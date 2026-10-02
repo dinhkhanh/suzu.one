@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadOneOnOne, canReadOneOnOnePrivate, canWriteOneOnOne, canWriteOneOnOnePrivate, findOneOnOne, loadDirectory, loadOneOnOne } from "@/modules/performance/service";
@@ -51,7 +52,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
           <Badge dot variant={statusTone(meeting.status)}>{t(`status.${meeting.status}`)}</Badge>
         </h1>
         <p className="text-sm text-muted-foreground">
-          {meeting.managerName} · {meeting.personName}
+          <RecordLink kind="person" id={meeting.managerPersonId}>{meeting.managerName}</RecordLink> · <RecordLink kind="person" id={meeting.personId}>{meeting.personName}</RecordLink>
         </p>
       </header>
 
@@ -92,7 +93,11 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
                 {action.dueOn ? <span className="ml-2 text-xs text-muted-foreground">{action.dueOn}</span> : null}
               </span>
               <span className="flex items-center gap-3">
-                {action.taskId ? <span className="text-xs text-muted-foreground">{t("actions.task")}</span> : null}
+                {action.taskId ? (
+                  <RecordLink kind="task" id={action.taskId} className="text-xs text-muted-foreground">
+                    {t("actions.task")}
+                  </RecordLink>
+                ) : null}
                 {mayWrite || action.assigneePersonId === user.person.id ? <CompleteActionButton actionId={action.id} /> : null}
               </span>
             </ListItem>

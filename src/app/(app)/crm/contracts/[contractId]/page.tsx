@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -47,15 +48,27 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
             {t("contracts.title")}
           </Link>{" "}
           ·{" "}
-          <Link href={`/crm/accounts/${account.client.id}`} className="underline">
+          <RecordLink kind="account" id={account.client.id} className="underline">
             {account.client.name}
-          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{contract.number}
+          </RecordLink></>} title={<span className="inline-flex flex-wrap items-center gap-2">{contract.number}
           <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
             {t(`enums.contractState.${contract.state}`)}
           </Badge></span>}>
         <p className="text-sm">{contract.title}</p>
         <p className="text-sm text-muted-foreground">
-          {[t(`contract.kinds.${contract.kind as "service"}`), contract.entityName, `${f.date(contract.startDate)} – ${f.date(contract.endDate)}`, contract.paymentTermsDays !== null ? t("contract.termsIs", { days: contract.paymentTermsDays }) : null, "valueVnd" in contract ? f.money(contract.valueVnd) : null].filter(Boolean).join(" · ")}
+          {[
+            t(`contract.kinds.${contract.kind as "service"}`),
+            contract.entityName ? (
+              <RecordLink key="entity" kind="entity" id={contract.entityId}>
+                {contract.entityName}
+              </RecordLink>
+            ) : null,
+            `${f.date(contract.startDate)} – ${f.date(contract.endDate)}`,
+            contract.paymentTermsDays !== null ? t("contract.termsIs", { days: contract.paymentTermsDays }) : null,
+            "valueVnd" in contract ? f.money(contract.valueVnd) : null,
+          ]
+            .filter(Boolean)
+            .flatMap((part, index) => (index ? [" · ", part] : [part]))}
         </p>
         {contract.signedOn ? (
           <p className="flex flex-wrap items-center gap-2 text-sm">
@@ -80,9 +93,9 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
           {contract.projectIds.map((projectId) => (
             <li key={projectId} className="flex items-center gap-2">
               {projectIds.includes(projectId) ? (
-                <Link href={`/projects/${projectId}`} className="underline">
+                <RecordLink kind="project" id={projectId} className="underline">
                   {projectName.get(projectId) ?? projectId}
-                </Link>
+                </RecordLink>
               ) : (
                 <span className="text-muted-foreground">{t("contract.hiddenProject")}</span>
               )}

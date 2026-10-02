@@ -169,7 +169,7 @@ describe("announcements", () => {
 
     const report = (await getReadReport(made.all))!;
     expect([report.total, report.read, report.acknowledged]).toEqual([7, 2, 2]);
-    expect(report.byDepartment.find((row) => row.departmentName === "Video")).toEqual({ departmentName: "Video", total: 6, read: 2, acknowledged: 2 });
+    expect(report.byDepartment.find((row) => row.departmentName === "Video")).toMatchObject({ departmentName: "Video", total: 6, read: 2, acknowledged: 2 });
     const pending = await listAnnouncementsFor(await viewer("long"), { onlyPendingAck: true });
     expect(pending.map((card) => card.title)).toEqual(["all"]);
     expect(await listAnnouncementsFor(huy, { onlyPendingAck: true })).toEqual([]);

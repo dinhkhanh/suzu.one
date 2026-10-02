@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
+import { recordHref } from "@/lib/record-routes";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import type { FeedbackPriority, FeedbackStatus } from "../enums";
 import type { FeedbackListItem } from "../service";
@@ -40,12 +42,18 @@ export async function FeedbackList({ items, showPerson, empty, numberFrom }: { i
           return (
             <TableRow key={item.id}>
               <TableCell className="max-w-md">
-                <Link href={`/feedback/${item.id}`} className="flex min-w-0 items-center gap-2 hover:underline">
+                <Link href={recordHref("feedback", item.id)} className="flex min-w-0 items-center gap-2 hover:underline">
                   <Icon className="size-4 shrink-0 text-muted-foreground" aria-label={t(`categories.${item.category}`)} />
                   <span className="truncate">{noteToPlainText(item.message)}</span>
                 </Link>
               </TableCell>
-              {showPerson ? <TableCell>{item.personName}</TableCell> : null}
+              {showPerson ? (
+                <TableCell>
+                  <RecordLink kind="person" id={item.personId}>
+                    {item.personName}
+                  </RecordLink>
+                </TableCell>
+              ) : null}
               <TableCell>{format.dateTime(item.createdAt, { dateStyle: "short", timeStyle: "short" })}</TableCell>
               <TableCell kind="id">{item.area ? `/${item.area}` : "—"}</TableCell>
               <TableCell>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { hasReached } from "@/modules/payroll/lifecycle";
@@ -78,7 +79,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
             <li className="font-medium">{t("unroutableTitle")}</li>
             {settlement.unpaidBank.map((person) => (
               <li key={person.personId}>
-                {person.fullName} — {t(`bank.skipReasons.${person.reason}` as "bank.skipReasons.no_account")}
+                <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink> — {t(`bank.skipReasons.${person.reason}` as "bank.skipReasons.no_account")}
               </li>
             ))}
           </ul>
@@ -156,7 +157,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                 {cash.map((row) => (
                   <TableRow key={row.personId}>
                     <TableCell>
-                      {row.fullName}
+                      <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                       <span className="ml-2 font-mono text-xs text-faint">{row.employeeCode}</span>
                     </TableCell>
                     <TableCell kind="money">{formatVnd(row.amount)}</TableCell>

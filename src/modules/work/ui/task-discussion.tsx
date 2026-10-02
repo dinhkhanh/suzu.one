@@ -15,10 +15,11 @@ import { mentionQueryAt, mentionToken, parseBody } from "../engine/mentions";
 import { REACTIONS } from "../enums";
 import type { DetailActivity } from "./task-detail";
 import { PersonAvatar } from "./task-row";
+import { RecordLink } from "@/components/ui/record-link";
 
 type Person = { id: string; fullName: string };
 export type DiscussionComment = { id: string; parentId: string | null; /** null = posted by an automation. */ authorPersonId: string | null; authorName: string; byAutomation?: boolean; body: string; reactions: Record<string, string[]>; editedAt: string | null; deleted: boolean; createdAt: string };
-export type DiscussionFile = { id: string; fileName: string; sizeBytes: number; uploadedByName: string | null; createdAt: string; canRemove: boolean };
+export type DiscussionFile = { id: string; fileName: string; sizeBytes: number; uploadedByPersonId?: string | null; uploadedByName: string | null; createdAt: string; canRemove: boolean };
 
 type Failure = { ok: boolean; error?: string; message?: string };
 const keyOf = (result: Failure) => (result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
@@ -44,9 +45,9 @@ function Body({ body }: { body: string }) {
     <p className="text-sm break-words whitespace-pre-wrap">
       {parseBody(body).map((segment, index) =>
         segment.type === "mention" ? (
-          <span key={index} className="rounded bg-primary/10 px-1 font-medium text-primary">
+          <RecordLink key={index} kind="person" id={segment.personId} className="rounded bg-primary/10 px-1 font-medium text-primary">
             @{segment.name}
-          </span>
+          </RecordLink>
         ) : segment.type === "link" ? (
           <a key={index} href={segment.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all underline">
             {segment.url}
@@ -178,7 +179,7 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
                   <FileLink fileId={file.id} fileName={file.fileName} download={openTaskFileAction} onError={setErrorKey} />
                 </TableCell>
                 <TableCell kind="number">{size(file.sizeBytes)}</TableCell>
-                <TableCell>{file.uploadedByName ?? "—"}</TableCell>
+                <TableCell>{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
                 <TableCell>{format.dateTime(new Date(file.createdAt), { dateStyle: "short" })}</TableCell>
                 {files.some((row) => row.canRemove) ? (
                   <TableCell kind="actions">
@@ -283,7 +284,7 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
       <PersonAvatar name={comment.byAutomation ? null : comment.authorName} className="mt-0.5" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-          <span className="font-medium">{comment.authorName}</span>
+          <RecordLink kind="person" id={comment.byAutomation ? null : comment.authorPersonId} className="font-medium">{comment.authorName}</RecordLink>
           {comment.byAutomation ? <Badge variant="outline">{t("byAutomation")}</Badge> : null}
           <time className="text-xs text-faint">{when(comment.createdAt)}</time>
           {comment.editedAt && !comment.deleted ? <span className="text-xs text-faint">{t("edited")}</span> : null}
@@ -347,7 +348,7 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
                   <HistoryIcon className="size-3.5" />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-wrap gap-x-1.5">
-                  <span className="font-medium">{item.entry.actorName ?? tTask("system")}</span>
+                  <RecordLink kind="person" id={item.entry.actorName ? item.entry.actorPersonId : null} className="font-medium">{item.entry.actorName ?? tTask("system")}</RecordLink>
                   <span className="min-w-0 text-muted-foreground">{describe(item.entry)}</span>
                 </span>
                 <time className="shrink-0 font-mono text-[0.6875rem] text-faint tabular-nums">{when(item.entry.createdAt)}</time>

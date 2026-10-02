@@ -76,7 +76,7 @@ export async function nudgeTask(taskId: string, actor: { personId: string; fullN
   });
 }
 
-export type MyWorkItem = { id: string; key: string; title: string; status: "todo" | "in_progress" | "done" | "cancelled"; stateName: string; dueDate: string | null; priority: number | null; projectName: string | null; reviewStatus: string; blockedBy: number; /** The reason of the open blocker raised on it (FR-PJM-28). */ blocker: string | null };
+export type MyWorkItem = { id: string; key: string; title: string; status: "todo" | "in_progress" | "done" | "cancelled"; stateName: string; dueDate: string | null; priority: number | null; projectId: string | null; projectName: string | null; reviewStatus: string; blockedBy: number; /** The reason of the open blocker raised on it (FR-PJM-28). */ blocker: string | null };
 
 /** The signed-in person's open work tasks, for "My work". */
 export async function listMyWorkItems(personId: string): Promise<MyWorkItem[]> {
@@ -90,6 +90,7 @@ export async function listMyWorkItems(personId: string): Promise<MyWorkItem[]> {
       stateName: schema.workState.name,
       dueDate: schema.task.dueDate,
       priority: schema.task.priority,
+      projectId: schema.workTask.projectId,
       projectName: schema.workProject.name,
       reviewStatus: schema.workTask.reviewStatus,
       blockedBy: sql<number>`(select count(*)::int from work_task_dependency d join task b on b.id = d.blocker_task_id where d.blocked_task_id = ${schema.task.id} and d.type = 'blocks' and b.deleted_at is null and b.status in ('todo', 'in_progress'))`,

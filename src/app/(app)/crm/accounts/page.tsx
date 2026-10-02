@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -92,9 +92,9 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
             {accounts.map((row) => (
               <TableRow key={row.client.id}>
                 <TableCell>
-                  <Link href={`/crm/accounts/${row.client.id}`} className="font-medium hover:underline">
+                  <RecordLink kind="account" id={row.client.id} className="font-medium">
                     {row.client.name}
-                  </Link>
+                  </RecordLink>
                   <span className="ml-2 font-mono text-xs text-faint">{row.client.code}</span>
                   {row.profile?.tier ? <Badge variant="outline" className="ml-2">{t(`enums.tier.${row.profile.tier as "a"}`)}</Badge> : null}
                   {row.profile?.creditHold ? <Badge variant="destructive" className="ml-2">{t("account.creditHold")}</Badge> : null}
@@ -105,7 +105,7 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                     {t(`enums.lifecycle.${(row.profile?.lifecycle ?? "prospect") as Lifecycle}`)}
                   </Badge>
                 </TableCell>
-                <TableCell>{row.managerName ?? "—"}</TableCell>
+                <TableCell>{row.managerName ? <RecordLink kind="person" id={row.client.accountManagerPersonId}>{row.managerName}</RecordLink> : "—"}</TableCell>
                 <TableCell kind="number">{row.signals.openProjects}</TableCell>
                 <TableCell kind="number">{row.signals.openDeals}</TableCell>
                 {showMoney ? <TableCell kind="money">{row.seesMoney ? f.money(row.signals.pipelineVnd) : "—"}</TableCell> : null}

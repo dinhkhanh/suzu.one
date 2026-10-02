@@ -3,7 +3,7 @@
 // at once and snaps back if the server refuses it — rows picked for one bulk change, and column
 // totals of estimates and logged time.
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -207,9 +207,9 @@ export function TaskTableView({
                 <TableCell kind="id">{task.key}</TableCell>
                 <TableCell className="max-w-72">
                   <span className="flex items-center gap-1.5">
-                    <Link href={`/work/tasks/${task.id}`} className={`truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                    <RecordLink kind="task" id={task.id} className={`truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
                       {task.title}
-                    </Link>
+                    </RecordLink>
                     {task.blocker ? (
                       <Badge variant="destructive" title={task.blocker.reason}>
                         {tWork("blockers.badge")}

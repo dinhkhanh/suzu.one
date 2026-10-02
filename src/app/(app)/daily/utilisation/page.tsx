@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { Fragment } from "react";
 import { List, ListEmpty } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,9 @@ export default async function UtilisationPage() {
           ? null
           : group.people.map((person: UtilisationPerson) => (
               <TableRow key={person.personId}>
-                <TableCell className="align-top font-medium">{person.name}</TableCell>
+                <TableCell className="align-top font-medium">
+                  <RecordLink kind="person" id={person.personId}>{person.name}</RecordLink>
+                </TableCell>
                 {person.weeks.map((value, index) => (
                   <Fragment key={view.weeks[index]}>{cell(value)}</Fragment>
                 ))}
@@ -82,7 +85,7 @@ export default async function UtilisationPage() {
         </List>
       ) : null}
       {view.groups.map((group) => (
-        <Section key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} title={group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name}>
+        <Section key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} title={group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : <RecordLink kind="team" id={group.teamId}>{group.name}</RecordLink>}>
           {group.kind === "portfolio" || group.kind === "portfolio_other" ? <p className="px-0.5 text-xs text-muted-foreground">{t("portfolioHint")}</p> : null}
           {table(group)}
         </Section>

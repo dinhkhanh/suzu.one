@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { TableAddRow, TableCard } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -76,7 +77,7 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                   <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.owner")}</dt>
-                      <dd>{item.ownerName ?? "—"}</dd>
+                      <dd>{item.ownerName ? <RecordLink kind="person" id={item.ownerPersonId}>{item.ownerName}</RecordLink> : "—"}</dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
@@ -90,7 +91,7 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                     ) : null}
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.author")}</dt>
-                      <dd>{item.authorName ?? "—"}</dd>
+                      <dd>{item.authorName ? <RecordLink kind="person" id={item.createdByPersonId}>{item.authorName}</RecordLink> : "—"}</dd>
                     </div>
                   </dl>
                   {item.evidenceFile || item.evidenceUrl ? (
@@ -115,9 +116,9 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                   {item.task ? (
                     <p className="text-sm">
                       <span className="text-xs text-muted-foreground">{t("task")} </span>
-                      <Link href={`/work/tasks/${item.task.id}`} className="underline">
+                      <RecordLink kind="task" id={item.task.id} className="underline">
                         <span className="font-mono text-xs">{item.task.key}</span> {item.task.title}
-                      </Link>
+                      </RecordLink>
                     </p>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-3">

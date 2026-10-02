@@ -1,9 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { CreateEntityForm } from "@/modules/platform/org/ui/entity-forms";
@@ -41,9 +41,9 @@ export default async function EntitiesPage() {
               <TableRow key={entity.id}>
                 <TableCell kind="id">{entity.code}</TableCell>
                 <TableCell className="max-w-96">
-                  <Link href={`/admin/entities/${entity.id}`} className="block truncate font-medium hover:underline">
+                  <RecordLink kind="entity" id={entity.id} className="block truncate font-medium">
                     {entity.shortName}
-                  </Link>
+                  </RecordLink>
                   <p className="truncate text-xs text-muted-foreground">{entity.legalName}</p>
                 </TableCell>
                 <TableCell kind="id">{entity.taxCode ?? "—"}</TableCell>

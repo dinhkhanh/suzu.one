@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -123,7 +124,9 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
             {view.rows.map((row) => (
               <TableRow key={row.person.id}>
                 <TableCell className="whitespace-normal">
-                  <span className="block truncate font-medium">{row.person.fullName}</span>
+                  <RecordLink kind="person" id={row.person.id} className="block truncate font-medium">
+                    {row.person.fullName}
+                  </RecordLink>
                   <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                     {row.person.positionName ? <span>{row.person.positionName}</span> : null}
                     {row.overWeeks ? <span className="font-medium text-destructive">{t("overWeeks", { count: row.overWeeks })}</span> : null}

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -125,8 +126,12 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                       <span className="block text-xs text-muted-foreground">{t(`sources.${item.source as "manual"}`)}</span>
                     </TableCell>
                     <TableCell className="whitespace-normal">
-                      {item.clientName ?? "—"}
-                      {item.entityName ? <span className="block text-xs text-muted-foreground">{item.entityName}</span> : null}
+                      {item.clientName ? <RecordLink kind="account" id={item.clientId}>{item.clientName}</RecordLink> : "—"}
+                      {item.entityName ? (
+                        <RecordLink kind="entity" id={item.entityId} className="block text-xs text-muted-foreground">
+                          {item.entityName}
+                        </RecordLink>
+                      ) : null}
                     </TableCell>
                     <TableCell kind="id">{reference ?? "—"}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">{format.dateTime(item.createdAt, { day: "2-digit", month: "2-digit", year: "numeric" })}</TableCell>
@@ -149,13 +154,23 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                           {item.status === "invoiced" ? (
                             <p className="text-sm text-muted-foreground">
                               {t("invoicedAs", { number: item.invoiceNumber ?? "—", date: date(item.invoiceDate) })}
-                              {item.decidedByName ? ` · ${item.decidedByName}` : ""}
+                              {item.decidedByName ? (
+                                <>
+                                  {" · "}
+                                  <RecordLink kind="person" id={item.decidedByPersonId}>{item.decidedByName}</RecordLink>
+                                </>
+                              ) : null}
                             </p>
                           ) : null}
                           {item.status === "waived" ? (
                             <p className="text-sm text-muted-foreground">
                               {t("waivedBecause", { reason: item.waivedReason ?? "—" })}
-                              {item.decidedByName ? ` · ${item.decidedByName}` : ""}
+                              {item.decidedByName ? (
+                                <>
+                                  {" · "}
+                                  <RecordLink kind="person" id={item.decidedByPersonId}>{item.decidedByName}</RecordLink>
+                                </>
+                              ) : null}
                             </p>
                           ) : null}
                           {item.status === "ready" && decides ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}

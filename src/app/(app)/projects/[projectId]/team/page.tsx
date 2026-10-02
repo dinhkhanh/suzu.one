@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Page } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -96,7 +97,7 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
                 return (
                   <tr key={key}>
                     <th scope="row" className="px-2 text-left align-top font-medium">
-                      {personId ? own[0].personName : <span className="italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>}
+                      {personId ? <RecordLink kind="person" id={personId}>{own[0].personName}</RecordLink> : <span className="italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>}
                       {personId && own.some((booking) => booking.placeholderRole) ? <span className="block text-xs font-normal text-muted-foreground">{own.find((booking) => booking.placeholderRole)?.placeholderRole}</span> : null}
                     </th>
                     {weeks.map((week, index) => {

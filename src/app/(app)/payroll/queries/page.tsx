@@ -11,6 +11,7 @@ import { listQueriesForManager } from "@/modules/payroll/payslips";
 import { compensationReach } from "@/modules/payroll/policy";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("payslipQueries");
 
@@ -49,7 +50,9 @@ export default async function PayslipQueriesPage() {
             {rows.map((row) => (
               <TableRow key={row.query.id}>
                 <TableCell>
-                  <span className="font-medium">{row.personName}</span>
+                  <RecordLink kind="person" id={row.payslip.personId} className="font-medium">
+                    {row.personName}
+                  </RecordLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">
                     {row.entityCode} · {row.payslip.month}
                   </span>

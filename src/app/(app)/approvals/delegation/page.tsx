@@ -59,7 +59,7 @@ export default async function DelegationPage() {
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">
-                      <PersonName name={row.toName} />
+                      <PersonName name={row.toName} personId={row.toPersonId} />
                     </TableCell>
                     <TableCell>{day(row.validFrom)}</TableCell>
                     <TableCell>{day(row.validTo)}</TableCell>
@@ -94,7 +94,7 @@ export default async function DelegationPage() {
             {current.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="font-medium">
-                  <PersonName name={row.fromName} />
+                  <PersonName name={row.fromName} personId={row.fromPersonId} />
                 </TableCell>
                 <TableCell>{day(row.validFrom)}</TableCell>
                 <TableCell>{day(row.validTo)}</TableCell>

@@ -1,10 +1,10 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { getRequest } from "@/modules/platform/approvals/service";
@@ -51,10 +51,10 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<><Link href={`/crm/deals/${dealId}`} className="underline">
+      <PageHeader eyebrow={<><RecordLink kind="deal" id={dealId} className="underline">
             {found.deal.title}
-          </Link>{" "}
-          · {found.account.client.name}</>} title={<span className="inline-flex flex-wrap items-center gap-2">{quote.quote.number} v{quote.quote.version}
+          </RecordLink>{" "}
+          · <RecordLink kind="account" id={found.account.client.id}>{found.account.client.name}</RecordLink></>} title={<span className="inline-flex flex-wrap items-center gap-2">{quote.quote.number} v{quote.quote.version}
           <Badge dot variant={statusTone(quote.quote.status === "in_approval" ? "pending" : quote.quote.status)}>
             {t(`enums.quoteStatus.${quote.quote.status as "draft"}`)}
           </Badge></span>}>

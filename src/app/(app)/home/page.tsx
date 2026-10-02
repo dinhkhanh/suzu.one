@@ -5,6 +5,8 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
+import { recordHref } from "@/lib/record-routes";
 import { getHomeFeed } from "@/modules/comms/service";
 import { AnnouncementCards, KudosCards } from "@/modules/comms/ui/cards";
 import { IconTile } from "@/modules/core-hr/ui/me-menu";
@@ -59,7 +61,7 @@ export default async function HomePage() {
                 <ul className="ml-4 list-disc text-foreground/80">
                   {pending.acks.slice(0, 5).map((ack) => (
                     <li key={ack.pageId}>
-                      <Link href={`/kb/pages/${ack.pageId}`}>{ack.title}</Link> — {ack.overdue ? <span className="text-destructive">{t("home.pending.overdue")}</span> : t("home.pending.dueOn", { date: isoDay(ack.dueOn) })}
+                      <Link href={recordHref("kbPage", ack.pageId)}>{ack.title}</Link> — {ack.overdue ? <span className="text-destructive">{t("home.pending.overdue")}</span> : t("home.pending.dueOn", { date: isoDay(ack.dueOn) })}
                     </li>
                   ))}
                 </ul>
@@ -71,7 +73,7 @@ export default async function HomePage() {
                 <ul className="ml-4 list-disc text-foreground/80">
                   {pending.announcements.map((card) => (
                     <li key={card.id}>
-                      <Link href={`/announcements/${card.id}`}>{card.title}</Link>
+                      <Link href={recordHref("announcement", card.id)}>{card.title}</Link>
                     </li>
                   ))}
                 </ul>
@@ -92,7 +94,7 @@ export default async function HomePage() {
               <List>
                 {feed.joiners.length === 0 ? <ListEmpty>{t("home.nothingThisWeek")}</ListEmpty> : null}
                 {feed.joiners.map((person) => (
-                  <ListItem key={person.personId} href={`/people/${person.personId}`} className="press">
+                  <ListItem key={person.personId} href={recordHref("person", person.personId)} className="press">
                     <IconTile>
                       <UserPlus aria-hidden />
                     </IconTile>
@@ -115,7 +117,9 @@ export default async function HomePage() {
                       <Cake aria-hidden />
                     </IconTile>
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-medium">{person.fullName}</span>
+                      <RecordLink kind="person" id={person.personId} className="truncate font-medium">
+                        {person.fullName}
+                      </RecordLink>
                       <span className="truncate text-xs text-muted-foreground">{when(person.inDays, person.month, person.day)}</span>
                     </span>
                   </ListItem>
@@ -131,7 +135,9 @@ export default async function HomePage() {
                       <Award aria-hidden />
                     </IconTile>
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-medium">{person.fullName}</span>
+                      <RecordLink kind="person" id={person.personId} className="truncate font-medium">
+                        {person.fullName}
+                      </RecordLink>
                       <span className="truncate text-xs text-muted-foreground">
                         {t("home.years", { years: person.years })}, {when(person.inDays, person.month, person.day)}
                       </span>
@@ -152,7 +158,7 @@ export default async function HomePage() {
         <Section title={t("home.newPages")} count={feed.newPages.length}>
           <List>
             {feed.newPages.map((page) => (
-              <ListItem key={page.pageId} href={`/kb/pages/${page.pageId}`} className="press flex-wrap gap-x-3 gap-y-0.5">
+              <ListItem key={page.pageId} href={recordHref("kbPage", page.pageId)} className="press flex-wrap gap-x-3 gap-y-0.5">
                 <span className="min-w-0 flex-1 truncate font-medium">{page.title}</span>
                 <span className="text-xs text-faint">
                   {page.spaceName}

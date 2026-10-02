@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { kbViewerOf, listMyAcknowledgements, listMyPendingAcks } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
@@ -43,11 +44,13 @@ export default async function MyAcknowledgementsPage() {
             {pending.map((row) => (
               <TableRow key={row.pageId}>
                 <TableCell className="max-w-80 truncate">
-                  <Link href={`/kb/pages/${row.pageId}`} className="font-medium hover:underline">
+                  <RecordLink kind="kbPage" id={row.pageId} className="font-medium">
                     {row.title}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{row.spaceName}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  <RecordLink kind="kbSpace" id={row.spaceKey}>{row.spaceName}</RecordLink>
+                </TableCell>
                 <TableCell>
                   <Badge dot variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
                 </TableCell>
@@ -72,9 +75,7 @@ export default async function MyAcknowledgementsPage() {
             {done.map((row) => (
               <TableRow key={`${row.pageId}-${row.versionNo}`}>
                 <TableCell>
-                  <Link href={`/kb/pages/${row.pageId}`} className="hover:underline">
-                    {row.title}
-                  </Link>
+                  <RecordLink kind="kbPage" id={row.pageId}>{row.title}</RecordLink>
                 </TableCell>
                 <TableCell>
                   v{row.versionNo} {row.current ? null : <span className="text-xs text-muted-foreground">· {t("ack.superseded")}</span>}

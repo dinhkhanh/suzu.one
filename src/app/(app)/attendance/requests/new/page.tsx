@@ -13,6 +13,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("attendanceRequest");
 
@@ -65,7 +66,7 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
 
   return (
     <Page width="narrow">
-      <PageHeader title={returned ? t("resubmitTitle") : t("newTitle")} description={onBehalf && subject ? t("onBehalf", { name: subject.fullName }) : t("newDescription")} />
+      <PageHeader title={returned ? t("resubmitTitle") : t("newTitle")} description={onBehalf && subject ? t.rich("onBehalf", { name: subject.fullName, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> }) : t("newDescription")} />
       {returned ? null : (
         <nav className="tab-row">
           {ATTENDANCE_REQUEST_TYPES.map((value) => (

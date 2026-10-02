@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { decidePageReviewAction } from "@/modules/kb/actions";
 import { getPublishReview } from "@/modules/kb/service";
 import { DiffView } from "@/modules/kb/ui/diff-view";
@@ -38,8 +39,17 @@ export default async function KbPublishReviewPage(props: PageProps<"/approvals/k
         requestId={request.id}
         who={
           <>
-            {view.requesterName}
-            {view.spaceName ? ` · ${view.spaceName}` : ""}
+            <RecordLink kind="person" id={request.requesterPersonId}>
+              {view.requesterName}
+            </RecordLink>
+            {view.spaceName ? (
+              <>
+                {" · "}
+                <RecordLink kind="kbSpace" id={view.spaceKey}>
+                  {view.spaceName}
+                </RecordLink>
+              </>
+            ) : null}
             {payload.isMajor ? (
               <Badge variant="outline" className="ml-2">
                 {t("fields.isMajor")}
@@ -55,9 +65,9 @@ export default async function KbPublishReviewPage(props: PageProps<"/approvals/k
             {
               label: t("review.page"),
               value: (
-                <Link href={`/kb/pages/${payload.pageId}`} className="text-link hover:underline">
+                <RecordLink kind="kbPage" id={payload.pageId} className="text-link">
                   {view.submitted?.title ?? payload.title}
-                </Link>
+                </RecordLink>
               ),
             },
             { label: t("fields.changeNote"), value: payload.changeNote, long: true },

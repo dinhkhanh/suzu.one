@@ -259,7 +259,7 @@ export async function listMyAcknowledgements(personId: string, limit = 100): Pro
 
 // ── The managers' report ────────────────────────────────────────────────────────────────────
 
-export type AckReportRow = { personId: string; fullName: string; entityName: string | null; departmentName: string | null; acknowledgedAt: Date | null; dueOn: IsoDate; overdue: boolean; lastNoticeOn: IsoDate | null; notices: number };
+export type AckReportRow = { personId: string; fullName: string; entityId: string | null; entityName: string | null; departmentId: string | null; departmentName: string | null; acknowledgedAt: Date | null; dueOn: IsoDate; overdue: boolean; lastNoticeOn: IsoDate | null; notices: number };
 export type AckGroup = { name: string; total: number; done: number };
 export type AckReport = { versionNo: number | null; since: Date | null; dueDays: number; total: number; done: number; overdue: number; rows: AckReportRow[]; byEntity: AckGroup[]; byDepartment: AckGroup[] };
 
@@ -273,7 +273,9 @@ export async function getAckReport(page: PageRow, today: IsoDate = todayInVietna
       personId: person.id,
       fullName: person.fullName,
       createdAt: person.createdAt,
+      entityId: person.primaryEntityId,
       entityName: schema.entity.shortName,
+      departmentId: person.departmentId,
       departmentName: schema.orgUnit.name,
       acknowledgedAt: kbAcknowledgement.acknowledgedAt,
       lastNoticeOn: sql<IsoDate | null>`(select max(${kbAckReminder.sentOn}) from ${kbAckReminder} where ${kbAckReminder.pageId} = ${kbPage.id} and ${kbAckReminder.versionId} = ${kbPage.ackVersionId} and ${kbAckReminder.personId} = ${person.id})`,
@@ -288,7 +290,7 @@ export async function getAckReport(page: PageRow, today: IsoDate = todayInVietna
     .orderBy(asc(person.searchName));
   const rows: AckReportRow[] = people.map((row) => {
     const dueOn = ackDueOn(page, row.createdAt);
-    return { personId: row.personId, fullName: row.fullName, entityName: row.entityName, departmentName: row.departmentName, acknowledgedAt: row.acknowledgedAt, dueOn, overdue: !row.acknowledgedAt && dueOn < today, lastNoticeOn: row.lastNoticeOn, notices: row.notices };
+    return { personId: row.personId, fullName: row.fullName, entityId: row.entityId, entityName: row.entityName, departmentId: row.departmentId, departmentName: row.departmentName, acknowledgedAt: row.acknowledgedAt, dueOn, overdue: !row.acknowledgedAt && dueOn < today, lastNoticeOn: row.lastNoticeOn, notices: row.notices };
   });
   const group = (key: (row: AckReportRow) => string | null): AckGroup[] =>
     [...Map.groupBy(rows, (row) => key(row) ?? "—")].map(([name, own]) => ({ name, total: own.length, done: own.filter((row) => row.acknowledgedAt).length })).sort((a, b) => a.name.localeCompare(b.name, "vi"));

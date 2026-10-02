@@ -11,6 +11,7 @@ import { formatVnd } from "@/modules/payroll/ui/money";
 import { ExportReportButton, ReportFilters } from "@/modules/payroll/ui/report-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { PayrollTabs } from "@/modules/payroll/ui/payroll-tabs";
 
 export const generateMetadata = pageTitle("payrollReports");
@@ -79,10 +80,10 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
               {register.lines.map((line) => (
                 <TableRow key={line.personId}>
                   <TableCell>
-                    {line.fullName}
+                    <RecordLink kind="person" id={line.personId}>{line.fullName}</RecordLink>
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{line.employeeCode}</span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{line.departmentName ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{line.departmentName ? <RecordLink kind="unit" id={line.departmentId}>{line.departmentName}</RecordLink> : "—"}</TableCell>
                   <TableCell kind="money">{formatVnd(line.gross)}</TableCell>
                   <TableCell kind="money">{formatVnd(line.employeeInsurance)}</TableCell>
                   <TableCell kind="money">{formatVnd(line.pit)}</TableCell>

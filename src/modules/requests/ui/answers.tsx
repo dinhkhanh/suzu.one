@@ -4,6 +4,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { FormDefinition } from "../engine/form";
 import { AttachmentLink } from "./attachment-link";
@@ -55,7 +56,14 @@ export async function Answers({
                     .map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) }))
                     .join(", ") || "—"
                 ) : field.type === "person" || field.type === "entity" ? (
-                  (Array.isArray(value) ? value : [value]).map((entry) => recordNames.get(String(entry)) ?? String(entry)).join(", ") || "—"
+                  (Array.isArray(value) ? value : [value]).map((entry, index) => (
+                    <span key={String(entry)}>
+                      {index ? ", " : ""}
+                      <RecordLink kind={field.type === "person" ? "person" : "entity"} id={recordNames.has(String(entry)) ? String(entry) : null}>
+                        {recordNames.get(String(entry)) ?? String(entry)}
+                      </RecordLink>
+                    </span>
+                  ))
                 ) : field.type === "textarea" ? (
                   <RichText text={String(value)} />
                 ) : field.type === "file" ? (

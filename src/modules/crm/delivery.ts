@@ -169,13 +169,13 @@ export async function dealOfProject(projectId: string): Promise<{ dealId: string
   return row ?? null;
 }
 
-export type SalesHandoffWaiting = { projectId: string; projectName: string; dealId: string; dealTitle: string; fromName: string | null; createdAt: Date };
+export type SalesHandoffWaiting = { projectId: string; projectName: string; dealId: string; dealTitle: string; fromPersonId: string | null; fromName: string | null; createdAt: Date };
 
 /** Sales hand-offs waiting for this person to accept (Today, My work). */
 export async function listSalesHandoffsFor(personId: string): Promise<SalesHandoffWaiting[]> {
   const from = alias(schema.person, "handoff_from");
   return db()
-    .select({ projectId: schema.crmDealProject.projectId, projectName: schema.workProject.name, dealId: schema.crmDeal.id, dealTitle: schema.crmDeal.title, fromName: from.fullName, createdAt: schema.crmDealProject.createdAt })
+    .select({ projectId: schema.crmDealProject.projectId, projectName: schema.workProject.name, dealId: schema.crmDeal.id, dealTitle: schema.crmDeal.title, fromPersonId: schema.crmDealProject.createdByPersonId, fromName: from.fullName, createdAt: schema.crmDealProject.createdAt })
     .from(schema.crmDealProject)
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
     .innerJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId))

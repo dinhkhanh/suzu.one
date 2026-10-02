@@ -1,6 +1,6 @@
 // A report's lines — done, not done, the day's activity — for the form and the read-only view.
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { RecordLink } from "@/components/ui/record-link";
 import type { ShownActivity, ShownLine } from "../engine/redact";
 import { hoursOf } from "./format";
 
@@ -18,9 +18,9 @@ export function TaskLines({ lines, empty }: { lines: readonly ShownLine[]; empty
           {line.hidden ? (
             <span className="text-muted-foreground italic">{t("privateWork")}</span>
           ) : (
-            <Link href={`/work/tasks/${line.taskId}`} className="hover:underline">
+            <RecordLink kind="task" id={line.taskId}>
               {line.ref ? <span className="font-mono text-xs text-muted-foreground">{line.ref}</span> : null} {line.title}
-            </Link>
+            </RecordLink>
           )}
         </li>
       ))}
@@ -38,9 +38,9 @@ export function ActivityList({ items }: { items: readonly ShownActivity[] }) {
         const title = item.hidden ? (
           <span className="text-muted-foreground italic">{t("privateWork")}</span>
         ) : item.taskId ? (
-          <Link href={`/work/tasks/${item.taskId}`} className="hover:underline">
+          <RecordLink kind="task" id={item.taskId}>
             {item.ref ? <span className="font-mono text-xs text-muted-foreground">{item.ref}</span> : null} {item.title}
-          </Link>
+          </RecordLink>
         ) : (
           <span>{t.has(`categories.${item.title}`) ? t(`categories.${item.title}` as "categories.admin") : item.title}</span>
         );

@@ -72,7 +72,7 @@ export async function resolveBlocker(taskId: string, resolution: string | null, 
   });
 }
 
-export type BlockerView = { id: string; taskId: string; reason: string; neededPersonId: string | null; neededName: string | null; raisedByPersonId: string; raisedByName: string | null; raisedAt: Date; resolvedAt: Date | null; resolvedByName: string | null; resolution: string | null; minutes: number };
+export type BlockerView = { id: string; taskId: string; reason: string; neededPersonId: string | null; neededName: string | null; raisedByPersonId: string; raisedByName: string | null; raisedAt: Date; resolvedAt: Date | null; resolvedByPersonId: string | null; resolvedByName: string | null; resolution: string | null; minutes: number };
 
 function blockerQuery(executor: Executor) {
   const needed = alias(schema.person, "needed");
@@ -89,6 +89,7 @@ function blockerQuery(executor: Executor) {
       raisedByName: raiser.fullName,
       raisedAt: schema.workBlocker.raisedAt,
       resolvedAt: schema.workBlocker.resolvedAt,
+      resolvedByPersonId: schema.workBlocker.resolvedByPersonId,
       resolvedByName: resolver.fullName,
       resolution: schema.workBlocker.resolution,
       minutes: blockedMinutesSql,
@@ -133,7 +134,7 @@ function withTask(executor: Executor) {
     .leftJoin(raiser, eq(raiser.id, schema.workBlocker.raisedByPersonId))
     .$dynamic();
 }
-const present = (rows: Awaited<ReturnType<ReturnType<typeof withTask>["execute"]>>): RaisedBlocker[] => rows.map(({ number, teamKey, ...row }) => ({ ...row, resolvedByName: null, key: taskKey(teamKey, number) }));
+const present = (rows: Awaited<ReturnType<ReturnType<typeof withTask>["execute"]>>): RaisedBlocker[] => rows.map(({ number, teamKey, ...row }) => ({ ...row, resolvedByPersonId: null, resolvedByName: null, key: taskKey(teamKey, number) }));
 
 /** For the daily report (FR-PJM-21): the blockers a person raised on a day (Vietnam time), resolved or not. */
 export async function listBlockersRaisedOn(personId: string, date: IsoDate, executor: Executor = db()): Promise<RaisedBlocker[]> {

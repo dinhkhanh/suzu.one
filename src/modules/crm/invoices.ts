@@ -131,7 +131,7 @@ export function invoiceReach(viewer: CrmViewer): SQL | undefined | null {
   return parts.length ? or(...parts)! : null;
 }
 
-export type InvoiceView = InvoiceRow & { accountName: string; entityName: string | null; managerName: string | null; paidVnd: number; outstandingVnd: number; standing: ReturnType<typeof invoiceStanding>; daysPastDue: number; bucket: AgingBucket };
+export type InvoiceView = InvoiceRow & { accountName: string; entityName: string | null; managerPersonId: string | null; managerName: string | null; paidVnd: number; outstandingVnd: number; standing: ReturnType<typeof invoiceStanding>; daysPastDue: number; bucket: AgingBucket };
 
 const paidSub = () =>
   db()
@@ -149,7 +149,7 @@ export async function listInvoices(viewer: CrmViewer, filters: InvoiceFilters = 
   const manager = alias(schema.person, "invoice_manager");
   const status = filters.status ?? "open";
   const rows = await db()
-    .select({ invoice: schema.crmInvoice, accountName: schema.workClient.name, entityName: schema.entity.shortName, managerName: manager.fullName, paid: paid.amount })
+    .select({ invoice: schema.crmInvoice, accountName: schema.workClient.name, entityName: schema.entity.shortName, managerPersonId: schema.workClient.accountManagerPersonId, managerName: manager.fullName, paid: paid.amount })
     .from(schema.crmInvoice)
     .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmInvoice.clientId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.crmInvoice.entityId))
@@ -222,7 +222,7 @@ async function listInvoicesByIds(ids: readonly string[], today: IsoDate): Promis
   const paid = paidSub();
   const manager = alias(schema.person, "invoice_manager");
   const rows = await db()
-    .select({ invoice: schema.crmInvoice, accountName: schema.workClient.name, entityName: schema.entity.shortName, managerName: manager.fullName, paid: paid.amount })
+    .select({ invoice: schema.crmInvoice, accountName: schema.workClient.name, entityName: schema.entity.shortName, managerPersonId: schema.workClient.accountManagerPersonId, managerName: manager.fullName, paid: paid.amount })
     .from(schema.crmInvoice)
     .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmInvoice.clientId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.crmInvoice.entityId))

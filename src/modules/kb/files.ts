@@ -61,7 +61,7 @@ export async function shownByPublishedVersion(loaded: LoadedPage, fileId: string
   return !!version && fileIdsOf(version.content as Doc).includes(fileId.toLowerCase());
 }
 
-export type SpaceFileView = PageFileView & { pageId: string; pageTitle: string; uploadedByName: string | null };
+export type SpaceFileView = PageFileView & { pageId: string; pageTitle: string; uploadedByPersonId: string | null; uploadedByName: string | null };
 
 /**
  * Every file in a space, in one list (FR-KB-15): a team finds an upload without remembering which
@@ -104,5 +104,5 @@ export async function listSpaceFiles(viewer: KbViewer, spaceId: string): Promise
       ),
     )
     .orderBy(desc(schema.storedFile.createdAt));
-  return rows.map(({ file, pageId, pageTitle, uploadedByName }) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType, createdAt: file.createdAt, pageId, pageTitle, uploadedByName }));
+  return rows.map(({ file, pageId, pageTitle, uploadedByName }) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType, createdAt: file.createdAt, pageId, pageTitle, uploadedByPersonId: file.uploadedByPersonId, uploadedByName }));
 }

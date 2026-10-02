@@ -7,6 +7,7 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { requestCode } from "@/modules/platform/approvals/ui/request-views";
@@ -56,11 +57,16 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
         title={view.request.summary}
         description={
           <>
-            <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-link hover:underline">
-              {view.subjectName}
-            </Link>
+            {/* The pay file for whoever reads the figures; the colleague's profile for an approver who does not. */}
+            {view.request.subjectPersonId && view.figures ? (
+              <Link href={`/payroll/salaries/${view.request.subjectPersonId}`} className="text-link hover:underline">
+                {view.subjectName}
+              </Link>
+            ) : (
+              <RecordLink kind="person" id={view.request.subjectPersonId}>{view.subjectName}</RecordLink>
+            )}
             {" · "}
-            {t("salaries.requestedBy", { name: view.requesterName })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}
+            {t.rich("salaries.requestedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={view.request.requesterPersonId}>{chunks}</RecordLink> })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}
           </>
         }
       />
@@ -100,7 +106,7 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
               <Badge dot variant={statusTone(step.status)}>{tApprovals.has(`assignee.${step.status}`) ? tApprovals(`assignee.${step.status}` as "assignee.pending") : step.status}</Badge>
               {step.assignees.map((assignee) => (
                 <span key={assignee.personId}>
-                  {assignee.name}
+                  <RecordLink kind="person" id={assignee.personId}>{assignee.name}</RecordLink>
                   {assignee.comment ? <span className="text-muted-foreground"> — “{assignee.comment}”</span> : null}
                 </span>
               ))}

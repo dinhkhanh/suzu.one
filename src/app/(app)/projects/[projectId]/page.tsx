@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { initialsOf } from "@/lib/text";
@@ -110,9 +111,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
       label: t("fields.client"),
       value: account ? (
         <span className="flex flex-wrap items-center gap-2">
-          <Link href={`/crm/accounts/${account.client.id}`} className="font-medium hover:underline">
+          <RecordLink kind="account" id={account.client.id} className="font-medium">
             {account.client.name}
-          </Link>
+          </RecordLink>
           {account.profile?.creditHold ? <Badge variant="destructive">{t("crm.creditHold")}</Badge> : null}
         </span>
       ) : (
@@ -126,7 +127,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           {leads.map((lead) => (
             <span key={lead.personId} className="flex items-center gap-1.5">
               <PersonAvatar person={{ id: lead.personId, fullName: lead.fullName, photoFileId: null }} size="sm" />
-              {lead.fullName}
+              <RecordLink kind="person" id={lead.personId}>{lead.fullName}</RecordLink>
             </span>
           ))}
         </span>
@@ -134,7 +135,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         "—"
       ),
     },
-    { label: t("fields.accountManager"), value: accountManager?.fullName ?? <span className="text-muted-foreground">{t("settings.noAccountManager")}</span> },
+    { label: t("fields.accountManager"), value: accountManager ? <RecordLink kind="person" id={accountManager.personId}>{accountManager.fullName}</RecordLink> : <span className="text-muted-foreground">{t("settings.noAccountManager")}</span> },
     {
       label: t("overview.people"),
       value: members.length ? (
@@ -165,7 +166,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
       ),
     },
     ...(can.seeFees ? [{ label: t("fields.feeVnd"), value: <span className="font-mono text-[0.8125rem] tabular-nums">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : money(plan.feeVnd)}</span> }] : []),
-    ...(entityName ? [{ label: t("fields.entity"), value: entityName }] : []),
+    ...(entityName ? [{ label: t("fields.entity"), value: <RecordLink kind="entity" id={project.entityId}>{entityName}</RecordLink> }] : []),
     ...(contract || (origin && showsDeal)
       ? [
           {
@@ -173,9 +174,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
             value: (
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {origin && showsDeal ? (
-                  <Link href={`/crm/deals/${origin.dealId}`} className="hover:underline">
+                  <RecordLink kind="deal" id={origin.dealId}>
                     <span className="font-mono text-xs text-muted-foreground">{origin.code}</span> {origin.title} <span className="text-xs text-faint">({t(`crm.handoff.${origin.handoffStatus as "pending"}`)})</span>
-                  </Link>
+                  </RecordLink>
                 ) : null}
                 {contract ? <span className="text-muted-foreground">{t("crm.contract", { number: contract })}</span> : null}
               </span>
@@ -296,7 +297,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
                 <ul className="flex flex-col gap-2">
                   {bookings.map((booking) => (
                     <li key={booking.id} className="flex items-center gap-3 text-sm">
-                      <span className="min-w-0 flex-1 truncate">{booking.personName ?? <span className="italic text-muted-foreground">{t("bookings.placeholder", { role: booking.placeholderRole ?? "" })}</span>}</span>
+                      <span className="min-w-0 flex-1 truncate">{booking.personName ? <RecordLink kind="person" id={booking.personId}>{booking.personName}</RecordLink> : <span className="italic text-muted-foreground">{t("bookings.placeholder", { role: booking.placeholderRole ?? "" })}</span>}</span>
                       <span className="shrink-0 font-mono text-xs tabular-nums">
                         {t("bookings.hoursShort", { hours: hours(booking.minutes) })}
                         {booking.status === "tentative" ? <span className="text-faint">?</span> : null}

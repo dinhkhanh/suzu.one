@@ -87,6 +87,18 @@ on rows that should arrive one after another. Sheets slide up (`animate-rise-up`
   a phone (`size="lg"` + `w-full md:w-auto`).
 - Dialogs are bottom sheets on a phone (handle, rounded top, safe-area padding) and centred cards
   on a desk — `Dialog` does this by itself.
+- A name is a way to its record. Wherever a person, project, client, task, team, asset or any
+  other record with a page of its own is named — a table cell, a fact sheet, a byline, a history
+  line, a sentence — it is a `RecordLink` (`components/ui/record-link.tsx`):
+  `<RecordLink kind="person" id={row.ownerId}>{row.ownerName}</RecordLink>`. The routes live in
+  `src/lib/record-routes.ts` (`recordHref(kind, id)` for an `href` prop); no hand-written
+  `/people/${id}`. It is quiet (ink, underlined under the pointer) and takes the caller's classes,
+  and it turns into plain text by itself when there is no id, when this viewer cannot open that
+  kind (`linkableKinds` in `shell/nav.ts`) or inside a row that is already a link (`ListItem
+  href`) — so pass `id={null}` when the page knows the viewer may not open this one record, and
+  never put a link inside a link, a button, an option or a label. A query that shows a name selects
+  the id beside it. Not linked: the record's own title on its own page, names inside form controls,
+  and exports, e-mails and PDFs.
 - Empty states are a row of the grid (`TableEmpty`, `ListEmpty`): one sentence, and when there is
   something to do about it, the add row under it.
 - No hand-rolled `rounded-xl border` boxes, no `divide-y` lists, no raw `<table>`, no coloured

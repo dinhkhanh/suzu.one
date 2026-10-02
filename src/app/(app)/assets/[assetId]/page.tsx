@@ -15,6 +15,7 @@ import { BookingList } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
 import { AssetHistory, AssetQr, StatusBadge } from "@/modules/assets/ui/register-views";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("assets");
 
@@ -61,7 +62,7 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
       <PageHeader eyebrow={<span className="font-mono">{view.asset.code}</span>} title={view.asset.name} actions={<AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${view.qrToken}`} />}>
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <StatusBadge status={view.asset.status} />
-          {view.asset.categoryName} · {view.asset.entityName}
+          {view.asset.categoryName} · <RecordLink kind="entity" id={view.asset.entityId}>{view.asset.entityName}</RecordLink>
         </p>
       </PageHeader>
 
@@ -81,7 +82,16 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
         <section className="flex flex-col gap-3 rounded-md border p-4">
           <h2 className="font-medium">{t("held.title")}</h2>
           <p className="text-sm">
-            {t("held.by", { holder: open.holderName ?? "—" })} · {open.assignedAt.toLocaleDateString("vi-VN")}
+            {t.rich("held.by", {
+              holder: open.holderName ?? "—",
+              link: (chunks) => (
+                // A holder whose name was not resolved shows a dash, which is not a way anywhere.
+                <RecordLink kind={open.holderType === "person" ? "person" : open.holderType === "team" ? "unit" : "entity"} id={!open.holderName ? null : open.holderType === "person" ? open.holderPersonId : open.holderType === "team" ? open.holderTeamId : open.holderEntityId}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}{" "}
+            · {open.assignedAt.toLocaleDateString("vi-VN")}
             {open.handoverConfirmedAt ? <span className="ml-2 text-emerald-600">{t("held.confirmed")}</span> : <span className="ml-2 text-amber-600">{t("held.awaitingConfirmation")}</span>}
           </p>
           {open.accessories.length > 0 ? <p className="text-sm text-muted-foreground">{open.accessories.join(" · ")}</p> : null}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -63,7 +64,7 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
                   <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
                 </TableCell>
                 <TableCell>{[date(meeting.heldOn), meeting.startTime ? meeting.startTime.slice(0, 5) : null].filter(Boolean).join(" · ")}</TableCell>
-                <TableCell>{meeting.authorName ?? "—"}</TableCell>
+                <TableCell>{meeting.authorName ? <RecordLink kind="person" id={meeting.createdByPersonId}>{meeting.authorName}</RecordLink> : "—"}</TableCell>
                 <TableCell kind="number">{meeting.attendeeIds.length}</TableCell>
                 <TableCell kind="number">{meeting.decisions}</TableCell>
                 <TableCell>{meeting.actionItems ? <Badge dot variant={meeting.openActionItems ? "warning" : "success"}>{t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}</Badge> : "—"}</TableCell>

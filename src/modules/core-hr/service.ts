@@ -97,9 +97,12 @@ export type PeopleListRow = {
   workEmail: string | null;
   photoFileId: string | null;
   employeeCode: string | null;
+  entityId: string | null;
   entityName: string | null;
+  departmentId: string | null;
   departmentName: string | null;
   positionName: string | null;
+  managerId: string | null;
   managerName: string | null;
   // null when the viewer may only see this person's directory entry.
   workforceType: WorkforceType | null;
@@ -113,7 +116,8 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
   const manager = alias(schema.person, "manager");
   const directoryReach = tierReach(principal, "public_internal");
   const personalReach = tierReach(principal, "personal");
-  const [directoryUnits, personalUnits] = await Promise.all([widenReach(directoryReach), widenReach(personalReach)]);
+  // Naming a unit reaches everything below it (D20): a department's link lists its small teams' people too.
+  const [directoryUnits, personalUnits, filterUnits] = await Promise.all([widenReach(directoryReach), widenReach(personalReach), filters.departmentId ? unitsWithin([filters.departmentId]) : []]);
   const status = filters.status ?? "active";
   const needsPersonalTier = filters.workforceType !== undefined || status !== "active";
   const q = filters.q?.trim();
@@ -125,7 +129,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
     status === "all" ? undefined : eq(schema.person.status, status),
     filters.workforceType ? eq(a.workforceType, filters.workforceType) : undefined,
     filters.entityId ? eq(e.entityId, filters.entityId) : undefined,
-    filters.departmentId ? eq(a.departmentId, filters.departmentId) : undefined,
+    filters.departmentId ? or(eq(a.departmentId, filters.departmentId), filterUnits.length ? inArray(a.orgUnitId, filterUnits) : undefined) : undefined,
     pattern
       ? or(ilike(schema.person.searchName, `%${toSearchKey(q!).replace(/[\\%_]/g, "\\$&")}%`), ilike(schema.person.workEmail, pattern), ilike(e.employeeCode, pattern))
       : undefined,
@@ -182,9 +186,12 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         workEmail: row.workEmail,
         photoFileId: row.photoFileId,
         employeeCode: row.employeeCode,
+        entityId: row.entityId,
         entityName: row.entityName,
+        departmentId: row.departmentId,
         departmentName: row.departmentName,
         positionName: row.positionName,
+        managerId: row.managerId,
         managerName: row.managerName,
         workforceType: personal ? row.workforceType : null,
         status: personal ? row.status : null,
@@ -275,6 +282,7 @@ async function readPersonTarget(personId: string, executor: Tx | ReturnType<type
 export type AssignmentView = {
   id: string;
   employmentId: string;
+  entityId: string;
   entityName: string;
   employeeCode: string;
   validFrom: IsoDate;
@@ -308,7 +316,7 @@ export type PersonView = {
   entityId: string | null;
   entityName: string | null;
   // The assignment in force today; only its directory fields are filled below the personal tier.
-  current: Pick<AssignmentView, "departmentName" | "teamName" | "positionName" | "managerId" | "managerName"> | null;
+  current: Pick<AssignmentView, "departmentId" | "departmentName" | "teamId" | "teamName" | "positionName" | "managerId" | "managerName"> | null;
   personal: {
     status: PersonStatus;
     startDate: IsoDate | null;
@@ -396,7 +404,9 @@ export async function getPersonView(principal: Principal, personId: string): Pro
     entityId: employment?.row.entityId ?? null,
     entityName: employment?.entityName ?? null,
     current: current && {
+      departmentId: current.departmentId,
       departmentName: current.departmentName,
+      teamId: current.teamId,
       teamName: current.teamName,
       positionName: current.positionName,
       managerId: current.managerId,
@@ -428,6 +438,7 @@ async function loadAssignments(personId: string): Promise<AssignmentView[]> {
     .select({
       id: schema.assignment.id,
       employmentId: schema.assignment.employmentId,
+      entityId: schema.employment.entityId,
       entityName: schema.entity.shortName,
       employeeCode: schema.employment.employeeCode,
       validFrom: schema.assignment.validFrom,

@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOfferTemplates } from "@/modules/recruit/offers";
@@ -32,7 +33,7 @@ export default async function NewOfferPage({ searchParams }: PageProps<"/recruit
       <header>
         <h1>{t("newTitle", { name: view.candidate.fullName })}</h1>
         <p className="text-sm text-muted-foreground">
-          {view.opening.title} · {view.opening.code}
+          <RecordLink kind="opening" id={view.opening.id}>{view.opening.title}</RecordLink> · {view.opening.code}
         </p>
       </header>
       <OfferForm

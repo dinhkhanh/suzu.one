@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -84,8 +85,14 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
       <TableCell className="align-top whitespace-normal">
         <details>
           <summary className="cursor-pointer">
-            <span className="font-medium">{project.name}</span>
-            <span className="ps-2 text-xs text-faint">{[project.jobNumber, project.clientName].filter(Boolean).join(" · ")}</span>
+            <RecordLink kind="project" id={project.id} className="font-medium">
+              {project.name}
+            </RecordLink>
+            <span className="ps-2 text-xs text-faint">
+              {project.jobNumber}
+              {project.jobNumber && project.clientName ? " · " : null}
+              <RecordLink kind="account" id={project.clientId}>{project.clientName}</RecordLink>
+            </span>
             {project.estimated ? (
               <Badge variant="warning" className="ms-2">
                 {t("estimated")}
@@ -208,7 +215,7 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
               {view.clients.map((client) => (
                 <TableRow key={client.clientId ?? "none"}>
                   <TableCell>
-                    {client.clientName ?? t("noClient")}
+                    {client.clientName ? <RecordLink kind="account" id={client.clientId}>{client.clientName}</RecordLink> : t("noClient")}
                     {client.estimated ? (
                       <Badge variant="warning" className="ms-2">
                         {t("estimated")}

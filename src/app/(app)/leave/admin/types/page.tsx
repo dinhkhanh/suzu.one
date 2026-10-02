@@ -10,6 +10,7 @@ import { LeavePolicyForm, LeaveTypeForm } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { leaveConfigOptions } from "../options";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("leaveTypes");
 
@@ -71,7 +72,7 @@ export default async function LeaveTypesPage() {
                                 <TableCell>
                                   {date(policy.validFrom)} – {policy.validTo ? date(policy.validTo) : "…"}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">{entityName(policy.entityId)}</TableCell>
+                                <TableCell className="text-muted-foreground">{policy.entityId ? <RecordLink kind="entity" id={policy.entityId}>{entityName(policy.entityId)}</RecordLink> : entityName(null)}</TableCell>
                                 <TableCell>{t(`accrual.${policy.accrualMethod}`)}</TableCell>
                                 <TableCell>
                                   {policy.baseSource === "statutory_annual" ? t("base.statutory_annual") : days(policy.fixedDaysCenti)}

@@ -60,7 +60,7 @@ export default async function TimePage({ searchParams }: PageProps<"/daily/time"
 
       {timer ? <RunningTimer label={timer.key ? `${timer.key} ${timer.title ?? ""}` : t(`time.categories.${(timer.category ?? "internal") as "internal"}`)} startedAt={timer.startedAt.toISOString()} /> : null}
 
-      <TimeWeek view={view} openTasks={open.map(({ taskId, key, title, projectName }) => ({ taskId, key, title, projectName }))} />
+      <TimeWeek view={view} openTasks={open.map(({ taskId, key, title, projectId, projectName }) => ({ taskId, key, title, projectId, projectName }))} />
 
       {canSubmit ? (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">

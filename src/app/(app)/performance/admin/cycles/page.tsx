@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageCycle, cycleProgress, listCycleParticipants, listReviewCycles, listReviewTemplates, nextCycleStatus } from "@/modules/performance/service";
 import { FormStatusBadge, StageBadge, Timeline } from "@/modules/performance/ui/review";
@@ -113,7 +114,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
                       {line.personName}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{line.managerName ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{line.managerName ? <RecordLink kind="person" id={line.managerPersonId}>{line.managerName}</RecordLink> : "—"}</TableCell>
                   <TableCell>
                     <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
                   </TableCell>

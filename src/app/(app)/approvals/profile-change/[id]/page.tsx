@@ -1,10 +1,10 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Page, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { getProfileChange } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
@@ -35,7 +35,7 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
 
   return (
     <Page width="narrow">
-      <RequestHeader title={t("detail.title")} kind={tApprovals("types.profile_change")} status={request.status} requestId={request.id} who={view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>} />
+      <RequestHeader title={t("detail.title")} kind={tApprovals("types.profile_change")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
 
       {personal.length > 0 ? (
         <Section title={t("detail.personal")}>
@@ -66,9 +66,9 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
           {view.canDecide ? (
             <p className="text-xs text-muted-foreground">
               {t("detail.currentValues")}{" "}
-              <Link href={`/people/${request.requesterPersonId}`} className="text-link underline-offset-4 hover:underline">
+              <RecordLink kind="person" id={request.requesterPersonId} className="text-link">
                 {view.requesterName}
-              </Link>
+              </RecordLink>
             </p>
           ) : null}
         </Section>

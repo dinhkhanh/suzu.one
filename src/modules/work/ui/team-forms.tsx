@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { RecordLink } from "@/components/ui/record-link";
 import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -194,7 +195,9 @@ export function MemberManager({ members, people, canManage, target }: { members:
             {members.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
             {members.map((member) => (
               <TableRow key={member.personId}>
-                <TableCell className="font-medium">{member.fullName}</TableCell>
+                <TableCell className="font-medium">
+                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
+                </TableCell>
                 <TableCell>
                   {canManage ? (
                     <Select aria-label={t("role")} className="w-36" value={member.role} disabled={pending} onChange={(event) => run(action, { ...target, personId: member.personId, role: event.target.value })}>

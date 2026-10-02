@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
@@ -357,7 +358,9 @@ export type HandoffItem = {
   id: string;
   kind: string;
   status: string;
+  fromPersonId?: string | null;
   fromName: string | null;
+  toPersonId?: string | null;
   toName: string | null;
   toTeamName: string | null;
   fromStateName: string | null;
@@ -398,7 +401,14 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
               <Badge variant="outline">{t(`kinds.${item.kind}`)}</Badge>
               <Badge dot variant={statusTone(item.status)}>{t(`statuses.${item.status}`)}</Badge>
               <span className="text-muted-foreground">
-                {item.kind === "cross_team" ? t("toTeam", { from: item.fromName ?? "—", team: item.toTeamName ?? "—" }) : t("fromTo", { from: item.fromName ?? "—", to: item.toName ?? "—" })}
+                {item.kind === "cross_team"
+                  ? t.rich("toTeam", { from: item.fromName ?? "—", team: item.toTeamName ?? "—", a: (chunks) => <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>{chunks}</RecordLink> })
+                  : t.rich("fromTo", {
+                      from: item.fromName ?? "—",
+                      to: item.toName ?? "—",
+                      a: (chunks) => <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>{chunks}</RecordLink>,
+                      b: (chunks) => <RecordLink kind="person" id={item.toName ? item.toPersonId : null}>{chunks}</RecordLink>,
+                    })}
                 {item.fromStateName && item.toStateName ? ` · ${item.fromStateName} → ${item.toStateName}` : ""}
               </span>
               <span className="ml-auto text-xs text-muted-foreground">
@@ -410,9 +420,9 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
               <p className="text-xs">
                 {t("targetStatus")}{" "}
                 {item.target.key ? (
-                  <Link href={`/work/tasks/${item.target.id}`} className="underline">
+                  <RecordLink kind="task" id={item.target.id} className="underline">
                     {item.target.key} {item.target.title}
-                  </Link>
+                  </RecordLink>
                 ) : null}{" "}
                 <Badge variant="outline">{item.target.triageStatus === "pending" || item.target.triageStatus === "snoozed" ? t("inTriage") : item.target.stateName}</Badge>
               </p>

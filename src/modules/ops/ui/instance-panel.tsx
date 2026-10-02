@@ -14,11 +14,12 @@ import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { beginEvidenceUploadAction, cancelObligationAction, completeEvidenceUploadAction, completeObligationAction, openEvidenceFileAction, reassignObligationAction, removeEvidenceFileAction, reopenObligationAction, saveObligationProgressAction } from "../actions";
 import type { EvidenceKey, EvidenceRequirement } from "../enums";
+import { RecordLink } from "@/components/ui/record-link";
 
 type Failure = { ok: boolean; error?: string; message?: string; details?: unknown };
 const keyOf = (result: Failure) => (result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
 
-export type EvidenceFile = { id: string; fileName: string; sizeBytes: number; uploadedByName: string | null; createdAt: string; canRemove: boolean };
+export type EvidenceFile = { id: string; fileName: string; sizeBytes: number; uploadedByPersonId: string | null; uploadedByName: string | null; createdAt: string; canRemove: boolean };
 
 export type InstancePanelProps = {
   taskId: string;
@@ -111,7 +112,17 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
               <span className="min-w-0 flex-1 basis-56 truncate">
                 <FileLink fileId={file.id} fileName={file.fileName} download={openEvidenceFileAction} onError={setErrorKey} />
               </span>
-              <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>
+              <span className="text-xs text-muted-foreground">
+                {size(file.sizeBytes)}
+                {file.uploadedByName ? (
+                  <>
+                    {" · "}
+                    <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink>
+                  </>
+                ) : null}
+                {" · "}
+                {format.dateTime(new Date(file.createdAt), { dateStyle: "short" })}
+              </span>
               {file.canRemove && open ? (
                 <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => removeEvidenceFileAction({ fileId: file.id }))}>
                   {t("removeFile")}

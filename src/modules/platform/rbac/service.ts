@@ -113,9 +113,11 @@ export type RoleAssignmentView = {
   workEmail: string | null;
   role: string;
   scopeType: ScopeType;
+  scopeId: string | null;
   scopeName: string | null;
   validFrom: string;
   validTo: string | null;
+  grantedByPersonId: string | null;
   grantedByName: string | null;
 };
 
@@ -130,9 +132,11 @@ export async function listRoleAssignments(): Promise<RoleAssignmentView[]> {
       workEmail: schema.person.workEmail,
       role: schema.roleAssignment.role,
       scopeType: schema.roleAssignment.scopeType,
+      scopeId: schema.roleAssignment.scopeId,
       scopeName: sql<string | null>`coalesce(${schema.entity.shortName}, ${schema.orgUnit.name})`,
       validFrom: schema.roleAssignment.validFrom,
       validTo: schema.roleAssignment.validTo,
+      grantedByPersonId: schema.roleAssignment.grantedByPersonId,
       grantedByName: grantor.fullName,
     })
     .from(schema.roleAssignment)

@@ -19,6 +19,7 @@ import { leaveTypesFor } from "@/modules/leave/types";
 import { SubmitLeaveForm } from "@/modules/leave/ui/request-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("requestLeave");
 
@@ -188,8 +189,8 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
                   <AlertTitle>{t("request.colleaguesAway")}</AlertTitle>
                   <ul className="flex flex-col gap-0.5">
                     {preview.conflicts.colleaguesAway.map((row) => (
-                      <li key={row.name}>
-                        {row.name}: {row.dates.map(date).join(", ")}
+                      <li key={row.personId}>
+                        <RecordLink kind="person" id={row.personId}>{row.name}</RecordLink>: {row.dates.map(date).join(", ")}
                       </li>
                     ))}
                   </ul>

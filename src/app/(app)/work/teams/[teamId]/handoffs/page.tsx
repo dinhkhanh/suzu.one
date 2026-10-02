@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -32,9 +33,9 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
             {t("title")}
           </Link>
           <span className="text-faint">/</span>
-          <Link href={`/work/teams/${team.id}`} className="hover:underline">
+          <RecordLink kind="team" id={team.id}>
             {team.name}
-          </Link></span>} title={t("handoff.packages.title")} description={t("handoff.packages.description")} />
+          </RecordLink></span>} title={t("handoff.packages.title")} description={t("handoff.packages.description")} />
 
       <HandoffPackageManager
         teamId={team.id}

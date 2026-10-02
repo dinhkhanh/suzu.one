@@ -340,6 +340,7 @@ export type DigitalAssetListRow = {
   entityId: string;
   entityName: string | null;
   ownership: DigitalOwnership;
+  clientId: string | null;
   clientName: string | null;
   ownerPersonId: string | null;
   ownerName: string | null;
@@ -426,6 +427,7 @@ export async function listDigitalAssets(viewer: Principal, filter: DigitalFilter
       entityId: asset.entityId,
       entityName,
       ownership: asset.ownership,
+      clientId: asset.clientId,
       clientName,
       ownerPersonId: asset.ownerPersonId,
       ownerName,
@@ -473,6 +475,7 @@ export type DigitalAccessView = {
   expiresOn: string | null;
   decidedByName: string | null;
   endedAt: Date | null;
+  endedByPersonId: string | null;
   endedByName: string | null;
   endNote: string | null;
 };
@@ -535,6 +538,7 @@ export async function getDigitalAssetView(viewer: Principal, assetId: string): P
     expiresOn: access.expiresOn,
     decidedByName,
     endedAt: access.endedAt,
+    endedByPersonId: access.endedByPersonId,
     endedByName,
     endNote: canRun || access.personId === me ? access.endNote : null,
   });
@@ -552,6 +556,7 @@ export async function getDigitalAssetView(viewer: Principal, assetId: string): P
       entityId: asset.entityId,
       entityName: found.entityName,
       ownership: asset.ownership,
+      clientId: asset.clientId,
       clientName: found.clientName,
       ownerPersonId: asset.ownerPersonId,
       ownerName: found.ownerName,

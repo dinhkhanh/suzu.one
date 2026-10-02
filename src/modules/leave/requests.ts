@@ -62,7 +62,7 @@ async function syncWithdrawn(executor: Executor, personId: string): Promise<void
 
 // ── Preview: what a request would cost, and whom it would leave short ───────────────────────
 
-export type TeamConflicts = { colleaguesAway: { name: string; dates: IsoDate[] }[]; shortfalls: { date: IsoDate; present: number; minPresent: number }[] };
+export type TeamConflicts = { colleaguesAway: { personId: string; name: string; dates: IsoDate[] }[]; shortfalls: { date: IsoDate; present: number; minPresent: number }[] };
 export type LeavePreview = { type: LeaveTypeRow; counted: CountResult; problems: string[]; availableByYear: Record<number, number>; conflicts: TeamConflicts };
 
 async function facts(executor: Executor, personId: string): Promise<EmploymentFacts> {
@@ -91,7 +91,7 @@ async function teamConflicts(executor: Executor, person: EmploymentFacts, dates:
     if (list) list.push(row.date);
     else datesOf.set(row.personId, [row.date]);
   }
-  const colleaguesAway = group.map((colleague) => ({ name: colleague.fullName, dates: datesOf.get(colleague.id) ?? [] })).filter((row) => row.dates.length > 0);
+  const colleaguesAway = group.map((colleague) => ({ personId: colleague.id, name: colleague.fullName, dates: datesOf.get(colleague.id) ?? [] })).filter((row) => row.dates.length > 0);
   const rule = staffingRuleFor(rules, person);
   const awayByDate: Record<IsoDate, number> = {};
   for (const row of onDates) awayByDate[row.date] = (awayByDate[row.date] ?? 0) + 1;

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import type { PayLine, PersonPayResult } from "../engine/types";
 import { formatVnd } from "./money";
 
@@ -13,7 +14,7 @@ type Props = {
   result: PersonPayResult;
   /** Component code → the name the entity's catalogue gives it. The codes themselves are not for reading. */
   componentNames: ReadonlyMap<string, string>;
-  person: { fullName: string; employeeCode: string | null; positionName: string | null; departmentName: string | null };
+  person: { id?: string | null; fullName: string; employeeCode: string | null; positionName: string | null; departmentName: string | null };
   entity: { legalName: string; shortName: string; taxCode: string | null; address: string | null };
   month: string;
   runName?: string | null;
@@ -51,7 +52,7 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
       <Section title={t("person")}>
         <Sheet
           rows={[
-            { label: t("person"), value: <span className="font-medium">{person.fullName}</span> },
+            { label: t("person"), value: <RecordLink kind="person" id={person.id} className="font-medium">{person.fullName}</RecordLink> },
             { label: t("employeeCode"), value: person.employeeCode ?? "—", mono: true },
             { label: t("position"), value: person.positionName ?? "—" },
             { label: t("department"), value: person.departmentName ?? "—" },

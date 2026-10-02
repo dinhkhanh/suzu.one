@@ -171,14 +171,14 @@ export async function listDealContacts(dealId: string): Promise<DealContactView[
     .orderBy(asc(schema.crmContact.searchName));
 }
 
-export type StageChangeView = { id: string; fromName: string | null; toName: string; toCategory: string; changedAt: Date; byName: string | null };
+export type StageChangeView = { id: string; fromName: string | null; toName: string; toCategory: string; changedAt: Date; byPersonId: string | null; byName: string | null };
 
 export async function listStageChanges(dealId: string): Promise<StageChangeView[]> {
   const from = alias(schema.crmStage, "from_stage");
   const to = alias(schema.crmStage, "to_stage");
   const by = alias(schema.person, "changed_by");
   const rows = await db()
-    .select({ id: schema.crmDealStageChange.id, fromName: from.name, toName: to.name, toCategory: to.category, changedAt: schema.crmDealStageChange.changedAt, byName: by.fullName })
+    .select({ id: schema.crmDealStageChange.id, fromName: from.name, toName: to.name, toCategory: to.category, changedAt: schema.crmDealStageChange.changedAt, byPersonId: schema.crmDealStageChange.changedByPersonId, byName: by.fullName })
     .from(schema.crmDealStageChange)
     .leftJoin(from, eq(from.id, schema.crmDealStageChange.fromStageId))
     .innerJoin(to, eq(to.id, schema.crmDealStageChange.toStageId))

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Section } from "@/components/ui/page";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
+import { recordHref } from "@/lib/record-routes";
 import type { IsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TodayView } from "@/modules/daily/service";
@@ -72,7 +74,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
           <span className="mt-0.5 flex shrink-0 flex-col">
             <DoneCheck taskId={task.taskId} doneStateId={doneStateOf(task.teamId)} done={task.status === "done"} action={updateTaskAction} />
           </span>
-          <Link href={`/work/tasks/${task.taskId}`} className="min-w-0 flex-1">
+          <Link href={recordHref("task", task.taskId)} className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">
               <span className="font-mono text-xs font-normal text-muted-foreground">{task.key}</span>{" "}
               <span className={task.status === "done" ? "text-muted-foreground line-through" : undefined}>{task.title}</span>
@@ -127,7 +129,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
                 <ListItem key={`review:${review.taskId}`} {...rise(index)} className="rise flex-col items-stretch gap-2">
                   <div className="flex items-center gap-3">
                     <IconTile tone="violet" icon={<Eye />} />
-                    <Link href={`/work/tasks/${review.taskId}`} className="min-w-0 flex-1">
+                    <Link href={recordHref("task", review.taskId)} className="min-w-0 flex-1">
                       <span className="block truncate font-medium">
                         <span className="font-mono text-xs font-normal text-muted-foreground">{review.key}</span> {review.title}
                       </span>
@@ -147,7 +149,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
                 <ListItem key={`handoff:${handoff.handoffId}`} {...rise(view.reviews.length + index)} className="rise flex-col items-stretch gap-2">
                   <div className="flex items-center gap-3">
                     <IconTile tone="teal" icon={<ArrowRightLeft />} />
-                    <Link href={`/work/tasks/${handoff.taskId}`} className="min-w-0 flex-1">
+                    <Link href={recordHref("task", handoff.taskId)} className="min-w-0 flex-1">
                       <span className="block truncate font-medium">
                         <span className="font-mono text-xs font-normal text-muted-foreground">{handoff.key}</span> {handoff.title}
                       </span>
@@ -166,13 +168,13 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
                     <IconTile tone="orange" icon={<Handshake />} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate font-medium">
-                        <Link href={`/crm/deals/${handoff.dealId}`} className="hover:underline">
+                        <RecordLink kind="deal" id={handoff.dealId}>
                           {handoff.dealTitle}
-                        </Link>
+                        </RecordLink>
                         <span className="text-muted-foreground"> → </span>
-                        <Link href={`/projects/${handoff.projectId}`} className="hover:underline">
+                        <RecordLink kind="project" id={handoff.projectId}>
                           {handoff.projectName}
-                        </Link>
+                        </RecordLink>
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">{t("today.handoffFrom", { name: handoff.fromName ?? "—" })}</span>
                     </div>
@@ -186,7 +188,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
               {[...view.blockersWaiting.map((blocker) => ({ blocker, waiting: true })), ...view.blockersRaised.map((blocker) => ({ blocker, waiting: false }))].map(({ blocker, waiting: onMe }, index) => (
                 <ListItem key={`blocker:${blocker.blockerId}`} {...rise(view.reviews.length + view.handoffs.length + salesHandoffs.length + index)} className="rise">
                   <IconTile tone={onMe ? "destructive" : "muted"} icon={<OctagonAlert />} />
-                  <Link href={`/work/tasks/${blocker.taskId}`} className="min-w-0 flex-1">
+                  <Link href={recordHref("task", blocker.taskId)} className="min-w-0 flex-1">
                     <span className="block truncate font-medium">
                       <span className="font-mono text-xs font-normal text-muted-foreground">{blocker.key}</span> {blocker.title}
                     </span>
@@ -215,9 +217,9 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
               {view.bookings.map((booking) => (
                 <TableRow key={booking.id}>
                   <TableCell>
-                    <Link href={`/work/projects/${booking.projectId}`} className="hover:underline">
+                    <RecordLink kind="project" id={booking.projectId}>
                       {booking.projectName}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
                   <TableCell>{booking.status === "tentative" ? <Badge variant="outline">{t("today.tentative")}</Badge> : null}</TableCell>
                   <TableCell kind="time">{t("hours", { value: hoursOf(booking.minutes) })}</TableCell>
@@ -237,7 +239,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
           </Link>
         }
       >
-        <TimeList entries={view.time.map(({ id, key, title, category, minutes, billable }) => ({ id, key, title, category, minutes, billable }))} />
+        <TimeList entries={view.time.map(({ id, taskId, key, title, category, minutes, billable }) => ({ id, taskId, key, title, category, minutes, billable }))} />
         <div className="flex flex-wrap items-center gap-2">
           <QuickLog date={date} tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))].filter((task) => task.status !== "cancelled").map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: !!task.projectId && billable.has(task.projectId) }))} />
         </div>

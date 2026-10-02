@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "cn";
 import { AUDIT_PAGE_SIZE, type AuditFilters, listAuditEntries, listAuditResourceTypes } from "@/modules/platform/audit/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -253,7 +254,7 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-xs">{row.entityId ? (entityName.get(row.entityId) ?? row.entityId) : <span className="text-faint">—</span>}</TableCell>
+                  <TableCell className="text-xs">{row.entityId ? <RecordLink kind="entity" id={row.entityId}>{entityName.get(row.entityId) ?? row.entityId}</RecordLink> : <span className="text-faint">—</span>}</TableCell>
                 </TableRow>
               );
             })}

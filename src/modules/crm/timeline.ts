@@ -40,6 +40,9 @@ export type TimelineItem = {
   detail: string | null;
   actorName: string | null;
   projectName: string | null;
+  /** The ids behind the two names, where the source has them, so the page can link them. */
+  actorId?: string | null;
+  projectId?: string | null;
   link: string | null;
 };
 
@@ -75,7 +78,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .orderBy(desc(schema.crmActivity.doneAt))
         .limit(each)
         .then((rows) =>
-          rows.map(({ activity, actorName }) => ({ key: `a:${activity.id}`, kind: "activity" as const, at: iso(activity.occurredAt ?? activity.doneAt), title: activity.subject, detail: activity.outcome ?? activity.kind, actorName, projectName: null, link: activityLink(activity) })),
+          rows.map(({ activity, actorName }) => ({ key: `a:${activity.id}`, kind: "activity" as const, at: iso(activity.occurredAt ?? activity.doneAt), title: activity.subject, detail: activity.outcome ?? activity.kind, actorName, actorId: activity.ownerPersonId, projectName: null, link: activityLink(activity) })),
         ),
     );
     sources.push(
@@ -89,9 +92,9 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .then((rows) =>
           rows.flatMap(({ deal, actorName }) => {
             const link = `/crm/deals/${deal.id}`;
-            const items: TimelineItem[] = [{ key: `do:${deal.id}`, kind: "deal_opened", at: iso(deal.createdAt), title: deal.title, detail: deal.code, actorName, projectName: null, link }];
-            if (deal.wonAt) items.push({ key: `dw:${deal.id}`, kind: "deal_won", at: iso(deal.wonAt), title: deal.title, detail: deal.code, actorName, projectName: null, link });
-            if (deal.lostAt) items.push({ key: `dl:${deal.id}`, kind: "deal_lost", at: iso(deal.lostAt), title: deal.title, detail: deal.lostReason, actorName, projectName: null, link });
+            const items: TimelineItem[] = [{ key: `do:${deal.id}`, kind: "deal_opened", at: iso(deal.createdAt), title: deal.title, detail: deal.code, actorName, actorId: deal.ownerPersonId, projectName: null, link }];
+            if (deal.wonAt) items.push({ key: `dw:${deal.id}`, kind: "deal_won", at: iso(deal.wonAt), title: deal.title, detail: deal.code, actorName, actorId: deal.ownerPersonId, projectName: null, link });
+            if (deal.lostAt) items.push({ key: `dl:${deal.id}`, kind: "deal_lost", at: iso(deal.lostAt), title: deal.title, detail: deal.lostReason, actorName, actorId: deal.ownerPersonId, projectName: null, link });
             return items;
           }),
         ),
@@ -128,22 +131,22 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(inProjects)
         .then((rows) =>
           rows.flatMap((row) => {
-            const items: TimelineItem[] = [{ key: `po:${row.id}`, kind: "project_opened", at: iso(row.createdAt), title: row.name, detail: row.jobNumber, actorName: null, projectName: row.name, link: `/projects/${row.id}` }];
-            if (row.closedAt) items.push({ key: `pc:${row.id}`, kind: "project_closed", at: iso(row.closedAt), title: row.name, detail: row.jobNumber, actorName: null, projectName: row.name, link: `/projects/${row.id}/close` });
+            const items: TimelineItem[] = [{ key: `po:${row.id}`, kind: "project_opened", at: iso(row.createdAt), title: row.name, detail: row.jobNumber, actorName: null, projectName: row.name, projectId: row.id, link: `/projects/${row.id}` }];
+            if (row.closedAt) items.push({ key: `pc:${row.id}`, kind: "project_closed", at: iso(row.closedAt), title: row.name, detail: row.jobNumber, actorName: null, projectName: row.name, projectId: row.id, link: `/projects/${row.id}/close` });
             return items;
           }),
         ),
       db()
-        .select({ id: schema.projectStatusUpdate.id, projectId: schema.projectStatusUpdate.projectId, health: schema.projectStatusUpdate.health, summary: schema.projectStatusUpdate.summary, at: schema.projectStatusUpdate.createdAt, projectName: schema.workProject.name, actorName: actor.fullName })
+        .select({ id: schema.projectStatusUpdate.id, projectId: schema.projectStatusUpdate.projectId, health: schema.projectStatusUpdate.health, summary: schema.projectStatusUpdate.summary, at: schema.projectStatusUpdate.createdAt, projectName: schema.workProject.name, actorId: schema.projectStatusUpdate.authorPersonId, actorName: actor.fullName })
         .from(schema.projectStatusUpdate)
         .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectStatusUpdate.projectId))
         .leftJoin(actor, eq(actor.id, schema.projectStatusUpdate.authorPersonId))
         .where(inProjects)
         .orderBy(desc(schema.projectStatusUpdate.createdAt))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `s:${row.id}`, kind: "status_update" as const, at: iso(row.at), title: noteToPlainText(row.summary).replace(/\n/g, " ").slice(0, 200), detail: row.health, actorName: row.actorName, projectName: row.projectName, link: `/projects/${row.projectId}/updates` }))),
+        .then((rows) => rows.map((row) => ({ key: `s:${row.id}`, kind: "status_update" as const, at: iso(row.at), title: noteToPlainText(row.summary).replace(/\n/g, " ").slice(0, 200), detail: row.health, actorName: row.actorName, actorId: row.actorId, projectName: row.projectName, projectId: row.projectId, link: `/projects/${row.projectId}/updates` }))),
       db()
-        .select({ id: schema.workDeliverableDecision.id, decision: schema.workDeliverableDecision.decision, at: schema.workDeliverableDecision.createdAt, taskId: schema.workTask.taskId, taskTitle: schema.task.title, projectName: schema.workProject.name, actorName: actor.fullName })
+        .select({ id: schema.workDeliverableDecision.id, decision: schema.workDeliverableDecision.decision, at: schema.workDeliverableDecision.createdAt, taskId: schema.workTask.taskId, taskTitle: schema.task.title, projectId: schema.workProject.id, projectName: schema.workProject.name, actorId: schema.workDeliverableDecision.decidedByPersonId, actorName: actor.fullName })
         .from(schema.workDeliverableDecision)
         .innerJoin(schema.workDeliverable, eq(schema.workDeliverable.id, schema.workDeliverableDecision.deliverableId))
         .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.workDeliverable.taskId))
@@ -153,9 +156,9 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(and(inProjects, eq(schema.workDeliverableDecision.isClient, true)))
         .orderBy(desc(schema.workDeliverableDecision.createdAt))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `cd:${row.id}`, kind: "client_decision" as const, at: iso(row.at), title: row.taskTitle, detail: row.decision, actorName: row.actorName, projectName: row.projectName, link: `/work/tasks/${row.taskId}` }))),
+        .then((rows) => rows.map((row) => ({ key: `cd:${row.id}`, kind: "client_decision" as const, at: iso(row.at), title: row.taskTitle, detail: row.decision, actorName: row.actorName, actorId: row.actorId, projectName: row.projectName, projectId: row.projectId, link: `/work/tasks/${row.taskId}` }))),
       db()
-        .select({ id: schema.workDelivery.id, at: schema.workDelivery.deliveredOn, createdAt: schema.workDelivery.createdAt, taskId: schema.workDelivery.taskId, taskTitle: schema.task.title, projectName: schema.workProject.name, actorName: actor.fullName })
+        .select({ id: schema.workDelivery.id, at: schema.workDelivery.deliveredOn, createdAt: schema.workDelivery.createdAt, taskId: schema.workDelivery.taskId, taskTitle: schema.task.title, projectId: schema.workProject.id, projectName: schema.workProject.name, actorId: schema.workDelivery.deliveredByPersonId, actorName: actor.fullName })
         .from(schema.workDelivery)
         .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.workDelivery.taskId))
         .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
@@ -164,7 +167,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(inProjects)
         .orderBy(desc(schema.workDelivery.deliveredOn))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `dv:${row.id}`, kind: "delivery" as const, at: iso(row.at), title: row.taskTitle, detail: null, actorName: row.actorName, projectName: row.projectName, link: `/work/tasks/${row.taskId}` }))),
+        .then((rows) => rows.map((row) => ({ key: `dv:${row.id}`, kind: "delivery" as const, at: iso(row.at), title: row.taskTitle, detail: null, actorName: row.actorName, actorId: row.actorId, projectName: row.projectName, projectId: row.projectId, link: `/work/tasks/${row.taskId}` }))),
       db()
         .select({ id: schema.projectAcceptance.id, projectId: schema.projectAcceptance.projectId, number: schema.projectAcceptance.number, signedOn: schema.projectAcceptance.signedOn, projectName: schema.workProject.name })
         .from(schema.projectAcceptance)
@@ -172,7 +175,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(and(inProjects, eq(schema.projectAcceptance.status, "signed")))
         .orderBy(desc(schema.projectAcceptance.signedOn))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `ac:${row.id}`, kind: "acceptance_signed" as const, at: iso(row.signedOn), title: `#${row.number}`, detail: null, actorName: null, projectName: row.projectName, link: `/projects/${row.projectId}/acceptance` }))),
+        .then((rows) => rows.map((row) => ({ key: `ac:${row.id}`, kind: "acceptance_signed" as const, at: iso(row.signedOn), title: `#${row.number}`, detail: null, actorName: null, projectName: row.projectName, projectId: row.projectId, link: `/projects/${row.projectId}/acceptance` }))),
       db()
         .select({ id: schema.projectMeeting.id, projectId: schema.projectMeeting.projectId, title: schema.projectMeeting.title, heldOn: schema.projectMeeting.heldOn, projectName: schema.workProject.name })
         .from(schema.projectMeeting)
@@ -180,7 +183,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(and(inProjects, inArray(schema.projectMeeting.kind, ["client", "kickoff"])))
         .orderBy(desc(schema.projectMeeting.heldOn))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `m:${row.id}`, kind: "client_meeting" as const, at: iso(row.heldOn), title: row.title, detail: null, actorName: null, projectName: row.projectName, link: `/projects/${row.projectId}/meetings/${row.id}` }))),
+        .then((rows) => rows.map((row) => ({ key: `m:${row.id}`, kind: "client_meeting" as const, at: iso(row.heldOn), title: row.title, detail: null, actorName: null, projectName: row.projectName, projectId: row.projectId, link: `/projects/${row.projectId}/meetings/${row.id}` }))),
       db()
         .select({ id: schema.projectChangeRequest.id, projectId: schema.projectChangeRequest.projectId, title: schema.projectChangeRequest.title, appliedAt: schema.projectChangeRequest.appliedAt, projectName: schema.workProject.name })
         .from(schema.projectChangeRequest)
@@ -188,7 +191,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(and(inProjects, eq(schema.projectChangeRequest.status, "approved")))
         .orderBy(desc(schema.projectChangeRequest.appliedAt))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `cr:${row.id}`, kind: "change_approved" as const, at: iso(row.appliedAt), title: row.title, detail: null, actorName: null, projectName: row.projectName, link: `/projects/${row.projectId}/changes` }))),
+        .then((rows) => rows.map((row) => ({ key: `cr:${row.id}`, kind: "change_approved" as const, at: iso(row.appliedAt), title: row.title, detail: null, actorName: null, projectName: row.projectName, projectId: row.projectId, link: `/projects/${row.projectId}/changes` }))),
     );
   }
 

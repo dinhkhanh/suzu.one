@@ -1,10 +1,10 @@
 import { CheckIcon } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
@@ -83,9 +83,9 @@ export default async function RolesPage() {
               {grants.map((grant) => (
                 <TableRow key={grant.id}>
                   <TableCell className="max-w-64">
-                    <Link href={`/people/${grant.personId}`} className="block truncate font-medium hover:underline">
+                    <RecordLink kind="person" id={grant.personId} className="block truncate font-medium">
                       {grant.personName}
-                    </Link>
+                    </RecordLink>
                     <p className="truncate text-xs text-muted-foreground">{grant.workEmail ?? t("noAccess")}</p>
                   </TableCell>
                   <TableCell>
@@ -93,13 +93,18 @@ export default async function RolesPage() {
                   </TableCell>
                   <TableCell className="max-w-64 truncate">
                     {t(`scope.${grant.scopeType}`)}
-                    {grant.scopeType === "group" ? null : <span className="text-muted-foreground"> · {grant.scopeName ?? "?"}</span>}
+                    {grant.scopeType === "group" ? null : (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · <RecordLink kind={grant.scopeType === "entity" ? "entity" : "unit"} id={grant.scopeName ? grant.scopeId : null}>{grant.scopeName ?? "?"}</RecordLink>
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
                     {day(grant.validFrom)} → {grant.validTo ? day(grant.validTo) : "…"}
                     {grant.validFrom > today ? <Badge variant="warning" className="ml-2 font-sans">{t("notYet")}</Badge> : null}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{grant.grantedByName ?? t("system")}</TableCell>
+                  <TableCell className="text-muted-foreground">{grant.grantedByName ? <RecordLink kind="person" id={grant.grantedByPersonId}>{grant.grantedByName}</RecordLink> : t("system")}</TableCell>
                   <TableCell kind="actions">
                     <RevokeRoleButton id={grant.id} />
                   </TableCell>

@@ -14,6 +14,7 @@ import { isUuid, OpsNav, OverviewFilters, overviewParams, overviewQuery } from "
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("complianceCalendar");
 
@@ -97,10 +98,10 @@ export default async function OpsCalendarPage({ searchParams }: PageProps<"/ops/
                     {off ? <span className="truncate font-sans text-[10px]">{off}</span> : null}
                   </p>
                   {own.slice(0, MAX_PER_DAY).map((item) => (
-                    <Link key={item.taskId} href={`/ops/obligations/${item.taskId}`} title={`${item.title} · ${item.assigneeName ?? t("unassigned")}`} className="flex items-center gap-1 hover:underline">
+                    <RecordLink key={item.taskId} kind="obligation" id={item.taskId} title={`${item.title} · ${item.assigneeName ?? t("unassigned")}`} className="flex items-center gap-1">
                       <StatusBadge colour={item.colour} label={item.entityCode} />
                       <span className="truncate">{item.subjectName ? `${item.templateName} — ${item.subjectName}` : item.templateName}</span>
-                    </Link>
+                    </RecordLink>
                   ))}
                   {own.length > MAX_PER_DAY ? (
                     <Link href={`/ops/list${overviewParams(query, { entity: entityId, month: day.date.slice(0, 7) })}`} className="text-link hover:underline">

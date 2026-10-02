@@ -1,8 +1,8 @@
 // The alignment view (FR-PRF-01): goals as a tree from the group down to individuals, each with its
 // figure, confidence and owner. Server-rendered; the viewer's visibility was applied by the service.
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { isAnnual } from "../enums";
 import type { GoalView } from "../goals";
 import { ConfidenceBadge, GoalStatusBadge, ProgressBar } from "./progress";
@@ -12,17 +12,39 @@ type Labels = { t: Awaited<ReturnType<typeof getTranslations>>; format: Awaited<
 export const periodLabel = (t: Labels["t"], periodKey: string) => (isAnnual(periodKey) ? t("period.annual", { year: periodKey }) : t("period.quarter", { quarter: periodKey.slice(-1), year: periodKey.slice(0, 4) }));
 export const progressLabel = ({ t, format }: Labels, bp: number | null) => (bp === null ? t("notMeasured") : `${format.number(bp / 100, { maximumFractionDigits: 2 })} %`);
 
+/** Whose goal it is, as a way there: the entity, the department or team, or — an individual goal — the person. */
+export function GoalUnitLink({ goal }: { goal: Pick<GoalView, "level" | "unitName" | "entityId" | "departmentId" | "teamId" | "personId"> }) {
+  if (!goal.unitName) return null;
+  switch (goal.level) {
+    case "entity":
+      return <RecordLink kind="entity" id={goal.entityId}>{goal.unitName}</RecordLink>;
+    case "department":
+      return <RecordLink kind="unit" id={goal.departmentId}>{goal.unitName}</RecordLink>;
+    case "team":
+      return <RecordLink kind="unit" id={goal.teamId}>{goal.unitName}</RecordLink>;
+    case "individual":
+      return <RecordLink kind="person" id={goal.personId}>{goal.unitName}</RecordLink>;
+    default:
+      return <>{goal.unitName}</>;
+  }
+}
+
 export function GoalLine({ goal, labels }: { goal: GoalView; labels: Labels }) {
   const { t } = labels;
   const stale = goal.keyResults.some((keyResult) => keyResult.stale);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
       <div className="min-w-0 flex-1 basis-56">
-        <Link href={`/performance/goals/${goal.id}`} className={`font-medium hover:underline ${goal.status === "cancelled" ? "text-muted-foreground line-through" : ""}`}>
+        <RecordLink kind="goal" id={goal.id} className={`font-medium ${goal.status === "cancelled" ? "text-muted-foreground line-through" : ""}`}>
           {goal.title}
-        </Link>
+        </RecordLink>
         <p className="text-xs text-muted-foreground">
-          {[`${t(`enums.level.${goal.level}`)}${goal.unitName ? ` · ${goal.unitName}` : ""}`, goal.level === "individual" ? null : goal.ownerName, periodLabel(t, goal.periodKey), stale ? t("stale") : null, goal.hiddenChildren > 0 ? t("hiddenChildren", { count: goal.hiddenChildren }) : null].filter(Boolean).join(" · ")}
+          {t(`enums.level.${goal.level}`)}
+          {goal.unitName ? " · " : null}
+          <GoalUnitLink goal={goal} />
+          {goal.level === "individual" ? null : " · "}
+          {goal.level === "individual" ? null : <RecordLink kind="person" id={goal.ownerPersonId}>{goal.ownerName}</RecordLink>}
+          {` · ${[periodLabel(t, goal.periodKey), stale ? t("stale") : null, goal.hiddenChildren > 0 ? t("hiddenChildren", { count: goal.hiddenChildren }) : null].filter(Boolean).join(" · ")}`}
         </p>
       </div>
       {goal.status === "active" ? null : <GoalStatusBadge status={goal.status} label={t(`enums.status.${goal.status}`)} />}

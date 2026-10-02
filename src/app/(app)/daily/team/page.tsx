@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { initialsOf } from "@/lib/text";
 import { type BoardRow, getTeamBoard, loadReportReader } from "@/modules/daily/service";
@@ -38,12 +39,15 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
             <AvatarFallback className="text-[0.625rem] font-semibold">{initialsOf(person.name)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
+            {/* With a report, the name opens the report; without one, the person. */}
             {person.reportId ? (
-              <Link href={`/daily/reports/${person.reportId}`} className="block truncate text-sm font-medium hover:underline">
+              <RecordLink kind="dailyReport" id={person.reportId} className="block truncate text-sm font-medium">
                 {person.name}
-              </Link>
+              </RecordLink>
             ) : (
-              <span className="block truncate text-sm font-medium">{person.name}</span>
+              <RecordLink kind="person" id={person.personId} className="block truncate text-sm font-medium">
+                {person.name}
+              </RecordLink>
             )}
             {meta ? <span className={person.openBlockers > 0 ? "block truncate text-xs text-destructive" : "block truncate text-xs text-muted-foreground"}>{meta}</span> : null}
           </div>
@@ -88,7 +92,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         const remindable = group.kind !== "company";
         const missing = group.rows.filter((person) => person.status === "missing" && !person.reminded).map((person) => person.personId);
         return (
-          <Section key={group.kind === "team" ? group.teamId : group.kind} title={group.kind === "team" ? group.name : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")} count={group.rows.length} action={isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}>
+          <Section key={group.kind === "team" ? group.teamId : group.kind} title={group.kind === "team" ? <RecordLink kind="team" id={group.teamId}>{group.name}</RecordLink> : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")} count={group.rows.length} action={isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}>
             <p className="px-0.5 text-xs text-muted-foreground">{t("board.counts", { submitted: group.counts.submitted, missing: group.counts.missing, notRequired: group.counts.not_required })}</p>
             <List>{group.rows.map((person, index) => row(person, index, remindable))}</List>
           </Section>

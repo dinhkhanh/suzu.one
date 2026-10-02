@@ -131,11 +131,14 @@ export type SeatView = {
   assetCode: string | null;
   assetName: string | null;
   /** Who is holding the device the seat is on, when somebody is. */
+  deviceHolderPersonId: string | null;
   deviceHolderName: string | null;
   assignedAt: Date;
+  assignedByPersonId: string | null;
   assignedByName: string | null;
   note: string | null;
   releasedAt: Date | null;
+  releasedByPersonId: string | null;
   releasedByName: string | null;
   releaseNote: string | null;
 };
@@ -148,6 +151,7 @@ export async function listSeatsOfLicence(licenceId: string, executor: Executor =
       personName: seatPerson.fullName,
       assetCode: schema.asset.code,
       assetName: schema.asset.name,
+      deviceHolderPersonId: schema.assetAssignment.holderPersonId,
       deviceHolderName: deviceHolder.fullName,
       assignedByName: assigner.fullName,
       releasedByName: releaser.fullName,
@@ -163,7 +167,7 @@ export async function listSeatsOfLicence(licenceId: string, executor: Executor =
     // Seats in use first, by who or what holds them; then the most recently released.
     .orderBy(sql`${schema.licenceSeat.releasedAt} is not null`, desc(schema.licenceSeat.releasedAt), asc(seatPerson.fullName), asc(schema.asset.code))
     .limit(300);
-  const views = rows.map(({ seat, ...names }) => ({ id: seat.id, personId: seat.personId, assetId: seat.assetId, assignedAt: seat.assignedAt, note: seat.note, releasedAt: seat.releasedAt, releaseNote: seat.releaseNote, ...names }));
+  const views = rows.map(({ seat, ...names }) => ({ id: seat.id, personId: seat.personId, assetId: seat.assetId, assignedAt: seat.assignedAt, assignedByPersonId: seat.assignedByPersonId, note: seat.note, releasedAt: seat.releasedAt, releasedByPersonId: seat.releasedByPersonId, releaseNote: seat.releaseNote, ...names }));
   return { open: views.filter((seat) => !seat.releasedAt), released: views.filter((seat) => seat.releasedAt).slice(0, 30) };
 }
 

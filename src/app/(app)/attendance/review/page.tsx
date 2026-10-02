@@ -7,6 +7,7 @@ import { listFlaggedPunches } from "@/modules/attendance/punches";
 import { ReviewPunchForm } from "@/modules/attendance/ui/check-in";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("flaggedCheckIns");
 
@@ -22,7 +23,7 @@ export default async function ReviewPunchesPage() {
   const describe = (row: (typeof rows)[number]) => (
     <>
       <p className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">{row.personName}</span>
+        <RecordLink kind="person" id={row.personId} className="font-medium">{row.personName}</RecordLink>
         <span className="font-mono text-[0.8125rem] tabular-nums">{format.dateTime(row.at, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
         <Badge variant={row.direction === "in" ? "success" : "secondary"}>{tFlags(row.direction === "in" ? "in" : "out")}</Badge>
       </p>
@@ -69,7 +70,11 @@ export default async function ReviewPunchesPage() {
                   <Badge dot variant={statusTone(row.reviewStatus)}>
                     {tFlags(`review.${row.reviewStatus}`)}
                   </Badge>
-                  <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
+                  <span className="text-muted-foreground">
+                    <RecordLink kind="person" id={row.reviewerPersonId}>{row.reviewerName}</RecordLink>
+                    {row.reviewerName && row.reviewNote ? " — " : null}
+                    {row.reviewNote}
+                  </span>
                 </p>
               </ListItem>
             ))}

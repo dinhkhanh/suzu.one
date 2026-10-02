@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -36,9 +37,9 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
             {t("title")}
           </Link>
           <span className="text-faint">/</span>
-          <Link href={`/work/teams/${team.id}`} className="hover:underline">
+          <RecordLink kind="team" id={team.id}>
             {team.name}
-          </Link></span>} title={t("cycles.title")} description={t("cycles.description")} />
+          </RecordLink></span>} title={t("cycles.title")} description={t("cycles.description")} />
 
       {page.current ? (
         <TableCard>
@@ -62,11 +63,11 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
                 <TableRow key={task.id}>
                   <TableCell kind="id">{task.key}</TableCell>
                   <TableCell className="max-w-96">
-                    <Link href={`/work/tasks/${task.id}`} className={`block truncate hover:underline ${task.status === "done" || task.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}>
+                    <RecordLink kind="task" id={task.id} className={`block truncate ${task.status === "done" || task.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}>
                       {task.title}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{task.assigneeName ?? t("list.unassigned")}</TableCell>
+                  <TableCell className="text-muted-foreground">{task.assigneeName ? <RecordLink kind="person" id={task.assigneePersonId}>{task.assigneeName}</RecordLink> : t("list.unassigned")}</TableCell>
                 </TableRow>
               ))}
               {tasks.length === 0 ? <TableEmpty>{t("cycles.empty")}</TableEmpty> : null}

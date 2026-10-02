@@ -1,11 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -70,9 +70,9 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
             {leads.map((lead) => (
               <TableRow key={lead.id}>
                 <TableCell>
-                  <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
+                  <RecordLink kind="lead" id={lead.id} className="font-medium">
                     {lead.companyName}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
                   <Badge dot variant={statusTone(lead.status === "new" ? "pending" : lead.status === "converted" ? "done" : lead.status === "disqualified" ? "cancelled" : "open")}>
@@ -84,8 +84,8 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
                 </TableCell>
                 <TableCell className="max-w-xs truncate text-faint">{lead.need ? noteToPlainText(lead.need) : "—"}</TableCell>
                 <TableCell>
-                  {lead.ownerName ?? t("leads.unassigned")}
-                  {lead.referrerName ? <p className="text-xs text-faint">{t("leads.referredBy", { name: lead.referrerName })}</p> : null}
+                  {lead.ownerName ? <RecordLink kind="person" id={lead.ownerPersonId}>{lead.ownerName}</RecordLink> : t("leads.unassigned")}
+                  {lead.referrerName ? <p className="text-xs text-faint">{t.rich("leads.referredBy", { name: lead.referrerName, person: (chunks) => <RecordLink kind="person" id={lead.referrerPersonId}>{chunks}</RecordLink> })}</p> : null}
                 </TableCell>
                 <TableCell kind="date" className="text-muted-foreground">{f.when(lead.createdAt)}</TableCell>
               </TableRow>

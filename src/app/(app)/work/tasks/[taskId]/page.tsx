@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { acceptAttributeFor } from "@/modules/platform/files/rules";
 import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canRaiseBlocker, canResolveBlocker, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listCustomFields, listMentionable, listMoveTargets, listTaskBlockers, listTaskFiles, listAssignable, listClients, listLabels, listLinkableTasks, listProjectOptions, listStates, loadViewer, resolveTaskKey, toFieldViews } from "@/modules/work/service";
@@ -117,9 +118,9 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
       {detail.parent ? (
         <>
           <span className="text-faint">/</span>
-          <Link href={`/work/tasks/${detail.parent.id}`} className="hover:underline">
+          <RecordLink kind="task" id={detail.parent.id}>
             <span className="font-mono text-xs">{detail.parent.key}</span> {detail.parent.title}
-          </Link>
+          </RecordLink>
         </>
       ) : null}
       <span className="text-faint">/</span>
@@ -142,7 +143,9 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           stateId: work.stateId,
           status: task.status,
           assigneePersonId: task.assigneePersonId,
+          requesterPersonId: task.requesterPersonId,
           requesterName: detail.requesterName,
+          createdByPersonId: task.createdByPersonId,
           createdByName: detail.createdByName,
           createdAt: task.createdAt.toISOString(),
           priority: task.priority,
@@ -171,7 +174,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           checklists,
           stageChecklists,
         }}
-        subtasks={detail.subtasks.map(({ id, key, title, status, stateId, assigneeName, dueDate }) => ({ id, key, title, status, stateId, assigneeName, dueDate }))}
+        subtasks={detail.subtasks.map(({ id, key, title, status, stateId, assigneePersonId, assigneeName, dueDate }) => ({ id, key, title, status, stateId, assigneePersonId, assigneeName, dueDate }))}
         linked={detail.linked}
         canEdit={canEdit}
         canDelete={canDeleteTask(viewer, detail.facts)}
@@ -188,7 +191,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
         />
         <TaskFiles
           taskId={task.id}
-          files={files.map((file) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, uploadedByName: file.uploadedByName, createdAt: file.createdAt.toISOString(), canRemove: moderate || (canEdit && file.uploadedByPersonId === user.person.id) }))}
+          files={files.map((file) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, uploadedByPersonId: file.uploadedByPersonId, uploadedByName: file.uploadedByName, createdAt: file.createdAt.toISOString(), canRemove: moderate || (canEdit && file.uploadedByPersonId === user.person.id) }))}
           canAdd={canEdit}
           accept={acceptAttributeFor(TASK_FILE_OWNER)}
         />
@@ -204,7 +207,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
             stageDueAt: stageDueAt?.toISOString() ?? null,
             frozenAt: frozenAt?.toISOString() ?? null,
             decisions: decisions.map(({ createdAt, ...decision }) => ({ ...decision, createdAt: createdAt.toISOString() })),
-            pins: pins.filter((pin) => pin.deliverableId === item.id).map((pin) => ({ id: pin.id, x: pin.x, y: pin.y, timecodeMs: pin.timecodeMs, body: pin.body, authorName: pin.authorName, resolved: !!pin.resolvedAt, createdAt: pin.createdAt.toISOString(), canResolve: canResolvePin(viewer, detail.facts, pin) })),
+            pins: pins.filter((pin) => pin.deliverableId === item.id).map((pin) => ({ id: pin.id, x: pin.x, y: pin.y, timecodeMs: pin.timecodeMs, body: pin.body, authorPersonId: pin.authorPersonId, authorName: pin.authorName, resolved: !!pin.resolvedAt, createdAt: pin.createdAt.toISOString(), canResolve: canResolvePin(viewer, detail.facts, pin) })),
           }))}
           files={files.map(({ id, fileName }) => ({ id, fileName }))}
           people={people}
@@ -232,7 +235,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
         />
         <DeliveryPanel
           taskId={task.id}
-          deliveries={deliveries.map((item) => ({ id: item.id, version: item.version, deliveredOn: item.deliveredOn, recipient: item.recipient, links: item.links, note: item.note, deliveredByName: item.deliveredByName, canRemove: (item.deliveredByPersonId === user.person.id && canRecordDelivery(viewer, detail.facts)) || moderate }))}
+          deliveries={deliveries.map((item) => ({ id: item.id, version: item.version, deliveredOn: item.deliveredOn, recipient: item.recipient, links: item.links, note: item.note, deliveredByPersonId: item.deliveredByPersonId, deliveredByName: item.deliveredByName, canRemove: (item.deliveredByPersonId === user.person.id && canRecordDelivery(viewer, detail.facts)) || moderate }))}
           versions={deliverables.filter((item) => item.decision !== "superseded").map((item) => ({ id: item.id, version: item.version, approved: item.decision === "approved", frozen: !!item.frozenAt }))}
           canRecord={canRecordDelivery(viewer, detail.facts)}
           today={today}
@@ -247,7 +250,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
             channel={work.channel}
             accounts={digitalOptions}
             defaultAccountId={detail.digitalAssets.length === 1 && detail.digitalAssets[0].status !== "retired" ? detail.digitalAssets[0].id : null}
-            publishes={publishes.map((item) => ({ id: item.id, platform: item.platform, page: item.page, digitalAssetId: item.digitalAssetId, status: item.status, plannedAt: item.plannedAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null, url: item.url, boosted: item.boosted, adAccount: item.adAccount, publishedByName: item.publishedByName, latest: item.latest, results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })) }))}
+            publishes={publishes.map((item) => ({ id: item.id, platform: item.platform, page: item.page, digitalAssetId: item.digitalAssetId, status: item.status, plannedAt: item.plannedAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null, url: item.url, boosted: item.boosted, adAccount: item.adAccount, publishedByPersonId: item.publishedByPersonId, publishedByName: item.publishedByName, latest: item.latest, results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })) }))}
             canManage={canManagePublish(viewer, detail.facts) && task.status !== "cancelled"}
             today={today}
             now={new Date().toISOString()}

@@ -7,6 +7,7 @@ import { shiftMonth } from "@/lib/month-grid";
 import { getOverview, type Spread } from "@/modules/performance/service";
 import { bpText, MonthPicker, monthLabel, readMonth, ScoreFigure, ScoreState } from "@/modules/performance/ui/kpi";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -37,7 +38,7 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
         {overview.entities.map((entity) => (
           <TableCard key={entity.entityId}>
             <TableCardHeader
-              title={`${entity.code} · ${entity.name}`}
+              title={<RecordLink kind="entity" id={entity.entityId}>{`${entity.code} · ${entity.name}`}</RecordLink>}
               actions={
                 <>
                   <ScoreState state={entity.state} label={t(`kpi.state.${entity.state}`)} />
@@ -70,7 +71,7 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
                 {entity.departments.length === 0 ? <TableEmpty>{t("overview.nobody")}</TableEmpty> : null}
                 {entity.departments.map((department) => (
                   <TableRow key={department.departmentId ?? "none"}>
-                    <TableCell>{department.name ?? t("overview.noDepartment")}</TableCell>
+                    <TableCell>{department.name ? <RecordLink kind="unit" id={department.departmentId}>{department.name}</RecordLink> : t("overview.noDepartment")}</TableCell>
                     <TableCell kind="number">{department.spread.people}</TableCell>
                     <TableCell kind="percent">
                       <ScoreFigure bp={department.spread.averageBp} text={bpText(format, department.spread.averageBp)} />
@@ -103,12 +104,12 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
             {overview.goals.map((goal) => (
               <TableRow key={goal.id}>
                 <TableCell className="max-w-96">
-                  <Link href={`/performance/goals/${goal.id}`} className="block truncate font-medium hover:underline">
+                  <RecordLink kind="goal" id={goal.id} className="block truncate font-medium">
                     {goal.title}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
                 <TableCell>{t(`enums.level.${goal.level}`)}</TableCell>
-                <TableCell className="text-muted-foreground">{goal.unitName ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{goal.unitName ? <RecordLink kind="entity" id={goal.entityId}>{goal.unitName}</RecordLink> : "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{goal.periodKey}</TableCell>
                 <TableCell>
                   <ConfidenceBadge confidence={goal.confidence} label={goal.confidence ? t(`enums.confidence.${goal.confidence}`) : ""} />

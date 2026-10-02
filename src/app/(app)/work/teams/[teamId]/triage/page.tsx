@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -42,12 +43,12 @@ export default async function TriagePage({ params }: PageProps<"/work/teams/[tea
             {t("title")}
           </Link>
           <span className="text-faint">/</span>
-          <Link href={`/work/teams/${team.id}`} className="hover:underline">
+          <RecordLink kind="team" id={team.id}>
             {team.name}
-          </Link></span>} title={t("triage.title")} description={t("triage.description")} />
+          </RecordLink></span>} title={t("triage.title")} description={t("triage.description")} />
 
       <TriageQueue
-        items={items.map(({ id, key, title, description, source, triageStatus, snoozedUntil, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }) => ({ id, key, title, description, source, triageStatus, snoozedUntil, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }))}
+        items={items.map(({ id, key, title, description, source, triageStatus, snoozedUntil, requesterPersonId, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }) => ({ id, key, title, description, source, triageStatus, snoozedUntil, requesterPersonId, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }))}
         choices={{ ...choices, mergeTargets }}
         canDecide={decide}
         today={today}

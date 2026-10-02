@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { listPositions } from "../service";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -69,7 +70,7 @@ export async function LifecycleTemplates({ principal }: { principal: Principal }
                                 </p>
                               ) : null}
                             </TableCell>
-                            <TableCell>{item.assigneeRule === "person" ? people.find((person) => person.id === item.assigneePersonId)?.fullName : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}</TableCell>
+                            <TableCell>{item.assigneeRule === "person" ? <RecordLink kind="person" id={item.assigneePersonId}>{people.find((person) => person.id === item.assigneePersonId)?.fullName}</RecordLink> : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}</TableCell>
                             <TableCell>{t("offset", { days: item.dueOffsetDays })}</TableCell>
                             {manage ? (
                               <TableCell kind="actions">

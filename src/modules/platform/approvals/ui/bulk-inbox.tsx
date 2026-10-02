@@ -16,7 +16,7 @@ import type { ActionResult } from "@/lib/action";
 import { ageOf } from "./age";
 import { PersonName } from "./person-name";
 
-export type BulkInboxRow = { id: string; type: string; summary: string; link: string | null; createdAt: Date; requesterName: string; bulk: boolean };
+export type BulkInboxRow = { id: string; type: string; summary: string; link: string | null; createdAt: Date; requesterPersonId: string; requesterName: string; bulk: boolean };
 export type BulkResult = { requestId: string; ok: boolean; error?: string };
 
 export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[]; action: (input: unknown) => Promise<ActionResult<{ results: BulkResult[] }>>; /** Names of the request builder's types, which the message bundle does not know. */ labels?: Record<string, string> }) {
@@ -103,7 +103,7 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <PersonName name={row.requesterName} />
+                  <PersonName name={row.requesterName} personId={row.requesterPersonId} />
                 </TableCell>
                 <TableCell>{outcome(row)}</TableCell>
                 <TableCell kind="time" className={cn(waited.stale ? "text-warning" : "text-muted-foreground")} title={format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}>

@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { decideLeaveAction } from "@/modules/leave/actions";
 import { canManageLeaveOf } from "@/modules/leave/policy";
@@ -46,8 +47,15 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
         requestId={request.id}
         who={
           <>
-            {view.subjectName}
-            {view.requesterName !== view.subjectName ? ` · ${t("request.filedBy", { name: view.requesterName })}` : ""}
+            <RecordLink kind="person" id={request.subjectPersonId}>
+              {view.subjectName}
+            </RecordLink>
+            {view.requesterName !== view.subjectName ? (
+              <>
+                {" · "}
+                {t.rich("request.filedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={request.requesterPersonId}>{chunks}</RecordLink> })}
+              </>
+            ) : null}
           </>
         }
         actions={
@@ -85,8 +93,8 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
           <CardContent className="flex flex-col gap-2 text-sm">
             <ul className="text-muted-foreground">
               {view.conflicts.colleaguesAway.map((row) => (
-                <li key={row.name}>
-                  {row.name}: <span className="font-mono text-xs tabular-nums">{row.dates.map((value) => format.dateTime(new Date(`${value}T00:00:00`), { day: "numeric", month: "numeric" })).join(", ")}</span>
+                <li key={row.personId}>
+                  <RecordLink kind="person" id={row.personId}>{row.name}</RecordLink>: <span className="font-mono text-xs tabular-nums">{row.dates.map((value) => format.dateTime(new Date(`${value}T00:00:00`), { day: "numeric", month: "numeric" })).join(", ")}</span>
                 </li>
               ))}
             </ul>

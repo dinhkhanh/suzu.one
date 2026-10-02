@@ -10,13 +10,14 @@ import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { setRowBillableAction, setTimeCellAction } from "../time-actions";
 import { durationText, hoursOf, parseCellDuration } from "./format";
 
-export type GridRowView = { key: string; label: string; sub: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
+export type GridRowView = { key: string; label: string; sub: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
 export type GridDayView = {
   date: string;
   label: string;
@@ -189,10 +190,16 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
               <TableRow key={row.key}>
                 <TableCell className="py-1.5">
                   <span className="flex items-center gap-1.5">
-                    <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <RecordLink kind="task" id={row.taskId}>{row.label}</RecordLink>
+                    </span>
                     <BillableToggle weekStart={weekStart} rowKey={row.key} billable={row.billable} total={row.total} editable={editable} onError={setErrorKey} />
                   </span>
-                  {row.sub ? <span className="block truncate text-xs text-muted-foreground">{row.sub}</span> : null}
+                  {row.sub ? (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
+                    </span>
+                  ) : null}
                 </TableCell>
                 {days.map((day, index) => (
                   <TableCell key={day.date} kind="time" className={cn("px-1 py-1", day.off && "bg-muted/30")}>
@@ -254,8 +261,13 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                   <li key={row.key} className="flex items-center gap-2 py-0.5">
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm">
                       <span className="min-w-0 truncate">
-                        {row.label}
-                        {row.sub ? <span className="text-xs text-muted-foreground"> · {row.sub}</span> : null}
+                        <RecordLink kind="task" id={row.taskId}>{row.label}</RecordLink>
+                        {row.sub ? (
+                          <span className="text-xs text-muted-foreground">
+                            {" "}
+                            · <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
+                          </span>
+                        ) : null}
                       </span>
                       <BillableToggle weekStart={weekStart} rowKey={row.key} billable={row.billable} total={row.total} editable={false} onError={setErrorKey} />
                     </span>

@@ -1,11 +1,11 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { goalFormOptions, listGoals, loadGoal } from "@/modules/performance/service";
 import { CheckInForm, EditGoalForm, GoalMoves, KeyResultForm, RemoveKeyResultButton, ReparentForm } from "@/modules/performance/ui/goal-forms";
-import { GoalLine, periodLabel, progressLabel } from "@/modules/performance/ui/goal-tree";
+import { GoalLine, GoalUnitLink, periodLabel, progressLabel } from "@/modules/performance/ui/goal-tree";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, GoalStatusBadge, metricText, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -47,9 +47,9 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
         {parent ? (
           <p className="text-sm text-muted-foreground">
             {t("detail.alignedTo")}{" "}
-            <Link href={`/performance/goals/${parent.id}`} className="underline">
+            <RecordLink kind="goal" id={parent.id} className="underline">
               {parent.title}
-            </Link>
+            </RecordLink>
           </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
@@ -57,7 +57,14 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
           <GoalStatusBadge status={goal.status} label={t(`enums.status.${goal.status}`)} />
           <ConfidenceBadge confidence={goal.progress.confidence} label={goal.progress.confidence ? t(`enums.confidence.${goal.progress.confidence}`) : ""} />
         </div>
-        <p className="text-sm text-muted-foreground">{[`${t(`enums.level.${goal.level}`)}${goal.unitName ? ` · ${goal.unitName}` : ""}`, t("detail.owner", { name: goal.ownerName }), periodLabel(t, goal.periodKey), t("detail.weight", { weight: goal.weight })].join(" · ")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t(`enums.level.${goal.level}`)}
+          {goal.unitName ? " · " : null}
+          <GoalUnitLink goal={goal} />
+          {" · "}
+          {t.rich("detail.owner", { name: goal.ownerName, person: (chunks) => <RecordLink kind="person" id={goal.ownerPersonId}>{chunks}</RecordLink> })}
+          {` · ${periodLabel(t, goal.periodKey)} · ${t("detail.weight", { weight: goal.weight })}`}
+        </p>
         <RichText text={goal.description} />
         <ProgressBar bp={goal.progress.progressBp} label={progressLabel(labels, goal.progress.progressBp)} />
         {goal.status === "closed" && goal.closedAt ? <p className="text-xs text-muted-foreground">{t("detail.frozen", { date: dateTime(goal.closedAt) })}</p> : null}
@@ -136,7 +143,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
             <TableBody>
               {goal.progress.lines.map((line) => (
                 <TableRow key={line.id} className={line.skipped ? "text-muted-foreground" : undefined}>
-                  <TableCell className="whitespace-normal">{line.redacted ? t("trace.private") : (lineTitles[line.id] ?? "—")}</TableCell>
+                  <TableCell className="whitespace-normal">{line.redacted ? t("trace.private") : line.kind === "goal" ? <RecordLink kind="goal" id={line.id}>{lineTitles[line.id] ?? "—"}</RecordLink> : (lineTitles[line.id] ?? "—")}</TableCell>
                   <TableCell kind="number">{line.weight}</TableCell>
                   <TableCell kind="percent">{line.redacted ? "—" : line.skipped ? t(`trace.skipped.${line.skipped}`) : progressLabel(labels, line.progressBp)}</TableCell>
                 </TableRow>
@@ -179,7 +186,11 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
                   <span className="tabular-nums">{keyResult ? metricText(format, keyResult.metricType, checkIn.value ?? 0, checkIn.milestones) : "—"}</span>
                   <ConfidenceBadge confidence={checkIn.confidence as "on_track" | "at_risk" | "off_track"} label={t(`enums.confidence.${checkIn.confidence as "on_track" | "at_risk" | "off_track"}`)} />
                 </div>
-                <p className="text-xs text-muted-foreground">{[checkIn.authorName, dateTime(checkIn.createdAt), t("checkIn.week", { date: format.dateTime(new Date(`${checkIn.weekStart}T00:00:00`), { dateStyle: "medium" }) })].join(" · ")}</p>
+                <p className="text-xs text-muted-foreground">
+                  <RecordLink kind="person" id={checkIn.authorPersonId}>{checkIn.authorName}</RecordLink>
+                  {" · "}
+                  {[dateTime(checkIn.createdAt), t("checkIn.week", { date: format.dateTime(new Date(`${checkIn.weekStart}T00:00:00`), { dateStyle: "medium" }) })].join(" · ")}
+                </p>
                 {checkIn.note ? <p className="text-sm whitespace-pre-line">{checkIn.note}</p> : null}
               </ListItem>
             );

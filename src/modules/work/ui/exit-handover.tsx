@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { heldKinds, isReassignable } from "../engine/exit";
@@ -43,6 +44,9 @@ function ErrorLine({ errorKey }: { errorKey: string | null }) {
     </p>
   );
 }
+
+/** The page an owned item opens on, for the kinds that are a task or a project. */
+const recordKindOf = (kind: string): "task" | "project" | null => (kind === "task" || kind === "review" ? "task" : kind === "project_lead" || kind === "account_manager" ? "project" : null);
 
 export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { handoverId: string; owned: OwnedItemView[]; people: { id: string; fullName: string }[]; canRun: boolean; open: boolean }) {
   const t = useTranslations("work.exit");
@@ -87,7 +91,10 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
               {group.items.map((item) => (
                 <ListItem key={keyOf(item)} data-state={chosen.has(keyOf(item)) ? "selected" : undefined}>
                   {canRun && open && item.canReassign ? <Checkbox aria-label={label(item)} checked={chosen.has(keyOf(item))} onCheckedChange={(checked) => toggle(keyOf(item), checked)} /> : null}
-                  <span className="min-w-0 flex-1 truncate">{label(item)}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {/* Named only where this runner runs the place, which is also where they may open it. */}
+                    {item.label !== null && recordKindOf(item.kind) ? <RecordLink kind={recordKindOf(item.kind)!} id={item.id}>{label(item)}</RecordLink> : label(item)}
+                  </span>
                   {item.context ? <span className="text-xs text-muted-foreground">{item.context}</span> : null}
                   {item.kind === "time_week" ? <span className="text-xs text-muted-foreground">{t("submitWeek")}</span> : null}
                 </ListItem>

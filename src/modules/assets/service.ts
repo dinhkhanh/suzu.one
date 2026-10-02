@@ -334,6 +334,8 @@ export type AssetListRow = {
   holderName: string | null;
   holderType: HolderType | null;
   holderPersonId: string | null;
+  holderTeamId: string | null;
+  holderEntityId: string | null;
   assignmentId: string | null;
   handoverConfirmedAt: Date | null;
   dueBack: string | null;
@@ -407,6 +409,8 @@ async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: strin
       categoryKind,
       holderType: assignment?.holderType ?? null,
       holderPersonId: assignment?.holderPersonId ?? null,
+      holderTeamId: assignment?.holderTeamId ?? null,
+      holderEntityId: assignment?.holderEntityId ?? null,
       holderName: assignment ? (assignment.holderType === "person" ? holderPersonName : assignment.holderType === "team" ? holderTeamName : entityName) : null,
       assignmentId: assignment?.id ?? null,
       handoverConfirmedAt: assignment?.handoverConfirmedAt ?? null,
@@ -444,7 +448,7 @@ export async function listLabelRows(viewer: Principal, filter: { entityId?: stri
   return rows;
 }
 
-export type AssetHistoryEntry = { id: number; type: string; at: Date; actorName: string | null; note: string | null; detail: Record<string, unknown> | null };
+export type AssetHistoryEntry = { id: number; type: string; at: Date; actorPersonId: string | null; actorName: string | null; note: string | null; detail: Record<string, unknown> | null };
 export type AssetSpell = AssetAssignmentRow & { holderName: string | null; assignedByName: string | null; returnedToName: string | null };
 export type AssetView = { asset: AssetListRow; history: AssetHistoryEntry[]; spells: AssetSpell[]; canSeeMoney: boolean; /** For the asset's own QR label. */ qrToken: string; /** Shared production gear: the page shows its bookings. */ bookable: boolean };
 
@@ -471,7 +475,7 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
   const [rows, history, spells] = await Promise.all([
     queryAssets(viewer, { id: assetId }, 1).then(([row]) => row),
     db()
-      .select({ id: schema.assetEvent.id, type: schema.assetEvent.type, at: schema.assetEvent.at, actorName: actor.fullName, note: schema.assetEvent.note, detail: schema.assetEvent.detail })
+      .select({ id: schema.assetEvent.id, type: schema.assetEvent.type, at: schema.assetEvent.at, actorPersonId: schema.assetEvent.actorPersonId, actorName: actor.fullName, note: schema.assetEvent.note, detail: schema.assetEvent.detail })
       .from(schema.assetEvent)
       .leftJoin(actor, eq(actor.id, schema.assetEvent.actorPersonId))
       .where(eq(schema.assetEvent.assetId, assetId))
@@ -506,6 +510,8 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
     categoryKind: null,
     holderType: open?.holderType ?? null,
     holderPersonId: open?.holderPersonId ?? null,
+    holderTeamId: open?.holderTeamId ?? null,
+    holderEntityId: open?.holderEntityId ?? null,
     holderName: null,
     assignmentId: open?.id ?? null,
     handoverConfirmedAt: open?.handoverConfirmedAt ?? null,

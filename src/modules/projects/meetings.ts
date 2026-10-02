@@ -192,7 +192,7 @@ export async function listMeetings(projectId: string): Promise<MeetingListItem[]
     .then((rows) => rows.map((row) => ({ ...row.meeting, authorName: row.authorName, decisions: row.decisions, actionItems: row.actionItems, openActionItems: row.openActionItems })));
 }
 
-export type MeetingActionView = { taskId: string; key: string; title: string; status: string; assigneeName: string | null; dueDate: IsoDate | null };
+export type MeetingActionView = { taskId: string; key: string; title: string; status: string; assigneePersonId: string | null; assigneeName: string | null; dueDate: IsoDate | null };
 export type MeetingView = MeetingRow & { authorName: string | null; attendees: { id: string; fullName: string }[]; decisions: RaidView[]; actions: MeetingActionView[] };
 
 /** One meeting of the project with its people, decisions and action items. null = not this project's. */
@@ -205,7 +205,7 @@ export async function getMeeting(projectId: string, meetingId: string): Promise<
     meeting.createdByPersonId ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, meeting.createdByPersonId)).limit(1) : Promise.resolve([]),
     listRaid(projectId, { meetingId }),
     db()
-      .select({ taskId: schema.task.id, title: schema.task.title, status: schema.task.status, dueDate: schema.task.dueDate, number: schema.workTask.number, teamKey: schema.workTeam.key, assigneeName: assignee.fullName })
+      .select({ taskId: schema.task.id, title: schema.task.title, status: schema.task.status, dueDate: schema.task.dueDate, number: schema.workTask.number, teamKey: schema.workTeam.key, assigneePersonId: schema.task.assigneePersonId, assigneeName: assignee.fullName })
       .from(schema.projectMeetingTask)
       .innerJoin(schema.task, eq(schema.task.id, schema.projectMeetingTask.taskId))
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
@@ -219,6 +219,6 @@ export async function getMeeting(projectId: string, meetingId: string): Promise<
     authorName: author[0]?.fullName ?? null,
     attendees,
     decisions,
-    actions: actions.map((row) => ({ taskId: row.taskId, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, assigneeName: row.assigneeName, dueDate: row.dueDate })),
+    actions: actions.map((row) => ({ taskId: row.taskId, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, assigneePersonId: row.assigneePersonId, assigneeName: row.assigneeName, dueDate: row.dueDate })),
   };
 }

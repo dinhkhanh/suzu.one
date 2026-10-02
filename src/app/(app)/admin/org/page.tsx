@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "cn";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -81,9 +82,8 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
   const canAdd = canShare || manageableEntities.length > 0;
   const parents = units.filter((item) => item.isActive).map(({ id, name, depth, path }) => ({ id, name, depth, path }));
   const canSeeRoles = can(user.principal, "rbac:manage", {});
-  // The grants that name this unit as their scope. The listing carries the scope's name, not its
-  // id, so a unit sharing its name with another would show the other's grants too.
-  const grants = unit && canSeeRoles ? (await listRoleAssignments()).filter((grant) => grant.scopeType === "unit" && grant.scopeName === unit.name) : [];
+  // The grants that name this unit as their scope.
+  const grants = unit && canSeeRoles ? (await listRoleAssignments()).filter((grant) => grant.scopeType === "unit" && grant.scopeId === unit.id) : [];
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
 
   const addRow = (parentId?: string) =>
@@ -139,7 +139,7 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
     { label: t("code"), value: unit.code ? <span className="font-mono text-[0.8125rem]">{unit.code}</span> : <span className="text-faint">—</span> },
     { label: t("kind"), value: <Badge variant="outline">{t(`kinds.${unit.kind}`)}</Badge> },
     { label: t("parent"), value: parent ? <Link href={`/admin/org?unit=${parent.id}`} className="text-link hover:underline">{parent.name}</Link> : <span className="text-muted-foreground">{t("noParent")}</span> },
-    { label: t("belongsTo"), value: unit.entityId ? (entityName.get(unit.entityId) ?? "—") : <Badge variant="secondary">{t("shared")}</Badge> },
+    { label: t("belongsTo"), value: unit.entityId ? <RecordLink kind="entity" id={unit.entityId}>{entityName.get(unit.entityId) ?? "—"}</RecordLink> : <Badge variant="secondary">{t("shared")}</Badge> },
     { label: t("path"), value: <span className="font-mono text-xs text-faint">{[...ancestors, unit].map((item) => item.code ?? item.name).join(" / ")}</span> },
     { label: t("unitsInside"), value: <span className="font-mono text-[0.8125rem] tabular-nums">{unit.children.length}</span> },
   ];
@@ -240,9 +240,9 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
                 {grants.map((grant) => (
                   <TableRow key={grant.id}>
                     <TableCell>
-                      <Link href={`/people/${grant.personId}`} className="font-medium hover:underline">
+                      <RecordLink kind="person" id={grant.personId} className="font-medium">
                         {grant.personName}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     <TableCell>{roleName.has(grant.role) ? roleName(grant.role) : grant.role}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">

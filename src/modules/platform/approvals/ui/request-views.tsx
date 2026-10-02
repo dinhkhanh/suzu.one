@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -100,7 +101,7 @@ export async function RequestTable({ rows, empty, showRequester, labels, showWai
       </TableCell>
       {showRequester ? (
         <TableCell>
-          <PersonName name={row.requesterName} />
+          <PersonName name={row.requesterName} personId={row.requesterPersonId} />
         </TableCell>
       ) : null}
       <TableCell>
@@ -216,7 +217,9 @@ export async function ApprovalChain({ view }: { view: RequestView }) {
                 </p>
                 {step.assignees.map((assignee) => (
                   <p key={assignee.personId} className="text-xs text-faint">
-                    {assignee.name}
+                    <RecordLink kind="person" id={assignee.personId}>
+                      {assignee.name}
+                    </RecordLink>
                     {assignee.delegatedFromName ? ` ${t("history.standingInFor", { name: assignee.delegatedFromName })}` : ""}
                     {" · "}
                     {t(`assignee.${assignee.status}` as "assignee.pending")}
@@ -244,9 +247,23 @@ export async function RequestEvents({ view }: { view: RequestView }) {
           <ListItem key={event.id} className="flex-wrap gap-x-2 gap-y-0.5">
             <span className="font-medium">{t(`events.${event.type}` as "events.submitted")}</span>
             <span className="text-muted-foreground">
-              {event.actorName ?? "—"} · <span className="font-mono text-xs tabular-nums">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
+              {event.actorName ? (
+                <RecordLink kind="person" id={event.actorPersonId}>
+                  {event.actorName}
+                </RecordLink>
+              ) : (
+                "—"
+              )}{" "}
+              · <span className="font-mono text-xs tabular-nums">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
             </span>
-            {typeof event.meta?.toName === "string" ? <span className="text-muted-foreground">→ {event.meta.toName}</span> : null}
+            {typeof event.meta?.toName === "string" ? (
+              <span className="text-muted-foreground">
+                →{" "}
+                <RecordLink kind="person" id={typeof event.meta.toPersonId === "string" ? event.meta.toPersonId : null}>
+                  {event.meta.toName}
+                </RecordLink>
+              </span>
+            ) : null}
             {event.meta?.verifiedSecondChannel ? <Badge variant="outline">{t("history.verified")}</Badge> : null}
             {event.comment ? <p className="w-full text-muted-foreground">“{event.comment}”</p> : null}
           </ListItem>

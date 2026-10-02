@@ -6,7 +6,7 @@ import { matchesReach, permissionReach, type Principal, reachesNothing } from "@
 import { personInReachSql } from "@/modules/platform/rbac/reach-sql";
 import { type Balance, getBalances } from "./ledger";
 
-export type BalanceRow = { personId: string; fullName: string; entityName: string | null; departmentName: string | null; status: string; balances: Balance[] };
+export type BalanceRow = { personId: string; fullName: string; entityId: string | null; entityName: string | null; departmentId: string | null; departmentName: string | null; status: string; balances: Balance[] };
 
 export async function listBalancesForAdmin(principal: Principal, year: number, filter: { entityId?: string | null } = {}): Promise<BalanceRow[]> {
   const reach = permissionReach(principal, "leave:manage");
@@ -21,5 +21,5 @@ export async function listBalancesForAdmin(principal: Principal, year: number, f
   // The WHERE already applies the reach; the policy check stays as a guard.
   const visible = rows.filter(({ person }) => matchesReach(reach, { personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId }));
   const balances = await getBalances(visible.map((row) => row.person.id), year);
-  return visible.map(({ person, entityName, departmentName }) => ({ personId: person.id, fullName: person.fullName, entityName, departmentName, status: person.status, balances: balances.get(person.id) ?? [] }));
+  return visible.map(({ person, entityName, departmentName }) => ({ personId: person.id, fullName: person.fullName, entityId: person.primaryEntityId, entityName, departmentId: person.departmentId, departmentName, status: person.status, balances: balances.get(person.id) ?? [] }));
 }

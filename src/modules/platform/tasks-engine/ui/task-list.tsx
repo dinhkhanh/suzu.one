@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { DueText, PersonAvatar, StateDot } from "./task-row";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { reassignTaskAction, setTaskStatusAction } from "../actions";
@@ -93,8 +94,14 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                 </span>
                 {task.description?.trim() ? <span className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(task.description)}</span> : null}
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                  {showSubject && task.subjectName ? <span>{task.subjectName}</span> : null}
-                  <span>{task.assigneeName ?? t("unassigned")}</span>
+                  {showSubject && task.subjectName ? (
+                    <RecordLink kind="person" id={task.subjectPersonId}>
+                      {task.subjectName}
+                    </RecordLink>
+                  ) : null}
+                  <RecordLink kind="person" id={task.assigneeName ? task.assigneePersonId : null}>
+                    {task.assigneeName ?? t("unassigned")}
+                  </RecordLink>
                   <DueText dueDate={task.dueDate} today={today} open={open} />
                   {task.linkUrl ? (
                     <a href={task.linkUrl} className="text-link underline underline-offset-2" {...(task.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}>
@@ -149,12 +156,14 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                   </TableCell>
                   {showSubject ? (
                     <TableCell>
-                      {task.subjectName ?? "—"}
+                      <RecordLink kind="person" id={task.subjectPersonId}>
+                        {task.subjectName ?? "—"}
+                      </RecordLink>
                       {task.subjectPersonId ? (
                         <p className="text-xs">
-                          <Link href={`/people/${task.subjectPersonId}`} className="text-link underline underline-offset-2">
+                          <RecordLink kind="person" id={task.subjectPersonId} className="text-link underline underline-offset-2">
                             {t("openRecord")}
-                          </Link>
+                          </RecordLink>
                         </p>
                       ) : null}
                     </TableCell>
@@ -172,7 +181,9 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                     ) : (
                       <span className="flex items-center gap-2">
                         <PersonAvatar name={task.assigneeName} />
-                        <span className={task.assigneeName ? "truncate" : "text-muted-foreground"}>{task.assigneeName ?? t("unassigned")}</span>
+                        <RecordLink kind="person" id={task.assigneeName ? task.assigneePersonId : null} className={task.assigneeName ? "truncate" : "text-muted-foreground"}>
+                          {task.assigneeName ?? t("unassigned")}
+                        </RecordLink>
                       </span>
                     )}
                   </TableCell>

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -46,11 +47,28 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
           <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
           <h2>{meeting.title}</h2>
         </div>
-        <p className="text-sm text-muted-foreground">{[date(meeting.heldOn), meeting.startTime ? t("atTime", { time: meeting.startTime.slice(0, 5), minutes: meeting.durationMinutes ?? DEFAULT_MEETING_MINUTES }) : null, meeting.authorName ? t("recordedBy", { name: meeting.authorName }) : null].filter(Boolean).join(" · ")}</p>
+        <p className="text-sm text-muted-foreground">
+          {[date(meeting.heldOn), meeting.startTime ? t("atTime", { time: meeting.startTime.slice(0, 5), minutes: meeting.durationMinutes ?? DEFAULT_MEETING_MINUTES }) : null].filter(Boolean).join(" · ")}
+          {meeting.authorName ? (
+            <>
+              {" · "}
+              {t.rich("recordedBy", { name: meeting.authorName, person: (chunks) => <RecordLink kind="person" id={meeting.createdByPersonId}>{chunks}</RecordLink> })}
+            </>
+          ) : null}
+        </p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted-foreground">{t("fields.attendees")}</dt>
-            <dd>{meeting.attendees.length ? meeting.attendees.map((person) => person.fullName).join(", ") : "—"}</dd>
+            <dd>
+              {meeting.attendees.length
+                ? meeting.attendees.map((person, index) => (
+                    <span key={person.id}>
+                      {index ? ", " : ""}
+                      <RecordLink kind="person" id={person.id}>{person.fullName}</RecordLink>
+                    </span>
+                  ))
+                : "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t("fields.externalAttendees")}</dt>
@@ -118,12 +136,12 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
             {meeting.actions.map((action) => (
               <TableRow key={action.taskId}>
                 <TableCell className="max-w-96 truncate">
-                  <Link href={`/work/tasks/${action.taskId}`} className="hover:underline">
+                  <RecordLink kind="task" id={action.taskId}>
                     <span className="mr-2 font-mono text-xs text-muted-foreground">{action.key}</span>
                     <span className={action.status === "done" || action.status === "cancelled" ? "line-through" : undefined}>{action.title}</span>
-                  </Link>
+                  </RecordLink>
                 </TableCell>
-                <TableCell>{action.assigneeName ?? t("unassigned")}</TableCell>
+                <TableCell>{action.assigneeName ? <RecordLink kind="person" id={action.assigneePersonId}>{action.assigneeName}</RecordLink> : t("unassigned")}</TableCell>
                 <TableCell>{action.dueDate ? date(action.dueDate) : "—"}</TableCell>
               </TableRow>
             ))}

@@ -9,13 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { addPinAction, setPinResolvedAction } from "../delivery-actions";
 import { formatTimecode, type MediaKind } from "../engine/delivery";
 import { DeliveryError, errorKeyOf, type Result, SignedVideo, useSignedUrl } from "./delivery-shared";
 
-export type PinItem = { id: string; x: number | null; y: number | null; timecodeMs: number | null; body: string; authorName: string | null; resolved: boolean; createdAt: string; canResolve: boolean };
+export type PinItem = { id: string; x: number | null; y: number | null; timecodeMs: number | null; body: string; authorPersonId?: string | null; authorName: string | null; resolved: boolean; createdAt: string; canResolve: boolean };
 export type MediaVersion = { id: string; version: number; fileId: string; fileName: string; media: MediaKind };
 
 type Draft = { x: number | null; y: number | null; timecodeMs: number | null };
@@ -155,7 +156,7 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
                     {pin.body}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {pin.authorName ?? "—"} · {format.dateTime(new Date(pin.createdAt), { dateStyle: "short", timeStyle: "short" })}
+                    {pin.authorName ? <RecordLink kind="person" id={pin.authorPersonId}>{pin.authorName}</RecordLink> : "—"} · {format.dateTime(new Date(pin.createdAt), { dateStyle: "short", timeStyle: "short" })}
                   </p>
                 </div>
                 {pin.canResolve ? (

@@ -12,6 +12,7 @@ import { cn } from "cn";
 import { type BookingStatus } from "../enums";
 import { layoutWeek, weekDays } from "../engine/booking";
 import type { BookingView } from "../service";
+import { RecordLink } from "@/components/ui/record-link";
 
 // A booking on the grid: a small tinted block in the tone of its status — waiting amber, confirmed
 // green, out of the cupboard blue, back or cancelled grey.
@@ -109,9 +110,9 @@ export async function BookingWeek({ weekBegins, assets, bookings }: { weekBegins
           return (
             <TableRow key={asset.id}>
               <TableCell className="align-top">
-                <Link href={`/assets/${asset.id}`} className="font-mono text-xs font-medium hover:underline">
+                <RecordLink kind="asset" id={asset.id} className="font-mono text-xs font-medium">
                   {asset.code}
-                </Link>
+                </RecordLink>
                 <p className="truncate text-xs text-faint">{asset.name}</p>
               </TableCell>
               <TableCell colSpan={7} className="relative p-0 align-top">
@@ -165,13 +166,17 @@ export async function BookingList({ rows, empty, showAsset = true }: { rows: Boo
           <TableRow key={row.id}>
             {showAsset ? (
               <TableCell className="max-w-64">
-                <Link href={`/assets/bookings/${row.id}`} className="font-mono text-xs font-medium hover:underline">
+                <RecordLink kind="booking" id={row.id} className="font-mono text-xs font-medium">
                   {row.assetCode}
-                </Link>
-                <p className="truncate text-xs text-faint">{row.assetName}</p>
+                </RecordLink>
+                <p className="truncate text-xs text-faint">
+                  <RecordLink kind="asset" id={row.assetId}>{row.assetName}</RecordLink>
+                </p>
               </TableCell>
             ) : null}
-            <TableCell>{row.personName}</TableCell>
+            <TableCell>
+              <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+            </TableCell>
             <TableCell className="font-mono text-xs tabular-nums">{formatWindow(row.startAt, row.endAt)}</TableCell>
             <TableCell className="max-w-80 truncate text-xs text-muted-foreground">
               {row.purpose ?? "—"}

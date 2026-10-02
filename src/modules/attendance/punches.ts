@@ -172,6 +172,7 @@ export type FlaggedPunch = {
   note: string | null;
   reviewStatus: PunchRow["reviewStatus"];
   reviewNote: string | null;
+  reviewerPersonId: string | null;
   reviewerName: string | null;
   nearestLocationName: string | null;
 };
@@ -214,6 +215,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
       note: punch.note,
       reviewStatus: punch.reviewStatus,
       reviewNote: punch.reviewNote,
+      reviewerPersonId: punch.reviewedByPersonId,
       reviewerName: reviewers.find((row) => row.id === punch.reviewedByPersonId)?.fullName ?? null,
       // With one office the distance speaks for itself; with several, the name would be a guess.
       nearestLocationName: entityLocations.length === 1 ? entityLocations[0].name : null,
@@ -264,6 +266,7 @@ export type PresenceStatus = "in" | "out" | "not_yet" | "on_leave" | "off_site" 
 export type PresenceRow = {
   personId: string;
   fullName: string;
+  departmentId: string | null;
   departmentName: string | null;
   isSelf: boolean;
   status: PresenceStatus;
@@ -351,6 +354,7 @@ export async function getWhoIsIn(viewer: { personId: string; principal: Principa
       return {
         personId: person.id,
         fullName: person.fullName,
+        departmentId: person.departmentId,
         departmentName,
         isSelf: person.id === viewer.personId,
         status,

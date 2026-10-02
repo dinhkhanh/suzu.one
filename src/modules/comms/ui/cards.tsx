@@ -8,6 +8,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { List, ListEmpty } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "@/lib/utils";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { AnnouncementCard, KudosCard } from "../service";
@@ -35,13 +36,16 @@ export async function AnnouncementCards({ cards, empty }: { cards: AnnouncementC
             <p className="flex items-center gap-2 text-xs text-faint">
               {card.read ? null : <span aria-label={t("list.unread")} className="size-2 shrink-0 rounded-full bg-primary" />}
               <span className="truncate">
-                {card.authorName} · {format.dateTime(card.publishAt, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" })}
+                <RecordLink kind="person" id={card.authorPersonId}>
+                  {card.authorName}
+                </RecordLink>{" "}
+                · {format.dateTime(card.publishAt, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" })}
               </span>
             </p>
             <h3 className="text-[1.0625rem] leading-snug font-semibold tracking-[-0.01em]">
-              <Link href={`/announcements/${card.id}`} className="hover:underline">
+              <RecordLink kind="announcement" id={card.id}>
                 {card.title}
-              </Link>
+              </RecordLink>
             </h3>
           </CardHeader>
           <CardContent>
@@ -87,13 +91,13 @@ export async function KudosCards({ cards, empty, action }: { cards: KudosCard[];
         <Card key={card.id} className="rise" style={{ "--i": index } as CSSProperties}>
           <CardHeader className="gap-2">
             <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <Link href={`/people/${card.fromPersonId}`} className="font-semibold hover:underline">
+              <RecordLink kind="person" id={card.fromPersonId} className="font-semibold">
                 {card.fromName}
-              </Link>
+              </RecordLink>
               <ArrowRight className="size-3.5 shrink-0 text-faint" aria-hidden />
-              <Link href={`/people/${card.toPersonId}`} className="font-semibold hover:underline">
+              <RecordLink kind="person" id={card.toPersonId} className="font-semibold">
                 {card.toName}
-              </Link>
+              </RecordLink>
               <span className="sr-only">{t.rich("kudos.line", { from: card.fromName, to: card.toName, b: (chunks) => <>{chunks}</> })}</span>
             </p>
             <Badge variant={hueOf(card.valueKey)}>{(locale === "en" ? card.valueNameEn : card.valueNameVi) ?? card.valueKey}</Badge>

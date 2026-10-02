@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import type { Note } from "../engine/handoff";
 import { acknowledgeCoverAction, checkMyCoverPlansAction, handBackCoverAction, saveCoverPlanAction, submitCoverPlanAction } from "../handoff-actions";
@@ -18,7 +19,7 @@ import { HandoffNoteFields, HandoffNoteView, readNote } from "./handoff";
 type Result = { ok: boolean; error?: string; message?: string; data?: unknown };
 /** `label` null: work the reader may not open. `assignableIds`: who may cover the item. */
 export type CoverItemRow = { id: string; itemType: "task" | "review" | "recurrence" | "booking"; label: string | null; detail: string | null; href: string | null; coverPersonId: string | null; effectiveCoverName: string | null; acknowledgedAt: string | null; handedBackAt: string | null; handoffStatus: string | null; assignableIds: string[] };
-export type CoverPlanData = { id: string; status: string; personName: string; fromDate: string; toDate: string; defaultCoverPersonId: string | null; defaultCoverName: string | null; note: Note; appliedAt: string | null; items: CoverItemRow[] };
+export type CoverPlanData = { id: string; status: string; personId?: string | null; personName: string; fromDate: string; toDate: string; defaultCoverPersonId: string | null; defaultCoverName: string | null; note: Note; appliedAt: string | null; items: CoverItemRow[] };
 
 function useRun() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">{t("absence", { name: plan.personName, from: day(plan.fromDate), to: day(plan.toDate) })}</p>
+      <p className="text-sm text-muted-foreground">{t.rich("absence", { name: plan.personName, from: day(plan.fromDate), to: day(plan.toDate), who: (chunks) => <RecordLink kind="person" id={plan.personId}>{chunks}</RecordLink> })}</p>
       {plan.items.length === 0 ? <p className="text-sm text-muted-foreground">{t("nothing")}</p> : null}
       <form
         className="flex flex-col gap-4"
@@ -92,7 +93,7 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
             <p className="text-xs text-muted-foreground">{t("defaultHint")}</p>
           </div>
         ) : plan.defaultCoverName ? (
-          <p className="text-sm">{t("coveredBy", { name: plan.defaultCoverName })}</p>
+          <p className="text-sm">{t.rich("coveredBy", { name: plan.defaultCoverName, who: (chunks) => <RecordLink kind="person" id={plan.defaultCoverPersonId}>{chunks}</RecordLink> })}</p>
         ) : null}
 
         <List>
@@ -124,7 +125,7 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
                 </Select>
               ) : (
                 <span className="flex items-center gap-2 text-xs">
-                  {item.effectiveCoverName ?? t("uncovered")}
+                  {item.effectiveCoverName ? <RecordLink kind="person" id={item.coverPersonId ?? plan.defaultCoverPersonId}>{item.effectiveCoverName}</RecordLink> : t("uncovered")}
                   {item.handedBackAt ? <Badge variant="outline">{t("handedBack")}</Badge> : item.acknowledgedAt ? <Badge>{t("acknowledged")}</Badge> : plan.status === "submitted" ? <Badge variant="secondary">{t("waitingAck")}</Badge> : null}
                 </span>
               )}

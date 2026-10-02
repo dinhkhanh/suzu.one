@@ -2,7 +2,7 @@
 // bug of its own, so the entries gated on a permission are kept in step with the page behind them.
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { groupNav, NAV_GROUPS, navFor } from "./nav";
+import { groupNav, linkableKinds, NAV_GROUPS, navFor } from "./nav";
 
 const group = { type: "group" } as const;
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
@@ -74,5 +74,25 @@ describe("sidebar sections", () => {
 
   it("still draws an entry no section names", () => {
     expect(groupNav([{ key: "somethingNew" }])).toEqual([{ key: "work", items: [{ key: "somethingNew" }] }]);
+  });
+});
+
+describe("names that are links", () => {
+  it("opens a colleague's profile to every employee, and to a collaborator only with a role that reads people", () => {
+    expect(linkableKinds(principal([]), { people: false })).toContain("person");
+    const collaborator = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "collaborator", grants });
+    expect(linkableKinds(collaborator([]), { people: true })).not.toContain("person");
+    expect(linkableKinds(collaborator([{ role: "hr_staff", scope: group }]), { people: true })).toContain("person");
+  });
+
+  it("links a unit to the people list only while the People module is open, and an entity only with org:read", () => {
+    expect(linkableKinds(principal([]), { people: false })).not.toContain("unit");
+    expect(linkableKinds(principal([]), { people: true })).toContain("unit");
+    expect(linkableKinds(principal([]), { people: true })).not.toContain("entity");
+    expect(linkableKinds(principal([{ role: "hr_staff", scope: group }]), { people: true })).toContain("entity");
+  });
+
+  it("leaves every other kind to the page behind it", () => {
+    expect(linkableKinds({ personId: "me", workforceType: "collaborator", grants: [] }, { people: false })).toEqual(expect.arrayContaining(["project", "task", "account", "asset"]));
   });
 });

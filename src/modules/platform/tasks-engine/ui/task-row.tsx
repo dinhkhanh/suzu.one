@@ -1,5 +1,6 @@
 import { useFormatter } from "next-intl";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "cn";
 import { initialsOf } from "@/lib/text";
 
@@ -52,12 +53,18 @@ export function ColorSquare({ color, className }: { color?: string | null; class
   return <span aria-hidden className={cn("inline-block size-[7px] shrink-0 rounded-[2px]", (color && ACCENT_SQUARE[color]) || "bg-faint/40", className)} />;
 }
 
-/** The project chip of a row: a muted pill with the colour square and the name, cut short when long. */
-export function ProjectChip({ name, color, className }: { name: string; color?: string | null; className?: string }) {
+/**
+ * The project chip of a row: a muted pill with the colour square and the name, cut short when
+ * long. Given the project's id, the name is the way to the project — except in a row that is a
+ * link itself, where `RecordLink` leaves it as text.
+ */
+export function ProjectChip({ name, color, className, projectId }: { name: string; color?: string | null; className?: string; projectId?: string | null }) {
   return (
     <span className={cn("inline-flex h-[22px] max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 text-xs text-muted-foreground", className)} title={name}>
       <ColorSquare color={color} />
-      <span className="truncate">{name}</span>
+      <RecordLink kind="project" id={projectId} className="truncate">
+        {name}
+      </RecordLink>
     </span>
   );
 }

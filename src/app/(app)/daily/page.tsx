@@ -1,10 +1,10 @@
 import { BarChart3, CalendarCheck, CalendarRange, ChevronRight, ClipboardCheck, ClipboardList, Clock, Users } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import type { CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listMyReports } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
@@ -58,9 +58,9 @@ export default async function DailyIndexPage() {
             {reports.map((report) => (
               <TableRow key={report.id}>
                 <TableCell>
-                  <Link href={`/daily/reports/${report.id}`} className="font-medium hover:underline">
+                  <RecordLink kind="dailyReport" id={report.id} className="font-medium">
                     {format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "short" })}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
                 <TableCell>{report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}</TableCell>
                 <TableCell kind="time" className="text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</TableCell>

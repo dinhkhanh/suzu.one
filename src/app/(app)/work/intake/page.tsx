@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -73,9 +74,9 @@ export default async function IntakeIndexPage() {
                 <TableRow key={request.taskId}>
                   <TableCell kind="id">{request.key}</TableCell>
                   <TableCell className="max-w-80">
-                    <Link href={`/work/tasks/${request.taskId}`} className="block truncate font-medium hover:underline">
+                    <RecordLink kind="task" id={request.taskId} className="block truncate font-medium">
                       {request.title}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
                   <TableCell>{request.formName ?? "—"}</TableCell>
                   <TableCell>{format.dateTime(request.createdAt, { dateStyle: "medium" })}</TableCell>

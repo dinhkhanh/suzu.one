@@ -85,6 +85,7 @@ export type RegisterLine = {
   personId: string;
   fullName: string;
   employeeCode: string | null;
+  departmentId: string | null;
   departmentName: string | null;
   profile: "statutory" | "simple";
   gross: number;
@@ -124,6 +125,7 @@ export async function payrollRegister(principal: Principal, entityId: string, mo
         personId: person.personId,
         fullName: fact?.fullName ?? "—",
         employeeCode: fact?.employeeCode ?? null,
+        departmentId: fact?.departmentId ?? null,
         departmentName: fact?.departmentId ? (departmentOf.get(fact.departmentId) ?? null) : null,
         profile: person.profile,
         gross: (existing?.gross ?? 0) + totals.grossEarnings,

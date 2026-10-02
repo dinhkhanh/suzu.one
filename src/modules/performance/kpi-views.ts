@@ -83,7 +83,7 @@ export type OverviewEntity = {
   spread: Spread;
   departments: { departmentId: string | null; name: string | null; spread: Spread }[];
 };
-export type Overview = { month: string; entities: OverviewEntity[]; goals: { id: string; level: "group" | "entity"; unitName: string | null; title: string; periodKey: string; progressBp: number | null; confidence: Confidence | null }[] };
+export type Overview = { month: string; entities: OverviewEntity[]; goals: { id: string; level: "group" | "entity"; entityId: string | null; unitName: string | null; title: string; periodKey: string; progressBp: number | null; confidence: Confidence | null }[] };
 
 export function spreadOf(scores: readonly (number | null)[]): Spread {
   const values = scores.filter((score): score is number => score !== null).sort((a, b) => a - b);
@@ -143,5 +143,5 @@ export async function getOverview(viewer: Viewer, month: string, months: readonl
     });
   }
   const top = goals.filter((goal) => (goal.status === "active" || goal.status === "closed") && (goal.level === "group" || (goal.level === "entity" && !!goal.entityId && entityIds.includes(goal.entityId))));
-  return { month, entities: result, goals: top.map((goal) => ({ id: goal.id, level: goal.level as "group" | "entity", unitName: goal.unitName, title: goal.title, periodKey: goal.periodKey, progressBp: goal.progress.progressBp, confidence: goal.progress.confidence })) };
+  return { month, entities: result, goals: top.map((goal) => ({ id: goal.id, level: goal.level as "group" | "entity", entityId: goal.entityId, unitName: goal.unitName, title: goal.title, periodKey: goal.periodKey, progressBp: goal.progress.progressBp, confidence: goal.progress.confidence })) };
 }

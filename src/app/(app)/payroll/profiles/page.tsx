@@ -11,6 +11,7 @@ import { listProfileProposals } from "@/modules/payroll/profiles";
 import { RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("payProfiles");
 
@@ -70,7 +71,7 @@ export default async function ProfilesPage() {
               </TableCell>
               <TableCell>{proposal.simpleBasis ? t(`profiles.bases.${proposal.simpleBasis}`) : "—"}</TableCell>
               <TableCell>{day(proposal.validFrom)}</TableCell>
-              <TableCell>{proposal.proposedByName ?? "—"}</TableCell>
+              <TableCell>{proposal.proposedByName ? <RecordLink kind="person" id={proposal.proposedByPersonId}>{proposal.proposedByName}</RecordLink> : "—"}</TableCell>
               <TableCell className="max-w-64 truncate text-muted-foreground">{proposal.note ?? "—"}</TableCell>
               {canDecide ? (
                 <TableCell kind="actions">

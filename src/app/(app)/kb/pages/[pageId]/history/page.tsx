@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, compareVersions, kbViewerOf, levelOf, listVersions, loadPage } from "@/modules/kb/service";
 import { RestoreVersionButton } from "@/modules/kb/ui/page-forms";
@@ -68,7 +69,7 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
                   </span>
                 </TableCell>
                 <TableCell className="max-w-80 truncate">{version.changeNote ?? version.title}</TableCell>
-                <TableCell>{version.authorName ?? "—"}</TableCell>
+                <TableCell>{version.authorName ? <RecordLink kind="person" id={version.authorPersonId}>{version.authorName}</RecordLink> : "—"}</TableCell>
                 <TableCell>{format.dateTime(version.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
                 <TableCell kind="actions">
                   <span className="flex items-center justify-end gap-3">

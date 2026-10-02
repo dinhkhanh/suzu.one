@@ -6,6 +6,7 @@ import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
@@ -97,12 +98,12 @@ export default async function MyProfilePage() {
 
       <Section id="profile" title={t("sections.employment")} className="scroll-mt-16">
         <FactSheet>
-          <Fact label={t("fields.entity")}>{person.entityName}</Fact>
+          <Fact label={t("fields.entity")}>{person.entityName ? <RecordLink kind="entity" id={person.entityId}>{person.entityName}</RecordLink> : null}</Fact>
           <Fact label={t("fields.employeeCode")}>{person.employeeCode}</Fact>
           <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
           <Fact label={t("fields.workforceType")}>{personal.current ? t(`workforceType.${personal.current.workforceType}`) : null}</Fact>
-          <Fact label={t("fields.managerId")}>{person.current?.managerName}</Fact>
-          <Fact label={t("fields.team")}>{person.current?.teamName}</Fact>
+          <Fact label={t("fields.managerId")}>{person.current?.managerName ? <RecordLink kind="person" id={person.current.managerId}>{person.current.managerName}</RecordLink> : null}</Fact>
+          <Fact label={t("fields.team")}>{person.current?.teamName ? <RecordLink kind="unit" id={person.current.teamId}>{person.current.teamName}</RecordLink> : null}</Fact>
           <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
           <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
           <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>

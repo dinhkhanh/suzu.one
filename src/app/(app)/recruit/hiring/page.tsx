@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canRunRecruitment, headcountPlan, listHiringRequests } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -48,14 +49,14 @@ export default async function HiringRequestsPage() {
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="max-w-72 truncate">
-                  <Link href={`/recruit/hiring/${row.id}`} className="font-medium hover:underline">
+                  <RecordLink kind="hiringRequest" id={row.id} className="font-medium">
                     {row.positionTitle}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
                 <TableCell kind="number">{row.headcount}</TableCell>
-                <TableCell>{row.entityName || "—"}</TableCell>
-                <TableCell>{row.departmentName || "—"}</TableCell>
-                <TableCell>{row.requesterName || "—"}</TableCell>
+                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
+                <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
+                <TableCell>{row.requesterName ? <RecordLink kind="person" id={row.requesterPersonId}>{row.requesterName}</RecordLink> : "—"}</TableCell>
                 <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                 <TableCell>
                   <Badge dot variant={statusTone(row.status)}>{t(`hiringStatus.${row.status}`)}</Badge>
@@ -81,9 +82,9 @@ export default async function HiringRequestsPage() {
             </TableHeader>
             <TableBody>
               {plan.map((row) => (
-                <TableRow key={`${row.entityName}-${row.departmentId}`}>
-                  <TableCell>{row.entityName || "—"}</TableCell>
-                  <TableCell>{row.departmentName || "—"}</TableCell>
+                <TableRow key={`${row.entityId}-${row.departmentId}`}>
+                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
                   <TableCell kind="number">{row.approvedHeads}</TableCell>
                   <TableCell kind="number">{row.openHeads}</TableCell>
                 </TableRow>

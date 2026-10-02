@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
 import { buttonVariants } from "@/components/ui/button";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canCreatePage, kbViewerOf, listTemplates, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
@@ -35,9 +36,7 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
     <Page>
       <PageHeader
         eyebrow={
-          <Link href={`/kb/spaces/${loaded.space.key}`} className="hover:underline">
-            {loaded.space.name}
-          </Link>
+          <RecordLink kind="kbSpace" id={loaded.space.key}>{loaded.space.name}</RecordLink>
         }
         title={t("page.new")}
         actions={

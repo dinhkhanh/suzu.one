@@ -1,5 +1,6 @@
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { can } from "@/modules/platform/rbac/policy";
+import { RECORD_KINDS, type RecordKind } from "@/lib/record-routes";
 
 export type NavItem = { key: string; href?: string; phase?: number };
 
@@ -93,6 +94,25 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     ...(can(principal, "feedback:manage") || can(principal, "feedback:read") ? [{ key: "feedbackInbox", href: "/feedback/inbox" }] : []),
   ];
   return { main, admin };
+}
+
+/**
+ * The kinds of record whose names are links for this viewer (`RecordLink`). Cosmetic, like the
+ * entries above, and kept in step with the pages for the same reason: a name that always lands on
+ * a 404 is a bug. Only the kinds a whole group of people cannot open are held back here; whether
+ * this one project or account opens is the page's to say, and a caller that knows passes no id.
+ */
+export function linkableKinds(principal: Principal, open: { people: boolean }): RecordKind[] {
+  // The directory tier (`readableTier`): every employee reads every colleague's public profile;
+  // a collaborator has no directory unless a role gives one.
+  const directory = principal.workforceType !== "collaborator" || can(principal, "person:read");
+  const closed = new Set<RecordKind>([
+    ...(directory ? [] : (["person"] as const)),
+    // A unit's name opens the people list filtered to it, which is behind the People flag.
+    ...(directory && open.people ? [] : (["unit"] as const)),
+    ...(can(principal, "org:read") ? [] : (["entity"] as const)),
+  ]);
+  return RECORD_KINDS.filter((kind) => !closed.has(kind));
 }
 
 export type NavGroupKey = "today" | "me" | "work" | "manage" | "company" | "preferences" | "admin";

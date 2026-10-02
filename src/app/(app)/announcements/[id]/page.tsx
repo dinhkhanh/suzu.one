@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { commsViewerOf, getAnnouncementView, markAnnouncementRead } from "@/modules/comms/service";
 import { AcknowledgeAnnouncementButton } from "@/modules/comms/ui/buttons";
 import { canViewPage, kbViewerOf, loadPage } from "@/modules/kb/service";
@@ -43,7 +44,14 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
           </Link>
         }
         title={row.title}
-        description={`${view.authorName}${row.publishAt ? ` · ${format.dateTime(row.publishAt, { dateStyle: "long", timeStyle: "short" })}` : ""}`}
+        description={
+          <>
+            <RecordLink kind="person" id={row.authorPersonId}>
+              {view.authorName}
+            </RecordLink>
+            {row.publishAt ? ` · ${format.dateTime(row.publishAt, { dateStyle: "long", timeStyle: "short" })}` : ""}
+          </>
+        }
         actions={
           view.canManage ? (
             <Link href={`/announcements/manage/${row.id}`} className={cn(buttonVariants({ variant: "outline" }))}>
@@ -67,9 +75,9 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
       {page ? (
         <p className="text-sm">
           {t("detail.readMore")}{" "}
-          <Link href={`/kb/pages/${page.id}`} className="text-link underline underline-offset-2">
+          <RecordLink kind="kbPage" id={page.id} className="text-link underline underline-offset-2">
             {page.publishedTitle ?? page.title}
-          </Link>
+          </RecordLink>
         </p>
       ) : null}
 

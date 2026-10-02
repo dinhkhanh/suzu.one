@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -79,16 +80,18 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
           {invoices.map((invoice) => (
             <TableRow key={invoice.id}>
               <TableCell kind="id">
-                <Link href={`/crm/invoices/${invoice.id}`} className="font-medium text-foreground hover:underline">
+                <RecordLink kind="invoice" id={invoice.id} className="font-medium text-foreground">
                   {invoice.number}
-                </Link>
-                <p className="font-sans text-xs text-faint">{invoice.entityName}</p>
+                </RecordLink>
+                <p className="font-sans text-xs text-faint">
+                  <RecordLink kind="entity" id={invoice.entityId}>{invoice.entityName}</RecordLink>
+                </p>
               </TableCell>
               <TableCell>
-                <Link href={`/crm/accounts/${invoice.clientId}`} className="hover:underline">
-                  {invoice.accountName}
-                </Link>
-                <p className="text-xs text-faint">{invoice.managerName}</p>
+                <RecordLink kind="account" id={invoice.clientId}>{invoice.accountName}</RecordLink>
+                <p className="text-xs text-faint">
+                  <RecordLink kind="person" id={invoice.managerPersonId}>{invoice.managerName}</RecordLink>
+                </p>
               </TableCell>
               <TableCell kind="date">{f.date(invoice.issuedOn)}</TableCell>
               <TableCell kind="date">
@@ -120,7 +123,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
                       {group.entityName ? ` · ${group.entityName}` : ""} <span className="font-mono text-xs font-normal text-faint tabular-nums">{t("invoices.readyCount", { count: group.items.length })}</span>
                     </summary>
                     <div className="pt-3">
-                      <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
+                      <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectId: item.projectId, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
                     </div>
                   </details>
                 </ListItem>

@@ -7,6 +7,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOneOnOnes, myReports } from "@/modules/performance/service";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { NewOneOnOneForm } from "@/modules/performance/ui/one-on-one-forms";
 import { pageTitle } from "@/i18n/page-title";
@@ -42,7 +43,9 @@ export default async function OneOnOnesPage() {
                     {format.dateTime(new Date(`${row.meetingOn}T00:00:00+07:00`), { dateStyle: "medium" })}
                   </Link>
                 </TableCell>
-                <TableCell>{row.managerPersonId === user.person.id ? personName : managerName}</TableCell>
+                <TableCell>
+                  <RecordLink kind="person" id={row.managerPersonId === user.person.id ? row.personId : row.managerPersonId}>{row.managerPersonId === user.person.id ? personName : managerName}</RecordLink>
+                </TableCell>
                 <TableCell kind="number">{actionCount > 0 ? actionCount : "—"}</TableCell>
                 <TableCell>
                   <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>

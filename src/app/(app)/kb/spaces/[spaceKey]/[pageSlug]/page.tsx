@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { initialsOf } from "@/lib/text";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -130,7 +131,7 @@ export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pa
                   <Avatar size="sm">
                     <AvatarFallback>{initialsOf(ownerName)}</AvatarFallback>
                   </Avatar>
-                  <span>{ownerName}</span>
+                  <RecordLink kind="person" id={page.ownerPersonId}>{ownerName}</RecordLink>
                 </span>
               ) : null}
               {view.version ? (

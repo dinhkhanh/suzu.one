@@ -7,6 +7,7 @@ import { statusTone } from "@/components/ui/tone";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
@@ -70,7 +71,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
             {cost.byEntity.map((entity) => (
               <TableRow key={entity.entityId}>
                 <TableCell className="text-muted-foreground">
-                  {entity.entityName} · {t("headcount", { count: entity.totals.headcount, eligible: entity.totals.eligible })}
+                  <RecordLink kind="entity" id={entity.entityId}>{entity.entityName}</RecordLink> · {t("headcount", { count: entity.totals.headcount, eligible: entity.totals.eligible })}
                 </TableCell>
                 <TableCell kind="money">{formatVnd(entity.totals.totalVnd)}</TableCell>
               </TableRow>

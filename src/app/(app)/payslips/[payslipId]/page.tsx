@@ -9,6 +9,7 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "cn";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -79,7 +80,7 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
         <span className="text-xs opacity-70">{view.person.fullName}</span>
       </div>
 
-      <PayslipDetail result={view.result} componentNames={view.componentNames} person={view.person} entity={view.entity} month={view.run.month} runName={view.run.kind === "off_cycle" ? view.run.name : null} />
+      <PayslipDetail result={view.result} componentNames={view.componentNames} person={{ ...view.person, id: view.payslip.personId }} entity={view.entity} month={view.run.month} runName={view.run.kind === "off_cycle" ? view.run.name : null} />
 
       <Card size="sm">
         <CardContent className="flex flex-col gap-1 text-sm">
@@ -105,7 +106,9 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
                   {messages.map((message) => (
                     <li key={message.id} className="text-sm">
                       <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="font-medium">{message.authorName}</span>
+                        <RecordLink kind="person" id={message.authorPersonId} className="font-medium">
+                          {message.authorName}
+                        </RecordLink>
                         <span className="font-mono text-xs text-faint tabular-nums">{format.dateTime(message.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
                       </div>
                       <RichText text={message.body} />

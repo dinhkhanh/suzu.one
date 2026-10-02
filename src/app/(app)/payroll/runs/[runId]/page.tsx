@@ -9,6 +9,7 @@ import { statusTone } from "@/components/ui/tone";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
@@ -81,7 +82,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
         }
         title={
           <>
-            <span className="font-mono tabular-nums">{run.month}</span> · {entity.code}
+            <span className="font-mono tabular-nums">{run.month}</span> · <RecordLink kind="entity" id={run.entityId}>{entity.code}</RecordLink>
             {run.name ? <span className="text-muted-foreground"> — {run.name}</span> : null}
           </>
         }
@@ -149,7 +150,9 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
             {variance.flagged.length === 0 ? <TableEmpty>{t("runs.variance.clean")}</TableEmpty> : null}
             {variance.flagged.map((person) => (
               <TableRow key={person.personId}>
-                <TableCell className="font-medium">{variance.names.get(person.personId)?.fullName ?? "—"}</TableCell>
+                <TableCell className="font-medium">
+                  <RecordLink kind="person" id={person.personId}>{variance.names.get(person.personId)?.fullName ?? "—"}</RecordLink>
+                </TableCell>
                 <TableCell>
                   <span className="flex flex-wrap gap-1">
                     {person.flags.map((flag) => (
@@ -188,7 +191,9 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
           {variance.flagged.map((person) => (
             <ListItem key={person.personId} className="flex-col items-stretch gap-1.5">
               <span className="flex items-center justify-between gap-2">
-                <span className="truncate font-medium">{variance.names.get(person.personId)?.fullName ?? "—"}</span>
+                <RecordLink kind="person" id={person.personId} className="truncate font-medium">
+                  {variance.names.get(person.personId)?.fullName ?? "—"}
+                </RecordLink>
                 <span className="font-mono text-[0.8125rem] tabular-nums">{formatVnd(person.net)}</span>
               </span>
               <span className="flex flex-wrap gap-1">

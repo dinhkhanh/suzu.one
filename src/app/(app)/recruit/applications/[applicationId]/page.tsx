@@ -1,12 +1,14 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { publicOrigin } from "@/lib/site";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAssignments } from "@/modules/recruit/assignments";
@@ -60,9 +62,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
       <PageHeader
         eyebrow={
           <>
-            <Link href={`/recruit/${view.opening.id}`} className="hover:underline">
-              {view.opening.title}
-            </Link>
+            <RecordLink kind="opening" id={view.opening.id}>{view.opening.title}</RecordLink>
             <span className="font-mono text-xs text-faint"> · {view.opening.code}</span>
           </>
         }
@@ -163,11 +163,19 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               {interviews.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="max-w-72 truncate">
-                    <Link href={`/recruit/interviews/${row.id}`} className="font-medium hover:underline">
+                    <RecordLink kind="interview" id={row.id} className="font-medium">
                       {row.title}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
-                  <TableCell className="max-w-64 truncate">{row.interviewers.map((person) => person.fullName).join(", ") || "—"}</TableCell>
+                  <TableCell className="max-w-64 truncate">
+                    {row.interviewers.length === 0 ? "—" : null}
+                    {row.interviewers.map((person, index) => (
+                      <Fragment key={person.personId}>
+                        {index ? ", " : ""}
+                        <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
+                      </Fragment>
+                    ))}
+                  </TableCell>
                   <TableCell>{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
                   <TableCell>
                     <Badge dot variant={statusTone(row.status)}>{tInterview(`statuses.${row.status}`)}</Badge>
@@ -241,9 +249,9 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
             {offers.map((row) => (
               <TableRow key={row.id}>
                 <TableCell kind="id">
-                  <Link href={`/recruit/offers/${row.id}`} className="font-medium text-foreground hover:underline">
+                  <RecordLink kind="offer" id={row.id} className="font-medium text-foreground">
                     {row.number}
-                  </Link>
+                  </RecordLink>
                 </TableCell>
                 <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
                 <TableCell>
@@ -276,7 +284,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                   {t(`event.${event.type}`)}
                   {event.toStageName ? ` → ${event.toStageName}` : ""}
                 </span>
-                <span className="block text-xs text-faint">{event.actorName ?? t("source.careers_page")}</span>
+                <span className="block text-xs text-faint">{event.actorName ? <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink> : t("source.careers_page")}</span>
                 {event.note ? <span className="block text-xs text-muted-foreground">{noteToPlainText(event.note)}</span> : null}
               </span>
             </ListItem>

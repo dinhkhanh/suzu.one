@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { exportHeadcountAction } from "@/modules/core-hr/export-actions";
 import { getHeadcountReport } from "@/modules/core-hr/reports";
@@ -158,12 +159,19 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
               {report[list].map((row) => (
                 <TableRow key={`${row.personId}-${row.endDate}-${row.type}`}>
                   <TableCell>
-                    <Link href={`/people/${row.personId}`} className="font-medium hover:underline">
+                    <RecordLink kind="person" id={row.personId} className="font-medium">
                       {row.fullName}
-                    </Link>{" "}
+                    </RecordLink>{" "}
                     <span className="font-mono text-xs text-faint">{row.employeeCode}</span>
                   </TableCell>
-                  <TableCell>{[row.department, row.entity].filter(Boolean).join(" · ") || "—"}</TableCell>
+                  <TableCell>
+                    {row.department ? (
+                      <>
+                        <RecordLink kind="unit" id={row.departmentId}>{row.department}</RecordLink> ·{" "}
+                      </>
+                    ) : null}
+                    <RecordLink kind="entity" id={row.entityId}>{row.entity}</RecordLink>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">{tc(row.type as "probation")}</Badge>
                   </TableCell>

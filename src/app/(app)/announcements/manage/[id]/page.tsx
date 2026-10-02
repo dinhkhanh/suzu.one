@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { audienceNames, audienceOptionsFor, commsViewerOf, getAnnouncementView, getReadReport } from "@/modules/comms/service";
 import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
 import { AnnouncementStateButtons } from "@/modules/comms/ui/buttons";
@@ -75,7 +76,7 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
               <TableBody>
                 {report.byDepartment.map((line) => (
                   <TableRow key={line.departmentName ?? "-"}>
-                    <TableCell>{line.departmentName ?? "—"}</TableCell>
+                    <TableCell>{line.departmentName ? <RecordLink kind="unit" id={line.departmentId}>{line.departmentName}</RecordLink> : "—"}</TableCell>
                     <TableCell kind="number">{line.total}</TableCell>
                     <TableCell kind="number">{line.read}</TableCell>
                     {row.mustAcknowledge ? <TableCell kind="number">{line.acknowledged}</TableCell> : null}
@@ -96,8 +97,12 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
             <TableBody>
               {report.people.map((member) => (
                 <TableRow key={member.personId}>
-                  <TableCell>{member.fullName}</TableCell>
-                  <TableCell>{member.departmentName ?? "—"}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="person" id={member.personId}>
+                      {member.fullName}
+                    </RecordLink>
+                  </TableCell>
+                  <TableCell>{member.departmentName ? <RecordLink kind="unit" id={member.departmentId}>{member.departmentName}</RecordLink> : "—"}</TableCell>
                   <TableCell>{when(member.readAt)}</TableCell>
                   {row.mustAcknowledge ? <TableCell>{when(member.acknowledgedAt)}</TableCell> : null}
                 </TableRow>

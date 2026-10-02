@@ -2,7 +2,8 @@ import { getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
 import { AppFrame, type NavRow, type TabStop } from "@/components/shell/app-frame";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
-import { groupNav, navFor } from "@/components/shell/nav";
+import { groupNav, linkableKinds, navFor } from "@/components/shell/nav";
+import { RecordLinkProvider } from "@/components/ui/record-link";
 import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
@@ -106,7 +107,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         }
         footer={<SignOutButton label={t("nav.signOut")} compact />}
       >
-        {children}
+        {/* Which names on the page are links for this person (RecordLink). */}
+        <RecordLinkProvider kinds={linkableKinds(user.principal, { people })}>{children}</RecordLinkProvider>
       </AppFrame>
       <CommandPalette
         selfId={user.person.id}

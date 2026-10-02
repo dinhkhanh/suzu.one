@@ -3209,7 +3209,7 @@
     },
     "timesheet": {
       "myMonth": "My month",
-      "monthOf": "Month of {name}",
+      "monthOf": "Month of <person>{name}</person>",
       "previousMonth": "Previous month",
       "nextMonth": "Next month",
       "tapHint": "Tap a day to see how it was computed.",
@@ -3308,14 +3308,14 @@
       "newTitle": "New attendance request",
       "newDescription": "Correct a punch, or ask for remote work, overtime or work on a day off. Your line manager answers.",
       "resubmitTitle": "Correct and send again",
-      "onBehalf": "Filed on behalf of {name}",
+      "onBehalf": "Filed on behalf of <person>{name}</person>",
       "mine": "My requests this month",
       "submit": "Send request",
       "resubmit": "Send again",
       "withdraw": "Withdraw",
       "cancel": "Cancel request",
       "cancelConfirm": "End this request?",
-      "filedBy": "filed by {name}",
+      "filedBy": "filed by <person>{name}</person>",
       "openEvidence": "Open file",
       "fixAndResubmit": "Correct and send again",
       "dayNow": "The day as it stands",
@@ -3727,7 +3727,7 @@
       "openAttachment": "Open",
       "submit": "Send request",
       "replace": "Replace the request",
-      "filedBy": "filed by {name}",
+      "filedBy": "filed by <person>{name}</person>",
       "dates": "Dates",
       "cost": "Leave days",
       "countedDays": "Days counted",
@@ -4328,7 +4328,7 @@
       "activityTitle": "Activity",
       "system": "System",
       "noProject": "No project (team backlog)",
-      "meta": "Requested by {requester} · created by {creator} on {date}",
+      "meta": "Requested by <r>{requester}</r> · created by <c>{creator}</c> on {date}",
       "delete": "Delete task",
       "deleteConfirm": "Delete this task and its sub-tasks?",
       "activity": {
@@ -4724,8 +4724,8 @@
         "changes_requested": "Changes requested",
         "superseded": "Replaced"
       },
-      "submittedBy": "{name} · {when}",
-      "decidedBy": "Decided by {name} · {when}",
+      "submittedBy": "<who>{name}</who> · {when}",
+      "decidedBy": "Decided by <who>{name}</who> · {when}",
       "errors": {
         "generic": "That did not work.",
         "forbidden": "You may not do that.",
@@ -5098,7 +5098,7 @@
         "handoff": "Hand-off",
         "request": "Request"
       },
-      "from": "{name} sent it {date}",
+      "from": "<who>{name}</who> sent it {date}",
       "viaForm": "via “{form}”",
       "until": "Snoozed until {date}",
       "prefilled": "Pre-filled by rules",
@@ -5152,10 +5152,10 @@
       "resolve": "Resolve",
       "resolution": "Note on resolving (optional)",
       "open": "Blocked: {reason}",
-      "waitingOn": "waiting on {name}",
-      "raisedBy": "{name} flagged it {date}",
+      "waitingOn": "waiting on <who>{name}</who>",
+      "raisedBy": "<who>{name}</who> flagged it {date}",
       "history": "Resolved",
-      "resolvedBy": "{name} resolved it {date}",
+      "resolvedBy": "<who>{name}</who> resolved it {date}",
       "blockedFor": "blocked {duration}",
       "total": "Total time blocked: {duration}",
       "badge": "Blocked",
@@ -5185,8 +5185,8 @@
         "cancelled": "Cancelled",
         "recorded": "Recorded"
       },
-      "fromTo": "{from} → {to}",
-      "toTeam": "{from} → team {team}",
+      "fromTo": "<a>{from}</a> → <b>{to}</b>",
+      "toTeam": "<a>{from}</a> → team {team}",
       "targetStatus": "Receiving team's task:",
       "inTriage": "Waiting in triage",
       "package": "Package: {name}",
@@ -5312,12 +5312,12 @@
     "cover": {
       "title": "Leave cover plan",
       "description": "The work that falls in the absence and who covers it. Covers take over on the first day of leave; back at work, hand it back from here.",
-      "absence": "{name} is away from {from} to {to}",
+      "absence": "<who>{name}</who> is away from {from} to {to}",
       "nothing": "No work falls in the absence.",
       "defaultCover": "One cover for everything",
       "noDefault": "Choose per item",
       "defaultHint": "Items without their own cover go to this person.",
-      "coveredBy": "Covered by {name}",
+      "coveredBy": "Covered by <who>{name}</who>",
       "types": {
         "task": "Task",
         "review": "Review",
@@ -5471,7 +5471,7 @@
         "person": "A specific person"
       },
       "progress": "Review progress",
-      "waitingOn": "Waiting on {name}",
+      "waitingOn": "Waiting on <who>{name}</who>",
       "dueAt": "due {when}",
       "decideTitle": "Version {version} — the “{stage}” stage waits for you",
       "decisions": {
@@ -5520,7 +5520,7 @@
       "frozen": "Locked",
       "frozenHint": "The client approved this version; it cannot be changed or removed.",
       "clientSaid": "Client",
-      "recordedAs": "{client}, by {channel} on {date} — recorded by {name}",
+      "recordedAs": "{client}, by {channel} on {date} — recorded by <who>{name}</who>",
       "evidenceLink": "See the evidence",
       "evidenceFile": "Evidence file",
       "record": "Record client decision"
@@ -5587,7 +5587,7 @@
       },
       "boostedOn": "Boosted · {account}",
       "plannedAt": "Planned {when}",
-      "publishedAt": "Published {when} by {name}",
+      "publishedAt": "Published {when} by <who>{name}</who>",
       "plan": "Schedule a post",
       "platform": "Platform",
       "page": "Page / account",
@@ -6301,7 +6301,7 @@
     },
     "detail": {
       "alignedTo": "Contributes to:",
-      "owner": "accountable: {name}",
+      "owner": "accountable: <person>{name}</person>",
       "weight": "weight {weight}",
       "frozen": "Closed on {date}. This figure is what the year-end review reads.",
       "children": "Goals below",
@@ -6312,7 +6312,7 @@
     "kpi": {
       "mineTitle": "My KPIs",
       "mineDescription": "What you are measured on this month, the score and how it is worked out. Actuals are entered by your manager or HR.",
-      "personTitle": "KPIs of {name}",
+      "personTitle": "KPIs of <person>{name}</person>",
       "personDescription": "Personal data: only the person, the managers above them, HR and leaders in scope see this.",
       "previousMonth": "Previous month",
       "nextMonth": "Next month",
@@ -6608,7 +6608,7 @@
       "title": "Performance reviews",
       "description": "Review cycles: self review, manager review, peer feedback, calibration, then release.",
       "back": "← All reviews",
-      "manager": "Reviewing manager: {name}",
+      "manager": "Reviewing manager: <person>{name}</person>",
       "notLaunched": "The cycle has not been launched, so there is no form yet.",
       "mine": {
         "title": "My reviews",
@@ -7672,7 +7672,7 @@
         "reject": "Reject"
       },
       "withdraw": "Withdraw",
-      "requestedBy": "Requested by {name}",
+      "requestedBy": "Requested by <person>{name}</person>",
       "effective": "effective {date}",
       "component": "Component",
       "currentTerms": "Current",
@@ -9265,7 +9265,7 @@
       },
       "work": {
         "tasks": "Open work for this asset",
-        "projects": "Projects: {names}",
+        "projects": "Projects: <names></names>",
         "noTasks": "No open task names this asset.",
         "posts": "Posts",
         "noPosts": "No post planned or published here lately.",
@@ -9289,7 +9289,7 @@
       "since": "Since",
       "by": "Given by",
       "empty": "No seat has been given out.",
-      "deviceWith": "Device held by {name}",
+      "deviceWith": "Device held by <person>{name}</person>",
       "deviceOnShelf": "Device — nobody is holding it",
       "assign": "Give a seat",
       "assigned": "Seat given.",
@@ -9396,7 +9396,7 @@
     },
     "held": {
       "title": "Currently held",
-      "by": "Held by {holder}",
+      "by": "Held by <link>{holder}</link>",
       "confirmed": "Receipt confirmed",
       "awaitingConfirmation": "Receipt not confirmed"
     },
@@ -10753,9 +10753,9 @@
       },
       "requiredBadge": "Time logging required",
       "submittedAt": "Submitted {time}",
-      "returnedBy": "Returned by {name}: {comment}",
-      "approvedBy": "Approved by {name}, {time}",
-      "reopenedBy": "Reopened by {name}: {comment}",
+      "returnedBy": "Returned by <person>{name}</person>: {comment}",
+      "approvedBy": "Approved by <person>{name}</person>, {time}",
+      "reopenedBy": "Reopened by <person>{name}</person>: {comment}",
       "privateWork": "Private work",
       "billableToggle": "Bill this row's week to the client, or stop billing it",
       "billableState": {
@@ -11985,7 +11985,7 @@
       "attendeesCount": "{count, plural, =0 {no attendees recorded} one {# attendee} other {# attendees}}",
       "decisionsCount": "{count, plural, one {# decision} other {# decisions}}",
       "actionsCount": "{open}/{total} actions open",
-      "recordedBy": "Recorded by {name}",
+      "recordedBy": "Recorded by <person>{name}</person>",
       "noDecisions": "No decisions recorded for this meeting.",
       "noActions": "No action items from this meeting.",
       "toLog": "See the whole decision log",
@@ -12956,13 +12956,13 @@
     "detail": {
       "backInbox": "Feedback inbox",
       "backMine": "My feedback",
-      "sentBy": "Sent by {name} · {when}",
+      "sentBy": "Sent by <person>{name}</person> · {when}",
       "you": "you",
       "page": "Page",
       "screenshot": "Screenshot",
       "device": "Browser",
       "handledBy": "Last handled",
-      "handledAt": "{name} · {when}",
+      "handledAt": "<person>{name}</person> · {when}",
       "reply": "Reply",
       "noReply": "No reply yet. You'll be notified when there is one."
     },
@@ -13017,7 +13017,7 @@
     "home": {
       "intro": "Your follow-ups, deals and leads today, the renewals coming up and what clients owe.",
       "handoffs": "Won deals handed to you",
-      "handoffFrom": "from {name}, {date}",
+      "handoffFrom": "from <person>{name}</person>, {date}",
       "followUps": "Follow-ups due",
       "myDeals": "My open deals",
       "noDeals": "No open deals of yours.",
@@ -13072,8 +13072,8 @@
       "groupWide": "Whole group",
       "creditHold": "Credit hold",
       "taxCodeIs": "Tax code {code}",
-      "managerIs": "Account manager: {name}",
-      "salesOwnerIs": "Sales owner: {name}",
+      "managerIs": "Account manager: <person>{name}</person>",
+      "salesOwnerIs": "Sales owner: <person>{name}</person>",
       "brands": "Brands: {names}",
       "lifecycleAuto": "Automatic (now {lifecycle})",
       "defaultTerms": "Contract or default",
@@ -13081,7 +13081,7 @@
       "editTerms": "Payment terms and credit",
       "termsAre": "Payment terms: {days} days",
       "changeManager": "Change the account manager",
-      "handedOver": "{from} → {to}, {date}",
+      "handedOver": "<giver>{from}</giver> → <taker>{to}</taker>, {date}",
       "noProjects": "No projects yet.",
       "noDeals": "No deals yet.",
       "noContracts": "No contracts recorded.",
@@ -13140,7 +13140,7 @@
         "creditHold": "On credit hold",
         "creditHoldReason": "Why"
       },
-      "leftBehind": "{name}, the previous account manager, still holds {deals} open deals and {followUps} follow-ups here.",
+      "leftBehind": "<person>{name}</person>, the previous account manager, still holds {deals} open deals and {followUps} follow-ups here.",
       "moveWork": "Give them to {name}"
     },
     "contacts": {
@@ -13227,14 +13227,14 @@
       "mine": "Only mine",
       "empty": "No leads here.",
       "unassigned": "Not assigned yet",
-      "referredBy": "referred by {name}",
+      "referredBy": "referred by <person>{name}</person>",
       "columns": {
         "createdAt": "Received"
       }
     },
     "lead": {
       "me": "Me",
-      "ownerIs": "Owner: {name}",
+      "ownerIs": "Owner: <person>{name}</person>",
       "openDeal": "Open the deal",
       "disqualifiedBecause": "Not pursued: {reason}",
       "markContacted": "Contacted",
@@ -13304,8 +13304,8 @@
       }
     },
     "deal": {
-      "ownerIs": "Owner: {name}",
-      "teamIs": "Delivered by {name}",
+      "ownerIs": "Owner: <person>{name}</person>",
+      "teamIs": "Delivered by <team>{name}</team>",
       "valueIs": "Value {total} · weighted {weighted} at {probability}%",
       "monthlyIs": "{amount} a month for {months} months",
       "closeIs": "Expected to close {date}",
@@ -13322,7 +13322,7 @@
       "edit": "Edit the deal",
       "editContacts": "Change the people on the deal",
       "noQuotes": "No quotes yet.",
-      "stageChange": "{from} → {to} by {by}, {date}",
+      "stageChange": "{from} → {to} by <person>{by}</person>, {date}",
       "sections": {
         "delivery": "Delivery",
         "quotes": "Quotes",
@@ -13382,8 +13382,8 @@
         "create": "Create the project and hand it over"
       },
       "handoff": {
-        "waiting": "{project} is handed to you — accept it or send it back",
-        "to": "to {name}, {date}",
+        "waiting": "<link>{project}</link> is handed to you — accept it or send it back",
+        "to": "to <person>{name}</person>, {date}",
         "note": "The hand-off note",
         "returnedBecause": "Sent back: {reason}",
         "resend": "Send it again",

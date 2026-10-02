@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { TableAddRow, TableCard } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import { FLOW_PERMISSIONS, listFlows } from "@/modules/platform/approvals/flows";
 import { FlowEditor } from "@/modules/platform/approvals/ui/flow-editor";
@@ -72,7 +73,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
         {mine.map((flow) => (
           <Card key={flow.id}>
             <CardHeader>
-              <CardTitle>{flow.entityName ?? t("wholeGroup")}</CardTitle>
+              <CardTitle>{flow.entityName ? <RecordLink kind="entity" id={flow.entityId}>{flow.entityName}</RecordLink> : t("wholeGroup")}</CardTitle>
               <CardDescription>{flow.active ? t("flowOn") : t("off")}</CardDescription>
             </CardHeader>
             <CardContent>

@@ -222,6 +222,7 @@ export type PreviewLinkView = {
   expiresAt: Date;
   viewCount: number;
   lastViewedAt: Date | null;
+  createdByPersonId: string | null;
   createdByName: string | null;
   createdAt: Date;
   /** What the client said on it, once they have. */
@@ -249,6 +250,7 @@ export async function listPreviewLinks(taskId: string): Promise<PreviewLinkView[
     expiresAt: link.expiresAt,
     viewCount: link.viewCount,
     lastViewedAt: link.lastViewedAt,
+    createdByPersonId: link.createdByPersonId,
     createdByName,
     createdAt: link.createdAt,
     decision: decision ? { decision: decision.decision, decidedByName: decision.client?.decidedByName ?? "", comment: decision.comment, at: decision.createdAt } : null,

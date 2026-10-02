@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Page, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
 import { getResignation } from "@/modules/core-hr/resignation";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
@@ -26,7 +26,7 @@ export default async function ResignationPage(props: PageProps<"/approvals/resig
 
   return (
     <Page width="narrow">
-      <RequestHeader title={t("resign.detailTitle")} kind={tApprovals("types.resignation")} status={request.status} requestId={request.id} who={view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>} />
+      <RequestHeader title={t("resign.detailTitle")} kind={tApprovals("types.resignation")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
       <Section title={tRequests("view.details")}>
         <PropertySheet
           rows={[

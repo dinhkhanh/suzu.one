@@ -41,7 +41,7 @@ export async function findTimesheetWeekById(id: string): Promise<TimesheetWeekRo
 
 export type WeekDayView = { date: IsoDate; kind: DayKind | null; name: string | null; leave: "full" | "part" | null; dayOff: boolean; /** null when the reader may not see attendance. */ hint: AttendanceHint | null };
 /** `hidden`: a task the reader may not open — shown as private work, with its hours only. */
-export type RowLabel = { key: RowKey; taskId: string | null; category: string | null; taskKey: string | null; title: string | null; projectName: string | null; hidden?: true };
+export type RowLabel = { key: RowKey; taskId: string | null; category: string | null; taskKey: string | null; title: string | null; projectId: string | null; projectName: string | null; hidden?: true };
 
 export type TimeWeekView = {
   personId: string;
@@ -67,7 +67,7 @@ export type TimeWeekView = {
   partial: boolean;
 };
 
-const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({ key: rowKeyOf(entry), taskId: entry.taskId, category: entry.category, taskKey: entry.key, title: entry.title, projectName: entry.projectName, ...(entry.hidden ? { hidden: true as const } : {}) });
+const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({ key: rowKeyOf(entry), taskId: entry.taskId, category: entry.category, taskKey: entry.key, title: entry.title, projectId: entry.projectId, projectName: entry.projectName, ...(entry.hidden ? { hidden: true as const } : {}) });
 
 /**
  * `readerPersonId` is who reads it: for anyone but the person, each task and project is named only

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setSpaceAccessAction } from "@/modules/kb/actions";
 import { parseSubjectKey } from "@/modules/kb/enums";
@@ -109,9 +110,9 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
                         {Math.max(1, Math.round(file.sizeBytes / 1024))} KB
                       </TableCell>
                       <TableCell kind="link" className="max-w-64 truncate">
-                        <Link href={`/kb/pages/${file.pageId}`}>{file.pageTitle}</Link>
+                        <RecordLink kind="kbPage" id={file.pageId}>{file.pageTitle}</RecordLink>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{file.uploadedByName ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

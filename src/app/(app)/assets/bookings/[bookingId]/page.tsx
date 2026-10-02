@@ -8,6 +8,8 @@ import { canActOnBooking, canDecideBookings, findBooking } from "@/modules/asset
 import { BookingStatusBadge, formatWindow } from "@/modules/assets/ui/booking-calendar";
 import { CancelBookingForm, DecideBookingForm, MoveBookingForm } from "@/modules/assets/ui/booking-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
+import type { ReactNode } from "react";
 
 export const generateMetadata = pageTitle("equipmentBooking");
 
@@ -24,9 +26,9 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
   const mayAct = canActOnBooking(user.principal, { personId: booking.personId, entityId: booking.assetEntityId });
   const mayDecide = canDecideBookings(user.principal, booking.assetEntityId);
 
-  const facts: [string, string][] = [
-    [t("columns.asset"), `${booking.assetCode} — ${booking.assetName}`],
-    [t("columns.person"), booking.personName],
+  const facts: [string, ReactNode][] = [
+    [t("columns.asset"), <RecordLink key="asset" kind="asset" id={booking.assetId}>{`${booking.assetCode} — ${booking.assetName}`}</RecordLink>],
+    [t("columns.person"), <RecordLink key="person" kind="person" id={booking.personId}>{booking.personName}</RecordLink>],
     [t("columns.window"), formatWindow(booking.startAt, booking.endAt)],
     [t("columns.purpose"), booking.purpose ?? "—"],
     [t("form.projectRef"), booking.projectRef ?? "—"],

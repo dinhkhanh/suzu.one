@@ -13,6 +13,7 @@ import { canManageLicences, CYCLE_MONTHS, listAssets, listLicences, listSeatsOfL
 import { LicenceForm } from "@/modules/assets/ui/licence-forms";
 import { AssignSeatForm, ReleaseSeatButton } from "@/modules/assets/ui/seat-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("licence");
 
@@ -58,7 +59,13 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
           <Badge dot variant={statusTone(licence.status)}>
             {t(`status.${licence.status}`)}
           </Badge>
-          {[licence.vendor, licence.entityName, t(`cycle.${licence.billingCycle}`)].filter(Boolean).join(" · ")}
+          {licence.vendor ? `${licence.vendor} · ` : null}
+          {licence.entityName ? (
+            <>
+              <RecordLink kind="entity" id={licence.entityId}>{licence.entityName}</RecordLink> ·{" "}
+            </>
+          ) : null}
+          {t(`cycle.${licence.billingCycle}`)}
         </p>
       </PageHeader>
 
@@ -87,20 +94,28 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
                 <TableCell className="whitespace-normal">
                   {seat.assetId ? (
                     <>
-                      <Link href={`/assets/${seat.assetId}`} className="font-medium hover:underline">
+                      <RecordLink kind="asset" id={seat.assetId} className="font-medium">
                         <span className="font-mono text-xs text-muted-foreground">{seat.assetCode}</span> {seat.assetName}
-                      </Link>
-                      <p className="text-xs text-faint">{seat.deviceHolderName ? tSeats("deviceWith", { name: seat.deviceHolderName }) : tSeats("deviceOnShelf")}</p>
+                      </RecordLink>
+                      <p className="text-xs text-faint">{seat.deviceHolderName ? tSeats.rich("deviceWith", { name: seat.deviceHolderName, person: (chunks) => <RecordLink kind="person" id={seat.deviceHolderPersonId}>{chunks}</RecordLink> }) : tSeats("deviceOnShelf")}</p>
                     </>
                   ) : (
-                    <span className="font-medium">{seat.personName}</span>
+                    <RecordLink kind="person" id={seat.personId} className="font-medium">{seat.personName}</RecordLink>
                   )}
                   {seat.note ? <p className="text-xs text-faint">{seat.note}</p> : null}
                   {/* On a phone the two columns to the right fold into this line. */}
-                  <p className="text-xs text-faint md:hidden">{[day(seat.assignedAt), seat.assignedByName].filter(Boolean).join(" · ")}</p>
+                  <p className="text-xs text-faint md:hidden">
+                    {day(seat.assignedAt)}
+                    {seat.assignedByName ? (
+                      <>
+                        {" · "}
+                        <RecordLink kind="person" id={seat.assignedByPersonId}>{seat.assignedByName}</RecordLink>
+                      </>
+                    ) : null}
+                  </p>
                 </TableCell>
                 <TableCell kind="date" className="hidden md:table-cell">{day(seat.assignedAt)}</TableCell>
-                <TableCell className="hidden md:table-cell">{seat.assignedByName ?? "—"}</TableCell>
+                <TableCell className="hidden md:table-cell">{seat.assignedByName ? <RecordLink kind="person" id={seat.assignedByPersonId}>{seat.assignedByName}</RecordLink> : "—"}</TableCell>
                 <TableCell kind="actions">
                   <ReleaseSeatButton seatId={seat.id} />
                 </TableCell>
@@ -126,8 +141,19 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
           <List>
             {seats.released.map((seat) => (
               <ListItem key={seat.id} className="flex-wrap gap-x-3 gap-y-0.5">
-                <span className="font-medium">{seat.assetId ? `${seat.assetCode} ${seat.assetName}` : seat.personName}</span>
-                <span className="text-xs text-muted-foreground">{[`${day(seat.assignedAt)} → ${seat.releasedAt ? day(seat.releasedAt) : "—"}`, seat.releasedByName, seat.releaseNote].filter(Boolean).join(" · ")}</span>
+                <RecordLink kind={seat.assetId ? "asset" : "person"} id={seat.assetId ?? seat.personId} className="font-medium">
+                  {seat.assetId ? `${seat.assetCode} ${seat.assetName}` : seat.personName}
+                </RecordLink>
+                <span className="text-xs text-muted-foreground">
+                  {`${day(seat.assignedAt)} → ${seat.releasedAt ? day(seat.releasedAt) : "—"}`}
+                  {seat.releasedByName ? (
+                    <>
+                      {" · "}
+                      <RecordLink kind="person" id={seat.releasedByPersonId}>{seat.releasedByName}</RecordLink>
+                    </>
+                  ) : null}
+                  {seat.releaseNote ? ` · ${seat.releaseNote}` : null}
+                </span>
               </ListItem>
             ))}
           </List>

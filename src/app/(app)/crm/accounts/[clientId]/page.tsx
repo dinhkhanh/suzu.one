@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -81,7 +82,8 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
           {[profile?.legalName, profile?.taxCode ? t("account.taxCodeIs", { code: profile.taxCode }) : null, profile?.industry].filter(Boolean).join(" · ")}
         </p>
         <p className="text-sm">
-          {t("account.managerIs", { name: page.managerName ?? "—" })} · {t("account.salesOwnerIs", { name: page.salesOwnerName ?? "—" })}
+          {t.rich("account.managerIs", { name: page.managerName ?? "—", person: (chunks) => <RecordLink kind="person" id={account.client.accountManagerPersonId}>{chunks}</RecordLink> })} ·{" "}
+          {t.rich("account.salesOwnerIs", { name: page.salesOwnerName ?? "—", person: (chunks) => <RecordLink kind="person" id={profile?.salesOwnerPersonId}>{chunks}</RecordLink> })}
           {brands.length ? ` · ${t("account.brands", { names: brands.map((brand) => brand.name).join(", ") })}` : ""}
         </p>
         {profile?.creditHold && profile.creditHoldReason ? <p className="text-sm text-destructive">{profile.creditHoldReason}</p> : null}
@@ -123,15 +125,15 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                     <TableRow key={project.id}>
                       <TableCell kind="id">{project.jobNumber ?? "—"}</TableCell>
                       <TableCell>
-                        <Link href={`/projects/${project.id}`} className="font-medium hover:underline">
+                        <RecordLink kind="project" id={project.id} className="font-medium">
                           {project.name}
-                        </Link>
+                        </RecordLink>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{tProjects(`kinds.${project.kind as "client"}`)}</Badge>
                       </TableCell>
                       <TableCell>{project.health ? <Badge dot variant={project.health === "on_track" ? "success" : project.health === "at_risk" ? "warning" : "destructive"}>{tProjects(`health.${project.health as "on_track"}`)}</Badge> : "—"}</TableCell>
-                      <TableCell>{project.leadName ?? "—"}</TableCell>
+                      <TableCell>{project.leadName ? <RecordLink kind="person" id={project.leadPersonId}>{project.leadName}</RecordLink> : "—"}</TableCell>
                       <TableCell>{project.phaseName ?? "—"}</TableCell>
                       <TableCell>{project.nextMilestone ? `${project.nextMilestone.name} · ${f.date(project.nextMilestone.dueDate)}` : "—"}</TableCell>
                       <TableCell kind="number">{t("account.registerProgress", { accepted: project.register.accepted, promised: project.register.promised })}</TableCell>
@@ -144,7 +146,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
               <ul className="flex flex-col gap-1 text-sm">
                 {page.retainers.map((row) => (
                   <li key={`${row.projectId}-${row.month}`} className="flex flex-wrap gap-2">
-                    <span>{row.projectName}</span>
+                    <RecordLink kind="project" id={row.projectId}>{row.projectName}</RecordLink>
                     <span className="text-muted-foreground">{t("account.retainerMonth", { month: row.month, delivered: row.delivered, contracted: row.contracted, hours: f.hours(row.minutesLogged) })}</span>
                     {row.contracted > 0 && row.delivered > row.contracted ? <Badge variant="warning">{t("account.overservicing")}</Badge> : null}
                   </li>
@@ -180,16 +182,16 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   <TableRow key={deal.id}>
                     <TableCell kind="id">{deal.code}</TableCell>
                     <TableCell>
-                      <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                      <RecordLink kind="deal" id={deal.id} className="font-medium">
                         {deal.title}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     <TableCell>
                       <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
                         {stageName(deal.stage, locale)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{deal.ownerName ?? "—"}</TableCell>
+                    <TableCell>{deal.ownerName ? <RecordLink kind="person" id={deal.ownerPersonId}>{deal.ownerName}</RecordLink> : "—"}</TableCell>
                     <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
                   </TableRow>
                 ))}
@@ -220,9 +222,9 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   {contracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell kind="id">
-                        <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
+                        <RecordLink kind="contract" id={contract.id} className="font-medium text-foreground">
                           {contract.number}
-                        </Link>
+                        </RecordLink>
                       </TableCell>
                       <TableCell>{contract.title}</TableCell>
                       <TableCell>
@@ -263,9 +265,9 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   {invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell kind="id">
-                        <Link href={`/crm/invoices/${invoice.id}`} className="font-medium text-foreground hover:underline">
+                        <RecordLink kind="invoice" id={invoice.id} className="font-medium text-foreground">
                           {invoice.number}
-                        </Link>
+                        </RecordLink>
                       </TableCell>
                       <TableCell>{f.date(invoice.issuedOn)}</TableCell>
                       <TableCell>
@@ -340,7 +342,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             <List>
               {page.team.map((member) => (
                 <ListItem key={member.personId} className="flex-wrap gap-2">
-                  <span>{member.fullName}</span>
+                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
                   <span className="text-xs text-muted-foreground">{member.ties.map((tie) => t(`enums.tie.${tie as "member"}`)).join(", ")}</span>
                   {can.manageTeam && member.ties.includes("member") ? <RemoveMemberButton clientId={account.client.id} personId={member.personId} /> : null}
                 </ListItem>
@@ -354,7 +356,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             ) : null}
             {leftBehind.map(([personId, work]) => (
               <div key={personId} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 p-2 text-sm">
-                <span>{t("account.leftBehind", { name: nameOf(personId) ?? "—", deals: work.deals, followUps: work.followUps })}</span>
+                <span>{t.rich("account.leftBehind", { name: nameOf(personId) ?? "—", deals: work.deals, followUps: work.followUps, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> })}</span>
                 <MoveAccountWorkButton clientId={account.client.id} fromPersonId={personId} label={t("account.moveWork", { name: page.managerName ?? "—" })} />
               </div>
             ))}
@@ -365,7 +367,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   <AccountHandoverForm clientId={account.client.id} currentName={nameOf(account.client.accountManagerPersonId)} people={people.filter((person) => person.id !== account.client.accountManagerPersonId)} />
                   {(handoffs.get(account.client.id) ?? []).map((handoff) => (
                     <div key={handoff.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 p-2">
-                      <p className="text-xs text-muted-foreground">{t("account.handedOver", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", date: f.when(handoff.createdAt) })}</p>
+                      <p className="text-xs text-muted-foreground">{t.rich("account.handedOver", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", date: f.when(handoff.createdAt), giver: (chunks) => <RecordLink kind="person" id={handoff.fromPersonId}>{chunks}</RecordLink>, taker: (chunks) => <RecordLink kind="person" id={handoff.toPersonId}>{chunks}</RecordLink> })}</p>
                       <HandoffNoteView note={handoff.note} />
                     </div>
                   ))}

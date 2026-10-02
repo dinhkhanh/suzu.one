@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -56,15 +57,13 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
           {contracts.map((contract) => (
             <TableRow key={contract.id}>
               <TableCell kind="id">
-                <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
+                <RecordLink kind="contract" id={contract.id} className="font-medium text-foreground">
                   {contract.number}
-                </Link>
+                </RecordLink>
                 <p className="font-sans text-xs text-faint">{contract.title}</p>
               </TableCell>
               <TableCell>
-                <Link href={`/crm/accounts/${contract.clientId}`} className="hover:underline">
-                  {contract.accountName}
-                </Link>
+                <RecordLink kind="account" id={contract.clientId}>{contract.accountName}</RecordLink>
               </TableCell>
               <TableCell>
                 <Badge variant="outline">{t(`contract.kinds.${contract.kind as "service"}`)}</Badge>

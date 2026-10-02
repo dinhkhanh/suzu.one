@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -109,11 +110,11 @@ export default async function CrmHomePage() {
             {handoffs.map((handoff) => (
               <ListItem key={handoff.projectId} className="flex-col items-stretch gap-2">
                 <p>
-                  <Link href={`/crm/deals/${handoff.dealId}`} className="font-medium hover:underline">
+                  <RecordLink kind="deal" id={handoff.dealId} className="font-medium">
                     {handoff.dealTitle}
-                  </Link>{" "}
-                  → <Link href={`/projects/${handoff.projectId}`}>{handoff.projectName}</Link>
-                  <span className="text-xs text-faint"> · {t("home.handoffFrom", { name: handoff.fromName ?? "—", date: f.when(handoff.createdAt) })}</span>
+                  </RecordLink>{" "}
+                  → <RecordLink kind="project" id={handoff.projectId}>{handoff.projectName}</RecordLink>
+                  <span className="text-xs text-faint"> · {t.rich("home.handoffFrom", { name: handoff.fromName ?? "—", date: f.when(handoff.createdAt), person: (chunks) => <RecordLink kind="person" id={handoff.fromPersonId}>{chunks}</RecordLink> })}</span>
                 </p>
                 <HandoffAnswerForm projectId={handoff.projectId} />
               </ListItem>
@@ -155,11 +156,13 @@ export default async function CrmHomePage() {
               {deals.map((deal) => (
                 <TableRow key={deal.id}>
                   <TableCell>
-                    <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                    <RecordLink kind="deal" id={deal.id} className="font-medium">
                       {deal.title}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
-                  <TableCell>{deal.accountName}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="account" id={deal.clientId}>{deal.accountName}</RecordLink>
+                  </TableCell>
                   <TableCell>
                     <Badge dot variant="info">{deal.stage.name}</Badge>
                   </TableCell>
@@ -188,16 +191,16 @@ export default async function CrmHomePage() {
                 {leads.slice(0, 10).map((lead) => (
                   <TableRow key={lead.id}>
                     <TableCell>
-                      <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
+                      <RecordLink kind="lead" id={lead.id} className="font-medium">
                         {lead.companyName}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     <TableCell>
                       <Badge dot variant="outline">
                         {t(`enums.leadStatus.${lead.status as "new"}`)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{lead.ownerName ?? t("leads.unassigned")}</TableCell>
+                    <TableCell>{lead.ownerName ? <RecordLink kind="person" id={lead.ownerPersonId}>{lead.ownerName}</RecordLink> : t("leads.unassigned")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -224,12 +227,14 @@ export default async function CrmHomePage() {
               {renewals.map((contract) => (
                 <TableRow key={contract.id}>
                   <TableCell kind="id">
-                    <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
+                    <RecordLink kind="contract" id={contract.id} className="font-medium text-foreground">
                       {contract.number}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
                   <TableCell>{contract.title}</TableCell>
-                  <TableCell>{contract.accountName}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="account" id={contract.clientId}>{contract.accountName}</RecordLink>
+                  </TableCell>
                   <TableCell kind="date">{f.date(contract.endDate)}</TableCell>
                 </TableRow>
               ))}

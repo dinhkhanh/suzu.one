@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { cancelPublishAction, markPublishedAction, planPublishAction, recordResultAction, removeResultAction, updatePublishPlanAction } from "../delivery-actions";
@@ -31,6 +32,7 @@ export type PublishItem = {
   url: string | null;
   boosted: boolean;
   adAccount: string | null;
+  publishedByPersonId?: string | null;
   publishedByName: string | null;
   latest: Metrics;
   results: { id: string; recordedOn: string; metrics: Metrics; source: string }[];
@@ -71,9 +73,9 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
                 <span className="font-medium">{tWork(`channels.${publish.platform}`)}</span>
                 {publish.page ? (
                   publish.digitalAssetId ? (
-                    <Link href={`/assets/digital/${publish.digitalAssetId}`} className="text-muted-foreground underline-offset-2 hover:underline">
+                    <RecordLink kind="digitalAsset" id={publish.digitalAssetId} className="text-muted-foreground underline-offset-2">
                       {publish.page}
-                    </Link>
+                    </RecordLink>
                   ) : (
                     <span className="text-muted-foreground">{publish.page}</span>
                   )
@@ -82,7 +84,9 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
                 {publish.boosted ? <Badge variant="info">{t("boostedOn", { account: publish.adAccount ?? "—" })}</Badge> : null}
               </div>
               <p className="text-xs text-muted-foreground">
-                {[publish.plannedAt ? t("plannedAt", { when: when(publish.plannedAt) }) : null, publish.publishedAt ? t("publishedAt", { when: when(publish.publishedAt), name: publish.publishedByName ?? "—" }) : null].filter(Boolean).join(" · ")}
+                {publish.plannedAt ? t("plannedAt", { when: when(publish.plannedAt) }) : null}
+                {publish.plannedAt && publish.publishedAt ? " · " : null}
+                {publish.publishedAt ? t.rich("publishedAt", { when: when(publish.publishedAt), name: publish.publishedByName ?? "—", who: (chunks) => <RecordLink kind="person" id={publish.publishedByName ? publish.publishedByPersonId : null}>{chunks}</RecordLink> }) : null}
               </p>
               {publish.url ? (
                 <a href={publish.url} target="_blank" rel="noopener noreferrer nofollow" className="truncate underline">

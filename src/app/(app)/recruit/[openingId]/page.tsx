@@ -6,6 +6,7 @@ import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, T
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canSetRecruitMoney, getOpeningView, listApplications, listCandidates } from "@/modules/recruit/service";
@@ -46,7 +47,29 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
       <PageHeader
         eyebrow={<span className="font-mono">{view.opening.code}</span>}
         title={view.opening.title}
-        description={[view.entityName, view.departmentName, view.teamName, t(`employmentType.${view.opening.employmentType}`), t(`workMode.${view.opening.workMode}`), view.opening.workLocation].filter(Boolean).join(" · ")}
+        description={
+          <>
+            {view.entityName ? (
+              <>
+                <RecordLink kind="entity" id={view.opening.entityId}>{view.entityName}</RecordLink>
+                {" · "}
+              </>
+            ) : null}
+            {view.departmentName ? (
+              <>
+                <RecordLink kind="unit" id={view.opening.departmentId}>{view.departmentName}</RecordLink>
+                {" · "}
+              </>
+            ) : null}
+            {view.teamName ? (
+              <>
+                <RecordLink kind="unit" id={view.opening.teamId}>{view.teamName}</RecordLink>
+                {" · "}
+              </>
+            ) : null}
+            {[t(`employmentType.${view.opening.employmentType}`), t(`workMode.${view.opening.workMode}`), view.opening.workLocation].filter(Boolean).join(" · ")}
+          </>
+        }
         actions={
           <>
             {/* Only an open opening has a public page; any other status answers 404 there. */}
@@ -106,7 +129,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
             <ul className="flex flex-col gap-1 text-sm">
               {view.members.map((member) => (
                 <li key={member.personId} className="flex justify-between gap-3">
-                  <span>{member.fullName}</span>
+                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
                   <span className="text-xs text-muted-foreground">{t(`memberRole.${member.role}`)}</span>
                 </li>
               ))}
@@ -155,9 +178,9 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
                 ...column.rows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="max-w-72 truncate">
-                      <Link href={`/recruit/applications/${row.id}`} className="font-medium hover:underline">
+                      <RecordLink kind="application" id={row.id} className="font-medium">
                         {row.candidateName}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     <TableCell className="max-w-56 truncate">{row.currentTitle || "—"}</TableCell>
                     <TableCell>
@@ -187,9 +210,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
                   {closed.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="max-w-72 truncate">
-                        <Link href={`/recruit/applications/${row.id}`} className="hover:underline">
-                          {row.candidateName}
-                        </Link>
+                        <RecordLink kind="application" id={row.id}>{row.candidateName}</RecordLink>
                       </TableCell>
                       <TableCell>{row.stageName}</TableCell>
                       <TableCell>

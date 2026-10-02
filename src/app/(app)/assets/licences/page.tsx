@@ -10,6 +10,7 @@ import { assetsToday, canManageAssets, canManageLicences, canReadLicences, CYCLE
 import { AssetsNav } from "@/modules/assets/ui/nav";
 import { statusTone } from "@/components/ui/tone";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("licencesSubscriptions");
 
@@ -69,16 +70,12 @@ export default async function LicencesPage() {
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  {manage ? (
-                    <Link href={`/assets/licences/${row.id}`} className="font-medium hover:underline">
-                      {row.name}
-                    </Link>
-                  ) : (
-                    <span className="font-medium">{row.name}</span>
-                  )}
+                  <RecordLink kind="licence" id={manage ? row.id : null} className="font-medium">
+                    {row.name}
+                  </RecordLink>
                   {row.vendor ? <p className="text-xs text-faint">{row.vendor}</p> : null}
                 </TableCell>
-                <TableCell>{row.entityName ?? "—"}</TableCell>
+                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
                 {/* Seats in use against seats paid for; idle seats of a running subscription are money for nobody. */}
                 <TableCell kind="number" className={row.status === "active" && row.seats !== null && row.seatsUsed < row.seats ? "text-warning" : undefined}>
                   {row.seats === null ? (row.seatsUsed || "—") : `${row.seatsUsed} / ${row.seats}`}
@@ -90,7 +87,7 @@ export default async function LicencesPage() {
                   <span className="font-mono text-[0.8125rem] tabular-nums">{row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}</span>
                   {CYCLE_MONTHS[row.billingCycle] !== null && !row.autoRenews ? <span className="ml-1 text-xs text-muted-foreground">{t("manualRenew")}</span> : null}
                 </TableCell>
-                <TableCell>{row.ownerName ?? "—"}</TableCell>
+                <TableCell>{row.ownerName ? <RecordLink kind="person" id={row.ownerPersonId}>{row.ownerName}</RecordLink> : "—"}</TableCell>
                 {/* An asset's price and a licence's price are exactly as visible as each other. */}
                 <TableCell kind="money">{row.canSeeMoney ? (row.costPerCycle === null ? "—" : row.costPerCycle.toLocaleString("vi-VN")) : "•••"}</TableCell>
                 <TableCell>

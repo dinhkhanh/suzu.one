@@ -8,6 +8,7 @@ import { Field } from "@/components/forms/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
+import { RecordLink } from "@/components/ui/record-link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -197,7 +198,7 @@ export function UnlinkProjectButton({ clientId, projectId }: { clientId: string;
   return <CrmButton action={linkProjectContractAction} input={{ clientId, projectId, contractId: "" }} label={t("unlinkProject")} variant="ghost" />;
 }
 
-export type ReadyItem = { id: string; projectName: string; jobNumber: string | null; description: string; amountVnd: number | null; reference: string | null };
+export type ReadyItem = { id: string; projectId?: string; projectName: string; jobNumber: string | null; description: string; amountVnd: number | null; reference: string | null };
 
 /** An invoice over ready items of one client and entity: pick them, number and date it, choose the VAT. */
 export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { items: ReadyItem[]; vatRates: number[]; defaultVat: number; today: string }) {
@@ -243,7 +244,12 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
                   {item.jobNumber ?? "—"}
                 </span>
               </TableCell>
-              <TableCell>{item.projectName}</TableCell>
+              <TableCell>
+                {/* A new tab: the ticks and typed amounts of this form are not lost. */}
+                <RecordLink kind="project" id={item.projectId} target="_blank" rel="noreferrer">
+                  {item.projectName}
+                </RecordLink>
+              </TableCell>
               <TableCell className="whitespace-normal text-muted-foreground">{item.description}</TableCell>
               <TableCell kind="id">{item.reference ?? "—"}</TableCell>
               <TableCell kind="money">
