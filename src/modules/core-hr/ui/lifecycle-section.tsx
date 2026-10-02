@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
+import { jobTitle } from "@/lib/job-levels";
 import { summarize } from "@/modules/platform/tasks-engine/engine/checklist";
 import { listPersonNames } from "@/modules/platform/people/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
@@ -21,11 +22,12 @@ export async function LifecycleSection({ principal, personId, canManage, employe
   if (!events) return null;
   const t = await getTranslations("lifecycle");
   const tt = await getTranslations("tasks");
+  const tp = await getTranslations("people");
   const format = await getFormatter();
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const today = todayInVietnam();
   const people = canManage ? await listPersonNames() : undefined;
-  const words = (placement: NonNullable<(typeof events)[number]["to"]>) => [placement.entity, placement.position, placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
+  const words = (placement: NonNullable<(typeof events)[number]["to"]>) => [placement.entity, placement.position, jobTitle(tp, placement) ?? placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
   const resignation = events.find((event) => event.type === "resignation" && event.status === "pending");
 
   return (

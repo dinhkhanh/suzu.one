@@ -6,6 +6,7 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 import { toSearchKey } from "@/lib/text";
 import { featureEnabled } from "@/modules/platform/flags/service";
 import { notify, queueEmail } from "@/modules/platform/notifications/service";
@@ -86,6 +87,8 @@ export type PeopleFilters = {
   entityId?: string;
   departmentId?: string;
   workforceType?: WorkforceType;
+  /** People who hold this professional field or skill (FR-CHR-13). */
+  competencyId?: string;
   // Defaults to "active". Anything else is personal-tier information.
   status?: PersonStatus | "all";
   page?: number;
@@ -102,6 +105,9 @@ export type PeopleListRow = {
   departmentId: string | null;
   departmentName: string | null;
   positionName: string | null;
+  // The job title's two halves (src/lib/job-levels.ts): directory information, like the position.
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   managerName: string | null;
   // null when the viewer may only see this person's directory entry.
@@ -129,6 +135,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
     status === "all" ? undefined : eq(schema.person.status, status),
     filters.workforceType ? eq(a.workforceType, filters.workforceType) : undefined,
     filters.entityId ? eq(e.entityId, filters.entityId) : undefined,
+    filters.competencyId ? sql`exists (select 1 from ${schema.personCompetency} where ${schema.personCompetency.personId} = ${schema.person.id} and ${schema.personCompetency.competencyId} = ${filters.competencyId})` : undefined,
     filters.departmentId ? or(eq(a.departmentId, filters.departmentId), filterUnits.length ? inArray(a.orgUnitId, filterUnits) : undefined) : undefined,
     pattern
       ? or(ilike(schema.person.searchName, `%${toSearchKey(q!).replace(/[\\%_]/g, "\\$&")}%`), ilike(schema.person.workEmail, pattern), ilike(e.employeeCode, pattern))
@@ -153,6 +160,8 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         departmentName: schema.orgUnit.name,
         teamId: a.teamId,
         positionName: schema.position.name,
+        seniorityLevel: a.seniorityLevel,
+        positionLevel: a.positionLevel,
         managerId: a.managerId,
         managerName: manager.fullName,
         workforceType: a.workforceType,
@@ -191,6 +200,8 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         departmentId: row.departmentId,
         departmentName: row.departmentName,
         positionName: row.positionName,
+        seniorityLevel: row.seniorityLevel,
+        positionLevel: row.positionLevel,
         managerId: row.managerId,
         managerName: row.managerName,
         workforceType: personal ? row.workforceType : null,
@@ -295,7 +306,8 @@ export type AssignmentView = {
   teamId: string | null;
   teamName: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   managerName: string | null;
   dottedManagerId: string | null;
@@ -316,7 +328,7 @@ export type PersonView = {
   entityId: string | null;
   entityName: string | null;
   // The assignment in force today; only its directory fields are filled below the personal tier.
-  current: Pick<AssignmentView, "departmentId" | "departmentName" | "teamId" | "teamName" | "positionName" | "managerId" | "managerName"> | null;
+  current: Pick<AssignmentView, "departmentId" | "departmentName" | "teamId" | "teamName" | "positionName" | "seniorityLevel" | "positionLevel" | "managerId" | "managerName"> | null;
   personal: {
     status: PersonStatus;
     startDate: IsoDate | null;
@@ -409,6 +421,9 @@ export async function getPersonView(principal: Principal, personId: string): Pro
       teamId: current.teamId,
       teamName: current.teamName,
       positionName: current.positionName,
+      // Rows cached before the columns existed have neither.
+      seniorityLevel: current.seniorityLevel ?? null,
+      positionLevel: current.positionLevel ?? null,
       managerId: current.managerId,
       managerName: current.managerName,
     },
@@ -451,7 +466,8 @@ async function loadAssignments(personId: string): Promise<AssignmentView[]> {
       teamId: schema.assignment.teamId,
       teamName: teamUnit.name,
       positionName: schema.position.name,
-      jobLevel: schema.assignment.jobLevel,
+      seniorityLevel: schema.assignment.seniorityLevel,
+      positionLevel: schema.assignment.positionLevel,
       managerId: schema.assignment.managerId,
       managerName: manager.fullName,
       dottedManagerId: schema.assignment.dottedManagerId,
@@ -544,7 +560,8 @@ export type PlacementInput = {
   // One unit, at any depth (FR-PLT-16); `departmentId` and `teamId` are derived from it.
   orgUnitId: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   dottedManagerId: string | null;
   workLocation: string | null;
@@ -986,3 +1003,4 @@ export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccas
  * as on `/reports/headcount`.
  */
 export { getHeadcountReport, type HeadcountFilters, type HeadcountReport } from "./reports";
+export { type CatalogueEntry, competenciesOf, type Competency, competencyChoices, type CompetencyKind, type CompetencyLists, invalidateCompetencies, listCompetencies, listCompetencyCatalogue } from "./competencies";

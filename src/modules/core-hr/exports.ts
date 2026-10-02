@@ -5,6 +5,7 @@ import "server-only";
 import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
+import { jobTitle } from "@/lib/job-levels";
 import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import en from "../../../messages/en.json";
@@ -25,6 +26,7 @@ export async function buildPeopleExport(principal: Principal, filters: Omit<Peop
     { header: t("people.fields.workEmail"), value: (row) => row.workEmail },
     { header: t("people.fields.entity"), value: (row) => row.entityName },
     { header: t("people.fields.department"), value: (row) => row.departmentName },
+    { header: t("people.fields.jobTitle"), value: (row) => jobTitle((key) => t(`people.${key}`), row) },
     { header: t("people.fields.position"), value: (row) => row.positionName },
     { header: t("people.fields.managerId"), value: (row) => row.managerName },
     { header: t("people.fields.workforceType"), value: (row) => (row.workforceType ? t(`people.workforceType.${row.workforceType}`) : null) },

@@ -12,6 +12,7 @@
 //     advertisement from the approved ask — which is the point at which somebody decides what the
 //     job is actually called and what the pipeline should be.
 import "server-only";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 import { and, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -54,7 +55,8 @@ export type HiringRequestInput = {
   departmentId: string | null;
   teamId: string | null;
   positionTitle: string;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   headcount: number;
   employmentType: EmploymentType;
   workLocation: string | null;

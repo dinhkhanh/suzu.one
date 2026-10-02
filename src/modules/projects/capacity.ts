@@ -5,7 +5,8 @@
 //
 // Who is on the page is the list form of `canSeeCapacityOf`: the whole directory, filtered by the
 // policy in memory, so the two can never disagree. Leave shows only as "away" — the type never
-// leaves this file. Skills (FR-CHR-14) are not recorded anywhere yet: the page filters by position.
+// leaves this file. The page filters by position; skills (FR-CHR-14, core-hr `competencies.ts`) are
+// not a filter here yet — the people directory finds who holds one.
 import "server-only";
 import { and, asc, between, eq, inArray, isNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";

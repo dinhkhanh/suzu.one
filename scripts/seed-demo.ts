@@ -6,7 +6,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, orgUnit, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, competency, contract, orgUnit, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personCompetency, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
@@ -157,6 +157,7 @@ async function main() {
   });
 
   console.log(`Seeded ${created} demo people (existing people skipped).`);
+  console.log(`Seeded ${await seedCompetencies(db)} professional fields and skills on the demo people's profiles (people who already list some skipped).`);
   console.log(`Seeded ${await seedRecords(db, today)} contracts, restricted details and dependents (existing ones skipped).`);
   console.log(`Seeded ${await seedChangeRequests(db)} pending change requests (people who already have one skipped).`);
   console.log(`Seeded ${await seedLifecycle(db, today)} lifecycle events, checklists and a resignation request (existing ones skipped).`);
@@ -188,6 +189,42 @@ async function main() {
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.
   console.log("Next: `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops` (obligations), `pnpm db:seed:demo:payroll` (payroll runs), `pnpm db:seed:demo:bonus` (the year-end bonus run) and `pnpm db:recompute` (timesheets).");
   await client.end();
+}
+
+// What the demo people say they are good at (FR-CHR-14), by work email: names from the starter
+// catalogue of `pnpm db:seed`, so the directory's filter and the HR list have something to show.
+const DEMO_COMPETENCIES: Record<string, { profession: string[]; skill: string[] }> = {
+  "ha.nguyen@suzu.vn": { profession: ["Brand Strategy", "Business Development"], skill: ["Leadership", "Negotiation", "English"] },
+  "mai.le@suzu.group": { profession: ["Human Resources", "Recruitment"], skill: ["Coaching", "Conflict Resolution"] },
+  "bao.pham@suzu.group": { profession: ["Human Resources", "Administration"], skill: ["Microsoft Excel", "Communication"] },
+  "tuan.vo@suzu.group": { profession: ["Accounting", "Finance"], skill: ["Microsoft Excel", "Budgeting", "Reporting"] },
+  "long.dang@suzu.group": { profession: ["Video Production", "Directing"], skill: ["Leadership", "Planning", "Storytelling"] },
+  "tam.bui@suzu.group": { profession: ["Directing", "Scriptwriting"], skill: ["Storytelling", "Creativity"] },
+  "huy.ho@suzu.group": { profession: ["Video Editing", "Motion Graphics"], skill: ["Adobe Premiere Pro", "Adobe After Effects"] },
+  "linh.do@suzu.group": { profession: ["Video Editing"], skill: ["Adobe Premiere Pro", "CapCut"] },
+  "chi.duong@suzu.group": { profession: ["Graphic Design", "Brand Identity"], skill: ["Adobe Illustrator", "Figma", "Leadership"] },
+  "khoi.ly@suzu.group": { profession: ["Graphic Design", "UI/UX Design"], skill: ["Adobe Photoshop", "Figma"] },
+  "anh.trinh@suzu.group": { profession: ["Graphic Design"], skill: ["Canva", "Adobe Photoshop"] },
+  "duc.phan@suzu.group": { profession: ["Social Media", "Community Management"], skill: ["Meta Ads", "Problem Solving", "Teamwork"] },
+  "duyen.huynh@suzu.group": { profession: ["Content Marketing", "Copywriting"], skill: ["Writing", "Storytelling"] },
+  "thu.mai@suzu.group": { profession: ["Account Management"], skill: ["Client Relations", "Presentation"] },
+  "ngan.vu@suzu.group": { profession: ["Compensation & Benefits"], skill: ["Microsoft Excel", "Attention To Detail"] },
+};
+
+async function seedCompetencies(db: ReturnType<typeof drizzle>): Promise<number> {
+  const people = new Map((await db.select({ id: person.id, workEmail: person.workEmail }).from(person)).flatMap((row) => (row.workEmail ? [[row.workEmail, row.id] as const] : [])));
+  const catalogue = new Map((await db.select().from(competency)).map((row) => [`${row.kind}:${row.searchName}`, row.id]));
+  const listed = new Set((await db.selectDistinct({ personId: personCompetency.personId }).from(personCompetency)).map((row) => row.personId));
+  const rows = Object.entries(DEMO_COMPETENCIES).flatMap(([email, lists]) => {
+    const personId = people.get(email);
+    if (!personId || listed.has(personId)) return [];
+    return (["profession", "skill"] as const).flatMap((kind) => lists[kind].flatMap((name) => {
+      const competencyId = catalogue.get(`${kind}:${toSearchKey(name)}`);
+      return competencyId ? [{ personId, competencyId }] : [];
+    }));
+  });
+  if (rows.length) await db.insert(personCompetency).values(rows).onConflictDoNothing();
+  return rows.length;
 }
 
 // Week 2 records: contracts (one about to expire, one probation about to end, so the daily alerts

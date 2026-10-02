@@ -10,8 +10,9 @@ Các mục xếp từ trên xuống:
 
 | Mục | Nội dung |
 | --- | --- |
-| Phần đầu trang | Ảnh đại diện, họ tên, mã nhân viên, chức danh, phòng ban, pháp nhân |
-| **Quan hệ lao động** | Pháp nhân, mã nhân viên, email công ty, loại lao động, quản lý trực tiếp, nhóm, ngày vào làm, ngày tính thâm niên, cấp bậc, chi nhánh |
+| Phần đầu trang | Ảnh đại diện, họ tên, mã nhân viên, chức vụ, phòng ban, pháp nhân |
+| **Quan hệ lao động** | Pháp nhân, mã nhân viên, email công ty, loại lao động, quản lý trực tiếp, nhóm, ngày vào làm, ngày tính thâm niên, chức danh, chức vụ, chức vụ trong dự án (nếu có), chi nhánh |
+| **Chuyên môn & kỹ năng** | Hai danh sách bạn tự kê: **Chuyên môn** (ví dụ Social Media, Video Production) và **Kỹ năng** (ví dụ Problem Solving). Bấm **Sửa chuyên môn và kỹ năng**, chọn trong những tên đồng nghiệp đã dùng hoặc gõ tên mới rồi chọn **Thêm "…"**, sau đó bấm **Lưu**. Tên mới tự viết hoa chữ đầu mỗi từ ("problem solving" thành "Problem Solving"), bạn không cần gõ lại. Thay đổi có hiệu lực ngay, không cần Nhân sự duyệt, và cả công ty đều thấy |
 | **Chi tiết cá nhân** | Điện thoại, email cá nhân, ngày sinh, giới tính, tình trạng hôn nhân, quốc tịch, địa chỉ thường trú, chỗ ở hiện tại |
 | **Yêu cầu thay đổi thông tin của tôi** | Nút gửi yêu cầu sửa thông tin và danh sách các yêu cầu bạn đã gửi |
 | **Hợp đồng** | Các hợp đồng của bạn, trạng thái, ngày hiệu lực |
@@ -62,7 +63,7 @@ Hợp đồng, giấy tờ, người phụ thuộc và liên hệ khẩn cấp �
 
 ## Quá trình công tác
 
-Mục **Quá trình công tác** liệt kê các sự kiện của bạn, mới nhất ở trên: ngày hiệu lực, loại sự kiện, nơi chuyển từ đâu sang đâu (pháp nhân, chức danh, cấp bậc, phòng ban, nhóm, người quản lý). Sự kiện chưa tới ngày có nhãn **Chưa hiệu lực**. Sự kiện đã hủy bị gạch ngang và có nhãn **Đã hủy**.
+Mục **Quá trình công tác** liệt kê các sự kiện của bạn, mới nhất ở trên: ngày hiệu lực, loại sự kiện, nơi chuyển từ đâu sang đâu (pháp nhân, chức vụ, chức danh, phòng ban, nhóm, người quản lý). Sự kiện chưa tới ngày có nhãn **Chưa hiệu lực**. Sự kiện đã hủy bị gạch ngang và có nhãn **Đã hủy**.
 
 Nếu sự kiện có checklist (ví dụ lúc bạn mới vào), bạn thấy dòng **Checklist: x/y việc xong** và có thể mở ra xem từng bước.
 

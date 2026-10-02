@@ -17,6 +17,7 @@ import { documentTemplate } from "../documents/schema";
 import { approvalRequest } from "../platform/approvals/schema";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import type { PositionLevel, SeniorityLevel } from "../../lib/job-levels";
 import type {
   ApplicationEventType,
   ApplicationStatus,
@@ -99,6 +100,9 @@ export const hiringRequest = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
     positionTitle: text("position_title").notNull(),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     headcount: integer("headcount").notNull().default(1),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
@@ -143,6 +147,9 @@ export const jobOpening = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
     positionName: text("position_name"),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
     workMode: text("work_mode").$type<WorkMode>().notNull().default("onsite"),
@@ -583,6 +590,9 @@ export const jobOffer = pgTable(
 
     // ── The job, as offered ───────────────────────────────────────────────────────────────
     positionName: text("position_name").notNull(),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),

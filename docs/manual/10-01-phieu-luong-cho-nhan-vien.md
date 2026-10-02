@@ -43,7 +43,7 @@ Phiếu lương được trình bày giống bản giấy, gồm các phần:
 
 | Phần | Nội dung |
 |---|---|
-| Đầu phiếu | Tên và mã số thuế pháp nhân, **PHIẾU LƯƠNG THÁNG …**, **Nhân viên**, **Mã nhân viên**, **Chức danh**, **Phòng ban**, **Hồ sơ trả lương**, **Ngày công hưởng lương** |
+| Đầu phiếu | Tên và mã số thuế pháp nhân, **PHIẾU LƯƠNG THÁNG …**, **Nhân viên**, **Mã nhân viên**, **Chức vụ**, **Phòng ban**, **Hồ sơ trả lương**, **Ngày công hưởng lương** |
 | **Các khoản thu nhập** | Từng khoản (lương, phụ cấp, làm thêm, thưởng…) với **Phần chịu thuế** và **Số tiền**; dòng **Tổng thu nhập** |
 | **Các khoản khấu trừ** | Bảo hiểm phần người lao động, thuế TNCN, đoàn phí, tạm ứng…; dòng **Tổng khấu trừ** |
 | **Thực nhận** | Số tiền bạn thực nhận |

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { createOpeningAction, updateOpeningAction } from "../actions";
 import { EMPLOYMENT_TYPES, type EmploymentType, WORK_MODES, type WorkMode } from "../enums";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -23,7 +24,8 @@ export type OpeningFormValue = {
   departmentId: string | null;
   teamId: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: string | null;
+  positionLevel: string | null;
   employmentType: EmploymentType;
   workMode: WorkMode;
   workLocation: string | null;
@@ -56,6 +58,7 @@ export function OpeningForm({
   const t = useTranslations("recruit.form");
   const tRoot = useTranslations("recruit");
   const types = useTranslations("recruit.employmentType");
+  const tp = useTranslations("people");
   const modes = useTranslations("recruit.workMode");
   const router = useRouter();
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(value?.id ? updateOpeningAction : createOpeningAction, {
@@ -95,8 +98,25 @@ export function OpeningForm({
           <Field name="positionName" label={t("positionName")}>
             <Input id="positionName" name="positionName" maxLength={200} defaultValue={value?.positionName ?? ""} />
           </Field>
-          <Field name="jobLevel" label={t("jobLevel")}>
-            <Input id="jobLevel" name="jobLevel" maxLength={80} defaultValue={value?.jobLevel ?? ""} />
+          <Field name="seniorityLevel" label={tp("fields.seniorityLevel")}>
+            <Select id="seniorityLevel" name="seniorityLevel" defaultValue={value?.seniorityLevel ?? ""}>
+              <option value="">—</option>
+              {SENIORITY_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`seniorityLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field name="positionLevel" label={tp("fields.positionLevel")}>
+            <Select id="positionLevel" name="positionLevel" defaultValue={value?.positionLevel ?? ""}>
+              <option value="">—</option>
+              {POSITION_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`positionLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field name="employmentType" label={t("employmentType")}>
             <Select id="employmentType" name="employmentType" defaultValue={value?.employmentType ?? "employee"}>

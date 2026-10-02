@@ -30,7 +30,7 @@ async function hire(name: string, entityId: string, orgUnitId: string, managerId
       employeeCode: null,
       startDate: more.start ?? "2022-01-01",
       seniorityDate: null,
-      placement: { workforceType: more.type ?? "employee", branchId: null, orgUnitId, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      placement: { workforceType: more.type ?? "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
     },
     ids.actor,
     { onboarding: false },

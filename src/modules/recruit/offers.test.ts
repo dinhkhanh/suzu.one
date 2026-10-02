@@ -45,7 +45,7 @@ let stranger: Principal;
 const offerInput = (over: Partial<Parameters<typeof makeOffer>[0]> = {}) => ({
   applicationId: ids.applicationId,
   positionName: "Video Editor",
-  jobLevel: "Middle",
+  seniorityLevel: "mid" as const, positionLevel: "executive" as const,
   employmentType: "employee" as const,
   workLocation: "Hà Nội",
   managerPersonId: ids.headPerson,
@@ -118,7 +118,7 @@ beforeAll(async () => {
       departmentId: vid.id,
       teamId: null,
       positionName: "Video Editor",
-      jobLevel: null,
+      seniorityLevel: null, positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: "Hà Nội",

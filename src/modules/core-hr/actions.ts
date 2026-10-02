@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { normalizeEmail } from "@/modules/platform/auth/sign-in-policy";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { findPersonById } from "@/modules/platform/people/service";
@@ -38,7 +39,8 @@ const placementInput = z.object({
   branchId: id,
   orgUnitId: id,
   positionName: text(120),
-  jobLevel: text(60),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   managerId: id,
   dottedManagerId: id,
   workLocation: text(200),

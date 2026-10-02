@@ -32,7 +32,8 @@ export default async function EditOfferPage({ params }: PageProps<"/recruit/offe
         canSetMoney={!!view.money}
         values={{
           positionName: view.offer.positionName,
-          jobLevel: view.offer.jobLevel,
+          seniorityLevel: view.offer.seniorityLevel,
+          positionLevel: view.offer.positionLevel,
           employmentType: view.offer.employmentType,
           workLocation: view.offer.workLocation,
           managerPersonId: view.offer.managerPersonId,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canBrowsePeople, canChangePhoto, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign, canSeePhoto } from "./policy";
+import { canBrowsePeople, canChangePhoto, canEditCompetencies, canManageCompetencies, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign, canSeePhoto } from "./policy";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -104,6 +104,24 @@ describe("core HR policy", () => {
     expect(canChangePhoto(lineManager, someone)).toBe(false);
     expect(canChangePhoto(principal([]), someone)).toBe(false);
     expect(canChangePhoto(owner, null)).toBe(false);
+  });
+
+  it("lets the person and HR over them say what the person is good at — not the line manager", () => {
+    expect(canEditCompetencies(principal([], { personId: "someone" }), someone)).toBe(true);
+    expect(canEditCompetencies(principal([], { personId: "someone", workforceType: "collaborator" }), someone)).toBe(true);
+    expect(canEditCompetencies(hrOfA, someone)).toBe(true);
+    expect(canEditCompetencies(hrOfA, { ...someone, entityId: ENTITY_B })).toBe(false);
+    expect(canEditCompetencies(lineManager, someone)).toBe(false);
+    expect(canEditCompetencies(principal([]), someone)).toBe(false);
+    expect(canEditCompetencies(owner, null)).toBe(false);
+  });
+
+  it("lets whoever keeps people's records correct the shared catalogue — not a manager, not an employee", () => {
+    expect(canManageCompetencies(owner)).toBe(true);
+    expect(canManageCompetencies(hrOfA)).toBe(true);
+    expect(canManageCompetencies(head)).toBe(false);
+    expect(canManageCompetencies(lineManager)).toBe(false);
+    expect(canManageCompetencies(principal([]))).toBe(false);
   });
 
   it("shows the picture to whoever sees the directory entry", () => {

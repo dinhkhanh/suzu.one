@@ -65,6 +65,23 @@ export function canChangePhoto(principal: Principal, person: PersonTarget | null
 }
 
 /**
+ * Professional fields and skills (FR-CHR-14): the person says what they are good at, as on their
+ * own profile anywhere else — no change request, nothing HR vouches for — and HR with authority
+ * over them may correct the list. Not the line manager.
+ */
+export function canEditCompetencies(principal: Principal, person: PersonTarget | null): boolean {
+  return !!person && (principal.personId === person.personId || can(principal, "person:manage", person));
+}
+
+/**
+ * The catalogue those names come from is one list for the whole group, like positions: whoever
+ * keeps people's records anywhere may correct a misspelt entry, merge a double or remove one.
+ */
+export function canManageCompetencies(principal: Principal): boolean {
+  return can(principal, "person:manage");
+}
+
+/**
  * Seeing the picture is seeing the directory entry (`getPersonView`): anyone who reads the person
  * at all, but former and future colleagues only for those who read them at the personal tier.
  */

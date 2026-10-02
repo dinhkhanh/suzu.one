@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { can, canReadTier } from "@/modules/platform/rbac/policy";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
@@ -16,7 +17,7 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const text = (max: number) => optional(z.string().trim().max(max));
 const id = optional(z.uuid());
 const day = z.iso.date();
-const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) });
+const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), seniorityLevel: optional(z.enum(SENIORITY_LEVELS)), positionLevel: optional(z.enum(POSITION_LEVELS)), managerId: id, dottedManagerId: id, workLocation: text(200) });
 
 // Every lifecycle change is HR's: authority over the person where they sit today.
 const managesPerson = async (user: { principal: Parameters<typeof can>[0] }, personId: string) => {

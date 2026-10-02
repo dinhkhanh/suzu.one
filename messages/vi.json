@@ -21,7 +21,9 @@
     "clear": "Xóa",
     "time": "Giờ",
     "previousYear": "Năm trước",
-    "nextYear": "Năm sau"
+    "nextYear": "Năm sau",
+    "add": "Thêm “{name}”",
+    "typeToAdd": "Gõ tên để thêm mới"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -230,6 +232,7 @@
       "allEntities": "Tất cả pháp nhân",
       "allDepartments": "Tất cả phòng ban",
       "allTypes": "Tất cả loại lao động",
+      "allCompetencies": "Tất cả chuyên môn & kỹ năng",
       "apply": "Lọc",
       "clear": "Xóa lọc"
     },
@@ -288,7 +291,7 @@
       },
       "past": {
         "title": "Thêm quá trình công tác trước đây",
-        "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức danh của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
+        "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức vụ của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
         "from": "Từ ngày",
         "to": "Đến ngày (ngày cuối)"
       }
@@ -317,14 +320,57 @@
       "team": "Nhóm",
       "orgUnit": "Đơn vị",
       "branch": "Chi nhánh",
-      "position": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "position": "Chức vụ",
+      "jobTitle": "Chức danh",
+      "seniorityLevel": "Cấp bậc",
+      "positionLevel": "Cấp vị trí",
+      "projectPositions": "Chức vụ trong dự án",
       "managerId": "Quản lý trực tiếp",
       "dottedManagerId": "Quản lý gián tiếp",
       "workLocation": "Nơi làm việc",
       "validFrom": "Hiệu lực từ",
       "changeReason": "Lý do",
       "accountsManaged": "Khách hàng phụ trách"
+    },
+    "seniorityLevel": {
+      "intern": "Intern",
+      "junior": "Junior",
+      "mid": "Mid-level",
+      "senior": "Senior"
+    },
+    "positionLevel": {
+      "executive": "Executive",
+      "leader": "Leader",
+      "manager": "Manager",
+      "director": "Director",
+      "c_level": "C-level"
+    },
+    "projectPosition": {
+      "lead": "Phụ trách dự án",
+      "account_manager": "Phụ trách khách hàng"
+    },
+    "competencies": {
+      "title": "Chuyên môn & kỹ năng",
+      "profession": "Chuyên môn",
+      "skill": "Kỹ năng",
+      "edit": "Sửa chuyên môn và kỹ năng",
+      "hint": "Chọn trong những tên đồng nghiệp đã dùng, hoặc gõ tên mới rồi chọn “Thêm”. Tên mới tự viết hoa chữ đầu mỗi từ và sẽ có sẵn cho mọi người chọn. Cả công ty đều thấy hai danh sách này trên hồ sơ.",
+      "find": "Xem mọi người có {name}",
+      "catalogueDescription": "{count, plural, =0 {Chưa có mục nào} other {# mục}} dùng chung cho cả tập đoàn. Sửa tên sai chính tả, gộp mục trùng hoặc xóa mục không dùng.",
+      "name": "Tên",
+      "kind": "Loại",
+      "holders": "Số người",
+      "allKinds": "Tất cả loại",
+      "searchName": "Tìm theo tên",
+      "empty": "Chưa có mục nào.",
+      "noMatch": "Không có mục nào khớp.",
+      "add": "Thêm mục",
+      "editItem": "Sửa",
+      "editTitle": "Sửa “{name}”",
+      "editHint": "Tên tự viết hoa chữ đầu mỗi từ. Nếu tên sau khi sửa trùng với một mục đã có cùng loại, hai mục được gộp làm một: ai đang có mục này sẽ chuyển sang mục kia.",
+      "delete": "Xóa mục",
+      "deleteConfirm": "Xóa “{name}” khỏi danh mục{count, plural, =0 {} other { và khỏi hồ sơ của # người}}?",
+      "seeHolders": "Xem {count, plural, other {# người}} có {name}"
     },
     "workforceType": {
       "employee": "Chính thức",
@@ -364,6 +410,11 @@
       "employee_code_exhausted": "Không tìm được mã nhân viên trống. Vui lòng nhập mã thủ công.",
       "entity_not_found": "Pháp nhân không tồn tại hoặc đã ngừng hoạt động.",
       "person_not_found": "Hồ sơ này không còn tồn tại.",
+      "competencies_too_many": "Mỗi danh sách tối đa 30 mục.",
+      "competency_name_too_long": "Tên chuyên môn hoặc kỹ năng tối đa 60 ký tự.",
+      "competency_name_empty": "Chưa có tên.",
+      "competency_not_found": "Mục này không còn trong danh mục. Vui lòng tải lại trang.",
+      "competency_exists": "Danh mục đã có mục này.",
       "employment_overlap": "Người này đã có quan hệ lao động trong khoảng thời gian đó.",
       "assignment_conflict": "Có người khác vừa thay đổi vị trí công tác của người này. Vui lòng tải lại và thử lại.",
       "no_employment": "Người này chưa có quan hệ lao động để phân công.",
@@ -415,7 +466,7 @@
         "phone": "Hãy định dạng cột số điện thoại là văn bản trong Excel, nếu không số 0 đầu sẽ bị mất."
       },
       "historyTitle": "Quá trình công tác trước đây",
-      "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức danh…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
+      "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức vụ…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
       "historyWizard": "Tệp quá trình công tác"
     },
     "duplicates": {
@@ -8180,7 +8231,7 @@
       "taxCode": "Mã số thuế",
       "person": "Nhân viên",
       "employeeCode": "Mã nhân viên",
-      "position": "Chức danh",
+      "position": "Chức vụ",
       "department": "Phòng ban",
       "profile": "Hồ sơ trả lương",
       "paidDays": "Ngày công hưởng lương",
@@ -9907,8 +9958,7 @@
       "entity": "Pháp nhân",
       "department": "Phòng ban",
       "team": "Nhóm",
-      "positionName": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "positionName": "Chức vụ",
       "employmentType": "Hình thức làm việc",
       "workMode": "Hình thức địa điểm",
       "workLocation": "Địa điểm làm việc",
@@ -10056,7 +10106,7 @@
       "offer_expiry_after_start": "Thư mời không thể còn hiệu lực sau ngày bắt đầu làm việc.",
       "offer_probation_invalid": "Thời gian thử việc không hợp lệ.",
       "offer_probation_percent_invalid": "Lương thử việc phải từ 85% đến 100% mức thoả thuận.",
-      "offer_position_empty": "Chưa có chức danh.",
+      "offer_position_empty": "Chưa có chức vụ.",
       "offer_note_too_long": "Ghi chú quá dài.",
       "offer_already_open": "Hồ sơ này đã có một thư mời đang hiệu lực.",
       "offer_not_found": "Không tìm thấy thư mời.",
@@ -10335,8 +10385,7 @@
       "editTitle": "Sửa thư mời cho {name}",
       "edit": "Sửa thư mời",
       "save": "Lưu thư mời",
-      "positionName": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "positionName": "Chức vụ",
       "employmentType": "Hình thức làm việc",
       "workLocation": "Nơi làm việc",
       "manager": "Quản lý trực tiếp",
@@ -12312,6 +12361,7 @@
     "oneOnOneMeeting": "Buổi gặp 1:1",
     "oneOnOneMeetings": "Gặp 1:1",
     "orgChart": "Sơ đồ tổ chức",
+    "competencies": "Chuyên môn & kỹ năng",
     "orgUnits": "Cơ cấu tổ chức",
     "overview": "Tổng quan",
     "pageHistory": "Lịch sử trang",
@@ -12557,7 +12607,7 @@
           ],
           "list": [
             "Nhận dạng và liên lạc: họ tên, ngày sinh, giới tính, số điện thoại, địa chỉ, thông tin CCCD hoặc hộ chiếu, người liên hệ khẩn cấp.",
-            "Việc làm: công ty tuyển dụng bạn, đơn vị, chức danh, quản lý, loại và thời hạn hợp đồng, hồ sơ tiếp nhận và nghỉ việc, tài liệu như hợp đồng và quyết định.",
+            "Việc làm: công ty tuyển dụng bạn, đơn vị, chức danh, chức vụ, quản lý, loại và thời hạn hợp đồng, hồ sơ tiếp nhận và nghỉ việc, tài liệu như hợp đồng và quyết định.",
             "Chấm công và nghỉ phép: giờ vào và giờ ra; khi bạn chấm công trên ứng dụng, vị trí thiết bị báo về và địa chỉ mạng tại thời điểm đó, chỉ để xác nhận bạn đang ở địa điểm làm việc của công ty; dữ liệu nhập từ máy chấm công tại văn phòng (thời gian và mã nhân viên, không phải dấu vân tay hay dữ liệu khuôn mặt); số ngày phép và đơn nghỉ.",
             "Tiền lương và thu nhập: lương, phụ cấp, thưởng, thông tin bảo hiểm xã hội, bảo hiểm y tế, bảo hiểm thất nghiệp, thông tin thuế thu nhập cá nhân và người phụ thuộc, tài khoản ngân hàng, phiếu lương.",
             "Hiệu suất: mục tiêu, KPI, đánh giá và ghi nhận.",

@@ -1,6 +1,6 @@
 # Thư mời & nhận việc
 
-Khi đã chọn được người, bước cuối của tuyển dụng là **thư mời nhận việc** (offer): đề nghị chức danh, ngày bắt đầu, thử việc và mức lương. Thư mời đi qua luồng duyệt, được gửi cho ứng viên, và khi ứng viên đồng ý, bộ phận nhân sự chuyển ứng viên thành **hồ sơ nhân viên** chỉ bằng một nút — không gõ lại thông tin nào.
+Khi đã chọn được người, bước cuối của tuyển dụng là **thư mời nhận việc** (offer): đề nghị chức vụ, ngày bắt đầu, thử việc và mức lương. Thư mời đi qua luồng duyệt, được gửi cho ứng viên, và khi ứng viên đồng ý, bộ phận nhân sự chuyển ứng viên thành **hồ sơ nhân viên** chỉ bằng một nút — không gõ lại thông tin nào.
 
 ## Ai làm được gì
 
@@ -19,14 +19,14 @@ Khi đã chọn được người, bước cuối của tuyển dụng là **th�
 
 ## Danh sách thư mời
 
-[Thư mời nhận việc](/recruit/offers) liệt kê mọi thư mời bạn được xem: tên ứng viên, chức danh, mã vị trí, số thư mời, ngày bắt đầu, trạng thái. Danh sách **không có số tiền** cho bất kỳ ai — số tiền chỉ nằm trên trang của từng thư mời.
+[Thư mời nhận việc](/recruit/offers) liệt kê mọi thư mời bạn được xem: tên ứng viên, chức vụ, mã vị trí, số thư mời, ngày bắt đầu, trạng thái. Danh sách **không có số tiền** cho bất kỳ ai — số tiền chỉ nằm trên trang của từng thư mời.
 
 ## Soạn thư mời
 
 1. Mở hồ sơ ứng tuyển của ứng viên.
 2. Ở mục **Thư mời nhận việc**, bấm **Soạn thư mời** (nút chỉ hiện với người có quyền về lương).
 3. Điền:
-   - **Chức danh**, **Cấp bậc**, **Hình thức làm việc**, **Nơi làm việc**.
+   - **Chức vụ**, **Cấp bậc**, **Cấp vị trí**, **Hình thức làm việc**, **Nơi làm việc**.
    - **Quản lý trực tiếp** (có thể **Chưa xác định**).
    - **Ngày bắt đầu** — không được là ngày đã qua.
    - **Hiệu lực đến** — mặc định 7 ngày; không được là ngày đã qua và **không được sau ngày bắt đầu**.
@@ -103,7 +103,7 @@ Khi thư mời ở trạng thái **Đã đồng ý**, người có quyền thấ
 
 Hệ thống sẽ:
 
-- Tạo hồ sơ nhân sự với toàn bộ thông tin ứng viên đã khai (họ tên, liên hệ…) và nội dung thư mời (chức danh, phòng ban, quản lý, hình thức làm việc, ngày bắt đầu, thử việc). Không phải nhập lại.
+- Tạo hồ sơ nhân sự với toàn bộ thông tin ứng viên đã khai (họ tên, liên hệ…) và nội dung thư mời (chức vụ, cấp bậc, cấp vị trí, phòng ban, quản lý, hình thức làm việc, ngày bắt đầu, thử việc). Không phải nhập lại.
 - Nếu ngày bắt đầu ở tương lai, người đó ở trạng thái **chuẩn bị tiếp nhận** và tự chuyển sang đang làm việc vào sáng ngày bắt đầu.
 - Mở **checklist tiếp nhận** theo mẫu phù hợp nhất (xem trang **Checklist tiếp nhận và thôi việc**).
 - **Đề xuất mức lương thoả thuận** sang bộ phận tiền lương như một đề nghị điều chỉnh lương, để chủ sở hữu duyệt theo quy trình lương thông thường. Tuyển dụng không tự đặt lương.

@@ -11,6 +11,7 @@
 //     far more widely than a salary band.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { createAction } from "@/lib/action";
 import { STAGE_CATEGORIES } from "./enums";
 import { CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, RECRUIT_EMAIL_KINDS, REJECTION_REASONS, WORK_MODES } from "./enums";
@@ -65,7 +66,8 @@ const hiringRequestFields = {
   departmentId: optional(z.uuid()),
   teamId: optional(z.uuid()),
   positionTitle: z.string().trim().min(2).max(200),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   headcount: integer.min(1).max(100),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workLocation: optional(z.string().trim().max(200)),
@@ -124,7 +126,8 @@ const openingFields = {
   departmentId: optional(z.uuid()),
   teamId: optional(z.uuid()),
   positionName: optional(z.string().trim().max(200)),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workMode: z.enum(WORK_MODES),
   workLocation: optional(z.string().trim().max(200)),

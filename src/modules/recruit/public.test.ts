@@ -92,7 +92,7 @@ beforeAll(async () => {
     departmentId: ids.vid,
     teamId: null,
     positionName: "Video Editor",
-    jobLevel: "Middle",
+    seniorityLevel: "mid" as const, positionLevel: "executive" as const,
     employmentType: "employee" as const,
     workMode: "onsite" as const,
     workLocation: "Hà Nội",

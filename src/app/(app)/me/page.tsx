@@ -8,12 +8,15 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
-import { getPersonView } from "@/modules/core-hr/service";
+import { canBrowsePeople } from "@/modules/core-hr/policy";
+import { getPersonView, peopleModuleOpen } from "@/modules/core-hr/service";
+import { PersonCompetencies } from "@/modules/core-hr/ui/competencies";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
 import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
 import { IconTile, MenuList } from "@/modules/core-hr/ui/me-menu";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
+import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
@@ -23,6 +26,8 @@ import { hoursText } from "@/modules/attendance/ui/day-plan";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
 import { countMyOpenRequests, listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
+import { jobTitle } from "@/lib/job-levels";
+import { loadViewer, projectAppointmentsOf } from "@/modules/work/service";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getTheme } from "@/theme/server";
@@ -40,13 +45,16 @@ export default async function MyProfilePage() {
   const today = todayInVietnam();
   const year = Number(today.slice(0, 4));
   const month = today.slice(0, 7);
-  const [person, requests, balances, summary, openRequests, theme] = await Promise.all([
+  const [person, requests, balances, summary, openRequests, theme, appointments, directoryOpen] = await Promise.all([
     getPersonView(user.principal, user.person.id),
     listProfileChanges(viewer, user.person.id),
     getLeaveBalanceFor(user.principal, user.person.id, year),
     getMonthSummaryFor(user.principal, user.person.id, month),
     countMyOpenRequests(user.person.id),
     getTheme(),
+    // The posts held in running projects: the automatic half of the position.
+    loadViewer(user).then((viewer) => projectAppointmentsOf(viewer, user.person.id)),
+    canBrowsePeople(user.principal) ? peopleModuleOpen(user) : false,
   ]);
   if (!person?.personal) notFound();
 
@@ -106,10 +114,15 @@ export default async function MyProfilePage() {
           <Fact label={t("fields.team")}>{person.current?.teamName ? <RecordLink kind="unit" id={person.current.teamId}>{person.current.teamName}</RecordLink> : null}</Fact>
           <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
           <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
-          <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>
+          <Fact label={t("fields.jobTitle")}>{jobTitle(t, person.current)}</Fact>
+          <Fact label={t("fields.position")}>{person.current?.positionName}</Fact>
+          <ProjectPositions appointments={appointments} />
           <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
         </FactSheet>
       </Section>
+
+      {/* Yours to keep up, straight away: what you are good at is not a fact HR vouches for. */}
+      <PersonCompetencies personId={user.person.id} canEdit browsable={directoryOpen} />
 
       <Section title={t("sections.personal")}>
         <FactSheet>

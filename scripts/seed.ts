@@ -1,12 +1,13 @@
 // Seeds editable starter data: placeholder legal entities, the shared departments (SRS D8) and the
 // statutory parameter snapshot (SRS Appendix A), the starter onboarding/offboarding checklists,
-// the public holidays of this year and the next, and the default work schedule.
+// the public holidays of this year and the next, the default work schedule, and the starter
+// catalogue of professional fields and skills.
 // Safe to re-run: existing codes are left untouched. Run with `pnpm db:seed`.
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, competency, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -23,6 +24,7 @@ import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
 import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
 import { CATEGORY_SEED } from "../src/modules/assets/seed-categories";
+import { competencySeedRows } from "../src/modules/core-hr/seed-competencies";
 import { PIPELINE_SEED, pipelineSeedProblems } from "../src/modules/recruit/seed-pipelines";
 import { EMAIL_TEMPLATE_SEED } from "../src/modules/recruit/seed-email-templates";
 import { emailTemplateProblems } from "../src/modules/recruit/engine/email-template";
@@ -226,6 +228,12 @@ async function main() {
   }
   if (newEmailTemplates.length) await db.insert(recruitEmailTemplate).values(newEmailTemplates.map((row) => ({ ...row })));
   console.log(`Seeded ${newEmailTemplates.length} candidate email templates (existing codes left untouched).`);
+
+  // Professional fields and skills (FR-CHR-14): a starter catalogue, so the first profiles are filled
+  // in from a list. Only names the catalogue does not have yet — under any spelling: an entry HR
+  // has corrected, or one somebody typed first, is left as it stands.
+  const newCompetencies = await db.insert(competency).values(competencySeedRows()).onConflictDoNothing().returning({ id: competency.id });
+  console.log(`Seeded ${newCompetencies.length} professional fields and skills (existing names left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));

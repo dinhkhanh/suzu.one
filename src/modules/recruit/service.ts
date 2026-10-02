@@ -5,6 +5,7 @@
 // that returns openings, applications or candidates goes through it. A list that filters in
 // JavaScript is a list that leaks the moment somebody adds a `count`.
 import "server-only";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 import { randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, exists, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -380,7 +381,8 @@ export type OpeningInput = {
   departmentId: string | null;
   teamId: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   employmentType: EmploymentType;
   workMode: WorkMode;
   workLocation: string | null;

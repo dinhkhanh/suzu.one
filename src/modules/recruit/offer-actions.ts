@@ -15,6 +15,7 @@
 //     register. A recruiter runs the pipeline; HR puts somebody on the books.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { ActionError, createAction } from "@/lib/action";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "./enums";
 import { convertToEmployee, decideOfferRequest, findOffer, makeOffer, recordOfferResponse, sendOffer, submitOfferForApproval, updateOffer, withdrawOffer } from "./offers";
@@ -32,7 +33,8 @@ const vnd = z.preprocess(
 
 const offerFields = {
   positionName: z.string().trim().min(1).max(200),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workLocation: optional(z.string().trim().max(200)),
   managerPersonId: optional(z.uuid()),

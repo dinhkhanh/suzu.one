@@ -48,18 +48,21 @@ export async function startChecklist(tx: Executor, event: LifecycleEventRow, pur
 }
 
 /** A placement in words, for the from → to snapshot of a transfer or promotion. Names, not ids: the timeline must still read right after a department is renamed or a manager leaves. */
-export async function describePlacement(tx: Executor, row: { departmentId: string | null; teamId: string | null; positionId: string | null; managerId: string | null; jobLevel: string | null; workforceType: string }) {
+export async function describePlacement(tx: Executor, row: { departmentId: string | null; teamId: string | null; positionId: string | null; managerId: string | null; seniorityLevel: string | null; positionLevel: string | null; workforceType: string }) {
   const [[department], [team], [position], [manager]] = await Promise.all([
     row.departmentId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.departmentId)) : [],
     row.teamId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.teamId)) : [],
     row.positionId ? tx.select({ name: schema.position.name }).from(schema.position).where(eq(schema.position.id, row.positionId)) : [],
     row.managerId ? tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.managerId)) : [],
   ]);
-  return { department: department?.name ?? null, team: team?.name ?? null, position: position?.name ?? null, manager: manager?.name ?? null, jobLevel: row.jobLevel, workforceType: row.workforceType };
+  return { department: department?.name ?? null, team: team?.name ?? null, position: position?.name ?? null, manager: manager?.name ?? null, seniorityLevel: row.seniorityLevel, positionLevel: row.positionLevel, workforceType: row.workforceType };
 }
 
-/** `entity` is only written by a move between entities, the one change where it differs. */
-export type PlacementWords = Awaited<ReturnType<typeof describePlacement>> & { entity?: string | null };
+/**
+ * `entity` is only written by a move between entities, the one change where it differs. An event
+ * written before the job title had its two ladders carries the free-text `jobLevel` instead.
+ */
+export type PlacementWords = Awaited<ReturnType<typeof describePlacement>> & { entity?: string | null; jobLevel?: string | null };
 
 export type LifecycleEventView = Pick<LifecycleEventRow, "id" | "type" | "effectiveDate" | "status" | "reason" | "note" | "approvalRequestId" | "createdAt"> & {
   from: PlacementWords | null;

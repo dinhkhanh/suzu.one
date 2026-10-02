@@ -59,7 +59,7 @@ beforeAll(async () => {
 
   const hire = async (name: string, entityId: string, orgUnitId: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );

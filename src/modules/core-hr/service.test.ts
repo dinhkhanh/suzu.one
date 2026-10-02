@@ -32,7 +32,7 @@ let actorId: string;
 const ids = {} as Record<"media" | "creative" | "video" | "design" | "long" | "tam" | "huy" | "chi" | "ctv" | "future", string>;
 
 function placement(overrides: Partial<HireInput["placement"]> = {}): HireInput["placement"] {
-  return { workforceType: "employee", branchId: null, orgUnitId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null, ...overrides };
+  return { workforceType: "employee", branchId: null, orgUnitId: null, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null, ...overrides };
 }
 
 async function hire(name: string, entityId: string, overrides: Partial<HireInput> & { placement?: HireInput["placement"] } = {}) {
@@ -248,5 +248,30 @@ describe("updatePersonBasics", () => {
     const { after } = await updatePersonBasics(ids.tam, { fullName: "Bùi  Thanh Tâm", workEmail: "bui.thanh.tam@suzu.group", profile: NO_PROFILE });
     expect(after.person).toMatchObject({ fullName: "Bùi Thanh Tâm", searchName: "bui thanh tam" });
     await expect(updatePersonBasics(ids.tam, { fullName: "Bùi Thanh Tâm", workEmail: "ho.gia.huy@suzu.group", profile: NO_PROFILE })).rejects.toThrow("work_email_taken");
+  });
+});
+
+describe("job title and position", () => {
+  it("keeps the title's two levels beside the position, in the directory and through a promotion", async () => {
+    const id = await hire("Le Minh Chau", ids.creative, { placement: placement({ orgUnitId: ids.design, positionName: "Trưởng nhóm thiết kế", seniorityLevel: "mid", positionLevel: "leader" }) });
+
+    // A colleague's directory entry carries the title and the position, and nothing personal.
+    const asColleague = await getPersonView(principal(ids.long), id);
+    expect(asColleague).toMatchObject({ tier: "public_internal", personal: null, current: { positionName: "Trưởng nhóm thiết kế", seniorityLevel: "mid", positionLevel: "leader" } });
+    const { rows } = await listPeople(principal(ids.long), { q: "Chau" });
+    expect(rows).toMatchObject([{ id, positionName: "Trưởng nhóm thiết kế", seniorityLevel: "mid", positionLevel: "leader" }]);
+
+    // A promotion is a new row of history: the old title stays on the row that is over.
+    await changeAssignment(id, { validFrom: today, changeReason: "Thăng chức", placement: placement({ orgUnitId: ids.design, positionName: "Trưởng nhóm thiết kế", seniorityLevel: "senior", positionLevel: "manager" }) }, actorId);
+    const own = await getPersonView(principal(id), id);
+    expect(own?.current).toMatchObject({ seniorityLevel: "senior", positionLevel: "manager" });
+    expect(own?.personal?.history.map((row) => [row.seniorityLevel, row.positionLevel])).toEqual([
+      ["senior", "manager"],
+      ["mid", "leader"],
+    ]);
+
+    // Neither level is required: a person with none has no title, and the database refuses a level off the ladder.
+    expect((await getPersonView(principal(ids.long), ids.tam))?.current).toMatchObject({ seniorityLevel: null, positionLevel: null });
+    await expect(db().update(schema.assignment).set({ seniorityLevel: "principal" as never })).rejects.toThrow();
   });
 });

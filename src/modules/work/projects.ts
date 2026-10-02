@@ -6,9 +6,10 @@ import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
-import { invalidateMemberships } from "./viewer";
+import { invalidateMemberships, projectRolesOf } from "./viewer";
 import type { ProjectRole, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
+import { notePrivateProjectReads } from "./private-reads";
 import { resolveProjectStatus } from "./status-sets";
 import { teamFacts, type TeamRow } from "./teams";
 
@@ -167,6 +168,32 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
     .where(eq(schema.workProjectMember.projectId, projectId))
     .orderBy(asc(schema.workProjectMember.role), asc(schema.person.searchName));
   return rows.map((row) => ({ ...row, role: row.role as ProjectRole }));
+}
+
+export type ProjectAppointment = { projectId: string; projectName: string; role: Extract<ProjectRole, "lead" | "account_manager"> };
+
+/**
+ * The posts a person holds in projects that are still running — its lead (named on the project, or
+ * holding the role) and its account manager — as far as the viewer may open the project: a
+ * person's page shows them beside the position HR typed, and nobody learns of a project there
+ * that /projects would not list for them. Ordered by project name, the lead before the account
+ * manager. No query of its own: the projects come from the directory and the person's roles from
+ * their memberships, both already in the shared cache and dropped by their writers.
+ */
+export async function projectAppointmentsOf(viewer: WorkViewer, personId: string): Promise<ProjectAppointment[]> {
+  const [directory, roles] = await Promise.all([workDirectory(), projectRolesOf(personId)]);
+  const shown = projectsWithTeams(directory).flatMap(({ project, team }) => {
+    if (project.status === "done" || project.status === "archived") return [];
+    const role = roles.get(project.id);
+    const posts: ProjectAppointment["role"][] = [];
+    if (project.leadPersonId === personId || role === "lead") posts.push("lead");
+    if (role === "account_manager") posts.push("account_manager");
+    const facts = projectFacts(project, team);
+    return posts.length && canViewProject(viewer, facts) ? [{ project, facts, posts }] : [];
+  });
+  // A leader who is none of a private project's people has just been told its name.
+  await notePrivateProjectReads(viewer, shown.map((row) => row.facts));
+  return shown.flatMap(({ project, posts }) => posts.map((role) => ({ projectId: project.id, projectName: project.name, role })));
 }
 
 /** The person's role in the project, or null when they are not one of its members. */

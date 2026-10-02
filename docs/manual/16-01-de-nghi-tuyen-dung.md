@@ -22,7 +22,7 @@ Khi đội của bạn cần thêm người, bạn không cần nhắn riêng ch
 2. Điền các ô:
    - **Tên vị trí** và **Số lượng cần tuyển** (từ 1 đến 100) — bắt buộc.
    - **Pháp nhân** và **Phòng ban** — mặc định là pháp nhân và phòng ban của bạn.
-   - **Cấp bậc**, **Hình thức làm việc** (Nhân viên chính thức, Thử việc, Thực tập, Bán thời gian, Cộng tác viên), **Địa điểm làm việc**.
+   - **Cấp bậc**, **Cấp vị trí**, **Hình thức làm việc** (Nhân viên chính thức, Thử việc, Thực tập, Bán thời gian, Cộng tác viên), **Địa điểm làm việc**.
    - **Ngày mong muốn bắt đầu** — không được là ngày đã qua.
    - **Quản lý tuyển dụng** — người sẽ quản lý nhân sự mới. Để trống thì chính bạn là quản lý tuyển dụng.
    - **Lý do tuyển dụng** — bắt buộc. Viết rõ vì sao cần người: thay người nghỉ, dự án mới, khối lượng tăng…
@@ -72,7 +72,7 @@ Cách xử lý chung khi bị trả lại, rút yêu cầu, ủy quyền duyệt
 
 1. Mở đề nghị ở trạng thái **Đã duyệt** (từ thông báo hoặc từ [Nhu cầu tuyển dụng](/recruit/hiring)).
 2. Bấm **Tạo tin tuyển dụng từ đề nghị này**.
-3. Biểu mẫu tin tuyển dụng mở ra với tên vị trí, pháp nhân, phòng ban, cấp bậc, hình thức làm việc, địa điểm, số lượng và ngày mong muốn bắt đầu đã điền sẵn. Nếu bạn có quyền xem lương, ngân sách của đề nghị được chép sang làm dải lương.
+3. Biểu mẫu tin tuyển dụng mở ra với tên vị trí, pháp nhân, phòng ban, cấp bậc, cấp vị trí, hình thức làm việc, địa điểm, số lượng và ngày mong muốn bắt đầu đã điền sẵn. Nếu bạn có quyền xem lương, ngân sách của đề nghị được chép sang làm dải lương.
 4. Hoàn thiện mô tả, yêu cầu, quyền lợi, chọn quy trình tuyển rồi **Lưu**. Xem trang **Tin tuyển dụng & trang tuyển dụng**.
 
 Sau khi lưu, đề nghị chuyển sang **Đã tạo tin tuyển dụng** và có liên kết **Xem tin tuyển dụng**.

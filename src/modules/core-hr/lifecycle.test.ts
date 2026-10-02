@@ -42,7 +42,7 @@ async function hire(name: string, overrides: Partial<HireInput> = {}, managerId:
       employeeCode: null,
       startDate: "2024-01-01",
       seniorityDate: null,
-      placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: "Editor", jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
       ...overrides,
     },
     ids.actor,
@@ -107,7 +107,7 @@ describe("hire", () => {
 
   it("starts no checklist when told not to (bulk import of long-standing staff)", async () => {
     const { person, event } = await hirePerson(
-      { fullName: "Old Hand", workEmail: null, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2020-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: "Old Hand", workEmail: null, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2020-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       ids.actor,
       { onboarding: false },
     );
@@ -119,12 +119,12 @@ describe("hire", () => {
 describe("transfer and promotion", () => {
   it("records an event with a from → to snapshot; a correction records none", async () => {
     const { person } = await hire("Moving Person");
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Senior Editor", jobLevel: "L3", managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Senior Editor", seniorityLevel: "senior" as const, positionLevel: "executive" as const, managerId: ids.manager, dottedManagerId: null, workLocation: null };
     const { event } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: "Good year", placement, kind: "promotion" }, ids.actor);
     expect(event).toMatchObject({ type: "promotion", effectiveDate: "2025-01-01", reason: "Good year" });
-    expect(event!.details).toMatchObject({ from: { position: "Editor" }, to: { position: "Senior Editor", jobLevel: "L3" } });
+    expect(event!.details).toMatchObject({ from: { position: "Editor" }, to: { position: "Senior Editor", seniorityLevel: "senior", positionLevel: "executive" } });
 
-    const { event: none } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: null, placement: { ...placement, jobLevel: "L4" } }, ids.actor);
+    const { event: none } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: null, placement: { ...placement, positionLevel: "leader" as const } }, ids.actor);
     expect(none).toBeNull();
     const timeline = await listLifecycleEvents(principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]), person.id);
     expect(timeline!.map((row) => row.type)).toEqual(["promotion", "hire"]);
@@ -137,7 +137,7 @@ describe("move to another entity", () => {
     const [mediaOnly] = await db().insert(schema.orgUnit).values({ code: "MED-ADS", name: "Media Ads", entityId: ids.media }).returning();
     const [studioUnit] = await db().insert(schema.orgUnit).values({ code: "STU-POST", name: "Post-production", entityId: studio.id }).returning();
     const { person, employment: first } = await hire("Crossing Over", { seniorityDate: "2023-06-01" });
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: studioUnit.id, positionName: "Colourist", jobLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: studioUnit.id, positionName: "Colourist", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
     const startDate = addDays(today, -5);
 
     await expect(transferToEntity(person.id, { entityId: ids.media, employeeCode: null, startDate, reason: null, placement: { ...placement, orgUnitId: ids.video } }, ids.actor)).rejects.toThrow("transfer_same_entity");
@@ -238,7 +238,7 @@ describe("rehire and duplicates", () => {
   it("keeps one person with two employment periods", async () => {
     const { person, employment: first } = await hire("Coming Back", { profile: { ...NO_PROFILE, dateOfBirth: "1995-05-05", phone: "0912 345 678" } });
     await terminateEmployment(person.id, { lastDay: addDays(today, -30), reason: "resignation", note: null }, ids.actor);
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", jobLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
 
     await expect(rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: addDays(today, -40), seniorityDate: null, placement }, ids.actor)).rejects.toThrow("employment_overlap");
     const again = await rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: today, seniorityDate: null, placement }, ids.actor);

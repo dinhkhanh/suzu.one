@@ -31,8 +31,9 @@ Mở [Nhân sự](/people) → **Thêm nhân sự** (hoặc vào thẳng [/peopl
 | --- | --- |
 | **Loại lao động** | Chính thức, Thử việc, Thực tập, Bán thời gian, Cộng tác viên, Cố vấn |
 | **Đơn vị** | Phòng ban hoặc nhóm trong cây tổ chức. Đơn vị phải thuộc pháp nhân đã chọn hoặc là đơn vị dùng chung |
-| **Chức danh** | Gõ tự do; hệ thống gợi ý các chức danh đã có |
-| **Cấp bậc** | Gõ tự do |
+| **Chức vụ** | Gõ tự do; hệ thống gợi ý các chức vụ đã có |
+| **Cấp bậc** | Chọn một: Intern, Junior, Mid-level, Senior |
+| **Cấp vị trí** | Chọn một: Executive, Leader, Manager, Director, C-level. Cấp bậc và cấp vị trí ghép lại thành **Chức danh**, ví dụ "Senior Manager" |
 | **Quản lý trực tiếp** | Người duyệt đơn từ và thấy hồ sơ chi tiết của nhân viên này |
 | **Quản lý gián tiếp** | Báo cáo theo đường chấm (không bắt buộc) |
 | **Chi nhánh** | Chỉ hiện khi pháp nhân có chi nhánh |
@@ -79,7 +80,7 @@ Dùng khi cần đưa nhiều người vào cùng lúc, ví dụ lúc chuyển d
 ### Các bước
 
 1. Trong khung **Tệp nhân viên**, bấm **Tải file mẫu** để lấy tệp có sẵn tên cột và một dòng ví dụ.
-2. Điền mỗi người một dòng. Cột bắt buộc: **Họ và tên**, **Pháp nhân (mã)**, **Ngày vào làm**. Các cột khác: Mã nhân viên, Email công việc, Phòng ban (mã), Nhóm, Chức danh, Cấp bậc, Loại lao động, Ngày tính thâm niên, Quản lý trực tiếp (mã NV hoặc email), Ngày sinh, Giới tính, Tình trạng hôn nhân, Quốc tịch, Số điện thoại, Email cá nhân, Địa chỉ thường trú, Nơi ở hiện tại, Số CCCD, Ngày cấp CCCD, Nơi cấp CCCD, Mã số thuế, Số sổ BHXH, Ngân hàng, Số tài khoản, Chủ tài khoản.
+2. Điền mỗi người một dòng. Cột bắt buộc: **Họ và tên**, **Pháp nhân (mã)**, **Ngày vào làm**. Các cột khác: Mã nhân viên, Email công việc, Phòng ban (mã), Nhóm, Chức vụ, Cấp bậc, Cấp vị trí, Loại lao động, Ngày tính thâm niên, Quản lý trực tiếp (mã NV hoặc email), Ngày sinh, Giới tính, Tình trạng hôn nhân, Quốc tịch, Số điện thoại, Email cá nhân, Địa chỉ thường trú, Nơi ở hiện tại, Số CCCD, Ngày cấp CCCD, Nơi cấp CCCD, Mã số thuế, Số sổ BHXH, Ngân hàng, Số tài khoản, Chủ tài khoản.
 3. Bấm **Chọn file .xlsx hoặc .csv** rồi **Kiểm tra file**.
 4. Hệ thống đọc toàn bộ tệp và báo số dòng, số lỗi. Mỗi lỗi ghi rõ **Dòng …**, cột nào và lý do. Bản xem trước hiện các dòng đầu, với CCCD, mã số thuế, số BHXH và số tài khoản bị che.
 5. Nếu có lỗi: sửa trong tệp rồi kiểm tra lại. Lúc này chưa có gì được ghi vào hệ thống.
@@ -102,10 +103,10 @@ Dùng khi cần đưa nhiều người vào cùng lúc, ví dụ lúc chuyển d
 
 ## Nhập quá trình công tác trước đây
 
-Cùng trang [Nhập danh sách nhân viên](/people/import), phần **Quá trình công tác trước đây** dùng để ghi lại lịch sử của **nhân viên đã có trong hệ thống**: họ từng ở phòng ban nào, chức danh gì, trước khi công ty dùng SuZu One.
+Cùng trang [Nhập danh sách nhân viên](/people/import), phần **Quá trình công tác trước đây** dùng để ghi lại lịch sử của **nhân viên đã có trong hệ thống**: họ từng ở phòng ban nào, chức vụ gì, trước khi công ty dùng SuZu One.
 
 1. Trong khung **Tệp quá trình công tác**, bấm **Tải file mẫu**.
-2. Mỗi dòng là **một giai đoạn đã kết thúc**. Cột bắt buộc: **Mã nhân viên**, **Từ ngày**, **Đến ngày**. Cột khác: Phòng ban (mã), Nhóm, Chức danh, Cấp bậc, Loại lao động, Quản lý trực tiếp (mã NV hoặc email), Ghi chú.
+2. Mỗi dòng là **một giai đoạn đã kết thúc**. Cột bắt buộc: **Mã nhân viên**, **Từ ngày**, **Đến ngày**. Cột khác: Phòng ban (mã), Nhóm, Chức vụ, Cấp bậc, Cấp vị trí, Loại lao động, Quản lý trực tiếp (mã NV hoặc email), Ghi chú.
 3. **Kiểm tra file**, sửa lỗi nếu có, rồi ghi vào hệ thống.
 
 Các dòng của cùng một người được áp dụng **từ cũ đến mới**, giống như thao tác **Thêm quá trình công tác trước đây** trên hồ sơ (xem trang **Vị trí và quá trình công tác**). Khi xong, hệ thống báo bao nhiêu giai đoạn đã ghi và bao nhiêu giai đoạn cũ được điều chỉnh cho vừa.

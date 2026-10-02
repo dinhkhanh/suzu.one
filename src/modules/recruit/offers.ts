@@ -1,4 +1,5 @@
 import "server-only";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 // Offers, and the moment a candidate becomes an employee (FR-REC-08, FR-REC-09).
 //
 // Four things in this file carry the weight.
@@ -121,7 +122,8 @@ async function nextOfferNumber(executor: Executor, entityCode: string, year: num
 export type OfferInput = {
   applicationId: string;
   positionName: string;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   employmentType: EmploymentType;
   workLocation: string | null;
   managerPersonId: string | null;
@@ -170,7 +172,8 @@ export async function makeOffer(input: OfferInput, actorPersonId: string, today:
         entityId: opening.entityId,
         number,
         positionName: input.positionName,
-        jobLevel: input.jobLevel,
+        seniorityLevel: input.seniorityLevel,
+        positionLevel: input.positionLevel,
         departmentId: opening.departmentId,
         teamId: opening.teamId,
         managerPersonId: input.managerPersonId,
@@ -216,7 +219,8 @@ export async function updateOffer(offerId: string, input: OfferInput, today: Iso
       .update(schema.jobOffer)
       .set({
         positionName: input.positionName,
-        jobLevel: input.jobLevel,
+        seniorityLevel: input.seniorityLevel,
+        positionLevel: input.positionLevel,
         employmentType: input.employmentType,
         workLocation: input.workLocation,
         managerPersonId: input.managerPersonId,
@@ -782,7 +786,8 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
           // The offer names a department and, if the job sits deeper, a team: the team is where the person lands.
           orgUnitId: offer.teamId ?? offer.departmentId,
           positionName: offer.positionName,
-          jobLevel: offer.jobLevel,
+          seniorityLevel: offer.seniorityLevel,
+          positionLevel: offer.positionLevel,
           managerId: offer.managerPersonId,
           dottedManagerId: null,
           workLocation: offer.workLocation,

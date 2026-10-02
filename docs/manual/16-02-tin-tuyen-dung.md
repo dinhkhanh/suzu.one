@@ -26,7 +26,7 @@ Các bước:
 
 1. Điền thông tin chung:
    - **Tên vị trí** (bắt buộc) và **Tên vị trí (tiếng Anh)** — tên tiếng Anh hiện trên trang công khai khi người xem chọn tiếng Anh.
-   - **Pháp nhân**, **Phòng ban**, **Chức danh**, **Cấp bậc**.
+   - **Pháp nhân**, **Phòng ban**, **Chức vụ**, **Cấp bậc**, **Cấp vị trí**.
    - **Hình thức làm việc** và **Hình thức địa điểm** (**Tại văn phòng**, **Kết hợp**, **Từ xa**), **Địa điểm làm việc**.
    - **Số lượng cần tuyển** (1–100) và **Ngày mong muốn bắt đầu**.
    - **Quy trình tuyển dụng** — chọn một trong các quy trình có sẵn (xem bên dưới).

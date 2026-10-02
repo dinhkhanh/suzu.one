@@ -32,6 +32,12 @@ async function readMemberships(executor: Executor, personId: string): Promise<Me
 /** After a write to `work_team_member` or `work_project_member` (inside the transaction is fine). */
 export const invalidateMemberships = (...personIds: readonly string[]) => invalidate(...[...new Set(personIds)].map(membershipsKey));
 
+/** Somebody's roles in projects, from the same cached entry their own viewer is built from. */
+export async function projectRolesOf(personId: string): Promise<ReadonlyMap<string, ProjectRole>> {
+  const { projects } = await cached(membershipsKey(personId), TTL.personal, () => readMemberships(db(), personId));
+  return new Map(projects.map((row) => [row.id, row.role as ProjectRole]));
+}
+
 export async function loadViewerWith(executor: Executor, user: ViewerSource): Promise<WorkViewer> {
   const { teams, projects } = executor === db() ? await cached(membershipsKey(user.person.id), TTL.personal, () => readMemberships(executor, user.person.id)) : await readMemberships(executor, user.person.id);
   return {
