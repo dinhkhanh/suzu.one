@@ -35,7 +35,9 @@ export function FeedbackButton() {
         <MessageSquarePlus aria-hidden />
         {t("button.label")}
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* A tap beside the sheet does not close it: half a bug report is not lost to a stray tap.
+          The close button and Escape still do. */}
+      <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader className="pr-8">
             <DialogTitle>{t("dialog.title")}</DialogTitle>
