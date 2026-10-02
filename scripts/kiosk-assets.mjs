@@ -1,7 +1,9 @@
 // The face kiosk's runtimes, served by the app itself (src/modules/attendance/ui/kiosk/face-engine.ts):
-// MediaPipe's and ONNX Runtime's WebAssembly files, copied from node_modules into public/ on every
-// install, so a kiosk never depends on a third-party CDN and the files always match the installed
-// packages. The models themselves are committed beside them (public/kiosk/assets/models).
+// MediaPipe's and ONNX Runtime's WebAssembly files, copied from node_modules into public/ before
+// every build and dev server (and after install), so a kiosk never depends on a third-party CDN and
+// the files always match the installed packages. Not on install alone: a build that restores
+// node_modules from the platform's cache skips install scripts, and shipped without them once.
+// The models themselves are committed beside them (public/kiosk/assets/models).
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -15,8 +17,8 @@ const files = {
 for (const [folder, [from, names]] of Object.entries(files)) {
   const source = join(root, "node_modules", from);
   if (!existsSync(source)) {
-    console.warn(`kiosk-assets: ${from} is not installed; the face kiosk will not load.`);
-    continue;
+    console.error(`kiosk-assets: ${from} is not installed; the face kiosk cannot load without it.`);
+    process.exit(1);
   }
   mkdirSync(join(out, folder), { recursive: true });
   for (const name of names) copyFileSync(join(source, name), join(out, folder, name));
