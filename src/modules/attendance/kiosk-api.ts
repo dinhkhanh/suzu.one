@@ -3,8 +3,11 @@
 // cannot serve these — there is no user — so the steps are written out in the same order:
 // parse → authenticate → run → audit.
 //
-//   POST /api/kiosk/identify {"embedding":[…128]}              → {"person":{"personId","name","recentAt"}|null}
-//   POST /api/kiosk/punch    {"personId","embedding":[…128]}   → {"punchId","at","name","repeat"}
+//   POST /api/kiosk/identify {"embedding":[…128]}              → {"person":{"personId","name","next","recentAt","recentDirection"}|null}
+//   POST /api/kiosk/punch    {"personId","embedding":[…128]}   → {"punchId","at","name","repeat","direction"}
+//
+// `next` and `direction` say whether the punch arrives or leaves ("in" / "out"), from the person's
+// own punches of every source (`nextKioskDirection`), so the screen greets or says goodbye.
 //   POST /api/kiosk/undo     {"punchId"}                       → {"cancelled":true|false}
 //   GET  /api/kiosk/qr                                          → {"url","qr":{"path","size"}} — also the heartbeat
 //
@@ -15,7 +18,7 @@ import { reportError } from "@/lib/observability/report";
 import { qrPath } from "@/modules/assets/service";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { clientIpFrom } from "@/modules/platform/auth/client-ip";
-import { commitKioskPunch, recentKioskPunches, withdrawKioskPunch } from "./devices";
+import { commitKioskPunch, nextKioskDirection, recentKioskPunches, withdrawKioskPunch } from "./devices";
 import { EMBEDDING_SIZE } from "./engine/face";
 import { recogniseFace } from "./faces";
 import { type Kiosk, kioskOfToken, kioskQrUrl, kioskTokenOf } from "./kiosk";
@@ -63,8 +66,9 @@ export function identify(request: Request): Promise<Response> {
     if (!body) return json({ error: "invalid" }, 400);
     const found = await recogniseFace(body.embedding, kiosk.entityIds);
     if (!found) return json({ person: null });
-    const recent = await recentKioskPunches(kiosk.device.id, [found.personId], new Date(Date.now() - KIOSK_COOLDOWN_MS));
-    return json({ person: { personId: found.personId, name: found.name, recentAt: recent.get(found.personId)?.toISOString() ?? null } });
+    const [recent, next] = await Promise.all([recentKioskPunches(kiosk.device.id, [found.personId], new Date(Date.now() - KIOSK_COOLDOWN_MS)), nextKioskDirection(found.personId)]);
+    const last = recent.get(found.personId);
+    return json({ person: { personId: found.personId, name: found.name, next, recentAt: last?.at.toISOString() ?? null, recentDirection: last?.direction ?? null } });
   });
 }
 
@@ -76,10 +80,10 @@ export function punch(request: Request): Promise<Response> {
     const found = await recogniseFace(body.embedding, kiosk.entityIds);
     if (!found || found.personId !== body.personId) return json({ error: "not_recognised" }, 409);
     const recent = (await recentKioskPunches(kiosk.device.id, [found.personId], new Date(Date.now() - KIOSK_COOLDOWN_MS))).get(found.personId);
-    if (recent) return json({ punchId: null, at: recent.toISOString(), name: found.name, repeat: true });
+    if (recent) return json({ punchId: null, at: recent.at.toISOString(), name: found.name, repeat: true, direction: recent.direction });
     const made = await commitKioskPunch(kiosk.device.id, { personId: found.personId, entityId: found.entityId }, "face");
-    await audit(kiosk, request, "attendance.kiosk.punch", `${kiosk.device.name}: ${found.name} checked in by face`, { personId: found.personId, punchId: made.punchId, score: Math.round(found.score * 1000) / 1000, kioskSessionId: kiosk.session.id });
-    return json({ punchId: made.punchId, at: made.at.toISOString(), name: found.name, repeat: false });
+    await audit(kiosk, request, "attendance.kiosk.punch", `${kiosk.device.name}: ${found.name} checked ${made.direction} by face`, { personId: found.personId, punchId: made.punchId, direction: made.direction, score: Math.round(found.score * 1000) / 1000, kioskSessionId: kiosk.session.id });
+    return json({ punchId: made.punchId, at: made.at.toISOString(), name: found.name, repeat: false, direction: made.direction });
   });
 }
 

@@ -10,7 +10,8 @@ import { KioskScreen } from "@/modules/attendance/ui/kiosk/kiosk-screen";
  * holds is the kiosk's own cookie, good for one clock and nothing else. Without an open kiosk
  * behind it the page says how to open one, and shows nothing of the company.
  */
-export const metadata: Metadata = { title: { absolute: "SuZu check-in" }, robots: { index: false, follow: false }, manifest: null };
+// Its own manifest and the home-screen flags, so a tablet that adds it to the home screen opens it with no bars.
+export const metadata: Metadata = { title: { absolute: "SuZu check-in" }, robots: { index: false, follow: false }, manifest: "/kiosk/manifest.webmanifest", appleWebApp: { capable: true, title: "SuZu check-in", statusBarStyle: "black-translucent" } };
 
 export default async function KioskPage() {
   const kiosk = await kioskOfToken((await cookies()).get(KIOSK_COOKIE)?.value);

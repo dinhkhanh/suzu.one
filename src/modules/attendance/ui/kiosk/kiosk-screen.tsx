@@ -3,7 +3,7 @@
 // the face's 128 numbers go to /api/kiosk/* to be named and punched, and the picture itself goes
 // nowhere. What the screen shows is `KioskMachine`'s answer, frame by frame. The QR code in the
 // corner is for whoever the kiosk does not know: they scan it with their own phone and check in there.
-import { ArrowLeft, ArrowRight, Settings2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Maximize2, Settings2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "cn";
@@ -108,7 +108,8 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
         return;
       }
       const element = video.current;
-      if (stopped || !element) return;
+      // Unmounted while the camera was starting: let it go, or it stays on.
+      if (stopped || !element) return stream.getTracks().forEach((track) => track.stop());
       element.srcObject = stream;
       await element.play().catch(() => undefined);
       setPhase("ready");
@@ -243,6 +244,8 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
         )}
       </section>
 
+      <FullscreenButton />
+
       <footer className="absolute inset-x-0 bottom-1 flex items-center justify-center gap-2 text-xs text-white/50">
         <span>{deviceName}</span>
         <a href="/attendance/kiosk" className="inline-flex items-center gap-1 rounded px-1.5 py-1 hover:text-white/80" aria-label={t("manage")}>
@@ -253,6 +256,79 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   );
 }
 
+const FULLSCREEN_KEY = "suzu.kiosk.fullscreen";
+type FullscreenDocument = Document & { webkitFullscreenEnabled?: boolean; webkitFullscreenElement?: Element | null };
+type FullscreenElement = HTMLElement & { webkitRequestFullscreen?: () => void };
+
+const fullscreenNow = () => !!(document.fullscreenElement ?? (document as FullscreenDocument).webkitFullscreenElement) || matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+
+/**
+ * Full screen, without the browser's bars. Browsers allow it only on a tap, and drop it on a reload,
+ * so the choice is remembered on the tablet and the next tap anywhere takes the kiosk back to full
+ * screen. A browser without the API (an iPhone's Safari) is told how to add the kiosk to the home
+ * screen instead, which opens it without bars (the kiosk's web manifest asks for that).
+ */
+function FullscreenButton() {
+  const t = useTranslations("kiosk");
+  const [full, setFull] = useState(true);
+  const [hint, setHint] = useState(false);
+
+  const enter = useCallback(() => {
+    const element = document.documentElement as FullscreenElement;
+    try {
+      localStorage.setItem(FULLSCREEN_KEY, "1");
+    } catch {
+      // Private mode: the choice is not remembered; the button stays.
+    }
+    if (element.requestFullscreen) void element.requestFullscreen({ navigationUI: "hide" }).catch(() => setHint(true));
+    else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
+    else setHint(true);
+  }, []);
+
+  useEffect(() => {
+    const update = () => setFull(fullscreenNow());
+    const reenter = () => {
+      let wanted = false;
+      try {
+        wanted = localStorage.getItem(FULLSCREEN_KEY) === "1";
+      } catch {
+        wanted = false;
+      }
+      if (wanted && !fullscreenNow() && (document.fullscreenEnabled || (document as FullscreenDocument).webkitFullscreenEnabled)) enter();
+    };
+    const first = setTimeout(update, 0);
+    document.addEventListener("fullscreenchange", update);
+    document.addEventListener("webkitfullscreenchange", update);
+    document.addEventListener("pointerdown", reenter);
+    return () => {
+      clearTimeout(first);
+      document.removeEventListener("fullscreenchange", update);
+      document.removeEventListener("webkitfullscreenchange", update);
+      document.removeEventListener("pointerdown", reenter);
+    };
+  }, [enter]);
+
+  if (full && !hint) return null;
+  return (
+    <div className="absolute top-28 left-4 z-10 flex max-w-[min(70vw,26rem)] flex-col items-start gap-2 sm:top-40 sm:left-6">
+      {hint ? (
+        <div className="rounded-[14px] bg-black/80 p-3 text-sm text-white backdrop-blur">
+          <p>{t("fullscreenHint")}</p>
+          <button type="button" className="mt-2 text-white/70 underline underline-offset-4" onClick={() => setHint(false)}>
+            {t("close")}
+          </button>
+        </div>
+      ) : null}
+      {full ? null : (
+        <Button variant="outline" size="lg" className="border-white/40 bg-black/50 text-white backdrop-blur hover:bg-white/10 [&_svg]:text-white" onClick={enter}>
+          <Maximize2 />
+          {t("fullscreen")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return <main className="fixed inset-0 grid place-items-center bg-neutral-950 p-6 text-white">{children}</main>;
 }
@@ -260,11 +336,11 @@ function Shell({ children }: { children: React.ReactNode }) {
 function words(view: KioskView, t: ReturnType<typeof useTranslations<"kiosk">>, time: (iso: string) => string): [string, string | null] {
   switch (view.state) {
     case "challenge":
-      return [t("challenge", { name: view.name, direction: view.direction }), null];
+      return [t("challenge", { name: view.name, direction: view.direction, way: view.way }), null];
     case "punching":
-      return [t("punching", { name: view.name }), null];
+      return [t("punching", { name: view.name, way: view.way }), null];
     case "done":
-      return view.repeat ? [view.name, t("repeat", { time: time(view.at) })] : [t("done", { name: view.name }), t("doneAt", { time: time(view.at) })];
+      return view.repeat ? [view.name, t("repeat", { time: time(view.at), way: view.way })] : [t("done", { name: view.name, way: view.way }), t("doneAt", { time: time(view.at), way: view.way })];
     case "failed":
       return [t(view.reason === "cancelled" ? "cancelled.title" : "failed.title"), t(`failed.${view.reason}`)];
     default:

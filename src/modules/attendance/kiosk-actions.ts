@@ -132,9 +132,9 @@ const qrPunchPipeline = createAction({
     const person = user.person;
     if (person.status !== "active" || !person.primaryEntityId || !kiosk.entityIds.includes(person.primaryEntityId)) throw new ActionError("kiosk_not_yours");
     const recent = (await recentKioskPunches(kiosk.device.id, [person.id], new Date(Date.now() - KIOSK_COOLDOWN_MS))).get(person.id);
-    if (recent) return { data: { at: recent.toISOString(), repeat: true, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR check-in repeated within the minute; nothing new` } };
+    if (recent) return { data: { at: recent.at.toISOString(), repeat: true, direction: recent.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
     const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr");
-    return { data: { at: made.at.toISOString(), repeat: false, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: checked in with the kiosk's QR code`, after: { punchId: made.punchId, kioskSessionId: kiosk.session.id } } };
+    return { data: { at: made.at.toISOString(), repeat: false, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: checked ${made.direction} with the kiosk's QR code`, after: { punchId: made.punchId, direction: made.direction, kioskSessionId: kiosk.session.id } } };
   },
 });
 export async function kioskQrPunchAction(input: unknown) {

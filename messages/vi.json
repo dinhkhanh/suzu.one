@@ -3621,11 +3621,13 @@
         "hint": "Chụp 3–5 ảnh: nhìn thẳng, rồi hơi quay sang hai bên, trong ánh sáng ở cửa ra vào. Ảnh chỉ nằm trên máy này; SuZu One chỉ nhận các con số.",
         "noCamera": "Không mở được camera. Bạn vẫn có thể tải ảnh lên.",
         "loading": "Đang tải bộ nhận diện…",
-        "capture": "Chụp",
+        "capture": "Chụp 1 ảnh",
+        "burst": "Chụp 5 ảnh liên tục",
+        "bursting": "Đang chụp {current}/{total} — quay đầu thật nhẹ sang hai bên",
         "upload": "Tải ảnh lên",
         "photos": "{count} ảnh",
         "removePhoto": "Bỏ ảnh này",
-        "count": "{count, plural, =0 {Chưa có ảnh nào} other {Đã có # ảnh}}",
+        "count": "{count, plural, =0 {Chưa có ảnh nào. Nên có 3–5 ảnh, lưu tất cả một lần.} other {Đã có # ảnh. Chụp thêm nếu cần, rồi lưu tất cả một lần.}}",
         "consent": "Tôi đã nhận bản đồng ý có chữ ký của người này cho việc dùng khuôn mặt để chấm công.",
         "consentAgain": "Ghi nhận bản đồng ý mới có chữ ký (không bắt buộc).",
         "cancel": "Huỷ",
@@ -3643,9 +3645,9 @@
       "scan": {
         "title": "Chấm công tại máy",
         "at": "Máy chấm công: {device}",
-        "checkIn": "Chấm công ngay",
-        "done": "Đã chấm công lúc {time}.",
-        "repeat": "Bạn đã chấm công lúc {time}."
+        "checkIn": "{way, select, out {Ra ca ngay} other {Vào ca ngay}}",
+        "done": "{way, select, out {Đã ra ca lúc {time}. Hẹn gặp lại!} other {Đã vào ca lúc {time}.}}",
+        "repeat": "{way, select, out {Bạn đã ra ca lúc {time}.} other {Bạn đã vào ca lúc {time}.}}"
       },
       "errors": {
         "generic": "Có lỗi, thử lại nhé.",
@@ -11828,6 +11830,9 @@
     "offline": "Mất kết nối với SuZu One. Đang thử lại…",
     "notMe": "Không phải tôi",
     "manage": "Quản lý máy chấm công",
+    "fullscreen": "Toàn màn hình",
+    "fullscreenHint": "Trình duyệt này không cho toàn màn hình. Trên iPhone/iPad: bấm Chia sẻ → Thêm vào Màn hình chính, mở máy chấm công từ biểu tượng đó, rồi nhờ HR mở lại máy chấm công ở đó.",
+    "close": "Đóng",
     "closed": {
       "title": "Máy chấm công đã đóng",
       "body": "HR đã đóng máy chấm công trên máy tính bảng này. Để mở lại, HR đăng nhập và chọn Chấm công → Máy chấm công khuôn mặt.",
@@ -11861,11 +11866,11 @@
       "title": "Mỗi lần một người thôi nhé",
       "sub": "Chỉ một khuôn mặt trong khung"
     },
-    "challenge": "{name}, quay đầu sang {direction, select, left {trái} other {phải}}",
-    "punching": "Đang chấm công cho {name}…",
-    "done": "Xin chào, {name}",
-    "doneAt": "Đã chấm công lúc {time}",
-    "repeat": "Bạn đã chấm công lúc {time}",
+    "challenge": "{name}, quay đầu sang {direction, select, left {trái} other {phải}} để {way, select, out {ra ca} other {vào ca}}",
+    "punching": "Đang {way, select, out {ra ca} other {vào ca}} cho {name}…",
+    "done": "{way, select, out {Tạm biệt, {name}} other {Xin chào, {name}}}",
+    "doneAt": "{way, select, out {Đã ra ca lúc {time}} other {Đã vào ca lúc {time}}}",
+    "repeat": "{way, select, out {Bạn đã ra ca lúc {time}} other {Bạn đã vào ca lúc {time}}}",
     "failed": {
       "title": "Chưa xong",
       "timeout": "Hết thời gian, thử lại nhé",

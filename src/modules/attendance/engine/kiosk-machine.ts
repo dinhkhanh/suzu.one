@@ -7,8 +7,9 @@
 // The screen drives it. Each camera frame goes to `observe`, which says what it needs next: the
 // face's numbers sent to the server to be named (`identify`), or compared with the face that was
 // named (`track`). The answers come back through `identified`, `tracked` and `punched`. Done and
-// failed stay on screen for a moment, whatever the camera sees. Someone who already checked in a
-// minute ago sees their earlier time again and makes no new punch.
+// failed stay on screen for a moment, whatever the camera sees. Someone who already punched a
+// minute ago sees their earlier time again and makes no new punch. Every view that names a person
+// says which way they are going (`way`): arriving is greeted, leaving is said goodbye to.
 import { challengeVerdict, MATCH, MIN_TURN, type TurnDirection } from "./face";
 
 export type KioskSettings = {
@@ -29,14 +30,16 @@ export const KIOSK_SETTINGS: KioskSettings = { keepThreshold: MATCH.keepThreshol
 /** One frame's face: how wide (fraction of the frame), where the nose sits (`nosePosition`), and how many faces there are. */
 export type FaceObservation = { width: number; position: number | null; count: number };
 
-export type Named = { personId: string; name: string; recentAt: string | null };
-export type Punched = { punchId: string; at: string; name: string; repeat: boolean };
+export type Way = "in" | "out";
+/** Who the server named, whether their next punch arrives or leaves, and any punch of theirs a moment ago. */
+export type Named = { personId: string; name: string; next: Way; recentAt: string | null; recentDirection: Way | null };
+export type Punched = { punchId: string | null; at: string; name: string; repeat: boolean; direction: Way };
 
 export type KioskView =
   | { state: "idle" | "closer" | "looking" | "unknown" | "crowd" }
-  | { state: "challenge"; name: string; direction: TurnDirection; secondsLeft: number }
-  | { state: "punching"; name: string }
-  | { state: "done"; name: string; at: string; punchId: string | null; repeat: boolean }
+  | { state: "challenge"; name: string; direction: TurnDirection; way: Way; secondsLeft: number }
+  | { state: "punching"; name: string; way: Way }
+  | { state: "done"; name: string; at: string; punchId: string | null; repeat: boolean; way: Way }
   | { state: "failed"; reason: "timeout" | "wrong_way" | "changed" | "error" | "cancelled" };
 
 export type Need = "identify" | "track" | null;
@@ -79,7 +82,7 @@ export class KioskMachine {
 
   private challengeView(now: number): KioskView {
     if (this.mode.kind !== "challenge") return this.last;
-    return { state: "challenge", name: this.mode.person.name, direction: this.mode.direction, secondsLeft: Math.max(0, Math.ceil((this.mode.deadline - now) / 1000)) };
+    return { state: "challenge", name: this.mode.person.name, direction: this.mode.direction, way: this.mode.person.next, secondsLeft: Math.max(0, Math.ceil((this.mode.deadline - now) / 1000)) };
   }
 
   /** One camera frame. `now` is a monotonic clock in milliseconds. */
@@ -125,7 +128,7 @@ export class KioskMachine {
     const frames = named.personId === this.mode.candidate ? this.mode.frames + 1 : 1;
     this.mode = { kind: "scanning", candidate: named.personId, frames, unknownSince: null };
     if (frames < this.settings.confirmFrames) return this.show({ state: "looking" }).view;
-    if (named.recentAt) return this.hold({ state: "done", name: named.name, at: named.recentAt, punchId: null, repeat: true }, this.settings.doneMs, now).view;
+    if (named.recentAt) return this.hold({ state: "done", name: named.name, at: named.recentAt, punchId: null, repeat: true, way: named.recentDirection ?? named.next }, this.settings.doneMs, now).view;
     if (position === null) return this.show({ state: "looking" }).view;
     const direction: TurnDirection = this.random() < 0.5 ? "left" : "right";
     this.mode = { kind: "challenge", person: named, direction, baseline: position, deadline: now + this.settings.challengeMs };
@@ -143,14 +146,14 @@ export class KioskMachine {
     if (verdict === "wait") return { view: this.show(this.challengeView(now)).view, punch: null };
     const person = this.mode.person;
     this.mode = { kind: "punching", person };
-    return { view: this.show({ state: "punching", name: person.name }).view, punch: person };
+    return { view: this.show({ state: "punching", name: person.name, way: person.next }).view, punch: person };
   }
 
   /** The server's answer to the punch; null when it failed. */
   punched(result: Punched | null, now: number): KioskView {
     if (this.mode.kind !== "punching") return this.last;
     if (!result) return this.hold({ state: "failed", reason: "error" }, this.settings.failedMs, now).view;
-    return this.hold({ state: "done", name: result.name, at: result.at, punchId: result.repeat ? null : result.punchId, repeat: result.repeat }, this.settings.doneMs, now).view;
+    return this.hold({ state: "done", name: result.name, at: result.at, punchId: result.repeat ? null : result.punchId, repeat: result.repeat, way: result.direction }, this.settings.doneMs, now).view;
   }
 
   /** "Not me": the punch was taken back. */

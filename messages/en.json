@@ -3621,11 +3621,13 @@
         "hint": "Take 3–5 photos: looking straight, then turned slightly each way, in the light at the door. The photos stay on this device; SuZu One receives only the numbers.",
         "noCamera": "Could not open the camera. You can still upload photos.",
         "loading": "Loading face recognition…",
-        "capture": "Take photo",
+        "capture": "Take one photo",
+        "burst": "Take 5 in a row",
+        "bursting": "Taking {current} of {total} — turn your head slightly each way",
         "upload": "Upload photos",
         "photos": "{count, plural, one {# photo} other {# photos}}",
         "removePhoto": "Remove this photo",
-        "count": "{count, plural, =0 {No photos yet} one {# photo} other {# photos}}",
+        "count": "{count, plural, =0 {No photos yet. 3–5 is best, all saved at once.} one {# photo. Take more if you like, then save them all at once.} other {# photos. Take more if you like, then save them all at once.}}",
         "consent": "I have this person's signed consent to use their face for check-in.",
         "consentAgain": "Record a newly signed consent form (optional).",
         "cancel": "Cancel",
@@ -3643,9 +3645,9 @@
       "scan": {
         "title": "Check in at the kiosk",
         "at": "Kiosk: {device}",
-        "checkIn": "Check in now",
-        "done": "Checked in at {time}.",
-        "repeat": "You checked in at {time}."
+        "checkIn": "{way, select, out {Check out now} other {Check in now}}",
+        "done": "{way, select, out {Checked out at {time}. See you!} other {Checked in at {time}.}}",
+        "repeat": "{way, select, out {You checked out at {time}.} other {You checked in at {time}.}}"
       },
       "errors": {
         "generic": "Something went wrong, try again.",
@@ -11828,6 +11830,9 @@
     "offline": "Lost the connection to SuZu One. Retrying…",
     "notMe": "Not me",
     "manage": "Manage the kiosk",
+    "fullscreen": "Full screen",
+    "fullscreenHint": "This browser cannot go full screen. On an iPhone or iPad: tap Share → Add to Home Screen, open the kiosk from that icon, and have HR open the kiosk there once.",
+    "close": "Close",
     "closed": {
       "title": "This kiosk is closed",
       "body": "HR closed the kiosk on this tablet. To open it again, HR signs in and goes to Attendance → Face kiosk.",
@@ -11861,11 +11866,11 @@
       "title": "One person at a time, please",
       "sub": "Only one face inside the frame"
     },
-    "challenge": "{name}, turn your head to the {direction, select, left {left} other {right}}",
-    "punching": "Checking in {name}…",
-    "done": "Hello, {name}",
-    "doneAt": "Checked in at {time}",
-    "repeat": "You checked in at {time}",
+    "challenge": "{name}, turn your head to the {direction, select, left {left} other {right}} to {way, select, out {check out} other {check in}}",
+    "punching": "{way, select, out {Checking out} other {Checking in}} {name}…",
+    "done": "{way, select, out {Goodbye, {name}} other {Hello, {name}}}",
+    "doneAt": "{way, select, out {Checked out at {time}} other {Checked in at {time}}}",
+    "repeat": "{way, select, out {You checked out at {time}} other {You checked in at {time}}}",
     "failed": {
       "title": "Not quite",
       "timeout": "Time's up, try again",

@@ -1,7 +1,7 @@
 "use client";
 // The kiosk page's controls (FR-ATT-06): opening a kiosk on this tablet, closing one, enrolling a
 // face, deleting one, and checking in with a kiosk's QR code from one's own phone.
-import { Camera, ImageUp, ScanFace, Trash2, X } from "lucide-react";
+import { Camera, ImageUp, Images, ScanFace, Trash2, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -94,6 +94,8 @@ export function CloseKioskButton({ sessionId }: { sessionId: string }) {
 // ── Faces ───────────────────────────────────────────────────────────────────────────────────
 
 type Shot = { id: number; preview: string; embedding: number[] };
+/** Photos the "in a row" button takes. */
+const BURST = 5;
 type Problem = "no_face" | "several_faces" | "face_small" | "not_an_image";
 
 /** A still picture's face, as the kiosk will see it. The picture stays in this browser; only the numbers are sent. */
@@ -147,6 +149,7 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [bursting, setBursting] = useState(0);
   const [pending, start] = useTransition();
   const counter = useRef(0);
 
@@ -160,7 +163,8 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
         setReady(true);
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-          if (stopped || !video.current) return;
+          // Closed while the camera was starting: let it go, or it stays on.
+          if (stopped || !video.current) return stream.getTracks().forEach((track) => track.stop());
           video.current.srcObject = stream;
           await video.current.play().catch(() => undefined);
         } catch {
@@ -178,41 +182,78 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
 
   const add = (embedding: number[], preview: string) => setShots((current) => [...current, { id: counter.current++, preview, embedding }].slice(-10));
 
-  const capture = async () => {
+  /** One frame from the camera, read like an uploaded photo; null when the camera is not ready. */
+  const grab = async (): Promise<Problem | null> => {
     const element = video.current;
-    if (!engine.current || !element || element.readyState < 2) return;
-    setBusy(true);
-    setProblem(null);
+    if (!engine.current || !element || element.readyState < 2) return null;
     const canvas = document.createElement("canvas");
     canvas.width = element.videoWidth;
     canvas.height = element.videoHeight;
     canvas.getContext("2d")!.drawImage(element, 0, 0);
-    const read = await readFace(engine.current, canvas, canvas.width);
-    if ("problem" in read) setProblem(read.problem);
-    else add(read.embedding, thumbnail(canvas, canvas.width, canvas.height));
-    setBusy(false);
+    try {
+      const read = await readFace(engine.current, canvas, canvas.width);
+      if ("problem" in read) return read.problem;
+      add(read.embedding, thumbnail(canvas, canvas.width, canvas.height));
+      return null;
+    } catch {
+      return "no_face";
+    }
   };
 
-  const upload = async (files: FileList | null) => {
+  const capture = async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      setProblem(await grab());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Several photos in a row while the person turns their head a little: the angles the door will see.
+  const burst = async () => {
+    setBusy(true);
+    setProblem(null);
+    let last: Problem | null = null;
+    try {
+      for (let index = 1; index <= BURST; index++) {
+        setBursting(index);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        last = (await grab()) ?? last;
+      }
+    } finally {
+      setBursting(0);
+      setBusy(false);
+      setProblem(last);
+    }
+  };
+
+  const upload = async (input: HTMLInputElement) => {
+    const files = input.files;
     if (!files || !engine.current) return;
     setBusy(true);
     setProblem(null);
-    for (const file of Array.from(files).slice(0, 10)) {
-      const url = URL.createObjectURL(file);
-      try {
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        const read = await readFace(engine.current, image, image.naturalWidth);
-        if ("problem" in read) setProblem(read.problem);
-        else add(read.embedding, thumbnail(image, image.naturalWidth, image.naturalHeight));
-      } catch {
-        setProblem("not_an_image");
-      } finally {
-        URL.revokeObjectURL(url);
+    try {
+      for (const file of Array.from(files).slice(0, 10)) {
+        const url = URL.createObjectURL(file);
+        try {
+          const image = new Image();
+          image.src = url;
+          await image.decode();
+          const read = await readFace(engine.current, image, image.naturalWidth);
+          if ("problem" in read) setProblem(read.problem);
+          else add(read.embedding, thumbnail(image, image.naturalWidth, image.naturalHeight));
+        } catch {
+          setProblem("not_an_image");
+        } finally {
+          URL.revokeObjectURL(url);
+        }
       }
+    } finally {
+      // The same photo may be picked again after it was removed.
+      input.value = "";
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const save = () =>
@@ -234,8 +275,13 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
       <div className="relative aspect-[4/3] overflow-hidden rounded-[14px] bg-neutral-900">
         <video ref={video} autoPlay playsInline muted className="size-full -scale-x-100 object-cover" />
         {!ready || cameraFailed ? <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-white/80">{cameraFailed ? t("noCamera") : t("loading")}</p> : null}
+        {bursting ? <p className="absolute inset-x-3 bottom-3 rounded-[10px] bg-black/65 px-3 py-2 text-center text-sm text-white">{t("bursting", { current: bursting, total: BURST })}</p> : null}
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={!ready || cameraFailed || busy} onClick={() => void burst()}>
+          <Images />
+          {t("burst")}
+        </Button>
         <Button type="button" variant="outline" disabled={!ready || cameraFailed || busy} onClick={() => void capture()}>
           <Camera />
           {t("capture")}
@@ -244,7 +290,7 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
           <ImageUp />
           {t("upload")}
         </Button>
-        <Input id={`face-upload-${personId}`} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} onChange={(event) => void upload(event.currentTarget.files)} />
+        <Input id={`face-upload-${personId}`} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} onChange={(event) => void upload(event.currentTarget)} />
       </div>
       {problem ? <Alert variant="warning">{t(`problems.${problem}`)}</Alert> : null}
       {shots.length ? (
@@ -320,15 +366,15 @@ export function DeleteFacesButton({ personId, personName }: { personId: string; 
 
 // ── Checking in with the kiosk's QR code ────────────────────────────────────────────────────
 
-export function QrCheckIn({ token }: { token: string }) {
+export function QrCheckIn({ token, way }: { token: string; way: "in" | "out" }) {
   const t = useTranslations("attendance.kiosk.scan");
   const errors = useTranslations("attendance.kiosk.errors");
   const format = useFormatter();
   const [pending, start] = useTransition();
-  const [done, setDone] = useState<{ at: string; repeat: boolean } | null>(null);
+  const [done, setDone] = useState<{ at: string; repeat: boolean; way: "in" | "out" } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const time = (iso: string) => format.dateTime(new Date(iso), { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
-  if (done) return <Alert variant="success">{t(done.repeat ? "repeat" : "done", { time: time(done.at) })}</Alert>;
+  if (done) return <Alert variant="success">{t(done.repeat ? "repeat" : "done", { time: time(done.at), way: done.way })}</Alert>;
   return (
     <div className="flex flex-col gap-3">
       {error ? <Alert variant="destructive">{errors(error as never)}</Alert> : null}
@@ -341,11 +387,11 @@ export function QrCheckIn({ token }: { token: string }) {
           start(async () => {
             const result = await kioskQrPunchAction({ token });
             if (!result.ok) return setError(errorKey(result));
-            setDone({ at: result.data.at, repeat: result.data.repeat });
+            setDone({ at: result.data.at, repeat: result.data.repeat, way: result.data.direction });
           })
         }
       >
-        {t("checkIn")}
+        {t("checkIn", { way })}
       </Button>
     </div>
   );

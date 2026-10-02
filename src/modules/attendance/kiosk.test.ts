@@ -20,7 +20,7 @@ vi.mock("@/lib/action", () => ({
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { commitKioskPunch, recentKioskPunches, saveDevice, saveProfile, withdrawKioskPunch } from "./devices";
+import { commitKioskPunch, nextKioskDirection, recentKioskPunches, saveDevice, saveProfile, withdrawKioskPunch } from "./devices";
 import { PROFILE_SEED } from "./engine/device-log";
 import { EMBEDDING_SIZE, normalise } from "./engine/face";
 import { qrWindow } from "./engine/kiosk-qr";
@@ -141,6 +141,7 @@ describe("a kiosk on the wall", () => {
     const since = new Date(Date.now() - 60_000);
     const made = await commitKioskPunch(ids.device, { personId: ids.huy, entityId: ids.media }, "face");
     const [row] = await db().select().from(schema.punch).where(eq(schema.punch.id, made.punchId));
+    expect(made.direction).toBe("in");
     expect(row).toMatchObject({ personId: ids.huy, source: "device", deviceId: ids.device, deviceUserId: `face:${ids.huy}`, direction: "in" });
     expect((await recentKioskPunches(ids.device, [ids.huy, ids.nhu], since)).has(ids.huy)).toBe(true);
 
@@ -154,5 +155,22 @@ describe("a kiosk on the wall", () => {
     // A QR check-in is the person's own, and "Not me" cannot take it back.
     const scanned = await commitKioskPunch(ids.device, { personId: ids.nhu, entityId: ids.media }, "qr");
     expect(await withdrawKioskPunch(ids.device, scanned.punchId)).toBeNull();
+  });
+
+  it("leaves after arriving by any route, and arrives again once the stay is over", async () => {
+    // Nhu checked in on her phone this morning: the kiosk tonight is her departure.
+    const morning = new Date(Date.now() - 9 * 3_600_000);
+    await db().insert(schema.punch).values({ personId: ids.nhu, entityId: ids.media, at: morning, direction: "in", source: "app" });
+    expect(await nextKioskDirection(ids.nhu)).toBe("out");
+    const evening = await commitKioskPunch(ids.device, { personId: ids.nhu, entityId: ids.media }, "face");
+    expect(evening.direction).toBe("out");
+    expect((await recentKioskPunches(ids.device, [ids.nhu], new Date(Date.now() - 60_000))).get(ids.nhu)).toMatchObject({ direction: "out" });
+    // Out is out: the next punch arrives. And an arrival more than 16 hours old no longer holds a stay open.
+    expect(await nextKioskDirection(ids.nhu, new Date(Date.now() + 1000))).toBe("in");
+    await db().insert(schema.punch).values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 17 * 3_600_000), direction: "in", source: "app" });
+    expect(await nextKioskDirection(ids.hr)).toBe("in");
+    // A rejected punch does not count.
+    await db().insert(schema.punch).values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 3_600_000), direction: "in", source: "app", reviewStatus: "rejected" });
+    expect(await nextKioskDirection(ids.hr)).toBe("in");
   });
 });

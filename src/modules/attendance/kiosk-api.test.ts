@@ -8,6 +8,7 @@ const recognise = vi.fn();
 const commit = vi.fn();
 const recent = vi.fn();
 const withdraw = vi.fn();
+const next = vi.fn();
 const audit = vi.fn();
 
 vi.mock("./kiosk", () => ({
@@ -19,6 +20,7 @@ vi.mock("./faces", () => ({ recogniseFace: (...args: unknown[]) => recognise(...
 vi.mock("./devices", () => ({
   commitKioskPunch: (...args: unknown[]) => commit(...args),
   recentKioskPunches: (...args: unknown[]) => recent(...args),
+  nextKioskDirection: (...args: unknown[]) => next(...args),
   withdrawKioskPunch: (...args: unknown[]) => withdraw(...args),
 }));
 vi.mock("@/modules/assets/service", () => ({ qrPath: () => ({ path: "M0 0h1v1h-1z", size: 25 }) }));
@@ -34,7 +36,8 @@ const request = (path: string, body?: unknown, cookie: string | null = `suzu_kio
 
 beforeEach(() => {
   recognise.mockReset().mockResolvedValue({ personId: PERSON, name: "Huy", entityId: "e1", score: 0.71 });
-  commit.mockReset().mockResolvedValue({ punchId: "p1", at: new Date("2026-10-02T01:42:00Z") });
+  commit.mockReset().mockResolvedValue({ punchId: "p1", at: new Date("2026-10-02T01:42:00Z"), direction: "in" });
+  next.mockReset().mockResolvedValue("in");
   recent.mockReset().mockResolvedValue(new Map());
   withdraw.mockReset();
   audit.mockReset();
@@ -48,9 +51,15 @@ describe("the kiosk's endpoints", () => {
     expect(recognise).not.toHaveBeenCalled();
   });
 
+  it("says whether the face's next punch arrives or leaves", async () => {
+    next.mockResolvedValueOnce("out");
+    recent.mockResolvedValueOnce(new Map([[PERSON, { at: new Date("2026-10-02T10:30:00Z"), direction: "out" }]]));
+    expect(await (await identify(request("/api/kiosk/identify", { embedding }))).json()).toEqual({ person: { personId: PERSON, name: "Huy", next: "out", recentAt: "2026-10-02T10:30:00.000Z", recentDirection: "out" } });
+  });
+
   it("names a face among the kiosk's entities, with any punch of the last minute", async () => {
     const response = await identify(request("/api/kiosk/identify", { embedding }));
-    expect(await response.json()).toEqual({ person: { personId: PERSON, name: "Huy", recentAt: null } });
+    expect(await response.json()).toEqual({ person: { personId: PERSON, name: "Huy", next: "in", recentAt: null, recentDirection: null } });
     expect(recognise).toHaveBeenCalledWith(embedding, ["e1"]);
     recognise.mockResolvedValueOnce(null);
     expect(await (await identify(request("/api/kiosk/identify", { embedding }))).json()).toEqual({ person: null });
@@ -59,7 +68,7 @@ describe("the kiosk's endpoints", () => {
 
   it("punches only when the server names the same person, and audits it", async () => {
     const response = await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }));
-    expect(await response.json()).toEqual({ punchId: "p1", at: "2026-10-02T01:42:00.000Z", name: "Huy", repeat: false });
+    expect(await response.json()).toEqual({ punchId: "p1", at: "2026-10-02T01:42:00.000Z", name: "Huy", repeat: false, direction: "in" });
     expect(commit).toHaveBeenCalledWith("d1", { personId: PERSON, entityId: "e1" }, "face");
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "attendance.kiosk.punch", resource: { type: "attendance_device", id: "d1", entityId: "e1" } }));
 
@@ -69,8 +78,8 @@ describe("the kiosk's endpoints", () => {
   });
 
   it("shows the earlier time within the minute instead of punching again", async () => {
-    recent.mockResolvedValueOnce(new Map([[PERSON, new Date("2026-10-02T01:41:30Z")]]));
-    expect(await (await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }))).json()).toEqual({ punchId: null, at: "2026-10-02T01:41:30.000Z", name: "Huy", repeat: true });
+    recent.mockResolvedValueOnce(new Map([[PERSON, { at: new Date("2026-10-02T10:31:30Z"), direction: "out" }]]));
+    expect(await (await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }))).json()).toEqual({ punchId: null, at: "2026-10-02T10:31:30.000Z", name: "Huy", repeat: true, direction: "out" });
     expect(commit).not.toHaveBeenCalled();
   });
 
