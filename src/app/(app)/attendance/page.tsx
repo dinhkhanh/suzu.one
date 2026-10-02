@@ -11,7 +11,7 @@ import { statusTone } from "@/components/ui/tone";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { ownAnomaliesIn } from "@/modules/attendance/anomalies";
 import { getMonthRow } from "@/modules/attendance/months";
-import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
+import { canOpenAttendanceSettings, canOpenKioskPage } from "@/modules/attendance/policy";
 import { listAttendanceRequestsOf } from "@/modules/attendance/requests";
 import { countPunchesToReview } from "@/modules/attendance/punches";
 import { getDayPlans } from "@/modules/attendance/schedules";
@@ -82,6 +82,11 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
         {canOpenAttendanceSettings(user.principal) ? (
           <Link href="/attendance/anomalies" className={outline}>
             {t("console.title")}
+          </Link>
+        ) : null}
+        {canOpenKioskPage(user.principal) ? (
+          <Link href="/attendance/kiosk" className={outline}>
+            {t("kiosk.title")}
           </Link>
         ) : null}
         <Link href="/attendance/review" className={outline}>

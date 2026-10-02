@@ -2,7 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Page, PageHeader } from "@/components/ui/page";
-import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { canOpenAttendanceSettings, canOpenKioskPage } from "@/modules/attendance/policy";
 import { DevicesTabs } from "@/modules/attendance/ui/settings-tabs";
 import { requireUser } from "@/modules/platform/auth/session";
 
@@ -11,9 +13,21 @@ export default async function DevicesLayout({ children }: { children: ReactNode 
   const user = await requireUser();
   if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.devices");
+  const kiosk = await getTranslations("attendance.kiosk");
   return (
     <Page width="wide">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          // The face kiosk opens a tablet as one of these clocks.
+          canOpenKioskPage(user.principal) ? (
+            <Link href="/attendance/kiosk" className={buttonVariants({ variant: "outline" })}>
+              {kiosk("title")}
+            </Link>
+          ) : null
+        }
+      />
       <DevicesTabs labels={{ devices: t("tabs.devices"), import: t("tabs.import"), profiles: t("tabs.profiles") }} />
       {children}
     </Page>
