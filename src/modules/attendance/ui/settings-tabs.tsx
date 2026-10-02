@@ -4,12 +4,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-function Tabs({ tabs }: { tabs: { href: string; label: string }[] }) {
+function Tabs({ tabs }: { tabs: { href: string; label: string; exact?: boolean }[] }) {
   const pathname = usePathname();
   return (
     <nav className="tab-row">
       {tabs.map((tab) => (
-        <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "page" : undefined}>
+        <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href || (!tab.exact && pathname.startsWith(`${tab.href}/`)) ? "page" : undefined}>
           {tab.label}
         </Link>
       ))}
@@ -35,6 +35,17 @@ export function DevicesTabs({ labels }: { labels: Record<"devices" | "import" | 
         { href: "/attendance/devices", label: labels.devices },
         { href: "/attendance/devices/import", label: labels.import },
         { href: "/attendance/devices/profiles", label: labels.profiles },
+      ]}
+    />
+  );
+}
+
+export function KioskTabs({ labels }: { labels: Record<"kiosks" | "faces", string> }) {
+  return (
+    <Tabs
+      tabs={[
+        { href: "/attendance/kiosk", label: labels.kiosks, exact: true },
+        { href: "/attendance/kiosk/faces", label: labels.faces },
       ]}
     />
   );

@@ -176,8 +176,8 @@ export async function listUnmapped(deviceId: string): Promise<UnmappedView[]> {
 type NewPunch = { personId: string; entityId: string | null; at: Date; direction: "in" | "out" | null; deviceUserId: string };
 
 /** Inserts device punches that are not there yet; direction-less ones take their place in the person-day's order. Returns what was new. */
-async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | null, candidates: NewPunch[]): Promise<{ inserted: number; people: string[]; from: IsoDate | null; to: IsoDate | null }> {
-  if (candidates.length === 0) return { inserted: 0, people: [], from: null, to: null };
+async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | null, candidates: NewPunch[]): Promise<{ inserted: number; people: string[]; from: IsoDate | null; to: IsoDate | null; ids: string[] }> {
+  if (candidates.length === 0) return { inserted: 0, people: [], from: null, to: null, ids: [] };
   const people = [...new Set(candidates.map((item) => item.personId))];
   const times = candidates.map((item) => item.at.getTime());
   const lowest = new Date(Math.min(...times) - 86_400_000);
@@ -201,19 +201,19 @@ async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | n
     });
 
   let inserted = 0;
-  const touched: { personId: string; at: Date }[] = [];
+  const touched: { id: string; personId: string; at: Date }[] = [];
   for (let index = 0; index < values.length; index += 500) {
     const rows = await tx
       .insert(schema.punch)
       .values(values.slice(index, index + 500))
       .onConflictDoNothing({ target: [schema.punch.deviceId, schema.punch.deviceUserId, schema.punch.at], where: sql`${schema.punch.deviceId} is not null` })
-      .returning({ personId: schema.punch.personId, at: schema.punch.at });
+      .returning({ id: schema.punch.id, personId: schema.punch.personId, at: schema.punch.at });
     inserted += rows.length;
     touched.push(...rows);
   }
-  if (touched.length === 0) return { inserted: 0, people: [], from: null, to: null };
+  if (touched.length === 0) return { inserted: 0, people: [], from: null, to: null, ids: [] };
   const dates = touched.map((row) => vietnamDateAndMinute(row.at.getTime()).date).sort();
-  return { inserted, people: [...new Set(touched.map((row) => row.personId))], from: dates[0], to: dates.at(-1)! };
+  return { inserted, people: [...new Set(touched.map((row) => row.personId))], from: dates[0], to: dates.at(-1)!, ids: touched.map((row) => row.id) };
 }
 
 async function recomputeAfterImport(tx: Tx, result: { people: string[]; from: IsoDate | null; to: IsoDate | null }): Promise<void> {
@@ -464,4 +464,56 @@ export async function commitPushedRows(deviceId: string, rows: PushedRow[]): Pro
 /** Who the clock should know: its mapped IDs with names, for the kiosk's enrolment list. */
 export async function deviceRoster(deviceId: string): Promise<{ userId: string; fullName: string; employeeCode: string | null }[]> {
   return (await listUserMap(deviceId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
+}
+
+// ── The in-app kiosk ────────────────────────────────────────────────────────────────────────
+
+/**
+ * One punch from a kiosk opened in the app (`kiosk.ts`): a face it recognised, or a phone that
+ * scanned its code. The kiosk knows the person, so no ID map is involved; the ID on the clock says
+ * how they were known (`face:<person>`, `qr:<person>`). The rest is a device punch like any other:
+ * its direction from its place in the day, the days recomputed, the person's Today page told.
+ */
+export async function commitKioskPunch(deviceId: string, person: { personId: string; entityId: string | null }, how: "face" | "qr", at: Date = new Date()): Promise<{ punchId: string; at: Date }> {
+  const result = await db().transaction(async (tx) => {
+    const inserted = await insertDevicePunches(tx as Tx, deviceId, null, [{ personId: person.personId, entityId: person.entityId, at, direction: null, deviceUserId: `${how}:${person.personId}` }]);
+    await recomputeAfterImport(tx as Tx, inserted);
+    return inserted;
+  });
+  if (!result.ids[0]) throw new ActionError("punch_exists");
+  await invalidateLive(person.personId);
+  return { punchId: result.ids[0], at };
+}
+
+/** How long after a kiosk punch "Not me" may still take it back. */
+export const KIOSK_UNDO_MS = 60_000;
+
+/**
+ * "Not me": takes back a punch the kiosk made a moment ago. Only that clock's own, only while it is
+ * fresh; anything older is HR's to correct like any other punch. Returns the person, or null.
+ */
+export async function withdrawKioskPunch(deviceId: string, punchId: string, now: Date = new Date()): Promise<{ personId: string; at: Date } | null> {
+  const removed = await db().transaction(async (tx) => {
+    const [row] = await tx
+      .delete(schema.punch)
+      .where(and(eq(schema.punch.id, punchId), eq(schema.punch.deviceId, deviceId), eq(schema.punch.source, "device"), sql`${schema.punch.deviceUserId} like 'face:%'`, sql`${schema.punch.createdAt} > ${new Date(now.getTime() - KIOSK_UNDO_MS).toISOString()}::timestamptz`))
+      .returning({ personId: schema.punch.personId, at: schema.punch.at });
+    if (!row) return null;
+    const date = vietnamDateAndMinute(row.at.getTime()).date;
+    await recomputeAfterImport(tx as Tx, { people: [row.personId], from: date, to: date });
+    return row;
+  });
+  if (removed) await invalidateLive(removed.personId);
+  return removed;
+}
+
+/** The latest kiosk punch of each of these people on this clock since `since`: who already checked in a moment ago. */
+export async function recentKioskPunches(deviceId: string, personIds: readonly string[], since: Date): Promise<Map<string, Date>> {
+  if (personIds.length === 0) return new Map();
+  const rows = await db()
+    .select({ personId: schema.punch.personId, at: max(schema.punch.at) })
+    .from(schema.punch)
+    .where(and(eq(schema.punch.deviceId, deviceId), inArray(schema.punch.personId, [...personIds]), sql`${schema.punch.at} > ${since.toISOString()}::timestamptz`))
+    .groupBy(schema.punch.personId);
+  return new Map(rows.map((row) => [row.personId, row.at!]));
 }

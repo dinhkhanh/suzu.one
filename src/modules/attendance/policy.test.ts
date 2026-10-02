@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canManageDevices, canReviewPunchOf, canSeePunchDetailOf, canSeeTimesheetOf, canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
+import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canManageDevices, canReviewPunchOf, canSeePunchDetailOf, canSeeTimesheetOf, canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf, canOpenKiosk, canOpenKioskPage, canEnrolFaceOf } from "./policy";
 
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
 const hrAdmin = principal([{ role: "hr_admin", scope: { type: "group" } }]);
@@ -117,5 +117,26 @@ describe("requests, the monthly timesheet and the lock", () => {
     expect(canLockPeriod(mediaHr, "creative")).toBe(false);
     expect([hrAdmin, mediaHr, head, long].map((viewer) => canManageAttendanceOf(viewer, huy))).toEqual([true, true, false, false]);
     expect(canManageAttendanceOf(mediaHr, lan)).toBe(false);
+  });
+});
+
+describe("the face kiosk", () => {
+  const director = principal([{ role: "entity_director", scope: { type: "entity", id: "media" } }]);
+  const chief = principal([{ role: "c_level", scope: { type: "group" } }]);
+  const owner = principal([{ role: "owner", scope: { type: "group" } }]);
+
+  it("opens a kiosk for HR administrators, the entity's director, C-level and the owner — not HR staff, heads or employees", () => {
+    expect([hrAdmin, director, chief, owner, mediaHr, head, employee].map((who) => canOpenKiosk(who, "media"))).toEqual([true, true, true, true, false, false, false]);
+    expect(canOpenKiosk(director, "creative")).toBe(false);
+    expect([hrAdmin, director, mediaHr, employee].map(canOpenKioskPage)).toEqual([true, true, false, false]);
+  });
+
+  it("enrols faces of the people in reach, never one's own", () => {
+    expect(canEnrolFaceOf(hrAdmin, huy)).toBe(true);
+    expect(canEnrolFaceOf(director, huy)).toBe(true);
+    expect(canEnrolFaceOf(director, lan)).toBe(false);
+    expect(canEnrolFaceOf(mediaHr, huy)).toBe(false);
+    expect(canEnrolFaceOf(employee, { ...huy, managerId: "me" })).toBe(false);
+    expect(canEnrolFaceOf(hrAdmin, { ...huy, personId: "me" })).toBe(false);
   });
 });

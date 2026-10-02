@@ -131,7 +131,8 @@
       "company": "Company",
       "preferences": "Preferences",
       "admin": "Admin"
-    }
+    },
+    "kiosk": "Face kiosk"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -3576,6 +3577,85 @@
         "subject": "Person",
         "date": "Date",
         "amount": "Amount"
+      }
+    },
+    "kiosk": {
+      "title": "Face kiosk",
+      "description": "Turn a wall tablet into a face check-in kiosk, and enrol people's faces.",
+      "tabs": {
+        "kiosks": "Tablets",
+        "faces": "Faces"
+      },
+      "howTitle": "Open on this tablet",
+      "how": "Sign in on the tablet that will hang on the wall, then press Open beside its clock. You are signed out of the tablet and the check-in screen starts. Its punches reach the timesheet like any other clock's.",
+      "noDevices": "There is no clock you may open a kiosk for. Add one under Attendance → Time clocks.",
+      "openCount": "{count, plural, one {# tablet open} other {# tablets open}}",
+      "open": "Open here",
+      "openTitle": "Open {device} on this tablet?",
+      "openHint": "This browser becomes the kiosk, and you are signed out of it at once. Close the kiosk from this page on another device, or sign in again on the tablet.",
+      "openConfirm": "Open the kiosk",
+      "cancel": "Cancel",
+      "close": "Close",
+      "sessions": {
+        "title": "Open tablets",
+        "device": "Clock",
+        "openedBy": "Opened by",
+        "openedAt": "Opened",
+        "lastSeen": "Last seen",
+        "empty": "No tablet is open as a kiosk.",
+        "thisDevice": "This device"
+      },
+      "faces": {
+        "listTitle": "Enrolled faces",
+        "listHint": "Only numbers describing each face are kept, never a photo. Each person must sign a consent form (Law 91/2025/QH15). The data is deleted when they leave.",
+        "person": "Person",
+        "entity": "Entity",
+        "status": "Face",
+        "consentAt": "Consent",
+        "empty": "Nobody in your scope.",
+        "enrolled": "{count, plural, one {# photo} other {# photos}}",
+        "notEnrolled": "Not enrolled",
+        "enrol": "Enrol",
+        "addPhotos": "Add photos",
+        "title": "{name}'s face",
+        "hint": "Take 3–5 photos: looking straight, then turned slightly each way, in the light at the door. The photos stay on this device; SuZu One receives only the numbers.",
+        "noCamera": "Could not open the camera. You can still upload photos.",
+        "loading": "Loading face recognition…",
+        "capture": "Take photo",
+        "upload": "Upload photos",
+        "photos": "{count, plural, one {# photo} other {# photos}}",
+        "removePhoto": "Remove this photo",
+        "count": "{count, plural, =0 {No photos yet} one {# photo} other {# photos}}",
+        "consent": "I have this person's signed consent to use their face for check-in.",
+        "consentAgain": "Record a newly signed consent form (optional).",
+        "cancel": "Cancel",
+        "save": "{count, plural, =0 {Save} one {Save # photo} other {Save # photos}}",
+        "delete": "Delete face data",
+        "deleteTitle": "Delete {name}'s face?",
+        "deleteHint": "Every enrolled photo and the consent record are deleted. The kiosk stops recognising this person until they are enrolled again.",
+        "problems": {
+          "no_face": "No face found in the photo.",
+          "several_faces": "More than one face; one person per photo.",
+          "face_small": "The face is too small; come closer.",
+          "not_an_image": "Could not read this image file."
+        }
+      },
+      "scan": {
+        "title": "Check in at the kiosk",
+        "at": "Kiosk: {device}",
+        "checkIn": "Check in now",
+        "done": "Checked in at {time}.",
+        "repeat": "You checked in at {time}."
+      },
+      "errors": {
+        "generic": "Something went wrong, try again.",
+        "forbidden": "You may not do this.",
+        "face_consent_required": "Confirm that you have the signed consent form.",
+        "face_photos_differ": "The photos do not look like one person. Take them again.",
+        "face_looks_like_someone_else": "This face is too like someone already enrolled. Not saved, so nobody is checked in as somebody else.",
+        "models": "Could not load face recognition.",
+        "kiosk_code_expired": "The code has expired. Scan the one on the kiosk now.",
+        "kiosk_not_yours": "This kiosk does not serve your entity."
       }
     }
   },
@@ -11741,6 +11821,63 @@
       "preview_version_changed": "The work has moved on to another version. Please reload this page and send your answer again."
     }
   },
+  "kiosk": {
+    "loading": "Getting the kiosk ready…",
+    "cameraError": "Could not open the camera. Allow this page to use the camera, then reload.",
+    "loadError": "Could not load face recognition. Check the network, then reload the page.",
+    "offline": "Lost the connection to SuZu One. Retrying…",
+    "notMe": "Not me",
+    "manage": "Manage the kiosk",
+    "closed": {
+      "title": "This kiosk is closed",
+      "body": "HR closed the kiosk on this tablet. To open it again, HR signs in and goes to Attendance → Face kiosk.",
+      "signIn": "HR sign-in"
+    },
+    "notOpen": {
+      "title": "This is not a kiosk yet",
+      "body": "HR opens the kiosk from Attendance → Face kiosk, on this tablet itself. Opening it signs the HR account out of the tablet."
+    },
+    "qr": {
+      "label": "Check-in QR code",
+      "caption": "Not recognised? Scan with your phone"
+    },
+    "idle": {
+      "title": "Hello",
+      "sub": "Look at the camera to check in"
+    },
+    "closer": {
+      "title": "Come a little closer",
+      "sub": "Put your face inside the frame"
+    },
+    "looking": {
+      "title": "Recognising…",
+      "sub": ""
+    },
+    "unknown": {
+      "title": "We don't recognise you yet",
+      "sub": "Scan the QR code in the corner with your phone, or ask HR to enrol your face"
+    },
+    "crowd": {
+      "title": "One person at a time, please",
+      "sub": "Only one face inside the frame"
+    },
+    "challenge": "{name}, turn your head to the {direction, select, left {left} other {right}}",
+    "punching": "Checking in {name}…",
+    "done": "Hello, {name}",
+    "doneAt": "Checked in at {time}",
+    "repeat": "You checked in at {time}",
+    "failed": {
+      "title": "Not quite",
+      "timeout": "Time's up, try again",
+      "wrong_way": "Other way, try again",
+      "changed": "One person at a time, please",
+      "error": "The check-in was not saved, try again",
+      "cancelled": "Try again when you're ready"
+    },
+    "cancelled": {
+      "title": "Check-in cancelled"
+    }
+  },
   "pageTitles": {
     "acceptance": "Acceptance",
     "access": "Access",
@@ -11976,7 +12113,10 @@
     "crmProfitability": "Client profitability",
     "crmRateCard": "Rate card",
     "crmSettings": "Sales settings",
-    "crmCommission": "Sales commission"
+    "crmCommission": "Sales commission",
+    "kiosk": "Face kiosk",
+    "kioskFaces": "Kiosk faces",
+    "kioskCheckIn": "Check in at the kiosk"
   },
   "portfolio": {
     "title": "SuZu Group",

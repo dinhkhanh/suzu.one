@@ -771,6 +771,13 @@
       "when": 1790911570816,
       "tag": "0109_work_status_sets",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1790914716655,
+      "tag": "0110_face_kiosk",
+      "breakpoints": true
     }
   ]
 }

@@ -131,7 +131,8 @@
       "company": "Công ty",
       "preferences": "Tuỳ chỉnh",
       "admin": "Quản trị"
-    }
+    },
+    "kiosk": "Máy chấm công khuôn mặt"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -3576,6 +3577,85 @@
         "subject": "Người",
         "date": "Ngày",
         "amount": "Mức"
+      }
+    },
+    "kiosk": {
+      "title": "Máy chấm công khuôn mặt",
+      "description": "Mở máy tính bảng trên tường thành máy chấm công khuôn mặt, và đăng ký khuôn mặt cho nhân sự.",
+      "tabs": {
+        "kiosks": "Máy tính bảng",
+        "faces": "Khuôn mặt"
+      },
+      "howTitle": "Mở trên máy tính bảng này",
+      "how": "Đăng nhập trên chính máy tính bảng sẽ treo tường, rồi bấm Mở ở máy chấm công tương ứng. Bạn sẽ được đăng xuất khỏi máy tính bảng và màn hình chấm công bắt đầu. Lượt chấm đi vào bảng công như mọi máy chấm công khác.",
+      "noDevices": "Chưa có máy chấm công nào bạn được mở. Thêm máy ở Chấm công → Máy chấm công.",
+      "openCount": "{count} máy tính bảng đang mở",
+      "open": "Mở trên máy này",
+      "openTitle": "Mở {device} trên máy tính bảng này?",
+      "openHint": "Trình duyệt này sẽ thành máy chấm công và bạn được đăng xuất khỏi nó ngay. Đóng máy chấm công từ trang này trên một máy khác, hoặc đăng nhập lại ngay trên máy tính bảng.",
+      "openConfirm": "Mở máy chấm công",
+      "cancel": "Huỷ",
+      "close": "Đóng",
+      "sessions": {
+        "title": "Máy tính bảng đang mở",
+        "device": "Máy chấm công",
+        "openedBy": "Người mở",
+        "openedAt": "Mở lúc",
+        "lastSeen": "Hoạt động gần nhất",
+        "empty": "Chưa có máy tính bảng nào đang mở.",
+        "thisDevice": "Máy này"
+      },
+      "faces": {
+        "listTitle": "Khuôn mặt đã đăng ký",
+        "listHint": "Chỉ lưu các con số mô tả khuôn mặt, không lưu ảnh. Cần bản đồng ý có chữ ký của từng người (Luật 91/2025/QH15). Dữ liệu tự xoá khi người đó nghỉ việc.",
+        "person": "Nhân sự",
+        "entity": "Pháp nhân",
+        "status": "Khuôn mặt",
+        "consentAt": "Đồng ý ngày",
+        "empty": "Không có ai trong phạm vi của bạn.",
+        "enrolled": "{count} ảnh",
+        "notEnrolled": "Chưa đăng ký",
+        "enrol": "Đăng ký",
+        "addPhotos": "Thêm ảnh",
+        "title": "Khuôn mặt của {name}",
+        "hint": "Chụp 3–5 ảnh: nhìn thẳng, rồi hơi quay sang hai bên, trong ánh sáng ở cửa ra vào. Ảnh chỉ nằm trên máy này; SuZu One chỉ nhận các con số.",
+        "noCamera": "Không mở được camera. Bạn vẫn có thể tải ảnh lên.",
+        "loading": "Đang tải bộ nhận diện…",
+        "capture": "Chụp",
+        "upload": "Tải ảnh lên",
+        "photos": "{count} ảnh",
+        "removePhoto": "Bỏ ảnh này",
+        "count": "{count, plural, =0 {Chưa có ảnh nào} other {Đã có # ảnh}}",
+        "consent": "Tôi đã nhận bản đồng ý có chữ ký của người này cho việc dùng khuôn mặt để chấm công.",
+        "consentAgain": "Ghi nhận bản đồng ý mới có chữ ký (không bắt buộc).",
+        "cancel": "Huỷ",
+        "save": "{count, plural, =0 {Lưu} other {Lưu # ảnh}}",
+        "delete": "Xoá dữ liệu khuôn mặt",
+        "deleteTitle": "Xoá khuôn mặt của {name}?",
+        "deleteHint": "Mọi ảnh đã đăng ký và bản ghi đồng ý bị xoá. Người này không còn được máy chấm công nhận ra cho tới khi đăng ký lại.",
+        "problems": {
+          "no_face": "Không thấy khuôn mặt nào trong ảnh.",
+          "several_faces": "Ảnh có nhiều khuôn mặt; mỗi ảnh chỉ một người.",
+          "face_small": "Khuôn mặt quá nhỏ; lại gần hơn.",
+          "not_an_image": "Không đọc được tệp ảnh này."
+        }
+      },
+      "scan": {
+        "title": "Chấm công tại máy",
+        "at": "Máy chấm công: {device}",
+        "checkIn": "Chấm công ngay",
+        "done": "Đã chấm công lúc {time}.",
+        "repeat": "Bạn đã chấm công lúc {time}."
+      },
+      "errors": {
+        "generic": "Có lỗi, thử lại nhé.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "face_consent_required": "Cần xác nhận đã có bản đồng ý có chữ ký.",
+        "face_photos_differ": "Các ảnh không giống cùng một người. Chụp lại.",
+        "face_looks_like_someone_else": "Khuôn mặt này quá giống một người đã đăng ký. Không lưu, để tránh chấm công nhầm người.",
+        "models": "Không tải được bộ nhận diện khuôn mặt.",
+        "kiosk_code_expired": "Mã đã hết hạn. Quét lại mã đang hiện trên máy chấm công.",
+        "kiosk_not_yours": "Máy chấm công này không thuộc pháp nhân của bạn."
       }
     }
   },
@@ -11741,6 +11821,63 @@
       "preview_version_changed": "Nội dung đã sang phiên bản khác. Vui lòng tải lại trang rồi gửi phản hồi lại."
     }
   },
+  "kiosk": {
+    "loading": "Đang chuẩn bị máy chấm công…",
+    "cameraError": "Không mở được camera. Hãy cho phép trang này dùng camera, rồi tải lại.",
+    "loadError": "Không tải được bộ nhận diện khuôn mặt. Kiểm tra kết nối mạng rồi tải lại trang.",
+    "offline": "Mất kết nối với SuZu One. Đang thử lại…",
+    "notMe": "Không phải tôi",
+    "manage": "Quản lý máy chấm công",
+    "closed": {
+      "title": "Máy chấm công đã đóng",
+      "body": "HR đã đóng máy chấm công trên máy tính bảng này. Để mở lại, HR đăng nhập và chọn Chấm công → Máy chấm công khuôn mặt.",
+      "signIn": "HR đăng nhập"
+    },
+    "notOpen": {
+      "title": "Đây chưa phải máy chấm công",
+      "body": "HR mở máy chấm công từ Chấm công → Máy chấm công khuôn mặt, ngay trên máy tính bảng này. Khi mở, tài khoản HR được đăng xuất khỏi máy."
+    },
+    "qr": {
+      "label": "Mã QR chấm công",
+      "caption": "Chưa được nhận diện? Quét mã bằng điện thoại"
+    },
+    "idle": {
+      "title": "Xin chào",
+      "sub": "Nhìn vào camera để chấm công"
+    },
+    "closer": {
+      "title": "Lại gần hơn một chút",
+      "sub": "Đưa khuôn mặt vào khung"
+    },
+    "looking": {
+      "title": "Đang nhận diện…",
+      "sub": ""
+    },
+    "unknown": {
+      "title": "Chưa nhận ra bạn",
+      "sub": "Quét mã QR ở góc màn hình bằng điện thoại, hoặc nhờ HR đăng ký khuôn mặt"
+    },
+    "crowd": {
+      "title": "Mỗi lần một người thôi nhé",
+      "sub": "Chỉ một khuôn mặt trong khung"
+    },
+    "challenge": "{name}, quay đầu sang {direction, select, left {trái} other {phải}}",
+    "punching": "Đang chấm công cho {name}…",
+    "done": "Xin chào, {name}",
+    "doneAt": "Đã chấm công lúc {time}",
+    "repeat": "Bạn đã chấm công lúc {time}",
+    "failed": {
+      "title": "Chưa xong",
+      "timeout": "Hết thời gian, thử lại nhé",
+      "wrong_way": "Quay ngược hướng rồi, thử lại nhé",
+      "changed": "Mỗi lần một người thôi nhé",
+      "error": "Chưa lưu được lượt chấm, thử lại nhé",
+      "cancelled": "Thử lại khi bạn sẵn sàng"
+    },
+    "cancelled": {
+      "title": "Đã huỷ lượt chấm"
+    }
+  },
   "pageTitles": {
     "acceptance": "Nghiệm thu",
     "access": "Quyền truy cập",
@@ -11976,7 +12113,10 @@
     "crmProfitability": "Hiệu quả theo khách hàng",
     "crmRateCard": "Bảng giá dịch vụ",
     "crmSettings": "Cài đặt kinh doanh",
-    "crmCommission": "Hoa hồng kinh doanh"
+    "crmCommission": "Hoa hồng kinh doanh",
+    "kiosk": "Máy chấm công khuôn mặt",
+    "kioskFaces": "Khuôn mặt chấm công",
+    "kioskCheckIn": "Chấm công tại máy"
   },
   "portfolio": {
     "title": "SuZu Group",

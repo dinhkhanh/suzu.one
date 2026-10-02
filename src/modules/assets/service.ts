@@ -18,6 +18,19 @@ import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import { type AssetCondition, type AssetKind, type AssetStatus, type BillingCycle, BOOKING_CLOSED, BOOKING_HOLDS_SLOT, type BookingStatus, CYCLE_MONTHS, type HolderType, type LicenceStatus, UNASSIGNABLE_STATUSES } from "./enums";
 import { assetReach, canManageAssets, canReadAssetMoney, canReadRegister, canViewAsset } from "./policy";
 import { renewalsBetween } from "./engine/renewal";
+import { encodeQr } from "./engine/qr";
+
+/**
+ * A QR code as one SVG path of unit squares, with its side in modules (quiet zone included). For
+ * other modules that draw a code on a screen — the face kiosk's (attendance) — without carrying
+ * the encoder to the browser.
+ */
+export function qrPath(text: string, quietZone = 2): { path: string; size: number } {
+  const matrix = encodeQr(text);
+  const parts: string[] = [];
+  for (let row = 0; row < matrix.size; row++) for (let col = 0; col < matrix.size; col++) if (matrix.modules[row][col]) parts.push(`M${col + quietZone} ${row + quietZone}h1v1h-1z`);
+  return { path: parts.join(""), size: matrix.size + quietZone * 2 };
+}
 
 export * from "./enums";
 export * from "./engine/booking";

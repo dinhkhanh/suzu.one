@@ -30,6 +30,10 @@ export type Permission =
   | "person:read"
   | "person:manage"
   | "attendance:manage"
+  // The face kiosk (FR-ATT-06): opening a kiosk on a wall tablet for the entities of the grant, and
+  // enrolling people's faces for it. Biometric data, so held by HR's administrators and the people
+  // above them — not by every HR staffer who keeps attendance.
+  | "attendance:kiosk"
   | "leave:manage"
   | "payroll:read"
   | "payroll:propose"
@@ -123,10 +127,10 @@ type RoleDefinition = {
 
 export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   owner: { permissions: ["*"], maxTier: "compensation" },
-  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "compensation" },
-  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "restricted" },
+  c_level: { permissions: ["org:read", "person:read", "attendance:kiosk", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "compensation" },
+  entity_director: { permissions: ["org:read", "person:read", "attendance:kiosk", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "restricted" },
   hr_admin: {
-    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage", "feedback:manage"],
+    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "attendance:kiosk", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage", "feedback:manage"],
     maxTier: "compensation",
   },
   hr_staff: {

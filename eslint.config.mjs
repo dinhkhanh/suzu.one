@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The face kiosk's WebAssembly runtimes, copied from node_modules on install (scripts/kiosk-assets.mjs).
+    "public/kiosk/assets/vendor/**",
   ]),
   // Configuration is read and validated in one place (CLAUDE.md). instrumentation.ts, the Sentry
   // initialisers and the error reporters are the exception: error reporting must work even when the

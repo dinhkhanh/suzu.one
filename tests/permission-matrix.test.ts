@@ -13,6 +13,7 @@ const PERMISSIONS = [
   "person:read",
   "person:manage",
   "attendance:manage",
+  "attendance:kiosk",
   "leave:manage",
   "payroll:read",
   "payroll:propose",

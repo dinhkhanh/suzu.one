@@ -51,6 +51,8 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     // Shared production gear is common property (see assets/policy.ts), so the calendar is for
     // everybody — the camera operator who needs the lens on Friday most of all.
     { key: "bookings", href: "/assets/bookings" },
+    // The face kiosk (FR-ATT-06): opening wall tablets and enrolling faces, for `attendance:kiosk` anywhere.
+    ...(can(principal, "attendance:kiosk") ? [{ key: "kiosk", href: "/attendance/kiosk" }] : []),
     // Compliance: people with an ops role. Anyone else reaches their own obligations through My work.
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
     // Goals and KPIs: everyone has their own; what else they see is decided on the pages.
@@ -108,7 +110,7 @@ export const NAV_GROUPS: readonly { key: NavGroupKey; keys: readonly string[] }[
   // The work itself, as somebody doing it.
   { key: "work", keys: ["work", "projects", "daily", "time", "checklists", "crm", "bookings", "interviews"] },
   // The desks over other people's work: reports, capacity, money in and out, hiring, compliance.
-  { key: "manage", keys: ["reports", "capacity", "billing", "receivables", "recruit", "payroll", "ops"] },
+  { key: "manage", keys: ["reports", "capacity", "billing", "receivables", "recruit", "payroll", "ops", "kiosk"] },
   // What the whole company shares.
   { key: "company", keys: ["home", "announcements", "kudos", "people", "kb", "assistant", "referrals", "feedback"] },
   // How the app behaves for this person; the language and the theme switches sit under these rows.

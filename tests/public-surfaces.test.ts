@@ -95,11 +95,13 @@ describe("which surface a path is", () => {
     expect(surfaceForPath("/terms")).toBe("site");
     // The public domain's own home page (src/lib/site-routing.ts).
     expect(surfaceForPath("/portfolio")).toBe("portfolio");
+    // The check-in kiosk on a wall tablet: whoever opened it was signed out in the same step.
+    expect(surfaceForPath("/kiosk")).toBe("kiosk");
   });
 
   it("calls everything else the app, and nothing else public", () => {
     // The home page is public only as itself: `/` is not a prefix of every path.
-    for (const path of ["/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy", "/privacy-settings", "/termsheet", "//"]) {
+    for (const path of ["/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy", "/kiosks", "/attendance/kiosk", "/privacy-settings", "/termsheet", "//"]) {
       expect(surfaceForPath(path), path).toBe("app");
     }
   });
@@ -146,6 +148,13 @@ describe("which words a request is handed", () => {
     expect(messages.legal).toEqual(catalogue.legal);
   });
 
+  it("gives the kiosk on the wall its screen's words and nothing of the app", async () => {
+    const messages = await messagesFor("kiosk", false);
+    expect(Object.keys(messages).sort()).toEqual([CONTROLS, "kiosk", THEME]);
+    for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
+    expect(messages.kiosk).toEqual(catalogue.kiosk);
+  });
+
   it("gives a visitor to the public domain's home page its words and nothing of the app", async () => {
     const messages = await messagesFor("portfolio", false);
     expect(Object.keys(messages).sort()).toEqual([CONTROLS, "portfolio", THEME]);
@@ -167,7 +176,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", CONTROLS, "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -178,7 +187,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", CONTROLS, "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 

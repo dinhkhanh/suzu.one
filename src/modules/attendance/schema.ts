@@ -2,7 +2,7 @@
 // who follows which schedule, and the shift roster. Holidays are rows, never constants: the
 // government announces Tết and the swap days year by year.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, check, customType, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { approvalRequest } from "../platform/approvals/schema";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
@@ -294,6 +294,84 @@ export const deviceUnmappedLog = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("device_unmapped_log_key").on(t.deviceId, t.deviceUserId, t.at)],
+).enableRLS();
+
+// ── The face kiosk (FR-ATT-06) ──────────────────────────────────────────────────────────────
+//
+// A wall tablet that HR opens as a kiosk for one clock: it recognises faces in its own browser and
+// punches through the clock, like any other. Faces are biometric data — sensitive personal data
+// under Law 91/2025 — so they are restricted-tier, never cached, and kept only as numbers: the
+// kiosk sends 128 of them per face and never a picture.
+
+// pgvector in the `extensions` schema (see 0100), of the recognition model's size.
+const faceVector = customType<{ data: number[]; driverData: string }>({
+  dataType: () => "extensions.vector(128)",
+  toDriver: (value) => `[${value.join(",")}]`,
+  fromDriver: (value) => JSON.parse(value) as number[],
+});
+
+// One row per person whose face may be recognised: the consent they signed, recorded by whom.
+// Deleting the row deletes every template with it.
+export const faceEnrolment = pgTable(
+  "face_enrolment",
+  {
+    personId: uuid("person_id")
+      .primaryKey()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
+    consentRecordedByPersonId: uuid("consent_recorded_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("face_enrolment_entity_idx").on(t.entityId)],
+).enableRLS();
+
+// One embedding per enrolment photo, never the photo. `model` names what wrote it: a template of
+// another model is never compared with this one's (`FACE_MODEL`).
+export const faceTemplate = pgTable(
+  "face_template",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => faceEnrolment.personId, { onDelete: "cascade" }),
+    entityId: uuid("entity_id").references(() => entity.id),
+    model: text("model").notNull(),
+    embedding: faceVector("embedding").notNull(),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("face_template_person_idx").on(t.personId, t.model)],
+).enableRLS();
+
+// A tablet opened as a kiosk for a clock. The tablet holds the token in a cookie (its SHA-256 is
+// here); whoever opened it is signed out on that tablet in the same step. Closed from the kiosk
+// page, it stops at its next call. `qr_secret` signs the QR codes it shows.
+export const kioskSession = pgTable(
+  "kiosk_session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    deviceId: uuid("device_id")
+      .notNull()
+      .references(() => attendanceDevice.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    tokenHash: text("token_hash").notNull(),
+    qrSecret: text("qr_secret").notNull(),
+    openedByPersonId: uuid("opened_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    userAgent: text("user_agent"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedByPersonId: uuid("closed_by_person_id").references(() => person.id),
+  },
+  (t) => [uniqueIndex("kiosk_session_token_key").on(t.tokenHash), index("kiosk_session_device_idx").on(t.deviceId)],
 ).enableRLS();
 
 // ── Attendance policy and the daily timesheet (FR-ATT-08, 09) ───────────────────────────────

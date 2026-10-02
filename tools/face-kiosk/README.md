@@ -1,5 +1,10 @@
 # SuZu face kiosk
 
+> **Superseded by the kiosk inside SuZu One** (Attendance → Face kiosk, `/attendance/kiosk`): an
+> HR administrator opens it on the wall tablet itself, faces are recognised in the tablet's browser
+> and enrolled in the app. Nothing runs on the NAS. This container keeps working through the same
+> device-push API until it is switched off.
+
 Face check-in at the office door. A tablet on the wall shows the camera; a container on the
 Synology NAS recognises the face, asks the person to turn their head (so a photo or a phone screen
 cannot check in), and sends the punch to SuZu One. SuZu One files it like any time-clock punch:

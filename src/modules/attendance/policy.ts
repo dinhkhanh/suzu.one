@@ -66,3 +66,18 @@ export const canApproveMonthOf = (principal: Principal, person: PersonTarget): b
 
 /** Locking an entity's month, and reading its progress: HR over the entity. */
 export const canLockPeriod = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });
+
+// ── The face kiosk ──────────────────────────────────────────────────────────────────────────
+
+/** Opening (and closing) a kiosk on a wall tablet: HR's administrators and the directors above them, over the clock's entity. */
+export const canOpenKiosk = (principal: Principal, entityId: string): boolean => can(principal, "attendance:kiosk", { entityId });
+
+/** Sees the kiosk page at all: holds `attendance:kiosk` somewhere. */
+export const canOpenKioskPage = (principal: Principal): boolean => can(principal, "attendance:kiosk");
+
+/**
+ * Enrolling someone's face, recording their consent, deleting their face data: the same people,
+ * over the person. Biometric data — never the person themselves, so nobody enrols a colleague's
+ * face under their own name.
+ */
+export const canEnrolFaceOf = (principal: Principal, person: PersonTarget): boolean => principal.personId !== person.personId && can(principal, "attendance:kiosk", person);

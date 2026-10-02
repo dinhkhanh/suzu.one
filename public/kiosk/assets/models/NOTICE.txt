@@ -1,0 +1,9 @@
+Models used by the SuZu One face kiosk (src/modules/attendance/ui/kiosk/face-engine.ts).
+
+face_landmarker.task
+  MediaPipe Face Landmarker (float16, v1), Google LLC. Apache License 2.0.
+  https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+
+face_recognition_sface_2021dec_int8.onnx
+  SFace (int8), OpenCV Zoo. Apache License 2.0.
+  https://huggingface.co/opencv/face_recognition_sface

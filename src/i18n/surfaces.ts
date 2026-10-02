@@ -56,6 +56,11 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
   { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme", "controls"] },
   /** The public domain's own home page: the company, not the app (`src/lib/site-routing.ts`). */
   { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme", "controls"] },
+  /**
+   * The check-in kiosk on a wall tablet (FR-ATT-06): nobody is signed in on it — whoever opened it
+   * was signed out in the same step — and anyone walking past can read its screen.
+   */
+  { prefix: "/kiosk", name: "kiosk", namespaces: ["kiosk", "theme", "controls"] },
   /** Nobody is signed in here either, by definition. */
   { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme", "controls"] },
   /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */

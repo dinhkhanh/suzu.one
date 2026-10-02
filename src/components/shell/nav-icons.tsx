@@ -1,5 +1,6 @@
 import {
   Asterisk,
+  ScanFace,
   Award,
   Banknote,
   Bell,
@@ -76,6 +77,7 @@ const ICONS: Record<string, LucideIcon> = {
   assets: Package,
   bookings: CalendarRange,
   ops: ShieldCheck,
+  kiosk: ScanFace,
   performance: Target,
   recruit: Briefcase,
   interviews: Timer,
