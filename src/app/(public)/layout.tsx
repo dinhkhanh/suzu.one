@@ -36,11 +36,18 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
       <div className="flex min-h-0 flex-1 flex-col bg-background md:rounded-2xl md:border md:border-border">
         <header className="border-b border-border">
           <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4">
-            <Link href="/careers" className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em]">
+            <Link href="/careers" className="flex min-w-0 items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em]">
               <Logo className="size-7 shrink-0 text-brand" />
-              {t("brand")}
+              {/* The logo already reads "SuZu Group"; a phone has room only for what the site is. */}
+              <span className="truncate sm:hidden">{t("brandShort")}</span>
+              <span className="hidden truncate sm:inline">{t("brand")}</span>
             </Link>
-            <div className="flex items-center gap-2">
+            {/* A phone gets the sidebar's compact switches, so the brand keeps its one line. */}
+            <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
+              <ThemeSwitch theme={theme} compact />
+              <LocaleSwitch compact />
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 sm:flex">
               <ThemeSwitch theme={theme} />
               <LocaleSwitch />
             </div>
