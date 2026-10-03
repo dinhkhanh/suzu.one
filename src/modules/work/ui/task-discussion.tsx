@@ -2,9 +2,11 @@
 import { HistoryIcon, PaperclipIcon, SmilePlusIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Segmented } from "@/components/ui/segmented";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,7 +68,17 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
   const [body, setBody] = useState(initial);
   const [query, setQuery] = useState<{ start: number; query: string } | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const listId = useId();
   const matches = useMemo(() => (query ? people.filter((person) => searchKey(person.fullName).includes(searchKey(query.query))).slice(0, 6) : []), [people, query]);
+  // The highlighted row, moved by the arrow keys. A new search starts again at the top.
+  const [active, setActive] = useState(0);
+  const [searched, setSearched] = useState(query?.query);
+  if (searched !== query?.query) {
+    setSearched(query?.query);
+    setActive(0);
+  }
+  const picking = query !== null && matches.length > 0;
+  const current = picking ? Math.min(active, matches.length - 1) : -1;
 
   function pick(person: Person) {
     if (!query) return;
@@ -94,29 +106,52 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
           placeholder={placeholder}
           aria-label={placeholder}
           className="min-h-16 md:min-h-14"
+          role="combobox"
+          aria-expanded={picking}
+          aria-controls={picking ? listId : undefined}
+          aria-activedescendant={picking ? `${listId}-${current}` : undefined}
+          aria-autocomplete="list"
           onChange={(event) => {
             setBody(event.target.value);
             setQuery(mentionQueryAt(event.target.value, event.target.selectionStart));
           }}
           onKeyDown={(event) => {
-            if (query && matches.length && (event.key === "Enter" || event.key === "Tab")) {
+            if (picking && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
               event.preventDefault();
-              pick(matches[0]);
+              const step = event.key === "ArrowDown" ? 1 : -1;
+              setActive((current + step + matches.length) % matches.length);
+            } else if (picking && (event.key === "Enter" || event.key === "Tab")) {
+              event.preventDefault();
+              pick(matches[current]);
             } else if (event.key === "Escape") setQuery(null);
             else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
           }}
         />
-        {query && matches.length ? (
-          <ul role="listbox" aria-label={t("mentionPicker")} className="absolute z-10 mt-1 w-64 rounded-xl bg-popover p-1 text-sm shadow-(--float-shadow)">
-            {matches.map((person, index) => (
-              <li key={person.id}>
-                <button type="button" role="option" aria-selected={index === 0} className={`w-full rounded px-2 py-1 text-left hover:bg-muted ${index === 0 ? "bg-muted/60" : ""}`} onClick={() => pick(person)}>
-                  {person.fullName}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {/* In a portal over everything, so a card or a sheet that clips its content cannot cut it off. Focus stays in the text box. */}
+        <Popover open={picking} onOpenChange={(open) => (open ? null : setQuery(null))}>
+          <PopoverContent anchor={box} align="start" initialFocus={false} finalFocus={false} className="w-64 gap-0 p-1">
+            <ul id={listId} role="listbox" aria-label={t("mentionPicker")}>
+              {matches.map((person, index) => (
+                <li key={person.id}>
+                  <button
+                    id={`${listId}-${index}`}
+                    type="button"
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={index === current}
+                    className={cn("w-full rounded-md px-2 py-1.5 text-left", index === current ? "bg-muted" : "hover:bg-muted/60")}
+                    // Keep the caret in the text box; the click still picks.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => pick(person)}
+                  >
+                    {person.fullName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
       </div>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={pending || !body.trim()}>
