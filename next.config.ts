@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   // actions take salary figures as arguments — a developer's terminal would hold people's pay in
   // its scrollback. Off (see docs/PAYROLL_SECURITY_REVIEW.md, finding 3).
   logging: { serverFunctions: false },
+  // Vercel's build machine spends up to 2.3 minutes re-checking types that CI already checks
+  // (`pnpm check` and `pnpm build` in .github/workflows/ci.yml, on every push to main). Only the
+  // Vercel build skips it, so CI's and a local `pnpm build` still fail on a type error.
+  typescript: { ignoreBuildErrors: !!process.env.VERCEL },
   // Spreadsheet imports and a referral's CV (4 MB each) arrive through a server action with the
   // form's other fields; 4.5 MB is also all the hosting platform takes per request.
   experimental: { serverActions: { bodySizeLimit: "4.5mb" } },
