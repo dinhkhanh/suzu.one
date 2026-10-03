@@ -157,6 +157,16 @@ export async function readPublicInternalFile(file: StoredFileRow): Promise<Reada
   return readObject(file.objectPath);
 }
 
+/**
+ * A short-lived link to a directory-tier file for somebody who is not signed in — a brand kit's
+ * logo on the public domain (FR-BRD-04). The owning module has already decided the public may have
+ * it; this refuses anything above the directory tier whatever it was told.
+ */
+export async function createPublicDownloadLink(file: StoredFileRow, expiresInSeconds: number): Promise<string> {
+  if (file.tier !== "public_internal") throw new Error("only directory-tier files are handed to the public");
+  return createSignedDownloadUrl(file.objectPath, expiresInSeconds);
+}
+
 /** Hides the file at once; the bytes go when the retention process purges them (DR-03). */
 export async function softDeleteFile(fileId: string): Promise<StoredFileRow | undefined> {
   const [file] = await db().update(schema.storedFile).set({ deletedAt: new Date() }).where(and(eq(schema.storedFile.id, fileId), isNull(schema.storedFile.deletedAt))).returning();

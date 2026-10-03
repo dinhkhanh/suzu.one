@@ -4,7 +4,8 @@
 export type PreviewKind = "image" | "video" | "audio" | "pdf" | "document" | "spreadsheet" | "csv" | "text" | "archive" | "none";
 
 const KINDS: Record<Exclude<PreviewKind, "none">, readonly string[]> = {
-  image: ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"],
+  // An SVG is shown through <img>, which runs none of its script (only a brand kit stores one).
+  image: ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp", "svg"],
   video: ["mp4", "m4v", "mov", "webm"],
   audio: ["mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac"],
   pdf: ["pdf"],

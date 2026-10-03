@@ -11,13 +11,13 @@ describe("routeRequest", () => {
     });
 
     it("serves the review links and the careers pages", () => {
-      for (const path of ["/preview/abc", "/preview/abc/decide", "/careers", "/careers/editor", "/careers/assignment/tok/submit"]) {
+      for (const path of ["/preview/abc", "/preview/abc/decide", "/careers", "/careers/editor", "/careers/assignment/tok/submit", "/brands", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b"]) {
         expect(on("suzu.vn", path)).toEqual({ kind: "public" });
       }
     });
 
     it("serves nothing of the app", () => {
-      for (const path of ["/sign-in", "/today", "/privacy", "/portfolio", "/api/auth/session", "/api/cron/daily", "/api/messenger/webhook", "/api/telegram/webhook", "/api/attendance/device/punches", "/api/kiosk/identify", "/sw.js", "/manifest.webmanifest", "/careersx", "/previews"]) {
+      for (const path of ["/sign-in", "/today", "/privacy", "/portfolio", "/api/auth/session", "/api/cron/daily", "/api/messenger/webhook", "/api/telegram/webhook", "/api/attendance/device/punches", "/api/kiosk/identify", "/sw.js", "/manifest.webmanifest", "/careersx", "/previews", "/brandsx", "/admin/brands"]) {
         expect(on("suzu.vn", path)).toEqual({ kind: "notFound" });
       }
     });
@@ -37,6 +37,8 @@ describe("routeRequest", () => {
     it("sends the public pages over, path intact", () => {
       expect(on("suzu.one", "/preview/abc")).toEqual({ kind: "redirect", path: "/preview/abc" });
       expect(on("suzu.one", "/careers")).toEqual({ kind: "redirect", path: "/careers" });
+      expect(on("suzu.one", "/brands/suzu-coffee")).toEqual({ kind: "redirect", path: "/brands/suzu-coffee" });
+      expect(on("suzu.one", "/admin/brands")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/portfolio")).toEqual({ kind: "redirect", path: "/" });
     });
 

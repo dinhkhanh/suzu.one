@@ -54,6 +54,8 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
   { prefix: "/preview", name: "preview", namespaces: ["preview", "theme", "controls"] },
   /** The careers page and the take-home brief (FR-REC-03). */
   { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme", "controls"] },
+  /** The brand guidelines and their downloads (FR-BRD-04): only their own words, not the editor's. */
+  { prefix: "/brands", name: "brands", namespaces: ["brands.public", "theme", "controls"] },
   /** The public domain's own home page: the company, not the app (`src/lib/site-routing.ts`). */
   { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme", "controls"] },
   /**

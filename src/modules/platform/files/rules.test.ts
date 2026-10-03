@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_PHOTO_BYTES, MAX_VIDEO_BYTES, maxBytesFor, PHOTO_OWNER_TYPE, POSTER_OWNER_TYPE } from "./rules";
+import { acceptAttributeFor, BRAND_OWNER_TYPE, checkUpload, cleanFileName, matchesSignature, MAX_BRAND_FILE_BYTES, MAX_FILE_BYTES, MAX_PHOTO_BYTES, MAX_VIDEO_BYTES, maxBytesFor, PHOTO_OWNER_TYPE, POSTER_OWNER_TYPE } from "./rules";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 
@@ -102,5 +102,43 @@ describe("project posters", () => {
       expect(checkUpload({ fileName, sizeBytes: 1000 }, POSTER_OWNER_TYPE), fileName).toEqual({ ok: false, problem: "file_type_not_allowed" });
     }
     expect(acceptAttributeFor(POSTER_OWNER_TYPE)).toBe(".jpg,.jpeg,.png,.webp");
+  });
+});
+
+describe("brand kit files (FR-BRD-02)", () => {
+  const text = (value: string) => new TextEncoder().encode(value);
+  it("take the designer's formats — vectors, layered files, packs, film — under the larger cap", () => {
+    for (const [fileName, contentType] of [
+      ["Logo.svg", "image/svg+xml"],
+      ["Logo.ai", "application/postscript"],
+      ["Logo CMYK.eps", "application/postscript"],
+      ["Key visual.psd", "image/vnd.adobe.photoshop"],
+      ["All logos.zip", "application/zip"],
+      ["Brand film.mp4", "video/mp4"],
+      ["Brochure.pdf", "application/pdf"],
+      ["Logo.png", "image/png"],
+    ] as const) {
+      expect(checkUpload({ fileName, sizeBytes: 1000 }, BRAND_OWNER_TYPE), fileName).toEqual({ ok: true, fileName, contentType });
+    }
+    expect(checkUpload({ fileName: "pack.zip", sizeBytes: MAX_BRAND_FILE_BYTES + 1 }, BRAND_OWNER_TYPE)).toEqual({ ok: false, problem: "file_too_large" });
+    expect(maxBytesFor("pack.zip", BRAND_OWNER_TYPE)).toBe(MAX_BRAND_FILE_BYTES);
+    expect(acceptAttributeFor(BRAND_OWNER_TYPE)).toContain(".svg");
+  });
+  it("still refuse what a brand has no use for, and keep vectors out everywhere else", () => {
+    for (const fileName of ["setup.exe", "page.html", "data.xlsx", "letter.docx"]) {
+      expect(checkUpload({ fileName, sizeBytes: 10 }, BRAND_OWNER_TYPE), fileName).toEqual({ ok: false, problem: "file_type_not_allowed" });
+    }
+    for (const fileName of ["logo.svg", "logo.ai", "logo.eps", "pack.zip"]) expect(checkUpload({ fileName, sizeBytes: 10 }), fileName).toEqual({ ok: false, problem: "file_type_not_allowed" });
+  });
+  it("check what the bytes are: an SVG is markup, an AI is PDF or PostScript", () => {
+    expect(matchesSignature("logo.svg", text('﻿  <?xml version="1.0"?><svg/>'), BRAND_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("logo.svg", text("<svg xmlns='http://www.w3.org/2000/svg'/>"), BRAND_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("logo.svg", new Uint8Array([0x4d, 0x5a, 0x90, 0x00]), BRAND_OWNER_TYPE)).toBe(false);
+    expect(matchesSignature("logo.svg", text("just words, not markup"), BRAND_OWNER_TYPE)).toBe(false);
+    expect(matchesSignature("logo.ai", text("%PDF-1.6"), BRAND_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("logo.ai", text("%!PS-Adobe-3.0"), BRAND_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("logo.eps", new Uint8Array([0xc5, 0xd0, 0xd3, 0xc6, 0, 0]), BRAND_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("logo.eps", text("%PDF-1.6"), BRAND_OWNER_TYPE)).toBe(false);
+    expect(matchesSignature("visual.psd", text("8BPS\u0000\u0001"), BRAND_OWNER_TYPE)).toBe(true);
   });
 });

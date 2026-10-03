@@ -18,6 +18,7 @@ export const ROLES = [
   "auditor",
   "support",
   "sales",
+  "marketing",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -93,6 +94,10 @@ export type Permission =
   // Anyone may send feedback and read their own; neither needs a permission.
   | "feedback:manage"
   | "feedback:read"
+  // Brand kits (FR-BRD-01): keep each brand's logos, brochures and guidelines, and decide what the
+  // public domain hands out. Over the kits of the entities the grant covers; a group grant also
+  // reaches the kits of brands that belong to the whole group.
+  | "brand:manage"
   // Seeing the app as somebody else (FR-PLT-40): the holder's session acts as a person the grant
   // covers — their pages, their grants, their name on what they do — while the audit log keeps the
   // holder's own account on every entry. `canImpersonate` adds the rule that only a "*" holder may
@@ -151,6 +156,9 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   // Business development and account executives (CRM, Phase 11): a pipeline over the grant's
   // entities. No person data beyond the directory, and no money but the deals' own values.
   sales: { permissions: ["org:read", "crm:sell"], maxTier: "public_internal" },
+  // Whoever keeps the group's brands (FR-BRD-01): the brand kits and what the public may download.
+  // Nothing about people beyond the directory.
+  marketing: { permissions: ["org:read", "brand:manage"], maxTier: "public_internal" },
 };
 
 export function tierRank(tier: Tier): number {

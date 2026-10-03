@@ -1,5 +1,6 @@
 import {
   Asterisk,
+  Palette,
   ScanFace,
   Award,
   Banknote,
@@ -95,6 +96,7 @@ const ICONS: Record<string, LucideIcon> = {
   feedback: MessageSquarePlus,
   feedbackInbox: MessagesSquare,
   entities: Building2,
+  brands: Palette,
   org: Network,
   flags: ToggleRight,
   checklists: ListChecks,

@@ -779,6 +779,21 @@ Design rules for the whole of the CRM:
 
 ---
 
+### 4.16 Brand kits (BRD)
+
+Each of the group's own brands, as a guideline partners, suppliers and the press read and download from on the public domain — modelled on the brand-resource pages of large brands (what the brand is, how to show it and how not to, colours, typefaces, files). Added 2026-10-04 at the owner's request.
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-BRD-01 | **Kits** kept under Admin → Brand kits by holders of `brand:manage` (*new role* `marketing`; the owner) over the kit's entity, or the group for a brand of the whole group. A kit has a name, a readable **slug** (its address, `suzu.vn/brands/<slug>`; a renamed slug keeps redirecting), tagline, description (Vietnamese and optional English), website and a contact address. | M |
+| FR-BRD-02 | **Files** of a kit: logos as vectors (SVG, AI, EPS) and pictures, brochures, guidelines, packed sets (ZIP), layered files (PSD), brand films (MP4/MOV), up to 500 MB each, several at once. Checked like every upload (allow-list by owner, magic bytes); taken for this owner only. Each file has a title, a kind, the section that offers it, and a public switch. | M |
+| FR-BRD-03 | **Guideline**: ordered sections (text, colour palette, typography, downloads), each with rich text and **do's and don'ts**, each rule optionally illustrated by an example picture of the kit (shown beside the rule, never offered for download). A new kit starts with Overview, Logo, Colour, Typography and Downloads. The palette lists name, HEX (copyable), RGB and a note; typefaces list name, use and where to get them. | M |
+| FR-BRD-04 | **Public pages** on the public domain: `/brands` lists the *listed* kits; `/brands/<slug>` shows one kit's guideline and files. Visibility per kit: hidden (nobody), unlisted (anyone with the link, not indexed), listed (on the list, indexable). Files are handed out through short-lived signed links on the storage domain; a hidden kit, a private file or another kit's file are the same 404. The page receives only its own words. | M |
+| FR-BRD-05 | **Downloads counted** per file and day (no visitor data), shown to the kit's keepers as totals and the last 30 days. | S |
+| FR-BRD-06 | Content in the visitor's language where the keeper wrote an English version; Vietnamese otherwise. | S |
+
+---
+
 ## 5. Data requirements
 
 ### 5.1 Core entities (conceptual)
