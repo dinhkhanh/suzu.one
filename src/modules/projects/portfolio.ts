@@ -11,6 +11,7 @@ import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modu
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { listEntities } from "../platform/org/service";
+import { type AccentColor, accentOf } from "../work/enums";
 import { projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
@@ -24,6 +25,10 @@ import { canSeeFees } from "./policy";
 export type PortfolioRow = {
   id: string;
   name: string;
+  /** The project's poster, shown as its mark; null = its initials. */
+  posterFileId: string | null;
+  /** The project's colour, else its team's (as on the work page); null = ink. */
+  accent: AccentColor | null;
   status: string;
   /** The project's status as its team's set names it; null = shown by its category. */
   statusName: string | null;
@@ -109,6 +114,8 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
     const row: PortfolioRow = {
       id: project.id,
       name: project.name,
+      posterFileId: project.posterFileId,
+      accent: accentOf(project.color, project.teamColor) ?? null,
       status: project.status,
       statusName: (project.statusId && statusNames.get(project.statusId)) || null,
       jobNumber: plan.jobNumber,

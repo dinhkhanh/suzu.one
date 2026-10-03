@@ -18,6 +18,7 @@ import { ProgressBar } from "@/modules/projects/ui/progress";
 import { healthVariant, ProjectMark } from "@/modules/projects/ui/project-header";
 import { listClients, listCreateTargets, loadViewer } from "@/modules/work/service";
 import { CreateProjectButton } from "@/modules/work/ui/edit-dialogs";
+import { ColorSquare } from "@/modules/work/ui/task-row";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("projects");
@@ -83,13 +84,17 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
     const meta = [row.teamName, row.clientName ?? t("portfolio.noClient"), row.leadName].filter(Boolean).join(" · ");
     const burnTone = row.burn.level === "over" ? "text-destructive" : row.burn.level === "warning" ? "text-warning" : "text-muted-foreground";
     return (
-      <Link key={row.id} href={`/projects/${row.id}`} className="press group/project block min-w-0 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+      // `data-accent` turns the card's one blue (the mark) into the project's colour, as on the work page.
+      <Link key={row.id} href={`/projects/${row.id}`} data-accent={row.accent ?? undefined} className="press group/project block min-w-0 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
         <Card className="h-full transition-colors duration-100 group-hover/project:bg-canvas">
           <CardContent className="flex h-full flex-col gap-3">
             <div className="flex items-start gap-3">
-              <ProjectMark project={{ id: row.id, name: row.name }} />
+              <ProjectMark project={row} accent={!!row.accent} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.01em]">{row.name}</p>
+                <p className="flex min-w-0 items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.01em]">
+                  <ColorSquare color={row.accent ?? undefined} />
+                  <span className="truncate">{row.name}</span>
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{meta}</p>
               </div>
               {row.jobNumber ? <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{row.jobNumber}</span> : null}

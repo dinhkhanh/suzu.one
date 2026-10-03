@@ -25,7 +25,7 @@ export async function findProject(projectId: string, executor: Executor = db()):
   return row;
 }
 
-export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; clientName: string | null; leadName: string | null; openTasks: number; doneTasks: number; overdueTasks: number };
+export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; /** The team's colour, which a project without its own wears. */ teamColor: string | null; clientName: string | null; leadName: string | null; openTasks: number; doneTasks: number; overdueTasks: number };
 
 /** Every project the viewer may open, with task counts. */
 export async function visibleProjects(viewer: WorkViewer, options: { today: string; includeArchived?: boolean; executor?: Executor } = { today: "9999-12-31" }): Promise<ProjectSummary[]> {
@@ -66,7 +66,7 @@ export async function visibleProjects(viewer: WorkViewer, options: { today: stri
     const team = teams.get(project.teamId);
     if (!team || !allowed(project)) return [];
     const tally = byProject.get(project.id);
-    return [{ ...project, teamKey: team.key, teamName: team.name, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 }];
+    return [{ ...project, teamKey: team.key, teamName: team.name, teamColor: team.color, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 }];
   });
 }
 
