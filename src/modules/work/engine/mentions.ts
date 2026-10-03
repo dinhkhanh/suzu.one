@@ -8,7 +8,10 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const MENTION = new RegExp(`@\\[([^\\]\\n]{1,80})\\]\\((${UUID})\\)`, "g");
 const TOKEN = new RegExp(`@\\[([^\\]\\n]{1,80})\\]\\((${UUID})\\)|(https?:\\/\\/[^\\s<>"]+)`, "g");
 
-export const mentionToken = (name: string, personId: string) => `@[${name.replace(/[\[\]\n]/g, " ").trim()}](${personId})`;
+/** A person's name as a mention carries it: brackets and line breaks would end the token early. */
+export const mentionName = (name: string) => name.replace(/[\[\]\n]/g, " ").trim();
+
+export const mentionToken = (name: string, personId: string) => `@[${mentionName(name)}](${personId})`;
 
 /** The people a body mentions, once each, in order of appearance. */
 export function extractMentionIds(body: string): string[] {
@@ -63,3 +66,50 @@ export function mentionQueryAt(body: string, caret: number): { start: number; qu
   const match = /(^|\s)@([^\s@\[\]()]{0,20}(?: [^\s@\[\]()]{1,20}){0,3})$/.exec(before);
   return match ? { start: before.length - match[2].length - 1, query: match[2] } : null;
 }
+
+// ── The draft in the text box ───────────────────────────────────────────────────────────────
+// The box shows a mention as "@Full name", never its token: the people picked are kept beside
+// the text and the tokens are put back when the comment is sent. A name that was typed by hand
+// rather than picked stays plain text, as it always did.
+
+export type DraftMention = { name: string; personId: string };
+export type DraftSegment = { type: "text"; text: string } | { type: "mention"; name: string; personId: string };
+
+/** A stored body as the box shows it: tokens become "@name", and the people they name are remembered. */
+export function toDraft(body: string): { text: string; mentions: DraftMention[] } {
+  const mentions: DraftMention[] = [];
+  const text = body.replace(MENTION, (_token, name: string, personId: string) => {
+    if (!mentions.some((mention) => mention.personId === personId && mention.name === name)) mentions.push({ name, personId });
+    return `@${name}`;
+  });
+  return { text, mentions };
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The draft cut into plain text and picked mentions. The longest name is tried first, so "@Lan Anh"
+ * is not read as "@Lan" followed by " Anh", and a name must end where a word ends.
+ */
+export function splitDraft(text: string, mentions: readonly DraftMention[]): DraftSegment[] {
+  const byName = new Map<string, string>();
+  for (const mention of mentions) if (mention.name.trim()) byName.set(mention.name, mention.personId);
+  if (byName.size === 0) return text ? [{ type: "text", text }] : [];
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`@(${names.map(escapeRegExp).join("|")})(?![\\p{L}\\p{N}_])`, "gu");
+  const segments: DraftSegment[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > cursor) segments.push({ type: "text", text: text.slice(cursor, match.index) });
+    segments.push({ type: "mention", name: match[1], personId: byName.get(match[1])! });
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) segments.push({ type: "text", text: text.slice(cursor) });
+  return segments;
+}
+
+/** The draft as it is stored: every picked "@name" still in the text becomes its token again. */
+export const fromDraft = (text: string, mentions: readonly DraftMention[]): string =>
+  splitDraft(text, mentions)
+    .map((segment) => (segment.type === "mention" ? mentionToken(segment.name, segment.personId) : segment.text))
+    .join("");
