@@ -186,7 +186,8 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
 
   return (
     <div className="flex min-h-[60vh] min-w-0 flex-col gap-5">
-      <div className="flex min-w-0 flex-1 flex-col gap-5">
+      {/* The padding keeps the thread's last line clear of the composer's fade when scrolled to the end. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-5 pb-7">
         {shown.length === 0 ? (
           <div className="flex flex-col gap-4 py-4 md:py-8">
             <Spark />
@@ -212,8 +213,13 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
         )}
       </div>
 
-      {/* The composer, pinned under the thread: a floating box on a desk, a pill on a phone. */}
-      <form ref={formRef} onSubmit={onSubmit} className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] z-10 mr-16 flex flex-col gap-2 md:bottom-4 md:mr-0">
+      {/* The composer, pinned under the thread: a floating box on a desk, a pill on a phone.
+          It sticks to the edge of `<main>`'s content, which that element's bottom padding already
+          holds off the screen's edge: on a phone the padding clears the tab bar, and half a rem
+          back into it sets the pill beside the quick-add button. */}
+      <form ref={formRef} onSubmit={onSubmit} className="sticky -bottom-2 z-10 mr-16 flex flex-col gap-2 md:bottom-4 md:mr-0">
+        {/* The ground under the composer: the thread fades out as it reaches the box and is gone below it — down to the tab bar on a phone, to the edge of the page on a desk. */}
+        <div aria-hidden className="pointer-events-none absolute -top-12 -right-16 -bottom-6 left-0 -z-10 bg-[linear-gradient(to_top,var(--background)_calc(100%-3rem),transparent)] md:right-0 md:-bottom-16" />
         <label htmlFor="question" className="sr-only">
           {t("askLabel")}
         </label>
