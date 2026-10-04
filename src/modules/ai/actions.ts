@@ -5,6 +5,7 @@ import { ActionError, createAction } from "@/lib/action";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { ask, deleteConversation, resolveUnanswered } from "./conversations";
 import { QUESTION_MAX } from "./enums";
+import { admitAiUse } from "./limits";
 import { canAskAssistant, canReadUnansweredLog } from "./policy";
 
 /**
@@ -16,6 +17,9 @@ import { canAskAssistant, canReadUnansweredLog } from "./policy";
  * which is the point of auditing an assistant. Not the answer text: it is a copy of pages that are
  * already in the knowledge base, and the citation ids find it again. A question can be personal, so
  * the entry lands where personal things already live — the audit log, behind `audit:read`.
+ *
+ * THE CEILING comes first (`admitAiUse`): a person over their limit for the minute or the day is
+ * refused before anything is retrieved, so the refused call reaches no driver and stores no turn.
  */
 const askPipeline = createAction({
   name: "ai.ask",
@@ -26,6 +30,7 @@ const askPipeline = createAction({
   }),
   authorize: (user) => canAskAssistant(user.principal),
   run: async ({ user, input }) => {
+    await admitAiUse(user, "ask");
     const { audit: toolCall, ...result } = await ask(user, input);
     // FR-AI-06: **every tool call is audited**, under its own action name, so an auditor can ask
     // "who had the assistant read a payslip this quarter" without reading every question. The
@@ -45,7 +50,7 @@ const askPipeline = createAction({
       audit: {
         resource: { type: "ai_message", id: result.messageId },
         summary: input.question.slice(0, 300),
-        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, tool: toolCall?.tool ?? null, citedPageIds: result.citations.map((citation) => citation.pageId) },
+        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, citedPageIds: result.citations.map((citation) => citation.pageId) },
       },
     };
   },

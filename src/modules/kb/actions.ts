@@ -1,11 +1,12 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { toCsv } from "@/modules/platform/export/csv";
 import { acknowledgePage, getAckReport, remindPendingNow, setAckRequirement } from "./acknowledgements";
-import { embedPendingChunks } from "./chunks";
+import { embedPendingChunks, embedPublishedPage } from "./chunks";
 import { embeddingDriver } from "./embeddings";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile, shownByPublishedVersion } from "./files";
@@ -35,10 +36,23 @@ const spaceFactsForAudit = (space: SpaceRow) => ({ key: space.key, name: space.n
 // What the audit log keeps of a page: what happened to it, none of the prose.
 const pageFactsForAudit = (page: PageRow) => ({ title: page.title, slug: page.slug, status: page.status, parentId: page.parentId, sortOrder: page.sortOrder, publishedVersionId: page.publishedVersionId, hasUnpublishedChanges: page.hasUnpublishedChanges, ownerPersonId: page.ownerPersonId, reviewBy: page.reviewBy });
 
-/** With the local fake there is no network call to wait for: a freshly published page is ready for retrieval at once. The real driver is the job's business. */
-async function embedAfterPublish() {
-  if (!embeddingDriver().isFake) return;
-  await embedPendingChunks(500).catch(() => undefined);
+/**
+ * A freshly published page is ready for the assistant at once. With the local fake there is no
+ * network call to wait for, so it is done before the action answers. The real driver's call is made
+ * once the response is out (`after`), for this page's own new passages: the person who pressed
+ * Publish does not wait for it, and `embedPublishedPage` never throws — a page too long for it, or
+ * an embeddings outage, leaves the passages to the `kb-embeddings` job as before.
+ */
+async function embedAfterPublish(pageId: string) {
+  if (embeddingDriver().isFake) {
+    await embedPendingChunks(500).catch(() => undefined);
+    return;
+  }
+  try {
+    after(() => embedPublishedPage(pageId));
+  } catch {
+    // Not in a request: the job embeds it.
+  }
 }
 
 function refresh(spaceKey?: string, pageId?: string) {
@@ -203,7 +217,7 @@ const publishPipeline = createAction({
     const actor = { personId: user.person.id };
     if (input.title !== undefined && input.content !== undefined) await saveDraft(input.pageId, { title: input.title, content: input.content }, actor);
     const { page, version, before } = await publishPage(input.pageId, actor, { changeNote: input.changeNote, isMajor: input.isMajor });
-    await embedAfterPublish();
+    await embedAfterPublish(page.id);
     refresh(loaded.space.key, page.id);
     return { data: { id: page.id, versionNo: version.versionNo }, audit: { resource: auditPage(loaded), summary: `${page.title}: v${version.versionNo}`, before: pageFactsForAudit(before), after: { ...pageFactsForAudit(page), versionNo: version.versionNo, isMajor: version.isMajor, changeNote: version.changeNote } } };
   },
@@ -226,6 +240,8 @@ const submitReviewPipeline = createAction({
     const loaded = await must(user, input.pageId);
     const draft = input.title !== undefined && input.content !== undefined ? { title: input.title, content: input.content } : undefined;
     const { page, requestId, resubmitted } = await submitPageForReview(input.pageId, { personId: user.person.id }, { changeNote: input.changeNote, isMajor: input.isMajor, draft });
+    // A flow with no step that applies publishes at once: the same page, ready the same way.
+    if (page.status === "published") await embedAfterPublish(page.id);
     refresh(loaded.space.key, page.id);
     revalidatePath("/approvals");
     return { data: { id: page.id, requestId }, audit: { resource: auditPage(loaded), summary: `${page.title}: ${resubmitted ? "resubmitted for review" : "submitted for review"}`, before: { status: loaded.page.status }, after: { status: page.status, requestId, isMajor: input.isMajor, changeNote: input.changeNote } } };
@@ -242,7 +258,7 @@ const decideReviewPipeline = createAction({
   authorize: async (user, input) => !!(await getPublishReview({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
   run: async ({ user, input }) => {
     const { request, before, outcome, page, version, payload } = await decidePageReview(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
-    if (outcome === "approved") await embedAfterPublish();
+    if (outcome === "approved") await embedAfterPublish(payload.pageId);
     refresh(undefined, payload.pageId);
     revalidatePath("/approvals");
     revalidatePath(`/approvals/kb-publish/${request.id}`);

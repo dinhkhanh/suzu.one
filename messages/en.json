@@ -10578,13 +10578,29 @@
       "resolve": "Mark done",
       "note": "Note",
       "notePlaceholder": "Which page did you write?",
-      "resolvedOn": "Done on {date}"
+      "resolvedOn": "Done on {date}",
+      "usage": {
+        "tab": "Usage",
+        "title": "Assistant usage — last {days} days",
+        "intro": "Each person may ask up to {askDay} questions a day ({askBurst} a minute) and draft up to {draftDay} texts a day ({draftBurst} a minute). Tokens are only spent when a model writes the answer.",
+        "byPerson": "By person",
+        "byDay": "By day",
+        "person": "Asked by",
+        "day": "Day",
+        "answers": "Answers",
+        "modelAnswers": "Written by a model",
+        "inputTokens": "Tokens sent",
+        "outputTokens": "Tokens received",
+        "empty": "Nobody has asked anything in this period."
+      }
     },
     "errors": {
       "generic": "The question could not be sent. Please try again.",
       "forbidden": "You may not use the assistant.",
       "ai_conversation_not_found": "That conversation was not found.",
-      "ai_unanswered_not_found": "That question has already been dealt with."
+      "ai_unanswered_not_found": "That question has already been dealt with.",
+      "ai_limit_day": "You have reached today's limit of questions. Ask again tomorrow.",
+      "ai_limit_burst": "That is a lot of questions at once. Wait a minute, then ask again."
     },
     "tools": {
       "fromYourRecord": "These figures come from your own record, not from a knowledge-base page. Open the screen to see the detail.",
@@ -10641,6 +10657,8 @@
       "filled": "Draft filled in — read and edit it before you submit.",
       "notAvailable": "No draft is available for this.",
       "failed": "Could not draft it. Try again.",
+      "limitDay": "You have reached today's limit of drafts. Try again tomorrow.",
+      "limitBurst": "That is a lot of drafts at once. Wait a minute, then try again.",
       "lines": {
         "eod": {
           "done": "Finished {count, plural, one {# task} other {# tasks}}: {items}.",

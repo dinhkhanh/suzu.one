@@ -10,14 +10,15 @@
 // FR-AI-06 GUARDRAIL: `redactCompensation` runs over every piece of free text before it reaches a
 // model. The sources are work records (task titles, comments, status facts in hours) and never
 // read a compensation table, but people write anything in a comment; a sentence about pay or an
-// amount of money is taken out rather than trusted to stay in the building.
+// amount of money is taken out rather than trusted to stay in the building. Contact details go the
+// same way — see `engine/redact.ts`, which is what every model call actually passes through.
 
 export type DraftLine = { key: string; params: Record<string, string | number> };
 
 // ── Guardrail ───────────────────────────────────────────────────────────────────────────────
 
 /** Amounts of money: "15.000.000 đ", "15tr", "20 triệu", "1,5 tỷ", "VND 3,000,000", "$1200". */
-const MONEY = /(?:(?:vnd|vnđ|usd|\$)\s?\d[\d.,]*(?:\s?(?:k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))?)|(?:\d[\d.,]*\s?(?:đồng|đ|₫|vnd|vnđ|usd|k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))/giu;
+export const MONEY =/(?:(?:vnd|vnđ|usd|\$)\s?\d[\d.,]*(?:\s?(?:k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))?)|(?:\d[\d.,]*\s?(?:đồng|đ|₫|vnd|vnđ|usd|k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))/giu;
 /**
  * Whole words, in any script: `\b` only knows ASCII letters, so "sẽ" or "đã" would never match it.
  * Tested with Vietnamese on both edges.

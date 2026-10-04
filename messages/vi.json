@@ -10578,13 +10578,29 @@
       "resolve": "Đánh dấu đã xử lý",
       "note": "Ghi chú",
       "notePlaceholder": "Đã viết trang nào?",
-      "resolvedOn": "Đã xử lý ngày {date}"
+      "resolvedOn": "Đã xử lý ngày {date}",
+      "usage": {
+        "tab": "Mức dùng",
+        "title": "Mức dùng trợ lý — {days} ngày qua",
+        "intro": "Mỗi người được hỏi tối đa {askDay} câu một ngày ({askBurst} câu một phút) và soạn tối đa {draftDay} bản nháp một ngày ({draftBurst} bản một phút). Token chỉ phát sinh khi câu trả lời do mô hình viết.",
+        "byPerson": "Theo người",
+        "byDay": "Theo ngày",
+        "person": "Người hỏi",
+        "day": "Ngày",
+        "answers": "Lượt trả lời",
+        "modelAnswers": "Do mô hình viết",
+        "inputTokens": "Token gửi đi",
+        "outputTokens": "Token nhận về",
+        "empty": "Chưa có lượt hỏi nào trong khoảng này."
+      }
     },
     "errors": {
       "generic": "Không gửi được câu hỏi. Thử lại nhé.",
       "forbidden": "Bạn không có quyền dùng trợ lý.",
       "ai_conversation_not_found": "Không tìm thấy cuộc trò chuyện.",
-      "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi."
+      "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi.",
+      "ai_limit_day": "Bạn đã hỏi hết số lượt của hôm nay. Mai hỏi tiếp nhé.",
+      "ai_limit_burst": "Bạn hỏi nhanh quá. Chờ một phút rồi hỏi tiếp nhé."
     },
     "tools": {
       "fromYourRecord": "Số liệu lấy từ hồ sơ của chính bạn, không phải từ trang Tri thức. Mở màn hình gốc để xem chi tiết.",
@@ -10641,6 +10657,8 @@
       "filled": "Đã điền bản nháp — hãy đọc và sửa trước khi gửi.",
       "notAvailable": "Không soạn được bản nháp cho mục này.",
       "failed": "Chưa soạn được. Hãy thử lại.",
+      "limitDay": "Bạn đã dùng hết số lượt soạn nháp của hôm nay. Mai dùng tiếp nhé.",
+      "limitBurst": "Bạn bấm soạn nhanh quá. Chờ một phút rồi thử lại.",
       "lines": {
         "eod": {
           "done": "Đã xong {count, plural, other {# việc}}: {items}.",

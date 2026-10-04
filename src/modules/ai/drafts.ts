@@ -7,8 +7,11 @@
 //     caller's own day; a status draft needs the right to post the project's update
 //     (`openProject` + `canPostStatus`); a hand-off draft needs the right to open the task
 //     (`canViewTask`). Refused = null, and nothing was read for the model.
-//  2. **No compensation reaches a model.** The sources are work records in hours and counts — no
-//     compensation table is read — and every free text passes `redactCompensation` on its way out.
+//  2. **No compensation and no contact detail reaches a model.** The sources are work records in
+//     hours and counts — no compensation table is read — and the driver itself takes sentences
+//     about pay, amounts of money, phone numbers, email addresses and chat links out of whatever
+//     it is handed (`draftRequestForModel`, `engine/redact.ts`). Nothing here has to remember to.
+//     The hand-off note's contacts are never asked of a model: the person fills them in.
 //  3. **Nothing is saved.** A draft is text handed back to the person's form; they edit it and
 //     submit it through the owning module's own action, or throw it away.
 //  4. **Local first.** With no model key the local driver's deterministic extractive draft is the
@@ -23,11 +26,13 @@ import { canViewTask, findState, listComments, loadTask, loadViewer, notePrivate
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { type DraftLine, eodDraftLines, handoffDraft, type HandoffNoteDraft, redactCompensation, statusDraftLines, suggestedHealth, threadText } from "./engine/drafts";
+import { NO_USAGE, type TokenUsage } from "./engine/limits";
+import { factsForModel } from "./engine/redact";
 import { draftDriver } from "./model";
 
 type Locale = "vi" | "en";
 type DraftUser = Pick<CurrentUser, "person" | "principal">;
-export type DraftResult<Draft> = { draft: Draft; driver: string; model: string; /** True when the local extractive draft is what came back. */ extractive: boolean };
+export type DraftResult<Draft> = { draft: Draft; driver: string; model: string; /** True when the local extractive draft is what came back. */ extractive: boolean; /** What the model call cost — zero on the local driver. Kept in the audit entry; a draft is not stored. */ usage: TokenUsage };
 
 const translator = (locale: Locale) => createTranslator({ locale, messages: locale === "vi" ? vi : en, namespace: "assistant.drafts.lines" });
 const render = (lines: readonly DraftLine[], locale: Locale) => {
@@ -38,8 +43,10 @@ const render = (lines: readonly DraftLine[], locale: Locale) => {
 /** The model's text when there is a model and it answered; the extractive draft otherwise. */
 async function viaDriver(extractive: string, request: { instruction: string; facts: string; locale: Locale }): Promise<DraftResult<string>> {
   const driver = draftDriver();
-  const written = driver.isLocal ? null : await driver.draft({ ...request, facts: redactCompensation(request.facts) });
-  return written ? { draft: written, driver: driver.name, model: driver.model, extractive: false } : { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true };
+  // The driver redacts what it sends (rule 2); a fallback after a failed call still cost its tokens.
+  const answer = driver.isLocal ? null : await driver.draft(request);
+  const usage = answer?.usage ?? NO_USAGE;
+  return answer?.text ? { draft: answer.text, driver: driver.name, model: driver.model, extractive: false, usage } : { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true, usage };
 }
 
 // ── 1. EOD report notes ─────────────────────────────────────────────────────────────────────
@@ -78,14 +85,16 @@ export async function draftStatusSummary(user: DraftUser, projectId: string, loc
 
 // ── 3. Hand-off note from a task's thread ───────────────────────────────────────────────────
 
+// No `contacts`: who the client's people are and how to reach them is never asked of a model, and
+// never accepted from one (SRS §4.15 rule 4). That part of the note is the person's to fill in.
 const NOTE_SCHEMA = {
   type: "object",
-  properties: { context: { type: "string" }, state: { type: "string" }, done: { type: "string" }, next: { type: "string" }, questions: { type: "string" }, links: { type: "array", items: { type: "string" } }, contacts: { type: "string" } },
-  required: ["context", "state", "done", "next", "questions", "links", "contacts"],
+  properties: { context: { type: "string" }, state: { type: "string" }, done: { type: "string" }, next: { type: "string" }, questions: { type: "string" }, links: { type: "array", items: { type: "string" } } },
+  required: ["context", "state", "done", "next", "questions", "links"],
   additionalProperties: false,
 } as const;
 
-const NOTE_TEXT_PARTS = ["context", "state", "done", "next", "questions", "contacts"] as const;
+const NOTE_TEXT_PARTS = ["context", "state", "done", "next", "questions"] as const;
 const MAX_PART = 4000;
 
 /** Whatever a model answered, kept only in the note's shape: known parts, strings, bounded. */
@@ -94,7 +103,9 @@ function asNote(json: string | null): HandoffNoteDraft | null {
   try {
     const value = JSON.parse(json) as Record<string, unknown>;
     const note: HandoffNoteDraft = {};
-    for (const part of NOTE_TEXT_PARTS) if (typeof value[part] === "string" && value[part].trim()) note[part] = redactCompensation(value[part].trim()).slice(0, MAX_PART);
+    // What comes back is held to the same rule as what went out: a model given no pay and no
+    // contact should return none, and is not trusted to.
+    for (const part of NOTE_TEXT_PARTS) if (typeof value[part] === "string" && value[part].trim()) note[part] = factsForModel(value[part].trim()).slice(0, MAX_PART);
     if (Array.isArray(value.links)) note.links = value.links.filter((link): link is string => typeof link === "string" && /^https?:\/\//u.test(link)).slice(0, 10);
     return Object.keys(note).length ? note : null;
   } catch {
@@ -112,10 +123,12 @@ export async function draftHandoffNote(user: DraftUser, taskId: string, locale: 
   const facts = { title: loaded.task.title, description: loaded.task.description, stateName: state?.name ?? null, comments: comments.filter((comment) => !comment.deleted).map((comment) => ({ author: comment.authorName, body: comment.body })) };
   const extractive = handoffDraft(facts);
   const driver = draftDriver();
-  const written = driver.isLocal
+  const answer = driver.isLocal
     ? null
-    : asNote(await driver.draft({ instruction: "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions, links and client contacts. Leave a part empty when the thread does not say.", facts: threadText(facts), locale, schema: NOTE_SCHEMA }));
+    : await driver.draft({ instruction: "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions and links. Leave a part empty when the thread does not say. Do not write anybody's contact details.", facts: threadText(facts), locale, schema: NOTE_SCHEMA });
+  const written = asNote(answer?.text ?? null);
+  const usage = answer?.usage ?? NO_USAGE;
   // The links are the thread's own: a model may drop one, never add one.
-  if (written) return { draft: { ...written, links: extractive.links }, driver: driver.name, model: driver.model, extractive: false };
-  return { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true };
+  if (written) return { draft: { ...written, links: extractive.links }, driver: driver.name, model: driver.model, extractive: false, usage };
+  return { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true, usage };
 }
