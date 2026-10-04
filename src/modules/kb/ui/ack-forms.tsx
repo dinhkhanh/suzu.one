@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { acknowledgePageAction, exportAckReportAction, remindAckAction, setAckRequirementAction } from "../actions";
-import { type SubjectType, subjectKey } from "../enums";
+import { ACK_AUDIENCE_TYPES, subjectKey } from "../enums";
 
 const keyOf = (result: ActionResult<unknown>) => (result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
 
@@ -49,8 +49,7 @@ export function AcknowledgeButton({ pageId }: { pageId: string }) {
 }
 
 type Option = { id: string; name: string };
-const AUDIENCE_TYPES = ["all", "entity", "unit", "unit_only", "person"] as const satisfies readonly SubjectType[];
-type AudienceType = (typeof AUDIENCE_TYPES)[number];
+type AudienceType = (typeof ACK_AUDIENCE_TYPES)[number];
 
 /** "Must read": on or off, days to confirm, who must confirm. Saves the whole setting at once. */
 export function AckSettingsForm({ pageId, required, dueDays, audience, choices }: { pageId: string; required: boolean; dueDays: number; audience: { subjectKey: string; label: string }[]; choices: { entities: Option[]; units: Option[]; people: Option[] } }) {
@@ -105,7 +104,7 @@ export function AckSettingsForm({ pageId, required, dueDays, audience, choices }
             setId("");
           }}
         >
-          {AUDIENCE_TYPES.map((value) => (
+          {ACK_AUDIENCE_TYPES.map((value) => (
             <option key={value} value={value}>
               {t(`access.subject.${value}`)}
             </option>
