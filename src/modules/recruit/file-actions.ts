@@ -33,7 +33,8 @@ const openCvPipeline = createAction({
     const file = await findFile(input.fileId);
     if (!file || file.deletedAt || file.ownerType !== "job_application") throw new ActionError("file_not_found");
     const url = await createDownloadLink(file, { personId: user.person.id, email: user.email }, user.request);
-    return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: file.fileName } };
+    // The application, not the file's name: a CV is called after its owner, and the audit log keeps what it is told for ever.
+    return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: `cv of application ${input.applicationId}` } };
   },
 });
 
@@ -54,7 +55,7 @@ const openSubmissionPipeline = createAction({
     const file = await findFile(input.fileId);
     if (!file || file.deletedAt || file.ownerType !== "recruit_assignment") throw new ActionError("file_not_found");
     const url = await createDownloadLink(file, { personId: user.person.id, email: user.email }, user.request);
-    return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: file.fileName } };
+    return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: `submission of assignment ${input.assignmentId}` } };
   },
 });
 

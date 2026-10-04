@@ -13,24 +13,27 @@ import "server-only";
 //     applying with an address already on file, produces the *same* answer as a first application:
 //     a thank-you. A form that says "you have already applied" is a membership oracle for every
 //     address somebody cares to try.
-//   · **The pipeline is `createPublicAction`**, so parse → rate limit → spam check → run → audit
+//   · **The pipeline is `createPublicAction`**, so rate limit → parse → spam check → run → audit
 //     cannot be skipped, and no refusal reaches the caller as anything but a message key.
 //   · **The CV is never trusted.** The bytes are checked against the allow-list and the file's own
 //     magic bytes in memory before anything is stored, the stored row is `not_scanned` (there is
 //     no scanner in this system), and `policy.ts` keeps it to the people hiring for that opening.
-import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { cache } from "react";
 import { z } from "zod";
 import { ActionError } from "@/lib/action";
+import { cached, TTL } from "@/lib/cache";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, softDeleteFile, storeIncomingFile } from "@/modules/platform/files/service";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { CONSENT_VERSION, OPENING_PUBLIC_STATUSES, type OpeningQuestion, PUBLIC_LIMITS } from "./enums";
 import { signFormToken, verifyFormToken } from "./engine/form-token";
-import { CAREERS_LIMITS, type CareersBucket, retryAfterSeconds, windowStartFor, withinLimit } from "./engine/rate-limit";
+import { CAREERS_LIMITS, type CareersBucket, isRepeatRefusal, retryAfterSeconds, windowStartFor, withinLimit } from "./engine/rate-limit";
 import type { DuplicateMatch } from "./engine/duplicates";
-import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpeningBySlug, recordApplicationEvent } from "./service";
+import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpeningBySlug, PUBLISHED_OPENINGS_CACHE, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -57,8 +60,15 @@ export async function countPublicHit(bucket: CareersBucket, visitor: Visitor, at
       set: { hits: sql`${schema.recruitPublicHit.hits} + 1`, lastAt: at },
     })
     .returning({ hits: schema.recruitPublicHit.hits });
-  return withinLimit(row?.hits ?? 1, limit) ? { ok: true } : { ok: false, retryAfterSeconds: retryAfterSeconds(at, limit.windowSeconds) };
+  const hits = row?.hits ?? 1;
+  return withinLimit(hits, limit) ? { ok: true } : { ok: false, retryAfterSeconds: retryAfterSeconds(at, limit.windowSeconds), repeat: isRepeatRefusal(hits, limit) };
 }
+
+/**
+ * Counted each time an opening's page is rendered, because rendering the form mints a signed token.
+ * Over the limit the page is still served — the advertisement is public — but without the form.
+ */
+export const countFormLoad = (visitor: Visitor): Promise<RateLimitOutcome> => countPublicHit("form", visitor);
 
 /**
  * Counted windows nobody can still be inside. Swept by the retention job (week 4).
@@ -102,44 +112,65 @@ export type PublicOpening = {
   publishedAt: Date | null;
 };
 
-type OpeningRow = typeof schema.jobOpening.$inferSelect;
+/**
+ * What is kept of a published opening between requests: the advertisement, and the two ids its
+ * names are looked up by. **Only what the public pages print** — a band nobody published is cut
+ * before it is stored (compensation is never cached) — and the ids stay on the server: they are
+ * dropped again before anything is handed to a page.
+ */
+type PublishedOpening = Omit<PublicOpening, "entityName" | "departmentName"> & { entityId: string; departmentId: string | null };
 
-const publicViewOf = (opening: OpeningRow, entityName: string, departmentName: string | null): PublicOpening => ({
-  slug: opening.publicSlug,
-  title: opening.title,
-  titleEn: opening.titleEn,
-  entityName,
-  departmentName,
-  employmentType: opening.employmentType,
-  workMode: opening.workMode,
-  workLocation: opening.workLocation,
-  description: opening.description,
-  requirements: opening.requirements,
-  benefits: opening.benefits,
-  salary: opening.salaryPublic ? { minVnd: opening.salaryMinVnd, maxVnd: opening.salaryMaxVnd } : null,
-  questions: opening.questions,
-  publishedAt: opening.publishedAt,
+/** Filtered in the database by the rule `findOpeningBySlug` applies. The slug breaks ties, so the stored list is the same list every time. */
+async function readPublishedOpenings(): Promise<PublishedOpening[]> {
+  const rows = await db()
+    .select()
+    .from(schema.jobOpening)
+    .where(and(inArray(schema.jobOpening.status, [...OPENING_PUBLIC_STATUSES]), isNotNull(schema.jobOpening.publishedAt)))
+    .orderBy(asc(schema.jobOpening.title), asc(schema.jobOpening.publicSlug));
+  return rows.map((opening) => ({
+    slug: opening.publicSlug,
+    title: opening.title,
+    titleEn: opening.titleEn,
+    entityId: opening.entityId,
+    departmentId: opening.departmentId,
+    employmentType: opening.employmentType,
+    workMode: opening.workMode,
+    workLocation: opening.workLocation,
+    description: opening.description,
+    requirements: opening.requirements,
+    benefits: opening.benefits,
+    salary: opening.salaryPublic ? { minVnd: opening.salaryMinVnd, maxVnd: opening.salaryMaxVnd } : null,
+    questions: opening.questions,
+    publishedAt: opening.publishedAt,
+  }));
+}
+
+/**
+ * Every published opening with its names — **once per request** (a page and its metadata ask for
+ * the same thing) and from the shared cache between requests. It is reference data: a handful of
+ * rows that change when a recruiter publishes, edits, closes or reopens one (`service.ts` drops the
+ * entry each time), read by anybody on the internet as often as they like. The names come from the
+ * organisation's own cached tables, so renaming a company needs nothing here.
+ */
+const publicOpeningsOnce = cache(async (): Promise<PublicOpening[]> => {
+  const [openings, entities, units] = await Promise.all([cached(PUBLISHED_OPENINGS_CACHE, TTL.reference, readPublishedOpenings), listEntities(), listOrgUnits()]);
+  const entityNames = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  const unitNames = new Map(units.map((unit) => [unit.id, unit.name]));
+  return openings.map(({ entityId, departmentId, ...advertisement }) => ({
+    ...advertisement,
+    entityName: entityNames.get(entityId) ?? "",
+    departmentName: departmentId ? (unitNames.get(departmentId) ?? null) : null,
+  }));
 });
 
-/** Every job on offer. Filtered in the database by the same rule `findOpeningBySlug` applies. */
+/** Every job on offer. */
 export async function listPublicOpenings(): Promise<PublicOpening[]> {
-  const rows = await db()
-    .select({ opening: schema.jobOpening, entityName: schema.entity.shortName, departmentName: schema.orgUnit.name })
-    .from(schema.jobOpening)
-    .innerJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
-    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.jobOpening.departmentId))
-    .where(and(inArray(schema.jobOpening.status, [...OPENING_PUBLIC_STATUSES]), isNotNull(schema.jobOpening.publishedAt)))
-    .orderBy(asc(schema.jobOpening.title));
-  return rows.map((row) => publicViewOf(row.opening, row.entityName, row.departmentName));
+  return publicOpeningsOnce();
 }
 
 /** One advertisement, or nothing at all — a draft, a closed job and a made-up slug are one answer. */
 export async function findPublicOpening(slug: string): Promise<PublicOpening | null> {
-  const opening = await findOpeningBySlug(slug);
-  if (!opening) return null;
-  const [entity] = await db().select({ name: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1);
-  const [department] = opening.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.departmentId)).limit(1) : [];
-  return publicViewOf(opening, entity?.name ?? "", department?.name ?? null);
+  return (await publicOpeningsOnce()).find((opening) => opening.slug === slug) ?? null;
 }
 
 // ── Applying ────────────────────────────────────────────────────────────────────────────────
@@ -213,15 +244,12 @@ async function candidateFor(input: PublicApplication, tx: Executor): Promise<{ c
   const certain = duplicates.find((match) => match.certain);
   if (certain) {
     // **Consent on file is not the stranger's to change.** Anybody can type somebody else's
-    // address into this form, so what it posts may neither widen a permission (a talent-pool tick
-    // keeps the record years longer) nor withdraw one (which would start the purge clock on
-    // somebody who never asked). The one thing it may do is fill a gap: a record with no consent
-    // at all — a referral, a lead a recruiter typed in — takes the notice agreed to here. The
-    // talent pool is asked for again by the recruiter, in person.
-    await tx
-      .update(schema.candidate)
-      .set({ consentAt: now(), consentVersion: CONSENT_VERSION, updatedAt: now() })
-      .where(and(eq(schema.candidate.id, certain.id), isNull(schema.candidate.consentAt)));
+    // address into this form, so nothing it posts is written to the record already there: not a
+    // talent-pool tick (which keeps the record years longer), not a withdrawal (which would start
+    // the purge clock on somebody who never asked), and not the notice itself — a referral or a
+    // lead a recruiter typed in has agreed to nothing, and a stranger cannot agree for them. What
+    // this form agreed to is kept with *this application*, in its history (see `run` below); the
+    // record's own consent, and the talent pool, are the recruiter's to ask the person for.
     return { candidateId: certain.id, matched: certain };
   }
   const created = await createCandidate(
@@ -312,9 +340,15 @@ const applyPipeline = createPublicAction({
         );
         // Joined to a record already on file by address or number, from a form anybody can fill in
         // with anybody's address. The recruiter is told so in the history — with the name that was
-        // typed and what matched — before trusting the CV and the answers as that person's.
+        // typed and what matched — before trusting the CV and the answers as that person's. The
+        // notice agreed to on the form is recorded here too, with the application it was given for.
         if (matched) {
-          await recordApplicationEvent(tx, { applicationId: application.id, type: "note", actorPersonId: null, detail: { possibleDuplicate: true, typedName: input.fullName, signals: matched.signals } });
+          await recordApplicationEvent(tx, {
+            applicationId: application.id,
+            type: "note",
+            actorPersonId: null,
+            detail: { possibleDuplicate: true, typedName: input.fullName, signals: matched.signals, consentVersion: CONSENT_VERSION },
+          });
         }
         return application;
       });

@@ -95,7 +95,9 @@ export async function countPreviewHit(bucket: PreviewBucket, keyHash: string, at
       set: { hits: sql`${schema.workPreviewHit.hits} + 1`, lastAt: at },
     })
     .returning({ hits: schema.workPreviewHit.hits });
-  return withinLimit(row?.hits ?? 1, limit) ? { ok: true } : { ok: false, retryAfterSeconds: retryAfterSeconds(at, limit.windowSeconds) };
+  const hits = row?.hits ?? 1;
+  // `repeat`: past the first refusal of a window, the public pipeline answers without auditing again.
+  return withinLimit(hits, limit) ? { ok: true } : { ok: false, retryAfterSeconds: retryAfterSeconds(at, limit.windowSeconds), repeat: hits > limit.max + 1 };
 }
 
 /** Counted windows nobody can still be inside. Swept nightly; see `workPreviewSweepJob`. */

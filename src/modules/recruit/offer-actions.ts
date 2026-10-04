@@ -191,7 +191,8 @@ const decideOfferPipeline = createAction({
     refresh(offerId, offer?.applicationId ?? null);
     return {
       data: { outcome },
-      audit: { resource: { type: "job_offer", id: offerId, entityId: request.entityId }, summary: request.summary, after: { decision: input.decision, outcome } },
+      // The offer's number, not the request's summary: that one opens with the candidate's name.
+      audit: { resource: { type: "job_offer", id: offerId, entityId: request.entityId }, summary: offer?.number ?? "offer", after: { decision: input.decision, outcome } },
     };
   },
 });

@@ -26,7 +26,7 @@ export type RateLimit = { max: number; windowSeconds: number };
 export const CAREERS_LIMITS = {
   /** A finished application, CV and all. */
   apply: { max: 6, windowSeconds: 60 * 60 },
-  /** Opening the form (which mints a signed token): stops a script harvesting tokens to spend later. */
+  /** Opening the form (which mints a signed token): stops a script harvesting tokens to spend later. Counted by the opening's page. */
   form: { max: 60, windowSeconds: 60 * 60 },
   /**
    * Sending back a take-home (FR-REC-07). Tighter than an application, because a candidate sends
@@ -58,6 +58,15 @@ export function retryAfterSeconds(at: Date, windowSeconds: number): number {
  */
 export function withinLimit(hitsIncludingThisOne: number, limit: RateLimit): boolean {
   return hitsIncludingThisOne <= limit.max;
+}
+
+/**
+ * Whether a refused hit is a **repeat** refusal: the visitor was already over the limit before it.
+ * The first one over (`max + 1`) is the refusal worth recording; every one after it is the same
+ * fact again, and the public pipeline does not write it to the audit log a second time.
+ */
+export function isRepeatRefusal(hitsIncludingThisOne: number, limit: RateLimit): boolean {
+  return hitsIncludingThisOne > limit.max + 1;
 }
 
 /** How long a counted row is worth keeping: two windows, so the retention job never removes a live one. */

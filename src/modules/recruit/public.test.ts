@@ -25,10 +25,11 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { canOpenCandidateFile } from "./policy";
 import type { Principal } from "../platform/rbac/policy";
 import { PIPELINE_SEED } from "./seed-pipelines";
-import { createOpening, savePipeline, setOpeningStatus, setOpeningTeam } from "./service";
+import { CONSENT_VERSION } from "./enums";
+import { createCandidate, createOpening, savePipeline, setOpeningStatus, setOpeningTeam, updateOpening } from "./service";
 import { MIN_FILL_MS } from "./engine/form-token";
 import { CAREERS_LIMITS } from "./engine/rate-limit";
-import { answersFor, applyToOpening, countPublicHit, findPublicOpening, issueFormToken, listPublicOpenings } from "./public";
+import { answersFor, applyToOpening, countFormLoad, countPublicHit, findPublicOpening, issueFormToken, listPublicOpenings } from "./public";
 
 const principal = (personId: string | null, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 
@@ -144,6 +145,35 @@ describe("what the public may see", () => {
     expect(await findPublicOpening(draftSlug)).toBeNull();
     expect(await findPublicOpening("definitely-not-a-slug")).toBeNull();
   });
+
+  it("shows the one advertisement with its company and department, and still no identifier", async () => {
+    const opening = await findPublicOpening(slug);
+    expect(opening).toMatchObject({ slug, title: "Video Editor", entityName: "SuZu Media", departmentName: "Video" });
+    expect(JSON.stringify(opening)).not.toContain(ids.szm);
+    expect(JSON.stringify(opening)).not.toContain(ids.vid);
+    expect(Object.keys(opening!)).not.toContain("entityId");
+  });
+
+  it("follows the opening: published, edited, closed and reopened are each what the next visitor sees", async () => {
+    const other = await createOpening({ ...openingBase, title: "Sound Designer", questions: [] }, { salaryMinVnd: 15_000_000, salaryMaxVnd: 20_000_000, salaryPublic: true }, ids.recruiterPerson);
+    expect(await findPublicOpening(other.publicSlug)).toBeNull();
+
+    const { after: published } = await setOpeningStatus(other.id, "open", null);
+    // A band somebody decided to publish is shown; the list is ordered by title.
+    expect((await findPublicOpening(published.publicSlug))?.salary).toEqual({ minVnd: 15_000_000, maxVnd: 20_000_000 });
+    expect((await listPublicOpenings()).map((row) => row.title)).toEqual(["Sound Designer", "Video Editor"]);
+
+    await updateOpening(other.id, { ...openingBase, title: "Sound Designer", workLocation: "Đà Nẵng", questions: [] }, { salaryMinVnd: 15_000_000, salaryMaxVnd: 20_000_000, salaryPublic: false });
+    expect(await findPublicOpening(published.publicSlug)).toMatchObject({ workLocation: "Đà Nẵng", salary: null });
+
+    await setOpeningStatus(other.id, "closed", "filled elsewhere");
+    expect(await findPublicOpening(published.publicSlug)).toBeNull();
+    await setOpeningStatus(other.id, "open", null);
+    expect(await findPublicOpening(published.publicSlug)).not.toBeNull();
+    // Closed again, so the list the other tests read is the one they expect.
+    await setOpeningStatus(other.id, "closed", null);
+    expect((await listPublicOpenings()).map((row) => row.title)).toEqual(["Video Editor"]);
+  });
 });
 
 describe("answersFor", () => {
@@ -252,6 +282,30 @@ describe("applying", () => {
     await setOpeningStatus(other.id, "closed", null);
   });
 
+  it("cannot give consent for somebody else: a record with none on file keeps none", async () => {
+    // A lead a recruiter typed in from a forwarded CV. The person has agreed to nothing.
+    const lead = await createCandidate(
+      { fullName: "Lê Văn Chưa Đồng Ý", email: "lead@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null },
+      ids.recruiterPerson,
+      { confirmedNotDuplicate: true },
+    );
+    expect(lead.consentAt).toBeNull();
+
+    // A stranger types that address into the form, agrees to the notice and ticks the talent pool.
+    const result = await applyToOpening(filled(slug, { email: "lead@example.com", fullName: "Kẻ Lạ", phone: null, talentPool: true, answers: { portfolio_reel: "https://a" } }), nextVisitor());
+    expect(result).toEqual({ ok: true, data: { received: true } });
+
+    const [after] = await db().select().from(schema.candidate).where(eq(schema.candidate.id, lead.id));
+    expect(after.consentAt).toBeNull();
+    expect(after.consentVersion).toBeNull();
+    expect(after.talentPoolConsent).toBe(false);
+
+    // What the form agreed to stays with the application it was given for, in its history.
+    const [application] = await db().select().from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, lead.id));
+    const events = await db().select().from(schema.applicationEvent).where(eq(schema.applicationEvent.applicationId, application.id));
+    expect(events.map((event) => event.detail).find((detail) => (detail as { possibleDuplicate?: boolean } | null)?.possibleDuplicate)).toMatchObject({ consentVersion: CONSENT_VERSION });
+  });
+
   it("refuses an application to a draft or a closed opening without saying which", async () => {
     const result = await applyToOpening(filled(draftSlug, { email: "draft@example.com" }), nextVisitor());
     expect(result).toEqual({ ok: false, error: "failed", message: "careers_opening_closed" });
@@ -310,6 +364,32 @@ describe("the rate limit", () => {
     const result = await applyToOpening(filled(slug, { email: "flood@example.com", answers: { portfolio_reel: "https://a" } }), visitor);
     expect(result).toEqual({ ok: false, error: "rate_limited", message: "rate_limited" });
     expect(await db().select().from(schema.candidate).where(eq(schema.candidate.email, "flood@example.com"))).toHaveLength(0);
+  });
+
+  it("counts a malformed post like any other, and stops writing them to the audit log once the visitor is over", async () => {
+    const visitor = nextVisitor();
+    const malformed = filled(slug, { email: "not-an-address" });
+    const posts = CAREERS_LIMITS.apply.max + 20;
+    const answers = [];
+    for (let post = 0; post < posts; post++) answers.push(await applyToOpening(malformed, visitor));
+    expect(answers.slice(0, CAREERS_LIMITS.apply.max)).toEqual(Array(CAREERS_LIMITS.apply.max).fill({ ok: false, error: "invalid" }));
+    expect(answers.slice(CAREERS_LIMITS.apply.max)).toEqual(Array(20).fill({ ok: false, error: "rate_limited", message: "rate_limited" }));
+
+    // The append-only log holds the attempts that were allowed and one refusal — not twenty.
+    const rows = await db().select({ action: schema.auditLog.action }).from(schema.auditLog).where(eq(schema.auditLog.ipAddress, visitor.ipHash));
+    expect(rows.filter((row) => row.action === "careers.apply.invalid")).toHaveLength(CAREERS_LIMITS.apply.max);
+    expect(rows.filter((row) => row.action === "careers.apply.rate_limited")).toHaveLength(1);
+    expect(rows).toHaveLength(CAREERS_LIMITS.apply.max + 1);
+  });
+
+  it("limits how often one visitor may load the form, apart from how often they may apply", async () => {
+    const visitor = nextVisitor();
+    for (let load = 1; load <= CAREERS_LIMITS.form.max; load++) expect(await countFormLoad(visitor)).toEqual({ ok: true });
+    expect((await countFormLoad(visitor)).ok).toBe(false);
+    expect((await countFormLoad(visitor)).ok).toBe(false);
+    // Reading too much does not spend the allowance for applying, and somebody else still gets a form.
+    expect(await countPublicHit("apply", visitor)).toEqual({ ok: true });
+    expect(await countFormLoad(nextVisitor())).toEqual({ ok: true });
   });
 });
 
