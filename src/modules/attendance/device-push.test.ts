@@ -1,11 +1,14 @@
-// The endpoint a time clock posts to: refused without its token, a bad body answered with a 400,
-// a clock set in the future refused line by line, and everything else committed and audited.
+// The endpoint a time clock posts to: refused without its token, refused past its rate limit, a bad
+// body answered with a 400, a clock set in the future refused line by line, and everything else
+// committed and audited.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const device = { id: "d1", entityId: "e1", name: "Face kiosk" };
 const presenting = vi.fn();
 const commit = vi.fn();
 const audit = vi.fn();
+const limit = vi.fn();
+vi.mock("./endpoint-limit", () => ({ endpointKey: (kind: string, id: string) => `${kind}:${id}`, countEndpointHit: (...args: unknown[]) => limit(...args) }));
 vi.mock("./devices", () => ({
   devicePresentingToken: (token: string) => presenting(token),
   commitPushedRows: (deviceId: string, rows: unknown) => commit(deviceId, rows),
@@ -24,6 +27,7 @@ beforeEach(() => {
   presenting.mockReset().mockImplementation(async (token: string) => (token === TOKEN ? device : null));
   commit.mockReset().mockImplementation(async (_id: string, rows: unknown[]) => ({ punches: rows.length, skipped: 0, unmapped: 0, people: rows.length ? 1 : 0 }));
   audit.mockReset();
+  limit.mockReset().mockResolvedValue({ ok: true });
 });
 
 describe("POST /api/attendance/device/punches", () => {
@@ -31,6 +35,19 @@ describe("POST /api/attendance/device/punches", () => {
     expect((await receivePunches(post({ punches: [] }, null))).status).toBe(401);
     expect((await receivePunches(post({ punches: [] }, "szd_wrong"))).status).toBe(401);
     expect(commit).not.toHaveBeenCalled();
+    // Nothing is counted for a caller with no clock behind it.
+    expect(limit).not.toHaveBeenCalled();
+  });
+
+  it("counts each call against its clock, and past the limit answers 429 without reading the body", async () => {
+    await receivePunches(post({ punches: [] }));
+    expect(limit).toHaveBeenCalledWith("device_punches", "device:d1");
+    limit.mockResolvedValue({ ok: false, retryAfterSeconds: 42 });
+    const response = await receivePunches(post("not json"));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("42");
+    expect(await response.json()).toEqual({ error: "rate_limited" });
+    expect(commit).toHaveBeenCalledTimes(1);
   });
 
   it("answers a body it cannot read with 400", async () => {

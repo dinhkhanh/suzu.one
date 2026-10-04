@@ -827,6 +827,13 @@
       "when": 1791136835151,
       "tag": "0117_brand_file_hit",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1791136864744,
+      "tag": "0118_kiosk_hardening",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,19 @@
 export const EMBED_PROVIDERS = ["youtube", "google_drive", "google_docs", "figma", "canva"] as const;
 export type EmbedProvider = (typeof EMBED_PROVIDERS)[number];
 
+/**
+ * The origin each provider's embed address is on — everything `normalizeEmbed` can return, and so
+ * everything a page may frame: the Content-Security-Policy's `frame-src` is this list
+ * (`src/lib/csp.ts`). A provider added below is added here, and a test holds the two together.
+ */
+export const EMBED_FRAME_ORIGINS: Record<EmbedProvider, string> = {
+  youtube: "https://www.youtube-nocookie.com",
+  google_drive: "https://drive.google.com",
+  google_docs: "https://docs.google.com",
+  figma: "https://www.figma.com",
+  canva: "https://www.canva.com",
+};
+
 /** The address as it may be put into an `href`, or null. */
 export function safeHref(value: unknown): string | null {
   if (typeof value !== "string") return null;

@@ -10,7 +10,10 @@ import { and, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
+import { purgeEndpointHits } from "./endpoint-limit";
 import { cosine, decideMatch, FACE_MODEL, isEmbedding, MATCH, normalise } from "./engine/face";
+import { ENDPOINT_HIT_RETENTION_DAYS } from "./engine/rate-limit";
+import { closeLapsedKioskSessions } from "./kiosk";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -115,8 +118,14 @@ export async function purgeFacesOfLeavers(): Promise<number> {
   return removed.length;
 }
 
-// Nightly, with the other housekeeping: face data has no purpose once its person has left (Law 91/2025).
+// Nightly, with the other housekeeping: face data has no purpose once its person has left (Law
+// 91/2025). The kiosk's own housekeeping rides with it: tablets past their lifetime are closed
+// (`engine/kiosk-lifetime.ts`), and the limiter's counted windows of more than a day ago go.
 export const faceLeaversJob: JobDefinition = {
   name: "face-leavers",
-  run: async () => ({ people: await purgeFacesOfLeavers() }),
+  run: async () => ({
+    people: await purgeFacesOfLeavers(),
+    kiosksLapsed: await closeLapsedKioskSessions(),
+    endpointHits: await purgeEndpointHits(new Date(Date.now() - ENDPOINT_HIT_RETENTION_DAYS * 86_400_000)),
+  }),
 };

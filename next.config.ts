@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
+          // Said outright rather than left to the platform's default (NFR-SEC-01): two years, every
+          // subdomain. No `preload` — joining the browsers' preload list cannot be undone in
+          // practice, and is the owner's decision. The Content-Security-Policy is not here: it
+          // carries a nonce per request, so the proxy writes it (src/lib/csp.ts, src/proxy.ts).
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

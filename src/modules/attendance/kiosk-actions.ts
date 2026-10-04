@@ -11,11 +11,10 @@ import { db, schema } from "@/lib/db";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { invalidateSession } from "@/modules/platform/auth/session-cache";
 import { eq } from "drizzle-orm";
-import { commitKioskPunch, getDevice, recentKioskPunches } from "./devices";
+import { commitKioskPunch, getDevice } from "./devices";
 import { EMBEDDING_SIZE } from "./engine/face";
 import { deleteFaces, enrolFaces } from "./faces";
 import { closeKioskSession, getKioskSession, KIOSK_COOKIE, KIOSK_COOKIE_MAX_AGE, kioskOfQrToken, kioskOfToken, openKioskSession } from "./kiosk";
-import { KIOSK_COOLDOWN_MS } from "./kiosk-api";
 import { canEnrolFaceOf, canOpenKiosk } from "./policy";
 
 const refresh = () => revalidatePath("/attendance/kiosk", "layout");
@@ -131,9 +130,9 @@ const qrPunchPipeline = createAction({
     if (!kiosk) throw new ActionError("kiosk_code_expired");
     const person = user.person;
     if (person.status !== "active" || !person.primaryEntityId || !kiosk.entityIds.includes(person.primaryEntityId)) throw new ActionError("kiosk_not_yours");
-    const recent = (await recentKioskPunches(kiosk.device.id, [person.id], new Date(Date.now() - KIOSK_COOLDOWN_MS))).get(person.id);
-    if (recent) return { data: { at: recent.at.toISOString(), repeat: true, direction: recent.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
-    const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr");
+    // Within the minute the earlier punch is the answer and nothing is written (`commitKioskPunch`).
+    const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr", new Date(), kiosk.session.id);
+    if (made.repeat) return { data: { at: made.at.toISOString(), repeat: true, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
     return { data: { at: made.at.toISOString(), repeat: false, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: checked ${made.direction} with the kiosk's QR code`, after: { punchId: made.punchId, direction: made.direction, kioskSessionId: kiosk.session.id } } };
   },
 });
