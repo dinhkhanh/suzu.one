@@ -1,9 +1,29 @@
 // Who may do what with an approval request, independent of its type. Pure.
 // Deciding is not here on purpose: whose turn it is comes from the flow state (engine/flow.ts),
 // and what else an approver needs (a permission, a sensitivity tier) is the owning module's rule.
-import { can, type Principal } from "../rbac/policy";
+import { can, type Principal, type Target } from "../rbac/policy";
 
 type RequestParties = { requesterPersonId: string; status: string };
+
+/**
+ * Moving somebody's turn on to another person, for an approver who is away, suspended or simply
+ * not answering (PLT-02): whoever holds `person:manage` over the person the request is about — over
+ * its requester when it is about nobody — which the owner always does. `where` is that person's
+ * place in the organisation. Never on a request one filed or is the subject of: choosing one's own
+ * approver is approving one's own request by another road.
+ */
+export function canReassignTurns(principal: Principal, request: { requesterPersonId: string; subjectPersonId: string | null }, where: Target | null): boolean {
+  if (!principal.personId || principal.personId === request.requesterPersonId || principal.personId === request.subjectPersonId) return false;
+  return !!where && can(principal, "person:manage", where);
+}
+
+/**
+ * Setting, or ending, a standing delegation for someone who cannot do it themselves (FR-ACL-06):
+ * `person:manage` over that person. One's own delegation is one's own business and needs nothing.
+ */
+export function canDelegateFor(principal: Principal, person: (Target & { personId: string }) | null): boolean {
+  return !!person && !!principal.personId && principal.personId !== person.personId && can(principal, "person:manage", person);
+}
 
 /** Opening a request: its requester, anyone who is or was asked to approve it, and whoever the owning module lets in. */
 export function canOpenRequest(request: RequestParties, viewer: { personId: string; isApprover: boolean; typeAllows: boolean }): boolean {

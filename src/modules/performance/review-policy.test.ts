@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { readableTier } from "../platform/rbac/policy";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { chainAbove, type PersonContext } from "./policy";
-import { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
+import { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewCalibrator, isReviewingManager, type ReviewParties } from "./review-policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -157,13 +157,39 @@ describe("writing a review (FR-PRF-03)", () => {
     expect(canWritePeerReview(colleague, parties(huy, { cycleStatus: "calibration" }), true)).toBe(false);
   });
 
-  it("keeps calibration and release with the manager or HR, and the acknowledgement with the person", () => {
-    expect(canReleaseReview(lineManager, parties(huy))).toBe(true);
-    expect(canReleaseReview(headVid, parties(huy))).toBe(true);
-    expect(canReleaseReview(hrSzm, parties(huy))).toBe(true);
-    expect(canReleaseReview(principal("huy"), parties(huy))).toBe(false);
-    expect(canReleaseReview(colleague, parties(huy))).toBe(false);
-    expect(canReleaseReview(auditor, parties(huy))).toBe(false);
+  it("keeps calibration and release with HR, from the calibration stage on, and the acknowledgement with the person", () => {
+    // Owner's decision, 2026-10-05 (PRF-02): the manager writes the review and proposes a rating;
+    // only performance managers (HR) calibrate and release.
+    const calibrating = parties(huy, { cycleStatus: "calibration" });
+    expect(canReleaseReview(hrSzm, calibrating)).toBe(true);
+    expect(canReleaseReview(hrAdmin, calibrating)).toBe(true);
+    expect(canReleaseReview(lineManager, calibrating)).toBe(false); // the manager named at launch
+    expect(canReleaseReview(headVid, calibrating)).toBe(false); // above the subject, reads but does not hold `performance:manage`
+    expect(canReleaseReview(principal("huy"), calibrating)).toBe(false);
+    expect(canReleaseReview(colleague, calibrating)).toBe(false);
+    expect(canReleaseReview(auditor, calibrating)).toBe(false); // `performance:read` reads
+    // HR of another entity has no say over this person.
+    expect(canReleaseReview(principal("x", [{ role: "hr_staff", scope: { type: "entity", id: SZC } }]), calibrating)).toBe(false);
+
+    // …and only once the cycle allows it: not while it collects, still after it has closed.
+    expect(isReviewCalibrator(hrSzm, parties(huy))).toBe(true);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "active" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "draft" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "released" }))).toBe(true);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "closed" }))).toBe(true);
+
+    // Never one's own review, whatever one holds: HR who is the subject, and the owner about themself.
+    const baoSelf = person("bao", SZM, VID);
+    expect(isReviewCalibrator(hrSzm, parties(baoSelf, { cycleStatus: "calibration" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(baoSelf, { cycleStatus: "calibration" }))).toBe(false);
+    expect(canReleaseReview(owner, parties(person("owner", SZM, VID), { cycleStatus: "calibration" }))).toBe(false);
+    // The owner holds every permission, `performance:manage` among them; oversight alone (D31) only reads.
+    expect(canReleaseReview(owner, calibrating)).toBe(true);
+
+    // An HR manager who is also the reviewing manager releases as HR, not as the manager.
+    const tamAsHr = principal("tam", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
+    expect(canReleaseReview(tamAsHr, calibrating)).toBe(true);
+    expect(canReleaseReview(tamAsHr, parties(huy))).toBe(false);
 
     expect(canAcknowledgeReview(principal("huy"), parties(huy, { released: true }))).toBe(true);
     expect(canAcknowledgeReview(principal("huy"), parties(huy, { released: false }))).toBe(false);

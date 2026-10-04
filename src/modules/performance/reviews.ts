@@ -17,7 +17,7 @@ import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { missingRequired, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
-import { laterStage, type RatingPoint, type ReviewAnswers, type ReviewCycleKind, type ReviewCycleStatus, type ReviewFormKind, type ReviewFormShape, type ReviewFormStatus, type ReviewSection, type ReviewStage } from "./enums";
+import { laterStage, reviewsAreIn, type RatingPoint, type ReviewAnswers, type ReviewCycleKind, type ReviewCycleStatus, type ReviewFormKind, type ReviewFormShape, type ReviewFormStatus, type ReviewSection, type ReviewStage } from "./enums";
 import { type Directory, loadDirectory } from "./people";
 import type { PersonContext } from "./policy";
 import type { ReviewParties } from "./review-policy";
@@ -318,16 +318,26 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
   });
 }
 
+// Calibration and release happen from the cycle's calibration stage on, and a review is never
+// levelled or handed over by the person it is about (owner's decision, 2026-10-05; PRF-02). Both
+// hold here as well as in the policy, because the bulk release reaches these rows by another road.
+async function assertReleasable(tx: Tx, participant: ReviewParticipantRow, actorPersonId: string): Promise<void> {
+  if (participant.personId === actorPersonId) throw new ActionError("review_own");
+  const cycle = await findReviewCycle(participant.cycleId, tx);
+  if (!cycle || !reviewsAreIn(cycle.status as ReviewCycleStatus)) throw new ActionError("review_cycle_not_calibrating");
+}
+
 /**
- * Calibration: HR or the reviewing manager may level a rating before release, with a note saying
- * why. The manager's own form is left exactly as written — what moves is the figure the final
- * yearly result reads (FR-PRF-09), and the note is the record of the difference.
+ * Calibration: HR may level a rating before release, with a note saying why. The manager's own
+ * form is left exactly as written — the rating on it is their proposal — and what moves is the
+ * figure the final yearly result reads (FR-PRF-09); the note is the record of the difference.
  */
 export async function calibrateParticipant(participantId: string, input: { reviewScoreBp: number | null; note: string }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
     if (before.releasedAt) throw new ActionError("review_already_released");
+    await assertReleasable(tx, before, actorPersonId);
     const [after] = await tx
       .update(schema.reviewParticipant)
       .set({ reviewScoreBp: input.reviewScoreBp, calibrationNote: input.note, calibratedAt: new Date(), calibratedByPersonId: actorPersonId, stage: laterStage(before.stage as ReviewStage, "calibrated"), updatedAt: new Date() })
@@ -339,13 +349,15 @@ export async function calibrateParticipant(participantId: string, input: { revie
 
 /**
  * Release: the review becomes the person's to read, and the figure FR-PRF-09 reads is frozen —
- * the calibrated one if there is one, else the manager's. Refused before the manager has written.
+ * the calibrated one if there is one, else the rating the manager proposed. Refused before the
+ * manager has written, and before the cycle has reached its calibration stage.
  */
 export async function releaseParticipant(participantId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
     if (before.releasedAt) throw new ActionError("review_already_released");
+    await assertReleasable(tx, before, actorPersonId);
     const [manager] = await tx
       .select()
       .from(schema.reviewForm)
@@ -527,8 +539,13 @@ export type BulkReleaseResult = { released: string[]; skipped: { participantId: 
 /**
  * Release everybody in a cycle who is ready. The ones whose manager has not written are left
  * alone and listed back — a bulk action that silently skips people is worse than one that says so.
+ * So is the actor's own review: somebody else releases that one. Refused as a whole before the
+ * cycle has reached its calibration stage.
  */
 export async function releaseCycle(cycleId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BulkReleaseResult> {
+  const cycle = await findReviewCycle(cycleId, executor);
+  if (!cycle) throw new ActionError("review_cycle_not_found");
+  if (!reviewsAreIn(cycle.status as ReviewCycleStatus)) throw new ActionError("review_cycle_not_calibrating");
   const participants = await executor.select().from(schema.reviewParticipant).where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)));
   const result: BulkReleaseResult = { released: [], skipped: [] };
   for (const participant of participants) {

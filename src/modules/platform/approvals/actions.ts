@@ -8,10 +8,10 @@ import { todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { can, type Principal } from "../rbac/policy";
-import { createDelegation, revokeDelegation } from "./delegations";
+import { createDelegation, findDelegation, revokeDelegation } from "./delegations";
 import { deleteFlow, flowDefinitionSchema, getFlow, saveFlow } from "./flows";
-import { canWithdraw } from "./policy";
-import { commentOnRequest, delegateRequest, isRequestParty, listInbox, withdrawRequest } from "./service";
+import { canDelegateFor, canWithdraw } from "./policy";
+import { commentOnRequest, delegateRequest, isRequestParty, listInbox, mayReassignRequest, placeOfPerson, reassignRequest, withdrawRequest } from "./service";
 
 const withdrawPipeline = createAction({
   name: "approval.withdraw",
@@ -59,6 +59,29 @@ export async function delegateApprovalAction(input: unknown) {
   return delegatePipeline(input);
 }
 
+// An administrator moves somebody else's turn (PLT-02): the approver is away, suspended, or not
+// answering. Who may: `canReassignTurns`. To whom: the engine's rules, and the tier of what the
+// request carries. Always with a reason, which stays with the request.
+const reassignPipeline = createAction({
+  name: "approval.reassign",
+  input: z.object({ requestId: z.uuid(), fromPersonId: z.uuid(), toPersonId: z.uuid(), reason: z.string().trim().min(1).max(1000) }),
+  authorize: (user, input) => mayReassignRequest(user.principal, input.requestId),
+  run: async ({ user, input }) => {
+    const { request, fromName, toName } = await db().transaction((tx) => reassignRequest(tx, input.requestId, user.person.id, input));
+    refreshRequest(request.link);
+    revalidatePath("/approvals/all");
+    revalidatePath("/approvals/delegation");
+    return {
+      data: { id: request.id },
+      audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `reassigned from ${fromName} to ${toName}: ${request.summary}`, before: { approverPersonId: input.fromPersonId }, after: { approverPersonId: input.toPersonId, reason: input.reason } },
+    };
+  },
+});
+
+export async function reassignApprovalAction(input: unknown) {
+  return reassignPipeline(input);
+}
+
 const commentPipeline = createAction({
   name: "approval.comment",
   input: z.object({ requestId: z.uuid(), comment: z.string().trim().min(1).max(1000) }),
@@ -77,17 +100,18 @@ export async function commentApprovalAction(input: unknown) {
 
 // ── Standing delegations: everyone manages their own ─────────────────────────────────────────
 
+const delegationInput = {
+  toPersonId: z.uuid(),
+  validFrom: z.iso.date(),
+  validTo: z.iso.date(),
+  requestTypes: z.preprocess((value) => (typeof value === "string" ? (value ? [value] : []) : (value ?? [])), z.array(z.string().max(60)).max(20)),
+  // Also hand over what is waiting for me now (only when the delegation already runs today).
+  includePending: z.preprocess((value) => value === "on" || value === true, z.boolean()),
+};
+
 const delegationPipeline = createAction({
   name: "approval.delegation.create",
-  input: z.object({
-    toPersonId: z.uuid(),
-    validFrom: z.iso.date(),
-    validTo: z.iso.date(),
-    requestTypes: z.preprocess((value) => (typeof value === "string" ? (value ? [value] : []) : (value ?? [])), z.array(z.string().max(60)).max(20)),
-    reason: optionalText(300),
-    // Also hand over what is waiting for me now (only when the delegation already runs today).
-    includePending: z.preprocess((value) => value === "on" || value === true, z.boolean()),
-  }),
+  input: z.object({ ...delegationInput, reason: optionalText(300) }),
   authorize: () => true,
   run: async ({ user, input }) => {
     const row = await createDelegation(user.person.id, { ...input, requestTypes: input.requestTypes.length ? input.requestTypes : null });
@@ -128,6 +152,60 @@ const revokeDelegationPipeline = createAction({
 
 export async function revokeDelegationAction(input: unknown) {
   return revokeDelegationPipeline(input);
+}
+
+// ── …and an administrator, for someone who is away and cannot (FR-ACL-06, PLT-02) ─────────────
+
+const delegationForPipeline = createAction({
+  name: "approval.delegation.create_for",
+  // Acting for somebody else is always explained: the reason is what the absent person reads.
+  input: z.object({ ...delegationInput, fromPersonId: z.uuid(), reason: z.string().trim().min(1).max(300) }),
+  authorize: async (user, input) => canDelegateFor(user.principal, await placeOfPerson(input.fromPersonId)),
+  run: async ({ user, input }) => {
+    const { fromPersonId, includePending, ...delegation } = input;
+    const row = await createDelegation(fromPersonId, { ...delegation, requestTypes: delegation.requestTypes.length ? delegation.requestTypes : null }, user.person.id);
+    let handedOver = 0;
+    if (includePending && row.validFrom <= todayInVietnam()) {
+      for (const waiting of await listInbox(fromPersonId)) {
+        if (row.requestTypes && !row.requestTypes.includes(waiting.type)) continue;
+        try {
+          await db().transaction((tx) => delegateRequest(tx, waiting.id, fromPersonId, { toPersonId: row.toPersonId, comment: input.reason, onBehalfBy: user.person.id }));
+          handedOver++;
+        } catch (error) {
+          // The delegate filed it, already sits on the step, or may not read what it carries: it stays where it is.
+          if (!(error instanceof ActionError)) throw error;
+        }
+      }
+    }
+    revalidatePath("/approvals");
+    revalidatePath("/approvals/delegation");
+    // Both people are named: whose approvals they are, and who answers them now.
+    return { data: { id: row.id, handedOver }, audit: { resource: { type: "approval_delegation", id: row.id }, summary: `on behalf: ${row.validFrom} → ${row.validTo}`, after: { fromPersonId, toPersonId: row.toPersonId, requestTypes: row.requestTypes, reason: row.reason, handedOver } } };
+  },
+});
+
+export async function createDelegationForAction(input: unknown) {
+  return delegationForPipeline(input);
+}
+
+const revokeDelegationForPipeline = createAction({
+  name: "approval.delegation.revoke_for",
+  input: z.object({ id: z.uuid() }),
+  authorize: async (user, input) => {
+    const row = await findDelegation(input.id);
+    return !!row && canDelegateFor(user.principal, await placeOfPerson(row.fromPersonId));
+  },
+  run: async ({ input }) => {
+    const found = await findDelegation(input.id);
+    if (!found) throw new ActionError("delegation_not_found");
+    const row = await revokeDelegation(found.fromPersonId, input.id);
+    revalidatePath("/approvals/delegation");
+    return { data: { id: row.id }, audit: { resource: { type: "approval_delegation", id: row.id }, summary: "revoked on behalf", before: { revokedAt: null }, after: { revokedAt: row.revokedAt, fromPersonId: row.fromPersonId, toPersonId: row.toPersonId } } };
+  },
+});
+
+export async function revokeDelegationForAction(input: unknown) {
+  return revokeDelegationForPipeline(input);
 }
 
 // ── Flow configuration: whoever manages the organisation — the group's flows need a group grant ──

@@ -6,9 +6,10 @@ import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { listAllRequests, type OversightFilter } from "@/modules/platform/approvals/service";
-import { canOverseeRequests } from "@/modules/platform/approvals/policy";
+import { canOverseeRequests, canReassignTurns } from "@/modules/platform/approvals/policy";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listPersonNames } from "@/modules/platform/people/service";
 import { entityReach } from "@/modules/platform/rbac/policy";
 import { RequestTabs } from "@/modules/requests/ui/request-tabs";
 import { allRequestTypes } from "../registry";
@@ -32,7 +33,11 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
   const type = typeof query.type === "string" && registered.has(query.type) ? query.type : undefined;
   const since = typeof query.since === "string" && DATE.test(query.since) ? query.since : undefined;
   const filter: OversightFilter = { state: state === "all" ? undefined : state, type, since };
-  const rows = await listAllRequests(entityReach(user.principal, "approval:oversee"), filter);
+  const found = await listAllRequests(entityReach(user.principal, "approval:oversee"), filter);
+  // Following a request is not moving it: a turn is reassigned only by whoever answers for the
+  // person the request is about (PLT-02) — which the owner does for everyone.
+  const rows = found.map((row) => ({ ...row, reassignable: row.status === "pending" && canReassignTurns(user.principal, row, row.reassignTarget) }));
+  const directory = rows.some((row) => row.reassignable) ? await listPersonNames() : undefined;
 
   const labelOf = (key: string, names?: { vi: string; en: string }) => (names ? (locale === "en" ? names.en : names.vi) : t.has(`types.${key}` as "types.leave") ? t(`types.${key}` as "types.leave") : key);
   const types = [...registered].map(([key, entry]) => ({ key, label: labelOf(key, entry.names) })).sort((a, b) => a.label.localeCompare(b.label, locale));
@@ -62,7 +67,7 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
       </form>
 
       <Section title={t("oversight.title")} count={rows.length || undefined}>
-        <RequestTable rows={rows} empty={t("oversight.empty")} showRequester labels={labels} showWaitingOn />
+        <RequestTable rows={rows} empty={t("oversight.empty")} showRequester labels={labels} showWaitingOn reassignTo={directory} />
         {rows.length === 200 ? <p className="text-xs text-faint">{t("oversight.limited", { count: 200 })}</p> : null}
       </Section>
     </Page>

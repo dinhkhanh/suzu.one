@@ -931,6 +931,14 @@
         "title": "{delegator} ủy quyền phê duyệt cho bạn",
         "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới {delegator} sẽ được chuyển cho bạn."
       },
+      "approvals_delegation_set_for_you": {
+        "title": "{actor} đã ủy quyền phê duyệt của bạn cho {delegate}",
+        "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới bạn sẽ được chuyển cho {delegate}. {actor} đã thiết lập thay bạn; bạn có thể kết thúc tại mục Ủy quyền."
+      },
+      "approvals_turn_reassigned": {
+        "title": "{actor} đã chuyển một yêu cầu từ bạn sang {to}: {requestType}",
+        "body": "Yêu cầu ({requestType}) đang chờ bạn duyệt nay chờ {to}. Bạn không cần trả lời nữa."
+      },
       "approvals_leave_cancelled": {
         "title": "Nhân sự đã huỷ đơn nghỉ của bạn",
         "body": "Nhân sự đã huỷ đơn nghỉ đã duyệt của bạn ({range}). Số ngày đã được cộng lại vào số dư."
@@ -1773,6 +1781,7 @@
       "commented": "Ý kiến",
       "withdrawn": "Đã rút",
       "delegated": "Ủy quyền",
+      "reassigned": "Đổi người duyệt",
       "cancelled": "Đã hủy"
     },
     "history": {
@@ -1781,6 +1790,11 @@
       "verified": "Đã xác minh qua kênh thứ hai",
       "parallel": "· cùng lúc với bước trước",
       "standingInFor": "thay {name}",
+      "othersOnStep": "những người duyệt còn lại của bước",
+      "moved": {
+        "offboarded": "Người duyệt đã nghỉ việc",
+        "administrator": "Quản trị viên chuyển"
+      },
       "chain": "Chuỗi phê duyệt",
       "stepTitle": "Bước {number}",
       "mode": "{mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}"
@@ -1806,6 +1820,8 @@
       "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
       "change_request_verification_required": "Hãy xác nhận rằng bạn đã xác minh tài khoản ngân hàng mới với nhân viên qua kênh thứ hai.",
       "approval_delegate_refused": "Không thể chuyển yêu cầu này cho người đó: chưa đến lượt bạn, hoặc họ đã được hỏi.",
+      "approval_reassign_refused": "Không thể chuyển lượt duyệt này: người được chọn không còn lượt đang chờ, hoặc người nhận đã có mặt ở bước này.",
+      "approval_reassign_tier": "Yêu cầu này chứa thông tin hạn chế. Chỉ chuyển được cho người có quyền xem thông tin hạn chế của nhân viên đó.",
       "approval_open_to_decide": "Hãy mở yêu cầu này để quyết định.",
       "delegation_self": "Bạn không thể ủy quyền cho chính mình.",
       "delegation_dates": "Ngày kết thúc trước ngày bắt đầu.",
@@ -1823,6 +1839,13 @@
       "delegateHint": "Người được chọn sẽ trả lời thay bạn. Các điều kiện để quyết định loại yêu cầu này (ví dụ quyền nhân sự) vẫn áp dụng với họ.",
       "delegateTo": "Chuyển cho",
       "delegateNote": "Ghi chú",
+      "reassign": "Đổi người duyệt",
+      "reassignShort": "Đổi người duyệt",
+      "reassignHint": "Dành cho khi người duyệt vắng mặt, bị tạm khóa hoặc không trả lời. Người nhận sẽ trả lời thay; người tạo yêu cầu và người mà yêu cầu nói đến không thể nhận. Lý do được lưu trong lịch sử yêu cầu.",
+      "reassignFrom": "Lấy lượt của",
+      "reassignTo": "Chuyển cho",
+      "reassignReason": "Lý do",
+      "reassignSubmit": "Đổi người duyệt",
       "delegateSubmit": "Chuyển"
     },
     "bulk": {
@@ -1837,6 +1860,16 @@
     "delegation": {
       "link": "Ủy quyền phê duyệt",
       "title": "Ủy quyền",
+      "onBehalf": {
+        "title": "Phê duyệt của người vắng mặt",
+        "description": "Bạn đang thiết lập thay cho <person>{name}</person>. Các yêu cầu mới lẽ ra chờ người này sẽ được chuyển tới người bạn chỉ định; người này được thông báo và có thể tự kết thúc ủy quyền.",
+        "waiting": "Yêu cầu đang chờ người này duyệt",
+        "waitingEmpty": "Không có yêu cầu nào đang chờ mà bạn có thể chuyển.",
+        "hidden": "Còn {count} yêu cầu đang chờ người này nhưng thuộc về nhân viên ngoài phạm vi quản lý của bạn.",
+        "given": "Ủy quyền của người này",
+        "link": "Ủy quyền thay người này",
+        "includePending": "Chuyển luôn các yêu cầu đang chờ người này"
+      },
       "description": "Khi bạn vắng mặt, các yêu cầu mới lẽ ra chờ bạn sẽ được chuyển tới người bạn chỉ định. Bạn có thể kết thúc ủy quyền bất cứ lúc nào.",
       "to": "Ủy quyền cho",
       "types": "Loại yêu cầu",
@@ -2269,6 +2302,18 @@
       "submit": "Ghi nhận",
       "noteHint": "Ghi chú của sự kiện kỷ luật chỉ người có quyền xem thông tin hạn chế mới đọc được. Điều chỉnh lương: không ghi số tiền ở đây."
     },
+    "suspend": {
+      "title": "Tạm khóa tài khoản",
+      "hint": "Người này bị đăng xuất khỏi mọi thiết bị ngay lập tức và không đăng nhập được cho đến khi mở khóa. Quan hệ lao động, phân công và các vai trò giữ nguyên. Các yêu cầu đang chờ người này duyệt không tự chuyển đi.",
+      "reason": "Lý do tạm khóa",
+      "submit": "Tạm khóa",
+      "liftTitle": "Mở khóa tài khoản",
+      "liftHint": "Tài khoản đang bị tạm khóa. Mở khóa trả lại đúng quyền truy cập như trước; người này đăng nhập lại từ đầu.",
+      "liftReason": "Ghi chú (không bắt buộc)",
+      "liftSubmit": "Mở khóa",
+      "approvalsHint": "Khi người này vắng mặt hoặc bị tạm khóa, các yêu cầu chờ họ duyệt cần có người trả lời thay.",
+      "approvalsLink": "Xem yêu cầu đang chờ và ủy quyền thay"
+    },
     "terminate": {
       "title": "Cho thôi việc",
       "fromResignation": "Thực hiện thôi việc theo đơn đã duyệt",
@@ -2300,6 +2345,10 @@
     },
     "errors": {
       "generic": "Không lưu được.",
+      "suspend_self": "Bạn không thể tạm khóa tài khoản của chính mình.",
+      "suspend_not_active": "Chỉ tạm khóa được tài khoản đang hoạt động.",
+      "suspend_not_suspended": "Tài khoản này không bị tạm khóa.",
+      "person_not_found": "Không tìm thấy nhân viên.",
       "forbidden": "Bạn không có quyền thực hiện việc này.",
       "invalid": "Kiểm tra lại các ô đã nhập.",
       "no_employment": "Người này chưa có quan hệ lao động.",
@@ -6755,6 +6804,8 @@
         "yes": "Công bố",
         "cycleAction": "Công bố cả chu kỳ",
         "cycleConfirm": "Sẽ công bố cho tất cả những người đã có phiếu quản lý. Tiếp tục?",
+        "waitingForHr": "Bạn đã gửi phiếu đánh giá và mức xếp loại đề xuất. Phòng Nhân sự sẽ cân đối và công bố cho nhân viên — đang chờ Nhân sự công bố.",
+        "notYet": "Chỉ cân đối và công bố được khi chu kỳ đã sang giai đoạn cân đối. Hiện chu kỳ vẫn đang nhận phiếu.",
         "cycleDone": "Đã công bố {released} người, bỏ qua {skipped} người."
       },
       "acknowledge": {
@@ -6826,6 +6877,8 @@
         "review_cycle_no_participants": "Không có ai thuộc phạm vi chu kỳ này.",
         "review_cycle_bad_step": "Không chuyển được sang trạng thái đó.",
         "review_cycle_not_collecting": "Chu kỳ không còn nhận phiếu.",
+        "review_cycle_not_calibrating": "Chu kỳ chưa sang giai đoạn cân đối: chưa thể cân đối hay công bố.",
+        "review_own": "Bạn không thể cân đối hay công bố đánh giá của chính mình.",
         "review_period_backwards": "Ngày kết thúc phải sau ngày bắt đầu.",
         "review_timeline_backwards": "Các mốc thời gian phải theo thứ tự.",
         "review_timeline_before_period": "Mốc thời gian không được trước ngày bắt đầu kỳ.",

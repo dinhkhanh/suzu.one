@@ -15,7 +15,7 @@ import { listPersonNames } from "../../people/service";
 import type { RequestListRow, RequestView } from "../service";
 import { ageOf } from "./age";
 import { PersonName } from "./person-name";
-import { CommentForm, DelegateForm } from "./request-tools";
+import { CommentForm, DelegateForm, ReassignDialog, ReassignForm } from "./request-tools";
 
 export async function RequestStatusBadge({ status }: { status: string }) {
   const t = await getTranslations("approvals");
@@ -75,13 +75,30 @@ export function PropertySheet({ rows }: { rows: { label: ReactNode; value: React
   );
 }
 
-type Row = RequestListRow & { waitingOn?: string | null };
+type Row = RequestListRow & { waitingOn?: string | null; /** The approvers whose turn is open, and whether this viewer may move it (`canReassignTurns`). */ waiting?: { personId: string; name: string }[]; subjectPersonId?: string | null; reassignable?: boolean };
 
 /**
  * The reference grid of requests: kind, title, who, where it stands, how long it has waited. Open
  * rows first; the decided ones under a band. On a phone the same rows are a list.
  */
-export async function RequestTable({ rows, empty, showRequester, labels, showWaitingOn = false }: { rows: Row[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string>; /** Whose answer each open request is waiting for — the oversight list. */ showWaitingOn?: boolean }) {
+export async function RequestTable({
+  rows,
+  empty,
+  showRequester,
+  labels,
+  showWaitingOn = false,
+  reassignTo,
+}: {
+  rows: Row[];
+  empty: string;
+  showRequester: boolean;
+  /** Names of the request builder's types, which the message bundle does not know. */
+  labels?: ReadonlyMap<string, string>;
+  /** Whose answer each open request is waiting for — the oversight list. */
+  showWaitingOn?: boolean;
+  /** The directory an administrator reassigns a turn to: given, every row marked `reassignable` gets the key (the desk's table; on a phone it is on the request's own page). */
+  reassignTo?: { id: string; fullName: string }[];
+}) {
   const t = await getTranslations("approvals");
   // No message, no empty state: the caller hides the list when there is nothing to show.
   if (rows.length === 0 && !empty) return null;
@@ -111,6 +128,19 @@ export async function RequestTable({ rows, empty, showRequester, labels, showWai
       <TableCell kind="time">
         <RequestAge createdAt={row.createdAt} decidedAt={row.decidedAt} />
       </TableCell>
+      {reassignTo ? (
+        <TableCell kind="actions">
+          {row.reassignable && row.waiting?.length ? (
+            <ReassignDialog
+              requestId={row.id}
+              summary={row.summary || label(row.type)}
+              waiting={row.waiting}
+              people={reassignTo}
+              exclude={[row.requesterPersonId, ...(row.subjectPersonId ? [row.subjectPersonId] : []), ...row.waiting.map((person) => person.personId)]}
+            />
+          ) : null}
+        </TableCell>
+      ) : null}
     </>
   );
 
@@ -125,6 +155,7 @@ export async function RequestTable({ rows, empty, showRequester, labels, showWai
             <TableHead kind="status">{t("columns.step")}</TableHead>
             {showWaitingOn ? <TableHead kind="person">{t("columns.waitingOn")}</TableHead> : null}
             <TableHead kind="time">{t("columns.age")}</TableHead>
+            {reassignTo ? <TableHead kind="actions" /> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -236,6 +267,42 @@ export async function ApprovalChain({ view }: { view: RequestView }) {
   );
 }
 
+/**
+ * "A → B" on an event that moved a turn: handed on by its approver (who is the event's actor, so
+ * only "→ B"), set by an administrator, or moved when the approver left — to several people, or to
+ * nobody new when the others on the step answer it without them.
+ */
+function TurnMoved({ meta, others }: { meta: Record<string, unknown> | null; others: string }) {
+  const id = (value: unknown) => (typeof value === "string" ? value : null);
+  const from = typeof meta?.fromName === "string" ? { personId: id(meta.fromPersonId), name: meta.fromName } : null;
+  const to = Array.isArray(meta?.to)
+    ? (meta.to as { personId?: unknown; name?: unknown }[]).flatMap((person) => (typeof person?.name === "string" ? [{ personId: id(person.personId), name: person.name }] : []))
+    : typeof meta?.toName === "string"
+      ? [{ personId: id(meta.toPersonId), name: meta.toName }]
+      : [];
+  if (!from && to.length === 0) return null;
+  return (
+    <span className="text-muted-foreground">
+      {from ? (
+        <RecordLink kind="person" id={from.personId}>
+          {from.name}
+        </RecordLink>
+      ) : null}
+      {" → "}
+      {to.length === 0
+        ? others
+        : to.map((person, index) => (
+            <span key={`${person.personId}-${index}`}>
+              {index ? ", " : ""}
+              <RecordLink kind="person" id={person.personId}>
+                {person.name}
+              </RecordLink>
+            </span>
+          ))}
+    </span>
+  );
+}
+
 /** Everything that happened, oldest first. */
 export async function RequestEvents({ view }: { view: RequestView }) {
   const t = await getTranslations("approvals");
@@ -256,14 +323,8 @@ export async function RequestEvents({ view }: { view: RequestView }) {
               )}{" "}
               · <span className="font-mono text-xs tabular-nums">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
             </span>
-            {typeof event.meta?.toName === "string" ? (
-              <span className="text-muted-foreground">
-                →{" "}
-                <RecordLink kind="person" id={typeof event.meta.toPersonId === "string" ? event.meta.toPersonId : null}>
-                  {event.meta.toName}
-                </RecordLink>
-              </span>
-            ) : null}
+            <TurnMoved meta={event.meta} others={t("history.othersOnStep")} />
+            {typeof event.meta?.reason === "string" && t.has(`history.moved.${event.meta.reason}` as "history.moved.offboarded") ? <Badge variant="outline">{t(`history.moved.${event.meta.reason}` as "history.moved.offboarded")}</Badge> : null}
             {event.meta?.verifiedSecondChannel ? <Badge variant="outline">{t("history.verified")}</Badge> : null}
             {event.comment ? <p className="w-full text-muted-foreground">“{event.comment}”</p> : null}
           </ListItem>
@@ -287,18 +348,31 @@ export async function RequestHistory({ view }: { view: RequestView }) {
 export async function RequestTools({ view, viewerPersonId }: { view: RequestView; viewerPersonId: string }) {
   const open = view.request.status === "pending" || view.request.status === "returned";
   const isParty = view.isRequester || view.steps.some((step) => step.assignees.some((assignee) => assignee.personId === viewerPersonId));
-  if (!open || !isParty) return null;
+  if (!open || (!isParty && !view.canReassign)) return null;
   const onStep = new Set(view.steps.flatMap((step) => step.assignees.map((assignee) => assignee.personId)));
-  const people = view.canDecide ? (await listPersonNames()).filter((person) => person.id !== viewerPersonId && person.id !== view.request.requesterPersonId && !onStep.has(person.id)) : [];
+  const directory = view.canDecide || view.canReassign ? await listPersonNames() : [];
+  const people = view.canDecide ? directory.filter((person) => person.id !== viewerPersonId && person.id !== view.request.requesterPersonId && !onStep.has(person.id)) : [];
+  // An administrator's "reassign" (PLT-02): the turns that are open, and everyone who is neither a
+  // party nor already on a step that is open — someone asked later may well take an earlier turn.
+  const openSteps = view.steps.filter((step) => step.status === "pending");
+  const waiting = openSteps.flatMap((step) => step.assignees.filter((assignee) => assignee.status === "pending").map((assignee) => ({ personId: assignee.personId, name: assignee.name })));
+  const exclude = [view.request.requesterPersonId, ...(view.request.subjectPersonId ? [view.request.subjectPersonId] : []), ...openSteps.flatMap((step) => step.assignees.map((assignee) => assignee.personId))];
   return (
     <TableCard>
       <List>
-        <ListItem className="py-3">
-          <CommentForm requestId={view.request.id} />
-        </ListItem>
+        {isParty ? (
+          <ListItem className="py-3">
+            <CommentForm requestId={view.request.id} />
+          </ListItem>
+        ) : null}
         {view.canDecide ? (
           <ListItem className="py-3">
             <DelegateForm requestId={view.request.id} people={people} />
+          </ListItem>
+        ) : null}
+        {view.canReassign ? (
+          <ListItem className="py-3">
+            <ReassignForm requestId={view.request.id} waiting={waiting.filter((person, index) => waiting.findIndex((other) => other.personId === person.personId) === index)} people={directory} exclude={exclude} />
           </ListItem>
         ) : null}
       </List>
