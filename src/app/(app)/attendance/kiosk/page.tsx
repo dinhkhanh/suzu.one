@@ -53,6 +53,8 @@ export default async function KioskPage() {
               <TableHead kind="person">{t("sessions.openedBy")}</TableHead>
               <TableHead kind="date">{t("sessions.openedAt")}</TableHead>
               <TableHead kind="date">{t("sessions.lastSeen")}</TableHead>
+              <TableHead kind="date">{t("sessions.expires")}</TableHead>
+              <TableHead kind="number">{t("sessions.punchesToday")}</TableHead>
               <TableHead kind="actions" />
             </TableRow>
           </TableHeader>
@@ -68,6 +70,8 @@ export default async function KioskPage() {
                 </TableCell>
                 <TableCell kind="date">{when(session.openedAt)}</TableCell>
                 <TableCell kind="date">{session.lastSeenAt ? when(session.lastSeenAt) : "—"}</TableCell>
+                <TableCell kind="date">{session.lapsed ? <Badge variant="warning">{t("sessions.expired")}</Badge> : when(session.expiresAt)}</TableCell>
+                <TableCell kind="number">{session.punchesToday}</TableCell>
                 <TableCell kind="actions">
                   <CloseKioskButton sessionId={session.id} />
                 </TableCell>

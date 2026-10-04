@@ -10,18 +10,27 @@ import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { reportBrowserError } from "@/lib/observability/browser";
 import { cosine } from "../../engine/face";
+import { KIOSK_IDLE_DAYS, KIOSK_MAX_DAYS } from "../../engine/kiosk-lifetime";
 import { KioskMachine, type KioskView, type Named, type Punched } from "../../engine/kiosk-machine";
 import { currentQr, needsMoreQr, type QrCode as QrCodeEntry, shouldReload } from "../../engine/kiosk-qr";
 import { type FaceEngine, loadFaceEngine } from "./face-engine";
 import { QrCode } from "./kiosk-qr";
 
-type Phase = "loading" | "ready" | "camera" | "failed" | "closed";
+type Phase = "loading" | "ready" | "camera" | "failed" | "closed" | "expired";
 
-class KioskClosed extends Error {}
+/** The server no longer takes this tablet for a kiosk: HR closed it, or it ran out of time (`expired`). */
+class KioskClosed extends Error {
+  constructor(readonly expired: boolean) {
+    super("kiosk closed");
+  }
+}
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, body === undefined ? { cache: "no-store" } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store" });
-  if (response.status === 401) throw new KioskClosed();
+  if (response.status === 401) {
+    const reason = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new KioskClosed(reason?.error === "expired");
+  }
   if (!response.ok && response.status !== 409) throw new Error(String(response.status));
   return response.json() as Promise<T>;
 }
@@ -44,7 +53,7 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   const [now, setNow] = useState<Date | null>(null);
 
   const closed = useCallback((error: unknown) => {
-    if (error instanceof KioskClosed) setPhase("closed");
+    if (error instanceof KioskClosed) setPhase(error.expired ? "expired" : "closed");
     else setOffline(true);
   }, []);
 
@@ -64,7 +73,7 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   // 30 seconds while it cannot reach the server. A kiosk that was closed learns it from its next
   // face; the codes it still holds are refused by then.
   useEffect(() => {
-    if (phase === "closed") return;
+    if (phase === "closed" || phase === "expired") return;
     let stopped = false;
     let asking = false;
     let retryAt = 0;
@@ -217,12 +226,12 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
 
   const time = (iso: string) => format.dateTime(new Date(iso), { hour: "2-digit", minute: "2-digit", timeZone: ZONE });
 
-  if (phase === "closed") {
+  if (phase === "closed" || phase === "expired") {
     return (
       <Shell>
         <div className="flex max-w-md flex-col items-center gap-4 text-center">
-          <h1 className="text-2xl font-semibold">{t("closed.title")}</h1>
-          <p className="text-white/80">{t("closed.body")}</p>
+          <h1 className="text-2xl font-semibold">{t(phase === "expired" ? "expired.title" : "closed.title")}</h1>
+          <p className="text-white/80">{phase === "expired" ? t("expired.body", { idle: KIOSK_IDLE_DAYS, max: KIOSK_MAX_DAYS }) : t("closed.body")}</p>
           <a href="/attendance/kiosk" className="rounded-[0.625rem] border border-white/40 px-4 py-2.5 text-sm font-medium hover:bg-white/10">
             {t("closed.signIn")}
           </a>

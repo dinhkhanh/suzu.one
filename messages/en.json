@@ -3680,7 +3680,10 @@
         "openedAt": "Opened",
         "lastSeen": "Last seen",
         "empty": "No tablet is open as a kiosk.",
-        "thisDevice": "This device"
+        "thisDevice": "This device",
+        "expires": "Expires",
+        "expired": "Expired, open it again",
+        "punchesToday": "Punches today"
       },
       "faces": {
         "listTitle": "Enrolled faces",
@@ -12192,6 +12195,10 @@
       "title": "This kiosk is closed",
       "body": "HR closed the kiosk on this tablet. To open it again, HR signs in and goes to Attendance → Face kiosk.",
       "signIn": "HR sign-in"
+    },
+    "expired": {
+      "title": "This kiosk needs to be opened again",
+      "body": "A kiosk closes by itself after {idle} days without use, or {max} days after it was opened. To open it again, HR signs in on this tablet and goes to Attendance → Face kiosk."
     },
     "notOpen": {
       "title": "This is not a kiosk yet",

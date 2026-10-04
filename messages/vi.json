@@ -3680,7 +3680,10 @@
         "openedAt": "Mở lúc",
         "lastSeen": "Hoạt động gần nhất",
         "empty": "Chưa có máy tính bảng nào đang mở.",
-        "thisDevice": "Máy này"
+        "thisDevice": "Máy này",
+        "expires": "Hết hạn",
+        "expired": "Đã hết hạn, cần mở lại",
+        "punchesToday": "Lượt chấm hôm nay"
       },
       "faces": {
         "listTitle": "Khuôn mặt đã đăng ký",
@@ -12192,6 +12195,10 @@
       "title": "Máy chấm công đã đóng",
       "body": "HR đã đóng máy chấm công trên máy tính bảng này. Để mở lại, HR đăng nhập và chọn Chấm công → Máy chấm công khuôn mặt.",
       "signIn": "HR đăng nhập"
+    },
+    "expired": {
+      "title": "Máy chấm công này cần được mở lại",
+      "body": "Máy chấm công tự đóng sau {idle} ngày không dùng, hoặc {max} ngày kể từ khi mở. Để mở lại, HR đăng nhập trên máy tính bảng này và chọn Chấm công → Máy chấm công khuôn mặt."
     },
     "notOpen": {
       "title": "Đây chưa phải máy chấm công",

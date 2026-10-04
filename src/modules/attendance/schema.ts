@@ -184,6 +184,10 @@ export const punch = pgTable(
     deviceId: uuid("device_id").references((): AnyPgColumn => attendanceDevice.id),
     deviceUserId: text("device_user_id"),
     importBatchId: uuid("import_batch_id"),
+    // A punch made through a kiosk opened in the app (a face, or its QR code): which tablet's
+    // session it came through. A tablet cannot prove the face in front of it was alive, so HR can
+    // see what one session did — and take it back — if the tablet's cookie ever got out.
+    kioskSessionId: uuid("kiosk_session_id").references((): AnyPgColumn => kioskSession.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -191,6 +195,7 @@ export const punch = pgTable(
     index("punch_entity_at_idx").on(t.entityId, t.at),
     index("punch_review_idx").on(t.reviewStatus),
     uniqueIndex("punch_device_key").on(t.deviceId, t.deviceUserId, t.at).where(sql`${t.deviceId} is not null`),
+    index("punch_kiosk_session_idx").on(t.kioskSessionId, t.at).where(sql`${t.kioskSessionId} is not null`),
   ],
 ).enableRLS();
 
@@ -349,7 +354,9 @@ export const faceTemplate = pgTable(
 
 // A tablet opened as a kiosk for a clock. The tablet holds the token in a cookie (its SHA-256 is
 // here); whoever opened it is signed out on that tablet in the same step. Closed from the kiosk
-// page, it stops at its next call. `qr_secret` signs the QR codes it shows.
+// page, it stops at its next call. `qr_secret` signs the QR codes it shows. It also ends by
+// itself (`engine/kiosk-lifetime.ts`): unused for two weeks, or three months after it was opened,
+// both read off `last_seen_at` and `opened_at`; the nightly job then closes it with nobody's name.
 export const kioskSession = pgTable(
   "kiosk_session",
   {
@@ -372,6 +379,24 @@ export const kioskSession = pgTable(
     closedByPersonId: uuid("closed_by_person_id").references(() => person.id),
   },
   (t) => [uniqueIndex("kiosk_session_token_key").on(t.tokenHash), index("kiosk_session_device_idx").on(t.deviceId)],
+).enableRLS();
+
+// The rate limiter of the endpoints nobody signs in to (NFR-SEC-03): a kiosk tablet's
+// `/api/kiosk/*` and a clock's `/api/attendance/device/*`. One row per (bucket, key, window) and
+// one atomic upsert — the careers page's mechanism, in this module's own table
+// (`endpoint-limit.ts`). `key_hash` is a hash of the kiosk session or the clock, never a token.
+export const attendanceEndpointHit = pgTable(
+  "attendance_endpoint_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What was counted: "kiosk_identify", "kiosk_punch", "device_punches"… See `ENDPOINT_LIMITS`.
+    bucket: text("bucket").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("attendance_endpoint_hit_key").on(t.bucket, t.keyHash, t.windowStart), index("attendance_endpoint_hit_window_idx").on(t.windowStart)],
 ).enableRLS();
 
 // ── Attendance policy and the daily timesheet (FR-ATT-08, 09) ───────────────────────────────
