@@ -7,12 +7,12 @@ export type { ReportDraft } from "./engine/prefill";
 export type { PersonWeek, TeamWeek } from "./engine/weekly";
 /** Labels resolved for the reader (SRS §4.6b): a task or project they may not open is "private work" with its hours only. */
 export type { Seen, ShownActivity, ShownHours, ShownLine, ShownPersonWeek, ShownTeamWeek } from "./engine/redact";
-export { canApproveTimesheet, canCommentOnReport, canOverseeReport, canViewAttendanceHint, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
-export { loadReportReader, loadSubjects, loadTimeReader, readerMaySee } from "./people";
+export { canApproveTimesheet, canCommentOnReport, canOverseeReport, canViewAttendanceHint, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, type ReportReader, type ReportSubject, type TimeReader, type TimesheetSubject } from "./policy";
+export { loadReportReader, loadSubjects, loadTimeReader, loadTimesheetSubjects, readerMaySee } from "./people";
 export { dayOf, daysOf, type PersonDay } from "./days";
 export { getTeamRules, rulesOfPeople } from "./team-rules";
 export { getPlanPage, type PlanPage } from "./plans";
-export { type BoardGroup, type BoardRow, getReportForm, getReportView, getTeamBoard, listMyReports, REPORT_BACKFILL_DAYS, type ReportForm, type ReportView, type ShownBlocker, type ShownReport } from "./reports";
+export { type BoardGroup, type BoardRow, getReportForm, getReportView, getTeamBoard, listMissingReportDays, listMyReports, REPORT_BACKFILL_DAYS, type ReportForm, reportLink, type ReportView, type ShownBlocker, type ShownReport, withinReportWindow } from "./reports";
 export { listWeekly, type WeeklyPersonView, type WeeklyTeamView } from "./weekly";
 export { billableByDefault, getRunningTimer, listTimeOf, type RunningTimer, TIME_BACKFILL_DAYS, type TimeEntryView } from "./time";
 export type { AttendanceHint, GridRow, RowKey, TimesheetStatus, WeekGrid } from "./engine/timesheet";
@@ -27,3 +27,5 @@ export { getUtilisation, UTILISATION_WEEKS, type UtilisationGroup, type Utilisat
  */
 export { type LoggedTotal, loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 export { type BookingView, getToday, type TodayView } from "./today";
+/** Time on one task, for the task's page: the totals the reader may see, their timer, the billable default. */
+export { getTaskTime, type TaskTime } from "./task-time";

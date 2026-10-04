@@ -3,13 +3,13 @@
 // reactions, and the one-click reminder. Who may read a report is policy.ts; every read here takes
 // the reader and asks it.
 import "server-only";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { countOpenBlockersRaisedBy, type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
-import { dayOf, type PersonDay } from "./days";
+import { dayOf, daysOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
 import { dayActivities } from "../platform/day-activity/registry";
 import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
@@ -27,6 +27,10 @@ export type ReportCommentRow = typeof schema.dailyReportComment.$inferSelect;
 /** How far back a report may still be written: the rest of the week, not last month. */
 export const REPORT_BACKFILL_DAYS = 7;
 const dayLabel = (date: IsoDate) => date.split("-").reverse().join("/");
+/** May a report for this day still be written, or asked for: today or one of the days of the back-fill window. */
+export const withinReportWindow = (date: IsoDate, today: IsoDate): boolean => date <= today && date >= addDays(today, -REPORT_BACKFILL_DAYS);
+/** The day's report form. Every link to it names its day: a reminder opened after midnight still opens the day it was about. */
+export const reportLink = (date: IsoDate) => `/daily/report?date=${date}`;
 
 export async function findReport(personId: string, date: IsoDate): Promise<ReportRow | null> {
   const [row] = await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, date))).limit(1);
@@ -82,8 +86,7 @@ export type ReportInput = { blockers: string | null; notes: string | null; tomor
  * afterwards changes the words, not the record of when it came in.
  */
 export async function submitReport(personId: string, date: IsoDate, input: ReportInput, now: Date = new Date()): Promise<{ before: ReportRow | null; after: ReportRow }> {
-  const today = todayInVietnam(now);
-  if (date > today || date < addDays(today, -REPORT_BACKFILL_DAYS)) throw new ActionError("report_date_invalid");
+  if (!withinReportWindow(date, todayInVietnam(now))) throw new ActionError("report_date_invalid");
   const [before, draft, day, open] = await Promise.all([findReport(personId, date), buildDraft(personId, date), dayOf([personId], date), listOpenWorkOf(personId, date)]);
   const tomorrow: PlannedItem[] = [...new Set(input.tomorrow)].map((taskId) => {
     const task = open.find((row) => row.taskId === taskId);
@@ -158,6 +161,29 @@ export async function getReportView(reader: ReportReader, reportId: string): Pro
   const shown: ShownReport = { ...report, done: report.done.map((line) => showLine(line, seen)), notDone: report.notDone.map((line) => showLine(line, seen)), activity: report.activity.map((item) => showActivity(item, seen)) };
   const blockers = openBlockers.map((blocker): ShownBlocker => (seen.tasks.has(blocker.taskId) ? blocker : { ...blocker, key: "", title: "", reason: "", neededPersonId: null, neededName: null, hidden: true }));
   return { report: shown, subject, comments, openBlockers: blockers, tomorrow: tomorrow.map((line) => showLine(line, seen)) };
+}
+
+/**
+ * The days before today the person can still report on and has not: inside the back-fill window,
+ * a report required of them that day (never a holiday, leave or a day off) and none submitted.
+ * Newest first. Filed now, each is marked late — the deadline was that day's.
+ */
+export async function listMissingReportDays(personId: string, today: IsoDate): Promise<IsoDate[]> {
+  const from = addDays(today, -REPORT_BACKFILL_DAYS);
+  const to = addDays(today, -1);
+  const [days, submitted] = await Promise.all([
+    daysOf([personId], from, to),
+    db()
+      .select({ date: schema.dailyReport.date })
+      .from(schema.dailyReport)
+      .where(and(eq(schema.dailyReport.personId, personId), gte(schema.dailyReport.date, from), lte(schema.dailyReport.date, to), eq(schema.dailyReport.status, "submitted"))),
+  ]);
+  const sent = new Set(submitted.map((row) => row.date));
+  return [...(days.get(personId)?.values() ?? [])]
+    .filter((day) => day.report.required && !sent.has(day.day.date))
+    .map((day) => day.day.date)
+    .sort()
+    .reverse();
 }
 
 /** The person's own recent reports. */
@@ -275,11 +301,14 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
 }
 
 /**
- * "Please send today's report" to one person or everyone missing (FR-PJM-22). Only to people the
- * reader oversees whose report is required and not in; once per person and day however often
- * anyone presses the button (`daily_reminder_sent`). Returns who was told.
+ * "Please send your report" to one person or everyone missing (FR-PJM-22), for today or a day of
+ * the back-fill window — a report that can still be written can still be asked for. Only to people
+ * the reader oversees whose report was required that day and is not in; once per person and report
+ * day however often anyone presses the button (`daily_reminder_sent`). The notice for a past day
+ * names it, and the link opens that day's form. Returns who was told.
  */
-export async function remindMissing(reader: ReportReader, personIds: readonly string[], date: IsoDate, actorName: string): Promise<string[]> {
+export async function remindMissing(reader: ReportReader, personIds: readonly string[], date: IsoDate, actorName: string, today: IsoDate = todayInVietnam()): Promise<string[]> {
+  if (!withinReportWindow(date, today)) throw new ActionError("report_date_invalid");
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return [];
   const [subjects, days, reports] = await Promise.all([loadSubjects(ids), dayOf(ids, date), db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, ids), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")))]);
@@ -295,7 +324,7 @@ export async function remindMissing(reader: ReportReader, personIds: readonly st
       .onConflictDoNothing()
       .returning({ personId: schema.dailyReminderSent.personId });
     const told = fresh.map((row) => row.personId);
-    await notify({ recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: `/daily/report?date=${date}` }, tx);
+    await notify(date === today ? { recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: reportLink(date) } : { recipients: told, kind: "daily.report_nudge_past", params: { actor: actorName, date: dayLabel(date) }, link: reportLink(date) }, tx);
     return told;
   });
 }

@@ -7,10 +7,12 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { loadDirectory, reportsBelow } from "@/modules/performance/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import { canViewReport, overseesDaily, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
+import { fallbackApproversOf } from "./approvers";
+import { canViewReport, overseesDaily, type ReportReader, type ReportSubject, type TimeReader, type TimesheetSubject } from "./policy";
 import { rulesOfPeople } from "./team-rules";
 
 export type Subject = ReportSubject & { fullName: string };
+export type TimesheetPerson = Subject & TimesheetSubject;
 
 /**
  * The reader: who they are and which active work teams they lead. Inside a transaction, pass it.
@@ -52,6 +54,15 @@ export async function loadSubjects(personIds: readonly string[]): Promise<Map<st
     result.set(personId, { personId, fullName: person.fullName, teamIds: teams.get(personId)?.teamIds ?? [], chainAbove: person.chainAbove });
   }
   return result;
+}
+
+/**
+ * Subjects as the timesheet's approval asks of them: with whoever approves the week when no lead
+ * and no line manager can (approvers.ts). Only the reads that decide or show a week pay for it.
+ */
+export async function loadTimesheetSubjects(personIds: readonly string[]): Promise<Map<string, TimesheetPerson>> {
+  const [subjects, fallbacks] = await Promise.all([loadSubjects(personIds), fallbackApproversOf(personIds)]);
+  return new Map([...subjects].map(([personId, subject]) => [personId, { ...subject, fallbackApprovers: fallbacks.get(personId) ?? [] }]));
 }
 
 /** May this reader see that person's reports? One subject, loaded on the spot. */

@@ -121,6 +121,12 @@ describe("the approval states", () => {
     expect(transition("returned", { type: "submit" })).toEqual({ ok: true, status: "submitted" });
   });
 
+  it("a week still waiting is the person's to take back; a decided one is not", () => {
+    expect(transition("submitted", { type: "recall" })).toEqual({ ok: true, status: "open" });
+    expect(isWeekEditable("open")).toBe(true);
+    for (const status of ["approved", "returned", "open"] as const) expect(transition(status, { type: "recall" }), status).toEqual({ ok: false, error: "timesheet_not_submitted" });
+  });
+
   it("only an approved week reopens, and only with a reason", () => {
     expect(transition("approved", { type: "reopen", reason: null })).toEqual({ ok: false, error: "timesheet_comment_required" });
     expect(transition("approved", { type: "reopen", reason: "Sai dự án" })).toEqual({ ok: true, status: "open" });

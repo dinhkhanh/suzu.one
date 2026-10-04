@@ -10,7 +10,7 @@ import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { initialsOf } from "@/lib/text";
-import { type BoardRow, getTeamBoard, loadReportReader } from "@/modules/daily/service";
+import { type BoardRow, getTeamBoard, loadReportReader, withinReportWindow } from "@/modules/daily/service";
 import { RemindButton } from "@/modules/daily/ui/remind-button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -19,7 +19,8 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("teamDailyBoard");
 
 // FR-PJM-22: the lead's board — per team they lead, and for line managers their reports:
-// submitted, missing, not required today; blockers first; one tap to remind.
+// submitted, missing, not required today; blockers first; one tap to remind — for today, and for
+// any earlier day whose report can still be written.
 export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/team">) {
   const user = await requireUser();
   const today = todayInVietnam();
@@ -28,6 +29,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
   const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id, undefined, user.principal)]);
   const groups = await getTeamBoard(reader, date);
   const isToday = date === today;
+  const canRemind = withinReportWindow(date, today);
 
   // Oversight reads the rest of the company; reminding stays with the people who run the work.
   const row = (person: BoardRow, index: number, remindable: boolean) => {
@@ -52,7 +54,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
             {meta ? <span className={person.openBlockers > 0 ? "block truncate text-xs text-destructive" : "block truncate text-xs text-muted-foreground"}>{meta}</span> : null}
           </div>
           {person.status === "submitted" ? <Badge dot variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge dot variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}
-          {person.status === "missing" && isToday && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
+          {person.status === "missing" && canRemind && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
         </div>
         {person.blockers?.trim() ? <RichText text={person.blockers} className="pl-9 text-sm text-destructive" /> : null}
       </ListItem>
@@ -92,7 +94,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         const remindable = group.kind !== "company";
         const missing = group.rows.filter((person) => person.status === "missing" && !person.reminded).map((person) => person.personId);
         return (
-          <Section key={group.kind === "team" ? group.teamId : group.kind} title={group.kind === "team" ? <RecordLink kind="team" id={group.teamId}>{group.name}</RecordLink> : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")} count={group.rows.length} action={isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}>
+          <Section key={group.kind === "team" ? group.teamId : group.kind} title={group.kind === "team" ? <RecordLink kind="team" id={group.teamId}>{group.name}</RecordLink> : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")} count={group.rows.length} action={canRemind && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}>
             <p className="px-0.5 text-xs text-muted-foreground">{t("board.counts", { submitted: group.counts.submitted, missing: group.counts.missing, notRequired: group.counts.not_required })}</p>
             <List>{group.rows.map((person, index) => row(person, index, remindable))}</List>
           </Section>

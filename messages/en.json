@@ -1219,6 +1219,14 @@
         "title": "Daily report reminder",
         "body": "{actor} reminds you to submit today's report."
       },
+      "daily_report_nudge_past": {
+        "title": "Daily report reminder",
+        "body": "{actor} reminds you to submit the report for {date}."
+      },
+      "daily_report_missed": {
+        "title": "Yesterday's report is missing",
+        "body": "No end-of-day report came in for {date}. You can still send it — it will be marked late."
+      },
       "daily_report_commented": {
         "title": "Comment on your report",
         "body": "{actor} commented on your report of {date}."
@@ -10771,6 +10779,15 @@
       "submitHint": "Weekly timesheets are approved. Check your hours, then submit.",
       "submit": "Submit week",
       "resubmit": "Submit again",
+      "recall": "Take back",
+      "recallHint": "Nobody has decided this week yet. Take it back to change your hours, then submit again.",
+      "date": "Day",
+      "notePlaceholder": "What was it for? (optional)",
+      "onTask": "Time on this task",
+      "taskMine": "You: {value} h",
+      "taskTotal": "Everyone: {value} h",
+      "taskBillable": "{value} h billable",
+      "taskNone": "No time logged on this task yet.",
       "start": "Start timer",
       "stop": "Stop",
       "running": "Timer running:",
@@ -10891,6 +10908,7 @@
       "send": "Send report",
       "dueBy": "Due by {time}",
       "optional": "Not required today",
+      "missed": "Not sent — sending it now is marked late",
       "prefilledHint": "What you did is filled in from today's activity — just add blockers and tomorrow's plan.",
       "tomorrowPlanned": "Tomorrow's plan ({count})",
       "noTomorrow": "No plan for tomorrow.",
@@ -11005,6 +11023,9 @@
       "plan": "Today's plan",
       "report": "Today's report",
       "recent": "Recent reports",
+      "missing": "Reports not sent",
+      "missingHint": "You can still send the reports of these days; each will be marked late.",
+      "write": "Write report",
       "empty": "You have not sent a daily report yet.",
       "hasBlockers": "Blockers",
       "screens": "Screens",

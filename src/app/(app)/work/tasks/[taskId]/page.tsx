@@ -25,6 +25,8 @@ import { digitalAssetsByProject, listLinkableDigitalAssets } from "@/modules/wor
 import { TaskDigitalAssets } from "@/modules/work/ui/digital-assets";
 import { activeAccessPairs } from "@/modules/assets/service";
 import { accentOf } from "@/modules/work/enums";
+import { getTaskTime, loadTimeReader } from "@/modules/daily/service";
+import { TaskTime } from "@/modules/daily/ui/task-time";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("task");
@@ -67,7 +69,17 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     listTaskBlockers(task.id),
     canEdit ? listMoveTargets(viewer, detail.facts) : [],
   ]);
-  const [pins, deliveries, publishes, client, checklists, stageHooks] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail), checklistChoices(), listStateChecklists([work.stateId])]);
+  // Time is logged where the work is (D22, FR-PJM-37): the daily module's own log and timer, and
+  // the hours its access rule lets this reader see. Whoever opens the task may log on it.
+  const [pins, deliveries, publishes, client, checklists, stageHooks, time] = await Promise.all([
+    listTaskPins(task.id),
+    listDeliveriesByTask([task.id]),
+    listPublishesByTask([task.id]),
+    clientOfTask(detail),
+    checklistChoices(),
+    listStateChecklists([work.stateId]),
+    loadTimeReader(user.person.id, user.principal).then((reader) => getTaskTime(reader, { taskId: task.id, projectId: work.projectId }, todayInVietnam())),
+  ]);
   // FR-AST-09: the pages and channels the task may name — the project's own first, then the rest;
   // what the task already names stays in the list even once retired, so saving does not drop it.
   const [linkable, ofProject, accessPairs] = await Promise.all([
@@ -181,6 +193,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
         today={today}
       >
         <TaskCustomFields taskId={task.id} fields={toFieldViews(fields)} values={work.customValues} people={people} canEdit={canEdit} />
+        <TaskTime taskId={task.id} today={today} earliest={time.earliest} billable={time.billable} running={time.running} mine={time.mine} total={time.total} />
         <BlockerPanel
           taskId={task.id}
           blockers={blockers.map((blocker) => ({ ...blocker, raisedAt: blocker.raisedAt.toISOString(), resolvedAt: blocker.resolvedAt?.toISOString() ?? null }))}

@@ -7,7 +7,7 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getMyTimeWeek, getRunningTimer, weekStartOf } from "@/modules/daily/service";
 import { RunningTimer } from "@/modules/daily/ui/timer";
-import { SubmitWeekButton } from "@/modules/daily/ui/week-entries";
+import { RecallWeekButton, SubmitWeekButton } from "@/modules/daily/ui/week-entries";
 import { TimeWeek, WeekStatus } from "@/modules/daily/ui/week-view";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOpenWorkOf } from "@/modules/work/service";
@@ -16,7 +16,8 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("myTime");
 
 // FR-PJM-24, 25, 26: the person's week of time — the grid (typed into, or copied from last week),
-// attendance beside each day, and the weekly submission where a team approves timesheets.
+// attendance beside each day, and the weekly submission where a team approves timesheets; a week
+// sent in and not yet decided can be taken back.
 export default async function TimePage({ searchParams }: PageProps<"/daily/time">) {
   const user = await requireUser();
   const today = todayInVietnam();
@@ -66,6 +67,12 @@ export default async function TimePage({ searchParams }: PageProps<"/daily/time"
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
           <SubmitWeekButton weekStart={weekStart} again={view.status === "returned"} />
           <p className="text-xs text-muted-foreground">{t("time.submitHint")}</p>
+        </div>
+      ) : null}
+      {view.status === "submitted" ? (
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+          <RecallWeekButton weekStart={weekStart} />
+          <p className="text-xs text-muted-foreground">{t("time.recallHint")}</p>
         </div>
       ) : null}
     </Page>

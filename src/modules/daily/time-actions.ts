@@ -13,10 +13,10 @@ import { weekStartOf } from "./engine/rules";
 import { parseRowKey } from "./engine/timesheet";
 import type { Utilisation } from "./engine/utilisation";
 import { TIME_CATEGORIES, type TimeCategory } from "./enums";
-import { loadReportReader, loadSubjects } from "./people";
+import { loadReportReader, loadTimesheetSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { deleteTimeEntry, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
-import { approveWeeks, decideWeek, findTimesheetWeekById, submitWeek } from "./timesheets";
+import { approveWeeks, decideWeek, findTimesheetWeekById, recallWeek, submitWeek } from "./timesheets";
 import { getUtilisation } from "./utilisation";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -190,11 +190,27 @@ export async function submitWeekAction(input: unknown) {
   return submitWeekPipeline(input);
 }
 
-/** The reader approves this week's person (a lead of their team, or their line manager — never themself). */
+const recallWeekPipeline = createAction({
+  name: "daily.timesheet.recall",
+  input: z.object({ weekStart: monday }),
+  // One's own week; the service refuses a week that is not waiting any more.
+  authorize: () => true,
+  run: async ({ user, input }) => {
+    const { before, after } = await recallWeek(user.person.id, input.weekStart);
+    refresh();
+    revalidatePath("/daily/timesheets", "layout");
+    return { data: { id: after.id }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: recalled`, before: { status: before.status, submittedAt: before.submittedAt }, after: { status: after.status } } };
+  },
+});
+export async function recallWeekAction(input: unknown) {
+  return recallWeekPipeline(input);
+}
+
+/** The reader approves this week's person (a lead of their team, their line manager, or — where there is neither — the approver of last resort; never themself). */
 async function mayDecide(personId: string, weekId: string): Promise<boolean> {
   const week = await findTimesheetWeekById(weekId);
   if (!week) return false;
-  const [reader, subjects] = await Promise.all([loadReportReader(personId), loadSubjects([week.personId])]);
+  const [reader, subjects] = await Promise.all([loadReportReader(personId), loadTimesheetSubjects([week.personId])]);
   const subject = subjects.get(week.personId);
   return !!subject && canApproveTimesheet(reader, subject);
 }

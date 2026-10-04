@@ -25,7 +25,7 @@ import { createWorkTask, listStates } from "@/modules/work/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DEFAULT_TEAM_RULES } from "./engine/rules";
 import { sendTimesheetReminders } from "./jobs";
-import { loadReportReader, loadSubjects, loadTimeReader } from "./people";
+import { loadReportReader, loadTimeReader, loadTimesheetSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { saveTeamRules } from "./team-rules";
 import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
@@ -280,7 +280,7 @@ describe("the weekly timesheet", () => {
     await submitWeek(ids.huy, W, TODAY);
     await submitWeek(ids.bao, W, TODAY);
     const submitted = await db().select().from(schema.timesheetWeek).where(eq(schema.timesheetWeek.status, "submitted"));
-    const subjects = await loadSubjects(PEOPLE.map((key) => ids[key]));
+    const subjects = await loadTimesheetSubjects(PEOPLE.map((key) => ids[key]));
     for (const key of PEOPLE) {
       const reader = await loadReportReader(ids[key]);
       const { waiting } = await listApprovals(reader, TODAY);

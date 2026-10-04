@@ -1219,6 +1219,14 @@
         "title": "Nhắc nộp báo cáo ngày",
         "body": "{actor} nhắc bạn nộp báo cáo công việc hôm nay."
       },
+      "daily_report_nudge_past": {
+        "title": "Nhắc nộp báo cáo ngày",
+        "body": "{actor} nhắc bạn nộp báo cáo công việc ngày {date}."
+      },
+      "daily_report_missed": {
+        "title": "Thiếu báo cáo hôm qua",
+        "body": "Bạn chưa nộp báo cáo công việc ngày {date}. Bạn vẫn nộp bù được — báo cáo sẽ được ghi là nộp muộn."
+      },
       "daily_report_commented": {
         "title": "Nhận xét về báo cáo của bạn",
         "body": "{actor} đã nhận xét báo cáo ngày {date} của bạn."
@@ -10771,6 +10779,15 @@
       "submitHint": "Bảng giờ hằng tuần cần được duyệt. Kiểm tra đủ giờ rồi hãy nộp.",
       "submit": "Nộp bảng giờ tuần",
       "resubmit": "Nộp lại bảng giờ",
+      "recall": "Rút lại bảng giờ",
+      "recallHint": "Chưa ai duyệt tuần này. Rút lại để sửa giờ rồi nộp lại.",
+      "date": "Ngày",
+      "notePlaceholder": "Làm việc gì? (không bắt buộc)",
+      "onTask": "Giờ làm của việc này",
+      "taskMine": "Bạn: {value} giờ",
+      "taskTotal": "Mọi người: {value} giờ",
+      "taskBillable": "{value} giờ tính phí",
+      "taskNone": "Chưa ai ghi giờ cho việc này.",
       "start": "Bấm giờ",
       "stop": "Dừng",
       "running": "Đang bấm giờ:",
@@ -10891,6 +10908,7 @@
       "send": "Gửi báo cáo",
       "dueBy": "Hạn nộp {time}",
       "optional": "Không bắt buộc hôm nay",
+      "missed": "Chưa nộp — nộp bây giờ sẽ ghi là nộp muộn",
       "prefilledHint": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày — bạn chỉ cần thêm vướng mắc và kế hoạch ngày mai.",
       "tomorrowPlanned": "Kế hoạch ngày mai ({count})",
       "noTomorrow": "Chưa lên kế hoạch cho ngày mai.",
@@ -11005,6 +11023,9 @@
       "plan": "Kế hoạch hôm nay",
       "report": "Báo cáo hôm nay",
       "recent": "Báo cáo gần đây",
+      "missing": "Báo cáo chưa nộp",
+      "missingHint": "Bạn vẫn nộp bù được báo cáo của những ngày này; báo cáo nộp bù được ghi là nộp muộn.",
+      "write": "Viết báo cáo",
       "empty": "Bạn chưa gửi báo cáo ngày nào.",
       "hasBlockers": "Có vướng mắc",
       "screens": "Các màn hình",

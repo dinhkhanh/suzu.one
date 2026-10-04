@@ -255,7 +255,7 @@ describe("the team daily board", () => {
     const board = await getTeamBoard(reader, D);
     expect(board.map((group) => group.kind)).toEqual(["company"]);
     // Reading is all: no reminder goes out on his say-so, and without the principal he is Bao again.
-    expect(await remindMissing(reader, listed, D, names.bao)).toEqual([]);
+    expect(await remindMissing(reader, listed, D, names.bao, D)).toEqual([]);
     expect((await listOverseen(await loadReportReader(ids.bao))).flatMap((group) => group.personIds)).toEqual([]);
   });
 
@@ -282,9 +282,9 @@ describe("the team daily board", () => {
 
   it("reminds the missing once per day, and only people the reader oversees", async () => {
     const khoi = await loadReportReader(ids.khoi);
-    expect(await remindMissing(khoi, [ids.sang, ids.lan], D, names.khoi)).toEqual([ids.sang]);
-    expect(await remindMissing(khoi, [ids.sang], D, names.khoi)).toEqual([]);
-    expect(await remindMissing(await loadReportReader(ids.long), [ids.sang], D, names.long)).toEqual([]);
+    expect(await remindMissing(khoi, [ids.sang, ids.lan], D, names.khoi, D)).toEqual([ids.sang]);
+    expect(await remindMissing(khoi, [ids.sang], D, names.khoi, D)).toEqual([]);
+    expect(await remindMissing(await loadReportReader(ids.long), [ids.sang], D, names.long, D)).toEqual([]);
     const notices = await noticesOf(ids.sang, "daily.report_nudge");
     expect(notices).toHaveLength(1);
     expect(notices[0].params).toEqual({ actor: names.khoi });

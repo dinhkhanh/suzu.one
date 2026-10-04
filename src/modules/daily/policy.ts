@@ -73,17 +73,34 @@ export function canViewTimeEntry(reader: TimeReader, subject: ReportSubject, ent
   return !!reader.personId && !!entry.projectId && reader.ledProjectIds.has(entry.projectId);
 }
 
-/** The whole week — every row, the attendance hint beside each day, the status — as the report. */
-export const canViewTimesheet = canViewReport;
+/** A subject as the timesheet's approval asks of them (`loadTimesheetSubjects`). */
+export type TimesheetSubject = ReportSubject & {
+  /**
+   * Who approves the week when no lead of the person's teams and no line manager is there to: the
+   * holders of `work:manage` over the person, and when there are none, the owners. Empty while a
+   * lead or the line manager can approve; never the person.
+   */
+  fallbackApprovers: readonly string[];
+};
 
 /**
  * Approving (or returning, or reopening) a person's week is for a lead of one of their work teams
  * or their line manager — the manager directly above, not the whole chain — and never the person
- * themself, whatever else they are.
+ * themself, whatever else they are. Where those rules find nobody, the week still has an approver
+ * (`fallbackApprovers`): no submitted week waits for ever.
  */
-export function canApproveTimesheet(reader: ReportReader, subject: ReportSubject): boolean {
+export function canApproveTimesheet(reader: ReportReader, subject: TimesheetSubject): boolean {
   if (!reader.personId || isSelf(reader, subject)) return false;
-  return leadsThem(reader, subject) || subject.chainAbove[0] === reader.personId;
+  return leadsThem(reader, subject) || subject.chainAbove[0] === reader.personId || subject.fallbackApprovers.includes(reader.personId);
+}
+
+/**
+ * The whole week — every row, the attendance hint beside each day, the status — as the report,
+ * and for whoever approves it: an approver of last resort reads the week they decide, and nothing
+ * else of the person's day.
+ */
+export function canViewTimesheet(reader: ReportReader, subject: TimesheetSubject): boolean {
+  return canViewReport(reader, subject) || canApproveTimesheet(reader, subject);
 }
 
 /**

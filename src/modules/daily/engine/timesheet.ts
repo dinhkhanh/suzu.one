@@ -17,12 +17,13 @@ export const weekDates = (weekStart: IsoDate): IsoDate[] => Array.from({ length:
 
 /**
  * open → submitted → approved | returned. Returned is open again for the person: they fix and
- * submit anew. Approved is locked; only an approver reopens it, with a reason.
+ * submit anew. Approved is locked; only an approver reopens it, with a reason. A week still
+ * waiting — submitted, decided by nobody — is the person's to take back (recall): open again.
  */
 export const TIMESHEET_STATUSES = ["open", "submitted", "approved", "returned"] as const;
 export type TimesheetStatus = (typeof TIMESHEET_STATUSES)[number];
 
-export type TimesheetEvent = { type: "submit" } | { type: "approve" } | { type: "return"; comment: string | null } | { type: "reopen"; reason: string | null };
+export type TimesheetEvent = { type: "submit" } | { type: "recall" } | { type: "approve" } | { type: "return"; comment: string | null } | { type: "reopen"; reason: string | null };
 
 export type Transition = { ok: true; status: TimesheetStatus } | { ok: false; error: "timesheet_not_submitted" | "timesheet_not_open" | "timesheet_not_approved" | "timesheet_comment_required" };
 
@@ -30,6 +31,9 @@ export function transition(status: TimesheetStatus, event: TimesheetEvent): Tran
   switch (event.type) {
     case "submit":
       return status === "open" || status === "returned" ? { ok: true, status: "submitted" } : { ok: false, error: "timesheet_not_open" };
+    case "recall":
+      // Once an approver has spoken — approved or returned — the week is theirs to reopen, not the person's to take back.
+      return status === "submitted" ? { ok: true, status: "open" } : { ok: false, error: "timesheet_not_submitted" };
     case "approve":
       return status === "submitted" ? { ok: true, status: "approved" } : { ok: false, error: "timesheet_not_submitted" };
     case "return":
