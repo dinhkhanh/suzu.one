@@ -4,7 +4,7 @@
 // every writer below drops all four keys once its change has committed. Download counts change on
 // every visit and are summed in SQL beside them, never cached.
 import "server-only";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
@@ -16,6 +16,7 @@ import { type BrandAssetKind, type BrandRuleVerdict, type BrandSectionKind, type
 import { canManageBrandKit } from "./policy";
 import type { BrandColor, BrandFont } from "./schema";
 import { compareAssets, isValidBrandSlug } from "./engine/kit";
+import { BRAND_HIT_RETENTION_DAYS } from "./engine/rate-limit";
 
 type Executor = Tx | ReturnType<typeof db>;
 type Actor = { personId: string; email?: string | null };
@@ -112,6 +113,18 @@ export async function downloadTotalsByAsset(kitId: string, today: string): Promi
     .where(eq(schema.brandAsset.brandId, kitId))
     .groupBy(schema.brandAssetDownload.assetId);
   return new Map(rows.map((row) => [row.assetId, { total: row.total, recent: row.recent }]));
+}
+
+/**
+ * The file route's counted windows older than their retention (`brand_file_hit`,
+ * `BRAND_HIT_RETENTION_DAYS`) — nobody can still be inside them. Swept nightly with the other
+ * public surface's (`workPreviewSweepJob`); returns how many went, as the database counted them:
+ * postgres-js answers with `count`, the PGlite of the service tests with `rowCount`.
+ */
+export async function purgeBrandFileHits(now: Date = new Date()): Promise<number> {
+  const before = new Date(now.getTime() - BRAND_HIT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const result = (await db().delete(schema.brandFileHit).where(lt(schema.brandFileHit.windowStart, before))) as { count?: number; rowCount?: number } | undefined;
+  return result?.count ?? result?.rowCount ?? 0;
 }
 
 // ── Kits ────────────────────────────────────────────────────────────────────────────────────
