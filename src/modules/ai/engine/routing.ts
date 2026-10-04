@@ -14,7 +14,9 @@
 // tháng thì chuyện gì xảy ra?" is a policy question for the handbook, not a request for this
 // month's lateness — and "Một năm được bao nhiêu ngày phép?" is the leave policy, not a balance.
 // The name case exists only so the refusal can be honest ("I can only answer about your own
-// leave") instead of quietly answering about the asker.
+// leave") instead of quietly answering about the asker — and a name is somebody spoken OF, not a
+// word with a capital letter (`namedPersonIn`). When it is not clear that anybody is named, the
+// question goes where it would have gone without the word: a refusal is for the sure case.
 import type { IsoDate } from "@/lib/dates";
 import { words } from "./question";
 
@@ -44,8 +46,8 @@ function isFirstPerson(asked: ReadonlySet<string>, text: string): boolean {
   return has(asked, "toi", "tui", "minh", "em", "my", "mine", "i", "me", "myself") || hasPhrase(text, "cua toi", "cua minh", "cua em", "cho toi", "cho minh");
 }
 
-// Capitalised words that are not people. Without this "SuZu One", "Google Drive" and "OT" would be
-// read as colleagues; with it, a capitalised word inside a tool question is a name.
+// Capitalised words that are not people: products, acronyms, months and days. A run made only of
+// these — "SuZu One", "Google Drive", "OT" — is never a colleague.
 const NOT_NAMES = new Set([
   "suzu", "one", "google", "drive", "docs", "sheets", "meet", "gmail", "zalo", "facebook", "youtube",
   "ot", "ai", "kpi", "okr", "hr", "bhxh", "bhyt", "bhtn", "vssid", "esop", "pit", "tncn", "vnd", "usd",
@@ -54,40 +56,106 @@ const NOT_NAMES = new Set([
   "tet", "covid", "wfh", "sop", "pdf", "excel", "word",
 ]);
 
+// A run that holds one of these is a company or a product, whatever stands beside it: "SuZu Media".
+const BRANDS = new Set(["suzu", "google", "facebook", "zalo", "youtube"]);
+
+// What a capitalised run begins with when it is a place, a date or a part of the company — "Quận
+// 1", "Tháng Tám", "Phòng Kế Toán", "Ban Giám Đốc". Matched on the word AS TYPED, accents kept:
+// stripped, "Quận" (a district) and "Quân" (a man) are one word, and so are "Năm" and "Nam".
+const NOT_A_PERSON_HEAD = new Set(["quận", "phường", "tháng", "thang", "năm", "ngày", "tuần", "tết", "phòng", "ban", "khối", "nhóm", "team"]);
+
+// Capitalised runs that are places, accent-stripped: "Tôi làm ở Hà Nội" names nobody.
+const PLACES = new Set(["ha noi", "sai gon", "ho chi minh", "tp ho chi minh", "da nang", "hai phong", "can tho", "viet nam"]);
+
+// The things a tool question is about, which people also write with capitals: "Phiếu Lương".
+const SUBJECT_PHRASES = ["phieu luong", "bang luong", "ngay phep", "nghi phep", "phep nam", "cham cong", "bang cong", "lam them", "tang ca", "thuc nhan"];
+
 // `\p{Lu}` and not a character range: `[A-ZÀ-Ỹ]` looks like "Latin capitals, accents included" and
 // is not — the interval U+00C0…U+1EF8 swallows every lowercase Vietnamese vowel and `đ` with it, so
 // "đơn nghỉ phép" read as a colleague called Đơn and every leave question was refused as being
 // about somebody else. Found by the guardrail tests, which is what they are for.
 const NAME_WORD = "\\p{Lu}[\\p{L}]+";
+const NAME_RUN = `${NAME_WORD}(?:\\s+${NAME_WORD}){0,3}`;
+const IS_NAME_WORD = new RegExp(`^${NAME_WORD}$`, "u");
+
+// How a colleague is spoken of: "anh Huy", "chị Lan", "bạn Mai", "sếp Long", "Mr Huy". Written as
+// typed — and the unaccented spellings only in lower case, so "Ban Giám Đốc" is not "bạn Giám Đốc".
+const HONORIFIC = "(?:[Aa]nh|[Cc]hị|chi|[Ee]m|[Bb]ạn|ban|[Cc]ô|[Cc]hú|[Bb]ác|[Ôô]ng|[Bb]à|[Ss]ếp|sep|[Mm]rs?|[Mm]s)";
+
+/** Capitalised words that could be a person: not a product, a brand, a place, a date, a department or the question's own subject. */
+function couldBePerson(run: string): boolean {
+  const stripped = words(run);
+  if (stripped.length === 0 || stripped.every((word) => NOT_NAMES.has(word))) return false;
+  if (stripped.some((word) => BRANDS.has(word))) return false;
+  if (NOT_A_PERSON_HEAD.has(run.trim().split(/\s+/)[0].normalize("NFC").toLowerCase())) return false;
+  const text = stripped.join(" ");
+  return !PLACES.has(text) && !SUBJECT_PHRASES.some((phrase) => text.includes(phrase));
+}
 
 /**
- * A person's name inside the question, or null. Three shapes cover how it is actually written:
- * "của Huy" / "của Hồ Gia Huy", "Huy's payslip", "the salary of Lê Thị Mai". Failing that, any
- * capitalised word that is not the first word of the question and is not in `NOT_NAMES`.
+ * A person's name inside the question, or null — and "a capital letter" is not a name. "Quận 1",
+ * "Media", "Tháng Tám" are capitalised and are nobody; read as colleagues, they turned a person's
+ * question about their own leave into a refusal. So a name needs a SIGN that somebody is being
+ * spoken of:
  *
- * It is a heuristic, and it is allowed to be: it never *grants* anything. Its only effect is to
- * turn an answer about the asker into a refusal, so a false positive costs a refused question and
- * a false negative costs nothing (the subject is clamped to the asker regardless).
+ *  - a possessive — "của Huy" / "của Hồ Gia Huy", "Huy's payslip", "the salary of Lê Thị Mai";
+ *  - a form of address — "anh Huy", "chị Lan", "Mr Huy";
+ *  - a full name: two or more capitalised words in a row, past the first word of the sentence
+ *    (which is capitalised by grammar) — "Tháng này Trần Thị Lan đi muộn mấy lần?".
+ *
+ * and in each case the words must be able to be a person (`couldBePerson`). One capitalised word on
+ * its own is not enough either way: the question is then routed as if it were not there — about
+ * the asker when it says "tôi", to the knowledge base when it does not.
+ *
+ * It is a heuristic, and it is allowed to be: it never *grants* anything. A tool takes the asker's
+ * id and nothing from the question (`tools.ts`, rule 1), so a name this misses costs an answer
+ * about the asker's own record or a handbook page — never a figure about the person named.
  */
 export function namedPersonIn(question: string): string | null {
-  const patterns = [new RegExp(`(?:của|cua)\\s+(${NAME_WORD}(?:\\s+${NAME_WORD}){0,3})`, "u"), new RegExp(`(${NAME_WORD})(?:'s|’s)\\b`, "u"), new RegExp(`\\bof\\s+(${NAME_WORD}(?:\\s+${NAME_WORD}){0,3})`, "u")];
+  const patterns = [
+    new RegExp(`(?:của|cua)\\s+(${NAME_RUN})`, "u"),
+    new RegExp(`(${NAME_WORD})(?:'s|’s)\\b`, "u"),
+    new RegExp(`\\bof\\s+(${NAME_RUN})`, "u"),
+    new RegExp(`(?<![\\p{L}])${HONORIFIC}\\.?\\s+(${NAME_RUN})`, "u"),
+  ];
   for (const pattern of patterns) {
-    const found = pattern.exec(question);
-    const name = found?.[1]?.trim();
-    if (name && !words(name).every((word) => NOT_NAMES.has(word))) return name;
+    const name = pattern.exec(question)?.[1]?.trim();
+    if (name && couldBePerson(name)) return name;
   }
-  // A bare capitalised word — but never the first word of a sentence, which is capitalised by
-  // grammar rather than by being a name. "Tôi còn bao nhiêu ngày phép? Hỏi HR hay xem OT?" has two
-  // sentences and no colleague in it.
+  // A full name with nothing introducing it. Never the first word of a sentence, and a run ends
+  // where the capitals do — or at a comma.
   for (const sentence of question.split(/(?<=[.!?…])\s+/)) {
+    let run: string[] = [];
+    const named = () => (run.length >= 2 && couldBePerson(run.join(" ")) ? run.join(" ") : null);
     for (const token of sentence.trim().split(/\s+/).filter(Boolean).slice(1)) {
       const bare = token.replace(/[^\p{L}]/gu, "");
-      if (bare.length < 2 || !new RegExp(`^${NAME_WORD}$`, "u").test(bare)) continue;
-      if (NOT_NAMES.has(words(bare)[0] ?? "")) continue;
-      return bare;
+      const capital = bare.length >= 2 && IS_NAME_WORD.test(bare);
+      if (capital) run.push(bare);
+      if (!capital || /[,;:)]$/u.test(token)) {
+        const name = named();
+        if (name) return name;
+        run = [];
+      }
     }
+    const name = named();
+    if (name) return name;
   }
   return null;
+}
+
+/** Whether the question was typed with Vietnamese accents at all — then an accent is evidence. */
+const typedWithAccents = (question: string): boolean => /[̀-ͯ]|đ/iu.test(question.normalize("NFD"));
+
+/**
+ * "còn" (left) and "dư" (spare), as opposed to "con" (a child) and "du" (as in "du lịch") or "đủ"
+ * (enough): accent-stripped they are the same two words, and a parent asking for leave to look
+ * after a sick child was sent to the leave ledger. When the question carries accents, the accent
+ * decides. Typed without any, "con" and "du" count unless the words around them say child or trip.
+ */
+function asksWhatIsLeft(question: string, asked: ReadonlySet<string>, text: string): boolean {
+  if (typedWithAccents(question)) return /(?<![\p{L}])(?:còn|dư)(?![\p{L}])/iu.test(question.normalize("NFC"));
+  if (hasPhrase(text, "cham con", "con om", "con nho", "con nha", "con cai", "sinh con", "nuoi con", "trong con", "don con", "con toi", "con minh", "con em", "du lich")) return false;
+  return has(asked, "con", "du");
 }
 
 const MONTHS_EN = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
@@ -160,7 +228,7 @@ export function routeQuestion(question: string, today: IsoDate): ToolRoute | nul
   // Leave balance: the question must be about what is LEFT. "Một năm được bao nhiêu ngày phép?" is
   // the policy; "Tôi còn bao nhiêu ngày phép?" is the ledger.
   const leaveWord = hasPhrase(text, "phep nam", "ngay phep", "nghi phep", "annual leave", "leave day", "leave days", "leave balance", "holiday entitlement");
-  const remaining = hasPhrase(text, "con lai", "con bao nhieu", "so du", "remaining", "left", "balance", "con may") || has(asked, "con", "du");
+  const remaining = hasPhrase(text, "con lai", "con bao nhieu", "so du", "remaining", "left", "balance", "con may") || asksWhatIsLeft(question, asked, text);
   if (leaveWord && remaining) return route("leave_balance", { month: null });
 
   // Attendance: this month's own lateness, absence, overtime hours — a figure from the timesheet.

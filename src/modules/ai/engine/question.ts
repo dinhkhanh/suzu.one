@@ -1,10 +1,11 @@
 // Turning a question into something retrieval can use. Pure.
 //
 // Two jobs. First, a question is not a query: "Tôi được nghỉ phép bao nhiêu ngày một năm?" carries
-// six words that say nothing about the subject. The stop list below drops them, which matters more
-// here than in a search box, because the embedding of the whole question is diluted by every word
-// that means nothing — the local driver's vectors are feature-hashed bags of words, and the real
-// ones are not immune either.
+// six words that say nothing about the subject. The stop list below drops them for everything that
+// matches on WORDS: the lexical score, the word match over passages still waiting for a vector,
+// and the local driver's vectors, which are feature-hashed bags of words and are diluted by every
+// word that means nothing. A real embeddings model is the exception — it is given the question as
+// typed (`retrieval.ts`), because the passages it embedded were accented prose, not keyword bags.
 //
 // Second, scoring: the passages that come back are ranked again in the application against the
 // question's content words (`keywordScore`), because a lexical signal and a vector signal fail in
