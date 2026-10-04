@@ -6,7 +6,14 @@
 // A line discount above the entity's threshold, or an estimated margin under the floor, sends the
 // quote to the approval engine (`crm:manage` over the deal's entity) before it may go out. The
 // margin is computed from an aggregate cost rate (payroll's `blendedCostRate`) whoever submits; only
-// a `pjm:cost` holder ever reads the figure.
+// a `pjm:cost` holder ever reads the figure — or the rule's verdict on a draft: for everyone else
+// the margin is judged when the quote is sent, on the server, and a quote it stops goes to its
+// approver then (`sendQuote`). A draft that showed "needs approval" flipping with the margin would
+// hand a seller the team's average hourly cost for the price of a few edits.
+//
+// When the margin cannot be estimated (no delivering team, fewer than two people with a signed
+// payroll month) the rule is not applied — and that is said: on the approval request's payload when
+// there is one, and in the audit entry of the step that sent the quote out.
 import "server-only";
 import { and, asc, desc, eq, inArray, lt, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
@@ -16,7 +23,7 @@ import { decideRequest, defineRequestType, submitRequest, withdrawRequest } from
 import { can } from "../platform/rbac/policy";
 import { blendedCostRate } from "@/modules/payroll/service";
 import { jobPrefix, jobYear, nextJobNumber } from "@/modules/projects/service";
-import { approvalReasons, type ApprovalReason, marginEstimate, type MarginEstimate, quoteTotals } from "./engine/quote";
+import { approvalReasons, type ApprovalReason, draftApproval, type DraftApproval, marginEstimate, type MarginEstimate, marginWasChecked, quoteTotals } from "./engine/quote";
 import type { QuoteStatus } from "./enums";
 import type { RoleMinutes } from "./schema";
 import { crmSettings, vatRates } from "./stages";
@@ -24,7 +31,10 @@ import { crmSettings, vatRates } from "./stages";
 type Executor = Tx | ReturnType<typeof db>;
 export type QuoteRow = typeof schema.crmQuote.$inferSelect;
 export type QuoteLineRow = typeof schema.crmQuoteLine.$inferSelect;
-export type QuotePayload = { quoteId: string; dealId: string; number: string; version: number; reasons: ApprovalReason[] };
+/** `marginChecked: false` — the margin rule could not be applied to this quote; absent on requests made before that was recorded. */
+export type QuotePayload = { quoteId: string; dealId: string; number: string; version: number; reasons: ApprovalReason[]; marginChecked?: boolean };
+/** What the approval rules said of a quote, and whether the margin rule could be applied at all. */
+export type QuoteApprovalCheck = { reasons: ApprovalReason[]; marginChecked: boolean };
 
 export const quoteRequestType = defineRequestType({
   type: "crm_quote",
@@ -122,26 +132,39 @@ export async function estimateMargin(quote: Pick<QuoteRow, "subtotalVnd" | "disc
   return marginEstimate(quote.subtotalVnd - quote.discountVnd, lines, rate);
 }
 
-/** Why this quote must be approved before it goes out (empty = it may go straight out). Never inside a transaction: it reads payroll's aggregate. */
-export async function quoteApprovalReasons(quote: QuoteRow, lines: readonly QuoteLineRow[], today: IsoDate = todayInVietnam()): Promise<ApprovalReason[]> {
+/**
+ * What the approval rules say of this quote, both of them, for the server's own use when a quote is
+ * submitted or sent — never for a page (`quoteReaderView` is what a reader gets). Never inside a
+ * transaction: it reads payroll's aggregate.
+ */
+async function checkQuoteApproval(quote: QuoteRow, lines: readonly QuoteLineRow[], today: IsoDate): Promise<QuoteApprovalCheck> {
   const settings = await crmSettings(today);
   const margin = await estimateMargin(quote, lines, today);
-  return approvalReasons({ maxDiscountBp: quote.maxDiscountBp }, margin, { discountThresholdBp: settings.quoteDiscountApprovalBp, marginFloorBp: settings.quoteMarginFloorBp });
+  return { reasons: approvalReasons({ maxDiscountBp: quote.maxDiscountBp }, margin, { discountThresholdBp: settings.quoteDiscountApprovalBp, marginFloorBp: settings.quoteMarginFloorBp }), marginChecked: marginWasChecked(margin) };
 }
 
+/** What one reader of a quote's page is given: the margin when they read margins, and — on a draft they may change — the approval signal they may know. */
+export type QuoteReaderView = { margin: MarginEstimate | null; approval: DraftApproval | null };
+
 /**
- * A draft to its approver, or straight to "approved" when nothing asks for approval (the flow
- * administration may still require it: a configured flow with a step that applies always runs).
- *
- * The reasons are worked out before the transaction — the margin reads payroll's aggregate — and
- * the draft is then locked and checked to be the very draft they were worked out for.
+ * The quote's page for one reader. Without `pjm:cost` the margin is **not worked out at all** —
+ * what was never computed cannot reach the page through a flag, a hidden step or a wording — and
+ * the draft's approval signal is the discount rule alone (`draftApproval`).
  */
-export async function submitQuote(quoteId: string, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<{ quote: QuoteRow; requestId: string | null; reasons: ApprovalReason[] }> {
-  const found = await getQuote(quoteId);
-  if (!found) throw new ActionError("quote_not_found");
-  if (found.quote.status !== "draft") throw new ActionError("quote_locked");
-  if (found.lines.length === 0) throw new ActionError("quote_empty");
-  const reasons = await quoteApprovalReasons(found.quote, found.lines, today);
+export async function quoteReaderView(quote: QuoteRow, lines: readonly QuoteLineRow[], reader: { seesMargin: boolean; drafts: boolean }, today: IsoDate = todayInVietnam()): Promise<QuoteReaderView> {
+  const margin = reader.seesMargin ? await estimateMargin(quote, lines, today) : null;
+  if (!reader.drafts || quote.status !== "draft" || lines.length === 0) return { margin, approval: null };
+  const settings = await crmSettings(today);
+  return { margin, approval: draftApproval({ maxDiscountBp: quote.maxDiscountBp }, margin, { discountThresholdBp: settings.quoteDiscountApprovalBp, marginFloorBp: settings.quoteMarginFloorBp }, reader.seesMargin) };
+}
+
+type FoundQuote = { quote: QuoteRow; lines: QuoteLineRow[] };
+export type SubmittedQuote = { quote: QuoteRow; requestId: string | null; reasons: ApprovalReason[]; marginChecked: boolean };
+
+/** The draft the check was worked out for, to its approver — or straight to "approved" when nothing asks. */
+async function routeQuote(found: FoundQuote, check: QuoteApprovalCheck, actorPersonId: string): Promise<SubmittedQuote> {
+  const { reasons, marginChecked } = check;
+  const quoteId = found.quote.id;
   const deal = await dealOf(db(), found.quote.dealId);
   return db().transaction(async (tx) => {
     const quote = await lockQuote(tx, quoteId);
@@ -149,9 +172,9 @@ export async function submitQuote(quoteId: string, actorPersonId: string, today:
     if (quote.updatedAt.getTime() !== found.quote.updatedAt.getTime()) throw new ActionError("quote_changed");
     if (reasons.length === 0) {
       const [after] = await tx.update(schema.crmQuote).set({ status: "approved", updatedAt: new Date() }).where(eq(schema.crmQuote.id, quoteId)).returning();
-      return { quote: after, requestId: null, reasons };
+      return { quote: after, requestId: null, reasons, marginChecked };
     }
-    const payload: QuotePayload = { quoteId, dealId: quote.dealId, number: quote.number, version: quote.version, reasons };
+    const payload: QuotePayload = { quoteId, dealId: quote.dealId, number: quote.number, version: quote.version, reasons, marginChecked };
     const { request, outcome } = await submitRequest(tx, quoteRequestType, {
       entityId: deal.entityId,
       requesterPersonId: actorPersonId,
@@ -169,8 +192,23 @@ export async function submitQuote(quoteId: string, actorPersonId: string, today:
       .set({ status: outcome === "approved" ? "approved" : "in_approval", approvalRequestId: request.id, updatedAt: new Date() })
       .where(eq(schema.crmQuote.id, quoteId))
       .returning();
-    return { quote: after, requestId: request.id, reasons };
+    return { quote: after, requestId: request.id, reasons, marginChecked };
   });
+}
+
+/**
+ * A draft to its approver, or straight to "approved" when nothing asks for approval (the flow
+ * administration may still require it: a configured flow with a step that applies always runs).
+ *
+ * The reasons are worked out before the transaction — the margin reads payroll's aggregate — and
+ * the draft is then locked and checked to be the very draft they were worked out for.
+ */
+export async function submitQuote(quoteId: string, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<SubmittedQuote> {
+  const found = await getQuote(quoteId);
+  if (!found) throw new ActionError("quote_not_found");
+  if (found.quote.status !== "draft") throw new ActionError("quote_locked");
+  if (found.lines.length === 0) throw new ActionError("quote_empty");
+  return routeQuote(found, await checkQuoteApproval(found.quote, found.lines, today), actorPersonId);
 }
 
 /** The approver's decision, applied in the same transaction: approved, or back to draft with the comment. */
@@ -202,19 +240,26 @@ export async function withdrawQuote(quoteId: string, actorPersonId: string): Pro
   });
 }
 
-/** Sent to the client: an approved quote, or a draft nothing asks to approve. */
-export async function sendQuote(quoteId: string, today: IsoDate = todayInVietnam()): Promise<{ before: QuoteRow; after: QuoteRow }> {
+/**
+ * Sent to the client: an approved quote, or a draft nothing asks to approve. A draft the rules do
+ * ask about is not refused: it goes to its approver instead, here and now. The person drafting was
+ * not told beforehand what the margin rule would say (see the top of this file), so "send" is where
+ * it is judged — and `check` says what was found, including a margin that could not be checked.
+ */
+export async function sendQuote(quoteId: string, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<{ before: QuoteRow; after: QuoteRow; check: QuoteApprovalCheck | null }> {
   const found = await getQuote(quoteId);
   if (!found) throw new ActionError("quote_not_found");
+  let check: QuoteApprovalCheck | null = null;
   if (found.quote.status === "draft") {
     if (found.lines.length === 0) throw new ActionError("quote_empty");
-    if ((await quoteApprovalReasons(found.quote, found.lines, today)).length) throw new ActionError("quote_needs_approval");
+    check = await checkQuoteApproval(found.quote, found.lines, today);
+    if (check.reasons.length) return { before: found.quote, after: (await routeQuote(found, check, actorPersonId)).quote, check };
   }
   return db().transaction(async (tx) => {
     const before = await lockQuote(tx, quoteId);
     if (before.status === "draft" ? before.updatedAt.getTime() !== found.quote.updatedAt.getTime() : before.status !== "approved") throw new ActionError(before.status === "draft" ? "quote_changed" : "quote_not_sendable");
     const [after] = await tx.update(schema.crmQuote).set({ status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(schema.crmQuote.id, quoteId)).returning();
-    return { before, after };
+    return { before, after, check };
   });
 }
 

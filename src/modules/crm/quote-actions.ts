@@ -94,9 +94,19 @@ const quoteStepPipeline = createAction({
     const quote = (await findQuote(input.quoteId))!;
     let resultId = quote.id;
     let status: string = quote.status;
-    if (input.step === "submit") status = (await submitQuote(input.quoteId, user.person.id)).quote.status;
-    else if (input.step === "withdraw") status = (await withdrawQuote(input.quoteId, user.person.id)).after.status;
-    else if (input.step === "send") status = (await sendQuote(input.quoteId)).after.status;
+    // Whether the margin rule could be applied when the quote was submitted or sent as a draft.
+    let marginChecked: boolean | null = null;
+    if (input.step === "submit") {
+      const submitted = await submitQuote(input.quoteId, user.person.id);
+      status = submitted.quote.status;
+      marginChecked = submitted.marginChecked;
+    } else if (input.step === "withdraw") status = (await withdrawQuote(input.quoteId, user.person.id)).after.status;
+    else if (input.step === "send") {
+      // A draft the rules ask about comes back "in approval", not refused: the margin is judged here.
+      const sent = await sendQuote(input.quoteId, user.person.id);
+      status = sent.after.status;
+      marginChecked = sent.check?.marginChecked ?? null;
+    }
     else if (input.step === "accept" || input.step === "reject") status = (await answerQuote(input.quoteId, input.step === "accept", input.note)).after.status;
     else {
       const revised = await reviseQuote(input.quoteId, user.person.id);
@@ -105,7 +115,9 @@ const quoteStepPipeline = createAction({
     }
     refreshQuote(quote.dealId, resultId);
     revalidatePath("/approvals");
-    return { data: { id: resultId, status }, audit: { resource: auditQuote(input.quoteId), summary: `${input.step} → ${status}`, before: { status: quote.status }, after: { status } } };
+    // A quote that left without its margin being checked says so on its trail — never the margin itself.
+    const unchecked = marginChecked === false;
+    return { data: { id: resultId, status }, audit: { resource: auditQuote(input.quoteId), summary: `${input.step} → ${status}${unchecked ? " (margin not checked: no cost rate)" : ""}`, before: { status: quote.status }, after: { status, ...(marginChecked === null ? {} : { marginChecked }) } } };
   },
 });
 export async function quoteStepAction(input: unknown) {

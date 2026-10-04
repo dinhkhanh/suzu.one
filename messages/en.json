@@ -13424,6 +13424,7 @@
       "erase": "Erase on request",
       "eraseType": "Type ERASE to confirm",
       "eraseConfirm": "Erase the details",
+      "eraseReach": "This also blanks the lead they came from and any copy of their email or phone in a project brief or hand-off note. Notes typed into activities are not searched — check those by hand.",
       "fields": {
         "fullName": "Full name",
         "title": "Job title",
@@ -13519,6 +13520,8 @@
       "newAccount": "A new account",
       "createContact": "Add {name} as a contact",
       "confirmDuplicate": "Probably already an account: {names}. Tick to create a new one anyway.",
+      "eraseContact": "Erase the contact on request",
+      "eraseContactReach": "The contact's name, title, email and phone are blanked; the company and the enquiry stay. Notes typed into activities are not searched — check those by hand.",
       "fields": {
         "companyName": "Company",
         "existingAccount": "Account",
@@ -13714,6 +13717,7 @@
       "policy": "the company's rules",
       "margin": "Estimated: {hours} h at the team's average hour ≈ {cost}; margin {margin} ({percent})",
       "noMargin": "No margin estimate: the delivering team has no signed payroll months to average.",
+      "marginUnchecked": "The margin was not checked: no cost rate could be worked out for the delivering team.",
       "documentTitle": "Quotation",
       "monthsCount": "{count} months",
       "steps": {
@@ -14156,6 +14160,7 @@
       "lead_not_found": "That lead no longer exists.",
       "lead_closed": "That lead is already converted or closed.",
       "lead_reason_required": "Say why it is not pursued.",
+      "lead_contact_erased": "This lead no longer names a contact.",
       "deal_not_found": "That deal no longer exists.",
       "deal_closed": "The deal is already won or lost.",
       "deal_open": "The deal is still open.",

@@ -375,6 +375,8 @@ export function EraseContactForm({ contactId }: { contactId: string }) {
     );
   return (
     <CrmForm action={eraseContactAction} extra={{ contactId }} submit={t("contacts.eraseConfirm")} className="flex flex-wrap items-end gap-3 rounded-lg border border-destructive/40 p-3">
+      {/* How far the erasure reaches, and the one place it cannot: free text somebody typed. */}
+      <p className="w-full text-xs text-muted-foreground">{t("contacts.eraseReach")}</p>
       <Field name="confirm" label={t("contacts.eraseType")}>
         <Input id={`erase-${contactId}`} name="confirm" required placeholder="ERASE" />
       </Field>

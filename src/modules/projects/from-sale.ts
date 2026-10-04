@@ -7,10 +7,16 @@
 // scope and client contacts, the deliverables register, the retainer's monthly scope and fee, the
 // hours budget by role, and the account manager. A template's register is replaced by the sale's
 // when the sale has lines: the quote is the promise.
+//
+// The client contacts a sale brings are a name and a role, never how to reach the person: a brief
+// is read by everyone on the project, a contact's email and phone only by the people who work with
+// the account (SRS §4.15, design rule 4). `eraseBriefContactDetailsIn` is the other half — it takes
+// a contact's details out of the briefs made before that rule was kept.
 import "server-only";
-import { and, eq, inArray, isNull, notExists } from "drizzle-orm";
+import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { schema, type Tx } from "@/lib/db";
+import { rowsOf } from "@/lib/db/rows";
 import { invalidateMemberships } from "../work/service";
 import type { ProjectKind } from "./engine/brief";
 import { ensurePlan, type PlanRow } from "./plans";
@@ -22,7 +28,8 @@ export type SalePlanInput = {
   deliverables: RetainerLineTemplate[];
   retainer: { startMonth: string; endMonth: string | null; lines: RetainerLineTemplate[]; feePerMonthVnd: number | null; minutesPerMonth: number | null } | null;
   budgetByRole: RoleBudget[];
-  brief: { objective: string; scopeIn: string; clientContacts: ClientContact[] };
+  /** The contacts are names and roles; whatever else a caller hands in is left out (see above). */
+  brief: { objective: string; scopeIn: string; clientContacts: Pick<ClientContact, "name" | "role">[] };
   accountManagerPersonId: string | null;
   /** People who sold it and want to follow it: made viewers of the project (never more). */
   viewerPersonIds: readonly string[];
@@ -60,7 +67,8 @@ export async function applySalePlanIn(tx: Tx, projectId: string, sale: SalePlanI
     ...plan.brief,
     objective: plan.brief.objective || sale.brief.objective,
     scopeIn: plan.brief.scopeIn || sale.brief.scopeIn,
-    clientContacts: plan.brief.clientContacts?.length ? plan.brief.clientContacts : sale.brief.clientContacts,
+    // Rebuilt field by field, so a contact's email or phone cannot ride in on a wider object.
+    clientContacts: plan.brief.clientContacts?.length ? plan.brief.clientContacts : sale.brief.clientContacts.map((contact): ClientContact => ({ name: contact.name, ...(contact.role ? { role: contact.role } : {}) })),
   };
   await tx
     .update(schema.projectPlan)
@@ -92,6 +100,36 @@ export async function applySalePlanIn(tx: Tx, projectId: string, sale: SalePlanI
 
   const [after] = await tx.select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).limit(1);
   return after;
+}
+
+/**
+ * A client contact asked to be erased (CRM, PDPL): briefs made from a sale before contact details
+ * stopped being copied may still hold the person's email or phone in a client contact's "contact"
+ * text. Inside the caller's transaction, over the projects of one account (`clientIds`: the client
+ * and its brands): every brief entry whose contact text holds one of the details loses that text —
+ * the name and the role stay, as they do on the contact itself. One statement; returns how many
+ * briefs changed. An approved brief is changed too: a frozen brief is not a reason to keep
+ * somebody's phone number.
+ */
+export async function eraseBriefContactDetailsIn(tx: Tx, clientIds: readonly string[], details: readonly string[]): Promise<number> {
+  const needles = [...new Set(details.map((detail) => detail.trim().toLowerCase()).filter((detail) => detail.length >= 3))];
+  if (clientIds.length === 0 || needles.length === 0) return 0;
+  const holds = sql.join(needles.map((needle) => sql`position(${needle}::text in lower(c.entry->>'contact')) > 0`), sql` or `);
+  // The guard is inside the call, not beside it: the planner may run either side of an AND first,
+  // and `jsonb_array_elements` over a brief without contacts would be an error, not "no rows".
+  const contacts = sql`jsonb_array_elements(case when jsonb_typeof(p.brief->'clientContacts') = 'array' then p.brief->'clientContacts' else '[]'::jsonb end)`;
+  const result = await tx.execute(sql`
+    update project_plan p
+    set brief = jsonb_set(p.brief, '{clientContacts}', (
+          select jsonb_agg(case when ${holds} then c.entry - 'contact' else c.entry end order by c.position)
+          from ${contacts} with ordinality as c(entry, position))),
+        updated_at = now()
+    from work_project w
+    where w.id = p.project_id
+      and w.client_id in (${sql.join(clientIds.map((id) => sql`${id}::uuid`), sql`, `)})
+      and exists (select 1 from ${contacts} as c(entry) where ${holds})
+    returning p.project_id`);
+  return rowsOf<{ project_id: string }>(result).length;
 }
 
 /**
