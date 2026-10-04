@@ -1,18 +1,30 @@
 "use client"
 
 import * as React from "react"
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { Drawer as DialogPrimitive } from "@base-ui/react/drawer"
 import { cn } from "cn"
 
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-// A dialog is a sheet on a phone — it rises from the bottom edge, a handle across its top, and
-// sits on the thumb — and a centred card on a desk. One component, so every form that opens over
-// a page gets the phone treatment without asking for it.
+// A dialog is a sheet on a phone — it rises from the bottom edge, a handle across its top, sits on
+// the thumb, and a swipe down puts it away — and a centred card on a desk. One component, so every
+// form that opens over a page gets the phone treatment without asking for it. It is Base UI's
+// Drawer (a Dialog with the gesture); on a desk the card ignores swipes, so a mouse dragging across
+// it selects text as it always did.
+
+/** Tailwind's `sm`: from here up the dialog is a card. */
+const DESK = "(min-width: 40rem)"
+const subscribeDesk = (change: () => void) => {
+  const query = window.matchMedia(DESK)
+  query.addEventListener("change", change)
+  return () => query.removeEventListener("change", change)
+}
+const useDesk = () =>
+  React.useSyncExternalStore(subscribeDesk, () => window.matchMedia(DESK).matches, () => false)
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  return <DialogPrimitive.Root swipeDirection="down" {...props} />
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -35,7 +47,8 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-ink/30 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        // The scrim thins as the sheet is pulled down, and goes at the speed the sheet was thrown.
+        "fixed inset-0 isolate z-50 min-h-dvh bg-ink/30 opacity-[calc(1-var(--drawer-swipe-progress,0))] transition-opacity duration-[360ms] ease-(--ease-drawer) data-swiping:duration-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*280ms)] supports-[-webkit-touch-callout:none]:absolute sm:duration-150 sm:ease-(--ease-settle) sm:data-ending-style:duration-100",
         className
       )}
       {...props}
@@ -51,40 +64,48 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  const desk = useDesk()
   return (
     <DialogPortal>
       <DialogOverlay />
-      <DialogPrimitive.Popup
-        data-slot="dialog-content"
-        className={cn(
-          // The phone: a sheet along the bottom edge.
-          "fixed inset-x-0 bottom-0 z-50 grid max-h-[calc(100dvh-3rem)] w-full gap-4 overflow-y-auto rounded-t-[22px] bg-popover px-4 pt-3 text-sm text-popover-foreground shadow-(--float-shadow) duration-300 ease-(--ease-settle) outline-none data-open:animate-in data-open:slide-in-from-bottom-full data-closed:animate-out data-closed:slide-out-to-bottom-full",
-          "pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]",
-          "before:mx-auto before:block before:h-1 before:w-9 before:rounded-full before:bg-input before:content-['']",
-          // The desk: a card in the middle.
-          "sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[calc(100dvh-4rem)] sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-5 sm:duration-150 sm:before:hidden sm:data-open:zoom-in-95 sm:data-open:slide-in-from-bottom-0 sm:data-closed:zoom-out-95 sm:data-closed:slide-out-to-bottom-0",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-3 right-3"
-                size="icon-sm"
+      <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+        <DialogPrimitive.Popup
+          data-slot="dialog-content"
+          data-base-ui-swipe-ignore={desk ? "" : undefined}
+          className={cn(
+            // The phone: a sheet along the bottom edge. It rises on the iOS sheet curve, follows the
+            // finger while held, and leaves at the speed it was thrown — a flick is enough.
+            "relative grid max-h-[calc(100dvh-3rem)] w-full gap-4 overflow-y-auto overscroll-contain rounded-t-[22px] bg-popover px-4 pt-3 text-sm text-popover-foreground shadow-(--float-shadow) outline-none",
+            "[transform:translateY(var(--drawer-swipe-movement-y,0px))] transition-[transform,scale,opacity] duration-[360ms] ease-(--ease-drawer) data-swiping:duration-0 data-swiping:select-none data-starting-style:[transform:translateY(100%)] data-ending-style:[transform:translateY(100%)] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*280ms)]",
+            "pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]",
+            "before:mx-auto before:block before:h-1 before:w-9 before:rounded-full before:bg-input before:content-['']",
+            // The desk: a card in the middle that settles in from a touch smaller, and leaves faster
+            // than it came. Not anchored to anything, so it grows from its own centre.
+            "sm:max-h-[calc(100dvh-4rem)] sm:max-w-sm sm:rounded-2xl sm:p-5 sm:[transform:none] sm:duration-150 sm:ease-(--ease-settle) sm:before:hidden sm:data-starting-style:[transform:none] sm:data-starting-style:scale-95 sm:data-starting-style:opacity-0 sm:data-ending-style:[transform:none] sm:data-ending-style:scale-95 sm:data-ending-style:opacity-0 sm:data-ending-style:duration-100",
+            className
+          )}
+          {...props}
+        >
+          {/* Lets a mouse select text inside without the drag being read as a swipe. */}
+          <DialogPrimitive.Content className="contents">{children}</DialogPrimitive.Content>
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              render={
+                <Button
+                  variant="ghost"
+                  className="absolute top-3 right-3"
+                  size="icon-sm"
+                />
+              }
+            >
+              <XIcon
               />
-            }
-          >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Popup>
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Viewport>
     </DialogPortal>
   )
 }

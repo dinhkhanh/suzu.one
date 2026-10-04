@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import { getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
 import { AppFrame, type NavRow, type TabStop } from "@/components/shell/app-frame";
@@ -21,6 +22,10 @@ import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules
 import { getTheme } from "@/theme/server";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 import { FeedbackButton } from "@/modules/feedback/ui/feedback-button";
+
+// The app paints edge to edge on a phone, under the home indicator and beside the notch, and pads
+// its own bars away from them with env(safe-area-inset-*) — which is 0 everywhere without this.
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();

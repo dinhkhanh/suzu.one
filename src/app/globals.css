@@ -82,14 +82,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   /* One easing for everything that moves: fast out, long settle (see the motion notes below). */
   --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --animate-rise: rise 0.4s var(--ease-settle) both;
-  --animate-rise-up: rise-up 0.36s var(--ease-settle) both;
-  --animate-pop: pop 0.4s var(--ease-settle) both;
-  --animate-fade: fade 0.2s ease-out both;
+  /* The phone's sheets, which a finger can hold, throw or let go of: iOS's own sheet curve, so a
+     sheet put away by a swipe carries on at the speed it was thrown. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-rise: rise 0.3s var(--ease-settle) both;
+  --animate-rise-up: rise-up 0.36s var(--ease-drawer) both;
+  --animate-pop: pop 0.3s var(--ease-settle) both;
+  --animate-fade: fade 0.2s var(--ease-settle) both;
   @keyframes rise {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
@@ -106,11 +109,12 @@
   }
   @keyframes pop {
     0% {
-      transform: scale(0.6);
+      transform: scale(0.8);
       opacity: 0;
     }
-    70% {
-      transform: scale(1.12);
+    60% {
+      transform: scale(1.06);
+      opacity: 1;
     }
     100% {
       transform: scale(1);
@@ -299,14 +303,75 @@
   [data-slot="table-cell"] {
     font-variant-numeric: tabular-nums;
   }
-  /* Everything that moves honours the reader who asked it not to. */
+  /* A tap is a tap: nothing that is pressed waits to see whether it was half of a double-tap zoom,
+     and a long press on a control does not select its label or pop the link callout. */
+  a,
+  button,
+  summary,
+  label,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
+  button,
+  summary,
+  [role="button"],
+  [role="tab"] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* A fold (<details>) opens rather than appearing: its contents grow out of the summary and fade
+     in, and shut back into it. A browser that cannot animate to an automatic height just opens it,
+     as it always has. Clipped only up and down, and a ring's width beyond, so focus rings and the
+     menus some folds hold are not cut off. */
+  @supports (interpolate-size: allow-keywords) {
+    details {
+      interpolate-size: allow-keywords;
+    }
+    details::details-content {
+      block-size: 0;
+      opacity: 0;
+      overflow-y: clip;
+      overflow-clip-margin: 4px;
+      transition:
+        block-size 0.2s var(--ease-settle),
+        opacity 0.2s var(--ease-settle),
+        content-visibility 0.2s allow-discrete;
+    }
+    details[open]::details-content {
+      block-size: auto;
+      opacity: 1;
+    }
+  }
+  /* Everything that moves honours the reader who asked it not to — with fewer and gentler motions,
+     not none: nothing travels, grows or springs and state changes are instant, but what arrives
+     still fades in, so a sheet or a row does not land from nowhere. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      animation-duration: 0.01ms !important;
+      --tw-enter-translate-x: 0 !important;
+      --tw-enter-translate-y: 0 !important;
+      --tw-enter-scale: 1 !important;
+      --tw-enter-rotate: 0 !important;
+      --tw-exit-translate-x: 0 !important;
+      --tw-exit-translate-y: 0 !important;
+      --tw-exit-scale: 1 !important;
+      --tw-exit-rotate: 0 !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .rise,
+    .animate-rise,
+    .animate-rise-up,
+    .animate-pop,
+    .nav-count,
+    .nav-count-rail,
+    .tab-count {
+      animation-name: fade !important;
     }
   }
 }
@@ -330,6 +395,12 @@
   .nav-section {
     @apply flex h-6 items-center gap-1 px-2 text-[0.6875rem] font-semibold tracking-[0.06em] text-faint uppercase;
   }
+  /* Counts pop in when something arrives, and again when the number changes (keyed by it). */
+  .nav-count,
+  .nav-count-rail,
+  .tab-count {
+    animation: var(--animate-pop);
+  }
   .nav-count {
     @apply ml-auto flex h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums;
   }
@@ -343,12 +414,28 @@
   .tab-bar {
     @apply fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-canvas/90 px-2 pt-1.5 backdrop-blur-xl md:hidden;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 0.5rem);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 0.5rem);
   }
   .tab-stop {
     @apply relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[0.6875rem] font-medium text-faint transition-colors [&>svg]:size-6 [&>svg]:shrink-0;
   }
   .tab-stop[aria-current="page"] {
     @apply text-primary;
+  }
+  /* The stop just tapped takes the accent at once, before its page arrives, and the one being left
+     lets go of it (src/components/shell/link-pending.tsx); the same for a row of the sidebar. */
+  .tab-bar:has([data-link-pending]) .tab-stop[aria-current="page"]:not(:has([data-link-pending])) {
+    @apply text-faint;
+  }
+  .tab-stop:has([data-link-pending]) {
+    @apply text-primary;
+  }
+  aside:has(.nav-row [data-link-pending]) .nav-row[aria-current="page"]:not(:has([data-link-pending])) {
+    @apply bg-transparent text-sidebar-foreground [&>svg]:text-muted-foreground;
+  }
+  .nav-row:has([data-link-pending]) {
+    @apply bg-sidebar-accent text-foreground [&>svg]:text-primary;
   }
   .tab-count {
     @apply absolute top-0.5 left-1/2 ml-1.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-canvas;
@@ -395,10 +482,12 @@
   .press {
     @apply transition-[transform,background-color,color,box-shadow] duration-100 ease-(--ease-settle) active:scale-[0.97];
   }
-  /* A list that arrives row by row: give each row `--i` (its index) and the class. */
+  /* A list that arrives row by row: give each row `--i` (its index) and the class. The cascade
+     stops after the first ten rows — those below the fold arrive with the tenth — so a long list
+     is never still landing when the reader gets to it. */
   .rise {
     animation: var(--animate-rise);
-    animation-delay: calc(var(--i, 0) * 40ms);
+    animation-delay: calc(min(var(--i, 0), 10) * 30ms);
   }
 
   /* The gutter of row numbers down the left of every grid (src/components/ui/table.tsx and

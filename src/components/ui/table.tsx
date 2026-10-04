@@ -369,7 +369,7 @@ function TableCardHeader({
 }
 
 const ADD_ROW =
-  "flex h-11 w-full cursor-pointer items-center gap-2 border-t px-3 text-[0.8125rem] font-medium text-link transition-colors select-none hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-3.5"
+  "flex h-11 w-full cursor-pointer items-center gap-2 border-t px-3 text-[0.8125rem] font-medium text-link transition-colors select-none hover:bg-canvas active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-3.5"
 
 /**
  * The "+ Add …" row that closes a sheet. Given `href`, it is a link to the create page; given

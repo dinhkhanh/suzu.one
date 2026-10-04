@@ -38,8 +38,8 @@ export function QuickAdd({ labels }: { labels: QuickAddLabels }) {
         type="button"
         aria-label={labels.button}
         onClick={() => setOpen(true)}
-        className="press fixed right-4 z-30 flex size-14 items-center justify-center rounded-[18px] bg-ink text-ink-foreground shadow-[0_8px_24px_oklch(0_0_0/28%)] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.25rem)" }}
+        className="press fixed z-30 flex size-14 items-center justify-center rounded-[18px] bg-ink text-ink-foreground shadow-[0_8px_24px_oklch(0_0_0/28%)] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.25rem)", right: "calc(env(safe-area-inset-right, 0px) + 1rem)" }}
       >
         <Plus className="size-6" strokeWidth={2.25} aria-hidden />
       </button>

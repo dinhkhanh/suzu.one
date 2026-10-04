@@ -149,8 +149,10 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
   const groupLabel: Record<Entry["group"], string> = { tasks: t("groups.tasks"), actions: t("groups.actions"), pages: t("groups.pages") };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 animate-fade sm:items-start sm:p-4 sm:pt-[14vh]" role="dialog" aria-modal="true" aria-label={t("title")} onClick={(event) => (event.target === event.currentTarget ? close() : undefined)}>
-      <div className="flex max-h-[80dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-popover shadow-(--float-shadow) animate-in slide-in-from-bottom-full duration-300 ease-(--ease-settle) sm:max-w-xl sm:rounded-[14px] sm:slide-in-from-bottom-0 sm:zoom-in-95 sm:duration-150">
+    // On a phone the palette is a sheet a finger opened, and rises like one. On a desk it answers ⌘K
+    // and "C", dozens of times a day, so it is simply there: an animation would only be a wait.
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 animate-fade sm:animate-none sm:items-start sm:p-4 sm:pt-[14vh]" role="dialog" aria-modal="true" aria-label={t("title")} onClick={(event) => (event.target === event.currentTarget ? close() : undefined)}>
+      <div className="flex max-h-[80dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-popover shadow-(--float-shadow) animate-rise-up sm:max-w-xl sm:animate-none sm:rounded-[14px]">
         {mode === "search" ? (
           <>
             <div className="flex h-13 shrink-0 items-center gap-2.5 border-b border-border px-4">
@@ -160,7 +162,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
                 value={query}
                 placeholder={t("placeholder")}
                 aria-label={t("placeholder")}
-                className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-faint"
+                className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint sm:text-[0.9375rem]"
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setCursor(0);
