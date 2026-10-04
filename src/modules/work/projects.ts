@@ -5,6 +5,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { runProjectCreationHooks } from "@/modules/platform/project-creation/registry";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
 import { invalidateMemberships, projectRolesOf } from "./viewer";
 import type { ProjectRole, Visibility } from "./enums";
@@ -110,7 +111,14 @@ export async function createProject(input: ProjectInput, actorPersonId: string):
   return project;
 }
 
-/** Inside the caller's transaction: the caller calls `invalidateWorkDirectory()` once it commits. */
+/**
+ * Inside the caller's transaction: the caller calls `invalidateWorkDirectory()` once it commits.
+ *
+ * The one place a project row is made — the form, a template and a deal won in the CRM all come
+ * through here — so it is also where the modules built on top of projects add what a project must
+ * never be without (the project layer's plan row and job number), through the platform's
+ * project-creation hooks and in this same transaction.
+ */
 export async function createProjectIn(tx: Executor, input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
   {
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, input.teamId)).limit(1);
@@ -122,6 +130,7 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     await invalidateMemberships(...members.keys());
+    await runProjectCreationHooks(tx, { id: project.id });
     return project;
   }
 }

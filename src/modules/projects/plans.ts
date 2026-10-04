@@ -1,15 +1,19 @@
 // The plan of a project (FR-PJM-01, 02, 09, 14): one `project_plan` row per `work_project`.
 //
-// Work never imports projects, so a project is created without its plan. The plan is made
-// idempotently by the first change anything makes to it (`ensurePlan`, inside that change's
-// transaction), and the daily job backfills every project still missing one (`backfillPlans`).
-// Making it hands out the job number. Reading never writes: a page opened before either has
-// happened reads the plan's defaults (`readPlan`), with no job number yet.
+// Work never imports projects, so the plan is made through the platform's project-creation hooks
+// (`planOnCreate`, registered beside the tables): work runs them inside the transaction that makes
+// the project, so a new project is committed with its plan and its job number. Projects older than
+// that — and any row written past the application — get theirs idempotently from the first change
+// anything makes to the plan (`ensurePlan`, inside that change's transaction), and the daily job
+// backfills whatever is still missing (`backfillPlans`). Making it hands out the job number.
+// Reading never writes: a page that opens such a project first reads the plan's defaults
+// (`readPlan`), with no job number yet.
 import "server-only";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import type { ProjectCreationHook } from "@/modules/platform/project-creation/registry";
 import { invalidateMemberships } from "@/modules/work/service";
 import type { ProjectKind } from "./engine/brief";
 import { briefEditable, type BriefStatus } from "./engine/brief";
@@ -66,6 +70,11 @@ export async function ensurePlan(projectId: string, executor?: Tx): Promise<Plan
     return plan;
   });
 }
+
+/** The plan of a project the work module has just made, in the transaction that made it (see `schema.ts`). */
+export const planOnCreate: ProjectCreationHook = async (tx, project) => {
+  await ensurePlan(project.id, tx as Tx);
+};
 
 /**
  * The plan a project has before anything made it: what the table's defaults and `ensurePlan` would

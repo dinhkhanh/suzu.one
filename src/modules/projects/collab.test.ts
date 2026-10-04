@@ -32,7 +32,7 @@ import { type KbViewer, viewerKeys } from "../kb/policy";
 import { searchKb } from "../kb/search";
 import { listSpaces, loadSpace } from "../kb/spaces";
 import type { Principal } from "../platform/rbac/policy";
-import { createProject, setProjectMember } from "../work/projects";
+import { createProject, createProjectIn, setProjectMember } from "../work/projects";
 import { createTeam, setTeamMember } from "../work/teams";
 import { ensureProjectSpace, getProjectDocuments, projectSpaceKey } from "./documents";
 import { getMeeting, listMeetings, putMeetingInCalendar, removeMeetingFromCalendar, saveMeeting } from "./meetings";
@@ -70,7 +70,61 @@ beforeAll(async () => {
   ids.project = project.id;
   await setProjectMember(project.id, ids.huy, "member");
   await setProjectMember(project.id, ids.lan, "member");
-  await ensurePlan(project.id);
+});
+
+describe("a new project (FR-PJM-01, 02)", () => {
+  const input = (name: string) => ({ teamId: ids.team, name, description: null, clientId: null, status: "active", visibility: "team" as const, leadPersonId: ids.tam, startDate: null, dueDate: null });
+  const plansOf = (projectId: string) => db().select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId));
+  const sequenceOf = (jobNumber: string | null) => Number(jobNumber?.split("-").pop());
+
+  it("has its plan and its job number from the moment it is created", async () => {
+    // The project every other test here works in was made by the work module alone, in `beforeAll`.
+    const [plan] = await plansOf(ids.project);
+    expect(plan).toMatchObject({ kind: "internal", briefStatus: "draft", accountManagerPersonId: null });
+    expect(plan.jobNumber).toMatch(/^SZM-\d{2}-\d{3}$/);
+    // Asking again hands the same row back: nothing is numbered twice.
+    expect((await ensurePlan(ids.project)).jobNumber).toBe(plan.jobNumber);
+    expect(await plansOf(ids.project)).toHaveLength(1);
+  });
+
+  it("can be given its document space at once", async () => {
+    const project = await createProject(input("Ra mắt sản phẩm"), ids.tam);
+    const made = await ensureProjectSpace(project.id, ids.tam);
+    expect(made).toMatchObject({ created: true, pages: 4 });
+    const [plan] = await plansOf(project.id);
+    expect(plan.kbSpaceId).toBe(made.spaceId);
+    // The space is named after the job number the project was created with.
+    expect((await loadSpace({ id: made.spaceId }))!.space.name).toBe(`${plan.jobNumber} · Ra mắt sản phẩm`);
+  });
+
+  it("is made with its plan or not at all: a creation that fails leaves neither, and burns no number", async () => {
+    const before = await createProject(input("Trước"), ids.tam);
+    let lostId = "";
+    const failed = db().transaction(async (tx) => {
+      lostId = (await createProjectIn(tx, input("Không thành"), ids.tam)).id;
+      // Inside the creating transaction the plan is already there.
+      expect(await tx.select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, lostId))).toHaveLength(1);
+      throw new Error("rolled back");
+    });
+    expect(await fails(failed)).toBe("rolled back");
+    expect(await db().select().from(schema.workProject).where(eq(schema.workProject.id, lostId))).toHaveLength(0);
+    expect(await plansOf(lostId)).toHaveLength(0);
+    const after = await createProject(input("Sau"), ids.tam);
+    expect(sequenceOf((await plansOf(after.id))[0].jobNumber)).toBe(sequenceOf((await plansOf(before.id))[0].jobNumber) + 1);
+  });
+
+  it("still gets a document space when it is older than that and has no plan row", async () => {
+    // Written past the application, as every project was before plans were made at creation.
+    const [old] = await db().insert(schema.workProject).values({ teamId: ids.team, entityId: ids.szm, name: "Dự án cũ", status: "active", visibility: "team", leadPersonId: ids.tam, createdByPersonId: ids.tam }).returning();
+    expect(await plansOf(old.id)).toHaveLength(0);
+    const made = await ensureProjectSpace(old.id, ids.tam);
+    expect(made).toMatchObject({ created: true, pages: 4 });
+    const [plan] = await plansOf(old.id);
+    expect(plan).toMatchObject({ kbSpaceId: made.spaceId });
+    expect(plan.jobNumber).toMatch(/^SZM-\d{2}-\d{3}$/);
+    // And a project that does not exist is still refused.
+    expect(await fails(ensureProjectSpace("00000000-0000-4000-8000-0000000000aa", ids.tam))).toBe("project_not_found");
+  });
 });
 
 describe("the RAID log (FR-PJM-29)", () => {
