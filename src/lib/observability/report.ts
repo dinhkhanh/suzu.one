@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { onVercelDeployment, reportingEnvironment } from "./options";
 import { redactUrl } from "./scrub";
 
 // Server side only (instrumentation.ts cannot import "server-only"). Every server-side error the
@@ -16,6 +17,14 @@ type Context = {
   tags?: Record<string, string | undefined>;
 };
 
+/** What this server files its errors under: the deployment's environment on Vercel, `development` anywhere else (options.ts). */
+export const serverEnvironment = (): string =>
+  reportingEnvironment({
+    explicit: process.env.SENTRY_ENVIRONMENT,
+    vercelEnv: process.env.VERCEL_ENV,
+    deployed: onVercelDeployment({ url: process.env.VERCEL_URL, deploymentId: process.env.VERCEL_DEPLOYMENT_ID, region: process.env.VERCEL_REGION }),
+  });
+
 export function logError(error: unknown, { event, request, ...where }: Context): void {
   const isError = error instanceof Error;
   console.error(
@@ -28,7 +37,7 @@ export function logError(error: unknown, { event, request, ...where }: Context):
       digest: typeof error === "object" && error !== null && "digest" in error ? String(error.digest) : undefined,
       request: request && { method: request.method, path: redactUrl(request.path) },
       ...where,
-      environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
+      environment: serverEnvironment(),
       release: process.env.VERCEL_GIT_COMMIT_SHA,
     }),
   );
