@@ -126,11 +126,12 @@ export const bonusSchemeSchema = z
       requireResult: z.boolean(),
     }),
   })
-  .refine((value) => value.serviceBands.some((band) => band.minMonths === 0), "no_bottom_service_band")
-  .refine((value) => new Set(value.serviceBands.map((band) => band.minMonths)).size === value.serviceBands.length, "duplicate_service_band")
-  .refine((value) => value.performanceMultiplier.bands.some((band) => band.minScoreBp === 0), "no_bottom_performance_band")
-  .refine((value) => new Set(value.performanceMultiplier.bands.map((band) => band.key)).size === value.performanceMultiplier.bands.length, "duplicate_performance_band")
-  .refine((value) => value.unitOkr.bands.some((band) => band.minProgressBp === 0), "no_bottom_okr_band");
+  // Each rule about a whole table names the table it is about (`path`), so the editor can point at it.
+  .refine((value) => value.serviceBands.some((band) => band.minMonths === 0), { error: "no_bottom_service_band", path: ["serviceBands"] })
+  .refine((value) => new Set(value.serviceBands.map((band) => band.minMonths)).size === value.serviceBands.length, { error: "duplicate_service_band", path: ["serviceBands"] })
+  .refine((value) => value.performanceMultiplier.bands.some((band) => band.minScoreBp === 0), { error: "no_bottom_performance_band", path: ["performanceMultiplier", "bands"] })
+  .refine((value) => new Set(value.performanceMultiplier.bands.map((band) => band.key)).size === value.performanceMultiplier.bands.length, { error: "duplicate_performance_band", path: ["performanceMultiplier", "bands"] })
+  .refine((value) => value.unitOkr.bands.some((band) => band.minProgressBp === 0), { error: "no_bottom_okr_band", path: ["unitOkr", "bands"] });
 export type BonusSchemeValue = z.output<typeof bonusSchemeSchema>;
 
 /**

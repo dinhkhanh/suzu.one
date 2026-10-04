@@ -63,9 +63,22 @@ export async function getBonusSchemeVersion(id: string, executor?: Executor): Pr
   return { id: row.id, entityId: row.entityId, validFrom: row.validFrom, value: bonusSchemeSchema.parse(row.value) };
 }
 
+/** One thing wrong with a scheme: where it is ("serviceBands.2.factorBp") and what, as a message key. */
+export type BonusSchemeIssue = { path: string; code: string };
+
+/** A rule of the scheme's own (`no_bottom_service_band`) is named; anything else is zod's issue code. */
+export const bonusSchemeIssues = (value: unknown): BonusSchemeIssue[] => {
+  const parsed = bonusSchemeSchema.safeParse(value);
+  return parsed.success ? [] : parsed.error.issues.map((issue) => ({ path: issue.path.join("."), code: issue.code === "custom" ? issue.message : (issue.code ?? "invalid") }));
+};
+
+/**
+ * The scheme, or `bonus_scheme_invalid` with every problem and the field it is about — the editor
+ * is raw JSON, so "not valid" alone would leave the reader to find the field themselves.
+ */
 export function checkBonusSchemeValue(value: unknown): BonusSchemeValue {
   const parsed = bonusSchemeSchema.safeParse(value);
-  if (!parsed.success) throw new ActionError("bonus_scheme_invalid", { issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), code: issue.code })) });
+  if (!parsed.success) throw new ActionError("bonus_scheme_invalid", { issues: bonusSchemeIssues(value) });
   return parsed.data;
 }
 
