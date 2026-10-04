@@ -353,10 +353,13 @@ describe("weekly reports", () => {
   it("generates each person's and team's week, tells the lead and the department head once", async () => {
     const first = await generateWeek(D, { notify: true });
     expect(first.teams).toBe(3);
-    expect(first.notified).toBe(3);
+    // The three teams' weeks, and the weeks of the two people in no team who have a line manager
+    // (Tam's to Chi, Chi's to Vu — readers.test.ts covers whose week goes where).
+    expect(first.notified).toBe(5);
     expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);
-    // Chi heads Marketing, where Video sits.
-    expect((await noticesOf(ids.chi, "daily.weekly_report")).map((row) => row.params)).toEqual([{ subject: "Video", week: "21/09/2026" }]);
+    // Chi heads Marketing, where Video sits, and is Tam's line manager: one notice for the two weeks.
+    expect((await noticesOf(ids.chi, "daily.weekly_reports")).map((row) => row.params)).toEqual([{ count: 2, week: "21/09/2026" }]);
+    expect((await noticesOf(ids.vu, "daily.weekly_report")).map((row) => row.params)).toEqual([{ subject: "Chi Vo", week: "21/09/2026" }]);
     const again = await generateWeek(D, { notify: true });
     expect(again.notified).toBe(0);
     expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);

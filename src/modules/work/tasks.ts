@@ -1,11 +1,12 @@
 // Work tasks: a row of the engine's `task` table (kind "work") plus its `work_task` half. Every
 // change is written to `work_activity`, field by field (FR-WRK-09).
 import "server-only";
-import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, inArray, isNotNull, isNull, ne, or, type SQL, sql } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { rowsOf } from "@/lib/db/rows";
 import { notify } from "../platform/notifications/service";
 import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { runTaskAutomations } from "./automations";
@@ -16,7 +17,7 @@ import { appendChecklists, gatedStages, resolveLinked, MAX_TASK_CHECKLIST, merge
 import { changedFields } from "./engine/automation";
 import { requirementFor } from "./handoff-gate";
 import { assertPublishable } from "./publish-gate";
-import { rankBetween, wouldCreateDependencyCycle, wouldCreateParentCycle } from "./engine/graph";
+import { rankBetween, wouldCreateDependencyCycle } from "./engine/graph";
 import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enums";
 import { notifyFollowers } from "./followers";
 import { projectsWithTeams, workDirectory } from "./directory";
@@ -43,11 +44,15 @@ export async function loadTask(taskId: string, executor: Executor = db()): Promi
   return (await loadTasks([taskId], executor)).get(taskId);
 }
 
-/** `loadTask` for many tasks in two queries. Deleted and unknown tasks are left out of the map. */
-export async function loadTasks(taskIds: readonly string[], executor: Executor = db()): Promise<Map<string, LoadedTask>> {
+/**
+ * `loadTask` for many tasks in two queries. Deleted and unknown tasks are left out of the map —
+ * unless `deleted` asks for exactly the deleted ones (restoring, and deciding who may).
+ */
+export async function loadTasks(taskIds: readonly string[], executor: Executor = db(), options: { deleted?: boolean } = {}): Promise<Map<string, LoadedTask>> {
   const ids = [...new Set(taskIds)];
   const result = new Map<string, LoadedTask>();
   if (ids.length === 0) return result;
+  const present = options.deleted ? isNotNull(schema.task.deletedAt) : live;
   const [rows, people] = await Promise.all([
     executor
       .select({ task: schema.task, work: schema.workTask, team: schema.workTeam, project: schema.workProject })
@@ -55,7 +60,7 @@ export async function loadTasks(taskIds: readonly string[], executor: Executor =
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
       .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-      .where(and(ids.length === 1 ? eq(schema.task.id, ids[0]) : inArray(schema.task.id, ids), live)),
+      .where(and(ids.length === 1 ? eq(schema.task.id, ids[0]) : inArray(schema.task.id, ids), present)),
     executor.select({ taskId: schema.workTaskPerson.taskId, personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).where(ids.length === 1 ? eq(schema.workTaskPerson.taskId, ids[0]) : inArray(schema.workTaskPerson.taskId, ids)),
   ]);
   const peopleOf = Map.groupBy(people, (person) => person.taskId);
@@ -165,6 +170,26 @@ async function parentOfTeam(tx: Executor, parentTaskId: string, teamId: string):
   const [row] = await tx.select({ task: schema.task, work: schema.workTask }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(eq(schema.task.id, parentTaskId), live)).limit(1);
   if (!row || row.work.teamId !== teamId) throw new ActionError("parent_not_found");
   return row;
+}
+
+/**
+ * Is `taskId` the task `ancestorId` itself, or somewhere under it? Asked before a task is put under
+ * a new parent: a parent that sits under the task would close a loop. Walked upwards from the task
+ * in Postgres — the handful of rows on the way to the top, however large the team's backlog — and
+ * bounded, so a loop already in the data would end the walk rather than spin it.
+ */
+async function isUnder(tx: Executor, taskId: string, ancestorId: string): Promise<boolean> {
+  if (taskId === ancestorId) return true;
+  const [row] = rowsOf<{ found: boolean }>(
+    await tx.execute(sql`
+      with recursive up(id, parent_id, depth) as (
+        select t.id, t.parent_task_id, 1 from task t where t.id = ${taskId}
+        union all
+        select t.id, t.parent_task_id, up.depth + 1 from task t join up on t.id = up.parent_id where up.depth < 64
+      )
+      select exists (select 1 from up where up.id = ${ancestorId}) as found`),
+  );
+  return !!row?.found;
 }
 
 /** A cycle of the task's own team; planning into a closed cycle is refused (FR-PJM-10). */
@@ -417,8 +442,7 @@ export async function updateWorkTaskIn(
       let parentTitle: Named = null;
       if (patch.parentTaskId) {
         const parent = await parentOfTeam(tx, patch.parentTaskId, team.id);
-        const links = await tx.select({ id: schema.task.id, parentId: schema.task.parentTaskId }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(eq(schema.workTask.teamId, team.id));
-        if (wouldCreateParentCycle(new Map(links.map((link) => [link.id, link.parentId])), taskId, parent.task.id)) throw new ActionError("parent_cycle");
+        if (await isUnder(tx, parent.task.id, taskId)) throw new ActionError("parent_cycle");
         parentTitle = { id: parent.task.id, name: parent.task.title };
       }
       taskSet.parentTaskId = patch.parentTaskId;
@@ -601,9 +625,86 @@ export async function deleteWorkTask(taskId: string, actorPersonId: string): Pro
       frontier = children.map((child) => child.id).filter((id) => !ids.includes(id));
       ids.push(...frontier);
     }
-    await tx.update(schema.task).set({ deletedAt: new Date(), updatedAt: new Date() }).where(inArray(schema.task.id, ids));
+    // One instant for the task and every sub-task that goes with it: restoring puts back exactly
+    // the rows that carry it (`restoreWorkTask`), not a sub-task somebody had deleted before.
+    const deletedAt = new Date();
+    await tx.update(schema.task).set({ deletedAt, updatedAt: deletedAt }).where(inArray(schema.task.id, ids));
     await logActivity(tx, taskId, actorPersonId, [{ type: "deleted", from: { title: found.task.title, withSubtasks: ids.length - 1 } }]);
     return { task: found.task, deleted: ids.length };
+  });
+}
+
+/** How long a deleted task is still listed and can be put back. Nothing is purged: after this it simply stops being offered. */
+export const RESTORE_WINDOW_DAYS = 30;
+const restoreSince = (now: Date) => new Date(now.getTime() - RESTORE_WINDOW_DAYS * 86_400_000);
+
+export type DeletedTask = { id: string; key: string; title: string; projectId: string | null; deletedAt: Date; deletedByPersonId: string | null; deletedByName: string | null; /** Sub-tasks deleted with it, which come back with it. */ subtasks: number };
+
+/**
+ * Recently deleted (FR-WRK-03): the tasks of a project, or of a team's backlog, deleted in the last
+ * `RESTORE_WINDOW_DAYS` days — newest first, each with who deleted it and how many sub-tasks went
+ * with it. A sub-task deleted with its parent is not a row of its own: it comes back with the
+ * parent. No authorization inside: the caller has decided the viewer runs the project or the team.
+ */
+export async function listDeletedTasks(scope: { projectId: string } | { teamId: string }, now: Date = new Date(), limit = 100): Promise<DeletedTask[]> {
+  const parent = alias(schema.task, "parent");
+  const deleter = alias(schema.person, "deleter");
+  const lastDelete = db()
+    .select({ actorPersonId: schema.workActivity.actorPersonId, fromValue: schema.workActivity.fromValue })
+    .from(schema.workActivity)
+    .where(and(eq(schema.workActivity.taskId, schema.task.id), eq(schema.workActivity.type, "deleted")))
+    .orderBy(desc(schema.workActivity.createdAt))
+    .limit(1)
+    .as("last_delete");
+  const rows = await db()
+    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, projectId: schema.workTask.projectId, deletedAt: schema.task.deletedAt, deletedByPersonId: lastDelete.actorPersonId, deletedByName: deleter.fullName, subtasks: sql<number>`coalesce((${lastDelete.fromValue}->>'withSubtasks')::int, 0)` })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+    .leftJoin(parent, eq(parent.id, schema.task.parentTaskId))
+    .leftJoinLateral(lastDelete, sql`true`)
+    .leftJoin(deleter, eq(deleter.id, lastDelete.actorPersonId))
+    .where(
+      and(
+        eq(schema.task.kind, WORK_KIND),
+        gte(schema.task.deletedAt, restoreSince(now)),
+        "projectId" in scope ? eq(schema.workTask.projectId, scope.projectId) : and(eq(schema.workTask.teamId, scope.teamId), isNull(schema.workTask.projectId)),
+        // Its own deletion, not its parent's: no parent, a parent still there, or one deleted at another time.
+        or(isNull(parent.id), isNull(parent.deletedAt), ne(parent.deletedAt, schema.task.deletedAt)),
+      ),
+    )
+    .orderBy(desc(schema.task.deletedAt), asc(schema.workTask.number))
+    .limit(limit);
+  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, projectId: row.projectId, deletedAt: row.deletedAt!, deletedByPersonId: row.deletedByPersonId, deletedByName: row.deletedByName, subtasks: Number(row.subtasks) }));
+}
+
+/**
+ * Puts a deleted task back, with the sub-tasks that were deleted with it (the same instant, found
+ * down the tree in one recursive statement) — not one somebody had deleted on its own before. Only
+ * within `RESTORE_WINDOW_DAYS`. A task whose parent is still deleted comes back on its own, at the
+ * top level: it cannot hang under something that is not there.
+ */
+export async function restoreWorkTask(taskId: string, actorPersonId: string, now: Date = new Date()): Promise<{ task: TaskRow; projectId: string | null; restored: number }> {
+  return db().transaction(async (tx) => {
+    const found = (await loadTasks([taskId], tx, { deleted: true })).get(taskId);
+    if (!found) throw new ActionError("task_not_found");
+    const deletedAt = found.task.deletedAt!;
+    if (deletedAt < restoreSince(now)) throw new ActionError("task_restore_too_late");
+    const [parent] = found.task.parentTaskId ? await tx.select({ deletedAt: schema.task.deletedAt }).from(schema.task).where(eq(schema.task.id, found.task.parentTaskId)).limit(1) : [];
+    const orphaned = !!found.task.parentTaskId && (!parent || !!parent.deletedAt);
+    const restored = rowsOf<{ id: string }>(
+      await tx.execute(sql`
+        with recursive tree(id, depth) as (
+          select t.id, 1 from task t where t.id = ${taskId}
+          union all
+          select c.id, tree.depth + 1 from task c join tree on c.parent_task_id = tree.id where c.deleted_at = ${deletedAt.toISOString()}::timestamptz and tree.depth < 64
+        )
+        update task set deleted_at = null, updated_at = ${now.toISOString()}::timestamptz where id in (select id from tree) and deleted_at is not null
+        returning id`),
+    );
+    if (orphaned) await tx.update(schema.task).set({ parentTaskId: null }).where(eq(schema.task.id, taskId));
+    await logActivity(tx, taskId, actorPersonId, [{ type: "restored", to: { title: found.task.title, withSubtasks: restored.length - 1 } }, ...(orphaned ? [{ type: "field_changed", field: "parent", from: { id: found.task.parentTaskId }, to: null }] : [])]);
+    return { task: found.task, projectId: found.work.projectId, restored: restored.length };
   });
 }
 
@@ -896,8 +997,8 @@ export async function resolveTaskKeys(keys: readonly string[], executor: Executo
 
 export type TaskSearchHit = { id: string; key: string; title: string; status: TaskRow["status"]; projectName: string | null };
 
-/** Command palette: by title, or by key ("VID-12", "12"). */
-export async function searchTasks(viewer: WorkViewer, query: string, limit = 12): Promise<TaskSearchHit[]> {
+/** Command palette: by title, or by key ("VID-12", "12"). `within` narrows the search further (a picker that takes only some tasks). */
+export async function searchTasks(viewer: WorkViewer, query: string, limit = 12, within?: SQL): Promise<TaskSearchHit[]> {
   const text = query.trim().slice(0, 80);
   if (text.length < 2 && !/^\d+$/.test(text)) return [];
   const keyMatch = /^(?:([a-z0-9]{2,8})-)?(\d{1,7})$/i.exec(text);
@@ -909,10 +1010,27 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-    .where(and(eq(schema.task.kind, WORK_KIND), live, matches, await visibleTaskCondition(viewer)))
+    .where(and(eq(schema.task.kind, WORK_KIND), live, matches, within, await visibleTaskCondition(viewer)))
     .orderBy(sql`case when ${schema.task.status} in ('todo', 'in_progress') then 0 else 1 end`, desc(schema.task.updatedAt))
     .limit(limit);
   return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, projectName: row.projectName }));
+}
+
+/**
+ * "Move under…" on a task's page: the tasks it could become a sub-task of — of its own team (a
+ * task keeps its team's workflow), among those the viewer may open, and never the task itself or
+ * anything already under it, which would close a loop. The search is `searchTasks`'s; the caller
+ * has checked that the viewer may edit the task.
+ */
+export function searchParentCandidates(viewer: WorkViewer, task: { id: string; teamId: string }, query: string, limit = 12): Promise<TaskSearchHit[]> {
+  const under = sql`${schema.task.id} not in (
+    with recursive down(id, depth) as (
+      select t.id, 1 from task t where t.id = ${task.id}
+      union all
+      select c.id, down.depth + 1 from task c join down on c.parent_task_id = down.id where down.depth < 64
+    )
+    select id from down)`;
+  return searchTasks(viewer, query, limit, and(eq(schema.workTask.teamId, task.teamId), under));
 }
 
 // ── One task, in full ───────────────────────────────────────────────────────────────────────

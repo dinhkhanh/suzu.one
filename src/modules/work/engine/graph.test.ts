@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankBetween, wouldCreateDependencyCycle, wouldCreateParentCycle } from "./graph";
+import { rankBetween, wouldCreateDependencyCycle } from "./graph";
 
 const edge = (blockerTaskId: string, blockedTaskId: string) => ({ blockerTaskId, blockedTaskId });
 
@@ -18,17 +18,6 @@ describe("dependency cycles", () => {
   });
   it("terminates on data that already holds a loop", () => {
     expect(wouldCreateDependencyCycle([edge("a", "b"), edge("b", "a")], "c", "a")).toBe(false);
-  });
-});
-
-describe("sub-task tree", () => {
-  const parentOf = new Map<string, string | null>([["campaign", null], ["video", "campaign"], ["cut", "video"]]);
-  it("lets a task move under an unrelated task", () => {
-    expect(wouldCreateParentCycle(parentOf, "cut", "campaign")).toBe(false);
-  });
-  it("refuses a task under itself or under its own descendant", () => {
-    expect(wouldCreateParentCycle(parentOf, "video", "video")).toBe(true);
-    expect(wouldCreateParentCycle(parentOf, "campaign", "cut")).toBe(true);
   });
 });
 

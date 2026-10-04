@@ -183,7 +183,7 @@ describe("recurring tasks", () => {
     expect(await generateOccurrences("2026-10-10")).toMatchObject({ made: 2 });
     await changeRecurrence(recurrence.id, { endDate: "2026-10-10" });
     expect(await generateOccurrences("2026-11-01")).toMatchObject({ made: 0 });
-    const [view] = await listRecurrences(ids.project, "2026-11-01");
+    const [view] = await listRecurrences({ projectId: ids.project }, "2026-11-01");
     expect(view).toMatchObject({ made: 4, nextDate: null, assigneeName: "Huy Ho" });
     expect(await fails(createRecurrence({ projectId: ids.project, title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: {} }, ids.long, "2026-09-20"))).toBe("recurrence_rule_invalid");
   });

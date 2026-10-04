@@ -63,7 +63,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     listProjectMembers(project.id),
     listAssignable(team.id, project.id),
     manage ? listPersonNames() : [],
-    listRecurrences(project.id, today),
+    listRecurrences({ projectId: project.id }, today),
     listWorkTemplates([team.id], { activeOnly: true }),
     listCustomFields({ teamId: team.id, projectId: project.id }, { includeInactive: true }),
   ]);

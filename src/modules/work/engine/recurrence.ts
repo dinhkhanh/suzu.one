@@ -80,3 +80,47 @@ export function nextOccurrence(rule: RecurrenceRule, startDate: IsoDate, from: I
   const [next] = occurrencesBetween(rule, startDate, from, until && until < horizon ? until : horizon, 1);
   return next ?? null;
 }
+
+// ── Days off ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What becomes of an occurrence that falls on a day nobody works (a holiday, a company day off, a
+ * Sunday of the team's entity):
+ *   · shift — the task is due the next working day instead (the default);
+ *   · skip  — the occurrence is not made;
+ *   · keep  — it is made on the day anyway (a post that goes out on a Sunday).
+ */
+export const DAY_OFF_MODES = ["shift", "skip", "keep"] as const;
+export type DayOffMode = (typeof DAY_OFF_MODES)[number];
+
+/** How far a shifted occurrence may travel looking for a working day: past a long holiday, not for ever. */
+const MAX_SHIFT_DAYS = 14;
+
+export type PlacedOccurrence = { /** The rule's own date: what the occurrence is known by, shifted or not. */ occurrence: IsoDate; /** The day its task is due. */ due: IsoDate };
+
+/**
+ * Where each of the rule's dates lands. A shifted occurrence that arrives on a day the rule already
+ * comes round on is dropped rather than doubled — a daily task skips the weekend instead of piling
+ * three up on Monday — and so is a second one shifted onto the same day. `dates` are the rule's
+ * dates (`occurrencesBetween`), oldest first.
+ */
+export function placeOccurrences(rule: RecurrenceRule, startDate: IsoDate, dates: readonly IsoDate[], mode: DayOffMode, isOff: (date: IsoDate) => boolean): PlacedOccurrence[] {
+  if (mode === "keep") return dates.map((date) => ({ occurrence: date, due: date }));
+  const placed: PlacedOccurrence[] = [];
+  const taken = new Set<IsoDate>();
+  for (const date of dates) {
+    if (!isOff(date)) {
+      placed.push({ occurrence: date, due: date });
+      taken.add(date);
+      continue;
+    }
+    if (mode === "skip") continue;
+    let due: IsoDate | null = null;
+    for (let step = 1; step <= MAX_SHIFT_DAYS && !due; step++) if (!isOff(addDays(date, step))) due = addDays(date, step);
+    // Nowhere to go, a day another shifted occurrence took, or one of the rule's own days.
+    if (!due || taken.has(due) || occurrencesBetween(rule, startDate, due, due, 1).length > 0) continue;
+    placed.push({ occurrence: date, due });
+    taken.add(due);
+  }
+  return placed;
+}

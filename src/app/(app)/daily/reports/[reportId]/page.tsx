@@ -34,6 +34,8 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
   const mine = report.personId === user.person.id;
   const today = todayInVietnam();
   const editable = mine && report.date >= addDays(today, -REPORT_BACKFILL_DAYS);
+  // "Today" and "tomorrow" are the report's own day and the one after it only while that day is today.
+  const past = report.date !== today;
 
   return (
     <Page width="narrow">
@@ -55,6 +57,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
       >
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
+          {report.revisions.length > 0 ? <Badge variant="outline">{t("report.edited")}</Badge> : null}
           {report.submittedAt ? <span className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(report.submittedAt, { dateStyle: "short", timeStyle: "short" }) })}</span> : null}
           <span className="font-mono text-xs text-muted-foreground tabular-nums">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
         </div>
@@ -88,7 +91,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
       ) : null}
 
       <Section title={t("report.done", { count: report.done.length })}>
-        <TaskLines lines={report.done} empty={t("report.noneDone")} />
+        <TaskLines lines={report.done} empty={t(past ? "report.noneDonePast" : "report.noneDone")} />
       </Section>
       <Section title={t("report.notDone", { count: report.notDone.length })}>
         <TaskLines lines={report.notDone} empty={t("report.allPlannedDone")} />
@@ -98,18 +101,50 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
           <RichText text={report.notes} />
         </Section>
       ) : null}
-      <Section title={t("report.tomorrowPlanned", { count: report.tomorrow.length })}>
-        <TaskLines lines={view.tomorrow} empty={t("report.noTomorrow")} />
+      <Section title={t(past ? "report.tomorrowPlannedPast" : "report.tomorrowPlanned", { count: report.tomorrow.length })}>
+        <TaskLines lines={view.tomorrow} empty={t(past ? "report.noTomorrowPast" : "report.noTomorrow")} />
       </Section>
       <details className="group/activity rounded-[14px] border border-border bg-background">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0 flex-1">{t("report.activity", { count: report.activity.length })}</span>
+          <span className="min-w-0 flex-1">{t(past ? "report.activityPast" : "report.activity", { count: report.activity.length })}</span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/activity:rotate-180" />
         </summary>
         <div className="border-t px-4 py-3">
-          <ActivityList items={report.activity} />
+          <ActivityList items={report.activity} past={past} />
         </div>
       </details>
+
+      {/* A re-submission rewrote the report: the readers see that it did, and the words it replaced. */}
+      {report.revisions.length > 0 ? (
+        <details className="group/revisions rounded-[14px] border border-border bg-background">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0 flex-1">{t("report.edited")}</span>
+            <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{report.revisions.length}</span>
+            <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/revisions:rotate-180" />
+          </summary>
+          <div className="flex flex-col gap-3 border-t px-4 py-3">
+            <p className="text-xs text-muted-foreground">{t("report.editedHint")}</p>
+            {[...report.revisions].reverse().map((revision) => (
+              <div key={revision.at} className="flex flex-col gap-1 text-sm">
+                <p className="text-xs text-muted-foreground">{t("report.revisionAt", { time: format.dateTime(new Date(revision.at), { dateStyle: "short", timeStyle: "short" }) })}</p>
+                {revision.blockers ? (
+                  <div>
+                    <p className="section-label">{t("report.blockers")}</p>
+                    <RichText text={revision.blockers} />
+                  </div>
+                ) : null}
+                {revision.notes ? (
+                  <div>
+                    <p className="section-label">{t("report.notes")}</p>
+                    <RichText text={revision.notes} />
+                  </div>
+                ) : null}
+                {!revision.blockers && !revision.notes ? <p className="text-muted-foreground">{t("report.revisionEmpty")}</p> : null}
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
 
       <Section title={t("thread.title", { count: view.comments.length })}>
         {view.comments.length > 0 ? (

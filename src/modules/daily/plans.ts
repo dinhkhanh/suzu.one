@@ -8,6 +8,7 @@ import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { type DayTask, listDayTasks, listOpenWorkOf } from "@/modules/work/service";
 import { dayOf, type PersonDay } from "./days";
+import { isLate } from "./engine/rules";
 import type { PlannedItem } from "./schema";
 
 export type PlanRow = typeof schema.dailyPlan.$inferSelect;
@@ -48,15 +49,25 @@ export async function getPlanPage(personId: string, date: IsoDate): Promise<Plan
 
 /**
  * Saves the plan. Every task must be the person's own open work — or already in the plan, which
- * lets a task that was finished meanwhile stay where it was put.
+ * lets a task that was finished meanwhile stay where it was put. The first save files the plan:
+ * it fixes the time and, on a day a plan is required of the person, whether that was after their
+ * cut-off (`planCutoff`) — as a report's first submission does. Changing the plan afterwards
+ * changes what it holds, not the record of when it came in.
  */
-export async function savePlan(personId: string, date: IsoDate, items: readonly PlannedItem[], note: string | null): Promise<{ before: PlanRow | null; after: PlanRow }> {
-  const before = await findPlan(personId, date);
-  const open = await listOpenWorkOf(personId, date);
+export async function savePlan(personId: string, date: IsoDate, items: readonly PlannedItem[], note: string | null, now: Date = new Date()): Promise<{ before: PlanRow | null; after: PlanRow }> {
+  const [before, open, day] = await Promise.all([findPlan(personId, date), listOpenWorkOf(personId, date), dayOf([personId], date)]);
   const allowed = new Set([...open.map((task) => task.taskId), ...(before?.items ?? []).map((item) => item.taskId)]);
   const unique = [...new Map(items.map((item) => [item.taskId, item])).values()];
   if (unique.some((item) => !allowed.has(item.taskId))) throw new ActionError("plan_task_not_yours");
-  const values = { items: unique.map((item) => ({ taskId: item.taskId, minutes: item.minutes ?? null })), note, submittedAt: new Date(), updatedAt: new Date() };
+  const own = day.get(personId);
+  const first = !before?.submittedAt;
+  const values = {
+    items: unique.map((item) => ({ taskId: item.taskId, minutes: item.minutes ?? null })),
+    note,
+    updatedAt: now,
+    // Late only where a plan was asked for: a plan nobody required cannot come in late.
+    ...(first ? { submittedAt: now, late: !!own?.plan.required && isLate(now, date, own.rules.planCutoff) } : {}),
+  };
   const [after] = await db()
     .insert(schema.dailyPlan)
     .values({ personId, date, ...values })

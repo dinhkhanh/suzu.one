@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { updateTaskAction } from "../actions";
 import { monthGrid, placeByDueDate, shiftMonth } from "../engine/calendar";
 import { filterTasks, type TaskFilters } from "../engine/filter";
 import { CHANNELS } from "../enums";
 import { FilterBar, useUrlFilters } from "./filter-bar";
+import { QuickCreate, type TaskScope } from "./quick-create";
 import type { ListOptions, ListTask } from "./task-list-view";
 
 export type CalendarTask = ListTask & { teamId: string; channel: string | null; contentFormat: string | null; projectName: string | null; editable: boolean };
@@ -49,7 +51,10 @@ export function CalendarView({
   today,
   posts,
   missingTaskIds,
+  scope,
 }: {
+  /** A project's (or a team backlog's) calendar, for someone who may add to it: the quick-create files there, on the day given. The cross-project calendar has none. */
+  scope?: TaskScope;
   tasks: CalendarTask[];
   options: ListOptions;
   month: string;
@@ -148,6 +153,12 @@ export function CalendarView({
         </Select>
       </div>
       <FilterBar filters={filters} setFilter={setFilter} clear={clear} options={options} showClosed={false} />
+      {scope ? (
+        // Keyed by the month: stepping to another month offers a day of that month.
+        <QuickCreate key={month} scope={scope} defaults={{ assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }}>
+          <DatePicker name="dueDate" required defaultValue={today.startsWith(month) ? today : `${month}-01`} aria-label={t("dueOn")} className="w-40" />
+        </QuickCreate>
+      ) : null}
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}

@@ -12,6 +12,7 @@ import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { dayOf, daysOf } from "./days";
 import { isoWeekday, weekStartOf } from "./engine/rules";
+import { claimReminders } from "./reminders";
 import { listDailyPeople, rulesOfPeople } from "./team-rules";
 import { reportLink } from "./reports";
 import { generateWeek } from "./weekly";
@@ -20,7 +21,7 @@ import { generateWeek } from "./weekly";
 async function claim(personIds: readonly string[], kind: string, today: IsoDate, tell: (fresh: string[], tx: Tx) => Promise<void>): Promise<number> {
   if (personIds.length === 0) return 0;
   return db().transaction(async (tx) => {
-    const fresh = (await tx.insert(schema.dailyReminderSent).values(personIds.map((personId) => ({ personId, kind, sentOn: today }))).onConflictDoNothing().returning({ personId: schema.dailyReminderSent.personId })).map((row) => row.personId);
+    const fresh = await claimReminders(tx, personIds, kind, today);
     if (fresh.length > 0) await tell(fresh, tx);
     return fresh.length;
   });
@@ -76,7 +77,7 @@ export async function sendMissedReportReminders(today: IsoDate): Promise<{ date:
   return { date, reminded };
 }
 
-/** Mondays (FR-PJM-23): last week's reports, to the leads and the department heads above the teams. */
+/** Mondays (FR-PJM-23): last week's reports — of everyone the loop asks and of every team — to the leads, the heads above the teams, and the line manager of someone no lead stands over. */
 export async function runWeeklyReports(today: IsoDate): Promise<Record<string, unknown>> {
   if (isoWeekday(today) !== 1) return { skipped: "not_monday" };
   const weekStart = addDays(weekStartOf(today), -7);

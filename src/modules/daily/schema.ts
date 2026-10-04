@@ -49,7 +49,11 @@ export const dailyPlan = pgTable(
     date: date("date").notNull(),
     items: jsonb("items").$type<PlannedItem[]>().notNull().default([]),
     note: text("note"),
+    // When the plan was first filed, and whether that was after the person's cut-off for the day
+    // (the team's `planCutoff`). Fixed at the first save, as a report's are: editing the plan later
+    // changes what it holds, not the record of when it came in.
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    late: boolean("late").notNull().default(false),
     ...timestamps,
   },
   (t) => [unique("daily_plan_unique").on(t.personId, t.date)],
@@ -58,6 +62,8 @@ export const dailyPlan = pgTable(
 // What the day's activity says the person did (the prefill), kept as it was at submission.
 export type ActivityItem = { kind: string; taskId: string | null; title: string; ref: string | null; detail: string | null; at: string };
 export type DailyTaskLine = { taskId: string; title: string; ref: string | null; note?: string | null };
+/** The person's own words as they stood before a re-submission replaced them; `at` is when that version was sent. */
+export type ReportRevision = { at: string; blockers: string | null; notes: string | null };
 export const dailyReport = pgTable(
   "daily_report",
   {
@@ -79,6 +85,9 @@ export const dailyReport = pgTable(
     late: boolean("late").notNull().default(false),
     // Seconds from opening the form to submitting it (NFR-PRF-06: median ≤ 60).
     secondsToSubmit: integer("seconds_to_submit"),
+    // What the person wrote in earlier submissions of this report, oldest first: a re-submission
+    // rewrites the row, and the readers are shown that it was edited, with the earlier words.
+    revisions: jsonb("revisions").$type<ReportRevision[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [unique("daily_report_unique").on(t.personId, t.date), index("daily_report_date_idx").on(t.date)],

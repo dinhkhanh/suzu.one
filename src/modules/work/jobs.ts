@@ -6,9 +6,9 @@ import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "../platform/jobs/service";
 import { notify } from "../platform/notifications/service";
 import { runDueDateAutomations } from "./automations";
-import { syncCoverPlans } from "./cover";
+import { sendCoverReturnReminders, syncCoverPlans } from "./cover";
 import { runCycles } from "./cycles";
-import { type ReminderKind, reminderFor } from "./engine/reminders";
+import { REMINDER_LOOK_AHEAD, REMINDER_LOOK_BACK, type ReminderKind, reminderOnWorkingDay } from "./engine/reminders";
 import { syncExitHandovers } from "./exit";
 import { sendPublishReminders } from "./publish";
 import { PREVIEW_HIT_RETENTION_DAYS } from "./engine/preview";
@@ -18,9 +18,17 @@ import { sendReviewOverdueReminders } from "./reviews";
 import { taskKey, WORK_KIND } from "./tasks";
 import { wakeSnoozedTriage } from "./triage";
 
+// The daily module builds on work: its reading of a person's days (their working calendar, less
+// approved leave) is loaded when first needed, as leave cover does (cover.ts).
+const dailyService = () => import("../daily/service");
+
 /**
- * Due tomorrow / overdue (FR-WRK-17), to the assignee: one notice per person, kind and day however
+ * Due soon / overdue (FR-WRK-17), to the assignee: one notice per person, kind and day however
  * many tasks it covers. `work_reminder_sent` makes a second run on the same day send nothing.
+ *
+ * Nobody is reminded on a day they do not work — approved leave, a holiday, a rest day of their own
+ * calendar — and a reminder that would have fallen on one moves to a working day instead of being
+ * lost (`reminderOnWorkingDay`). Every assignee's days are read in one go.
  */
 export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: number; overdue: number; people: number }> {
   const rows = await db()
@@ -28,13 +36,17 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), inArray(schema.task.status, ["todo", "in_progress"]), isNotNull(schema.task.assigneePersonId), isNotNull(schema.task.dueDate), lte(schema.task.dueDate, addDays(today, 1))))
+    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), inArray(schema.task.status, ["todo", "in_progress"]), isNotNull(schema.task.assigneePersonId), isNotNull(schema.task.dueDate), lte(schema.task.dueDate, addDays(today, REMINDER_LOOK_AHEAD))))
     .orderBy(schema.task.dueDate, schema.workTask.number);
+  if (rows.length === 0) return { dueSoon: 0, overdue: 0, people: 0 };
 
+  const days = await (await dailyService()).daysOf([...new Set(rows.map((row) => row.assigneeId!))], addDays(today, -REMINDER_LOOK_BACK), addDays(today, REMINDER_LOOK_AHEAD));
+  // A day the calendar says nothing about counts as worked: better a reminder than none.
+  const worksOn = (personId: string) => (date: IsoDate) => !days.get(personId)?.get(date)?.dayOff;
   const sent = { due_soon: 0, overdue: 0 };
   const people = new Set<string>();
   const due = rows.flatMap((row) => {
-    const kind = reminderFor(row.dueDate!, today);
+    const kind = reminderOnWorkingDay(row.dueDate!, today, worksOn(row.assigneeId!));
     return kind ? [{ ...row, kind, assigneeId: row.assigneeId! }] : [];
   });
   for (const [groupKey, own] of Map.groupBy(due, (row) => `${row.assigneeId}:${row.kind}`)) {
@@ -55,14 +67,15 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
 /**
  * The morning's work reminders: due and overdue tasks, review-chain stages past their due time
  * (FR-PJM-50), posts planned for today or missed (FR-PJM-54 — there is no hourly slot, so "due"
- * is the morning of the day), and the "due date reached" automations (FR-PJM-33), whose notices
- * belong to the same moment.
+ * is the morning of the day), the "due date reached" automations (FR-PJM-33), whose notices
+ * belong to the same moment, and — for whoever is back from leave this morning — the reminder to
+ * hand the covered work back (FR-PJM-44).
  */
 export const workRemindersJob: JobDefinition = {
   name: "work-reminders",
   run: async ({ today }) => {
     const now = new Date();
-    return { ...(await sendWorkReminders(today)), ...(await sendReviewOverdueReminders(now)), publish: await sendPublishReminders(now), ...(await runDueDateAutomations(today)) };
+    return { ...(await sendWorkReminders(today)), ...(await sendReviewOverdueReminders(now)), publish: await sendPublishReminders(now), ...(await runDueDateAutomations(today)), coverReturn: await sendCoverReturnReminders(today) };
   },
 };
 

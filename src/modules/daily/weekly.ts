@@ -1,20 +1,23 @@
 // Weekly reports (FR-PJM-23): each person's week and each work team's week, generated from the
 // week's daily reports, completed work and logged time; the team's lead adds a summary. The Monday
-// job makes last week's and tells the leads — and, for a team, the department head above it — once.
+// job makes last week's — for everyone the daily loop asks, in a team or not — and tells the people
+// above once: a team's leads and the head of its department, and the line manager of someone no
+// lead stands over.
 import "server-only";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
-import { listPeopleWithRole } from "@/modules/platform/rbac/service";
-import { listWorkActivityBetween } from "@/modules/work/service";
+import { listPeopleHoldingEach } from "@/modules/platform/rbac/service";
+import { listWorkActivityBetween, workDirectory } from "@/modules/work/service";
 import { daysOf } from "./days";
 import { type ShownPersonWeek, type ShownTeamWeek, showPersonWeek, showTeamWeek } from "./engine/redact";
 import { type PersonWeek, summarisePersonWeek, summariseTeamWeek, type TeamWeek, type WeekDayReport } from "./engine/weekly";
 import { loadSeen, readsOwn } from "./labels";
-import { loadSubjects } from "./people";
+import { firstReadersOf, listOverseen, loadSubjects } from "./people";
 import { canOverseeReport, canViewReport, type ReportReader } from "./policy";
+import { listDailyPeople } from "./team-rules";
 import { listTimeOf } from "./time";
 
 export type WeeklyRow = typeof schema.dailyWeeklyReport.$inferSelect;
@@ -55,8 +58,8 @@ async function personWeeks(personIds: readonly string[], weekStart: IsoDate): Pr
 type WeeklySubject = { subjectType: "person" | "team"; subjectId: string; content: PersonWeek | TeamWeek };
 
 /**
- * A week's rows in one statement, whatever their number: the Monday job writes a row per person in
- * an active team and one per team, and a company-wide run must not be a statement per person.
+ * A week's rows in one statement, whatever their number: the Monday job writes a row per person the
+ * loop asks and one per team, and a company-wide run must not be a statement per person.
  * Generating again refreshes the facts and keeps the lead's summary.
  */
 async function upsertWeekly(weekStart: IsoDate, subjects: readonly WeeklySubject[]): Promise<Map<string, WeeklyRow>> {
@@ -88,33 +91,75 @@ async function activeTeams(teamIds?: readonly string[]): Promise<TeamWithMembers
 }
 
 /**
- * Generates the weekly reports of a week: one per person in an active team, one per team.
- * Safe to run again — the rows are refreshed, the summaries kept, and each team's notice
- * (`sent_at`) goes out once. `notify: false` for a lead's refresh from the screen.
+ * Generates the weekly reports of a week: one per person the daily loop asks anything of
+ * (`listDailyPeople` — in a work team or in none, D23; never a collaborator or an owner, of whom it
+ * asks nothing) and one per active team. A team's week still counts every member's work, whoever
+ * they are. With `teamIds` — a lead's refresh from the screen — only those teams and their people.
+ * Safe to run again: the rows are refreshed, the summaries kept, and each notice (`sent_at`) goes
+ * out once. `notify: false` for the refresh.
  */
 export async function generateWeek(weekStart: IsoDate, options: { teamIds?: readonly string[]; notify?: boolean } = {}): Promise<{ people: number; teams: number; notified: number }> {
-  const teams = await activeTeams(options.teamIds);
-  const personIds = [...new Set(teams.flatMap((team) => team.members.map((member) => member.personId)))];
-  const weeks = await personWeeks(personIds, weekStart);
+  const [teams, asked] = await Promise.all([activeTeams(options.teamIds), listDailyPeople()]);
+  const members = new Set(teams.flatMap((team) => team.members.map((member) => member.personId)));
+  const personIds = options.teamIds ? asked.filter((personId) => members.has(personId)) : asked;
+  const weeks = await personWeeks([...members, ...personIds], weekStart);
   const rows = await upsertWeekly(weekStart, [
-    ...[...weeks].map(([personId, week]) => ({ subjectType: "person" as const, subjectId: personId, content: week })),
+    ...personIds.map((personId) => ({ subjectType: "person" as const, subjectId: personId, content: weeks.get(personId)! })),
     ...teams.map((team) => ({ subjectType: "team" as const, subjectId: team.id, content: summariseTeamWeek(team.members.map((member) => ({ personId: member.personId, name: member.name, week: weeks.get(member.personId)! }))) })),
   ]);
-  let notified = 0;
-  for (const team of teams) {
-    const row = rows.get(`team:${team.id}`)!;
-    if (options.notify === false || row.sentAt) continue;
-    const leads = team.members.filter((member) => member.role === "lead").map((member) => member.personId);
-    const heads = team.departmentId ? await listPeopleWithRole("department_head", { unitPath: [team.departmentId], entityId: team.entityId }) : [];
-    await db().transaction(async (tx) => {
-      // Claimed first, so two runs at once tell nobody twice.
-      const [claimed] = await tx.update(schema.dailyWeeklyReport).set({ sentAt: new Date() }).where(and(eq(schema.dailyWeeklyReport.id, row.id), isNull(schema.dailyWeeklyReport.sentAt))).returning({ id: schema.dailyWeeklyReport.id });
-      if (!claimed) return;
-      await notify({ recipients: [...leads, ...heads], kind: "daily.weekly_report", params: { subject: team.name, week: weekLabel(weekStart) }, link: `/daily/weekly?week=${weekStart}&team=${team.id}` }, tx);
-      notified += 1;
-    });
-  }
-  return { people: weeks.size, teams: teams.length, notified };
+  const notified = options.notify === false ? 0 : await tellOfWeek(weekStart, teams, personIds, rows);
+  return { people: personIds.length, teams: teams.length, notified };
+}
+
+type WeekNotice = { rowId: string; recipients: string[]; subject: string; link: string };
+
+/**
+ * Who hears that a week is ready (FR-PJM-23 "sent to the chain above"), once per row:
+ *   · a team's week — its leads, and whoever holds `work:manage` over the team's department (the
+ *     department head; the owners' "*" is left out of a routine notice);
+ *   · the week of someone no lead stands over — a person in no team, the lead of their own team —
+ *     their line manager. Everyone else's week reaches their lead with the team's.
+ * The grants are read once for every team and the leads once for every person; the rows are claimed
+ * in one statement, so two runs at once tell nobody twice; and a person with several weeks to read
+ * gets one notice that counts them, not one per week. Returns how many rows were sent.
+ */
+async function tellOfWeek(weekStart: IsoDate, teams: readonly TeamWithMembers[], personIds: readonly string[], rows: ReadonlyMap<string, WeeklyRow>): Promise<number> {
+  const unsentTeams = teams.filter((team) => !rows.get(`team:${team.id}`)!.sentAt);
+  const unsentPeople = personIds.filter((personId) => !rows.get(`person:${personId}`)!.sentAt);
+  if (unsentTeams.length === 0 && unsentPeople.length === 0) return 0;
+  const placed = unsentTeams.filter((team) => team.departmentId);
+  const [holders, readers] = await Promise.all([listPeopleHoldingEach("work:manage", placed.map((team) => ({ entityId: team.entityId, unitPath: [team.departmentId!] })), { includeWildcard: false }), firstReadersOf(unsentPeople)]);
+  const above = new Map(placed.map((team, index) => [team.id, holders[index]]));
+  const notices: WeekNotice[] = [
+    ...unsentTeams.map((team) => ({
+      rowId: rows.get(`team:${team.id}`)!.id,
+      recipients: [...new Set([...team.members.filter((member) => member.role === "lead").map((member) => member.personId), ...(above.get(team.id) ?? [])])],
+      subject: team.name,
+      link: `/daily/weekly?week=${weekStart}&team=${team.id}`,
+    })),
+    ...unsentPeople.flatMap((personId) => {
+      const own = readers.get(personId);
+      return own?.manager ? [{ rowId: rows.get(`person:${personId}`)!.id, recipients: [own.manager], subject: own.fullName, link: `/daily/weekly?week=${weekStart}` }] : [];
+    }),
+  ];
+  if (notices.length === 0) return 0;
+  const week = weekLabel(weekStart);
+  return db().transaction(async (tx) => {
+    // Claimed first, so two runs at once tell nobody twice.
+    const claimed = new Set((await tx.update(schema.dailyWeeklyReport).set({ sentAt: new Date() }).where(and(inArray(schema.dailyWeeklyReport.id, notices.map((notice) => notice.rowId)), isNull(schema.dailyWeeklyReport.sentAt))).returning({ id: schema.dailyWeeklyReport.id })).map((row) => row.id));
+    const sent = notices.filter((notice) => claimed.has(notice.rowId));
+    const byRecipient = new Map<string, WeekNotice[]>();
+    for (const notice of sent) for (const recipient of notice.recipients) byRecipient.set(recipient, [...(byRecipient.get(recipient) ?? []), notice]);
+    // One week to read: the notice names it and opens it. Several: one notice that counts them.
+    const one = Map.groupBy([...byRecipient].filter(([, own]) => own.length === 1), ([, own]) => own[0].rowId);
+    for (const group of one.values()) {
+      const [notice] = group[0][1];
+      await notify({ recipients: group.map(([recipient]) => recipient), kind: "daily.weekly_report", params: { subject: notice.subject, week }, link: notice.link }, tx);
+    }
+    const several = Map.groupBy([...byRecipient].filter(([, own]) => own.length > 1), ([, own]) => own.length);
+    for (const [count, group] of several) await notify({ recipients: group.map(([recipient]) => recipient), kind: "daily.weekly_reports", params: { count, week }, link: `/daily/weekly?week=${weekStart}` }, tx);
+    return sent.length;
+  });
 }
 
 /** The stored row without its `content`: what the reader may see of it is `content` beside it, resolved for them. */
@@ -138,14 +183,34 @@ const rowView = (row: WeeklyRow): WeeklyRowView => {
  * neither their lead nor above them in the reporting line gets the team's totals and hours, not the
  * people's lines or their blockers (`showTeamWeek`). And in every week, a task or a project the
  * reader may not open is shown as private work with its hours only.
+ *
+ * Who may be read is settled before the query, so only those rows — with their JSON — leave
+ * Postgres: the teams out of the work directory (cached reference data) that `canRunTeam` passes,
+ * and the people out of `listOverseen`, the list form of `canViewReport` (with those who have
+ * left: a past week is still theirs to read). Oversight (`daily:oversee`) reads every person's
+ * row, so its query names no one. Each row is still put to the policy before it is shown.
  */
 export async function listWeekly(reader: ReportReader, weekStart: IsoDate, canRunTeam: (team: { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: string }) => boolean): Promise<{ teams: WeeklyTeamView[]; people: WeeklyPersonView[] }> {
-  const rows = await db().select().from(schema.dailyWeeklyReport).where(eq(schema.dailyWeeklyReport.weekStart, weekStart)).orderBy(desc(schema.dailyWeeklyReport.updatedAt));
-  const teamRows = rows.filter((row) => row.subjectType === "team");
-  const teamFacts = teamRows.length ? await db().select({ id: schema.workTeam.id, name: schema.workTeam.name, entityId: schema.workTeam.entityId, departmentId: schema.workTeam.departmentId, defaultVisibility: schema.workTeam.defaultVisibility }).from(schema.workTeam).where(inArray(schema.workTeam.id, teamRows.map((row) => row.subjectId))) : [];
-  const runnable = teamRows.flatMap((row) => {
-    const team = teamFacts.find((facts) => facts.id === row.subjectId);
-    return team && canRunTeam(team) ? [{ row: rowView(row), team: { id: team.id, name: team.name }, content: row.content as unknown as TeamWeek }] : [];
+  if (!reader.personId) return { teams: [], people: [] };
+  const [directory, overseen] = await Promise.all([workDirectory(), reader.oversees ? [] : listOverseen(reader, { includeLeft: true })]);
+  const runnableTeams = new Map(directory.teams.filter(canRunTeam).map((team) => [team.id, team]));
+  const readable = [...new Set([reader.personId, ...overseen.flatMap((group) => group.personIds)])];
+  const rows = await db()
+    .select()
+    .from(schema.dailyWeeklyReport)
+    .where(
+      and(
+        eq(schema.dailyWeeklyReport.weekStart, weekStart),
+        or(
+          and(eq(schema.dailyWeeklyReport.subjectType, "person"), reader.oversees ? undefined : inArray(schema.dailyWeeklyReport.subjectId, readable)),
+          runnableTeams.size > 0 ? and(eq(schema.dailyWeeklyReport.subjectType, "team"), inArray(schema.dailyWeeklyReport.subjectId, [...runnableTeams.keys()])) : undefined,
+        ),
+      ),
+    )
+    .orderBy(desc(schema.dailyWeeklyReport.updatedAt));
+  const runnable = rows.flatMap((row) => {
+    const team = row.subjectType === "team" ? runnableTeams.get(row.subjectId) : undefined;
+    return team ? [{ row: rowView(row), team: { id: team.id, name: team.name }, content: row.content as unknown as TeamWeek }] : [];
   });
   const personRows = rows.filter((row) => row.subjectType === "person");
   // Everyone named anywhere on the page: the person rows and the people inside each team's week.

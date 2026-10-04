@@ -1139,6 +1139,18 @@
         "title": "Việc làm thay đã được trả lại",
         "body": "{actor} đã đi làm lại và nhận lại {count} việc."
       },
+      "tasks_cover_drafted": {
+        "title": "Chọn người làm thay khi bạn nghỉ",
+        "body": "Đợt nghỉ từ {from} đến {to} của bạn có {count} việc rơi vào thời gian nghỉ. Hãy chọn người làm thay cho từng việc."
+      },
+      "tasks_cover_return_due": {
+        "title": "Bạn đã đi làm lại — nhận lại việc",
+        "body": "Còn {count} việc đang ở chỗ người làm thay. Mở kế hoạch làm thay để nhận lại."
+      },
+      "tasks_cover_return_ask": {
+        "title": "Trả lại việc đã làm thay",
+        "body": "{actor} đã đi làm lại. Hãy trả lại {count} việc bạn đã làm thay."
+      },
       "tasks_exit_handover": {
         "title": "Cần bàn giao công việc",
         "body": "{person} sắp nghỉ hoặc chuyển bộ phận: còn {count} việc phải bàn giao."
@@ -1231,9 +1243,17 @@
         "title": "Nhận xét về báo cáo của bạn",
         "body": "{actor} đã nhận xét báo cáo ngày {date} của bạn."
       },
+      "daily_report_blockers": {
+        "title": "Báo cáo có vướng mắc",
+        "body": "Báo cáo ngày {date} của {actor} có ghi vướng mắc."
+      },
       "daily_weekly_report": {
         "title": "Báo cáo tuần",
         "body": "Báo cáo tuần {week} của {subject} đã sẵn sàng."
+      },
+      "daily_weekly_reports": {
+        "title": "Báo cáo tuần",
+        "body": "Có {count} báo cáo tuần {week} đã sẵn sàng để bạn đọc."
       },
       "daily_timesheet_reminder": {
         "title": "Nộp bảng giờ tuần",
@@ -5418,7 +5438,11 @@
       "toHandBack": "Có thể trả lại",
       "away": "Đang nghỉ",
       "awayCovered": "Đang nghỉ — {name} làm thay",
-      "privateItem": "Việc riêng tư"
+      "privateItem": "Việc riêng tư",
+      "panelTooShort": "Không cần kế hoạch làm thay: đợt nghỉ này ngắn hơn {days} ngày làm việc.",
+      "panelNotDrafted": "Chưa có kế hoạch làm thay. Kế hoạch được tạo khi gửi đơn nghỉ; với đơn gửi từ trước, hệ thống sẽ tạo trong đêm.",
+      "panelCancelled": "Kế hoạch làm thay đã hủy cùng với đơn nghỉ.",
+      "panelDraft": "{name} chưa chọn đủ người làm thay cho các việc."
     },
     "exit": {
       "title": "Bàn giao công việc của {name}",
@@ -10860,6 +10884,7 @@
     },
     "activity": {
       "empty": "Hôm nay chưa có hoạt động nào được ghi nhận.",
+      "emptyPast": "Ngày này không có hoạt động nào được ghi nhận.",
       "categories": {
         "internal": "Việc nội bộ",
         "admin": "Hành chính",
@@ -10912,7 +10937,19 @@
       "prefilledHint": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày — bạn chỉ cần thêm vướng mắc và kế hoạch ngày mai.",
       "tomorrowPlanned": "Kế hoạch ngày mai ({count})",
       "noTomorrow": "Chưa lên kế hoạch cho ngày mai.",
-      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới."
+      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới.",
+      "noneDonePast": "Ngày này không có việc nào xong.",
+      "activityPast": "Hoạt động trong ngày ({count})",
+      "tomorrowPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "optionalPast": "Ngày này không bắt buộc",
+      "prefilledHintPast": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày đó — bạn chỉ cần thêm vướng mắc và kế hoạch cho ngày làm việc kế tiếp.",
+      "tomorrowPlannedPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "noTomorrowPast": "Chưa lên kế hoạch cho ngày làm việc kế tiếp.",
+      "noTimeLoggedPast": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng ngày này bạn chưa ghi giờ nào. Ghi bổ sung ở phần hoạt động bên dưới.",
+      "edited": "Đã sửa sau khi nộp",
+      "editedHint": "Báo cáo này đã được sửa sau lần nộp đầu. Nội dung trước đó:",
+      "revisionAt": "Nộp lúc {time}",
+      "revisionEmpty": "Không ghi gì."
     },
     "thread": {
       "react": "Thả {reaction}",
@@ -10944,6 +10981,11 @@
       "myReports": "Nhân sự tôi quản lý",
       "counts": "{submitted} đã nộp · {missing} chưa nộp · {notRequired} không bắt buộc",
       "remindAll": "Nhắc tất cả ({count})",
+      "planFiled": "Đã lên kế hoạch lúc {time}",
+      "planLate": "Lên kế hoạch muộn, lúc {time}",
+      "planTasks": "{count, plural, =0 {chưa có việc nào} other {# việc}}",
+      "planMissing": "Chưa có kế hoạch buổi sáng",
+      "planEmpty": "Kế hoạch chưa có việc nào.",
       "columns": {
         "person": "Người",
         "status": "Báo cáo",
@@ -11005,6 +11047,7 @@
       "people": "Từng người ({count})",
       "myWeek": "Tuần của tôi",
       "done": "Đã xong ({count})",
+      "noneDone": "Tuần này không có việc nào xong.",
       "slipped": "Chưa xong như kế hoạch ({count})",
       "columns": {
         "person": "Người",
@@ -11066,7 +11109,7 @@
     },
     "timesheets": {
       "title": "Duyệt bảng giờ",
-      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn.",
+      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn — và của những người không có trưởng nhóm hay quản lý trực tiếp nào duyệt được, nên bảng giờ được chuyển đến bạn.",
       "waiting": "Chờ bạn duyệt ({count})",
       "none": "Không có bảng giờ nào đang chờ bạn duyệt.",
       "recent": "Đã xử lý gần đây",

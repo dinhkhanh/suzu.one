@@ -166,6 +166,12 @@ export const KINDS = {
   "tasks.triage_new": "tasks",
   "tasks.cover_requested": "tasks",
   "tasks.cover_handed_back": "tasks",
+  // Leave cover (FR-PJM-44): a leave long enough to need cover was asked for — name who covers;
+  // and, on the first working day back, the person (`_due`) and each cover (`_ask`) are reminded
+  // that the work is still to be handed back.
+  "tasks.cover_drafted": "tasks",
+  "tasks.cover_return_due": "tasks",
+  "tasks.cover_return_ask": "tasks",
   "tasks.exit_handover": "tasks",
   "tasks.client_decision": "tasks",
   // The client answered on the review link the account manager sent (FR-PJM-51a), rather than
@@ -203,7 +209,12 @@ export const KINDS = {
   "daily.report_nudge_past": "daily",
   "daily.report_missed": "daily",
   "daily.report_commented": "daily",
+  // A report came in with blockers (FR-PJM-22): to the person's leads, or their line manager where
+  // no lead stands over them. Who and which day — the blockers themselves are read on the report.
+  "daily.report_blockers": "daily",
   "daily.weekly_report": "daily",
+  // Several weeks are ready for the same reader (FR-PJM-23): one notice that counts them.
+  "daily.weekly_reports": "daily",
   "daily.timesheet_reminder": "daily",
   "daily.timesheet_submitted": "daily",
   "daily.timesheet_decided": "daily",

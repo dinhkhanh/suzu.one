@@ -102,12 +102,13 @@ export function TaskListView({
   selfId: string;
   today: string;
   canContribute: boolean;
-  /** Project lists only: named filter sets, the viewer's own and the shared ones. */
-  savedViews?: { id: string; name: string; isShared: boolean; mine: boolean; canDelete: boolean; filters: Record<string, string> }[];
+  /** Named filter sets of this list — a project's, or a team backlog's: the viewer's own and the shared ones. */
+  savedViews?: { id: string; name: string; isShared: boolean; mine: boolean; /** May rename it, change its filters, share or unshare it. */ canEdit: boolean; canDelete: boolean; filters: Record<string, string> }[];
 }) {
   const t = useTranslations("work.list");
   const tWork = useTranslations("work");
   const router = useRouter();
+  const [activeView, setActiveView] = useState<string | null>(null);
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
   const [grouping, setGrouping] = useState<ListGrouping>(initialGrouping);
   const [sort, setSort] = useState<ListSort>(initialSort);
@@ -180,7 +181,7 @@ export function TaskListView({
 
   const filtered = filterEntries(filters).length > 0;
 
-  function applyView(view: { filters: Record<string, string> }) {
+  function applyView(view: { id: string; filters: Record<string, string> }) {
     // Saved before custom fields existed or after: whatever keys the view has, the list reads.
     const next = readFilters(view.filters);
     const nextGrouping = readGrouping(view.filters.group);
@@ -188,16 +189,23 @@ export function TaskListView({
     setFilters(next);
     setGrouping(nextGrouping);
     setSort(nextSort);
+    setActiveView(view.id);
     sync(next, nextGrouping, nextSort);
   }
+  // The view last applied, where the viewer may change it: the form below can rewrite it in place.
+  const active = savedViews?.find((view) => view.id === activeView && view.canEdit) ?? null;
   function saveView(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
     const current = { ...Object.fromEntries(filterEntries(filters)), ...(grouping === "none" ? {} : { group: grouping }), ...(sort === "rank" ? {} : { sort }) };
+    // Which of the form's two buttons was pressed: "update" rewrites the view in use, the other saves a new one.
+    const update = active && (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "update" ? active : null;
+    // Sharing is offered only to the people working on the list; without the box, the view stays as shared as it was.
+    const shared = canContribute ? { isShared: data.get("isShared") === "on" } : {};
     startTransition(async () => {
-      failed(await saveViewAction({ projectId: scope.projectId, name: data.get("name"), isShared: data.get("isShared") === "on", filters: current }));
-      form.reset();
+      failed(update ? await updateViewAction({ viewId: update.id, name: data.get("name"), filters: current, ...shared }) : await saveViewAction({ projectId: scope.projectId, teamId: scope.teamId, name: data.get("name"), filters: current, ...shared }));
+      if (!update) form.reset();
       router.refresh();
     });
   }

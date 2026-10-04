@@ -3,7 +3,8 @@
 // the performance module's directory (the same walk its goals and reviews use), read once per
 // request.
 import "server-only";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, ne, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db, schema, type Tx } from "@/lib/db";
 import { loadDirectory, reportsBelow } from "@/modules/performance/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
@@ -78,12 +79,15 @@ export type OverseenGroup = { kind: "team"; teamId: string; name: string; person
  * one group per team they lead, then the people below them in the reporting line. A person may be
  * in two groups. For an overseer (`daily:oversee`), a last group holds everyone else in the
  * company. This is the list form of `canViewReport`; a test keeps the two in step.
+ *
+ * `includeLeft`: people who have left stay in the list — for a page that reads what was written
+ * while they were here (a past week's report), where the board asks only about who is here now.
  */
-export async function listOverseen(reader: ReportReader): Promise<OverseenGroup[]> {
+export async function listOverseen(reader: ReportReader, options: { includeLeft?: boolean } = {}): Promise<OverseenGroup[]> {
   const self = reader.personId;
   if (!self) return [];
   const directory = await loadDirectory();
-  const present = (personId: string) => personId !== self && directory.get(personId)?.status !== "offboarded" && directory.has(personId);
+  const present = (personId: string) => personId !== self && directory.has(personId) && (!!options.includeLeft || directory.get(personId)?.status !== "offboarded");
   const groups: OverseenGroup[] = [];
   if (reader.ledTeamIds.size > 0) {
     const rows = await db()
@@ -108,4 +112,41 @@ export async function listOverseen(reader: ReportReader): Promise<OverseenGroup[
     if (rest.length > 0) groups.push({ kind: "company", personIds: rest });
   }
   return groups;
+}
+
+export type FirstReaders = { fullName: string; /** Active leads of the person's active teams, other than the person. */ leads: string[]; /** The line manager, where no lead stands over the person and the manager is active. */ manager: string | null; /** Whom to tell: the leads, else the manager. */ told: string[] };
+
+/**
+ * Whom a person's day is sent to (FR-PJM-22 "submitted to the team lead", D23): the leads of the
+ * active work teams they belong to — active people, never the person themself — and, for someone
+ * no lead stands over (a person in no team, the lead of their own team), their line manager. Empty
+ * when there is neither. One query and the directory, however many people are asked about. These
+ * are the first readers a notice goes to, not the whole of who may read (`canViewReport`).
+ */
+export async function firstReadersOf(personIds: readonly string[], executor: Tx | ReturnType<typeof db> = db()): Promise<Map<string, FirstReaders>> {
+  const ids = [...new Set(personIds)];
+  const result = new Map<string, FirstReaders>();
+  if (ids.length === 0) return result;
+  const member = alias(schema.workTeamMember, "member");
+  const lead = alias(schema.workTeamMember, "lead");
+  const [directory, rows] = await Promise.all([
+    loadDirectory(executor),
+    executor
+      .selectDistinct({ personId: member.personId, leadId: lead.personId })
+      .from(member)
+      .innerJoin(schema.workTeam, and(eq(schema.workTeam.id, member.teamId), eq(schema.workTeam.isActive, true)))
+      .innerJoin(lead, and(eq(lead.teamId, member.teamId), eq(lead.role, "lead"), ne(lead.personId, member.personId)))
+      .innerJoin(schema.person, and(eq(schema.person.id, lead.personId), eq(schema.person.status, "active")))
+      .where(inArray(member.personId, ids)),
+  ]);
+  const leadsOf = Map.groupBy(rows, (row) => row.personId);
+  for (const personId of ids) {
+    const person = directory.get(personId);
+    if (!person) continue;
+    const leads = (leadsOf.get(personId) ?? []).map((row) => row.leadId);
+    const above = person.chainAbove[0];
+    const manager = leads.length === 0 && above && directory.get(above)?.status === "active" ? above : null;
+    result.set(personId, { fullName: person.fullName, leads, manager, told: leads.length > 0 ? leads : manager ? [manager] : [] });
+  }
+  return result;
 }

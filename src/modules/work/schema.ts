@@ -9,6 +9,7 @@ import { entity, orgUnit } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
+import { registerLeaveChangeHook } from "../platform/leave-changes/registry";
 import { registerCompletionGuard } from "../platform/tasks-engine/completion-guards";
 import type { IntakeField } from "./engine/intake";
 
@@ -17,6 +18,11 @@ import type { IntakeField } from "./engine/intake";
 // database access (src/lib/db/schema.ts): the guard is in place before any task can be completed,
 // whichever screen, action or job completes it. The check itself loads only when it first runs.
 registerCompletionGuard("work.exit_handover", () => import("./exit-guard").then((module) => module.exitHandoverGuard));
+
+// Leave cover (FR-PJM-44) follows a leave request the moment it is filed, amended, decided or called
+// off — the leave actions run this hook — instead of waiting for the night's job. Registered here
+// for the same reason: in place before any leave action runs, loaded only when one does.
+registerLeaveChangeHook("work.cover", () => import("./cover-hook").then((module) => module.coverOnLeaveChange));
 
 export type CustomFieldValue = string | number | boolean | string[] | null;
 
@@ -403,7 +409,10 @@ export const workReminderSent = pgTable(
 
 export type SavedViewFilters = Record<string, string>;
 
-// A named set of list filters: personal, or shared with everyone who can open the project.
+// A named set of list filters: personal, or shared with everyone who can open the list it was
+// saved on — a project's tasks, or (project null) a team's backlog. Every view names its team; a
+// project's view names the project's. (Nullable in the database only for the release that added
+// it: the code deployed before did not write it, and the migration fills the rows it made.)
 export const workSavedView = pgTable(
   "work_saved_view",
   {
@@ -411,6 +420,7 @@ export const workSavedView = pgTable(
     ownerPersonId: uuid("owner_person_id")
       .notNull()
       .references(() => person.id),
+    teamId: uuid("team_id").references(() => workTeam.id, { onDelete: "cascade" }),
     projectId: uuid("project_id").references(() => workProject.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     layout: text("layout").notNull().default("list"),
@@ -419,7 +429,7 @@ export const workSavedView = pgTable(
     isShared: boolean("is_shared").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("work_saved_view_project_idx").on(t.projectId)],
+  (t) => [index("work_saved_view_project_idx").on(t.projectId), index("work_saved_view_team_idx").on(t.teamId)],
 ).enableRLS();
 
 // A deliverable handed in for review (FR-WRK-08): every hand-in is a new version and stays on the
@@ -469,7 +479,8 @@ export type RecurrenceRuleJson =
 export type RecurrenceDraft = { description?: string | null; assigneePersonId?: string | null; priority?: number | null; estimateMinutes?: number | null; clientId?: string | null; channel?: string | null; contentFormat?: string | null; labelIds?: string[] };
 
 // A task that comes back (FR-WRK-11): the daily job makes each occurrence once, `leadDays` before
-// its date (work_task's unique recurrence + occurrence date is the guard).
+// its date (work_task's unique recurrence + occurrence date is the guard). On a project, or — with
+// no project — in its team's backlog.
 export const workRecurrence = pgTable(
   "work_recurrence",
   {
@@ -485,13 +496,17 @@ export const workRecurrence = pgTable(
     endDate: date("end_date"),
     // The occurrence's date is the task's due date; the task appears this many days before it.
     leadDays: integer("lead_days").notNull().default(7),
+    // An occurrence that falls on a day off of the team's entity (a holiday, a company day off, a
+    // Sunday): shift | skip | keep — due the next working day instead, not made at all, or made
+    // on the day anyway (a post that goes out on a Sunday). See engine/recurrence.ts.
+    onDayOff: text("on_day_off").notNull().default("shift"),
     // Occurrences up to and including this date have been made.
     generatedThrough: date("generated_through"),
     isActive: boolean("is_active").notNull().default(true),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("work_recurrence_project_idx").on(t.projectId)],
+  (t) => [index("work_recurrence_project_idx").on(t.projectId), index("work_recurrence_team_idx").on(t.teamId)],
 ).enableRLS();
 
 // Intake forms (FR-WRK-16): a team publishes a request form ("Design request"); a submission becomes

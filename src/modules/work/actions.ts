@@ -10,13 +10,13 @@ import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { MAX_LINKED_DIGITAL_ASSETS, setProjectDigitalAssets } from "./digital-links";
 import { setFollowing } from "./followers";
 import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
-import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
+import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask, canViewTeamBacklog } from "./policy";
 import { createProject, findProject, projectFacts, projectRoleOf, setProjectArchived, setProjectMember, updateProject } from "./projects";
-import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
+import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, loadTasks, removeDependency, restoreWorkTask, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamArchived, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { findStateSet, startingStates } from "./status-sets";
 import { loadViewer } from "./viewer";
-import { createSavedView, deleteSavedView, findSavedView } from "./views";
+import { createSavedView, deleteSavedView, findSavedView, updateSavedView } from "./views";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -473,6 +473,26 @@ export async function deleteTaskAction(input: unknown) {
   return deleteTaskPipeline(input);
 }
 
+const restoreTaskPipeline = createAction({
+  name: "work.task.restore",
+  input: z.object({ taskId: z.uuid() }),
+  // Whoever may delete the task may put it back: the people who run its project or team, and its
+  // creator undoing their own mistake. The service refuses a task deleted too long ago.
+  authorize: async (user, input) => {
+    const task = (await loadTasks([input.taskId], undefined, { deleted: true })).get(input.taskId);
+    return !!task && canDeleteTask(await loadViewer(user), task.facts);
+  },
+  run: async ({ user, input }) => {
+    const { task, projectId, restored } = await restoreWorkTask(input.taskId, user.person.id);
+    refreshTask(task, projectId);
+    revalidatePath("/work/teams", "layout");
+    return { data: { id: task.id, restored }, audit: { resource: auditTask(task.id, task.entityId), summary: `restored: ${task.title} (+${restored - 1} sub-tasks)`, after: { title: task.title, restored } } };
+  },
+});
+export async function restoreTaskAction(input: unknown) {
+  return restoreTaskPipeline(input);
+}
+
 const addDependencyPipeline = createAction({
   name: "work.task.dependency.add",
   input: z.object({ blockerTaskId: z.uuid(), blockedTaskId: z.uuid(), type: z.enum(DEPENDENCY_TYPES).default("blocks") }),
@@ -520,26 +540,69 @@ export async function removeDependencyAction(input: unknown) {
 // The list's filters (a custom field's too, `cf.<fieldId>`), its grouping and its order.
 const VIEW_PARAMETERS = [...FILTER_KEYS, "group", "sort"] as readonly string[];
 
+const viewFilters = z.record(z.string(), z.string().max(200)).refine((filters) => Object.keys(filters).every((key) => VIEW_PARAMETERS.includes(key) || isFilterKey(key)));
+
+/**
+ * What a person may do with the saved views of a list — a project's tasks, or (no project) a
+ * team's backlog: `open` keeps their own filters there, which anyone who can open the list may;
+ * `share` puts a view in front of everyone, which is for the people working there; `manage`
+ * changes or removes a shared view somebody else made, which is for whoever runs it. Null when
+ * the list is not there.
+ */
+async function viewRights(user: Parameters<typeof loadViewer>[0], list: { projectId: string | null; teamId: string | null }): Promise<{ teamId: string; open: boolean; share: boolean; manage: boolean } | null> {
+  if (list.projectId) {
+    const found = await findProject(list.projectId);
+    if (!found) return null;
+    const [viewer, facts] = [await loadViewer(user), projectFacts(found.project, found.team)];
+    return { teamId: found.team.id, open: canViewProject(viewer, facts), share: canContributeToProject(viewer, facts), manage: canManageProject(viewer, facts) };
+  }
+  const team = list.teamId ? await findTeam(list.teamId) : undefined;
+  if (!team) return null;
+  const [viewer, facts] = [await loadViewer(user), teamFacts(team)];
+  return { teamId: team.id, open: canViewTeamBacklog(viewer, facts), share: canContributeToTeam(viewer, facts), manage: canAdminTeam(viewer, facts) };
+}
+const viewPath = (view: { projectId: string | null; teamId: string | null }) => (view.projectId ? `/work/projects/${view.projectId}` : `/work/teams/${view.teamId}`);
+
 const saveViewPipeline = createAction({
   name: "work.view.save",
-  input: z.object({ projectId: z.uuid(), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: z.record(z.string(), z.string().max(200)).refine((filters) => Object.keys(filters).every((key) => VIEW_PARAMETERS.includes(key) || isFilterKey(key))) }),
-  // Anyone who can open the project keeps their own filters; a shared one is put in front of the
-  // whole project, which is for the people working in it.
+  // On a project's list, or — a team and no project — on the team's backlog.
+  input: z.object({ projectId: optional(z.uuid()), teamId: optional(z.uuid()), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: viewFilters }).refine((input) => !!input.projectId || !!input.teamId, { path: ["teamId"] }),
   authorize: async (user, input) => {
-    const found = await findProject(input.projectId);
-    if (!found) return false;
-    const viewer = await loadViewer(user);
-    const facts = projectFacts(found.project, found.team);
-    return input.isShared ? canContributeToProject(viewer, facts) : canViewProject(viewer, facts);
+    const rights = await viewRights(user, input);
+    return !!rights && (input.isShared ? rights.share : rights.open);
   },
   run: async ({ user, input }) => {
-    const view = await createSavedView(input, user.person.id);
-    revalidatePath(`/work/projects/${input.projectId}`);
+    const rights = (await viewRights(user, input))!;
+    const view = await createSavedView({ teamId: rights.teamId, projectId: input.projectId, name: input.name, filters: input.filters, isShared: input.isShared }, user.person.id);
+    revalidatePath(viewPath(view));
     return { data: { id: view.id }, audit: { resource: { type: "work_saved_view", id: view.id }, summary: `${view.name}${view.isShared ? " (shared)" : ""}`, after: view } };
   },
 });
 export async function saveViewAction(input: unknown) {
   return saveViewPipeline(input);
+}
+
+const updateViewPipeline = createAction({
+  name: "work.view.update",
+  input: z.object({ viewId: z.uuid(), name: z.string().trim().min(1).max(60).optional(), isShared: z.boolean().optional(), filters: viewFilters.optional() }),
+  // One's own view, as long as the list still opens for them — and sharing it takes the right to
+  // share; a shared view of somebody else's is changed by whoever runs the project or the team.
+  authorize: async (user, input) => {
+    const view = await findSavedView(input.viewId);
+    const rights = view ? await viewRights(user, view) : null;
+    if (!view || !rights) return false;
+    if (view.ownerPersonId !== user.person.id) return view.isShared && rights.manage;
+    return rights.open && (!input.isShared || view.isShared || rights.share);
+  },
+  run: async ({ input }) => {
+    const { viewId, ...patch } = input;
+    const { before, after } = await updateSavedView(viewId, patch);
+    revalidatePath(viewPath(after));
+    return { data: { id: after.id }, audit: { resource: { type: "work_saved_view", id: after.id }, summary: `${after.name}${after.isShared ? " (shared)" : ""}`, before, after } };
+  },
+});
+export async function updateViewAction(input: unknown) {
+  return updateViewPipeline(input);
 }
 
 const deleteViewPipeline = createAction({
@@ -549,12 +612,11 @@ const deleteViewPipeline = createAction({
     const view = await findSavedView(input.viewId);
     if (!view) return false;
     if (view.ownerPersonId === user.person.id) return true;
-    const found = view.isShared && view.projectId ? await findProject(view.projectId) : undefined;
-    return !!found && canManageProject(await loadViewer(user), projectFacts(found.project, found.team));
+    return view.isShared && !!(await viewRights(user, view))?.manage;
   },
   run: async ({ input }) => {
     const view = await deleteSavedView(input.viewId);
-    if (view.projectId) revalidatePath(`/work/projects/${view.projectId}`);
+    revalidatePath(viewPath(view));
     return { data: { id: view.id }, audit: { resource: { type: "work_saved_view", id: view.id }, summary: view.name, before: view } };
   },
 });
