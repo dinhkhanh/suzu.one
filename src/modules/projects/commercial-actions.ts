@@ -23,7 +23,7 @@ import { changeRequestType, changeWithEvidence, decideChange, findChange, saveCh
 import { findClientReport, saveClientReport } from "./client-reports";
 import { closeProject, publishLessons, saveRetro } from "./close";
 import { ACCEPTANCE_SCOPES } from "./engine/acceptance";
-import { CHANGE_REQUESTERS } from "./engine/change-request";
+import { CHANGE_REQUESTERS, hasFeeChange } from "./engine/change-request";
 import { RETAINER_ROLLOVERS } from "./engine/retainer";
 import { checkbox, hours, hoursDelta, idList, isoDate, month, optional, rows, text, vnd, vndDelta } from "./form-inputs";
 import { canCloseProject, canDecideBilling, canEditFees, canHoldRetro, canManageAcceptance, canManageChanges, canEditRetainer, canViewPlan, canWriteClientReport, type PlanFacts } from "./policy";
@@ -114,6 +114,12 @@ const saveChangePipeline = createAction({
     hoursDelta,
     feeDeltaVnd: vndDelta.optional(),
     dueDateTo: optional(isoDate),
+    // A retainer's monthly scope (FR-PJM-06): the form of a retainer project posts the whole of it —
+    // the quota lines, the hours allowance and, for `pjm:commercial`, the monthly fee.
+    retainerScope: checkbox.default(false),
+    retainerLines: rows(line, 30).default([]),
+    retainerHours: hours,
+    retainerFeeVnd: vnd.optional(),
     evidenceFileId: optional(z.uuid()),
     evidenceUrl: optional(z.url().max(500)),
   }),
@@ -131,11 +137,15 @@ const saveChangePipeline = createAction({
       ...(input.hoursDelta ? { minutesDelta: input.hoursDelta } : {}),
       ...(withFee && input.feeDeltaVnd ? { feeDeltaVnd: input.feeDeltaVnd } : {}),
       ...(input.dueDateTo ? { dueDateTo: input.dueDateTo } : {}),
+      // Posted whole; `saveChange` keeps only the terms that differ from the retainer as it stands.
+      ...(input.retainerScope
+        ? { retainer: { lines: input.retainerLines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.retainerHours, ...(withFee && input.retainerFeeVnd !== undefined ? { feePerMonthVnd: input.retainerFeeVnd } : {}) } }
+        : {}),
     };
     const { before, after } = await saveChange(input.projectId, input.changeId, { title: input.title, description: input.description, requestedBy: input.requestedBy, impact, evidenceFileId: input.evidenceFileId, evidenceUrl: input.evidenceUrl }, user.person.id, { withFee });
     refresh(input.projectId);
     // The fee delta is money: the log says that it changed, never how much, like the fee itself.
-    const shape = (row: typeof after | null) => (row ? { title: row.title, requestedBy: row.requestedBy, status: row.status, minutesDelta: row.impact.minutesDelta ?? null, dueDateTo: row.impact.dueDateTo ?? null, lines: row.impact.deliverables?.length ?? 0, cancelled: row.impact.cancelDeliverableIds?.length ?? 0, feeChange: !!row.impact.feeDeltaVnd } : null);
+    const shape = (row: typeof after | null) => (row ? { title: row.title, requestedBy: row.requestedBy, status: row.status, minutesDelta: row.impact.minutesDelta ?? null, dueDateTo: row.impact.dueDateTo ?? null, lines: row.impact.deliverables?.length ?? 0, cancelled: row.impact.cancelDeliverableIds?.length ?? 0, feeChange: hasFeeChange(row.impact), retainerLines: row.impact.retainer?.lines?.length ?? null, retainerMinutesPerMonth: row.impact.retainer?.minutesPerMonth } : null);
     return { data: { id: after.id, number: after.number }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `CR-${after.number}: ${after.title}`.slice(0, 300), before: shape(before), after: shape(after) } };
   },
 });

@@ -4505,6 +4505,10 @@
       "project_not_found": "Không tìm thấy dự án.",
       "project_other_team": "Dự án đó thuộc nhóm khác; công việc giữ quy trình của nhóm mình.",
       "project_archived": "Dự án đó đã lưu trữ.",
+      "project_closed": "Dự án này đã đóng: không thêm việc, đổi trạng thái việc hay ghi giờ được cho đến khi dự án được mở lại.",
+      "project_needs_kickoff": "Dự án làm cho khách chỉ chuyển sang Đang chạy khi brief được duyệt khởi động (trang Tổng quan của dự án).",
+      "project_needs_closeout": "Dự án làm cho khách chỉ chuyển sang Đã xong qua bước đóng dự án (tab Đóng dự án).",
+      "project_closed_reopen": "Dự án đã đóng. Hãy mở lại dự án ở tab Đóng dự án trước khi đổi trạng thái.",
       "project_dates_invalid": "Hạn trước ngày bắt đầu.",
       "project_last_member": "Dự án phải còn ít nhất một thành viên.",
       "task_not_found": "Không tìm thấy công việc.",
@@ -4863,6 +4867,7 @@
         "person_not_found": "Không tìm thấy một người đã chọn hoặc họ đã nghỉ việc.",
         "team_not_found": "Không tìm thấy nhóm.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ.",
         "state_not_found": "Nhóm chưa có trạng thái cho việc mới."
       },
@@ -4921,6 +4926,7 @@
         "recurrence_dates_invalid": "Ngày kết thúc trước ngày bắt đầu.",
         "recurrence_not_found": "Không tìm thấy.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ."
       },
       "columns": {
@@ -5129,6 +5135,7 @@
         "custom_field_not_found": "việc này không có trường đó",
         "task_not_found": "không còn tồn tại",
         "other": "không hợp lệ",
+        "project_closed": "dự án đã đóng",
         "handoff_required": "cần gói bàn giao",
         "cycle_not_found": "chu kỳ không thuộc nhóm",
         "cycle_closed": "chu kỳ đã đóng",
@@ -11044,6 +11051,7 @@
       "report_date_invalid": "Chỉ nộp được báo cáo của hôm nay hoặc bảy ngày gần đây.",
       "report_not_found": "Không tìm thấy báo cáo.",
       "comment_empty": "Hãy viết nhận xét hoặc chọn một biểu tượng.",
+      "project_closed": "Dự án của việc này đã đóng: không ghi thêm giờ được cho đến khi dự án được mở lại.",
       "time_week_locked": "Tuần này đã nộp hoặc đã duyệt bảng giờ, không sửa được nữa.",
       "time_task_or_category": "Chọn một việc hoặc một loại thời gian khác — không chọn cả hai.",
       "time_entry_not_found": "Không tìm thấy dòng giờ này.",
@@ -11204,6 +11212,9 @@
         }
       },
       "contactsHint": "Mỗi dòng một người: Tên — vai trò — số điện thoại hoặc email",
+      "editContacts": "Sửa liên hệ và đường dẫn",
+      "approvedLocked": "Brief đã duyệt: mục tiêu, phạm vi và tiêu chí thành công chỉ thay đổi qua yêu cầu thay đổi hoặc một lần duyệt mới. Liên hệ phía khách và đường dẫn vẫn cập nhật được.",
+      "saveContacts": "Lưu liên hệ và đường dẫn",
       "save": "Lưu brief",
       "submit": "Gửi duyệt khởi động",
       "resubmit": "Gửi duyệt lại",
@@ -11277,6 +11288,7 @@
       "endDate": "Kết thúc",
       "dueSlip": "Trễ so với baseline (ngày)",
       "accepted": "Sản phẩm đã nghiệm thu",
+      "awaitingClient": "Sản phẩm xong nội bộ, chờ khách duyệt",
       "promised": "Sản phẩm đã cam kết",
       "hoursUsed": "Giờ đã ghi",
       "hoursBurn": "Giờ dự kiến (đã ghi + còn lại)",
@@ -11378,6 +11390,17 @@
       "remove": "Xóa",
       "removeConfirm": "Xóa mục này? Công việc đã gắn vẫn giữ nguyên."
     },
+    "scope": {
+      "budgetLocked": "Sau khi duyệt khởi động, tổng ngân sách giờ chỉ thay đổi qua yêu cầu thay đổi. Bạn vẫn có thể chia lại tổng đó giữa các vai trò.",
+      "lineLocked": "Sau khi duyệt khởi động, số lượng, định dạng và kênh là phạm vi đã thống nhất với khách: chỉ thay đổi qua yêu cầu thay đổi. Tên dòng, mốc và hạn vẫn sửa được ở đây.",
+      "registerLocked": "Sau khi duyệt khởi động, thêm hoặc bỏ sản phẩm cần một yêu cầu thay đổi.",
+      "feeLocked": "Sau khi duyệt khởi động, phí chỉ thay đổi qua yêu cầu thay đổi.",
+      "raiseChange": "Tạo yêu cầu thay đổi"
+    },
+    "gates": {
+      "clientHint": "Dự án làm cho khách chuyển sang Đang chạy khi <brief>brief được duyệt khởi động</brief>, và sang Đã xong khi <close>đóng dự án</close>.",
+      "closedHint": "Dự án đã đóng. Muốn đổi trạng thái, hãy <close>mở lại dự án</close>."
+    },
     "register": {
       "title": "Danh mục sản phẩm bàn giao",
       "progress": "Đã nghiệm thu {accepted}/{promised} ({percent}%)",
@@ -11385,12 +11408,14 @@
       "status": {
         "promised": "Đã cam kết",
         "in_production": "Đang sản xuất",
+        "ready_for_client": "Xong nội bộ",
         "client_review": "Chờ khách duyệt",
         "accepted": "Đã nghiệm thu",
         "delivered": "Đã bàn giao",
         "published": "Đã đăng",
         "cancelled": "Đã hủy"
       },
+      "awaitingClient": "{count} đã xong nội bộ, chờ khách duyệt",
       "lineProgress": "nghiệm thu {accepted}/{promised} · {linked} việc đã gắn",
       "columns": {
         "progress": "Nghiệm thu",
@@ -11469,7 +11494,7 @@
       "state_not_found": "Nhóm chưa có trạng thái cho việc mới.",
       "task_not_found": "Công việc không thuộc dự án này.",
       "account_manager_is_lead": "Người phụ trách dự án không thể đồng thời là account phụ trách.",
-      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được.",
+      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được. Brief đã duyệt chỉ sửa được liên hệ và đường dẫn; phần còn lại thay đổi qua yêu cầu thay đổi.",
       "brief_not_submittable": "Brief đang chờ duyệt hoặc đã được duyệt.",
       "brief_incomplete": "Brief còn thiếu thông tin bắt buộc.",
       "plan_dates_invalid": "Ngày kết thúc phải sau ngày bắt đầu.",
@@ -11511,7 +11536,11 @@
       "billing_decided": "Khoản này đã được xử lý.",
       "billing_conflict": "Khoản này đã tồn tại.",
       "report_not_found": "Không tìm thấy báo cáo.",
-      "project_closed": "Dự án đã đóng.",
+      "project_closed": "Dự án đã đóng: kế hoạch chỉ xem được. Người phụ trách có thể mở lại dự án ở tab Đóng dự án.",
+      "scope_locked": "Sau khi duyệt khởi động, phạm vi, ngân sách giờ và phí chỉ thay đổi qua yêu cầu thay đổi. Hãy tạo yêu cầu thay đổi ở tab Thay đổi.",
+      "brief_not_approved": "Chỉ brief đã duyệt mới sửa riêng phần liên hệ và đường dẫn.",
+      "project_not_closed": "Dự án này chưa đóng.",
+      "reopen_reason_required": "Hãy ghi lý do mở lại dự án.",
       "close_unmet": "Còn mục chưa đạt: hãy ghi lý do nếu vẫn muốn đóng.",
       "retro_in_future": "Ngày họp không được sau hôm nay.",
       "retro_missing": "Hãy lưu buổi rút kinh nghiệm trước.",
@@ -11731,6 +11760,9 @@
       "dueDate": "Hạn dự án",
       "original": "Ban đầu",
       "current": "Hiện tại",
+      "unexplained": "Sửa trực tiếp, không qua yêu cầu thay đổi",
+      "unexplainedNote": "Có số liệu đã bị sửa trực tiếp nên ban đầu + yêu cầu thay đổi không bằng hiện tại. Phần chênh lệch được ghi thành dòng riêng ở trên.",
+      "retainerHint": "Phạm vi hằng tháng của retainer, áp dụng từ tháng được tạo tiếp theo. Để nguyên nếu không thay đổi.",
       "list": "Yêu cầu thay đổi",
       "empty": "Chưa có yêu cầu thay đổi nào.",
       "new": "Yêu cầu thay đổi mới",
@@ -11760,6 +11792,9 @@
         "withdrawn": "Đã rút"
       },
       "impact": {
+        "retainerLines": "Định mức hằng tháng mới:",
+        "retainerHours": "Giờ mỗi tháng: {hours}",
+        "retainerFee": "Phí mỗi tháng: {fee}",
         "hours": "Giờ: {hours}",
         "fee": "Phí: {fee}",
         "dueDate": "Hạn mới: {date}"
@@ -11773,6 +11808,9 @@
         "hoursDelta": "Thay đổi giờ (+/−)",
         "feeDelta": "Thay đổi phí (VND, +/−)",
         "dueDateTo": "Hạn mới của dự án",
+        "retainerLines": "Định mức hằng tháng của retainer",
+        "retainerHours": "Giờ mỗi tháng",
+        "retainerFee": "Phí mỗi tháng (VND)",
         "evidenceFile": "Tệp bằng chứng",
         "evidenceUrl": "Hoặc đường dẫn bằng chứng"
       }
@@ -11910,6 +11948,16 @@
     },
     "close": {
       "closedBadge": "Đã đóng",
+      "reopen": {
+        "title": "Mở lại dự án",
+        "submit": "Mở lại dự án",
+        "reason": "Lý do mở lại",
+        "reasonHint": "Ví dụ: khách yêu cầu thêm một vòng chỉnh sửa sau nghiệm thu…",
+        "warning": "Mở lại sẽ mở khóa kế hoạch và đưa dự án về Đang chạy. Lần đóng trước được giữ lại làm lịch sử. Retainer đã dừng khi đóng không tự chạy lại.",
+        "history": "Những lần đóng đã được mở lại",
+        "closedLine": "Đóng ngày {date}",
+        "reopenedLine": "Mở lại ngày {date}"
+      },
       "checklist": "Danh sách kiểm tra trước khi đóng",
       "met": "Đạt",
       "unmet": "Chưa đạt",

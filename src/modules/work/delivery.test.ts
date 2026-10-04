@@ -110,6 +110,8 @@ describe("a review chain: team lead, then the client (FR-PJM-50, 51)", () => {
     // The task's own reviewer is not overwritten by a stage.
     expect((await loadTask(taskId))!.work).toMatchObject({ reviewerPersonId: null, reviewStatus: "submitted", stateId: ids.internal });
     expect((await listReviewsWaitingFor(ids.long)).find((row) => row.taskId === taskId)).toMatchObject({ stageName: "Trưởng nhóm duyệt", isClient: false });
+    // In review inside the house: the register must not read this as "with the client".
+    expect((await deliveryFactsByTask([taskId])).get(taskId)).toMatchObject({ currentVersion: 1, withClient: false });
     expect((await noticesOf("long", "tasks.review_requested")).filter((notice) => notice.link === `/work/tasks/${taskId}`)).toHaveLength(1);
     expect(await fails(decideReview(taskId, "approved", null, actor("long")))).toBe("review_in_chain");
     expect(await fails(decideStage(taskId, { decision: "approved", comment: null, client: null }, actor("huy")))).toBe("review_own_work");
@@ -123,6 +125,8 @@ describe("a review chain: team lead, then the client (FR-PJM-50, 51)", () => {
     expect(await stateOf(taskId)).toBe(ids.clientReview);
     expect((await listReviewsWaitingFor(ids.an)).find((row) => row.taskId === taskId)).toMatchObject({ stageName: "Khách duyệt", isClient: true });
     expect((await listReviewsWaitingFor(ids.long)).some((row) => row.taskId === taskId)).toBe(false);
+    // Waiting at the chain's client stage: now it is.
+    expect((await deliveryFactsByTask([taskId])).get(taskId)).toMatchObject({ currentVersion: 1, withClient: true, lastClientDecision: null });
     expect(await fails(decideStage(taskId, { decision: "approved", comment: null, client: null }, actor("an")))).toBe("client_evidence_required");
     expect(await fails(decideStage(taskId, { decision: "approved", comment: null, client: { ...evidence(), evidenceUrl: null } }, actor("an")))).toBe("client_evidence_required");
   });
@@ -132,6 +136,8 @@ describe("a review chain: team lead, then the client (FR-PJM-50, 51)", () => {
     expect(outcome).toBe("changes");
     expect((await loadTask(taskId))!.work).toMatchObject({ reviewStatus: "changes_requested", revisionRounds: 1, stateId: ids.edit });
     expect((await revisionRoundsByTask([taskId])).get(taskId)).toEqual({ internal: 0, client: 1 });
+    // Answered: nothing waits on the client, and their request stands on the current version.
+    expect((await deliveryFactsByTask([taskId])).get(taskId)).toMatchObject({ currentVersion: 1, withClient: false, lastClientDecision: { decision: "changes_required", version: 1 } });
     expect((await noticesOf("huy", "tasks.client_decision"))[0].params).toMatchObject({ actor: "an", task: "VID-2 TVC 30s" });
     expect(await noticesOf("tam", "tasks.client_decision")).toHaveLength(1);
   });
@@ -297,8 +303,10 @@ describe("delivery records and the register's facts (FR-PJM-53)", () => {
     const [chained] = await db().select({ taskId: schema.workDeliverable.taskId }).from(schema.workDeliverable).where(eq(schema.workDeliverable.chainId, ids.chain)).limit(1);
     const [social] = await db().select({ taskId: schema.workPublish.taskId }).from(schema.workPublish).where(eq(schema.workPublish.status, "published")).limit(1);
     const facts = await deliveryFactsByTask([task.id, chained.taskId, social.taskId]);
-    expect(facts.get(task.id)).toEqual({ clientApproved: false, delivered: true, published: false, lastClientDecision: null });
-    expect(facts.get(chained.taskId)).toMatchObject({ clientApproved: true, delivered: false, published: false, lastClientDecision: { decision: "approved", channel: "email", decidedByName: "Chị Mai (Vinamilk)", decidedOn: "2026-09-22" } });
+    // One version handed in, waiting on internal review: not with the client.
+    expect(facts.get(task.id)).toEqual({ clientApproved: false, delivered: true, published: false, lastClientDecision: null, currentVersion: 1, withClient: false });
+    // The client answered the version that went through the chain: nothing is waiting on them any more.
+    expect(facts.get(chained.taskId)).toMatchObject({ clientApproved: true, delivered: false, published: false, withClient: false, lastClientDecision: { decision: "approved", channel: "email", decidedByName: "Chị Mai (Vinamilk)", decidedOn: "2026-09-22" } });
     expect(facts.get(social.taskId)).toMatchObject({ clientApproved: false, published: true });
   });
 });

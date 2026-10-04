@@ -41,24 +41,46 @@ export async function revisionRoundsByTask(taskIds: readonly string[]): Promise<
 }
 
 export type LastClientDecision = { decision: string; version: number; decidedOn: string; channel: string; decidedByName: string; recordedAt: Date; comment: string | null };
-export type DeliveryFacts = { clientApproved: boolean; delivered: boolean; published: boolean; lastClientDecision: LastClientDecision | null };
+export type DeliveryFacts = {
+  clientApproved: boolean;
+  delivered: boolean;
+  published: boolean;
+  lastClientDecision: LastClientDecision | null;
+  /** The newest version handed in, or null when none was. */
+  currentVersion: number | null;
+  /**
+   * The current version is with the client and unanswered: it waits at a client stage of its review
+   * chain, or a review link — not revoked, not yet answered — shows it (a link pinned to this
+   * version, or one that follows the current version once that has cleared internal review) — and
+   * no client decision is recorded on it.
+   */
+  withClient: boolean;
+};
 
 /**
  * Per task: whether the client approved a version (a frozen version), whether a delivery was
- * recorded, whether a post is out (published with its URL), and the latest client decision. One
- * query; every task asked about is in the map.
+ * recorded, whether a post is out (published with its URL), the latest client decision, and whether
+ * the current version is with the client now. One query; every task asked about is in the map.
  */
 export async function deliveryFactsByTask(taskIds: readonly string[]): Promise<Map<string, DeliveryFacts>> {
   const ids = [...new Set(taskIds)];
-  const result = new Map<string, DeliveryFacts>(ids.map((id) => [id, { clientApproved: false, delivered: false, published: false, lastClientDecision: null }]));
+  const result = new Map<string, DeliveryFacts>(ids.map((id) => [id, { clientApproved: false, delivered: false, published: false, lastClientDecision: null, currentVersion: null, withClient: false }]));
   if (ids.length === 0) return result;
-  const rows = rowsOf<{ task_id: string; client_approved: boolean; delivered: boolean; published: boolean; decision: string | null; version: number | null; client: ClientDecisionFacts | null; recorded_at: Date | string | null; comment: string | null }>(
+  const rows = rowsOf<{ task_id: string; client_approved: boolean; delivered: boolean; published: boolean; decision: string | null; version: number | null; client: ClientDecisionFacts | null; recorded_at: Date | string | null; comment: string | null; current_version: number | null; with_client: boolean | null }>(
     await db().execute(sql`
       SELECT t.id AS task_id,
              EXISTS (SELECT 1 FROM ${schema.workDeliverable} d WHERE d.task_id = t.id AND d.frozen_at IS NOT NULL) AS client_approved,
              EXISTS (SELECT 1 FROM ${schema.workDelivery} v WHERE v.task_id = t.id) AS delivered,
              EXISTS (SELECT 1 FROM ${schema.workPublish} p WHERE p.task_id = t.id AND p.status = 'published' AND p.url IS NOT NULL) AS published,
-             last.decision, last.version, last.client, last.created_at AS recorded_at, last.comment
+             last.decision, last.version, last.client, last.created_at AS recorded_at, last.comment,
+             cur.version AS current_version,
+             (cur.id IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM ${schema.workDeliverableDecision} x WHERE x.deliverable_id = cur.id AND x.is_client)
+               AND (
+                 (cur.decision = 'pending' AND EXISTS (SELECT 1 FROM ${schema.workReviewChain} c WHERE c.id = cur.chain_id AND c.stages -> cur.stage_index ->> 'reviewer' = 'client'))
+                 OR EXISTS (SELECT 1 FROM ${schema.workPreviewLink} l WHERE l.task_id = t.id AND l.revoked_at IS NULL AND l.decided_at IS NULL
+                             AND (l.deliverable_id = cur.id OR (l.deliverable_id IS NULL AND cur.decision = 'approved')))
+               )) AS with_client
         FROM unnest(${uuidArray(ids)}) AS t(id)
         LEFT JOIN LATERAL (
           SELECT x.decision, d.version, x.client, x.created_at, x.comment
@@ -66,7 +88,13 @@ export async function deliveryFactsByTask(taskIds: readonly string[]): Promise<M
             JOIN ${schema.workDeliverable} d ON d.id = x.deliverable_id
            WHERE d.task_id = t.id AND x.is_client
            ORDER BY x.created_at DESC LIMIT 1
-        ) last ON true`),
+        ) last ON true
+        LEFT JOIN LATERAL (
+          SELECT d.id, d.version, d.decision, d.chain_id, d.stage_index
+            FROM ${schema.workDeliverable} d
+           WHERE d.task_id = t.id
+           ORDER BY d.version DESC LIMIT 1
+        ) cur ON true`),
   );
   for (const row of rows) {
     result.set(row.task_id, {
@@ -77,6 +105,8 @@ export async function deliveryFactsByTask(taskIds: readonly string[]): Promise<M
         row.decision && row.client
           ? { decision: row.decision, version: Number(row.version), decidedOn: row.client.decidedOn, channel: row.client.channel, decidedByName: row.client.decidedByName, recordedAt: new Date(row.recorded_at!), comment: row.comment }
           : null,
+      currentVersion: row.current_version === null ? null : Number(row.current_version),
+      withClient: !!row.with_client,
     });
   }
   return result;

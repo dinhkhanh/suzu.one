@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { getFormatter, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page } from "@/components/ui/page";
@@ -8,7 +9,7 @@ import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, T
 import { statusTone } from "@/components/ui/tone";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listStructure, listTaskLinks, loadRegisters, openProject, REGISTER_STATUSES } from "@/modules/projects/service";
+import { listStructure, listTaskLinks, loadRegisters, openProject, REGISTER_STATUSES, scopeLocked } from "@/modules/projects/service";
 import { CancelLineButton, DeliverableForm, LineTasksForm, UnlinkButton } from "@/modules/projects/ui/plan-forms";
 import { ProgressBar } from "@/modules/projects/ui/progress";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
@@ -20,14 +21,18 @@ export const generateMetadata = pageTitle("deliverables");
 /**
  * The deliverables register (FR-PJM-05): what the client was promised, line by line, and how far
  * each promise has come — computed from the linked tasks, one task per unit. Progress = accepted ÷
- * promised. The lead makes the tasks of a line in one go, from the row's detail.
+ * promised, where accepted is the client's recorded word: work finished on our side and not yet
+ * answered is shown beside it (the paler stretch of each bar), never counted in it. The lead makes
+ * the tasks of a line in one go, from the row's detail.
  */
 export default async function ProjectDeliverablesPage({ params }: PageProps<"/projects/[projectId]/deliverables">) {
   const user = await requireUser();
   const { projectId } = await params;
   const context = await openProject(user, projectId);
   if (!context) notFound();
-  const { project, team, can } = context;
+  const { project, team, can, plan } = context;
+  // After the kick-off the register is the agreed scope: lines and quantities move through change requests.
+  const locked = scopeLocked(plan);
   const [t, tWork, format, registers, structure, links, people] = await Promise.all([getTranslations("projects"), getTranslations("work"), getFormatter(), loadRegisters([project.id]), listStructure(project.id), listTaskLinks(project.id), can.editPlan ? listAssignable(team.id, project.id) : Promise.resolve([])]);
   const register = registers.get(project.id)!;
   const milestoneName = new Map(structure.milestones.map((milestone) => [milestone.id, milestone.name]));
@@ -43,10 +48,10 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
       <ProjectHeader context={context} current="deliverables" />
 
       <TableCard>
-        <TableCardHeader title={t("register.title")} count={register.lines.length || null} description={register.promised ? t("register.progress", { accepted: register.accepted, promised: register.promised, percent: register.percent ?? 0 }) : t("register.empty")} />
+        <TableCardHeader title={t("register.title")} count={register.lines.length || null} description={register.promised ? [t("register.progress", { accepted: register.accepted, promised: register.promised, percent: register.percent ?? 0 }), register.awaitingClient ? t("register.awaitingClient", { count: register.awaitingClient }) : null].filter(Boolean).join(" · ") : t("register.empty")} />
         {register.promised ? (
           <div className="border-b px-4 py-3">
-            <ProgressBar percent={register.percent} tone="success" label={t("register.title")} />
+            <ProgressBar percent={register.percent} pending={Math.floor((register.awaitingClient / register.promised) * 100)} tone="success" label={t("register.title")} />
           </div>
         ) : null}
         <Table>
@@ -95,7 +100,7 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
                         "—"
                       ) : (
                         <span className="flex items-center justify-end gap-2">
-                          <ProgressBar percent={percent} tone="success" className="w-16" />
+                          <ProgressBar percent={percent} pending={line.promised ? Math.floor((line.awaitingClient / line.promised) * 100) : null} tone="success" className="w-16" />
                           <span>
                             {line.accepted}/{line.promised}
                           </span>
@@ -142,10 +147,12 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
                             {can.editPlan ? (
                               <>
                                 {!cancelled ? <LineTasksForm deliverableId={line.id} missing={missing} people={people} /> : null}
-                                <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={milestones} />
-                                <div>
-                                  <CancelLineButton deliverableId={line.id} cancelled={cancelled} />
-                                </div>
+                                <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={milestones} scopeLocked={locked} />
+                                {locked ? null : (
+                                  <div>
+                                    <CancelLineButton deliverableId={line.id} cancelled={cancelled} />
+                                  </div>
+                                )}
                               </>
                             ) : null}
                           </div>
@@ -158,10 +165,18 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
             })}
           </TableBody>
         </Table>
-        {can.editPlan ? (
+        {can.editPlan && !locked ? (
           <TableAddRow label={t("register.newLine")} open={register.lines.length === 0}>
             <DeliverableForm projectId={project.id} milestones={milestones} />
           </TableAddRow>
+        ) : null}
+        {can.editPlan && locked ? (
+          <p className="border-t px-4 py-3 text-sm text-muted-foreground">
+            {t("scope.registerLocked")}{" "}
+            <Link href={`/projects/${project.id}/changes`} className="text-link hover:underline">
+              {t("scope.raiseChange")}
+            </Link>
+          </p>
         ) : null}
       </TableCard>
     </Page>
