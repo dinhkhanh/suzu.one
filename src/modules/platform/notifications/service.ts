@@ -378,6 +378,25 @@ export async function markRead(personId: string, notificationId: string | null):
   return rows.length;
 }
 
+/**
+ * Takes a notice back from the people who have not read it yet: what it asked of them is no longer
+ * wanted (a submitted week the person recalled before anyone decided it). Their unread rows of
+ * that kind and link are marked read and kept out of the digest, so their badge stops counting
+ * them. In-app only: an email or a push already sent stays sent. Pass the transaction when the
+ * withdrawal is part of one.
+ */
+export async function withdrawNotices(input: { recipients: readonly string[]; kind: Kind; link: string }, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+  const recipientIds = [...new Set(input.recipients)];
+  if (recipientIds.length === 0) return 0;
+  const rows = await executor
+    .update(schema.notification)
+    .set({ readAt: new Date(), digestedAt: sql`coalesce(${schema.notification.digestedAt}, now())` })
+    .where(and(inArray(schema.notification.recipientPersonId, recipientIds), isNull(schema.notification.readAt), eq(schema.notification.kind, input.kind), eq(schema.notification.link, input.link)))
+    .returning({ recipientPersonId: schema.notification.recipientPersonId });
+  if (rows.length > 0) await invalidateLive(...rows.map((row) => row.recipientPersonId));
+  return rows.length;
+}
+
 // Everyone's explicit choices in one entry (a few rows per person who ever changed one), read for
 // every recipient of every notification and on the notifications page; `setPreferences` drops it.
 const PREFERENCES_KEY = "notifications:preferences";

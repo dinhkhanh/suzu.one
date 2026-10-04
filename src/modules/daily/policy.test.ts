@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Grant } from "@/modules/platform/rbac/policy";
-import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, overseesDaily, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
+import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, overseesDaily, type ReportReader, type ReportSubject, type TimeReader, type TimesheetSubject } from "./policy";
 
 const reader = (personId: string, led: string[] = []): ReportReader => ({ personId, ledTeamIds: new Set(led) });
 
 // Huy works in Video (led by Long) and collaborates on Design's work as a member (led by Mai).
 // His line manager is Tam, whose manager is Chi, whose manager is Vu.
-const huy: ReportSubject = { personId: "huy", teamIds: ["team-video", "team-design"], chainAbove: ["tam", "chi", "vu"] };
+// A lead and a line manager are there for him, so nobody approves his week as a last resort.
+const huy: TimesheetSubject = { personId: "huy", teamIds: ["team-video", "team-design"], chainAbove: ["tam", "chi", "vu"], fallbackApprovers: [] };
 // Tam himself is in no work team at all (Q18): his day is read by the chain above him and by nobody else.
-const tam: ReportSubject = { personId: "tam", teamIds: [], chainAbove: ["chi", "vu"] };
+const tam: TimesheetSubject = { personId: "tam", teamIds: [], chainAbove: ["chi", "vu"], fallbackApprovers: [] };
 
 describe("daily report visibility", () => {
   it("the person sees their own", () => {
@@ -112,10 +113,27 @@ describe("who approves a week", () => {
   });
 
   it("never the person themself — not even a lead approving their own week", () => {
-    const long: ReportSubject = { personId: "long", teamIds: ["team-video"], chainAbove: ["tam"] };
+    const long: TimesheetSubject = { personId: "long", teamIds: ["team-video"], chainAbove: ["tam"], fallbackApprovers: [] };
     expect(canApproveTimesheet(reader("long", ["team-video"]), long)).toBe(false);
     expect(canApproveTimesheet(reader("tam"), long)).toBe(true);
     expect(canApproveTimesheet({ personId: null, ledTeamIds: new Set(["team-video"]) }, huy)).toBe(false);
+  });
+
+  // Vu leads his own team and reports to nobody: the two rules above find no one, and his week
+  // would wait for ever. The service names who approves it instead (approvers.ts).
+  it("the approver of last resort where there is no lead and no line manager", () => {
+    const vu: TimesheetSubject = { personId: "vu", teamIds: ["team-board"], chainAbove: [], fallbackApprovers: ["khanh"] };
+    expect(canApproveTimesheet(reader("khanh"), vu)).toBe(true);
+    // They read the week they decide — and nothing else of his day.
+    expect(canViewTimesheet(reader("khanh"), vu)).toBe(true);
+    expect(canViewReport(reader("khanh"), vu)).toBe(false);
+    expect(canCommentOnReport(reader("khanh"), vu)).toBe(false);
+    expect(canViewAttendanceHint(reader("khanh"), vu)).toBe(false);
+    // Nobody else, and never Vu himself — not as his team's lead, not if he were named.
+    expect(canApproveTimesheet(reader("chi"), vu)).toBe(false);
+    expect(canViewTimesheet(reader("chi"), vu)).toBe(false);
+    expect(canApproveTimesheet(reader("vu", ["team-board"]), vu)).toBe(false);
+    expect(canApproveTimesheet(reader("vu", ["team-board"]), { ...vu, fallbackApprovers: ["vu"] })).toBe(false);
   });
 });
 

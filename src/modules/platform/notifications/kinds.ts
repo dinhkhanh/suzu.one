@@ -198,6 +198,10 @@ export const KINDS = {
   "daily.plan_reminder": "daily",
   "daily.report_reminder": "daily",
   "daily.report_nudge": "daily",
+  // A report for a day already past: the lead's nudge for it, and the next morning's notice that
+  // yesterday's is missing. Both name the day, and their links carry it.
+  "daily.report_nudge_past": "daily",
+  "daily.report_missed": "daily",
   "daily.report_commented": "daily",
   "daily.weekly_report": "daily",
   "daily.timesheet_reminder": "daily",

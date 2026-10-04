@@ -8,12 +8,13 @@ import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getTimesheetDays } from "@/modules/attendance/service";
-import { notify } from "@/modules/platform/notifications/service";
+import { notify, withdrawNotices } from "@/modules/platform/notifications/service";
 import { daysOf } from "./days";
 import { type DayKind, weekStartOf } from "./engine/rules";
 import { attendanceHint, type AttendanceHint, buildWeekGrid, isWeekEditable, rowKeyOf, type RowKey, rowsToCopy, type TimesheetStatus, transition, type WeekGrid, weekDates } from "./engine/timesheet";
 import type { RuleMode } from "./enums";
-import { listOverseen, loadSubjects, type Subject } from "./people";
+import { listFallbackSubjects } from "./approvers";
+import { listOverseen, loadSubjects, loadTimesheetSubjects, type Subject, type TimesheetPerson } from "./people";
 import { showTimeLabels } from "./engine/redact";
 import { loadSeen } from "./labels";
 import { canApproveTimesheet, canViewAttendanceHint, canViewTimeEntry, canViewTimesheet, type ReportReader, type TimeReader } from "./policy";
@@ -127,19 +128,20 @@ export async function getMyTimeWeek(personId: string, weekStart: IsoDate, today:
 
 /**
  * Somebody's week as the reader may see it: the whole week for the people above them (the report
- * rule); only the rows on their projects for a project's lead; null for anyone else. The
+ * rule) and for whoever approves it; only the rows on their projects for a project's lead; null
+ * for anyone else. The
  * attendance hint is for the person and their line-management chain (FR-PJM-26), not a work
  * team's lead; tasks and projects the reader may not open are shown as private work.
  */
 export async function getTimesheetView(reader: TimeReader, personId: string, weekStart: IsoDate, today: IsoDate): Promise<TimeWeekView | null> {
   if (!reader.personId) return null;
   if (reader.personId === personId) return getMyTimeWeek(personId, weekStart, today);
-  const subject = (await loadSubjects([personId])).get(personId);
+  const subject = (await loadTimesheetSubjects([personId])).get(personId);
   if (!subject) return null;
   const full = canViewTimesheet(reader, subject);
   const canApprove = canApproveTimesheet(reader, subject);
   if (!full && reader.ledProjectIds.size === 0) return null;
-  const view = await buildWeekView(subject, weekStart, today, { readerPersonId: reader.personId, ledProjectIds: reader.ledProjectIds, keep: (entry) => canViewTimeEntry(reader, subject, entry), hints: full && canViewAttendanceHint(reader, subject), own: false, canApprove, partial: !full });
+  const view = await buildWeekView(subject, weekStart, today, { readerPersonId: reader.personId, ledProjectIds: reader.ledProjectIds, keep: (entry) => full || canViewTimeEntry(reader, subject, entry), hints: full && canViewAttendanceHint(reader, subject), own: false, canApprove, partial: !full });
   // A project's lead with no row of this person on their projects has nothing to see here.
   if (!full && view.entries.length === 0) return null;
   // Nothing of the person's days or of their timesheet's status: only the hours on the project.
@@ -149,16 +151,22 @@ export async function getTimesheetView(reader: TimeReader, personId: string, wee
 
 // ── Submitting and deciding (FR-PJM-25) ─────────────────────────────────────────────────────
 
-/** Who hears that a week waits: the leads of the person's teams and their line manager, never the person. */
-async function approversOf(subject: Subject, executor: Tx): Promise<string[]> {
+/**
+ * Who hears that a week waits: the leads of the person's teams and their line manager — and, where
+ * neither is there to approve it, the approvers of last resort (approvers.ts). Never the person.
+ */
+async function approversOf(subject: TimesheetPerson, executor: Tx): Promise<string[]> {
   const leads = subject.teamIds.length
     ? await executor
         .selectDistinct({ personId: schema.workTeamMember.personId })
         .from(schema.workTeamMember)
         .where(and(inArray(schema.workTeamMember.teamId, subject.teamIds), eq(schema.workTeamMember.role, "lead")))
     : [];
-  return [...new Set([...leads.map((row) => row.personId), ...subject.chainAbove.slice(0, 1)])].filter((personId) => personId !== subject.personId);
+  return [...new Set([...leads.map((row) => row.personId), ...subject.chainAbove.slice(0, 1), ...subject.fallbackApprovers])].filter((personId) => personId !== subject.personId);
 }
+
+/** Where the approvers' notice of a waiting week points; a recall withdraws the notices that carry it. */
+const waitingLink = (personId: string, weekStart: IsoDate) => `/daily/timesheets/${personId}?week=${weekStart}`;
 
 /**
  * The person submits their week. Only where a team of theirs approves timesheets, only a week that
@@ -167,7 +175,7 @@ async function approversOf(subject: Subject, executor: Tx): Promise<string[]> {
  */
 export async function submitWeek(personId: string, weekStart: IsoDate, today: IsoDate, now: Date = new Date()): Promise<{ before: TimesheetWeekRow | null; after: TimesheetWeekRow }> {
   if (weekStartOf(weekStart) !== weekStart || weekStart > today) throw new ActionError("timesheet_week_invalid");
-  const [subject, rules] = await Promise.all([loadSubjects([personId]).then((map) => map.get(personId)), rulesOfPeople([personId])]);
+  const [subject, rules] = await Promise.all([loadTimesheetSubjects([personId]).then((map) => map.get(personId)), rulesOfPeople([personId])]);
   if (!subject || !rules.get(personId)?.rules.timesheetApproval) throw new ActionError("timesheet_not_required");
   return db().transaction(async (tx) => {
     // The week's lock, the one every write of time takes: no entry slips in while it is totted up.
@@ -195,7 +203,34 @@ export async function submitWeek(personId: string, weekStart: IsoDate, today: Is
       .values({ personId, weekStart, ...values })
       .onConflictDoUpdate({ target: [schema.timesheetWeek.personId, schema.timesheetWeek.weekStart], set: values })
       .returning();
-    await notify({ recipients: await approversOf(subject, tx), kind: "daily.timesheet_submitted", params: { person: subject.fullName, week: weekLabel(weekStart) }, link: `/daily/timesheets/${personId}?week=${weekStart}` }, tx);
+    await notify({ recipients: await approversOf(subject, tx), kind: "daily.timesheet_submitted", params: { person: subject.fullName, week: weekLabel(weekStart) }, link: waitingLink(personId, weekStart) }, tx);
+    return { before, after };
+  });
+}
+
+/**
+ * The person takes back a week they submitted while nobody has decided it: it is open again, to
+ * fix and send anew. A week an approver has approved or returned is not the person's to recall.
+ * The approvers' unread notice of the waiting week is withdrawn with it, and their list — every
+ * submitted week — no longer has it.
+ */
+export async function recallWeek(personId: string, weekStart: IsoDate, now: Date = new Date()): Promise<{ before: TimesheetWeekRow; after: TimesheetWeekRow }> {
+  const subject = (await loadTimesheetSubjects([personId])).get(personId);
+  return db().transaction(async (tx) => {
+    // The week's lock, as every write of time and the submission take it.
+    await lockTimesheetWeek(tx, personId, weekStart);
+    const before = await findTimesheetWeek(personId, weekStart, tx);
+    if (!before) throw new ActionError("timesheet_not_found");
+    const next = transition(before.status as TimesheetStatus, { type: "recall" });
+    if (!next.ok) throw new ActionError(next.error);
+    const [after] = await tx
+      .update(schema.timesheetWeek)
+      .set({ status: next.status, submittedAt: null, updatedAt: now })
+      // The status it was read in: an approver deciding at this very moment wins, and the recall fails.
+      .where(and(eq(schema.timesheetWeek.id, before.id), eq(schema.timesheetWeek.status, before.status)))
+      .returning();
+    if (!after) throw new ActionError("timesheet_changed");
+    if (subject) await withdrawNotices({ recipients: await approversOf(subject, tx), kind: "daily.timesheet_submitted", link: waitingLink(personId, weekStart) }, tx);
     return { before, after };
   });
 }
@@ -210,7 +245,7 @@ export type Decision = { type: "approve" } | { type: "return"; comment: string |
 export async function decideWeek(reader: ReportReader, weekId: string, decision: Decision, now: Date = new Date()): Promise<{ before: TimesheetWeekRow; after: TimesheetWeekRow }> {
   const week = await findTimesheetWeekById(weekId);
   if (!week) throw new ActionError("timesheet_not_found");
-  const subject = (await loadSubjects([week.personId])).get(week.personId);
+  const subject = (await loadTimesheetSubjects([week.personId])).get(week.personId);
   if (!subject || !canApproveTimesheet(reader, subject)) throw new ActionError("timesheet_not_found");
   const next = transition(week.status as TimesheetStatus, decision);
   if (!next.ok) throw new ActionError(next.error);
@@ -254,16 +289,18 @@ export async function approveWeeks(reader: ReportReader, weekIds: readonly strin
 export type WaitingWeek = { id: string; personId: string; name: string; weekStart: IsoDate; status: TimesheetStatus; minutes: number; submittedAt: Date | null; decidedAt: Date | null; comment: string | null };
 
 /**
- * Weeks the reader approves: the people they oversee (`listOverseen`) narrowed by
- * `canApproveTimesheet` — a skip-level manager sees reports but does not approve. `waiting` is
- * every submitted week; `recent` the weeks decided in the last `days` days (to reopen from).
+ * Weeks the reader approves: the people they oversee (`listOverseen`) and the people they are the
+ * approver of last resort for (`listFallbackSubjects`), narrowed by `canApproveTimesheet` — a
+ * skip-level manager sees reports but does not approve. `waiting` is every submitted week;
+ * `recent` the weeks decided in the last `days` days (to reopen from).
  */
 export async function listApprovals(reader: ReportReader, today: IsoDate, days = 42): Promise<{ waiting: WaitingWeek[]; recent: WaitingWeek[] }> {
   // Oversight approves nothing: the rest of the company is not worth loading here.
-  const groups = (await listOverseen(reader)).filter((group) => group.kind !== "company");
-  const candidates = [...new Set(groups.flatMap((group) => group.personIds))];
+  const [overseen, fallback] = await Promise.all([listOverseen(reader), reader.personId ? listFallbackSubjects(reader.personId) : []]);
+  const groups = overseen.filter((group) => group.kind !== "company");
+  const candidates = [...new Set([...groups.flatMap((group) => group.personIds), ...fallback])];
   if (candidates.length === 0) return { waiting: [], recent: [] };
-  const subjects = await loadSubjects(candidates);
+  const subjects = await loadTimesheetSubjects(candidates);
   const mine = candidates.filter((personId) => {
     const subject = subjects.get(personId);
     return !!subject && canApproveTimesheet(reader, subject);

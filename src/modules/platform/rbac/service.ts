@@ -1,6 +1,6 @@
 import "server-only";
-import { and, arrayOverlaps, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, arrayOverlaps, asc, eq, gte, inArray, isNull, lte, or, type SQL, sql } from "drizzle-orm";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { cached, invalidate } from "@/lib/cache";
@@ -244,11 +244,22 @@ export async function listOwnerPersonIds(executor: Executor = db()): Promise<str
   return rows.map((row) => row.personId);
 }
 
+type HoldingOptions = { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor };
+
 /**
  * Who holds `permission` over `target` today — e.g. the HR people to warn about someone's contract.
  * Reads every grant in force: fine for a company-sized table, and it keeps `can()` the one rule.
  */
-export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor } = {}): Promise<string[]> {
+export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: HoldingOptions = {}): Promise<string[]> {
+  return (await listPeopleHoldingEach(permission, [target], options))[0];
+}
+
+/**
+ * `listPeopleHolding` for several targets at once: one read of the grants however many targets
+ * there are, and the holders of each target in the targets' order.
+ */
+export async function listPeopleHoldingEach(permission: Exclude<Permission, "*">, targets: readonly Target[], options: HoldingOptions = {}): Promise<string[][]> {
+  if (targets.length === 0) return [];
   const { today = todayInVietnam(), includeWildcard = true, executor = db() } = options;
   const rows = await executor
     .select()
@@ -261,8 +272,15 @@ export async function listPeopleHolding(permission: Exclude<Permission, "*">, ta
     if (!includeWildcard && ROLE_DEFINITIONS[row.role as Role].permissions.includes("*")) continue;
     grantsByPerson.set(row.personId, [...(grantsByPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
   }
-  return [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, target)).map(([personId]) => personId);
+  return targets.map((target) => [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, target)).map(([personId]) => personId));
 }
+
+/**
+ * A condition for another module's query over people: does the person in `personId` hold `role`
+ * today, at any scope? The check stays in Postgres — the caller's list is filtered where it is read.
+ */
+export const holdsRoleToday = (personId: AnyPgColumn, role: Role, today: IsoDate = todayInVietnam()): SQL =>
+  sql`exists (select 1 from ${schema.roleAssignment} where ${schema.roleAssignment.personId} = ${personId} and ${schema.roleAssignment.role} = ${role} and ${schema.roleAssignment.validFrom} <= ${today} and (${schema.roleAssignment.validTo} is null or ${schema.roleAssignment.validTo} >= ${today}))`;
 
 /** Who holds `role` with a scope that covers `target` today — for approval steps that name a role (FR-PLT-20). */
 export async function listPeopleWithRole(role: Role, target: Target, executor: Executor = db()): Promise<string[]> {

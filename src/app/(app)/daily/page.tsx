@@ -6,20 +6,24 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listMyReports } from "@/modules/daily/service";
+import { todayInVietnam } from "@/lib/dates";
+import { listMissingReportDays, listMyReports, reportLink } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("myDays");
 
-// The person's own daily reports, newest first, with the ways into the day's screens.
+// The person's own daily reports, newest first, with the ways into the day's screens — and the days
+// of the past week whose report never came, each still open to write (FR-PJM-22).
 export default async function DailyIndexPage() {
   const user = await requireUser();
-  const [t, format, reports] = await Promise.all([getTranslations("daily"), getFormatter(), listMyReports(user.person.id)]);
+  const today = todayInVietnam();
+  const [t, format, reports, missing] = await Promise.all([getTranslations("daily"), getFormatter(), listMyReports(user.person.id), listMissingReportDays(user.person.id, today)]);
+  const dayName = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "short" });
   const screens = [
     { href: "/daily/plan", label: t("index.plan"), icon: CalendarCheck },
-    { href: "/daily/report", label: t("index.report"), icon: ClipboardList },
+    { href: reportLink(today), label: t("index.report"), icon: ClipboardList },
     { href: "/daily/team", label: t("board.title"), icon: Users },
     { href: "/daily/weekly", label: t("weekly.title"), icon: CalendarRange },
     { href: "/daily/time", label: t("time.title"), icon: Clock },
@@ -43,6 +47,22 @@ export default async function DailyIndexPage() {
         </List>
       </Section>
 
+      {missing.length > 0 ? (
+        <Section title={t("index.missing")} count={missing.length}>
+          <List>
+            {missing.map((date, index) => (
+              <ListItem key={date} href={reportLink(date)} className="rise press" style={{ "--i": index } as CSSProperties}>
+                <span className="min-w-0 flex-1 font-medium">{dayName(date)}</span>
+                <Badge dot variant="destructive">{t("board.missing")}</Badge>
+                <span className="text-xs text-muted-foreground">{t("index.write")}</span>
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-faint" />
+              </ListItem>
+            ))}
+          </List>
+          <p className="px-0.5 text-xs text-muted-foreground">{t("index.missingHint")}</p>
+        </Section>
+      ) : null}
+
       <Section title={t("index.recent")} count={reports.length || undefined}>
         <Table>
           <TableHeader>
@@ -59,7 +79,7 @@ export default async function DailyIndexPage() {
               <TableRow key={report.id}>
                 <TableCell>
                   <RecordLink kind="dailyReport" id={report.id} className="font-medium">
-                    {format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "short" })}
+                    {dayName(report.date)}
                   </RecordLink>
                 </TableCell>
                 <TableCell>{report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}</TableCell>

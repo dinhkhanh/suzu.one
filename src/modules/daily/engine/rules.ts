@@ -72,6 +72,17 @@ export function mergeRules(teams: readonly TeamRules[]): PersonRules {
   };
 }
 
+/**
+ * What the loop asks of someone it asks nothing of — a collaborator, a holder of the owner role
+ * (owner's decision of 2026-10-05, amending D23). Whatever their teams require is optional for
+ * them: they may plan, report and log time as anyone does, are never reminded and never counted
+ * as missing, and have no week to send in for approval.
+ */
+export function exemptRules(rules: PersonRules): PersonRules {
+  const relaxed = (mode: RuleMode): RuleMode => (mode === "required" ? "optional" : mode);
+  return { ...rules, planMode: relaxed(rules.planMode), reportMode: relaxed(rules.reportMode), timeMode: relaxed(rules.timeMode), timesheetApproval: false };
+}
+
 // ── Dates ───────────────────────────────────────────────────────────────────────────────────
 
 /** 1 = Monday … 7 = Sunday. */
