@@ -13,6 +13,7 @@
 // into a prompt. The day a key is added, this is what stands between a payslip and the network.
 import type { ToolAnswer } from "../enums";
 import { escapeSourceText } from "./prompt";
+import { redactContacts } from "./redact";
 
 export class ToolPromptRefusal extends Error {
   constructor(reason: string) {
@@ -40,12 +41,16 @@ export type ToolPromptInput = {
 export function buildToolUserMessage(input: ToolPromptInput): string {
   if (!input.askerPersonId || input.subjectPersonId !== input.askerPersonId) throw new ToolPromptRefusal("another person's data");
   const { answer } = input;
+  // The figures are the asker's own and go as they are — FR-AI-06's one exception, and every one
+  // of them is a number. A contact detail is never anybody's exception (SRS §4.15 rule 4): the
+  // words of the record and of the question lose theirs, the numbers are not touched.
+  const shown = (value: string | number) => (typeof value === "number" ? value : redactContacts(value));
   const pairs = [
-    ...Object.entries(answer.params).map(([name, value]) => `${name} = ${value}`),
-    ...answer.lines.flatMap((line) => Object.entries(line.params).map(([name, value]) => `${line.key}.${name} = ${value}`)),
+    ...Object.entries(answer.params).map(([name, value]) => `${name} = ${shown(value)}`),
+    ...answer.lines.flatMap((line) => Object.entries(line.params).map(([name, value]) => `${line.key}.${name} = ${shown(value)}`)),
   ];
   return [
-    `<question>\n${escapeSourceText(input.question, 2000)}\n</question>`,
+    `<question>\n${escapeSourceText(redactContacts(input.question), 2000)}\n</question>`,
     "",
     `<your-own-record tool="${escapeSourceText(answer.tool, 60)}" about="the person asking">`,
     escapeSourceText(pairs.join("\n"), 4000),

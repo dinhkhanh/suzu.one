@@ -4,10 +4,12 @@
 //  - every message, with the citations the answer was built from, the driver and model that
 //    produced it and the retrieval score, so an answer can be explained afterwards,
 //  - the questions the knowledge base could not answer, for whoever keeps it (FR-KB-08's
-//    "what is missing" in the small): the log is the backlog of pages still to write.
+//    "what is missing" in the small): the log is the backlog of pages still to write,
+//  - what each answer cost — tokens in and out, beside the driver and model already kept,
+//  - the counted windows of the per-person limit (`ai_usage_hit`, `engine/limits.ts`).
 // Citations are stored as JSON on the message rather than in a join table: they are a record of
 // what was shown at the time, not a live index. Every link is re-checked by the KB page itself.
-import { index, jsonb, pgEnum, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { person } from "../platform/people/schema";
 
 export const aiMessageRole = pgEnum("ai_message_role", ["user", "assistant"]);
@@ -62,6 +64,13 @@ export const aiMessage = pgTable(
     model: text("model"),
     /** Best retrieval score behind the answer, 0..1 — why it answered, or why it did not. */
     score: real("score"),
+    /**
+     * What the answer cost, as the driver reported it: tokens sent and tokens written. Zero for the
+     * local driver and for a personal tool — nothing went to a model. Null on the asker's own turn
+     * and on answers stored before usage was kept.
+     */
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("ai_message_conversation_idx").on(t.conversationId, t.createdAt), index("ai_message_person_idx").on(t.personId, t.createdAt)],
@@ -86,4 +95,24 @@ export const aiUnansweredQuestion = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("ai_unanswered_open_idx").on(t.resolvedAt, t.createdAt), index("ai_unanswered_person_idx").on(t.personId)],
+).enableRLS();
+
+/**
+ * The per-person limit on questions and drafts (NFR-SEC-03): one row per (bucket, person, window),
+ * counted by one atomic upsert — the careers page's mechanism in this module's own table. The
+ * bucket is "ask_burst", "ask_day", "draft_burst" or "draft_day" (`AI_LIMITS`). Swept nightly.
+ */
+export const aiUsageHit = pgTable(
+  "ai_usage_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bucket: text("bucket").notNull(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("ai_usage_hit_key").on(t.bucket, t.personId, t.windowStart), index("ai_usage_hit_window_idx").on(t.windowStart)],
 ).enableRLS();
