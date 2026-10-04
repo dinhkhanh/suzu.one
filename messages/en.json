@@ -4648,6 +4648,7 @@
       "preview_link_closed": "That link is no longer active.",
       "preview_comment_required": "Say what needs changing.",
       "preview_version_not_ready": "This version has not cleared internal review, so it cannot go to the client yet.",
+      "preview_project_closed": "The project is finished or archived, so no new review link can be made.",
       "checklist_name_required": "Give the checklist a name.",
       "checklist_empty": "Add at least one item.",
       "checklist_too_many": "A checklist holds at most 40 items.",
@@ -5884,6 +5885,14 @@
       "viewOnly": "view only",
       "revoke": "Revoke",
       "revokeConfirm": "Revoke this link? The client will not be able to open it.",
+      "revokeTitle": "Revoke the link",
+      "project": {
+        "title": "Client review links",
+        "explainer": "The project's review links that have not expired or been revoked. New links are made on the task.",
+        "task": "Task",
+        "version": "Version",
+        "none": "No live links."
+      },
       "meta": "{name} created it {created} · expires {expires}",
       "views": "{count} views, last {last}",
       "noViews": "not opened yet",
@@ -12152,11 +12161,16 @@
     "forWhom": "for {name}",
     "work": "For your review",
     "fileHint": "Tap the file name to download it. The file stays available for as long as this link is active.",
+    "videoHint": "Press play to watch it here. If the video does not play, tap the file name to download it. The file stays available for as long as this link is active.",
+    "unfurl": {
+      "title": "Work shared for your review",
+      "body": "Open this link in a browser to see it."
+    },
     "unavailable": "The file cannot be opened right now. Please reload this page in a moment.",
     "messageFrom": "A note from {name}",
     "viewOnly": "This link is for viewing. Please send your comments to whoever shared it with you.",
     "expiresOn": "This link works until {date}.",
-    "privacy": "Opening this page is recorded as a count and a time. When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address: to stop automated abuse we keep a one-way fingerprint of your connection, which changes every day and is used for nothing else.",
+    "privacy": "Opening this page is recorded as a count and a time, and noted in our access log. When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address: to stop automated abuse and to tell one visit from another in that log, we keep a one-way fingerprint of your connection, which changes every day and is used for nothing else.",
     "decide": {
       "title": "Your answer",
       "choice": "Your choice",

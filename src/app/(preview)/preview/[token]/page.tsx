@@ -24,7 +24,14 @@ import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
  * The file is not a storage URL printed into the page — one signed here would run out while the
  * client was still reading the note. It is this link's own `file` route, which checks the token
  * again on every request and signs at that moment, so the file opens for as long as the link does.
- * A picture is shown in place through the same route; anything else is a link to it.
+ * A picture is shown in place through the same route and a video is **played** in place through it
+ * — in the browser's own player, a plain `<video controls>`, because this page ships no script of
+ * ours — with the file's name beside it as the download; anything else is a link to it.
+ *
+ * **A machine is not shown the work.** A chat app fetches the address the moment the link is
+ * pasted, to draw its card. That is not the client opening it, so it is not counted or audited
+ * (`openPreviewLink` answers `not_a_view` before it reads anything) and it gets a page that says
+ * only that there is something to open — the same page for every token, real or not.
  *
  * **No answer is chosen for the client.** The three choices arrive unchecked: an approval freezes
  * the version and is the record of what was agreed, so it has to be something the client did, not
@@ -66,6 +73,16 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
   const outcome = await openPreviewLink(token, visitorOf({ headers: new Headers(await headers()) }));
 
+  if (!outcome.ok && outcome.reason === "not_a_view") {
+    // What a chat app's card is drawn from: no client, no project, no title, no file.
+    return (
+      <div className="flex flex-col gap-3">
+        <h1 className="text-xl font-semibold">{t("unfurl.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("unfurl.body")}</p>
+      </div>
+    );
+  }
+
   if (!outcome.ok) {
     // One page, one sentence, never why.
     return (
@@ -104,10 +121,14 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
                   <img src={fileHref} alt={page.fileName} className="mx-auto h-auto max-h-[80dvh] max-w-full rounded-lg border" />
                 </a>
               ) : null}
+              {/* The browser's own player, fed by the same route: it follows the redirect to storage
+                  and asks storage for each stretch of the film. Only the first frames are fetched
+                  until the client presses play. */}
+              {page.fileIsVideo ? <video src={fileHref} controls preload="metadata" playsInline className="mx-auto max-h-[80dvh] w-full rounded-lg border bg-black" /> : null}
               <a href={fileHref} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-sm font-medium underline">
                 {page.fileName}
               </a>
-              <p className="text-xs text-muted-foreground">{t("fileHint")}</p>
+              <p className="text-xs text-muted-foreground">{page.fileIsVideo ? t("videoHint") : t("fileHint")}</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">{t("unavailable")}</p>

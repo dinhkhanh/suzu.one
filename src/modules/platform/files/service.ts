@@ -147,6 +147,42 @@ export async function createDownloadLink(file: StoredFileRow, actor: Actor, requ
   return url;
 }
 
+/** The longest a link handed to somebody outside the company may live, whatever the caller asks for. */
+const MAX_VISITOR_LINK_SECONDS = 60 * 60;
+
+/**
+ * Who opened a file when nobody inside the company did: somebody holding a credential of their own
+ * — a client on a review link (D24). `via` names the kind of credential, `id` the record of it
+ * (never the credential itself), and `visitorKey` is the hashed visitor the public surface already
+ * counts and audits under, never an address.
+ */
+export type VisitorReader = { via: string; id: string; visitorKey: string };
+
+/**
+ * A download link for a visitor. The owning module has already decided this visitor may have this
+ * file; what this adds is an honest audit entry. A restricted or compensation file is audited
+ * exactly as `createDownloadLink` audits it — the same action, the same resource — but the entry
+ * names **what opened it**: signing in the name of whoever handed the credential out would put an
+ * account manager's name on a read they never made.
+ *
+ * `expiresInSeconds` is the caller's to choose (a video played in place outlives a minute) and is
+ * capped here.
+ */
+export async function createVisitorDownloadLink(file: StoredFileRow, reader: VisitorReader, expiresInSeconds: number = DOWNLOAD_LINK_SECONDS): Promise<string> {
+  const url = await createSignedDownloadUrl(file.objectPath, Math.max(1, Math.min(Math.round(expiresInSeconds), MAX_VISITOR_LINK_SECONDS)));
+  if (tierRank(file.tier as Tier) >= tierRank("restricted")) {
+    await recordAudit({
+      action: "file.read",
+      actor: { userId: null, personId: null, email: null },
+      request: { ipAddress: reader.visitorKey, userAgent: null },
+      resource: { type: file.ownerType, id: file.ownerId, entityId: file.entityId },
+      summary: file.fileName,
+      after: { via: reader.via, id: reader.id },
+    });
+  }
+  return url;
+}
+
 /**
  * The bytes of a directory-tier file for the app to serve itself — a profile picture, shown on
  * many screens at once, where a signed link per picture per page would be a round trip each.

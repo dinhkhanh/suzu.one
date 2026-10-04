@@ -4648,6 +4648,7 @@
       "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
       "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa.",
       "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được.",
+      "preview_project_closed": "Dự án đã kết thúc hoặc đã lưu trữ nên không tạo được đường dẫn duyệt mới.",
       "checklist_name_required": "Hãy đặt tên cho checklist.",
       "checklist_empty": "Thêm ít nhất một mục.",
       "checklist_too_many": "Một checklist có tối đa 40 mục.",
@@ -5884,6 +5885,14 @@
       "viewOnly": "chỉ xem",
       "revoke": "Thu hồi",
       "revokeConfirm": "Thu hồi đường dẫn này? Khách sẽ không mở được nữa.",
+      "revokeTitle": "Thu hồi đường dẫn",
+      "project": {
+        "title": "Đường dẫn duyệt đang ở chỗ khách",
+        "explainer": "Các đường dẫn duyệt của dự án chưa hết hạn và chưa bị thu hồi. Đường dẫn mới được tạo ở trang công việc.",
+        "task": "Công việc",
+        "version": "Phiên bản",
+        "none": "Không có đường dẫn nào đang mở."
+      },
       "meta": "{name} tạo ngày {created} · hết hạn {expires}",
       "views": "{count} lượt xem, gần nhất {last}",
       "noViews": "khách chưa mở",
@@ -12152,11 +12161,16 @@
     "forWhom": "gửi {name}",
     "work": "Nội dung cần duyệt",
     "fileHint": "Chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "videoHint": "Bấm phát để xem ngay trên trang. Nếu video không phát được, chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "unfurl": {
+      "title": "Nội dung gửi anh/chị duyệt",
+      "body": "Mở đường dẫn này trong trình duyệt để xem nội dung."
+    },
     "unavailable": "Chưa mở được tệp. Vui lòng tải lại trang sau giây lát.",
     "messageFrom": "Lời nhắn từ {name}",
     "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
     "expiresOn": "Đường dẫn có hiệu lực đến hết ngày {date}.",
-    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
+    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở, và ghi lượt mở vào nhật ký truy cập. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động và phân biệt các lượt mở trong nhật ký, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
     "decide": {
       "title": "Phản hồi của anh/chị",
       "choice": "Anh/chị chọn",

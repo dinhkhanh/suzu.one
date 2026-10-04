@@ -24,7 +24,8 @@ import { BriefView } from "@/modules/projects/ui/brief-view";
 import { AccountManagerForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
 import { burnTone, Meter } from "@/modules/projects/ui/progress";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
-import { listProjectMembers } from "@/modules/work/service";
+import { canSeeProjectPreviewLinks, listProjectMembers, listProjectPreviewLinks } from "@/modules/work/service";
+import { ProjectPreviewLinks } from "@/modules/work/ui/preview-links";
 import { pageTitle } from "@/i18n/page-title";
 import { canViewDeal, contactChoicesFor, contractNumbersOfProjects, type DealStatus, dealOfProject, findAccount, loadCrm } from "@/modules/crm/service";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
@@ -65,7 +66,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   const { project, plan, can } = context;
   const today = todayInVietnam();
   const monday = mondayOf(today);
-  const [request, updates, members, people, waiting, origin, contracts, account, structure, facts, bookings, entities] = await Promise.all([
+  // The review links clients are holding (R14): for whoever may hand one out on this project.
+  const seesPreviewLinks = canSeeProjectPreviewLinks(context.viewer, context.facts);
+  const [request, updates, members, people, waiting, origin, contracts, account, structure, facts, bookings, entities, previewLinks] = await Promise.all([
     getBriefRequest({ personId: user.person.id, principal: user.principal }, plan),
     listStatusUpdates(project.id, 5),
     listProjectMembers(project.id),
@@ -79,6 +82,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
     loadStatusFacts(project.id, { budgetMinutes: plan.budgetMinutes, baseline: plan.baseline }, today),
     listProjectBookings(project.id, monday, monday),
     listEntities(),
+    seesPreviewLinks ? listProjectPreviewLinks(project.id) : Promise.resolve([]),
   ]);
   // The deal is shown only to whoever may see it (`canViewDeal`): reading a project does not open its sale.
   const showsDeal = !!origin && !!account && canViewDeal((await loadCrm(user)).viewer, { id: origin.dealId, entityId: origin.entityId, ownerPersonId: origin.ownerPersonId, status: origin.status as DealStatus, account: account.facts });
@@ -354,6 +358,27 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
       </Section>
 
       <AcceptanceWaitingList projectId={project.id} waiting={waiting} />
+
+      {seesPreviewLinks ? (
+        <ProjectPreviewLinks
+          links={previewLinks.map((link) => ({
+            id: link.id,
+            taskId: link.taskId,
+            taskKey: link.taskKey,
+            taskTitle: link.taskTitle,
+            label: link.label,
+            allowDecision: link.allowDecision,
+            version: link.version,
+            state: link.state,
+            expiresAt: link.expiresAt.toISOString(),
+            viewCount: link.viewCount,
+            createdByPersonId: link.createdByPersonId,
+            createdByName: link.createdByName,
+            createdAt: link.createdAt.toISOString(),
+            decision: link.decision,
+          }))}
+        />
+      ) : null}
 
       {can.editPlan ? (
         <Section title={t("settings.title")}>
