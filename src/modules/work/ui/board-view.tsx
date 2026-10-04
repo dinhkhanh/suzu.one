@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { cn } from "cn";
 import { updateTaskAction } from "../actions";
 import { boardColumns, isSamePlace, planDrop } from "../engine/board";
@@ -15,7 +14,8 @@ import { CustomValueText } from "./custom-fields";
 import { FilterBar, useUrlFilters } from "./filter-bar";
 import { useHandoffGate } from "./handoff";
 import { type ListOptions, type ListTask, PriorityMark } from "./task-list-view";
-import { DueText, PersonAvatar, StateDot, TaskKey } from "./task-row";
+import { StateBadge, stateColumnClass } from "./status-badge";
+import { DueText, PersonAvatar, TaskKey } from "./task-row";
 import { LabelChip } from "./team-forms";
 
 export type BoardTask = ListTask & { boardRank: number; updatedAt: string };
@@ -23,8 +23,9 @@ export type BoardTask = ListTask & { boardRank: number; updatedAt: string };
 const RECENT_DAYS = 14;
 
 /**
- * Kanban board (FR-WRK-05): one column per workflow state of the team. A drop shows at once
- * (`useOptimistic`); if the server refuses, the card goes back by itself and the reason is shown.
+ * Kanban board (FR-WRK-05): one column per workflow state of the team, washed in its state's tint.
+ * A drop shows at once (`useOptimistic`); if the server refuses, the card goes back by itself and
+ * the reason is shown. Without a mouse a card is only reordered here — its state changes on its page.
  */
 export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean }) {
   const t = useTranslations("work.board");
@@ -93,7 +94,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
             <section
               key={state.id}
               aria-label={state.name}
-              className={cn("flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border bg-canvas p-2 transition-shadow duration-100 md:w-72", dragging && target?.stateId === state.id && "ring-2 ring-ring/40")}
+              className={cn("flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border p-2 transition-shadow duration-100 md:w-72", stateColumnClass(state.category), dragging && target?.stateId === state.id && "ring-2 ring-ring/40")}
               onDragOver={(event) => {
                 if (!dragging) return;
                 event.preventDefault();
@@ -102,8 +103,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
               onDrop={(event) => onDrop(event, state.id)}
             >
               <h3 className="flex h-8 items-center gap-2 px-1.5 text-[0.8125rem] font-medium">
-                <StateDot category={state.category} />
-                <span className="truncate">{state.name}</span>
+                <StateBadge category={state.category} name={state.name} className="min-w-0" />
                 <span className="ml-auto font-mono text-[0.6875rem] font-normal text-faint tabular-nums">{cards.length}</span>
               </h3>
               <ul className="flex min-h-10 flex-col gap-2">
@@ -176,7 +176,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         <PersonAvatar name={task.assigneeName} />
                         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{task.assigneeName ?? tWork("list.unassigned")}</span>
                         {editable(task) ? (
-                          // Without a mouse (phone, keyboard): pick the column, nudge up or down.
+                          // Without a mouse (phone, keyboard): nudge up or down.
                           <span className="flex items-center gap-0.5">
                             <Button variant="ghost" size="icon-xs" aria-label={t("moveUp")} disabled={position === 0} onClick={() => move(task, state.id, position - 1)}>
                               <ChevronUpIcon />
@@ -184,13 +184,6 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                             <Button variant="ghost" size="icon-xs" aria-label={t("moveDown")} disabled={position === cards.length - 1} onClick={() => move(task, state.id, position + 1)}>
                               <ChevronDownIcon />
                             </Button>
-                            <Select aria-label={t("moveTo")} value={state.id} searchable={false} onChange={(event) => move(task, event.target.value, columns.get(event.target.value)?.length ?? 0)} className="h-7 w-28 text-xs md:h-6 md:text-xs">
-                              {states.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                </option>
-                              ))}
-                            </Select>
                           </span>
                         ) : null}
                       </div>

@@ -12,6 +12,7 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, projectStatusNames, projectStatusSetChoices, teamFacts, visibleProjects, workflowChoices } from "@/modules/work/service";
 import { accentOf, projectShelf, type Shelf, teamShelf, type TeamStatus, teamStatusOf } from "@/modules/work/enums";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { CreateProjectButton, CreateTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ColorSquare } from "@/modules/work/ui/task-row";
 import { pageTitle } from "@/i18n/page-title";
@@ -51,14 +52,16 @@ export default async function WorkPage() {
       shelf === "archived" && "border-dashed text-muted-foreground grayscale hover:grayscale-0",
     );
 
-  /** Why a card is set aside: its own status, else its team's. */
+  /** The card's status in its own colour; a project at work in a set-aside team says why it is set aside too. */
   const projectBadge = (project: (typeof projects)[number]) => {
-    const name = project.statusId ? statusNames.get(project.statusId) : undefined;
-    if (project.status === "archived") return <ArchivedBadge label={name ?? t("projects.status.archived")} />;
-    if (project.status !== "active") return <Badge variant="secondary">{name ?? t(`projects.status.${project.status}`)}</Badge>;
-    if (name) return <Badge variant="outline">{name}</Badge>;
+    const name = (project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status as "active"}`);
     const status = teamStatus(project.teamId);
-    return status === "active" ? null : <Badge variant="outline">{t(`shelves.team.${status}`)}</Badge>;
+    return (
+      <>
+        <ProjectStatusBadge status={project.status} name={name} />
+        {project.status === "active" && status !== "active" ? <Badge variant="outline">{t(`shelves.team.${status}`)}</Badge> : null}
+      </>
+    );
   };
 
   const projectCard = (project: (typeof projects)[number]) => {
@@ -79,12 +82,10 @@ export default async function WorkPage() {
               <span className="truncate text-xs text-muted-foreground">{[project.teamName, project.clientName, project.leadName].filter(Boolean).join(" · ")}</span>
             </span>
           </span>
-          {project.visibility === "private" || projectBadge(project) ? (
-            <span className="flex flex-wrap gap-1.5">
-              {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
-              {projectBadge(project)}
-            </span>
-          ) : null}
+          <span className="flex flex-wrap gap-1.5">
+            {projectBadge(project)}
+            {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
+          </span>
           <span className="mt-auto flex flex-col gap-2">
             <span className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("projects.progress", { done: project.doneTasks, total })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
               <span className={cn("block h-full rounded-full transition-[width] duration-300 ease-(--ease-settle)", shelf === "current" ? "bg-primary" : "bg-faint/50")} style={{ width: `${percent}%` }} />

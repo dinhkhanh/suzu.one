@@ -4666,7 +4666,6 @@
     "board": {
       "moveUp": "Chuyển lên",
       "moveDown": "Chuyển xuống",
-      "moveTo": "Chuyển sang cột",
       "emptyColumn": "Chưa có gì"
     },
     "calendar": {

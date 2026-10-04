@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createTaskAction, deleteViewAction, saveViewAction, updateTaskAction } from "../actions";
+import { createTaskAction, deleteViewAction, saveViewAction } from "../actions";
 import { customKey, fieldIdOf } from "../engine/custom-fields";
 import { filterEntries, filterTasks, GROUPINGS, groupTasks, type ListGrouping, type ListSort, nestTasks, readFilters, readGrouping, readSort, SORTS, sortTasks, type TaskFilters } from "../engine/filter";
 import { CustomValueText, type FieldView } from "./custom-fields";
 import { FilterBar, MenuPicker, writeFiltersToUrl } from "./filter-bar";
-import { useHandoffGate } from "./handoff";
+import { StateBadge } from "./status-badge";
 import { DueText, dotOf, PersonAvatar, StateDot, TaskKey } from "./task-row";
 import { LabelChip } from "./team-forms";
 
@@ -119,9 +118,7 @@ export function TaskListView({
   const titleInput = useRef<HTMLInputElement>(null);
   const addRow = useRef<HTMLDetailsElement>(null);
   // Shown at once; the server's answer replaces them when the page data refreshes.
-  const [shown, applyOptimistic] = useOptimistic(tasks, (current: ListTask[], change: { type: "state"; id: string; stateId: string } | { type: "add"; task: ListTask }) =>
-    change.type === "add" ? [...current, change.task] : current.map((task) => (task.id === change.id ? { ...task, stateId: change.stateId } : task)),
-  );
+  const [shown, applyOptimistic] = useOptimistic(tasks, (current: ListTask[], added: ListTask) => [...current, added]);
 
   // "C" (the palette's shortcut) focuses the quick-create box: unfold the add row first, so the
   // focus lands. Capture phase, so this runs before the palette's own listener.
@@ -164,17 +161,6 @@ export function TaskListView({
     return key === "none" ? t("noClient") : (options.clients.find((client) => client.id === key)?.name ?? key);
   };
   const failed = (result: { ok: boolean; error?: string; message?: string }) => setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
-  const gate = useHandoffGate();
-
-  function moveState(task: ListTask, stateId: string) {
-    startTransition(async () => {
-      applyOptimistic({ type: "state", id: task.id, stateId });
-      const result = await updateTaskAction({ taskId: task.id, stateId });
-      gate.intercept(result);
-      failed(result);
-      router.refresh();
-    });
-  }
 
   function quickCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -185,7 +171,7 @@ export function TaskListView({
     const state = options.states.find((row) => row.id === filters.state && row.isActive);
     titleInput.current!.value = "";
     startTransition(async () => {
-      applyOptimistic({ type: "add", task: { id: `new-${title}`, key: "…", title, status: "todo", stateId: state?.id ?? "", priority: null, assigneePersonId: assignee || null, assigneeName: null, dueDate: null, clientId: null, labelIds: [], parentTaskId: null, blockedBy: 0, subtasks: { done: 0, total: 0 }, checklist: { done: 0, total: 0 } } });
+      applyOptimistic({ id: `new-${title}`, key: "…", title, status: "todo", stateId: state?.id ?? "", priority: null, assigneePersonId: assignee || null, assigneeName: null, dueDate: null, clientId: null, labelIds: [], parentTaskId: null, blockedBy: 0, subtasks: { done: 0, total: 0 }, checklist: { done: 0, total: 0 } });
       const result = await createTaskAction({ teamId: scope.teamId, ...(scope.projectId ? { projectId: scope.projectId } : {}), title, stateId: state?.id ?? "", assigneePersonId: assignee, labelIds: filters.label ? [filters.label] : [] });
       failed(result);
       router.refresh();
@@ -225,7 +211,6 @@ export function TaskListView({
   const row = (task: ListTask, depth: number) => {
     const open = task.status === "todo" || task.status === "in_progress";
     const state = stateById.get(task.stateId);
-    const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
     const assignee = task.assigneeName ?? (task.assigneePersonId ? names.get(task.assigneePersonId) : null) ?? null;
     const chips = (
       <>
@@ -276,7 +261,7 @@ export function TaskListView({
             {/* On a phone the row's columns fold into a meta line under the title. */}
             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground md:hidden">
               <TaskKey>{task.key}</TaskKey>
-              {state ? <span>{state.name}</span> : null}
+              {state ? <StateBadge category={state.category} name={state.name} /> : null}
               <DueText dueDate={task.dueDate} today={today} open={open} />
               {chips}
             </span>
@@ -291,21 +276,8 @@ export function TaskListView({
         <TableCell kind="date" className="hidden w-px md:table-cell">
           <DueText dueDate={task.dueDate} today={today} open={open} />
         </TableCell>
-        <TableCell className="hidden w-px md:table-cell">
-          {editable ? (
-            <Select aria-label={t("state")} value={task.stateId} disabled={pending} searchable={false} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:h-7 md:text-xs">
-              {options.states
-                .filter((row) => row.isActive || row.id === task.stateId)
-                .map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name}
-                  </option>
-                ))}
-            </Select>
-          ) : (
-            <span className="text-xs text-muted-foreground">{state?.name ?? "…"}</span>
-          )}
-        </TableCell>
+        {/* The state is read here and changed on the task's page, where its gates can speak. */}
+        <TableCell className="hidden w-px max-w-44 md:table-cell">{state ? <StateBadge category={state.category} name={state.name} /> : <span className="text-xs text-faint">…</span>}</TableCell>
       </TableRow>
     );
   };
@@ -383,7 +355,6 @@ export function TaskListView({
         </div>
       ) : null}
 
-      {gate.sheet}
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}
@@ -418,8 +389,7 @@ export function TaskListView({
                 grouping === "none" ? null : (
                   <TableGroupRow key={`group-${group.key}`}>
                     <span className="flex items-center gap-2">
-                      {grouping === "status" ? <StateDot category={stateById.get(group.key)?.category ?? "todo"} /> : null}
-                      <span>{groupName(group.key)}</span>
+                      {grouping === "status" ? <StateBadge category={stateById.get(group.key)?.category ?? "todo"} name={groupName(group.key)} /> : <span>{groupName(group.key)}</span>}
                       <span className="font-mono text-[0.6875rem] font-normal text-faint tabular-nums">{group.tasks.length}</span>
                     </span>
                   </TableGroupRow>

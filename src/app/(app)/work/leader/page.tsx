@@ -8,6 +8,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getLeaderView, loadViewer } from "@/modules/work/service";
 import { NudgeButton } from "@/modules/work/ui/planning-forms";
+import { StateBadge } from "@/modules/work/ui/status-badge";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("leaderView");
@@ -92,7 +93,7 @@ export default async function LeaderPage() {
                     {task.blocker ? <p className="truncate text-xs text-muted-foreground">{t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })})` : task.blocker.reason })}</p> : null}
                   </TableCell>
                   <TableCell>{task.projectName ? <RecordLink kind="project" id={task.projectId}>{task.projectName}</RecordLink> : "—"}</TableCell>
-                  <TableCell>{task.stateName ? <Badge variant="outline">{task.stateName}</Badge> : "—"}</TableCell>
+                  <TableCell>{task.stateName ? <StateBadge category={task.category} name={task.stateName} /> : "—"}</TableCell>
                   <TableCell>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}</TableCell>
                   <TableCell>{t(`mine.${task.mine}`)}</TableCell>
                   <TableCell>

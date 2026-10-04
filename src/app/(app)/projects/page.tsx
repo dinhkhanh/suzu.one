@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -19,6 +18,7 @@ import { healthVariant, ProjectMark } from "@/modules/projects/ui/project-header
 import { listClients, listCreateTargets, loadViewer } from "@/modules/work/service";
 import { CreateProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("projects");
@@ -100,7 +100,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
               {row.jobNumber ? <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{row.jobNumber}</span> : null}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Badge dot variant={statusTone(row.status)}>{row.statusName ?? tWork(`projects.status.${row.status as "active"}`)}</Badge>
+              <ProjectStatusBadge status={row.status} name={row.statusName ?? tWork(`projects.status.${row.status as "active"}`)} />
               <Badge variant="outline">{t(`kinds.${row.kind}`)}</Badge>
               {row.briefStatus !== "approved" ? <Badge variant="secondary">{t(`brief.status.${row.briefStatus as "draft"}`)}</Badge> : null}
               {row.health ? <Badge variant={healthVariant(row.health)}>{t(`health.${row.health}`)}</Badge> : null}

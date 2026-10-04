@@ -23,7 +23,8 @@ export function dotOf(status: string, reviewStatus?: string | null): DotCategory
 const DOT: Record<DotCategory, string> = {
   backlog: "border-2 border-dashed border-faint/70 bg-transparent",
   todo: "border-2 border-faint/70 bg-transparent",
-  in_progress: "bg-primary",
+  // `info`, not `primary`: a project page re-tints `primary` to the project's colour.
+  in_progress: "bg-info",
   in_review: "bg-tone-violet",
   done: "bg-success",
   cancelled: "bg-faint/40",

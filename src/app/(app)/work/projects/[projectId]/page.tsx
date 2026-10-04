@@ -5,7 +5,6 @@ import { ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -27,6 +26,7 @@ import { accentOf } from "@/modules/work/enums";
 import { ArchiveButton, EditProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
@@ -109,7 +109,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <ColorSquare color={accentOf(project.color, team.color)} className="size-2.5 rounded-[3px]" />
             {project.name}
             <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-            {project.status === "active" && !statusName ? null : <Badge dot variant={statusTone(project.status)}>{statusName ?? t(`projects.status.${project.status}`)}</Badge>}
+            <ProjectStatusBadge status={project.status} name={statusName ?? t(`projects.status.${project.status}`)} />
           </span>
         }
         description={

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -22,6 +21,7 @@ import { accentOf, teamStatusOf } from "@/modules/work/enums";
 import { ArchiveButton, EditTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
 import { checklistChoices, listStateChecklists, projectStatusNames, projectStatusSetChoices } from "@/modules/work/service";
 import { StageChecklists } from "@/modules/work/ui/checklists";
@@ -140,7 +140,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(project.status)}>{(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)}</Badge>
+                  <ProjectStatusBadge status={project.status} name={(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)} />
                 </TableCell>
                 <TableCell kind="number">{project.openTasks}</TableCell>
                 <TableCell>
