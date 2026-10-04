@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.4 (Phase 11 — CRM — added) |
-| **Date** | 2026-09-30 |
+| **Version** | 0.5 (Phase 12 — close the gaps — added after the inspection of 2026-10-04) |
+| **Date** | 2026-10-04 |
 | **Companion doc** | [SRS.md](./SRS.md) — requirement IDs below (FR-…, NFR-…) refer to it |
 
 ---
@@ -34,6 +34,7 @@ Four principles drive the order of work:
 | **9** | AI assistant + analytics | 3 wks | **M9** — "Ask SuZu" and owner dashboard v2 |
 | **10** | Projects & daily work management (PJM) — six releases | 12 wks | **M10** — every team plans, executes, hands off and delivers in the app; old trackers retired (SRS D21) |
 | **11** | CRM — five releases (SRS §4.15) | 10 wks | **M11** — deal → project → invoice → cash in one app; client profitability without a spreadsheet |
+| **12** | Close the gaps — eight releases ([inspection of 2026-10-04](./INSPECTION_2026-10-04.md)) | sized per release | **M12** — no open defect, payroll's first parallel run signed, a review cycle run, operations that survive something going wrong |
 
 Build time for the full HRM suite (phases 0–9) is roughly **41 weeks ≈ 9–10 months**. Starting late September 2026, that puts M1 in early November 2026, M2 in mid-December 2026, M3 in late January 2027, M3.5 in February 2027 and the first official payroll (M5) around mid-2027. The payroll parallel run overlaps phases 6–7.
 
@@ -118,7 +119,9 @@ CI on every pull request: typecheck → lint (incl. module boundaries) → unit 
 
 Each phase lists its scope (SRS IDs), key deliverables, and its **exit criteria** — the conditions under which the phase counts as done.
 
-> ### MVP status — read this first
+> ### Where things stand — read this first
+>
+> **Corrected 2026-10-04.** Phases 0–11 and the features built after them are all on `main`, and `main` is production. Wherever a status note below says "not pushed, not merged, not deployed", read it as the record of the day it was written. What is missing, wrong or unverified today is in [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md), and the work that follows from it is **Phase 12** below. The text under this paragraph is the callout as it stood on 2026-09-20.
 >
 > **Phases 0–9 are built.** Phases 1–9 sit on local branch `mvp` (not pushed, not merged, not deployed); only the first part of Phase 0 is live on `main`. `pnpm check` (2,498 tests) and `pnpm build` pass; migrations 0001–0071, all additive.
 >
@@ -585,6 +588,61 @@ This phase must be live by **November 2027** to serve the year-end review and th
 - A leaver's accounts, deals and follow-ups are reassigned before their offboarding checklist closes (verified on a test case).
 - No deal value is visible to a person without the rule's role or permission, no contact detail outside the account team, and no cost or margin without `pjm:cost` — proven by PGlite tests on every list, export and rollup.
 
+### Phase 12 — Close the gaps (eight releases) → **M12**
+
+> **Status, 2026-10-04 — planned, nothing built.** This phase adds no module. It is what the inspection of 4 October found: [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md) holds every item with its evidence, and the item numbers below (PJM-01, PAY-03, …) are that document's. Items marked ✔ there were re-checked; the others were found by one reading of the code and are read again before they are built on.
+
+**Why now.** Phases 0–11 were each built in a day or two and verified by tests and HTTP, not by people doing their work. They are now all in production, the company-wide cut-over to daily work in the app is 5 October (D28), and the first month lock, the payroll parallel run and the year-end review are each a few weeks out. The inspection found the app broad and mostly sound, with three kinds of debt: **defects** on paths nobody has walked yet (retro pay, a second payroll calculation, a must-read page for a unit), **flows that stop one step short** (no review template, a request that ends at "approved", a candidate who is never written to), and **operations that rest on nothing going wrong** (no staging, no restore drill, no test that opens a browser, CI that does not gate production). New features wait until these are closed.
+
+**Order.** By what breaks first for real people, then by what is hardest to undo: the cut-over's own defects → holes that expose data → figures leads and finance act on → payroll before its first run → HR flows before the year-end → operations → speed and house rules → the deferred Should-haves the owner picks.
+
+| Release | Size | Scope | Inspection items |
+|---|---|---|---|
+| **R0 — Cut-over week** | S | A project gets its plan row and job number when it is created, and the document space works at once · the client's review page preselects nothing and its file link lasts as long as the page says · a timesheet week always has an approver (fallback: HR or `work:manage`) and can be recalled · missed end-of-day reports: the missing days listed with a date switcher, the lead's nudge for past days, a next-morning reminder · must-read audiences on `unit:` / `unit_only:` keys · role-holder lookups cover the subtree · time logging on the task page · the developer's machine reports to Sentry as `development` | PJM-01, 05, 06 · DLY-01, 02 · KB-01 · PLT-01 · WRK-01 · ENG-07 |
+| **R1 — Safety** | M | CRM: tie the lead to the account in activity authorization; stop copying contact details into briefs and hand-off notes and make erasure reach leads and activity text; take the approval signal away from readers without `pjm:cost` · brand kits: private means private, rate-limit the file route · careers: rate-limit before parsing, count form loads, no consent stamped by a stranger, anonymisation that reaches events, notes, the outbox and audit summaries, an HR erase action, and deleted files actually deleted from storage · a per-person daily cap and token count on the assistant and drafts; redaction of contact details and pay passages before any model key is set · Content-Security-Policy (report-only, then enforced) and explicit HSTS · CI gates production (branch protection, Vercel waits for checks), secret scanning, a dependency bot · kiosk sessions expire · approvals: reassign pending turns at offboarding, HR "reassign" and "delegate on behalf" · a suspend action · review calibration and release gated on the cycle, per the owner's decision | CRM-01..03 · BRD-01 · REC-01..03 · AI-01, 02 · SEC-01..03 · PLT-02, 03 · PRF-02 · ENG-04 (files) |
+| **R2 — Project figures people can act on** | M | "Done internally" and "accepted by the client" are two things in the register · Active only through the kick-off gate, Done only through close-out, an audited re-open, closed projects locked for work · after kick-off, scope, budget and fee change only through change requests · retainer months: tasks and edits on the month's lines, the month in link labels, finished tasks linkable, the hours-allowance alert · billing: a message when a billing milestone has no scope, amount correction, a guarded milestone delete, a correction path for a signed acceptance, the generated biên bản stored as issued · job number on tasks and time entries; an approved brief's contacts and links stay editable · delivery set-up refuses a double submit; invoice void and edit, a payment cap, draft deletion, a commission adjustment rule · the morning plan visible to the chain; weekly reports for people in no team; a notice to the lead when a report with blockers is filed · leave cover drafted when leave is submitted, shown to the approver, with a hand-back reminder · task restore; project-less recurrences; a board and calendar for a team's backlog | PJM-02..04, 07..09 · CRM-04, 05 · DLY-03, 04 · WRK-02 · CHR-01 (acceptance) |
+| **R3 — Payroll ready for its first run** | L | Run integrity: retro items survive a recalculation, a changed input marks the run stale, typed figures keep their sign and an unknown code is refused · retro (derive, add, cancel) and off-cycle runs on screens; more than one bonus run a year · a per-person lines-and-trace view of a calculated run for C&B · payment: other banks routed or "paid another way", zero-net people excluded, only the latest file's skips counted · payslips withdrawn when a run is returned; `payBonusRun` atomic · PIT filings from approved runs only and correct in a two-run month · leave payout and final settlement on termination · salary-structure and pay-profile import; voiding a wrong approved version · Q13 holiday parameter; month timesheet export · **with the chief accountant:** night-OT multipliers, allowance proration, the PIT month basis, every Appendix A value, the VCB / ACB and statutory layouts, then real cases in the golden tests and the parallel-run report with employer cost and a sign-off record | PAY-01..14 · FR-PAY-18, 38 · FR-PLT-36 (salary) |
+| **R4 — HR flows end to end** | L | **Reviews:** a review-template editor and one starter template in the production seed; cycle launch notices; probation cycles from probation contracts · **Leave:** booking against projected accrual and next year's grant; the employee's own ledger · **Documents:** what was issued is stored as issued, numbering under a lock, letterhead from the entity, fuller placeholders, translated values, a register of issued documents, own letters on `/me` · **Records:** edit paths for contracts (any employment), dependents, contacts, vault rows, employment dates and code, positions; contract import · **Lifecycle:** probation pass and renewal that change workforce type, contract and document together; configurable approval for transfer, promotion and termination; the resignation form after a rehire · **Governance:** owner approval for leave and attendance policies (FR-PLT-39) · **Recruitment:** candidate emails (acknowledgement, invite with time and `.ics`, rejection, offer), recruiter notices, editors for per-job stages, interview kits and custom questions, the talent pool visible and withdrawable · **Attendance:** notices for flagged punches, rejections and the lock; a position picker instead of typed coordinates · **Requests:** a finance "to pay" queue with paid date and reference, advance settlement, a nightly claim sweep, the three missing seed types, the confirmation letter generated on approval | PRF-01 · LVE-01 · CHR-01..03 · REC-04, 05 · ATT-01, 02 · REQ-01, 02 · FR-CHR-09, 12 · FR-PLT-39 |
+| **R5 — Operations and privacy** | M | A staging project (or Supabase branch) and the production database off the laptop · runbooks for backup, restore, rollback and incidents, and one restore drill performed · `/api/health` and an external uptime check · cron: one invocation per job or a time budget, a notice on a timed-out run, a dead-man's ping per schedule; "run now" and a failed-delivery tile on Admin → Jobs · migration lint (destructive DDL, `lock_timeout`) · a Playwright smoke suite for the seven journeys of §4 against real Postgres through the pooler · housekeeping jobs (tokens, import batches, notifications, delivery tables, `job_run`) · privacy: "export my data", retention and HR-confirmed anonymisation of former employees, retention for GPS positions and AI conversations, a recorded notice for GPS and face data with self-service withdrawal, the NAS face store decommissioned or purged · idle timeout; rate limits on auth, kiosk and device endpoints · a decision on virus scanning · audit written in the mutation's transaction · the manual and these documents brought up to the code | ENG-01..05, 08, 09 · NFR-PRV-01..04 · NFR-OPS-02..04 · NFR-SEC-03 |
+| **R6 — Speed and house rules** | M | Message namespaces per route instead of the whole catalogue · `loading.tsx` and Suspense on the heavy pages; Tiptap loaded on demand · bounded lists: closed tasks off by default, pagination or virtualisation on tasks, deals, assets, candidates, obligations · the reads named in PERF-04 moved to `cached()` and to SQL aggregates, loops batched · role-holder lookups under one cached key · the boundary lint covers relative imports, and the 35 crossings go through `service.ts` · native controls, `window.confirm`, raw tables and stored Vietnamese replaced · exports: `.xlsx`, and the lists that have none · the service worker prunes its cache | PERF-01..05 · UI-01 · ENG-06 · FR-PLT-37 |
+| **R7 — The deferred Should-haves** | by item | Picked by the owner from §5 of the inspection, suggested order: **assistant quality** (embed on publish, the natural question, the routing fixes, the eval rewritten against the manual and the handbook, then the Claude driver exercised once) · **CRM completeness** (Account 360, list filters and CSV, aging by account and manager, credit-limit warnings, profitability drill-down, CSV import) · **reports** (leave usage and liability, OT against caps, joiners and leavers trend, file attachments on scheduled emails) · **assets** (maintenance and incident log, photos, notices and a daily job, export) · **ops** maker-checker · **KB and comms** (page feedback and comments, edit-conflict guard, surveys and pulse) · global search across people, pages and requests · Google Calendar out-of-office · pre-boarding form · custom roles | AI-03 · COM-01 · KB-02 · AST-01 · OPS-01 · the Should list |
+
+**Rules for this phase**
+
+- Every release starts by re-reading its unmarked items in the code; an item that turns out wrong is struck from the inspection, with a line saying why.
+- Every defect fixed gets the test that would have caught it; R3's fixes get golden cases.
+- R0 and R1 ship item by item — each is small and none waits for the others. R2–R6 ship as releases.
+- Nothing in R7 starts while an S1 item of the inspection is open.
+
+**Deadlines the calendar sets**
+
+| By | What must be closed |
+|---|---|
+| 5 October 2026 (cut-over, D28) | R0, as far as it gets; the owner's data items below |
+| First month lock (early November) | PAY-01, PAY-07 and the notices of ATT-01, since the lock is where they first bite |
+| First parallel payroll run | All of R3, the accountant's confirmations, Q16 (PDPL) |
+| 1 December 2026 | PRF-01 (year-end reviews) and LVE-01 (Tết leave is booked in December) |
+| Before an Anthropic key is set | AI-01, AI-02 |
+
+**Needs the owner** (the current list; it replaces §7 of earlier versions and the parts of `MVP_STATUS.md` §4 that are done)
+
+1. **Reporting lines and teams:** 17 of 35 active people have no line manager and 8 of them are in no work team either — their approvals fall to the owners and their reports and timesheets have no reader.
+2. **Role grants:** nobody holds an HR, payroll, finance, recruiter, sales or marketing role; six people hold `owner`.
+3. **Four decisions the build made:** who is asked for a plan, a report and time (today everyone active, collaborators and owners included); whether a line manager may calibrate and release a review; whether fixed allowances are pro-rated for joiners and leavers; whether a won deal may be set up for delivery more than once.
+4. **The chief accountant:** 20 of 21 statutory parameters are unverified and all 47 obligation templates unreviewed (`MVP_STATUS.md` §4.C stands in full); the R3 questions; three months of real payroll files for the golden tests.
+5. **Open questions:** Q5, Q13, Q14, Q16 and Q26–Q30 of the SRS.
+6. **Keys or a decision to do without:** Google Chat, Google Calendar, the Anthropic key.
+7. **Branch protection on `main`**, and agreement that a push no longer deploys without a green check.
+8. **A real client list** — production has one client.
+
+**Exit criteria**
+- No S1 item of the inspection is open, and every S2 item is closed or carries the owner's dated decision to leave it.
+- A month is locked, a payroll run is calculated twice with a retro item in it and proposed, and the parallel-run report is signed by the chief accountant.
+- A review cycle is created, run and released in production from a template made on screen.
+- A candidate applies and receives each of the four emails; a purged candidate leaves no name and no file behind.
+- A restore drill has been performed and written down; the smoke suite runs on every push; production cannot be deployed past a red check.
+- The documents in `docs/` describe the system as it is.
+
 ---
 
 ## 4. Quality plan
@@ -636,12 +694,15 @@ This phase must be live by **November 2027** to serve the year-end review and th
 
 ## 7. Immediate next steps
 
+*Rewritten 2026-10-04. The list of 2026-09-22 (build Phase 10, decide Q17–Q25) is done: D22–D30 record the answers and Phase 10 is live.*
+
 | # | Action | Who |
 |---|---|---|
-| 1 | Build Phase 10 release R1 (Plan) on branch `phase-10-pjm` | Owner + Claude Code — **in progress** |
-| 2 | Name the two PJM pilot teams and their leads (SRS Q24) | Owner |
-| 3 | Decide the job-number scheme per entity, who sees fees, and whether private projects stay closed to the owner (Q20, Q21, Q25) | Owner |
-| 4 | List the trackers and spreadsheets PJM will replace and pick a cut-over date (Q23) | Owner |
-| 5 | Decide which teams log time and whether EOD reports are required for everyone (Q17, Q18) | Owner + team leads |
-| 6 | Collect one real brief, one retainer scope and one signed biên bản nghiệm thu per pilot client as template sources (Q22) | Account managers |
-| 7 | Everything in `docs/MVP_STATUS.md` §4 still stands for the HRM go-live | Owner |
+| 1 | Read [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md) §3–§4 and strike or confirm the four decisions in its §7 | Owner |
+| 2 | Enter line managers for the 17 people without one, and grant the HR, payroll, finance, recruiter and sales roles | Owner |
+| 3 | Build Phase 12 **R0** (cut-over week), item by item | Owner + Claude Code |
+| 4 | Switch on branch protection on `main` and make Vercel wait for CI | Owner |
+| 5 | Build Phase 12 **R1** (safety) | Owner + Claude Code |
+| 6 | Book the chief accountant: Appendix A values, obligation templates, the R3 questions, three months of real payroll files | Owner + chief accountant |
+| 7 | Build **R2**, then **R3** before the first parallel run and **R4**'s review templates and leave booking before 1 December | Owner + Claude Code |
+| 8 | Close Q16 (PDPL, cross-border hosting) before payroll data goes live | Owner + counsel |

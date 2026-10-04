@@ -2,6 +2,8 @@
 
 *Written 2026-09-20, at the end of Phase 9. Companion to `docs/DEVELOPMENT_PLAN.md` §3, which holds the full per-phase status notes; this file is the short version plus the one list the owner needs: **§4, Needs the owner**.*
 
+> **Superseded in part, 2026-10-04.** Everything described here — and Phases 10 and 11 after it — is merged into `main` and live on `suzu.one`, so §1 ("nothing is deployed") and §6 are history. Of §4.A, the DNS, secrets, OAuth client and production seed are done; branch protection is unconfirmed and the role grants are not made (only `owner` and `department_head` are granted). §4.B has moved: email, web push, Messenger and Telegram deliver; files are on Cloudflare R2 and embeddings on Workers AI; Google Chat, Google Calendar and the assistant's model still have no key; there is still no virus scanning. **§4.C (the accountant's and counsel's confirmations), §4.E and §4.F still stand in full** — production has 20 of 21 statutory parameters unverified and all 47 obligation templates unreviewed. The current state, the defects found and the list of what the owner must do now are in [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md) and in Phase 12 of the development plan.
+
 ---
 
 ## 1. Where the code is
