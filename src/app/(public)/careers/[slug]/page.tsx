@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { visitorOf } from "@/lib/public-action";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { CONSENT_VERSION, PUBLIC_LIMITS } from "@/modules/recruit/enums";
-import { findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
+import { CONSENT_VERSION, DEFAULT_RETENTION_MONTHS, PUBLIC_LIMITS } from "@/modules/recruit/enums";
+import { countFormLoad, findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
@@ -40,7 +42,10 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
   const t = await getTranslations("recruit.careers");
   const locale = await getLocale();
   const format = await getFormatter();
-  const token = issueFormToken(slug);
+  // Rendering the form mints a signed token, so form loads are counted per visitor. Over the limit
+  // the advertisement is still shown — it is public — but no token is minted and no form drawn.
+  const formAllowed = (await countFormLoad(visitorOf({ headers: new Headers(await headers()) }))).ok;
+  const token = formAllowed ? issueFormToken(slug) : null;
   const title = locale === "en" && opening.titleEn ? opening.titleEn : opening.title;
 
   const sections = [
@@ -87,6 +92,9 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
           </p>
         ) : null}
 
+        {token === null ? (
+          <p className="text-sm text-muted-foreground">{t("formLimited")}</p>
+        ) : (
         <form method="post" action={`/careers/${slug}/apply`} encType="multipart/form-data" className="flex flex-col gap-4">
           <input type="hidden" name="formToken" value={token} />
           {/* The honeypot. Hidden from people by CSS and from screen readers by aria-hidden, and
@@ -172,7 +180,9 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
               with the form so the record says which wording this person actually agreed to. */}
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 text-xs">
             <p className="font-medium">{t("consent.title")}</p>
-            <p className="whitespace-pre-line text-muted-foreground">{t("consent.body", { months: 12 })}</p>
+            {/* The months are the retention job's own figure, and the address is where an erasure
+                request goes: HR acts on it from the candidate's page. */}
+            <p className="whitespace-pre-line text-muted-foreground">{t("consent.body", { months: DEFAULT_RETENTION_MONTHS, email: t("consent.contactEmail") })}</p>
             <input type="hidden" name="consentVersion" value={CONSENT_VERSION} />
             <label className="flex items-start gap-2">
               <input type="checkbox" name="consent" value="true" required className="mt-0.5" />
@@ -188,6 +198,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
             {t("submit")}
           </Button>
         </form>
+        )}
       </section>
     </div>
   );

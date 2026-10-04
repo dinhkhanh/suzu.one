@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { recordAudit } from "../audit/service";
@@ -167,10 +167,79 @@ export async function createPublicDownloadLink(file: StoredFileRow, expiresInSec
   return createSignedDownloadUrl(file.objectPath, expiresInSeconds);
 }
 
-/** Hides the file at once; the bytes go when the retention process purges them (DR-03). */
+/** Hides the file at once; the bytes go `DELETED_FILE_GRACE_DAYS` later, with the cleanup job (DR-03). */
 export async function softDeleteFile(fileId: string): Promise<StoredFileRow | undefined> {
   const [file] = await db().update(schema.storedFile).set({ deletedAt: new Date() }).where(and(eq(schema.storedFile.id, fileId), isNull(schema.storedFile.deletedAt))).returning();
   return file;
+}
+
+/** How long a deleted file's bytes are kept before they are removed: room to notice a mistake, and no longer. */
+export const DELETED_FILE_GRACE_DAYS = 7;
+/** Deleted files removed from storage per run of the cleanup job. A backlog drains over the following mornings. */
+const PURGE_BATCH = 200;
+/** Storage calls in flight at once while removing. */
+const PURGE_CONCURRENCY = 8;
+
+/**
+ * Removes these objects from storage and marks their rows, so they are never asked for again. An
+ * object that is already gone counts as removed (`removeObject` takes a 404 as done). One that
+ * storage refused keeps its row unmarked — the next run tries again — and the first such refusal is
+ * returned for the caller to raise once everything that could be marked has been.
+ */
+async function removeBytes(files: readonly { id: string; objectPath: string }[], now: Date): Promise<{ removed: number; failure: unknown }> {
+  const removed: string[] = [];
+  let failure: unknown;
+  for (let start = 0; start < files.length; start += PURGE_CONCURRENCY) {
+    const outcomes = await Promise.allSettled(files.slice(start, start + PURGE_CONCURRENCY).map((file) => removeObject(file.objectPath).then(() => file.id)));
+    for (const outcome of outcomes) {
+      if (outcome.status === "fulfilled") removed.push(outcome.value);
+      else failure ??= outcome.reason;
+    }
+  }
+  if (removed.length > 0) await db().update(schema.storedFile).set({ purgedAt: now }).where(inArray(schema.storedFile.id, removed));
+  return { removed: removed.length, failure };
+}
+
+/**
+ * What is deleted is deleted: the stored object of every file soft-deleted more than the grace
+ * period ago is removed, oldest first, a batch per run. The row is kept (it is what the audit trail
+ * points at) and marked `purged_at`, so the next run does not ask storage for it again.
+ */
+export async function purgeDeletedFiles(now: Date = new Date(), limit: number = PURGE_BATCH): Promise<{ purgedFiles: number }> {
+  const cutoff = new Date(now.getTime() - DELETED_FILE_GRACE_DAYS * 24 * 60 * 60 * 1000);
+  const due = await db()
+    .select({ id: schema.storedFile.id, objectPath: schema.storedFile.objectPath })
+    .from(schema.storedFile)
+    .where(and(isNotNull(schema.storedFile.deletedAt), lt(schema.storedFile.deletedAt, cutoff), isNull(schema.storedFile.purgedAt)))
+    .orderBy(asc(schema.storedFile.deletedAt), asc(schema.storedFile.id))
+    .limit(limit);
+  const { removed, failure } = await removeBytes(due, now);
+  // After the marking, so one object storage will not give up does not hold back the rest.
+  if (failure) throw failure;
+  return { purgedFiles: removed };
+}
+
+/** What an erased file is called. A CV is named after its owner, so the name goes with the bytes. */
+export const ERASED_FILE_NAME = "erased";
+
+/**
+ * Deletes files **for good, now**: hidden, renamed (the row stays, and a CV's name is its owner's),
+ * and their bytes removed without waiting out the grace period. For an erasure — a candidate
+ * anonymised by the retention job or at their own request (NFR-PRV-04) — where "it will be gone in
+ * a week" is not an answer. Files already soft-deleted are included: their bytes go at once too.
+ * Returns how many objects were removed.
+ */
+export async function eraseFiles(fileIds: readonly string[], now: Date = new Date()): Promise<number> {
+  if (fileIds.length === 0) return 0;
+  await db().update(schema.storedFile).set({ deletedAt: now }).where(and(inArray(schema.storedFile.id, [...fileIds]), isNull(schema.storedFile.deletedAt)));
+  await db().update(schema.storedFile).set({ fileName: ERASED_FILE_NAME }).where(inArray(schema.storedFile.id, [...fileIds]));
+  const files = await db()
+    .select({ id: schema.storedFile.id, objectPath: schema.storedFile.objectPath })
+    .from(schema.storedFile)
+    .where(and(inArray(schema.storedFile.id, [...fileIds]), isNull(schema.storedFile.purgedAt)));
+  const { removed, failure } = await removeBytes(files, now);
+  if (failure) throw failure;
+  return removed;
 }
 
 /** Uploads that were allowed but never finished: remove whatever arrived, a day later. */

@@ -32,7 +32,7 @@ import {
   type WorkMode,
 } from "./enums";
 import { type CandidateLike, type DuplicateMatch, isCertainDuplicate, type RedactedDuplicateMatch, normaliseEmail, normalisePhone, probeFor, rankDuplicates } from "./engine/duplicates";
-import { canBrowseCandidates, canReadRecruitMoney, canRunRecruitment, canViewOpening, type OpeningTarget } from "./policy";
+import { canBrowseCandidates, canEraseCandidate, canReadRecruitMoney, canRunRecruitment, canViewOpening, type OpeningTarget } from "./policy";
 
 export * from "./enums";
 export * from "./engine/duplicates";
@@ -40,6 +40,7 @@ export {
   canActOnApplication,
   canBrowseCandidates,
   canEditOpening,
+  canEraseCandidate,
   canFileHiringRequest,
   canManageCandidates,
   canManagePipelines,
@@ -238,6 +239,14 @@ const targetOf = (opening: { entityId: string; departmentId: string | null; team
 
 // ── Openings ────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The published openings as the careers pages read them (`public.ts` holds the reader): one cache
+ * entry for the whole short list. Every writer of `job_opening` below drops it once its change has
+ * committed — publishing, editing, closing and reopening all change what a stranger is shown.
+ */
+export const PUBLISHED_OPENINGS_CACHE = "recruit:published-openings";
+export const invalidatePublishedOpenings = (): Promise<void> => invalidate(PUBLISHED_OPENINGS_CACHE);
+
 export type OpeningListRow = {
   id: string;
   code: string;
@@ -406,7 +415,7 @@ function checkBand(min: number | null, max: number | null) {
 export async function createOpening(input: OpeningInput, money: OpeningMoneyInput | null, actorPersonId: string, options: { hiringRequestId?: string | null } = {}): Promise<OpeningRow> {
   if (money) checkBand(money.salaryMinVnd, money.salaryMaxVnd);
   if (input.headcount < 1 || !Number.isSafeInteger(input.headcount)) throw new ActionError("recruit_headcount_invalid");
-  return inTransaction(async (tx) => {
+  const created = await inTransaction(async (tx) => {
     const [entity] = await tx.select({ code: schema.entity.code, isActive: schema.entity.isActive }).from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1);
     if (!entity?.isActive) throw new ActionError("recruit_entity_not_found");
     const pipeline = await findPipeline(input.pipelineId, tx);
@@ -431,6 +440,8 @@ export async function createOpening(input: OpeningInput, money: OpeningMoneyInpu
     }
     return opening;
   });
+  await invalidatePublishedOpenings();
+  return created;
 }
 
 /** `money: null` = the editor may not read the band, so the stored one is left exactly as it was. */
@@ -446,6 +457,7 @@ export async function updateOpening(openingId: string, input: OpeningInput, mone
     .set({ ...input, ...(money ?? {}), publicSlug, updatedAt: now() })
     .where(eq(schema.jobOpening.id, openingId))
     .returning();
+  await invalidatePublishedOpenings();
   return { before, after };
 }
 
@@ -465,6 +477,7 @@ export async function setOpeningStatus(openingId: string, status: OpeningStatus,
     })
     .where(eq(schema.jobOpening.id, openingId))
     .returning();
+  await invalidatePublishedOpenings();
   return { before, after };
 }
 
@@ -703,11 +716,26 @@ export async function canReachCandidate(principal: Principal, candidateId: strin
 
 export type CandidateApplicationRow = { applicationId: string; openingId: string; openingCode: string; openingTitle: string; stageName: string; status: ApplicationStatus; appliedAt: Date };
 
+/**
+ * Every opening this candidate has applied to, as the rules see an opening — **all** of them, not
+ * the ones a viewer may see: erasing a candidate empties them everywhere, and `canEraseCandidate`
+ * is asked about every place that will be touched.
+ */
+export async function candidateOpeningTargets(candidateId: string, executor: Executor = db()): Promise<OpeningTarget[]> {
+  return executor
+    .select({ entityId: schema.jobOpening.entityId, departmentId: schema.jobOpening.departmentId, teamId: schema.jobOpening.teamId })
+    .from(schema.jobApplication)
+    .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
+    .where(eq(schema.jobApplication.candidateId, candidateId));
+}
+
 export type CandidateView = {
   candidate: CandidateRow;
   applications: CandidateApplicationRow[];
   referredByName: string | null;
   canManage: boolean;
+  /** Whether the viewer may erase this candidate on request (`canEraseCandidate`). False once anonymised. */
+  canErase: boolean;
 };
 
 export async function getCandidateView(viewer: { principal: Principal; personId: string | null }, candidateId: string): Promise<CandidateView | null> {
@@ -736,9 +764,14 @@ export async function getCandidateView(viewer: { principal: Principal; personId:
   // With no application in reach, only a group-wide grant may see the row — a lead who has applied
   // nowhere carries no entity to scope a narrower grant against. The rule `listCandidates` lists by.
   if (applications.length === 0 && !(canBrowseCandidates(viewer.principal) && entityReach(viewer.principal, "recruit:manage").all)) return null;
-  const [referrer] = candidate.referredByPersonId ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1) : [undefined];
+  const canManage = canBrowseCandidates(viewer.principal);
+  const [[referrer], appliedTo] = await Promise.all([
+    candidate.referredByPersonId ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1) : [undefined],
+    // Asked only for somebody who could erase at all, and only while there is somebody left to erase.
+    canManage && !candidate.anonymisedAt ? candidateOpeningTargets(candidateId) : null,
+  ]);
 
-  return { candidate, applications, referredByName: referrer?.fullName ?? null, canManage: canBrowseCandidates(viewer.principal) };
+  return { candidate, applications, referredByName: referrer?.fullName ?? null, canManage, canErase: appliedTo !== null && canEraseCandidate(viewer.principal, appliedTo) };
 }
 
 // ── Applications ────────────────────────────────────────────────────────────────────────────

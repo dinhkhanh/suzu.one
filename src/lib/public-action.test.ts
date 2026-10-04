@@ -124,7 +124,7 @@ describe("the public pipeline", () => {
     expect((await auditRows("test.expected"))[0].action).toBe("test.expected.refused");
   });
 
-  it("checks in order: parse, then limit, then spam — a malformed probe never even counts", async () => {
+  it("checks in order: limit, then parse, then spam — a malformed probe is counted like any other", async () => {
     const calls: string[] = [];
     const { action } = actionUnder("test.order", {
       rateLimit: async () => {
@@ -137,8 +137,25 @@ describe("the public pipeline", () => {
       },
     });
     await action({ value: "x" }, visitor);
-    expect(calls).toEqual([]);
+    expect(calls).toEqual(["limit"]);
     await action({ value: "hello" }, visitor);
-    expect(calls).toEqual(["limit", "spam"]);
+    expect(calls).toEqual(["limit", "limit", "spam"]);
+  });
+
+  it("stops auditing malformed posts once the visitor is over the limit — the body is not even parsed", async () => {
+    // A limiter that allows three, as the modules' real ones do: the fourth is the first refusal.
+    let hits = 0;
+    const { action } = actionUnder("test.flood", {
+      rateLimit: async () => (++hits <= 3 ? { ok: true } : { ok: false, retryAfterSeconds: 60, repeat: hits > 4 }),
+    });
+    const answers = [];
+    for (let post = 0; post < 10; post++) answers.push(await action({ value: "x" }, visitor));
+    expect(answers.slice(0, 3)).toEqual(Array(3).fill({ ok: false, error: "invalid" }));
+    expect(answers.slice(3)).toEqual(Array(7).fill({ ok: false, error: "rate_limited", message: "rate_limited" }));
+    // Three rows for the three counted attempts, one for the refusal, and nothing for the other six.
+    const rows = await auditRows("test.flood");
+    expect(rows.filter((row) => row.action === "test.flood.invalid")).toHaveLength(3);
+    expect(rows.filter((row) => row.action === "test.flood.rate_limited")).toHaveLength(1);
+    expect(rows).toHaveLength(4);
   });
 });

@@ -7,8 +7,10 @@
 //     caller may not read it — so a recruiter posting the edit form by hand cannot set a band, and
 //     an existing band is left exactly as it was rather than being wiped by a form that never
 //     showed it.
-//   · **Audit entries name the opening and the candidate, never a figure.** The audit log is read
-//     far more widely than a salary band.
+//   · **Audit entries name the opening, never a figure and never a candidate.** The audit log is
+//     read far more widely than a salary band, and it is append-only: a candidate's name written
+//     there would still be there after the retention job, or an erasure request, had removed it
+//     everywhere else. A candidate is the resource's id, an application is its id.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
@@ -17,9 +19,11 @@ import { STAGE_CATEGORIES } from "./enums";
 import { CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, RECRUIT_EMAIL_KINDS, REJECTION_REASONS, WORK_MODES } from "./enums";
 import { saveEmailTemplate, sendCandidateEmail } from "./emails";
 import { decideHiringRequest, submitHiringRequest } from "./hiring";
+import { eraseCandidate } from "./jobs";
 import {
   canActOnApplication,
   canEditOpening,
+  canEraseCandidate,
   canFileHiringRequest,
   canManageCandidates,
   canManagePipelines,
@@ -28,6 +32,7 @@ import {
   canSetRecruitMoney,
 } from "./policy";
 import {
+  candidateOpeningTargets,
   canReachCandidate,
   createApplication,
   createCandidate,
@@ -291,7 +296,9 @@ const createCandidatePipeline = createAction({
     revalidatePath("/recruit/candidates");
     return {
       data: { id: candidate.id },
-      audit: { resource: { type: "candidate", id: candidate.id, entityId: null }, summary: candidate.fullName, after: { source: candidate.source, confirmedNotDuplicate } },
+      // The record's id (the resource), never its name: the audit log cannot be edited, so a name
+      // written here would outlive the candidate's anonymisation.
+      audit: { resource: { type: "candidate", id: candidate.id, entityId: null }, summary: "candidate added", after: { source: candidate.source, confirmedNotDuplicate } },
     };
   },
 });
@@ -306,9 +313,29 @@ const updateCandidatePipeline = createAction({
     const { candidateId, ...rest } = input;
     const { before, after } = await updateCandidate(candidateId, rest);
     revalidatePath(`/recruit/candidates/${candidateId}`);
+    // Which fields changed, not what they said: neither the old name nor the new one is written.
+    const changed = (Object.keys(rest) as (keyof typeof rest)[]).filter((field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]));
     return {
       data: { id: after.id },
-      audit: { resource: { type: "candidate", id: after.id, entityId: null }, summary: after.fullName, before: { fullName: before.fullName }, after: { fullName: after.fullName } },
+      audit: { resource: { type: "candidate", id: after.id, entityId: null }, summary: "candidate updated", after: { changed } },
+    };
+  },
+});
+
+const eraseCandidatePipeline = createAction({
+  name: "recruit.candidate.erase",
+  input: z.object({ candidateId: z.uuid() }),
+  // `recruit:manage` over every opening the candidate applied to (`canEraseCandidate`): erasing
+  // empties the record everywhere, so authority over one of its openings is not authority over it.
+  authorize: async (user, input) => canEraseCandidate(user.principal, await candidateOpeningTargets(input.candidateId)),
+  run: async ({ user, input }) => {
+    const erased = await eraseCandidate(input.candidateId, user.person.id);
+    revalidatePath(`/recruit/candidates/${input.candidateId}`);
+    revalidatePath("/recruit/candidates");
+    return {
+      data: erased,
+      // What was done and to how much — and nothing that says to whom.
+      audit: { resource: { type: "candidate", id: input.candidateId, entityId: null }, summary: "candidate erased on request", after: erased },
     };
   },
 });
@@ -424,8 +451,9 @@ const sendCandidateEmailPipeline = createAction({
     revalidatePath(`/recruit/applications/${input.applicationId}`);
     return {
       data: { to: sent.to },
-      // The subject, not the letter, and never the address: the audit log is read across the company.
-      audit: { resource: { type: "job_application", id: input.applicationId, entityId: sent.entityId }, summary: sent.templateCode, after: { subject: sent.subject } },
+      // Which wording, not the letter, its subject or the address: the audit log is read across the
+      // company, and a subject may greet the candidate by name.
+      audit: { resource: { type: "job_application", id: input.applicationId, entityId: sent.entityId }, summary: sent.templateCode },
     };
   },
 });
@@ -493,6 +521,10 @@ export async function createCandidateAction(input: unknown) {
 
 export async function updateCandidateAction(input: unknown) {
   return updateCandidatePipeline(input);
+}
+
+export async function eraseCandidateAction(input: unknown) {
+  return eraseCandidatePipeline(input);
 }
 
 export async function createApplicationAction(input: unknown) {

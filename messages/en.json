@@ -9841,6 +9841,13 @@
       "properties": "Details",
       "links": "Link"
     },
+    "erase": {
+      "open": "Erase data",
+      "title": "Erase this candidate's data?",
+      "hint": "Use this when the candidate asks for their data to be deleted. Their name, contact details, CV and other files, answers and every note about them are removed from all their applications at once. The applications stay in the reports as anonymous counts. This cannot be undone.",
+      "confirm": "Erase now",
+      "cancel": "Cancel"
+    },
     "home": {
       "newOpening": "New opening",
       "careers": "Careers site",
@@ -10054,7 +10061,8 @@
       "offer_accepted": "Offer accepted",
       "offer_declined": "Offer declined",
       "converted": "Became an employee",
-      "anonymised": "Anonymised under the retention policy"
+      "anonymised": "Anonymised under the retention policy",
+      "erased": "Erased at the candidate's request"
     },
     "errors": {
       "recruit_pipeline_empty": "A pipeline needs at least one stage.",
@@ -10076,6 +10084,8 @@
       "recruit_candidate_name_required": "A candidate needs a name.",
       "recruit_candidate_not_found": "No such candidate.",
       "recruit_candidate_anonymised": "The candidate's data has been anonymised under the retention policy.",
+      "recruit_candidate_hired": "This candidate became an employee. Their record is kept with the employee register and cannot be erased here.",
+      "recruit_candidate_in_progress": "This candidate still has an application in progress. Withdraw or reject it first, then erase.",
       "recruit_candidate_duplicate": "This candidate is already on file (same email or phone).",
       "recruit_candidate_possible_duplicate": "Somebody with this name is already on file. Check the matches, then confirm if this is someone else.",
       "recruit_already_applied": "This candidate has already applied to this opening.",
@@ -10158,6 +10168,7 @@
       "salary": "Salary",
       "apply": "Apply",
       "submit": "Send application",
+      "formLimited": "This page has been opened many times in a short while, so the application form is paused. Please try again later.",
       "workMode": {
         "onsite": "On site",
         "hybrid": "Hybrid",
@@ -10187,7 +10198,8 @@
       },
       "consent": {
         "title": "How we handle your personal data",
-        "body": "By sending this application you agree that SuZu Group may collect and process the information in it for the purpose of recruiting for the role you applied to.\nYour application is kept for {months} months from the day you apply and is then deleted or anonymised, unless you agree below that we may keep it for other opportunities.\nYou may ask to see, correct or delete your data at any time by contacting HR.",
+        "body": "By sending this application you agree that SuZu Group may collect and process the information in it for the purpose of recruiting for the role you applied to.\nYour application is kept for {months} months after it is closed and is then deleted or anonymised, unless you agree below that we may keep it for other opportunities.\nYou may ask to see, correct or delete your data at any time by writing to {email}.",
+        "contactEmail": "privacy@suzu.one",
         "agree": "I agree that SuZu Group may process this application for the role I applied to.",
         "talentPool": "I also agree that SuZu Group may keep my details for other suitable roles in future."
       },

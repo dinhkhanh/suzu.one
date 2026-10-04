@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAREERS_LIMITS, hitExpiresAt, retryAfterSeconds, windowStartFor, withinLimit } from "./rate-limit";
+import { CAREERS_LIMITS, hitExpiresAt, isRepeatRefusal, retryAfterSeconds, windowStartFor, withinLimit } from "./rate-limit";
 
 const at = (iso: string) => new Date(iso);
 
@@ -24,6 +24,15 @@ describe("withinLimit", () => {
     expect(withinLimit(3, limit)).toBe(true);
     expect(withinLimit(4, limit)).toBe(false);
     expect(withinLimit(400, limit)).toBe(false);
+  });
+});
+
+describe("isRepeatRefusal", () => {
+  it("is false for the first hit over the limit — the one refusal worth recording — and true for every one after it", () => {
+    const limit = { max: 3, windowSeconds: 3600 };
+    expect(isRepeatRefusal(4, limit)).toBe(false);
+    expect(isRepeatRefusal(5, limit)).toBe(true);
+    expect(isRepeatRefusal(400, limit)).toBe(true);
   });
 });
 

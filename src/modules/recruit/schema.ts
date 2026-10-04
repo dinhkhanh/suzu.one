@@ -242,8 +242,12 @@ export const candidate = pgTable(
     /**
      * PDPL (FR-REC-03, 13). `consentAt` is when the candidate agreed to the notice they were shown
      * and `consentVersion` is which notice that was; `talentPoolConsent` is the separate, opt-in
-     * agreement to be kept on file after this application ends, which is the only thing that
-     * extends `retainUntil`. `anonymisedAt` is set by the retention job, never by a person.
+     * agreement to be kept on file after this application ends — the one thing that stops the
+     * retention clock. All three are written when the record is made by the person it is about
+     * and **never by a later application**: anybody can type somebody else's address into the
+     * public form (`public.ts`). `retainUntil` is the window from the day the record was made; the
+     * job also counts it from the day their latest application closed (`engine/retention.ts`).
+     * `anonymisedAt` is set by the retention job, or by HR erasing the candidate at their request.
      */
     consentAt: timestamp("consent_at", { withTimezone: true }),
     consentVersion: text("consent_version"),

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { entity } from "../org/schema";
 import { person } from "../people/schema";
@@ -31,6 +32,15 @@ export const storedFile = pgTable(
     uploadedByPersonId: uuid("uploaded_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // When the stored object itself was removed: a grace period after `deletedAt` (the cleanup
+    // job), or at once for an erasure. The row stays — it is the record that a file existed.
+    purgedAt: timestamp("purged_at", { withTimezone: true }),
   },
-  (t) => [index("stored_file_owner_idx").on(t.ownerType, t.ownerId)],
+  (t) => [
+    index("stored_file_owner_idx").on(t.ownerType, t.ownerId),
+    // What the cleanup job reads: deleted files whose bytes are still in storage.
+    index("stored_file_unpurged_idx")
+      .on(t.deletedAt)
+      .where(sql`${t.deletedAt} is not null and ${t.purgedAt} is null`),
+  ],
 ).enableRLS();
