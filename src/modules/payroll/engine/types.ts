@@ -212,6 +212,25 @@ export type PitResult = {
   tax: number;
 };
 
+/**
+ * What the engine tells a human to look at. The last three mean **a figure somebody entered was
+ * not paid** — a typed-in amount under a code that is not an input component, a negative typed-in
+ * amount, a retro item with no retro component in the catalogue — and a run carrying one must not
+ * be proposed until it is put right (`run-readiness.ts`).
+ */
+export type PayWarning =
+  | "negative_net"
+  | "no_salary_structure"
+  | "zero_paid_days"
+  | "insurance_base_below_minimum"
+  | "insurance_base_above_declared"
+  | "input_code_unknown"
+  | "input_negative"
+  | "retro_component_missing";
+
+/** The warnings that say an entered figure was left out of the result. */
+export const UNPAID_FIGURE_WARNINGS: readonly PayWarning[] = ["input_code_unknown", "input_negative", "retro_component_missing"];
+
 export type PersonPayResult = {
   personId: string;
   entityId: string;
@@ -223,6 +242,6 @@ export type PersonPayResult = {
   insurance: InsuranceResult;
   pit: PitResult;
   /** Anything a human should look at before the run is proposed (FR-PAY-31 adds more). */
-  warnings: ("negative_net" | "no_salary_structure" | "zero_paid_days" | "insurance_base_below_minimum" | "insurance_base_above_declared")[];
+  warnings: PayWarning[];
   trace: TraceStep[];
 };

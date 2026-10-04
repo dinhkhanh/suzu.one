@@ -8,7 +8,7 @@ import { computeFormula } from "./formula";
 import { componentVariable } from "./formula/variables";
 import { findComponent, taxablePart } from "./components";
 import { applyShare, divisorDays, employedDaysIn, segmentShare } from "./proration";
-import type { PayLine, PersonPayInput } from "./types";
+import type { PayLine, PayWarning, PersonPayInput, TraceStep } from "./types";
 
 export const BASE_CODE = "BASE";
 
@@ -149,13 +149,33 @@ export function calculateFormulaLines(input: PersonPayInput, existing: readonly 
   return lines;
 }
 
-/** Figures typed into the run (bonus, commission, advance, penalty): taken as given, never pro-rated. */
-export function calculateInputLines(input: PersonPayInput): PayLine[] {
+/**
+ * Figures typed into the run (bonus, commission, advance, penalty): taken as given, never pro-rated.
+ *
+ * An amount is entered as a positive figure and the component's kind says which way it goes: an
+ * earning is added, a deduction is taken off. `setRunInput` refuses anything else where it is
+ * typed; the checks here are the second line, and what they leave out is **named as a warning**,
+ * never dropped in silence and never paid with its sign turned round.
+ */
+export function calculateInputLines(input: PersonPayInput): { lines: PayLine[]; warnings: PayWarning[]; trace: TraceStep[] } {
   const lines: PayLine[] = [];
+  const warnings = new Set<PayWarning>();
+  const trace: TraceStep[] = [];
   for (const entry of input.inputs) {
+    // Nothing was entered, so nothing is lost by leaving it out.
+    if (entry.amount === 0) continue;
     const component = findComponent(input.components, entry.code);
-    if (!component || component.source !== "input" || entry.amount === 0) continue;
-    const amount = Math.abs(entry.amount);
+    if (!component || component.source !== "input") {
+      warnings.add("input_code_unknown");
+      trace.push({ stage: "inputs", rule: "input_code_unknown", detail: { code: entry.code } });
+      continue;
+    }
+    if (entry.amount < 0) {
+      warnings.add("input_negative");
+      trace.push({ stage: "inputs", rule: "input_negative", detail: { code: entry.code } });
+      continue;
+    }
+    const amount = entry.amount;
     lines.push({
       code: component.code,
       kind: component.kind,
@@ -168,5 +188,5 @@ export function calculateInputLines(input: PersonPayInput): PayLine[] {
       inputs: { entered: amount },
     });
   }
-  return lines;
+  return { lines, warnings: [...warnings], trace };
 }

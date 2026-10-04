@@ -59,6 +59,9 @@ async function reimbursementOf(runId: string, personId: string): Promise<{ amoun
 
 beforeAll(async () => {
   await migrateTestDb();
+  // Payroll takes a figure only under a code its catalogue holds as a typed-in component — what
+  // `pnpm db:seed` gives every real database. Without it the posting is refused, not skipped.
+  await db().insert(schema.payComponent).values({ code: REIMBURSEMENT_COMPONENT, name: "Hoàn ứng chi phí", kind: "earning", category: "other", source: "input", taxTreatment: "exempt", validFrom: "2026-01-01", status: "approved" });
   const [group, other] = await db()
     .insert(schema.entity)
     .values([

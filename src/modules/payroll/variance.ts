@@ -100,10 +100,18 @@ async function thresholdOf(run: PayrollRunRow, executor: Executor): Promise<numb
 /** Used only when a run carries no policy of its own: 10%. */
 export const DEFAULT_THRESHOLD_BP = 1000;
 
-/** People in the run who are missing something the payment or the declaration needs. */
-export async function runBlockers(run: PayrollRunRow, executor?: Executor): Promise<{ personId: string; flags: string[] }[]> {
-  const variance = await getRunVariance(run, executor);
-  return variance.flagged
-    .filter((person) => person.flags.includes("missing_bank_account") || person.flags.includes("missing_tax_code") || person.flags.includes("negative_net"))
-    .map((person) => ({ personId: person.personId, flags: person.flags }));
+/** The flags that say a person could not be paid, or declared, as things stand. */
+export const PAYABILITY_FLAGS = ["negative_net", "missing_bank_account", "missing_tax_code"] as const;
+export type PayabilityFlag = (typeof PAYABILITY_FLAGS)[number];
+
+/**
+ * People in the run who are missing something the payment or the declaration needs. Which of
+ * these refuse a proposal is `run-readiness.ts`'s to say. A caller that has the variance check in
+ * hand passes it, and the comparison is not made twice.
+ */
+export async function runBlockers(run: PayrollRunRow, executor?: Executor, variance?: Pick<RunVariance, "flagged">): Promise<{ personId: string; flags: PayabilityFlag[] }[]> {
+  const report = variance ?? (await getRunVariance(run, executor));
+  return report.flagged
+    .map((person) => ({ personId: person.personId, flags: PAYABILITY_FLAGS.filter((flag) => person.flags.includes(flag)) }))
+    .filter((person) => person.flags.length > 0);
 }

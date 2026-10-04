@@ -45,7 +45,8 @@ const raisePipeline = createAction({
   // Only the person whose payslip it is asks about it; C&B answer, they do not ask on someone's behalf.
   authorize: async (user, input) => {
     const payslip = await getPayslip(input.payslipId);
-    return !!payslip && payslip.personId === user.person.id;
+    // A withdrawn payslip cannot be opened, so it cannot be asked about either.
+    return !!payslip && !payslip.withdrawnAt && payslip.personId === user.person.id;
   },
   run: async ({ user, input }) => {
     const query = await raisePayslipQuery(input, user.person.id);

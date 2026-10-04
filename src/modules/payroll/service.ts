@@ -24,6 +24,11 @@ export { createOffCycleRun } from "./runs";
  * claim). The caller finds the entity's open run, types its figure in under a pay component, and
  * takes it out again if what it was for goes away. It never reads a figure back: `RunHandle`
  * carries ids, a month and a status and nothing else, so no amount leaves payroll this way.
+ *
+ * `setRunInput` **throws** when payroll cannot take the figure — the code is not an input
+ * component of the entity's catalogue, or the amount is negative — so the caller's transaction
+ * fails and says so, rather than reporting "posted" for a line that would pay nothing. A figure
+ * posted to (or taken out of) a run that was already calculated sends that run back to draft.
  */
 export { findOpenRegularRun, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "./runs";
 /**
