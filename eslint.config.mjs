@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Git worktrees of this same repository (parallel agent sessions); each is linted in its own checkout.
+    ".claude/worktrees/**",
     // The face kiosk's WebAssembly runtimes, copied from node_modules on install (scripts/kiosk-assets.mjs).
     "public/kiosk/assets/vendor/**",
   ]),

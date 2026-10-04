@@ -45,3 +45,6 @@ drizzle/.generate.lock
 
 # the face kiosk's runtimes, copied from node_modules on install (scripts/kiosk-assets.mjs)
 /public/kiosk/assets/vendor/
+
+# git worktrees of parallel agent sessions
+.claude/worktrees/
