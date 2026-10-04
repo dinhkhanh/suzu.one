@@ -143,7 +143,8 @@ export async function decideHiringRequest(actorPersonId: string, requestId: stri
     }
 
     if (outcome === "approved" && hiringRequest) {
-      const target = { entityId: hiringRequest.entityId, departmentId: hiringRequest.departmentId, teamId: hiringRequest.teamId };
+      // The units the request names; a grant on either, or on any unit above, answers for it.
+      const target = { entityId: hiringRequest.entityId, unitPath: [hiringRequest.departmentId, hiringRequest.teamId].filter((id): id is string => !!id) };
       const recruiters = await listPeopleHolding("recruit:manage", target, { includeWildcard: false, executor: tx });
       await notify(
         {

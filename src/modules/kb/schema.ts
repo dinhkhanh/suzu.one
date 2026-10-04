@@ -186,7 +186,8 @@ export const kbPageView = pgTable(
   (t) => [uniqueIndex("kb_page_view_day_idx").on(t.pageId, t.personId, t.viewedOn), index("kb_page_view_person_idx").on(t.personId, t.viewedAt)],
 ).enableRLS();
 
-// Who must confirm a "must read" page: subject keys as in `kb_access`, without roles.
+// Who must confirm a "must read" page: subject keys as in `kb_access` — "all", "entity:<id>",
+// "unit:<id>" (the unit and everything below it), "unit_only:<id>", "person:<id>" — without roles.
 export const kbAckAudience = pgTable(
   "kb_ack_audience",
   {

@@ -15,7 +15,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { loadGrants } from "../platform/rbac/service";
 import { pagePublishedVisibleSql } from "./access-sql";
-import { parseSubjectKey } from "./enums";
+import { ACK_AUDIENCE_TYPES, parseSubjectKey } from "./enums";
 import { loadPage, type PageRow } from "./pages";
 import { canViewPage, type KbViewer, viewerKeys } from "./policy";
 
@@ -23,16 +23,20 @@ type Executor = Tx | ReturnType<typeof db>;
 const { kbAckAudience, kbAckReminder, kbAcknowledgement, kbPage, kbPageVersion, kbSpace, person } = schema;
 
 export const ACK_REMINDER_EVERY_DAYS = 3;
-export const ACK_AUDIENCE_TYPES = ["all", "entity", "department", "team", "person"] as const;
 
-/** `person` is in the audience of `kb_page` (both un-aliased in the query). */
+/**
+ * `person` is in the audience of `kb_page` (both un-aliased in the query). The keys mean what they
+ * mean on an access row (`viewerKeys` in policy.ts; workflow.test.ts keeps the two in step):
+ * `unit:<id>` names that unit and every unit below it — so it matches any unit on the person's
+ * path, as the tree is now (FR-KB-14) —, `unit_only:<id>` the one unit the person sits in.
+ */
 const inAudienceSql = (): SQL => sql`exists (select 1 from ${kbAckAudience} where ${kbAckAudience.pageId} = ${kbPage.id} and (
   ${kbAckAudience.subjectKey} = 'person:' || ${person.id}::text
   or (${person.workforceType} <> 'collaborator' and (
     ${kbAckAudience.subjectKey} = 'all'
     or ${kbAckAudience.subjectKey} = 'entity:' || ${person.primaryEntityId}::text
-    or ${kbAckAudience.subjectKey} = 'department:' || ${person.departmentId}::text
-    or ${kbAckAudience.subjectKey} = 'team:' || ${person.teamId}::text))))`;
+    or ${kbAckAudience.subjectKey} = 'unit_only:' || ${person.orgUnitId}::text
+    or ${kbAckAudience.subjectKey} in (select 'unit:' || above::text from unnest(${person.orgUnitPath}) as above)))))`;
 
 const confirmedSql = (): SQL => sql`exists (select 1 from ${kbAcknowledgement} where ${kbAcknowledgement.pageId} = ${kbPage.id} and ${kbAcknowledgement.versionId} = ${kbPage.ackVersionId} and ${kbAcknowledgement.personId} = ${person.id})`;
 
