@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { setRowBillableAction, setTimeCellAction } from "../time-actions";
 import { durationText, hoursOf, parseCellDuration } from "./format";
 
-export type GridRowView = { key: string; label: string; sub: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
+export type GridRowView = { key: string; label: string; sub: string | null; /** The project's job number, shown before its name. */ job?: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
 export type GridDayView = {
   date: string;
   label: string;
@@ -197,6 +197,7 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                   </span>
                   {row.sub ? (
                     <span className="block truncate text-xs text-muted-foreground">
+                      {row.job ? <span className="font-mono text-faint">{row.job} </span> : null}
                       <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
                     </span>
                   ) : null}
@@ -265,7 +266,8 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                         {row.sub ? (
                           <span className="text-xs text-muted-foreground">
                             {" "}
-                            · <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
+                            · {row.job ? <span className="font-mono text-faint">{row.job} </span> : null}
+                            <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
                           </span>
                         ) : null}
                       </span>

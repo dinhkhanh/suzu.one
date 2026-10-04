@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
+// Sending or signing an acceptance stores the paper that was issued: the bucket is in memory here.
+vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
     constructor(
@@ -296,7 +298,7 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(await noticesOf(ids.ke, "projects.acceptance_signed")).toHaveLength(1);
 
     // The paper: the entity's letterhead, the items, and no money anywhere.
-    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}` });
+    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}`, described: "Theo mô tả" });
     expect(paper.letterhead).toMatchObject({ companyName: "Công ty TNHH SuZu Media", taxCode: "0312345678" });
     expect(paper.number).toMatch(/^SZM-\d{2}-\d{3}\/NT-01$/);
     expect(paper.title).toBe("Biên bản nghiệm thu");

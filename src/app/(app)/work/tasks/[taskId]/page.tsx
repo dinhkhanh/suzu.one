@@ -11,13 +11,14 @@ import { BlockerPanel, MovePanel, TriageBanner } from "@/modules/work/ui/task-fo
 import { TaskDetailView } from "@/modules/work/ui/task-detail";
 import { FollowButton, TaskDiscussion, TaskFiles } from "@/modules/work/ui/task-discussion";
 import { TaskReview } from "@/modules/work/ui/task-review";
-import { canRespondToHandoff, canSendToTeam, listOpenCycles, listTaskHandoffs, listTeamCycles, listTeams, TASK_FILE_OWNER, teamFacts } from "@/modules/work/service";
+import { canRespondToHandoff, canSendToTeam, listOpenCycles, listTaskHandoffs, listTeamCycles, listTeams, projectFacts, TASK_FILE_OWNER, teamFacts } from "@/modules/work/service";
 import { HandoffPanel } from "@/modules/work/ui/handoff";
 import { todayInVietnam } from "@/lib/dates";
 import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, canRevokePreviewLink, clientOfTask, listDeliveriesByTask, listPreviewLinks, listPublishesByTask, listTaskPins } from "@/modules/work/service";
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
-import { auditPrivateTaskRead } from "@/modules/projects/service";
+import { auditPrivateTaskRead, getTaskLine, jobNumbersOf } from "@/modules/projects/service";
+import { TaskLineField } from "@/modules/projects/ui/task-line";
 import { contactChoicesFor } from "@/modules/crm/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
@@ -71,7 +72,9 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   ]);
   // Time is logged where the work is (D22, FR-PJM-37): the daily module's own log and timer, and
   // the hours its access rule lets this reader see. Whoever opens the task may log on it.
-  const [pins, deliveries, publishes, client, checklists, stageHooks, time] = await Promise.all([
+  // The project layer's two facts about the work, composed here because work cannot import it:
+  // the job number beside the project's name (FR-PJM-02), and the register line this task fills.
+  const [pins, deliveries, publishes, client, checklists, stageHooks, time, jobNumbers, registerLine] = await Promise.all([
     listTaskPins(task.id),
     listDeliveriesByTask([task.id]),
     listPublishesByTask([task.id]),
@@ -79,7 +82,10 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     checklistChoices(),
     listStateChecklists([work.stateId]),
     loadTimeReader(user.person.id, user.principal).then((reader) => getTaskTime(reader, { taskId: task.id, projectId: work.projectId }, todayInVietnam())),
+    jobNumbersOf([project?.id]),
+    project ? getTaskLine(viewer, projectFacts(project, team), task.id) : null,
   ]);
+  const jobNumber = project ? (jobNumbers.get(project.id) ?? null) : null;
   // FR-AST-09: the pages and channels the task may name — the project's own first, then the rest;
   // what the task already names stays in the list even once retired, so saving does not drop it.
   const [linkable, ofProject, accessPairs] = await Promise.all([
@@ -125,6 +131,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
       </Link>
       <span className="text-faint">/</span>
       <Link href={project ? `/work/projects/${project.id}` : `/work/teams/${team.id}`} className="hover:underline">
+        {jobNumber ? <span className="mr-1.5 font-mono text-xs text-faint">{jobNumber}</span> : null}
         {project?.name ?? team.name}
       </Link>
       {detail.parent ? (
@@ -194,6 +201,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
       >
         <TaskCustomFields taskId={task.id} fields={toFieldViews(fields)} values={work.customValues} people={people} canEdit={canEdit} />
         <TaskTime taskId={task.id} today={today} earliest={time.earliest} billable={time.billable} running={time.running} mine={time.mine} total={time.total} />
+        {registerLine ? <TaskLineField taskId={task.id} current={registerLine.current} options={registerLine.options.map(({ id, label }) => ({ id, label }))} canEdit={registerLine.canEdit} /> : null}
         <BlockerPanel
           taskId={task.id}
           blockers={blockers.map((blocker) => ({ ...blocker, raisedAt: blocker.raisedAt.toISOString(), resolvedAt: blocker.resolvedAt?.toISOString() ?? null }))}

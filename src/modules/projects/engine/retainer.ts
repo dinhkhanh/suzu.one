@@ -75,6 +75,36 @@ export function monthsToMake(months: readonly Month[], savedMonth: Month, today:
 }
 
 /**
+ * A register line as a picker names it: "4 × Bài đăng Facebook" — and, for a line of a retainer
+ * month, the month in front. A retainer promises the same lines every month, so without the month
+ * the same label would stand in the list once per month.
+ */
+export const lineLabel = (line: { title: string; quantity: number; month?: Month | null }): string => `${line.month ? `${line.month} · ` : ""}${line.quantity} × ${line.title}`;
+
+/**
+ * The lines of a picker in the order people reach for them: this month's first, then the other
+ * months newest first, then the project's own register. Lines keep their register order within a
+ * month (the sort is stable), and a project without retainer months is left exactly as it was.
+ */
+export function openLinesFirst<Line extends { month: Month | null }>(lines: readonly Line[], currentMonth: Month): Line[] {
+  const rank = (line: Line) => (line.month === null ? 2 : line.month === currentMonth ? 0 : 1);
+  return [...lines].sort((a, b) => rank(a) - rank(b) || (b.month ?? "").localeCompare(a.month ?? ""));
+}
+
+/**
+ * The earlier months a retainer should have had and has not, oldest first: from its first month to
+ * last month — or its end month, when that came sooner — less the months that exist. What the lead
+ * may make by hand; this month and later are the midnight job's. Bounded by the terms alone, which
+ * `monthBounds` already kept from reaching far back.
+ */
+export function missedMonths(terms: Pick<RetainerTerms, "startMonth" | "endMonth">, existing: readonly Month[], today: IsoDate): Month[] {
+  const lastMonth = addMonths(monthOf(today), -1);
+  const last = terms.endMonth && terms.endMonth < lastMonth ? terms.endMonth : lastMonth;
+  const made = new Set(existing);
+  return monthsBetween(terms.startMonth, last).filter((month) => !made.has(month));
+}
+
+/**
  * The share of a month the retainer covers, between 0 and 1: all of it, unless the project starts
  * or ends inside it. Counted in calendar days, both ends included.
  */
@@ -170,6 +200,9 @@ export function quotaAlertsDue(lineId: string, percent: number | null, alerted: 
   if (percent === null) return [];
   return QUOTA_THRESHOLDS.filter((threshold) => percent >= threshold && !alerted.includes(`${lineId}:${threshold}`)).map((threshold) => `${lineId}:${threshold}`);
 }
+
+/** The key the hours allowance's alerts are kept under, where a line's are kept under its id ("hours:80"). */
+export const HOURS_ALERT = "hours";
 
 /** The hours allowance against the minutes logged in the month. */
 export const hoursUsage = (allowanceMinutes: number | null, loggedMinutes: number): Usage | null => (allowanceMinutes === null ? null : usage(allowanceMinutes, loggedMinutes));

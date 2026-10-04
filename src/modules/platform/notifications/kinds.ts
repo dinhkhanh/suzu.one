@@ -185,6 +185,8 @@ export const KINDS = {
   "projects.milestone_missed": "projects",
   "projects.budget_alert": "projects",
   "projects.quota_alert": "projects",
+  // A retainer month's hours allowance at 80% or 100% (FR-PJM-06): the project, the month, the percent.
+  "projects.retainer_hours_alert": "projects",
   "projects.change_decided": "projects",
   "projects.acceptance_signed": "projects",
   "projects.billing_ready": "projects",

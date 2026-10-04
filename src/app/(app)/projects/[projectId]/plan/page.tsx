@@ -9,7 +9,7 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { baselineSlip, canRebaseline, linkedProgress, listStructure, listTaskLinks, loadTaskSlips, openProject, slipWords } from "@/modules/projects/service";
+import { baselineSlip, canRebaseline, lineLabel, linkedProgress, listPeriodOptions, listStructure, listTaskLinks, loadTaskSlips, type MilestoneBillingState, milestoneBilling, openLinesFirst, openProject, slipWords } from "@/modules/projects/service";
 import { LinkTaskForm, MilestoneForm, MilestoneTools, PhaseForm, RebaselineForm, RemovePhaseButton, UnlinkButton } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listAssignable } from "@/modules/work/service";
@@ -29,7 +29,12 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
   if (!context) notFound();
   const { project, team, plan, can } = context;
   const today = todayInVietnam();
-  const [t, format, structure, links, people, taskSlips] = await Promise.all([getTranslations("projects"), getFormatter(), listStructure(project.id), listTaskLinks(project.id), listAssignable(team.id, project.id), loadTaskSlips(project.id, today)]);
+  const [t, format, structure, links, people, taskSlips, periods, billing] = await Promise.all([getTranslations("projects"), getFormatter(), listStructure(project.id), listTaskLinks(project.id), listAssignable(team.id, project.id), loadTaskSlips(project.id, today), listPeriodOptions(project.id), milestoneBilling(project.id)]);
+  // A retainer promises the same lines every month: the month names which one a label means.
+  const monthOf = new Map(periods.map((period) => [period.id, period.month]));
+  const lineChoices = openLinesFirst(structure.deliverables.filter((line) => !line.cancelledAt).map((line) => ({ id: line.id, title: line.title, quantity: line.quantity, month: line.retainerPeriodId ? (monthOf.get(line.retainerPeriodId) ?? null) : null })), today.slice(0, 7)).map((line) => ({ id: line.id, name: lineLabel(line) }));
+  // Where a billing milestone stands with finance — said, so that one which bills nothing yet does not look forgotten.
+  const billingTone = (state: MilestoneBillingState) => (state === "invoiced" ? "success" : state === "ready" ? "info" : state === "waived" || state === "covered_by_project" ? "outline" : "warning");
   const mayRebaseline = canRebaseline(context.viewer, context.facts);
   const worstTask = taskSlips.summary.worst ? links.find((link) => link.taskId === taskSlips.summary.worst!.taskId) : null;
   const { phases, milestones, deliverables } = structure;
@@ -147,6 +152,17 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                   {slipDays ? <SlipBadge days={slipDays} label={days(slipDays)!} /> : null}
                   {can.seeFees && milestone.isBilling && milestone.billingAmountVnd !== null ? <span className="text-sm">{format.number(milestone.billingAmountVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span> : null}
                 </div>
+                {billing.get(milestone.id) ? (
+                  <p className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant={billingTone(billing.get(milestone.id)!.state)}>{t(`billing.milestone.${billing.get(milestone.id)!.state}`)}</Badge>
+                    {billing.get(milestone.id)!.amountSet ? null : <span className="text-warning">{t("billing.milestone.noAmount")}</span>}
+                    {billing.get(milestone.id)!.state === "awaiting_acceptance" ? (
+                      <Link href={`/projects/${project.id}/acceptance`} className="underline">
+                        {t("acceptance.waitingLink")}
+                      </Link>
+                    ) : null}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {milestone.phaseId && phaseName.get(milestone.phaseId) ? `${phaseName.get(milestone.phaseId)} · ` : null}
                   {milestone.ownerPersonId && ownerName.get(milestone.ownerPersonId) ? (
@@ -195,9 +211,10 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
           <h2>{t("plan.linkTasks")}</h2>
           <p className="text-sm text-muted-foreground">{t("plan.linkHint", { count: unlinked.length })}</p>
           <LinkTaskForm
-            tasks={links.filter((link) => link.status === "todo" || link.status === "in_progress").map((link) => ({ id: link.taskId, key: link.key, title: link.title }))}
+            // A finished task links like an open one: work is often done before anyone records which promise it filled.
+            tasks={links.filter((link) => link.status !== "cancelled").map((link) => ({ id: link.taskId, key: link.key, title: link.title }))}
             milestones={milestones.map(({ id, name }) => ({ id, name }))}
-            lines={deliverables.filter((line) => !line.cancelledAt).map(({ id, title, quantity }) => ({ id, name: `${quantity} × ${title}` }))}
+            lines={lineChoices}
             phases={phases.map(({ id, name }) => ({ id, name }))}
           />
         </section>

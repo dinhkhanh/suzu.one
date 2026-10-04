@@ -5,7 +5,11 @@
 // from the one before), closes the months that are over and bills each closed month's fee. Every
 // step is idempotent: a period is unique per retainer and month, its lines are made with it in one
 // transaction, and a month's fee item is unique per period. The morning job warns the account
-// manager and the lead at 80% and 100% of any line, once per line and threshold.
+// manager and the lead at 80% and 100% of any line and of the month's hours allowance, once per
+// line (or allowance) and threshold.
+//
+// A month the job never made — the terms were saved after it began, as at the cut-over — is made
+// on demand by the lead (`makeMissedPeriod`), inside the terms' own months and never twice.
 import "server-only";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { createTranslator } from "next-intl";
@@ -16,10 +20,10 @@ import vi from "../../../messages/vi.json";
 import { notify } from "../platform/notifications/service";
 import { fireProjectAutomations } from "../work/service";
 import { acceptedForBilling, ensureBillingItem } from "./billing";
-import { unitsConsumed } from "./engine/register";
-import { addMonths, hoursUsage, isMonth, lastDayOf, type Month, monthBounds, monthOf, monthsDue, monthsToMake, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
-import { loadLineUnits, withLineStatus } from "./metrics";
-import { ensurePlan } from "./plans";
+import { type LineStatus, lineStatus, unitsConsumed } from "./engine/register";
+import { addMonths, HOURS_ALERT, hoursUsage, isMonth, lastDayOf, missedMonths, type Month, monthBounds, monthOf, monthsDue, monthsToMake, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
+import { loadLineUnits } from "./metrics";
+import { ensurePlan, isProjectClosed } from "./plans";
 import type { RetainerLineTemplate } from "./schema";
 import type { DeliverableRow } from "./structure";
 
@@ -94,18 +98,22 @@ export function shapeRetainer(row: RetainerRow, seesFees: boolean): RetainerView
 
 // ── Consumption ─────────────────────────────────────────────────────────────────────────────
 
-export type PeriodLine = DeliverableRow & { consumed: number; usage: Usage; status: string };
+/** A month's line as the register reads it (status, units by stage, linked tasks) and as the quota counts it. */
+export type PeriodLine = DeliverableRow & LineStatus & { consumed: number; usage: Usage };
 
-/** Each period's lines with what they consumed (uncapped: overservicing shows). */
+/**
+ * Each period's lines with their register status and what they consumed (uncapped: overservicing
+ * shows). The units are read once and both readings are taken from them.
+ */
 async function periodLines(periodIds: readonly string[]): Promise<Map<string, PeriodLine[]>> {
   const result = new Map<string, PeriodLine[]>(periodIds.map((id) => [id, []]));
   if (periodIds.length === 0) return result;
   const lines = await db().select().from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.retainerPeriodId, [...periodIds])).orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
-  const [units, statuses] = await Promise.all([loadLineUnits(lines.map((line) => line.id)), withLineStatus(lines)]);
-  const statusOf = new Map(statuses.map((line) => [line.id, line.status]));
+  const units = await loadLineUnits(lines.map((line) => line.id));
   for (const line of lines) {
-    const consumed = line.cancelledAt ? 0 : unitsConsumed(units.get(line.id) ?? []);
-    result.get(line.retainerPeriodId!)?.push({ ...line, consumed, usage: usage(line.cancelledAt ? 0 : line.quantity, consumed), status: statusOf.get(line.id) ?? "promised" });
+    const own = units.get(line.id) ?? [];
+    const consumed = line.cancelledAt ? 0 : unitsConsumed(own);
+    result.get(line.retainerPeriodId!)?.push({ ...line, ...lineStatus({ quantity: line.quantity, cancelled: !!line.cancelledAt, units: own }), consumed, usage: usage(line.cancelledAt ? 0 : line.quantity, consumed) });
   }
   return result;
 }
@@ -148,6 +156,36 @@ async function makePeriod(retainerId: string, month: Month): Promise<PeriodRow |
     }
     return period;
   });
+}
+
+const monthsMade = async (retainerId: string): Promise<Month[]> => (await db().select({ month: schema.projectRetainerPeriod.month }).from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.retainerId, retainerId))).map((row) => row.month);
+
+/**
+ * A month the midnight job never made, made now by the lead (FR-PJM-06): a retainer entered after
+ * it began — the cut-over — has no period for the months before its terms were saved, so their
+ * work could not be linked, accepted or billed. Bounded by the terms themselves: from the
+ * retainer's first month to last month (this month and later are the job's), within its end month,
+ * and never a month that exists. Its register comes from the terms as they stand, carrying from
+ * the month before when that one exists; the next run of the job closes it like any month that is
+ * over, and its fee waits for the client's signature as every month's does (D27).
+ */
+export async function makeMissedPeriod(projectId: string, month: Month, today: IsoDate = todayInVietnam()): Promise<PeriodRow> {
+  if (!isMonth(month)) throw new ActionError("retainer_months_invalid");
+  const retainer = await getRetainer(projectId);
+  if (!retainer) throw new ActionError("retainer_not_found");
+  if (!retainer.isActive || (await isProjectClosed(projectId))) throw new ActionError("retainer_paused");
+  const made = await monthsMade(retainer.id);
+  if (made.includes(month)) throw new ActionError("retainer_month_exists");
+  if (!missedMonths(retainer, made, today).includes(month)) throw new ActionError("retainer_month_not_missed");
+  const period = await makePeriod(retainer.id, month);
+  // Two people pressing at once: the second finds the month made.
+  if (!period) throw new ActionError("retainer_month_exists");
+  return period;
+}
+
+/** The earlier months of a retainer that have no period, oldest first — what the lead may still make. */
+export async function listMissedMonths(retainer: RetainerRow, today: IsoDate = todayInVietnam()): Promise<Month[]> {
+  return retainer.isActive ? missedMonths(retainer, await monthsMade(retainer.id), today) : [];
 }
 
 /** The fee of one month: the month's share of the monthly fee (a part month pays its part). */
@@ -240,7 +278,11 @@ async function recipientsOf(projectIds: readonly string[]): Promise<Map<string, 
   return new Map([...Map.groupBy(rows, (row) => row.projectId)].map(([projectId, members]) => [projectId, [...new Set(members.map((member) => member.personId))]]));
 }
 
-/** Lines of open months at 80% or 100% of their quota: the account manager and the lead, once per line and threshold. */
+/**
+ * Lines of open months at 80% or 100% of their quota, and open months at 80% or 100% of their
+ * hours allowance (minutes logged on the project in the month, as the retainer page counts them):
+ * the account manager and the lead, once per line — or allowance — and threshold.
+ */
 export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
   const periods = await db()
     .select({ period: schema.projectRetainerPeriod, projectId: schema.projectRetainer.projectId, projectName: schema.workProject.name })
@@ -248,14 +290,22 @@ export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
     .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectRetainer.projectId))
     .where(and(eq(schema.projectRetainerPeriod.status, "open"), eq(schema.projectRetainer.isActive, true)));
-  const [lines, recipientsByProject] = await Promise.all([periodLines(periods.map((row) => row.period.id)), recipientsOf(periods.map((row) => row.projectId))]);
+  // Hours are read only for the months that have an allowance, all of them in one query.
+  const allowed = periods.filter((row) => row.period.minutesAllowance !== null);
+  const allowedMonths = allowed.map((row) => row.period.month).sort();
+  const [lines, recipientsByProject, minutes] = await Promise.all([
+    periodLines(periods.map((row) => row.period.id)),
+    recipientsOf(periods.map((row) => row.projectId)),
+    allowed.length ? minutesByProjectMonth([...new Set(allowed.map((row) => row.projectId))], { from: allowedMonths[0], to: allowedMonths.at(-1)! }) : new Map<string, number>(),
+  ]);
   let alerts = 0;
   for (const { period, projectId, projectName } of periods) {
     const due = (lines.get(period.id) ?? []).filter((line) => !line.cancelledAt).flatMap((line) => {
       const keys = quotaAlertsDue(line.id, line.usage.percent, period.alerted);
       return keys.length ? [{ line, keys }] : [];
     });
-    if (due.length === 0) continue;
+    const hours = hoursUsage(period.minutesAllowance, minutes.get(`${projectId} ${period.month}`) ?? 0);
+    if (due.length === 0 && (!hours || quotaAlertsDue(HOURS_ALERT, hours.percent, period.alerted).length === 0)) continue;
     const recipients = recipientsByProject.get(projectId) ?? [];
     await db().transaction(async (tx) => {
       // Marked under the period's lock: a second run finds the marks and sends nothing.
@@ -270,6 +320,13 @@ export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
         alerts += 1;
         // The team's own rules on a quota mark (FR-PJM-33), once per line and threshold like the notice.
         for (const key of keys) await fireProjectAutomations(tx, projectId, { type: "quota_threshold", percent: Number(key.slice(key.lastIndexOf(":") + 1)), key });
+      }
+      // The hours allowance, the same way: one notice at its highest mark, each mark kept once.
+      const hourKeys = hours ? quotaAlertsDue(HOURS_ALERT, hours.percent, marks) : [];
+      if (hours && hourKeys.length) {
+        marks.push(...hourKeys);
+        await notify({ recipients, kind: "projects.retainer_hours_alert", params: { project: projectName, month: period.month, percent: hours.percent ?? 0 }, link: `/projects/${projectId}/retainer` }, tx);
+        alerts += 1;
       }
       await tx.update(schema.projectRetainerPeriod).set({ alerted: marks }).where(eq(schema.projectRetainerPeriod.id, period.id));
     });
