@@ -11,7 +11,7 @@ describe("routeRequest", () => {
     });
 
     it("serves the review links and the careers pages", () => {
-      for (const path of ["/preview/abc", "/preview/abc/decide", "/careers", "/careers/editor", "/careers/assignment/tok/submit", "/brands", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b"]) {
+      for (const path of ["/preview/abc", "/preview/abc/decide", "/preview/abc/file", "/careers", "/careers/editor", "/careers/assignment/tok/submit", "/brands", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b"]) {
         expect(on("suzu.vn", path)).toEqual({ kind: "public" });
       }
     });

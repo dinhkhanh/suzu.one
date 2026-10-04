@@ -86,14 +86,14 @@ export { type CalendarPublish, type ContentCalendar, contentCalendar, listCalend
 export { type DeliveryFacts, deliveryFactsByTask, type LastClientDecision, type RevisionRounds, revisionRoundsByTask } from "./delivery-facts";
 export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/delivery";
 /**
- * Phase 10, the client's expiring review link (D24, FR-PJM-51a). `openPreviewLink` and
- * `decideOnPreviewLink` are the **public** surface: they take a token and a visitor, never a user,
- * and they check everything themselves — the routes under `(preview)` hand them the request and
- * print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
+ * Phase 10, the client's expiring review link (D24, FR-PJM-51a). `openPreviewLink`,
+ * `openPreviewFile` and `decideOnPreviewLink` are the **public** surface: they take a token and a
+ * visitor, never a user, and they check everything themselves — the routes under `(preview)` hand
+ * them the request and print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
  * decides who may see it, and the task page asks before it calls.
  */
 export { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
-export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, openPreviewLink, type PreviewDecisionInput, type PreviewLinkView, type PreviewOutcome, type PreviewPage, purgePreviewHits } from "./preview";
+export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, openPreviewFile, openPreviewLink, type PreviewDecisionInput, type PreviewFileOutcome, type PreviewLinkView, type PreviewOutcome, type PreviewPage, purgePreviewHits } from "./preview";
 export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_DAYS, type PreviewState } from "./engine/preview";
 /**
  * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run

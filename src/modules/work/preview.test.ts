@@ -5,8 +5,9 @@
 // it: that opening one counts a view and shows one version and nothing else, that the client's
 // answer becomes the *same* record the account manager's own recording writes — freezing the
 // version, counting the round, telling the team — that a link takes exactly one answer, that a
-// closed link of any kind says the same thing, that a private project keeps its name, and that a
-// script walking the token space runs out of allowance.
+// closed link of any kind says the same thing, that a private project keeps its name, that a
+// script walking the token space runs out of allowance — and that the file behind the page is
+// behind the token too: signed afresh for as long as the link is open, and not a request longer.
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
@@ -23,6 +24,16 @@ vi.mock("@/lib/action", () => ({
   },
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
+// Only the signer is replaced: what is asked of a link before anything is signed runs for real.
+const storage = { signed: [] as string[], down: false };
+vi.mock("@/modules/platform/files/storage", () => ({
+  currentBucket: () => "test-bucket",
+  createSignedDownloadUrl: async (objectPath: string, expiresInSeconds: number) => {
+    if (storage.down) throw new Error("storage is down");
+    storage.signed.push(objectPath);
+    return `https://storage.invalid/${objectPath}?expires=${expiresInSeconds}&n=${storage.signed.length}`;
+  },
+}));
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -31,7 +42,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { PREVIEW_LIMITS, previewVisitorKey } from "./engine/preview";
 import { saveReviewChain } from "./chains";
-import { claimLink, createPreviewLink, decideOnPreviewLink, listPreviewLinks, openPreviewLink, purgePreviewHits, releaseClaim, revokePreviewLink } from "./preview";
+import { claimLink, createPreviewLink, decideOnPreviewLink, listPreviewLinks, openPreviewFile, openPreviewLink, purgePreviewHits, releaseClaim, revokePreviewLink } from "./preview";
 import { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
 import { createProject, setProjectMember } from "./projects";
 import { decideReview, decideStage, listDeliverables, submitDeliverable } from "./reviews";
@@ -53,6 +64,15 @@ async function taskWithVersion(title: string, projectId = ids.project) {
   const { task } = await createWorkTask({ teamId: ids.video, projectId, title, stateId: ids.edit, assigneePersonId: ids.huy }, ids.long);
   const { deliverable } = await submitDeliverable(task.id, { kind: "link", url: "https://drive.google.com/v1", note: null }, actor("huy"));
   return { taskId: task.id, deliverableId: deliverable.id };
+}
+
+/** A task whose one version is a file in storage, as an upload would have left it. */
+async function taskWithFile(title: string, fileName: string) {
+  const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title, stateId: ids.edit, assigneePersonId: ids.huy }, ids.long);
+  const extension = fileName.split(".").pop();
+  const [file] = await db().insert(schema.storedFile).values({ bucket: "test-bucket", objectPath: `work_task/2026/${task.id}.${extension}`, fileName, contentType: "application/octet-stream", sizeBytes: 10, ownerType: "work_task", ownerId: task.id, entityId: ids.szm, tier: "public_internal", status: "ready", uploadedByPersonId: ids.huy }).returning();
+  const { deliverable } = await submitDeliverable(task.id, { kind: "file", fileId: file.id, note: null }, actor("huy"));
+  return { taskId: task.id, deliverableId: deliverable.id, fileId: file.id, objectPath: file.objectPath };
 }
 
 const linkOn = async (taskId: string, over: Partial<Parameters<typeof createPreviewLink>[0]> = {}) =>
@@ -133,7 +153,7 @@ describe("opening a link", () => {
     // The page carries no identifier of any kind: not the task, the project, the client or the link.
     const printed = JSON.stringify(page);
     for (const id of [taskId, link.id, ids.project, ids.client, ids.an, ids.huy]) expect(printed).not.toContain(id);
-    expect(Object.keys(page!).sort()).toEqual(["allowDecision", "clientName", "expiresAt", "fileName", "kind", "message", "projectName", "recipientLabel", "senderName", "title", "url", "version"]);
+    expect(Object.keys(page!).sort()).toEqual(["allowDecision", "clientName", "expiresAt", "fileIsImage", "fileName", "kind", "message", "projectName", "recipientLabel", "senderName", "title", "url", "version"]);
 
     await openPreviewLink(token, visitor("open-1"));
     const [after] = await listPreviewLinks(taskId);
@@ -237,6 +257,20 @@ describe("the client's decision", () => {
     expect((await listDeliverables(taskId))[0].decisions).toHaveLength(0);
   });
 
+  it("takes no answer the client did not choose (PJM-05)", async () => {
+    const { taskId } = await taskWithVersion("Không chọn gì");
+    const { token } = await linkOn(taskId);
+    // The page preselects nothing, so a form sent past the browser's own check arrives with no
+    // decision in it. Nothing is recorded, and the link is not spent on it.
+    for (const decision of ["", "approve", "on"]) {
+      expect(await decide(token, { decision }, "no-choice")).toEqual({ ok: false, error: "invalid" });
+    }
+    expect((await listDeliverables(taskId))[0]).toMatchObject({ decision: "pending", frozenAt: null, decisions: [] });
+    expect((await listPreviewLinks(taskId))[0].state).toBe("active");
+    // Chosen, the same link takes it.
+    expect(await decide(token, { decision: "approved" }, "no-choice")).toEqual({ ok: true, data: { recorded: true } });
+  });
+
   it("drops what a machine sends, and tells it nothing", async () => {
     const { taskId } = await taskWithVersion("Bẫy máy");
     const { token } = await linkOn(taskId);
@@ -296,6 +330,116 @@ describe("the version a link is for (FR-PJM-51a)", () => {
     // Refusing it does not spend the link: the client reloads and answers about what they now see.
     expect((await listPreviewLinks(taskId))[0].state).toBe("active");
     expect(await decide(token, { version: "1" }, "stale")).toEqual({ ok: true, data: { recorded: true } });
+  });
+});
+
+describe("the file behind a link (PJM-06)", () => {
+  const closed = { ok: false, reason: "closed" };
+
+  it("is never a storage URL on the page: the page names the file and says whether it is a picture", async () => {
+    const picture = await taskWithFile("Key visual", "kv-tet.png");
+    const { token } = await linkOn(picture.taskId);
+    const before = storage.signed.length;
+    const outcome = await openPreviewLink(token, visitor("file-page"));
+    expect(outcome.ok && outcome.page).toMatchObject({ kind: "file", url: null, fileName: "kv-tet.png", fileIsImage: true });
+    // Nothing was signed to render the page, and nothing of storage — or the file's id — is on it.
+    expect(storage.signed).toHaveLength(before);
+    const printed = JSON.stringify(outcome);
+    for (const secret of ["storage.invalid", picture.fileId, picture.objectPath]) expect(printed).not.toContain(secret);
+
+    // A cut is a file too, and not something an <img> can show.
+    const cut = await taskWithFile("Bản dựng", "teaser-v1.mp4");
+    const video = await openPreviewLink((await linkOn(cut.taskId)).token, visitor("file-page"));
+    expect(video.ok && video.page).toMatchObject({ kind: "file", url: null, fileName: "teaser-v1.mp4", fileIsImage: false });
+  });
+
+  it("is signed afresh each time it is asked for, for as long as the link is open — and is not a view", async () => {
+    const { taskId, objectPath } = await taskWithFile("Mở tệp nhiều lần", "poster.jpg");
+    const { token } = await linkOn(taskId);
+    const first = await openPreviewFile(token, visitor("file-open"));
+    const second = await openPreviewFile(token, visitor("file-open"));
+    expect(first).toMatchObject({ ok: true });
+    expect(second).toMatchObject({ ok: true });
+    // A minute each, and each its own: the page's address never goes stale, the signed one always does.
+    expect(first.ok && first.url).toContain(`${objectPath}?expires=60`);
+    expect(first.ok && second.ok && first.url !== second.url).toBe(true);
+    // Fetching the file is part of looking at the page: the link has still not been "viewed".
+    expect((await listPreviewLinks(taskId))[0]).toMatchObject({ state: "active", viewCount: 0, lastViewedAt: null });
+    await openPreviewLink(token, visitor("file-open"));
+    await openPreviewFile(token, visitor("file-open"));
+    expect((await listPreviewLinks(taskId))[0]).toMatchObject({ state: "viewed", viewCount: 1 });
+  });
+
+  it("is refused, the same way and with nothing signed, on a token nobody issued and on a link that expired, was revoked or was decided", async () => {
+    const { taskId } = await taskWithFile("Mọi cách đóng đều giống nhau, cả với tệp", "storyboard.pdf");
+    const expired = await linkOn(taskId);
+    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    const revoked = await linkOn(taskId);
+    const decided = await linkOn(taskId);
+    // Each opened while it could be…
+    for (const link of [revoked, decided]) expect((await openPreviewFile(link.token, visitor("file-closed"))).ok).toBe(true);
+    await revokePreviewLink(revoked.link.id, ids.long);
+    expect(await decide(decided.token, { decision: "changes_required", comment: "Đổi khung 3" }, "file-closed")).toEqual({ ok: true, data: { recorded: true } });
+
+    // …and none of them after. A URL signed earlier lives out its minute; no new one is made.
+    const before = storage.signed.length;
+    for (const token of ["Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g", "not a token at all", expired.token, revoked.token, decided.token]) {
+      expect(await openPreviewFile(token, visitor("file-closed")), token).toEqual(closed);
+    }
+    expect(storage.signed).toHaveLength(before);
+  });
+
+  it("closes with the page when the company takes the version back", async () => {
+    const { taskId, deliverableId } = await taskWithFile("Rút lại tệp", "banner.png");
+    const { token } = await linkOn(taskId);
+    expect((await openPreviewFile(token, visitor("file-withdrawn"))).ok).toBe(true);
+    await db().update(schema.workDeliverable).set({ decision: "changes_requested" }).where(eq(schema.workDeliverable.id, deliverableId));
+    expect(await openPreviewFile(token, visitor("file-withdrawn"))).toEqual(closed);
+  });
+
+  it("has nothing to give for a version that is a link, or a file that is gone", async () => {
+    const link = await taskWithVersion("Phiên bản là đường dẫn");
+    expect(await openPreviewFile((await linkOn(link.taskId)).token, visitor("file-none"))).toEqual({ ok: false, reason: "no_file" });
+
+    const gone = await taskWithFile("Tệp đã xoá", "old-cut.mp4");
+    const { token } = await linkOn(gone.taskId);
+    await db().update(schema.storedFile).set({ deletedAt: new Date() }).where(eq(schema.storedFile.id, gone.fileId));
+    expect(await openPreviewFile(token, visitor("file-none"))).toEqual({ ok: false, reason: "no_file" });
+    // The page still opens, and says the file cannot be had instead of linking to nothing.
+    const page = await openPreviewLink(token, visitor("file-none"));
+    expect(page.ok && page.page).toMatchObject({ kind: "file", url: null, fileName: null, fileIsImage: false });
+  });
+
+  it("says so, and does not throw, when storage cannot sign", async () => {
+    const { taskId } = await taskWithFile("Kho tệp lỗi", "poster.png");
+    const { token } = await linkOn(taskId);
+    storage.down = true;
+    try {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      expect(await openPreviewFile(token, visitor("file-down"))).toEqual({ ok: false, reason: "unavailable" });
+      expect(logged.mock.calls[0]?.[0]).toContain("work.preview.file_url_failed");
+      logged.mockRestore();
+      // The page does not depend on storage at all any more.
+      expect((await openPreviewLink(token, visitor("file-down"))).ok).toBe(true);
+    } finally {
+      storage.down = false;
+    }
+  });
+
+  it("has an allowance of its own: hammering the file is refused, and does not spend the page's", async () => {
+    const { taskId } = await taskWithFile("Gọi tệp liên tục", "kv.png");
+    const { token } = await linkOn(taskId);
+    const hammer = visitor("file-hammer");
+    const answers = [];
+    for (let attempt = 0; attempt < PREVIEW_LIMITS.file.max + 1; attempt++) answers.push(await openPreviewFile(token, hammer));
+    expect(answers[PREVIEW_LIMITS.file.max - 1]).toMatchObject({ ok: true });
+    expect(answers[PREVIEW_LIMITS.file.max]).toEqual({ ok: false, reason: "rate_limited" });
+    // The same visitor can still open the page: looking at the work is counted apart from opening it.
+    expect((await openPreviewLink(token, hammer)).ok).toBe(true);
+    // And a token of the wrong shape writes nothing, here as on the page.
+    const before = (await db().select().from(schema.workPreviewHit)).length;
+    expect(await openPreviewFile("not a token at all", hammer)).toEqual(closed);
+    expect(await db().select().from(schema.workPreviewHit)).toHaveLength(before);
   });
 });
 
@@ -377,7 +521,9 @@ describe("the public page", () => {
   })(ROOT);
 
   it("exists at all (the guard would otherwise be vacuous)", () => {
-    expect(sources.length).toBeGreaterThanOrEqual(3);
+    // The layout, the page, the decision endpoint and the file route.
+    expect(sources.length).toBeGreaterThanOrEqual(4);
+    expect(sources.some(({ path }) => path.endsWith(join("[token]", "file", "route.ts")))).toBe(true);
   });
 
   /** The code, without the comments: these files explain at length what they deliberately do not do. */
@@ -416,6 +562,25 @@ describe("the public page", () => {
   it("puts the version the client is reading in the form", () => {
     expect(pageSource()).toContain('name="version"');
   });
+
+  it("chooses no answer for the client: no decision is preselected, and the form will not go without one (PJM-05)", () => {
+    const source = pageSource();
+    const radio = source.match(/<input type="radio"[^>]*>/g) ?? [];
+    expect(radio).toHaveLength(1);
+    expect(radio[0]).toContain('name="decision"');
+    expect(radio[0]).toContain("required");
+    // However it is spelled: an approval is something the client does, never the page's default.
+    expect(source).not.toMatch(/defaultChecked|\bchecked\b|defaultValue/);
+  });
+
+  it("links the file through the token's own route and prints no storage URL (PJM-06)", () => {
+    const source = pageSource();
+    expect(source).toContain("`/preview/${encodeURIComponent(token)}/file`");
+    // The picture and the link share the one address; nothing on the page is signed.
+    expect(source).toContain("<img src={fileHref}");
+    expect(source).toContain("<a href={fileHref}");
+    for (const forbidden of ["createDownloadLink", "createSignedDownloadUrl", "openPreviewFile", "@/modules/platform/files/service"]) expect(source).not.toContain(forbidden);
+  });
 });
 
 describe("the endpoint the answer is posted to", () => {
@@ -446,10 +611,76 @@ describe("the endpoint the answer is posted to", () => {
     expect((await post(chunks(16), { "content-type": "application/x-www-form-urlencoded", "content-length": "10" })).headers.get("location")).toBe("/preview/abc?error=failed");
   });
 
+  it("sends a form with no decision in it back, as invalid (PJM-05)", async () => {
+    const body = new URLSearchParams({ decidedByName: "Chị Mai", version: "1", comment: "", website: "" }).toString();
+    const response = await post(body, { "content-type": "application/x-www-form-urlencoded", "content-length": String(body.length) }, STRANGER);
+    expect(response.headers.get("location")).toBe(`/preview/${STRANGER}?error=invalid`);
+  });
+
   it("takes an ordinary form and hands it on", async () => {
     const body = new URLSearchParams({ decision: "approved", decidedByName: "Chị Mai", version: "1", comment: "", website: "" }).toString();
     const response = await post(body, { "content-type": "application/x-www-form-urlencoded", "content-length": String(body.length) }, STRANGER);
     // The token is nobody's, so the answer is the closed page — but the body was read, not refused.
     expect(response.headers.get("location")).toBe(`/preview/${STRANGER}?error=preview_link_closed`);
+  });
+});
+
+describe("the route the file is fetched from (PJM-06)", () => {
+  const get = async (token: string) => {
+    const { GET } = await import("../../app/(preview)/preview/[token]/file/route");
+    return GET(new Request(`https://suzu.one/preview/${token}/file`), { params: Promise.resolve({ token }) });
+  };
+  /** What every answer of this route carries, whatever it is: never indexed, never stored, never a referrer. */
+  const guarded = (response: Response) => ({ cache: response.headers.get("cache-control"), robots: response.headers.get("x-robots-tag"), referrer: response.headers.get("referrer-policy") });
+  const GUARDED = { cache: "private, no-store, max-age=0", robots: "noindex, nofollow, noarchive, nosnippet", referrer: "no-referrer" };
+
+  it("redirects an open link to a freshly signed URL, and counts no view", async () => {
+    const { taskId, objectPath } = await taskWithFile("Mở tệp qua route", "kv-route.png");
+    const { token } = await linkOn(taskId);
+    const response = await get(token);
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain(`https://storage.invalid/${objectPath}?expires=60`);
+    expect(guarded(response)).toEqual(GUARDED);
+    expect(await response.text()).toBe("");
+    expect((await listPreviewLinks(taskId))[0]).toMatchObject({ state: "active", viewCount: 0 });
+  });
+
+  it("sends a wrong token, an expired link and a revoked one to the page's one sentence — never to storage", async () => {
+    const { taskId } = await taskWithFile("Route từ chối", "kv-refused.png");
+    const expired = await linkOn(taskId);
+    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    const revoked = await linkOn(taskId);
+    await revokePreviewLink(revoked.link.id, ids.long);
+
+    const before = storage.signed.length;
+    for (const token of ["Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g", expired.token, revoked.token]) {
+      const response = await get(token);
+      // The same answer for all three, and nothing in it but the way back to the page.
+      expect([response.status, response.headers.get("location")], token).toEqual([303, `/preview/${token}`]);
+      expect(guarded(response), token).toEqual(GUARDED);
+      expect(await response.text()).toBe("");
+    }
+    expect(storage.signed).toHaveLength(before);
+    // A token is encoded on its way into the redirect, whatever was typed into the address.
+    expect((await get("a b/c")).headers.get("location")).toBe("/preview/a%20b%2Fc");
+  });
+
+  it("answers a version with no file, and storage that cannot sign, with a bare status", async () => {
+    const link = await taskWithVersion("Route: phiên bản là đường dẫn");
+    const none = await get((await linkOn(link.taskId)).token);
+    expect([none.status, none.headers.get("location"), await none.text()]).toEqual([404, null, ""]);
+    expect(guarded(none)).toEqual(GUARDED);
+
+    const { taskId } = await taskWithFile("Route: kho tệp lỗi", "kv-down.png");
+    const { token } = await linkOn(taskId);
+    storage.down = true;
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const down = await get(token);
+      expect([down.status, down.headers.get("location"), await down.text()]).toEqual([503, null, ""]);
+    } finally {
+      storage.down = false;
+      logged.mockRestore();
+    }
   });
 });

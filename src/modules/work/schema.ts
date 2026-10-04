@@ -1068,7 +1068,7 @@ export const workPreviewHit = pgTable(
   "work_preview_hit",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // What was counted: "view", "decide", "token_view", "token_decide". See `PREVIEW_LIMITS`.
+    // What was counted: "view", "decide", "file", "token_view", "token_decide", "token_file". See `PREVIEW_LIMITS`.
     bucket: text("bucket").notNull(),
     keyHash: text("key_hash").notNull(),
     windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
