@@ -22,7 +22,7 @@ export { loadDirectory, reportsBelow, type DirectoryPerson } from "./people";
 export type { AnnualKpiLine, KpiLineFlag, KpiTrace, KpiTraceLine } from "./engine/kpi-score";
 
 // ── Review cycles (Phase 8 week 1, FR-PRF-03, 08) ───────────────────────────────────────────
-export { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
+export { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewCalibrator, isReviewingManager, type ReviewParties } from "./review-policy";
 export {
   annualParticipantIds,
   cycleProgress,

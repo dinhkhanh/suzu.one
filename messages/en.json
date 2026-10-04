@@ -6793,6 +6793,8 @@
         "yes": "Release",
         "cycleAction": "Release the whole cycle",
         "cycleConfirm": "Everyone whose manager review is in will be released. Continue?",
+        "waitingForHr": "Your review and the rating you proposed are in. HR calibrates and releases it to the employee — waiting for HR to release.",
+        "notYet": "Calibration and release open once the cycle reaches its calibration stage. It is still collecting forms.",
         "cycleDone": "Released {released}, skipped {skipped}."
       },
       "acknowledge": {
@@ -6864,6 +6866,8 @@
         "review_cycle_no_participants": "Nobody falls inside this cycle.",
         "review_cycle_bad_step": "That is not the next step.",
         "review_cycle_not_collecting": "The cycle is no longer taking forms.",
+        "review_cycle_not_calibrating": "The cycle has not reached its calibration stage: nothing can be calibrated or released yet.",
+        "review_own": "You cannot calibrate or release your own review.",
         "review_period_backwards": "The end date must be after the start date.",
         "review_timeline_backwards": "The timeline dates must run forwards.",
         "review_timeline_before_period": "A timeline date cannot fall before the period starts.",

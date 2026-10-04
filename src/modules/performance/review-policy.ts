@@ -12,11 +12,13 @@
 //     calibration may still move it.
 //   · the **management chain** above the subject (direct or skip-level) and holders of
 //     `performance:read` / `performance:manage` covering them read submitted forms at any time.
+//   · the manager **proposes** a rating; only HR (`performance:manage`) **calibrates and
+//     releases**, and only once the cycle has reached its calibration stage.
 //   · **peers** are never shown to the subject by name while the cycle is anonymous, and a peer
 //     never reads another peer.
 //   · **colleagues read nothing**, whatever they hold over other parts of the company.
 import { can, type Principal } from "../platform/rbac/policy";
-import type { ReviewCycleStatus, ReviewFormKind, ReviewStage } from "./enums";
+import { type ReviewCycleStatus, type ReviewFormKind, type ReviewStage, reviewsAreIn } from "./enums";
 import { canManagePerformanceOf, canReadPerformanceOf, type PersonContext } from "./policy";
 
 /** One person's review as the policy needs it: who it is about, who writes it, how far it has got. */
@@ -121,8 +123,16 @@ export const canDecideNomination = (principal: Principal, parties: ReviewParties
  */
 export const canSeeNominations = (principal: Principal, parties: ReviewParties): boolean => isSelf(principal, parties) || isAbove(principal, parties) || isHr(principal, parties);
 
-/** Calibration and release: the reviewing manager or HR over the person. Never the subject. */
-export const canReleaseReview = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && (isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
+/**
+ * Who calibrates and releases a review: HR over the person (`performance:manage`), and never the
+ * person themself. The reviewing manager writes the review and proposes a rating — being the
+ * manager opens neither calibration nor release (owner's decision, 2026-10-05; PRF-02). Oversight
+ * (`performance:oversee`) reads and never acts.
+ */
+export const isReviewCalibrator = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && canManagePerformanceOf(principal, parties.subject);
+
+/** Calibration and release: the calibrator, and only once the cycle has reached its calibration stage (or is closed). */
+export const canReleaseReview = (principal: Principal, parties: ReviewParties): boolean => isReviewCalibrator(principal, parties) && reviewsAreIn(parties.cycleStatus);
 
 /** Acknowledging: the subject, once it has been released to them (FR-PRF-03's last step). */
 export const canAcknowledgeReview = (principal: Principal, parties: ReviewParties): boolean => isSelf(principal, parties) && parties.released;

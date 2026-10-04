@@ -6793,6 +6793,8 @@
         "yes": "Công bố",
         "cycleAction": "Công bố cả chu kỳ",
         "cycleConfirm": "Sẽ công bố cho tất cả những người đã có phiếu quản lý. Tiếp tục?",
+        "waitingForHr": "Bạn đã gửi phiếu đánh giá và mức xếp loại đề xuất. Phòng Nhân sự sẽ cân đối và công bố cho nhân viên — đang chờ Nhân sự công bố.",
+        "notYet": "Chỉ cân đối và công bố được khi chu kỳ đã sang giai đoạn cân đối. Hiện chu kỳ vẫn đang nhận phiếu.",
         "cycleDone": "Đã công bố {released} người, bỏ qua {skipped} người."
       },
       "acknowledge": {
@@ -6864,6 +6866,8 @@
         "review_cycle_no_participants": "Không có ai thuộc phạm vi chu kỳ này.",
         "review_cycle_bad_step": "Không chuyển được sang trạng thái đó.",
         "review_cycle_not_collecting": "Chu kỳ không còn nhận phiếu.",
+        "review_cycle_not_calibrating": "Chu kỳ chưa sang giai đoạn cân đối: chưa thể cân đối hay công bố.",
+        "review_own": "Bạn không thể cân đối hay công bố đánh giá của chính mình.",
         "review_period_backwards": "Ngày kết thúc phải sau ngày bắt đầu.",
         "review_timeline_backwards": "Các mốc thời gian phải theo thứ tự.",
         "review_timeline_before_period": "Mốc thời gian không được trước ngày bắt đầu kỳ.",

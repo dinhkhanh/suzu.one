@@ -4,10 +4,12 @@
 // had at launch, and every submitted form carries the figure the pure engine gives for its
 // answers, so week 2's final yearly result reads exactly what a real cycle would have left.
 //
-// One 2026 annual cycle for SuZu Media (SZM), most of the way through:
-//   · everyone has self-reviewed except one person (so the "waiting for the self review" path is live)
+// One 2026 annual cycle for SuZu Media (SZM), in its calibration stage — a review is calibrated
+// and released by HR only, and only from that stage on (owner's decision, 2026-10-05), so a cycle
+// with released reviews in it cannot still be collecting:
+//   · everyone has self-reviewed except one person, who never wrote before the forms closed
 //   · their managers have written and submitted, except for that one
-//   · two people are calibrated and released, one of them has acknowledged
+//   · HR (Mai, `performance:manage`) calibrated two and released four; two have acknowledged
 //   · peer nominations are approved and four peer forms are in; one nomination is still waiting
 //     for the manager's answer, so the approval step has a live row too
 import { eq } from "drizzle-orm";
@@ -62,8 +64,8 @@ const FILLS: Fill[] = [
     who: HUY,
     self: { answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Rút thời gian dựng bản nháp đầu từ 14 giờ xuống 10,5 giờ và học xong khoá DaVinci Resolve.", improve: "Chủ động hỏi brief sớm hơn để đỡ phải sửa nhiều vòng." }, comment: "Một năm học được nhiều, nhất là phần color grading." },
     manager: { by: LONG, answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Tiến bộ rõ về tốc độ dựng; đã chia sẻ lại kiến thức color cho cả phòng.", improve: "Cần tự tin hơn khi trao đổi trực tiếp với khách." }, comment: "Đồng ý với phần tự đánh giá. Là người tiến bộ nhanh nhất phòng năm nay." },
-    calibrate: { bp: 11200, note: "Cân đối theo mặt bằng chung của phòng Video: giữ ở mức vượt mong đợi.", by: HA },
-    release: LONG,
+    calibrate: { bp: 11200, note: "Cân đối theo mặt bằng chung của phòng Video: giữ ở mức vượt mong đợi.", by: MAI },
+    release: MAI,
     acknowledge: "Cảm ơn anh. Em sẽ chú ý phần trao đổi với khách.",
     peers: [{ by: LINH, answers: { quality: 4, teamwork: 5, highlights: "Anh Huy hướng dẫn em rất kỹ khi em mới vào.", improve: "" }, comment: "Rất dễ hỏi và sẵn sàng giúp." }],
   },
@@ -71,7 +73,7 @@ const FILLS: Fill[] = [
     who: TAM,
     self: { answers: { quality: 4, ownership: 4, teamwork: 3, growth: 3, highlights: "Đạo diễn 6 TVC, 5 bàn giao đúng hạn; số vòng sửa trung bình giảm từ 3,5 xuống 2,4.", improve: "Giao việc lại cho đội nhiều hơn thay vì ôm." }, comment: "Quý 3 nặng nhưng giữ được chất lượng." },
     manager: { by: LONG, answers: { quality: 4, ownership: 4, teamwork: 3, growth: 4, highlights: "Giữ được chất lượng khi khối lượng tăng; khách hài lòng.", improve: "Phân việc cho Huy và Linh nhiều hơn để đỡ nghẽn ở một người." }, comment: "Trụ cột của phòng. Cần tập giao việc." },
-    release: LONG,
+    release: MAI,
     acknowledge: "Em nhận phần giao việc. Sang năm sẽ chia rõ đầu việc cho Huy và Linh ngay từ đầu dự án.",
     peers: [
       { by: HUY, answers: { quality: 5, teamwork: 3, highlights: "Anh Tâm chốt hướng rất nhanh, đỡ mất thời gian sửa.", improve: "Đôi khi ôm việc, bọn em muốn được giao thêm." }, comment: "Học được nhiều khi làm cùng." },
@@ -82,8 +84,8 @@ const FILLS: Fill[] = [
     who: LONG,
     self: { answers: { quality: 4, ownership: 5, teamwork: 4, growth: 3, highlights: "Phòng Video đạt 95 % đúng hạn và giữ CSAT 4,25.", improve: "Xây quy trình hậu kỳ chuẩn hoá hơn." }, comment: "Một năm ổn định." },
     manager: { by: HA, answers: { quality: 4, ownership: 5, teamwork: 4, growth: 3, highlights: "Phòng chạy đều, không còn phụ thuộc vào một người.", improve: "Cần chuẩn bị người kế cận." }, comment: "Đồng ý." },
-    calibrate: { bp: 11000, note: "Cân đối giữa các trưởng phòng: giữ ở mức vượt mong đợi.", by: HA },
-    release: HA,
+    calibrate: { bp: 11000, note: "Cân đối giữa các trưởng phòng: giữ ở mức vượt mong đợi.", by: MAI },
+    release: MAI,
     peers: [{ by: TAM, answers: { quality: 4, teamwork: 5, highlights: "Anh Long bảo vệ đội trước khách rất tốt.", improve: "" }, comment: "Sếp trực tiếp, làm việc thẳng thắn." }],
   },
   {
@@ -93,9 +95,9 @@ const FILLS: Fill[] = [
     release: MAI,
     peers: [{ by: LINH, answers: { quality: 3, teamwork: 4, highlights: "Anh Bảo trả lời thắc mắc về hợp đồng rất nhanh.", improve: "" }, comment: "" }],
   },
-  // Linh joined in August and has not written hers: the manager review is blocked until the due
-  // date passes, which is exactly the path the screen has to explain. One peer has been put
-  // forward for her and is still waiting for Tâm to approve, so the nomination flow has a live
+  // Linh joined in August and never wrote hers, and her manager wrote nothing either: the one
+  // review HR cannot release, which is the row the bulk release reports back as skipped. One peer
+  // was put forward for her and is still waiting for Tâm's answer, so the nomination list has a
   // pending row too.
   { who: LINH, pendingPeers: [HUY] },
 ];
@@ -133,7 +135,7 @@ export async function seedReviews(db: Db): Promise<string> {
       peerDueOn: "2026-12-10",
       calibrationOn: "2026-12-18",
       releaseOn: "2026-12-22",
-      status: "active",
+      status: "calibration",
       peersEnabled: true,
       peerMin: 1,
       peerMax: 3,
