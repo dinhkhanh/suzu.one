@@ -5,7 +5,7 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { invalidatePeople } from "../people/service";
 import { buildTree, flattenTree, placementOf, type TreeNode, type UnitNode, wouldLoop } from "./engine/tree";
-import type { OrgUnitKind } from "./enums";
+import { type OrgUnitKind, PAYING_BANK_KEYS } from "./enums";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -14,7 +14,7 @@ export type OrgUnitRow = typeof schema.orgUnit.$inferSelect;
 
 // Entities, branches and the unit tree are read on nearly every page and change a few times a
 // year, so they live in the shared cache (src/lib/cache). Every write below drops its entry.
-const ORG_CACHE = { entities: "org:entities", branches: "org:branches", units: "org:units" } as const;
+const ORG_CACHE = { entities: "org:entities", branches: "org:branches", units: "org:units", bankAccounts: "org:entity-bank-accounts" } as const;
 const ORG_TTL = 60 * 60;
 
 /** For writers outside this file (the department import, seeds): the tree or entities changed. */
@@ -166,6 +166,68 @@ export async function updateBranch(id: string, details: Pick<BranchRow, "name" |
   const [after] = await db().update(schema.branch).set({ ...details, updatedAt: new Date() }).where(eq(schema.branch.id, id)).returning();
   await invalidate(ORG_CACHE.branches);
   return { before, after };
+}
+
+// ── The entity's paying bank accounts (FR-PLT-11, FR-PAY-33) ────────────────────────────────
+
+export type EntityBankAccountRow = typeof schema.entityBankAccount.$inferSelect;
+export type EntityBankAccountInput = Pick<EntityBankAccountRow, "bank" | "accountNumber" | "accountName" | "branch" | "isDefault" | "isActive">;
+
+/**
+ * Every paying account of every entity — a handful of rows that change once in years — under one
+ * cached key, in a fixed order. Inside a transaction pass it: the rows come from there.
+ */
+async function allBankAccounts(executor?: Executor): Promise<EntityBankAccountRow[]> {
+  const load = (from: Executor) => from.select().from(schema.entityBankAccount).orderBy(asc(schema.entityBankAccount.entityId), asc(schema.entityBankAccount.bank), asc(schema.entityBankAccount.accountNumber), asc(schema.entityBankAccount.id));
+  return executor ? load(executor) : cached(ORG_CACHE.bankAccounts, ORG_TTL, () => load(db()));
+}
+
+/** One entity's paying accounts, the default of each bank first. No authorization inside. */
+export async function listEntityBankAccounts(entityId: string, options: { activeOnly?: boolean } = {}, executor?: Executor): Promise<EntityBankAccountRow[]> {
+  const rows = await allBankAccounts(executor);
+  return rows
+    .filter((row) => row.entityId === entityId && (!options.activeOnly || row.isActive))
+    .sort((left, right) => left.bank.localeCompare(right.bank) || Number(right.isDefault) - Number(left.isDefault) || left.accountNumber.localeCompare(right.accountNumber));
+}
+
+export async function findEntityBankAccount(id: string, executor: Executor = db()): Promise<EntityBankAccountRow | undefined> {
+  const [row] = await executor.select().from(schema.entityBankAccount).where(eq(schema.entityBankAccount.id, id)).limit(1);
+  return row;
+}
+
+/**
+ * Adds a paying account (`accountId` null) or changes one. The number is kept as digits only. An
+ * account marked default takes the mark from the entity's other accounts at the same bank, and the
+ * first account in use at a bank is the default whether or not the box was ticked — there is
+ * always exactly one to offer while any is in use.
+ */
+export async function saveEntityBankAccount(entityId: string, accountId: string | null, input: EntityBankAccountInput): Promise<{ before: EntityBankAccountRow | null; after: EntityBankAccountRow }> {
+  if (!(PAYING_BANK_KEYS as readonly string[]).includes(input.bank)) throw new ActionError("bank_unknown");
+  const accountNumber = input.accountNumber.replace(/[\s-]/g, "");
+  if (!/^\d{6,32}$/.test(accountNumber)) throw new ActionError("bank_account_number_invalid");
+
+  const saved = await db().transaction(async (tx) => {
+    const table = schema.entityBankAccount;
+    // The entity's accounts are locked together: two saves at once must not both end up default.
+    const existing = await tx.select().from(table).where(eq(table.entityId, entityId)).for("update");
+    const before = accountId ? (existing.find((row) => row.id === accountId) ?? null) : null;
+    if (accountId && !before) throw new ActionError("not_found");
+    if (!accountId && (await tx.select({ id: schema.entity.id }).from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1)).length === 0) throw new ActionError("not_found");
+    if (existing.some((row) => row.id !== accountId && row.bank === input.bank && row.accountNumber === accountNumber)) throw new ActionError("bank_account_exists");
+
+    const others = existing.filter((row) => row.id !== accountId && row.bank === input.bank && row.isActive).sort((left, right) => left.accountNumber.localeCompare(right.accountNumber));
+    const isDefault = input.isActive && (input.isDefault || !others.some((row) => row.isDefault));
+    // The mark is taken from the others before this row takes it (one default per bank is an index).
+    const demoted = isDefault ? others.filter((row) => row.isDefault).map((row) => row.id) : [];
+    if (demoted.length > 0) await tx.update(table).set({ isDefault: false, updatedAt: new Date() }).where(inArray(table.id, demoted));
+    const values = { bank: input.bank, accountNumber, accountName: input.accountName.trim(), branch: input.branch?.trim() || null, isDefault, isActive: input.isActive };
+    const [after] = before ? await tx.update(table).set({ ...values, updatedAt: new Date() }).where(eq(table.id, before.id)).returning() : await tx.insert(table).values({ entityId, ...values }).returning();
+    // The default itself was switched off: the mark passes to another account still in use.
+    if (!isDefault && others.length > 0 && !others.some((row) => row.isDefault)) await tx.update(table).set({ isDefault: true, updatedAt: new Date() }).where(eq(table.id, others[0].id));
+    return { before, after };
+  });
+  await invalidate(ORG_CACHE.bankAccounts);
+  return saved;
 }
 
 export type OrgUnitDetails = Pick<OrgUnitRow, "name" | "kind" | "parentId" | "isActive">;

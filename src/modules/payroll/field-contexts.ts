@@ -17,6 +17,8 @@ export const retroAmountContext = (itemId: string) => `payroll_retro_item.amount
 /** The total of a generated bank batch or cash sheet (FR-PAY-33, 39), and one person's cash net. */
 export const paymentFileTotalContext = (fileId: string) => `payroll_payment_file.total:${fileId}`;
 export const cashAmountContext = (paymentId: string) => `payroll_cash_payment.amount:${paymentId}`;
+/** What was actually handed over on that cash row (FR-PAY-39) — its own context, so it can never stand in for the net. */
+export const cashDisbursedContext = (paymentId: string) => `payroll_cash_payment.disbursed:${paymentId}`;
 
 /** Year-to-date figures imported for a year the system did not run (FR-PAY-35). */
 export const ytdFiguresContext = (ytdId: string) => `payroll_ytd.figures:${ytdId}`;

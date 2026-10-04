@@ -10,7 +10,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { employment } from "../core-hr/schema";
-import { entity } from "../platform/org/schema";
+import { entity, entityBankAccount } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { BonusSchemeValue, PayrollPolicyValue } from "./enums";
 
@@ -467,6 +467,14 @@ export const payrollPaymentFile = pgTable(
     rowCount: integer("row_count").notNull(),
     /** People left out because their pay account is missing or malformed — never silently dropped. */
     skippedCount: integer("skipped_count").notNull().default(0),
+    /**
+     * Who the batch actually carried. Ids, never a figure or an account: what lets "is everybody
+     * inside a batch?" be answered person by person from the **latest** file of each bank, so a
+     * regenerated file supersedes the one before it instead of adding to it.
+     */
+    coveredPersonIds: uuid("covered_person_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** The entity's paying account the batch debits (FR-PLT-11); null when it was typed by hand. */
+    payingAccountId: uuid("paying_account_id").references(() => entityBankAccount.id),
     /** The batch total, encrypted: context "payroll_payment_file.total:<id>". */
     totalEnc: text("total_enc").notNull(),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -500,11 +508,46 @@ export const payrollCashPayment = pgTable(
     disbursedOn: date("disbursed_on"),
     disbursedByPersonId: uuid("disbursed_by_person_id").references(() => person.id),
     disbursementNote: text("disbursement_note"),
+    /**
+     * What was actually handed over: context "payroll_cash_payment.disbursed:<id>". null on a row
+     * disbursed before this column existed, which reads as "in full". A figure other than the net
+     * needs `disbursement_note` to say why.
+     */
+    disbursedAmountEnc: text("disbursed_amount_enc"),
     /** The person's own confirmation in the app. Nobody may confirm on their behalf. */
     receiptConfirmedAt: timestamp("receipt_confirmed_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [uniqueIndex("payroll_cash_payment_key").on(t.runId, t.personId), index("payroll_cash_payment_person_idx").on(t.personId)],
+).enableRLS();
+
+/**
+ * Somebody on the bank channel whom the run paid **outside every batch** — a single transfer from
+ * the banking app, a cheque, an account no bulk file can carry. The chief accountant records the
+ * day, the bank's reference and why; the row settles that person, so a run is never left unable to
+ * reach "paid" over one account. Words and a date only: the amount is the person's net in the run.
+ */
+export const payrollOtherPayment = pgTable(
+  "payroll_other_payment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    paidOn: date("paid_on").notNull(),
+    /** The bank's transaction reference or a voucher number — what the accountant looks it up by. */
+    reference: text("reference").notNull(),
+    reason: text("reason").notNull(),
+    recordedByPersonId: uuid("recorded_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_other_payment_key").on(t.runId, t.personId), index("payroll_other_payment_person_idx").on(t.personId)],
 ).enableRLS();
 
 // ── Retroactive items (FR-PAY-17) ───────────────────────────────────────────────────────────
@@ -747,6 +790,31 @@ export const bonusRunLine = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("bonus_run_line_key").on(t.runId, t.personId), index("bonus_run_line_entity_idx").on(t.runId, t.entityId), index("bonus_run_line_person_idx").on(t.personId)],
+).enableRLS();
+
+// Which off-cycle payroll run each entity of a bonus run was handed to (FR-PAY-19). One row per
+// hand-over: paying a bonus run finds these first and creates nothing that is already there, so a
+// second click — or a retry after a failure — never doubles an entity's run. A hand-over whose
+// payroll run was later cancelled no longer counts, and that entity can be handed over again.
+export const bonusRunHandoff = pgTable(
+  "bonus_run_handoff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bonusRunId: uuid("bonus_run_id")
+      .notNull()
+      .references(() => bonusRun.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    payrollRunId: uuid("payroll_run_id")
+      .notNull()
+      .references(() => payrollRun.id),
+    /** How many lines went into the payroll run. A count, not money. */
+    headcount: integer("headcount").notNull(),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("bonus_run_handoff_run_idx").on(t.bonusRunId, t.entityId), uniqueIndex("bonus_run_handoff_payroll_run_key").on(t.payrollRunId)],
 ).enableRLS();
 
 // Every step the run was carried through, with who took it and what they said (FR-PAY-21's

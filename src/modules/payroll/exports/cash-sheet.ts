@@ -19,6 +19,9 @@ export type CashSheetRow = {
   amount: number;
   /** Set once the accountant has recorded handing it over. */
   disbursedOn: string | null;
+  /** What was actually handed over, once it has been; and why, when it is not the net. The printed sheet shows neither. */
+  disbursedAmount?: number | null;
+  note?: string | null;
   /** Set once the person confirmed in the app. The paper signature is the other way. */
   receiptConfirmed: boolean;
 };
