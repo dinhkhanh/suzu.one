@@ -217,7 +217,16 @@ FR-ACL-08 view as a role · FR-CHR-17 · FR-KB-12, 16 · FR-COM-05, 06 · FR-AI-
 
 ## 7. What the owner alone can settle
 
-Decisions the build made that should be the owner's: who is asked for a plan, a report and time (today: everyone active, including the collaborator and the owners) · whether a line manager may calibrate and release a review (PRF-02) · whether fixed allowances are pro-rated for joiners and leavers · whether a deal may be set up for delivery more than once.
+Decisions the build made that should be the owner's — **answered 2026-10-05:**
+
+| Question | The owner's answer |
+|---|---|
+| Who is asked for a plan, a report and time? | Every active person **except collaborators and holders of the `owner` role**; they may still file, and are never reminded or counted missing (amends D23). |
+| May a line manager calibrate and release a review (PRF-02)? | **No.** Only HR (`performance:manage`) calibrates and releases, and only once the cycle has reached calibration or is closed; the manager writes the review and proposes the rating. |
+| Are fixed allowances pro-rated for joiners and leavers? | **Ask the chief accountant first**; the engine stays as it is until then, and the answer becomes a per-entity policy. |
+| How does Phase 12 reach production? | **On the branch only** (`phase-12-close-the-gaps`); the owner reads the diff and merges. |
+
+Not asked, decided by the build: a won deal may still become several projects, but a double submit of the same set-up is refused.
 
 Still open from the SRS: Q5 (clock models) · Q13 (holiday multiplier) · Q14 (bonus formula) · Q16 (PDPL, before payroll data) · Q26–Q30 (CRM).
 
