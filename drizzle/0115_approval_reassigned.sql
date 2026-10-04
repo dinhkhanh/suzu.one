@@ -1,0 +1,1 @@
+ALTER TYPE "public"."approval_event_type" ADD VALUE 'reassigned';

@@ -117,6 +117,22 @@ export async function activatePerson(tx: Tx, personId: string): Promise<void> {
   await invalidatePeople(rows);
 }
 
+/**
+ * Suspends an active person's access, or lifts the suspension (FR-PLT-05). Sign-in and every
+ * request re-check the status from the cache this drops, so it holds on the very next request; the
+ * caller deletes the sessions as well. Nothing but the status moves. Returns the row, or undefined
+ * when the person was not in the state to leave (not active; not suspended).
+ */
+export async function setPersonSuspended(tx: Tx, personId: string, suspended: boolean): Promise<PersonRow | undefined> {
+  const [row] = await tx
+    .update(schema.person)
+    .set({ status: suspended ? "suspended" : "active", updatedAt: new Date() })
+    .where(and(eq(schema.person.id, personId), eq(schema.person.status, suspended ? "active" : "suspended")))
+    .returning();
+  if (row) await invalidatePeople([row]);
+  return row;
+}
+
 export async function findPersonById(personId: string): Promise<PersonRow | undefined> {
   return cached(personKey(personId), TTL.personal, async () => {
     const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);

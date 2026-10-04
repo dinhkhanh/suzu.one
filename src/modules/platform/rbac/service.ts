@@ -296,6 +296,21 @@ export async function endRoleGrantsOf(tx: Executor, personId: string, lastDay: I
   return { ended: grants.map((grant) => ({ id: grant.id, validTo: grant.validTo })) };
 }
 
+/**
+ * Refuses to lock out the last owner who can still sign in (a suspension, FR-PLT-05): the grants
+ * stay, but an owner who cannot sign in grants nothing, and the system must never be left with
+ * nobody able to grant roles.
+ */
+export async function assertNotLastActiveOwner(tx: Executor, personId: string): Promise<void> {
+  const today = todayInVietnam();
+  const owners = await tx
+    .selectDistinct({ personId: schema.roleAssignment.personId })
+    .from(schema.roleAssignment)
+    .innerJoin(schema.person, eq(schema.person.id, schema.roleAssignment.personId))
+    .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), lte(schema.roleAssignment.validFrom, today), notEnded(today), eq(schema.person.status, "active")));
+  if (owners.some((owner) => owner.personId === personId) && owners.every((owner) => owner.personId === personId)) throw new ActionError("last_owner");
+}
+
 /** Undoes `endRoleGrantsOf` for a termination that was called off. */
 export async function restoreRoleGrants(tx: Executor, ended: { id: string; validTo: IsoDate | null }[]): Promise<void> {
   for (const grant of ended) await tx.update(schema.roleAssignment).set({ validTo: grant.validTo }).where(eq(schema.roleAssignment.id, grant.id));

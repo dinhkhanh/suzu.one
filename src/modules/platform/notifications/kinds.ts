@@ -79,6 +79,10 @@ export const KINDS = {
   "approvals.decided": "approvals",
   "approvals.commented": "approvals",
   "approvals.delegated_to_you": "approvals",
+  // PLT-02: an administrator acted on an approver's behalf while they were away — set a delegation
+  // for them, or moved one of their turns to somebody else. The approver is told who and to whom.
+  "approvals.delegation_set_for_you": "approvals",
+  "approvals.turn_reassigned": "approvals",
   // FR-PLT-23: a request has been waiting for your answer; and, when it still is, the nudge that
   // goes over your head. Neither carries anything but the type, the one-line summary and the wait.
   "approvals.sla_reminder": "approvals",

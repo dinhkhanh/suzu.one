@@ -931,6 +931,14 @@
         "title": "{delegator} delegated their approvals to you",
         "body": "From {from} to {to}, requests that would go to {delegator} come to you instead."
       },
+      "approvals_delegation_set_for_you": {
+        "title": "{actor} delegated your approvals to {delegate}",
+        "body": "From {from} to {to}, requests that would come to you go to {delegate} instead. {actor} set this for you; you can end it under Delegation."
+      },
+      "approvals_turn_reassigned": {
+        "title": "{actor} moved a request from you to {to}: {requestType}",
+        "body": "A request ({requestType}) that was waiting for your answer now waits for {to}. You no longer need to answer it."
+      },
       "approvals_leave_cancelled": {
         "title": "Your leave was cancelled by HR",
         "body": "HR cancelled your approved leave ({range}). The days are back in your balance."
@@ -1765,6 +1773,7 @@
       "commented": "Comment",
       "withdrawn": "Withdrawn",
       "delegated": "Delegated",
+      "reassigned": "Reassigned",
       "cancelled": "Cancelled"
     },
     "history": {
@@ -1773,6 +1782,11 @@
       "verified": "Verified through a second channel",
       "parallel": "· together with the previous step",
       "standingInFor": "for {name}",
+      "othersOnStep": "the other approvers of the step",
+      "moved": {
+        "offboarded": "The approver left the company",
+        "administrator": "Moved by an administrator"
+      },
       "chain": "Approval chain",
       "stepTitle": "Step {number}",
       "mode": "{mode, select, all {everyone must approve} other {one approval is enough}}"
@@ -1798,6 +1812,8 @@
       "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
       "change_request_verification_required": "Confirm that you verified the new bank account with the employee through a second channel.",
       "approval_delegate_refused": "This request cannot be handed to that person: it is not your turn, or they are already asked.",
+      "approval_reassign_refused": "This turn cannot be moved: the person chosen has no open turn any more, or the new approver is already on the step.",
+      "approval_reassign_tier": "This request carries restricted data. It can only go to someone who may read that employee's restricted data.",
       "approval_open_to_decide": "Open this request to decide it.",
       "delegation_self": "You cannot delegate to yourself.",
       "delegation_dates": "The end date is before the start date.",
@@ -1815,6 +1831,13 @@
       "delegateHint": "The person you choose answers instead of you. What they need to decide this kind of request (for example HR rights) still applies to them.",
       "delegateTo": "Hand over to",
       "delegateNote": "Note",
+      "reassign": "Reassign the approver",
+      "reassignShort": "Reassign",
+      "reassignHint": "For an approver who is away, suspended or not answering. The person you choose answers instead; the requester and the person the request is about cannot. The reason is kept in the request's history.",
+      "reassignFrom": "Take the turn from",
+      "reassignTo": "Give it to",
+      "reassignReason": "Reason",
+      "reassignSubmit": "Reassign",
       "delegateSubmit": "Hand over"
     },
     "bulk": {
@@ -1829,6 +1852,16 @@
     "delegation": {
       "link": "Delegate my approvals",
       "title": "Delegation",
+      "onBehalf": {
+        "title": "Approvals of someone who is away",
+        "description": "You are setting this up for <person>{name}</person>. New requests that would wait for them go to the person you name; they are told, and can end the delegation themselves.",
+        "waiting": "Requests waiting for this person",
+        "waitingEmpty": "Nothing is waiting that you can move.",
+        "hidden": "{count, plural, one {# more request is} other {# more requests are}} waiting for this person, about employees outside your scope.",
+        "given": "This person's delegations",
+        "link": "Delegate for this person",
+        "includePending": "Also hand over the requests waiting for this person now"
+      },
       "description": "While you are away, new requests that would wait for you go to the person you name. You can end a delegation at any time.",
       "to": "Delegate to",
       "types": "Request types",
@@ -2261,6 +2294,18 @@
       "submit": "Record",
       "noteHint": "Notes on disciplinary events are readable only by people who see restricted data. Salary changes: no amounts here."
     },
+    "suspend": {
+      "title": "Suspend the account",
+      "hint": "The person is signed out everywhere at once and cannot sign in until the suspension is lifted. Employment, assignments and roles stay as they are. Requests waiting for their approval are not moved by themselves.",
+      "reason": "Reason for the suspension",
+      "submit": "Suspend",
+      "liftTitle": "Lift the suspension",
+      "liftHint": "This account is suspended. Lifting it gives back exactly the access it had; the person signs in afresh.",
+      "liftReason": "Note (optional)",
+      "liftSubmit": "Lift the suspension",
+      "approvalsHint": "While this person is away or suspended, the requests waiting for their approval need someone to answer in their place.",
+      "approvalsLink": "See what is waiting and delegate for them"
+    },
     "terminate": {
       "title": "Terminate employment",
       "fromResignation": "Carry out the approved resignation",
@@ -2292,6 +2337,10 @@
     },
     "errors": {
       "generic": "Could not save.",
+      "suspend_self": "You cannot suspend your own account.",
+      "suspend_not_active": "Only an active account can be suspended.",
+      "suspend_not_suspended": "This account is not suspended.",
+      "person_not_found": "The person was not found.",
       "forbidden": "You may not do this.",
       "invalid": "Check the fields you entered.",
       "no_employment": "This person has no employment.",

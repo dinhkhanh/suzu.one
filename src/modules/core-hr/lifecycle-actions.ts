@@ -6,7 +6,7 @@ import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { can, canReadTier } from "@/modules/platform/rbac/policy";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
-import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment, transferToEntity } from "./lifecycle";
+import { cancelRecordedEvent, cancelTermination, liftSuspension, recordEvent, rehirePerson, suspendPerson, terminateEmployment, transferToEntity } from "./lifecycle";
 import { findLifecycleEvent } from "./lifecycle-events";
 import { canHireInto, canReassign } from "./policy";
 import { decideResignation, getResignation, submitResignation } from "./resignation";
@@ -78,6 +78,38 @@ const terminatePipeline = createAction({
 
 export async function terminateEmploymentAction(input: unknown) {
   return terminatePipeline(input);
+}
+
+// Suspension (FR-PLT-05): the same authority as a termination — HR over the person — and never over
+// oneself. The reason is kept in the audit log, which is the record of who locked whom out and why.
+const suspendPipeline = createAction({
+  name: "person.suspend",
+  input: z.object({ personId: z.uuid(), reason: z.string().trim().min(1).max(1000) }),
+  authorize: (user, input) => input.personId !== user.person.id && managesPerson(user, input.personId),
+  run: async ({ user, input }) => {
+    const { person, sessionsRevoked } = await suspendPerson(input.personId, user.person.id);
+    refresh(input.personId);
+    return { data: { id: person.id, sessionsRevoked }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: `suspended: ${input.reason}`, before: { status: "active" }, after: { status: person.status, reason: input.reason, sessionsRevoked } } };
+  },
+});
+
+export async function suspendPersonAction(input: unknown) {
+  return suspendPipeline(input);
+}
+
+const liftSuspensionPipeline = createAction({
+  name: "person.unsuspend",
+  input: z.object({ personId: z.uuid(), reason: text(1000) }),
+  authorize: (user, input) => input.personId !== user.person.id && managesPerson(user, input.personId),
+  run: async ({ input }) => {
+    const { person } = await liftSuspension(input.personId);
+    refresh(input.personId);
+    return { data: { id: person.id }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: input.reason ? `suspension lifted: ${input.reason}` : "suspension lifted", before: { status: "suspended" }, after: { status: person.status, reason: input.reason } } };
+  },
+});
+
+export async function liftSuspensionAction(input: unknown) {
+  return liftSuspensionPipeline(input);
 }
 
 const cancelPipeline = createAction({
