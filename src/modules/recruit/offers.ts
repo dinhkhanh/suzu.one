@@ -391,7 +391,7 @@ export async function recordOfferResponse(
     if (response.answer === "accept") {
       // Whoever may put somebody on the books in that entity: there is now a person to create
       // before they turn up. The card carries a name and a date, as every card in this module does.
-      const target = { entityId: before.entityId, departmentId: before.departmentId, teamId: before.teamId };
+      const target = { entityId: before.entityId, unitPath: [before.departmentId, before.teamId].filter((id): id is string => !!id) };
       const hrPeople = await listPeopleHolding("person:manage", target, { includeWildcard: false, executor: tx });
       const candidate = await findCandidate(before.candidateId, tx);
       await notify(

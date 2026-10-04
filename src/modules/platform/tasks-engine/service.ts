@@ -8,7 +8,7 @@ import { ActionError } from "@/lib/action";
 import { type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
-import type { Principal } from "../rbac/policy";
+import type { Principal, Target } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
 import { listPeopleHolding } from "../rbac/service";
 import { checkCompletion } from "./completion-guards";
@@ -91,7 +91,8 @@ export async function instantiateTemplate(tx: Executor, input: InstantiateInput)
   const items = await tx.select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, template.id));
 
   const [subject] = input.subjectPersonId ? await tx.select().from(schema.person).where(eq(schema.person.id, input.subjectPersonId)).limit(1) : [];
-  const target = { entityId: input.entityId, departmentId: input.departmentId, personId: input.subjectPersonId, managerId: subject?.managerId ?? null };
+  // The placement's unit alone: the lookup knows the units above it.
+  const target: Target = { entityId: input.entityId, unitPath: input.departmentId ? [input.departmentId] : [], personId: input.subjectPersonId, managerId: subject?.managerId ?? null };
   const holders = new Map<string, string | null>();
   for (const item of items) {
     const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);

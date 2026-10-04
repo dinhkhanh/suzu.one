@@ -6,6 +6,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { toSearchKey } from "@/lib/text";
 import { emailDomain, normalizeEmail, type PersonAccessState } from "../auth/sign-in-policy";
+import { invalidateGrants } from "../rbac/grants-cache";
 
 export type PersonRow = typeof schema.person.$inferSelect;
 
@@ -44,7 +45,7 @@ export function accessStateOf(person: PersonRow | undefined): PersonAccessState 
 
 /** First sign-in of an address listed in BOOTSTRAP_OWNER_EMAILS: create the person and the group-wide Owner grant. */
 export async function createBootstrapOwner(input: { email: string; name: string }): Promise<PersonRow> {
-  return db().transaction(async (tx) => {
+  const owner = await db().transaction(async (tx) => {
     const [created] = await tx
       .insert(schema.person)
       .values({
@@ -59,6 +60,9 @@ export async function createBootstrapOwner(input: { email: string; name: string 
     await invalidatePeople([created]);
     return created;
   });
+  // A row in `role_assignment`: "who are the owners?" must not be answered from before it.
+  await invalidateGrants(owner.id);
+  return owner;
 }
 
 export type PersonIdentity = { fullName: string; workEmail: string | null };
