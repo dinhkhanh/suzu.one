@@ -85,6 +85,9 @@ describe("which surface a path is", () => {
     // The one that leaked: `[token]` matches anything, and a token ending in an image extension
     // used to slip past the proxy's matcher and be served the whole catalogue.
     expect(surfaceForPath("/preview/anything.png")).toBe("preview");
+    // The file behind a review link is a route of the same surface, checked by the same token.
+    expect(surfaceForPath("/preview/AbC-123_xyz/file")).toBe("preview");
+    expect(surfaceForPath("/preview/AbC-123_xyz/decide")).toBe("preview");
     expect(surfaceForPath("/careers")).toBe("careers");
     expect(surfaceForPath("/careers/video-editor/apply")).toBe("careers");
     expect(surfaceForPath("/careers/assignment/AbC")).toBe("careers");
@@ -112,7 +115,7 @@ describe("which surface a path is", () => {
   it("is looked for on every path a page can be served at", () => {
     // Next's matcher is a plain pattern over the pathname here, with no parameters in it.
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b", "/api/cronies"]) {
+    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/preview/abc/file", "/preview/anything.png/file", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b", "/api/cronies"]) {
       expect(matcher.test(path), path).toBe(true);
     }
     // The installable app's files and the two routes that authenticate for themselves come through

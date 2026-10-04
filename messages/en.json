@@ -12130,8 +12130,7 @@
     "version": "Version {version}",
     "forWhom": "for {name}",
     "work": "For your review",
-    "openFile": "Open the file",
-    "fileHint": "The file link works for a few minutes. Reload this page if it stops.",
+    "fileHint": "Tap the file name to download it. The file stays available for as long as this link is active.",
     "unavailable": "The file cannot be opened right now. Please reload this page in a moment.",
     "messageFrom": "A note from {name}",
     "viewOnly": "This link is for viewing. Please send your comments to whoever shared it with you.",
@@ -12167,7 +12166,7 @@
     },
     "errors": {
       "failed": "Your answer could not be sent. Please try again.",
-      "invalid": "Please check your name and comment, then send again.",
+      "invalid": "Please choose an answer and check your name and comment, then send again.",
       "rejected": "Your answer could not be sent. Please try again.",
       "rate_limited": "That is a lot of attempts. Please try again in a few minutes.",
       "preview_link_closed": "This link no longer takes an answer.",

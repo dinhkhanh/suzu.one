@@ -12130,8 +12130,7 @@
     "version": "Phiên bản {version}",
     "forWhom": "gửi {name}",
     "work": "Nội dung cần duyệt",
-    "openFile": "Mở tệp",
-    "fileHint": "Đường dẫn tệp chỉ có hiệu lực trong ít phút. Hết hạn thì tải lại trang này.",
+    "fileHint": "Chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
     "unavailable": "Chưa mở được tệp. Vui lòng tải lại trang sau giây lát.",
     "messageFrom": "Lời nhắn từ {name}",
     "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
@@ -12167,7 +12166,7 @@
     },
     "errors": {
       "failed": "Chưa gửi được phản hồi. Vui lòng thử lại.",
-      "invalid": "Vui lòng kiểm tra lại tên và ý kiến rồi gửi lại.",
+      "invalid": "Vui lòng chọn một phản hồi, kiểm tra lại tên và ý kiến rồi gửi lại.",
       "rejected": "Chưa gửi được phản hồi. Vui lòng thử lại.",
       "rate_limited": "Anh/chị vừa gửi nhiều lần. Vui lòng thử lại sau ít phút.",
       "preview_link_closed": "Đường dẫn này không còn nhận phản hồi.",

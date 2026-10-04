@@ -91,7 +91,8 @@ beforeAll(async () => {
   ids.tvc = await project("TVC Tết", "team");
   ids.secret = await project("Dự án riêng", "private");
   await db().update(schema.workProject).set({ entityId: szm.id }).where(eq(schema.workProject.teamId, video.id));
-  await db().insert(schema.projectPlan).values({ projectId: ids.tvc, kind: "client", feeVnd: 50_000_000, jobNumber: "SZM-26-900" }).onConflictDoNothing();
+  // The project came with its plan row (PJM-01); the report is about this fee and this job number.
+  await db().update(schema.projectPlan).set({ kind: "client", feeVnd: 50_000_000, jobNumber: "SZM-26-900" }).where(eq(schema.projectPlan.projectId, ids.tvc));
 
   // September on TVC: three dated tasks done (two on time), one returned hand-off, a client revision, a blocker.
   const doneOnTime = await workTask({ title: "Kịch bản", projectId: ids.tvc, assignee: ids.huy, status: "done", dueDate: "2026-09-10", completedAt: at("2026-09-09T10:00:00") });

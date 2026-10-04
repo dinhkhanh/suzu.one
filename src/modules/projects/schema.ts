@@ -10,8 +10,15 @@ import type { CalendarDeliveryStatus } from "../platform/calendar/enums";
 import { entity } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
+import { registerProjectCreationHook } from "../platform/project-creation/registry";
 import { task, taskTemplate } from "../platform/tasks-engine/schema";
 import { workClient, workProject } from "../work/schema";
+
+// A project gets its plan row — and with it its job number — in the transaction that creates it
+// (FR-PJM-01, 02). The work module makes the project and cannot import this one, so the plan is
+// added through the platform's registry. Registered beside the tables, which every database access
+// loads; the hook itself loads when a project is first created.
+registerProjectCreationHook("projects.plan", () => import("./plans").then((module) => module.planOnCreate));
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

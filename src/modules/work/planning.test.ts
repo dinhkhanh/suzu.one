@@ -139,6 +139,10 @@ describe("templates", () => {
       ids.long,
     );
     expect(taskIds).toHaveLength(3);
+    // The project layer's plan and job number came with it, through the platform's
+    // project-creation hooks — no caller has to ask for them (PJM-01).
+    const [plan] = await db().select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, project.id));
+    expect(plan?.jobNumber).toMatch(/^[A-Z0-9]+-\d{2}-\d{3}$/);
     const tasks = await listProjectTasks(project.id);
     const byTitle = Object.fromEntries(tasks.map((task) => [task.title, task]));
     expect(byTitle["Tiền kỳ"]).toMatchObject({ dueDate: "2026-10-06", assigneePersonId: ids.tam, parentTaskId: null });

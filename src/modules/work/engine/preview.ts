@@ -97,6 +97,14 @@ export const PREVIEW_LIMITS = {
   view: { max: 60, windowSeconds: 60 * 60 },
   /** Opening **one** link, counted per token: a leaked link cannot be hammered from everywhere. */
   token_view: { max: 120, windowSeconds: 60 * 60 },
+  /**
+   * Fetching the file behind a link, per visitor. Counted apart from the page, so looking at the
+   * work never spends the allowance for opening it — and twice the page's, because a picture is
+   * fetched once by the page that shows it and once more by the client who taps it.
+   */
+  file: { max: 120, windowSeconds: 60 * 60 },
+  /** Fetching the file of **one** link, counted per token, for the same reason as `token_view`. */
+  token_file: { max: 240, windowSeconds: 60 * 60 },
   /** Deciding, per visitor. Room for a mistyped name and a second try, and no room for a habit. */
   decide: { max: 6, windowSeconds: 60 * 60 },
   /** Deciding on one link. A link takes one decision; this is the floods, not the arithmetic. */

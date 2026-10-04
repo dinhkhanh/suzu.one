@@ -31,6 +31,10 @@ import "server-only";
 //     one version (FR-PJM-51a) and pinned to it there and then, and `clientMayReview` is asked
 //     again on every open: work sent back internally, or still waiting at an internal stage of a
 //     review chain, is not something a client may look at or approve.
+//   · **The file is behind the token too.** The page never carries a storage URL: it points at a
+//     route of its own (`openPreviewFile`) that asks everything the page asks, again, on every
+//     request, and only then signs a link that lives a minute. So the file opens for exactly as
+//     long as the review link does — not for the minute after the page was rendered.
 //   · **The mutation is a `createPublicAction`**, so parse → rate limit → spam check → run → audit
 //     cannot be skipped, and no refusal reaches the caller as anything but a message key.
 import { and, desc, eq, gt, gte, isNull, lt, sql } from "drizzle-orm";
@@ -40,6 +44,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { todayInVietnam } from "@/lib/dates";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
+import { previewKindOf } from "@/modules/platform/files/preview";
 import { createDownloadLink, findFile } from "@/modules/platform/files/service";
 import {
   clientMayReview,
@@ -274,9 +279,15 @@ export type PreviewPage = {
   title: string;
   version: number;
   kind: "file" | "link";
-  /** The external link, or a signed storage URL that lives a minute — see `signedFileUrl`. */
+  /**
+   * The external link of a link version. A file has no URL here at all: the page points at its
+   * own file route, which is `openPreviewFile` — nothing signed is ever printed into the page.
+   */
   url: string | null;
+  /** The file's name; null for a link version, and for a file that is no longer there. */
   fileName: string | null;
+  /** Whether the file is a picture the page can show in place (read off its name, like every viewer). */
+  fileIsImage: boolean;
   message: string | null;
   senderName: string;
   recipientLabel: string | null;
@@ -310,56 +321,35 @@ async function deliverableOf(executor: Executor, link: PreviewLinkRow) {
   return clientMayReview(deliverable, (await currentStage(deliverable, executor))?.stage ?? null) ? deliverable : undefined;
 }
 
-/**
- * A file the client may open, as a signed URL that lives one minute.
- *
- * Two things it is honest to say about that URL, since it leaves the company: it is storage's own,
- * so it **names the object** — the bucket and the file's uuid are in it, though nothing about the
- * task, the project or the client is — and, like every signed URL, it is good for its minute
- * wherever it is taken. Revoking the link a minute after the client opened the page does not reach
- * a URL storage has already signed; it stops the next one being made, which is the whole of what
- * revocation can mean without proxying every byte of a video through the application.
- *
- * A storage outage must not turn the page into a 500 — the client still sees the work's name, the
- * message and the buttons — so the failure is logged and the link is simply absent.
- */
-async function signedFileUrl(fileId: string, asPersonId: string): Promise<{ url: string | null; fileName: string | null }> {
-  const file = await findFile(fileId);
-  if (!file) return { url: null, fileName: null };
-  try {
-    return { url: await createDownloadLink(file, { personId: asPersonId }), fileName: file.fileName };
-  } catch (error) {
-    console.error(JSON.stringify({ level: "error", event: "work.preview.file_url_failed", message: error instanceof Error ? error.message : String(error) }));
-    return { url: null, fileName: file.fileName };
-  }
-}
-
-export type PreviewOutcome = { ok: true; page: PreviewPage } | { ok: false; reason: "closed" | "rate_limited" };
+type Refusal = { ok: false; reason: "closed" | "rate_limited" };
+type OpenedLink = { ok: true; link: PreviewLinkRow; loaded: LoadedTask; deliverable: NonNullable<Awaited<ReturnType<typeof deliverableOf>>> };
 
 /**
- * Opening a link. Counted twice — once against the visitor, so a script cannot walk the token
- * space, and once against the link itself, so a leaked one cannot be hammered from everywhere. The
- * visitor's count comes first and costs one row whatever the token is; the link's is counted only
- * once a token has resolved, so a scanner cannot fill the table with rows of its own invention.
+ * The link a token opens and the one version it is for — or the refusal. This is the whole of what
+ * makes a link usable, and the page and the file behind it both ask it here, so neither can be
+ * more forgiving than the other.
+ *
+ * Counted twice — once against the visitor, so a script cannot walk the token space, and once
+ * against the link itself, so a leaked one cannot be hammered from everywhere. The visitor's count
+ * comes first and costs one row whatever the token is; the link's is counted only once a token has
+ * resolved, so a scanner cannot fill the table with rows of its own invention. `buckets` is the
+ * one thing the two callers differ in: a page opened and a file fetched are counted apart.
  *
  * Nothing at all is written for a request whose token is not even the right **shape**: that is
  * decided in the process, and a stranger typing rubbish into the address bar is not a reason to
  * write a row about them.
- *
- * A view is recorded on the link — a count and a time, never who — and that is what tells the
- * account manager the client has seen it.
  */
-export async function openPreviewLink(token: string, visitor: Visitor): Promise<PreviewOutcome> {
+async function resolveOpenLink(token: string, visitor: Visitor, buckets: { visitor: PreviewBucket; link: PreviewBucket }): Promise<OpenedLink | Refusal> {
   if (!isPreviewTokenShaped(token)) return { ok: false, reason: "closed" };
   const key = previewVisitor(visitor, now()).ipHash;
-  const visitorLimit = await countPreviewHit("view", key);
+  const visitorLimit = await countPreviewHit(buckets.visitor, key);
   if (!visitorLimit.ok) return { ok: false, reason: "rate_limited" };
 
   const link = await linkForToken(token);
   // Unknown, expired, revoked, already decided — one answer, and it is the same one a token nobody
   // ever issued gets.
   if (!link) return { ok: false, reason: "closed" };
-  const tokenLimit = await countPreviewHit("token_view", link.tokenHash);
+  const tokenLimit = await countPreviewHit(buckets.link, link.tokenHash);
   if (!tokenLimit.ok) return { ok: false, reason: "rate_limited" };
   if (!linkIsOpen(link, now())) return { ok: false, reason: "closed" };
 
@@ -369,12 +359,28 @@ export async function openPreviewLink(token: string, visitor: Visitor): Promise<
   // back inside the company: there is nothing to show, and the client is told the same thing as
   // for any other closed link.
   if (!loaded || !deliverable) return { ok: false, reason: "closed" };
+  return { ok: true, link, loaded, deliverable };
+}
 
-  const [client, sender] = await Promise.all([
+export type PreviewOutcome = { ok: true; page: PreviewPage } | Refusal;
+
+/**
+ * Opening a link: everything `resolveOpenLink` asks, then the page.
+ *
+ * A view is recorded on the link — a count and a time, never who — and that is what tells the
+ * account manager the client has seen it.
+ */
+export async function openPreviewLink(token: string, visitor: Visitor): Promise<PreviewOutcome> {
+  const opened = await resolveOpenLink(token, visitor, { visitor: "view", link: "token_view" });
+  if (!opened.ok) return opened;
+  const { link, loaded, deliverable } = opened;
+
+  const [client, sender, file] = await Promise.all([
     clientOfTask(loaded),
     db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, link.createdByPersonId)).limit(1),
+    // Only its name: the bytes are reached through `openPreviewFile`, which asks all of the above again.
+    deliverable.kind === "file" && deliverable.fileId ? findFile(deliverable.fileId) : undefined,
   ]);
-  const file = deliverable.kind === "file" && deliverable.fileId ? await signedFileUrl(deliverable.fileId, link.createdByPersonId) : null;
 
   await db()
     .update(schema.workPreviewLink)
@@ -389,8 +395,9 @@ export async function openPreviewLink(token: string, visitor: Visitor): Promise<
       title: loaded.task.title,
       version: deliverable.version,
       kind: deliverable.kind === "file" ? "file" : "link",
-      url: file ? file.url : deliverable.url,
+      url: deliverable.kind === "file" ? null : deliverable.url,
       fileName: file?.fileName ?? null,
+      fileIsImage: !!file && previewKindOf(file.fileName) === "image",
       message: link.message,
       senderName: sender[0]?.fullName ?? "",
       recipientLabel: link.label,
@@ -398,6 +405,48 @@ export async function openPreviewLink(token: string, visitor: Visitor): Promise<
       expiresAt: link.expiresAt,
     },
   };
+}
+
+// ── The file behind the page ────────────────────────────────────────────────────────────────
+
+export type PreviewFileOutcome = { ok: true; url: string } | Refusal | { ok: false; reason: "no_file" | "unavailable" };
+
+/**
+ * The file of the version a link is for, as a storage URL signed there and then — what the page's
+ * own file route redirects to. The page used to print a signed URL itself, and a client who read
+ * the note before tapping the file found it had already run out; now the address on the page is
+ * the token's, and a fresh minute is signed each time it is asked for. The file therefore opens
+ * for as long as the link does and not a request longer: expiry, revocation, "already decided" and
+ * a version taken back are all asked again here, exactly as the page asks them.
+ *
+ * **Not a view.** The count on the link says how often the client opened the page; the picture the
+ * page shows and a tap on the file are part of that visit, so nothing is written to the link. The
+ * requests are still counted — in buckets of their own — because a route that signs URLs must not
+ * be free to hammer.
+ *
+ * Two things it is honest to say about the URL, since it leaves the company: it is storage's own,
+ * so it **names the object** — the bucket and the file's uuid are in it, though nothing about the
+ * task, the project or the client is — and, like every signed URL, it is good for its minute
+ * wherever it is taken. Revoking the link does not reach a URL storage has already signed; it
+ * stops the next one being made, which is the whole of what revocation can mean without proxying
+ * every byte of a video through the application.
+ *
+ * `no_file` is a link version, or a file that is no longer there; `unavailable` is storage failing
+ * to sign, which is logged and must not become a 500.
+ */
+export async function openPreviewFile(token: string, visitor: Visitor): Promise<PreviewFileOutcome> {
+  const opened = await resolveOpenLink(token, visitor, { visitor: "file", link: "token_file" });
+  if (!opened.ok) return opened;
+  const { link, deliverable } = opened;
+  const file = deliverable.kind === "file" && deliverable.fileId ? await findFile(deliverable.fileId) : undefined;
+  if (!file) return { ok: false, reason: "no_file" };
+  try {
+    // Opened in the name of the account manager who sent the link, as the client's decision is recorded.
+    return { ok: true, url: await createDownloadLink(file, { personId: link.createdByPersonId }) };
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", event: "work.preview.file_url_failed", message: error instanceof Error ? error.message : String(error) }));
+    return { ok: false, reason: "unavailable" };
+  }
 }
 
 // ── The client's decision ───────────────────────────────────────────────────────────────────
