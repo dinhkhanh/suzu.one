@@ -75,14 +75,20 @@ async function soldLines(executor: Tx, dealId: string): Promise<SaleLine[]> {
   return lines.map((line) => ({ title: line.title, quantity: line.quantity, unitPriceVnd: line.unitPriceVnd, discountBp: line.discountBp, months: line.months, format: line.format, channel: line.channel, roleMinutes: line.roleMinutes }));
 }
 
+/**
+ * The deal's contacts as a project may know them: a name and a role (their part in the deal, else
+ * their title). Email, phone and Zalo are never selected here — a brief and a hand-off note are read
+ * by everyone on the project, and a contact's details only by the people who work with the account
+ * (SRS §4.15, design rule 4), who find them on the account's contact list.
+ */
 async function soldContacts(executor: Tx, dealId: string): Promise<SaleContact[]> {
   const rows = await executor
-    .select({ name: schema.crmContact.fullName, title: schema.crmContact.title, role: schema.crmDealContact.role, email: schema.crmContact.email, phone: schema.crmContact.phone })
+    .select({ name: schema.crmContact.fullName, title: schema.crmContact.title, role: schema.crmDealContact.role })
     .from(schema.crmDealContact)
     .innerJoin(schema.crmContact, eq(schema.crmContact.id, schema.crmDealContact.contactId))
     .where(eq(schema.crmDealContact.dealId, dealId))
     .orderBy(asc(schema.crmContact.searchName));
-  return rows.map((row) => ({ name: row.name, role: row.role ?? row.title, contact: [row.email, row.phone].filter(Boolean).join(" · ") || null }));
+  return rows.map((row) => ({ name: row.name, role: row.role ?? row.title }));
 }
 
 /**
@@ -113,7 +119,7 @@ export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorP
       viewerPersonIds: [deal.ownerPersonId],
     });
     if (setup.contractId) await tx.insert(schema.crmContractProject).values({ projectId: project.id, contractId: setup.contractId }).onConflictDoNothing();
-    const note: HandoffNote = { ...setup.note, done: setup.note.done || plan.brief.scopeIn, contacts: setup.note.contacts || plan.brief.clientContacts.map((contact) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n") };
+    const note: HandoffNote = { ...setup.note, done: setup.note.done || plan.brief.scopeIn, contacts: setup.note.contacts || plan.brief.clientContacts.map((contact) => [contact.name, contact.role].filter(Boolean).join(" — ")).join("\n") };
     const accepted = setup.leadPersonId === actorPersonId;
     [link] = await tx
       .insert(schema.crmDealProject)

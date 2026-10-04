@@ -15,12 +15,14 @@ import {
   canEditContacts,
   canEditDeal,
   canEraseContact,
+  canEraseLeadContact,
   canLogLead,
   canManageAccountTeam,
   canOpenCrm,
   canOpenReceivables,
   canPriceForEntity,
   canReassignDeal,
+  canRecordActivity,
   canRecordInvoices,
   canReopenDeal,
   canSeeAccountMoney,
@@ -230,6 +232,14 @@ describe("leads", () => {
   it("lets the owner work their own lead without a grant", () => {
     expect(canWorkLead(viewer("mine"), { ...lead, ownerPersonId: "mine" })).toBe(true);
   });
+  it("erases a lead's contact on request only with crm:manage over its entity — open or closed", () => {
+    expect(canEraseLeadContact(director, lead)).toBe(true);
+    expect(canEraseLeadContact(cLevel, { ...lead, status: "converted" })).toBe(true);
+    expect(canEraseLeadContact(director, { ...lead, entityId: SZC })).toBe(false);
+    expect(canEraseLeadContact(otherSeller, lead)).toBe(false);
+    expect(canEraseLeadContact(viewer("mine"), { ...lead, ownerPersonId: "mine" })).toBe(false);
+    expect(canEraseLeadContact(colleague, lead)).toBe(false);
+  });
 });
 
 describe("follow-ups and configuration", () => {
@@ -239,6 +249,27 @@ describe("follow-ups and configuration", () => {
     expect(canEditActivity(seller, activity, account)).toBe(true);
     expect(canEditActivity(director, activity, account)).toBe(true);
     expect(canEditActivity(otherSeller, activity, account)).toBe(false);
+  });
+  it("records an activity only where every record it names passes its own rule (CRM-01)", () => {
+    const none = { lead: null, account: null, deal: null };
+    const ownLead = { entityId: SZC, ownerPersonId: "mine", referrerPersonId: null, createdByPersonId: "mine", status: "new" as const };
+    const leadOwner = viewer("mine");
+    // A lead's owner logs on their lead — and on nothing else that rides in the same request.
+    expect(canRecordActivity(leadOwner, { ...none, lead: ownLead })).toBe(true);
+    expect(canRecordActivity(leadOwner, { ...none, lead: ownLead, account })).toBe(false);
+    expect(canRecordActivity(leadOwner, { lead: ownLead, account, deal: deal() })).toBe(false);
+    // The account's people log on the account; a lead they may not work refuses the whole request.
+    expect(canRecordActivity(am, { ...none, account })).toBe(true);
+    expect(canRecordActivity(am, { ...none, account, lead: ownLead })).toBe(false);
+    expect(canRecordActivity(collaboratorOnTeam, { ...none, account })).toBe(false);
+    expect(canRecordActivity(colleague, { ...none, account })).toBe(false);
+    // A deal is named with its own account, and by somebody who may see it.
+    expect(canRecordActivity(seller, { ...none, account, deal: deal() })).toBe(true);
+    expect(canRecordActivity(seller, { ...none, deal: deal() })).toBe(false);
+    expect(canRecordActivity(seller, { ...none, account, deal: deal({ account: groupAccount }) })).toBe(false);
+    expect(canRecordActivity(otherSeller, { ...none, account, deal: deal({ entityId: SZC }) })).toBe(false);
+    // Nothing named: nothing to record against.
+    expect(canRecordActivity(cLevel, none)).toBe(false);
   });
   it("configures the pipeline and the rate card with a group-wide crm:manage; an entity's price with crm:manage over it", () => {
     expect(canConfigureCrm(cLevel)).toBe(true);

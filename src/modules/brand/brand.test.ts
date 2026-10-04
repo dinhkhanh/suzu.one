@@ -36,7 +36,8 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { STARTER_SECTIONS } from "./enums";
-import { listPublicBrandKits, openPublicBrandKit, publicBrandFileLink } from "./public";
+import { BRAND_FILE_LIMITS, brandVisitorKey } from "./engine/rate-limit";
+import { countBrandFileHit, listPublicBrandKits, openPublicBrandKit, publicBrandFileLink, servePublicBrandFile } from "./public";
 import {
   beginBrandAssetUpload,
   completeBrandAssetUpload,
@@ -48,6 +49,7 @@ import {
   findBrandKit,
   loadBrandKitContent,
   moveBrandSection,
+  purgeBrandFileHits,
   totalsByKit,
   updateBrandKitDetails,
   type BrandKitDetails,
@@ -59,6 +61,7 @@ const starter = STARTER_SECTIONS.map((section) => ({ kind: section.kind, title: 
 const svg = new TextEncoder().encode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>');
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
 const exe = new Uint8Array([0x4d, 0x5a, 0x90, 0x00, 3, 0, 0, 0]);
+const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n");
 
 let actor: { personId: string };
 let kit: BrandKitRow;
@@ -168,6 +171,50 @@ describe("what the public gets", () => {
     expect(totals.get(logo.id)?.total).toBe(2);
     const content = await loadBrandKitContent(kit);
     expect((await totalsByKit([kit.id])).get(kit.id)).toEqual({ sections: content.sections.length, files: content.assets.length, downloads: 2 });
+  });
+
+  it("keeps a private file private even when a rule cites it, and draws nothing but pictures (BRD-01)", async () => {
+    const working = await upload("price list.pdf", pdf, { kind: "brochure", isPublic: false });
+    const brochure = await upload("brochure.pdf", pdf, { kind: "brochure" });
+    const content = await loadBrandKitContent((await findBrandKit(kit.id))!);
+    const logoSection = content.sections.find((section) => section.title === "logo")!;
+    // Citing a file as a rule's "example" is not a way to hand it out: only a picture illustrates.
+    await createBrandRule(logoSection, { verdict: "do", text: "Xem bảng giá", textEn: null, exampleAssetId: working.id });
+    const opened = await openPublicBrandKit("suzu-coffee");
+    expect(opened?.kind === "kit" && opened.content.assets.map((asset) => asset.title)).not.toContain(working.title);
+    // The same nothing as a hidden kit's file or an id nobody has.
+    for (const purpose of ["preview", "download"] as const) expect(await publicBrandFileLink("suzu-coffee", working.id, purpose)).toBeNull();
+    // A private picture no rule shows is not drawn either.
+    const unshown = content.assets.find((asset) => asset.title === "working file.png")!;
+    expect(await publicBrandFileLink("suzu-coffee", unshown.id, "preview")).toBeNull();
+    // "Preview" draws pictures: a public brochure is downloaded, and counted, or not had at all.
+    expect(await publicBrandFileLink("suzu-coffee", brochure.id, "preview")).toBeNull();
+    expect(await publicBrandFileLink("suzu-coffee", brochure.id, "download")).toMatch(/^https:\/\/storage\.invalid\/download\//);
+  });
+
+  it("counts every request against its visitor, and stops answering past the hour's allowance (BRD-01)", async () => {
+    const [logo] = (await loadBrandKitContent(kit)).assets.filter((asset) => asset.kind === "logo");
+    const visitor = { ipHash: "0123456789abcdef" };
+    const at = new Date("2026-10-05T03:10:00Z");
+    const downloads = async () => (await downloadTotalsByAsset(kit.id, "2999-01-01")).get(logo.id)?.total ?? 0;
+    const before = await downloads();
+    for (let hit = 1; hit < BRAND_FILE_LIMITS.download.max; hit += 1) await countBrandFileHit("download", brandVisitorKey(visitor.ipHash, at), at);
+    expect(await servePublicBrandFile("suzu-coffee", logo.id, "download", visitor, at)).toEqual({ ok: true, url: expect.stringMatching(/^https:\/\/storage\.invalid\/download\//) });
+    // One past the allowance: no link is signed and no download is counted, until the window ends.
+    expect(await servePublicBrandFile("suzu-coffee", logo.id, "download", visitor, at)).toEqual({ ok: false, retryAfterSeconds: 50 * 60 });
+    expect(await downloads()).toBe(before + 1);
+    // Pictures have their own allowance, another visitor has theirs, and the next hour starts afresh.
+    expect((await servePublicBrandFile("suzu-coffee", logo.id, "preview", visitor, at)).ok).toBe(true);
+    expect((await servePublicBrandFile("suzu-coffee", logo.id, "download", { ipHash: "fedcba9876543210" }, at)).ok).toBe(true);
+    expect((await servePublicBrandFile("suzu-coffee", logo.id, "download", visitor, new Date("2026-10-05T04:00:00Z"))).ok).toBe(true);
+    // A guessed id is counted like any request, and answered with nothing.
+    expect(await servePublicBrandFile("suzu-coffee", crypto.randomUUID(), "preview", visitor, at)).toEqual({ ok: true, url: null });
+
+    // What was kept is a daily key, never the visitor's own hash — and it goes after a week.
+    const hits = await db().select().from(schema.brandFileHit);
+    expect(hits.some((row) => row.keyHash === visitor.ipHash)).toBe(false);
+    expect(await purgeBrandFileHits(new Date("2026-10-06T00:00:00Z"))).toBe(0);
+    expect(await purgeBrandFileHits(new Date("2026-10-20T00:00:00Z"))).toBe(hits.length);
   });
 });
 

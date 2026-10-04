@@ -10,10 +10,11 @@ import { notify } from "../platform/notifications/service";
 import { addAccountMember, createAccount, findAccount, moveAccountWork, removeAccountMember, saveCommercialTerms, saveProfile, setLifecycle, setSalesOwner } from "./accounts";
 import { cancelFollowUp, completeFollowUp, findActivity, recordActivity, rescheduleFollowUp } from "./activities";
 import { eraseContact, findContact, saveContact } from "./contacts";
+import { dealContext } from "./deals";
 import { ACCOUNT_SIZES, ACCOUNT_TIERS, ACTIVITY_KINDS, CONTACT_CHANNELS, CONTACT_SOURCES, CONTACT_STATUSES, DECISION_ROLES, LAWFUL_BASES, LIFECYCLES, SOURCES } from "./enums";
 import { accountCode, checkbox, days, idList, isoDate, optional, text, vnd } from "./form-inputs";
 import { findLead, leadFacts } from "./leads";
-import { type AccountFacts, canCreateAccount, canEditAccount, canEditActivity, canEditCommercialTerms, canEditContacts, canEraseContact, canLogActivity, canManageAccountTeam, canWorkLead, type CrmViewer } from "./policy";
+import { type AccountFacts, canCreateAccount, canEditAccount, canEditActivity, canEditCommercialTerms, canEditContacts, canEraseContact, canManageAccountTeam, canRecordActivity, type CrmViewer } from "./policy";
 import { loadCrm } from "./viewer";
 
 type Rule = (viewer: CrmViewer, account: AccountFacts) => boolean;
@@ -193,9 +194,11 @@ const erasePipeline = createAction({
     return !!contact && may(user, contact.clientId, canEraseContact);
   },
   run: async ({ input }) => {
-    const { after } = await eraseContact(input.contactId);
+    const { after, copies } = await eraseContact(input.contactId);
     refresh(after.clientId);
-    return { data: { id: after.id }, audit: { resource: { type: "crm_contact", id: after.id }, summary: "erased on request" } };
+    revalidatePath("/crm/leads");
+    // The trail says how far the erasure reached — how many copies, never what they held.
+    return { data: { id: after.id }, audit: { resource: { type: "crm_contact", id: after.id }, summary: "erased on request", after: copies } };
   },
 });
 export async function eraseContactAction(input: unknown) {
@@ -220,12 +223,14 @@ const activityPipeline = createAction({
     followUpOwnerId: optional(z.uuid()),
     followUpSubject: text(200),
   }),
+  // Every record the request names is found again and passes its own rule (`canRecordActivity`):
+  // the lead, the account and the deal — a contact is its account's, which the service checks.
   authorize: async (user, input) => {
-    if (input.leadId) {
-      const lead = await findLead(input.leadId);
-      return !!lead && canWorkLead((await loadCrm(user)).viewer, leadFacts(lead));
-    }
-    return !!input.clientId && may(user, input.clientId, canLogActivity);
+    if (input.contactId && !input.clientId) return false;
+    const [{ viewer }, lead, account, deal] = await Promise.all([loadCrm(user), input.leadId ? findLead(input.leadId) : null, input.clientId ? findAccount(input.clientId) : null, input.dealId ? dealContext(input.dealId) : null]);
+    // A record that is named and cannot be found is a refusal, not a target left out.
+    if ((input.leadId && !lead) || (input.clientId && !account) || (input.dealId && !deal)) return false;
+    return canRecordActivity(viewer, { lead: lead ? leadFacts(lead) : null, account: account?.facts ?? null, deal: deal?.facts ?? null });
   },
   run: async ({ user, input }) => {
     const account = input.clientId ? await findAccount(input.clientId) : null;

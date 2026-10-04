@@ -5,7 +5,7 @@
 // tables say which kit a file belongs to, where it sits in the guideline, and whether the public
 // may have it.
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { storedFile } from "../platform/files/schema";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
@@ -123,4 +123,24 @@ export const brandAssetDownload = pgTable(
     downloads: integer("downloads").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.assetId, t.day] })],
+).enableRLS();
+
+/**
+ * Counted requests to the public file route (NFR-SEC-03) — the same fixed window the careers page
+ * and the client review links use, kept in this module because the table belongs to whoever owns
+ * the surface. `key_hash` is a hashed visitor re-keyed every day (`brandVisitorKey`), never an
+ * address; a row says that *somebody* asked for files that hour, which is all a limiter needs.
+ */
+export const brandFileHit = pgTable(
+  "brand_file_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What was counted: "download", "preview". See `BRAND_FILE_LIMITS`.
+    bucket: text("bucket").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("brand_file_hit_key").on(t.bucket, t.keyHash, t.windowStart), index("brand_file_hit_window_idx").on(t.windowStart)],
 ).enableRLS();

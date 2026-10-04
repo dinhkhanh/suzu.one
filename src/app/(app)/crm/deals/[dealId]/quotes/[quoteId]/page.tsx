@@ -10,7 +10,7 @@ import { pageTitle } from "@/i18n/page-title";
 import { getRequest } from "@/modules/platform/approvals/service";
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canEditQuotes, canSeeQuoteMargin, canViewQuotes, estimateMargin, getDeal, getQuote, getRateCard, priceOn, quoteApprovalReasons, quoteRequestType, vatRates } from "@/modules/crm/service";
+import { canEditQuotes, canSeeQuoteMargin, canViewQuotes, getDeal, getQuote, getRateCard, priceOn, type QuotePayload, quoteReaderView, quoteRequestType, vatRates } from "@/modules/crm/service";
 import { lineNet, quoteNext } from "@/modules/crm/engine/quote";
 import { decideQuoteAction } from "@/modules/crm/quote-actions";
 import { crmShell } from "@/modules/crm/pages";
@@ -30,24 +30,30 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
   const edits = canEditQuotes(shell.viewer, found.facts);
   const seesMargin = canSeeQuoteMargin(shell.viewer, found.facts);
   const draft = quote.quote.status === "draft";
-  const [t, f, card, vat, request, reasons, margin] = await Promise.all([
+  const [t, f, card, vat, request, { margin, approval }] = await Promise.all([
     getTranslations("crm"),
     formatters(),
     edits && draft ? getRateCard() : Promise.resolve(null),
     vatRates(today),
     quote.quote.approvalRequestId ? getRequest({ personId: user.person.id, principal: user.principal }, quoteRequestType, quote.quote.approvalRequestId) : Promise.resolve(null),
-    edits && draft && quote.lines.length ? quoteApprovalReasons(quote.quote, quote.lines, today) : Promise.resolve([]),
-    seesMargin ? estimateMargin(quote.quote, quote.lines, today) : Promise.resolve(null),
+    // The margin, and what the margin rule says of a draft, only for a reader of margins (`pjm:cost`).
+    quoteReaderView(quote.quote, quote.lines, { seesMargin, drafts: edits }, today),
   ]);
   const services = card
     ? card.services
         .filter((service) => service.isActive)
         .map((service) => ({ id: service.id, code: service.code, name: service.name, unit: service.unit, isRecurring: service.isRecurring, format: service.format, channel: service.channel, priceVnd: priceOn(card, service.id, found.deal.entityId, today), roleMinutes: service.roleMinutes }))
     : [];
-  // What may happen next: the steps the status allows, of which a draft needing approval may only be submitted.
-  const steps = edits ? quoteNext(quote.quote.status).filter((step) => !(draft && step === "send" && reasons.length > 0) && !(draft && step === "submit" && reasons.length === 0) && !(found.deal.status !== "open" && step === "revise")) : [];
-  // Why approval is asked: the discount is plain to see; the margin is named only to a reader of margins.
-  const visibleReasons = reasons.filter((reason) => reason === "discount" || seesMargin);
+  // What may happen next: the steps the status allows. A draft offers one of "submit" and "send":
+  // submit when a rule this reader may know already asks for approval, send otherwise — and a send
+  // the margin rule stops goes to the approver on the server, not back to this page as a warning.
+  const draftStep = approval?.next ?? "send";
+  const steps = edits ? quoteNext(quote.quote.status).filter((step) => !(draft && (step === "submit" || step === "send") && step !== draftStep) && !(found.deal.status !== "open" && step === "revise")) : [];
+  // Why approval is asked, as this reader may know it: the discount is plain to see; the margin is
+  // named only to a reader of margins, and is "the company's rules" to everyone else.
+  const payload = request ? (request.request.payload as Partial<QuotePayload>) : null;
+  const named = (reasons: readonly string[]) => reasons.filter((reason) => reason === "discount" || seesMargin).map((reason) => t(`enums.approvalReason.${reason as "discount"}`)).join(", ");
+  const waiting = quote.quote.status === "in_approval" && payload ? (payload.reasons ?? []) : null;
 
   return (
     <Page width="default">
@@ -74,7 +80,8 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
       {request?.canDecide ? (
         <section className="flex flex-col gap-2 rounded-xl border border-amber-300 p-4">
           <h2 className="text-sm font-medium">{t("quote.decide")}</h2>
-          <p className="text-sm text-muted-foreground">{t("quote.approvalReasons", { reasons: ((request.request.payload as { reasons?: string[] }).reasons ?? []).filter((reason) => reason === "discount" || seesMargin).map((reason) => t(`enums.approvalReason.${reason as "discount"}`)).join(", ") || "—" })}</p>
+          <p className="text-sm text-muted-foreground">{t("quote.approvalReasons", { reasons: named(payload?.reasons ?? []) || "—" })}</p>
+          {payload?.marginChecked === false ? <p className="text-sm text-muted-foreground">{t("quote.marginUnchecked")}</p> : null}
           <DecisionForm requestId={request.request.id} action={decideQuoteAction} />
         </section>
       ) : null}
@@ -89,7 +96,8 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
 
       {steps.length ? (
         <section className="flex flex-col gap-2">
-          {draft && reasons.length ? <p className="text-sm text-amber-700 dark:text-amber-400">{t("quote.needsApproval", { reasons: visibleReasons.map((reason) => t(`enums.approvalReason.${reason}`)).join(", ") || t("quote.policy") })}</p> : null}
+          {draft && approval?.reasons.length ? <p className="text-sm text-amber-700 dark:text-amber-400">{t("quote.needsApproval", { reasons: named(approval.reasons) || t("quote.policy") })}</p> : null}
+          {waiting ? <p className="text-sm text-amber-700 dark:text-amber-400">{t("quote.needsApproval", { reasons: named(waiting) || t("quote.policy") })}</p> : null}
           <QuoteSteps quoteId={quoteId} dealId={dealId} steps={steps} />
         </section>
       ) : null}

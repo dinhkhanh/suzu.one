@@ -122,6 +122,13 @@ export function compareAssets(a: Ordered, b: Ordered): number {
 /** Whether a file is offered for download: public, and not a picture that only illustrates a rule. */
 export const isDownloadable = (asset: { isPublic: boolean; kind: BrandAssetKind }): boolean => asset.isPublic && asset.kind !== "example";
 
+/**
+ * Whether a file is drawn beside a rule on the public page (FR-BRD-03): a rule of the kit cites it
+ * as its example, and it is a picture. Shown, never offered: a rule that cites a brochure or a
+ * working file illustrates nothing, and citing one must not be a way to hand it out.
+ */
+export const isIllustration = (asset: { id: string; fileName: string }, citedByRules: ReadonlySet<string>): boolean => citedByRules.has(asset.id) && hasThumbnail(asset.fileName);
+
 /** The file that stands for the brand on the list of brands: its first downloadable logo that can be pictured, else its first such picture. */
 export function coverAssetOf<Asset extends Ordered & { isPublic: boolean; fileName: string }>(assets: readonly Asset[]): Asset | null {
   const pictured = assets.filter((asset) => isDownloadable(asset) && hasThumbnail(asset.fileName)).sort(compareAssets);

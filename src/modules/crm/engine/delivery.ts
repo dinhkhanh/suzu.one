@@ -6,7 +6,12 @@ import type { RoleMinutes } from "../schema";
 import { lineNet, minutesByRole, monthlyNet, periodsOf, type QuoteLineFigures } from "./quote";
 
 export type SaleLine = QuoteLineFigures & { title: string; format: string | null; channel: string | null; roleMinutes: readonly RoleMinutes[] };
-export type SaleContact = { name: string; role: string | null; contact: string | null };
+/**
+ * Who on the client's side the project starts with: a name and a role, and never how to reach them.
+ * A contact's email and phone are read by the people who work with the account (SRS §4.15, design
+ * rule 4); a brief is read by everyone on the project, so the details stay on the account's page.
+ */
+export type SaleContact = { name: string; role: string | null };
 export type SaleDeal = { title: string; nextStep: string | null; oneOffVnd: number | null; monthlyVnd: number | null; months: number | null; serviceLines: readonly string[] };
 
 export type SalePlan = {
@@ -16,7 +21,7 @@ export type SalePlan = {
   deliverables: { title: string; quantity: number; format: string | null; channel: string | null }[];
   retainer: { startMonth: string; endMonth: string | null; lines: { title: string; quantity: number; format: string | null; channel: string | null }[]; feePerMonthVnd: number | null; minutesPerMonth: number | null } | null;
   budgetByRole: RoleMinutes[];
-  brief: { objective: string; scopeIn: string; clientContacts: { name: string; role?: string; contact?: string }[] };
+  brief: { objective: string; scopeIn: string; clientContacts: { name: string; role?: string }[] };
 };
 
 /** "2026-10" plus n months. */
@@ -60,7 +65,7 @@ export function salePlanFrom(deal: SaleDeal, lines: readonly SaleLine[], contact
     brief: {
       objective: [deal.title, deal.nextStep].filter(Boolean).join(" — "),
       scopeIn: scope,
-      clientContacts: contacts.map((contact) => ({ name: contact.name, ...(contact.role ? { role: contact.role } : {}), ...(contact.contact ? { contact: contact.contact } : {}) })),
+      clientContacts: contacts.map((contact) => ({ name: contact.name, ...(contact.role ? { role: contact.role } : {}) })),
     },
   };
 }

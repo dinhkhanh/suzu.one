@@ -13474,6 +13474,7 @@
       "erase": "Xoá theo yêu cầu",
       "eraseType": "Gõ ERASE để xác nhận",
       "eraseConfirm": "Xoá thông tin",
+      "eraseReach": "Thao tác này cũng xoá thông tin ở khách tiềm năng ban đầu và mọi bản sao email, số điện thoại trong brief dự án hay ghi chú bàn giao. Ghi chú tự gõ trong các hoạt động không được dò tìm — hãy tự kiểm tra.",
       "fields": {
         "fullName": "Họ và tên",
         "title": "Chức danh",
@@ -13569,6 +13570,8 @@
       "newAccount": "Khách hàng mới",
       "createContact": "Thêm {name} làm đầu mối",
       "confirmDuplicate": "Có thể đã có khách hàng: {names}. Đánh dấu để vẫn tạo mới.",
+      "eraseContact": "Xoá đầu mối theo yêu cầu",
+      "eraseContactReach": "Tên, chức danh, email và số điện thoại của đầu mối sẽ bị xoá; tên công ty và nhu cầu được giữ lại. Ghi chú tự gõ trong các hoạt động không được dò tìm — hãy tự kiểm tra.",
       "fields": {
         "companyName": "Công ty",
         "existingAccount": "Khách hàng",
@@ -13764,6 +13767,7 @@
       "policy": "quy định của công ty",
       "margin": "Ước tính: {hours} giờ theo giờ công bình quân của đội ≈ {cost}; biên lợi nhuận {margin} ({percent})",
       "noMargin": "Chưa ước tính được biên lợi nhuận: đội thực hiện chưa có tháng lương đã ký để tính bình quân.",
+      "marginUnchecked": "Biên lợi nhuận chưa được kiểm tra: không tính được đơn giá chi phí của đội thực hiện.",
       "documentTitle": "Báo giá",
       "monthsCount": "{count} tháng",
       "steps": {
@@ -14206,6 +14210,7 @@
       "lead_not_found": "Khách tiềm năng này không còn nữa.",
       "lead_closed": "Khách tiềm năng này đã được chuyển hoặc đã đóng.",
       "lead_reason_required": "Hãy ghi lý do không theo đuổi.",
+      "lead_contact_erased": "Khách tiềm năng này không còn ghi tên đầu mối nào.",
       "deal_not_found": "Cơ hội này không còn nữa.",
       "deal_closed": "Cơ hội đã chốt hoặc đã không thành công.",
       "deal_open": "Cơ hội vẫn đang mở.",

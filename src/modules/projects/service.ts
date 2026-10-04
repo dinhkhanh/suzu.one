@@ -10,7 +10,7 @@ export { HEALTHS, type Health, isStale, linkedProgress, updateDueOn } from "./en
 export { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan } from "./policy";
 export { backfillPlans, ensurePlan, nextJobNumber, type PlanRow, type PlanView, readPlans, shapePlan, syncProjectAccountManager } from "./plans";
 export { GROUP_JOB_PREFIX, jobPrefix, jobYear } from "./engine/job-number";
-export { applySalePlanIn, finishPitchProjectIn, markPitchIn, type SalePlanInput } from "./from-sale";
+export { applySalePlanIn, eraseBriefContactDetailsIn, finishPitchProjectIn, markPitchIn, type SalePlanInput } from "./from-sale";
 export { briefRequestProject, getBriefRequest, projectBriefRequest } from "./kickoff";
 export { type DeliverableRow, listStructure, type MilestoneRow, type PhaseRow } from "./structure";
 export { loadBurns, loadMilestoneTasks, loadRegisters, loadStatusFacts, type Register, type RegisterLine } from "./metrics";

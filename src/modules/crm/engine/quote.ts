@@ -96,6 +96,29 @@ export function approvalReasons(totals: Pick<QuoteTotals, "maxDiscountBp">, marg
   return reasons;
 }
 
+/**
+ * Whether the margin rule could be applied at all: there was a cost rate to estimate with and a
+ * price to hold the cost against. When there was not, the quote still goes out on its discount
+ * alone — and the trail says the margin was never checked, rather than letting silence read as "fine".
+ */
+export const marginWasChecked = (margin: MarginEstimate | null): boolean => margin !== null && margin.marginBp !== null;
+
+/** What somebody drafting a quote is shown about approval: the reasons they may know, and the one step a draft offers. */
+export type DraftApproval = { reasons: ApprovalReason[]; next: "submit" | "send" };
+
+/**
+ * The approval signal on a draft, for one reader (FR-CRM-22). A reader of margins (`pjm:cost`) sees
+ * both rules as they stand. Everyone else sees the discount rule — it is their own figure — and
+ * nothing of the margin rule: its verdict, shown while drafting, is an oracle. Vary the hours and
+ * the price until it flips, and the boundary is the delivering team's average loaded hour — of a
+ * team that may be two people. For them the margin is judged on the server when the quote is sent
+ * (`sendQuote`), and whatever is passed here as `margin` is not looked at.
+ */
+export function draftApproval(totals: Pick<QuoteTotals, "maxDiscountBp">, margin: MarginEstimate | null, rule: ApprovalRule, seesMargin: boolean): DraftApproval {
+  const reasons = approvalReasons(totals, seesMargin ? margin : null, rule);
+  return { reasons, next: reasons.length ? "submit" : "send" };
+}
+
 /** Statuses from which a quote may still be edited, and the next steps each one allows. */
 export const QUOTE_EDITABLE = new Set(["draft"]);
 export const quoteNext = (status: string): string[] =>
