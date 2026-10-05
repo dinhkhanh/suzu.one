@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("signIn"))("title") };
 }
 
-const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified"] as const;
+const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified", "rate_limited"] as const;
 
 // The front door: the mark, the name and one key, centred on paper. Nothing else competes.
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {

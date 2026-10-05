@@ -897,6 +897,13 @@
       "when": 1791161835258,
       "tag": "0127_reviews_operable",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791162455926,
+      "tag": "0128_auth_endpoint_rate_limit",
+      "breakpoints": true
     }
   ]
 }
