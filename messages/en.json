@@ -9981,6 +9981,7 @@
       "total": "To pay in all",
       "none": "Nothing is waiting to be paid.",
       "paidRecently": "Paid in the last 60 days ({count})",
+      "truncated": "Listing the {shown} oldest of {total} waiting requests. The figures above count them all.",
       "advanceUnpaid": "Advance not paid yet",
       "toCollect": "Collect {amount}",
       "columns": {

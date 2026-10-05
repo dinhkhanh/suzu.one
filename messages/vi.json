@@ -9981,6 +9981,7 @@
       "total": "Tổng cần chi",
       "none": "Không có đề nghị nào chờ chi.",
       "paidRecently": "Đã chi trong 60 ngày qua ({count})",
+      "truncated": "Đang liệt kê {shown} đề nghị cũ nhất trên {total} đề nghị chờ chi. Các con số ở trên tính đủ tất cả.",
       "advanceUnpaid": "Chờ chi tạm ứng",
       "toCollect": "Thu lại {amount}",
       "columns": {

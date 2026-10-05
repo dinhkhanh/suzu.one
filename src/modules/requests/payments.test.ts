@@ -19,7 +19,7 @@ import { saveTemplate, type TemplateInput } from "@/modules/documents/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { issueConfirmationLetter } from "./letters";
-import { listPayouts, markRequestPaid, payoutOf } from "./payments";
+import { listPayouts, markRequestPaid, payoutOf, payoutTotals } from "./payments";
 import { canPayRequests } from "./policy";
 import { REQUEST_TYPE_SEED } from "./seed-types";
 import { decideGenericRequest, fileRequest } from "./service";
@@ -159,6 +159,30 @@ describe("a trip's advance and its settlement", () => {
     expect((await pay(settlementId, "PT-0042")).after.paidAmount).toBe(-1_800_000);
     const [told] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.request_repayment_recorded")));
     expect(told.params).toMatchObject({ reference: "PT-0042" });
+  });
+});
+
+describe("the queue's figures", () => {
+  // The count and the sum were taken in JavaScript over the rows the list kept (300 at most);
+  // they are counted over everything waiting now, and must match the old figure on a list that fits.
+  it("counts and sums everything waiting exactly as the uncut list would", async () => {
+    // Hanh's trips: the trip tests below count Lan's attendance records.
+    const netted = await fileApproved(ids.hr, "business_trip", trip("2026-07-01", TODAY));
+    await pay(await fileApproved(ids.hr, "advance", advance(1_000_000), netted));
+    await fileApproved(ids.hr, "payment", await invoice(ids.hr, 2_500_000), netted);
+    const blocked = await fileApproved(ids.hr, "business_trip", trip("2026-06-01", TODAY));
+    await fileApproved(ids.hr, "advance", advance(700_000), blocked);
+    await fileApproved(ids.hr, "payment", await invoice(ids.hr, 400_000), blocked);
+    await fileApproved(ids.huy, "payment", await invoice(ids.huy, 650_000));
+
+    const rows = (await listPayouts(ALL, { paidSince: TODAY })).filter((row) => !row.paidOn);
+    const owed = rows.filter((row) => !row.blocked).reduce((total, row) => total + Math.max(0, row.settlement.toPay), 0);
+    expect(await payoutTotals(ALL)).toEqual({ waiting: rows.length, owed });
+    expect(owed).toBeGreaterThan(0);
+    expect(await payoutTotals({ all: false, entityIds: [ids.other] })).toEqual({ waiting: 0, owed: 0 });
+    // A list cut short does not cut the figures.
+    expect((await listPayouts(ALL, { paidSince: TODAY, limit: 1 })).length).toBe(1);
+    expect((await payoutTotals(ALL)).waiting).toBeGreaterThan(1);
   });
 });
 
