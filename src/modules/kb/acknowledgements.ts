@@ -16,7 +16,7 @@ import { notify } from "../platform/notifications/service";
 import { loadGrantsOfPeople } from "../platform/rbac/service";
 import { pagePublishedVisibleSql } from "./access-sql";
 import { ACK_AUDIENCE_TYPES, parseSubjectKey } from "./enums";
-import { loadPage, type PageRow } from "./pages";
+import { loadPages, type PageRow } from "./pages";
 import { canViewPage, type KbViewer, viewerKeys } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -123,29 +123,58 @@ const dueText = (date: IsoDate) => date.split("-").reverse().join("/");
  * claims in one insert, and one notice per distinct due date (its wording is the same for all).
  */
 async function sendNotices(tx: Tx, page: PageRow, people: readonly Owing[], today: IsoDate, kind: "requested" | "reminder"): Promise<number> {
-  if (!page.ackVersionId || people.length === 0) return 0;
-  const loaded = await loadPage(page.id, tx);
-  if (!loaded) return 0;
-  const viewers = await viewersFor(tx, people.map((owing) => owing.personId));
-  const asked = people.flatMap((owing) => {
-    const viewer = viewers.get(owing.personId);
-    if (!viewer || !canViewPage(viewer, loaded.facts, loaded.pageFacts)) return [];
-    const dueOn = ackDueOn(page, owing.createdAt);
-    return [{ personId: owing.personId, dueOn, overdue: dueOn < today }];
+  const [sent] = await sendNoticeBatches(tx, [{ page, people, kind }], today);
+  return sent;
+}
+
+type NoticeBatch = { page: PageRow; people: readonly Owing[]; kind: "requested" | "reminder" };
+
+/**
+ * `sendNotices` for any number of pages at once (the daily job): the pages and everybody's viewer
+ * read once, every claim in one insert, then one notice per page, kind and due date. Returns how
+ * many went out for each batch, in order.
+ */
+async function sendNoticeBatches(tx: Tx, batches: readonly NoticeBatch[], today: IsoDate): Promise<number[]> {
+  const sent = batches.map(() => 0);
+  const live = batches.filter((batch) => batch.page.ackVersionId && batch.people.length > 0);
+  if (live.length === 0) return sent;
+  const [loadedPages, viewers] = await Promise.all([
+    loadPages(
+      live.map((batch) => batch.page.id),
+      tx,
+    ),
+    viewersFor(tx, [...new Set(live.flatMap((batch) => batch.people.map((owing) => owing.personId)))]),
+  ]);
+  const asked = batches.flatMap(({ page, people, kind }, batch) => {
+    const loaded = page.ackVersionId ? loadedPages.get(page.id) : undefined;
+    if (!loaded) return [];
+    return people.flatMap((owing) => {
+      const viewer = viewers.get(owing.personId);
+      if (!viewer || !canViewPage(viewer, loaded.facts, loaded.pageFacts)) return [];
+      const dueOn = ackDueOn(page, owing.createdAt);
+      return [{ batch, page, kind, personId: owing.personId, dueOn, overdue: dueOn < today }];
+    });
   });
-  if (asked.length === 0) return 0;
+  if (asked.length === 0) return sent;
   const fresh = await tx
     .insert(kbAckReminder)
-    .values(asked.map(({ personId, overdue }) => ({ pageId: page.id, versionId: page.ackVersionId!, personId, sentOn: today, kind: kind === "requested" ? ("requested" as const) : overdue ? ("overdue" as const) : ("reminder" as const) })))
+    .values(asked.map(({ page, kind, personId, overdue }) => ({ pageId: page.id, versionId: page.ackVersionId!, personId, sentOn: today, kind: kind === "requested" ? ("requested" as const) : overdue ? ("overdue" as const) : ("reminder" as const) })))
     .onConflictDoNothing()
-    .returning({ personId: kbAckReminder.personId });
-  const claimed = new Set(fresh.map((row) => row.personId));
-  const byDue = new Map<IsoDate, string[]>();
-  for (const { personId, dueOn } of asked) if (claimed.has(personId)) byDue.set(dueOn, [...(byDue.get(dueOn) ?? []), personId]);
-  for (const [dueOn, recipients] of byDue) {
+    .returning({ pageId: kbAckReminder.pageId, personId: kbAckReminder.personId });
+  const claimed = new Set(fresh.map((row) => `${row.pageId}:${row.personId}`));
+  const groups = new Map<string, { page: PageRow; kind: NoticeBatch["kind"]; dueOn: IsoDate; recipients: string[] }>();
+  for (const { batch, page, kind, personId, dueOn } of asked) {
+    if (!claimed.has(`${page.id}:${personId}`)) continue;
+    sent[batch]++;
+    const key = `${batch}:${dueOn}`;
+    const group = groups.get(key) ?? { page, kind, dueOn, recipients: [] };
+    group.recipients.push(personId);
+    groups.set(key, group);
+  }
+  for (const { page, kind, dueOn, recipients } of groups.values()) {
     await notify({ recipients, kind: kind === "requested" ? "kb.ack_requested" : "kb.ack_reminder", params: { title: page.publishedTitle ?? page.title, dueDate: dueText(dueOn), overdue: dueOn < today ? "yes" : "no" }, link: `/kb/pages/${page.id}` }, tx);
   }
-  return asked.filter(({ personId }) => claimed.has(personId)).length;
+  return sent;
 }
 
 /** The first notice, to everyone pending who has had none for this version (new requirement, new major version, new joiner, wider audience). */
@@ -174,23 +203,38 @@ export async function remindPendingNow(pageId: string, today: IsoDate = todayInV
 export async function sendAckReminders(today: IsoDate = todayInVietnam()): Promise<{ pages: number; requested: number; reminded: number }> {
   const pages = await db().select().from(kbPage).where(collectingSql());
   const result = { pages: pages.length, requested: 0, reminded: 0 };
-  for (const page of pages) {
-    await db().transaction(async (tx) => {
-      result.requested += await askNewlyOwing(tx, page, today);
-      const pending = await pendingPeople(tx, page.id);
-      const last = await tx
-        .select({ personId: kbAckReminder.personId, sentOn: sql<IsoDate>`max(${kbAckReminder.sentOn})` })
+  if (pages.length === 0) return result;
+  const pageIds = pages.map((page) => page.id);
+  // One transaction and a fixed number of reads for every page: who still owes which page, and
+  // when each was last told about its current version. Nobody told yet gets the first notice; a
+  // reminder goes every few days after that — the two never overlap for one person and page.
+  await db().transaction(async (tx) => {
+    const [pending, last] = await Promise.all([
+      tx
+        .select({ pageId: kbPage.id, personId: person.id, createdAt: person.createdAt })
+        .from(person)
+        .innerJoin(kbPage, inArray(kbPage.id, pageIds))
+        .where(and(eq(person.status, "active"), collectingSql(), inAudienceSql(), sql`not ${confirmedSql()}`)),
+      tx
+        .select({ pageId: kbAckReminder.pageId, personId: kbAckReminder.personId, sentOn: sql<IsoDate>`max(${kbAckReminder.sentOn})` })
         .from(kbAckReminder)
-        .where(and(eq(kbAckReminder.pageId, page.id), eq(kbAckReminder.versionId, page.ackVersionId!)))
-        .groupBy(kbAckReminder.personId);
-      const lastBy = new Map(last.map((row) => [row.personId, row.sentOn]));
-      const due = pending.filter((owing) => {
-        const sentOn = lastBy.get(owing.personId);
-        return !!sentOn && addDays(sentOn, ACK_REMINDER_EVERY_DAYS) <= today;
-      });
-      result.reminded += await sendNotices(tx, page, due, today, "reminder");
+        .innerJoin(kbPage, and(eq(kbPage.id, kbAckReminder.pageId), eq(kbPage.ackVersionId, kbAckReminder.versionId)))
+        .where(inArray(kbAckReminder.pageId, pageIds))
+        .groupBy(kbAckReminder.pageId, kbAckReminder.personId),
+    ]);
+    const lastBy = new Map(last.map((row) => [`${row.pageId}:${row.personId}`, row.sentOn]));
+    const pendingOf = Map.groupBy(pending, (row) => row.pageId);
+    const batches = pages.flatMap((page): NoticeBatch[] => {
+      const owing = pendingOf.get(page.id) ?? [];
+      const sentOn = (row: (typeof owing)[number]) => lastBy.get(`${page.id}:${row.personId}`);
+      return [
+        { page, kind: "requested", people: owing.filter((row) => !sentOn(row)) },
+        { page, kind: "reminder", people: owing.filter((row) => { const at = sentOn(row); return !!at && addDays(at, ACK_REMINDER_EVERY_DAYS) <= today; }) },
+      ];
     });
-  }
+    const sent = await sendNoticeBatches(tx, batches, today);
+    batches.forEach((batch, index) => (result[batch.kind === "requested" ? "requested" : "reminded"] += sent[index]));
+  });
   return result;
 }
 

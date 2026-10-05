@@ -257,6 +257,23 @@ describe("policy acknowledgement", () => {
     expect(await sendReviewDueNotices(today)).toEqual({ notified: 1 });
     expect(await notices("kb.review_due", ids.hrSzm)).toBe(2);
   });
+
+  // The job runs every must-read page in one pass: each page still gets its own claim and notice.
+  it("asks a newcomer for every must-read page in one run, one notice per page", async () => {
+    const { addDays, todayInVietnam } = await import("@/lib/dates");
+    const today = todayInVietnam();
+    const second = await createPage({ spaceId: spaces.handbook, parentId: null, title: "An toàn lao động", content: body("An toàn lao động", "Đội mũ bảo hộ.") }, { personId: ids.hrGroup });
+    await publishPage(second.id, { personId: ids.hrGroup });
+    await setAckRequirement(second.id, { required: true, dueDays: 7, audience: ["all"] });
+    const [newcomer] = await db().insert(schema.person).values({ fullName: "Người mới hai", searchName: "nguoi moi hai", workEmail: "moi2@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: ids.vid }).returning();
+    const run = await sendAckReminders(addDays(today, 21));
+    expect(run.pages).toBeGreaterThanOrEqual(2);
+    expect(run.requested).toBe(2);
+    const asked = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_requested"))).filter((row) => row.recipientPersonId === newcomer.id);
+    expect(asked.map((row) => row.link).sort()).toEqual([`/kb/pages/${policy}`, `/kb/pages/${second.id}`].sort());
+    expect(await sendAckReminders(addDays(today, 21))).toMatchObject({ requested: 0, reminded: 0 });
+    await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, newcomer.id));
+  });
 });
 
 describe("search", () => {
