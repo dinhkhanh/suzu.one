@@ -27,6 +27,7 @@ import {
   countAssetsOfPerson,
   findAssignment,
   getAssetView,
+  listAssetPage,
   listAssets,
   listAssetsOfPerson,
   nextAssetCode,
@@ -340,6 +341,18 @@ describe("the totals above the register", () => {
     const after = await summaryByStatus(entityKeeperSzc);
     expect(after.in_stock).toBe(before.in_stock + 520);
     expect((await listAssets(entityKeeperSzc, {})).length).toBe(500);
+    // PERF-03: the register is paged instead, each page counting everything the filter names.
+    const total = after.in_stock + after.assigned + after.in_repair + after.lost + after.disposed;
+    const first = await listAssetPage(entityKeeperSzc, {}, 1, 100);
+    const last = await listAssetPage(entityKeeperSzc, {}, Math.ceil(total / 100), 100);
+    expect(first.rows).toHaveLength(100);
+    expect([first.total, last.total]).toEqual([total, total]);
+    expect(last.rows).toHaveLength(total - 100 * (Math.ceil(total / 100) - 1));
+    expect(first.rows.map((row) => row.code)).toEqual((await listAssets(entityKeeperSzc, {})).slice(0, 100).map((row) => row.code));
+    const second = await listAssetPage(entityKeeperSzc, { search: "SZC-BULK-01" }, 2, 60);
+    expect(second.total).toBe(100);
+    expect(second.rows.map((row) => row.code)).toEqual(Array.from({ length: 40 }, (_, index) => `SZC-BULK-01${String(60 + index).padStart(2, "0")}`));
+    expect(await listAssetPage(huy, {}, 1, 100)).toEqual({ rows: [], total: 0 });
 
     const all = await db().select({ entityId: schema.asset.entityId, status: schema.asset.status }).from(schema.asset);
     const tally = (rows: typeof all) => Object.fromEntries(["in_stock", "assigned", "in_repair", "lost", "disposed"].map((status) => [status, rows.filter((row) => row.status === status).length]));

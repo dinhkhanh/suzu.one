@@ -97,11 +97,11 @@ export async function RegisterFilterBar({ query, entities, categories }: { query
   );
 }
 
-export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetListRow[]; showMoney: boolean }) {
+export async function RegisterTable({ rows, showMoney, numberFrom }: { rows: readonly AssetListRow[]; showMoney: boolean; /** The first row's number on a later page. */ numberFrom?: number }) {
   const t = await getTranslations("assets.columns");
   const tEmpty = await getTranslations("assets");
   return (
-    <Table className="min-w-[720px]">
+    <Table className="min-w-[720px]" numberFrom={numberFrom}>
       <TableHeader>
         <TableRow>
           <TableHead kind="id">{t("code")}</TableHead>

@@ -234,6 +234,12 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_period_locked");
     const grants = await db().select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, ids.huy), eq(schema.leaveLedgerEntry.leaveTypeId, ids.comp)));
     expect(grants.map((row) => [row.kind, row.amountCenti, row.effectiveDate])).toEqual([["grant", 25, "2026-08-31"]]);
+    expect(await db().select({ personId: schema.attendanceToilPosting.personId, minutes: schema.attendanceToilPosting.minutes, amountCenti: schema.attendanceToilPosting.amountCenti }).from(schema.attendanceToilPosting).where(eq(schema.attendanceToilPosting.month, MONTH))).toEqual([{ personId: ids.huy, minutes: 120, amountCenti: 25 }]);
+    // All three months frozen in one statement, each with its own person's totals.
+    const months = await db().select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.entityId, ids.media), eq(schema.timesheetMonth.month, MONTH)));
+    expect(months.map((row) => [row.personId, row.status, row.lockedByPersonId]).sort()).toEqual([ids.lead, ids.huy, ids.nhu].sort().map((personId) => [personId, "locked", ids.hr]));
+    expect(months.find((row) => row.personId === ids.huy)?.summary).toMatchObject({ otTimeOffMinutes: 120 });
+    expect(months.find((row) => row.personId === ids.nhu)?.summary).toMatchObject({ otTimeOffMinutes: 0 });
     expect((await getTimesheetDays([ids.huy, ids.nhu, ids.lead], "2026-08-01", "2026-08-31")).every((day) => day.lockedAt !== null)).toBe(true);
     // Everyone whose month it was is told it is final; Creative's people are not (ATT-01).
     const locked = await db().select().from(schema.notification).where(eq(schema.notification.kind, "attendance.month_locked"));

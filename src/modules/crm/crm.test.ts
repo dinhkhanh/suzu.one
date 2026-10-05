@@ -42,7 +42,7 @@ import { listFollowUpsOf, recordActivity, sendFollowUpReminders } from "./activi
 import { eraseContact, listContacts, saveContact } from "./contacts";
 import { openRenewals, saveContract, signContract } from "./contracts";
 import { convertLead } from "./conversion";
-import { createDeal, getDeal, listDeals, moveDeal, setDealContacts } from "./deals";
+import { createDeal, getDeal, listDealBoard, listDealPage, listDeals, moveDeal, pipelineTotals, setDealContacts } from "./deals";
 import { listSalesHandoffsFor, respondToHandoff, setUpDelivery } from "./delivery";
 import { agingSummary, listInvoices, recordInvoice, recordPayment, sendReceivableReminders } from "./invoices";
 import { createLead, findLead } from "./leads";
@@ -563,5 +563,43 @@ describe("erasure on request reaches every copy (CRM-02)", () => {
     const only = await lead({ companyName: "Kido", contactName: "Anh Tuấn", email: "tuan@kido.vn", phone: "0912345678" });
     expect((await eraseLeadContact(only.id)).after).toMatchObject({ companyName: "Kido", contactName: null, contactTitle: null, email: null, phone: null, need: "Tết" });
     expect(await fails(eraseLeadContact(only.id))).toBe("lead_contact_erased");
+  });
+});
+
+describe("the pipeline's pages and board figures (PERF-03)", () => {
+  it("pages the list with a count of all, and sums each stage over every deal, not the cards that fit", async () => {
+    const { client } = await createAccount({ code: "PGN", name: "Paged Co", entityId: ids.szm, note: null, profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null }, salesOwnerPersonId: ids.seller, accountManagerPersonId: null, confirmDuplicate: false });
+    const stages = await listStages();
+    const [open, won, lost] = (["open", "won", "lost"] as const).map((category) => firstStageOf(stages, category)!);
+    const deal = (index: number, extra: Partial<typeof schema.crmDeal.$inferInsert> = {}) => ({ code: `DL-PG-${index}`, entityId: ids.szm, clientId: client.id, title: `Paged ${index}`, stageId: open.id, ownerPersonId: ids.seller, oneOffVnd: 10_000_000 * index, monthlyVnd: index % 2 ? 1_000_000 : null, months: index % 2 ? 3 : null, probability: index === 2 ? 35 : null, ...extra });
+    await db().insert(schema.crmDeal).values([
+      ...[1, 2, 3, 4, 5].map((index) => deal(index)),
+      deal(6, { stageId: won.id, status: "won", wonAt: new Date(Date.now() - 5 * 86_400_000) }),
+      deal(7, { stageId: lost.id, status: "lost", lostAt: new Date(Date.now() - 60 * 86_400_000) }),
+    ]);
+    const seller = viewerOf(ids.seller);
+    const every = await listDeals(seller, { clientId: client.id, status: "all" });
+    expect(every).toHaveLength(7);
+
+    const pages = await Promise.all([1, 2, 3].map((page) => listDealPage(seller, { clientId: client.id, status: "all" }, page, 3)));
+    expect(pages.map((page) => page.rows.length)).toEqual([3, 3, 1]);
+    expect(pages.every((page) => page.total === 7)).toBe(true);
+    expect(pages.flatMap((page) => page.rows.map((row) => row.id))).toEqual(every.map((row) => row.id));
+    expect(await listDealPage(viewerOf(ids.colleague), { clientId: client.id, status: "all" }, 1, 3)).toEqual({ rows: [], total: 0 });
+
+    // The board: open deals and those closed in the last 30 days, at most 2 cards — and the figures
+    // the page used to sum over the cards it had, summed by Postgres over all six.
+    const recent = addDays(today, -30);
+    const board = await listDealBoard(seller, { clientId: client.id, status: "all", closedSince: recent }, 2);
+    const onBoard = every.filter((row) => row.status === "open" || (row.wonAt ?? row.lostAt ?? new Date(0)).toISOString().slice(0, 10) >= recent);
+    expect(onBoard).toHaveLength(6);
+    expect(board.deals).toHaveLength(2);
+    expect(board.total).toBe(6);
+    expect(board.totals).toEqual(pipelineTotals(onBoard));
+    // A reader who sees the deals but may not value them: counted, never valued.
+    const member: CrmViewer = { principal: principalOf(ids.colleague), ties: new Map([[client.id, ["member"]]]) };
+    const valueless = await listDealBoard(member, { clientId: client.id, status: "all", closedSince: recent });
+    expect([...valueless.totals.values()].every((row) => row.valued === 0 && row.totalVnd === 0)).toBe(true);
+    expect([...valueless.totals.values()].reduce((sum, row) => sum + row.count, 0)).toBe(6);
   });
 });

@@ -1,9 +1,10 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { Page, PageHeader } from "@/components/ui/page";
-import { todayInVietnam } from "@/lib/dates";
-import { requireUser } from "@/modules/platform/auth/session";
+import { SectionSkeleton } from "@/components/ui/page-skeleton";
+import { type IsoDate, todayInVietnam } from "@/lib/dates";
+import { type CurrentUser, requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { can } from "@/modules/platform/rbac/policy";
 import { canManageSchedules, canReadProfitability, getDashboard } from "@/modules/reports/service";
@@ -25,7 +26,33 @@ export const generateMetadata = pageTitle("overview");
 export default async function ReportsOverviewPage() {
   const user = await requireUser();
   const today = todayInVietnam();
-  const [dashboard, t, tSchedules, format] = await Promise.all([getDashboard(user, today), getTranslations("reports.overview"), getTranslations("reports.schedules"), getFormatter()]);
+  const [t, tSchedules, format] = await Promise.all([getTranslations("reports.overview"), getTranslations("reports.schedules"), getFormatter()]);
+  const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
+
+  return (
+    <Page width="wide">
+      <PageHeader eyebrow={t("asOf", { date: day(today) })} title={t("title")} description={t("description")} />
+      <nav className="tab-row" aria-label={t("title")}>
+        <Link href="/reports" aria-current="page">
+          {t("title")}
+        </Link>
+        {can(user.principal, "report:read") ? <Link href="/reports/headcount">{t("tiles.headcount")}</Link> : null}
+        <Link href="/work/analytics">{t("tiles.work")}</Link>
+        <Link href="/reports/delivery">{t("tiles.delivery")}</Link>
+        {canReadProfitability(user.principal) ? <Link href="/reports/profitability">{t("tiles.profitability")}</Link> : null}
+        {canManageSchedules(user.principal) ? <Link href="/reports/schedules">{tSchedules("title")}</Link> : null}
+      </nav>
+
+      {/* Ten modules answer for the tiles: the page and its tabs come first, the figures as they arrive. */}
+      <Suspense fallback={<SectionSkeleton tiles />}>
+        <DashboardTiles user={user} today={today} />
+      </Suspense>
+    </Page>
+  );
+}
+
+async function DashboardTiles({ user, today }: { user: CurrentUser; today: IsoDate }) {
+  const [dashboard, t, format] = await Promise.all([getDashboard(user, today), getTranslations("reports.overview"), getFormatter()]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const stepUpFresh = isStepUpFresh(user.reauthAt);
@@ -117,21 +144,5 @@ export default async function ReportsOverviewPage() {
 
   tiles.push(<ReportTile key="approvals" title={t("tiles.approvals")} href="/approvals" value={dashboard.approvals.waiting} hint={dashboard.approvals.waiting > 0 ? t("approvals.waiting", { count: dashboard.approvals.waiting }) : t("approvals.none")} tone={dashboard.approvals.waiting > 0 ? "warning" : undefined} />);
 
-  return (
-    <Page width="wide">
-      <PageHeader eyebrow={t("asOf", { date: day(dashboard.today) })} title={t("title")} description={t("description")} />
-      <nav className="tab-row" aria-label={t("title")}>
-        <Link href="/reports" aria-current="page">
-          {t("title")}
-        </Link>
-        {can(user.principal, "report:read") ? <Link href="/reports/headcount">{t("tiles.headcount")}</Link> : null}
-        <Link href="/work/analytics">{t("tiles.work")}</Link>
-        <Link href="/reports/delivery">{t("tiles.delivery")}</Link>
-        {canReadProfitability(user.principal) ? <Link href="/reports/profitability">{t("tiles.profitability")}</Link> : null}
-        {canManageSchedules(user.principal) ? <Link href="/reports/schedules">{tSchedules("title")}</Link> : null}
-      </nav>
-
-      {tiles.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tiles}</div>}
-    </Page>
-  );
+  return tiles.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tiles}</div>;
 }

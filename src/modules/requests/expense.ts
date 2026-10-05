@@ -7,7 +7,7 @@
 // The *effect* of approving one lives in `expense-posting.ts`, which `service.ts` calls inside the
 // approval's own transaction, so a claim is never approved without being offered to payroll.
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -145,6 +145,31 @@ export async function listExpenseClaims(filter: { personId?: string; status?: st
   const claims = rows.filter((row) => row.total !== null);
   const payments = await paymentsOf(claims.map((row) => row.submissionId));
   return claims.map((row) => ({ ...row, total: row.total ?? 0, payment: payments.get(row.submissionId) ?? null }));
+}
+
+/**
+ * What the company owes on claims within `reach`: approved, with an amount, and in no live payroll
+ * run (none, or only one since cancelled — `paymentsOf`'s rule). Counted and summed by Postgres
+ * over every claim, not over the newest rows the list shows.
+ */
+export async function claimsOwed(reach: { all: true } | { all: false; entityIds: string[] }): Promise<{ count: number; amount: number }> {
+  if (!reach.all && reach.entityIds.length === 0) return { count: 0, amount: 0 };
+  const posted = sql`exists (select 1 from ${schema.expenseClaimPosting} inner join ${schema.payrollRun} on ${schema.payrollRun.id} = ${schema.expenseClaimPosting.runId} where ${schema.expenseClaimPosting.submissionId} = ${schema.requestSubmission.id} and ${schema.payrollRun.status} <> 'cancelled')`;
+  const [row] = await db()
+    .select({ count: sql<number>`count(*)::int`, amount: sql<string>`coalesce(sum(${schema.requestSubmission.amount}), 0)::bigint` })
+    .from(schema.requestSubmission)
+    .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+    .innerJoin(schema.person, eq(schema.person.id, schema.approvalRequest.requesterPersonId))
+    .where(
+      and(
+        eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE),
+        eq(schema.approvalRequest.status, "approved"),
+        isNotNull(schema.requestSubmission.amount),
+        reach.all ? undefined : inArray(schema.approvalRequest.entityId, reach.entityIds),
+        not(posted),
+      ),
+    );
+  return { count: Number(row?.count ?? 0), amount: Number(row?.amount ?? 0) };
 }
 
 /** The receipts of one claim, so the vault's owner look-up can let an approver open them. */

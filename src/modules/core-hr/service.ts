@@ -1028,7 +1028,7 @@ export async function listSavedViews(ownerPersonId: string, list: string): Promi
       .select()
       .from(schema.savedView)
       .where(and(eq(schema.savedView.ownerPersonId, ownerPersonId), eq(schema.savedView.list, list)))
-      .orderBy(asc(schema.savedView.name)),
+      .orderBy(asc(schema.savedView.name), asc(schema.savedView.id)),
   );
 }
 
@@ -1070,5 +1070,5 @@ export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccas
  * reader's principal and scopes itself — a viewer with no `report:read` reach gets null, exactly
  * as on `/reports/headcount`.
  */
-export { getHeadcountReport, type HeadcountFilters, type HeadcountReport } from "./reports";
+export { getHeadcountReport, getHeadcountTotals, type HeadcountFilters, type HeadcountReport, type HeadcountTotals } from "./reports";
 export { type CatalogueEntry, competenciesOf, type Competency, competencyChoices, type CompetencyKind, type CompetencyLists, invalidateCompetencies, listCompetencies, listCompetencyCatalogue } from "./competencies";

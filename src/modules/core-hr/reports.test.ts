@@ -9,10 +9,11 @@ vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {}
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
+import { eq } from "drizzle-orm";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { buildHeadcountExport, buildPeopleExport } from "./exports";
 import { terminateEmployment } from "./lifecycle";
-import { getHeadcountReport } from "./reports";
+import { getHeadcountReport, getHeadcountTotals } from "./reports";
 import { hirePerson } from "./service";
 
 const today = todayInVietnam();
@@ -83,6 +84,28 @@ describe("headcount report", () => {
     expect(director.movement.leavers).toBe(0);
     // Asking for another entity does not widen the scope.
     expect((await getHeadcountReport(principal("d", [{ role: "entity_director", scope: { type: "entity", id: ids.creative } }]), { ...period, entityId: ids.media }))!.snapshot.total).toBe(0);
+  });
+
+  it("gives the dashboard the report's headline figures, counted in SQL, for every slice", async () => {
+    const [{ employmentId, entityId }] = await db().select({ employmentId: schema.employment.id, entityId: schema.employment.entityId }).from(schema.employment).where(eq(schema.employment.personId, ids.khoi)).limit(1);
+    // A fixed-term contract running out within the window, and one already terminated (not counted).
+    await db().insert(schema.contract).values([
+      { employmentId, personId: ids.khoi, entityId, number: "FT-1", type: "fixed_term", startDate: "2024-01-01", endDate: addDays(today, 20) },
+      { employmentId, personId: ids.khoi, entityId, number: "FT-0", type: "fixed_term", startDate: "2023-01-01", endDate: addDays(today, 10), terminatedOn: addDays(today, -100) },
+    ]);
+    const readers = [
+      principal("x", [{ role: "hr_admin", scope: { type: "group" } }]),
+      principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]),
+      principal("d", [{ role: "entity_director", scope: { type: "entity", id: ids.creative } }]),
+    ];
+    for (const reader of readers) {
+      for (const filters of [period, { ...period, entityId: ids.media }, { asOf: addDays(today, -60), from: addDays(today, -90), to: addDays(today, -60) }]) {
+        const report = (await getHeadcountReport(reader, filters))!;
+        expect(await getHeadcountTotals(reader, filters)).toEqual({ total: report.snapshot.total, joiners: report.movement.joiners, leavers: report.movement.leavers, contractsExpiring: report.contractsExpiring.length, probations: report.probations.length, scoped: report.scoped });
+      }
+    }
+    expect(await getHeadcountTotals(readers[0], period)).toMatchObject({ total: 6, joiners: 1, leavers: 1, contractsExpiring: 1 });
+    expect(await getHeadcountTotals(principal(ids.huy), period)).toBeNull();
   });
 
   it("exports the same scoped figures", async () => {

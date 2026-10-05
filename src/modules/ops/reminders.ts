@@ -3,10 +3,10 @@
 // `obligation_notice_sent` — one notice per person and kind per run, however many items it covers.
 import "server-only";
 import { and, eq, inArray, isNotNull, isNull, lte } from "drizzle-orm";
-import { addDays, type IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
-import { listOwnerPersonIds, listPeopleHolding, listPeopleWithRole } from "../platform/rbac/service";
+import { roleHolders } from "../platform/rbac/service";
 import { escalationLevel, type Notice, type NoticeKind, noticesDue, supersededLeadKeys } from "./engine/escalation";
 import { DEFAULT_ESCALATION, DEFAULT_REMINDER_LEAD_DAYS, OBLIGATION_KIND } from "./enums";
 
@@ -36,27 +36,33 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
   const sentBy = new Map<string, Set<string>>();
   for (const row of sentRows) sentBy.set(row.instanceId, (sentBy.get(row.instanceId) ?? new Set()).add(row.key));
 
-  const owners = await listOwnerPersonIds(tx);
-  const cache = new Map<string, Promise<string[]>>();
-  const once = (key: string, load: () => Promise<string[]>) => cache.get(key) ?? cache.set(key, load()).get(key)!;
-
-  /** The owner's department head, else their line manager — whoever is one step up from the person who is late. */
-  const managersOf = (ownerId: string) =>
-    once(`manager:${ownerId}`, async () => {
-      const [owner] = await tx.select({ unitPath: schema.person.orgUnitPath, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId }).from(schema.person).where(eq(schema.person.id, ownerId)).limit(1);
-      if (!owner) return [];
-      const heads = owner.unitPath.length ? (await listPeopleWithRole("department_head", { unitPath: owner.unitPath, entityId: owner.entityId }, tx)).filter((id) => id !== ownerId) : [];
-      return heads.length > 0 ? heads : owner.managerId ? [owner.managerId] : [];
-    });
-  const executivesOf = (entityId: string) => once(`executive:${entityId}`, async () => [...new Set([...(await listPeopleWithRole("finance", { entityId }, tx)), ...(await listPeopleWithRole("c_level", { entityId }, tx)), ...owners])]);
-  /** Nobody owns it: the people who run the tracker for the entity hear about it instead. */
-  const keepersOf = (entityId: string) => once(`keeper:${entityId}`, () => listPeopleHolding("ops:manage", { entityId }, { includeWildcard: false, executor: tx, today }));
+  // The grants are read once for the run: a role is asked about the calendar day, the tracker's
+  // keepers about the run's `today` (they differ only in a test).
+  const byPermission = await roleHolders({ today, executor: tx });
+  const byRole = today === todayInVietnam() ? byPermission : await roleHolders({ executor: tx });
+  const owners = byRole.owners();
+  const cache = new Map<string, string[]>();
+  const once = (key: string, load: () => string[]) => cache.get(key) ?? cache.set(key, load()).get(key)!;
 
   type Outgoing = { recipient: string; kind: NoticeKind; taskId: string; title: string; dueDate: IsoDate; days: number; ownerName: string | null };
   const outgoing: Outgoing[] = [];
   const marks: { instanceId: string; key: string }[] = [];
   const ownerIds = [...new Set(rows.flatMap((row) => (row.task.assigneePersonId ? [row.task.assigneePersonId] : [])))];
-  const ownerNames = new Map(ownerIds.length === 0 ? [] : (await tx.select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ownerIds))).map((row) => [row.id, row.name] as const));
+  // Every owner's name and place, in one read.
+  const ownerRows = new Map(ownerIds.length === 0 ? [] : (await tx.select({ id: schema.person.id, name: schema.person.fullName, unitPath: schema.person.orgUnitPath, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId }).from(schema.person).where(inArray(schema.person.id, ownerIds))).map((row) => [row.id, row] as const));
+  const ownerNames = new Map([...ownerRows].map(([id, row]) => [id, row.name] as const));
+
+  /** The owner's department head, else their line manager — whoever is one step up from the person who is late. */
+  const managersOf = (ownerId: string) =>
+    once(`manager:${ownerId}`, () => {
+      const owner = ownerRows.get(ownerId);
+      if (!owner) return [];
+      const heads = owner.unitPath.length ? byRole.withRole("department_head", { unitPath: owner.unitPath, entityId: owner.entityId }).filter((id) => id !== ownerId) : [];
+      return heads.length > 0 ? heads : owner.managerId ? [owner.managerId] : [];
+    });
+  const executivesOf = (entityId: string) => once(`executive:${entityId}`, () => [...new Set([...byRole.withRole("finance", { entityId }), ...byRole.withRole("c_level", { entityId }), ...owners])]);
+  /** Nobody owns it: the people who run the tracker for the entity hear about it instead. */
+  const keepersOf = (entityId: string) => once(`keeper:${entityId}`, () => byPermission.holding("ops:manage", { entityId }, { includeWildcard: false }));
 
   for (const { instance, task, template } of rows) {
     const sent = sentBy.get(instance.id) ?? new Set<string>();

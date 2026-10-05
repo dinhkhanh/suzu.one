@@ -8,7 +8,7 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { eq } from "drizzle-orm";
-import { grantRole, holdsRoleGrants, listOwnerPersonIds, listPeopleHolding, listPeopleWithRole, listRoleAssignments, loadGrants, revokeRole } from "./service";
+import { grantRole, holdsRoleGrants, listOwnerPersonIds, listPeopleHolding, listPeopleHoldingEach, listPeopleWithRole, listRoleAssignments, loadGrants, revokeRole, roleHolders } from "./service";
 
 const today = todayInVietnam();
 let entityId: string;
@@ -146,6 +146,22 @@ describe("who holds a role over a unit", () => {
     const owners = await listOwnerPersonIds();
     expect(owners).toEqual([people.mai]);
     expect(sorted(await listPeopleHolding("person:manage", { unitPath: [units.video] }))).toEqual(sorted([who.hrSocial, ...owners]));
+  });
+
+  it("answers many questions from one read exactly as the single lookups do", async () => {
+    const targets = [{ unitPath: [units.video] }, { unitPath: [units.social] }, { unitPath: [units.brand] }, { unitPath: [units.design] }, { entityId }, {}];
+    const check = async (executor?: Parameters<typeof listOwnerPersonIds>[0]) => {
+      const holders = await roleHolders({ executor });
+      expect(holders.owners()).toEqual(await listOwnerPersonIds(executor));
+      for (const target of targets) {
+        expect(sorted(holders.withRole("department_head", target))).toEqual(sorted(await listPeopleWithRole("department_head", target, executor)));
+        for (const includeWildcard of [true, false]) expect(sorted(holders.holding("person:manage", target, { includeWildcard }))).toEqual(sorted(await listPeopleHolding("person:manage", target, { includeWildcard, executor })));
+      }
+      const each = await listPeopleHoldingEach("report:read", targets, { includeWildcard: false, executor });
+      expect(each).toEqual(await Promise.all(targets.map((target) => listPeopleHolding("report:read", target, { includeWildcard: false, executor }))));
+    };
+    await check();
+    await db().transaction(async (tx) => check(tx));
   });
 
   it("follows the tree when a unit moves", async () => {

@@ -10,7 +10,7 @@ import { and, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 export type { Portion } from "./engine/request";
-export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, listPayoutTotals, type PayoutLine, type PayoutTotal, postCompensatoryLeave } from "./ledger";
+export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, listPayoutTotals, type PayoutLine, type PayoutTotal, postCompensatoryLeave, postCompensatoryLeaves } from "./ledger";
 export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage, whoApprovesLeave } from "./requests";
 /** Who is away on a range of days, as the viewer may see them (FR-LVE-09) — the dashboard's leave tile. */
 export { type CalendarCell, type CalendarPerson, getTeamCalendar, type TeamCalendar } from "./calendar";

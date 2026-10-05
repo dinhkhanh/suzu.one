@@ -22,7 +22,7 @@ import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { entityReach } from "../platform/rbac/policy";
-import { listPeopleHolding } from "../platform/rbac/service";
+import { listPeopleHoldingEach } from "../platform/rbac/service";
 import { billingItemsByIds, type BillingItemRow, invoiceItemsIn, releaseInvoicedItemsIn } from "@/modules/projects/service";
 import { type AccountRef, accountsById } from "./accounts";
 import { followPaymentChange, type PaymentChangeResult } from "./commission";
@@ -450,7 +450,7 @@ export async function sendReceivableReminders(today: IsoDate = todayInVietnam())
   });
   if (due.length === 0) return { invoicesReminded: 0 };
   const entityIds = [...new Set(due.map((row) => row.invoice.entityId))];
-  const finance = await Promise.all(entityIds.map((entityId) => listPeopleHolding("pjm:commercial", { entityId }, { includeWildcard: false })));
+  const finance = await listPeopleHoldingEach("pjm:commercial", entityIds.map((entityId) => ({ entityId })), { includeWildcard: false });
   const financeByEntity = new Map(entityIds.map((entityId, index) => [entityId, finance[index]]));
   await db().transaction(async (tx) => {
     for (const row of due) {

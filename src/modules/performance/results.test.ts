@@ -31,6 +31,7 @@ import { loadDirectory } from "./people";
 import { canReadReviewForm, canSeeNominations, canNominatePeer, canDecideNomination, nominationIsApproved } from "./review-policy";
 import {
   advanceReviewCycle,
+  calibrateParticipant,
   type CycleInput,
   decideNomination,
   isApprovedPeer,
@@ -222,6 +223,8 @@ describe("releasing a whole cycle", () => {
     // Not while the cycle is still collecting (PRF-02): the reviews are released from calibration on.
     expect(await fails(releaseCycle(cycleId, ids.mai))).toBe("review_cycle_not_calibrating");
     await advanceReviewCycle(cycleId, "calibration");
+    // HR levels Linh's rating first: release freezes the calibrated figure, not the manager's.
+    await calibrateParticipant(participantOf.get(ids.linh)!, { reviewScoreBp: 11_000, note: "levelled" }, ids.mai);
     const result = await releaseCycle(cycleId, ids.mai);
     expect(result.released).toHaveLength(2);
     // Nobody else has a manager review, so they are skipped with the reason rather than released —
@@ -232,7 +235,19 @@ describe("releasing a whole cycle", () => {
 
     const lines = await listCycleParticipants(cycleId);
     expect(lines.find((line) => line.personId === ids.huy)?.reviewScoreBp).toBe(13_000);
-    expect(lines.find((line) => line.personId === ids.linh)?.reviewScoreBp).toBe(10_000);
+    expect(lines.find((line) => line.personId === ids.linh)?.reviewScoreBp).toBe(11_000);
+
+    // The released rows are stamped as `releaseParticipant` stamps one; the skipped ones are untouched.
+    const rows = await db().select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.cycleId, cycleId));
+    for (const row of rows) {
+      if (result.released.includes(row.id)) expect(row).toMatchObject({ stage: "released", releasedByPersonId: ids.mai, releasedAt: expect.any(Date) });
+      else expect(row).toMatchObject({ releasedAt: null, releasedByPersonId: null });
+    }
+    expect(new Set(rows.filter((row) => result.released.includes(row.id)).map((row) => row.releasedAt!.getTime())).size).toBe(1);
+    // A second release finds nobody new ready, and reports the same people skipped.
+    const again = await releaseCycle(cycleId, ids.mai);
+    expect(again.released).toEqual([]);
+    expect(again.skipped.map((row) => row.participantId).sort()).toEqual(result.skipped.map((row) => row.participantId).sort());
   });
 });
 

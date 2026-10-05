@@ -22,6 +22,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { type EmploymentFacts, listEmploymentFacts } from "@/modules/core-hr/service";
 import { type Column, oneOf, type ParsedRow, type Problem, text } from "@/modules/platform/import/engine/table";
 import { defineImport, readSpreadsheet } from "@/modules/platform/import/service";
+import { listEntities } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { CANONICAL_HEADERS, type DeviceMapping, inferredDirection, mappingProblems, parseDat, parseTimestamp, toCanonicalTable } from "./engine/device-log";
 import type { PushedRow } from "./engine/device-push";
@@ -122,8 +123,8 @@ export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRo
   const servedBefore = before ? await alsoServedEntityIds(before.id) : [];
   const servedAfter = input.alsoServes ? [...new Set(input.alsoServes)].filter((id) => id !== entityId).sort() : servedBefore;
   if (servedAfter.length > 0) {
-    const [found] = await db().select({ value: count() }).from(schema.entity).where(inArray(schema.entity.id, servedAfter));
-    if (found.value !== servedAfter.length) throw new ActionError("entity_not_found");
+    const known = new Set((await listEntities()).map((entity) => entity.id));
+    if (!servedAfter.every((id) => known.has(id))) throw new ActionError("entity_not_found");
   }
   const profile = await getProfile(input.profileId);
   if (!profile || (profile.entityId !== null && profile.entityId !== entityId)) throw new ActionError("profile_not_found");

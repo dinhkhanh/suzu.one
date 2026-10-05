@@ -36,8 +36,12 @@ function within(reach: TierReach, { entityId, orgUnitId }: { entityId: SQLWrappe
   return or(reach.entityIds.length ? inArray(entityId, reach.entityIds) : undefined, unitIds.length ? inArray(orgUnitId, [...unitIds]) : undefined) ?? sql`false`;
 }
 
-/** null = the viewer holds `report:read` nowhere. */
-export async function getHeadcountReport(principal: Principal, filters: HeadcountFilters): Promise<HeadcountReport | null> {
+/**
+ * What both the report and the dashboard's totals count over: the viewer's slice of the
+ * employments (`spansOn`), the window of employments the figures can count, and the contracts
+ * that are due. null = the viewer holds `report:read` nowhere.
+ */
+async function headcountScope(principal: Principal, filters: HeadcountFilters) {
   const reach = permissionReach(principal, "report:read");
   if (reachesNothing(reach)) return null;
   const { e, a } = spansOn(filters.asOf);
@@ -51,6 +55,22 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
   const latest = [filters.asOf, addDays(filters.to, 1)].sort()[1];
   const until = addDays(filters.asOf, EXPIRY_WINDOW_DAYS);
   const c = schema.contract;
+  return {
+    reach,
+    e,
+    a,
+    c,
+    scope,
+    spansWindow: and(scope, lte(e.startDate, latest), or(isNull(e.endDate), gte(e.endDate, earliest))),
+    contractsDue: and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])),
+  };
+}
+
+/** null = the viewer holds `report:read` nowhere. */
+export async function getHeadcountReport(principal: Principal, filters: HeadcountFilters): Promise<HeadcountReport | null> {
+  const found = await headcountScope(principal, filters);
+  if (!found) return null;
+  const { reach, e, a, c, spansWindow, contractsDue } = found;
   const [rows, due] = await Promise.all([
     db()
       .select({
@@ -69,7 +89,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
       .leftJoinLateral(a, sql`true`)
       .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
       .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
-      .where(and(scope, lte(e.startDate, latest), or(isNull(e.endDate), gte(e.endDate, earliest)))),
+      .where(spansWindow),
     db()
       .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entityId: e.entityId, entity: schema.entity.shortName, departmentId: a.departmentId, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
       .from(c)
@@ -78,7 +98,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
       .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
       .leftJoinLateral(a, sql`true`)
       .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
-      .where(and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])))
+      .where(contractsDue)
       .orderBy(asc(c.endDate)),
   ]);
   const spans: Span[] = rows;
@@ -89,6 +109,52 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
     movement: movement(spans, filters.from, filters.to),
     contractsExpiring: lists.filter((row) => row.type !== "probation"),
     probations: lists.filter((row) => row.type === "probation"),
+    scoped: !reach.all,
+  };
+}
+
+export type HeadcountTotals = { total: number; joiners: number; leavers: number; contractsExpiring: number; probations: number; scoped: boolean };
+
+/**
+ * The report's headline figures alone — for the owner dashboard's tile, which shows five numbers
+ * and no breakdown. Counted by Postgres over the same rows `getHeadcountReport` reads (the same
+ * slice, window and contract rules, from `headcountScope`), so the tile and the report cannot
+ * disagree; nothing but the counts leaves the database. null = no `report:read` anywhere.
+ */
+export async function getHeadcountTotals(principal: Principal, filters: HeadcountFilters): Promise<HeadcountTotals | null> {
+  const found = await headcountScope(principal, filters);
+  if (!found) return null;
+  const { reach, e, a, c, spansWindow, contractsDue } = found;
+  const inPeriod = (column: typeof e.startDate | typeof e.endDate) => sql`${column} >= ${filters.from}::date and ${column} <= ${filters.to}::date`;
+  const [[spans], [due]] = await Promise.all([
+    db()
+      .select({
+        total: sql<number>`count(*) filter (where ${e.startDate} <= ${filters.asOf}::date and (${e.endDate} is null or ${e.endDate} >= ${filters.asOf}::date))::int`,
+        joiners: sql<number>`count(*) filter (where ${inPeriod(e.startDate)})::int`,
+        leavers: sql<number>`count(*) filter (where ${inPeriod(e.endDate)})::int`,
+      })
+      .from(e)
+      .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
+      .leftJoinLateral(a, sql`true`)
+      .where(spansWindow),
+    db()
+      .select({
+        contractsExpiring: sql<number>`count(*) filter (where ${c.type} <> 'probation')::int`,
+        probations: sql<number>`count(*) filter (where ${c.type} = 'probation')::int`,
+      })
+      .from(c)
+      .innerJoin(e, eq(e.id, c.employmentId))
+      .innerJoin(schema.person, eq(schema.person.id, e.personId))
+      .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
+      .leftJoinLateral(a, sql`true`)
+      .where(contractsDue),
+  ]);
+  return {
+    total: Number(spans?.total ?? 0),
+    joiners: Number(spans?.joiners ?? 0),
+    leavers: Number(spans?.leavers ?? 0),
+    contractsExpiring: Number(due?.contractsExpiring ?? 0),
+    probations: Number(due?.probations ?? 0),
     scoped: !reach.all,
   };
 }

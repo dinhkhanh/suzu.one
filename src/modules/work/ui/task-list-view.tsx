@@ -131,9 +131,10 @@ export function TaskListView({
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  // Filters live in the URL (shareable, survive a reload) without a server round trip.
+  // Filters live in the URL (shareable, survive a reload) without a server round trip — but for
+  // closed tasks, which the page loads only once they are asked for.
   function sync(nextFilters: TaskFilters, nextGrouping: ListGrouping, nextSort: ListSort = sort) {
-    writeFiltersToUrl(nextFilters, { group: nextGrouping === "none" ? null : nextGrouping, sort: nextSort === "rank" ? null : nextSort });
+    writeFiltersToUrl(nextFilters, { group: nextGrouping === "none" ? null : nextGrouping, sort: nextSort === "rank" ? null : nextSort }, (href) => router.replace(href, { scroll: false }));
   }
   const setFilter = (key: keyof TaskFilters, value: string) => {
     const next = { ...filters, [key]: value || undefined };

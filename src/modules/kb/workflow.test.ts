@@ -214,6 +214,10 @@ describe("policy acknowledgement", () => {
     expect(overdue).toHaveLength(5);
     const [last] = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_reminder"))).slice(-1);
     expect(last.params).toMatchObject({ overdue: "yes" });
+    // Sent together, still one notice per claimed reminder — each to its own person.
+    const claims = (await db().select().from(schema.kbAckReminder).where(eq(schema.kbAckReminder.pageId, policy))).filter((row) => row.kind !== "requested");
+    const sentNotices = await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_reminder"));
+    expect(sentNotices.map((row) => row.recipientPersonId).sort()).toEqual(claims.map((row) => row.personId).sort());
 
     // Someone who joins later owes it from their first day, and is told by the job.
     const [newbie] = await db().insert(schema.person).values({ fullName: "Người mới", searchName: "nguoi moi", workEmail: "moi@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: ids.vid }).returning();

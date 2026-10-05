@@ -12,9 +12,10 @@ import { and, eq } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
+import { findOpenRegularRun, findOpenRegularRuns } from "@/modules/payroll/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { ExpenseLine } from "./engine/expense";
-import { fileExpenseClaim, getExpenseClaim } from "./expense";
+import { claimsOwed, fileExpenseClaim, getExpenseClaim, listExpenseClaims } from "./expense";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim, REIMBURSEMENT_COMPONENT, sweepApprovedClaims } from "./expense-posting";
 import { REQUEST_TYPE_SEED } from "./seed-types";
 import { decideGenericRequest } from "./service";
@@ -164,9 +165,21 @@ describe("approving one", () => {
     const filed = await fileAndApprove(ids.huy, [line({ amount: 90_000 })], [ids.boss]);
 
     expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, filed.submissionId))).toEqual([]);
+    // A sweep with still no run for it counts it as waiting, without a transaction for it.
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await sweepApprovedClaims(ids.boss)).toMatchObject({ posted: 0, released: 0, stillWaiting: 1 });
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      transaction.mockRestore();
+    }
 
     // …until a run exists, and the sweep offers it again.
     const run = await openRun(lonely.id, "2026-11");
+    // The sweep asks for every entity's open run at once: the same answer as one at a time.
+    const open = await findOpenRegularRuns([lonely.id, ids.entity, ids.other, lonely.id]);
+    for (const entityId of [lonely.id, ids.entity, ids.other]) expect(open.get(entityId) ?? null).toEqual(await findOpenRegularRun(entityId));
+    expect(open.get(lonely.id)?.id).toBe(run.id);
     expect((await sweepApprovedClaims(ids.boss)).posted).toBe(1);
     expect((await reimbursementOf(run.id, ids.huy))?.amount).toBe(90_000);
 
@@ -238,5 +251,27 @@ describe("a run that has moved past calculated", () => {
     const filed = await fileAndApprove(ids.lan, [line({ amount: 66_000 })], [ids.boss]);
     expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, filed.submissionId))).toEqual([]);
     expect((await reimbursementOf(run.id, ids.lan))?.amount).toBe(55_000);
+  });
+});
+
+describe("what is owed", () => {
+  it("is counted and summed in SQL, the same as the claims list adds it up", async () => {
+    // One still being decided (never owed), and one whose run is cancelled under it (owed again).
+    await fileExpenseClaim({ values: { title: "Chưa duyệt", project_tag: null, note: null }, lines: [line({ amount: 77_000 })] }, await requester(ids.huy), money);
+    const [entity] = await db().insert(schema.entity).values({ code: "SZZ", legalName: "SuZu Z", shortName: "SZZ", taxCode: "0106", wageRegion: 1 }).returning();
+    await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.huy));
+    const run = await openRun(entity.id, "2027-05");
+    await fileAndApprove(ids.huy, [line({ amount: 44_000 }), line({ amount: 6_000 })], [ids.boss]);
+    await db().update(schema.payrollRun).set({ status: "cancelled" }).where(eq(schema.payrollRun.id, run.id));
+
+    const entities = (await db().select({ id: schema.entity.id }).from(schema.entity)).map((row) => row.id);
+    const reaches = [{ all: true as const }, { all: false as const, entityIds: [entity.id] }, { all: false as const, entityIds: entities.slice(0, 2) }, { all: false as const, entityIds: [] }];
+    for (const reach of reaches) {
+      // What the claims page used to add up from the list.
+      const waiting = (await listExpenseClaims({ reach }, 100_000)).filter((claim) => claim.status === "approved" && !claim.payment);
+      expect(await claimsOwed(reach)).toEqual({ count: waiting.length, amount: waiting.reduce((total, claim) => total + claim.total, 0) });
+    }
+    expect(await claimsOwed({ all: false, entityIds: [entity.id] })).toEqual({ count: 1, amount: 50_000 });
+    expect((await claimsOwed({ all: true })).count).toBeGreaterThan(1);
   });
 });

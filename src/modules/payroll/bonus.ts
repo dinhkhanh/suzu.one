@@ -31,7 +31,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { listEntities } from "@/modules/platform/org/service";
-import { getKpiResults, getOkrResults, listFinalResults, markScoresConsumed, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
+import { getKpiResultsOfPeople, getOkrResultsOfPeople, listFinalResults, markScoresConsumed, type OkrResults, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
 import { getBonusScheme, getBonusSchemeVersion, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 import { type BonusOkrLevel, type BonusRunStatus, type BonusSchemeValue, bonusSchemeSchema } from "./enums";
 import { bonusForPerson, type BonusOverride, type BonusPersonInput, type BonusResultInput, type BonusTotals, type BonusTrace, EMPTY_BONUS_TOTALS, sumBonus } from "./engine/bonus";
@@ -166,7 +166,7 @@ export async function createBonusRun(input: { year: number; name: string; entity
 }
 
 /** Which OKR figure the scheme's collective level asks for, out of what performance published. */
-function unitProgressOf(okr: Awaited<ReturnType<typeof getOkrResults>>, level: BonusOkrLevel): number | null {
+function unitProgressOf(okr: OkrResults, level: BonusOkrLevel): number | null {
   switch (level) {
     case "team":
       return okr.units.team.goals.length > 0 ? okr.units.team.progressBp : null;
@@ -216,8 +216,6 @@ export type BonusSimulation = { cost: BonusCost; lines: { personId: string; pers
  * salary on the reference day, and the scheme in force. Pure reads — nothing is written, so this
  * is both what `simulateBonusRun` stores and what a what-if hands back.
  */
-const PERFORMANCE_READS_AT_ONCE = 4;
-
 async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, executor: Executor = db()): Promise<{ lines: { input: BonusPersonInput; trace: BonusTrace; personId: string; personName: string; entityId: string; schemeVersionId: string; result: PerformanceResultRow | null; kpiScoreIds: string[] }[] }> {
   const entityIds = run.entityIds;
   const referenceDates = new Map<string, IsoDate>();
@@ -240,23 +238,20 @@ async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, exe
   for (const forEntity of perEntity) for (const [personId, amount] of forEntity) salaries.set(personId, amount);
 
   const inRun = people.filter((person) => person.entityId && entityIds.includes(person.entityId));
-  // Each person's OKR and KPI results, a few people at a time. Simulations run as server actions,
-  // where React's per-request cache does not apply, so every call reads the year's goals again:
-  // all at once would be dozens of full reads competing for the pool.
-  const performance: [Awaited<ReturnType<typeof getOkrResults>>, Awaited<ReturnType<typeof getKpiResults>>][] = [];
-  for (let start = 0; start < inRun.length; start += PERFORMANCE_READS_AT_ONCE) {
-    const batch = inRun.slice(start, start + PERFORMANCE_READS_AT_ONCE);
-    performance.push(...(await Promise.all(batch.map((person) => Promise.all([getOkrResults({ personId: person.personId, year: run.year }, executor), getKpiResults({ personId: person.personId, year: run.year }, executor)])))));
-  }
+  // Everybody's OKR and KPI results together: one read of the year's goals and the directory, and
+  // two of the year's KPI scores and assignments, however many people the run holds.
+  const personIds = inRun.map((person) => person.personId);
+  const [okrs, kpis] = await Promise.all([getOkrResultsOfPeople({ personIds, year: run.year }, executor), getKpiResultsOfPeople({ personIds, year: run.year }, executor)]);
 
   const lines = [];
-  for (const [index, person] of inRun.entries()) {
+  for (const person of inRun) {
     if (!person.entityId) continue;
     const scheme = schemes.get(person.entityId)!;
     const referenceDate = referenceDates.get(person.entityId)!;
     const result = results.get(person.personId) ?? null;
     // The stored month scores behind the result — what approval freezes.
-    const [okr, kpi] = performance[index];
+    const okr = okrs.get(person.personId)!;
+    const kpi = kpis.get(person.personId)!;
     const input: BonusPersonInput = {
       baseSalaryVnd: salaries.get(person.personId) ?? null,
       serviceMonths: serviceMonthsOn(person.seniorityDate ?? person.startDate, referenceDate),

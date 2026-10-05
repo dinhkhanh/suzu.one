@@ -97,11 +97,20 @@ export function instanceConditions(filter: InstanceFilter): SQL | undefined {
 }
 
 export async function listInstances(viewer: { principal: Principal; personId: string }, filter: InstanceFilter = {}, today: IsoDate = todayInVietnam()): Promise<InstanceListItem[]> {
+  return (await readInstances(viewer, filter, today, 0)).items;
+}
+
+/** One page of the register (PERF-03), in its order, and how many instances the filter names in all. */
+export function listInstancePage(viewer: { principal: Principal; personId: string }, filter: Omit<InstanceFilter, "limit">, page: number, pageSize: number, today: IsoDate = todayInVietnam()): Promise<{ items: InstanceListItem[]; total: number }> {
+  return readInstances(viewer, { ...filter, limit: pageSize }, today, (Math.max(1, page) - 1) * pageSize);
+}
+
+async function readInstances(viewer: { principal: Principal; personId: string }, filter: InstanceFilter, today: IsoDate, offset: number): Promise<{ items: InstanceListItem[]; total: number }> {
   const assignee = alias(schema.person, "assignee");
   const subject = alias(schema.person, "subject");
   const completer = alias(schema.person, "completer");
   const rows = await db()
-    .select({ instance: schema.obligationInstance, task: schema.task, template: schema.obligationTemplate, entityCode: schema.entity.code, assigneeName: assignee.fullName, subjectName: subject.fullName, completedByName: completer.fullName })
+    .select({ instance: schema.obligationInstance, task: schema.task, template: schema.obligationTemplate, entityCode: schema.entity.code, assigneeName: assignee.fullName, subjectName: subject.fullName, completedByName: completer.fullName, total: sql<number>`count(*) over ()`.mapWith(Number) })
     .from(schema.obligationInstance)
     .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
     .innerJoin(schema.obligationTemplate, eq(schema.obligationTemplate.id, schema.obligationInstance.templateId))
@@ -110,10 +119,12 @@ export async function listInstances(viewer: { principal: Principal; personId: st
     .leftJoin(subject, eq(subject.id, schema.task.subjectPersonId))
     .leftJoin(completer, eq(completer.id, schema.task.completedByPersonId))
     .where(and(visibleTo(viewer), instanceConditions(filter)))
-    .orderBy(filter.open === false ? desc(schema.task.dueDate) : sql`${schema.task.dueDate} asc nulls last`, asc(schema.entity.code), asc(schema.obligationTemplate.sortOrder))
-    .limit(filter.limit ?? 500);
+    // The instance id last: a total order, so a page never repeats or skips one.
+    .orderBy(filter.open === false ? desc(schema.task.dueDate) : sql`${schema.task.dueDate} asc nulls last`, asc(schema.entity.code), asc(schema.obligationTemplate.sortOrder), asc(schema.obligationInstance.id))
+    .limit(filter.limit ?? 500)
+    .offset(offset);
   const sentKeys = await sentKeysOf(rows.filter((row) => row.task.status === "todo" || row.task.status === "in_progress").map((row) => row.instance.id));
-  return rows.map(({ instance, task, template, entityCode, assigneeName, subjectName, completedByName }) => ({
+  return { total: rows[0]?.total ?? 0, items: rows.map(({ instance, task, template, entityCode, assigneeName, subjectName, completedByName }) => ({
     taskId: task.id,
     title: task.title,
     templateId: template.id,
@@ -142,7 +153,41 @@ export async function listInstances(viewer: { principal: Principal; personId: st
     amountPaid: instance.amountPaid,
     escalationLevel: escalationLevel(sentKeys.get(instance.id) ?? []),
     instanceId: instance.id,
-  }));
+  })) };
+}
+
+export type DueFigures = { overdue: number; dueSoon: number; worst: { entityCode: string; templateName: string; dueDate: IsoDate; assigneeName: string | null }[] };
+
+/**
+ * The open instances the viewer may see that are due by `dueTo`: how many are overdue and how many
+ * are still to come, counted by Postgres over all of them, and the `worstCount` most overdue — for
+ * the owner dashboard's tile, which shows two numbers and five lines, not the list.
+ */
+export async function dueFigures(viewer: { principal: Principal; personId: string }, dueTo: IsoDate, today: IsoDate = todayInVietnam(), worstCount = 5): Promise<DueFigures> {
+  const assignee = alias(schema.person, "assignee");
+  const where = and(visibleTo(viewer), instanceConditions({ open: true, dueTo }));
+  const [[counts], worst] = await Promise.all([
+    db()
+      .select({ overdue: sql<number>`count(*) filter (where ${schema.task.dueDate} < ${today}::date)::int`, dueSoon: sql<number>`count(*) filter (where ${schema.task.dueDate} >= ${today}::date)::int` })
+      .from(schema.obligationInstance)
+      .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
+      .innerJoin(schema.obligationTemplate, eq(schema.obligationTemplate.id, schema.obligationInstance.templateId))
+      .innerJoin(schema.entity, eq(schema.entity.id, schema.obligationInstance.entityId))
+      .where(where),
+    db()
+      .select({ entityCode: schema.entity.code, templateName: schema.obligationTemplate.name, dueDate: schema.task.dueDate, assigneeName: assignee.fullName })
+      .from(schema.obligationInstance)
+      .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
+      .innerJoin(schema.obligationTemplate, eq(schema.obligationTemplate.id, schema.obligationInstance.templateId))
+      .innerJoin(schema.entity, eq(schema.entity.id, schema.obligationInstance.entityId))
+      .leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId))
+      .where(and(where, lt(schema.task.dueDate, today)))
+      // The list's order, ties included (`readInstances`).
+      .orderBy(asc(schema.task.dueDate), asc(schema.entity.code), asc(schema.obligationTemplate.sortOrder), asc(schema.obligationInstance.id))
+      .limit(worstCount),
+  ]);
+  // `dueTo` keeps out an instance without a due date, so every row here has one.
+  return { overdue: Number(counts?.overdue ?? 0), dueSoon: Number(counts?.dueSoon ?? 0), worst: worst.flatMap((row) => (row.dueDate ? [{ ...row, dueDate: row.dueDate }] : [])) };
 }
 
 // ── Working on one ──────────────────────────────────────────────────────────────────────────

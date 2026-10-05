@@ -10,8 +10,8 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
-import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listDeletedTasks, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, RESTORE_WINDOW_DAYS, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { readFilters, readGrouping, readSort, taskSliceFor } from "@/modules/work/engine/filter";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listDeletedTasks, listLabels, listProjectMembers, listRecurrences, listTaskSlice, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, RESTORE_WINDOW_DAYS, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
 import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
 import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains, projectStatusChoices, projectStatusNames } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
@@ -54,10 +54,15 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const t = await getTranslations("work");
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
+  const filters = readFilters(query);
+  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
+  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
+  const grid = monthGrid(month);
 
-  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows, deleted] = await Promise.all([
+  const [views, { items: tasks, total: taskTotal }, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows, deleted] = await Promise.all([
     listSavedViews({ projectId: project.id }, user.person.id),
-    listProjectTasks(project.id),
+    // PERF-03: open work, and closed work only as far as this view shows it.
+    listTaskSlice({ projectId: project.id }, taskSliceFor(view, filters, today, grid)),
     listStates([team.id]),
     listLabels([team.id]),
     listClients({ activeOnly: true }),
@@ -76,20 +81,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const [digitalAssets, digitalOptions] = await Promise.all([digitalAssetsByProject([project.id]).then((byProject) => byProject.get(project.id) ?? []), manage ? listLinkableDigitalAssets() : []]);
   const chip = ({ id, name, platform, status }: (typeof digitalAssets)[number]) => ({ id, name, platform, status });
   const statusName = project.statusId ? statusNames.get(project.statusId) : undefined;
-  const filters = readFilters(query);
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
   const fields = toFieldViews(fieldRows);
   const clientName = clients.find((client) => client.id === project.clientId)?.name;
-  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
   // FR-PJM-10: the owning team's open cycles, for the filter and bulk edit.
   const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
   const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields, cycles };
   const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
   // Logged time per task is for the project's lead and the team's leads (PJM access rules).
   const logged = view === "table" && canSeeLoggedTime(viewer, { team: teamFacts(team), project: facts }) ? Object.fromEntries(await loggedMinutesByTask(tasks.map((task) => task.id))) : null;
-  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
-  const grid = monthGrid(month);
   const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
 
   return (
@@ -139,6 +140,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <ProjectTabs projectId={project.id} current={view === "board" ? "board" : "tasks"} />
       <Section>
         <ViewTabs current={view} />
+        {taskTotal > tasks.length ? <p className="text-sm text-muted-foreground">{t("list.truncated", { shown: tasks.length, total: taskTotal })}</p> : null}
       {view === "table" ? (
         <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} scope={{ teamId: team.id, projectId: project.id }} />
       ) : view === "board" ? (

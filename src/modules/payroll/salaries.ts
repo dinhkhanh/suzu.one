@@ -15,6 +15,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
 import { listEmploymentFacts, recordPayEvent } from "@/modules/core-hr/service";
 import { decideRequest, defineRequestType, getRequest, listRequestsAbout, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
+import { listEntities } from "@/modules/platform/org/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { planApproval, planVoid } from "@/modules/platform/statutory/engine/versions";
 import { getParameter } from "@/modules/platform/statutory/service";
@@ -402,7 +403,8 @@ export async function getSalaryDecision(viewer: Viewer, structureId: string): Pr
   if (!row || !canViewCompensationOf(viewer.principal, { personId: row.personId, entityId: row.entityId })) return null;
   const [[facts], [entity], [previous], catalogue, [decider]] = await Promise.all([
     listEmploymentFacts({ personIds: [row.personId] }),
-    db().select().from(schema.entity).where(eq(schema.entity.id, row.entityId)).limit(1),
+    // The entity is reference data, in the org module's cache.
+    listEntities().then((entities) => entities.filter((entity) => entity.id === row.entityId)),
     db().select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, row.employmentId), isNull(schema.salaryStructure.voidedAt), lte(schema.salaryStructure.validFrom, row.validFrom), sql`${schema.salaryStructure.id} <> ${row.id}`)).orderBy(desc(schema.salaryStructure.validFrom)).limit(1),
     resolveCatalogue(row.entityId, row.validFrom),
     row.decidedByPersonId ? db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.decidedByPersonId)).limit(1) : Promise.resolve([]),

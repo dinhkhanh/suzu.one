@@ -18,15 +18,15 @@
 import "server-only";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { getWhoIsIn } from "@/modules/attendance/service";
-import { getHeadcountReport } from "@/modules/core-hr/service";
+import { getHeadcountTotals } from "@/modules/core-hr/service";
 import { getTeamCalendar } from "@/modules/leave/service";
-import { listInstances } from "@/modules/ops/service";
+import { dueFigures } from "@/modules/ops/service";
 import { costTrend, payrollReadReach, type TrendPoint } from "@/modules/payroll/service";
 import { countInbox } from "@/modules/platform/approvals/service";
 import type { PersonRow } from "@/modules/platform/people/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { canReadRecruitReports, defaultReportFrom, getRecruitReport } from "@/modules/recruit/service";
-import { getLeaderView, loadViewer } from "@/modules/work/service";
+import { leaderTotals, loadViewer } from "@/modules/work/service";
 import { type DeliveryTile, getDeliveryTile } from "./delivery";
 import { loadCrm, type SalesTile, salesTile } from "@/modules/crm/service";
 
@@ -88,9 +88,8 @@ export async function getDashboard(user: DashboardViewer, today: IsoDate = today
   const [headcount, payroll, attendance, leave, recruit, ops, work, delivery, sales, waiting] = await Promise.all([
     tile("headcount", async () => {
       if (!can(user.principal, "report:read")) return null;
-      const report = await getHeadcountReport(user.principal, { asOf: today, from: period.from, to: period.to });
-      if (!report) return null;
-      return { total: report.snapshot.total, joiners: report.movement.joiners, leavers: report.movement.leavers, contractsExpiring: report.contractsExpiring.length, probations: report.probations.length, scoped: report.scoped } satisfies HeadcountTile;
+      // The five figures alone, counted by Postgres — not the report's rows and lists.
+      return (await getHeadcountTotals(user.principal, { asOf: today, from: period.from, to: period.to })) satisfies HeadcountTile | null;
     }),
 
     tile("payroll", async () => {
@@ -126,25 +125,15 @@ export async function getDashboard(user: DashboardViewer, today: IsoDate = today
 
     tile("ops", async () => {
       if (!can(user.principal, "ops:read") && !can(user.principal, "ops:manage")) return null;
-      const soon = addDays(today, DUE_SOON_DAYS);
-      const instances = await listInstances(viewerId, { open: true, dueTo: soon, limit: 200 }, today);
-      const dueOn = (instance: { dueDate: IsoDate | null; nominalDueDate: IsoDate }) => instance.dueDate ?? instance.nominalDueDate;
-      const overdue = instances.filter((instance) => dueOn(instance) < today);
-      return {
-        overdue: overdue.length,
-        dueSoon: instances.filter((instance) => dueOn(instance) >= today).length,
-        worst: overdue
-          .sort((left, right) => dueOn(left).localeCompare(dueOn(right)))
-          .slice(0, 5)
-          .map((instance) => ({ entityCode: instance.entityCode, templateName: instance.templateName, dueDate: dueOn(instance), assigneeName: instance.assigneeName })),
-      } satisfies OpsTile;
+      // Counted by Postgres over every open instance due within the fortnight; only the five worst are rows.
+      return (await dueFigures(viewerId, addDays(today, DUE_SOON_DAYS), today)) satisfies OpsTile;
     }),
 
     tile("work", async () => {
-      const viewer = await loadViewer(user);
-      const view = await getLeaderView(viewer, today);
-      if (view.totals.open === 0) return null;
-      return view.totals satisfies WorkTile;
+      // The leader view's four figures, counted by Postgres over all of it: no task is loaded.
+      const totals = await leaderTotals(await loadViewer(user), today);
+      if (totals.open === 0) return null;
+      return totals satisfies WorkTile;
     }),
 
     // Projects the reader may open, and nothing else: the same rows as the portfolio.

@@ -3,10 +3,12 @@
 // Requests keep a snapshot of the flow they were submitted under, so an edit never touches
 // requests already on their way.
 import "server-only";
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
+import { listEntities } from "../org/service";
 import { ROLE_DEFINITIONS, ROLES } from "../rbac/roles";
 import { type FlowDefinition, flowProblems } from "./engine/flow";
 
@@ -51,12 +53,24 @@ export const flowDefinitionSchema = z.object({
 export const APPROVER_RULES = ["line_manager", "department_head", "manager_level", "permission", "role", "person"] as const;
 export const FLOW_PERMISSIONS = NAMED_PERMISSIONS;
 
+// The saved flows are reference data read on every request filed and every approver preview: the
+// whole table sits under one key in the shared cache, in a fixed order, and callers filter it here.
+// `saveFlow` and `deleteFlow` drop it once committed; the TTL bounds a write behind the app's back.
+const FLOWS_KEY = "approvals:flows";
+/** After a write to `approval_flow` outside this file has committed. */
+export const invalidateApprovalFlows = () => invalidate(FLOWS_KEY);
+
+/** A transaction reads its own rows; the pool itself, or no executor at all, may be answered from the cache. */
+const inTransaction = (executor: Executor | undefined): executor is Executor => !!executor && executor !== db();
+
+async function allFlows(executor?: Executor): Promise<ApprovalFlowRow[]> {
+  const read = (from: Executor) => from.select().from(schema.approvalFlow).orderBy(asc(schema.approvalFlow.requestType), asc(schema.approvalFlow.id));
+  return inTransaction(executor) ? read(executor) : cached(FLOWS_KEY, TTL.reference, () => read(db()));
+}
+
 /** The flow a new request of this type follows: the entity's own, else the group's, else the default in code. */
 export async function effectiveFlow(executor: Executor, requestType: string, entityId: string | null, fallback: FlowDefinition): Promise<{ flow: FlowDefinition; source: "entity" | "group" | "default" }> {
-  const rows = await executor
-    .select()
-    .from(schema.approvalFlow)
-    .where(and(eq(schema.approvalFlow.requestType, requestType), eq(schema.approvalFlow.active, true), entityId ? or(eq(schema.approvalFlow.entityId, entityId), isNull(schema.approvalFlow.entityId)) : isNull(schema.approvalFlow.entityId)));
+  const rows = (await allFlows(executor)).filter((row) => row.requestType === requestType && row.active && (row.entityId === null || row.entityId === entityId));
   const own = rows.find((row) => row.entityId !== null);
   const chosen = own ?? rows.find((row) => row.entityId === null);
   if (!chosen) return { flow: fallback, source: "default" };
@@ -68,18 +82,17 @@ export async function effectiveFlow(executor: Executor, requestType: string, ent
 
 export type FlowListRow = ApprovalFlowRow & { entityName: string | null };
 
+/** By request type, the group's flow last (Postgres sorts a null name last), the entities' by name. */
 export async function listFlows(): Promise<FlowListRow[]> {
-  const rows = await db()
-    .select({ flow: schema.approvalFlow, entityName: schema.entity.shortName })
-    .from(schema.approvalFlow)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.approvalFlow.entityId))
-    .orderBy(asc(schema.approvalFlow.requestType), asc(schema.entity.shortName));
-  return rows.map(({ flow, entityName }) => ({ ...flow, entityName }));
+  const [flows, entities] = await Promise.all([allFlows(), listEntities()]);
+  const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  const rows = flows.map((flow) => ({ ...flow, entityName: flow.entityId ? (nameOf.get(flow.entityId) ?? null) : null }));
+  const byName = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b, "vi"));
+  return rows.sort((a, b) => (a.requestType < b.requestType ? -1 : a.requestType > b.requestType ? 1 : 0) || byName(a.entityName, b.entityName) || a.id.localeCompare(b.id));
 }
 
 export async function getFlow(id: string): Promise<ApprovalFlowRow | null> {
-  const [row] = await db().select().from(schema.approvalFlow).where(eq(schema.approvalFlow.id, id)).limit(1);
-  return row ?? null;
+  return (await allFlows()).find((row) => row.id === id) ?? null;
 }
 
 export type SaveFlowInput = { requestType: string; entityId: string | null; definition: FlowDefinition; active: boolean };
@@ -93,7 +106,7 @@ export async function saveFlow(input: SaveFlowInput, actorPersonId: string): Pro
     const found = await db().select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, named), eq(schema.person.status, "active")));
     if (found.length !== new Set(named).size) throw new ActionError("flow_person_unknown");
   }
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [before] = await tx
       .select()
       .from(schema.approvalFlow)
@@ -106,10 +119,13 @@ export async function saveFlow(input: SaveFlowInput, actorPersonId: string): Pro
       : await tx.insert(schema.approvalFlow).values({ requestType: input.requestType, entityId: input.entityId, ...values }).returning();
     return { before: before ?? null, after };
   });
+  await invalidateApprovalFlows();
+  return saved;
 }
 
 /** Back to the default: the next request of the type follows the group flow or the one in code. */
 export async function deleteFlow(id: string): Promise<ApprovalFlowRow | null> {
   const [row] = await db().delete(schema.approvalFlow).where(eq(schema.approvalFlow.id, id)).returning();
+  await invalidateApprovalFlows();
   return row ?? null;
 }

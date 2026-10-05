@@ -200,6 +200,17 @@ export async function findOpenRegularRun(entityId: string, executor: Executor = 
   return rows.length > 0 ? handleOf(rows[0]) : null;
 }
 
+/** `findOpenRegularRun` for several entities in one query; an entity with nothing open is absent. */
+export async function findOpenRegularRuns(entityIds: readonly string[], executor: Executor = db()): Promise<Map<string, RunHandle>> {
+  if (entityIds.length === 0) return new Map();
+  const rows = await executor
+    .selectDistinctOn([schema.payrollRun.entityId])
+    .from(schema.payrollRun)
+    .where(and(inArray(schema.payrollRun.entityId, [...new Set(entityIds)]), eq(schema.payrollRun.kind, "regular"), inArray(schema.payrollRun.status, ["draft", "calculated"])))
+    .orderBy(schema.payrollRun.entityId, schema.payrollRun.month);
+  return new Map(rows.map((run) => [run.entityId, handleOf(run)]));
+}
+
 /** One run's handle, for a caller holding an id it stored earlier. */
 export async function getRunHandle(runId: string, executor: Executor = db()): Promise<RunHandle | null> {
   const run = await getRun(runId, executor);

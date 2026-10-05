@@ -43,23 +43,35 @@ const formatVnd = (amount: number) => amount.toLocaleString("vi-VN");
 
 export type TemplateInput = { code: string; name: string; entityId: string | null; kind: DocumentKind; tier: Tier; body: string; letterhead: LetterheadFields; isActive: boolean };
 
-// The template library is reference data: one entry in the shared cache, dropped by `saveTemplate`.
-const TEMPLATES_KEY = "documents:templates";
+// The template library is reference data: the bare rows sit under one entry in the shared cache,
+// in a fixed order, dropped by `saveTemplate` once written (a seed is followed by
+// `pnpm cache:flush`). The entity's name is joined from the org module's own cached list, so a
+// renamed entity shows at once. v2: the entry used to hold the joined name.
+const TEMPLATES_KEY = "documents:templates:v2";
+/** After a write to `document_template` outside this file has committed. */
+export const invalidateDocumentTemplates = () => invalidate(TEMPLATES_KEY);
+
+const readTemplates = (from: Executor): Promise<DocumentTemplateRow[]> => from.select().from(schema.documentTemplate).orderBy(asc(schema.documentTemplate.kind), asc(schema.documentTemplate.name), asc(schema.documentTemplate.id));
+const libraryRows = () => cached(TEMPLATES_KEY, TTL.reference, () => readTemplates(db()));
 
 /** Inside a transaction the rows are read there; otherwise from the shared cache. */
 export async function listTemplates(executor?: Executor): Promise<(DocumentTemplateRow & { entityName: string | null })[]> {
-  const read = async (from: Executor) => {
-    const rows = await from
+  if (executor) {
+    const rows = await executor
       .select({ template: schema.documentTemplate, entityName: schema.entity.shortName })
       .from(schema.documentTemplate)
       .leftJoin(schema.entity, eq(schema.entity.id, schema.documentTemplate.entityId))
-      .orderBy(asc(schema.documentTemplate.kind), asc(schema.documentTemplate.name));
+      .orderBy(asc(schema.documentTemplate.kind), asc(schema.documentTemplate.name), asc(schema.documentTemplate.id));
     return rows.map((row) => ({ ...row.template, entityName: row.entityName }));
-  };
-  return executor ? read(executor) : cached(TEMPLATES_KEY, TTL.reference, () => read(db()));
+  }
+  const [rows, entities] = await Promise.all([libraryRows(), listEntities()]);
+  const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  return rows.map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null }));
 }
 
-export async function findTemplate(templateId: string, executor: Executor = db()): Promise<DocumentTemplateRow | undefined> {
+/** One template. Without an executor it comes from the cached library; a writer passes one and reads the row as it stands. */
+export async function findTemplate(templateId: string, executor?: Executor): Promise<DocumentTemplateRow | undefined> {
+  if (!executor) return (await libraryRows()).find((row) => row.id === templateId);
   const [row] = await executor.select().from(schema.documentTemplate).where(eq(schema.documentTemplate.id, templateId)).limit(1);
   return row;
 }
@@ -76,17 +88,18 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
   const values = { ...input, code: input.code.toUpperCase(), updatedByPersonId: actorPersonId, updatedAt: now() };
   if (!templateId) {
     const [after] = await db().insert(schema.documentTemplate).values(values).returning();
-    await invalidate(TEMPLATES_KEY);
+    await invalidateDocumentTemplates();
     return { before: null, after };
   }
-  const before = await findTemplate(templateId);
+  // The row as it stands, not the cached one: its version is bumped from here.
+  const before = await findTemplate(templateId, db());
   if (!before) throw new ActionError("template_not_found");
   const [after] = await db()
     .update(schema.documentTemplate)
     .set({ ...values, version: before.version + 1 })
     .where(eq(schema.documentTemplate.id, templateId))
     .returning();
-  await invalidate(TEMPLATES_KEY);
+  await invalidateDocumentTemplates();
   return { before, after };
 }
 

@@ -11,7 +11,7 @@
 // (template, entity, period key): the job runs in both cron schedules and behind "Sync now".
 import "server-only";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { addDays, type IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff, isPeriodLocked } from "@/modules/attendance/service";
 import { hasReached, listRunMilestones, type RunMilestone, type RunStatus } from "@/modules/payroll/service";
@@ -19,7 +19,7 @@ import { type LifecycleEventFact, listLifecycleEventFacts } from "@/modules/core
 import { listInactiveLicenceIds, listLicenceRenewalFacts } from "@/modules/assets/service";
 import { notify } from "../platform/notifications/service";
 import type { Permission, Role } from "../platform/rbac/roles";
-import { listPeopleHolding, listPeopleWithRole } from "../platform/rbac/service";
+import { type RoleHolders, roleHolders } from "../platform/rbac/service";
 import { createTasks } from "../platform/tasks-engine/service";
 import { nominalDueDate, type Period, periodsDueBetween, shiftDueDate } from "./engine/due-rule";
 import { LIFECYCLE_EVENT_TYPES, OBLIGATION_KIND, type ObligationEventType, type PeriodicRecurrence, type Shift } from "./enums";
@@ -79,12 +79,21 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   const to = addDays(today, options.horizonDays ?? DEFAULT_HORIZON_DAYS);
   const now = options.now ?? new Date();
 
-  const [templates, entities, existing] = await Promise.all([
+  const [templates, entities] = await Promise.all([
     tx.select().from(schema.obligationTemplate).where(eq(schema.obligationTemplate.isActive, true)),
     tx.select({ id: schema.entity.id, code: schema.entity.code }).from(schema.entity).where(eq(schema.entity.isActive, true)),
-    tx.select({ templateId: schema.obligationInstance.templateId, entityId: schema.obligationInstance.entityId, periodKey: schema.obligationInstance.periodKey }).from(schema.obligationInstance),
   ]);
-  const have = new Set(existing.map((row) => `${row.templateId}|${row.entityId}|${row.periodKey}`));
+  // What already exists, read for the keys this run could create and no others (PERF-03): the
+  // instance table only grows, and the run is twice a day. One read per source below.
+  const have = new Set<string>();
+  const readExisting = async (templateIds: readonly string[], periodKeys: readonly string[]) => {
+    if (templateIds.length === 0 || periodKeys.length === 0) return;
+    const rows = await tx
+      .select({ templateId: schema.obligationInstance.templateId, entityId: schema.obligationInstance.entityId, periodKey: schema.obligationInstance.periodKey })
+      .from(schema.obligationInstance)
+      .where(and(inArray(schema.obligationInstance.templateId, [...new Set(templateIds)]), inArray(schema.obligationInstance.periodKey, [...new Set(periodKeys)])));
+    for (const row of rows) have.add(`${row.templateId}|${row.entityId}|${row.periodKey}`);
+  };
   const entityCode = new Map(entities.map((row) => [row.id, row.code]));
   const appliesTo = (template: ObligationTemplateRow, entityId: string) => entityCode.has(entityId) && (!template.entityIds || template.entityIds.includes(entityId));
 
@@ -96,13 +105,22 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   };
 
   const parties = new Map<string, string[]>();
+  // The grants are read once for the whole run, not once per rule and entity. A role is asked
+  // about the calendar day, a permission about the run's `today` (they differ only in a test).
+  let lookups: Promise<{ byRole: RoleHolders; byPermission: RoleHolders }> | undefined;
+  const holders = () =>
+    (lookups ??= (async () => {
+      const byPermission = await roleHolders({ today, executor: tx });
+      return { byPermission, byRole: today === todayInVietnam() ? byPermission : await roleHolders({ executor: tx }) };
+    })());
   const candidates = async (rule: string, personId: string | null, entityId: string): Promise<string[]> => {
     if (rule === "none") return [];
     if (rule === "person") return personId ? [personId] : [];
     const key = `${rule}|${entityId}`;
     if (!parties.has(key)) {
       // The people whose job it is — never the owners' "*" — and the entity's own before the group's.
-      const ids = rule.startsWith("role:") ? await listPeopleWithRole(rule.slice(5) as Role, { entityId }, tx) : await listPeopleHolding(rule.slice("permission:".length) as Exclude<Permission, "*">, { entityId }, { today, includeWildcard: false, executor: tx });
+      const { byRole, byPermission } = await holders();
+      const ids = rule.startsWith("role:") ? byRole.withRole(rule.slice(5) as Role, { entityId }) : byPermission.holding(rule.slice("permission:".length) as Exclude<Permission, "*">, { entityId }, { includeWildcard: false });
       const people = ids.length ? await tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, ids)) : [];
       const active = people.filter((person) => person.status !== "offboarded").sort((a, b) => a.id.localeCompare(b.id));
       parties.set(key, [...active.filter((person) => person.entityId === entityId), ...active.filter((person) => person.entityId !== entityId)].map((person) => person.id));
@@ -113,9 +131,10 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   type Planned = { template: ObligationTemplateRow; entityId: string; periodKey: string; period: Period | null; nominal: IsoDate; title: string; subjectPersonId: string | null; source: { type: string; id: string } | null; /** The person the fact itself names as responsible; tried before the template's rule. */ preferredOwnerId?: string | null };
   const planned: Planned[] = [];
 
-  for (const template of templates) {
-    if (template.recurrence === "event") continue;
-    for (const due of periodsDueBetween(template.recurrence as PeriodicRecurrence, template.dueRule, from, to)) {
+  const periodic = templates.filter((template) => template.recurrence !== "event").map((template) => ({ template, dues: periodsDueBetween(template.recurrence as PeriodicRecurrence, template.dueRule, from, to) }));
+  await readExisting(periodic.map(({ template }) => template.id), periodic.flatMap(({ dues }) => dues.map((due) => due.period.key)));
+  for (const { template, dues } of periodic) {
+    for (const due of dues) {
       for (const entity of entities) {
         if (!appliesTo(template, entity.id) || have.has(`${template.id}|${entity.id}|${due.period.key}`)) continue;
         planned.push({ template, entityId: entity.id, periodKey: due.period.key, period: due.period, nominal: due.nominalDueDate, title: `${template.name} — ${periodLabel(due.period.key)} · ${entity.code}`, subjectPersonId: null, source: null });
@@ -131,6 +150,7 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     const since = eventTemplates.reduce((earliest, template) => (template.createdAt < earliest ? template.createdAt : earliest), lookback);
     const facts = await listLifecycleEventFacts({ createdSince: since, types: [...new Set(eventTemplates.flatMap((template) => LIFECYCLE_TYPE[template.eventType as ObligationEventType] ?? []))] }, tx);
 
+    await readExisting(eventTemplates.map((template) => template.id), facts.map((fact) => `event:${fact.id}`));
     const calledOff = facts.filter((fact) => fact.status === "cancelled").map((fact) => fact.id);
     if (calledOff.length) cancelled = await cancelForSources(tx, "lifecycle_event", calledOff);
 
@@ -160,6 +180,7 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   const licenceTemplates = templates.filter((template) => template.recurrence === "event" && template.eventType === "licence_renewal");
   if (licenceTemplates.length) {
     const renewals = await listLicenceRenewalFacts(from, to, tx);
+    await readExisting(licenceTemplates.map((template) => template.id), renewals.map((fact) => `event:${fact.id}`));
     // A licence that was cancelled or has expired renews no more: what was opened for it goes.
     const inactive = await listInactiveLicenceIds(tx);
     if (inactive.length) {

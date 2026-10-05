@@ -2,7 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { canRemoveKudos, listCompanyValues, listKudos, listKudosRecipients } from "@/modules/comms/service";
+import { canRemoveKudos, kudosReceived, listCompanyValues, listKudos, listKudosRecipients } from "@/modules/comms/service";
 import { RemoveKudosButton } from "@/modules/comms/ui/buttons";
 import { KudosCards } from "@/modules/comms/ui/cards";
 import { KudosForm } from "@/modules/comms/ui/kudos-form";
@@ -17,7 +17,8 @@ export default async function KudosPage() {
   if (user.principal.workforceType === "collaborator") notFound();
   const t = await getTranslations("comms");
   const locale = await getLocale();
-  const [wall, mine, people, values] = await Promise.all([listKudos({ limit: 60 }), listKudos({ toPersonId: user.person.id, limit: 30 }), listKudosRecipients(user.person.id), listCompanyValues()]);
+  // How many one received is counted by Postgres; only the newest thirty are cards.
+  const [wall, mine, people, values] = await Promise.all([listKudos({ limit: 60 }), kudosReceived(user.person.id, { recent: 30 }), listKudosRecipients(user.person.id), listCompanyValues()]);
 
   return (
     <Page>
@@ -29,8 +30,8 @@ export default async function KudosPage() {
           </CardContent>
         </Card>
       </Section>
-      <Section title={t("kudos.mine")} count={mine.length || undefined}>
-        <KudosCards cards={mine} empty={t("kudos.mineEmpty")} />
+      <Section title={t("kudos.mine")} count={mine.count || undefined}>
+        <KudosCards cards={mine.recent} empty={t("kudos.mineEmpty")} />
       </Section>
       <Section title={t("kudos.wall")} count={wall.length || undefined}>
         <KudosCards

@@ -18,6 +18,7 @@ import { dealValue, effectiveProbability, type GateFacts, isStale, unmetGates, w
 import type { DealStatus, LostReason, ServiceLine, Source, StageCategory, StageGate } from "./enums";
 import { canEditDeal, canOwnDeal, canSeeDealValue, canViewDeal, type CrmViewer, type DealFacts } from "./policy";
 import { crmSettings, firstStageOf, listStages, type StageRow } from "./stages";
+import { dealValueReach } from "./pipeline";
 import { invalidateTies } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -55,7 +56,7 @@ export type DealView = Omit<DealRow, "oneOffVnd" | "monthlyVnd"> & {
 const brand = alias(schema.workClient, "deal_brand");
 const owner = alias(schema.person, "deal_owner");
 
-async function readDeals(where: SQL | undefined, limit: number, executor: Executor = db()) {
+async function readDeals(where: SQL | undefined, limit: number, executor: Executor = db(), offset = 0) {
   // The last time anything happened: a stage change, or a logged activity on the deal.
   const lastActivity = executor
     .select({ dealId: schema.crmActivity.dealId, at: sql<Date>`max(coalesce(${schema.crmActivity.occurredAt}, ${schema.crmActivity.doneAt}))`.as("last_activity_at") })
@@ -83,8 +84,10 @@ async function readDeals(where: SQL | undefined, limit: number, executor: Execut
     .leftJoin(schema.entity, eq(schema.entity.id, schema.crmDeal.entityId))
     .leftJoin(lastActivity, eq(lastActivity.dealId, schema.crmDeal.id))
     .where(where)
-    .orderBy(asc(schema.crmStage.sortOrder), desc(schema.crmDeal.updatedAt))
-    .limit(limit);
+    // The id last, so that the order is total and a page never repeats or skips a deal.
+    .orderBy(asc(schema.crmStage.sortOrder), desc(schema.crmDeal.updatedAt), asc(schema.crmDeal.id))
+    .limit(limit)
+    .offset(offset);
 }
 
 type ReadRow = Awaited<ReturnType<typeof readDeals>>[number];
@@ -116,6 +119,17 @@ export type DealFilters = { status?: DealStatus | "all"; ownerId?: string | null
  * row, with the value shaped per deal.
  */
 export async function listDeals(viewer: CrmViewer, filters: DealFilters = {}, limit = 500): Promise<DealView[]> {
+  const where = dealWhere(viewer, filters);
+  if (where === null) return [];
+  return shapeVisible(viewer, await readDeals(where, limit));
+}
+
+/**
+ * The deals the filters name among those this viewer may see, as SQL — the rule of `canViewDeal`:
+ * their own, their accounts', and every deal of the entities they sell in. null = none.
+ * `closedSince`: open deals, and the ones won or lost since that day (the board's last 30 days).
+ */
+function dealWhere(viewer: CrmViewer, filters: DealFilters & { closedSince?: IsoDate }): SQL | undefined | null {
   const me = viewer.principal.personId;
   const sell = entityReach(viewer.principal, "crm:sell");
   const manage = entityReach(viewer.principal, "crm:manage");
@@ -124,11 +138,12 @@ export async function listDeals(viewer: CrmViewer, filters: DealFilters = {}, li
   const tied = [...viewer.ties.keys()];
   const own = me ? eq(schema.crmDeal.ownerPersonId, me) : undefined;
   const reach = filters.mine ? own : all ? undefined : or(own, tied.length ? inArray(schema.crmDeal.clientId, tied) : undefined, entities.length ? inArray(schema.crmDeal.entityId, entities) : undefined);
-  if (!all && !reach) return [];
+  if (!all && !reach) return null;
   const q = filters.q?.trim();
-  const conditions = [
+  return and(
     reach,
     filters.status && filters.status !== "all" ? eq(schema.crmDeal.status, filters.status) : undefined,
+    filters.closedSince ? sql`(${schema.crmDeal.status} = 'open' or (coalesce(${schema.crmDeal.wonAt}, ${schema.crmDeal.lostAt}) at time zone 'UTC')::date >= ${filters.closedSince}::date)` : undefined,
     filters.ownerId ? eq(schema.crmDeal.ownerPersonId, filters.ownerId) : undefined,
     filters.teamId ? eq(schema.crmDeal.teamId, filters.teamId) : undefined,
     filters.entityId ? eq(schema.crmDeal.entityId, filters.entityId) : undefined,
@@ -136,8 +151,58 @@ export async function listDeals(viewer: CrmViewer, filters: DealFilters = {}, li
     filters.serviceLine ? sql`${filters.serviceLine} = any(${schema.crmDeal.serviceLines})` : undefined,
     filters.closeMonth ? sql`to_char(${schema.crmDeal.expectedCloseOn}, 'YYYY-MM') = ${filters.closeMonth}` : undefined,
     q ? sql`(${schema.crmDeal.title} ilike ${`%${q}%`} or ${schema.crmDeal.code} ilike ${`%${q}%`} or ${schema.workClient.name} ilike ${`%${q}%`})` : undefined,
-  ];
-  const [rows, accounts] = await Promise.all([readDeals(and(...conditions), limit), accountsById()]);
+  );
+}
+
+/** How many deals the filters name, counted in SQL (the `q` filter needs the account's name). */
+async function countDeals(where: SQL | undefined): Promise<number> {
+  const [row] = await db().select({ count: sql<number>`count(*)`.mapWith(Number) }).from(schema.crmDeal).innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId)).where(where);
+  return row?.count ?? 0;
+}
+
+/** The pipeline list (PERF-03): one page of the filtered deals, in the board's order, and how many there are in all. */
+export async function listDealPage(viewer: CrmViewer, filters: DealFilters, page: number, pageSize: number): Promise<{ rows: DealView[]; total: number }> {
+  const where = dealWhere(viewer, filters);
+  if (where === null) return { rows: [], total: 0 };
+  const [rows, total] = await Promise.all([readDeals(where, pageSize, db(), (Math.max(1, page) - 1) * pageSize), countDeals(where)]);
+  return { rows: await shapeVisible(viewer, rows), total };
+}
+
+/**
+ * The board's deals: the open ones and those closed since `closedSince`, at most `limit` of them,
+ * with the count of all of them and each stage's figures summed in SQL over all of them — the
+ * values only of deals the reader may value (`dealValueReach`), weighted by the same probability
+ * the cards show (won 100, lost 0).
+ */
+export async function listDealBoard(viewer: CrmViewer, filters: DealFilters & { closedSince: IsoDate }, limit = 500): Promise<{ deals: DealView[]; total: number; totals: ReturnType<typeof pipelineTotals> }> {
+  const where = dealWhere(viewer, filters);
+  if (where === null) return { deals: [], total: 0, totals: new Map() };
+  const valued = dealValueReach(viewer);
+  const counted = valued === null ? sql`false` : (valued ?? sql`true`);
+  const probability = sql`(case ${schema.crmStage.category} when 'won' then 100 when 'lost' then 0 else least(100, greatest(0, coalesce(${schema.crmDeal.probability}, ${schema.crmStage.probability}))) end)`;
+  const [rows, stages] = await Promise.all([
+    readDeals(where, limit),
+    db()
+      .select({
+        stageId: schema.crmDeal.stageId,
+        count: sql<number>`count(*)`.mapWith(Number),
+        valued: sql<number>`count(*) filter (where ${counted})`.mapWith(Number),
+        totalVnd: sql<number>`coalesce(sum(${dealValueSql}) filter (where ${counted}), 0)`.mapWith(Number),
+        weightedVnd: sql<number>`coalesce(sum(round(${dealValueSql} * ${probability} / 100.0)) filter (where ${counted}), 0)`.mapWith(Number),
+      })
+      .from(schema.crmDeal)
+      .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
+      .innerJoin(schema.crmStage, eq(schema.crmStage.id, schema.crmDeal.stageId))
+      .where(where)
+      .groupBy(schema.crmDeal.stageId),
+  ]);
+  const totals = new Map(stages.map(({ stageId, ...figures }) => [stageId, figures]));
+  return { deals: await shapeVisible(viewer, rows), total: stages.reduce((sum, stage) => sum + stage.count, 0), totals };
+}
+
+/** The rows asked of the policy again, one by one, with the value shaped per deal. */
+async function shapeVisible(viewer: CrmViewer, rows: ReadRow[]): Promise<DealView[]> {
+  const accounts = await accountsById();
   const result: DealView[] = [];
   for (const row of rows) {
     const account = accounts.get(row.deal.clientId);

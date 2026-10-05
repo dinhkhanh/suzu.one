@@ -15,6 +15,7 @@ import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { publicOrigin } from "@/lib/site";
 import { queueRawEmail } from "@/modules/platform/notifications/service";
+import { listEntities } from "@/modules/platform/org/service";
 import type { RecruitEmailKind } from "./enums";
 import { emailTemplateProblems, placeholdersIn, renderEmail, type RenderedEmail } from "./engine/email-template";
 import { privacyLinkFor, rememberPrivacyLink } from "./privacy";
@@ -104,8 +105,9 @@ export async function letterFacts(applicationId: string, executor?: Tx): Promise
   if (!application) throw new ActionError("recruit_application_not_found");
   const [candidate, opening] = await Promise.all([findCandidate(application.candidateId, executor), findOpening(application.openingId, executor)]);
   if (!candidate || !opening) throw new ActionError("recruit_application_not_found");
+  // The entity's name from the cached org reference; a transaction reads its own rows.
   const [[entity], stages] = await Promise.all([
-    (executor ?? db()).select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1),
+    executor ? executor.select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1) : listEntities().then((rows) => rows.filter((row) => row.id === opening.entityId)),
     stagesOf(opening.pipelineId, executor),
   ]);
   const stage = stages.find((row) => row.id === application.stageId);

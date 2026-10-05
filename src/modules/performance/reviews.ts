@@ -670,22 +670,56 @@ export type BulkReleaseResult = { released: string[]; skipped: { participantId: 
  * alone and listed back — a bulk action that silently skips people is worse than one that says so.
  * So is the actor's own review: somebody else releases that one. Refused as a whole before the
  * cycle has reached its calibration stage.
+ *
+ * One transaction for the whole cycle — the same checks `releaseParticipant` makes, asked of
+ * everybody at once: the unreleased participants locked in one read, their submitted manager
+ * forms in another, and one update per distinct (frozen score, stage) pair rather than per person.
  */
 export async function releaseCycle(cycleId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BulkReleaseResult> {
   const cycle = await findReviewCycle(cycleId, executor);
   if (!cycle) throw new ActionError("review_cycle_not_found");
   if (!releasable({ status: cycle.status as ReviewCycleStatus, rolling: cycle.isRolling })) throw new ActionError("review_cycle_not_calibrating");
-  const participants = await executor.select().from(schema.reviewParticipant).where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)));
-  const result: BulkReleaseResult = { released: [], skipped: [] };
-  for (const participant of participants) {
-    try {
-      await releaseParticipant(participant.id, actorPersonId, executor);
+  return executor.transaction(async (tx) => {
+    const participants = await tx
+      .select()
+      .from(schema.reviewParticipant)
+      .where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)))
+      .orderBy(asc(schema.reviewParticipant.id))
+      .for("update");
+    const result: BulkReleaseResult = { released: [], skipped: [] };
+    if (participants.length === 0) return result;
+    // The cycle as the locked rows see it: moved back out of calibration meanwhile, nobody is released.
+    const current = await findReviewCycle(cycleId, tx);
+    const stillReleasable = !!current && releasable({ status: current.status as ReviewCycleStatus, rolling: current.isRolling });
+    const forms = await tx
+      .select({ participantId: schema.reviewForm.participantId, overallRatingBp: schema.reviewForm.overallRatingBp })
+      .from(schema.reviewForm)
+      .where(and(inArray(schema.reviewForm.participantId, participants.map((participant) => participant.id)), eq(schema.reviewForm.kind, "manager"), eq(schema.reviewForm.status, "submitted")));
+    const managerRating = new Map<string, number | null>();
+    for (const form of forms) if (!managerRating.has(form.participantId)) managerRating.set(form.participantId, form.overallRatingBp);
+
+    // Grouped by what each row is set to: a cycle's frozen scores are a handful of rating points.
+    const updates = new Map<string, { reviewScoreBp: number | null; stage: ReviewStage; ids: string[] }>();
+    for (const participant of participants) {
+      const reason = participant.personId === actorPersonId ? "review_own" : !stillReleasable ? "review_cycle_not_calibrating" : !managerRating.has(participant.id) ? "review_manager_not_submitted" : null;
+      if (reason) {
+        result.skipped.push({ participantId: participant.id, reason });
+        continue;
+      }
+      const reviewScoreBp = participant.reviewScoreBp ?? managerRating.get(participant.id) ?? null;
+      const stage = laterStage(participant.stage as ReviewStage, "released");
+      const key = `${reviewScoreBp}|${stage}`;
+      const group = updates.get(key) ?? { reviewScoreBp, stage, ids: [] };
+      group.ids.push(participant.id);
+      updates.set(key, group);
       result.released.push(participant.id);
-    } catch (error) {
-      result.skipped.push({ participantId: participant.id, reason: error instanceof ActionError ? error.message : "failed" });
     }
-  }
-  return result;
+    const now = new Date();
+    for (const { reviewScoreBp, stage, ids } of updates.values()) {
+      await tx.update(schema.reviewParticipant).set({ reviewScoreBp, releasedAt: now, releasedByPersonId: actorPersonId, stage, updatedAt: now }).where(inArray(schema.reviewParticipant.id, ids));
+    }
+    return result;
+  });
 }
 
 // ── Reads for the screens ───────────────────────────────────────────────────────────────────
