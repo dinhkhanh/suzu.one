@@ -206,7 +206,7 @@ export const projectRetainerPeriod = pgTable(
     minutesAllowance: integer("minutes_allowance"),
     // Quantities carried in from last month by line title (rollover rule).
     carried: jsonb("carried").$type<Record<string, number>>().notNull().default({}),
-    // Quota alerts already sent, per line id and threshold ("<lineId>:80").
+    // Quota alerts already sent, per line id and threshold ("<lineId>:80"); the hours allowance's as "hours:80".
     alerted: jsonb("alerted").$type<string[]>().notNull().default([]),
     // open | closed
     status: text("status").notNull().default("open"),
@@ -438,6 +438,8 @@ export const projectBooking = pgTable(
 
 // Acceptance — biên bản nghiệm thu (FR-PJM-55).
 export type AcceptanceItem = { deliverableId: string; title: string; promised: number; delivered: number; accepted: number; links: string[] };
+/** What a signed record said before it was corrected: the earlier scan stays in the files, named here. */
+export type AcceptanceCorrection = { at: string; byPersonId: string; reason: string; before: { signedFileId: string | null; signedOn: string | null; signedByClient: string | null } };
 export const projectAcceptance = pgTable(
   "project_acceptance",
   {
@@ -451,13 +453,18 @@ export const projectAcceptance = pgTable(
     milestoneId: uuid("milestone_id").references(() => projectMilestone.id, { onDelete: "set null" }),
     retainerPeriodId: uuid("retainer_period_id").references(() => projectRetainerPeriod.id, { onDelete: "set null" }),
     items: jsonb("items").$type<AcceptanceItem[]>().notNull().default([]),
+    // What is accepted, in the lead's words — required when the scope has no register lines.
+    description: text("description"),
     // draft | sent | signed | void
     status: text("status").notNull().default("draft"),
+    // The paper as it was issued (sent, or signed without being sent): rendered once and kept.
     generatedFileId: uuid("generated_file_id").references(() => storedFile.id),
     signedFileId: uuid("signed_file_id").references(() => storedFile.id),
     signedByClient: text("signed_by_client"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     signedOn: date("signed_on"),
+    // Corrections of the signed record, oldest first: who, why, and what it said before.
+    corrections: jsonb("corrections").$type<AcceptanceCorrection[]>().notNull().default([]),
     createdByPersonId: uuid("created_by_person_id")
       .notNull()
       .references(() => person.id),
@@ -467,6 +474,8 @@ export const projectAcceptance = pgTable(
 ).enableRLS();
 
 // "Ready to invoice" for finance (FR-PJM-56).
+/** An amount corrected before invoicing. Money: read with the item, by `pjm:commercial` — never copied to the audit log. */
+export type BillingCorrection = { at: string; byPersonId: string; reason: string; beforeVnd: number | null; afterVnd: number | null };
 export const projectBillingItem = pgTable(
   "project_billing_item",
   {
@@ -490,6 +499,8 @@ export const projectBillingItem = pgTable(
     invoiceNumber: text("invoice_number"),
     invoiceDate: date("invoice_date"),
     waivedReason: text("waived_reason"),
+    // Amount corrections made while the item was still ready, oldest first.
+    corrections: jsonb("corrections").$type<BillingCorrection[]>().notNull().default([]),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),

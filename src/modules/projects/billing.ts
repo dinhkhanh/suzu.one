@@ -13,8 +13,12 @@
 //
 // Amounts are `pjm:commercial`: finance's queue is theirs by definition; anywhere else the amount
 // is taken out for a reader without it (`shapeBillingItem`).
+//
+// Nothing here fails in silence: a billing milestone that hands finance nothing says why
+// (`milestoneBilling`), and an amount that was wrong when the item was made is corrected, with a
+// reason, for as long as the item is not invoiced (`correctBillingAmount`).
 import "server-only";
-import { and, count, desc, eq, inArray, isNull, ne, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, ne, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
@@ -23,8 +27,9 @@ import { notify } from "../platform/notifications/service";
 import type { Principal } from "../platform/rbac/policy";
 import { listEntities } from "../platform/org/service";
 import { listPeopleHolding } from "../platform/rbac/service";
-import { type BillingSource, type BillingStatus, billingDecidable } from "./engine/acceptance";
+import { type BillingSource, type BillingStatus, billingDecidable, type MilestoneBillingState, milestoneBillingState } from "./engine/acceptance";
 import { ensurePlan } from "./plans";
+import type { BillingCorrection } from "./schema";
 import { billingReach, canDecideBilling } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -152,14 +157,51 @@ export async function billMilestone(tx: Tx, milestone: typeof schema.projectMile
   return ensureBillingItem(tx, { projectId: milestone.projectId, source: "milestone", milestoneId: milestone.id, description: milestone.name, amountVnd: milestone.billingAmountVnd, createdByPersonId: actorPersonId });
 }
 
+/** Where one billing milestone stands with finance, and whether an amount was agreed for it — never the amount. */
+export type MilestoneBilling = { state: MilestoneBillingState; amountSet: boolean };
+
+/**
+ * Every billing milestone of a project with where it stands (FR-PJM-56): its item's status, or
+ * the reason there is no item yet — waiting for the signed acceptance, covered by the
+ * whole-project acceptance, not marked done. The same facts `billMilestone` decides on, read in
+ * four queries for the whole plan page, so "done" on a client's milestone never looks like a
+ * hand-off that silently went nowhere. No money: `amountSet` says only whether one was agreed.
+ */
+export async function milestoneBilling(projectId: string): Promise<Map<string, MilestoneBilling>> {
+  const [milestones, items, signed, [project]] = await Promise.all([
+    db().select({ id: schema.projectMilestone.id, doneAt: schema.projectMilestone.doneAt, amountVnd: schema.projectMilestone.billingAmountVnd }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), eq(schema.projectMilestone.isBilling, true))),
+    db()
+      .select({ milestoneId: schema.projectBillingItem.milestoneId, source: schema.projectBillingItem.source, status: schema.projectBillingItem.status, amountVnd: schema.projectBillingItem.amountVnd, acceptanceScope: schema.projectAcceptance.scope })
+      .from(schema.projectBillingItem)
+      .leftJoin(schema.projectAcceptance, eq(schema.projectAcceptance.id, schema.projectBillingItem.acceptanceId))
+      .where(eq(schema.projectBillingItem.projectId, projectId)),
+    db().select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
+    db().select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1),
+  ]);
+  const itemOf = new Map(items.flatMap((item) => (item.source === "milestone" && item.milestoneId ? [[item.milestoneId, item] as const] : [])));
+  const wholeProjectBilled = items.some((item) => item.acceptanceScope === "project" && item.status !== "waived");
+  const wholeProjectSigned = signed.some((row) => row.scope === "project");
+  const signedMilestones = new Set(signed.flatMap((row) => (row.milestoneId ? [row.milestoneId] : [])));
+  return new Map(
+    milestones.map((milestone) => {
+      const item = itemOf.get(milestone.id) ?? null;
+      const state = milestoneBillingState({ item: item ? { status: item.status as BillingStatus } : null, clientWork: !!project?.clientId, accepted: wholeProjectSigned || signedMilestones.has(milestone.id), wholeProjectBilled, done: !!milestone.doneAt });
+      return [milestone.id, { state, amountSet: (item ? item.amountVnd : milestone.amountVnd) !== null }];
+    }),
+  );
+}
+
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
 export type BillingItemView = Omit<BillingItemRow, "amountVnd"> & { amountVnd?: number | null; projectName: string; clientName: string | null; entityName: string | null; decidedByName: string | null };
 
-/** Without `pjm:commercial`, an item has no amount at all — not a zero, not a null: no key. */
-export function shapeBillingItem<Row extends { amountVnd: number | null }>(row: Row, seesFees: boolean): Omit<Row, "amountVnd"> & { amountVnd?: number | null } {
+/**
+ * Without `pjm:commercial`, an item has no amount at all — not a zero, not a null: no key. Its
+ * corrections go with it: they are the amounts it had, and the reasons given for changing them.
+ */
+export function shapeBillingItem<Row extends { amountVnd: number | null; corrections?: BillingCorrection[] }>(row: Row, seesFees: boolean): Omit<Row, "amountVnd"> & { amountVnd?: number | null } {
   const { amountVnd, ...rest } = row;
-  return seesFees ? { ...rest, amountVnd } : rest;
+  return seesFees ? { ...rest, amountVnd } : "corrections" in rest ? { ...rest, corrections: [] } : rest;
 }
 
 async function listItems(where: SQL | undefined, limit: number): Promise<(BillingItemRow & { projectName: string; clientName: string | null; entityName: string | null; decidedByName: string | null })[]> {
@@ -196,6 +238,31 @@ export async function listBillingQueue(principal: Principal, filters: BillingFil
   const status = filters.status && filters.status !== "all" ? eq(schema.projectBillingItem.status, filters.status) : undefined;
   const entity = filters.entityId ? eq(schema.projectBillingItem.entityId, filters.entityId) : undefined;
   return listItems(and(scope, status, entity), 500);
+}
+
+/**
+ * What waits to be invoiced in the reader's queue — how many items and their sum — counted by
+ * Postgres over the whole queue, not added up over the rows the list happens to show. The same
+ * cut as `listBillingQueue`: the reader's entities, and the entity the page is filtered to.
+ */
+export async function readyBillingTotal(principal: Principal, filters: Pick<BillingFilters, "entityId"> = {}): Promise<{ count: number; totalVnd: number }> {
+  const reach = billingReach(principal);
+  if (!reach.all && reach.entityIds.length === 0) return { count: 0, totalVnd: 0 };
+  const scope = reach.all ? undefined : inArray(schema.projectBillingItem.entityId, reach.entityIds);
+  const entity = filters.entityId ? eq(schema.projectBillingItem.entityId, filters.entityId) : undefined;
+  const [row] = await db()
+    .select({ count: count(), totalVnd: sql<string>`coalesce(sum(${schema.projectBillingItem.amountVnd}), 0)` })
+    .from(schema.projectBillingItem)
+    .where(and(scope, entity, eq(schema.projectBillingItem.status, "ready")));
+  return { count: row?.count ?? 0, totalVnd: Number(row?.totalVnd ?? 0) };
+}
+
+/** The names of the people who corrected these items' amounts, in one query — for the queue's history lines. */
+export async function billingCorrectors(items: readonly { corrections: readonly BillingCorrection[] }[]): Promise<Map<string, string>> {
+  const ids = [...new Set(items.flatMap((item) => item.corrections.map((correction) => correction.byPersonId)))];
+  if (ids.length === 0) return new Map();
+  const rows = await db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids)).orderBy(asc(schema.person.fullName));
+  return new Map(rows.map((row) => [row.id, row.name]));
 }
 
 /** The entities a reader's queue can be filtered to — from the org module's cached list, not a query of its own. */
@@ -245,6 +312,27 @@ export async function decideBillingItem(itemId: string, decision: BillingDecisio
       const [project] = await tx.select({ name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(eq(schema.workProject.id, after.projectId)).limit(1);
       if (project?.manager) await notify({ recipients: [project.manager], kind: "projects.billing_invoiced", params: { project: project.name, job: after.jobNumber ?? "—" }, link: `/projects/${after.projectId}/acceptance` }, tx);
     }
+    return { before, after };
+  });
+}
+
+/**
+ * Corrects the amount of an item that is not yet invoiced (`pjm:commercial`): the fee was typed
+ * wrong on the milestone, the retainer's fee changed after the month was made, an item made
+ * without an amount gets one — or loses a wrong one. A reason is required and kept on the item
+ * with the amount before and after (`corrections`), which only `pjm:commercial` reads; the audit
+ * log records that it happened and why, never the figures. An invoiced or waived item is settled:
+ * its amount is on an invoice, or was given up, and is not rewritten here.
+ */
+export async function correctBillingAmount(itemId: string, input: { amountVnd: number | null; reason: string }, actorPersonId: string): Promise<{ before: BillingItemRow; after: BillingItemRow }> {
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.id, itemId)).limit(1).for("update");
+    if (!before) throw new ActionError("billing_not_found");
+    if (!billingDecidable(before.status as BillingStatus)) throw new ActionError("billing_decided");
+    if (before.amountVnd === input.amountVnd) throw new ActionError("billing_amount_unchanged");
+    const now = new Date();
+    const corrections = [...before.corrections, { at: now.toISOString(), byPersonId: actorPersonId, reason: input.reason, beforeVnd: before.amountVnd, afterVnd: input.amountVnd }];
+    const [after] = await tx.update(schema.projectBillingItem).set({ amountVnd: input.amountVnd, corrections, updatedAt: now }).where(eq(schema.projectBillingItem.id, itemId)).returning();
     return { before, after };
   });
 }

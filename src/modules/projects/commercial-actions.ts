@@ -17,8 +17,8 @@ import { kbViewerOf } from "../kb/service";
 import { CHANNELS, CONTENT_FORMATS } from "../work/enums";
 import type { WorkViewer } from "../work/policy";
 import { invalidateWorkDirectory } from "../work/service";
-import { createAcceptance, findAcceptance, refreshAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
-import { billingItemForAcceptance, createManualBillingItem, decideBillingItem, findBillingItem, projectByJobNumber } from "./billing";
+import { correctSignedAcceptance, createAcceptance, findAcceptance, isScanOf, refreshAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
+import { billingItemForAcceptance, correctBillingAmount, createManualBillingItem, decideBillingItem, findBillingItem, projectByJobNumber } from "./billing";
 import { changeRequestType, changeWithEvidence, decideChange, findChange, saveChange, submitChange, withdrawChange } from "./change-requests";
 import { findClientReport, saveClientReport } from "./client-reports";
 import { closeProject, publishLessons, saveRetro } from "./close";
@@ -27,7 +27,7 @@ import { CHANGE_REQUESTERS, hasFeeChange } from "./engine/change-request";
 import { RETAINER_ROLLOVERS } from "./engine/retainer";
 import { checkbox, hours, hoursDelta, idList, isoDate, month, optional, rows, text, vnd, vndDelta } from "./form-inputs";
 import { canCloseProject, canDecideBilling, canEditFees, canHoldRetro, canManageAcceptance, canManageChanges, canEditRetainer, canViewPlan, canWriteClientReport, type PlanFacts } from "./policy";
-import { ensureCurrentPeriods, getRetainer, saveRetainer } from "./retainers";
+import { ensureCurrentPeriods, getRetainer, makeMissedPeriod, saveRetainer } from "./retainers";
 import { planProjectFor } from "./views";
 
 const may = async (user: CurrentUser, projectId: string | null, rule: (viewer: WorkViewer, facts: PlanFacts) => boolean) => {
@@ -95,6 +95,23 @@ const retainerPipeline = createAction({
 });
 export async function saveRetainerAction(input: unknown) {
   return retainerPipeline(input);
+}
+
+const missedMonthPipeline = createAction({
+  name: "projects.retainer.make_month",
+  input: z.object({ projectId: z.uuid(), month }),
+  // The months a retainer covers are the fee-holder's to set; making one of those months that the
+  // job missed adds nothing to them, so it is the client side's: the lead and the account manager.
+  authorize: (user, input) => may(user, input.projectId, canEditRetainer),
+  run: async ({ user, input }) => {
+    const found = (await planProjectFor(user, input.projectId))!;
+    const period = await makeMissedPeriod(input.projectId, input.month);
+    refresh(input.projectId);
+    return { data: { id: period.id, month: period.month }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `retainer month made by hand: ${period.month}`, after: { periodId: period.id, month: period.month, minutesAllowance: period.minutesAllowance, carried: period.carried } } };
+  },
+});
+export async function makeRetainerMonthAction(input: unknown) {
+  return missedMonthPipeline(input);
 }
 
 // ── Change requests (FR-PJM-11) ─────────────────────────────────────────────────────────────
@@ -251,12 +268,12 @@ const acceptanceProject = async (acceptanceId: string) => (await findAcceptance(
 
 const createAcceptancePipeline = createAction({
   name: "projects.acceptance.create",
-  input: z.object({ projectId: z.uuid(), scope: z.enum(ACCEPTANCE_SCOPES), milestoneId: optional(z.uuid()), retainerPeriodId: optional(z.uuid()) }),
+  input: z.object({ projectId: z.uuid(), scope: z.enum(ACCEPTANCE_SCOPES), milestoneId: optional(z.uuid()), retainerPeriodId: optional(z.uuid()), description: text(2000) }),
   authorize: (user, input) => may(user, input.projectId, canManageAcceptance),
   run: async ({ user, input }) => {
-    const row = await createAcceptance(input.projectId, { scope: input.scope, milestoneId: input.milestoneId, retainerPeriodId: input.retainerPeriodId }, user.person.id);
+    const row = await createAcceptance(input.projectId, { scope: input.scope, milestoneId: input.milestoneId, retainerPeriodId: input.retainerPeriodId, description: input.description }, user.person.id);
     refresh(input.projectId);
-    return { data: { id: row.id, number: row.number }, audit: { resource: auditProject(input.projectId), summary: `acceptance ${row.number}: ${row.scope}`, after: { id: row.id, scope: row.scope, milestoneId: row.milestoneId, retainerPeriodId: row.retainerPeriodId, items: row.items.length } } };
+    return { data: { id: row.id, number: row.number }, audit: { resource: auditProject(input.projectId), summary: `acceptance ${row.number}: ${row.scope}`, after: { id: row.id, scope: row.scope, milestoneId: row.milestoneId, retainerPeriodId: row.retainerPeriodId, items: row.items.length, description: row.description } } };
   },
 });
 export async function createAcceptanceAction(input: unknown) {
@@ -304,6 +321,26 @@ export async function signAcceptanceAction(input: unknown) {
   return signPipeline(input);
 }
 
+const correctSignedPipeline = createAction({
+  name: "projects.acceptance.correct_signed",
+  input: z.object({ acceptanceId: z.uuid(), signedFileId: optional(z.uuid()), signedOn: isoDate, signedByClient: z.string().trim().min(1).max(200), reason: z.string().trim().min(1).max(1000) }),
+  authorize: async (user, input) => may(user, await acceptanceProject(input.acceptanceId), canManageAcceptance),
+  run: async ({ user, input }) => {
+    // A replacement scan must be one uploaded for this record, like the first.
+    if (input.signedFileId) {
+      const file = await findFile(input.signedFileId);
+      if (!file || file.ownerType !== SIGNED_SCAN || file.ownerId !== input.acceptanceId) throw new ActionError("file_not_found");
+    }
+    const { before, after } = await correctSignedAcceptance(input.acceptanceId, { signedFileId: input.signedFileId, signedOn: input.signedOn, signedByClient: input.signedByClient, reason: input.reason }, user.person.id);
+    refresh(after.projectId);
+    const shape = (row: typeof after) => ({ signedOn: row.signedOn, signedByClient: row.signedByClient, signedFileId: row.signedFileId });
+    return { data: { id: after.id }, audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number} signature corrected: ${input.reason}`.slice(0, 300), before: shape(before), after: { ...shape(after), reason: input.reason } } };
+  },
+});
+export async function correctSignedAcceptanceAction(input: unknown) {
+  return correctSignedPipeline(input);
+}
+
 const beginScanPipeline = createAction({
   name: "projects.acceptance.scan.begin",
   input: z.object({ acceptanceId: z.uuid(), fileName: z.string().trim().min(1).max(255), sizeBytes: z.number().int().positive() }),
@@ -334,12 +371,14 @@ export async function completeSignedScanAction(input: unknown) {
 
 const openScanPipeline = createAction({
   name: "projects.acceptance.scan.open",
-  input: z.object({ acceptanceId: z.uuid() }),
+  // `fileId`: an earlier scan, one a correction replaced; without it, the scan on record.
+  input: z.object({ acceptanceId: z.uuid(), fileId: optional(z.uuid()) }),
   // The project's people, or finance through the billing item the signed acceptance raised.
   authorize: async (user, input) => (await may(user, await acceptanceProject(input.acceptanceId), canViewPlan)) || !!(await billingItemForAcceptance(user.principal, input.acceptanceId)),
   run: async ({ user, input }) => {
     const acceptance = await findAcceptance(input.acceptanceId);
-    const file = acceptance?.signedFileId ? await findFile(acceptance.signedFileId) : undefined;
+    const fileId = input.fileId && acceptance && isScanOf(acceptance, input.fileId) ? input.fileId : input.fileId ? null : (acceptance?.signedFileId ?? null);
+    const file = fileId ? await findFile(fileId) : undefined;
     if (!file) throw new ActionError("file_not_found");
     const url = await createDownloadLink(file, { personId: user.person.id, email: user.email }, user.request);
     return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: file.fileName } };
@@ -374,6 +413,25 @@ const decideBillingPipeline = createAction({
 });
 export async function decideBillingAction(input: unknown) {
   return decideBillingPipeline(input);
+}
+
+const correctAmountPipeline = createAction({
+  name: "projects.billing.correct_amount",
+  input: z.object({ itemId: z.uuid(), amountVnd: vnd, reason: z.string().trim().min(1).max(1000) }),
+  authorize: async (user, input) => {
+    const item = await findBillingItem(input.itemId);
+    return !!item && canDecideBilling(user.principal, item);
+  },
+  run: async ({ user, input }) => {
+    const { before, after } = await correctBillingAmount(input.itemId, { amountVnd: input.amountVnd, reason: input.reason }, user.person.id);
+    refresh(after.projectId);
+    // The log says the amount changed and why, never what it was or is: an audit reader is not a
+    // `pjm:commercial` holder. The figures before and after are kept on the item (`corrections`).
+    return { data: { id: after.id }, audit: { resource: { type: "project_billing_item", id: after.id, entityId: after.entityId }, summary: `${after.jobNumber ?? ""} amount corrected: ${input.reason}`.trim().slice(0, 300), before: { amountSet: before.amountVnd !== null }, after: { amountSet: after.amountVnd !== null, amountChanged: true, reason: input.reason, corrections: after.corrections.length } } };
+  },
+});
+export async function correctBillingAmountAction(input: unknown) {
+  return correctAmountPipeline(input);
 }
 
 async function projectOfManualItem(input: { projectId: string | null; jobNumber: string | null }): Promise<string | null> {

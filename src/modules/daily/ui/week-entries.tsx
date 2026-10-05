@@ -15,7 +15,7 @@ import { deleteTimeEntryAction, recallWeekAction, submitWeekAction, updateTimeEn
 import { durationText, parseCellDuration } from "./format";
 import { useRun } from "./use-run";
 
-export type EntryView = { id: string; day: string; label: string; sub: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; minutes: number; billable: boolean; note: string | null; timer: boolean; capped: boolean };
+export type EntryView = { id: string; day: string; label: string; sub: string | null; /** The project's job number, shown before its name. */ job?: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; minutes: number; billable: boolean; note: string | null; timer: boolean; capped: boolean };
 
 function EntryRow({ entry, editable, index }: { entry: EntryView; editable: boolean; index: number }) {
   const t = useTranslations("daily.time");
@@ -34,7 +34,8 @@ function EntryRow({ entry, editable, index }: { entry: EntryView; editable: bool
           {entry.sub ? (
             <span className="text-xs text-muted-foreground">
               {" "}
-              · <RecordLink kind="project" id={entry.projectId}>{entry.sub}</RecordLink>
+              · {entry.job ? <span className="font-mono text-faint">{entry.job} </span> : null}
+              <RecordLink kind="project" id={entry.projectId}>{entry.sub}</RecordLink>
             </span>
           ) : null}
         </span>

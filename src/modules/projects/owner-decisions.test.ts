@@ -13,6 +13,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
+// Sending or signing an acceptance stores the paper that was issued: the bucket is in memory here.
+vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 
 // Each action's pipeline is kept as it was built, so its `authorize` step can be asked here.

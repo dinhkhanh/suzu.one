@@ -1205,6 +1205,10 @@
         "title": "Hạn mức retainer",
         "body": "{project}: “{line}” đã đạt {percent}% hạn mức tháng."
       },
+      "projects_retainer_hours_alert": {
+        "title": "Giờ retainer",
+        "body": "{project}: tháng {month} đã dùng {percent}% số giờ cho phép."
+      },
       "projects_change_decided": {
         "title": "Yêu cầu thay đổi đã có quyết định",
         "body": "Yêu cầu thay đổi “{title}” của {project} đã được xử lý."
@@ -11600,7 +11604,7 @@
       "edit": "Sửa mốc",
       "linkTasks": "Gắn công việc vào kế hoạch",
       "linkHint": "{count, plural, =0 {Mọi công việc đều đã được gắn.} other {# công việc chưa gắn vào mốc, sản phẩm hay giai đoạn nào.}}",
-      "nothingToLink": "Dự án chưa có công việc đang mở.",
+      "nothingToLink": "Dự án chưa có công việc nào để gắn.",
       "pickTask": "Chọn công việc",
       "link": "Gắn",
       "unlink": "Gỡ",
@@ -11746,10 +11750,20 @@
       "change_evidence_required": "Thay đổi do khách hàng yêu cầu cần có bằng chứng (tệp hoặc đường dẫn).",
       "change_empty": "Yêu cầu chưa thay đổi gì: thêm/bỏ sản phẩm, giờ, phí hoặc hạn.",
       "acceptance_not_found": "Không tìm thấy biên bản nghiệm thu.",
-      "acceptance_locked": "Chỉ cập nhật số liệu được khi biên bản còn là nháp.",
+      "acceptance_locked": "Biên bản đã ký hoặc đã huỷ thì không cập nhật số liệu được nữa.",
       "acceptance_wrong_status": "Biên bản không ở trạng thái cho phép thao tác này.",
       "acceptance_milestone_internal": "Chỉ nghiệm thu các mốc làm việc với khách hàng.",
-      "acceptance_empty": "Phạm vi này chưa có sản phẩm nào để nghiệm thu.",
+      "acceptance_empty": "Phạm vi này chưa có sản phẩm cam kết nào. Hãy ghi nội dung nghiệm thu bằng lời để tạo biên bản.",
+      "acceptance_changed": "Biên bản vừa được người khác thay đổi. Tải lại trang rồi thử lại.",
+      "acceptance_invoiced": "Kế toán đã xuất hoá đơn theo biên bản này nên không sửa được nữa.",
+      "acceptance_correction_empty": "Chưa có gì thay đổi so với thông tin đã ghi.",
+      "billing_amount_unchanged": "Số tiền mới giống số tiền hiện tại.",
+      "milestone_has_acceptance": "Mốc này đang có biên bản nghiệm thu. Huỷ biên bản trước khi xoá mốc; biên bản đã ký thì mốc phải được giữ lại.",
+      "milestone_has_billing": "Mốc này đã có khoản chuyển kế toán. Chỉ xoá được mốc sau khi kế toán xác nhận không thu khoản đó.",
+      "retainer_not_found": "Dự án chưa có điều khoản retainer.",
+      "retainer_paused": "Retainer đang tạm dừng hoặc dự án đã đóng nên không tạo thêm tháng.",
+      "retainer_month_exists": "Tháng này đã có kỳ retainer.",
+      "retainer_month_not_missed": "Chỉ tạo bổ sung được các tháng đã qua nằm trong thời hạn của retainer.",
       "acceptance_signed_in_future": "Ngày ký không được sau hôm nay.",
       "billing_not_found": "Không tìm thấy khoản cần xuất hoá đơn.",
       "billing_decided": "Khoản này đã được xử lý.",
@@ -11919,6 +11933,13 @@
     },
     "uploading": "Đang tải lên…",
     "uploaded": "Đã tải lên: {name}",
+    "taskLine": {
+      "title": "Sản phẩm cam kết",
+      "label": "Việc này thực hiện sản phẩm cam kết",
+      "none": "Không gắn với sản phẩm nào",
+      "save": "Lưu",
+      "empty": "Dự án chưa có sản phẩm cam kết nào đang mở."
+    },
     "retainer": {
       "terms": "Điều khoản retainer",
       "termsLine": "Từ {start} đến {end} · {rollover}",
@@ -11968,6 +11989,22 @@
       "periodStatus": {
         "open": "Đang mở",
         "closed": "Đã khoá"
+      },
+      "delivered": "Đã giao",
+      "accepted": "Đã duyệt",
+      "linkTask": "Gắn việc vào sản phẩm cam kết",
+      "linkHint": "Chọn một việc của dự án (kể cả việc đã xong) và sản phẩm cam kết của tháng mà việc đó thực hiện. Mỗi việc là một đơn vị của sản phẩm.",
+      "linkTaskField": "Công việc",
+      "linkLineField": "Sản phẩm cam kết",
+      "pickTask": "Chọn công việc",
+      "pickLine": "Chọn sản phẩm cam kết",
+      "linkSubmit": "Gắn việc",
+      "nothingToLink": "Không còn việc nào của dự án chưa gắn vào sản phẩm cam kết.",
+      "missed": {
+        "title": "Tạo tháng còn thiếu",
+        "hint": "Điều khoản retainer được nhập sau khi hợp đồng đã chạy nên các tháng trước đó chưa có kỳ. Tạo kỳ để gắn việc, nghiệm thu và tính phí cho tháng ấy. Phí của tháng chỉ chuyển kế toán sau khi khách ký biên bản nghiệm thu.",
+        "month": "Tháng",
+        "submit": "Tạo kỳ cho tháng này"
       },
       "billingDescription": "Phí retainer tháng {month}",
       "monthsLocked": "Chỉ người có quyền xem phí (pjm:commercial) mới đổi được tháng bắt đầu, tháng kết thúc và trạng thái chạy của retainer."
@@ -12079,6 +12116,20 @@
       "waitingMilestone": "Mốc: {name}",
       "waitingMonth": "Tháng retainer: {name}",
       "waitingLink": "Mở trang nghiệm thu",
+      "described": "Nghiệm thu theo nội dung mô tả nêu trên.",
+      "description": "Nội dung nghiệm thu",
+      "descriptionHint": "Bắt buộc khi phạm vi chưa có sản phẩm cam kết nào: ghi rõ khách hàng nghiệm thu những gì. Khi đã có sản phẩm cam kết, đây là ghi chú thêm in trên biên bản.",
+      "pdfIssued": "Tải biên bản đã phát hành (PDF)",
+      "refreshSent": "Cập nhật và phát hành lại",
+      "correct": "Sửa thông tin đã ký",
+      "correctHint": "Dùng khi đính nhầm bản scan, ghi sai tên người ký hoặc ngày ký. Thông tin và bản scan cũ được giữ lại trong lịch sử. Không sửa được sau khi kế toán đã xuất hoá đơn.",
+      "replaceScan": "Bản scan thay thế (nếu đính nhầm)",
+      "correctReason": "Lý do chỉnh sửa",
+      "correctSubmit": "Lưu chỉnh sửa",
+      "history": "Lịch sử chỉnh sửa",
+      "historyBefore": "Trước đó: {name} ký ngày {date}.",
+      "earlierScan": "Bản scan trước",
+      "invoicedLocked": "Kế toán đã xuất hoá đơn theo biên bản này nên thông tin đã ký không sửa được nữa.",
       "monthNotBilled": "Chưa chuyển kế toán: đang chờ biên bản nghiệm thu đã ký."
     },
     "billing": {
@@ -12108,6 +12159,21 @@
         "milestone": "Mốc thanh toán",
         "retainer": "Phí retainer tháng",
         "manual": "Nhập tay"
+      },
+      "correctAmount": "Sửa số tiền",
+      "correctHint": "Chỉ sửa được khi khoản này chưa xuất hoá đơn. Để trống nếu chưa thoả thuận số tiền. Số tiền trước và sau cùng lý do được lưu lại.",
+      "newAmount": "Số tiền đúng (VND)",
+      "correctReason": "Lý do sửa",
+      "correctSubmit": "Lưu số tiền",
+      "corrected": "{date} · {name} sửa số tiền: {before} → {after}. Lý do: {reason}",
+      "milestone": {
+        "ready": "Đã chuyển kế toán, chờ xuất hoá đơn",
+        "invoiced": "Đã xuất hoá đơn",
+        "waived": "Kế toán xác nhận không thu",
+        "awaiting_acceptance": "Chưa chuyển kế toán: chờ khách ký biên bản nghiệm thu",
+        "covered_by_project": "Không tạo khoản riêng: biên bản nghiệm thu toàn dự án đã tính phần phí này",
+        "awaiting_done": "Chưa chuyển kế toán: mốc chưa được đánh dấu hoàn thành",
+        "noAmount": "Chưa có số tiền thoả thuận cho mốc này."
       },
       "invoice": "Xuất hoá đơn",
       "waive": "Không thu",

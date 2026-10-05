@@ -2,7 +2,7 @@
 // the deliverables register — and which task works towards which of them (`project_task_link`,
 // one task = one unit of a register line). The actions check who may change them.
 import "server-only";
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
@@ -119,10 +119,24 @@ export async function setMilestoneDone(milestoneId: string, done: boolean, actor
   });
 }
 
+/**
+ * A milestone goes only while nothing the client or finance holds hangs off it: an acceptance
+ * record that is not void, or a billing item that is not waived, would be left pointing at
+ * nothing (their link is ON DELETE SET NULL) — a signed paper for a milestone nobody can name, an
+ * item in finance's queue with no source. Void the record or have finance waive the item first.
+ * Checked under the milestone's lock, which `setMilestoneDone` takes before it bills.
+ */
 export async function deleteMilestone(milestoneId: string): Promise<MilestoneRow> {
-  const [row] = await db().delete(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId)).returning();
-  if (!row) throw new ActionError("milestone_not_found");
-  return row;
+  return db().transaction(async (tx) => {
+    const [row] = await tx.select().from(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId)).limit(1).for("update");
+    if (!row) throw new ActionError("milestone_not_found");
+    const [acceptance] = await tx.select({ id: schema.projectAcceptance.id }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.milestoneId, milestoneId), ne(schema.projectAcceptance.status, "void"))).limit(1);
+    if (acceptance) throw new ActionError("milestone_has_acceptance");
+    const [item] = await tx.select({ id: schema.projectBillingItem.id }).from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestoneId), ne(schema.projectBillingItem.status, "waived"))).limit(1);
+    if (item) throw new ActionError("milestone_has_billing");
+    await tx.delete(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId));
+    return row;
+  });
 }
 
 // ── The deliverables register ───────────────────────────────────────────────────────────────

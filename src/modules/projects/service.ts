@@ -36,18 +36,21 @@ export { CAPACITY_WEEKS, capacityOfBooked, type CapacityPerson, type CapacityVie
  * for a reader without `pjm:commercial`; the billing queue is cut to the reader's entities in SQL.
  */
 export { billingReach, canCloseProject, canDecideBilling, canEditRetainer, canHoldRetro, canManageAcceptance, canManageChanges, canOpenBillingQueue, canWriteClientReport, type PlanFacts } from "./policy";
-export { getRetainer, listPeriodOptions, listPeriods, type PeriodLine, type PeriodView, type RetainerConsumption, retainerConsumption, type RetainerView, shapeRetainer } from "./retainers";
-export { hoursUsage, QUOTA_THRESHOLDS, RETAINER_ROLLOVERS, type RetainerRollover, type Usage, type UsageLevel } from "./engine/retainer";
+export { getRetainer, listMissedMonths, listPeriodOptions, listPeriods, type PeriodLine, type PeriodView, type RetainerConsumption, retainerConsumption, type RetainerView, shapeRetainer } from "./retainers";
+export { hoursUsage, lineLabel, openLinesFirst, QUOTA_THRESHOLDS, RETAINER_ROLLOVERS, type RetainerRollover, type Usage, type UsageLevel } from "./engine/retainer";
 export { changeRequestType, type ChangeView, getChangeLedger, getChangeRequest, listChanges, openChangesForApprover } from "./change-requests";
 export { CHANGE_REQUESTERS, CHANGE_STATUSES, type ChangeLedger, type ChangeStatus, changeEditable, type LedgerStep } from "./engine/change-request";
-export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, listAcceptances, signedTargets } from "./acceptance";
-export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus } from "./engine/acceptance";
-export { billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling } from "./billing";
+export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, issuedPaper, listAcceptances, signedTargets } from "./acceptance";
+export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, acceptanceRefreshable, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus, type MilestoneBillingState, signedCorrectable } from "./engine/acceptance";
+export { billingCorrectors, billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling, type MilestoneBilling, milestoneBilling, readyBillingTotal } from "./billing";
 export { clientReportFigures, defaultReportPeriod, entityLetterhead, findClientReport, listClientReports } from "./client-reports";
 export { type ReportFigures, reportText, type ReportWords } from "./engine/client-report";
 export { getCloseChecklist, getRetro, listCloseHistory, previewCloseReport, type StoredCloseReport } from "./close";
 export { CLOSE_CHECKS, type ChecklistItem, type CloseReport } from "./engine/close";
-export { planProjectFor } from "./views";
+export { openableProjectIds, planProjectFor } from "./views";
+/** The job number beside the project's name on the work itself (FR-PJM-02), and the register line a task fills. */
+export { invalidateJobNumbers, jobNumbersOf } from "./job-numbers";
+export { getTaskLine, type TaskLineOption, type TaskLineView } from "./task-line";
 export { ACCEPTANCE_TEMPLATE_CODE, seedAcceptanceTemplate } from "./seed";
 /**
  * Collaboration (FR-PJM-29..31): the risks, issues and decisions log, meeting notes with their

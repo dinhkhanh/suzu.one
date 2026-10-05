@@ -10,7 +10,7 @@ import { deleteTimeEntryAction } from "../time-actions";
 import { hoursOf } from "./format";
 import { useRun } from "./use-run";
 
-type Entry = { id: string; /** The task the time is on: its name is then the way to it. */ taskId?: string | null; key: string | null; title: string | null; category: string | null; minutes: number; billable: boolean };
+type Entry = { id: string; /** The task the time is on: its name is then the way to it. */ taskId?: string | null; key: string | null; title: string | null; /** The project the time is on, and its job number (FR-PJM-02). */ projectName?: string | null; jobNumber?: string | null; category: string | null; minutes: number; billable: boolean };
 
 /** Today's time, each line removable while the week is open. */
 export function TimeList({ entries }: { entries: Entry[] }) {
@@ -27,6 +27,13 @@ export function TimeList({ entries }: { entries: Entry[] }) {
                 {entry.key ? <span className="font-mono text-xs text-muted-foreground">{entry.key} </span> : null}
                 {entry.title ?? (entry.category ? t(`time.categories.${entry.category as "admin"}`) : "")}
               </RecordLink>
+              {entry.projectName ? (
+                <span className="text-xs text-muted-foreground">
+                  {" "}
+                  · {entry.jobNumber ? <span className="font-mono text-faint">{entry.jobNumber} </span> : null}
+                  {entry.projectName}
+                </span>
+              ) : null}
             </span>
             {entry.billable ? <Badge variant="info">{t("time.billable")}</Badge> : null}
             <span className="font-mono text-[0.8125rem] tabular-nums">{t("hours", { value: hoursOf(entry.minutes) })}</span>

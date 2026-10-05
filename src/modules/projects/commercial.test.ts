@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
+// Sending or signing an acceptance stores the paper that was issued: the bucket is in memory here.
+vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
     constructor(
@@ -357,6 +359,24 @@ describe("change requests (FR-PJM-11)", () => {
     expect(check("approved", terms, { feePerMonthVnd: 35_000_000 })).toBe("scope_locked");
   });
 
+  it("refuses a changed monthly scope when the retainer's terms are saved after the kick-off", async () => {
+    const stored = (await getRetainer(ids.retainer))!;
+    const terms = { startMonth: stored.startMonth, endMonth: stored.endMonth, lines: stored.lines, minutesPerMonth: stored.minutesPerMonth, rollover: stored.rollover, isActive: stored.isActive };
+    const [plan] = await db().select({ briefStatus: schema.projectPlan.briefStatus }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, ids.retainer));
+    await db().update(schema.projectPlan).set({ briefStatus: "approved" }).where(eq(schema.projectPlan.projectId, ids.retainer));
+    try {
+      expect(await fails(saveRetainer(ids.retainer, { ...terms, lines: stored.lines.map((line, index) => (index === 0 ? { ...line, quantity: line.quantity + 1 } : line)) }))).toBe("scope_locked");
+      expect(await fails(saveRetainer(ids.retainer, { ...terms, minutesPerMonth: (stored.minutesPerMonth ?? 0) + 60 }))).toBe("scope_locked");
+      expect(await fails(saveRetainer(ids.retainer, { ...terms, feePerMonthVnd: (stored.feePerMonthVnd ?? 0) + 1_000_000 }))).toBe("scope_locked");
+      // The switch and the rollover rule are not scope.
+      const { after } = await saveRetainer(ids.retainer, { ...terms, isActive: !stored.isActive });
+      expect(after.isActive).toBe(!stored.isActive);
+      await saveRetainer(ids.retainer, terms);
+    } finally {
+      await db().update(schema.projectPlan).set({ briefStatus: plan.briefStatus }).where(eq(schema.projectPlan.projectId, ids.retainer));
+    }
+  });
+
   it("keeps a budget by role and the approved changes in step", async () => {
     const { after } = await updatePlanSettings(ids.tvc, { kind: "client", budgetMinutes: null, budgetByRole: [{ role: "Dựng phim", minutes: 6000 }], updateCadenceDays: 7, driveUrl: null });
     expect(after.budgetMinutes).toBe(7200);
@@ -393,7 +413,7 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(await noticesOf(ids.ke, "projects.acceptance_signed")).toHaveLength(1);
 
     // The paper: the entity's letterhead, the items, and no money anywhere.
-    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}` });
+    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}`, described: "Theo mô tả" });
     expect(paper.letterhead).toMatchObject({ companyName: "Công ty TNHH SuZu Media", taxCode: "0312345678" });
     expect(paper.number).toMatch(/^SZM-\d{2}-\d{3}\/NT-01$/);
     expect(paper.title).toBe("Biên bản nghiệm thu");

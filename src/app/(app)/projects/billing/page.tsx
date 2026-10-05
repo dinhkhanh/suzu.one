@@ -11,8 +11,8 @@ import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableH
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { BILLING_STATUSES, billingEntities, type BillingStatus, canDecideBilling, canOpenBillingQueue, listBillingQueue, openProject } from "@/modules/projects/service";
-import { BillingDecisionForm, ManualBillingForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
+import { BILLING_STATUSES, billingCorrectors, billingEntities, type BillingStatus, canDecideBilling, canOpenBillingQueue, listBillingQueue, openableProjectIds, readyBillingTotal } from "@/modules/projects/service";
+import { BillingAmountForm, BillingDecisionForm, ManualBillingForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { contractNumbersOfProjects } from "@/modules/crm/service";
 
@@ -31,17 +31,18 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
   const status = (BILLING_STATUSES as readonly string[]).includes(params.status as string) || params.status === "all" ? (params.status as BillingStatus | "all") : "ready";
   const entityId = typeof params.entityId === "string" && params.entityId ? params.entityId : null;
   const [t, tAcceptance, format, entities] = await Promise.all([getTranslations("projects.billing"), getTranslations("projects.acceptance"), getFormatter(), billingEntities(user.principal)]);
-  const items = await listBillingQueue(user.principal, { status, entityId: entities.some((entity) => entity.id === entityId) ? entityId : null });
+  const filteredEntity = entities.some((entity) => entity.id === entityId) ? entityId : null;
+  // The total waiting is summed by Postgres over the whole queue, not over the rows the list shows.
+  const [items, ready] = await Promise.all([listBillingQueue(user.principal, { status, entityId: filteredEntity }), status === "ready" ? readyBillingTotal(user.principal, { entityId: filteredEntity }) : null]);
   // Finance is usually on none of these projects: the name links only where the reader may open it,
-  // and the acceptance an item carries opens from the item itself.
+  // and the acceptance an item carries opens from the item itself. One answer for every row, from
+  // the cached directory — a list names a project without opening it, so nothing is audited here.
   const projectIds = [...new Set(items.map((item) => item.projectId))];
   // The contract each project is delivered under (FR-CRM-25): the reference finance invoices against.
-  const contractOf = await contractNumbersOfProjects(projectIds);
-  const openable = new Set((await Promise.all(projectIds.map(async (id) => ((await openProject(user, id)) ? id : null)))).filter((id) => id !== null));
+  const [contractOf, openable, correctorOf] = await Promise.all([contractNumbersOfProjects(projectIds), openableProjectIds(user, projectIds), billingCorrectors(items)]);
   const today = todayInVietnam();
   const money = (value: number | null | undefined) => (value === null || value === undefined ? t("noAmount") : format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 }));
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
-  const readyTotal = items.filter((item) => item.status === "ready").reduce((sum, item) => sum + (item.amountVnd ?? 0), 0);
   const columns = 8;
 
   return (
@@ -77,9 +78,9 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
         </Button>
       </form>
 
-      {status === "ready" && items.length ? (
+      {ready && ready.count ? (
         <TileGrid>
-          <Tile label={t("readyTotalLabel")} value={format.number(readyTotal, { style: "currency", currency: "VND", maximumFractionDigits: 0 })} hint={t("readyTotal", { count: items.length, total: money(readyTotal) })} />
+          <Tile label={t("readyTotalLabel")} value={format.number(ready.totalVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })} hint={t("readyTotal", { count: ready.count, total: money(ready.totalVnd) })} />
         </TileGrid>
       ) : null}
 
@@ -102,7 +103,7 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
             {items.map((item) => {
               const reference = item.reference ?? contractOf.get(item.projectId) ?? null;
               const decides = canDecideBilling(user.principal, item);
-              const detail = (item.acceptanceId && decides) || item.status !== "ready" || (item.status === "ready" && decides);
+              const detail = (item.acceptanceId && decides) || item.status !== "ready" || (item.status === "ready" && decides) || item.corrections.length > 0;
               return (
                 <Fragment key={item.id}>
                   <TableRow>
@@ -173,7 +174,13 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                               ) : null}
                             </p>
                           ) : null}
+                          {item.corrections.map((correction) => (
+                            <p key={correction.at} className="text-xs text-muted-foreground">
+                              {t("corrected", { date: format.dateTime(new Date(correction.at), { dateStyle: "medium" }), name: correctorOf.get(correction.byPersonId) ?? "—", before: money(correction.beforeVnd), after: money(correction.afterVnd), reason: correction.reason })}
+                            </p>
+                          ))}
                           {item.status === "ready" && decides ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}
+                          {item.status === "ready" && decides ? <BillingAmountForm itemId={item.id} amountVnd={item.amountVnd ?? null} /> : null}
                         </div>
                       </TableCell>
                     </TableRow>

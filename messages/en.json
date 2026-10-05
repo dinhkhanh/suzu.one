@@ -1205,6 +1205,10 @@
         "title": "Retainer quota",
         "body": "{project}: “{line}” reached {percent}% of this month's quota."
       },
+      "projects_retainer_hours_alert": {
+        "title": "Retainer hours",
+        "body": "{project}: {month} has used {percent}% of its hours allowance."
+      },
       "projects_change_decided": {
         "title": "Change request decided",
         "body": "Change request “{title}” on {project} has been decided."
@@ -11600,7 +11604,7 @@
       "edit": "Edit milestone",
       "linkTasks": "Link tasks to the plan",
       "linkHint": "{count, plural, =0 {Every task is linked.} one {# task is not linked to a milestone, deliverable or phase.} other {# tasks are not linked to a milestone, deliverable or phase.}}",
-      "nothingToLink": "The project has no open tasks.",
+      "nothingToLink": "The project has no tasks to link.",
       "pickTask": "Choose a task",
       "link": "Link",
       "unlink": "Unlink",
@@ -11746,10 +11750,20 @@
       "change_evidence_required": "A change the client asked for needs evidence (a file or a link).",
       "change_empty": "The change changes nothing yet: add or remove deliverables, hours, fee or due date.",
       "acceptance_not_found": "Acceptance record not found.",
-      "acceptance_locked": "Only a draft can be refreshed.",
+      "acceptance_locked": "A signed or void record can no longer be refreshed.",
       "acceptance_wrong_status": "The record's status does not allow this.",
       "acceptance_milestone_internal": "Only client-facing milestones are accepted by the client.",
-      "acceptance_empty": "There is nothing in this scope to accept yet.",
+      "acceptance_empty": "This scope has no promised deliverables yet. State in words what is accepted to make the record.",
+      "acceptance_changed": "The record was just changed by someone else. Reload the page and try again.",
+      "acceptance_invoiced": "Finance has invoiced against this record, so it can no longer be corrected.",
+      "acceptance_correction_empty": "Nothing differs from what is on record.",
+      "billing_amount_unchanged": "The new amount is the same as the current one.",
+      "milestone_has_acceptance": "This milestone has an acceptance record. Void the record before removing the milestone; a signed record keeps its milestone.",
+      "milestone_has_billing": "This milestone has an item with finance. It can be removed only after finance waives that item.",
+      "retainer_not_found": "The project has no retainer terms yet.",
+      "retainer_paused": "The retainer is paused or the project is closed, so no more months are made.",
+      "retainer_month_exists": "This month already has a retainer period.",
+      "retainer_month_not_missed": "Only past months within the retainer's term can be made by hand.",
       "acceptance_signed_in_future": "The signing date cannot be after today.",
       "billing_not_found": "Billing item not found.",
       "billing_decided": "This item has already been handled.",
@@ -11919,6 +11933,13 @@
     },
     "uploading": "Uploading…",
     "uploaded": "Uploaded: {name}",
+    "taskLine": {
+      "title": "Promised deliverable",
+      "label": "This task delivers",
+      "none": "None",
+      "save": "Save",
+      "empty": "The project has no open promised deliverables."
+    },
     "retainer": {
       "terms": "Retainer terms",
       "termsLine": "From {start} to {end} · {rollover}",
@@ -11968,6 +11989,22 @@
       "periodStatus": {
         "open": "Open",
         "closed": "Closed"
+      },
+      "delivered": "Delivered",
+      "accepted": "Accepted",
+      "linkTask": "Link a task to a deliverable",
+      "linkHint": "Pick a task of the project — a finished one too — and the month's deliverable it was done for. Each task is one unit of its deliverable.",
+      "linkTaskField": "Task",
+      "linkLineField": "Promised deliverable",
+      "pickTask": "Pick a task",
+      "pickLine": "Pick a deliverable",
+      "linkSubmit": "Link",
+      "nothingToLink": "Every task of the project is already linked to a deliverable.",
+      "missed": {
+        "title": "Make a missing month",
+        "hint": "The retainer's terms were entered after it began, so the months before have no period. Make one to link its work, have it accepted and bill it. A month's fee goes to finance only after the client signs its acceptance record.",
+        "month": "Month",
+        "submit": "Make this month's period"
       },
       "billingDescription": "Retainer fee for {month}",
       "monthsLocked": "Only someone who may see fees (pjm:commercial) can change the retainer's start month, end month and whether it runs."
@@ -12079,6 +12116,20 @@
       "waitingMilestone": "Milestone: {name}",
       "waitingMonth": "Retainer month: {name}",
       "waitingLink": "Open the acceptance page",
+      "described": "Accepted as described above.",
+      "description": "What is accepted",
+      "descriptionHint": "Required when the scope has no promised deliverables: say in words what the client accepts. When there are, this is a remark printed on the paper.",
+      "pdfIssued": "Download the issued paper (PDF)",
+      "refreshSent": "Refresh and re-issue",
+      "correct": "Correct the signed record",
+      "correctHint": "For a wrong scan, a misspelt signer or the wrong date. What was recorded before, and the earlier scan, stay in the history. Not possible once finance has invoiced.",
+      "replaceScan": "Replacement scan (if the wrong one was attached)",
+      "correctReason": "Reason for the correction",
+      "correctSubmit": "Save correction",
+      "history": "Corrections",
+      "historyBefore": "Before: signed by {name} on {date}.",
+      "earlierScan": "Earlier scan",
+      "invoicedLocked": "Finance has invoiced against this record, so what was signed can no longer be corrected.",
       "monthNotBilled": "Not handed to finance yet: waiting for a signed acceptance record."
     },
     "billing": {
@@ -12108,6 +12159,21 @@
         "milestone": "Billing milestone",
         "retainer": "Monthly retainer fee",
         "manual": "Manual"
+      },
+      "correctAmount": "Correct the amount",
+      "correctHint": "Possible only while the item is not invoiced. Leave blank when no amount is agreed yet. The amount before and after, and the reason, are kept.",
+      "newAmount": "Correct amount (VND)",
+      "correctReason": "Reason",
+      "correctSubmit": "Save amount",
+      "corrected": "{date} · {name} corrected the amount: {before} → {after}. Reason: {reason}",
+      "milestone": {
+        "ready": "With finance, ready to invoice",
+        "invoiced": "Invoiced",
+        "waived": "Waived by finance",
+        "awaiting_acceptance": "Not with finance yet: waiting for the client's signed acceptance",
+        "covered_by_project": "No item of its own: the whole-project acceptance billed this share of the fee",
+        "awaiting_done": "Not with finance yet: the milestone is not marked done",
+        "noAmount": "No amount agreed for this milestone yet."
       },
       "invoice": "Invoice",
       "waive": "Waive",
