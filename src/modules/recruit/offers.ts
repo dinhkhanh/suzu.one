@@ -824,7 +824,9 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
       // The base salary is the agreed base. The offer's allowance total is **not** split into pay
       // components here: this module does not know the entity's catalogue, and inventing a code
       // would put a figure under a heading nobody chose. It is named in the note for C&B to itemise.
-      terms: { baseSalary: conversion.offer.baseSalaryVnd, insuranceSalary: conversion.offer.baseSalaryVnd, allowances: [] },
+      // The offer's probation share goes with it (FR-PAY-05): payroll pays it on the days a
+      // probation contract covers, and the full figure after.
+      terms: { baseSalary: conversion.offer.baseSalaryVnd, insuranceSalary: conversion.offer.baseSalaryVnd, allowances: [], probationPercent: conversion.offer.probationSalaryPercent < 100 ? conversion.offer.probationSalaryPercent : null },
       note: conversion.offer.allowancesVnd > 0 ? `${conversion.offer.number} — phụ cấp theo thư mời: ${formatVnd(conversion.offer.allowancesVnd)} đ/tháng` : conversion.offer.number,
     });
     salaryRequestId = request.id;

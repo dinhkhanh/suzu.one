@@ -19,7 +19,7 @@
 // No authorization inside: the actions check `canManageCompensation` over the entity.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gt, inArray, isNotNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { fieldCipher } from "@/lib/crypto";
 import { todayInVietnam } from "@/lib/dates";
@@ -393,6 +393,7 @@ export async function deriveRetroItems(entityId: string, beforeMonth: string, ac
     .where(
       and(
         eq(structure.entityId, entityId),
+        isNull(structure.voidedAt),
         eq(run.kind, "regular"),
         inArray(run.status, [...SETTLED]),
         lt(run.month, beforeMonth),
@@ -486,7 +487,9 @@ function differenceFromStructures(line: PayrollRunPersonRow, month: string, stru
     const period = payPeriodOf(month, input.period.standardDays);
     // `buildSegments` reads only these three figures of the locked month, and they are in the input.
     const totals = { standardDays: input.timesheet.standardDays, paidDaysCenti: input.timesheet.paidDaysCenti, unpaidDaysCenti: input.timesheet.unpaidDaysCenti };
-    const segments = buildSegments(structures, totals as Parameters<typeof buildSegments>[1], period.start, period.end, days);
+    // The probation days are the ones the month was paid with: the replayed input still knows them.
+    const probation = input.segments.filter((segment) => segment.probationPercent).map((segment) => ({ start: segment.from, end: segment.to }));
+    const segments = buildSegments(structures, totals as Parameters<typeof buildSegments>[1], period.start, period.end, days, probation);
     return differenceBetween(before, calculatePerson(withSegments(input, segments)));
   } catch {
     return null;

@@ -1364,6 +1364,10 @@
       "crm_cover_followups": {
         "title": "Việc theo dõi khách hàng khi đồng nghiệp nghỉ",
         "body": "Bạn đảm nhận {count} việc theo dõi khách hàng của {name} trong thời gian họ nghỉ phép."
+      },
+      "payroll_profile_import_proposed": {
+        "title": "Có hồ sơ trả lương nhập từ tệp chờ duyệt",
+        "body": "{count} hồ sơ trả lương nhập từ tệp đang chờ bạn đọc và phê duyệt."
       }
     },
     "errors": {
@@ -1569,7 +1573,19 @@
       "proposal_not_found": "Đề xuất này đã được xử lý.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin (giá trị phải là JSON hợp lệ).",
-      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
+      "version_not_voidable": "Chỉ có thể hủy bỏ phiên bản đang ở trạng thái đã duyệt.",
+      "void_used_by_paid_run": "Một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản này — không thể hủy bỏ. Hãy điều chỉnh bằng khoản truy lĩnh, truy thu.",
+      "void_run_in_review": "Một kỳ lương đang chờ duyệt dùng phiên bản này. Hãy trả kỳ lương về cho nhân sự trước, rồi hủy bỏ."
+    },
+    "void": {
+      "label": "Hủy bỏ",
+      "title": "Hủy bỏ phiên bản: {version}",
+      "hint": "Phiên bản đã duyệt nhưng sai sẽ được hủy bỏ: không còn hiệu lực, nhưng vẫn được lưu kèm người hủy và lý do. Phiên bản trước đó tiếp tục áp dụng cho những ngày này; sau đó hãy đề xuất phiên bản đúng như bình thường. Không thể hủy khi một kỳ lương đã chi đã dùng phiên bản này.",
+      "reason": "Lý do hủy bỏ",
+      "confirm": "Hủy bỏ phiên bản",
+      "voided": "Đã hủy bỏ",
+      "because": "Lý do hủy bỏ: {reason}"
     }
   },
   "flags": {
@@ -1624,7 +1640,10 @@
       "saved": "đã lưu",
       "unchanged": "không đổi",
       "periods": "giai đoạn đã ghi",
-      "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa"
+      "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa",
+      "requests": "đề xuất lương chờ duyệt",
+      "approved": "hồ sơ có hiệu lực ngay",
+      "proposed": "hồ sơ chờ Chủ sở hữu duyệt"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -1695,7 +1714,17 @@
       "outside_employment": "Nằm ngoài thời gian làm việc của nhân viên này",
       "covers_recorded_period": "Bao trùm trọn một giai đoạn đã có hoặc có trong tệp",
       "inside_recorded_period": "Nằm gọn trong một giai đoạn và sẽ chia đôi nó; hãy bắt đầu từ giai đoạn cũ nhất",
-      "moves_recorded_event": "Sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm"
+      "moves_recorded_event": "Sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm",
+      "salary_change_open": "Người này đang có một đề xuất thay đổi lương chờ duyệt.",
+      "allowance_unknown": "Mã phụ cấp không có trong danh mục của pháp nhân",
+      "bad_allowances": "Phụ cấp phải ghi dạng MÃ=số tiền, cách nhau bởi dấu chấm phẩy",
+      "version_exists": "Đã có một phiên bản bắt đầu đúng ngày này.",
+      "before_current_version": "Ngày hiệu lực sớm hơn phiên bản đang áp dụng.",
+      "probation_below_minimum": "Tỷ lệ lương thử việc thấp hơn mức tối thiểu luật định.",
+      "profile_proposal_open": "Người này đang có một đề xuất hồ sơ trả lương chờ duyệt.",
+      "profile_basis_required": "Hồ sơ Đơn giản cần ghi cơ sở; hồ sơ Đầy đủ thì không.",
+      "profile_review_date_simple_only": "Ngày xem lại chỉ dùng cho hồ sơ Đơn giản.",
+      "profile_non_resident_method": "Cách tính thuế không phù hợp với tình trạng cư trú."
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -7846,7 +7875,10 @@
         "down": "Giảm",
         "same": "Lương cơ bản không đổi"
       },
-      "request": "Đề xuất"
+      "request": "Đề xuất",
+      "probationPercent": "Tỷ lệ lương thử việc (%)",
+      "probationPercentHint": "Để trống nếu trả đủ",
+      "probationShort": "thử việc {percent}%"
     },
     "profiles": {
       "title": "Hồ sơ trả lương",
@@ -7904,11 +7936,16 @@
       "status": {
         "proposed": "Đề xuất",
         "approved": "Đã duyệt",
-        "rejected": "Từ chối"
+        "rejected": "Từ chối",
+        "voided": "Đã hủy bỏ"
       },
       "waiting": "Chờ Chủ sở hữu quyết định",
       "approve": "Phê duyệt",
-      "reject": "Từ chối"
+      "reject": "Từ chối",
+      "voided": {
+        "title": "Phiên bản đã hủy bỏ",
+        "because": "Lý do hủy bỏ: {reason}"
+      }
     },
     "exposure": {
       "title": "Hồ sơ Đơn giản — căn cứ và thời gian",
@@ -8138,7 +8175,12 @@
       "approval_own_request": "Không thể tự duyệt đề xuất của mình.",
       "approval_comment_required": "Hãy ghi lý do khi trả lại hoặc từ chối.",
       "approval_no_approver": "Không tìm thấy người duyệt.",
-      "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này."
+      "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này.",
+      "version_not_voidable": "Chỉ có thể hủy bỏ phiên bản đang có hiệu lực.",
+      "void_used_by_paid_run": "Một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản này — không thể hủy bỏ. Hãy điều chỉnh bằng khoản truy lĩnh, truy thu.",
+      "void_run_in_review": "Một kỳ lương đang chờ duyệt dùng phiên bản này. Hãy trả kỳ lương về cho nhân sự trước, rồi hủy bỏ.",
+      "salary_probation_below_minimum": "Tỷ lệ lương thử việc thấp hơn mức tối thiểu luật định ({minimum}%).",
+      "component_code_reserved": "Mã này dành cho các khoản giảm trừ khi tính thuế TNCN, không dùng cho khoản mục lương."
     },
     "offers": {
       "title": "Quy đổi lương net sang gross",
@@ -8272,7 +8314,8 @@
           "inputs_changed": "Các khoản nhập tay hoặc truy lĩnh, truy thu đã thay đổi sau lần tính gần nhất.",
           "retro_waiting": "Có khoản truy lĩnh, truy thu chưa được tính vào.",
           "timesheet_changed": "Bảng công của tháng đã thay đổi sau lần tính gần nhất.",
-          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này."
+          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này.",
+          "version_voided": "Một phiên bản quy tắc, hồ sơ trả lương hoặc cấu trúc lương dùng để tính đã bị hủy bỏ."
         }
       },
       "readiness": {
@@ -8402,7 +8445,8 @@
         "run_has_blockers": "Còn vướng mắc chưa xử lý, chưa thể trình kỳ lương.",
         "run_input_code_unknown": "Khoản mục này không phải là khoản nhập tay trong danh mục của pháp nhân.",
         "run_input_negative_earning": "Khoản thu nhập không nhập số âm. Để thu hồi, hãy nhập một khoản truy thu hoặc dùng khoản mục khấu trừ.",
-        "run_input_negative_deduction": "Khoản khấu trừ nhập bằng số dương — hệ thống tự trừ vào thực nhận."
+        "run_input_negative_deduction": "Khoản khấu trừ nhập bằng số dương — hệ thống tự trừ vào thực nhận.",
+        "run_input_relief_regular_only": "Khoản giảm trừ khi tính thuế chỉ nhập vào kỳ lương định kỳ của tháng."
       },
       "payments": "Chi lương",
       "stages": {
@@ -8419,6 +8463,29 @@
       "lineStatus": {
         "published": "Đã phát hành",
         "read": "Đã xem"
+      },
+      "relief": {
+        "PIT_CHARITY": "Giảm trừ thuế: từ thiện, nhân đạo, khuyến học",
+        "PIT_VOLUNTARY_PENSION": "Giảm trừ thuế: hưu trí tự nguyện",
+        "PIT_OTHER_RELIEF": "Giảm trừ thuế: khoản khác được trừ"
+      },
+      "offCycle": {
+        "link": "Kỳ lương ngoài kỳ",
+        "title": "Tạo kỳ lương ngoài kỳ",
+        "hint": "Thưởng Tết, thưởng lễ, thưởng dự án — chi thêm trong tháng, ngoài kỳ lương định kỳ, và tính thuế cùng tháng đó. Kỳ lương này đi qua đủ các bước: tính, trình, Tổng giám đốc duyệt, chi.",
+        "month": "Tháng chi",
+        "name": "Tên kỳ lương",
+        "namePlaceholder": "Thưởng Tết 2027",
+        "everyone": {
+          "title": "Cả pháp nhân",
+          "hint": "Thêm một dòng cho mỗi người của pháp nhân ({count} người) với cùng một số tiền, rồi sửa riêng từng người nếu khác.",
+          "fill": "Thêm cho mọi người"
+        },
+        "lines": "Các khoản chi ({count})",
+        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân.",
+        "addLine": "Thêm một người",
+        "noCodes": "Danh mục của pháp nhân chưa có khoản mục nhập tay nào.",
+        "submit": "Tạo kỳ lương ngoài kỳ"
       }
     },
     "payslips": {
@@ -8861,7 +8928,8 @@
         "unionDues": "Đoàn phí",
         "pit": "Thuế TNCN",
         "otherDeductions": "Khấu trừ khác",
-        "net": "Thực nhận"
+        "net": "Thực nhận",
+        "employerCost": "Chi phí công ty"
       },
       "presence": {
         "system_only": "Chỉ có trong hệ thống — bảng cũ không có người này.",
@@ -8892,7 +8960,46 @@
       "errors": {
         "step_up_required": "Cần xác thực lại trước khi xem dữ liệu lương.",
         "forbidden": "Bạn không có quyền đối chiếu lương của pháp nhân này.",
-        "generic": "Không lưu được, vui lòng thử lại."
+        "generic": "Không lưu được, vui lòng thử lại.",
+        "parallel_not_clean": "Còn chênh lệch chưa giải thích, chưa thể xác nhận đối chiếu tháng này."
+      },
+      "totals": {
+        "netSystem": "Thực nhận — hệ thống",
+        "netReference": "Thực nhận — kế toán",
+        "difference": "Chênh lệch",
+        "costSystem": "Chi phí công ty — hệ thống",
+        "costReference": "Chi phí công ty — kế toán",
+        "costCoverage": "Kế toán ghi cho {count}/{people} người"
+      },
+      "columns": {
+        "netSystem": "Thực nhận (hệ thống)",
+        "netReference": "Thực nhận (kế toán)",
+        "netDifference": "Chênh lệch",
+        "costSystem": "Chi phí công ty (hệ thống)",
+        "costReference": "Chi phí công ty (kế toán)"
+      },
+      "signoff": {
+        "title": "Xác nhận đối chiếu",
+        "current": "Tháng này đã được xác nhận và kết quả đối chiếu chưa thay đổi.",
+        "ready": "Không còn chênh lệch chưa giải thích — có thể xác nhận đối chiếu tháng này.",
+        "notReady": "Chỉ xác nhận được khi không còn chênh lệch chưa giải thích.",
+        "none": "Chưa có xác nhận nào.",
+        "holds": "Còn hiệu lực",
+        "outdated": "Đã cũ — số liệu thay đổi sau khi xác nhận",
+        "counts": "{people} người, {matching} khớp hoàn toàn, {explained} chênh lệch đã giải thích",
+        "with": "đối chiếu cùng {name}",
+        "checkedWith": "Đối chiếu cùng",
+        "checkedWithHint": "Kế toán trưởng",
+        "submit": "Xác nhận đối chiếu"
+      },
+      "export": {
+        "label": "Tải báo cáo",
+        "employeeCode": "Mã nhân viên",
+        "presence": "Có mặt",
+        "system": "hệ thống",
+        "reference": "kế toán",
+        "difference": "chênh lệch",
+        "explanations": "Giải thích"
       }
     },
     "ytd": {
@@ -9099,7 +9206,7 @@
         "forbidden": "Bạn không có quyền với đợt thưởng này.",
         "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
         "bonus_run_not_found": "Không tìm thấy đợt thưởng.",
-        "bonus_run_exists": "Năm này đã có một đợt thưởng đang chạy.",
+        "bonus_run_exists": "Năm này đã có một đợt thưởng cùng tên đang chạy.",
         "bonus_run_no_entities": "Chọn ít nhất một pháp nhân.",
         "bonus_run_not_editable": "Đợt thưởng đã trình, không sửa được nữa.",
         "bonus_run_empty": "Đợt thưởng chưa có ai. Bấm “Tính lại” trước.",
@@ -9126,6 +9233,38 @@
         "people": "Số người",
         "approvedOn": "Ngày duyệt"
       }
+    },
+    "imports": {
+      "link": "Nhập từ tệp",
+      "title": "Nhập lương và hồ sơ trả lương",
+      "description": "Nạp lương và hồ sơ trả lương của cả công ty từ bảng tính. Không có gì có hiệu lực cho đến khi Chủ sở hữu đọc toàn bộ đợt nhập trên màn hình duyệt và phê duyệt (hồ sơ Đầy đủ đầu tiên có hiệu lực ngay, như khi nhập tay).",
+      "waiting": "Đợt nhập chờ duyệt",
+      "noneWaiting": "Không có đợt nhập nào đang chờ duyệt.",
+      "kinds": {
+        "salary": "Lương",
+        "profile": "Hồ sơ trả lương"
+      },
+      "pending": "{count} đang chờ duyệt",
+      "forEntity": "Nhập cho pháp nhân",
+      "salaries": {
+        "title": "Lương",
+        "hint": "Mỗi dòng trở thành một đề xuất thay đổi lương gửi Chủ sở hữu, như khi lập trên hồ sơ lương. Phụ cấp ghi theo mã khoản mục, ví dụ: ALW_MEAL=730000; ALW_PHONE=200000.",
+        "wizard": "Tệp lương"
+      },
+      "profiles": {
+        "title": "Hồ sơ trả lương",
+        "hint": "Hồ sơ Đầy đủ đầu tiên của một người có hiệu lực ngay; hồ sơ Đơn giản và mọi thay đổi hồ sơ chờ Chủ sở hữu duyệt.",
+        "wizard": "Tệp hồ sơ trả lương"
+      },
+      "review": {
+        "title": "Duyệt đợt nhập",
+        "description": "Mọi đề xuất trong đợt nhập, mỗi mức lương đặt cạnh mức đang áp dụng. Phê duyệt tại đây là phê duyệt đúng những dòng đang hiển thị; mỗi đề xuất vẫn có thể mở riêng để trả lại hoặc từ chối.",
+        "currentBase": "Lương cơ bản hiện tại",
+        "allowances": "Tổng phụ cấp",
+        "empty": "Không có đề xuất nào."
+      },
+      "approveAll": "Phê duyệt {count} đề xuất",
+      "approved": "Đã phê duyệt. Những đề xuất không duyệt được vẫn ở trạng thái chờ."
     }
   },
   "requests": {
@@ -13176,7 +13315,10 @@
     "crmCommission": "Hoa hồng kinh doanh",
     "kiosk": "Máy chấm công khuôn mặt",
     "kioskFaces": "Khuôn mặt chấm công",
-    "kioskCheckIn": "Chấm công tại máy"
+    "kioskCheckIn": "Chấm công tại máy",
+    "newOffCycleRun": "Kỳ lương ngoài kỳ",
+    "salaryImport": "Nhập lương từ tệp",
+    "salaryImportReview": "Duyệt lương nhập từ tệp"
   },
   "portfolio": {
     "title": "SuZu Group",

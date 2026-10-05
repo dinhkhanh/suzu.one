@@ -11,11 +11,12 @@ import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts, listPayrollFacts, recordPayEvent } from "@/modules/core-hr/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { listOwnerPersonIds } from "@/modules/platform/rbac/service";
-import { planApproval } from "@/modules/platform/statutory/engine/versions";
+import { planApproval, planVoid } from "@/modules/platform/statutory/engine/versions";
 import { getParameter } from "@/modules/platform/statutory/service";
 import type { SimpleBasis } from "./enums";
 import { type ExposureFlag, exposureFlags, monthsOn } from "./engine/exposure";
 import { type EntityReach, withinReach } from "./reach";
+import { personVersionRefusal } from "./version-use";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PayProfileRow = typeof schema.payProfile.$inferSelect;
@@ -67,7 +68,7 @@ export async function listProfileProposals(reach: EntityReach, executor: Executo
   return rows.map(({ row, personName, proposedByName, currentProfile }) => ({ ...row, personName, proposedByName: proposedByName ?? null, currentProfile: currentProfile ?? null }));
 }
 
-function checkShape(input: ProfileInput) {
+export function checkProfileShape(input: ProfileInput) {
   if ((input.profile === "simple") !== (input.simpleBasis !== null)) throw new ActionError("profile_basis_required");
   if (input.profile === "statutory" && input.reviewDate) throw new ActionError("profile_review_date_simple_only");
   if (input.taxResidency === "non_resident" && input.profile === "statutory" && input.pitMethod !== "flat_non_resident") throw new ActionError("profile_non_resident_method");
@@ -79,7 +80,7 @@ function checkShape(input: ProfileInput) {
  * (`approved`: a first Statutory profile) or waits for the owner (`proposed`).
  */
 export async function submitProfile(input: ProfileInput, actorPersonId: string): Promise<PayProfileRow> {
-  checkShape(input);
+  checkProfileShape(input);
   const [facts] = await listEmploymentFacts({ personIds: [input.personId] });
   if (!facts?.employmentId || !facts.entityId) throw new ActionError("person_without_employment");
   if (facts.startDate && input.validFrom < facts.startDate) throw new ActionError("profile_before_employment");
@@ -121,6 +122,34 @@ export async function decideProfile(id: string, decision: "approve" | "reject", 
     const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
     // FR-PAY-07: a move between profiles is a lifecycle event. A first profile is not a move.
     if (approved.length > 0) await recordPayEvent(tx, { type: "pay_profile_change", personId: after.personId, employmentId: after.employmentId, entityId: after.entityId, effectiveDate: after.validFrom, reason: null, details: {} }, actorPersonId);
+    return { before, after };
+  });
+}
+
+/** One profile version, for the actions' authorization. null = no such version. */
+export async function getProfile(id: string, executor: Executor = db()): Promise<PayProfileRow | null> {
+  const [row] = await executor.select().from(schema.payProfile).where(eq(schema.payProfile.id, id)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * Takes back an approved profile that was wrong (PAY-13): kept and marked `voided` with the reason,
+ * the profile before it runs on for its dates, and a correction is submitted like any other.
+ * Refused while a run that has gone past C&B paid the person under it (`version-use.ts`). Who may
+ * is the action's question: the owner, or C&B for a first Statutory profile that needed nobody.
+ */
+export async function voidProfile(id: string, reason: string, actorPersonId: string): Promise<{ before: PayProfileRow; after: PayProfileRow }> {
+  return db().transaction(async (tx) => {
+    const table = schema.payProfile;
+    const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
+    if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
+    const refusal = await personVersionRefusal(before, tx);
+    if (refusal) throw new ActionError(refusal);
+    const approved = await tx.select().from(table).where(and(eq(table.employmentId, before.employmentId), eq(table.status, "approved"))).for("update");
+    const now = new Date();
+    const [after] = await tx.update(table).set({ status: "voided", voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, id)).returning();
+    const plan = planVoid(approved, before);
+    if (plan.kind === "reopen") await tx.update(table).set({ validTo: plan.reopenTo, updatedAt: now }).where(eq(table.id, plan.reopenId));
     return { before, after };
   });
 }

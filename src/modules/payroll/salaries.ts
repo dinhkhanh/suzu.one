@@ -16,7 +16,8 @@ import { toSearchKey } from "@/lib/text";
 import { listEmploymentFacts, recordPayEvent } from "@/modules/core-hr/service";
 import { decideRequest, defineRequestType, getRequest, listRequestsAbout, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import { planApproval } from "@/modules/platform/statutory/engine/versions";
+import { planApproval, planVoid } from "@/modules/platform/statutory/engine/versions";
+import { getParameter } from "@/modules/platform/statutory/service";
 import vi from "../../../messages/vi.json";
 import { resolveCatalogue } from "./components";
 import { type SalaryChangeReason, type SalaryTerms, salaryTermsSchema } from "./enums";
@@ -24,6 +25,7 @@ import { salaryChangeContext, salaryTermsContext } from "./field-contexts";
 import { canDecideSalaryChange, canManageCompensation, canViewCompensationOf, compensationReach } from "./policy";
 import { listProfileHistory, type PayProfileRow } from "./profiles";
 import { withinReach } from "./reach";
+import { personVersionRefusal } from "./version-use";
 
 type Executor = Tx | ReturnType<typeof db>;
 type Viewer = { personId: string; principal: Principal };
@@ -38,7 +40,8 @@ const openTerms = (row: SalaryStructureRow): SalaryStructureView => {
   return { ...rest, terms: salaryTermsSchema.parse(JSON.parse(fieldCipher().decrypt(termsEnc, salaryTermsContext(row.id)))) };
 };
 
-const inForce = (table: typeof schema.salaryStructure, from: IsoDate, to: IsoDate) => and(lte(table.validFrom, to), or(isNull(table.validTo), gte(table.validTo, from)));
+// A voided structure (PAY-13) is kept for the record and is in force nowhere.
+const inForce = (table: typeof schema.salaryStructure, from: IsoDate, to: IsoDate) => and(isNull(table.voidedAt), lte(table.validFrom, to), or(isNull(table.validTo), gte(table.validTo, from)));
 
 // ── For payroll's own use-cases (no authorization inside) ───────────────────────────────────
 
@@ -163,8 +166,10 @@ export async function listSalaryOverview(principal: Principal, filter: { entityI
 
 export type SalaryFile = {
   person: { personId: string; fullName: string; employeeCode: string | null; entityId: string | null; employmentId: string | null; startDate: IsoDate | null; workforceType: string };
-  /** Newest first. */
+  /** The structures that stand, newest first. */
   structures: SalaryStructureView[];
+  /** Structures voided as wrong (PAY-13), newest first: kept on the file with who voided them and why. */
+  voided: SalaryStructureView[];
   profiles: PayProfileRow[];
   /** Open and past change requests — for C&B; the person sees only what took effect. */
   requests: { id: string; status: string; summary: string; createdAt: Date; link: string | null }[];
@@ -183,7 +188,8 @@ export async function getSalaryFile(viewer: Viewer, personId: string): Promise<S
   ]);
   return {
     person: { personId, fullName: facts.fullName, employeeCode: facts.employeeCode, entityId: facts.entityId, employmentId: facts.employmentId, startDate: facts.startDate, workforceType: facts.workforceType },
-    structures: rows.map(openTerms),
+    structures: rows.filter((row) => !row.voidedAt).map(openTerms),
+    voided: rows.filter((row) => row.voidedAt).map(openTerms),
     profiles: canManage ? profiles : profiles.filter((row) => row.status === "approved"),
     requests: requests.map((request) => ({ id: request.id, status: request.status, summary: request.summary, createdAt: request.createdAt, link: request.link })),
     canManage,
@@ -202,8 +208,12 @@ export const salaryChangeRequest = defineRequestType({
   bulkApprovable: () => false,
 });
 
-/** The clear payload: what kind of change, from when. No amounts — they are in `payload_enc`. */
-export type SalaryChangePayload = { reason: SalaryChangeReason; validFrom: IsoDate; employmentId: string; initial: boolean };
+/**
+ * The clear payload: what kind of change, from when. No amounts — they are in `payload_enc`.
+ * `importBatchId` names the spreadsheet a change came in with (PAY-14), so the owner can read and
+ * approve the whole import on one screen.
+ */
+export type SalaryChangePayload = { reason: SalaryChangeReason; validFrom: IsoDate; employmentId: string; initial: boolean; importBatchId?: string };
 type SealedSalaryChange = { terms: SalaryTerms; note: string | null };
 
 export type SalaryChangeInput = { personId: string; validFrom: IsoDate; reason: SalaryChangeReason; terms: SalaryTerms; note: string | null };
@@ -222,11 +232,25 @@ async function checkTerms(executor: Executor, entityId: string, input: SalaryCha
   const unknown = terms.data.allowances.filter((line) => !allowed.has(line.code)).map((line) => line.code);
   // Codes are catalogue entries, not pay: naming the unknown one is safe.
   if (unknown.length) throw new ActionError("salary_allowance_unknown", { codes: unknown });
-  return { ...terms.data, allowances: terms.data.allowances.filter((line) => line.amount > 0) };
+  const { probationPercent, ...rest } = terms.data;
+  await checkProbationPercent(executor, probationPercent ?? null, input.validFrom);
+  // A share is kept only when there is one: terms paid in full read exactly as they always did.
+  return { ...rest, ...(probationPercent && probationPercent < 100 ? { probationPercent } : {}), allowances: rest.allowances.filter((line) => line.amount > 0) };
+}
+
+/**
+ * FR-PAY-05: pay on probation is at least the share of the position's salary the law sets
+ * (`probation.limits.minimumPayPercent`, as in force on the day the terms start). The percentage
+ * is a rule, not pay: saying what the minimum is gives nothing away.
+ */
+async function checkProbationPercent(executor: Executor, percent: number | null, validFrom: IsoDate) {
+  if (percent === null || percent >= 100) return;
+  const { minimumPayPercent } = await getParameter("probation.limits", validFrom, executor);
+  if (percent < minimumPayPercent) throw new ActionError("salary_probation_below_minimum", { minimum: minimumPayPercent });
 }
 
 async function plan(executor: Executor, employmentId: string, validFrom: IsoDate) {
-  const existing = await executor.select().from(schema.salaryStructure).where(eq(schema.salaryStructure.employmentId, employmentId));
+  const existing = await executor.select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, employmentId), isNull(schema.salaryStructure.voidedAt)));
   const result = planApproval(existing, validFrom);
   if (result.kind === "rejected") throw new ActionError(`salary_${result.reason}`);
   return { result, initial: existing.length === 0 };
@@ -242,24 +266,32 @@ export async function submitSalaryChange(actorPersonId: string, input: SalaryCha
 
     const terms = await checkTerms(tx, facts.entityId, input);
     const { initial } = await plan(tx, facts.employmentId, input.validFrom);
-    const reason: SalaryChangeReason = initial ? "initial" : input.reason === "initial" ? "adjustment" : input.reason;
-    const id = randomUUID();
-    const payload: SalaryChangePayload = { reason, validFrom: input.validFrom, employmentId: facts.employmentId, initial };
-    const sealed: SealedSalaryChange = { terms, note: input.note };
-    const { request, approverIds } = await submitRequest(tx, salaryChangeRequest, {
-      id,
-      entityId: facts.entityId,
-      requesterPersonId: actorPersonId,
-      subjectPersonId: input.personId,
-      summary: summaryOf(payload),
-      payload,
-      payloadEnc: fieldCipher().encrypt(JSON.stringify(sealed), salaryChangeContext(id)),
-      link: (requestId) => `/payroll/salaries/changes/${requestId}`,
-      // Flow conditions may look at the kind of change, never at an amount.
-      conditionData: { reason, initial },
-    });
-    return { request, payload, approverIds, entityId: facts.entityId };
+    return fileSalaryChange(tx, actorPersonId, { personId: input.personId, entityId: facts.entityId, employmentId: facts.employmentId, validFrom: input.validFrom, reason: input.reason, initial, terms, note: input.note });
   });
+}
+
+/** A change already checked, ready to become a request: what the form and the import both end in. */
+export type CheckedSalaryChange = { personId: string; entityId: string; employmentId: string; validFrom: IsoDate; reason: SalaryChangeReason; initial: boolean; terms: SalaryTerms; note: string | null; importBatchId?: string | null };
+
+/** Files the request for the owner. The figures are sealed into `payload_enc`; the clear payload says what and from when. */
+export async function fileSalaryChange(tx: Tx, actorPersonId: string, change: CheckedSalaryChange) {
+  const reason: SalaryChangeReason = change.initial ? "initial" : change.reason === "initial" ? "adjustment" : change.reason;
+  const id = randomUUID();
+  const payload: SalaryChangePayload = { reason, validFrom: change.validFrom, employmentId: change.employmentId, initial: change.initial, ...(change.importBatchId ? { importBatchId: change.importBatchId } : {}) };
+  const sealed: SealedSalaryChange = { terms: change.terms, note: change.note };
+  const { request, approverIds } = await submitRequest(tx, salaryChangeRequest, {
+    id,
+    entityId: change.entityId,
+    requesterPersonId: actorPersonId,
+    subjectPersonId: change.personId,
+    summary: summaryOf(payload),
+    payload,
+    payloadEnc: fieldCipher().encrypt(JSON.stringify(sealed), salaryChangeContext(id)),
+    link: (requestId) => `/payroll/salaries/changes/${requestId}`,
+    // Flow conditions may look at the kind of change, never at an amount.
+    conditionData: { reason, initial: change.initial },
+  });
+  return { request, payload, approverIds, entityId: change.entityId };
 }
 
 /** C&B's corrected proposal after it was sent back. */
@@ -284,7 +316,7 @@ export async function withdrawSalaryChange(actorPersonId: string, requestId: str
   });
 }
 
-const unseal = (request: { id: string; payloadEnc: string | null }): SealedSalaryChange => {
+export const unseal = (request: { id: string; payloadEnc: string | null }): SealedSalaryChange => {
   if (!request.payloadEnc) throw new ActionError("approval_not_found");
   const sealed = JSON.parse(fieldCipher().decrypt(request.payloadEnc, salaryChangeContext(request.id))) as SealedSalaryChange;
   return { terms: salaryTermsSchema.parse(sealed.terms), note: sealed.note ?? null };
@@ -371,7 +403,7 @@ export async function getSalaryDecision(viewer: Viewer, structureId: string): Pr
   const [[facts], [entity], [previous], catalogue, [decider]] = await Promise.all([
     listEmploymentFacts({ personIds: [row.personId] }),
     db().select().from(schema.entity).where(eq(schema.entity.id, row.entityId)).limit(1),
-    db().select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, row.employmentId), lte(schema.salaryStructure.validFrom, row.validFrom), sql`${schema.salaryStructure.id} <> ${row.id}`)).orderBy(desc(schema.salaryStructure.validFrom)).limit(1),
+    db().select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, row.employmentId), isNull(schema.salaryStructure.voidedAt), lte(schema.salaryStructure.validFrom, row.validFrom), sql`${schema.salaryStructure.id} <> ${row.id}`)).orderBy(desc(schema.salaryStructure.validFrom)).limit(1),
     resolveCatalogue(row.entityId, row.validFrom),
     row.decidedByPersonId ? db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.decidedByPersonId)).limit(1) : Promise.resolve([]),
   ]);
@@ -386,6 +418,37 @@ export async function getSalaryDecision(viewer: Viewer, structureId: string): Pr
     decidedByName: decider?.name ?? null,
     componentNames: Object.fromEntries(catalogue.map((component) => [component.code, component.name])),
   };
+}
+
+// ── Voiding a wrong structure (PAY-13) ──────────────────────────────────────────────────────
+
+/** Where a structure sits — for the void action's authorization. null = no such structure (answered like a refusal). */
+export async function salaryStructureEntity(structureId: string): Promise<{ entityId: string; personId: string } | null> {
+  const [row] = await db().select({ entityId: schema.salaryStructure.entityId, personId: schema.salaryStructure.personId }).from(schema.salaryStructure).where(eq(schema.salaryStructure.id, structureId)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * Takes back a salary structure that was approved wrong — a mistyped figure, a wrong date. It is
+ * kept with who voided it and why (its decision number too: a number is never given out twice),
+ * the structure before it runs on for its dates, and the correct terms are then proposed and
+ * approved like any change — from the same day, or an earlier one. Refused while a run that has
+ * gone past C&B paid the person on it (`version-use.ts`): a paid month is corrected by a retro item.
+ */
+export async function voidSalaryStructure(structureId: string, reason: string, actorPersonId: string): Promise<{ before: SalaryStructureView; after: SalaryStructureView }> {
+  return db().transaction(async (tx) => {
+    const table = schema.salaryStructure;
+    const [before] = await tx.select().from(table).where(eq(table.id, structureId)).limit(1).for("update");
+    if (!before || before.voidedAt) throw new ActionError("version_not_voidable");
+    const refusal = await personVersionRefusal(before, tx);
+    if (refusal) throw new ActionError(refusal);
+    const standing = await tx.select().from(table).where(and(eq(table.employmentId, before.employmentId), isNull(table.voidedAt))).for("update");
+    const now = new Date();
+    const [after] = await tx.update(table).set({ voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, structureId)).returning();
+    const outcome = planVoid(standing, before);
+    if (outcome.kind === "reopen") await tx.update(table).set({ validTo: outcome.reopenTo, updatedAt: now }).where(eq(table.id, outcome.reopenId));
+    return { before: openTerms(before), after: openTerms(after) };
+  });
 }
 
 /** Where a salary change request sits — for the actions' authorization. null = no such request (answered like a refusal). */

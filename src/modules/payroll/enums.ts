@@ -29,6 +29,10 @@ export const salaryTermsSchema = z
     // The contribution base for compulsory insurance; may differ from the base salary (FR-PAY-01).
     insuranceSalary: vnd,
     allowances: z.array(z.object({ code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: vnd })).max(30),
+    // FR-PAY-05: the share of the base salary and allowances paid on days a probation contract
+    // covers — at least the statutory minimum (`probation.limits.minimumPayPercent`), checked when
+    // the structure is proposed. The figures above are the position's own; absent = paid in full.
+    probationPercent: z.number().int().min(1).max(100).nullable().optional(),
   })
   .refine((terms) => new Set(terms.allowances.map((line) => line.code)).size === terms.allowances.length, "duplicate_allowance");
 export type SalaryTerms = z.output<typeof salaryTermsSchema>;

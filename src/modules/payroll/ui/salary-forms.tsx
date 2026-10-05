@@ -58,6 +58,10 @@ export function SalaryChangeForm({ personId, allowances, current, initial, reque
               <MoneyInput id={`terms.allowances.${allowance.code}`} name={`terms.allowances.${allowance.code}`} defaultValue={amount(allowance.code)} />
             </Field>
           ))}
+          {/* FR-PAY-05: the figures above are the position's; on probation days this share of them is paid. */}
+          <Field name="terms.probationPercent" label={t("probationPercent")}>
+            <Input id="terms.probationPercent" name="terms.probationPercent" type="number" inputMode="numeric" min={1} max={100} step={1} defaultValue={current?.probationPercent ?? ""} placeholder={t("probationPercentHint")} />
+          </Field>
         </div>
         <Field name="note" label={t("note")}>
           <Input id="note" name="note" maxLength={1000} defaultValue={defaults?.note ?? ""} />

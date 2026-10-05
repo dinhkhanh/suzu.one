@@ -58,6 +58,23 @@ export const canDecidePayRules = (principal: Principal): boolean => can(principa
 /** Reading the rules is harmless next to reading pay; anyone with a payroll role somewhere may. */
 export const canReadPayRules = (principal: Principal): boolean => canProposePayRules(principal) || canDecidePayRules(principal) || can(principal, "payroll:read") || can(principal, "payroll:propose");
 
+// ── Voiding a wrong approved version (PAY-13) ───────────────────────────────────────────────
+// Taking a version back needs the same hand that let it in: what the owner approved, only the
+// owner voids. The services refuse a version a run past C&B was worked out from, whoever asks.
+
+/** A component, a pay policy, a statutory value: the owner, who approves them. */
+export const canVoidPayRule = (principal: Principal): boolean => canDecidePayRules(principal);
+
+/** A salary structure: every one came out of the owner's approval, so the owner over the entity. */
+export const canVoidSalaryStructure = (principal: Principal, where: InEntity): boolean => can(principal, "payroll:rules", over(where));
+
+/**
+ * A pay profile: the owner when the owner approved it; C&B over the entity too for a first
+ * Statutory profile, which took effect without anyone's approval (`decidedByPersonId` empty).
+ */
+export const canVoidProfile = (principal: Principal, profile: InEntity & { decidedByPersonId: string | null }): boolean =>
+  canDecidePayRules(principal) || (profile.decidedByPersonId === null && canManageCompensation(principal, profile));
+
 /** FR-PAY-08 / risk R11: who is on the Simple profile and why — the owner's eyes only. */
 export const canSeeSimpleProfileReport = (principal: Principal): boolean => canDecidePayRules(principal);
 

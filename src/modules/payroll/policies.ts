@@ -8,8 +8,9 @@ import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { listOwnerPersonIds } from "@/modules/platform/rbac/service";
-import { planApproval, versionOn } from "@/modules/platform/statutory/engine/versions";
+import { planApproval, planVoid, versionOn } from "@/modules/platform/statutory/engine/versions";
 import { payrollPolicySchema, type PayrollPolicyValue } from "./enums";
+import { ruleVersionRefusal } from "./version-use";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PayrollPolicyRow = typeof schema.payrollPolicy.$inferSelect;
@@ -75,6 +76,29 @@ export async function decidePolicy(id: string, decision: "approve" | "reject", a
     if (plan.kind === "rejected") throw new ActionError(`rule_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
     const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    return { before, after };
+  });
+  await invalidate(POLICIES_CACHE);
+  return result;
+}
+
+/**
+ * Takes back an approved policy version that was wrong (PAY-13): kept and marked `voided` with the
+ * reason, the version before it runs on for its dates, and a correction is proposed like any other.
+ * Refused while a run that has gone past C&B was calculated under it (`version-use.ts`).
+ */
+export async function voidPolicy(id: string, reason: string, actorPersonId: string): Promise<{ before: PayrollPolicyRow; after: PayrollPolicyRow }> {
+  const result = await db().transaction(async (tx) => {
+    const table = schema.payrollPolicy;
+    const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
+    if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
+    const refusal = await ruleVersionRefusal("policy", id, tx);
+    if (refusal) throw new ActionError(refusal);
+    const approved = await tx.select().from(table).where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const now = new Date();
+    const [after] = await tx.update(table).set({ status: "voided", voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, id)).returning();
+    const plan = planVoid(approved, before);
+    if (plan.kind === "reopen") await tx.update(table).set({ validTo: plan.reopenTo, updatedAt: now }).where(eq(table.id, plan.reopenId));
     return { before, after };
   });
   await invalidate(POLICIES_CACHE);

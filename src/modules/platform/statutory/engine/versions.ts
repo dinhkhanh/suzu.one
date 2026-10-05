@@ -28,3 +28,22 @@ export function planApproval(approved: readonly Version[], validFrom: IsoDate): 
   if (latest.validTo !== null) return validFrom > latest.validTo ? { kind: "first" } : { kind: "rejected", reason: "before_current_version" };
   return { kind: "succeed", closeId: latest.id, closeOn: addDays(validFrom, -1) };
 }
+
+export type VoidPlan =
+  // The version before it takes its dates back, up to where the voided one ended.
+  | { kind: "reopen"; reopenId: string; reopenTo: IsoDate | null }
+  // Nothing came right before it: its dates are simply no longer covered.
+  | { kind: "gap" };
+
+/**
+ * What voiding an approved version does to the approved versions around it (PAY-13). A wrong
+ * version is taken back as if it had never been approved: the version it took over from — the one
+ * that ended the day before it began — runs on again for its dates. Nothing else moves: a later
+ * version keeps its own start, and a correction is then proposed and approved over the dates like
+ * any other version (`planApproval` no longer sees the voided one).
+ */
+export function planVoid(approved: readonly Version[], voided: Version): VoidPlan {
+  const dayBefore = addDays(voided.validFrom, -1);
+  const previous = approved.find((version) => version.id !== voided.id && version.validTo === dayBefore);
+  return previous ? { kind: "reopen", reopenId: previous.id, reopenTo: voided.validTo } : { kind: "gap" };
+}

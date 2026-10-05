@@ -25,7 +25,7 @@ import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService } from "./calculation";
+import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService, splitByProbation } from "./calculation";
 import { DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
 import { payComponentSeedRows } from "./seed-components";
@@ -283,6 +283,34 @@ describe("splitting a month into segments", () => {
     expect(dayWeight({ ...base, requiredMinutes: 0, workedMinutes: 480 })).toEqual({ standardDays: 0, paidDaysCenti: 0, unpaidDaysCenti: 0 });
     // A paid holiday is a day the month asked for and paid in full.
     expect(dayWeight({ ...base, requiredMinutes: 0, holidayMinutes: 480 })).toEqual({ standardDays: 1, paidDaysCenti: 100, unpaidDaysCenti: 0 });
+  });
+
+  // FR-PAY-05: a structure with a probation share is cut where the probation contract ends.
+  const onProbation = (validFrom: string, percent: number) => ({ ...structure(validFrom, null, 20_000_000), terms: { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: percent } }) as unknown as Structure;
+
+  it("cuts the month where probation ends, and marks only the days on probation", () => {
+    const segments = buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }]);
+    expect(segments.map((segment) => [segment.from, segment.to, segment.probationPercent ?? null])).toEqual([
+      ["2026-08-01", "2026-08-14", 85],
+      ["2026-08-15", "2026-08-31", null],
+    ]);
+    expect(segments.reduce((sum, segment) => sum + segment.paidDaysCenti, 0)).toBe(2200);
+  });
+
+  it("leaves a month alone when no probation contract covers it, or the terms carry no share", () => {
+    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-05-01", end: "2026-06-30" }]).map((segment) => segment.probationPercent ?? null)).toEqual([null]);
+    expect(buildSegments([structure("2026-07-15", null, 20_000_000)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }])).toHaveLength(1);
+    // A probation still running covers the whole month.
+    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: null }]).map((segment) => [segment.from, segment.to, segment.probationPercent])).toEqual([["2026-08-01", "2026-08-31", 85]]);
+  });
+
+  it("finds every piece of a month cut by probation more than once", () => {
+    expect(splitByProbation("2026-08-01", "2026-08-31", [{ start: "2026-08-05", end: "2026-08-10" }, { start: "2026-08-20", end: null }])).toEqual([
+      { from: "2026-08-01", to: "2026-08-04", onProbation: false },
+      { from: "2026-08-05", to: "2026-08-10", onProbation: true },
+      { from: "2026-08-11", to: "2026-08-19", onProbation: false },
+      { from: "2026-08-20", to: "2026-08-31", onProbation: true },
+    ]);
   });
 
   it("gives an empty structure rather than nothing when a person has no pay terms", () => {

@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { can } from "../rbac/policy";
-import { decideParameter, proposeParameter, verifyParameter } from "./service";
+import { decideParameter, proposeParameter, verifyParameter, voidParameter } from "./service";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const text = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable().default(null));
@@ -50,4 +50,20 @@ const decidePipeline = createAction({
 
 export async function decideParameterAction(input: unknown) {
   return decidePipeline(input);
+}
+
+const voidPipeline = createAction({
+  name: "statutory_parameter.void",
+  input: z.object({ id: z.uuid(), reason: z.string().trim().min(3).max(500) }),
+  // A wrong version is taken back by whoever may approve one: the owner (SRS D17, PAY-13).
+  authorize: (user) => can(user.principal, "payroll:rules", {}),
+  run: async ({ user, input }) => {
+    const { before, after } = await voidParameter(input.id, input.reason, user.person.id);
+    revalidatePath("/admin/rules");
+    return { data: { id: after.id }, audit: { resource: { type: "statutory_parameter", id: after.id }, summary: `void ${after.key} from ${after.validFrom}: ${input.reason}`, before, after } };
+  },
+});
+
+export async function voidParameterAction(input: unknown) {
+  return voidPipeline(input);
 }

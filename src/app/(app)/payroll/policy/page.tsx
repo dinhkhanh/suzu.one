@@ -11,7 +11,9 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { versionOn } from "@/modules/platform/statutory/engine/versions";
 import { listEntityOptions } from "@/modules/payroll/options";
 import { listPolicyVersions } from "@/modules/payroll/policies";
-import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
+import { canDecidePayRules, canProposePayRules, canReadPayRules, canVoidPayRule } from "@/modules/payroll/policy";
+import { voidPolicyAction } from "@/modules/payroll/rule-actions";
+import { VoidVersionButton } from "@/modules/platform/statutory/ui/void-version";
 import { ProposePolicyForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -60,8 +62,10 @@ export default async function PayPolicyPage() {
                   ))}
                 </dl>
                 {version.note ? <span className="text-muted-foreground">{version.note}</span> : null}
+                {version.status === "voided" ? <span className="text-muted-foreground">{t("rules.voided.because", { reason: version.voidReason ?? "—" })}</span> : null}
               </div>
               {version.status === "proposed" && canDecidePayRules(user.principal) ? <RuleDecisionButtons id={version.id} kind="policy" /> : null}
+              {version.status === "approved" && canVoidPayRule(user.principal) ? <VoidVersionButton action={voidPolicyAction} id={version.id} title={`${version.entityId ? entityCode.get(version.entityId) : t("policy.groupWide")} — ${day(version.validFrom)}`} errorNamespace="payroll.errors" /> : null}
             </ListItem>
           ))}
         </List>

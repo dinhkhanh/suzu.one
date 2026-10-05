@@ -1,0 +1,30 @@
+{
+  "name": "Probation ends on the 14th: 85% of the position's salary before, the whole after",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-05", "FR-PAY-16"],
+  "derivation": [
+    "The structure holds the position's salary, 20,000,000, and a probation share of 85%; the probation contract covers 1-14 August 2026, so the month has two segments: 1-14 (10 working days, on probation) and 15-31 (12 working days), 22 in all, every one paid.",
+    "On probation days the month's figure is 85% of the position's: 20,000,000 x 85 / 100 = 17,000,000.",
+    "Each segment is pro-rated on its own and rounded on its own:",
+    "  segment 1: 17,000,000 x 1000 / 2200 = 7,727,272.72... -> 7,727,273",
+    "  segment 2: 20,000,000 x 1200 / 2200 = 10,909,090.90... -> 10,909,091",
+    "  BASE = 18,636,364.",
+    "The insurance base follows the terms in force at the end of the period (rule last_segment): 20,000,000. Employee insurance 1,600,000 + 300,000 + 200,000 = 2,100,000.",
+    "Gross = taxable income = 18,636,364.",
+    "Assessable = 18,636,364 - 2,100,000 - 15,500,000 = 1,036,364; PIT = 5% = 51,818.2 -> 51,818.",
+    "Net = 18,636,364 - 2,100,000 - 51,818 = 16,484,546."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-14", "standardDays": 10, "paidDaysCenti": 1000, "probationPercent": 85, "terms": { "baseSalary": 20000000, "insuranceSalary": 20000000, "allowances": [], "probationPercent": 85 } },
+    { "from": "2026-08-15", "to": "2026-08-31", "standardDays": 12, "paidDaysCenti": 1200, "terms": { "baseSalary": 20000000, "insuranceSalary": 20000000, "allowances": [], "probationPercent": 85 } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 18636364, "PIT": 51818 },
+    "totals": { "grossEarnings": 18636364, "taxableIncome": 18636364, "employeeInsurance": 2100000, "pit": 51818, "net": 16484546 },
+    "insurance": { "covered": true, "bhxhBhytBase": 20000000 },
+    "pit": { "assessableIncome": 1036364, "tax": 51818 }
+  }
+}

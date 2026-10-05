@@ -12,15 +12,29 @@ import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, tim
 import { employment } from "../core-hr/schema";
 import { entity, entityBankAccount } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import { registerParameterVoidGuard } from "../platform/statutory/void-guards";
 import type { BonusSchemeValue, PayrollPolicyValue } from "./enums";
+
+// A statutory value a payroll run was paid with is never voided (PAY-13): the store is the
+// platform's, so payroll registers its guard beside its tables, which every database access loads;
+// the guard's code loads the first time a value is voided.
+registerParameterVoidGuard("payroll.runs", () => import("./version-use").then((module) => module.parameterVoidGuard));
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
-// Propose → the owner decides (FR-PLT-39, SRS D17), like `statutory_parameter`.
-export const payRuleStatus = pgEnum("pay_rule_status", ["proposed", "approved", "rejected"]);
+// Propose → the owner decides (FR-PLT-39, SRS D17), like `statutory_parameter`. An approved version
+// found to be wrong is `voided` (PAY-13): kept, with who voided it and why, but no longer in force.
+export const payRuleStatus = pgEnum("pay_rule_status", ["proposed", "approved", "rejected", "voided"]);
+
+/** Who took a wrong approved version back, when, and why. Never cleared: a void is not undone. */
+const voiding = {
+  voidedAt: timestamp("voided_at", { withTimezone: true }),
+  voidedByPersonId: uuid("voided_by_person_id").references(() => person.id),
+  voidReason: text("void_reason"),
+};
 
 const governance = {
   status: payRuleStatus("status").notNull().default("proposed"),
@@ -28,6 +42,7 @@ const governance = {
   proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
   decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
+  ...voiding,
 };
 
 // ── Pay profiles (SRS D18, FR-PAY-07, FR-PAY-08) ────────────────────────────────────────────
@@ -68,6 +83,8 @@ export const payProfile = pgTable(
     validFrom: date("valid_from").notNull(),
     // Last day, inclusive. null = open-ended.
     validTo: date("valid_to"),
+    /** Set when the profile came in with a spreadsheet (PAY-14): what "approve the import" approves. */
+    importBatchId: uuid("import_batch_id"),
     ...governance,
     ...timestamps,
   },
@@ -166,8 +183,8 @@ export const payrollPolicy = pgTable(
 
 export const salaryChangeReason = pgEnum("salary_change_reason", ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal", "decrease"]);
 
-// Effective-dated; one employment's structures never overlap. Every row comes out of an approved
-// `salary_change` request. `terms_enc` = { baseSalary, insuranceSalary, allowances: [{ code, amount }] }
+// Effective-dated; one employment's structures in force never overlap. Every row comes out of an
+// approved `salary_change` request; a wrong one is voided (`voided_at`, PAY-13) and stops counting. `terms_enc` = { baseSalary, insuranceSalary, allowances: [{ code, amount }] }
 // encrypted with context "salary_structure.terms:<id>".
 export const salaryStructure = pgTable(
   "salary_structure",
@@ -192,6 +209,7 @@ export const salaryStructure = pgTable(
     decisionNumber: text("decision_number"),
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...voiding,
     ...timestamps,
   },
   (t) => [
@@ -686,6 +704,32 @@ export const payrollParallelFinding = pgTable(
   (t) => [uniqueIndex("payroll_parallel_finding_key").on(t.entityId, t.month, t.personId, t.field), index("payroll_parallel_finding_month_idx").on(t.entityId, t.month)],
 ).enableRLS();
 
+// The record that a month's reconciliation was looked at and accepted (FR-PAY-38): who, when, what
+// they said, and the counts it was accepted on. Counts and words only — never a figure. Appended,
+// never edited: a second sign-off after a recalculation is a new row beside the first.
+export const payrollParallelSignoff = pgTable(
+  "payroll_parallel_signoff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    /** People compared, people matching, and the differences explained — what was accepted. */
+    people: integer("people").notNull(),
+    matching: integer("matching").notNull(),
+    explainedLines: integer("explained_lines").notNull(),
+    /** Who on the existing method's side the figures were checked with (the chief accountant). */
+    checkedWith: text("checked_with"),
+    note: text("note"),
+    signedByPersonId: uuid("signed_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payroll_parallel_signoff_month_idx").on(t.entityId, t.month, t.signedAt), check("payroll_parallel_signoff_month_check", sql`${t.month} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`)],
+).enableRLS();
+
 // ── The performance-driven year-end bonus (FR-PAY-21, SRS D13 — Phase 8 week 3) ─────────────
 //
 // The bonus lives here, in payroll, and not in the performance module: the amount is compensation
@@ -748,8 +792,9 @@ export const bonusRun = pgTable(
   },
   (t) => [
     index("bonus_run_year_idx").on(t.year, t.status),
-    // One live run per year: a year is paid once, and a run that went wrong is cancelled.
-    uniqueIndex("bonus_run_year_key").on(t.year).where(sql`${t.status} <> 'cancelled'`),
+    // A year may pay more than one bonus (a Tết bonus beside the year-end one, PAY-11); two live
+    // runs of one year are told apart by their names. A run that went wrong is cancelled.
+    uniqueIndex("bonus_run_year_name_key").on(t.year, t.name).where(sql`${t.status} <> 'cancelled'`),
     check("bonus_run_month_check", sql`${t.payrollMonth} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
   ],
 ).enableRLS();
