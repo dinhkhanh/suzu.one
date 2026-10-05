@@ -26,6 +26,7 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { listAnomalies } from "./anomalies";
 import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
+import { buildLockedMonthExport } from "./exports";
 import { eachDate, isoWeekday } from "./engine/calendar";
 import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
 import { declaredOffSiteLocations } from "./request-inputs";
@@ -259,6 +260,19 @@ describe("what payroll reads", () => {
     expect(nhu).toMatchObject({ standardDays: 26, paidDaysCenti: 2600, workedMinutes: 21 * 480, overtime: { weekday: { day: 180, night: 0 }, totalMinutes: 180, payableMinutes: 180 } });
     // Leave speaks the same units: days in hundredths, by entity and date range. Nobody took leave here.
     expect(await getLeaveUsage({ entityId: ids.media }, "2026-08-01", "2026-08-31")).toEqual([]);
+  });
+
+  it("exports the locked month as a file in the lock's own figures, and nothing before the lock (ATT-02)", async () => {
+    const file = await buildLockedMonthExport(ids.media, MONTH, "en");
+    expect(file).toMatchObject({ fileName: "timesheet-SZM-2026-08.csv", rowCount: 3, truncated: false });
+    const [header, ...lines] = file.csv.replace(/^﻿/, "").trim().split("\r\n");
+    expect(header.split(",").slice(0, 6)).toEqual(["Employee code", "Full name", "Standard days", "Paid days", "Unpaid days", "Hours worked"]);
+    const huy = lines.find((line) => line.startsWith("SZM-0003,Huy,"))!.split(",");
+    // Huy's August, as payroll reads it: 26 days asked and paid, 160 h in the office, 48 h credited;
+    // 2 h weekday overtime taken as time off, 4 h on a Sunday to be paid.
+    expect(huy.slice(2, 7)).toEqual(["26", "26", "0", "160", "48"]);
+    expect(huy.slice(-8)).toEqual(["2", "0", "4", "0", "0", "0", "2", "4"]);
+    await expect(buildLockedMonthExport(ids.media, "2026-07", "vi")).rejects.toThrow("timesheet_not_locked");
   });
 
   it("an adjustment to a locked month never edits it and reaches the next payroll as a retro item — once", async () => {

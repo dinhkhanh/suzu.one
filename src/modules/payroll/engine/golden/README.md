@@ -40,8 +40,9 @@ file says only what makes its case different:
 | `profile` | statutory, resident, progressive PIT, no exemption, not a union member |
 | `employment` | no dependants, 12 months of service, employed all month |
 | `wageRegion` | I |
-| statutory values | `STATUTORY_SEED` as at the end of the month |
-| components | the 30 starter components of `seed-components.ts` |
+| statutory values | `STATUTORY_SEED` as at the end of the month; `statutory` overrides one by its key (`"overtime.holiday_pay"`) |
+| components | the starter components of `seed-components.ts` |
+| `leavePayout` | none — a leaver's unused days, the basis month's terms and its working days |
 
 `monthStandardDays` is the working days the **month** asks of a full-time person — the divisor. It
 is deliberately separate from the person's own `timesheet.standardDays`, which is smaller for a

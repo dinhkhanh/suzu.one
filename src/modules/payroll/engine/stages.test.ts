@@ -365,3 +365,55 @@ describe("the whole calculation", () => {
     expect(cheaper.totals.pit).toBeLessThan(calculatePerson(personInput()).totals.pit);
   });
 });
+
+describe("unused leave paid out on leaving (FR-LVE-03, FR-PAY-18)", () => {
+  // July's terms: base 26,000,000, an insurable responsibility allowance and an uninsured meal allowance.
+  const terms = { baseSalary: 26_000_000, insuranceSalary: 26_000_000, allowances: [{ code: "ALW_RESPONSIBILITY", amount: 2_600_000 }, { code: "ALW_MEAL", amount: 1_300_000 }] };
+  const leaver = (overrides: Partial<PersonPayInput> = {}) =>
+    personInput({ employment: { startDate: null, endDate: "2026-08-14", dependents: 0, serviceMonths: 40, kpiScoreBp: 0 }, leavePayout: { daysCenti: 200, basisMonth: "2026-07", terms, workingDays: 26 }, ...overrides });
+  const payoutOf = (result: ReturnType<typeof calculatePerson>) => result.lines.find((line) => line.code === "LEAVE_PAYOUT");
+
+  it("prices a day on the basis month's salary under `leave.payout_basis`, divided by that month's working days", () => {
+    // Seeded basis: base plus the allowances that count towards the insurance base = 28,600,000; × 2 days ÷ 26.
+    expect(payoutOf(calculatePerson(leaver()))).toMatchObject({ kind: "earning", amount: 2_200_000, rule: "leave_payout_day_rate", insurable: 0, taxable: 2_200_000, inputs: { daysCenti: 200, monthlySalary: 28_600_000, workingDays: 26 } });
+    const basis = (salary: "base" | "base_plus_allowances") => payoutOf(calculatePerson(leaver({ statutory: { ...STATUTORY, leavePayoutBasis: { salary } } })))?.amount;
+    expect(basis("base")).toBe(2_000_000);
+    expect(basis("base_plus_allowances")).toBe(2_300_000);
+  });
+
+  it("names the leaver so the rest of the final settlement is typed in, and only on a regular run", () => {
+    expect(calculatePerson(leaver()).warnings).toEqual(["leaves_in_period"]);
+    expect(calculatePerson(personInput()).warnings).not.toContain("leaves_in_period");
+  });
+
+  it("refuses to drop owed days in silence: no payout component, or nothing to price them on", () => {
+    const withoutPayout = COMPONENTS.filter((component) => component.code !== "LEAVE_PAYOUT");
+    const missing = calculatePerson(leaver({ components: withoutPayout }));
+    expect(payoutOf(missing)).toBeUndefined();
+    expect(missing.warnings).toContain("leave_payout_component_missing");
+    const unpriced = calculatePerson(leaver({ leavePayout: { daysCenti: 200, basisMonth: "2026-07", terms, workingDays: 0 } }));
+    expect(payoutOf(unpriced)).toBeUndefined();
+    expect(unpriced.warnings).toContain("leave_payout_unpriced");
+  });
+
+  it("pays nothing on an off-cycle run: the leaver's regular run settles the leave", () => {
+    const offCycle = calculatePerson(leaver({ runKind: "off_cycle", inputs: [{ code: "BONUS", amount: 1_000_000 }] }));
+    expect(payoutOf(offCycle)).toBeUndefined();
+    expect(offCycle.warnings).toEqual([]);
+  });
+});
+
+describe("holiday work and SRS Q13 (`overtime.holiday_pay`)", () => {
+  const holiday = (mode: "in_addition" | "inclusive") =>
+    calculatePerson(personInput({ timesheet: { ...personInput().timesheet, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 480, night: 0 }, holiday: { day: 480, night: 0 } } }, statutory: { ...STATUTORY, overtimeHolidayPay: { mode } } }));
+  const line = (result: ReturnType<typeof calculatePerson>, code: string) => result.lines.find((candidate) => candidate.code === code)!;
+
+  it("pays the holiday multiplier on top of the salary by default, and the multiplier less 100% when it is read as inclusive", () => {
+    // Hourly rate 30,000,000 / (22 × 8) = 170,455; 8 hours at 300% or 200%.
+    expect(STATUTORY.overtimeHolidayPay.mode).toBe("in_addition");
+    expect(line(holiday("in_addition"), "OT_HOLIDAY").amount).toBe(4_090_920);
+    expect(line(holiday("inclusive"), "OT_HOLIDAY")).toMatchObject({ amount: 2_727_280, rule: "overtime_multiplier_holiday_inclusive" });
+    // Rest-day work is not a holiday: the answer to Q13 does not touch it.
+    expect(line(holiday("inclusive"), "OT_REST_DAY").amount).toBe(line(holiday("in_addition"), "OT_REST_DAY").amount);
+  });
+});

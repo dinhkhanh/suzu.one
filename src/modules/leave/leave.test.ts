@@ -24,7 +24,7 @@ import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { getTeamCalendar } from "./calendar";
 import { commitOpeningRows, resolveOpeningRows } from "./import";
-import { adjustBalance, getBalances, getLedger, listPayouts, postCompensatoryLeave, runLeaveAccruals } from "./ledger";
+import { adjustBalance, getBalances, getLedger, listPayouts, listPayoutTotals, postCompensatoryLeave, runLeaveAccruals } from "./ledger";
 import { amendLeave, cancelLeave, decideLeave, getLeaveOnDays, getLeaveRequestView, getLeaveUsage, type LeaveInput, listLeaveRequestsOf, previewLeave, submitLeave } from "./requests";
 import { leaveSeedRows } from "./seed-types";
 import { saveLeavePolicy, saveStaffingRule } from "./types";
@@ -114,6 +114,10 @@ describe("the ledger job", () => {
     expect(ledger.find((row) => row.kind === "payout")).toMatchObject({ amountCenti: -800, effectiveDate: "2026-08-31" });
     expect((await balance(ids.leaver)).balanceCenti).toBe(0);
     expect(await listPayouts(ids.media, "2026-08-01", "2026-08-31")).toEqual([expect.objectContaining({ personId: ids.leaver, typeCode: "ANNUAL", daysCenti: 800 })]);
+    // What the run of the month pays, one total per person — and nothing "posted since" a later moment.
+    expect(await listPayoutTotals(ids.media, "2026-08-01", "2026-08-31")).toEqual([{ personId: ids.leaver, daysCenti: 800, postedAt: expect.any(Date) }]);
+    expect(await listPayoutTotals(ids.media, "2026-08-01", "2026-08-31", undefined, { postedAfter: new Date(Date.now() + 60_000) })).toEqual([]);
+    expect(await listPayoutTotals(ids.media, "2026-09-01", "2026-09-30")).toEqual([]);
   });
 
   it("leaves out the months an imported opening balance already contains", async () => {

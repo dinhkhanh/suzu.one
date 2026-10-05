@@ -13,6 +13,7 @@ import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
+import { UNPAID_FIGURE_WARNINGS } from "@/modules/payroll/engine/types";
 import { RUN_STEPS, type RunStep } from "@/modules/payroll/lifecycle";
 import { canApprovePayroll, canManageCompensation, canPayPayroll } from "@/modules/payroll/policy";
 import { getRunView } from "@/modules/payroll/run-views";
@@ -27,8 +28,8 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("payrollRun");
 
 const SERIOUS = new Set(["negative_net", "missing_bank_account", "missing_tax_code"]);
-// The engine's own warnings that mean "a figure somebody entered was not paid".
-const UNPAID = new Set(["input_code_unknown", "input_negative", "retro_component_missing"]);
+// The engine's own warnings that mean "a figure owed or entered was not paid".
+const UNPAID = new Set<string>(UNPAID_FIGURE_WARNINGS);
 
 export default async function PayrollRunPage({ params }: PageProps<"/payroll/runs/[runId]">) {
   const user = await requireUser();

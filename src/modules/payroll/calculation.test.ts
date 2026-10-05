@@ -25,7 +25,8 @@ import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService } from "./calculation";
+import type { DayPlan } from "@/modules/attendance/service";
+import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService, normalWorkingDays } from "./calculation";
 import { DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
 import { payComponentSeedRows } from "./seed-components";
@@ -300,5 +301,12 @@ describe("months of service", () => {
     expect(monthsOfService(null, "2026-08-31")).toBe(0);
     // The day of the month has not come round yet.
     expect(monthsOfService("2025-08-20", "2026-08-19")).toBe(11);
+  });
+});
+
+describe("the normal working days a leaver's unused leave is divided by", () => {
+  const plan = (kind: DayPlan["kind"], baseline: DayPlan["kind"] = kind) => ({ kind, baseline: { kind: baseline } }) as DayPlan;
+  it("counts working and untracked days and the holidays that fell on one, as the lock counts standard days", () => {
+    expect(normalWorkingDays([plan("working"), plan("untracked"), plan("holiday", "working"), plan("company_off", "untracked"), plan("holiday", "rest"), plan("rest"), plan("unscheduled")])).toBe(4);
   });
 });

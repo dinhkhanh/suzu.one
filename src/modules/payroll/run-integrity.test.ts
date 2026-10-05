@@ -40,7 +40,7 @@ import { getPayslipView, listMyPayslips, publishPayslips } from "./payslips";
 import { addRetroItem, ALL_MONTHS, deriveRetroItems, enterRetroItem, getRetroItem, listRetroItems, listUnpricedAdjustments, refreshRetroItems, withdrawRetroItem } from "./retro";
 import { getRunReadiness } from "./run-readiness";
 import { findRunPerson, getRetroScreen, getRunView, openRunPerson } from "./run-views";
-import { calculateRun, cancelRun, createOffCycleRun, createRegularRun, getRun as loadRun, listRunInputs, removeRunInput, setRunInput } from "./runs";
+import { calculateRun, cancelRun, createOffCycleRun, createRegularRun, getRun as loadRun, getRunPerson, listRunInputs, removeRunInput, setRunInput } from "./runs";
 import { payComponentSeedRows } from "./seed-components";
 
 const shared = {} as Record<"actor" | "department", string>;
@@ -728,5 +728,59 @@ describe("C&B read a calculation before proposing it (PAY-12)", () => {
     expect(ceo.people.every((person) => person.result === null && person.inputs.length === 0)).toBe(true);
     expect(ceo.retro).toBeNull();
     expect(await getRunView(grantee("payroll", crypto.randomUUID()), runId)).toBeNull();
+  });
+});
+
+describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () => {
+  let entityId = "";
+  let khoa = "";
+  let annualLeave = "";
+
+  /** What the daily leave job posts the day after the last day: the unused days, as a negative `payout` row. */
+  const postPayout = async (daysCenti: number, createdAt?: Date) =>
+    db()
+      .insert(schema.leaveLedgerEntry)
+      .values({ personId: khoa, entityId, leaveTypeId: annualLeave, leaveYear: 2026, kind: "payout", amountCenti: -daysCenti, effectiveDate: "2026-09-18", reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc", ...(createdAt ? { createdAt } : {}) });
+
+  beforeAll(async () => {
+    ({
+      entityId,
+      people: [khoa],
+    } = await company("SZL", ["Pham Van Khoa"]));
+    await db().update(schema.employment).set({ endDate: "2026-09-18" }).where(eq(schema.employment.personId, khoa));
+    // The default week of SRS D15: office Monday–Friday, Saturday a working day from home. August 2026 asks 26 days of it.
+    const office = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
+    await db().insert(schema.workSchedule).values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } }, entityId: null, isDefault: true });
+    const [type] = await db().insert(schema.leaveType).values({ entityId: null, code: "ANNUAL", name: "Phép năm", category: "annual", isPaid: true, payrollTreatment: "paid_company", tracksBalance: true }).returning();
+    annualLeave = type.id;
+    await lockMonth(entityId, "2026-09", [khoa]);
+  });
+
+  it("names the leaver for the rest of the settlement, without stopping the run", async () => {
+    const run = await calculated(entityId, "2026-09");
+    expect((await linesOf(run.id, khoa)).warnings).toContain("leaves_in_period");
+    const readiness = await getRunReadiness(run);
+    expect(readiness.warnings).toContainEqual({ kind: "final_settlement", personId: khoa });
+    expect(readiness.blockers).toEqual([]);
+    expect(readiness.stale).toEqual([]);
+  });
+
+  it("goes stale when the leave job pays out after the calculation, and pays the days at the month-before day rate once recalculated", async () => {
+    const [run] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09")));
+    // Posted just after the calculation, as the morning job would.
+    await postPayout(250, new Date(run.calculatedAt!.getTime() + 1));
+    expect((await getRunReadiness(run)).stale).toEqual(["leave_payout_posted"]);
+    await expect(stepRun(run.id, "propose", { personId: shared.actor })).rejects.toThrow("run_stale");
+
+    const again = await calculateRun(run.id);
+    const { result } = (await getRunPerson(run.id, khoa))!;
+    // August's salary under the contract (30,000,000, no allowances) ÷ August's 26 working days × 2.5 days.
+    expect(result.lines.find((line) => line.code === "LEAVE_PAYOUT")).toMatchObject({ kind: "earning", amount: 2_884_615, rule: "leave_payout_day_rate", inputs: { daysCenti: 250, monthlySalary: 30_000_000, workingDays: 26 } });
+    expect(result.trace).toContainEqual(expect.objectContaining({ stage: "leave_payout", detail: expect.objectContaining({ basisMonth: "2026-08", salaryBasis: "base_plus_insurable_allowances" }) }));
+    expect(result.totals.grossEarnings).toBe(30_000_000 + 2_884_615);
+    // The calculation after the posting is up to date again.
+    const readiness = await getRunReadiness(again.run);
+    expect(readiness.stale).toEqual([]);
+    expect(readiness.blockers).toEqual([]);
   });
 });
