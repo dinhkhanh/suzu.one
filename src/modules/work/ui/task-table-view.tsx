@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { type ColumnKind, Table, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type ColumnKind, Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
 import { type CustomFieldType, type CustomValue, customKey } from "../engine/custom-fields";
 import { filterTasks, type ListSort, readSort, sortTasks, type TaskFilters } from "../engine/filter";
@@ -22,6 +22,7 @@ import { handoffOf, useHandoffGate } from "./handoff";
 import { CustomValueInput, type FieldView } from "./custom-fields";
 import { ArrowUpDownIcon } from "lucide-react";
 import { FilterBar, MenuPicker, useUrlFilters, writeFiltersToUrl } from "./filter-bar";
+import { QuickCreate, type TaskScope } from "./quick-create";
 import { type ListOptions, type ListTask, sortChoices } from "./task-list-view";
 import { StateBadge } from "./status-badge";
 import { LabelChip } from "./team-forms";
@@ -48,9 +49,12 @@ export function TaskTableView({
   today,
   canContribute,
   logged,
+  scope,
 }: {
   tasks: ListTask[];
   options: ListOptions;
+  /** Where the table's "new task" row files a task; without it the table has none (a list across several places). */
+  scope?: TaskScope;
   initialFilters: TaskFilters;
   initialSort?: ListSort;
   selfId: string;
@@ -294,6 +298,12 @@ export function TaskTableView({
           </TableRow>
         </TableFooter>
       </Table>
+        {scope && canContribute ? (
+          // Created inside the filters in force, as on the list, so the new row does not vanish on arrival.
+          <TableAddRow label={tList("newTask")} bodyClassName="border-t bg-background px-3 py-2 md:pl-[calc(var(--table-gutter)+0.75rem)]">
+            <QuickCreate scope={scope} defaults={{ stateId: options.states.find((row) => row.id === filters.state && row.isActive)?.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+          </TableAddRow>
+        ) : null}
       </TableCard>
     </div>
   );

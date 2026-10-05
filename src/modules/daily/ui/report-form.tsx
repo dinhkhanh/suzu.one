@@ -24,6 +24,7 @@ type Candidate = { taskId: string; key: string; title: string; dueDate: string |
 
 export function ReportForm({
   date,
+  past = false,
   draft,
   candidates,
   tomorrow,
@@ -33,6 +34,8 @@ export function ReportForm({
   notesDraft,
 }: {
   date: string;
+  /** The report is for a day before today: the form says "that day" and "the next working day", not "today" and "tomorrow". */
+  past?: boolean;
   draft: { done: DailyTaskLine[]; notDone: DailyTaskLine[]; activity: ActivityItem[]; minutesLogged: number };
   candidates: Candidate[];
   tomorrow: string[];
@@ -73,21 +76,21 @@ export function ReportForm({
   return (
     <div className="flex flex-col gap-6 md:gap-8">
       <Section title={t("report.done", { count: draft.done.length })}>
-        <TaskLines lines={draft.done} empty={t("report.noneDone")} />
+        <TaskLines lines={draft.done} empty={t(past ? "report.noneDonePast" : "report.noneDone")} />
       </Section>
       <Section title={t("report.notDone", { count: draft.notDone.length })}>
         <TaskLines lines={draft.notDone} empty={t("report.allPlannedDone")} />
       </Section>
-      {timeRequired && draft.minutesLogged === 0 ? <Alert variant="warning">{t("report.noTimeLogged")}</Alert> : null}
+      {timeRequired && draft.minutesLogged === 0 ? <Alert variant="warning">{t(past ? "report.noTimeLoggedPast" : "report.noTimeLogged")}</Alert> : null}
       <details className="group/activity rounded-[14px] border border-border bg-background" open={timeRequired && draft.minutesLogged === 0}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
-            {t("report.activity", { count: draft.activity.length })} <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">· {t("hours", { value: hoursOf(draft.minutesLogged) })}</span>
+            {t(past ? "report.activityPast" : "report.activity", { count: draft.activity.length })} <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">· {t("hours", { value: hoursOf(draft.minutesLogged) })}</span>
           </span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/activity:rotate-180" />
         </summary>
         <div className="flex flex-col gap-3 border-t px-4 py-3">
-          <ActivityList items={draft.activity} />
+          <ActivityList items={draft.activity} past={past} />
           <QuickLog date={date} tasks={candidates.map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: task.billable }))} />
         </div>
       </details>
@@ -99,7 +102,7 @@ export function ReportForm({
         <NoteEditor id="notes" draft={`daily-report:${date}:notes`} value={notes} onChange={setNotes} maxLength={2000} placeholder={t("report.notesPlaceholder")} />
       </Section>
 
-      <Section title={t("report.tomorrow", { count: picked.length })}>
+      <Section title={t(past ? "report.tomorrowPast" : "report.tomorrow", { count: picked.length })}>
         <List>
           {candidates.length === 0 ? <ListEmpty>{t("plan.noMoreWork")}</ListEmpty> : null}
           {shown.map((task, index) => (

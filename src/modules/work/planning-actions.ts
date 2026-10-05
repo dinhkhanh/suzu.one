@@ -5,14 +5,15 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
+import { DAY_OFF_MODES } from "./engine/recurrence";
 import { VISIBILITIES } from "./enums";
 import { nudgeTask } from "./leader";
-import { canContributeToProject, canCreateProject, canManageTemplate, canNudgeTask } from "./policy";
+import { canContributeToProject, canContributeToTeam, canCreateProject, canManageTemplate, canNudgeTask } from "./policy";
 import { findProject, projectFacts } from "./projects";
-import { changeRecurrence, createRecurrence, findRecurrence } from "./recurrences";
+import { changeRecurrence, createRecurrence, findRecurrence, updateRecurrence } from "./recurrences";
 import { loadTask } from "./tasks";
 import { findTeam, teamFacts } from "./teams";
-import { addWorkTemplateItem, applyTemplate, createProjectFromTemplate, findWorkTemplate, findWorkTemplateItem, removeWorkTemplateItem, saveWorkTemplate, WORK_TEMPLATE_PURPOSES } from "./templates";
+import { addWorkTemplateItem, applyTemplate, createProjectFromTemplate, findWorkTemplate, findWorkTemplateItem, removeWorkTemplateItem, saveWorkTemplate, updateWorkTemplateItem, WORK_TEMPLATE_PURPOSES } from "./templates";
 import { loadViewer } from "./viewer";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -81,6 +82,35 @@ export async function addWorkTemplateItemAction(input: unknown) {
   return addItemPipeline(input);
 }
 
+const updateItemPipeline = createAction({
+  name: "work.template.item.update",
+  input: z.object({
+    itemId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+    parentItemId: optional(z.uuid()),
+    roleKey: optional(z.string().trim().toLowerCase().regex(ROLE_KEY)),
+    dueOffsetDays: z.coerce.number().int().min(-365).max(365),
+    estimateHours: optional(z.coerce.number().min(0.25).max(1000)),
+    // Sent only when the form's checklist was changed: "" clears it, an id sets it; absent leaves the step's own.
+    checklistId: z.preprocess(blankToNull, z.uuid().nullable()).optional(),
+  }),
+  authorize: async (user, input) => {
+    const found = await findWorkTemplateItem(input.itemId);
+    if (!found) return false;
+    const owner = await ownerFacts(found.template.ownerId);
+    return owner.ok && canManageTemplate(await loadViewer(user), owner.team);
+  },
+  run: async ({ input }) => {
+    const { itemId, estimateHours, checklistId, ...rest } = input;
+    const { before, after } = await updateWorkTemplateItem(itemId, { ...rest, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60), ...(checklistId === undefined ? {} : { checklistIds: checklistId ? [checklistId] : [] }) });
+    revalidatePath("/work/templates");
+    return { data: { id: after.id }, audit: { resource: { type: "work_template", id: after.templateId }, summary: after.title, before, after } };
+  },
+});
+export async function updateWorkTemplateItemAction(input: unknown) {
+  return updateItemPipeline(input);
+}
+
 const removeItemPipeline = createAction({
   name: "work.template.item.remove",
   input: z.object({ itemId: z.uuid() }),
@@ -147,29 +177,44 @@ const ruleInput = z.discriminatedUnion("freq", [
   z.object({ freq: z.literal("monthly"), interval: z.coerce.number().int().min(1).max(24), monthDay: z.union([z.literal("last"), z.coerce.number().int().min(1).max(31)]) }),
 ]);
 
-const canWorkInProject = async (user: Parameters<typeof loadViewer>[0], projectId: string | null) => {
-  const found = projectId ? await findProject(projectId) : undefined;
-  return !!found && canContributeToProject(await loadViewer(user), projectFacts(found.project, found.team));
+/**
+ * A rule makes tasks, so it is kept by whoever may make tasks where it makes them: in its project,
+ * or — a rule on a team's backlog — in the team (`canContributeToProject`, `canContributeToTeam`).
+ */
+const canKeepRecurrence = async (user: Parameters<typeof loadViewer>[0], where: { projectId: string | null; teamId: string | null }) => {
+  if (where.projectId) {
+    const found = await findProject(where.projectId);
+    return !!found && canContributeToProject(await loadViewer(user), projectFacts(found.project, found.team));
+  }
+  const team = where.teamId ? await findTeam(where.teamId) : undefined;
+  return !!team && canContributeToTeam(await loadViewer(user), teamFacts(team));
 };
+const recurrencePath = (recurrence: { projectId: string | null; teamId: string }) => (recurrence.projectId ? `/work/projects/${recurrence.projectId}` : `/work/teams/${recurrence.teamId}`);
 
 const createRecurrencePipeline = createAction({
   name: "work.recurrence.create",
-  input: z.object({
-    projectId: z.uuid(),
-    title: z.string().trim().min(1).max(200),
-    rule: ruleInput,
-    startDate: isoDate,
-    endDate: optional(isoDate),
-    leadDays: z.coerce.number().int().min(0).max(60).default(7),
-    assigneePersonId: optional(z.uuid()),
-    priority: optional(z.coerce.number().int().min(1).max(4)),
-    description: optional(z.string().trim().max(10000)),
-  }),
-  authorize: (user, input) => canWorkInProject(user, input.projectId),
+  input: z
+    .object({
+      // On a project, or — with a team and no project — on that team's backlog.
+      projectId: optional(z.uuid()),
+      teamId: optional(z.uuid()),
+      title: z.string().trim().min(1).max(200),
+      rule: ruleInput,
+      startDate: isoDate,
+      endDate: optional(isoDate),
+      leadDays: z.coerce.number().int().min(0).max(60).default(7),
+      onDayOff: z.enum(DAY_OFF_MODES).default("shift"),
+      assigneePersonId: optional(z.uuid()),
+      estimateHours: optional(z.coerce.number().min(0.25).max(1000)),
+      priority: optional(z.coerce.number().int().min(1).max(4)),
+      description: optional(z.string().trim().max(10000)),
+    })
+    .refine((input) => !!input.projectId || !!input.teamId, { path: ["teamId"] }),
+  authorize: (user, input) => canKeepRecurrence(user, input),
   run: async ({ user, input }) => {
-    const { assigneePersonId, priority, description, ...rest } = input;
-    const { recurrence, made } = await createRecurrence({ ...rest, draft: { assigneePersonId, priority, description } }, user.person.id, todayInVietnam());
-    revalidatePath(`/work/projects/${input.projectId}`);
+    const { assigneePersonId, estimateHours, priority, description, ...rest } = input;
+    const { recurrence, made } = await createRecurrence({ ...rest, draft: { assigneePersonId, priority, description, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60) } }, user.person.id, todayInVietnam());
+    revalidatePath(recurrencePath(recurrence));
     return { data: { id: recurrence.id, made }, audit: { resource: { type: "work_recurrence", id: recurrence.id }, summary: `${recurrence.title} (${recurrence.rule.freq})`, after: { ...recurrence, made } } };
   },
 });
@@ -177,13 +222,43 @@ export async function createRecurrenceAction(input: unknown) {
   return createRecurrencePipeline(input);
 }
 
+const keepsRecurrence = async (user: Parameters<typeof loadViewer>[0], recurrenceId: string) => {
+  const recurrence = await findRecurrence(recurrenceId);
+  return !!recurrence && canKeepRecurrence(user, recurrence);
+};
+
+const updateRecurrencePipeline = createAction({
+  name: "work.recurrence.update",
+  input: z.object({
+    recurrenceId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+    rule: ruleInput,
+    endDate: optional(isoDate),
+    leadDays: z.coerce.number().int().min(0).max(60),
+    onDayOff: z.enum(DAY_OFF_MODES),
+    assigneePersonId: optional(z.uuid()),
+    estimateHours: optional(z.coerce.number().min(0.25).max(1000)),
+  }),
+  authorize: (user, input) => keepsRecurrence(user, input.recurrenceId),
+  run: async ({ input }) => {
+    const { recurrenceId, estimateHours, ...patch } = input;
+    const { before, after, made } = await updateRecurrence(recurrenceId, { ...patch, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60) }, todayInVietnam());
+    revalidatePath(recurrencePath(after));
+    const shown = (row: typeof after) => ({ title: row.title, rule: row.rule, endDate: row.endDate, leadDays: row.leadDays, onDayOff: row.onDayOff, assigneePersonId: row.draft.assigneePersonId ?? null, estimateMinutes: row.draft.estimateMinutes ?? null });
+    return { data: { id: after.id, made }, audit: { resource: { type: "work_recurrence", id: after.id }, summary: `${after.title} (${after.rule.freq})`, before: shown(before), after: { ...shown(after), made } } };
+  },
+});
+export async function updateRecurrenceAction(input: unknown) {
+  return updateRecurrencePipeline(input);
+}
+
 const changeRecurrencePipeline = createAction({
   name: "work.recurrence.change",
   input: z.object({ recurrenceId: z.uuid(), change: z.enum(["pause", "resume", "end"]) }),
-  authorize: async (user, input) => canWorkInProject(user, (await findRecurrence(input.recurrenceId))?.projectId ?? null),
+  authorize: (user, input) => keepsRecurrence(user, input.recurrenceId),
   run: async ({ input }) => {
     const { before, after } = await changeRecurrence(input.recurrenceId, input.change === "end" ? { endDate: todayInVietnam() } : { isActive: input.change === "resume" });
-    if (after.projectId) revalidatePath(`/work/projects/${after.projectId}`);
+    revalidatePath(recurrencePath(after));
     return { data: { id: after.id }, audit: { resource: { type: "work_recurrence", id: after.id }, summary: `${after.title}: ${input.change}`, before: { isActive: before.isActive, endDate: before.endDate }, after: { isActive: after.isActive, endDate: after.endDate } } };
   },
 });

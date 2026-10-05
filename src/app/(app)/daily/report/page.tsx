@@ -32,7 +32,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
       <PageHeader
         eyebrow={format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long" })}
         title={t("report.title")}
-        description={t("report.prefilledHint")}
+        description={t(isToday ? "report.prefilledHint" : "report.prefilledHintPast")}
         actions={
           <>
             {withinReportWindow(previous, today) ? (
@@ -57,7 +57,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
           {submitted ? (
             <Badge dot variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge>
           ) : !day?.report.required ? (
-            <Badge variant="secondary">{t("report.optional")}</Badge>
+            <Badge variant="secondary">{t(isToday ? "report.optional" : "report.optionalPast")}</Badge>
           ) : isToday ? (
             <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge>
           ) : (
@@ -69,6 +69,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
         // Keyed by its day: stepping to another day starts a new form, not the last one's words.
         key={date}
         date={date}
+        past={!isToday}
         draft={form.draft}
         candidates={form.candidates.map(({ taskId, key, title, dueDate, projectName, projectId }) => ({ taskId, key, title, dueDate, projectName, billable: !!projectId && form.billableProjects.includes(projectId) }))}
         tomorrow={form.tomorrow}

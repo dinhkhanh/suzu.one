@@ -1,22 +1,25 @@
-// Leave cover (FR-PJM-44). Pull, don't push: the leave module never calls work. A job — and the
-// person's own screens, on demand — read leave requests (pending and approved) through the leave
-// module's service; a request of at least the person's `coverMinDays` working days (the daily
-// module's team rules) gets a draft plan listing what falls in the absence. The person names a
-// cover per item or one for all, with a note, and submits: each cover is asked (a `cover` hand-off)
-// and takes the work over on the leave's first day — at once if it has started. After the leave,
-// "hand back" returns it. A leave that is withdrawn, rejected or cancelled cancels a plan that has
-// not started.
+// Leave cover (FR-PJM-44). Pull, don't push: the leave module's service never calls work, and work
+// reads leave requests (pending and approved) through the leave module's service. The read happens
+// (`syncCoverPlans`) the moment a request is filed, amended, decided or called off — the leave
+// actions ask for it once their own change has committed — and again every night, for whatever was
+// missed. A request of at least the person's `coverMinDays` working days (the daily module's team
+// rules) gets a draft plan listing what falls in the absence, and the person is told to name who
+// covers it. They name a cover per item or one for all, with a note, and submit: each cover is
+// asked (a `cover` hand-off) and takes the work over on the leave's first day — at once if it has
+// started. After the leave, "hand back" returns it — by hand; the person and their covers are
+// reminded once, on the person's first working day back. A leave that is withdrawn, rejected or
+// cancelled cancels a plan that has not started.
 import "server-only";
-import { and, asc, eq, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
-import type { IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type LeaveCoverFact, listLeaveForCover } from "../leave/service";
 import { notify } from "../platform/notifications/service";
 import { type CoverCandidates, type CoverItemType, type CoverSelection, coverOf, coverStartsOn, movesOnCover, needsCover, reconcileItems, selectCoverItems } from "./engine/cover";
 import { normalizeNote, type Note } from "./engine/handoff";
 import type { RecurrenceRule } from "./engine/recurrence";
-import { canViewProject, canViewTask, canViewTeamBacklog, type CoverPlanFacts, type WorkViewer } from "./policy";
+import { canViewCoverPlan, canViewProject, canViewTask, canViewTeamBacklog, type CoverPlanFacts, type WorkViewer } from "./policy";
 import { notePrivateProjectReads } from "./private-reads";
 import { projectFacts } from "./projects";
 import { loadTasks, logActivity, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
@@ -138,7 +141,8 @@ const coverWithin = (item: Pick<CoverItemRow, "id" | "itemType" | "coverPersonId
  * Reads the leave requests still to come (of one person, or everyone) and brings the plans in
  * line: drafts for new long-enough leave, drafts refreshed while the person has not submitted,
  * plans of ended leave cancelled if they had not started, and submitted plans whose leave has
- * begun applied. Safe to run any number of times.
+ * begun applied. Safe to run any number of times. A new draft with work to hand over tells the
+ * person, once — in the transaction that makes it — to name who covers it.
  */
 export async function syncCoverPlans(today: IsoDate, options: { personId?: string } = {}): Promise<{ drafted: number; refreshed: number; cancelled: number; applied: number }> {
   const result = { drafted: 0, refreshed: 0, cancelled: 0, applied: 0 };
@@ -164,9 +168,13 @@ export async function syncCoverPlans(today: IsoDate, options: { personId?: strin
     if (!plan) {
       if (!needsCover(fact.workingDays, rules.get(fact.personId)?.rules.coverMinDays ?? 2) || fact.endDate < today) continue;
       const fresh = await selectionFor(fact.personId, { from: fact.startDate, to: fact.endDate });
+      // Bookings are information; a plan that holds nothing else asks nobody to name anybody.
+      const moving = fresh.filter((item) => movesOnCover(item.itemType)).length;
       await db().transaction(async (tx) => {
         const [created] = await tx.insert(schema.workCoverPlan).values({ personId: fact.personId, leaveRequestId: fact.id, fromDate: fact.startDate, toDate: fact.endDate }).onConflictDoNothing().returning();
-        if (created) await refreshItems(tx, created, fresh);
+        if (!created) return;
+        await refreshItems(tx, created, fresh);
+        if (moving > 0) await notify({ recipients: [fact.personId], kind: "tasks.cover_drafted", params: { from: formatDay(fact.startDate), to: formatDay(fact.endDate), count: moving }, link: coverLink(created.id) }, tx);
       });
       result.drafted += 1;
       continue;
@@ -276,10 +284,28 @@ export async function getCoverPlanForLeave(leaveRequestId: string, viewer: WorkV
   return plan ? viewOf(plan, viewer) : undefined;
 }
 
-/** The same, for a panel that knows only who is looking (the leave approval page). */
-export async function getCoverPlanForLeaveAs(leaveRequestId: string, personId: string): Promise<CoverPlanView | undefined> {
+/**
+ * What the leave request's page says about cover (FR-PJM-44 "the approver sees this list next to
+ * the leave request"), for a panel that knows only who is looking: the plan as they may read it —
+ * with whether they may open its page (the person, a cover, whoever may submit it) — or, where
+ * there is none, why: the leave is shorter than the person's `coverMinDays`, or the draft has not
+ * been made yet (a request filed before requests drafted their plan; the night's job makes it).
+ * Undefined for a leave that was called off before any plan existed: there is nothing to say.
+ */
+export type LeaveCover = { plan: CoverPlanView; canOpen: boolean } | { plan: null; reason: "too_short" | "not_drafted"; minDays: number };
+
+export async function getLeaveCoverAs(leaveRequestId: string, personId: string): Promise<LeaveCover | undefined> {
   const viewer = await viewerOfPerson(db(), personId);
-  return viewer ? getCoverPlanForLeave(leaveRequestId, viewer) : undefined;
+  if (!viewer) return undefined;
+  const [row] = await db().select().from(schema.workCoverPlan).where(eq(schema.workCoverPlan.leaveRequestId, leaveRequestId)).limit(1);
+  if (row) {
+    const [plan, facts] = await Promise.all([viewOf(row, viewer), coverPlanFacts(row)]);
+    return { plan, canOpen: canViewCoverPlan(viewer, facts) };
+  }
+  const [fact] = await listLeaveForCover({ requestIds: [leaveRequestId] });
+  if (!fact || fact.state === "ended") return undefined;
+  const minDays = (await (await dailyService()).rulesOfPeople([fact.personId])).get(fact.personId)?.rules.coverMinDays ?? 2;
+  return { plan: null, reason: needsCover(fact.workingDays, minDays) ? "not_drafted" : "too_short", minDays };
 }
 
 async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlanView> {
@@ -515,4 +541,66 @@ export async function handBackCover(planId: string, actor: { personId: string; f
     for (const [cover, count] of returnedBy) await notify({ recipients: [cover], kind: "tasks.cover_handed_back", params: { actor: person?.name ?? actor.fullName, count }, link: coverLink(plan.id) }, tx);
     return { returned, covers: [...returnedBy.keys()] };
   });
+}
+
+// ── Back at work: the reminder to hand back ─────────────────────────────────────────────────
+
+/** How long after a leave's last day the reminder is still worth sending: the job may miss a morning, not a month. */
+const RETURN_REMINDER_DAYS = 14;
+
+/**
+ * The morning of the person's first working day back (FR-PJM-44 "on return, items can be handed
+ * back"): they, and each cover who still holds something of theirs, are reminded that it is to be
+ * handed back — once per plan and person, through the reminders' bookkeeping of the daily module
+ * (`daily_reminder_sent`, kind `cover_return:<plan>`, on the day of the return). Handing back
+ * stays somebody's decision: a cover may be half-way through the work.
+ *
+ * The first working day is the person's own calendar's (the daily module's `daysOf`): never a
+ * holiday, a rest day or a further day of leave. One read of the plans and one of the days,
+ * however many people came back.
+ */
+export async function sendCoverReturnReminders(today: IsoDate): Promise<{ returned: number; reminded: number }> {
+  const rows = await db()
+    .select({ planId: schema.workCoverPlan.id, personId: schema.workCoverPlan.personId, personName: schema.person.fullName, toDate: schema.workCoverPlan.toDate, defaultCoverPersonId: schema.workCoverPlan.defaultCoverPersonId, coverPersonId: schema.workCoverItem.coverPersonId })
+    .from(schema.workCoverPlan)
+    .innerJoin(schema.workCoverItem, eq(schema.workCoverItem.planId, schema.workCoverPlan.id))
+    .innerJoin(schema.person, eq(schema.person.id, schema.workCoverPlan.personId))
+    .where(
+      and(
+        eq(schema.workCoverPlan.status, "submitted"),
+        isNotNull(schema.workCoverPlan.appliedAt),
+        lt(schema.workCoverPlan.toDate, today),
+        gte(schema.workCoverPlan.toDate, addDays(today, -RETURN_REMINDER_DAYS)),
+        isNull(schema.workCoverItem.handedBackAt),
+        ne(schema.workCoverItem.itemType, "booking"),
+      ),
+    );
+  if (rows.length === 0) return { returned: 0, reminded: 0 };
+  const plans = [...Map.groupBy(rows, (row) => row.planId).values()];
+  const { claimReminders, daysOf } = await dailyService();
+  const earliest = plans.map(([plan]) => plan.toDate).sort()[0];
+  const days = await daysOf(plans.map(([plan]) => plan.personId), addDays(earliest, 1), today);
+  let returned = 0;
+  let reminded = 0;
+  for (const items of plans) {
+    const [plan] = items;
+    const back = [...(days.get(plan.personId)?.values() ?? [])].filter((day) => day.day.date > plan.toDate && !day.dayOff).map((day) => day.day.date).sort()[0];
+    // Still away — a rest day, a holiday, more leave: the reminder waits for the day they are back.
+    if (!back) continue;
+    returned += 1;
+    const held = new Map<string, number>();
+    for (const item of items) {
+      const cover = coverOf(item, plan.defaultCoverPersonId);
+      if (cover) held.set(cover, (held.get(cover) ?? 0) + 1);
+    }
+    if (held.size === 0) continue;
+    const count = [...held.values()].reduce((total, own) => total + own, 0);
+    reminded += await db().transaction(async (tx) => {
+      const fresh = new Set(await claimReminders(tx, [plan.personId, ...held.keys()], `cover_return:${plan.planId}`, back));
+      if (fresh.has(plan.personId)) await notify({ recipients: [plan.personId], kind: "tasks.cover_return_due", params: { count }, link: coverLink(plan.planId) }, tx);
+      for (const [cover, own] of held) if (fresh.has(cover)) await notify({ recipients: [cover], kind: "tasks.cover_return_ask", params: { actor: plan.personName, count: own }, link: coverLink(plan.planId) }, tx);
+      return fresh.size;
+    });
+  }
+  return { returned, reminded };
 }

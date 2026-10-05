@@ -9,6 +9,7 @@ export { addableMembers, type ClientInput, type ClientRow, entryState, findClien
 export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, type ProjectAppointment, projectAppointmentsOf, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
+export { type DeletedTask, listDeletedTasks, RESTORE_WINDOW_DAYS } from "./tasks";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
 export { type CommentView, listComments, listMentionable } from "./comments";
 export { type FollowState, followersOf, followStateOf } from "./followers";
@@ -66,7 +67,7 @@ export { listMoveTargets } from "./move";
 export { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
 export { type HandoffPackageRow, type HandoffRequirement, listPackages } from "./handoff-gate";
 export { type AccountHandoffView, handoffReturnsByTask, handoffStatsByStage, type HandoffView, listAccountHandoffs, listPendingHandoffsFor, listTaskHandoffs, type StageHandoffStats } from "./handoffs";
-export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getCoverPlanForLeaveAs, listCoverPlansFor } from "./cover";
+export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getLeaveCoverAs, type LeaveCover, listCoverPlansFor } from "./cover";
 export { exitHandoverFacts, type ExitHandoverView, getExitHandover, listExitHandoversFor } from "./exit";
 export { type CyclePage, type CycleRow, getCyclePage, listOpenCycles, listTeamCycles } from "./cycles";
 export { HANDOFF_KINDS, NOTE_PARTS } from "./engine/handoff";

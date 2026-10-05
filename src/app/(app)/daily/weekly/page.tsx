@@ -172,12 +172,12 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
                     <div className="flex flex-col gap-4 border-t bg-canvas px-4 py-3 text-sm md:px-3.5">
                       <div className="flex flex-col gap-1">
                         <h3 className="section-label">{t("weekly.done", { count: content.done.length })}</h3>
-                        <TaskLines lines={content.done} empty={t("report.noneDone")} />
+                        <TaskLines lines={content.done} empty={t("weekly.noneDone")} />
                       </div>
                       {content.slipped.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           <h3 className="section-label">{t("weekly.slipped", { count: content.slipped.length })}</h3>
-                          <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
+                          <TaskLines lines={content.slipped} empty={t("weekly.noneDone")} />
                         </div>
                       ) : null}
                       {blockersAlert(content.blockers)}

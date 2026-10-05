@@ -1,4 +1,5 @@
-// Cycle guards for the two graphs a task lives in: the sub-task tree and the "blocks" graph. Pure.
+// The cycle guard of the "blocks" graph, and the ranks of a board column. Pure. (The sub-task tree's
+// own guard — a task never under itself — is a recursive query where the parent changes: tasks.ts.)
 
 /** Would `blocker` → `blocked` close a loop? True when `blocker` is already (transitively) blocked by `blocked`. */
 export function wouldCreateDependencyCycle(edges: readonly { blockerTaskId: string; blockedTaskId: string }[], blocker: string, blocked: string): boolean {
@@ -14,16 +15,6 @@ export function wouldCreateDependencyCycle(edges: readonly { blockerTaskId: stri
     if (seen.has(current)) continue;
     seen.add(current);
     queue.push(...(blockedBy.get(current) ?? []));
-  }
-  return false;
-}
-
-/** Would making `parentId` the parent of `taskId` put the task under itself? `parentOf` maps a task to its parent. */
-export function wouldCreateParentCycle(parentOf: ReadonlyMap<string, string | null>, taskId: string, parentId: string): boolean {
-  const seen = new Set<string>();
-  for (let current: string | null = parentId; current; current = parentOf.get(current) ?? null) {
-    if (current === taskId || seen.has(current)) return true;
-    seen.add(current);
   }
   return false;
 }

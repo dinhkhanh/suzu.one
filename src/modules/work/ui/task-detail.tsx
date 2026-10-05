@@ -66,6 +66,7 @@ export type DetailTask = {
   links: { id: string; url: string; title: string | null }[];
   /** FR-PJM-10. */
   cycleId?: string | null;
+  parentTaskId?: string | null;
 };
 export type DetailOptions = {
   states: { id: string; name: string; isActive: boolean }[];
@@ -77,6 +78,8 @@ export type DetailOptions = {
   digitalAssets?: { id: string; name: string; platform: string }[];
   /** Tasks that can be linked: the same project's (or backlog's) other tasks. */
   linkable: { id: string; key: string; title: string }[];
+  /** Tasks this one can be put under: the same list's, never itself or its own sub-tasks. Absent = the field is not shown. */
+  parents?: { id: string; key: string; title: string }[];
   /** The team's cycles a task may be planned in (FR-PJM-10); the task's own closed one is listed too. */
   cycles?: { id: string; label: string }[];
   /** The checklist library's active checklists, to add one by hand. */
@@ -213,6 +216,8 @@ export function TaskDetailView({
         // Sent only when the field is on screen: an absent list must not read as "none".
         ...(options.digitalAssets?.length ? { digitalAssetIds: data.getAll("digitalAssetIds").map(String) } : {}),
         collaboratorIds: data.getAll("collaboratorIds").map(String),
+        // Sent only when the field is on screen, as above.
+        ...(options.parents ? { parentTaskId: text("parentTaskId") } : {}),
       },
       () => {
         setSaved(true);
@@ -236,7 +241,7 @@ export function TaskDetailView({
   const select = (name: string, label: string, value: string | null, children: React.ReactNode) =>
     prop(
       label,
-      <Select id={name} name={name} form="task-fields" defaultValue={value ?? ""} disabled={!canEdit} searchable={name === "assigneePersonId" || name === "projectId" ? undefined : false} className={compact}>
+      <Select id={name} name={name} form="task-fields" defaultValue={value ?? ""} disabled={!canEdit} searchable={name === "assigneePersonId" || name === "projectId" || name === "parentTaskId" ? undefined : false} className={compact}>
         {children}
       </Select>,
       name,
@@ -335,6 +340,21 @@ export function TaskDetailView({
               ))}
             </>,
           )}
+          {options.parents
+            ? select(
+                "parentTaskId",
+                t("fields.parent"),
+                task.parentTaskId ?? null,
+                <>
+                  <option value="">{t("noParent")}</option>
+                  {options.parents.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.key} {parent.title}
+                    </option>
+                  ))}
+                </>,
+              )
+            : null}
           {prop(t("fields.startDate"), <DatePicker id="startDate" name="startDate" form="task-fields" defaultValue={task.startDate ?? ""} disabled={!canEdit} className={compact} />, "startDate")}
           {prop(t("fields.dueDate"), <DatePicker id="dueDate" name="dueDate" form="task-fields" defaultValue={task.dueDate ?? ""} disabled={!canEdit} className={compact} />, "dueDate")}
           {prop(

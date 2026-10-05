@@ -1,11 +1,12 @@
 "use client";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { ArrowRightLeftIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "cn";
 import { updateTaskAction } from "../actions";
 import { boardColumns, isSamePlace, planDrop } from "../engine/board";
@@ -13,6 +14,7 @@ import { filterTasks, type TaskFilters } from "../engine/filter";
 import { CustomValueText } from "./custom-fields";
 import { FilterBar, useUrlFilters } from "./filter-bar";
 import { useHandoffGate } from "./handoff";
+import { QuickCreate, type TaskScope } from "./quick-create";
 import { type ListOptions, type ListTask, PriorityMark } from "./task-list-view";
 import { StateBadge, stateColumnClass } from "./status-badge";
 import { DueText, PersonAvatar, TaskKey } from "./task-row";
@@ -25,9 +27,11 @@ const RECENT_DAYS = 14;
 /**
  * Kanban board (FR-WRK-05): one column per workflow state of the team, washed in its state's tint.
  * A drop shows at once (`useOptimistic`); if the server refuses, the card goes back by itself and
- * the reason is shown. Without a mouse a card is only reordered here — its state changes on its page.
+ * the reason is shown. Without a mouse — on a phone — a card moves through its own menu: tap the
+ * state on the card, tap the state it goes to (FR-PJM-37: two taps), and the arrows reorder it
+ * within its column. With `scope`, each column ends with a quick-create that files into that state.
  */
-export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean }) {
+export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute, scope }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean; /** Where a column's quick-create files a new task; without it the board only shows. */ scope?: TaskScope }) {
   const t = useTranslations("work.board");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -141,6 +145,23 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         <span className="ml-auto">
                           <DueText dueDate={task.dueDate} today={today} open={open} />
                         </span>
+                        {editable(task) ? (
+                          // The card's own menu: where dragging is not to be had, the state is two taps away.
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={t("changeState", { title: task.title })} />}>
+                              <ArrowRightLeftIcon />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+                              <DropdownMenuRadioGroup value={task.stateId} onValueChange={(next) => move(task, String(next), (columns.get(String(next)) ?? []).filter((card) => card.id !== task.id).length)}>
+                                {states.filter((row) => row.isActive || row.id === task.stateId).map((row) => (
+                                  <DropdownMenuRadioItem key={row.id} value={row.id}>
+                                    {row.name}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                              </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </div>
                       <RecordLink kind="task" id={task.id} draggable={false} className={cn("line-clamp-2 leading-snug", open ? "font-medium" : "text-muted-foreground line-through")}>
                         {task.title}
@@ -192,6 +213,10 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                 })}
                 {cards.length === 0 ? <li className="rounded-[10px] border border-dashed border-border p-3 text-center text-xs text-faint">{t("emptyColumn")}</li> : null}
               </ul>
+              {/* A new task starts in the column it was typed under, inside the filters in force — so it does not vanish on arrival. */}
+              {scope && canContribute && state.isActive && state.category !== "done" && state.category !== "cancelled" ? (
+                <QuickCreate compact scope={scope} defaults={{ stateId: state.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+              ) : null}
             </section>
           );
         })}

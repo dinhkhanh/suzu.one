@@ -1165,6 +1165,18 @@
         "title": "Cover handed back",
         "body": "{actor} is back and took back {count} item(s)."
       },
+      "tasks_cover_drafted": {
+        "title": "Name who covers your work",
+        "body": "Your leave from {from} to {to} has {count} item(s) falling in it. Name who covers them while you are away."
+      },
+      "tasks_cover_return_due": {
+        "title": "Welcome back — take your work back",
+        "body": "{count} item(s) are still with whoever covered for you. Open the cover plan to take them back."
+      },
+      "tasks_cover_return_ask": {
+        "title": "Hand the work back",
+        "body": "{actor} is back from leave. Hand back the {count} item(s) you covered."
+      },
       "tasks_exit_handover": {
         "title": "Work to hand over",
         "body": "{person} is leaving or moving: {count} item(s) still need a new owner."
@@ -1261,9 +1273,17 @@
         "title": "Comment on your report",
         "body": "{actor} commented on your report of {date}."
       },
+      "daily_report_blockers": {
+        "title": "A report with blockers",
+        "body": "{actor}'s report of {date} came in with blockers."
+      },
       "daily_weekly_report": {
         "title": "Weekly report",
         "body": "The weekly report of {subject} for the week of {week} is ready."
+      },
+      "daily_weekly_reports": {
+        "title": "Weekly reports",
+        "body": "{count} weekly reports for the week of {week} are ready for you to read."
       },
       "daily_timesheet_reminder": {
         "title": "Submit your timesheet",
@@ -4102,6 +4122,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Recently deleted ({count})",
+      "hint": "A deleted task can be put back for {days} days, with the sub-tasks that were deleted with it.",
+      "empty": "Nothing was deleted in the last {days} days.",
+      "deletedBy": "Deleted by",
+      "deletedAt": "Deleted",
+      "restore": "Restore",
+      "subtasks": "{count, plural, one {with # sub-task} other {with # sub-tasks}}"
+    },
     "title": "Work",
     "digitalAssets": {
       "title": "Pages & channels",
@@ -4394,6 +4423,9 @@
       "blocked": "Blocked",
       "subtasks": "{done}/{total} sub-tasks",
       "views": {
+        "update": "Update “{name}”",
+        "saveNew": "Save as a new filter",
+        "shareTeam": "Share with the team",
         "shared": "shared",
         "delete": "Delete the saved filter {name}",
         "name": "Name this filter…",
@@ -4418,6 +4450,7 @@
       "inTriage": "In triage"
     },
     "task": {
+      "noParent": "None (top level)",
       "fields": {
         "title": "Title",
         "description": "Description",
@@ -4467,6 +4500,7 @@
       "delete": "Delete task",
       "deleteConfirm": "Delete this task and its sub-tasks?",
       "activity": {
+        "restored": "restored the task",
         "changed": "changed {field}: {from} → {to}",
         "changedPlain": "changed the {field}",
         "checklist": "updated the checklist ({done}/{total})",
@@ -4554,6 +4588,7 @@
       "createSubmit": "Create"
     },
     "errors": {
+      "task_restore_too_late": "This task was deleted too long ago to be put back.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You may not do that here.",
       "invalid": "Please check the fields.",
@@ -4751,11 +4786,13 @@
       "label": "View"
     },
     "board": {
+      "changeState": "Move {title} to another state",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "emptyColumn": "Nothing here"
     },
     "calendar": {
+      "dueOn": "Due on",
       "title": "Content calendar",
       "description": "Every dated task you can see, on its due date. Filter by client or channel to get one brand's calendar.",
       "previous": "Previous month",
@@ -4883,6 +4920,10 @@
       }
     },
     "templates": {
+      "edit": "Edit",
+      "editItem": "Edit the step “{title}”",
+      "editItemHint": "The next use of the template reads the step as it now is. Tasks already made from it stay as they are.",
+      "saveItem": "Save step",
       "title": "Templates",
       "description": "Task trees with days from a start or end date and a role per step. Using one asks who plays each role.",
       "newProject": "New project from a template",
@@ -4950,6 +4991,18 @@
       "noChecklist": "No checklist"
     },
     "recurrence": {
+      "emptyTeam": "Nothing recurs in this team's backlog yet.",
+      "estimate": "Hours",
+      "onDayOff": "On a day off",
+      "dayOff": {
+        "shift": "Due the next working day",
+        "skip": "Skip that time",
+        "keep": "Keep the day anyway"
+      },
+      "edit": "Edit",
+      "editTitle": "Edit the recurring task “{title}”",
+      "editHint": "Changes apply to the tasks it makes from now on. Tasks it has already made keep their title, date and assignee.",
+      "save": "Save",
       "heading": "Recurring tasks",
       "empty": "Nothing recurs in this project yet.",
       "title": "Task title",
@@ -4994,6 +5047,7 @@
         "monthlyLast": "{interval, plural, one {every month} other {every # months}} on the last day"
       },
       "errors": {
+        "team_not_found": "Team not found or archived.",
         "generic": "That did not work.",
         "forbidden": "You may not do that.",
         "invalid": "Check the fields: pick at least one weekday.",
@@ -5500,7 +5554,11 @@
       "toHandBack": "Ready to hand back",
       "away": "Away",
       "awayCovered": "Away — covered by {name}",
-      "privateItem": "Private work"
+      "privateItem": "Private work",
+      "panelTooShort": "No cover plan is asked for: this leave is shorter than {days, plural, one {# working day} other {# working days}}.",
+      "panelNotDrafted": "The cover plan has not been drafted yet. It is made when a request is filed, and overnight for one filed earlier.",
+      "panelCancelled": "The cover plan was cancelled with the leave.",
+      "panelDraft": "{name} has not yet named who covers every item."
     },
     "exit": {
       "title": "Work handover of {name}",
@@ -11206,6 +11264,7 @@
     },
     "activity": {
       "empty": "No recorded activity today yet.",
+      "emptyPast": "No activity was recorded that day.",
       "categories": {
         "internal": "Internal",
         "admin": "Admin",
@@ -11258,7 +11317,19 @@
       "prefilledHint": "What you did is filled in from today's activity — just add blockers and tomorrow's plan.",
       "tomorrowPlanned": "Tomorrow's plan ({count})",
       "noTomorrow": "No plan for tomorrow.",
-      "noTimeLogged": "Time logging is required every day, and nothing is logged today yet. Log it quickly under today's activity below."
+      "noTimeLogged": "Time logging is required every day, and nothing is logged today yet. Log it quickly under today's activity below.",
+      "noneDonePast": "Nothing was finished that day.",
+      "activityPast": "The day's activity ({count})",
+      "tomorrowPast": "Plan for the next working day ({count})",
+      "optionalPast": "Not required that day",
+      "prefilledHintPast": "What you did is filled in from that day's activity — just add blockers and the plan for the next working day.",
+      "tomorrowPlannedPast": "Plan for the next working day ({count})",
+      "noTomorrowPast": "No plan for the next working day.",
+      "noTimeLoggedPast": "Time logging is required every day, and nothing is logged for this day. Log it under the day's activity below.",
+      "edited": "Edited after submitting",
+      "editedHint": "This report was changed after it was first sent. What it said before:",
+      "revisionAt": "Sent {time}",
+      "revisionEmpty": "Nothing written."
     },
     "thread": {
       "react": "React {reaction}",
@@ -11290,6 +11361,11 @@
       "myReports": "People I manage",
       "counts": "{submitted} in · {missing} missing · {notRequired} not required",
       "remindAll": "Remind all ({count})",
+      "planFiled": "Plan filed {time}",
+      "planLate": "Plan filed late, {time}",
+      "planTasks": "{count, plural, =0 {no tasks} one {# task} other {# tasks}}",
+      "planMissing": "No morning plan",
+      "planEmpty": "The plan names no task.",
       "columns": {
         "person": "Person",
         "status": "Report",
@@ -11351,6 +11427,7 @@
       "people": "People ({count})",
       "myWeek": "My week",
       "done": "Done ({count})",
+      "noneDone": "Nothing was finished this week.",
       "slipped": "Planned, not done ({count})",
       "columns": {
         "person": "Person",
@@ -11413,7 +11490,7 @@
     },
     "timesheets": {
       "title": "Timesheets",
-      "intro": "Weekly timesheets of the people in the teams you lead and of your direct reports.",
+      "intro": "Weekly timesheets of the people in the teams you lead and of your direct reports — and of anyone whose week comes to you because no lead or line manager is there to approve it.",
       "waiting": "Waiting for you ({count})",
       "none": "No timesheets are waiting for you.",
       "recent": "Decided recently",

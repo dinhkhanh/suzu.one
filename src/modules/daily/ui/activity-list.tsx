@@ -28,9 +28,10 @@ export function TaskLines({ lines, empty }: { lines: readonly ShownLine[]; empty
   );
 }
 
-export function ActivityList({ items }: { items: readonly ShownActivity[] }) {
+/** `past`: the list is of a day before today — the empty line says so instead of "today … yet". */
+export function ActivityList({ items, past = false }: { items: readonly ShownActivity[]; past?: boolean }) {
   const t = useTranslations("daily.activity");
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">{t(past ? "emptyPast" : "empty")}</p>;
   return (
     <ul className="flex flex-col gap-1.5 text-sm">
       {items.map((item, index) => {

@@ -1165,6 +1165,18 @@
         "title": "Việc làm thay đã được trả lại",
         "body": "{actor} đã đi làm lại và nhận lại {count} việc."
       },
+      "tasks_cover_drafted": {
+        "title": "Chọn người làm thay khi bạn nghỉ",
+        "body": "Đợt nghỉ từ {from} đến {to} của bạn có {count} việc rơi vào thời gian nghỉ. Hãy chọn người làm thay cho từng việc."
+      },
+      "tasks_cover_return_due": {
+        "title": "Bạn đã đi làm lại — nhận lại việc",
+        "body": "Còn {count} việc đang ở chỗ người làm thay. Mở kế hoạch làm thay để nhận lại."
+      },
+      "tasks_cover_return_ask": {
+        "title": "Trả lại việc đã làm thay",
+        "body": "{actor} đã đi làm lại. Hãy trả lại {count} việc bạn đã làm thay."
+      },
       "tasks_exit_handover": {
         "title": "Cần bàn giao công việc",
         "body": "{person} sắp nghỉ hoặc chuyển bộ phận: còn {count} việc phải bàn giao."
@@ -1261,9 +1273,17 @@
         "title": "Nhận xét về báo cáo của bạn",
         "body": "{actor} đã nhận xét báo cáo ngày {date} của bạn."
       },
+      "daily_report_blockers": {
+        "title": "Báo cáo có vướng mắc",
+        "body": "Báo cáo ngày {date} của {actor} có ghi vướng mắc."
+      },
       "daily_weekly_report": {
         "title": "Báo cáo tuần",
         "body": "Báo cáo tuần {week} của {subject} đã sẵn sàng."
+      },
+      "daily_weekly_reports": {
+        "title": "Báo cáo tuần",
+        "body": "Có {count} báo cáo tuần {week} đã sẵn sàng để bạn đọc."
       },
       "daily_timesheet_reminder": {
         "title": "Nộp bảng giờ tuần",
@@ -4102,6 +4122,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Đã xóa gần đây ({count})",
+      "hint": "Công việc đã xóa có thể khôi phục trong {days} ngày, cùng với các việc con bị xóa theo.",
+      "empty": "Không có công việc nào bị xóa trong {days} ngày qua.",
+      "deletedBy": "Người xóa",
+      "deletedAt": "Thời điểm xóa",
+      "restore": "Khôi phục",
+      "subtasks": "{count, plural, other {kèm # việc con}}"
+    },
     "title": "Công việc",
     "digitalAssets": {
       "title": "Trang & kênh",
@@ -4394,6 +4423,9 @@
       "blocked": "Bị chặn",
       "subtasks": "{done}/{total} việc con",
       "views": {
+        "update": "Cập nhật “{name}”",
+        "saveNew": "Lưu thành bộ lọc mới",
+        "shareTeam": "Chia sẻ với nhóm",
         "shared": "dùng chung",
         "delete": "Xóa bộ lọc đã lưu {name}",
         "name": "Đặt tên bộ lọc…",
@@ -4418,6 +4450,7 @@
       "inTriage": "Chờ phân loại"
     },
     "task": {
+      "noParent": "Không có (cấp cao nhất)",
       "fields": {
         "title": "Tiêu đề",
         "description": "Mô tả",
@@ -4467,6 +4500,7 @@
       "delete": "Xóa công việc",
       "deleteConfirm": "Xóa công việc này cùng các việc con?",
       "activity": {
+        "restored": "đã khôi phục công việc",
         "changed": "đổi {field}: {from} → {to}",
         "changedPlain": "đã sửa {field}",
         "checklist": "cập nhật checklist ({done}/{total})",
@@ -4554,6 +4588,7 @@
       "createSubmit": "Tạo"
     },
     "errors": {
+      "task_restore_too_late": "Công việc này đã bị xóa quá lâu nên không thể khôi phục.",
       "generic": "Thao tác không thành công. Vui lòng thử lại.",
       "forbidden": "Bạn không được làm việc này ở đây.",
       "invalid": "Vui lòng kiểm tra lại các trường.",
@@ -4751,11 +4786,13 @@
       "label": "Cách xem"
     },
     "board": {
+      "changeState": "Chuyển {title} sang trạng thái khác",
       "moveUp": "Chuyển lên",
       "moveDown": "Chuyển xuống",
       "emptyColumn": "Chưa có gì"
     },
     "calendar": {
+      "dueOn": "Hạn vào ngày",
       "title": "Lịch nội dung",
       "description": "Mọi công việc có hạn mà bạn được xem, đặt theo ngày đến hạn. Lọc theo khách hàng hoặc kênh để có lịch nội dung của một thương hiệu.",
       "previous": "Tháng trước",
@@ -4883,6 +4920,10 @@
       }
     },
     "templates": {
+      "edit": "Sửa",
+      "editItem": "Sửa bước “{title}”",
+      "editItemHint": "Lần dùng mẫu tiếp theo sẽ lấy bước theo nội dung mới. Các việc đã tạo từ mẫu giữ nguyên.",
+      "saveItem": "Lưu bước",
       "title": "Mẫu công việc",
       "description": "Cây công việc với số ngày tính từ ngày bắt đầu hoặc ngày kết thúc và vai trò cho từng bước. Khi dùng mẫu, bạn chọn ai đảm nhận từng vai trò.",
       "newProject": "Tạo dự án từ mẫu",
@@ -4950,6 +4991,18 @@
       "noChecklist": "Không có checklist"
     },
     "recurrence": {
+      "emptyTeam": "Danh sách việc của nhóm chưa có việc lặp lại nào.",
+      "estimate": "Số giờ",
+      "onDayOff": "Nếu rơi vào ngày nghỉ",
+      "dayOff": {
+        "shift": "Dời hạn sang ngày làm việc kế tiếp",
+        "skip": "Bỏ qua lần đó",
+        "keep": "Vẫn giữ đúng ngày"
+      },
+      "edit": "Sửa",
+      "editTitle": "Sửa việc lặp lại “{title}”",
+      "editHint": "Thay đổi áp dụng cho các việc được tạo từ nay về sau. Các việc đã tạo giữ nguyên tiêu đề, hạn và người phụ trách.",
+      "save": "Lưu",
       "heading": "Việc lặp lại",
       "empty": "Dự án này chưa có việc lặp lại.",
       "title": "Tên công việc",
@@ -4994,6 +5047,7 @@
         "monthlyLast": "{interval, plural, =1 {mỗi tháng} other {mỗi # tháng}} vào ngày cuối tháng"
       },
       "errors": {
+        "team_not_found": "Không tìm thấy nhóm hoặc nhóm đã lưu trữ.",
         "generic": "Không thực hiện được.",
         "forbidden": "Bạn không có quyền làm việc này.",
         "invalid": "Kiểm tra lại: chọn ít nhất một ngày trong tuần.",
@@ -5500,7 +5554,11 @@
       "toHandBack": "Có thể trả lại",
       "away": "Đang nghỉ",
       "awayCovered": "Đang nghỉ — {name} làm thay",
-      "privateItem": "Việc riêng tư"
+      "privateItem": "Việc riêng tư",
+      "panelTooShort": "Không cần kế hoạch làm thay: đợt nghỉ này ngắn hơn {days} ngày làm việc.",
+      "panelNotDrafted": "Chưa có kế hoạch làm thay. Kế hoạch được tạo khi gửi đơn nghỉ; với đơn gửi từ trước, hệ thống sẽ tạo trong đêm.",
+      "panelCancelled": "Kế hoạch làm thay đã hủy cùng với đơn nghỉ.",
+      "panelDraft": "{name} chưa chọn đủ người làm thay cho các việc."
     },
     "exit": {
       "title": "Bàn giao công việc của {name}",
@@ -11206,6 +11264,7 @@
     },
     "activity": {
       "empty": "Hôm nay chưa có hoạt động nào được ghi nhận.",
+      "emptyPast": "Ngày này không có hoạt động nào được ghi nhận.",
       "categories": {
         "internal": "Việc nội bộ",
         "admin": "Hành chính",
@@ -11258,7 +11317,19 @@
       "prefilledHint": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày — bạn chỉ cần thêm vướng mắc và kế hoạch ngày mai.",
       "tomorrowPlanned": "Kế hoạch ngày mai ({count})",
       "noTomorrow": "Chưa lên kế hoạch cho ngày mai.",
-      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới."
+      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới.",
+      "noneDonePast": "Ngày này không có việc nào xong.",
+      "activityPast": "Hoạt động trong ngày ({count})",
+      "tomorrowPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "optionalPast": "Ngày này không bắt buộc",
+      "prefilledHintPast": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày đó — bạn chỉ cần thêm vướng mắc và kế hoạch cho ngày làm việc kế tiếp.",
+      "tomorrowPlannedPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "noTomorrowPast": "Chưa lên kế hoạch cho ngày làm việc kế tiếp.",
+      "noTimeLoggedPast": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng ngày này bạn chưa ghi giờ nào. Ghi bổ sung ở phần hoạt động bên dưới.",
+      "edited": "Đã sửa sau khi nộp",
+      "editedHint": "Báo cáo này đã được sửa sau lần nộp đầu. Nội dung trước đó:",
+      "revisionAt": "Nộp lúc {time}",
+      "revisionEmpty": "Không ghi gì."
     },
     "thread": {
       "react": "Thả {reaction}",
@@ -11290,6 +11361,11 @@
       "myReports": "Nhân sự tôi quản lý",
       "counts": "{submitted} đã nộp · {missing} chưa nộp · {notRequired} không bắt buộc",
       "remindAll": "Nhắc tất cả ({count})",
+      "planFiled": "Đã lên kế hoạch lúc {time}",
+      "planLate": "Lên kế hoạch muộn, lúc {time}",
+      "planTasks": "{count, plural, =0 {chưa có việc nào} other {# việc}}",
+      "planMissing": "Chưa có kế hoạch buổi sáng",
+      "planEmpty": "Kế hoạch chưa có việc nào.",
       "columns": {
         "person": "Người",
         "status": "Báo cáo",
@@ -11351,6 +11427,7 @@
       "people": "Từng người ({count})",
       "myWeek": "Tuần của tôi",
       "done": "Đã xong ({count})",
+      "noneDone": "Tuần này không có việc nào xong.",
       "slipped": "Chưa xong như kế hoạch ({count})",
       "columns": {
         "person": "Người",
@@ -11413,7 +11490,7 @@
     },
     "timesheets": {
       "title": "Duyệt bảng giờ",
-      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn.",
+      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn — và của những người không có trưởng nhóm hay quản lý trực tiếp nào duyệt được, nên bảng giờ được chuyển đến bạn.",
       "waiting": "Chờ bạn duyệt ({count})",
       "none": "Không có bảng giờ nào đang chờ bạn duyệt.",
       "recent": "Đã xử lý gần đây",

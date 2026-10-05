@@ -12,7 +12,7 @@ export { loadReportReader, loadSubjects, loadTimeReader, loadTimesheetSubjects, 
 export { dayOf, daysOf, type PersonDay } from "./days";
 export { getTeamRules, rulesOfPeople } from "./team-rules";
 export { getPlanPage, type PlanPage } from "./plans";
-export { type BoardGroup, type BoardRow, getReportForm, getReportView, getTeamBoard, listMissingReportDays, listMyReports, REPORT_BACKFILL_DAYS, type ReportForm, reportLink, type ReportView, type ShownBlocker, type ShownReport, withinReportWindow } from "./reports";
+export { type BoardGroup, type BoardPlan, type BoardRow, getReportForm, getReportView, getTeamBoard, listMissingReportDays, listMyReports, REPORT_BACKFILL_DAYS, type ReportForm, reportLink, type ReportView, type ShownBlocker, type ShownReport, withinReportWindow } from "./reports";
 export { listWeekly, type WeeklyPersonView, type WeeklyTeamView } from "./weekly";
 export { billableByDefault, getRunningTimer, listTimeOf, type RunningTimer, TIME_BACKFILL_DAYS, type TimeEntryView } from "./time";
 export type { AttendanceHint, GridRow, RowKey, TimesheetStatus, WeekGrid } from "./engine/timesheet";
@@ -27,5 +27,7 @@ export { getUtilisation, UTILISATION_WEEKS, type UtilisationGroup, type Utilisat
  */
 export { type LoggedTotal, loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 export { type BookingView, getToday, type TodayView } from "./today";
+/** The reminders' bookkeeping, for a reminder another module sends about a person's day back at work (leave cover, FR-PJM-44). */
+export { claimReminders } from "./reminders";
 /** Time on one task, for the task's page: the totals the reader may see, their timer, the billable default. */
 export { getTaskTime, type TaskTime } from "./task-time";

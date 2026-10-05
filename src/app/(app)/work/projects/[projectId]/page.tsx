@@ -11,7 +11,7 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listDeletedTasks, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, RESTORE_WINDOW_DAYS, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
 import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
 import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains, projectStatusChoices, projectStatusNames } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
@@ -26,6 +26,7 @@ import { accentOf } from "@/modules/work/enums";
 import { ArchiveButton, EditProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { DeletedTasks } from "@/modules/work/ui/deleted-tasks";
 import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
@@ -54,8 +55,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
 
-  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows] = await Promise.all([
-    listSavedViews(project.id, user.person.id),
+  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows, deleted] = await Promise.all([
+    listSavedViews({ projectId: project.id }, user.person.id),
     listProjectTasks(project.id),
     listStates([team.id]),
     listLabels([team.id]),
@@ -63,9 +64,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     listProjectMembers(project.id),
     listAssignable(team.id, project.id),
     manage ? listPersonNames() : [],
-    listRecurrences(project.id, today),
+    listRecurrences({ projectId: project.id }, today),
     listWorkTemplates([team.id], { activeOnly: true }),
     listCustomFields({ teamId: team.id, projectId: project.id }, { includeInactive: true }),
+    // Recently deleted, for the people who run the project: they may put a task back (FR-WRK-03).
+    manage ? listDeletedTasks({ projectId: project.id }) : [],
   ]);
   const [chains, automations] = await Promise.all([listReviewChains({ teamId: team.id, projectId: project.id }), canViewAutomations(viewer, teamFacts(team)) ? automationPanel({ teamId: team.id, projectId: project.id }, viewer) : null]);
   const [statusChoices, statusNames] = await Promise.all([projectStatusChoices(team.projectStatusSetId, project.statusId), projectStatusNames()]);
@@ -137,9 +140,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <Section>
         <ViewTabs current={view} />
       {view === "table" ? (
-        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} />
+        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} scope={{ teamId: team.id, projectId: project.id }} />
       ) : view === "board" ? (
-        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} />
+        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} scope={{ teamId: team.id, projectId: project.id }} />
       ) : view === "calendar" ? (
         <CalendarView
           tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
@@ -152,6 +155,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           today={today}
           posts={content?.posts}
           missingTaskIds={content?.missingTaskIds}
+          scope={canContribute ? { teamId: team.id, projectId: project.id } : undefined}
         />
       ) : (
         <TaskListView
@@ -164,7 +168,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           selfId={user.person.id}
           today={today}
           canContribute={canContribute}
-          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
+          // One's own view is one's own to change; a shared one of somebody else's, the project's leads'.
+          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canEdit: view.ownerPersonId === user.person.id || manage, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
         />
       )}
       </Section>
@@ -178,8 +183,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           <section className="flex flex-col gap-2">
             <h2 className="section-label">{t("recurrence.heading")}</h2>
             <RecurrenceManager
-              projectId={project.id}
-              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneePersonId: draft.assigneePersonId ?? null, assigneeName, nextDate, made }))}
+              target={{ projectId: project.id }}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, assigneePersonId: draft.assigneePersonId ?? null, estimateMinutes: draft.estimateMinutes ?? null, assigneeName, nextDate, made }))}
               people={assignable}
               canManage={canContribute}
               today={today}
@@ -193,6 +198,18 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           ) : null}
         </div>
       </details>
+
+      {manage && deleted.length ? (
+        <details className="group/details rounded-[14px] border border-border bg-background">
+          <summary className={DETAILS_SUMMARY}>
+            <ChevronRightIcon className="size-4 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/details:rotate-90" />
+            {t("deleted.title", { count: deleted.length })}
+          </summary>
+          <div className="border-t p-4">
+            <DeletedTasks tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))} days={RESTORE_WINDOW_DAYS} />
+          </div>
+        </details>
+      ) : null}
 
       <details className="group/details rounded-[14px] border border-border bg-background">
         <summary className={DETAILS_SUMMARY}>
