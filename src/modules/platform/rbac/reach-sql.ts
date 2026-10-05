@@ -1,7 +1,7 @@
 // `matchesReach` as WHERE clauses, so list queries never load people the viewer may not read and
 // then throw them away. The pure semantics live in `policy.ts`; a test keeps the two in step.
 import "server-only";
-import { arrayOverlaps, eq, inArray, or, type SQL } from "drizzle-orm";
+import { arrayOverlaps, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Tx } from "@/lib/db";
 import { listOrgUnits } from "../org/service";
@@ -33,7 +33,9 @@ export async function unitsWithin(unitIds: readonly string[], executor?: Executo
 
 /**
  * Which of `person` the reach admits. `person` must be selected from (or joined) un-aliased.
- * Returns undefined for a reach over everyone — the caller then adds no condition at all.
+ * Returns undefined only for a reach over everyone — the caller then adds no condition at all.
+ * A reach that admits nobody is `false`, never undefined: in `and(...)` undefined means "no
+ * filter", and a caller that forgot to ask `reachesNothing` first would list everyone.
  */
 export function personInReachSql(reach: TierReach): SQL | undefined {
   if (reach.all) return undefined;
@@ -43,8 +45,8 @@ export function personInReachSql(reach: TierReach): SQL | undefined {
     reach.unitIds.length ? arrayOverlaps(schema.person.orgUnitPath, reach.unitIds) : undefined,
     reach.managerOf ? eq(schema.person.managerId, reach.managerOf) : undefined,
   ].filter((clause): clause is SQL => !!clause);
-  return clauses.length ? or(...clauses) : undefined;
+  return clauses.length ? or(...clauses) : sql`false`;
 }
 
 /** The same question about a row that names a unit of its own (an assignment): `unitIds` already expanded by `unitsWithin`. */
-export const unitColumnInReachSql = (column: UuidColumn, expandedUnitIds: readonly string[]): SQL | undefined => (expandedUnitIds.length ? inArray(column, [...expandedUnitIds]) : undefined);
+export const unitColumnInReachSql = (column: UuidColumn, expandedUnitIds: readonly string[]): SQL => (expandedUnitIds.length ? inArray(column, [...expandedUnitIds]) : sql`false`);
