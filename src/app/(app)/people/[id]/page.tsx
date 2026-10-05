@@ -21,6 +21,10 @@ import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
 import { RehireForm, SuspensionForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { listEmploymentsOf } from "@/modules/core-hr/corrections";
+import { canRemovePerson } from "@/modules/core-hr/policy";
+import { CorrectEmploymentButton, RemovePersonForm } from "@/modules/core-hr/ui/correction-forms";
+import { List, ListItem } from "@/components/ui/list";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { PersonDocuments } from "@/modules/documents/ui/person-documents";
 import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history";
@@ -62,7 +66,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
   const today = todayInVietnam();
   const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
-  const [changeRequests, options, pastOptions, otherEntityOptions, entities, borrowable, target, managed, appointments, directoryOpen] = await Promise.all([
+  const [changeRequests, options, pastOptions, otherEntityOptions, entities, borrowable, target, managed, appointments, directoryOpen, employments] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
     // Work history that is already over (roll-out): only for someone who started before today.
@@ -79,6 +83,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
     loadViewer(user).then((viewer) => projectAppointmentsOf(viewer, person.id)),
     // A skill on the profile leads to everyone who holds it — for a viewer who has the directory.
     canBrowsePeople(user.principal) ? peopleModuleOpen(user) : false,
+    // Each employment period, for HR to correct its first day and code (CHR-02).
+    person.canManage ? listEmploymentsOf(person.id) : [],
   ]);
   const photoEditable = canChangePhoto(user.principal, target);
   const accounts = managed.get(person.id) ?? [];
@@ -230,6 +236,19 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={today} /> : null}
             {pastOptions ? <PastAssignmentForm person={person} options={pastOptions} today={addDays(today, -1)} /> : null}
+            {employments.length > 0 ? (
+              <List>
+                {employments.map((row) => (
+                  <ListItem key={row.id} className="flex-wrap gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="font-mono text-xs">{row.employeeCode}</span> · {row.entityName} · {day(row.startDate)} → {day(row.endDate) ?? t("assignment.ongoing")}
+                      <span className="ml-1 text-muted-foreground">({t("corrections.seniorityFrom", { date: day(row.seniorityDate) ?? "" })})</span>
+                    </span>
+                    <CorrectEmploymentButton employment={row} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : null}
             {transferring && otherEntityOptions && transferTargets.length > 0 && personal.startDate ? (
               <TransferEntityForm
                 personId={person.id}
@@ -264,6 +283,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           ) : null}
           <PersonEquipment principal={user.principal} personId={person.id} />
           <PersonDocuments principal={user.principal} personId={person.id} />
+          {/* A record that should never have been made (CHR-02): the service refuses once anything else names the person. */}
+          {canRemovePerson(user.principal, target) ? <RemovePersonForm personId={person.id} fullName={person.fullName} /> : null}
           {/* A former employee comes back on the same record (FR-CHR-16). */}
           {rehiring && otherEntityOptions ? (
             <RehireForm personId={person.id} today={today} defaultEntityId={person.entityId} options={otherEntityOptions} entities={manageableEntities} />

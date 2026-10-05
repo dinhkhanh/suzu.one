@@ -18,9 +18,12 @@ import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { resignationBlocker } from "@/modules/core-hr/resignation";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
+import { listDocumentsAbout } from "@/modules/documents/service";
+import { IssuedDocumentsTable } from "@/modules/documents/ui/issued-documents";
 import { getMonthSummaryFor } from "@/modules/attendance/service";
 import { hoursText } from "@/modules/attendance/ui/day-plan";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
@@ -150,6 +153,7 @@ export default async function MyProfilePage() {
       </Section>
 
       <RecordSections principal={user.principal} personId={user.person.id} />
+      <MyLetters principal={user.principal} personId={user.person.id} />
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
       <ResignationBlock personId={user.person.id} />
@@ -181,15 +185,22 @@ export default async function MyProfilePage() {
   );
 }
 
+// The contracts, decisions and letters issued about the person, as they were issued (FR-CHR-12).
+async function MyLetters({ principal, personId }: { principal: Parameters<typeof listDocumentsAbout>[1]; personId: string }) {
+  const [t, rows] = await Promise.all([getTranslations("documents"), listDocumentsAbout(personId, principal)]);
+  return <IssuedDocumentsTable rows={rows} title={t("mine.title")} empty={t("mine.empty")} />;
+}
+
 // Last on the page on purpose. A resignation is a request like any other: the line manager answers, HR carries it out.
+// The form is offered whenever nothing about the *current* employment stands in the way — so it
+// comes back after a rehire, or after HR called the termination off (CHR-03).
 async function ResignationBlock({ personId }: { personId: string }) {
   const t = await getTranslations("lifecycle");
-  const requests = await listRequestsAbout("resignation", personId);
-  const open = requests.some((request) => request.status === "pending" || request.status === "returned" || request.status === "approved");
+  const [requests, blocker] = await Promise.all([listRequestsAbout("resignation", personId), resignationBlocker(personId)]);
   return (
     <Section title={t("resign.section")}>
       {requests.length > 0 ? <RequestTable rows={requests} empty="" showRequester={false} /> : null}
-      {open ? null : <ResignationForm today={todayInVietnam()} />}
+      {blocker === null ? <ResignationForm today={todayInVietnam()} /> : null}
     </Section>
   );
 }

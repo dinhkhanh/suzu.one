@@ -7,7 +7,7 @@ import "server-only";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
-import { schema } from "@/lib/db";
+import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
@@ -24,19 +24,39 @@ export const resignationRequest = defineRequestType({
   canView: (viewer, subject) => !!subject && can(viewer, "person:manage", subject),
 });
 
+export type ResignationBlocker = "no_employment" | "already_terminated" | "resignation_open" | "resignation_approved";
+
+/**
+ * Why this person may not file a resignation now, or null when they may. Everything is asked of
+ * the **current** employment: a resignation approved during an earlier one (before a rehire), or
+ * one whose termination HR called off, no longer stands in the way. What does: an end date already
+ * set, a request still waiting for an answer, or an approved resignation HR has yet to carry out.
+ */
+export async function resignationBlocker(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<ResignationBlocker | null> {
+  const [employment] = await executor.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1);
+  if (!employment) return "no_employment";
+  if (employment.endDate) return "already_terminated";
+  const [open] = await executor
+    .select({ id: schema.approvalRequest.id })
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.type, resignationRequest.type), eq(schema.approvalRequest.subjectPersonId, personId), inArray(schema.approvalRequest.status, ["pending", "returned"])))
+    .limit(1);
+  if (open) return "resignation_open";
+  const [approved] = await executor
+    .select({ id: schema.lifecycleEvent.id })
+    .from(schema.lifecycleEvent)
+    .where(and(eq(schema.lifecycleEvent.employmentId, employment.id), eq(schema.lifecycleEvent.type, "resignation"), eq(schema.lifecycleEvent.status, "pending")))
+    .limit(1);
+  return approved ? "resignation_approved" : null;
+}
+
 export async function submitResignation(personId: string, input: ResignationPayload) {
   return inTransaction(async (tx) => {
     const target = await getPersonTarget(personId, tx);
-    const [employment] = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1);
-    if (!target?.entityId || !employment) throw new ActionError("no_employment");
-    if (employment.endDate) throw new ActionError("already_terminated");
+    if (!target?.entityId) throw new ActionError("no_employment");
+    const blocker = await resignationBlocker(personId, tx);
+    if (blocker) throw new ActionError(blocker);
     if (input.lastWorkingDay < todayInVietnam()) throw new ActionError("resignation_date_past");
-    const [open] = await tx
-      .select({ id: schema.approvalRequest.id })
-      .from(schema.approvalRequest)
-      .where(and(eq(schema.approvalRequest.type, resignationRequest.type), eq(schema.approvalRequest.subjectPersonId, personId), inArray(schema.approvalRequest.status, ["pending", "returned"])))
-      .limit(1);
-    if (open) throw new ActionError("resignation_open");
 
     const { request } = await submitRequest(tx, resignationRequest, {
       entityId: target.entityId,

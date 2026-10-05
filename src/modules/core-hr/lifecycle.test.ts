@@ -24,7 +24,7 @@ import { loadGrants } from "@/modules/platform/rbac/service";
 import { listMyTasks } from "@/modules/platform/tasks-engine/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { cancelTermination, findLikelyDuplicates, liftSuspension, listLifecycleEvents, recordEvent, rehirePerson, suspendPerson, terminateEmployment, transferToEntity } from "./lifecycle";
-import { decideResignation, getResignation, submitResignation } from "./resignation";
+import { decideResignation, getResignation, resignationBlocker, submitResignation } from "./resignation";
 import { changeAssignment, getPersonView, hirePerson, type HireInput, listEmploymentFacts, rollOverPlacements } from "./service";
 
 const today = todayInVietnam();
@@ -314,6 +314,35 @@ describe("resignation request", () => {
 
     await terminateEmployment(person.id, { lastDay: lastWorkingDay, reason: "resignation", note: null, resignationEventId: event.id }, ids.hr);
     expect((await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, event.id)))[0].status).toBe("applied");
+  });
+
+  // CHR-03: an approved resignation once hid the form for good.
+  it("can be filed again after the termination was called off, and after a rehire", async () => {
+    const { person } = await hire("Second Thoughts");
+    const resignAndApprove = async (lastWorkingDay: string) => {
+      const { request } = await submitResignation(person.id, { lastWorkingDay, reason: null });
+      const { eventId } = await decideResignation(ids.manager, request.id, { action: "approve", comment: null });
+      return eventId!;
+    };
+    expect(await resignationBlocker(person.id)).toBeNull();
+    const first = await resignAndApprove(addDays(today, 30));
+    // Approved and not yet carried out: nothing more to file.
+    expect(await resignationBlocker(person.id)).toBe("resignation_approved");
+    await expect(submitResignation(person.id, { lastWorkingDay: addDays(today, 40), reason: null })).rejects.toThrow("resignation_approved");
+
+    const { event: termination } = await terminateEmployment(person.id, { lastDay: addDays(today, 30), reason: "resignation", note: null, resignationEventId: first }, ids.hr);
+    expect(await resignationBlocker(person.id)).toBe("already_terminated");
+    // HR calls it off: the person stays, the resignation is struck with it, and the form is back.
+    await cancelTermination(termination.id);
+    expect((await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, first)))[0].status).toBe("cancelled");
+    expect(await resignationBlocker(person.id)).toBeNull();
+
+    // Leaves for real, comes back: the old approval belongs to the old employment.
+    const second = await resignAndApprove(addDays(today, 1));
+    await terminateEmployment(person.id, { lastDay: addDays(today, -1), reason: "resignation", note: null, resignationEventId: second }, ids.hr);
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    await rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: today, seniorityDate: null, placement }, ids.hr);
+    expect(await resignationBlocker(person.id)).toBeNull();
   });
 });
 

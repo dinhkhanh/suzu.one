@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { TableAddRow } from "@/components/ui/table";
 import { addCompetencyAction, deleteCompetencyAction, updateCompetencyAction } from "../competency-actions";
 import { COMPETENCY_KINDS, MAX_COMPETENCY_NAME } from "../enums";
+import { ConfirmButton } from "./confirm";
 
 type Entry = { id: string; kind: (typeof COMPETENCY_KINDS)[number]; name: string; holders: number };
 
@@ -45,7 +46,6 @@ export function EditCompetencyButton({ entry }: { entry: Entry }) {
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   function remove() {
-    if (!window.confirm(t("competencies.deleteConfirm", { name: entry.name, count: entry.holders }))) return;
     startRemoving(async () => {
       const result = await deleteCompetencyAction({ competencyId: entry.id });
       if (result.ok) setOpen(false);
@@ -71,9 +71,7 @@ export function EditCompetencyButton({ entry }: { entry: Entry }) {
             <Button type="submit" disabled={pending || removing}>
               {pending ? t("saving") : t("save")}
             </Button>
-            <Button type="button" variant="ghost" className="text-destructive" disabled={pending || removing} onClick={remove}>
-              {t("competencies.delete")}
-            </Button>
+            <ConfirmButton variant="ghost" className="text-destructive" destructive disabled={pending || removing} label={t("competencies.delete")} question={t("competencies.deleteConfirm", { name: entry.name, count: entry.holders })} onConfirm={remove} />
           </div>
         </form>
       </DialogContent>

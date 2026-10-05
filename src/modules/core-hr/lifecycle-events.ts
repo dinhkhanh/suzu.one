@@ -70,6 +70,10 @@ export type LifecycleEventView = Pick<LifecycleEventRow, "id" | "type" | "effect
   createdByName: string | null;
   /** The event's checklist, if it has one. */
   tasks: TaskView[];
+  /** It wrote a contract or moved the placement (a probation pass, a renewal): struck only by correcting those. */
+  hasEffects: boolean;
+  /** The contract it wrote, for the timeline. */
+  contractNumber: string | null;
 };
 
 /** The events whose reason and note are about pay: that there was one is personal, why is compensation. */
@@ -105,6 +109,8 @@ export async function loadTimeline(personId: string, options: { seesRestricted: 
       to: (event.details.to as PlacementWords | undefined) ?? null,
       createdByName,
       tasks: tasks.filter((task) => task.contextType === LIFECYCLE_CONTEXT && task.contextId === event.id),
+      hasEffects: typeof event.details.contractId === "string" || !!event.details.workforceType,
+      contractNumber: typeof event.details.contractNumber === "string" ? event.details.contractNumber : null,
     };
   });
 }

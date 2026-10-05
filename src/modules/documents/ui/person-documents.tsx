@@ -47,7 +47,7 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
               </TableCell>
               <TableCell>{tiers(row.tier)}</TableCell>
               <TableCell>{row.generatedByName ? <RecordLink kind="person" id={row.generatedByPersonId}>{row.generatedByName}</RecordLink> : "—"}</TableCell>
-              <TableCell>{row.createdAt.toLocaleDateString("vi-VN")}</TableCell>
+              <TableCell>{row.createdAt.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</TableCell>
               <TableCell kind="actions">
                 <a href={`/documents/${row.id}/pdf`} className="text-sm underline">
                   {t("download")}
@@ -57,9 +57,12 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
           ))}
         </TableBody>
       </Table>
-      <TableAddRow label={t("new")} open={history.length === 0}>
-        <GenerateDocumentForm subjectPersonId={personId} templates={mine.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))} />
-      </TableAddRow>
+      {/* The person themselves reads their papers here and issues none. */}
+      {mine.length > 0 ? (
+        <TableAddRow label={t("new")} open={history.length === 0}>
+          <GenerateDocumentForm subjectPersonId={personId} templates={mine.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))} />
+        </TableAddRow>
+      ) : null}
     </TableCard>
   );
 }

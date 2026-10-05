@@ -32,6 +32,10 @@ import {
   resolveAttachmentOwner,
   resolveFileOwner,
   terminateContract,
+  updateContract,
+  updateDependent,
+  updateDocument,
+  updateEmergencyContact,
   updateSensitiveFields,
   withoutSecrets,
 } from "./records";
@@ -137,6 +141,40 @@ const contractTarget = async (contractId: string) => {
   return contract ? getPersonTarget(contract.personId) : null;
 };
 
+// A correction of what was entered wrong (CHR-02), on any of the person's employments. The pay terms
+// change only when the form sends them, and only a reader of pay sees that field: anyone else's
+// correction leaves them exactly as they were.
+const updateContractPipeline = createAction({
+  name: "contract.update",
+  input: z.object({
+    contractId: z.uuid(),
+    number: z.string().trim().min(1).max(60),
+    type: z.enum(CONTRACT_TYPES),
+    parentContractId: optional(z.uuid()),
+    jobCategory: optional(z.enum(JOB_CATEGORIES)),
+    signDate: optional(day),
+    startDate: day,
+    endDate: optional(day),
+    // Sealed, so the form cannot show them: a blank field keeps the terms that are there.
+    salaryTerms: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(2000).optional()),
+    note: text(500),
+  }),
+  authorize: async (user, input) => canManageRecords(user.principal, await contractTarget(input.contractId), "personal"),
+  run: async ({ user, input }) => {
+    const { contractId, salaryTerms, ...details } = input;
+    const target = await contractTarget(contractId);
+    const seesPay = !!target && canReadTier(user.principal, target, "compensation");
+    if (salaryTerms !== undefined && !seesPay) throw new ActionError("contract_salary_terms_forbidden");
+    const { before, after } = await updateContract(contractId, { ...details, ...(seesPay && salaryTerms !== undefined ? { salaryTerms } : {}) });
+    refresh(after.personId);
+    return { data: { id: after.id }, audit: { resource: { type: "contract", id: after.id, entityId: after.entityId }, summary: `${after.number} corrected`, before: withoutSecrets(before, ["salaryTerms"]), after: withoutSecrets(after, ["salaryTerms"]) } };
+  },
+});
+
+export async function updateContractAction(input: unknown) {
+  return updateContractPipeline(input);
+}
+
 const terminateContractPipeline = createAction({
   name: "contract.terminate",
   input: z.object({ contractId: z.uuid(), terminatedOn: day }),
@@ -234,6 +272,36 @@ export async function endDependentDeductionAction(input: unknown) {
   return endDeductionPipeline(input);
 }
 
+// The ID number and tax code are sealed: the form does not show them, so a blank field keeps them.
+const keepIfBlank = z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.string().trim().max(40).optional());
+
+const updateDependentPipeline = createAction({
+  name: "dependent.update",
+  input: z.object({
+    dependentId: z.uuid(),
+    fullName: z.string().trim().min(2).max(120),
+    relationship: z.enum(DEPENDENT_RELATIONSHIPS),
+    dateOfBirth: optional(day),
+    idNumber: keepIfBlank,
+    taxCode: keepIfBlank,
+    deductionFrom: month,
+    deductionTo: optional(month),
+    note: text(500),
+  }),
+  authorize: async (user, input) => canManageRecords(user.principal, await dependentTarget(input.dependentId), "restricted"),
+  run: async ({ input }) => {
+    const { dependentId, ...details } = input;
+    const { before, after } = await updateDependent(dependentId, details);
+    const target = await getPersonTarget(after.personId);
+    refresh(after.personId);
+    return { data: { id: after.id }, audit: { resource: { type: "dependent", id: after.id, entityId: target?.entityId }, summary: `${after.relationship} corrected`, before: withoutSecrets(before, ["idNumber", "taxCode"]), after: withoutSecrets(after, ["idNumber", "taxCode"]) } };
+  },
+});
+
+export async function updateDependentAction(input: unknown) {
+  return updateDependentPipeline(input);
+}
+
 const deleteDependentPipeline = createAction({
   name: "dependent.delete",
   input: z.object({ dependentId: z.uuid() }),
@@ -267,6 +335,26 @@ const addContactPipeline = createAction({
 
 export async function addEmergencyContactAction(input: unknown) {
   return addContactPipeline(input);
+}
+
+const updateContactPipeline = createAction({
+  name: "emergency_contact.update",
+  input: z.object({ contactId: z.uuid(), fullName: z.string().trim().min(2).max(120), relationship: text(60), phone: z.string().trim().min(3).max(30), note: text(300) }),
+  authorize: async (user, input) => {
+    const contact = await findEmergencyContact(input.contactId);
+    return canManageRecords(user.principal, contact ? await getPersonTarget(contact.personId) : null, "personal");
+  },
+  run: async ({ input }) => {
+    const { contactId, ...details } = input;
+    const { before, after } = await updateEmergencyContact(contactId, details);
+    const target = await getPersonTarget(after.personId);
+    refresh(after.personId);
+    return { data: { id: after.id }, audit: { resource: { type: "emergency_contact", id: after.id, entityId: target?.entityId }, summary: after.fullName, before, after } };
+  },
+});
+
+export async function updateEmergencyContactAction(input: unknown) {
+  return updateContactPipeline(input);
 }
 
 const removeContactPipeline = createAction({
@@ -319,6 +407,25 @@ const completeDocumentPipeline = createAction({
 
 export async function completeDocumentUploadAction(input: unknown) {
   return completeDocumentPipeline(input);
+}
+
+const updateDocumentPipeline = createAction({
+  name: "document.update",
+  input: z.object({ documentId: z.uuid(), title: z.string().trim().min(1).max(200), expiresOn: optional(day) }),
+  authorize: async (user, input) => {
+    const document = await findDocument(input.documentId);
+    return !!document && canManageRecords(user.principal, await getPersonTarget(document.personId), document.tier as "personal");
+  },
+  run: async ({ input }) => {
+    const { documentId, ...details } = input;
+    const { before, after } = await updateDocument(documentId, details);
+    refresh(after.personId);
+    return { data: { id: after.id }, audit: { resource: { type: "person_document", id: after.id, entityId: after.entityId }, summary: `${after.category}: ${after.title}`, before: { title: before.title, expiresOn: before.expiresOn }, after: { title: after.title, expiresOn: after.expiresOn } } };
+  },
+});
+
+export async function updateDocumentAction(input: unknown) {
+  return updateDocumentPipeline(input);
 }
 
 const deleteDocumentPipeline = createAction({

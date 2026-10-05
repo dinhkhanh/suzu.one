@@ -1,4 +1,5 @@
 "use server";
+import { contractImport } from "./contract-import";
 import { historyImport } from "./history-import";
 import { employeeImport } from "./import";
 
@@ -16,4 +17,12 @@ export async function stageHistoryImportAction(input: unknown) {
 
 export async function commitHistoryImportAction(input: unknown) {
   return historyImport.commit(input);
+}
+
+export async function stageContractImportAction(input: unknown) {
+  return contractImport.stage(input);
+}
+
+export async function commitContractImportAction(input: unknown) {
+  return contractImport.commit(input);
 }
