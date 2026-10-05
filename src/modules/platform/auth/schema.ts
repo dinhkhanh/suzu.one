@@ -1,5 +1,6 @@
-// Tables owned by Better Auth. Column names follow its Drizzle adapter contract.
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+// Tables owned by Better Auth. Column names follow its Drizzle adapter contract — all but the last,
+// which is the auth module's own.
+import { boolean, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -79,4 +80,24 @@ export const verification = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("verification_identifier_idx").on(t.identifier)],
+).enableRLS();
+
+// The rate limiter of the sign-in endpoints (NFR-SEC-03): `/api/auth/*` counted per address, and
+// the step-up round trip per session. Better Auth's own limiter counts in each server's memory, so
+// on Vercel every new instance starts from zero; this one counts in Postgres, where every instance
+// sees the same number. One row per (bucket, key, window) and one atomic upsert — the careers
+// page's mechanism, in this module's own table (`endpoint-limit.ts`). `key_hash` is a hash of the
+// address or the session, never either itself.
+export const authEndpointHit = pgTable(
+  "auth_endpoint_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What was counted: "sign_in", "session", "step_up". See `AUTH_LIMITS`.
+    bucket: text("bucket").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("auth_endpoint_hit_key").on(t.bucket, t.keyHash, t.windowStart), index("auth_endpoint_hit_window_idx").on(t.windowStart)],
 ).enableRLS();

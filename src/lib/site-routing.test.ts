@@ -52,6 +52,8 @@ describe("routeRequest", () => {
       expect(on("suzu.one", "/api/attendance/device/punches")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/attendance/devices")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/api/kiosk/punch")).toEqual({ kind: "pass" });
+      expect(on("suzu.one", "/api/health")).toEqual({ kind: "pass" });
+      expect(on("suzu.one", "/api/healthz")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/sw.js")).toEqual({ kind: "pass" });
     });
   });

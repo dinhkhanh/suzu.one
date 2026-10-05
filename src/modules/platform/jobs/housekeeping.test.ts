@@ -11,7 +11,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { issueActionToken } from "../approvals/action-tokens";
+import { DELIVERY_LOG_RETENTION_DAYS, NOTIFICATION_RETENTION_DAYS } from "../notifications/retention";
 import { housekeepingJob } from "./housekeeping";
+import { JOB_RUN_RETENTION_DAYS } from "./service";
 
 const ids = { person: "", request: "" };
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -35,10 +37,41 @@ it("sweeps expired approval links and stale import batches, and leaves what is s
     { ...batch, status: "ready" },
   ]);
 
-  expect(await housekeepingJob.run({ today: todayInVietnam() })).toEqual({ approvalTokens: 1, importBatchesDeleted: 1, importBatchesEmptied: 0 });
+  expect(await housekeepingJob.run({ today: todayInVietnam() })).toMatchObject({ approvalTokens: 1, importBatchesDeleted: 1, importBatchesEmptied: 0 });
   expect(await db().select().from(schema.approvalActionToken)).toHaveLength(1);
   expect(await db().select().from(schema.importBatch)).toHaveLength(1);
 
   // Safe to run again the same night.
-  expect(await housekeepingJob.run({ today: todayInVietnam() })).toEqual({ approvalTokens: 0, importBatchesDeleted: 0, importBatchesEmptied: 0 });
+  expect(await housekeepingJob.run({ today: todayInVietnam() })).toMatchObject({ approvalTokens: 0, importBatchesDeleted: 0, importBatchesEmptied: 0 });
+});
+
+it("sweeps expired sessions, old notifications, finished deliveries and old job runs (ENG-04), and keeps what is owed or recent", async () => {
+  // A session that expired a week ago and one in use; a sign-in that was started and never finished.
+  await db().insert(schema.user).values({ id: "u1", name: "Người duyệt", email: "duyet@suzu.vn" });
+  await db().insert(schema.session).values([
+    { id: "s-old", token: "tok-old", userId: "u1", expiresAt: daysAgo(7) },
+    { id: "s-live", token: "tok-live", userId: "u1", expiresAt: daysAgo(-2) },
+  ]);
+  await db().insert(schema.verification).values({ id: "v-old", identifier: "state", value: "x", expiresAt: daysAgo(3) });
+  await db().insert(schema.authEndpointHit).values({ bucket: "sign_in", keyHash: "k", windowStart: daysAgo(2) });
+  // A notice from last year and one from today.
+  await db().insert(schema.notification).values([
+    { recipientPersonId: ids.person, kind: "system.job_failed", createdAt: daysAgo(NOTIFICATION_RETENTION_DAYS + 5) },
+    { recipientPersonId: ids.person, kind: "system.job_failed" },
+  ]);
+  // An email sent long ago, one that failed long ago, and one still owed from long ago: the last stays.
+  const email = { toEmail: "a@suzu.vn", subject: "s", bodyText: "b", createdAt: daysAgo(DELIVERY_LOG_RETENTION_DAYS + 1) };
+  await db().insert(schema.emailOutbox).values([
+    { ...email, status: "sent" },
+    { ...email, status: "failed" },
+    { ...email, status: "pending" },
+  ]);
+  await db().insert(schema.jobRun).values({ job: "old", status: "succeeded", startedAt: daysAgo(JOB_RUN_RETENTION_DAYS + 1), finishedAt: daysAgo(JOB_RUN_RETENTION_DAYS + 1) });
+
+  expect(await housekeepingJob.run({ today: todayInVietnam() })).toMatchObject({ sessionsExpired: 1, signInStatesExpired: 1, authHits: 1, notifications: 1, deliveries: 2, jobRuns: 1 });
+  expect((await db().select().from(schema.session)).map((row) => row.id)).toEqual(["s-live"]);
+  expect(await db().select().from(schema.notification)).toHaveLength(1);
+  expect((await db().select().from(schema.emailOutbox)).map((row) => row.status)).toEqual(["pending"]);
+
+  expect(await housekeepingJob.run({ today: todayInVietnam() })).toMatchObject({ sessionsExpired: 0, signInStatesExpired: 0, authHits: 0, notifications: 0, deliveries: 0, jobRuns: 0 });
 });

@@ -66,6 +66,11 @@ const schema = z.object({
   STEP_UP_DRIVER: z.enum(["google", "local"]).default("google"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
+  // A dead-man's switch for the schedules (ENG-01, docs/runbooks/incidents.md): a ping URL base at
+  // an uptime service, e.g. healthchecks.io's `https://hc-ping.com/<ping key>`. Each schedule pings
+  // `<base>/<schedule>/start`, then `<base>/<schedule>` or `<base>/<schedule>/fail`; the service
+  // alerts when a ping is late. Unset = no pings.
+  CRON_PING_URL: z.url().optional(),
   // Google Chat (FR-PLT-31): an incoming-webhook URL for the space that gets approval cards.
   // Unset = the local driver records each card as "simulated" and nothing leaves the machine.
   GOOGLE_CHAT_WEBHOOK_URL: z.url().optional(),

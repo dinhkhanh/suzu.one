@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { recordAudit } from "@/modules/platform/audit/service";
+import { authLimitKey, countAuthHit } from "@/modules/platform/auth/endpoint-limit";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { markReauthenticated, openPendingStepUp, STEP_UP_STATE_COOKIE, stepUpDriver, verifyGoogleStepUp } from "@/modules/platform/auth/step-up";
 
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
   };
 
   if (stepUpDriver() !== "google") return refuse("driver");
+  if (!(await countAuthHit("step_up", authLimitKey("session", user.sessionId))).ok) return refuse("rate_limited");
   const pending = openPendingStepUp(request.cookies.get(STEP_UP_STATE_COOKIE)?.value);
   const code = request.nextUrl.searchParams.get("code");
   if (!pending || !code || pending.state !== request.nextUrl.searchParams.get("state")) return refuse("state");

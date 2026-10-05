@@ -36,6 +36,7 @@
       "not_provisioned": "Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. Vui lòng liên hệ phòng Nhân sự.",
       "access_revoked": "Quyền truy cập của bạn đã bị khóa. Vui lòng liên hệ phòng Nhân sự.",
       "email_not_verified": "Email chưa được Google xác minh.",
+      "rate_limited": "Có quá nhiều lượt đăng nhập từ mạng này. Vui lòng đợi một phút rồi thử lại.",
       "generic": "Không thể đăng nhập. Vui lòng thử lại hoặc liên hệ phòng Nhân sự."
     }
   },
@@ -936,6 +937,10 @@
         "title": "Tác vụ tự động thất bại: {job}",
         "body": "Tác vụ {job} vừa chạy lỗi: {error}"
       },
+      "system_job_timed_out": {
+        "title": "Tác vụ tự động bị dừng giữa chừng: {job}",
+        "body": "Tác vụ {job} vẫn chạy sau {minutes} phút và đã bị máy chủ dừng lại. Có thể việc mới làm được một nửa: hãy mở Quản trị → Tác vụ tự động và chạy lại."
+      },
       "system_rule_proposed": {
         "title": "Có đề xuất thay đổi tham số pháp định",
         "body": "Tham số {parameter} được đề xuất giá trị mới, hiệu lực từ {validFrom}. Đề xuất chỉ có hiệu lực sau khi bạn phê duyệt."
@@ -1612,7 +1617,26 @@
       "failed": "Lỗi",
       "last24h": "trong 24 giờ qua",
       "median": "Thời gian chạy trung vị",
-      "next": "Lần chạy tiếp"
+      "next": "Lần chạy tiếp",
+      "deliveries": "Gửi tin thất bại",
+      "lastDays": "trong {days} ngày qua"
+    },
+    "channels": {
+      "email": "Email",
+      "push": "Thông báo đẩy",
+      "chat": "Chat",
+      "messenger": "Messenger",
+      "telegram": "Telegram"
+    },
+    "jobsSection": "Danh sách tác vụ",
+    "lastRun": "Lần chạy cuối",
+    "onDemand": "Chạy khi cần",
+    "runNow": {
+      "label": "Chạy ngay",
+      "running": "Đang chạy…",
+      "succeeded": "Xong",
+      "failed": "Lỗi — xem các lần chạy bên dưới",
+      "alreadyRunning": "Đang chạy rồi"
     },
     "runs": "Lần chạy gần đây",
     "schedule": "Lịch",

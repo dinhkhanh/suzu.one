@@ -36,6 +36,7 @@
       "not_provisioned": "Your account has no profile in the system yet. Please contact HR.",
       "access_revoked": "Your access has been revoked. Please contact HR.",
       "email_not_verified": "Google has not verified this email.",
+      "rate_limited": "Too many sign-in attempts from this network. Wait a minute and try again.",
       "generic": "Could not sign in. Try again or contact HR."
     }
   },
@@ -936,6 +937,10 @@
         "title": "Scheduled job failed: {job}",
         "body": "The job {job} just failed: {error}"
       },
+      "system_job_timed_out": {
+        "title": "Scheduled job stopped before it finished: {job}",
+        "body": "The job {job} was still running after {minutes} minutes and the server stopped it. Its work may be half done: open Admin → Jobs and run it again."
+      },
       "system_rule_proposed": {
         "title": "A statutory parameter change needs your decision",
         "body": "A new value was proposed for {parameter}, in force from {validFrom}. It takes effect only once you approve it."
@@ -1612,7 +1617,26 @@
       "failed": "Failed",
       "last24h": "in the last 24 hours",
       "median": "Median run",
-      "next": "Next run"
+      "next": "Next run",
+      "deliveries": "Failed deliveries",
+      "lastDays": "in the last {days} days"
+    },
+    "channels": {
+      "email": "Email",
+      "push": "Push",
+      "chat": "Chat",
+      "messenger": "Messenger",
+      "telegram": "Telegram"
+    },
+    "jobsSection": "Jobs",
+    "lastRun": "Last run",
+    "onDemand": "On demand",
+    "runNow": {
+      "label": "Run now",
+      "running": "Running…",
+      "succeeded": "Done",
+      "failed": "Failed — see the runs below",
+      "alreadyRunning": "Already running"
     },
     "runs": "Recent runs",
     "schedule": "Schedule",
