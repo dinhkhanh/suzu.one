@@ -30,7 +30,7 @@ import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { hireInTransaction, invalidatePositions, listPositionNames } from "@/modules/core-hr/service";
-import { atLeast, type LetterheadFields, renderTemplate, vietnameseWords } from "@/modules/documents/service";
+import { atLeast, findTemplate, type LetterheadFields, listTemplates, renderTemplate, vietnameseWords } from "@/modules/documents/service";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
@@ -690,14 +690,15 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
   const party = offer.approvalRequestId && viewer.personId ? !!(await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId)) : false;
   if (!canViewOffer(viewer.principal, target, member, party)) return null;
 
-  const [template] = await db().select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1);
-  if (!template) return null;
+  // The template library is reference data, in the documents module's cache.
+  const template = await findTemplate(offer.letterTemplateId);
+  if (!template?.isActive) return null;
   // An offer letter prints a salary, so its template is compensation tier and the reader must hold
   // the money authority. Checked here, again, against who is asking *now*.
   if (atLeast(template.tier, "compensation") && !canReadOfferMoney(viewer.principal, target)) return null;
 
   const candidate = await findCandidate(offer.candidateId);
-  const [department] = offer.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
+  const department = offer.departmentId ? (await listOrgUnits()).find((unit) => unit.id === offer.departmentId) : undefined;
 
   const context = offerLetterContext({
     offer,
@@ -713,7 +714,9 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
 }
 
 /** The wordings a recruiter may pick from when drafting an offer. Names and ids only. */
-export async function listOfferTemplates(executor: Executor = db()): Promise<{ id: string; name: string; entityId: string | null }[]> {
+export async function listOfferTemplates(executor?: Executor): Promise<{ id: string; name: string; entityId: string | null }[]> {
+  // Without a transaction, from the documents module's cached library (ordered by kind, then name).
+  if (!executor) return (await listTemplates()).filter((row) => row.kind === "offer" && row.isActive).map(({ id, name, entityId }) => ({ id, name, entityId }));
   return executor
     .select({ id: schema.documentTemplate.id, name: schema.documentTemplate.name, entityId: schema.documentTemplate.entityId })
     .from(schema.documentTemplate)

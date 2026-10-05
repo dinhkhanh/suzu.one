@@ -22,7 +22,8 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
 import { movesThroughEngine } from "../platform/tasks-engine/policy";
 import { NO_EVIDENCE, OBLIGATION_FILE_OWNER } from "./enums";
-import { cancelInstance, completeInstance, listInstances, loadInstance, reassignInstance, reopenInstance, saveProgress } from "./instances";
+import { cancelInstance, completeInstance, dueFigures, listInstancePage, listInstances, loadInstance, reassignInstance, reopenInstance, saveProgress } from "./instances";
+import { addDays } from "@/lib/dates";
 import { canViewInstance, canWorkInstance } from "./policy";
 import { generateInstances } from "./scheduler";
 import { OBLIGATION_LIBRARY } from "./seed-library";
@@ -270,6 +271,16 @@ describe("who sees what", () => {
     // Entity HR: its own entity, plus the SZC instance it was never part of stays hidden.
     expect(hrSees.every((row) => row.entityId === ids.szm)).toBe(true);
     expect(await listInstances({ principal: viewers[3][1], personId: ids.newHire }, {}, TODAY)).toEqual([]);
+
+    // PERF-03: the register in pages — the same rows in the same order, each page counting them all.
+    const finance = { principal: viewers[0][1], personId: ids.finance };
+    const whole = await listInstances(finance, {}, TODAY);
+    expect(whole.length).toBeGreaterThan(2);
+    const size = Math.ceil(whole.length / 2);
+    const pages = [await listInstancePage(finance, {}, 1, size, TODAY), await listInstancePage(finance, {}, 2, size, TODAY)];
+    expect(pages.map((page) => page.total)).toEqual([whole.length, whole.length]);
+    expect(pages.flatMap((page) => page.items)).toEqual(whole);
+    expect(await listInstancePage({ principal: viewers[3][1], personId: ids.newHire }, {}, 1, size, TODAY)).toEqual({ items: [], total: 0 });
   });
 
   it("a reader who owns a step works it; other readers only look", async () => {
@@ -286,5 +297,25 @@ describe("who sees what", () => {
     expect(open.find((row) => row.templateCode === "VAT" && row.periodKey === "2026-09" && row.entityId === ids.szc)).toMatchObject({ colour: "overdue", unreviewed: true });
     const closed = await listInstances({ principal: finance, personId: ids.finance }, { open: false }, TODAY);
     expect(closed.map((row) => row.colour)).toContain("done");
+  });
+
+  it("counts what is overdue and due soon in SQL, the same as the list does", async () => {
+    const viewers = [principal(ids.finance, [{ role: "finance", scope: { type: "group" } }]), principal(ids.hrSzm, [{ role: "hr_staff", scope: { type: "entity", id: ids.szm } }]), principal(ids.newHire, [])];
+    for (const today of [TODAY, "2026-10-25", "2026-12-01"]) {
+      const dueTo = addDays(today, 14);
+      for (const viewer of viewers) {
+        const who = { principal: viewer, personId: viewer.personId! };
+        // What the dashboard tile used to work out from the list.
+        const listed = await listInstances(who, { open: true, dueTo, limit: 100_000 }, today);
+        const overdue = listed.filter((row) => (row.dueDate ?? row.nominalDueDate) < today);
+        const figures = await dueFigures(who, dueTo, today);
+        expect(figures).toEqual({
+          overdue: overdue.length,
+          dueSoon: listed.length - overdue.length,
+          worst: overdue.slice(0, 5).map((row) => ({ entityCode: row.entityCode, templateName: row.templateName, dueDate: row.dueDate ?? row.nominalDueDate, assigneeName: row.assigneeName })),
+        });
+      }
+    }
+    expect((await dueFigures({ principal: viewers[0], personId: ids.finance }, "2026-12-15", "2026-12-01")).overdue).toBeGreaterThan(0);
   });
 });

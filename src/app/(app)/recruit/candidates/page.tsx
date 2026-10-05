@@ -5,23 +5,34 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Pager, readPage } from "@/components/ui/pager";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canBrowseCandidates, listCandidates } from "@/modules/recruit/service";
+import { canBrowseCandidates, listCandidatePage } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("candidates");
+
+/** Candidates per page (PERF-03). */
+const PAGE_SIZE = 50;
 
 // The candidate database (FR-REC-04). `recruit:manage` and nobody else — a hiring manager reaches
 // the people applying for their job through the opening, not through here.
 export default async function CandidatesPage({ searchParams }: PageProps<"/recruit/candidates">) {
   const user = await requireUser();
   if (!canBrowseCandidates(user.principal)) notFound();
-  const { q } = await searchParams;
+  const query = await searchParams;
+  const q = typeof query.q === "string" && query.q ? query.q : undefined;
+  const page = readPage(query.page);
   const t = await getTranslations("recruit");
   const format = await getFormatter();
-  const rows = await listCandidates(user.principal, { query: typeof q === "string" ? q : undefined });
+  const { rows, total } = await listCandidatePage(user.principal, { query: q }, page, PAGE_SIZE);
+  // The pages carry the search along.
+  const pageHref = (to: number) => {
+    const params = new URLSearchParams(Object.entries({ q, page: to > 1 ? String(to) : undefined }).filter((entry): entry is [string, string] => !!entry[1]));
+    return params.size ? `/recruit/candidates?${params.toString()}` : "/recruit/candidates";
+  };
 
   return (
     <Page>
@@ -36,14 +47,14 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
       />
 
       <form className="flex gap-2">
-        <Input name="q" defaultValue={typeof q === "string" ? q : ""} placeholder={t("columns.candidate")} className="max-w-xs" />
+        <Input name="q" defaultValue={q ?? ""} placeholder={t("columns.candidate")} className="max-w-xs" />
         <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
           {t("columns.candidate")}
         </button>
       </form>
 
       <TableCard>
-        <Table>
+        <Table numberFrom={(page - 1) * PAGE_SIZE + 1}>
           <TableHeader>
             <TableRow>
               <TableHead kind="text">{t("columns.candidate")}</TableHead>
@@ -91,6 +102,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         </Table>
         <TableAddRow label={t("newCandidate")} href="/recruit/candidates/new" />
       </TableCard>
+      <Pager page={page} pageSize={PAGE_SIZE} total={total} href={pageHref} />
     </Page>
   );
 }

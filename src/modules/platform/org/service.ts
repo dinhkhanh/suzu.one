@@ -107,13 +107,11 @@ export async function createEntity(input: EntityInput): Promise<EntityRow> {
 }
 
 export async function findEntity(id: string): Promise<EntityRow | undefined> {
-  const [row] = await db().select().from(schema.entity).where(eq(schema.entity.id, id)).limit(1);
-  return row;
+  return (await listEntities()).find((row) => row.id === id);
 }
 
 export async function findBranch(id: string): Promise<BranchRow | undefined> {
-  const [row] = await db().select().from(schema.branch).where(eq(schema.branch.id, id)).limit(1);
-  return row;
+  return (await listBranches()).find((row) => row.id === id);
 }
 
 export async function findOrgUnit(id: string, executor: Executor = db()): Promise<OrgUnitRow | undefined> {

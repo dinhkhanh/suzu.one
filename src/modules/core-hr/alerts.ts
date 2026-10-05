@@ -1,15 +1,15 @@
 // The daily HR countdowns (FR-CHR-05, FR-CHR-08): contracts running out, probation ending,
 // vault documents expiring. Safe to run twice: `hr_alert_sent` remembers what was already said.
 import "server-only";
-import { and, eq, gte, isNotNull, isNull } from "drizzle-orm";
+import { and, gte, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
-import { listPeopleHolding } from "@/modules/platform/rbac/service";
+import { listPeopleHoldingEach } from "@/modules/platform/rbac/service";
 import { getParameter } from "@/modules/platform/statutory/service";
 import { type AlertSubject, dueAlerts } from "./engine/alert-plan";
 import { isLabourContract } from "./engine/contract-rules";
-import { getPersonTarget } from "./service";
+import { getPersonTargets } from "./service";
 
 type AlertKind = "hr.contract_expiring" | "hr.probation_ending" | "hr.document_expiring";
 type Subject = AlertSubject<AlertKind> & { personId: string; label: string };
@@ -34,12 +34,25 @@ export async function sendHrAlerts(today: IsoDate): Promise<{ contractAlerts: nu
   const due = dueAlerts(today, subjects, { "hr.contract_expiring": thresholds.contractExpiryDays, "hr.probation_ending": thresholds.probationEndDays, "hr.document_expiring": thresholds.documentExpiryDays });
 
   const tally = { contractAlerts: 0, probationAlerts: 0, documentAlerts: 0 };
+  if (due.length === 0) return tally;
+  const subjectOf = (alert: (typeof due)[number]) => subjects.find((candidate) => candidate.subjectId === alert.subjectId && candidate.kind === alert.kind)!;
+  // Worked out before the transactions, for everybody at once, which then only claim and tell:
+  // where each person sits, who in HR holds them, and their name.
+  const personIds = [...new Set(due.map((alert) => subjectOf(alert).personId))];
+  const [targets, people] = await Promise.all([
+    getPersonTargets(personIds),
+    db().select({ id: schema.person.id, fullName: schema.person.fullName, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, personIds)),
+  ]);
+  const placed = personIds.filter((personId) => targets.has(personId));
+  // HR, not the owners: a countdown is routine work, and owners who want it can follow the person's page.
+  const holders = await listPeopleHoldingEach("person:manage", placed.map((personId) => targets.get(personId)!), { today, includeWildcard: false });
+  const hrOf = new Map(placed.map((personId, index) => [personId, holders[index]]));
+  const personOf = new Map(people.map((row) => [row.id, row]));
+
   for (const alert of due) {
-    const subject = subjects.find((candidate) => candidate.subjectId === alert.subjectId && candidate.kind === alert.kind)!;
-    // Worked out before the transaction, which then only claims and tells.
-    const target = await getPersonTarget(subject.personId);
-    // HR, not the owners: a countdown is routine work, and owners who want it can follow the person's page.
-    const hr = target ? await listPeopleHolding("person:manage", target, { today, includeWildcard: false }) : [];
+    const subject = subjectOf(alert);
+    const target = targets.get(subject.personId) ?? null;
+    const hr = hrOf.get(subject.personId) ?? [];
     // The line manager plans around a contract or a probation ending. What sits in someone's
     // vault is between them and HR, so document alerts go to the person instead.
     const other = alert.kind === "hr.document_expiring" ? subject.personId : target?.managerId;
@@ -47,7 +60,7 @@ export async function sendHrAlerts(today: IsoDate): Promise<{ contractAlerts: nu
       // The insert is the claim: whoever gets the row sends the alert.
       const [claimed] = await tx.insert(schema.hrAlertSent).values({ kind: alert.kind, subjectId: alert.subjectId, dueOn: alert.dueOn, thresholdDays: alert.thresholdDays }).onConflictDoNothing().returning({ id: schema.hrAlertSent.id });
       if (!claimed) return;
-      const [person] = await tx.select({ fullName: schema.person.fullName, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, subject.personId)).limit(1);
+      const person = personOf.get(subject.personId);
       if (!person || person.status === "offboarded") return;
       await notify({ recipients: [...hr, ...(other ? [other] : [])], kind: alert.kind, params: { person: person.fullName, label: subject.label, date: alert.dueOn, days: alert.daysLeft }, link: `/people/${subject.personId}` }, tx);
       tally[alert.kind === "hr.contract_expiring" ? "contractAlerts" : alert.kind === "hr.probation_ending" ? "probationAlerts" : "documentAlerts"]++;

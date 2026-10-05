@@ -26,15 +26,16 @@ const hashOf = (token: string) => createHash("sha256").update(token).digest("hex
  * the token itself is never stored, only its hash.
  */
 export async function issueActionToken(executor: Executor, requestId: string, personId: string, now: Date = new Date()): Promise<{ token: string; path: string }> {
-  const token = randomBytes(TOKEN_BYTES).toString("base64url");
-  await executor.insert(schema.approvalActionToken).values({
-    requestId,
-    personId,
-    action: "approve",
-    tokenHash: hashOf(token),
-    expiresAt: new Date(now.getTime() + TOKEN_TTL_HOURS * 60 * 60 * 1000),
-  });
-  return { token, path: `/approvals/act/${token}` };
+  return (await issueActionTokens(executor, requestId, [personId], now)).get(personId)!;
+}
+
+/** `issueActionToken` for everybody whose turn it is on one request: a key each, in one insert. */
+export async function issueActionTokens(executor: Executor, requestId: string, personIds: readonly string[], now: Date = new Date()): Promise<Map<string, { token: string; path: string }>> {
+  const issued = new Map([...new Set(personIds)].map((personId) => [personId, randomBytes(TOKEN_BYTES).toString("base64url")]));
+  if (issued.size === 0) return new Map();
+  const expiresAt = new Date(now.getTime() + TOKEN_TTL_HOURS * 60 * 60 * 1000);
+  await executor.insert(schema.approvalActionToken).values([...issued].map(([personId, token]) => ({ requestId, personId, action: "approve" as const, tokenHash: hashOf(token), expiresAt })));
+  return new Map([...issued].map(([personId, token]) => [personId, { token, path: `/approvals/act/${token}` }]));
 }
 
 export type TokenLookup = { ok: true; row: ApprovalActionTokenRow } | { ok: false; reason: "unknown" | "expired" | "used" };

@@ -19,7 +19,7 @@ vi.mock("@/lib/action", () => ({
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { getLeaderView, listMyWorkItems, nudgeTask } from "./leader";
+import { getLeaderView, leaderTotals, listMyWorkItems, nudgeTask } from "./leader";
 import { canDecideReview, canManageTemplate, canNudgeTask, canSubmitDeliverable } from "./policy";
 import { createProject } from "./projects";
 import { changeRecurrence, createRecurrence, generateOccurrences, listRecurrences } from "./recurrences";
@@ -202,6 +202,22 @@ describe("leader view and nudge", () => {
     expect(view.people.find((person) => person.personId === ids.tam)!.tasks.find((task) => task.title === "Colour grade")).toMatchObject({ risk: "at_risk" });
     expect(view.people.some((person) => person.personId === ids.long)).toBe(false);
     expect(view.totals.overdue).toBeGreaterThanOrEqual(1);
+
+    // PERF-03: the totals are counted in SQL (`leaderTotals`, the reports tile's) and equal what
+    // the rows say — overdue, at risk (blocked by an open task, or due within two days and not
+    // started), flagged — with a flagged task and a soon-due one among them.
+    const { task: soon } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Due Tuesday", assigneePersonId: ids.tam, dueDate: "2026-09-22" }, ids.long);
+    await db().insert(schema.workBlocker).values({ taskId: soon.id, reason: "Waiting for the client", raisedByPersonId: ids.tam });
+    const longViewer = (await viewerOfPerson(db(), ids.long))!;
+    const again = await getLeaderView(longViewer, "2026-09-20");
+    const rows = again.people.flatMap((person) => person.tasks);
+    const fromRows = { open: rows.length, overdue: rows.filter((task) => task.risk === "overdue").length, atRisk: rows.filter((task) => task.risk === "at_risk").length, blocked: rows.filter((task) => task.blocker).length };
+    expect(fromRows.atRisk).toBeGreaterThanOrEqual(2);
+    expect(fromRows.blocked).toBe(1);
+    expect(again.totals).toEqual(fromRows);
+    expect(await leaderTotals(longViewer, "2026-09-20")).toEqual(fromRows);
+    expect(again.shown).toBeNull();
+    expect(await leaderTotals((await viewerOfPerson(db(), ids.khoi))!, "2026-09-20")).toEqual({ open: 0, overdue: 0, atRisk: 0, blocked: 0 });
     // A plain member leads nothing and asked for nothing.
     expect((await getLeaderView((await viewerOfPerson(db(), ids.khoi))!, "2026-09-20")).people).toEqual([]);
 

@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { cn } from "cn";
 import { updateTaskAction } from "../actions";
 import { boardColumns, isSamePlace, planDrop } from "../engine/board";
-import { filterTasks, type TaskFilters } from "../engine/filter";
+import { BOARD_RECENT_DAYS, filterTasks, type TaskFilters } from "../engine/filter";
 import { CustomValueText } from "./custom-fields";
 import { FilterBar, useUrlFilters } from "./filter-bar";
 import { useHandoffGate } from "./handoff";
@@ -21,8 +21,6 @@ import { DueText, PersonAvatar, TaskKey } from "./task-row";
 import { LabelChip } from "./team-forms";
 
 export type BoardTask = ListTask & { boardRank: number; updatedAt: string };
-
-const RECENT_DAYS = 14;
 
 /**
  * Kanban board (FR-WRK-05): one column per workflow state of the team, washed in its state's tint.
@@ -48,7 +46,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
   const cardFields = fields.filter((field) => field.showOnCard);
   const states = useMemo(() => options.states.filter((state) => state.isActive || shown.some((task) => task.stateId === state.id)), [options.states, shown]);
   const columns = useMemo(() => {
-    const since = new Date(Date.parse(`${today}T00:00:00Z`) - RECENT_DAYS * 86_400_000).toISOString();
+    const since = new Date(Date.parse(`${today}T00:00:00Z`) - BOARD_RECENT_DAYS * 86_400_000).toISOString();
     // The board always has its "done" columns; without "show closed" they hold the last two weeks only.
     const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today, fields }).filter((task) => filters.closed === "1" || task.status === "todo" || task.status === "in_progress" || task.updatedAt >= since);
     return boardColumns(visible, states.map((state) => state.id));

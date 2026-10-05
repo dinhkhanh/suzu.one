@@ -19,7 +19,7 @@ import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { createCheckIn, createGoal, getOkrResults, type GoalDraft, goalFormOptions, listGoals, loadGoal, moveGoal, removeKeyResult, reparentGoal, resolveDraft, saveKeyResult, updateGoal, type Viewer } from "./goals";
+import { createCheckIn, createGoal, getOkrResults, getOkrResultsOfPeople, type GoalDraft, goalFormOptions, listGoals, loadGoal, moveGoal, removeKeyResult, reparentGoal, resolveDraft, saveKeyResult, updateGoal, type Viewer } from "./goals";
 import { canEditGoal } from "./policy";
 
 type Who = "owner" | "ceo" | "hrSzm" | "long" | "tam" | "huy" | "linh" | "ngo" | "chi" | "khoi";
@@ -229,6 +229,14 @@ describe("the tree", () => {
     expect(khoi.individual).toMatchObject({ progressBp: null, goals: [{ title: "Khoi: portfolio", progressBp: null, final: false }] });
     expect(khoi.units).toMatchObject({ team: { progressBp: null, goals: [] }, department: { progressBp: null, goals: [] }, entity: { progressBp: null, goals: [] }, group: { progressBp: 2500 } });
     expect((await getOkrResults({ personId: ids.huy, year: 2026 })).individual).toEqual({ progressBp: null, goals: [] });
+  });
+
+  it("answers for many people at once exactly as for each one (the bonus run reads it so)", async () => {
+    const people = [ids.huy, ids.khoi, ids.tam, ids.ngo];
+    const many = await getOkrResultsOfPeople({ personIds: people, year: YEAR });
+    expect([...many.keys()]).toEqual(people);
+    for (const personId of people) expect(many.get(personId)).toEqual(await getOkrResults({ personId, year: YEAR }));
+    expect(await getOkrResultsOfPeople({ personIds: [], year: YEAR })).toEqual(new Map());
   });
 
   it("lets HR take a frozen figure back, and nobody else's move through", async () => {

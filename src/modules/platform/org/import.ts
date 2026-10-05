@@ -1,11 +1,11 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, schema } from "@/lib/db";
+import { schema } from "@/lib/db";
 import { code, type Column, type ParsedRow, type Problem, templateCsv, text } from "../import/engine/table";
 import { defineImport } from "../import/service";
 import { can } from "../rbac/policy";
-import { invalidateOrgCache } from "./service";
+import { invalidateOrgCache, listEntities, listOrgUnits } from "./service";
 
 // Departments in bulk: new codes are created, known codes get their name and parent updated.
 // A department with no entity code is shared across the group.
@@ -22,7 +22,8 @@ type Row = ParsedRow<typeof departmentColumns>;
 
 async function validate(rows: Row[]): Promise<Problem[]> {
   const problems: Problem[] = [];
-  const [departments, entities] = await Promise.all([db().select().from(schema.orgUnit), db().select({ code: schema.entity.code }).from(schema.entity)]);
+  // Both are reference data, in the org module's cache; the import itself reads inside its transaction.
+  const [departments, entities] = await Promise.all([listOrgUnits(), listEntities()]);
   const entityCodes = new Set(entities.map((entity) => entity.code));
   const codeById = new Map(departments.flatMap((department) => (department.code ? [[department.id, department.code] as const] : [])));
   // Parent of every department as it would be after the import.

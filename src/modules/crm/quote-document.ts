@@ -4,10 +4,10 @@
 // keeps Admin → Document templates) edits the wording; the entity supplies its own name, address,
 // tax code and representative.
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
-import { type LetterheadFields, renderTemplate } from "../documents/service";
+import { type LetterheadFields, listTemplates, renderTemplate } from "../documents/service";
 import { lineDiscount, lineNet, periodsOf } from "./engine/quote";
 import type { QuoteLineRow, QuoteRow } from "./quotes";
 import { QUOTE_TEMPLATE_BODY, QUOTE_TEMPLATE_CODE } from "./seed";
@@ -40,7 +40,8 @@ export async function quoteDocument(quote: QuoteRow, lines: readonly QuoteLineRo
       .leftJoin(schema.entity, eq(schema.entity.id, schema.crmDeal.entityId))
       .where(eq(schema.crmDeal.id, quote.dealId))
       .limit(1),
-    db().select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.code, QUOTE_TEMPLATE_CODE), eq(schema.documentTemplate.isActive, true))).limit(1),
+    // The template library is reference data, in the documents module's cache.
+    listTemplates().then((templates) => templates.filter((row) => row.code === QUOTE_TEMPLATE_CODE && row.isActive)),
   ]);
   const entity = deal?.entity;
   const own = Object.fromEntries(Object.entries({ companyName: entity?.legalName, address: entity?.address, taxCode: entity?.taxCode, representative: entity?.legalRepresentative }).filter(([, value]) => !!value)) as LetterheadFields;

@@ -7,7 +7,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { postCompensatoryLeave } from "@/modules/leave/service";
+import { postCompensatoryLeaves } from "@/modules/leave/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { matchesReach, permissionReach, type Principal, type Target } from "@/modules/platform/rbac/policy";
 import { canLock, type LockIssue, lockIssues, type LockPersonInput, type MonthStatus, timeOffCenti } from "./engine/requests";
@@ -202,23 +202,26 @@ function lockInTransaction(entityId: string, month: string, actorPersonId: strin
     const exceptions = overview.issues.filter((issue) => issue.blocking);
 
     const now = new Date();
+    // Everybody's month frozen in one statement, each with their own summary.
+    await tx
+      .insert(schema.timesheetMonth)
+      .values(overview.people.map((person) => ({ personId: person.personId, entityId, month, status: "locked" as const, summary: person.summary, lockedAt: now, lockedByPersonId: actorPersonId })))
+      .onConflictDoUpdate({ target: [schema.timesheetMonth.personId, schema.timesheetMonth.month], set: { status: "locked", summary: sql`excluded.summary`, entityId, lockedAt: now, lockedByPersonId: actorPersonId, updatedAt: now } });
+    // Time off in lieu, one for one, in days of the person's own standard day. Only now are the month's actual hours final.
     const toilPosted: LockResult["toilPosted"] = [];
     for (const person of overview.people) {
-      await tx
-        .insert(schema.timesheetMonth)
-        .values({ personId: person.personId, entityId, month, status: "locked", summary: person.summary, lockedAt: now, lockedByPersonId: actorPersonId })
-        .onConflictDoUpdate({ target: [schema.timesheetMonth.personId, schema.timesheetMonth.month], set: { status: "locked", summary: person.summary, entityId, lockedAt: now, lockedByPersonId: actorPersonId, updatedAt: now } });
-      // Time off in lieu, one for one, in days of the person's own standard day. Only now are the month's actual hours final.
       const minutes = person.summary.otTimeOffMinutes;
-      if (minutes > 0) {
-        const dayMinutes = person.summary.standardDays > 0 ? Math.round(person.summary.standardMinutes / person.summary.standardDays) : 480;
-        const amountCenti = timeOffCenti(minutes, dayMinutes);
-        if (amountCenti > 0) {
-          await postCompensatoryLeave(tx, { personId: person.personId, amountCenti, effectiveDate: monthEnd(month), sourceKey: `${person.personId}:${month}`, reason: `Nghỉ bù làm thêm giờ tháng ${month.slice(5)}/${month.slice(0, 4)} (${minutes} phút)`, actorPersonId });
-          await tx.insert(schema.attendanceToilPosting).values({ personId: person.personId, month, minutes, amountCenti }).onConflictDoNothing();
-          toilPosted.push({ personId: person.personId, minutes, amountCenti });
-        }
-      }
+      if (minutes <= 0) continue;
+      const dayMinutes = person.summary.standardDays > 0 ? Math.round(person.summary.standardMinutes / person.summary.standardDays) : 480;
+      const amountCenti = timeOffCenti(minutes, dayMinutes);
+      if (amountCenti > 0) toilPosted.push({ personId: person.personId, minutes, amountCenti });
+    }
+    if (toilPosted.length > 0) {
+      await postCompensatoryLeaves(
+        tx,
+        toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, amountCenti, effectiveDate: monthEnd(month), sourceKey: `${personId}:${month}`, reason: `Nghỉ bù làm thêm giờ tháng ${month.slice(5)}/${month.slice(0, 4)} (${minutes} phút)`, actorPersonId })),
+      );
+      await tx.insert(schema.attendanceToilPosting).values(toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, month, minutes, amountCenti }))).onConflictDoNothing();
     }
     const locked = await tx.update(schema.timesheetDay).set({ lockedAt: now }).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), isNull(schema.timesheetDay.lockedAt))).returning({ id: schema.timesheetDay.id });
     const [after] = await tx

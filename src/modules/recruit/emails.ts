@@ -15,6 +15,7 @@ import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { publicOrigin } from "@/lib/site";
 import { queueRawEmail } from "@/modules/platform/notifications/service";
+import { listEntities } from "@/modules/platform/org/service";
 import type { RecruitEmailKind } from "./enums";
 import { emailTemplateProblems, renderEmail, type RenderedEmail } from "./engine/email-template";
 import { findApplication, findCandidate, findOpening, inTransaction, recordApplicationEvent, stagesOf } from "./service";
@@ -76,7 +77,7 @@ async function contextFor(applicationId: string, senderName: string): Promise<{ 
   // Nothing to send to. Not a bug: a candidate somebody added from a forwarded CV may have no address.
   if (!candidate.email) throw new ActionError("recruit_candidate_no_email");
 
-  const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1);
+  const entity = (await listEntities()).find((row) => row.id === opening.entityId);
   const stage = (await stagesOf(opening.pipelineId)).find((row) => row.id === application.stageId);
   return {
     to: candidate.email,

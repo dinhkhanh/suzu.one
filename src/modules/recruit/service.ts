@@ -624,10 +624,19 @@ export type CandidateListRow = { id: string; fullName: string; currentTitle: str
  *     only, because a candidate row carries no entity of its own and there is nothing to scope a
  *     narrower grant against.
  */
-export async function listCandidates(principal: Principal, filters: { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean } = {}): Promise<CandidateListRow[]> {
-  if (!canBrowseCandidates(principal)) return [];
+export async function listCandidates(principal: Principal, filters: CandidateFilters = {}): Promise<CandidateListRow[]> {
+  return (await readCandidates(principal, filters, 200, 0)).rows;
+}
 
-  // Counted for the rows returned only (at most 200), off the candidate index.
+type CandidateFilters = { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean };
+
+/** One page of the candidate database (PERF-03), newest first, and how many candidates the filters name in all. */
+export const listCandidatePage = (principal: Principal, filters: CandidateFilters, page: number, pageSize: number): Promise<{ rows: CandidateListRow[]; total: number }> => readCandidates(principal, filters, pageSize, (Math.max(1, page) - 1) * pageSize);
+
+async function readCandidates(principal: Principal, filters: CandidateFilters, limit: number, offset: number): Promise<{ rows: CandidateListRow[]; total: number }> {
+  if (!canBrowseCandidates(principal)) return { rows: [], total: 0 };
+
+  // Counted for the rows returned only (one page), off the candidate index.
   const applications = sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, schema.candidate.id))})`;
 
   const query = filters.query?.trim();
@@ -641,6 +650,7 @@ export async function listCandidates(principal: Principal, filters: { query?: st
       createdAt: schema.candidate.createdAt,
       anonymisedAt: schema.candidate.anonymisedAt,
       applications,
+      total: sql<number>`count(*) over ()`.mapWith(Number),
     })
     .from(schema.candidate)
     .where(
@@ -660,10 +670,12 @@ export async function listCandidates(principal: Principal, filters: { query?: st
         query ? sql`(${schema.candidate.searchName} like ${`%${toSearchKey(query)}%`} or ${schema.candidate.emailKey} like ${`%${query.toLowerCase()}%`})` : undefined,
       ),
     )
-    .orderBy(desc(schema.candidate.createdAt))
-    .limit(200);
+    // The id after the time, so that the order is total and a page never repeats or skips anybody.
+    .orderBy(desc(schema.candidate.createdAt), asc(schema.candidate.id))
+    .limit(limit)
+    .offset(offset);
 
-  return rows.map((row) => ({ ...row, applications: Number(row.applications ?? 0), anonymised: !!row.anonymisedAt }));
+  return { total: rows[0]?.total ?? 0, rows: rows.map(({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications }) => ({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications: Number(applications ?? 0), anonymised: !!anonymisedAt })) };
 }
 
 /**

@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { migrateTestDb } from "../../../../tests/helpers/db";
+import { findActionToken } from "./action-tokens";
 import { createDelegation, findDelegation, followDelegations, listDelegations, revokeDelegation } from "./delegations";
 import { deleteFlow, effectiveFlow, saveFlow } from "./flows";
 import { sendOversightDigest } from "./jobs";
@@ -107,6 +108,20 @@ describe("configured flows", () => {
     expect(view?.canDecide).toBe(true);
     expect(view?.steps.map((step) => [step.status, step.parallel])).toEqual([["pending", false], ["approved", true]]);
     expect((await decide(request.id, ids.manager)).outcome).toBe("approved");
+  });
+
+  it("asks several approvers in one notice, each with their own one-click link", async () => {
+    await saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }, { key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "leave:manage" }], parallel: true }] }, active: true }, ids.owner);
+    await db().delete(schema.chatDelivery);
+    const { request } = await submit(ids.huy, ids.media, 1);
+    const cards = await db().select().from(schema.chatDelivery).where(eq(schema.chatDelivery.kind, "approvals.requested"));
+    expect(cards.map((card) => card.personId).sort()).toEqual([ids.manager, ids.hr].sort());
+    for (const card of cards) {
+      expect(card.actionLabel).toBe("Duyệt");
+      const found = await findActionToken(card.actionLink!.split("/approvals/act/")[1]);
+      expect(found.ok && [found.row.personId, found.row.requestId]).toEqual([card.personId, request.id]);
+    }
+    expect((await db().select().from(schema.approvalActionToken).where(eq(schema.approvalActionToken.requestId, request.id))).length).toBe(2);
   });
 });
 

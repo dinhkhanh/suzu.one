@@ -351,11 +351,14 @@ export type AssetFilter = { entityId?: string; categoryId?: string; status?: Ass
 const openOnly = and(isNull(schema.assetAssignment.returnedAt));
 
 /** The register, as far as this reader may see it. Entity scope is a WHERE clause, not a filter in code. */
-export const listAssets = (viewer: Principal, filter: AssetFilter = {}): Promise<AssetListRow[]> => queryAssets(viewer, filter, 500);
+export const listAssets = (viewer: Principal, filter: AssetFilter = {}): Promise<AssetListRow[]> => queryAssets(viewer, filter, 500).then(({ rows }) => rows);
 
-async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: string }, limit: number): Promise<AssetListRow[]> {
+/** One page of the register (PERF-03), in code order, and how many assets the filter names in all. */
+export const listAssetPage = (viewer: Principal, filter: AssetFilter, page: number, pageSize: number): Promise<{ rows: AssetListRow[]; total: number }> => queryAssets(viewer, filter, pageSize, (Math.max(1, page) - 1) * pageSize);
+
+async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: string }, limit: number, offset = 0): Promise<{ rows: AssetListRow[]; total: number }> {
   const reach = assetReach(viewer);
-  if (!reach.all && reach.entityIds.length === 0) return [];
+  if (!reach.all && reach.entityIds.length === 0) return { rows: [], total: 0 };
   const scoped = reach.all ? undefined : inArray(schema.asset.entityId, reach.entityIds);
   const search = filter.search?.trim();
   const rows = await db()
@@ -368,6 +371,8 @@ async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: strin
       holderPersonName: holderPerson.fullName,
       holderTeamName: schema.orgUnit.name,
       holderEntityName: schema.entity.shortName,
+      // Everything the filter names, counted in the same statement as the page.
+      total: sql<number>`count(*) over ()`.mapWith(Number),
     })
     .from(schema.asset)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.asset.entityId))
@@ -387,10 +392,12 @@ async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: strin
         search ? sql`(${schema.asset.code} ilike ${"%" + search + "%"} or ${schema.asset.name} ilike ${"%" + search + "%"} or coalesce(${schema.asset.serial}, '') ilike ${"%" + search + "%"})` : undefined,
       ),
     )
+    // The code is unique across the group: a total order, so a page never repeats or skips an asset.
     .orderBy(asc(schema.asset.code))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
-  return rows.map(({ asset, entityName, categoryName, categoryKind, assignment, holderPersonName, holderTeamName }) => {
+  return { total: rows[0]?.total ?? 0, rows: rows.map(({ asset, entityName, categoryName, categoryKind, assignment, holderPersonName, holderTeamName }) => {
     const money = canReadAssetMoney(viewer, asset.entityId);
     return {
       id: asset.id,
@@ -420,7 +427,7 @@ async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: strin
       warrantyUntil: asset.warrantyUntil,
       supplier: money ? asset.supplier : null,
     };
-  });
+  }) };
 }
 
 /**
@@ -473,7 +480,7 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
   const assignedBy = alias(schema.person, "assigned_by");
   const returnedTo = alias(schema.person, "returned_to");
   const [rows, history, spells] = await Promise.all([
-    queryAssets(viewer, { id: assetId }, 1).then(([row]) => row),
+    queryAssets(viewer, { id: assetId }, 1).then(({ rows: [row] }) => row),
     db()
       .select({ id: schema.assetEvent.id, type: schema.assetEvent.type, at: schema.assetEvent.at, actorPersonId: schema.assetEvent.actorPersonId, actorName: actor.fullName, note: schema.assetEvent.note, detail: schema.assetEvent.detail })
       .from(schema.assetEvent)

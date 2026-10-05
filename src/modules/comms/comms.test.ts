@@ -23,7 +23,7 @@ import type { Grant, Principal } from "../platform/rbac/policy";
 import { acknowledgeAnnouncement, type AnnouncementInput, audienceNames, audiencePeople, commsViewerOf, countUnreadAnnouncements, createAnnouncement, getAnnouncementView, getReadReport, listAnnouncementsFor, listManagedAnnouncements, loadAnnouncement, markAnnouncementRead, mayPostTo, mayRead, notifyDueAnnouncements, publishAnnouncement, setAnnouncementState } from "./announcements";
 import { audienceKey } from "./enums";
 import { getHomeFeed } from "./feed";
-import { findKudos, giveKudos, listKudos, mayRemoveKudos, removeKudos } from "./kudos";
+import { findKudos, giveKudos, kudosReceived, listKudos, mayRemoveKudos, removeKudos } from "./kudos";
 
 type Who = "owner" | "hrGroup" | "hrSzm" | "long" | "huy" | "linh" | "khoi" | "ngo" | "gone";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des" | "hcm" | "hn", string>;
@@ -241,5 +241,28 @@ describe("home feed", () => {
     const feed = await getHomeFeed(users.long, TODAY);
     expect(feed.pending.approvals).toBe(0);
     expect(feed.pending.acks).toEqual([]);
+  });
+});
+
+describe("kudos received", () => {
+  it("counts every card in SQL and keeps the newest, as the old page of fifty did below its cap", async () => {
+    const at = (iso: string) => new Date(iso);
+    // 55 cards to Linh across two years, one of them removed: more than the page the panel used to count.
+    const rows = Array.from({ length: 55 }, (_, index) => ({ fromPersonId: ids.huy, toPersonId: ids.linh, valueKey: "teamwork", message: `#${index}`, createdAt: at(`${index < 40 ? "2025" : "2026"}-0${(index % 9) + 1}-1${index % 10}T0${index % 10}:00:00Z`) }));
+    const inserted = await db().insert(schema.kudos).values(rows).returning();
+    await db().update(schema.kudos).set({ deletedAt: new Date() }).where(eq(schema.kudos.id, inserted[0].id));
+    const live = inserted.slice(1).sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+
+    const year = { from: at("2025-01-01T00:00:00Z"), to: at("2025-12-31T23:59:59Z") };
+    const inYear = live.filter((row) => row.createdAt >= year.from && row.createdAt <= year.to);
+    const received = await kudosReceived(ids.linh, { ...year, recent: 5 });
+    expect(received.count).toBe(39);
+    expect(received.count).toBe(inYear.length);
+    expect(received.recent.map((card) => card.message)).toEqual(inYear.slice(0, 5).map((row) => row.message));
+    // Without a period: every card, and the newest thirty, as the kudos page shows them.
+    const all = await kudosReceived(ids.linh, { recent: 30 });
+    expect(all.count).toBe(54);
+    expect(all.recent.map((card) => card.id)).toEqual((await listKudos({ toPersonId: ids.linh, limit: 30 })).map((card) => card.id));
+    expect(await kudosReceived(ids.ngo, { recent: 5 })).toEqual({ count: 0, recent: [] });
   });
 });

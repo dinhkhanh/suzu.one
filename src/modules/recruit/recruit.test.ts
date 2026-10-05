@@ -38,6 +38,7 @@ import {
   headcountPlan,
   isOpeningMember,
   listApplications,
+  listCandidatePage,
   listCandidates,
   listOpenings,
   moveApplicationStage,
@@ -399,6 +400,16 @@ describe("the candidate database", () => {
     expect(await listCandidates(head)).toEqual([]);
     expect(await listCandidates(employee)).toEqual([]);
     expect(await listCandidates(otherHead)).toEqual([]);
+  });
+
+  it("is paged, newest first, each page counting everybody the filters name (PERF-03)", async () => {
+    const all = await listCandidates(hrAdmin);
+    expect(all.length).toBeGreaterThan(2);
+    const size = Math.ceil(all.length / 2);
+    const [first, second] = await Promise.all([listCandidatePage(hrAdmin, {}, 1, size), listCandidatePage(hrAdmin, {}, 2, size)]);
+    expect([first.total, second.total]).toEqual([all.length, all.length]);
+    expect([...first.rows, ...second.rows]).toEqual(all);
+    expect(await listCandidatePage(head, {}, 1, size)).toEqual({ rows: [], total: 0 });
   });
 
   it("shows an entity's recruiter only the candidates who applied within their reach", async () => {
