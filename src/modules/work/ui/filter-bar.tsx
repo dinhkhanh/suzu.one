@@ -44,7 +44,7 @@ export function useUrlFilters(initial: TaskFilters) {
 const VIEW_ICON: Record<WorkView, React.ComponentType<{ className?: string }>> = { list: ListIcon, board: SquareKanbanIcon, calendar: CalendarDaysIcon, table: Table2Icon };
 
 /** List / Board / Calendar / Table as a segmented control of icon keys. The current filters travel along. */
-export function ViewTabs({ current, views = WORK_VIEWS }: { current: WorkView; /** A team's backlog has no board or calendar of its own. */ views?: readonly WorkView[] }) {
+export function ViewTabs({ current, views = WORK_VIEWS }: { current: WorkView; /** The views a place offers; every list has all four. */ views?: readonly WorkView[] }) {
   const t = useTranslations("work.views");
   const router = useRouter();
   const pathname = usePathname();

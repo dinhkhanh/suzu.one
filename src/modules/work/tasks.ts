@@ -707,6 +707,9 @@ export async function restoreWorkTask(taskId: string, actorPersonId: string, now
     if (!found) throw new ActionError("task_not_found");
     const deletedAt = found.task.deletedAt!;
     if (deletedAt < restoreSince(now)) throw new ActionError("task_restore_too_late");
+    // Work coming back into a project is work added to it: an archived or closed project refuses it, as it refuses a new task.
+    if (found.project?.status === "archived") throw new ActionError("project_archived");
+    if (found.project) await assertProjectTakesWork(tx, found.project, "task_create");
     const [parent] = found.task.parentTaskId ? await tx.select({ deletedAt: schema.task.deletedAt }).from(schema.task).where(eq(schema.task.id, found.task.parentTaskId)).limit(1) : [];
     const orphaned = !!found.task.parentTaskId && (!parent || !!parent.deletedAt);
     const restored = rowsOf<{ id: string }>(
@@ -902,17 +905,30 @@ export async function awayToday(executor: Executor, personIds: readonly string[]
 /**
  * The "link a task" picker of a task page: the open tasks of its project (or of its team's
  * backlog), keys and titles only. The caller has checked the viewer may open that list.
+ *
+ * With `subtreeOf`, each row also says whether it is that task itself or sits anywhere under it
+ * (`under`): the "parent task" picker offers only the others, since a task put under its own
+ * sub-task would close a loop. One recursive walk down the task's tree, in the same statement.
  */
-export async function listLinkableTasks(scope: { projectId: string | null; teamId: string }, limit = 2000): Promise<{ id: string; key: string; title: string }[]> {
+export async function listLinkableTasks(scope: { projectId: string | null; teamId: string; subtreeOf?: string }, limit = 2000): Promise<{ id: string; key: string; title: string; under: boolean }[]> {
+  const under = scope.subtreeOf
+    ? sql<boolean>`${schema.task.id} in (
+        with recursive down(id, depth) as (
+          select t.id, 1 from task t where t.id = ${scope.subtreeOf}
+          union all
+          select c.id, down.depth + 1 from task c join down on c.parent_task_id = down.id where down.depth < 64
+        )
+        select id from down)`
+    : sql<boolean>`false`;
   const rows = await db()
-    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title })
+    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, under })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .where(and(eq(schema.task.kind, WORK_KIND), live, inArray(schema.task.status, ["todo", "in_progress"]), scope.projectId ? eq(schema.workTask.projectId, scope.projectId) : and(eq(schema.workTask.teamId, scope.teamId), isNull(schema.workTask.projectId))))
     .orderBy(asc(schema.workTask.boardRank), asc(schema.workTask.number))
     .limit(limit);
-  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title }));
+  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, under: !!row.under }));
 }
 
 /** The caller has checked that the viewer may open the project. */
@@ -1014,8 +1030,8 @@ export async function resolveTaskKeys(keys: readonly string[], executor: Executo
 
 export type TaskSearchHit = { id: string; key: string; title: string; status: TaskRow["status"]; projectName: string | null };
 
-/** Command palette: by title, or by key ("VID-12", "12"). `within` narrows the search further (a picker that takes only some tasks). */
-export async function searchTasks(viewer: WorkViewer, query: string, limit = 12, within?: SQL): Promise<TaskSearchHit[]> {
+/** Command palette: by title, or by key ("VID-12", "12"). */
+export async function searchTasks(viewer: WorkViewer, query: string, limit = 12): Promise<TaskSearchHit[]> {
   const text = query.trim().slice(0, 80);
   if (text.length < 2 && !/^\d+$/.test(text)) return [];
   const keyMatch = /^(?:([a-z0-9]{2,8})-)?(\d{1,7})$/i.exec(text);
@@ -1027,27 +1043,10 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12,
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-    .where(and(eq(schema.task.kind, WORK_KIND), live, matches, within, await visibleTaskCondition(viewer)))
+    .where(and(eq(schema.task.kind, WORK_KIND), live, matches, await visibleTaskCondition(viewer)))
     .orderBy(sql`case when ${schema.task.status} in ('todo', 'in_progress') then 0 else 1 end`, desc(schema.task.updatedAt))
     .limit(limit);
   return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, projectName: row.projectName }));
-}
-
-/**
- * "Move under…" on a task's page: the tasks it could become a sub-task of — of its own team (a
- * task keeps its team's workflow), among those the viewer may open, and never the task itself or
- * anything already under it, which would close a loop. The search is `searchTasks`'s; the caller
- * has checked that the viewer may edit the task.
- */
-export function searchParentCandidates(viewer: WorkViewer, task: { id: string; teamId: string }, query: string, limit = 12): Promise<TaskSearchHit[]> {
-  const under = sql`${schema.task.id} not in (
-    with recursive down(id, depth) as (
-      select t.id, 1 from task t where t.id = ${task.id}
-      union all
-      select c.id, down.depth + 1 from task c join down on c.parent_task_id = down.id where down.depth < 64
-    )
-    select id from down)`;
-  return searchTasks(viewer, query, limit, and(eq(schema.workTask.teamId, task.teamId), under));
 }
 
 // ── One task, in full ───────────────────────────────────────────────────────────────────────

@@ -869,6 +869,13 @@
       "when": 1791158799478,
       "tag": "0123_payroll_run_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1791159415823,
+      "tag": "0124_r2_daily_readers_work_paths",
+      "breakpoints": true
     }
   ]
 }

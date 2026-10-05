@@ -4122,6 +4122,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Đã xóa gần đây ({count})",
+      "hint": "Công việc đã xóa có thể khôi phục trong {days} ngày, cùng với các việc con bị xóa theo.",
+      "empty": "Không có công việc nào bị xóa trong {days} ngày qua.",
+      "deletedBy": "Người xóa",
+      "deletedAt": "Thời điểm xóa",
+      "restore": "Khôi phục",
+      "subtasks": "{count, plural, other {kèm # việc con}}"
+    },
     "title": "Công việc",
     "digitalAssets": {
       "title": "Trang & kênh",
@@ -4414,6 +4423,9 @@
       "blocked": "Bị chặn",
       "subtasks": "{done}/{total} việc con",
       "views": {
+        "update": "Cập nhật “{name}”",
+        "saveNew": "Lưu thành bộ lọc mới",
+        "shareTeam": "Chia sẻ với nhóm",
         "shared": "dùng chung",
         "delete": "Xóa bộ lọc đã lưu {name}",
         "name": "Đặt tên bộ lọc…",
@@ -4438,6 +4450,7 @@
       "inTriage": "Chờ phân loại"
     },
     "task": {
+      "noParent": "Không có (cấp cao nhất)",
       "fields": {
         "title": "Tiêu đề",
         "description": "Mô tả",
@@ -4487,6 +4500,7 @@
       "delete": "Xóa công việc",
       "deleteConfirm": "Xóa công việc này cùng các việc con?",
       "activity": {
+        "restored": "đã khôi phục công việc",
         "changed": "đổi {field}: {from} → {to}",
         "changedPlain": "đã sửa {field}",
         "checklist": "cập nhật checklist ({done}/{total})",
@@ -4574,6 +4588,7 @@
       "createSubmit": "Tạo"
     },
     "errors": {
+      "task_restore_too_late": "Công việc này đã bị xóa quá lâu nên không thể khôi phục.",
       "generic": "Thao tác không thành công. Vui lòng thử lại.",
       "forbidden": "Bạn không được làm việc này ở đây.",
       "invalid": "Vui lòng kiểm tra lại các trường.",
@@ -4771,11 +4786,13 @@
       "label": "Cách xem"
     },
     "board": {
+      "changeState": "Chuyển {title} sang trạng thái khác",
       "moveUp": "Chuyển lên",
       "moveDown": "Chuyển xuống",
       "emptyColumn": "Chưa có gì"
     },
     "calendar": {
+      "dueOn": "Hạn vào ngày",
       "title": "Lịch nội dung",
       "description": "Mọi công việc có hạn mà bạn được xem, đặt theo ngày đến hạn. Lọc theo khách hàng hoặc kênh để có lịch nội dung của một thương hiệu.",
       "previous": "Tháng trước",
@@ -4903,6 +4920,10 @@
       }
     },
     "templates": {
+      "edit": "Sửa",
+      "editItem": "Sửa bước “{title}”",
+      "editItemHint": "Lần dùng mẫu tiếp theo sẽ lấy bước theo nội dung mới. Các việc đã tạo từ mẫu giữ nguyên.",
+      "saveItem": "Lưu bước",
       "title": "Mẫu công việc",
       "description": "Cây công việc với số ngày tính từ ngày bắt đầu hoặc ngày kết thúc và vai trò cho từng bước. Khi dùng mẫu, bạn chọn ai đảm nhận từng vai trò.",
       "newProject": "Tạo dự án từ mẫu",
@@ -4970,6 +4991,18 @@
       "noChecklist": "Không có checklist"
     },
     "recurrence": {
+      "emptyTeam": "Danh sách việc của nhóm chưa có việc lặp lại nào.",
+      "estimate": "Số giờ",
+      "onDayOff": "Nếu rơi vào ngày nghỉ",
+      "dayOff": {
+        "shift": "Dời hạn sang ngày làm việc kế tiếp",
+        "skip": "Bỏ qua lần đó",
+        "keep": "Vẫn giữ đúng ngày"
+      },
+      "edit": "Sửa",
+      "editTitle": "Sửa việc lặp lại “{title}”",
+      "editHint": "Thay đổi áp dụng cho các việc được tạo từ nay về sau. Các việc đã tạo giữ nguyên tiêu đề, hạn và người phụ trách.",
+      "save": "Lưu",
       "heading": "Việc lặp lại",
       "empty": "Dự án này chưa có việc lặp lại.",
       "title": "Tên công việc",
@@ -5014,6 +5047,7 @@
         "monthlyLast": "{interval, plural, =1 {mỗi tháng} other {mỗi # tháng}} vào ngày cuối tháng"
       },
       "errors": {
+        "team_not_found": "Không tìm thấy nhóm hoặc nhóm đã lưu trữ.",
         "generic": "Không thực hiện được.",
         "forbidden": "Bạn không có quyền làm việc này.",
         "invalid": "Kiểm tra lại: chọn ít nhất một ngày trong tuần.",

@@ -4122,6 +4122,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Recently deleted ({count})",
+      "hint": "A deleted task can be put back for {days} days, with the sub-tasks that were deleted with it.",
+      "empty": "Nothing was deleted in the last {days} days.",
+      "deletedBy": "Deleted by",
+      "deletedAt": "Deleted",
+      "restore": "Restore",
+      "subtasks": "{count, plural, one {with # sub-task} other {with # sub-tasks}}"
+    },
     "title": "Work",
     "digitalAssets": {
       "title": "Pages & channels",
@@ -4414,6 +4423,9 @@
       "blocked": "Blocked",
       "subtasks": "{done}/{total} sub-tasks",
       "views": {
+        "update": "Update “{name}”",
+        "saveNew": "Save as a new filter",
+        "shareTeam": "Share with the team",
         "shared": "shared",
         "delete": "Delete the saved filter {name}",
         "name": "Name this filter…",
@@ -4438,6 +4450,7 @@
       "inTriage": "In triage"
     },
     "task": {
+      "noParent": "None (top level)",
       "fields": {
         "title": "Title",
         "description": "Description",
@@ -4487,6 +4500,7 @@
       "delete": "Delete task",
       "deleteConfirm": "Delete this task and its sub-tasks?",
       "activity": {
+        "restored": "restored the task",
         "changed": "changed {field}: {from} → {to}",
         "changedPlain": "changed the {field}",
         "checklist": "updated the checklist ({done}/{total})",
@@ -4574,6 +4588,7 @@
       "createSubmit": "Create"
     },
     "errors": {
+      "task_restore_too_late": "This task was deleted too long ago to be put back.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You may not do that here.",
       "invalid": "Please check the fields.",
@@ -4771,11 +4786,13 @@
       "label": "View"
     },
     "board": {
+      "changeState": "Move {title} to another state",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "emptyColumn": "Nothing here"
     },
     "calendar": {
+      "dueOn": "Due on",
       "title": "Content calendar",
       "description": "Every dated task you can see, on its due date. Filter by client or channel to get one brand's calendar.",
       "previous": "Previous month",
@@ -4903,6 +4920,10 @@
       }
     },
     "templates": {
+      "edit": "Edit",
+      "editItem": "Edit the step “{title}”",
+      "editItemHint": "The next use of the template reads the step as it now is. Tasks already made from it stay as they are.",
+      "saveItem": "Save step",
       "title": "Templates",
       "description": "Task trees with days from a start or end date and a role per step. Using one asks who plays each role.",
       "newProject": "New project from a template",
@@ -4970,6 +4991,18 @@
       "noChecklist": "No checklist"
     },
     "recurrence": {
+      "emptyTeam": "Nothing recurs in this team's backlog yet.",
+      "estimate": "Hours",
+      "onDayOff": "On a day off",
+      "dayOff": {
+        "shift": "Due the next working day",
+        "skip": "Skip that time",
+        "keep": "Keep the day anyway"
+      },
+      "edit": "Edit",
+      "editTitle": "Edit the recurring task “{title}”",
+      "editHint": "Changes apply to the tasks it makes from now on. Tasks it has already made keep their title, date and assignee.",
+      "save": "Save",
       "heading": "Recurring tasks",
       "empty": "Nothing recurs in this project yet.",
       "title": "Task title",
@@ -5014,6 +5047,7 @@
         "monthlyLast": "{interval, plural, one {every month} other {every # months}} on the last day"
       },
       "errors": {
+        "team_not_found": "Team not found or archived.",
         "generic": "That did not work.",
         "forbidden": "You may not do that.",
         "invalid": "Check the fields: pick at least one weekday.",

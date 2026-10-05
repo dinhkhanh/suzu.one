@@ -60,7 +60,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     listClients({ activeOnly: true }),
     listAssignable(team.id, work.projectId),
     canEdit ? listProjectOptions(viewer, team.id) : [],
-    canEdit ? listLinkableTasks({ projectId: work.projectId, teamId: team.id }) : [],
+    canEdit ? listLinkableTasks({ projectId: work.projectId, teamId: team.id, subtreeOf: task.id }) : [],
     listActivity(task.id),
     listComments(task.id),
     listTaskFiles(task.id),
@@ -180,6 +180,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           checklist: work.checklist,
           links: work.links,
           cycleId: work.cycleId,
+          parentTaskId: task.parentTaskId,
         }}
         options={{
           states: states.map(({ id, name, isActive }) => ({ id, name, isActive })),
@@ -188,7 +189,11 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           clients: clients.map(({ id, name }) => ({ id, name })),
           projects,
           digitalAssets: digitalOptions,
-          linkable: siblings.filter((row) => !linkedIds.has(row.id)),
+          linkable: siblings.filter((row) => !linkedIds.has(row.id)).map(({ id, key, title }) => ({ id, key, title })),
+          // "Parent task": any open task of the same list but this one and what sits under it — and the
+          // parent it has now, which stays in the picker even when closed, so saving does not drop it.
+          // Not offered where the parent is one the viewer cannot see: the picker could not hold it.
+          parents: task.parentTaskId && !detail.parent ? undefined : [...(detail.parent && !siblings.some((row) => row.id === detail.parent!.id) ? [{ id: detail.parent.id, key: detail.parent.key, title: detail.parent.title }] : []), ...siblings.filter((row) => !row.under).map(({ id, key, title }) => ({ id, key, title }))],
           cycles,
           checklists,
           stageChecklists,

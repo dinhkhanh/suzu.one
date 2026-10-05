@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextOccurrence, occurrencesBetween, ruleProblems } from "./recurrence";
+import { nextOccurrence, occurrencesBetween, placeOccurrences, ruleProblems } from "./recurrence";
 
 describe("occurrencesBetween", () => {
   it("daily: every n days counted from the start date, whatever the window", () => {
@@ -55,5 +55,32 @@ describe("ruleProblems", () => {
     expect(ruleProblems({ freq: "weekly", interval: 1, weekdays: [0, 8] })).toEqual(["bad_weekday"]);
     expect(ruleProblems({ freq: "monthly", interval: 1, monthDay: 32 })).toEqual(["bad_month_day"]);
     expect(ruleProblems({ freq: "monthly", interval: 2, monthDay: "last" })).toEqual([]);
+  });
+});
+
+describe("placeOccurrences", () => {
+  // 2026-10-04 is a Sunday; 5 and 6 October are made a holiday below.
+  const sunday = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  const daily = { freq: "daily" as const, interval: 1 };
+  const dates = occurrencesBetween(daily, "2026-10-01", "2026-10-01", "2026-10-07");
+
+  it("keeps every date when the rule says so", () => {
+    expect(placeOccurrences(daily, "2026-10-01", dates, "keep", sunday).map((row) => row.due)).toEqual(dates);
+  });
+
+  it("does not pile a shifted day onto one the rule already comes round on", () => {
+    const shifted = placeOccurrences(daily, "2026-10-01", dates, "shift", sunday);
+    expect(shifted.map((row) => row.due)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-05", "2026-10-06", "2026-10-07"]);
+    expect(placeOccurrences(daily, "2026-10-01", dates, "skip", sunday)).toEqual(shifted);
+  });
+
+  it("moves a Sunday post to Monday, or past a holiday, and keeps the rule's own date as its name", () => {
+    const weekly = { freq: "weekly" as const, interval: 1, weekdays: [7] };
+    expect(placeOccurrences(weekly, "2026-10-01", ["2026-10-04"], "shift", sunday)).toEqual([{ occurrence: "2026-10-04", due: "2026-10-05" }]);
+    expect(placeOccurrences(weekly, "2026-10-01", ["2026-10-04"], "skip", sunday)).toEqual([]);
+    const holiday = (date: string) => sunday(date) || date === "2026-10-05" || date === "2026-10-06";
+    expect(placeOccurrences({ freq: "weekly", interval: 1, weekdays: [1] }, "2026-10-01", ["2026-10-05"], "shift", holiday)).toEqual([{ occurrence: "2026-10-05", due: "2026-10-07" }]);
+    // Nowhere to go within two weeks: not made.
+    expect(placeOccurrences(weekly, "2026-10-01", ["2026-10-04"], "shift", () => true)).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ export { addableMembers, type ClientInput, type ClientRow, entryState, findClien
 export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, type ProjectAppointment, projectAppointmentsOf, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
+export { type DeletedTask, listDeletedTasks, RESTORE_WINDOW_DAYS } from "./tasks";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
 export { type CommentView, listComments, listMentionable } from "./comments";
 export { type FollowState, followersOf, followStateOf } from "./followers";

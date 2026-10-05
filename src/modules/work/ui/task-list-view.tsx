@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createTaskAction, deleteViewAction, saveViewAction } from "../actions";
+import { createTaskAction, deleteViewAction, saveViewAction, updateViewAction } from "../actions";
 import { customKey, fieldIdOf } from "../engine/custom-fields";
 import { filterEntries, filterTasks, GROUPINGS, groupTasks, type ListGrouping, type ListSort, nestTasks, readFilters, readGrouping, readSort, SORTS, sortTasks, type TaskFilters } from "../engine/filter";
 import { CustomValueText, type FieldView } from "./custom-fields";
@@ -321,10 +321,10 @@ export function TaskListView({
         <span className="font-mono text-xs text-faint tabular-nums">{t("count", { shown: visible.length, total: shown.length })}</span>
       </FilterBar>
 
-      {savedViews && scope.projectId ? (
+      {savedViews ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {savedViews.map((view) => (
-            <Badge key={view.id} variant="outline" className="h-7 gap-1 pr-1 pl-2.5">
+            <Badge key={view.id} variant={view.id === activeView ? "secondary" : "outline"} className="h-7 gap-1 pr-1 pl-2.5">
               <button type="button" className="hover:text-foreground" onClick={() => applyView(view)}>
                 {view.name}
               </button>
@@ -347,16 +347,22 @@ export function TaskListView({
               ) : null}
             </Badge>
           ))}
-          {filtered || grouping !== "none" ? (
-            <form onSubmit={saveView} className="flex flex-wrap items-center gap-2">
-              <Input name="name" required maxLength={60} placeholder={t("views.name")} aria-label={t("views.name")} className="h-8 w-44 md:h-7" />
+          {filtered || grouping !== "none" || active ? (
+            // Keyed by the view in use: its name and sharing fill the form, ready to be changed in place.
+            <form key={active?.id ?? "new"} onSubmit={saveView} className="flex flex-wrap items-center gap-2">
+              <Input name="name" required maxLength={60} defaultValue={active?.name} placeholder={t("views.name")} aria-label={t("views.name")} className="h-8 w-44 md:h-7" />
               {canContribute ? (
                 <Label className="flex items-center gap-1.5 text-xs font-normal">
-                  <Checkbox name="isShared" /> {t("views.share")}
+                  <Checkbox name="isShared" defaultChecked={active?.isShared} /> {t(scope.projectId ? "views.share" : "views.shareTeam")}
                 </Label>
               ) : null}
+              {active ? (
+                <Button type="submit" name="intent" value="update" size="xs" variant="outline" disabled={pending}>
+                  {t("views.update", { name: active.name })}
+                </Button>
+              ) : null}
               <Button type="submit" size="xs" variant="outline" disabled={pending}>
-                {t("views.save")}
+                {active ? t("views.saveNew") : t("views.save")}
               </Button>
             </form>
           ) : null}
