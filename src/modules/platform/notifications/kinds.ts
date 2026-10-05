@@ -70,6 +70,8 @@ export const KINDS = {
   // The same for a Telegram chat (docs/TELEGRAM.md).
   "security.telegram_linked": "security",
   "system.job_failed": "system",
+  // A run the platform killed (it outlived its function): it never reached its own catch block.
+  "system.job_timed_out": "system",
   "system.rule_proposed": "system",
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",
