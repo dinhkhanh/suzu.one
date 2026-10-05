@@ -9,6 +9,26 @@ const STATIC_CACHE = `suzu-static-${VERSION}`;
 const SHELL = ["/offline.html", "/icons/icon-192.png"];
 // The dev server's files are not content-hashed; caching them would serve stale code.
 const DEV = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
+// Every deploy brings new hashed files and the old ones are never asked for again, so without a
+// limit the cache only grows (FR-PLT-37 / PERF-05). It keeps the newest files up to a count and
+// drops what the server sent more than a month ago; the offline page and the icon always stay.
+const MAX_ENTRIES = 400;
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Drops the stale and the surplus static files, oldest first (a cache lists in the order it was filled). */
+async function prune(cache, now = Date.now()) {
+  const keys = await cache.keys();
+  const kept = [];
+  for (const request of keys) {
+    if (SHELL.includes(new URL(request.url).pathname)) continue;
+    const response = await cache.match(request);
+    const sent = response ? Date.parse(response.headers.get("date") || "") : NaN;
+    if (!response || (!Number.isNaN(sent) && now - sent > MAX_AGE_MS)) await cache.delete(request);
+    else kept.push(request);
+  }
+  const surplus = kept.length - MAX_ENTRIES;
+  for (let index = 0; index < surplus; index++) await cache.delete(kept[index]);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -19,6 +39,8 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => key.startsWith("suzu-") && key !== STATIC_CACHE).map((key) => caches.delete(key))))
+      .then(() => caches.open(STATIC_CACHE))
+      .then((cache) => prune(cache))
       .then(() => self.clients.claim()),
   );
 });
@@ -42,7 +64,9 @@ self.addEventListener("fetch", (event) => {
       const hit = await cache.match(request);
       if (hit) return hit;
       const response = await fetch(request);
-      if (response.ok && response.type === "basic") cache.put(request, response.clone());
+      // A long session across deploys fills the cache too: past the limit and some slack, prune
+      // once back to the limit (not on every file, which would read the whole cache each time).
+      if (response.ok && response.type === "basic") event.waitUntil(cache.put(request, response.clone()).then(() => cache.keys()).then((keys) => (keys.length > MAX_ENTRIES + 50 ? prune(cache) : undefined)));
       return response;
     }),
   );
