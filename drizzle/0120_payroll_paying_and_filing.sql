@@ -114,3 +114,4 @@ BEGIN
   END IF;
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
