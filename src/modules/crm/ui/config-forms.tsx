@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { SERVICE_LINES, SERVICE_UNITS, STAGE_CATEGORIES, STAGE_GATES } from "../enums";
 import { saveServiceAction, saveStageAction, setPriceAction } from "../quote-actions";
 import { CrmForm, type Named } from "./common";

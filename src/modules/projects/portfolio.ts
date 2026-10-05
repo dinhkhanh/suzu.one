@@ -11,8 +11,7 @@ import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modu
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { listEntities } from "../platform/org/service";
-import { type AccentColor, accentOf } from "../work/enums";
-import { projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
+import { type AccentColor, accentOf, projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
 import type { ProjectKind } from "./engine/brief";

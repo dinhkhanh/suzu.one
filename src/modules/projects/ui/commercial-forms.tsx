@@ -16,8 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
-import { type ClientContactChoice, ContactSuggestions } from "../../work/ui/client-decision";
+import { CHANNELS, type ClientContactChoice, CONTENT_FORMATS, ContactSuggestions } from "../../work/client";
 import {
   beginChangeEvidenceAction,
   beginSignedScanAction,

@@ -8,7 +8,7 @@
 // is in **client review** only while its current version is actually with the client (a client
 // stage of the review chain is waiting, or a review link was sent for it). Work that has no client
 // to accept it — an internal project, a pitch — is accepted when it is done.
-import type { StateCategory } from "../../work/enums";
+import type { StateCategory } from "../../work/service";
 
 export const REGISTER_STATUSES = ["promised", "in_production", "ready_for_client", "client_review", "accepted", "delivered", "published"] as const;
 export type RegisterStatus = (typeof REGISTER_STATUSES)[number];

@@ -28,6 +28,7 @@ import { canGenerate, canOpenDocument } from "./policy";
 export * from "./enums";
 export * from "./engine/template";
 export { canGenerate, canManageTemplates, canOpenDocument, canReadTemplates } from "./policy";
+export { type DocumentPdfInput, renderDocumentPdf } from "./document-pdf";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type DocumentTemplateRow = typeof schema.documentTemplate.$inferSelect;

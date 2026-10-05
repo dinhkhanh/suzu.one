@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { createProjectFromTemplatePlanAction, saveTemplatePlanAction } from "../actions";
 import type { ProjectBrief, RoleBudget, TemplateLine, TemplateMilestone, TemplatePhase } from "../schema";
 

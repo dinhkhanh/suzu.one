@@ -62,3 +62,6 @@ export { findRaidItem, listRaid, type RaidView } from "./raid-log";
 export { findMeeting, getMeeting, listMeetings, type MeetingActionView, type MeetingListItem, meetingPeople, type MeetingView, putMeetingInCalendar, removeMeetingFromCalendar } from "./meetings";
 export { getProjectDocuments, type ProjectDocuments, projectSpaceKey } from "./documents";
 export { loadRaidCounts } from "./metrics";
+
+/** What the project forms post, parsed once: the CRM's forms read a VND amount, a date or a checkbox the same way. */
+export { blankToNull, checkbox, idList, isoDate, month, optional, rows, text, vnd } from "./form-inputs";

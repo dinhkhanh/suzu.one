@@ -3,7 +3,7 @@ import "server-only";
 
 export * from "./enums";
 export { invalidateMemberships, loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
-export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
+export { canActForClient, canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type ProjectFacts, type TeamFacts, type WorkViewer } from "./policy";
 export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
 export { addableMembers, type ClientInput, type ClientRow, entryState, findClient, invalidateWorkClients, saveClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
 export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, type ProjectAppointment, projectAppointmentsOf, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
@@ -121,3 +121,16 @@ export { listProjectStatusSets, listProjectStatuses, listStateSets, projectStatu
  */
 export { channelOfPlatform, digitalAssetsByProject, digitalAssetsByTask, type LinkedDigitalAsset, listLinkableDigitalAssets, MAX_LINKED_DIGITAL_ASSETS } from "./digital-links";
 export { type DigitalAssetWork, listWorkOfDigitalAsset } from "./digital-work";
+
+/** The one note format of a hand-off (the CRM writes its account hand-overs in it). */
+export type { HandoffNote } from "./schema";
+
+/**
+ * The task update itself, checks, activity entry and audit line included: the project timeline
+ * writes each moved date through it rather than around it. Loaded on first use, so importing this
+ * file builds none of the module's actions.
+ */
+export async function updateTaskAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.updateTaskAction(input);
+}

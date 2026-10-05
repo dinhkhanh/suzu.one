@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, reopenProjectAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updateBriefContactsAction, updatePlanSettingsAction } from "../actions";
 
 type Person = { id: string; fullName: string };
