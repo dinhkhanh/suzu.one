@@ -10,7 +10,7 @@ import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { bulkMapAction, commitDeviceLogAction, issuePushTokenAction, mapDeviceUserAction, recomputeTimesheetsAction, revokePushTokenAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
-import { ConfirmDialog, useConfirmedSubmit } from "./confirm";
+import { ConfirmDialog, useConfirmedSubmit } from "@/components/ui/confirm";
 
 type Option = { id: string; name: string };
 const ERRORS = "attendance.devices.errors";

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { archiveSpaceAction, createSpaceAction, updateSpaceAction } from "../actions";
@@ -146,20 +147,17 @@ export function ArchiveSpaceButton({ spaceId, archived }: { spaceId: string; arc
   const t = useTranslations("kb");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      disabled={pending}
-      onClick={() => {
-        if (!archived && !window.confirm(t("space.archiveConfirm"))) return;
-        startTransition(async () => {
-          await archiveSpaceAction({ spaceId, archived: !archived });
-          router.refresh();
-        });
-      }}
-    >
-      {archived ? t("space.restore") : t("space.archive")}
+  const toggle = () =>
+    startTransition(async () => {
+      await archiveSpaceAction({ spaceId, archived: !archived });
+      router.refresh();
+    });
+  // Archiving asks first; restoring does not.
+  return archived ? (
+    <Button type="button" variant="outline" disabled={pending} onClick={toggle}>
+      {t("space.restore")}
     </Button>
+  ) : (
+    <ConfirmButton variant="outline" disabled={pending} label={t("space.archive")} question={t("space.archiveConfirm")} onConfirm={toggle} />
   );
 }

@@ -8,6 +8,7 @@ import { Fragment, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -270,18 +271,7 @@ function ChecklistEditor({ checklist, owners }: { checklist?: ChecklistCard; own
           {checklist ? t("save") : t("create")}
         </Button>
         {checklist ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("deleteConfirm"))) run(() => deleteChecklistAction({ checklistId: checklist.id }));
-            }}
-          >
-            {t("delete")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteChecklistAction({ checklistId: checklist.id }))} />
         ) : null}
       </div>
     </form>

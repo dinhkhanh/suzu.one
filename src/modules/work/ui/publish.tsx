@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -235,9 +236,7 @@ function PublishActions({ publish, accounts }: { publish: PublishItem; accounts:
       <Button type="button" size="sm" variant="ghost" onClick={() => setMode("edit")}>
         {t("reschedule")}
       </Button>
-      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm(t("cancelConfirm")) && run(() => cancelPublishAction({ publishId: publish.id }))}>
-        {t("cancelPost")}
-      </Button>
+      <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("cancelPost")} question={t("cancelConfirm")} onConfirm={() => run(() => cancelPublishAction({ publishId: publish.id }))} />
       <DeliveryError errorKey={errorKey} />
     </div>
   );

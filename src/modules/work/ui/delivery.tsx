@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -90,9 +91,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
                 {deliveries.some((row) => row.canRemove) ? (
                   <TableCell kind="actions">
                     {item.canRemove ? (
-                      <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => window.confirm(t("removeConfirm")) && run(() => removeDeliveryAction({ deliveryId: item.id }))}>
-                        {t("remove")}
-                      </Button>
+                      <ConfirmButton size="xs" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeDeliveryAction({ deliveryId: item.id }))} />
                     ) : null}
                   </TableCell>
                 ) : null}

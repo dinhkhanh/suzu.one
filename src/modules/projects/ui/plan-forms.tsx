@@ -7,6 +7,7 @@ import { type ReactNode, useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -54,25 +55,22 @@ export function ActionButton({ action, input, label, confirm, variant = "outline
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const run = () =>
+    startTransition(async () => {
+      const result = await action(input);
+      const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
+      setError(key);
+      if (result.ok) router.refresh();
+    });
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        size="xs"
-        variant={variant}
-        disabled={pending}
-        onClick={() => {
-          if (confirm && !window.confirm(confirm)) return;
-          startTransition(async () => {
-            const result = await action(input);
-            const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
-            setError(key);
-            if (result.ok) router.refresh();
-          });
-        }}
-      >
-        {label}
-      </Button>
+      {confirm ? (
+        <ConfirmButton size="xs" variant={variant} disabled={pending} label={label} question={confirm} onConfirm={run} />
+      ) : (
+        <Button type="button" size="xs" variant={variant} disabled={pending} onClick={run}>
+          {label}
+        </Button>
+      )}
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {t.has(error) ? t(error) : t("generic")}

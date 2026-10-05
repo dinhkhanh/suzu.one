@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -168,9 +169,9 @@ export function AutomationManager({ teamId, projectId = null, rules, options, ru
                         <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleAutomationAction({ automationId: rule.id, isActive: !rule.isActive }))}>
                           {rule.isActive ? t("turnOff") : t("turnOn")}
                         </Button>
-                        <Button type="button" size="sm" variant="ghost" disabled={pending} className="text-destructive" onClick={() => window.confirm(t("confirmRemove", { name: rule.name })) && run(() => removeAutomationAction({ automationId: rule.id }))}>
+                        <ConfirmButton size="sm" variant="ghost" disabled={pending} className="text-destructive" destructive label={t("remove")} question={t("confirmRemove", { name: rule.name })} onConfirm={() => run(() => removeAutomationAction({ automationId: rule.id }))}>
                           <Trash2 aria-hidden className="size-4" /> {t("remove")}
-                        </Button>
+                        </ConfirmButton>
                       </div>
                       <RuleForm teamId={teamId} projectId={rule.projectId} options={options} rule={rule} />
                     </div>

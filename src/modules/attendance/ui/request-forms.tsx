@@ -19,7 +19,7 @@ import type { ActionResult } from "@/lib/action";
 import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { approveMonthsAction, beginEvidenceAction, cancelAttendanceRequestAction, completeEvidenceAction, confirmMonthAction, confirmWorkedMinutesAction, createAdjustmentAction, evidenceLinkAction, lockPeriodAction, nudgeAction, remindToConfirmAction, reopenMonthAction, resubmitAttendanceRequestAction, submitAttendanceRequestAction, voidAdjustmentAction } from "../request-actions";
-import { useConfirmedSubmit } from "./confirm";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { PositionPicker } from "./position-picker";
 
 const ERRORS = "attendance.requests.errors";

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { List, ListItem } from "@/components/ui/list";
@@ -275,9 +276,7 @@ export function RemovePositionKpiButton({ id }: { id: string }) {
   const { run, pending, errorKey } = useRun();
   return (
     <span className="inline-flex items-center gap-2">
-      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm(t("positions.removeConfirm")) && run(() => removePositionKpiAction({ id }))}>
-        {t("positions.remove")}
-      </Button>
+      <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("positions.remove")} question={t("positions.removeConfirm")} onConfirm={() => run(() => removePositionKpiAction({ id }))} />
       <FormError namespace={ERRORS} errorKey={errorKey} />
     </span>
   );
@@ -408,9 +407,7 @@ export function CloseMonthForm({ entityId, month, blockers }: { entityId: string
         </>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" disabled={pending || (listed.length > 0 && reason.trim().length < 5)} onClick={() => window.confirm(t("periods.closeConfirm")) && run(() => closeKpiMonthAction({ entityId, month, overrideReason: listed.length > 0 ? reason : "" }))}>
-          {listed.length > 0 ? t("periods.closeOverride") : t("periods.close")}
-        </Button>
+        <ConfirmButton size="sm" disabled={pending || (listed.length > 0 && reason.trim().length < 5)} label={listed.length > 0 ? t("periods.closeOverride") : t("periods.close")} question={t("periods.closeConfirm")} onConfirm={() => run(() => closeKpiMonthAction({ entityId, month, overrideReason: listed.length > 0 ? reason : "" }))} />
         <FormError namespace={ERRORS} errorKey={errorKey} />
       </div>
     </div>
@@ -424,9 +421,7 @@ export function ReopenMonthForm({ entityId, month }: { entityId: string; month: 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("periods.reopenReason")} maxLength={1000} className="max-w-xs" aria-label={t("periods.reopenReason")} />
-      <Button type="button" size="sm" variant="outline" disabled={pending || reason.trim().length < 5} onClick={() => window.confirm(t("periods.reopenConfirm")) && run(() => reopenKpiMonthAction({ entityId, month, reason }))}>
-        {t("periods.reopen")}
-      </Button>
+      <ConfirmButton size="sm" variant="outline" disabled={pending || reason.trim().length < 5} label={t("periods.reopen")} question={t("periods.reopenConfirm")} onConfirm={() => run(() => reopenKpiMonthAction({ entityId, month, reason }))} />
       <FormError namespace={ERRORS} errorKey={errorKey} />
     </div>
   );

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Label } from "@/components/ui/label";
 import { List, ListItem } from "@/components/ui/list";
 import { RecordLink } from "@/components/ui/record-link";
@@ -158,15 +159,7 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
             </Button>
           ) : null}
           {canHandBack ? (
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                if (window.confirm(plan.appliedAt ? t("handBackConfirm") : t("withdrawConfirm"))) run(() => handBackCoverAction({ planId: plan.id }));
-              }}
-            >
-              {plan.appliedAt ? t("handBack") : t("withdraw")}
-            </Button>
+            <ConfirmButton variant="outline" disabled={pending} label={plan.appliedAt ? t("handBack") : t("withdraw")} question={plan.appliedAt ? t("handBackConfirm") : t("withdrawConfirm")} onConfirm={() => run(() => handBackCoverAction({ planId: plan.id }))} />
           ) : null}
         </div>
       ) : null}

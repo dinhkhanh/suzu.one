@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { CONTRACT_EVENT_TYPES, CONTRACT_TYPES, HAND_RECORDED_EVENT_TYPES, JOB_CATEGORIES, TERMINATION_REASONS, WORKFORCE_TYPES } from "../enums";
 import { cancelLifecycleEventAction, liftSuspensionAction, recordContractEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, suspendPersonAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
 import { TableAddRow } from "@/components/ui/table";
-import { ConfirmButton } from "./confirm";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { PlacementFields, type PlacementOptions } from "./fields";
 
 /** Events HR writes down: probation result, renewal, reward, discipline, long leave, salary change (no amounts). */

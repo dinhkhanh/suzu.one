@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -285,9 +286,7 @@ export function TriageRuleManager({ teamId, rules, choices, canManage }: { teamI
                     <Button size="sm" variant="ghost" onClick={() => setEditing(editing === rule.id ? null : rule.id)}>
                       {tWork("customFields.edit")}
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" disabled={pending} onClick={() => window.confirm(t("deleteConfirm")) && run(() => deleteTriageRuleAction({ ruleId: rule.id }))}>
-                      {t("delete")}
-                    </Button>
+                    <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteTriageRuleAction({ ruleId: rule.id }))} />
                   </>
                 ) : null}
               </div>

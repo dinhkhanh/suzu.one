@@ -4095,9 +4095,6 @@
       "withdrawConfirm": "Rút lại đồng ý chấm công bằng khuôn mặt?",
       "withdrawDetail": "Dữ liệu khuôn mặt và bản ghi đồng ý của bạn bị xoá ngay. Máy kiosk sẽ không nhận ra bạn nữa; nhân sự chỉ có thể đăng ký lại khi có bản đồng ý mới đã ký.",
       "failed": "Không rút lại được sự đồng ý. Hãy thử lại."
-    },
-    "dialog": {
-      "cancel": "Huỷ"
     }
   },
   "leave": {

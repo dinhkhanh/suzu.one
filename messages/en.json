@@ -4095,9 +4095,6 @@
       "withdrawConfirm": "Withdraw your consent to face check-in?",
       "withdrawDetail": "Your face data and the consent record are deleted at once. The kiosk will no longer recognise you; HR can enrol you again only with a newly signed consent.",
       "failed": "Could not withdraw the consent. Try again."
-    },
-    "dialog": {
-      "cancel": "Cancel"
     }
   },
   "leave": {

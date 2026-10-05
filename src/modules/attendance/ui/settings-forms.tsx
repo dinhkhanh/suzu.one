@@ -10,7 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import type { DayRule, SchedulePattern, Weekday } from "../engine/calendar";
-import { useConfirmedSubmit } from "./confirm";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { assignScheduleAction, confirmCalendarDayAction, deleteCalendarDayAction, removeAssignmentAction, saveCalendarDayAction, saveScheduleAction, saveShiftAction, setRosterAction } from "../settings-actions";
 
 type Option = { id: string; name: string };

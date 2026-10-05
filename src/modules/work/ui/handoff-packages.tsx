@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -233,18 +234,7 @@ function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; stat
           {tWork("save")}
         </Button>
         {pkg ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("deleteConfirm"))) run(() => deleteHandoffPackageAction({ packageId: pkg.id }));
-            }}
-          >
-            {t("delete")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteHandoffPackageAction({ packageId: pkg.id }))} />
         ) : null}
       </div>
     </form>

@@ -29,7 +29,7 @@ import {
 } from "../records-actions";
 import type { SensitiveFields, SensitiveSummary } from "../records";
 import { TableAddRow } from "@/components/ui/table";
-import { ConfirmButton } from "./confirm";
+import { ConfirmButton } from "@/components/ui/confirm";
 
 const ERRORS = "records.errors";
 const BANK_ROWS = [0, 1];

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -198,9 +199,7 @@ function ChainForm({ teamId, projectId, people, chain }: { teamId: string; proje
           {chain ? tWork("save") : t("create")}
         </Button>
         {chain ? (
-          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm(t("removeConfirm")) && run(() => removeReviewChainAction({ chainId: chain.id }))}>
-            {t("remove")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeReviewChainAction({ chainId: chain.id }))} />
         ) : null}
       </div>
     </form>

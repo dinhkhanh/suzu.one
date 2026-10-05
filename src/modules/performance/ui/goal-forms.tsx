@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -194,7 +195,6 @@ export function GoalMoves({ goalId, moves }: { goalId: string; moves: Move[] }) 
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const run = (move: Move) => {
-    if ((move === "close" || move === "cancel") && !window.confirm(t(`moves.${move}Confirm`))) return;
     startTransition(async () => {
       const result = await moveGoalAction({ goalId, move, reason });
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
@@ -206,11 +206,16 @@ export function GoalMoves({ goalId, moves }: { goalId: string; moves: Move[] }) 
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {moves.includes("reopen") ? <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("moves.reason")} maxLength={500} className="max-w-xs" aria-label={t("moves.reason")} /> : null}
-        {moves.map((move) => (
-          <Button key={move} type="button" size="sm" variant={move === "activate" || move === "close" ? "default" : "outline"} disabled={pending || (move === "reopen" && reason.trim() === "")} onClick={() => run(move)}>
-            {t(`moves.${move}`)}
-          </Button>
-        ))}
+        {moves.map((move) =>
+          // Closing and cancelling ask first; activating and reopening do not.
+          move === "close" || move === "cancel" ? (
+            <ConfirmButton key={move} size="sm" variant={move === "close" ? "default" : "outline"} disabled={pending} label={t(`moves.${move}`)} question={t(`moves.${move}Confirm`)} onConfirm={() => run(move)} />
+          ) : (
+            <Button key={move} type="button" size="sm" variant={move === "activate" ? "default" : "outline"} disabled={pending || (move === "reopen" && reason.trim() === "")} onClick={() => run(move)}>
+              {t(`moves.${move}`)}
+            </Button>
+          ),
+        )}
       </div>
       <FormError namespace="performance.errors" errorKey={errorKey} />
     </div>
@@ -290,22 +295,20 @@ export function RemoveKeyResultButton({ keyResultId }: { keyResultId: string }) 
   const [errorKey, setErrorKey] = useState<string | null>(null);
   return (
     <span className="flex items-center gap-2">
-      <Button
-        type="button"
+      <ConfirmButton
         size="sm"
         variant="ghost"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm(t("kr.removeConfirm"))) return;
+        label={t("kr.remove")}
+        question={t("kr.removeConfirm")}
+        onConfirm={() =>
           startTransition(async () => {
             const result = await removeKeyResultAction({ keyResultId });
             setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
             if (result.ok) router.refresh();
-          });
-        }}
-      >
-        {t("kr.remove")}
-      </Button>
+          })
+        }
+      />
       <FormError namespace="performance.errors" errorKey={errorKey} />
     </span>
   );

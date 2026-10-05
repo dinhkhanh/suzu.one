@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -302,9 +303,7 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
       <div className="flex flex-wrap items-center justify-end gap-2">
         {saved ? <span className="mr-auto text-xs text-success">{t("saved")}</span> : null}
         {flow ? (
-          <Button type="button" variant="outline" disabled={pending} onClick={() => window.confirm(t("deleteConfirm")) && run(() => deleteFlowAction({ id: flow.id }))}>
-            {t("delete")}
-          </Button>
+          <ConfirmButton variant="outline" disabled={pending} label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteFlowAction({ id: flow.id }))} />
         ) : null}
         <Button type="button" disabled={pending} onClick={save}>
           {t("save")}
