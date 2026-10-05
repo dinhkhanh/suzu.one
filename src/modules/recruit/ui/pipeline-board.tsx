@@ -35,6 +35,8 @@ export function PipelineBoard({ stages, cards, className }: { stages: BoardStage
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
+  // Whether a bulk rejection also sends each candidate the rejection letter, as the single form does.
+  const [tell, setTell] = useState(true);
 
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -59,7 +61,7 @@ export function PipelineBoard({ stages, cards, className }: { stages: BoardStage
 
   const moveTo = (stageId: string, ids: string[]) => run(ids, (id) => moveApplicationAction({ applicationId: id, stageId, note: null }));
 
-  const rejectSelected = (reason: string) => run([...selected], (id) => rejectApplicationAction({ applicationId: id, reason, note: null }));
+  const rejectSelected = (reason: string) => run([...selected], (id) => rejectApplicationAction({ applicationId: id, reason, note: null, tellCandidate: tell }));
 
   const onDrop = (event: DragEvent<HTMLDivElement>, stageId: string) => {
     event.preventDefault();
@@ -107,6 +109,10 @@ export function PipelineBoard({ stages, cards, className }: { stages: BoardStage
               </option>
             ))}
           </Select>
+          <label className="flex items-center gap-1.5 text-xs">
+            <Checkbox checked={tell} onCheckedChange={(checked) => setTell(checked === true)} disabled={pending} />
+            {t("board.tellCandidates")}
+          </label>
           <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setSelected(new Set())}>
             {t("board.clear")}
           </Button>

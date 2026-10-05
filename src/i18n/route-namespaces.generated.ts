@@ -4,7 +4,7 @@
 export const SHELL_NAMESPACES: readonly string[] = ["controls", "errors", "feedback", "files", "forms.fieldErrors", "impersonation", "notifications.push", "richText", "theme", "welcome", "work.palette"];
 
 export const SEGMENT_NAMESPACES = {
-  admin: ["approvals.flows", "approvals.types", "brands", "documents.designer", "documents.errors", "documents.kind", "documents.tier", "entities", "flags", "imports", "org", "rbac", "requests.designer", "requests.errors", "roles", "rules"],
+  admin: ["approvals.flows", "approvals.types", "brands", "documents.designer", "documents.errors", "documents.kind", "documents.tier", "entities", "flags", "imports", "jobs.runNow", "org", "rbac", "requests.designer", "requests.errors", "roles", "rules"],
   announcements: ["comms"],
   approvals: ["approvals", "attendance.dialog", "attendance.months", "attendance.position", "attendance.requests", "changeRequests", "leave", "records.errors", "requests"],
   assets: ["assets.assign", "assets.bookings", "assets.categories", "assets.digital", "assets.enums", "assets.errors", "assets.form", "assets.handover", "assets.licences", "assets.return", "assets.seats", "assets.status", "imports"],

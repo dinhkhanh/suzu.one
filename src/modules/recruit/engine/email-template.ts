@@ -47,11 +47,20 @@ export type RenderedEmail = { subject: string; body: string; /** Placeholders th
  * Substitution, and nothing else — no conditionals, no loops, no expressions. A placeholder the
  * context cannot fill is left standing rather than blanked, so the sender sees `{{start_date}}` in
  * the preview instead of a sentence with a hole in it.
+ *
+ * The one exception is `optional`: for a letter the system sends by itself there is no preview and
+ * nobody to see the braces, so a **line** naming an optional placeholder the context has no value
+ * for is left out whole ("Ghi chú: {{interview_notes}}" with no note), and is not reported missing.
  */
-export function renderEmail(template: EmailTemplateDraft, context: Readonly<Record<string, string>>): RenderedEmail {
+export function renderEmail(template: EmailTemplateDraft, context: Readonly<Record<string, string>>, options: { optional?: readonly string[] } = {}): RenderedEmail {
   const missing = new Set<string>();
-  const substitute = (text: string) =>
-    text.replace(PLACEHOLDER, (whole, key: string) => {
+  const optional = new Set(options.optional ?? []);
+  const unfilled = (key: string) => context[key] === undefined || context[key] === "";
+  const dropOptionalLines = (text: string) =>
+    optional.size === 0 ? text : text.split("\n").filter((line) => !placeholdersIn(line).some((key) => optional.has(key) && unfilled(key))).join("\n");
+  const substitute = (raw: string) => {
+    const text = dropOptionalLines(raw);
+    return text.replace(PLACEHOLDER, (whole, key: string) => {
       const value = context[key];
       if (value === undefined || value === "") {
         missing.add(key);
@@ -59,6 +68,7 @@ export function renderEmail(template: EmailTemplateDraft, context: Readonly<Reco
       }
       return value;
     });
+  };
   const subject = substitute(template.subject).slice(0, MAX_SUBJECT_LENGTH);
   const body = substitute(template.body).slice(0, MAX_BODY_LENGTH);
   return { subject, body, missing: [...missing] };

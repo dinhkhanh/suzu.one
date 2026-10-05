@@ -9,6 +9,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import * as schema from "@/lib/db/schema";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
+import { EMAIL_TEMPLATE_SEED } from "@/modules/recruit/seed-email-templates";
 
 const client = new PGlite({ extensions: { btree_gist, vector } });
 const db = drizzle(client, { schema });
@@ -188,6 +189,27 @@ describe("migrations", () => {
     for (const row of added) {
       const seed = STATUTORY_SEED.find((entry) => entry.key === row.key)!;
       expect({ value: row.value, validFrom: row.validFrom, legalReference: row.legalReference, note: row.note, status: row.status, isVerified: row.isVerified }).toEqual({ value: seed.value, validFrom: seed.validFrom, legalReference: seed.legalReference, note: seed.note, status: "approved", isVerified: false });
+    }
+  });
+
+  it("brings R4-D's three automatic candidate letters to a database that already has wordings, as the seed has them, once", async () => {
+    // The data half of 0127: its last statement. The columns before it are not re-runnable.
+    const insert = readFileSync("./drizzle/0131_candidate_letters.sql", "utf8").split("--> statement-breakpoint").at(-1)!;
+    const codes = ["ACK_APPLICATION", "INTERVIEW_SCHEDULED", "INTERVIEW_CANCELLED"];
+    const rowsOf = () => db.select().from(schema.recruitEmailTemplate);
+    expect(await rowsOf()).toEqual([]);
+    // A fresh database is left alone: the seed brings every wording there.
+    await client.exec(insert);
+    expect(await rowsOf()).toEqual([]);
+    const existing = EMAIL_TEMPLATE_SEED.find((seed) => seed.code === "INVITE_INTERVIEW")!;
+    await db.insert(schema.recruitEmailTemplate).values({ ...existing });
+    await client.exec(insert);
+    await client.exec(insert);
+    const added = (await rowsOf()).filter((row) => codes.includes(row.code));
+    expect(added).toHaveLength(3);
+    for (const row of added) {
+      const seed = EMAIL_TEMPLATE_SEED.find((entry) => entry.code === row.code)!;
+      expect({ name: row.name, kind: row.kind, subject: row.subject, body: row.body, subjectEn: row.subjectEn, bodyEn: row.bodyEn, isActive: row.isActive }).toEqual({ name: seed.name, kind: seed.kind, subject: seed.subject, body: seed.body, subjectEn: seed.subjectEn, bodyEn: seed.bodyEn, isActive: true });
     }
   });
 });

@@ -31,6 +31,7 @@ import {
   createCandidate,
   createOpening,
   findLikelyCandidateDuplicates,
+  findOpening,
   findOpeningBySlug,
   getApplicationView,
   getCandidateView,
@@ -46,6 +47,8 @@ import {
   nextOpeningCode,
   reachableCandidateIds,
   rejectApplication,
+  saveOpeningKit,
+  saveOpeningQuestions,
   savePipeline,
   setOpeningStatus,
   setOpeningTeam,
@@ -152,6 +155,28 @@ describe("openings", () => {
     const other = await createOpening({ ...baseOpening(), entityId: ids.szc, departmentId: ids.des, title: "Account Executive" }, null, ids.recruiterPerson);
     expect(other.code).toMatch(/^SZC-\d{4}-001$/);
     expect(await nextOpeningCode(db(), "SZM", Number(opening.code.slice(4, 8)))).toMatch(/-003$/);
+  });
+
+  it("saves the application form's own questions, keeping a renamed question's key, and refuses a bad one", async () => {
+    const opening = await createOpening({ ...baseOpening(), title: "Motion designer" }, null, ids.recruiterPerson);
+    const first = await saveOpeningQuestions(opening.id, [{ key: null, label: "Link showreel", labelEn: "Showreel link", kind: "text", required: true, choices: [] }]);
+    expect(first.after).toEqual([{ key: "link_showreel", label: "Link showreel", labelEn: "Showreel link", kind: "text", required: true, choices: [] }]);
+    // Renamed and joined by a choice question: the first keeps its key, so its answers still match.
+    const { after } = await saveOpeningQuestions(opening.id, [
+      { key: "link_showreel", label: "Đường dẫn showreel", labelEn: null, kind: "text", required: true, choices: [] },
+      { key: null, label: "Bắt đầu khi nào?", labelEn: null, kind: "choice", required: false, choices: ["Ngay", "Sau 1 tháng"] },
+    ]);
+    expect(after.map((row) => row.key)).toEqual(["link_showreel", "bat_dau_khi_nao"]);
+    expect((await findOpening(opening.id))?.questions).toEqual(after);
+    expect(await fails(saveOpeningQuestions(opening.id, [{ key: null, label: "Chọn", labelEn: null, kind: "choice", required: false, choices: ["Một"] }]))).toBe("opening_question_choices_required");
+  });
+
+  it("saves the interview kit on the opening, and an empty one falls back to the default", async () => {
+    const opening = await createOpening({ ...baseOpening(), title: "Colorist" }, null, ids.recruiterPerson);
+    const { after } = await saveOpeningKit(opening.id, [{ key: null, label: "Mắt màu", labelEn: "Colour eye", hint: null }]);
+    expect(after).toEqual([{ key: "mat_mau", label: "Mắt màu", labelEn: "Colour eye", hint: null }]);
+    expect((await findOpening(opening.id))?.interviewKit).toEqual(after);
+    expect((await saveOpeningKit(opening.id, [])).after).toEqual([]);
   });
 
   it("mints a readable public slug from the title, with a random tail, that is not the id", async () => {

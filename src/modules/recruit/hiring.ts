@@ -23,7 +23,7 @@ import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import type { EmploymentType } from "./enums";
-import { canReadRecruitMoney } from "./policy";
+import { canReadRecruitMoney, canRunRecruitment } from "./policy";
 import { findHiringRequest, type HiringRequestRow, inTransaction } from "./service";
 
 /** What the approval request's payload holds — deliberately no figure among it. */
@@ -185,7 +185,11 @@ export async function getHiringRequestView(viewer: { principal: Principal; perso
   const mine = viewer.personId === hiringRequest.requestedByPersonId || viewer.personId === hiringRequest.hiringManagerPersonId;
   // An approver reaches it through the approval engine, which has already decided they are a party
   // to the request; everybody else goes through the module's own rule.
-  if (!approval && !mine && !can(viewer.principal, "recruit:manage", target)) return null;
+  // `canRunRecruitment`, not a bare `can()`: the rule reads the units the request names as a unit
+  // chain (`unitPath`), which is what lets a recruiter granted on a department — or on a unit above
+  // it — open it. `{ departmentId, teamId }` handed to `can()` directly names no unit at all, and
+  // only group- and entity-wide grants ever matched.
+  if (!approval && !mine && !canRunRecruitment(viewer.principal, target)) return null;
 
   const [entities, units, people] = await Promise.all([
     listEntities(),

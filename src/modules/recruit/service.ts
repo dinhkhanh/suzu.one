@@ -23,14 +23,17 @@ import {
   APPLICATION_CLOSED,
   type ApplicationEventType,
   type ApplicationStatus,
+  type CandidateLocale,
   type CandidateSource,
   DEFAULT_RETENTION_MONTHS,
   type EmploymentType,
   type OpeningQuestion,
   type OpeningStatus,
   type RejectionReason,
+  type ScorecardCriterion,
   type WorkMode,
 } from "./enums";
+import { cleanKit, cleanQuestions, type CriterionDraft, type QuestionDraft } from "./engine/opening-config";
 import { type CandidateLike, type DuplicateMatch, isCertainDuplicate, type RedactedDuplicateMatch, normaliseEmail, normalisePhone, probeFor, rankDuplicates } from "./engine/duplicates";
 import { canBrowseCandidates, canEraseCandidate, canReadRecruitMoney, canRunRecruitment, canViewOpening, type OpeningTarget } from "./policy";
 
@@ -491,6 +494,33 @@ export async function setOpeningTeam(openingId: string, members: { personId: str
   });
 }
 
+/**
+ * The questions the application form asks (FR-REC-03), replaced wholesale — the editor shows them
+ * all. The public page reads them from the published-openings cache, which is dropped here.
+ */
+export async function saveOpeningQuestions(openingId: string, drafts: readonly QuestionDraft[]): Promise<{ before: OpeningQuestion[]; after: OpeningQuestion[] }> {
+  const cleaned = cleanQuestions(drafts);
+  if ("problem" in cleaned) throw new ActionError(cleaned.problem);
+  const before = await findOpening(openingId);
+  if (!before) throw new ActionError("recruit_opening_not_found");
+  await db().update(schema.jobOpening).set({ questions: cleaned.questions, updatedAt: now() }).where(eq(schema.jobOpening.id, openingId));
+  await invalidatePublishedOpenings();
+  return { before: before.questions, after: cleaned.questions };
+}
+
+/**
+ * The interview kit (FR-REC-06). Interviews already booked keep the kit they were booked with
+ * (`interview.criteria` is a copy), so a scorecard keeps meaning what it meant when it was filled in.
+ */
+export async function saveOpeningKit(openingId: string, drafts: readonly CriterionDraft[]): Promise<{ before: ScorecardCriterion[]; after: ScorecardCriterion[] }> {
+  const cleaned = cleanKit(drafts);
+  if ("problem" in cleaned) throw new ActionError(cleaned.problem);
+  const before = await findOpening(openingId);
+  if (!before) throw new ActionError("recruit_opening_not_found");
+  await db().update(schema.jobOpening).set({ interviewKit: cleaned.kit, updatedAt: now() }).where(eq(schema.jobOpening.id, openingId));
+  return { before: before.interviewKit, after: cleaned.kit };
+}
+
 // ── Candidates (FR-REC-04) ──────────────────────────────────────────────────────────────────
 
 export type CandidateInput = {
@@ -506,6 +536,8 @@ export type CandidateInput = {
   referredByPersonId: string | null;
   tags: string[];
   notes: string | null;
+  /** The language their letters are written in. Left out = left as it is (Vietnamese for a new record). */
+  locale?: CandidateLocale | null;
 };
 
 /** The normalised keys and the search key, derived in one place so the public form and the recruiter's form agree. */
@@ -615,7 +647,7 @@ export async function findCandidate(candidateId: string, executor: Executor = db
   return row;
 }
 
-export type CandidateListRow = { id: string; fullName: string; currentTitle: string | null; source: CandidateSource; tags: string[]; createdAt: Date; applications: number; anonymised: boolean };
+export type CandidateListRow = { id: string; fullName: string; currentTitle: string | null; source: CandidateSource; tags: string[]; createdAt: Date; applications: number; anonymised: boolean; talentPool: boolean };
 
 /**
  * The candidate database (FR-REC-04). Two kinds of row, and both are scoped:
@@ -628,7 +660,7 @@ export async function listCandidates(principal: Principal, filters: CandidateFil
   return (await readCandidates(principal, filters, 200, 0)).rows;
 }
 
-type CandidateFilters = { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean };
+type CandidateFilters = { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean; /** Only the talent pool: kept beyond their applications, by their own consent. */ talentPool?: boolean };
 
 /** One page of the candidate database (PERF-03), newest first, and how many candidates the filters name in all. */
 export const listCandidatePage = (principal: Principal, filters: CandidateFilters, page: number, pageSize: number): Promise<{ rows: CandidateListRow[]; total: number }> => readCandidates(principal, filters, pageSize, (Math.max(1, page) - 1) * pageSize);
@@ -649,6 +681,7 @@ async function readCandidates(principal: Principal, filters: CandidateFilters, l
       tags: schema.candidate.tags,
       createdAt: schema.candidate.createdAt,
       anonymisedAt: schema.candidate.anonymisedAt,
+      talentPool: schema.candidate.talentPoolConsent,
       applications,
       total: sql<number>`count(*) over ()`.mapWith(Number),
     })
@@ -656,6 +689,7 @@ async function readCandidates(principal: Principal, filters: CandidateFilters, l
     .where(
       and(
         candidateReach(principal),
+        filters.talentPool ? and(eq(schema.candidate.talentPoolConsent, true), isNull(schema.candidate.anonymisedAt)) : undefined,
         filters.tag ? sql`${filters.tag} = any(${schema.candidate.tags})` : undefined,
         filters.source ? eq(schema.candidate.source, filters.source) : undefined,
         filters.notAppliedTo
@@ -675,7 +709,7 @@ async function readCandidates(principal: Principal, filters: CandidateFilters, l
     .limit(limit)
     .offset(offset);
 
-  return { total: rows[0]?.total ?? 0, rows: rows.map(({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications }) => ({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications: Number(applications ?? 0), anonymised: !!anonymisedAt })) };
+  return { total: rows[0]?.total ?? 0, rows: rows.map(({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, talentPool, applications }) => ({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications: Number(applications ?? 0), anonymised: !!anonymisedAt, talentPool })) };
 }
 
 /**
@@ -869,8 +903,9 @@ export async function moveApplicationStage(applicationId: string, toStageId: str
   });
 }
 
-export async function rejectApplication(applicationId: string, input: { reason: RejectionReason; note: string | null }, actorPersonId: string): Promise<{ before: ApplicationRow; after: ApplicationRow }> {
-  return inTransaction(async (tx) => {
+/** In the caller's transaction when one is passed — `letters.ts` queues the rejection letter in the same one. */
+export async function rejectApplication(applicationId: string, input: { reason: RejectionReason; note: string | null }, actorPersonId: string, executor?: Tx): Promise<{ before: ApplicationRow; after: ApplicationRow }> {
+  const run = async (tx: Executor) => {
     const before = await findApplication(applicationId, tx);
     if (!before) throw new ActionError("recruit_application_not_found");
     if (APPLICATION_CLOSED.includes(before.status)) throw new ActionError("recruit_application_closed");
@@ -883,7 +918,8 @@ export async function rejectApplication(applicationId: string, input: { reason: 
     // people fall out.
     await recordApplicationEvent(tx, { applicationId, type: "rejected", fromStageId: before.stageId, actorPersonId, note: input.note, detail: { reason: input.reason } });
     return { before, after };
-  });
+  };
+  return executor ? run(executor) : inTransaction(run);
 }
 
 export async function withdrawApplication(applicationId: string, actorPersonId: string | null, note: string | null): Promise<{ before: ApplicationRow; after: ApplicationRow }> {
@@ -945,7 +981,60 @@ export async function listApplications(viewer: { principal: Principal; personId:
     .orderBy(asc(schema.recruitPipelineStage.sortOrder), asc(schema.jobApplication.appliedAt));
 }
 
-export type ApplicationEventView = { id: number; type: ApplicationEventType; at: Date; actorPersonId: string | null; actorName: string | null; note: string | null; fromStageName: string | null; toStageName: string | null; detail: Record<string, unknown> | null };
+export type ApplicationEventView = {
+  id: number;
+  type: ApplicationEventType;
+  at: Date;
+  actorPersonId: string | null;
+  actorName: string | null;
+  note: string | null;
+  fromStageName: string | null;
+  toStageName: string | null;
+  detail: Record<string, unknown> | null;
+  /**
+   * For a letter to the candidate: what became of it in the outbox — sent, still trying (with the
+   * last error), given up on, or simulated with no mail provider configured. Null for anything else.
+   */
+  delivery: { status: "pending" | "sent" | "failed" | "skipped"; error: string | null; attempts: number } | null;
+};
+
+export type UndeliveredLetterRow = { eventId: number; applicationId: string; candidateName: string; openingTitle: string; templateName: string | null; at: Date; status: "pending" | "failed"; error: string | null };
+
+/**
+ * Letters to candidates that did not reach them — given up on, or failing and being retried — over
+ * the openings this reader may see, newest first. What the recruitment home shows so a failure is
+ * noticed without opening every application. One query, scoped like every list here.
+ */
+export async function listUndeliveredLetters(principal: Principal, days = 30): Promise<UndeliveredLetterRow[]> {
+  if (!canRunRecruitment(principal)) return [];
+  const rows = await db()
+    .select({
+      eventId: schema.applicationEvent.id,
+      applicationId: schema.jobApplication.id,
+      candidateName: schema.candidate.fullName,
+      openingTitle: schema.jobOpening.title,
+      templateName: schema.applicationEvent.note,
+      at: schema.applicationEvent.at,
+      status: schema.emailOutbox.status,
+      error: schema.emailOutbox.lastError,
+    })
+    .from(schema.applicationEvent)
+    .innerJoin(schema.emailOutbox, sql`${schema.emailOutbox.id}::text = ${schema.applicationEvent.detail} ->> 'outboxId'`)
+    .innerJoin(schema.jobApplication, eq(schema.jobApplication.id, schema.applicationEvent.applicationId))
+    .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
+    .innerJoin(schema.candidate, eq(schema.candidate.id, schema.jobApplication.candidateId))
+    .where(
+      and(
+        eq(schema.applicationEvent.type, "emailed"),
+        sql`${schema.applicationEvent.at} > now() - make_interval(days => ${days}::int)`,
+        or(eq(schema.emailOutbox.status, "failed"), and(eq(schema.emailOutbox.status, "pending"), sql`${schema.emailOutbox.lastError} is not null`)),
+        openingScope(principal),
+      ),
+    )
+    .orderBy(desc(schema.applicationEvent.id))
+    .limit(20);
+  return rows.map((row) => ({ ...row, status: row.status === "failed" ? "failed" : "pending" }));
+}
 
 export type ApplicationView = {
   application: ApplicationRow;
@@ -983,13 +1072,24 @@ export async function getApplicationView(viewer: { principal: Principal; personI
         fromStageName: fromStage.name,
         toStageName: toStage.name,
         detail: schema.applicationEvent.detail,
+        deliveryStatus: schema.emailOutbox.status,
+        deliveryError: schema.emailOutbox.lastError,
+        deliveryAttempts: schema.emailOutbox.attempts,
       })
       .from(schema.applicationEvent)
       .leftJoin(schema.person, eq(schema.person.id, schema.applicationEvent.actorPersonId))
       .leftJoin(fromStage, eq(fromStage.id, schema.applicationEvent.fromStageId))
       .leftJoin(toStage, eq(toStage.id, schema.applicationEvent.toStageId))
+      // A letter's history line names its outbox row; joined here, so the page says whether it went.
+      .leftJoin(schema.emailOutbox, sql`${schema.emailOutbox.id}::text = ${schema.applicationEvent.detail} ->> 'outboxId'`)
       .where(eq(schema.applicationEvent.applicationId, applicationId))
-      .orderBy(desc(schema.applicationEvent.id)),
+      .orderBy(desc(schema.applicationEvent.id))
+      .then((rows) =>
+        rows.map(({ deliveryStatus, deliveryError, deliveryAttempts, ...event }) => ({
+          ...event,
+          delivery: deliveryStatus ? { status: deliveryStatus, error: deliveryError, attempts: deliveryAttempts ?? 0 } : null,
+        })),
+      ),
     application.cvFileId ? listFileNames([application.cvFileId]).then((names) => names.get(application.cvFileId!) ?? null) : null,
   ]);
   if (!opening) return null;

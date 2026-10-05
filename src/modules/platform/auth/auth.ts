@@ -12,6 +12,17 @@ import { invalidateSessionsOfUser, invalidateSessionTokens } from "./session-cac
 import { decideSignIn, emailDomain } from "./sign-in-policy";
 import { USER_ADDITIONAL_FIELDS } from "./user-fields";
 
+/**
+ * How long a session lives without being used (FR-PLT-06). The SRS names no figure; three days
+ * outlasts a Sunday and a Saturday off — a person who uses the app on working days never signs in
+ * again — and ends a session left open on a lost phone or a shared machine by the middle of the
+ * week, where the old rolling week kept it for seven. Compensation keeps its own, much shorter
+ * window on top (the step-up, `step-up-policy.ts`).
+ */
+export const IDLE_TIMEOUT_SECONDS = 3 * 24 * 60 * 60;
+/** How often a session in use has its expiry pushed forward: one write per person per hour of use at most, and the idle window is exact to the hour. */
+export const SESSION_REFRESH_SECONDS = 60 * 60;
+
 // Better Auth only turns an error into a redirect to the sign-in page when it carries a `code`;
 // without one the browser is left on a raw JSON response.
 function reject(reason: string) {
@@ -41,9 +52,17 @@ function create() {
 
     user: { additionalFields: USER_ADDITIONAL_FIELDS },
 
+    // Counted per address in Postgres before the request gets here (`/api/auth/[...all]/route.ts`,
+    // NFR-SEC-03). Better Auth's own limiter counts in each instance's memory — every new Vercel
+    // instance starts from zero — and its sign-in rule (three in ten seconds per address) would turn
+    // a whole office away on a Monday morning once the count were shared.
+    rateLimit: { enabled: false },
+
+    // The idle timeout (FR-PLT-06, NFR-SEC-03): a session nobody uses for IDLE_TIMEOUT_SECONDS ends;
+    // one in use is pushed forward at most once an hour.
     session: {
-      expiresIn: 60 * 60 * 24 * 7,
-      updateAge: 60 * 60 * 24,
+      expiresIn: IDLE_TIMEOUT_SECONDS,
+      updateAge: SESSION_REFRESH_SECONDS,
       // No cookie cache: a signed cookie cannot be revoked. The session row is read through the
       // shared cache instead (session-cache.ts), whose entry every writer below drops, so
       // revocation is still immediate (FR-PLT-05).

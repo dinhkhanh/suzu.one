@@ -14,7 +14,7 @@ import vi_ from "../../../../messages/vi.json";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { loadShellCounts } from "../shell/service";
 import { KINDS, messageKey } from "./kinds";
-import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
+import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueRawEmail, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
 
 const people = {} as Record<"an" | "binh" | "ctv" | "gone", string>;
 
@@ -125,6 +125,22 @@ describe("the daily job", () => {
     sendEmail.mockResolvedValue({ status: "skipped" });
     expect(await deliverPendingEmails()).toEqual({ sent: 0, failed: 0, skipped: 1 });
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "an@suzu.vn" }));
+  });
+
+  it("hands a letter's attachment to the provider, keeps it while a retry may need it, and drops it once done", async () => {
+    const file = { fileName: "interview.ics", contentType: "text/calendar; charset=utf-8; method=REQUEST", contentBase64: Buffer.from("BEGIN:VCALENDAR").toString("base64") };
+    const { id } = await queueRawEmail("candidate@example.com", "Lịch phỏng vấn", "Chào bạn", db(), [file]);
+
+    sendEmail.mockResolvedValue({ status: "failed", error: "503" });
+    await deliverPendingEmails();
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "candidate@example.com", attachments: [file] }));
+    let [email] = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.id, id));
+    expect(email.attachments).toEqual([file]);
+
+    sendEmail.mockResolvedValue({ status: "sent" });
+    await deliverPendingEmails();
+    [email] = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.id, id));
+    expect(email).toMatchObject({ status: "sent", attachments: null });
   });
 });
 

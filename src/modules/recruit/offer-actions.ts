@@ -140,9 +140,13 @@ const sendOfferPipeline = createAction({
     return !!opening && canMakeOffer(user.principal, openingTargetOf(opening));
   },
   run: async ({ user, input }) => {
-    const offer = await sendOffer(input.offerId, user.person.id);
+    const { offer, letter } = await sendOffer(input.offerId, { personId: user.person.id, fullName: user.person.fullName });
     refresh(offer.id, offer.applicationId);
-    return { data: { id: offer.id }, audit: { resource: { type: "job_offer", id: offer.id, entityId: offer.entityId }, summary: offer.number, after: { status: offer.status } } };
+    return {
+      // Whether the email went, or why not — the screen says so rather than leaving the sender to guess.
+      data: { id: offer.id, letter: letter.queued ? "queued" : letter.reason },
+      audit: { resource: { type: "job_offer", id: offer.id, entityId: offer.entityId }, summary: offer.number, after: { status: offer.status, candidateTold: letter.queued } },
+    };
   },
 });
 

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { authLimitKey, countAuthHit } from "@/modules/platform/auth/endpoint-limit";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { googleStepUpUrl, sealPendingStepUp, STEP_UP_STATE_COOKIE, stepUpDriver } from "@/modules/platform/auth/step-up";
 
@@ -8,6 +9,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.redirect(new URL("/sign-in", request.url));
   // A borrowed session (FR-PLT-40) has nothing of its own to prove: the page explains.
   if (stepUpDriver() !== "google" || user.impersonator) return NextResponse.redirect(new URL("/step-up", request.url));
+  // The start and the callback spend one allowance per session (NFR-SEC-03): five round trips in ten minutes.
+  if (!(await countAuthHit("step_up", authLimitKey("session", user.sessionId))).ok) return NextResponse.redirect(new URL("/step-up?error=1", request.url));
 
   const { cookie, pending } = sealPendingStepUp({ next: request.nextUrl.searchParams.get("next") ?? "/home", sessionId: user.sessionId });
   const response = NextResponse.redirect(googleStepUpUrl(pending, user.email));

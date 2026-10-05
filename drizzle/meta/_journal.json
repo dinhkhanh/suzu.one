@@ -918,6 +918,20 @@
       "when": 1791163429413,
       "tag": "0130_requests_paid_and_letters",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1791164480800,
+      "tag": "0131_candidate_letters",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1791164744459,
+      "tag": "0132_auth_endpoint_rate_limit",
+      "breakpoints": true
     }
   ]
 }
