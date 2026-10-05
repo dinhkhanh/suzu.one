@@ -19,6 +19,7 @@ import { getRunView } from "@/modules/payroll/run-views";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { listPayslipsOfRun } from "@/modules/payroll/payslips";
 import { PublishPayslipsButton } from "@/modules/payroll/ui/payslip-forms";
+import { RetroSection } from "@/modules/payroll/ui/retro-section";
 import { CalculateRunButton, CancelRunButton, RemoveRunInputButton, RunInputForm, RunStepForm } from "@/modules/payroll/ui/run-forms";
 import { RunStepper } from "@/modules/payroll/ui/run-stepper";
 import { pageTitle } from "@/i18n/page-title";
@@ -26,6 +27,8 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("payrollRun");
 
 const SERIOUS = new Set(["negative_net", "missing_bank_account", "missing_tax_code"]);
+// The engine's own warnings that mean "a figure somebody entered was not paid".
+const UNPAID = new Set(["input_code_unknown", "input_negative", "retro_component_missing"]);
 
 export default async function PayrollRunPage({ params }: PageProps<"/payroll/runs/[runId]">) {
   const user = await requireUser();
@@ -35,8 +38,12 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
   if (!view) notFound();
   requireStepUp(user, `/payroll/runs/${runId}`);
 
-  const { run, entity, totals, progress, variance, people, events, seesPayslips } = view;
+  const { run, entity, totals, progress, variance, people, events, seesPayslips, readiness, retro } = view;
   const editable = run.status === "draft" || run.status === "calculated";
+  // A run that is out of date or has something in its way is calculated again or put right first.
+  const proposable = readiness.stale.length === 0 && readiness.blockers.length === 0;
+  const issues = [...readiness.blockers.map((issue) => ({ ...issue, blocking: true })), ...readiness.warnings.map((issue) => ({ ...issue, blocking: false }))];
+  const nameOf = (personId: string) => view.names.get(personId)?.fullName ?? "—";
   const [t, format, payslips, catalogue] = await Promise.all([
     getTranslations("payroll"),
     getFormatter(),
@@ -54,7 +61,8 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
     "payroll:approve": canApprovePayroll(user.principal, run),
     "payroll:pay": canPayPayroll(user.principal, run),
   };
-  const mySteps = view.steps.filter((step) => holds[RUN_STEPS[step].permission]);
+  // The action refuses a proposal that is stale or blocked; the key is not offered for one either.
+  const mySteps = view.steps.filter((step) => holds[RUN_STEPS[step].permission] && (step !== "propose" || proposable));
   const inputCodes = catalogue.filter((component) => component.source === "input").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` }));
   const payslipOf = new Map(payslips.map((row) => [row.personId, row]));
   const manages = canManageCompensation(user.principal, run);
@@ -95,9 +103,18 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
         }
       />
 
-      {view.unverifiedParameters.length > 0 ? <Alert variant="warning">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</Alert> : null}
+      {/* While the run is with C&B this is a line of the warnings panel below; afterwards it stays up here. */}
+      {!editable && view.unverifiedParameters.length > 0 ? <Alert variant="warning">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</Alert> : null}
       {progress.state === "queued" || progress.state === "running" ? <Alert variant="info">{t("runs.progress", { done: progress.done, total: progress.total })}</Alert> : null}
       {progress.state === "failed" ? <Alert variant="destructive">{t("runs.calcError", { error: progress.error ?? "" })}</Alert> : null}
+      {/* Out of date: what the figures were worked out from has changed since (FR-PAY-30). */}
+      {readiness.stale.length > 0 ? (
+        <Alert variant="warning">
+          <span>
+            {t("runs.stale.title")} {readiness.stale.map((reason) => t(`runs.stale.reasons.${reason}`)).join(" ")}
+          </span>
+        </Alert>
+      ) : null}
 
       {/* ── Where the run is, and the step this person may take (SRS D17) ── */}
       <Card>
@@ -116,7 +133,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
         </CardContent>
         {hasActions ? (
           <CardFooter className="flex-col items-stretch gap-4 md:flex-row md:flex-wrap md:items-end">
-            {editable && manages ? <CalculateRunButton runId={run.id} label={t(run.status === "draft" ? "runs.calculate" : "runs.recalculate")} /> : null}
+            {editable && manages ? <CalculateRunButton runId={run.id} label={t(run.calculatedAt ? "runs.recalculate" : "runs.calculate")} /> : null}
             {mySteps.map((step) => (
               <RunStepForm key={step} runId={run.id} step={step} label={t(`runs.steps.${step}`)} destructive={step === "return"} />
             ))}
@@ -132,6 +149,38 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
         <Tile label={t("runs.totals.insurance")} value={<>{formatVnd(totals.employerInsurance)}</>} hint={`${t("runs.totals.pit")} ${formatVnd(totals.pit)} · ${t("runs.totals.employerCost")} ${formatVnd(totals.employerCost)}`} />
         <Tile label={t("runs.exceptions")} value={<>{variance.flagged.length}</>} tone={variance.flagged.length > 0 ? "destructive" : "success"} hint={variance.hasPrevious ? t("runs.variance.against", { month: variance.previousMonth, previous: formatVnd(variance.totals.previousNet), change: percent(variance.totals.changeBp) }) : t("runs.variance.noPrevious")} />
       </TileGrid>
+
+      {/* ── What stands in the way of a proposal, and what to settle before payment ── */}
+      {editable ? (
+        <Section title={t("runs.readiness.title")} count={issues.length + (view.unverifiedParameters.length > 0 ? 1 : 0) || undefined} description={readiness.blockers.length > 0 ? t("runs.readiness.blocked") : undefined}>
+          <List>
+            {issues.length === 0 && view.unverifiedParameters.length === 0 ? <ListEmpty>{t("runs.readiness.clean")}</ListEmpty> : null}
+            {/* A warning and never a blocker: the parallel run happens before the accountant's sign-off. */}
+            {view.unverifiedParameters.length > 0 ? (
+              <ListItem className="flex-wrap gap-x-3 gap-y-1.5">
+                <Badge dot variant="warning">{t("runs.readiness.warning")}</Badge>
+                <span className="text-muted-foreground">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</span>
+              </ListItem>
+            ) : null}
+            {issues.map((issue) => (
+              <ListItem key={`${issue.kind}:${issue.personId}`} className="flex-wrap gap-x-3 gap-y-1.5">
+                <Badge dot variant={issue.blocking ? "destructive" : "warning"}>{t(issue.blocking ? "runs.readiness.blocker" : "runs.readiness.warning")}</Badge>
+                <RecordLink kind="person" id={issue.personId} className="font-medium">
+                  {nameOf(issue.personId)}
+                </RecordLink>
+                <span className="text-muted-foreground">{t(`runs.readiness.kinds.${issue.kind}`)}</span>
+                {/* A figure typed for somebody the run does not pay: named, and taken out from here. */}
+                {issue.codes?.map((code) => (
+                  <span key={code} className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums">
+                    {code}
+                    {manages ? <RemoveRunInputButton runId={run.id} personId={issue.personId} code={code} /> : null}
+                  </span>
+                ))}
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : null}
 
       {/* ── The variance check (FR-PAY-31): what to look at before signing ── */}
       <Section title={t("runs.exceptions")} count={variance.flagged.length || undefined}>
@@ -216,6 +265,19 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       {/* ── Typed-in figures: bonuses, advances, penalties ── */}
       {seesPayslips && editable ? <RunInputForm runId={run.id} people={people.map(({ personId, fullName }) => ({ personId, fullName }))} codes={inputCodes} /> : null}
 
+      {/* ── Differences of months already paid, carried by this run (FR-PAY-17) ── */}
+      {retro ? (
+        <RetroSection
+          screen={retro}
+          entityId={run.entityId}
+          runId={run.id}
+          editable={editable && manages}
+          people={people.map(({ personId, fullName }) => ({ personId, fullName }))}
+          viewerPersonId={user.person.id}
+          action={<Link href={`/payroll/retro?entity=${run.entityId}`}>{t("retro.all")}</Link>}
+        />
+      ) : null}
+
       {/* ── Releasing the payslips (FR-PAY-32) ── */}
       {view.seesPayslips && run.approvedAt ? (
         <Card size="sm">
@@ -242,6 +304,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                 {seesPayslips ? <TableHead kind="money">{t("runs.totals.pit")}</TableHead> : null}
                 <TableHead kind="money">{t("runs.net")}</TableHead>
                 <TableHead kind="status">{t("runs.status")}</TableHead>
+                {seesPayslips ? <TableHead kind="actions" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -277,7 +340,14 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                     <TableCell kind="money" className="font-medium">{formatVnd(person.net)}</TableCell>
                     <TableCell>
                       {person.warnings.length > 0 ? (
-                        <Badge dot variant="warning">{t(`runs.warnings.${person.warnings[0]}` as "runs.warnings.negative_net")}</Badge>
+                        // Every warning, not the first: one that says a figure was not paid must not hide behind another.
+                        <span className="flex flex-wrap gap-1">
+                          {person.warnings.map((warning) => (
+                            <Badge key={warning} dot variant={UNPAID.has(warning) || warning === "negative_net" ? "destructive" : "warning"}>
+                              {t(`runs.warnings.${warning}` as "runs.warnings.negative_net")}
+                            </Badge>
+                          ))}
+                        </span>
                       ) : payslip?.payslipId ? (
                         <Link href={`/payslips/${payslip.payslipId}`} className="inline-flex">
                           <Badge dot variant={payslip.firstViewedAt ? "success" : "info"} className="hover:underline">
@@ -288,6 +358,14 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                         <Badge dot variant={statusTone(run.status)}>{t(`runs.statuses.${run.status}`)}</Badge>
                       )}
                     </TableCell>
+                    {seesPayslips ? (
+                      <TableCell kind="actions">
+                        {/* The person's lines and the working behind them, before anything is published (FR-PAY-20). */}
+                        <Link href={`/payroll/runs/${run.id}/people/${person.personId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          {t("runs.lines.open")}
+                        </Link>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}
@@ -307,6 +385,16 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
               <span>
                 {t(`runs.statuses.${event.fromStatus}`)} → <span className="font-medium">{t(`runs.statuses.${event.toStatus}`)}</span>
               </span>
+              {/* Every step is a signature (SRS D17): who took it. A job has no name. */}
+              {event.actorPersonId ? (
+                <RecordLink kind="person" id={event.actorPersonId} className="font-medium">
+                  {event.actorName ?? "—"}
+                </RecordLink>
+              ) : (
+                <span className="text-muted-foreground">{t("runs.bySystem")}</span>
+              )}
+              {/* Back to draft is never a decision: something the figures came from was changed. */}
+              {event.fromStatus === "calculated" && event.toStatus === "draft" ? <span className="text-muted-foreground">{t("runs.reopened")}</span> : null}
               {event.comment ? <span className="text-muted-foreground">“{event.comment}”</span> : null}
             </ListItem>
           ))}

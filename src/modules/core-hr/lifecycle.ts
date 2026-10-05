@@ -11,9 +11,10 @@ import { toSearchKey } from "@/lib/text";
 // the boundary the module rule allows.
 import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
-import { endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
+import { assertNotLastActiveOwner, endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
-import { invalidatePeople } from "@/modules/platform/people/service";
+import { revokeSessionsOf } from "@/modules/platform/auth/service";
+import { invalidatePeople, type PersonRow, setPersonSuspended } from "@/modules/platform/people/service";
 import { describePlacement, findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
 import { getPersonTarget, type HireInput, inTransaction, invalidatePersonView, offboardLeavers, openEmployment, resolvePlacement } from "./service";
 
@@ -99,7 +100,7 @@ export async function terminateEmployment(personId: string, input: TerminationIn
     // day, beside the checklist's own "collect the equipment" step (FR-AST-02). What happens to a
     // camera is the register's business, so it decides who collects it and what it is called.
     const returns = await openReturnTasks(tx, personId, input.lastDay, actorPersonId);
-    const offboardedNow = (await offboardLeavers(today, personId, tx)) > 0;
+    const offboardedNow = (await offboardLeavers(today, personId, tx, actorPersonId)) > 0;
     return { employment: ended, before: employment, event, tasks, closed, offboardedNow, returns };
   });
   await invalidateGrants(personId);
@@ -128,6 +129,37 @@ export async function cancelTermination(eventId: string) {
   });
   await invalidateGrants(result.before.personId);
   return result;
+}
+
+// ── Suspension (FR-PLT-05) ──────────────────────────────────────────────────────────────────
+
+/**
+ * Suspends a person's account: they are signed out everywhere at once and cannot sign in until it
+ * is lifted. Nothing else moves — employment, placement and role grants stay as they are, so
+ * lifting it gives back exactly what was there. Approvals waiting for them are not moved either:
+ * an administrator reassigns them or sets a delegation in their name (PLT-02). Only someone active
+ * is suspended (a leaver is already locked out, a newcomer has not started), never oneself, and
+ * never the last owner who can still sign in.
+ */
+export async function suspendPerson(personId: string, actorPersonId: string): Promise<{ person: PersonRow; sessionsRevoked: number }> {
+  if (personId === actorPersonId) throw new ActionError("suspend_self");
+  return inTransaction(async (tx) => {
+    const [before] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1).for("update");
+    if (!before) throw new ActionError("person_not_found");
+    if (before.status !== "active") throw new ActionError("suspend_not_active");
+    await assertNotLastActiveOwner(tx, personId);
+    const person = (await setPersonSuspended(tx, personId, true))!;
+    return { person, sessionsRevoked: await revokeSessionsOf(person.workEmail, tx) };
+  });
+}
+
+/** Lifts a suspension: the person is active again, with the grants and the placement they had, and signs in afresh. */
+export async function liftSuspension(personId: string): Promise<{ person: PersonRow }> {
+  return inTransaction(async (tx) => {
+    const person = await setPersonSuspended(tx, personId, false);
+    if (!person) throw new ActionError("suspend_not_suspended");
+    return { person };
+  });
 }
 
 // ── Rehire and duplicates ───────────────────────────────────────────────────────────────────

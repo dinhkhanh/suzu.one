@@ -1,7 +1,9 @@
 // The statutory filings (FR-PAY-35): who may build them, what lands in each block, and that the
 // period arithmetic (month / quarter / year) is right.
 import { beforeAll, describe, expect, it } from "vitest";
+import type { PitResult } from "./engine/types";
 import { buildD02lt, D02LT_REASONS, type D02ltRow } from "./exports/statutory/d02lt";
+import { FILED_RUN_STATUSES, isFiledRunStatus, type MonthRun, pitOfMonth, pitOfPeriod } from "./exports/statutory/month";
 import { buildDependants } from "./exports/statutory/dependants";
 import { buildFinalization, buildFinalizationAppendix1, buildFinalizationAppendix2, type FinalizationRow, finalizationIndicators, flatRows, residentRows } from "./exports/statutory/pit-finalization";
 import { buildPitMonthly, buildPitWorkingSheet, type PitPersonRow, pitIndicators } from "./exports/statutory/pit-monthly";
@@ -138,6 +140,57 @@ describe("statutory export formats", () => {
     expect(declaration.content).not.toContain("Nguyễn Văn A");
     expect(sheet.content).toContain("Nguyễn Văn A");
     expect(sheet.caveats.some((caveat) => caveat.includes("không nộp"))).toBe(true);
+  });
+});
+
+describe("one person's month, read from its runs (PAY-06)", () => {
+  const pit = (over: Partial<PitResult> = {}): PitResult => ({ method: "progressive", taxableIncome: 0, exemptIncome: 0, personalDeduction: 0, dependentDeduction: 0, dependents: 0, insuranceDeduction: 0, otherDeductions: 0, assessableIncome: 0, brackets: [], monthTax: 0, priorTax: 0, tax: 0, ...over });
+  const at = (day: number) => new Date(Date.UTC(2026, 8, day));
+  // Golden case 16: a salary of 30,000,000 by the regular run, then a bonus of 20,000,000 by an
+  // off-cycle run of the same month. The bonus run stores the **month's** deductions and
+  // assessable income (`engine/pit.ts`), and only its own income and its own withholding.
+  const regular: MonthRun = { kind: "regular", calculatedAt: at(2), createdAt: at(1), pit: pit({ taxableIncome: 30_000_000, insuranceDeduction: 3_150_000, personalDeduction: 15_500_000, assessableIncome: 11_350_000, monthTax: 635_000, tax: 635_000 }) };
+  const bonus: MonthRun = { kind: "off_cycle", calculatedAt: at(20), createdAt: at(20), pit: pit({ taxableIncome: 20_000_000, insuranceDeduction: 3_150_000, personalDeduction: 15_500_000, assessableIncome: 31_350_000, monthTax: 2_770_000, priorTax: 635_000, tax: 2_135_000 }) };
+
+  it("adds income and tax withheld, and takes the deductions and assessable income once", () => {
+    const month = pitOfMonth([regular, bonus]);
+    expect(month).toMatchObject({ method: "progressive", taxableIncome: 50_000_000, insuranceDeduction: 3_150_000, personalDeduction: 15_500_000, assessableIncome: 31_350_000, tax: 2_770_000 });
+    // What the declaration is checked against: the month's tax is what the runs withheld.
+    expect(month.tax).toBe(bonus.pit.monthTax);
+    expect(month.taxableIncome - month.insuranceDeduction - month.personalDeduction).toBe(month.assessableIncome);
+  });
+
+  it("does not depend on the order the runs are handed over in: the last one calculated carries the month", () => {
+    expect(pitOfMonth([bonus, regular])).toEqual(pitOfMonth([regular, bonus]));
+    // A bonus paid on the 20th, before the month's regular run is calculated on the 2nd of the next:
+    // then it is the regular run that aggregates, and the regular run that is read.
+    const early: MonthRun = { ...bonus, calculatedAt: at(1), pit: pit({ taxableIncome: 20_000_000, personalDeduction: 15_500_000, assessableIncome: 4_500_000, monthTax: 225_000, tax: 225_000 }) };
+    const late: MonthRun = { ...regular, calculatedAt: at(28), pit: pit({ taxableIncome: 30_000_000, insuranceDeduction: 3_150_000, personalDeduction: 15_500_000, assessableIncome: 31_350_000, monthTax: 2_770_000, priorTax: 225_000, tax: 2_545_000 }) };
+    expect(pitOfMonth([early, late])).toMatchObject({ taxableIncome: 50_000_000, personalDeduction: 15_500_000, assessableIncome: 31_350_000, tax: 2_770_000 });
+  });
+
+  it("leaves a month with one run exactly as that run stored it", () => {
+    expect(pitOfMonth([regular])).toMatchObject({ taxableIncome: 30_000_000, insuranceDeduction: 3_150_000, personalDeduction: 15_500_000, assessableIncome: 11_350_000, tax: 635_000 });
+  });
+
+  it("adds flat-rate payments as they stand: each is taxed on its own and never aggregates", () => {
+    const first: MonthRun = { kind: "regular", calculatedAt: at(2), createdAt: at(1), pit: pit({ method: "flat_without_contract", taxableIncome: 5_000_000, assessableIncome: 5_000_000, monthTax: 500_000, tax: 500_000 }) };
+    const second: MonthRun = { kind: "off_cycle", calculatedAt: at(20), createdAt: at(20), pit: pit({ method: "flat_without_contract", taxableIncome: 3_000_000, assessableIncome: 3_000_000, monthTax: 800_000, priorTax: 500_000, tax: 300_000 }) };
+    expect(pitOfMonth([first, second])).toMatchObject({ method: "flat_without_contract", taxableIncome: 8_000_000, assessableIncome: 8_000_000, personalDeduction: 0, tax: 800_000 });
+  });
+
+  it("adds months to a period, a month at a time", () => {
+    const july = { ...regular, month: "2026-07" };
+    const august = [
+      { ...regular, month: "2026-08" },
+      { ...bonus, month: "2026-08" },
+    ];
+    expect(pitOfPeriod([...august, july])).toMatchObject({ taxableIncome: 80_000_000, personalDeduction: 31_000_000, insuranceDeduction: 6_300_000, assessableIncome: 42_700_000, tax: 3_405_000 });
+  });
+
+  it("files only what the CEO has signed", () => {
+    expect(["draft", "calculated", "proposed", "approved", "payment_prepared", "paid", "locked", "cancelled"].filter(isFiledRunStatus)).toEqual(["approved", "payment_prepared", "paid", "locked"]);
+    expect([...FILED_RUN_STATUSES]).toEqual(["approved", "payment_prepared", "paid", "locked"]);
   });
 });
 

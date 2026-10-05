@@ -12,14 +12,17 @@ concurrency:
 permissions:
   contents: read
 
+# Third-party actions are pinned to a full commit SHA, with the release it is in a comment: a tag
+# can be moved to other code, a commit cannot. Dependabot (.github/dependabot.yml) proposes the
+# next SHA and keeps the comment in step.
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
@@ -37,3 +40,24 @@ jobs:
           BETTER_AUTH_URL: http://localhost:3000
           GOOGLE_CLIENT_ID: ci
           GOOGLE_CLIENT_SECRET: ci
+
+  # Secrets in what was just committed (NFR-SEC-07): every commit of the push or the pull request
+  # is scanned, so a key that was added and removed again in a later commit is still found. What
+  # the scanner may ignore is listed, with the reason, in .gitleaks.toml.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The scan reads commits, not the checked-out tree: it needs the history.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          # Read-only here (see `permissions` above): used to list a pull request's commits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # The scanner itself, pinned like the action that downloads it.
+          GITLEAKS_VERSION: 8.30.1
+          # Commenting on the pull request would need write access; the failed check says enough.
+          GITLEAKS_ENABLE_COMMENTS: "false"

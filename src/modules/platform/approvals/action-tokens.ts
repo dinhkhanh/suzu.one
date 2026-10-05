@@ -63,9 +63,12 @@ export async function spendActionToken(tokenId: string, now: Date = new Date()):
   return rows.length === 1;
 }
 
-/** Tokens of a request that is no longer waiting for this person — spent so they cannot be replayed. */
-export async function voidActionTokens(executor: Executor, requestId: string): Promise<void> {
-  await executor.update(schema.approvalActionToken).set({ usedAt: new Date() }).where(and(eq(schema.approvalActionToken.requestId, requestId), isNull(schema.approvalActionToken.usedAt)));
+/** Tokens of a request that is no longer waiting for this person — spent so they cannot be replayed. With `personId`, only that person's: the others on the step keep their links. */
+export async function voidActionTokens(executor: Executor, requestId: string, personId?: string): Promise<void> {
+  await executor
+    .update(schema.approvalActionToken)
+    .set({ usedAt: new Date() })
+    .where(and(eq(schema.approvalActionToken.requestId, requestId), isNull(schema.approvalActionToken.usedAt), personId ? eq(schema.approvalActionToken.personId, personId) : undefined));
 }
 
 /** Housekeeping: an expired token has nothing left to say. */

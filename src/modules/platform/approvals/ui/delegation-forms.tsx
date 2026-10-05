@@ -8,11 +8,15 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { createDelegationAction, revokeDelegationAction } from "../actions";
+import { createDelegationAction, createDelegationForAction, revokeDelegationAction, revokeDelegationForAction } from "../actions";
 
-export function DelegationForm({ people, requestTypes, today }: { people: { id: string; fullName: string }[]; requestTypes: { type: string; name: string }[]; today: string }) {
+/**
+ * "While I am away, my approvals go to …". With `forPersonId` an administrator fills it in for
+ * someone who is away and cannot (FR-ACL-06): the same form, the reason no longer optional.
+ */
+export function DelegationForm({ people, requestTypes, today, forPersonId }: { people: { id: string; fullName: string }[]; requestTypes: { type: string; name: string }[]; today: string; forPersonId?: string }) {
   const t = useTranslations("approvals");
-  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(createDelegationAction);
+  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm<{ id: string; handedOver: number }>(forPersonId ? createDelegationForAction : createDelegationAction, forPersonId ? { extra: { fromPersonId: forPersonId } } : {});
   return (
     <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-4">
       <FieldErrors value={fieldErrors}>
@@ -47,11 +51,11 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
           </Field>
         </div>
         <Field name="reason" label={t("delegation.reason")}>
-          <Input id="reason" name="reason" maxLength={300} />
+          <Input id="reason" name="reason" maxLength={300} required={!!forPersonId} />
         </Field>
         <Label className="flex items-center gap-2 text-sm font-normal">
           <Checkbox name="includePending" />
-          {t("delegation.includePending")}
+          {forPersonId ? t("delegation.onBehalf.includePending") : t("delegation.includePending")}
         </Label>
       </FieldErrors>
       <FormError namespace="approvals.errors" errorKey={errorKey} />
@@ -65,9 +69,9 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
   );
 }
 
-export function RevokeDelegationButton({ id }: { id: string }) {
+export function RevokeDelegationButton({ id, onBehalf = false }: { id: string; /** An administrator ends it in the absent person's name. */ onBehalf?: boolean }) {
   const t = useTranslations("approvals");
-  const { onSubmit, pending, errorKey } = useActionForm(revokeDelegationAction, { extra: { id } });
+  const { onSubmit, pending, errorKey } = useActionForm(onBehalf ? revokeDelegationForAction : revokeDelegationAction, { extra: { id } });
   return (
     <form onSubmit={onSubmit} className="flex items-center gap-2">
       <Button type="submit" variant="outline" size="sm" disabled={pending}>

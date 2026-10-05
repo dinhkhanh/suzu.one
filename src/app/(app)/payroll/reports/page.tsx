@@ -145,6 +145,10 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
         </TableCard>
       ) : null}
 
+      {/* The three summaries below are held against what is filed, so they read signed runs only:
+          a month that is calculated but not yet approved has a register and none of them. */}
+      {register && !pit ? <Alert variant="neutral">{t("signedOnly")}</Alert> : null}
+
       {/* ── Insurance: the figures the BHXH monthly notice is checked against ── */}
       {insurance ? (
         <section className="flex flex-col gap-3">

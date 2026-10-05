@@ -6,7 +6,7 @@ import { companyKey, likelyDuplicateAccounts, likelyDuplicateContacts, normalize
 import { agingBucket, contractState, daysPastDue, invoiceStanding, monthEnd, paymentTerms, reminderDue, renewalDue, vatOf } from "./contract";
 import { dealValue, effectiveProbability, forecastByMonth, isStale, unmetGates, weightedValue, winRate } from "./deal";
 import { addMonths, salePlanFrom } from "./delivery";
-import { approvalReasons, lineNet, marginEstimate, minutesByRole, monthlyNet, quoteTotals, scaleRoleMinutes } from "./quote";
+import { approvalReasons, draftApproval, lineNet, marginEstimate, marginWasChecked, minutesByRole, monthlyNet, quoteTotals, scaleRoleMinutes } from "./quote";
 
 describe("quote totals", () => {
   const lines = [
@@ -65,7 +65,22 @@ describe("quote approval and margin", () => {
     expect(margin).toEqual({ minutes: 2400, costVnd: 8_000_000, marginVnd: 2_000_000, marginBp: 2000 });
     expect(approvalReasons({ maxDiscountBp: 0 }, margin, rule)).toEqual(["margin"]);
   });
-  it("makes no margin estimate without a cost rate", () => {
+  it("shows a drafter without pjm:cost the discount rule only, whatever the margin is (CRM-03)", () => {
+    const thin = marginEstimate(10_000_000, [{ roleMinutes: [{ role: "Design", minutes: 60 * 40 }] }], 200_000);
+    const healthy = marginEstimate(10_000_000, [{ roleMinutes: [{ role: "Design", minutes: 60 * 10 }] }], 200_000);
+    // Either side of the floor, the same answer: nothing to vary a draft against.
+    expect(draftApproval({ maxDiscountBp: 0 }, thin, rule, false)).toEqual({ reasons: [], next: "send" });
+    expect(draftApproval({ maxDiscountBp: 0 }, healthy, rule, false)).toEqual({ reasons: [], next: "send" });
+    expect(draftApproval({ maxDiscountBp: 1500 }, thin, rule, false)).toEqual({ reasons: ["discount"], next: "submit" });
+    // A reader of margins keeps the live indicator.
+    expect(draftApproval({ maxDiscountBp: 0 }, thin, rule, true)).toEqual({ reasons: ["margin"], next: "submit" });
+    expect(draftApproval({ maxDiscountBp: 0 }, healthy, rule, true)).toEqual({ reasons: [], next: "send" });
+  });
+  it("makes no margin estimate without a cost rate, and says the margin was not checked", () => {
+    expect(marginWasChecked(marginEstimate(10_000_000, [], 200_000))).toBe(true);
+    expect(marginWasChecked(marginEstimate(10_000_000, [], null))).toBe(false);
+    // Nothing to hold the cost against: a quote of no value has no margin to test either.
+    expect(marginWasChecked(marginEstimate(0, [], 200_000))).toBe(false);
     expect(marginEstimate(10_000_000, [], null)).toBeNull();
   });
 });
@@ -79,7 +94,8 @@ describe("won deal → project plan", () => {
         { title: "Facebook post", quantity: 12, unitPriceVnd: 1_500_000, discountBp: 0, months: null, format: "post", channel: "facebook", roleMinutes: [{ role: "Design", minutes: 1080 }] },
         { title: "Page management", quantity: 1, unitPriceVnd: 25_000_000, discountBp: 0, months: 3, format: null, channel: "facebook", roleMinutes: [{ role: "Account", minutes: 1800 }] },
       ],
-      [{ name: "Chị Lan", role: "Brand manager", contact: "lan@client.vn" }],
+      // Whatever the caller holds about the person, only the name and the role go into a brief.
+      [{ name: "Chị Lan", role: "Brand manager", contact: "lan@client.vn" } as { name: string; role: string }],
       "2026-11",
     );
     expect(plan.kind).toBe("retainer");
@@ -89,7 +105,7 @@ describe("won deal → project plan", () => {
     expect(plan.budgetByRole).toEqual([{ role: "Design", minutes: 1080 }]);
     expect(plan.brief.objective).toBe("Tết campaign — Kick-off 5/1");
     expect(plan.brief.scopeIn).toBe("12 × Facebook post\n1 × Page management / 3");
-    expect(plan.brief.clientContacts).toEqual([{ name: "Chị Lan", role: "Brand manager", contact: "lan@client.vn" }]);
+    expect(plan.brief.clientContacts).toEqual([{ name: "Chị Lan", role: "Brand manager" }]);
   });
   it("without a quote, takes the deal's own values", () => {
     expect(salePlanFrom({ ...deal, oneOffVnd: 90_000_000 }, [], [], "2026-11")).toMatchObject({ kind: "client", feeVnd: 90_000_000, deliverables: [], retainer: null });

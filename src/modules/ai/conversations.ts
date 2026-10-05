@@ -17,6 +17,7 @@ import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import type { Citation } from "./engine/answer";
 import { allowedAppLinks, appLinksFor } from "./engine/app-links";
+import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { routeQuestion } from "./engine/routing";
 import type { ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
@@ -30,7 +31,7 @@ const TITLE_MAX = 120;
 
 export type AskInput = { question: string; conversationId?: string | null; locale?: string };
 
-export type Answer = { body: string; citations: Citation[]; score: number; answered: boolean; driver: string; model: string };
+export type Answer = { body: string; citations: Citation[]; score: number; answered: boolean; driver: string; model: string; /** What the driver reported it cost; zero on the local driver. */ usage: TokenUsage };
 
 /**
  * Retrieve → rank → answer. THE WHOLE DECISION, with nothing written down: `ask` adds the
@@ -55,7 +56,7 @@ export async function answerQuestion(viewer: KbViewer, question: string, locale:
   // already links to them.
   const related = answered ? appLinksFor(question, answer.extracted.passages.map((passage) => passage.excerpt), nav).filter((link) => !answer.body.includes(`](${link.href})`)) : [];
   const body = related.length ? `${answer.body}\n\n---\n\n**${t("title")}** ${related.map((link) => `[${t(link.key as "leaveNew")}](${link.href})`).join(" · ")}` : answer.body;
-  return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: driver.name, model: driver.model };
+  return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: driver.name, model: driver.model, usage: answer.usage };
 }
 
 /**
@@ -93,6 +94,8 @@ export type AskResult = {
   score: number;
   driver: string;
   model: string;
+  /** Tokens in and out of the model call behind the answer; zero for the local driver and a tool. */
+  usage: TokenUsage;
 };
 
 export type AiMessageRow = typeof aiMessage.$inferSelect;
@@ -128,6 +131,8 @@ export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promi
   const body = resolved.kind === "kb" ? resolved.answer.body : "";
   const driver = resolved.kind === "kb" ? resolved.answer.driver : "tool";
   const model = resolved.kind === "kb" ? resolved.answer.model : resolved.tool.tool;
+  // A tool's answer is rendered from its own data and sent to no model: it cost nothing.
+  const usage = resolved.kind === "kb" ? resolved.answer.usage : NO_USAGE;
   const outcome = resolved.outcome;
   // Only a knowledge-base miss is a missing page. A tool refusal is not a gap in the handbook and
   // must never land in a log that HR reads: "who approves Lê Thị Mai's overtime" belongs nowhere.
@@ -146,13 +151,13 @@ export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promi
     await tx.insert(aiMessage).values({ conversationId, personId, role: "user", body: question });
     const [stored] = await tx
       .insert(aiMessage)
-      .values({ conversationId, personId, role: "assistant", body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, driver, model, score: best })
+      .values({ conversationId, personId, role: "assistant", body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, driver, model, score: best, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
       .returning();
 
     // The backlog of pages still to write. Only the question, never the passages that failed.
     if (logAsUnanswered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
 
-    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, audit: resolved.kind === "tool" ? resolved.audit : null };
+    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, usage, audit: resolved.kind === "tool" ? resolved.audit : null };
   });
 }
 

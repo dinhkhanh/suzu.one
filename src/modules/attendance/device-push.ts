@@ -7,13 +7,25 @@
 //        → {"punches":1,"skipped":0,"unmapped":0,"people":1,"refused":[]}
 //        An empty list is a heartbeat: the device page shows when the clock last called in.
 //   GET  /api/attendance/device/roster   → {"device":"Cửa chính","people":[{"userId":"SZM-0004","fullName":"…","employeeCode":"SZM-0004"}]}
+//
+// Each call is counted against its clock (`endpoint-limit.ts`): past the limit the answer is a 429
+// with `Retry-After`, nothing is read or written, and the clock — which keeps what it could not
+// send — tries again.
 import "server-only";
 import { reportError } from "@/lib/observability/report";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { commitPushedRows, devicePresentingToken, deviceRoster } from "./devices";
+import { countEndpointHit, endpointKey } from "./endpoint-limit";
 import { futureRows, pushBodySchema, pushedRows } from "./engine/device-push";
+import type { EndpointBucket } from "./engine/rate-limit";
 
-const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
+const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
+
+/** The 429 a clock gets past its limit, or null while it is within it. */
+async function refusal(bucket: EndpointBucket, deviceId: string): Promise<Response | null> {
+  const allowed = await countEndpointHit(bucket, endpointKey("device", deviceId));
+  return allowed.ok ? null : json({ error: "rate_limited" }, 429, { "retry-after": String(allowed.retryAfterSeconds) });
+}
 
 async function authenticate(request: Request) {
   const header = request.headers.get("authorization") ?? "";
@@ -24,6 +36,8 @@ async function authenticate(request: Request) {
 export async function receivePunches(request: Request): Promise<Response> {
   const device = await authenticate(request);
   if (!device) return json({ error: "unauthorized" }, 401);
+  const limited = await refusal("device_punches", device.id);
+  if (limited) return limited;
 
   let body: unknown;
   try {
@@ -59,5 +73,5 @@ export async function receivePunches(request: Request): Promise<Response> {
 export async function sendRoster(request: Request): Promise<Response> {
   const device = await authenticate(request);
   if (!device) return json({ error: "unauthorized" }, 401);
-  return json({ device: device.name, people: await deviceRoster(device.id) });
+  return (await refusal("device_roster", device.id)) ?? json({ device: device.name, people: await deviceRoster(device.id) });
 }

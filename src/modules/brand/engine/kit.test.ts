@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brandSlugFrom, cleanFonts, cleanPalette, coverAssetOf, guessAssetKind, isDownloadable, isValidBrandSlug, localized, normalizeHex, placeAssets, prefersLightText, resolveBrandSlug, rgbOf, sectionAnchors, titleFromFileName } from "./kit";
+import { brandSlugFrom, cleanFonts, cleanPalette, coverAssetOf, guessAssetKind, isDownloadable, isIllustration, isValidBrandSlug, localized, normalizeHex, placeAssets, prefersLightText, resolveBrandSlug, rgbOf, sectionAnchors, titleFromFileName } from "./kit";
 
 const asset = (over: Partial<{ id: string; kind: "logo" | "image" | "example" | "brochure" | "pack"; sortOrder: number; title: string; isPublic: boolean; fileName: string; sectionId: string | null }>) => ({
   id: "a",
@@ -84,6 +84,12 @@ describe("files", () => {
     expect(isDownloadable({ isPublic: true, kind: "logo" })).toBe(true);
     expect(isDownloadable({ isPublic: false, kind: "logo" })).toBe(false);
     expect(isDownloadable({ isPublic: true, kind: "example" })).toBe(false);
+  });
+  it("illustrate a rule only when a rule cites them and they are a picture", () => {
+    const cited = new Set(["wrong", "pricing"]);
+    expect(isIllustration({ id: "wrong", fileName: "logo stretched.png" }, cited)).toBe(true);
+    expect(isIllustration({ id: "pricing", fileName: "price list.pdf" }, cited)).toBe(false);
+    expect(isIllustration({ id: "other", fileName: "photo.jpg" }, cited)).toBe(false);
   });
   it("give the brand its cover: the first picturable public logo", () => {
     expect(coverAssetOf([asset({ id: "eps", fileName: "logo.eps" }), asset({ id: "png", fileName: "logo.png", sortOrder: 5 }), asset({ id: "first", fileName: "logo.svg", isPublic: false })])?.id).toBe("png");

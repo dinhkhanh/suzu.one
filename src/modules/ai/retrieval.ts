@@ -17,12 +17,17 @@ import { retrievalQuery } from "./engine/question";
 export const CANDIDATES = 120;
 
 export async function retrievePassages(viewer: KbViewer, question: string, options: { spaceId?: string | null } = {}): Promise<RankedPassage[]> {
-  // The candidate set is the union of both forms of the question — a Postgres `word | word | …`
-  // match, so extra terms only widen it, and widening cannot widen *permissions*: the WHERE clause
-  // that decides what this viewer may see is unchanged and sits underneath.
+  // Two forms of the question go to retrieval, each to the half it suits.
+  //  - `query`, the content words of both languages' forms, accent-stripped: what is matched on
+  //    WORDS — the order of the passages still waiting for a vector, and the whole of what the
+  //    local fake embeds (it hashes words; it reads no sentence).
+  //  - `question`, as typed: what a real embeddings model is asked about. Passages are embedded as
+  //    accented Markdown, and a model that reads meaning is given the sentence, not a keyword bag.
+  // Neither can widen *permissions*: the WHERE clause that decides what this viewer may see is
+  // unchanged and sits underneath both.
   const query = [...new Set(questionVariants(question).flatMap((variant) => retrievalQuery(variant).split(" ")))].filter(Boolean).join(" ");
   if (!query) return [];
-  const chunks = await retrieveKbChunks(viewer, { query, limit: CANDIDATES, spaceId: options.spaceId ?? null });
+  const chunks = await retrieveKbChunks(viewer, { query, question, limit: CANDIDATES, spaceId: options.spaceId ?? null });
   const passages: Passage[] = chunks.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle, spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, anchor: chunk.anchor, content: chunk.content, vectorScore: chunk.score }));
   // The question, not the stripped query, decides the lexical score: "bao nhiêu ngày" tells us the
   // asker wants a number even though those words are not search terms.

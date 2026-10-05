@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
@@ -18,7 +20,7 @@ import { PersonCompetencies } from "@/modules/core-hr/ui/competencies";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
-import { RehireForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { RehireForm, SuspensionForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { PersonDocuments } from "@/modules/documents/ui/person-documents";
 import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history";
@@ -49,6 +51,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   if (!person) notFound();
 
   const t = await getTranslations("people");
+  const tLifecycle = await getTranslations("lifecycle");
   const format = await getFormatter();
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
   // A name with the way to its record; null without a name, so an empty fact still shows its dash.
@@ -110,7 +113,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         >
           {personal && personal.status !== "active" ? (
             <div className="pt-1">
-              <Badge variant="outline">{t(`status.${personal.status}`)}</Badge>
+              <Badge dot variant={statusTone(personal.status)}>{t(`status.${personal.status}`)}</Badge>
             </div>
           ) : null}
         </PageHeader>
@@ -247,6 +250,18 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           <PersonSalaryHistory viewer={{ personId: user.person.id, principal: user.principal }} personId={person.id} stepUpFresh={isStepUpFresh(user.reauthAt)} />
 
           <LifecycleSection principal={user.principal} personId={person.id} canManage={person.canManage} employed={personal.endDate === null} />
+          {/* Locking the account, and looking after the approvals that wait for it (FR-PLT-05, PLT-02): HR's, and never one's own. */}
+          {person.canManage && person.id !== user.person.id && (personal.status === "active" || personal.status === "suspended") ? (
+            <>
+              <SuspensionForm personId={person.id} suspended={personal.status === "suspended"} />
+              <p className="text-sm text-muted-foreground">
+                {tLifecycle("suspend.approvalsHint")}{" "}
+                <Link href={`/approvals/delegation?for=${person.id}`} className="text-link underline-offset-4 hover:underline">
+                  {tLifecycle("suspend.approvalsLink")}
+                </Link>
+              </p>
+            </>
+          ) : null}
           <PersonEquipment principal={user.principal} personId={person.id} />
           <PersonDocuments principal={user.principal} personId={person.id} />
           {/* A former employee comes back on the same record (FR-CHR-16). */}

@@ -71,8 +71,8 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
                 {cycle.status !== "draft" ? <p className="text-xs text-muted-foreground tabular-nums">{t("admin.progress", { participants: counts.participants, self: counts.selfDone, manager: counts.managerDone, released: counts.released })}</p> : null}
                 <div className="flex flex-wrap items-center gap-3">
                   {cycle.status === "draft" ? <LaunchCycleForm cycleId={cycle.id} /> : null}
-                  {/* Release everyone whose manager review is in. The ones it skips are reported. */}
-                  {cycle.status === "calibration" || cycle.status === "active" ? <ReleaseCycleForm cycleId={cycle.id} /> : null}
+                  {/* Release everyone whose manager review is in — from the calibration stage on (PRF-02). The ones it skips are reported. */}
+                  {cycle.status === "calibration" ? <ReleaseCycleForm cycleId={cycle.id} /> : null}
                   {next ? <AdvanceCycleForm cycleId={cycle.id} to={next} label={t(`admin.advance.${next}`)} /> : null}
                 </div>
               </ListItem>

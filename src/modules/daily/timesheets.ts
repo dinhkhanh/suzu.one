@@ -42,7 +42,7 @@ export async function findTimesheetWeekById(id: string): Promise<TimesheetWeekRo
 
 export type WeekDayView = { date: IsoDate; kind: DayKind | null; name: string | null; leave: "full" | "part" | null; dayOff: boolean; /** null when the reader may not see attendance. */ hint: AttendanceHint | null };
 /** `hidden`: a task the reader may not open — shown as private work, with its hours only. */
-export type RowLabel = { key: RowKey; taskId: string | null; category: string | null; taskKey: string | null; title: string | null; projectId: string | null; projectName: string | null; hidden?: true };
+export type RowLabel = { key: RowKey; taskId: string | null; category: string | null; taskKey: string | null; title: string | null; projectId: string | null; projectName: string | null; jobNumber: string | null; hidden?: true };
 
 export type TimeWeekView = {
   personId: string;
@@ -68,7 +68,7 @@ export type TimeWeekView = {
   partial: boolean;
 };
 
-const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({ key: rowKeyOf(entry), taskId: entry.taskId, category: entry.category, taskKey: entry.key, title: entry.title, projectId: entry.projectId, projectName: entry.projectName, ...(entry.hidden ? { hidden: true as const } : {}) });
+const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({ key: rowKeyOf(entry), taskId: entry.taskId, category: entry.category, taskKey: entry.key, title: entry.title, projectId: entry.projectId, projectName: entry.projectName, jobNumber: entry.jobNumber, ...(entry.hidden ? { hidden: true as const } : {}) });
 
 /**
  * `readerPersonId` is who reads it: for anyone but the person, each task and project is named only
@@ -319,7 +319,7 @@ export async function listApprovals(reader: ReportReader, today: IsoDate, days =
   };
 }
 
-export type ProjectTimeRow = { personId: string; name: string; projectId: string; projectName: string; minutes: number; billable: number };
+export type ProjectTimeRow = { personId: string; name: string; projectId: string; projectName: string; jobNumber: string | null; minutes: number; billable: number };
 
 /**
  * The time logged on the projects the reader leads in a week, per person and project (the PJM
@@ -335,15 +335,17 @@ export async function listProjectTime(reader: TimeReader, weekStart: IsoDate): P
       name: schema.person.fullName,
       projectId: schema.timeEntry.projectId,
       projectName: schema.workProject.name,
+      jobNumber: schema.projectPlan.jobNumber,
       minutes: sql<number>`coalesce(sum(${schema.timeEntry.minutes}), 0)::int`,
       billable: sql<number>`coalesce(sum(${schema.timeEntry.minutes}) filter (where ${schema.timeEntry.billable}), 0)::int`,
     })
     .from(schema.timeEntry)
     .innerJoin(schema.person, eq(schema.person.id, schema.timeEntry.personId))
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.timeEntry.projectId))
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.timeEntry.projectId))
     .where(and(inArray(schema.timeEntry.projectId, [...reader.ledProjectIds]), eq(schema.timeEntry.weekStart, weekStart), isNull(schema.timeEntry.deletedAt), isNull(schema.timeEntry.timerStartedAt)))
-    .groupBy(schema.timeEntry.personId, schema.person.fullName, schema.timeEntry.projectId, schema.workProject.name);
+    .groupBy(schema.timeEntry.personId, schema.person.fullName, schema.timeEntry.projectId, schema.workProject.name, schema.projectPlan.jobNumber);
   return rows
-    .map((row) => ({ personId: row.personId, name: row.name, projectId: row.projectId!, projectName: row.projectName, minutes: Number(row.minutes), billable: Number(row.billable) }))
+    .map((row) => ({ personId: row.personId, name: row.name, projectId: row.projectId!, projectName: row.projectName, jobNumber: row.jobNumber, minutes: Number(row.minutes), billable: Number(row.billable) }))
     .sort((a, b) => a.projectName.localeCompare(b.projectName, "vi") || a.name.localeCompare(b.name, "vi"));
 }

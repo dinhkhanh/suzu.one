@@ -15,7 +15,7 @@ export { getLead, leadFacts, type LeadView, listLeads, listOpenLeadsOf } from ".
 export * from "./policy";
 export { dealValue, isStale as isStaleDeal, weightedValue } from "./engine/deal";
 export { dealValueReach, forecast, revenueOutlook, salesDashboard, type SalesTile, salesTile } from "./pipeline";
-export { estimateMargin, getQuote, listQuotes, quoteApprovalReasons, quoteOfRequest, quoteRequestType } from "./quotes";
+export { getQuote, listQuotes, quoteOfRequest, type QuotePayload, quoteReaderView, quoteRequestType } from "./quotes";
 export { getRateCard, priceOn, rateCardView, type ServiceView } from "./rate-card";
 export { crmSettings, firstStageOf, listStages, stageName, type StageRow, vatRates } from "./stages";
 export { accountTimeline, TIMELINE_KINDS, type TimelineItem } from "./timeline";

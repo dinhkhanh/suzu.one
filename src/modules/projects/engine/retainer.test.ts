@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, carryFrom, MAX_MONTHS_AHEAD, monthBounds, monthsToMake, hoursUsage, lastDayOf, monthsBetween, monthsDue, monthShare, monthsToClose, planPeriod, quotaAlertsDue, type RetainerTerms, totalUsage, usage } from "./retainer";
+import { addMonths, carryFrom, HOURS_ALERT, lineLabel, MAX_MONTHS_AHEAD, missedMonths, monthBounds, monthsToMake, hoursUsage, lastDayOf, monthsBetween, monthsDue, monthShare, monthsToClose, openLinesFirst, planPeriod, quotaAlertsDue, type RetainerTerms, totalUsage, usage } from "./retainer";
 
 const lines = [
   { title: "Bài đăng Facebook", quantity: 12, format: "post", channel: "facebook" },
@@ -124,5 +124,47 @@ describe("overservicing and quota alerts", () => {
   it("measures hours against the allowance", () => {
     expect(hoursUsage(7200, 6000)).toMatchObject({ percent: 83, level: "warning" });
     expect(hoursUsage(null, 6000)).toBeNull();
+  });
+});
+
+describe("a month worked by hand (PJM-07)", () => {
+  it("offers the earlier months without a period — inside the terms, never this month or later", () => {
+    // Terms from October, entered in January: the job made December and January; October and November are missing.
+    expect(missedMonths(terms(), ["2026-12", "2027-01"], "2027-01-10")).toEqual(["2026-10", "2026-11"]);
+    expect(missedMonths(terms(), ["2026-10", "2026-11", "2026-12", "2027-01"], "2027-01-10")).toEqual([]);
+    // This month is the job's even when it has no period yet.
+    expect(missedMonths(terms(), [], "2026-10-20")).toEqual([]);
+    expect(missedMonths(terms(), [], "2026-11-01")).toEqual(["2026-10"]);
+    // Never beyond the end month, however long ago it ended.
+    expect(missedMonths(terms({ endMonth: "2026-11" }), [], "2027-06-01")).toEqual(["2026-10", "2026-11"]);
+    // A retainer that has not started has nothing behind it.
+    expect(missedMonths(terms(), [], "2026-08-15")).toEqual([]);
+  });
+
+  it("names a month's line with its month, and puts this month's lines first in a picker", () => {
+    expect(lineLabel({ title: "Bài đăng Facebook", quantity: 12 })).toBe("12 × Bài đăng Facebook");
+    expect(lineLabel({ title: "Bài đăng Facebook", quantity: 12, month: null })).toBe("12 × Bài đăng Facebook");
+    expect(lineLabel({ title: "Bài đăng Facebook", quantity: 12, month: "2026-10" })).toBe("2026-10 · 12 × Bài đăng Facebook");
+    const picker = [
+      { id: "own", month: null },
+      { id: "sep-a", month: "2026-09" },
+      { id: "oct-a", month: "2026-10" },
+      { id: "nov-a", month: "2026-11" },
+      { id: "oct-b", month: "2026-10" },
+    ];
+    expect(openLinesFirst(picker, "2026-10").map((line) => line.id)).toEqual(["oct-a", "oct-b", "nov-a", "sep-a", "own"]);
+    // A project without retainer months keeps its register order.
+    expect(openLinesFirst([{ id: "b", month: null }, { id: "a", month: null }], "2026-10").map((line) => line.id)).toEqual(["b", "a"]);
+  });
+
+  it("alerts on the hours allowance at 80% and 100%, each once, under its own key", () => {
+    const allowance = (logged: number) => hoursUsage(600, logged)!;
+    expect(quotaAlertsDue(HOURS_ALERT, allowance(470).percent, [])).toEqual([]);
+    expect(quotaAlertsDue(HOURS_ALERT, allowance(480).percent, [])).toEqual(["hours:80"]);
+    expect(quotaAlertsDue(HOURS_ALERT, allowance(700).percent, ["hours:80"])).toEqual(["hours:100"]);
+    expect(quotaAlertsDue(HOURS_ALERT, allowance(700).percent, ["hours:80", "hours:100"])).toEqual([]);
+    // A line's marks and the allowance's never stand in for each other.
+    expect(quotaAlertsDue(HOURS_ALERT, 100, ["line-1:80", "line-1:100"])).toEqual(["hours:80", "hours:100"]);
+    expect(hoursUsage(null, 9000)).toBeNull();
   });
 });

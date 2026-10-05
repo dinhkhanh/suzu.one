@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { readSheet } from "read-excel-file/node";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
@@ -50,7 +50,10 @@ export type StagedImport = {
 };
 
 // A staged batch sits in the database for up to a day. Cells of `sensitive` columns wait there
-// encrypted, bound to their batch and column; validation and commit see them in the clear.
+// encrypted, bound to their batch and column; validation and commit see them in the clear. The
+// rest of a row is plain JSON — names, dates, numbers — so the rows do not outlive their use: a
+// commit empties them, and `purgeImportBatches` removes the batches nobody committed.
+const STAGED_BATCH_MS = 24 * 60 * 60 * 1000;
 const MASK = "••••••";
 const cellContext = (batchId: string, field: string) => `import_batch.rows:${batchId}:${field}`;
 
@@ -85,6 +88,20 @@ export async function readSpreadsheet(file: UploadedFile): Promise<Cell[][]> {
   } catch {
     throw new ActionError("import_unreadable");
   }
+}
+
+/**
+ * Housekeeping, daily. A batch nobody committed can no longer be committed after a day (`commit`
+ * refuses it), so it is deleted with everything it staged. A committed batch keeps its summary row
+ * — the file, the row count, the result, which the import history and `import_batch_id` columns
+ * point at — and loses its staged rows (those committed before a commit emptied them itself).
+ */
+export async function purgeImportBatches(now: Date = new Date()): Promise<{ importBatchesDeleted: number; importBatchesEmptied: number }> {
+  const batches = schema.importBatch;
+  const cutoff = new Date(now.getTime() - STAGED_BATCH_MS);
+  const deleted = await db().delete(batches).where(and(ne(batches.status, "committed"), lt(batches.createdAt, cutoff))).returning({ id: batches.id });
+  const emptied = await db().update(batches).set({ rows: [] }).where(and(eq(batches.status, "committed"), sql`${batches.rows} <> '[]'::jsonb`)).returning({ id: batches.id });
+  return { importBatchesDeleted: deleted.length, importBatchesEmptied: emptied.length };
 }
 
 /**
@@ -154,7 +171,7 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
     authorize: (user) => definition.authorize(user, undefined),
     run: async ({ user, input }) => {
       const batches = schema.importBatch;
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const yesterday = new Date(Date.now() - STAGED_BATCH_MS);
       const result = await db().transaction(async (tx) => {
         // Only the person who staged it, only while fresh, only once.
         const [batch] = await tx
@@ -170,7 +187,8 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
         // The database may have moved on since the preview.
         if (definition.validate && (await definition.validate(rows, user, params)).some(blocks)) throw new ActionError("import_stale");
         const counts = await definition.commit(rows, tx as Tx, user, params, batch.id);
-        await tx.update(batches).set({ status: "committed", committedAt: new Date(), result: counts }).where(eq(batches.id, batch.id));
+        // The staged rows have done their work: what stays is the summary (file, row count, result).
+        await tx.update(batches).set({ status: "committed", committedAt: new Date(), result: counts, rows: [] }).where(eq(batches.id, batch.id));
         return { fileName: batch.fileName, counts };
       });
       await definition.onCommitted?.();

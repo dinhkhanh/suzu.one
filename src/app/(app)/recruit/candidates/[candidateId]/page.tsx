@@ -10,6 +10,7 @@ import { statusTone } from "@/components/ui/tone";
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
+import { EraseCandidateButton } from "@/modules/recruit/ui/erase-candidate";
 import { pageTitle } from "@/i18n/page-title";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
@@ -55,9 +56,13 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
         title={candidate.fullName}
         actions={
           view.canManage ? (
-            <Link href={`/recruit/candidates/${candidateId}/edit`} className={buttonVariants({ variant: "outline" })}>
-              {t("actions.editCandidate")}
-            </Link>
+            <>
+              {/* An erasure request (PDPL): for whoever runs recruitment over every opening they applied to. */}
+              {view.canErase ? <EraseCandidateButton candidateId={candidateId} /> : null}
+              <Link href={`/recruit/candidates/${candidateId}/edit`} className={buttonVariants({ variant: "outline" })}>
+                {t("actions.editCandidate")}
+              </Link>
+            </>
           ) : null
         }
       >

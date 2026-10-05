@@ -94,7 +94,7 @@ export const DEFAULT_RETENTION_MONTHS = 12;
  *
  * **Bump this whenever `recruit.careers.consent.*` changes in either message bundle.**
  */
-export const CONSENT_VERSION = "2026-09-pdpl-1";
+export const CONSENT_VERSION = "2026-10-pdpl-2";
 
 /** What the public form is allowed to contain, so a probe cannot post a 10 MB cover letter. */
 export const PUBLIC_LIMITS = {

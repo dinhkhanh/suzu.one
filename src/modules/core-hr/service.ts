@@ -16,6 +16,8 @@ import { activatePerson, createPerson, invalidatePeople, listPersonNames, type P
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
 import { revokeSessionsOf } from "@/modules/platform/auth/service";
+// The approval engine's entry point: a leaver's unanswered turns move on with the offboarding.
+import { reassignTurnsOfLeaver } from "@/modules/platform/approvals/service";
 import { periodOn, planAssignmentChange, planPastPeriod } from "./engine/assignment-plan";
 import { defaultCodeScheme, formatEmployeeCode, normalizeEmployeeCode } from "./engine/employee-code";
 import { describePlacement, markDueTerminationsApplied, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
@@ -859,8 +861,12 @@ export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUp
  * Termination ends access (FR-CHR-11): anyone whose latest employment ended before `today` and
  * who is not offboarded yet becomes so, and their sessions are deleted. Called by the daily
  * roll-over for last days that have now passed, and by the termination itself for past dates.
+ *
+ * In the same transaction every approval the leaver had not answered moves on to whoever the
+ * request's own rules name without them (PLT-02): a request never waits for someone who has gone.
+ * `actorPersonId` is who ended the employment — nobody, when the roll-over does it.
  */
-export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, executor: Tx | ReturnType<typeof db> = db(), actorPersonId: string | null = null): Promise<number> {
   const { e } = placementOn(today);
   const leavers = await executor
     .select({ personId: schema.person.id, workEmail: schema.person.workEmail })
@@ -873,6 +879,7 @@ export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, exe
       await invalidatePeople([{ id: leaver.personId, workEmail: leaver.workEmail }]);
       await revokeSessionsOf(leaver.workEmail, tx);
       await markDueTerminationsApplied(tx, leaver.personId, today);
+      await reassignTurnsOfLeaver(tx, leaver.personId, { actorPersonId });
     };
     if (onlyPersonId) await work(executor);
     else await db().transaction(work);

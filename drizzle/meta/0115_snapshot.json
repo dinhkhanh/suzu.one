@@ -1,5 +1,5 @@
 {
-  "id": "9ec4fab8-df29-4649-8020-be1433ac9846",
+  "id": "7457c664-4c23-47ee-9862-077038b92376",
   "prevId": "20a456c3-fb0c-4f40-990e-cbfe8e883c2f",
   "version": "7",
   "dialect": "postgresql",
@@ -2939,6 +2939,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "purged_at": {
+          "name": "purged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -2959,6 +2965,22 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "stored_file_unpurged_idx": {
+          "name": "stored_file_unpurged_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"stored_file\".\"deleted_at\" is not null and \"stored_file\".\"purged_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -15629,13 +15651,6 @@
           "notNull": true,
           "default": 7
         },
-        "on_day_off": {
-          "name": "on_day_off",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'shift'"
-        },
         "generated_through": {
           "name": "generated_through",
           "type": "date",
@@ -15676,21 +15691,6 @@
           "columns": [
             {
               "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "work_recurrence_team_idx": {
-          "name": "work_recurrence_team_idx",
-          "columns": [
-            {
-              "expression": "team_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -15989,12 +15989,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "team_id": {
-          "name": "team_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "project_id": {
           "name": "project_id",
           "type": "uuid",
@@ -16051,21 +16045,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "work_saved_view_team_idx": {
-          "name": "work_saved_view_team_idx",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -16080,19 +16059,6 @@
             "id"
           ],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "work_saved_view_team_id_work_team_id_fk": {
-          "name": "work_saved_view_team_id_work_team_id_fk",
-          "tableFrom": "work_saved_view",
-          "tableTo": "work_team",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "work_saved_view_project_id_work_project_id_fk": {
@@ -20433,13 +20399,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "late": {
-          "name": "late",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -20635,13 +20594,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
-        },
-        "revisions": {
-          "name": "revisions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
         },
         "created_at": {
           "name": "created_at",

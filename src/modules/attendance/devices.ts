@@ -173,7 +173,7 @@ export async function listUnmapped(deviceId: string): Promise<UnmappedView[]> {
   return rows.map((row) => ({ deviceUserId: row.deviceUserId, lines: row.lines, firstAt: row.firstAt!, lastAt: row.lastAt! })).sort((a, b) => a.deviceUserId.localeCompare(b.deviceUserId, undefined, { numeric: true }));
 }
 
-type NewPunch = { personId: string; entityId: string | null; at: Date; direction: "in" | "out" | null; deviceUserId: string };
+type NewPunch = { personId: string; entityId: string | null; at: Date; direction: "in" | "out" | null; deviceUserId: string; kioskSessionId?: string | null };
 
 /** Inserts device punches that are not there yet; direction-less ones take their place in the person-day's order. Returns what was new. */
 async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | null, candidates: NewPunch[]): Promise<{ inserted: number; people: string[]; from: IsoDate | null; to: IsoDate | null; ids: string[] }> {
@@ -197,7 +197,7 @@ async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | n
       const key = dayKey(item.personId, item.at);
       const index = position.get(key) ?? 0;
       position.set(key, index + 1);
-      return { personId: item.personId, entityId: item.entityId, at: item.at, direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index), source: "device" as const, deviceId, deviceUserId: item.deviceUserId, importBatchId: batchId };
+      return { personId: item.personId, entityId: item.entityId, at: item.at, direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index), source: "device" as const, deviceId, deviceUserId: item.deviceUserId, importBatchId: batchId, kioskSessionId: item.kioskSessionId ?? null };
     });
 
   let inserted = 0;
@@ -492,18 +492,35 @@ export async function nextKioskDirection(personId: string, at: Date = new Date()
  * how they were known (`face:<person>`, `qr:<person>`). Its direction follows the person's own
  * punches (`nextKioskDirection`), so arriving by app and leaving by kiosk reads right. The rest is
  * a device punch like any other: the days recomputed, the person's Today page told.
+ *
+ * **One punch per person per `KIOSK_COOLDOWN_MS` on a clock**, decided here and nowhere else. The
+ * server cannot tell a living face from its 128 numbers sent again, so what a tablet's cookie can
+ * do to one person's day is bounded instead: inside the interval the earlier punch is the answer
+ * (`repeat`), and nothing is written. The check and the insert share a transaction under the lock
+ * the app's own check-in takes, so calls sent together cannot all pass it. `kioskSessionId` is
+ * the tablet session the punch came through, kept on the punch for HR.
  */
-export async function commitKioskPunch(deviceId: string, person: { personId: string; entityId: string | null }, how: "face" | "qr", at: Date = new Date()): Promise<{ punchId: string; at: Date; direction: "in" | "out" }> {
-  const { inserted, direction } = await db().transaction(async (tx) => {
+export async function commitKioskPunch(deviceId: string, person: { personId: string; entityId: string | null }, how: "face" | "qr", at: Date = new Date(), kioskSessionId: string | null = null): Promise<KioskPunch> {
+  const made = await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`punch:${person.personId}`}))`);
+    const recent = (await recentKioskPunches(deviceId, [person.personId], new Date(at.getTime() - KIOSK_COOLDOWN_MS), tx as Tx)).get(person.personId);
+    if (recent) return { earlier: recent, inserted: null };
     const direction = await nextKioskDirection(person.personId, at, tx as Tx);
-    const inserted = await insertDevicePunches(tx as Tx, deviceId, null, [{ personId: person.personId, entityId: person.entityId, at, direction, deviceUserId: `${how}:${person.personId}` }]);
+    const inserted = await insertDevicePunches(tx as Tx, deviceId, null, [{ personId: person.personId, entityId: person.entityId, at, direction, deviceUserId: `${how}:${person.personId}`, kioskSessionId }]);
     await recomputeAfterImport(tx as Tx, inserted);
-    return { inserted, direction };
+    return { earlier: null, inserted, direction };
   });
-  if (!inserted.ids[0]) throw new ActionError("punch_exists");
+  if (made.earlier) return { punchId: null, at: made.earlier.at, direction: made.earlier.direction, repeat: true };
+  if (!made.inserted.ids[0]) throw new ActionError("punch_exists");
   await invalidateLive(person.personId);
-  return { punchId: inserted.ids[0], at, direction };
+  return { punchId: made.inserted.ids[0], at, direction: made.direction, repeat: false };
 }
+
+/** Within this long of a kiosk punch, the same person sees that punch again instead of making another. */
+export const KIOSK_COOLDOWN_MS = 60_000;
+
+/** What a kiosk punch came to: a new punch, or — inside the interval — the earlier one again (`repeat`, no `punchId`). */
+export type KioskPunch = { punchId: string | null; at: Date; direction: "in" | "out"; repeat: boolean };
 
 /** How long after a kiosk punch "Not me" may still take it back. */
 export const KIOSK_UNDO_MS = 60_000;
@@ -528,9 +545,9 @@ export async function withdrawKioskPunch(deviceId: string, punchId: string, now:
 }
 
 /** The latest kiosk punch of each of these people on this clock since `since`, and which way it went: who checked in or out a moment ago. */
-export async function recentKioskPunches(deviceId: string, personIds: readonly string[], since: Date): Promise<Map<string, { at: Date; direction: "in" | "out" }>> {
+export async function recentKioskPunches(deviceId: string, personIds: readonly string[], since: Date, executor: Executor = db()): Promise<Map<string, { at: Date; direction: "in" | "out" }>> {
   if (personIds.length === 0) return new Map();
-  const rows = await db()
+  const rows = await executor
     .selectDistinctOn([schema.punch.personId], { personId: schema.punch.personId, at: schema.punch.at, direction: schema.punch.direction })
     .from(schema.punch)
     .where(and(eq(schema.punch.deviceId, deviceId), inArray(schema.punch.personId, [...personIds]), sql`${schema.punch.at} > ${since.toISOString()}::timestamptz`))

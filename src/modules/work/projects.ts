@@ -6,9 +6,10 @@ import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { runProjectCreationHooks } from "@/modules/platform/project-creation/registry";
+import { checkProjectStatusChange } from "@/modules/platform/project-guards/registry";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
 import { invalidateMemberships, projectRolesOf } from "./viewer";
-import type { ProjectRole, Visibility } from "./enums";
+import type { ProjectRole, ProjectStatus, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
 import { notePrivateProjectReads } from "./private-reads";
 import { resolveProjectStatus } from "./status-sets";
@@ -135,7 +136,14 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
   }
 }
 
-/** The team stays: task numbers and workflow states belong to it. */
+/**
+ * The team stays: task numbers and workflow states belong to it.
+ *
+ * A change of the status category is put to the platform's project guards first, in this
+ * transaction: the project layer refuses a client project made Active past its kick-off gate or
+ * Done past its close-out, and a closed project moved out of Done (FR-PJM-03, 59). The kick-off, the
+ * close-out and the re-open make those moves themselves.
+ */
 export async function updateProject(projectId: string, input: Omit<ProjectInput, "teamId">): Promise<{ before: ProjectRow; after: ProjectRow }> {
   const updated = await db().transaction(async (tx) => {
     const found = await findProject(projectId, tx);
@@ -143,6 +151,10 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
     await checkProjectInput(tx, { ...input, teamId: found.project.teamId });
     // The status as posted: unchanged keeps the project's own, even one its set has since retired.
     const status = input.status === found.project.statusId ? { status: found.project.status, statusId: found.project.statusId } : await resolveProjectStatus(tx, found.project.teamId, input.status, found.project.statusId);
+    if (status.status !== found.project.status) {
+      const { refusal } = await checkProjectStatusChange(tx, { projectId, from: found.project.status, to: status.status, restoring: false });
+      if (refusal) throw new ActionError(refusal.reason, refusal.details);
+    }
     const [after] = await tx.update(schema.workProject).set({ ...input, ...status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
     if (input.leadPersonId && input.leadPersonId !== found.project.leadPersonId) {
       await tx.insert(schema.workProjectMember).values({ projectId, personId: input.leadPersonId, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
@@ -154,17 +166,26 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
   return updated;
 }
 
-/** Archive a project, or bring it back as active. */
+/**
+ * Archive a project, or bring it back. It comes back active unless a project guard names another
+ * category: un-archiving by itself never re-opens a closed project (it returns Done) and never
+ * walks a client project past its kick-off gate (it returns Planned).
+ */
 export async function setProjectArchived(projectId: string, archived: boolean): Promise<{ before: ProjectRow; after: ProjectRow }> {
-  const found = await findProject(projectId);
-  if (!found) throw new ActionError("project_not_found");
-  const [after] = await db()
-    .update(schema.workProject)
-    .set({ status: archived ? "archived" : "active", updatedAt: new Date() })
-    .where(eq(schema.workProject.id, projectId))
-    .returning();
+  const changed = await db().transaction(async (tx) => {
+    const found = await findProject(projectId, tx);
+    if (!found) throw new ActionError("project_not_found");
+    let status: ProjectStatus = "archived";
+    if (!archived) {
+      const { refusal, to } = await checkProjectStatusChange(tx, { projectId, from: found.project.status, to: "active", restoring: true });
+      if (refusal) throw new ActionError(refusal.reason, refusal.details);
+      status = to as ProjectStatus;
+    }
+    const [after] = await tx.update(schema.workProject).set({ status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
+    return { before: found.project, after };
+  });
   await invalidateWorkDirectory();
-  return { before: found.project, after };
+  return changed;
 }
 
 export type ProjectMemberView = { personId: string; fullName: string; role: ProjectRole; workforceType: string };

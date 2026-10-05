@@ -31,6 +31,16 @@
 //  * the debit account and value date are typed into the portal; they go in the file name;
 //  * the fee is paid by the company for every salary row ("OUR"), which is what a salary batch
 //    normally does — if ACB expects "SHA" or a Vietnamese word here, this is the line to change.
+//
+// **Interbank rows (`interbank: true`).** Because column 4 exists, paying a run sends everybody who
+// banks somewhere other than Vietcombank or ACB through this file. That rests on two further
+// assumptions, both unverified:
+//  * the portal accepts a row whose beneficiary bank is not ACB inside a salary batch at all;
+//  * it recognises the bank from its **name** as HR typed it on the person's record, upper-cased
+//    without diacritics ("TECHCOMBANK", "NGAN HANG QUAN DOI"). The real template may well want the
+//    bank's napas / citad code, or a branch besides — if so, this is where a lookup table goes, and
+//    until then such a row is rejected at the bank, not here. A person the bank will not take in
+//    the batch is paid by a single transfer and marked "paid another way" on the payment screen.
 import { type BankFormat, normalizedAccountNumber, partition, toAsciiUpper, toCsvFile, type TransferFile, type TransferInput } from "./format";
 
 export const ACB_COLUMNS = ["STT", "TAI KHOAN THU HUONG", "TEN THU HUONG", "NGAN HANG THU HUONG", "SO TIEN", "LOAI PHI", "NOI DUNG CHUYEN KHOAN", "MA NHAN VIEN"] as const;
@@ -43,6 +53,10 @@ export const acbFormat: BankFormat = {
   key: "acb",
   name: "ACB",
   version: "acb-bulk-csv-1",
+  aliases: ["acb", "á châu", "a chau"],
+  // Assumed from the beneficiary-bank column (see the header): the one format that can carry
+  // somebody who banks elsewhere.
+  interbank: true,
 
   build(input: TransferInput): TransferFile {
     const { payable, skipped } = partition(input.rows);

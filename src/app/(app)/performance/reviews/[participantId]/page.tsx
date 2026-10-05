@@ -17,6 +17,8 @@ import {
   canWritePeerReview,
   canWriteSelfReview,
   getPublishedResult,
+  isReviewCalibrator,
+  isReviewingManager,
   loadParticipant,
   loadReviewEvidence,
   peerCandidates,
@@ -62,16 +64,21 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   // The evidence panel (FR-PRF-07) is for whoever writes or reads this review — it is the same
   // personal-tier data as the review itself, and a nominated peer is not shown it.
   const writesReview = canWriteManagerReview(user.principal, parties) || canWriteSelfReview(user.principal, parties);
-  const showsEvidence = writesReview || canReleaseReview(user.principal, parties);
+  // HR over the person calibrates and releases; the manager writes and proposes (PRF-02).
+  const calibrator = isReviewCalibrator(user.principal, parties);
+  const showsEvidence = writesReview || calibrator;
   const seesNominations = canSeeNominations(user.principal, parties);
   const mayNominate = canNominatePeer(user.principal, parties);
   const mayDecide = canDecideNomination(user.principal, parties);
   const approvedPeers = nominations.filter((row) => row.status === "approved").length;
   const isSubject = participant.personId === user.person.id;
+  // …and only once the cycle has reached its calibration stage.
   const mayRelease = canReleaseReview(user.principal, parties);
-  // The calibrated score: whoever calibrates and releases it, and the subject once it is released
-  // to them. Not a nominated peer, not the subject before release.
-  const seesScore = mayRelease || (isSubject && parties.released);
+  const reviewingManager = !isSubject && isReviewingManager(user.principal, parties);
+  const managerSubmitted = forms.some((form) => form.kind === "manager" && form.status === "submitted");
+  // The calibrated score: whoever calibrates and releases it, and — once it is released — the
+  // subject and the manager who proposed it. Not a nominated peer, nobody else before release.
+  const seesScore = calibrator || ((isSubject || reviewingManager) && parties.released);
   // On an anonymous cycle the subject is told how many peers have written, never which ones: a
   // per-name "written" beside a per-name list is the author of every form, one by one.
   const peersByCountOnly = isSubject && cycle.peerAnonymous && !mayDecide;
@@ -235,19 +242,33 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           : null}
       </section>
 
-      {seesScore && (participant.reviewScoreBp !== null || (mayRelease && participant.calibrationNote)) ? (
+      {seesScore && (participant.reviewScoreBp !== null || (calibrator && participant.calibrationNote)) ? (
         <section className="flex flex-col gap-1 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("calibrate.title")}</h2>
           <p className="text-sm tabular-nums">{t("calibrate.current", { value: ratingText(format, participant.reviewScoreBp) })}</p>
-          {participant.calibrationNote && mayRelease ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
+          {participant.calibrationNote && calibrator ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
         </section>
       ) : null}
 
-      {mayRelease && !parties.released ? (
+      {calibrator && !parties.released ? (
         <section className="flex flex-col gap-3 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("release.title")}</h2>
-          <CalibrateForm participantId={participantId} currentPercent={participant.reviewScoreBp === null ? "" : String(participant.reviewScoreBp / 100)} />
-          <ReleaseForm participantId={participantId} />
+          {mayRelease ? (
+            <>
+              <CalibrateForm participantId={participantId} currentPercent={participant.reviewScoreBp === null ? "" : String(participant.reviewScoreBp / 100)} />
+              <ReleaseForm participantId={participantId} />
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("release.notYet")}</p>
+          )}
+        </section>
+      ) : null}
+
+      {/* The manager has written and proposed a rating; levelling it and handing it over is HR's. */}
+      {reviewingManager && !calibrator && managerSubmitted && !parties.released ? (
+        <section className="flex flex-col gap-1 rounded-xl border p-3">
+          <h2 className="text-sm font-medium">{t("release.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("release.waitingForHr")}</p>
         </section>
       ) : null}
 

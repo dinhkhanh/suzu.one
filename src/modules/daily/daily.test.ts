@@ -407,7 +407,7 @@ describe("private work in someone else's report", () => {
     // The week was approved by the quick-log test above; the approver reopens it.
     await db().update(schema.timesheetWeek).set({ status: "open" }).where(eq(schema.timesheetWeek.personId, ids.huy));
     ids.hr = (await db().insert(schema.workProject).values({ teamId: ids.design, entityId: ids.szm, name: "Tuyển Art Director", visibility: "private", leadPersonId: ids.mai }).returning())[0].id;
-    await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal" });
+    await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal", jobNumber: "SZM-26-099" });
     // Its people: a private project's work goes to nobody outside it.
     await db().insert(schema.workProjectMember).values([{ projectId: ids.hr, personId: ids.mai, role: "lead" as const }, { projectId: ids.hr, personId: ids.huy, role: "member" as const }]);
     const doing = (await listStates([ids.design])).find((state) => state.category === "in_progress")!;
@@ -453,10 +453,12 @@ describe("private work in someone else's report", () => {
 
   it("the week of time shows the hours under 'private work'", async () => {
     const own = (await getTimesheetView(await loadTimeReader(ids.huy), ids.huy, D, D))!;
-    expect(own.labels[`task:${ids.t6}`]).toMatchObject({ title: "Sơ tuyển ứng viên" });
+    expect(own.labels[`task:${ids.t6}`]).toMatchObject({ title: "Sơ tuyển ứng viên", jobNumber: "SZM-26-099" });
     const long = (await getTimesheetView(await loadTimeReader(ids.long), ids.huy, D, D))!;
     expect(long.grid.total).toBe(own.grid.total);
-    expect(long.labels[`task:${ids.t6}`]).toMatchObject({ hidden: true, title: null, taskKey: null, projectName: null });
+    // The job number goes where the project's name goes: hidden with it.
+    expect(long.labels[`task:${ids.t6}`]).toMatchObject({ hidden: true, title: null, taskKey: null, projectName: null, jobNumber: null });
+    expect(JSON.stringify(long)).not.toContain("SZM-26-099");
     expect(JSON.stringify(long)).not.toContain("Sơ tuyển ứng viên");
     expect(JSON.stringify(long)).not.toContain("Tuyển Art Director");
   });

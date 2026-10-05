@@ -206,7 +206,8 @@ describe("calculating an entity's month", () => {
   it("refuses a person with no pay profile rather than paying them by guesswork", async () => {
     const [stranger] = await db().insert(schema.person).values({ fullName: "No Profile", searchName: "no profile", primaryEntityId: ids.entity, status: "active" }).returning();
     await db().insert(schema.timesheetMonth).values({ personId: stranger.id, entityId: ids.entity, month: MONTH, status: "locked", summary: summary(), lockedAt: new Date(), lockedByPersonId: ids.actor });
-    expect(await listPeopleWithoutProfile(ids.entity, MONTH)).toContain("No Profile");
+    // Named with their id, so the run screen can link to the person who is missing a profile.
+    expect(await listPeopleWithoutProfile(ids.entity, MONTH)).toEqual([{ personId: stranger.id, fullName: "No Profile" }]);
     await expect(calculateEntityMonth(ids.entity, MONTH)).rejects.toThrow("pay_profile_missing");
     await db().delete(schema.timesheetMonth).where(eq(schema.timesheetMonth.personId, stranger.id));
   });

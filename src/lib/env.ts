@@ -106,6 +106,16 @@ const schema = z.object({
   // Vercel function and off everywhere else. `off` turns it off on Vercel too: every read goes to
   // Postgres. Never restricted or compensation data either way.
   DATA_CACHE: z.enum(["on", "off"]).optional(),
+  // The Content-Security-Policy the proxy puts on every page (src/lib/csp.ts). "report-only", the
+  // default, sends it as Content-Security-Policy-Report-Only: browsers block nothing and report
+  // what they would have. "enforce" sends the same policy as the enforcing header — after the
+  // reports have been read; "off" sends neither.
+  CSP_MODE: z.enum(["report-only", "enforce", "off"]).default("report-only"),
+  // Sentry's DSN, here only for that policy: the host the browser SDK posts to, and the endpoint
+  // that takes violation reports, are both read off it. The SDK itself reads these names directly
+  // (src/lib/observability), so any value passes here; one that is not a DSN is ignored.
+  SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 /**

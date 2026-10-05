@@ -1,6 +1,7 @@
 // Group → legal entities → branches; and one tree of org units (D20, FR-PLT-16): a unit contains
 // units, whatever it is called — department, big team, small team. Depth is not fixed.
-import { type AnyPgColumn, boolean, index, pgEnum, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { type AnyPgColumn, boolean, index, pgEnum, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -21,6 +22,34 @@ export const entity = pgTable("entity", {
   isActive: boolean("is_active").notNull().default(true),
   ...timestamps,
 }).enableRLS();
+
+// The company's own accounts that salary is paid from (FR-PLT-11, FR-PAY-33; SRS D12: Vietcombank
+// and ACB). They are the entity's, not a person's, so they sit in the clear like its tax code; who
+// may read and change them is decided by the actions (`org:manage` or `payroll:pay` over the entity).
+export const entityBankAccount = pgTable(
+  "entity_bank_account",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    // A key of `PAYING_BANKS` (enums.ts) — the bank whose bulk-payment file debits this account.
+    bank: text("bank").notNull(),
+    // Digits only; spaces and dashes are dropped when it is saved.
+    accountNumber: text("account_number").notNull(),
+    accountName: text("account_name").notNull(),
+    branch: text("branch"),
+    // The one the bank-file screen offers first, per entity and bank.
+    isDefault: boolean("is_default").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("entity_bank_account_key").on(t.entityId, t.bank, t.accountNumber),
+    // One default per entity and bank among the accounts still in use.
+    uniqueIndex("entity_bank_account_default_key").on(t.entityId, t.bank).where(sql`${t.isDefault} AND ${t.isActive}`),
+  ],
+).enableRLS();
 
 export const branch = pgTable(
   "branch",

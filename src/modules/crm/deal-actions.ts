@@ -14,8 +14,8 @@ import { dealContext, type DealInput, createDeal, moveDeal, reassignDeal, reopen
 import { dealOfProject, openPitchProject, resendHandoff, respondToHandoff, setUpDelivery } from "./delivery";
 import { ACCOUNT_SIZES, ACCOUNT_TIERS, CONTACT_SOURCES, LAWFUL_BASES, LOST_REASONS, SERVICE_LINES, SOURCES } from "./enums";
 import { accountCode, checkbox, isoDate, optional, probability, rows, text, vnd } from "./form-inputs";
-import { assignLead, createLead, findLead, leadFacts, setLeadStatus, updateLead } from "./leads";
-import { canCreateAccount, canCreateDeal, canEditDeal, canLogLead, canReassignDeal, canReopenDeal, canSetUpDelivery, canWorkLead, type CrmViewer, type DealFacts } from "./policy";
+import { assignLead, createLead, eraseLeadContact, findLead, leadFacts, setLeadStatus, updateLead } from "./leads";
+import { canCreateAccount, canCreateDeal, canEditDeal, canEraseLeadContact, canLogLead, canReassignDeal, canReopenDeal, canSetUpDelivery, canWorkLead, type CrmViewer, type DealFacts } from "./policy";
 import { loadCrm } from "./viewer";
 
 function refresh(paths: (string | null | undefined)[]) {
@@ -130,6 +130,26 @@ const assignLeadPipeline = createAction({
 });
 export async function assignLeadAction(input: unknown) {
   return assignLeadPipeline(input);
+}
+
+// Erasure on request for somebody who is only a lead's contact (PDPL): there is no contact record
+// to erase, so the lead's own fields are blanked. An open or a closed lead alike.
+const eraseLeadContactPipeline = createAction({
+  name: "crm.lead.erase_contact",
+  input: z.object({ leadId: z.uuid(), confirm: z.literal("ERASE") }),
+  authorize: async (user, input) => {
+    const lead = await findLead(input.leadId);
+    return !!lead && canEraseLeadContact((await loadCrm(user)).viewer, leadFacts(lead));
+  },
+  run: async ({ input }) => {
+    const { after } = await eraseLeadContact(input.leadId);
+    refresh([`/crm/leads/${input.leadId}`]);
+    // Personal data of someone outside the company: the audit says that it was erased, not what it said.
+    return { data: { id: after.id }, audit: { resource: { type: "crm_lead", id: after.id, entityId: after.entityId }, summary: "contact erased on request" } };
+  },
+});
+export async function eraseLeadContactAction(input: unknown) {
+  return eraseLeadContactPipeline(input);
 }
 
 const convertPipeline = createAction({

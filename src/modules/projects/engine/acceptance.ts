@@ -4,7 +4,8 @@
 // An acceptance is a snapshot: the register lines in its scope (one client-facing milestone, one
 // retainer month, or the whole project) with what was promised, what the client accepted and what
 // was delivered, taken when the record is made. The register moves on; the paper the client signs
-// does not.
+// does not. A scope with no register lines — a billing milestone on a project that keeps no
+// register — is accepted in the lead's own words instead: without them there is nothing to sign.
 import type { AcceptanceItem } from "../schema";
 import type { RegisterStatus } from "./register";
 
@@ -51,18 +52,32 @@ export function acceptanceTotals(items: readonly AcceptanceItem[]): AcceptanceTo
   return { promised, delivered, accepted, complete: items.length > 0 && items.every((item) => item.accepted >= item.promised) };
 }
 
+/** Something must be accepted: register lines in the scope, or what the lead states in words. */
+export const acceptanceHasScope = (items: readonly AcceptanceItem[], description: string | null | undefined): boolean => items.length > 0 || !!description?.trim();
+
 export type AcceptanceAction = "send" | "sign" | "void";
 
 /**
  * The paper's life: draft → sent → signed, or void before it is signed. A client may sign what was
- * never formally "sent" (handed over in the meeting). A signed record is final: it has made a
- * billing item, and a mistake is corrected by a new record, not by rewriting this one.
+ * never formally "sent" (handed over in the meeting). A signed record keeps its status and its
+ * items for good — it has made a billing item — and only what was recorded about the signature
+ * (the scan, the signer, the date) can be corrected, with a reason (`signedCorrectable`).
  */
 export function acceptanceNext(status: AcceptanceStatus, action: AcceptanceAction): AcceptanceStatus | null {
   if (action === "send") return status === "draft" ? "sent" : null;
   if (action === "sign") return status === "draft" || status === "sent" ? "signed" : null;
   return status === "draft" || status === "sent" ? "void" : null;
 }
+
+/** The register is read again for a draft, and for a paper sent and not yet signed (which is then issued again). */
+export const acceptanceRefreshable = (status: AcceptanceStatus): boolean => status === "draft" || status === "sent";
+
+/**
+ * A mistake in a signed record — the wrong scan, a misspelt signer, the wrong day — is corrected
+ * until finance has invoiced what the signature earned; after that the invoice quotes the record
+ * and it stays as it is.
+ */
+export const signedCorrectable = (status: AcceptanceStatus, billing: readonly BillingStatus[]): boolean => status === "signed" && !billing.includes("invoiced");
 
 /** The number the paper is quoted by: "SZM-26-042/NT-03". */
 export const acceptanceNumber = (jobNumber: string | null, number: number): string => `${jobNumber ?? "NT"}/NT-${String(number).padStart(2, "0")}`;
@@ -80,6 +95,15 @@ export function acceptanceItemsText(items: readonly AcceptanceItem[], words: { p
     .join("\n");
 }
 
+/**
+ * What the paper says was accepted: the items, then the lead's own words; and its summary line —
+ * the totals of the items, or, for a record made of words alone, that it is as described.
+ */
+export function acceptanceBody(items: readonly AcceptanceItem[], description: string | null | undefined, words: { promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string; described: string }): { items: string; totals: string } {
+  const stated = description?.trim() || null;
+  return { items: [items.length ? acceptanceItemsText(items, words) : null, stated].filter(Boolean).join("\n\n"), totals: items.length ? words.totals(acceptanceTotals(items)) : words.described };
+}
+
 // ── Billing items (FR-PJM-56) ────────────────────────────────────────────────────────────────
 
 export const BILLING_SOURCES = ["acceptance", "milestone", "retainer", "manual"] as const;
@@ -89,6 +113,21 @@ export type BillingStatus = (typeof BILLING_STATUSES)[number];
 
 /** Finance's two answers to a ready item; a decided item is settled for good. */
 export const billingDecidable = (status: BillingStatus): boolean => status === "ready";
+
+/**
+ * Where a billing milestone stands with finance — so that a milestone which hands finance nothing
+ * says why instead of saying nothing. Its own item's status once it has one; otherwise, in the
+ * order `billMilestone` decides it: on a client's project it waits for the signed acceptance
+ * (D27), a whole-project acceptance may have billed its share already, and internal work waits to
+ * be marked done.
+ */
+export type MilestoneBillingState = BillingStatus | "awaiting_acceptance" | "covered_by_project" | "awaiting_done";
+export function milestoneBillingState(facts: { item: { status: BillingStatus } | null; clientWork: boolean; accepted: boolean; wholeProjectBilled: boolean; done: boolean }): MilestoneBillingState {
+  if (facts.item) return facts.item.status;
+  if (facts.clientWork && !facts.accepted) return "awaiting_acceptance";
+  if (facts.wholeProjectBilled) return "covered_by_project";
+  return "awaiting_done";
+}
 
 /**
  * What a whole-project acceptance bills: the project's fee less what its milestones and months

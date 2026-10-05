@@ -7,7 +7,7 @@
 // else. That is the project's account manager or whoever runs the project; for work outside a
 // project, the client's own account manager or the team's leads. It follows that `work:manage` over
 // a team does not reach into a private project's links, because it does not reach its decisions.
-import { canModerateTask, canRecordClientDecision, type TaskFacts, type WorkViewer } from "./policy";
+import { canActForClient, canModerateTask, canRecordClientDecision, type ProjectFacts, type TaskFacts, type WorkViewer } from "./policy";
 
 export type PreviewLinkFacts = { createdByPersonId: string };
 type ClientFacts = { accountManagerPersonId: string | null };
@@ -19,6 +19,17 @@ type ClientFacts = { accountManagerPersonId: string | null };
  */
 export function canManagePreviewLinks(viewer: WorkViewer, task: TaskFacts, client: ClientFacts): boolean {
   return canRecordClientDecision(viewer, task, client);
+}
+
+/**
+ * A project's live links in one list, across its tasks (R14) — for the people who could have made
+ * any of them: on a task inside a project `canManagePreviewLinks` *is* `canActForClient`, so the
+ * list opens for exactly the account manager and whoever runs the project, and each of them may
+ * revoke every row on it. Nobody else learns which clients are holding what: not a member doing
+ * the work, not a `pjm:portfolio` reader of a private project.
+ */
+export function canSeeProjectPreviewLinks(viewer: WorkViewer, project: ProjectFacts): boolean {
+  return canActForClient(viewer, project);
 }
 
 /**

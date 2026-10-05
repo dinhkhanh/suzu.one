@@ -5,12 +5,13 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field } from "@/components/forms/field";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
+import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, eraseLeadContactAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
 import { ACCOUNT_TIERS, LOST_REASONS, SERVICE_LINES, SOURCES } from "../enums";
 import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
@@ -130,6 +131,26 @@ export function DisqualifyForm({ leadId }: { leadId: string }) {
     <CrmForm action={setLeadStatusAction} extra={{ leadId, status: "disqualified" }} submit={t("disqualify")} className="flex flex-wrap items-end gap-3">
       <Field name="reason" label={t("disqualifyReason")}>
         <Input id="disqualify-reason" name="reason" required maxLength={500} />
+      </Field>
+    </CrmForm>
+  );
+}
+
+/** Erasure on request for somebody who is only a lead's contact: typed confirmation, because it cannot be undone. */
+export function EraseLeadContactForm({ leadId }: { leadId: string }) {
+  const t = useTranslations("crm");
+  const [open, setOpen] = useState(false);
+  if (!open)
+    return (
+      <Button type="button" variant="link" size="xs" className="self-start px-0 text-destructive" onClick={() => setOpen(true)}>
+        {t("lead.eraseContact")}
+      </Button>
+    );
+  return (
+    <CrmForm action={eraseLeadContactAction} extra={{ leadId }} submit={t("contacts.eraseConfirm")} className="flex flex-wrap items-end gap-3 rounded-lg border border-destructive/40 p-3">
+      <p className="w-full text-xs text-muted-foreground">{t("lead.eraseContactReach")}</p>
+      <Field name="confirm" label={t("contacts.eraseType")}>
+        <Input id={`erase-lead-${leadId}`} name="confirm" required placeholder="ERASE" />
       </Field>
     </CrmForm>
   );

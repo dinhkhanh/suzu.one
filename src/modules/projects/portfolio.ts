@@ -51,7 +51,8 @@ export type PortfolioRow = {
   startDate: string | null;
   dueDate: string | null;
   dueSlipDays: number | null;
-  register: { promised: number; accepted: number; percent: number | null };
+  /** `accepted` is the client's acceptance; `awaitingClient` is finished on our side and not yet answered. */
+  register: { promised: number; accepted: number; awaitingClient: number; percent: number | null };
   burn: Pick<Burn, "loggedMinutes" | "burnMinutes" | "budgetMinutes" | "percent" | "level">;
   /** Open high risks and open issues of the RAID log (FR-PJM-29). */
   raid: RaidCounts;
@@ -137,7 +138,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
       startDate: project.startDate,
       dueDate: project.dueDate,
       dueSlipDays: slipDays(plan.baseline?.dueDate, project.dueDate),
-      register: { promised: register.promised, accepted: register.accepted, percent: register.percent },
+      register: { promised: register.promised, accepted: register.accepted, awaitingClient: register.awaitingClient, percent: register.percent },
       burn: { loggedMinutes: burn.loggedMinutes, burnMinutes: burn.burnMinutes, budgetMinutes: burn.budgetMinutes, percent: burn.percent, level: burn.level },
       raid: raid.get(project.id) ?? { highRisks: 0, openIssues: 0 },
     };
@@ -186,6 +187,7 @@ export async function buildPortfolioExport(viewer: WorkViewer, filters: Portfoli
     { header: t("projects.fields.dueDate"), value: (row) => row.dueDate },
     { header: t("projects.fields.dueSlip"), value: (row) => row.dueSlipDays },
     { header: t("projects.fields.accepted"), value: (row) => row.register.accepted },
+    { header: t("projects.fields.awaitingClient"), value: (row) => row.register.awaitingClient },
     { header: t("projects.fields.promised"), value: (row) => row.register.promised },
     { header: t("projects.fields.hoursUsed"), value: (row) => hours(row.burn.loggedMinutes) },
     { header: t("projects.fields.hoursBurn"), value: (row) => hours(row.burn.burnMinutes) },

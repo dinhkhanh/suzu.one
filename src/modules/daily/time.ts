@@ -10,6 +10,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { checkProjectWork } from "@/modules/platform/project-guards/registry";
 import { taskKey } from "@/modules/work/service";
 import { weekStartOf } from "./engine/rules";
 import { stopTimer, vietnamDateOf } from "./engine/timer";
@@ -100,10 +101,17 @@ async function projectOfTask(taskId: string, executor: Executor): Promise<string
 
 type Target = { taskId: string | null; category: TimeCategory | null };
 
-/** Where an entry goes: its project and whether it is billable, from the task or the category. */
+/**
+ * Where a new entry goes: its project and whether it is billable, from the task or the category.
+ * A closed project takes no more time (FR-PJM-59): the project layer says so through the
+ * platform's project guards, which this module asks because it cannot import that one. Entries
+ * already logged are still corrected and deleted — they do not come through here.
+ */
 async function placeOf(target: Target, billable: boolean | null, executor: Executor): Promise<{ taskId: string | null; category: TimeCategory | null; projectId: string | null; billable: boolean }> {
   if (!target.taskId === !target.category) throw new ActionError("time_task_or_category");
   const projectId = target.taskId ? await projectOfTask(target.taskId, executor) : null;
+  const refusal = projectId ? await checkProjectWork(executor, { projectId, action: "time_entry" }) : null;
+  if (refusal) throw new ActionError(refusal.reason, refusal.details);
   return { taskId: target.taskId, category: target.taskId ? null : target.category, projectId, billable: billable ?? (await billableByDefault(projectId, executor)) };
 }
 
@@ -310,7 +318,7 @@ export async function startTimer(personId: string, target: Target, now: Date = n
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type TimeEntryView = { id: string; date: IsoDate; taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; category: string | null; minutes: number; billable: boolean; note: string | null; source: string; capped: boolean; createdAt: Date };
+export type TimeEntryView = { id: string; date: IsoDate; taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; /** The project's job number (FR-PJM-02): what accounting ties the hours to. */ jobNumber: string | null; category: string | null; minutes: number; billable: boolean; note: string | null; source: string; capped: boolean; createdAt: Date };
 
 /**
  * Entries between two dates, newest first. No authorization: callers pass people they may read —
@@ -330,6 +338,7 @@ export async function listTimeOf(personIds: readonly string[], from: IsoDate, to
       title: schema.task.title,
       projectId: schema.timeEntry.projectId,
       projectName: schema.workProject.name,
+      jobNumber: schema.projectPlan.jobNumber,
       category: schema.timeEntry.category,
       minutes: schema.timeEntry.minutes,
       billable: schema.timeEntry.billable,
@@ -343,6 +352,8 @@ export async function listTimeOf(personIds: readonly string[], from: IsoDate, to
     .leftJoin(schema.workTask, eq(schema.workTask.taskId, schema.timeEntry.taskId))
     .leftJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.timeEntry.projectId))
+    // The job number rides with the project's name (FR-PJM-02): one row per project, by primary key.
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.timeEntry.projectId))
     // A running timer (minutes 0) is not yet time spent.
     .where(and(inArray(schema.timeEntry.personId, [...new Set(personIds)]), sql`${schema.timeEntry.date} between ${from} and ${to}`, isNull(schema.timeEntry.deletedAt), isNull(schema.timeEntry.timerStartedAt)))
     .orderBy(...(order === "newest" ? [desc(schema.timeEntry.date), desc(schema.timeEntry.createdAt)] : [asc(schema.timeEntry.date), asc(schema.timeEntry.createdAt)]));

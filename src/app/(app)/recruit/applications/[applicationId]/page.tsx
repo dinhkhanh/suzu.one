@@ -281,7 +281,8 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               <span className="w-28 shrink-0 pt-0.5 font-mono text-xs text-faint tabular-nums">{format.dateTime(event.at, { dateStyle: "short", timeStyle: "short" })}</span>
               <span className="min-w-0 flex-1">
                 <span className="font-medium">
-                  {t(`event.${event.type}`)}
+                  {/* Emptied because the window lapsed, or because the candidate asked: two different facts. */}
+                  {event.type === "anonymised" && event.detail?.reason === "erasure" ? t("event.erased") : t(`event.${event.type}`)}
                   {event.toStageName ? ` → ${event.toStageName}` : ""}
                 </span>
                 <span className="block text-xs text-faint">{event.actorName ? <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink> : t("source.careers_page")}</span>

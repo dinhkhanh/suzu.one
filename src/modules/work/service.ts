@@ -92,8 +92,8 @@ export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/deliv
  * them the request and print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
  * decides who may see it, and the task page asks before it calls.
  */
-export { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
-export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, openPreviewFile, openPreviewLink, type PreviewDecisionInput, type PreviewFileOutcome, type PreviewLinkView, type PreviewOutcome, type PreviewPage, purgePreviewHits } from "./preview";
+export { canManagePreviewLinks, canRevokePreviewLink, canSeeProjectPreviewLinks } from "./preview-policy";
+export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, listProjectPreviewLinks, openPreviewFile, openPreviewLink, type PreviewDecisionInput, type PreviewFileOutcome, type PreviewLinkView, type PreviewOutcome, type PreviewPage, type ProjectPreviewLinkView, purgePreviewHits, sweepPreviewLinks } from "./preview";
 export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_DAYS, type PreviewState } from "./engine/preview";
 /**
  * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run

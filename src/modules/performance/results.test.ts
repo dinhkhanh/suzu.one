@@ -30,6 +30,7 @@ import { reopenMonth } from "./kpi-scores";
 import { loadDirectory } from "./people";
 import { canReadReviewForm, canSeeNominations, canNominatePeer, canDecideNomination, nominationIsApproved } from "./review-policy";
 import {
+  advanceReviewCycle,
   type CycleInput,
   decideNomination,
   isApprovedPeer,
@@ -216,11 +217,16 @@ describe("releasing a whole cycle", () => {
       await saveReviewForm({ participantId: participantOf.get(ids[who])!, kind: "self", answers: { quality: 3 }, comment: null, submit: true }, ids[who], "2026-12-09");
       await saveReviewForm({ participantId: participantOf.get(ids[who])!, kind: "manager", answers: { quality: who === "huy" ? 5 : 3 }, comment: null, submit: true }, ids.tam, "2026-12-18");
     }
+    // Not while the cycle is still collecting (PRF-02): the reviews are released from calibration on.
+    expect(await fails(releaseCycle(cycleId, ids.mai))).toBe("review_cycle_not_calibrating");
+    await advanceReviewCycle(cycleId, "calibration");
     const result = await releaseCycle(cycleId, ids.mai);
     expect(result.released).toHaveLength(2);
-    // Nobody else has a manager review, so they are skipped with the reason rather than released.
-    expect(result.skipped.every((row) => row.reason === "review_manager_not_submitted")).toBe(true);
-    expect(result.skipped.length).toBeGreaterThan(0);
+    // Nobody else has a manager review, so they are skipped with the reason rather than released —
+    // and HR's own review is left for somebody else to release, whatever is written on it.
+    expect(result.skipped.find((row) => row.participantId === participantOf.get(ids.mai))?.reason).toBe("review_own");
+    expect(result.skipped.filter((row) => row.participantId !== participantOf.get(ids.mai)).every((row) => row.reason === "review_manager_not_submitted")).toBe(true);
+    expect(result.skipped.length).toBeGreaterThan(1);
 
     const lines = await listCycleParticipants(cycleId);
     expect(lines.find((line) => line.personId === ids.huy)?.reviewScoreBp).toBe(13_000);

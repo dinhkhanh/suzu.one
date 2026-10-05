@@ -4,7 +4,8 @@
 // match the run, and somebody dropped from the file without a word.
 import { describe, expect, it } from "vitest";
 import { acbFormat, ACB_COLUMNS } from "./acb";
-import { bankFormat, BANK_FORMATS, BANK_KEYS } from "./index";
+import { PAYING_BANK_KEYS, PAYING_BANKS } from "@/modules/platform/org/enums";
+import { bankFormat, BANK_FORMATS, BANK_KEYS, formatOfBankName, interbankFormat } from "./index";
 import { checkAccount, toAsciiUpper, type TransferInput, type TransferRow } from "./format";
 import { vcbFormat, VCB_COLUMNS } from "./vcb";
 
@@ -43,6 +44,41 @@ describe("the registry", () => {
     for (const format of Object.values(BANK_FORMATS)) {
       expect(format.version).toMatch(/^[a-z0-9-]+$/);
       expect(format.key).toMatch(/^[a-z]+$/);
+    }
+  });
+
+  it("has a format for every bank an entity may keep a paying account at (FR-PLT-11)", () => {
+    // The two lists live in different modules — the entity's accounts in platform, the formats
+    // here — and a bank in one without the other would be an account no file can be debited from.
+    expect([...PAYING_BANK_KEYS].sort()).toEqual([...BANK_KEYS].sort());
+    for (const bank of PAYING_BANKS) expect(bankFormat(bank.key)?.name).toBe(bank.name);
+  });
+});
+
+describe("which bank an account is with, and which file can pay another bank (PAY-05)", () => {
+  it("reads a bank off the name typed on the account, however it was typed", () => {
+    expect(formatOfBankName("Vietcombank")?.key).toBe("vcb");
+    expect(formatOfBankName("VCB - CN Tân Bình")?.key).toBe("vcb");
+    expect(formatOfBankName("Ngân hàng TMCP Ngoại thương Việt Nam")?.key).toBe("vcb");
+    expect(formatOfBankName("Ngân hàng Á Châu")?.key).toBe("acb");
+    expect(formatOfBankName("acb")?.key).toBe("acb");
+  });
+
+  it("admits when the bank is none of ours — and does not mistake a look-alike", () => {
+    for (const name of ["Techcombank", "Sacombank", "BIDV", "MB Bank", "VietCapital Bank", "", "   ", null, undefined]) expect({ name, key: formatOfBankName(name)?.key ?? null }).toEqual({ name, key: null });
+  });
+
+  it("sends people who bank elsewhere through the one layout that carries a beneficiary bank", () => {
+    // ACB's assumed layout has the column; Vietcombank's has none, so it can only pay its own accounts.
+    expect(acbFormat.interbank).toBe(true);
+    expect(ACB_COLUMNS).toContain("NGAN HANG THU HUONG");
+    expect(vcbFormat.interbank).toBe(false);
+    expect(interbankFormat()?.key).toBe("acb");
+    // Every format that claims to pay other banks must really have somewhere to name them.
+    for (const format of Object.values(BANK_FORMATS)) {
+      if (!format.interbank) continue;
+      const line = body(format.build(input([row({ account: account({ bankName: "Techcombank" }) })])).content)[0];
+      expect(line).toContain("TECHCOMBANK");
     }
   });
 });

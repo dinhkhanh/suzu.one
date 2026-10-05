@@ -9,6 +9,7 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
+import { statusTone } from "@/components/ui/tone";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
 import { competencyChoices, listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
@@ -200,7 +201,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
                       {row.workforceType ? <Badge variant="secondary">{t(`workforceType.${row.workforceType}`)}</Badge> : "—"}
-                      {row.status && row.status !== "active" ? <Badge variant="outline">{t(`status.${row.status}`)}</Badge> : null}
+                      {row.status && row.status !== "active" ? <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge> : null}
                     </span>
                   </TableCell>
                 ) : null}

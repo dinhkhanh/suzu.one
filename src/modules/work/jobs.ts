@@ -3,6 +3,7 @@ import "server-only";
 import { and, eq, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { purgeBrandFileHits } from "@/modules/brand/service";
 import type { JobDefinition } from "../platform/jobs/service";
 import { notify } from "../platform/notifications/service";
 import { runDueDateAutomations } from "./automations";
@@ -12,7 +13,7 @@ import { REMINDER_LOOK_AHEAD, REMINDER_LOOK_BACK, type ReminderKind, reminderOnW
 import { syncExitHandovers } from "./exit";
 import { sendPublishReminders } from "./publish";
 import { PREVIEW_HIT_RETENTION_DAYS } from "./engine/preview";
-import { purgePreviewHits } from "./preview";
+import { purgePreviewHits, sweepPreviewLinks } from "./preview";
 import { generateOccurrences } from "./recurrences";
 import { sendReviewOverdueReminders } from "./reviews";
 import { taskKey, WORK_KIND } from "./tasks";
@@ -98,11 +99,26 @@ export const workCoverJob: JobDefinition = { name: "work-cover", run: ({ today }
 export const workExitHandoverJob: JobDefinition = { name: "work-exit-handover", run: ({ today }) => syncExitHandovers(new Date(), today) };
 
 /**
- * The client review links' rate limiter (D24, FR-PJM-51a) at midnight. Its rows are hashes of a
- * visitor with an hour's resolution; a week on they are noise, and keeping noise about somebody
- * outside the company is keeping something for no reason (PDPL storage limitation).
+ * The client review links (D24, FR-PJM-51a) at midnight, two things.
+ *
+ * The rate limiter's rows are hashes of a visitor with an hour's resolution; a week on they are
+ * noise, and keeping noise about somebody outside the company is keeping something for no reason
+ * (PDPL storage limitation). The brand pages' file route counts its visitors the same way in its
+ * own table (FR-BRD-04), and its old windows go in the same sweep: one nightly job for the public
+ * surfaces' counters.
+ *
+ * And the links that have outlived their reason are taken back (R14): the live links of a project
+ * that is finished or archived, and those made by somebody who has since left. The audit log says
+ * why, link by link (`sweepPreviewLinks`).
  */
 export const workPreviewSweepJob: JobDefinition = {
   name: "work-preview-sweep",
-  run: async () => ({ previewHits: await purgePreviewHits(new Date(Date.now() - PREVIEW_HIT_RETENTION_DAYS * 24 * 60 * 60 * 1000)) }),
+  run: async () => {
+    const now = new Date();
+    return {
+      previewHits: await purgePreviewHits(new Date(now.getTime() - PREVIEW_HIT_RETENTION_DAYS * 24 * 60 * 60 * 1000)),
+      brandFileHits: await purgeBrandFileHits(),
+      revoked: await sweepPreviewLinks(now),
+    };
+  },
 };

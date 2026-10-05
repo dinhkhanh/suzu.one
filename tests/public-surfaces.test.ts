@@ -11,7 +11,11 @@
 // These tests hold the two halves of the answer: that the surface is read off the **path**, for
 // every path a page can be served at, and that the messages a public request is handed are that
 // page's own and nothing else.
-import { describe, expect, it, vi } from "vitest";
+//
+// And one thing only the proxy can do for the review link (R14): a `HEAD` and a browser's
+// fetch-ahead are not a client opening it, and a page cannot tell — it never learns the method.
+import { NextRequest } from "next/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 /** What the proxy wrote on the request, swapped per test. */
 const surfaceHeader = { current: null as string | null };
@@ -32,7 +36,15 @@ vi.mock("@/modules/platform/auth/session", () => ({
   getCurrentUser: async () => (signedIn.current ? { userId: "u1", preferences: { locale: signedIn.locale, theme: null } } : null),
 }));
 
-import { config } from "@/proxy";
+/** The public domain, when a test gives the product one (`src/lib/site.ts` reads it from the environment). */
+const publicDomain = { current: null as { origin: string; host: string } | null };
+vi.mock("@/lib/site", () => ({ publicSite: () => publicDomain.current }));
+
+// The proxy also writes the page's Content-Security-Policy (`tests/proxy-csp.test.ts` covers it),
+// which reads the configuration; this file is about surfaces, so the policy is off.
+vi.mock("@/lib/env", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/env")>()), env: () => ({ CSP_MODE: "off" }) }));
+
+import { config, proxy } from "@/proxy";
 import requestConfig from "@/i18n/request";
 import { namespacesForSurface, pickMessages, SURFACE_HEADER, surfaceForPath } from "@/i18n/surfaces";
 import catalogue from "../messages/vi.json";
@@ -127,6 +139,63 @@ describe("which surface a path is", () => {
     for (const path of ["/_next/static/chunk.js", "/_next/image", "/icons/icon-192.png", "/favicon.ico", "/robots.txt", "/next.svg"]) {
       expect(matcher.test(path), path).toBe(false);
     }
+  });
+});
+
+describe("a review link asked for by something that is not a person (R14)", () => {
+  afterEach(() => {
+    publicDomain.current = null;
+  });
+
+  const BROWSER = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  const ask = (url: string, init: { method?: string; headers?: Record<string, string> } = {}) => proxy(new NextRequest(url, { method: init.method ?? "GET", headers: { "user-agent": BROWSER, ...init.headers } }));
+  /** Whether the proxy handed the request on to a page or a route, rather than answering it. */
+  const passedOn = (response: Response) => response.headers.get("x-middleware-next") === "1";
+  const guarded = (response: Response) => ({ cache: response.headers.get("cache-control"), robots: response.headers.get("x-robots-tag"), referrer: response.headers.get("referrer-policy") });
+  const GUARDED = { cache: "private, no-store, max-age=0", robots: "noindex, nofollow, noarchive, nosnippet", referrer: "no-referrer" };
+
+  it("answers a HEAD itself: no page is rendered, so nothing is counted as a view", async () => {
+    for (const path of ["/preview/AbC-123_xyz", "/preview/AbC-123_xyz/file", "/preview/anything.png"]) {
+      const response = ask(`https://suzu.one${path}`, { method: "HEAD" });
+      expect([response.status, passedOn(response), response.headers.get("location")], path).toEqual([200, false, null]);
+      expect(guarded(response), path).toEqual(GUARDED);
+      expect(await response.text()).toBe("");
+    }
+  });
+
+  it("declines a browser fetching ahead of its person, so what it shows them later is the page and not a stale answer", async () => {
+    const aheadOfTheirPerson: Record<string, string>[] = [{ "sec-purpose": "prefetch" }, { "sec-purpose": "prefetch;prerender" }, { purpose: "prefetch" }, { "x-moz": "prefetch" }];
+    for (const headers of aheadOfTheirPerson) {
+      const response = ask("https://suzu.one/preview/AbC-123_xyz", { headers });
+      expect([response.status, passedOn(response)], JSON.stringify(headers)).toEqual([503, false]);
+      expect(guarded(response)).toEqual(GUARDED);
+      expect(await response.text()).toBe("");
+    }
+  });
+
+  it("hands everything else on: a person's GET, a chat app's (the page decides what it is shown), and the client's answer", () => {
+    for (const init of [{}, { headers: { "user-agent": "facebookexternalhit/1.1" } }, { method: "POST" }]) {
+      const response = ask("https://suzu.one/preview/AbC-123_xyz", init);
+      expect(passedOn(response), JSON.stringify(init)).toBe(true);
+      expect(response.headers.get("x-middleware-request-x-surface")).toBe("preview");
+    }
+  });
+
+  it("is the review link's rule and nobody else's", () => {
+    // The careers page is an advertisement: a crawler's HEAD and a prefetch are welcome to it.
+    expect(passedOn(ask("https://suzu.one/careers", { method: "HEAD" }))).toBe(true);
+    expect(passedOn(ask("https://suzu.one/careers", { headers: { "sec-purpose": "prefetch" } }))).toBe(true);
+    // Inside the app a HEAD without a session is sent to sign in, like anything else.
+    const inside = ask("https://suzu.one/today", { method: "HEAD" });
+    expect(inside.headers.get("location")).toBe("https://suzu.one/sign-in");
+  });
+
+  it("holds on the public domain, and the app's domain still sends the link over first", () => {
+    publicDomain.current = { origin: "https://suzu.vn", host: "suzu.vn" };
+    expect(ask("https://suzu.vn/preview/AbC-123_xyz", { method: "HEAD" }).status).toBe(200);
+    expect(ask("https://suzu.vn/preview/AbC-123_xyz", { headers: { "sec-purpose": "prefetch" } }).status).toBe(503);
+    const moved = ask("https://suzu.one/preview/AbC-123_xyz", { method: "HEAD" });
+    expect([moved.status, moved.headers.get("location")]).toEqual([308, "https://suzu.vn/preview/AbC-123_xyz"]);
   });
 });
 

@@ -4,12 +4,16 @@
 // role — enough to record who decided — and nothing else. Never cached, never sent to the AI model.
 //
 // Erasure on request blanks every detail and keeps the name, because signed records (a biên bản
-// nghiệm thu, a client decision) quote it as text and must stay what was signed.
+// nghiệm thu, a client decision) quote it as text and must stay what was signed. It reaches every
+// copy the product made of the details: the lead the contact came from, and the briefs and hand-off
+// notes written before contact details stopped being copied into them. What somebody typed into an
+// activity's free text cannot be found reliably and is left — the erase screen says so.
 import "server-only";
-import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
+import { eraseBriefContactDetailsIn } from "@/modules/projects/service";
 import { likelyDuplicateContacts } from "./engine/account";
 import type { DecisionRole } from "./enums";
 
@@ -115,11 +119,64 @@ export async function saveContact(clientId: string, contactId: string | null, in
   });
 }
 
+/** How many copies of an erased contact's details were blanked outside the contact itself. */
+export type ErasedCopies = { leads: number; briefs: number; handoffNotes: number };
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The copies of a contact's details the product itself made, blanked inside the erasure's
+ * transaction — each a single statement:
+ *
+ *   · **Leads.** A lead holds a contact's name, title, email and phone as plain fields. One is this
+ *     person's when it carries their email or their phone (wherever it is — a lead that was never
+ *     converted has no account), or their name on this account (the lead a contact was made from).
+ *   · **Briefs** of the account's projects, through the projects module, which owns them.
+ *   · **Hand-off notes** of the account's deals: the "contacts" text loses every part that holds the
+ *     email or the phone, and keeps the name and the role beside it.
+ *
+ * The last two only ever find something written before delivery set-up stopped copying details.
+ */
+async function eraseCopiesIn(tx: Tx, contact: Pick<ContactRow, "clientId" | "fullName" | "email" | "phone" | "zalo">): Promise<ErasedCopies> {
+  const email = contact.email?.trim().toLowerCase() || null;
+  const phoneDigits = contact.phone?.replace(/\D/g, "") ?? "";
+  const clients = await tx.select({ id: schema.workClient.id }).from(schema.workClient).where(or(eq(schema.workClient.id, contact.clientId), eq(schema.workClient.parentId, contact.clientId)));
+  const clientIds = clients.map((row) => row.id);
+
+  const leads = await tx
+    .update(schema.crmLead)
+    .set({ contactName: null, contactTitle: null, email: null, phone: null, updatedAt: new Date() })
+    .where(
+      or(
+        email ? sql`lower(btrim(${schema.crmLead.email})) = ${email}` : undefined,
+        // Digits only on both sides: "090 123 4567" on the lead is "0901234567" on the contact.
+        phoneDigits.length >= 6 ? sql`regexp_replace(coalesce(${schema.crmLead.phone}, ''), '\\D', '', 'g') = ${phoneDigits}` : undefined,
+        and(inArray(schema.crmLead.clientId, clientIds), sql`lower(btrim(${schema.crmLead.contactName})) = ${contact.fullName.trim().toLowerCase()}`),
+      ),
+    )
+    .returning({ id: schema.crmLead.id });
+
+  const details = [contact.email, contact.phone, contact.zalo].map((detail) => detail?.trim() ?? "").filter((detail) => detail.length >= 3);
+  if (details.length === 0) return { leads: leads.length, briefs: 0, handoffNotes: 0 };
+  const briefs = await eraseBriefContactDetailsIn(tx, clientIds, details);
+  // One " — "-separated part of a line, with the separator before it, when it holds a detail:
+  // "Lan — decides — lan@client.vn · 0901234567" becomes "Lan — decides".
+  const part = `( — )?[^—\\n]*(?:${details.map(escapeRegExp).join("|")})[^—\\n]*`;
+  const contactsText = sql`${schema.crmDealProject.handoffNote}->>'contacts'`;
+  const notes = await tx
+    .update(schema.crmDealProject)
+    .set({ handoffNote: sql`jsonb_set(${schema.crmDealProject.handoffNote}, '{contacts}', to_jsonb(regexp_replace(${contactsText}, ${part}, '', 'gi')))` })
+    .where(and(inArray(schema.crmDealProject.dealId, tx.select({ id: schema.crmDeal.id }).from(schema.crmDeal).where(eq(schema.crmDeal.clientId, contact.clientId))), sql`${contactsText} ~* ${part}`))
+    .returning({ projectId: schema.crmDealProject.projectId });
+  return { leads: leads.length, briefs, handoffNotes: notes.length };
+}
+
 /**
  * Erasure on the contact's request (PDPL): every detail blanked, the name kept for the signed
- * records that quote it, the contact marked left and taken off deals. Cannot be undone.
+ * records that quote it, the contact marked left and taken off deals — and every copy of the
+ * details blanked with it (`eraseCopiesIn`). Cannot be undone.
  */
-export async function eraseContact(contactId: string): Promise<{ before: ContactRow; after: ContactRow }> {
+export async function eraseContact(contactId: string): Promise<{ before: ContactRow; after: ContactRow; copies: ErasedCopies }> {
   return db().transaction(async (tx) => {
     const [before] = await tx.select().from(schema.crmContact).where(eq(schema.crmContact.id, contactId)).limit(1).for("update");
     if (!before) throw new ActionError("contact_not_found");
@@ -132,7 +189,8 @@ export async function eraseContact(contactId: string): Promise<{ before: Contact
     await tx.delete(schema.crmDealContact).where(eq(schema.crmDealContact.contactId, contactId));
     // Activities keep their subject (what was done) but lose the link to the person.
     await tx.update(schema.crmActivity).set({ contactId: null, updatedAt: new Date() }).where(eq(schema.crmActivity.contactId, contactId));
-    return { before, after };
+    const copies = await eraseCopiesIn(tx, before);
+    return { before, after, copies };
   });
 }
 

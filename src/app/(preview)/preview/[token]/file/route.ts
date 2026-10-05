@@ -13,11 +13,15 @@ import { openPreviewFile } from "@/modules/work/service";
  *   · nothing is decided here: the token and the visitor go to `openPreviewFile`, which asks
  *     everything the page asks — the token's shape, the rate limits, the hash compare, expiry,
  *     revocation, "already decided", a version the company has taken back — on **every** request;
- *   · a fetch is not a view: the page that shows a picture and the client who taps it are one
- *     visit, and the link's count is not touched;
- *   · the answer never has a body worth reading. A file that may be had is a redirect to storage;
- *     a link that is closed in any way is a redirect to the page, which says its one sentence and
- *     never why; the rest is a bare status;
+ *   · a fetch is not a view: the page that shows a picture or plays a video and the client who
+ *     taps the file are one visit, and the link's count is not touched;
+ *   · the answer never has a body worth reading. A file that may be had is a redirect to storage
+ *     — which is also what the page's `<video>` follows, asking storage itself for each stretch of
+ *     the film it plays; a link that is closed in any way is a redirect to the page, which says
+ *     its one sentence and never why; the rest is a bare status;
+ *   · a machine fetching on somebody's behalf — a chat app drawing the link's card, a crawler —
+ *     is never given the work: it gets an empty 204, the same for every token, and nothing is
+ *     counted. (A `HEAD` and a browser's fetch-ahead do not reach here at all: `src/proxy.ts`.)
  *   · never indexed, never stored, and the address is never passed on as a referrer: the URL *is*
  *     the credential (`next.config.ts` says the same for all of `/preview/*`).
  *
@@ -31,7 +35,7 @@ export const maxDuration = 15;
 const GUARDED = { "cache-control": "private, no-store, max-age=0", "x-robots-tag": "noindex, nofollow, noarchive, nosnippet", "referrer-policy": "no-referrer" };
 
 const redirect = (status: 302 | 303, location: string) => new Response(null, { status, headers: { ...GUARDED, location } });
-const refused = (status: 404 | 429 | 503) => new Response(null, { status, headers: GUARDED });
+const refused = (status: 204 | 404 | 429 | 503) => new Response(null, { status, headers: GUARDED });
 
 export async function GET(request: Request, context: RouteContext<"/preview/[token]/file">) {
   const { token } = await context.params;
@@ -45,6 +49,9 @@ export async function GET(request: Request, context: RouteContext<"/preview/[tok
       return redirect(303, `/preview/${encodeURIComponent(token)}`);
     case "rate_limited":
       return refused(429);
+    // Not a person: nothing to show, nothing to say about the link.
+    case "not_a_view":
+      return refused(204);
     // Storage could not sign: worth trying again in a moment.
     case "unavailable":
       return refused(503);

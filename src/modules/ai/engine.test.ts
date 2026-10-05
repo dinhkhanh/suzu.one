@@ -289,6 +289,59 @@ describe("routing a question to a personal tool (engine/routing.ts)", () => {
     expect(namedPersonIn("Tôi còn bao nhiêu ngày phép? Hỏi HR hay xem OT?")).toBeNull();
   });
 
+  it("does not take a capital letter for a colleague: a place, an entity, a month, a department", () => {
+    // Each of these was refused as "about somebody else", and the knowledge base never asked.
+    const own: [string, string][] = [
+      ["Tôi làm ở văn phòng Quận 1, tháng này tôi đi muộn mấy lần?", "attendance_summary"],
+      ["Tôi làm ở Media, tôi còn bao nhiêu ngày phép?", "leave_balance"],
+      ["Giải thích phiếu lương tháng 8 của tôi ở SuZu Media", "payslip_explain"],
+      ["Giải thích phiếu lương Tháng Tám của tôi", "payslip_explain"],
+      ["Explain my payslip for August", "payslip_explain"],
+      ["Giải thích Phiếu Lương của tôi", "payslip_explain"],
+      ["Tôi ở Hà Nội thì còn bao nhiêu ngày phép?", "leave_balance"],
+      ["Tôi thuộc Phòng Kế Toán, ai duyệt đơn nghỉ phép của tôi?", "approver_lookup"],
+    ];
+    for (const [question, tool] of own) expect(routeQuestion(question, today), question).toMatchObject({ tool, subject: "self", namedPerson: null });
+    // "of" something that is not a person is not a person either.
+    for (const question of ["Ngày phép của Quận 1 thế nào?", "Lịch nghỉ của Tháng Tám", "Nội quy của Phòng Nhân Sự", "Quy định của SuZu Media"]) expect(namedPersonIn(question), question).toBeNull();
+  });
+
+  it("leaves a question to the knowledge base when it is not sure anybody is named", () => {
+    // No "me", and one capitalised word that may be anything: not a tool question, so not a refusal.
+    for (const question of ["Nhân viên ở Quận 1 còn lại bao nhiêu ngày phép năm?", "Văn phòng Media đi muộn thì xử lý thế nào?", "Lương ở Creative trả ngày nào?"]) expect(routeQuestion(question, today), question).toBeNull();
+  });
+
+  it("still refuses a question that really is about somebody else", () => {
+    const others: [string, string][] = [
+      // A full name, with nothing introducing it.
+      ["Tháng 8/2026 Ho Gia Huy đi muộn mấy lần?", "Ho Gia Huy"],
+      ["Tôi muốn xem Trần Thị Lan còn bao nhiêu ngày phép", "Trần Thị Lan"],
+      // A possessive.
+      ["Còn bao nhiêu ngày phép của Lan?", "Lan"],
+      ["Giải thích phiếu lương của Hồ Gia Huy ở Quận 1", "Hồ Gia Huy"],
+      ["What is the net salary of Ho Gia Huy?", "Ho Gia Huy"],
+      // The way a colleague is spoken of.
+      ["Tháng này anh Huy đi muộn mấy lần?", "Huy"],
+      ["Tôi hỏi giúp chị Lan còn bao nhiêu ngày phép", "Lan"],
+      ["Is Mr Long late this month?", "Long"],
+    ];
+    for (const [question, namedPerson] of others) expect(routeQuestion(question, today), question).toMatchObject({ subject: "other", namedPerson });
+  });
+
+  it("tells còn (left) from con (a child), and dư from du lịch", () => {
+    // The sentence from the inspection: a parent asking for leave, not for a balance.
+    expect(routeQuestion("Tôi nghỉ phép chăm con ốm được không?", today)).toBeNull();
+    expect(routeQuestion("Vợ tôi sinh con thì tôi được nghỉ phép mấy ngày?", today)).toBeNull();
+    expect(routeQuestion("Tôi xin nghỉ phép đi du lịch thì báo trước mấy ngày?", today)).toBeNull();
+    expect(routeQuestion("Tôi nghỉ phép đủ 12 ngày thì có được nghỉ thêm không?", today)).toBeNull();
+    // Typed without accents, the words around it decide.
+    expect(routeQuestion("Toi nghi phep cham con om duoc khong?", today)).toBeNull();
+    // And what is left is still what is left, with accents or without.
+    for (const question of ["Tôi còn bao nhiêu ngày phép?", "Phép năm của tôi còn không?", "Ngày phép của tôi còn dư mấy ngày?", "Toi con bao nhieu ngay phep?", "ngay phep cua toi con khong"]) {
+      expect(routeQuestion(question, today), question).toMatchObject({ tool: "leave_balance", subject: "self" });
+    }
+  });
+
   it("reads the month a question names", () => {
     expect(monthIn("bảng công tháng 7 của tôi", today)).toBe("2026-07");
     expect(monthIn("my timesheet for tháng 12/2025", today)).toBe("2025-12");

@@ -20,7 +20,7 @@ vi.mock("@/lib/action", () => ({
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { embedPendingChunks } from "../kb/chunks";
@@ -179,6 +179,18 @@ describe("conversations", () => {
     expect(conversation!.turns.map((turn) => turn.role)).toEqual(["user", "assistant"]);
     expect(conversation!.turns[1].citations[0].pageTitle).toBe("Quy định nghỉ phép");
     expect(await listConversations(ids.huy)).toHaveLength(1);
+  });
+
+  it("keeps what the answer cost beside the driver and the model — nothing, on the local driver", async () => {
+    const result = await ask(users.huy, { question: "Một năm được bao nhiêu ngày phép năm?", locale: "vi" });
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+    const [stored] = await db().select().from(schema.aiMessage).where(eq(schema.aiMessage.id, result.messageId));
+    // Zero, not null: this answer was counted and cost nothing. Null is "from before usage was kept".
+    expect(stored).toMatchObject({ driver: "local-extractive", model: "local-extractive", inputTokens: 0, outputTokens: 0 });
+    // The asker's own turn has no cost to record.
+    const [question] = await db().select().from(schema.aiMessage).where(and(eq(schema.aiMessage.conversationId, result.conversationId), eq(schema.aiMessage.role, "user")));
+    expect(question).toMatchObject({ inputTokens: null, outputTokens: null });
+    await deleteConversation(ids.huy, result.conversationId);
   });
 
   it("belongs to one person: nobody else can open it, continue it or delete it", async () => {

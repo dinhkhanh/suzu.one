@@ -1,11 +1,12 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
-import { BUDGET_THRESHOLDS, listStructure, loadBurns, openProject, PROJECT_KINDS } from "@/modules/projects/service";
+import { BUDGET_THRESHOLDS, listStructure, loadBurns, openProject, PROJECT_KINDS, scopeLocked } from "@/modules/projects/service";
 import { FeeForm, PlanSettingsForm } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
@@ -15,7 +16,8 @@ export const generateMetadata = pageTitle("projectBudget");
 /**
  * The hours budget and its burn (FR-PJM-09): logged hours plus the estimates still open, against
  * the budget, with the 80% / 100% marks. Hours are for whoever may read the plan; the fee in VND is
- * on this page only for a reader with `pjm:commercial` over the project's entity.
+ * on this page only for a reader with `pjm:commercial` over the project's entity. After the kick-off
+ * both are shown, not typed: the page points to a change request (FR-PJM-11).
  */
 export default async function ProjectBudgetPage({ params }: PageProps<"/projects/[projectId]/budget">) {
   const user = await requireUser();
@@ -23,6 +25,8 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, plan, can } = context;
+  // After the kick-off the hours budget and the fee are the agreed baseline: they move through change requests.
+  const locked = scopeLocked(plan);
   const [t, format, burns, structure] = await Promise.all([getTranslations("projects"), getFormatter(), loadBurns([project.id], new Map([[project.id, plan.budgetMinutes]])), listStructure(project.id)]);
   const burn = burns.get(project.id)!;
   const hours = (minutes: number | null) => (minutes === null ? "—" : format.number(minutes / 60, { maximumFractionDigits: 1 }));
@@ -112,7 +116,15 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
             <CardContent className="flex flex-col gap-2">
               <p className="font-mono text-2xl font-medium tracking-[-0.02em] tabular-nums">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : format.number(plan.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</p>
               <p className="text-xs text-muted-foreground">{t("budget.feeNote")}</p>
-              {can.editFees ? <FeeForm projectId={project.id} feeVnd={plan.feeVnd ?? null} /> : null}
+              {can.editFees && !locked ? <FeeForm projectId={project.id} feeVnd={plan.feeVnd ?? null} /> : null}
+              {can.editFees && locked ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("scope.feeLocked")}{" "}
+                  <Link href={`/projects/${project.id}/changes`} className="text-link hover:underline">
+                    {t("scope.raiseChange")}
+                  </Link>
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </Section>
@@ -122,7 +134,14 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
         <Section title={t("budget.edit")}>
           <Card>
             <CardContent>
-              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} />
+              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} scopeLocked={locked} />
+              {locked ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  <Link href={`/projects/${project.id}/changes`} className="text-link hover:underline">
+                    {t("scope.raiseChange")}
+                  </Link>
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </Section>

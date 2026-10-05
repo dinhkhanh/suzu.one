@@ -110,6 +110,14 @@ export type ReviewCycleKind = (typeof REVIEW_CYCLE_KINDS)[number];
 export const REVIEW_CYCLE_STATUSES = ["draft", "active", "calibration", "released", "closed"] as const;
 export type ReviewCycleStatus = (typeof REVIEW_CYCLE_STATUSES)[number];
 
+/**
+ * Has the cycle reached its calibration stage? Only from there on is a review calibrated or
+ * released (owner's decision, 2026-10-05): while the cycle is still collecting, the manager
+ * reviews are not all in, and a rating levelled or handed over early is levelled against nothing.
+ * A closed cycle still takes a late release — the person whose manager wrote last.
+ */
+export const reviewsAreIn = (status: ReviewCycleStatus): boolean => status === "calibration" || status === "released" || status === "closed";
+
 export const REVIEW_FORM_KINDS = ["self", "manager", "peer"] as const;
 export type ReviewFormKind = (typeof REVIEW_FORM_KINDS)[number];
 

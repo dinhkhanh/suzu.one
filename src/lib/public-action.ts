@@ -12,7 +12,11 @@ import { type AuditEntry, recordAudit } from "@/modules/platform/audit/service";
  * `getCurrentUser()`, and there is nobody there — so this is its sibling, and it is deliberately
  * *stricter* rather than looser:
  *
- *   parse → rate limit → spam check → run → audit
+ *   rate limit → parse → spam check → run → audit
+ *
+ * The limit comes **first**, before the body is looked at: the limiter is keyed on the hashed
+ * visitor and needs nothing from the input, and a malformed post that is never counted is a free
+ * way to append to the audit log for ever.
  *
  * Every step is a **required** field of the definition, exactly as in `createAction`: a public
  * mutation cannot be written that forgets its rate limit, because it would not compile. The
@@ -33,7 +37,12 @@ export type PublicActionResult<T> =
 /** Everything known about the caller. Never their address: see `visitorOf`. */
 export type Visitor = { ipHash: string; userAgent: string | null };
 
-export type RateLimitOutcome = { ok: true } | { ok: false; retryAfterSeconds: number };
+/**
+ * `repeat` is set by the limiter when this visitor **was already refused in this window**. The
+ * first refusal is worth an audit row; the thousand after it are the flood the limit exists to
+ * stop, and the append-only audit log must not be where that flood lands instead.
+ */
+export type RateLimitOutcome = { ok: true } | { ok: false; retryAfterSeconds: number; repeat?: boolean };
 
 /**
  * What the spam checks decided. `"drop"` is the interesting one: the submission is **answered as
@@ -66,7 +75,7 @@ export function createPublicAction<Schema extends z.ZodType, Output>(definition:
   /** Audit action name, e.g. "careers.apply". Refusals are recorded under `<name>.<why>`. */
   name: string;
   input: Schema;
-  /** Counted per visitor by the owning module. Called once, before anything is read or written. */
+  /** Counted per visitor by the owning module. Called once, before anything is parsed, read or written. */
   rateLimit: (context: { visitor: Visitor }) => Promise<RateLimitOutcome>;
   /** Honeypot, form token, anything cheap that does not touch the database. */
   spamCheck: (input: z.output<Schema>, context: { visitor: Visitor }) => SpamVerdict;
@@ -79,6 +88,15 @@ export function createPublicAction<Schema extends z.ZodType, Output>(definition:
     const request = { ipAddress: visitor.ipHash, userAgent: visitor.userAgent };
     const anonymous = { userId: null, personId: null, email: null };
 
+    // Counted before anything else, valid or not: every attempt spends the visitor's allowance, so
+    // whatever follows — the `.invalid` rows included — is bounded by the limit.
+    const limit = await definition.rateLimit({ visitor });
+    if (!limit.ok) {
+      // One row per visitor per window: a caller who keeps knocking is answered, not written down again.
+      if (!limit.repeat) await recordAudit({ action: `${definition.name}.rate_limited`, actor: anonymous, request, after: { retryAfterSeconds: limit.retryAfterSeconds } });
+      return { ok: false, error: "rate_limited", message: "rate_limited" };
+    }
+
     const parsed = definition.input.safeParse(rawInput);
     if (!parsed.success) {
       // Field-level codes stay on the server: a public form is told *that* it was wrong, and its
@@ -86,12 +104,6 @@ export function createPublicAction<Schema extends z.ZodType, Output>(definition:
       // tripped is a map of the schema.
       await recordAudit({ action: `${definition.name}.invalid`, actor: anonymous, request, summary: parsed.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).slice(0, 10).join(" ") });
       return { ok: false, error: "invalid" };
-    }
-
-    const limit = await definition.rateLimit({ visitor });
-    if (!limit.ok) {
-      await recordAudit({ action: `${definition.name}.rate_limited`, actor: anonymous, request, after: { retryAfterSeconds: limit.retryAfterSeconds } });
-      return { ok: false, error: "rate_limited", message: "rate_limited" };
     }
 
     const spam = definition.spamCheck(parsed.data, { visitor });

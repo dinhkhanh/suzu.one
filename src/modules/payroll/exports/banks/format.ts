@@ -60,6 +60,18 @@ export type BankFormat = {
   name: string;
   /** Bumped whenever the columns change, so an old file can be told from a new one. */
   version: string;
+  /**
+   * How this bank is recognised in the bank name typed on a person's pay account: lower-case
+   * fragments, matched as substrings ("vietcombank", "vcb"). A person whose account matches is
+   * paid through this bank's own file, as an in-house transfer.
+   */
+  aliases: readonly string[];
+  /**
+   * May a batch pay accounts held at **other** banks? True only where the layout carries the
+   * beneficiary's bank on every row. Like the columns themselves this is an assumption about the
+   * bank's template, to be confirmed with it — see the format's own file.
+   */
+  interbank: boolean;
   build(input: TransferInput): TransferFile;
 };
 
@@ -81,7 +93,13 @@ export function toAsciiUpper(text: string): string {
     .trim();
 }
 
-/** A bank account number: digits only here — every Vietnamese bank in scope numbers accounts so. */
+/**
+ * A bank account number: digits only here — every Vietnamese bank in scope numbers accounts so.
+ *
+ * The two amount reasons are a format's own last line of defence. Paying a run never hands a
+ * format somebody who is owed nothing (`payments.ts` keeps a zero or negative net out of every
+ * batch — that person is not a payment problem), so in practice only the account reasons are seen.
+ */
 export function checkAccount(row: TransferRow): SkippedRow["reason"] | null {
   if (row.amount === 0) return "zero_amount";
   if (row.amount < 0) return "negative_amount";

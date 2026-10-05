@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS } from "../enums";
-import { cancelLifecycleEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
+import { cancelLifecycleEventAction, liftSuspensionAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, suspendPersonAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
 import { TableAddRow } from "@/components/ui/table";
 import { PlacementFields, type PlacementOptions } from "./fields";
 
@@ -96,6 +96,33 @@ export function TerminateForm({ personId, today, resignation }: { personId: stri
         <div>
           <Button type="submit" variant="destructive" disabled={pending}>
             {t("terminate.submit")}
+          </Button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * Suspend the account, or lift the suspension (FR-PLT-05). No confirm box: suspending asks for the
+ * reason, and typing it is the second thought.
+ */
+export function SuspensionForm({ personId, suspended }: { personId: string; suspended: boolean }) {
+  const t = useTranslations("lifecycle");
+  const router = useRouter();
+  const { onSubmit, pending, errorKey } = useActionForm<{ id: string }>(suspended ? liftSuspensionAction : suspendPersonAction, { extra: { personId }, onSuccess: () => router.refresh() });
+  return (
+    <details className="rounded-xl border p-4" open={suspended}>
+      <summary className="cursor-pointer text-sm font-medium">{suspended ? t("suspend.liftTitle") : t("suspend.title")}</summary>
+      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">{suspended ? t("suspend.liftHint") : t("suspend.hint")}</p>
+        <Field name="reason" label={suspended ? t("suspend.liftReason") : t("suspend.reason")}>
+          <Input id="suspend-reason" name="reason" maxLength={1000} required={!suspended} />
+        </Field>
+        <FormError namespace="lifecycle.errors" errorKey={errorKey} />
+        <div>
+          <Button type="submit" variant={suspended ? "default" : "destructive"} disabled={pending}>
+            {suspended ? t("suspend.liftSubmit") : t("suspend.submit")}
           </Button>
         </div>
       </form>
