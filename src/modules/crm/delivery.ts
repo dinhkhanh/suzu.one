@@ -4,7 +4,7 @@
 //
 // The CRM decides what was sold (engine/delivery.ts); it never writes a project table itself.
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -93,8 +93,10 @@ async function soldContacts(executor: Tx, dealId: string): Promise<SaleContact[]
 
 /**
  * Makes one delivery project of a won deal, prefilled from what was sold, and hands it to its lead.
- * A deal may become several projects (a campaign and its retainer); running the set-up again for
- * the same project name after a failure makes nothing twice, because everything is one transaction.
+ * A deal may become several projects (a campaign and its retainer) — but not the same one twice
+ * (CRM-04): a set-up naming a project the deal already has, archived ones aside, is refused, under
+ * the deal's lock, so a double submit or two people at once make one project. A set-up that failed
+ * made nothing, because everything is one transaction, and can simply be run again.
  */
 export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorPersonId: string): Promise<{ project: ProjectRow; link: DealProjectRow }> {
   const deal = await findDeal(dealId);
@@ -111,6 +113,14 @@ export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorP
 
   const fill = async (tx: Tx, project: ProjectRow) => {
     await lockDeal(tx, dealId);
+    // Read after the lock: a set-up that held it first has committed its project by now.
+    const [twin] = await tx
+      .select({ projectId: schema.crmDealProject.projectId })
+      .from(schema.crmDealProject)
+      .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
+      .where(and(eq(schema.crmDealProject.dealId, dealId), ne(schema.workProject.id, project.id), ne(schema.workProject.status, "archived"), sql`lower(btrim(${schema.workProject.name})) = lower(btrim(${setup.name}))`))
+      .limit(1);
+    if (twin) throw new ActionError("delivery_exists", { projectId: twin.projectId });
     const plan = salePlanFrom(deal, await soldLines(tx, dealId), await soldContacts(tx, dealId), setup.startDate.slice(0, 7));
     await applySalePlanIn(tx, project.id, {
       ...plan,

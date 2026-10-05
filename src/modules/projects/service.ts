@@ -42,7 +42,7 @@ export { changeRequestType, type ChangeView, getChangeLedger, getChangeRequest, 
 export { CHANGE_REQUESTERS, CHANGE_STATUSES, type ChangeLedger, type ChangeStatus, changeEditable, type LedgerStep } from "./engine/change-request";
 export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, issuedPaper, listAcceptances, signedTargets } from "./acceptance";
 export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, acceptanceRefreshable, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus, type MilestoneBillingState, signedCorrectable } from "./engine/acceptance";
-export { billingCorrectors, billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling, type MilestoneBilling, milestoneBilling, readyBillingTotal } from "./billing";
+export { billingCorrectors, billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling, type MilestoneBilling, milestoneBilling, readyBillingTotal, releaseInvoicedItemsIn } from "./billing";
 export { clientReportFigures, defaultReportPeriod, entityLetterhead, findClientReport, listClientReports } from "./client-reports";
 export { type ReportFigures, reportText, type ReportWords } from "./engine/client-report";
 export { getCloseChecklist, getRetro, listCloseHistory, previewCloseReport, type StoredCloseReport } from "./close";

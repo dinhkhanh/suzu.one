@@ -231,6 +231,10 @@ export const KINDS = {
   "crm.invoice_overdue": "crm",
   // A commission statement to read: generic wording, like every notification about pay.
   "crm.commission_ready": "payroll",
+  // To the C&B who confirmed a month's statements, when a payment of the month changed after it:
+  // back to draft to confirm again, or — paid in a closed run — to adjust in payroll by hand.
+  "crm.commission_reopened": "payroll",
+  "crm.commission_after_payroll": "payroll",
   // Feedback about SuZu One: a new item to triage (the category and the area, never the text),
   // and the answer to the person who sent it.
   "feedback.received": "feedback",

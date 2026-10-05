@@ -9,7 +9,7 @@ export { contactChoicesFor, type ContactName, type ContactView, findContact, lis
 export { contractChoices, contractNumbersOfProjects, type ContractView, expiringContracts, findContract, listContracts } from "./contracts";
 export { type DealFilters, type DealView, dealContext, gateFacts, getDeal, listDealContacts, listDeals, listStageChanges, openDealsOf, ownsAnyDeal, pipelineTotals } from "./deals";
 export { dealOfProject, type DealProjectView, listDealProjects, listSalesHandoffsFor, type SalesHandoffWaiting } from "./delivery";
-export { agingSummary, collectedByAccount, getInvoice, type InvoiceDetail, type InvoiceView, listInvoices } from "./invoices";
+export { agingSummary, collectedByAccount, getInvoice, heldBillingItemIds, type InvoiceDetail, type InvoiceView, listInvoices } from "./invoices";
 export { crmMorningJob, crmNightlyJob } from "./jobs";
 export { getLead, leadFacts, type LeadView, listLeads, listOpenLeadsOf } from "./leads";
 export * from "./policy";

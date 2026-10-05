@@ -236,5 +236,8 @@ describe("contracts and receivables", () => {
     expect(invoiceStanding(100, 40, "open")).toBe("part_paid");
     expect(invoiceStanding(100, 100, "open")).toBe("paid");
     expect(invoiceStanding(100, 0, "written_off")).toBe("written_off");
+    // A draft is not owed yet and a voided invoice is not owed at all, whatever their figures say.
+    expect(invoiceStanding(100, 0, "draft")).toBe("draft");
+    expect(invoiceStanding(100, 0, "void")).toBe("void");
   });
 });

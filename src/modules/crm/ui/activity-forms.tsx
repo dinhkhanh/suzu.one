@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { cancelFollowUpAction, completeFollowUpAction, recordActivityAction, rescheduleFollowUpAction } from "../account-actions";
@@ -21,23 +22,20 @@ export function LogActivityForm({ target, contacts, people, meId, today }: { tar
   const [plan, setPlan] = useState(false);
   return (
     <CrmForm action={recordActivityAction} extra={{ clientId: target.clientId ?? "", dealId: target.dealId ?? "", leadId: target.leadId ?? "", logged: logged ? "on" : "" }} submit={t("save")}>
-      <div className="flex flex-wrap gap-3 text-sm">
-        <label className="flex items-center gap-1.5">
-          <input type="radio" name="mode" checked={logged} onChange={() => setLogged(true)} /> {t("happened")}
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            type="radio"
-            name="mode"
-            checked={!logged}
-            onChange={() => {
-              setLogged(false);
-              setPlan(true);
-            }}
-          />{" "}
-          {t("planOnly")}
-        </label>
-      </div>
+      <Segmented
+        size="sm"
+        className="self-start"
+        aria-label={t("mode")}
+        value={logged ? "happened" : "plan"}
+        options={[
+          { value: "happened", label: t("happened") },
+          { value: "plan", label: t("planOnly") },
+        ]}
+        onChange={(value) => {
+          setLogged(value === "happened");
+          if (value === "plan") setPlan(true);
+        }}
+      />
       <div className="grid gap-3 sm:grid-cols-3">
         <Field name="kind" label={t("kind")}>
           <Select id="activity-kind" name="kind" defaultValue="call">
