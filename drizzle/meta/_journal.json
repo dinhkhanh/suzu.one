@@ -876,6 +876,13 @@
       "when": 1791159415823,
       "tag": "0124_r2_daily_readers_work_paths",
       "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1791160990300,
+      "tag": "0125_statutory_holiday_pay_and_leave_payout",
+      "breakpoints": true
     }
   ]
 }

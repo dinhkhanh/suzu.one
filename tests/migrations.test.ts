@@ -6,7 +6,9 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import * as schema from "@/lib/db/schema";
+import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 
 const client = new PGlite({ extensions: { btree_gist, vector } });
 const db = drizzle(client, { schema });
@@ -170,5 +172,22 @@ describe("migrations", () => {
     await expect(client.query("DELETE FROM audit_log")).rejects.toThrow(/append-only/);
     await expect(client.query("TRUNCATE audit_log")).rejects.toThrow(/append-only/);
     expect(await db.select().from(schema.auditLog)).toHaveLength(1);
+  });
+
+  it("brings the two statutory keys of R3 to a database that already has parameters, as the seed has them, once", async () => {
+    const sql = readFileSync("./drizzle/0125_statutory_holiday_pay_and_leave_payout.sql", "utf8");
+    const keys = ["overtime.holiday_pay", "leave.payout_basis"];
+    const rowsOf = () => db.select().from(schema.statutoryParameter);
+    // A fresh database got nothing from it: the seed brings the whole catalogue there.
+    expect((await rowsOf()).filter((row) => keys.includes(row.key))).toEqual([]);
+    await db.insert(schema.statutoryParameter).values({ key: "work.night_window", value: { start: "22:00", end: "06:00" }, validFrom: "2021-01-01", status: "approved" });
+    await client.exec(sql);
+    await client.exec(sql);
+    const added = (await rowsOf()).filter((row) => keys.includes(row.key));
+    expect(added).toHaveLength(2);
+    for (const row of added) {
+      const seed = STATUTORY_SEED.find((entry) => entry.key === row.key)!;
+      expect({ value: row.value, validFrom: row.validFrom, legalReference: row.legalReference, note: row.note, status: row.status, isVerified: row.isVerified }).toEqual({ value: seed.value, validFrom: seed.validFrom, legalReference: seed.legalReference, note: seed.note, status: "approved", isVerified: false });
+    }
   });
 });
