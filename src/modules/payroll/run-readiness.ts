@@ -5,7 +5,7 @@
 //
 //   * **Is it stale?** Something the figures were worked out from has changed since the last
 //     calculation: a typed-in figure, a retro item waiting for the people in it, the locked
-//     timesheet, a salary decision. A stale run is calculated again before anything else.
+//     timesheet, a salary decision, a leaver's unused leave paid out. A stale run is calculated again before anything else.
 //   * **Is something in the way?** (`blockers`) The figures themselves are wrong or incomplete,
 //     and only a change to the run puts that right: a person the month owes pay to who is not in
 //     it, a figure somebody typed that the calculation did not pay, a net below zero.
@@ -24,6 +24,7 @@ import "server-only";
 import { and, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { getLockedTimesheets } from "@/modules/attendance/service";
+import { listPayoutTotals } from "@/modules/leave/service";
 import { type CalculationContext, listPeopleWithoutProfile } from "./calculation";
 import { payPeriodOf } from "./engine/period";
 import { UNPAID_FIGURE_WARNINGS } from "./engine/types";
@@ -33,7 +34,7 @@ import { type RunVariance, runBlockers } from "./variance";
 type Executor = Tx | ReturnType<typeof db>;
 
 /** Why a calculated run no longer says what it would pay. */
-export type StaleReason = "inputs_changed" | "retro_waiting" | "timesheet_changed" | "salary_changed";
+export type StaleReason = "inputs_changed" | "retro_waiting" | "timesheet_changed" | "salary_changed" | "leave_payout_posted";
 
 export type IssueKind =
   // On the locked timesheet without a pay profile: the calculation refuses the whole month.
@@ -45,6 +46,8 @@ export type IssueKind =
   // The engine left a typed-in figure or a retro item out of the result (`UNPAID_FIGURE_WARNINGS`).
   | "figure_not_paid"
   | "no_salary_structure"
+  // Leaves this month: the rest of the final settlement is typed in (FR-PAY-18).
+  | "final_settlement"
   // What the variance check already knows (FR-PAY-31).
   | "negative_net"
   | "missing_bank_account"
@@ -74,7 +77,7 @@ export async function getRunReadiness(run: PayrollRunRow, options: { executor?: 
   const calculated = !!run.calculatedAt;
   const period = payPeriodOf(run.month, 0);
 
-  const [inputs, people, locked, waiting, salaries, flagged] = await Promise.all([
+  const [inputs, people, locked, waiting, salaries, payouts, flagged] = await Promise.all([
     // Codes and times only: the amounts stay sealed.
     executor.select({ personId: schema.payrollRunInput.personId, code: schema.payrollRunInput.code, touchedAt: sql<Date>`greatest(${schema.payrollRunInput.createdAt}, ${schema.payrollRunInput.updatedAt})`.mapWith(schema.payrollRunInput.updatedAt) }).from(schema.payrollRunInput).where(eq(schema.payrollRunInput.runId, run.id)),
     executor.select({ personId: schema.payrollRunPerson.personId, warnings: schema.payrollRunPerson.warnings }).from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, run.id)),
@@ -90,6 +93,8 @@ export async function getRunReadiness(run: PayrollRunRow, options: { executor?: 
           .from(schema.salaryStructure)
           .where(and(eq(schema.salaryStructure.entityId, run.entityId), gt(schema.salaryStructure.createdAt, run.calculatedAt), lte(schema.salaryStructure.validFrom, period.end), or(isNull(schema.salaryStructure.validTo), gte(schema.salaryStructure.validTo, period.start))))
       : Promise.resolve([]),
+    // Unused leave the ledger paid out to a leaver after the calculation (the daily leave job posts it the day after the last day).
+    regular && run.calculatedAt ? listPayoutTotals(run.entityId, period.start, period.end, executor, { postedAfter: run.calculatedAt }) : Promise.resolve([]),
     calculated ? runBlockers(run, options.executor, options.variance) : Promise.resolve([]),
   ]);
 
@@ -107,6 +112,7 @@ export async function getRunReadiness(run: PayrollRunRow, options: { executor?: 
     if (waiting.some((row) => inRun.has(row.personId))) stale.push("retro_waiting");
     if (regular && lockOf(run) !== (locked?.lockedAt.getTime() ?? null)) stale.push("timesheet_changed");
     if (salaries.some((row) => inRun.has(row.personId))) stale.push("salary_changed");
+    if (payouts.some((row) => inRun.has(row.personId))) stale.push("leave_payout_posted");
   }
 
   const issues: RunIssue[] = [];
@@ -124,6 +130,7 @@ export async function getRunReadiness(run: PayrollRunRow, options: { executor?: 
   for (const person of people) {
     if (person.warnings.some((warning) => (UNPAID_FIGURE_WARNINGS as readonly string[]).includes(warning))) issues.push({ kind: "figure_not_paid", personId: person.personId });
     if (person.warnings.includes("no_salary_structure")) issues.push({ kind: "no_salary_structure", personId: person.personId });
+    if (person.warnings.includes("leaves_in_period")) issues.push({ kind: "final_settlement", personId: person.personId });
   }
   for (const person of flagged) for (const flag of person.flags) issues.push({ kind: flag, personId: person.personId });
 

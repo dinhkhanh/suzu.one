@@ -140,6 +140,25 @@ export async function listPayouts(entityId: string, from: IsoDate, to: IsoDate, 
   return rows.map(({ entry, typeCode }) => ({ personId: entry.personId, leaveTypeId: entry.leaveTypeId, typeCode, daysCenti: -entry.amountCenti, effectiveDate: entry.effectiveDate }));
 }
 
+export type PayoutTotal = { personId: string; daysCenti: number; /** When the last of the person's payout rows was posted. */ postedAt: Date };
+
+/**
+ * Unused days paid out on termination in a period, one total per person across leave types —
+ * what the run of the month pays (FR-LVE-03, FR-PAY-18). With `postedAfter`, only people with a
+ * payout posted after that moment: how a run calculated before the daily job posted knows it is stale.
+ */
+export async function listPayoutTotals(entityId: string, from: IsoDate, to: IsoDate, executor: Executor = db(), options: { postedAfter?: Date } = {}): Promise<PayoutTotal[]> {
+  const table = schema.leaveLedgerEntry;
+  const rows = await executor
+    .select({ personId: table.personId, daysCenti: sql<number>`(-sum(${table.amountCenti}))::int`, postedAt: sql<Date>`max(${table.createdAt})`.mapWith(table.createdAt) })
+    .from(table)
+    .where(and(eq(table.entityId, entityId), eq(table.kind, "payout"), gte(table.effectiveDate, from), lte(table.effectiveDate, to)))
+    .groupBy(table.personId)
+    .having(options.postedAfter ? sql`max(${table.createdAt}) > ${options.postedAfter.toISOString()}::timestamptz` : undefined)
+    .orderBy(table.personId);
+  return rows;
+}
+
 // ── HR's postings ───────────────────────────────────────────────────────────────────────────
 
 /** A manual correction with a reason (FR-LVE-07). Positive adds days, negative takes them. */

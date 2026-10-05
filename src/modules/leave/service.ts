@@ -2,15 +2,15 @@
 // so that the leave ↔ attendance import cycle never runs anything at load time.
 //
 // For attendance (timesheet): `getLeaveOnDays`, `postCompensatoryLeave`.
-// For payroll (Phase 5): `getLeaveUsage` (days by payroll treatment), `listPayouts` (unused days
-// paid on termination), `getBalances`, `getLedger`.
+// For payroll (Phase 5): `getLeaveUsage` (days by payroll treatment), `listPayouts` and
+// `listPayoutTotals` (unused days paid on termination), `getBalances`, `getLedger`.
 // For work management (Phase 10, leave cover): `listLeaveForCover`, the one read defined here — it
 // imports nothing of leave's own, so the cycle above stays inert.
 import { and, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 export type { Portion } from "./engine/request";
-export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, type PayoutLine, postCompensatoryLeave } from "./ledger";
+export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, listPayoutTotals, type PayoutLine, type PayoutTotal, postCompensatoryLeave } from "./ledger";
 export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage, whoApprovesLeave } from "./requests";
 /** Who is away on a range of days, as the viewer may see them (FR-LVE-09) — the dashboard's leave tile. */
 export { type CalendarCell, type CalendarPerson, getTeamCalendar, type TeamCalendar } from "./calendar";

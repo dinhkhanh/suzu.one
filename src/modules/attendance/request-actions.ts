@@ -11,6 +11,7 @@ import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/mod
 import { notify } from "@/modules/platform/notifications/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { ANOMALY_KINDS, listAnomalies } from "./anomalies";
+import { buildLockedMonthExport } from "./exports";
 import { ADJUSTMENT_FIELDS, approveMonth, confirmMonth, createAdjustment, findAdjustment, isMonth, lockPeriod, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
 import { canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
 import { ATTENDANCE_REQUEST_TYPES, type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, findAttendanceRequest, findByApproval, getAttendanceRequestView, isPendingEvidence, resubmitAttendanceRequest, submitAttendanceRequest } from "./requests";
@@ -376,4 +377,18 @@ const exportPipeline = createAction({
 });
 export async function exportAnomaliesAction(input: unknown) {
   return exportPipeline(input);
+}
+
+// A locked month's timesheet for an entity (FR-ATT-14): for whoever may lock it.
+const exportMonthPipeline = createAction({
+  name: "attendance.timesheet.export",
+  input: z.object({ entityId: z.uuid(), month, locale: z.enum(["vi", "en"]).default("vi") }),
+  authorize: (user, input) => canLockPeriod(user.principal, input.entityId),
+  run: async ({ input }) => {
+    const file = await buildLockedMonthExport(input.entityId, input.month, input.locale);
+    return { data: file, audit: { resource: { type: "export:timesheet_month", id: input.month, entityId: input.entityId }, summary: `${file.rowCount} rows`, after: { month: input.month, rowCount: file.rowCount } } };
+  },
+});
+export async function exportLockedMonthAction(input: unknown) {
+  return exportMonthPipeline(input);
 }

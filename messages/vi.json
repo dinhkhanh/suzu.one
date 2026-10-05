@@ -1569,8 +1569,10 @@
       "pit_brackets": "Biểu thuế TNCN lũy tiến",
       "pit_flat_rates": "Thuế TNCN khấu trừ theo tỷ lệ cố định",
       "overtime_multipliers": "Hệ số lương tăng ca, làm đêm",
+      "overtime_holiday_pay": "Làm việc ngày lễ – hệ số 300% đã gồm hay chưa gồm lương ngày lễ",
       "overtime_caps": "Giới hạn giờ tăng ca",
       "leave_annual": "Phép năm",
+      "leave_payout_basis": "Tiền lương làm căn cứ thanh toán phép năm chưa nghỉ khi nghỉ việc",
       "probation_limits": "Thử việc",
       "contract_fixed_term": "Hợp đồng xác định thời hạn",
       "union_dues_cap": "Công đoàn – mức trần đoàn phí",
@@ -3704,6 +3706,35 @@
       "columns": {
         "status": "Trạng thái",
         "summary": "Tóm tắt"
+      },
+      "export": {
+        "button": "Tải bảng công tháng (CSV)",
+        "failed": "Không tải được bảng công.",
+        "truncated": "Tệp chỉ có 5.000 dòng đầu.",
+        "columns": {
+          "employeeCode": "Mã nhân viên",
+          "fullName": "Họ tên",
+          "standardDays": "Ngày công chuẩn",
+          "paidDays": "Ngày công hưởng lương",
+          "unpaidDays": "Ngày không lương",
+          "workedHours": "Giờ làm việc",
+          "creditedHours": "Giờ ghi nhận không chấm công",
+          "leavePaidHours": "Giờ nghỉ phép có lương",
+          "leaveUnpaidHours": "Giờ nghỉ không lương",
+          "holidayHours": "Giờ nghỉ lễ, nghỉ bù",
+          "absenceHours": "Giờ vắng mặt",
+          "lateMinutes": "Phút đi muộn",
+          "earlyMinutes": "Phút về sớm",
+          "nightHours": "Giờ làm đêm",
+          "otWeekday": "Tăng ca ngày thường (giờ)",
+          "otWeekdayNight": "Tăng ca đêm ngày thường (giờ)",
+          "otRestDay": "Tăng ca ngày nghỉ (giờ)",
+          "otRestDayNight": "Tăng ca đêm ngày nghỉ (giờ)",
+          "otHoliday": "Tăng ca ngày lễ (giờ)",
+          "otHolidayNight": "Tăng ca đêm ngày lễ (giờ)",
+          "otTimeOff": "Tăng ca chuyển nghỉ bù (giờ)",
+          "otPayable": "Tăng ca được trả lương (giờ)"
+        }
       }
     },
     "console": {
@@ -8330,7 +8361,8 @@
           "inputs_changed": "Các khoản nhập tay hoặc truy lĩnh, truy thu đã thay đổi sau lần tính gần nhất.",
           "retro_waiting": "Có khoản truy lĩnh, truy thu chưa được tính vào.",
           "timesheet_changed": "Bảng công của tháng đã thay đổi sau lần tính gần nhất.",
-          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này."
+          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này.",
+          "leave_payout_posted": "Sổ phép vừa ghi khoản thanh toán phép chưa nghỉ cho người nghỉ việc sau lần tính gần nhất."
         }
       },
       "readiness": {
@@ -8345,6 +8377,7 @@
           "input_outside_run": "Có khoản nhập tay nhưng người này không có trong kỳ lương",
           "figure_not_paid": "Có khoản đã nhập nhưng không được tính vào kết quả",
           "no_salary_structure": "Chưa có cơ cấu lương",
+          "final_settlement": "Nghỉ việc trong tháng — quyết toán: phép chưa nghỉ đã tính tự động; nhập trợ cấp thôi việc, bồi thường tài sản, tạm ứng cần thu hồi nếu có",
           "negative_net": "Thực nhận âm",
           "missing_bank_account": "Thiếu tài khoản ngân hàng — cần bổ sung trước khi chi",
           "missing_tax_code": "Thiếu mã số thuế — cần bổ sung trước khi kê khai"
@@ -8417,7 +8450,10 @@
         "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai",
         "input_code_unknown": "Có khoản nhập tay không thuộc danh mục khoản nhập — chưa được tính",
         "input_negative": "Có khoản nhập tay mang số âm — chưa được tính",
-        "retro_component_missing": "Thiếu khoản mục truy lĩnh, truy thu trong danh mục — chưa được tính"
+        "retro_component_missing": "Thiếu khoản mục truy lĩnh, truy thu trong danh mục — chưa được tính",
+        "leaves_in_period": "Nghỉ việc trong tháng — kiểm tra quyết toán",
+        "leave_payout_component_missing": "Thiếu khoản mục thanh toán phép chưa nghỉ trong danh mục — chưa được tính",
+        "leave_payout_unpriced": "Không có lương hoặc ngày công tháng căn cứ để tính phép chưa nghỉ — chưa được tính"
       },
       "new": {
         "link": "Kỳ lương mới",
@@ -8526,7 +8562,10 @@
         "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo",
         "input_code_unknown": "Có khoản nhập tay chưa được tính",
         "input_negative": "Có khoản nhập tay chưa được tính",
-        "retro_component_missing": "Có khoản truy lĩnh, truy thu chưa được tính"
+        "retro_component_missing": "Có khoản truy lĩnh, truy thu chưa được tính",
+        "leaves_in_period": "Nghỉ việc trong tháng",
+        "leave_payout_component_missing": "Có ngày phép chưa nghỉ chưa được thanh toán",
+        "leave_payout_unpriced": "Có ngày phép chưa nghỉ chưa được thanh toán"
       },
       "insurance": {
         "title": "Bảo hiểm bắt buộc",

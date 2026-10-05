@@ -1,4 +1,4 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,9 @@ import { listHoursToConfirm } from "@/modules/attendance/requests";
 import { monthEnd, monthStart } from "@/modules/attendance/timesheets";
 import { AdjustmentForm, ApproveMonthsForm, LockPeriodForm, RemindButton, ReopenMonthForm, VoidAdjustmentButton } from "@/modules/attendance/ui/request-forms";
 import { MonthNav } from "@/modules/attendance/ui/timesheet-views";
+import { exportLockedMonthAction } from "@/modules/attendance/request-actions";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { listEntities } from "@/modules/platform/org/service";
 import { pageTitle } from "@/i18n/page-title";
 import { RecordLink } from "@/components/ui/record-link";
@@ -26,7 +28,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
   const user = await requireUser();
   const query = await searchParams;
   const t = await getTranslations("attendance.months");
-  const format = await getFormatter();
+  const [format, locale] = await Promise.all([getFormatter(), getLocale()]);
   const today = todayInVietnam();
   const thisMonth = today.slice(0, 7);
   // The month that is waiting is the one that just ended.
@@ -104,12 +106,17 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
             ))}
           </TileGrid>
           {locked && overview.period ? (
-            <Alert variant="success">
-              <div className="flex flex-col gap-0.5">
-                <p className="font-medium">{t("period.lockedOn", { date: format.dateTime(overview.period.lockedAt!, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) })}</p>
-                {overview.period.overrideReason ? <p>{t("period.override", { reason: overview.period.overrideReason, count: overview.period.exceptions.length })}</p> : null}
+            <>
+              <Alert variant="success">
+                <div className="flex flex-col gap-0.5">
+                  <p className="font-medium">{t("period.lockedOn", { date: format.dateTime(overview.period.lockedAt!, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) })}</p>
+                  {overview.period.overrideReason ? <p>{t("period.override", { reason: overview.period.overrideReason, count: overview.period.exceptions.length })}</p> : null}
+                </div>
+              </Alert>
+              <div>
+                <ExportButton action={exportLockedMonthAction} input={{ entityId: chosen.id, month, locale }} label={t("export.button")} failedLabel={t("export.failed")} truncatedLabel={t("export.truncated")} />
               </div>
-            </Alert>
+            </>
           ) : (
             <>
               {overview.issues.length > 0 ? (

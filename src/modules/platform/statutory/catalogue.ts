@@ -30,10 +30,16 @@ export const PARAMETERS = {
     .refine((brackets) => brackets.at(-1)?.upTo === null && brackets.slice(0, -1).every((bracket, index) => bracket.upTo !== null && (index === 0 || bracket.upTo > (brackets[index - 1].upTo ?? 0))), "brackets must ascend and end with an open bracket"),
   "pit.flat_rates": z.object({ nonResident: basisPoints, withoutContract: basisPoints, withoutContractThreshold: vnd }),
   "overtime.multipliers": z.object({ weekday: percent, restDay: percent, holiday: percent, nightPremium: percent, nightOvertimeExtra: percent }),
+  // Holiday work of monthly-salaried staff (SRS Q13): is the holiday multiplier paid *in addition*
+  // to the holiday's own salary, which the month's salary already carries, or does it *include* it?
+  "overtime.holiday_pay": z.object({ mode: z.enum(["in_addition", "inclusive"]) }),
   // Night work (night premium, night overtime): local clock times, the window runs past midnight.
   "work.night_window": z.object({ start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
   "overtime.caps": z.object({ monthlyHours: count, yearlyHours: count, yearlyHoursExtended: count }),
   "leave.annual": z.object({ baseDays: count, yearsOfServicePerExtraDay: count }),
+  // Unused leave paid out on leaving: which parts of the salary structure make up "the salary under
+  // the labour contract" a day is priced on. The month and the divisor are the law's own (payroll).
+  "leave.payout_basis": z.object({ salary: z.enum(["base", "base_plus_insurable_allowances", "base_plus_allowances"]) }),
   "probation.limits": z.object({ managerDays: count, professionalDays: count, intermediateDays: count, otherDays: count, minimumPayPercent: percent }),
   "contract.fixed_term": z.object({ maxMonths: count, maxFixedTermRenewals: count }),
   // Not law but company practice, kept here so it is effective-dated and owner-approved like the rest:

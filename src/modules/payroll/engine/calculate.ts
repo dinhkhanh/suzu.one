@@ -1,12 +1,13 @@
 // The payroll engine's one entry point (FR-PAY-10..16, 20). Pure: no I/O, no clock, no randomness.
 //
-//   timesheet → pro-rating → earnings → overtime → insurance → union → PIT → net
+//   timesheet → pro-rating → earnings → overtime → retro → leave payout → insurance → union → PIT → net
 //
 // Given the same input it always returns the same result, and every line says what it was made
 // from, so a payslip from two years ago can be explained and reproduced exactly. The caller
 // (`calculation.ts`) is the only place that reads the database; nothing in this folder does.
 import { calculateEarnings, calculateFormulaLines, calculateInputLines } from "./earnings";
 import { calculateInsurance, calculateUnion } from "./insurance";
+import { calculateLeavePayout } from "./leave-payout";
 import { calculateOvertime } from "./overtime";
 import { calculatePit, overtimeExemption, pitMethodFor } from "./pit";
 import { uncoveredWorkingDays } from "./proration";
@@ -17,7 +18,7 @@ import type { PayLine, PersonPayInput, PersonPayResult, TraceStep } from "./type
  * The engine's version. It changes whenever a rule in this folder changes shape, and is stored
  * with every result: a run calculated under an older engine is never silently compared with a new one.
  */
-export const PAYROLL_ENGINE_VERSION = "1.1.0";
+export const PAYROLL_ENGINE_VERSION = "1.2.0";
 
 export function calculatePerson(input: PersonPayInput): PersonPayResult {
   const trace: TraceStep[] = [];
@@ -49,8 +50,15 @@ export function calculatePerson(input: PersonPayInput): PersonPayResult {
   trace.push(...retro.trace);
   warnings.push(...retro.warnings);
 
-  // Formula and typed-in lines see the structure, overtime and retro lines before them.
-  const beforeFormulas = [...earnings.lines, ...overtime.lines, ...retro.lines.filter((line) => line.kind === "earning")];
+  // A leaver's month is their final settlement (FR-PAY-18): unused leave is paid here, and what
+  // is typed in — severance, asset compensation, advances to recover — is asked for by name.
+  const payout = calculateLeavePayout(input);
+  trace.push(...payout.trace);
+  warnings.push(...payout.warnings);
+  if (regular && input.employment.endDate) warnings.push("leaves_in_period");
+
+  // Formula and typed-in lines see the structure, overtime, retro and payout lines before them.
+  const beforeFormulas = [...earnings.lines, ...overtime.lines, ...retro.lines.filter((line) => line.kind === "earning"), ...payout.lines];
   const formulaLines = calculateFormulaLines(input, beforeFormulas);
   // A typed-in figure the engine will not pay is a warning on the result, never nothing.
   const typed = calculateInputLines(input);

@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { DEFAULT_PAYROLL_POLICY, payrollPolicySchema, salaryTermsSchema } from "../../enums";
 import { payComponentSeedRows } from "../../seed-components";
+import { isParameterKey, PARAMETERS } from "@/modules/platform/statutory/catalogue";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import type { ComponentDefinition } from "../components";
 import { payPeriodOf } from "../period";
@@ -138,6 +139,16 @@ const fixtureSchema = z.object({
     .default(null),
   runKind: z.enum(["regular", "off_cycle"]).default("regular"),
   otherPitDeductions: z.number().int().nonnegative().default(0),
+  /** Unused leave the ledger pays out to a leaver (FR-LVE-03, FR-PAY-18). */
+  leavePayout: z
+    .object({ daysCenti: z.number().int().positive(), basisMonth: z.string().regex(/^\d{4}-\d{2}$/), terms: salaryTermsSchema, workingDays: z.number().int().nonnegative() })
+    .nullable()
+    .default(null),
+  /**
+   * Statutory values that differ from the seed, by parameter key ("overtime.holiday_pay") — how a
+   * case pins down an answer the chief accountant has not given yet (SRS Q13). Usually empty.
+   */
+  statutory: z.record(z.string(), z.unknown()).default({}),
   /** What the case must produce. Only the keys given are checked, so a case can be narrow. */
   expect: z.object({
     lines: z.record(z.string(), money).prefault({}),
@@ -191,10 +202,22 @@ export function toEngineInput(fixture: GoldenFixture): PersonPayInput {
     components: seededComponents(),
     inputs: fixture.inputs,
     retro: fixture.retro,
+    leavePayout: fixture.leavePayout,
     priorInMonth: fixture.priorInMonth,
     runKind: fixture.runKind,
     otherPitDeductions: fixture.otherPitDeductions,
     policy: { ...DEFAULT_PAYROLL_POLICY, ...fixture.policy },
-    statutory: seededStatutory(period.end),
+    statutory: withOverrides(seededStatutory(period.end), fixture.statutory, fixture.file),
   };
+}
+
+/** The seeded snapshot with a fixture's own values put in place, each checked against its parameter's shape. */
+function withOverrides(statutory: StatutoryParams, overrides: Record<string, unknown>, file: string): StatutoryParams {
+  const result: Record<string, unknown> = { ...statutory };
+  for (const [key, value] of Object.entries(overrides)) {
+    const name = (Object.keys(STATUTORY_KEYS) as (keyof StatutoryParams)[]).find((candidate) => STATUTORY_KEYS[candidate] === key);
+    if (!name || !isParameterKey(key)) throw new Error(`${file}: "${key}" is not a statutory value the engine reads`);
+    result[name] = PARAMETERS[key].parse(value);
+  }
+  return result as StatutoryParams;
 }

@@ -1569,8 +1569,10 @@
       "pit_brackets": "Progressive income tax brackets",
       "pit_flat_rates": "Flat-rate income tax withholding",
       "overtime_multipliers": "Overtime and night-work multipliers",
+      "overtime_holiday_pay": "Holiday work – whether the 300% includes the holiday's own salary",
       "overtime_caps": "Overtime limits",
       "leave_annual": "Annual leave",
+      "leave_payout_basis": "Salary that unused leave paid out on leaving is priced on",
       "probation_limits": "Probation",
       "contract_fixed_term": "Fixed-term contracts",
       "union_dues_cap": "Union – cap on member dues",
@@ -3704,6 +3706,35 @@
       "columns": {
         "status": "Status",
         "summary": "Summary"
+      },
+      "export": {
+        "button": "Download the month's timesheet (CSV)",
+        "failed": "The timesheet could not be downloaded.",
+        "truncated": "The file holds the first 5,000 rows only.",
+        "columns": {
+          "employeeCode": "Employee code",
+          "fullName": "Full name",
+          "standardDays": "Standard days",
+          "paidDays": "Paid days",
+          "unpaidDays": "Unpaid days",
+          "workedHours": "Hours worked",
+          "creditedHours": "Hours credited without punches",
+          "leavePaidHours": "Paid leave hours",
+          "leaveUnpaidHours": "Unpaid leave hours",
+          "holidayHours": "Holiday and day-off hours",
+          "absenceHours": "Absence hours",
+          "lateMinutes": "Minutes late",
+          "earlyMinutes": "Minutes left early",
+          "nightHours": "Night hours",
+          "otWeekday": "Overtime, weekday (h)",
+          "otWeekdayNight": "Overtime, weekday night (h)",
+          "otRestDay": "Overtime, rest day (h)",
+          "otRestDayNight": "Overtime, rest day night (h)",
+          "otHoliday": "Overtime, holiday (h)",
+          "otHolidayNight": "Overtime, holiday night (h)",
+          "otTimeOff": "Overtime taken as time off (h)",
+          "otPayable": "Overtime paid (h)"
+        }
       }
     },
     "console": {
@@ -8330,7 +8361,8 @@
           "inputs_changed": "Typed-in figures or retro items changed since the last calculation.",
           "retro_waiting": "A retro item is waiting that the calculation did not include.",
           "timesheet_changed": "The month's timesheet changed since the last calculation.",
-          "salary_changed": "A new salary decision applies to this month."
+          "salary_changed": "A new salary decision applies to this month.",
+          "leave_payout_posted": "The leave ledger paid out a leaver's unused leave after the last calculation."
         }
       },
       "readiness": {
@@ -8345,6 +8377,7 @@
           "input_outside_run": "A figure was typed in for this person, who is not in the run",
           "figure_not_paid": "A figure that was entered is not in the result",
           "no_salary_structure": "No salary structure",
+          "final_settlement": "Leaves this month — final settlement: unused leave is paid automatically; type in severance, asset compensation and advances to recover, if any",
           "negative_net": "Negative net",
           "missing_bank_account": "No bank account — needed before payment",
           "missing_tax_code": "No tax code — needed before the declaration"
@@ -8417,7 +8450,10 @@
         "insurance_base_above_declared": "Insurance base above the declared one",
         "input_code_unknown": "A typed-in figure is not under an input component — not paid",
         "input_negative": "A typed-in figure is negative — not paid",
-        "retro_component_missing": "The catalogue has no retro component — not paid"
+        "retro_component_missing": "The catalogue has no retro component — not paid",
+        "leaves_in_period": "Leaves this month — check the final settlement",
+        "leave_payout_component_missing": "The catalogue has no unused-leave payout component — not paid",
+        "leave_payout_unpriced": "No salary or working days in the basis month to price unused leave on — not paid"
       },
       "new": {
         "link": "New run",
@@ -8526,7 +8562,10 @@
         "insurance_base_above_declared": "Contribution base above the declared salary",
         "input_code_unknown": "A typed-in figure was not paid",
         "input_negative": "A typed-in figure was not paid",
-        "retro_component_missing": "A retro item was not paid"
+        "retro_component_missing": "A retro item was not paid",
+        "leaves_in_period": "Leaves this month",
+        "leave_payout_component_missing": "Unused leave was not paid",
+        "leave_payout_unpriced": "Unused leave was not paid"
       },
       "insurance": {
         "title": "Compulsory insurance",

@@ -1,0 +1,43 @@
+{
+  "name": "Leaver paid for unused leave at the month-before day rate (final settlement)",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-LVE-03", "FR-PAY-16", "FR-PAY-18"],
+  "derivation": [
+    "Last day 11 September 2026: 10 of the month's 26 working days were paid (paidDaysCenti 1000). The structure: base 48,000,000, responsibility allowance 4,000,000 (insurable, attendance-prorated), meal allowance 730,000 (exempt up to 730,000, attendance-prorated).",
+    "BASE = 48,000,000 x 1000 / 2600 = 18,461,538.46..., half up = 18,461,538. ALW_RESPONSIBILITY = 4,000,000 x 1000 / 2600 = 1,538,461.53..., = 1,538,462. ALW_MEAL = 730,000 x 1000 / 2600 = 280,769.23..., = 280,769.",
+    "The leave ledger paid out 3.5 unused days (daysCenti 350). The law prices a day on the salary under the contract of the month before the month of leaving (August 2026) divided by that month's normal working days (26 on a Monday-to-Saturday schedule).",
+    "Seeded leave.payout_basis = base_plus_insurable_allowances: 48,000,000 + 4,000,000 (the responsibility allowance counts towards the insurance base; the meal allowance does not) = 52,000,000.",
+    "LEAVE_PAYOUT = 52,000,000 x 350 / (26 x 100) = 52,000,000 x 350 / 2600 = 7,000,000 exactly. It is taxable and outside the insurance base.",
+    "Gross = 18,461,538 + 1,538,462 + 280,769 + 7,000,000 = 27,280,769.",
+    "Insurance: uncovered working days = 26 - 10 = 16, at or above the seeded threshold of 14, so the month carries no compulsory insurance.",
+    "Taxable = 27,280,769 - 280,769 (meal, exempt up to its cap) = 27,000,000. Assessable = 27,000,000 - 0 - 15,500,000 = 11,500,000.",
+    "PIT = 10,000,000 x 5% + 1,500,000 x 10% = 500,000 + 150,000 = 650,000.",
+    "Net = 27,280,769 - 650,000 = 26,630,769. The result names the leaver (leaves_in_period) so C&B types in the rest of the settlement."
+  ],
+  "month": "2026-09",
+  "monthStandardDays": 26,
+  "employment": { "endDate": "2026-09-11", "serviceMonths": 30 },
+  "segments": [
+    {
+      "from": "2026-09-01",
+      "to": "2026-09-11",
+      "standardDays": 10,
+      "paidDaysCenti": 1000,
+      "terms": { "baseSalary": 48000000, "insuranceSalary": 52000000, "allowances": [{ "code": "ALW_RESPONSIBILITY", "amount": 4000000 }, { "code": "ALW_MEAL", "amount": 730000 }] }
+    }
+  ],
+  "timesheet": { "standardDays": 10, "paidDaysCenti": 1000 },
+  "leavePayout": {
+    "daysCenti": 350,
+    "basisMonth": "2026-08",
+    "workingDays": 26,
+    "terms": { "baseSalary": 48000000, "insuranceSalary": 52000000, "allowances": [{ "code": "ALW_RESPONSIBILITY", "amount": 4000000 }, { "code": "ALW_MEAL", "amount": 730000 }] }
+  },
+  "expect": {
+    "lines": { "BASE": 18461538, "ALW_RESPONSIBILITY": 1538462, "ALW_MEAL": 280769, "LEAVE_PAYOUT": 7000000, "PIT": 650000 },
+    "totals": { "grossEarnings": 27280769, "taxableIncome": 27000000, "employeeInsurance": 0, "employerInsurance": 0, "pit": 650000, "net": 26630769 },
+    "insurance": { "covered": false, "reason": "unpaid_leave_threshold" },
+    "pit": { "method": "progressive", "assessableIncome": 11500000, "tax": 650000 },
+    "warnings": ["leaves_in_period"]
+  }
+}

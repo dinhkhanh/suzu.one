@@ -9,6 +9,11 @@
 //   ordinary OT   = hours × rate × multiplier%
 //   night work    = hours × rate × night premium% (ordinary hours worked at night)
 //   night OT      = the OT multiplier, plus the night premium, plus the extra for OT at night
+//
+// Holiday work (SRS Q13, `overtime.holiday_pay`): the monthly salary already pays the holiday
+// itself. Read `in_addition`, the holiday multiplier is paid on top of that; read `inclusive`, it
+// includes it, so the line pays the multiplier less the 100% the salary has paid — and none of
+// what it pays is ordinary-hours pay, for the PIT exemption.
 import { type ComponentDefinition, ENGINE_CODES, findComponent, taxablePart } from "./components";
 import { ratio } from "./rounding";
 import type { PayLine, PersonPayInput, TraceStep } from "./types";
@@ -45,7 +50,9 @@ export function calculateOvertime(input: PersonPayInput, monthlyPayRate: number)
   let ordinaryEquivalent = 0;
   if (rate === 0) return { lines, hourlyRate: rate, ordinaryEquivalent, trace };
 
-  const categoryMultiplier: Record<Category, number> = { weekday: multipliers.weekday, restDay: multipliers.restDay, holiday: multipliers.holiday };
+  // The part of the holiday multiplier the monthly salary has already paid (SRS Q13).
+  const holidayIncluded = statutory.overtimeHolidayPay.mode === "inclusive" ? 100 : 0;
+  const categoryMultiplier: Record<Category, number> = { weekday: multipliers.weekday, restDay: multipliers.restDay, holiday: Math.max(0, multipliers.holiday - holidayIncluded) };
 
   for (const category of ["weekday", "restDay", "holiday"] as Category[]) {
     const minutes = timesheet.overtime[category];
@@ -61,8 +68,10 @@ export function calculateOvertime(input: PersonPayInput, monthlyPayRate: number)
     const amount = dayPay + nightPay;
     if (amount === 0) continue;
     // What the same hours would have cost at the ordinary rate — the taxable part when the law
-    // exempts only the premium (`pit.overtime_exemption` = premium_only).
-    ordinaryEquivalent += payFor(rate, minutes.day + minutes.night, 100, component);
+    // exempts only the premium (`pit.overtime_exemption` = premium_only). Holiday hours read
+    // `inclusive` had their ordinary pay in the salary, so the line holds none of it.
+    const inclusiveHoliday = category === "holiday" && holidayIncluded > 0;
+    if (!inclusiveHoliday) ordinaryEquivalent += payFor(rate, minutes.day + minutes.night, 100, component);
     lines.push({
       code: component.code,
       kind: "earning",
@@ -70,11 +79,11 @@ export function calculateOvertime(input: PersonPayInput, monthlyPayRate: number)
       amount,
       taxable: taxablePart(component, amount),
       insurable: 0,
-      rule: "overtime_multiplier",
+      rule: inclusiveHoliday ? "overtime_multiplier_holiday_inclusive" : "overtime_multiplier",
       roundingRule: component.roundingRule,
       inputs: { hourlyRate: rate, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, nightMultiplierPercent: nightMultiplier, dayPay, nightPay },
     });
-    trace.push({ stage: "overtime", rule: "overtime_multiplier", detail: { category, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, amount } });
+    trace.push({ stage: "overtime", rule: inclusiveHoliday ? "overtime_multiplier_holiday_inclusive" : "overtime_multiplier", detail: { category, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, amount } });
   }
 
   // Ordinary hours worked inside the statutory night window earn the night premium on top of the
