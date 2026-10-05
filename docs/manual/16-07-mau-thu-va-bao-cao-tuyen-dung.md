@@ -10,13 +10,18 @@ Mẫu thư là lời lẽ chung của cả tập đoàn, nên chỉ người là
 
 ### Các mẫu có sẵn
 
-Hệ thống có sẵn ba mẫu, được viết như bản nháp để nhân sự chỉnh lại theo giọng văn của công ty:
+Hệ thống có sẵn sáu mẫu, được viết như bản nháp để nhân sự chỉnh lại theo giọng văn của công ty. Năm mẫu được hệ thống **tự gửi** theo mã, đúng lúc sự việc xảy ra (xem trang **Ứng viên & quy trình tuyển**):
 
 | Mẫu | Loại | Dùng khi |
 | --- | --- | --- |
-| **Mời phỏng vấn** | Mời phỏng vấn | Báo ứng viên được mời vào một vòng tiếp theo. |
-| **Từ chối sau khi xem hồ sơ** | Từ chối | Cảm ơn và báo ứng viên không phù hợp. |
-| **Thư báo đề nghị tuyển dụng** | Đề nghị tuyển dụng | Báo ứng viên rằng công ty sắp gửi thư mời. |
+| **Xác nhận đã nhận hồ sơ** (`ACK_APPLICATION`) | Xác nhận đã nhận hồ sơ | Tự gửi khi ứng viên nộp hồ sơ qua trang tuyển dụng. |
+| **Lịch phỏng vấn (kèm thời gian)** (`INTERVIEW_SCHEDULED`) | Mời phỏng vấn | Tự gửi khi đặt hoặc dời lịch phỏng vấn, kèm file `.ics`. |
+| **Huỷ lịch phỏng vấn** (`INTERVIEW_CANCELLED`) | Chung | Tự gửi khi huỷ buổi phỏng vấn. |
+| **Từ chối sau khi xem hồ sơ** (`REJECT_AFTER_REVIEW`) | Từ chối | Tự gửi khi từ chối có tích gửi thư báo kết quả; cũng gửi tay được. |
+| **Thư báo đề nghị tuyển dụng** (`OFFER_NOTE`) | Đề nghị tuyển dụng | Tự gửi khi bấm **Gửi thư mời cho ứng viên**, kèm thư mời PDF. |
+| **Mời phỏng vấn** | Mời phỏng vấn | Gửi tay: báo ứng viên được mời vào một vòng tiếp theo. |
+
+Mã của mẫu đã lưu không đổi được. Bỏ tick **Đang dùng** ở một mẫu tự gửi thì thư đó không đi nữa, và lịch sử hồ sơ ghi "Không gửi thư: mẫu thư này đang tắt".
 
 ### Sửa hoặc thêm một mẫu
 
@@ -39,6 +44,10 @@ Trong tiêu đề và nội dung, bạn có thể chèn các trường sau, vi�
 | `{{stage_name}}` | Tên vòng hiện tại của hồ sơ |
 | `{{sender_name}}` | Tên người gửi thư |
 | `{{careers_url}}` | Đường dẫn trang tuyển dụng |
+| `{{interview_time}}`, `{{interview_place}}`, `{{interview_notes}}` | Thời gian (giờ Việt Nam), địa điểm và lời dặn của buổi phỏng vấn — chỉ có trong thư lịch phỏng vấn và huỷ lịch |
+| `{{privacy_url}}` | Đường dẫn riêng của ứng viên tới trang **Dữ liệu ứng tuyển của bạn**, nơi họ rút khỏi danh sách ứng viên tiềm năng mà không cần đăng nhập. Chỉ được điền khi thư gửi đúng địa chỉ email trên hồ sơ |
+
+Dòng chứa `{{interview_notes}}` hoặc `{{privacy_url}}` mà không có giá trị sẽ được bỏ khỏi thư, thay vì để lại chỗ trống. Mẫu cần thời gian phỏng vấn không chọn được khi gửi tay.
 
 Hệ thống từ chối lưu mẫu có trường gõ sai (ví dụ `{{candidat_name}}`), để không có thư nào đến tay ứng viên với một chỗ trống kỳ lạ.
 

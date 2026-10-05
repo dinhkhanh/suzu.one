@@ -56,7 +56,12 @@ Bạn chỉ kéo được thanh của những việc mình được sửa; nếu
 
 **Danh mục sản phẩm bàn giao** là những gì đã hứa với khách, từng dòng một — ví dụ *12 × Bài đăng Facebook*, *2 × Video ngắn*. Đầu trang là tiến độ chung *Đã nghiệm thu x/y (%)*.
 
-Mỗi dòng hiện: số lượng × tên, trạng thái, định dạng, kênh, mốc, hạn, *nghiệm thu x/y · … việc đã gắn*, và số đơn vị ở từng trạng thái: **Đã cam kết**, **Đang sản xuất**, **Chờ khách duyệt**, **Đã nghiệm thu**, **Đã bàn giao**, **Đã đăng**, **Đã hủy**. Mỗi đơn vị tương ứng một công việc được gắn vào dòng, và trạng thái được tính từ công việc đó.
+Mỗi dòng hiện: số lượng × tên, trạng thái, định dạng, kênh, mốc, hạn, *nghiệm thu x/y · … việc đã gắn*, và số đơn vị ở từng trạng thái: **Đã cam kết**, **Đang sản xuất**, **Xong nội bộ**, **Chờ khách duyệt**, **Đã nghiệm thu**, **Đã bàn giao**, **Đã đăng**, **Đã hủy**. Mỗi đơn vị tương ứng một công việc được gắn vào dòng, và trạng thái được tính từ công việc đó.
+
+Việc đã xong trong nội bộ chưa phải là khách đã nhận: một đơn vị chỉ là **Đã nghiệm thu** khi có quyết định của khách được ghi nhận (hoặc đã giao, đã đăng); trước đó nó là **Xong nội bộ** (*… đã xong nội bộ, chờ khách duyệt*). **Chờ khách duyệt** chỉ khi phiên bản hiện tại đang ở bước khách duyệt hoặc đang có đường dẫn duyệt mở. Dự án nội bộ và pitch được tính nghiệm thu khi việc xong.
+
+> [!NOTE]
+> Sau khi duyệt khởi động, thêm hoặc bỏ sản phẩm, đổi số lượng, định dạng hay kênh của một dòng chỉ đi qua **Tạo yêu cầu thay đổi** (tab **Thay đổi**). Tên dòng, mốc và hạn vẫn sửa trực tiếp được.
 
 Người điều hành dự án:
 
@@ -77,6 +82,6 @@ Phần **Mức dùng ngân sách giờ** cho bốn con số: **Giờ đã ghi**,
 - Trưởng dự án và account nhận cảnh báo khi đạt 80% và 100%, mỗi mức một lần.
 - Nếu có, trang hiện **Ngân sách giờ theo vai trò** và **Ngân sách theo giai đoạn**.
 
-Phần **Phí dự án** chỉ hiện với người được xem phí (*Chỉ người có quyền xem thông tin thương mại mới thấy phí dự án*); người có quyền thương mại sửa được **Phí dự án (VND)** tại đây.
+Phần **Phí dự án** chỉ hiện với người được xem phí (*Chỉ người có quyền xem thông tin thương mại mới thấy phí dự án*); người có quyền thương mại sửa được **Phí dự án (VND)** tại đây cho đến khi duyệt khởi động; sau đó phí và tổng ngân sách giờ chỉ thay đổi qua yêu cầu thay đổi (vẫn chia lại được tổng giờ giữa các vai trò).
 
 Người điều hành dự án sửa loại dự án, ngân sách giờ, chu kỳ cập nhật và thư mục Drive ở phần **Sửa ngân sách giờ** cuối trang (giống phần thiết lập trên tab **Tổng quan**).

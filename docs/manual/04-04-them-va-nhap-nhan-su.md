@@ -114,6 +114,10 @@ Các dòng của cùng một người được áp dụng **từ cũ đến mớ
 > [!TIP]
 > Giai đoạn cũ nhất nên bắt đầu từ ngày vào làm. Giai đoạn cuối cùng phải kết thúc muộn nhất là hôm qua; vị trí hiện tại không bị thay đổi bởi tệp này.
 
+## Nhập hợp đồng lao động
+
+Cùng trang, khung **Hợp đồng lao động** (**Nhập hợp đồng**) dành cho hợp đồng đã ký của **nhân sự đã có trên hệ thống**: mỗi dòng một hợp đồng. Cột bắt buộc: **Mã nhân viên**, **Số hợp đồng**, **Loại hợp đồng**, **Từ ngày**; cột khác: Nhóm công việc (thử việc), Ngày ký, Đến ngày, Ghi chú. Mỗi hợp đồng được gắn vào kỳ làm việc chứa ngày bắt đầu của nó và được kiểm tra theo luật như khi nhập tay. Điều khoản lương không nhập ở đây; hãy nhập trên trang của từng người.
+
 ## Phòng ban phải có trước
 
 Tệp nhân viên và tệp quá trình công tác tham chiếu phòng ban bằng **mã**. Nếu phòng ban chưa có, quản trị viên tạo trước trong **Quản trị** → **Cơ cấu tổ chức** (có thể nhập phòng ban từ Excel / CSV ở đó).

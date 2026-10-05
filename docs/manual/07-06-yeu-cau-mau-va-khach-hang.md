@@ -38,7 +38,8 @@ Trưởng nhóm giữ mẫu của nhóm mình; mẫu dùng chung do lãnh đạo
 1. Ở phần **Mẫu mới**, nhập **Tên mẫu**, chọn **Loại** (**Mẫu dự án** hoặc **Mẫu công việc**), **Thuộc về** (một nhóm, hoặc **Dùng chung cho mọi nhóm**) và **Dùng để làm gì**. Bấm **Tạo mẫu**.
 2. Trên thẻ mẫu, **Thêm bước**: **Bước** (tên công việc), **Thuộc bước** (để làm việc con — mẫu chỉ có hai cấp), **Vai trò (vd. designer)**, **Số ngày tính từ ngày mốc**, **Số giờ**, và **Checklist** nếu cần.
 3. Với **Mẫu dự án**, mở mục *Phần kế hoạch của mẫu* để thêm giai đoạn, mốc, dòng sản phẩm, ngân sách giờ theo vai trò, loại dự án, chu kỳ cập nhật và **Brief mẫu**. Số ngày tính từ ngày 0 của mẫu; số âm là trước ngày 0. Bấm **Lưu phần kế hoạch**.
-4. **Ngừng dùng** để ẩn mẫu khỏi danh sách chọn; **Dùng lại** để bật lại.
+4. Bấm **Sửa** cạnh một bước để đổi tên, vị trí, vai trò, số ngày, số giờ hay checklist của bước, rồi **Lưu bước**. Lần dùng mẫu tiếp theo lấy nội dung mới; các việc đã tạo từ mẫu giữ nguyên.
+5. **Ngừng dùng** để ẩn mẫu khỏi danh sách chọn; **Dùng lại** để bật lại.
 
 ### Tạo dự án từ mẫu
 
@@ -57,16 +58,16 @@ Trên tab **Công việc** của dự án, mở mục gập **Việc lặp lại
 
 ## Việc lặp lại
 
-Cho những việc định kỳ của một dự án (báo cáo tuần, bài đăng mỗi thứ Hai, đối soát cuối tháng…). Mở mục **Việc lặp lại và mẫu** trên tab **Công việc** của dự án → phần **Việc lặp lại**:
+Cho những việc định kỳ (báo cáo tuần, bài đăng mỗi thứ Hai, đối soát cuối tháng…). Mở mục **Việc lặp lại và mẫu** trên tab **Công việc** của dự án → phần **Việc lặp lại**. Việc định kỳ không thuộc dự án nào thì đặt trên trang của nhóm, vào việc tồn của nhóm.
 
 1. Nhập **Tên công việc**, chọn **Người phụ trách**.
 2. Chọn chu kỳ **Mỗi** … **ngày** / **tuần** / **tháng**:
    - Theo tuần: tích các ngày (T2 … CN).
    - Theo tháng: chọn **Ngày trong tháng** hoặc ngày cuối tháng.
-3. Chọn **Từ**, **Đến** (không bắt buộc) và **Tạo trước (ngày)** — tạo công việc sớm bao nhiêu ngày trước hạn.
+3. Chọn **Từ**, **Đến** (không bắt buộc) và **Tạo trước (ngày)** — tạo công việc sớm bao nhiêu ngày trước hạn. Có thể ghi **Số giờ** ước lượng và chọn **Nếu rơi vào ngày nghỉ**: **Dời hạn sang ngày làm việc kế tiếp**, **Bỏ qua lần đó** hoặc **Vẫn giữ đúng ngày**.
 4. Bấm **Thêm việc lặp lại**.
 
-Mỗi đêm hệ thống tạo các lần lặp đến hạn. Danh sách cho biết quy tắc (ví dụ *mỗi tuần vào T2, T5*), **đã tạo …** và **lần tới …**. Dùng **Tạm dừng** / **Chạy tiếp** / **Kết thúc** khi cần. Thành viên dự án (trừ người xem) quản lý được việc lặp lại.
+Mỗi đêm hệ thống tạo các lần lặp đến hạn. Danh sách cho biết quy tắc (ví dụ *mỗi tuần vào T2, T5*), **đã tạo …** và **lần tới …**. Dùng **Sửa** để đổi quy tắc (thay đổi áp dụng cho các việc tạo từ nay về sau; việc đã tạo giữ nguyên), **Tạm dừng** / **Chạy tiếp** / **Kết thúc** khi cần. Thành viên dự án (trừ người xem) quản lý được việc lặp lại.
 
 ## Khách hàng và nhãn hàng
 

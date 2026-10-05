@@ -82,7 +82,9 @@ Khi khoá, hệ thống:
 - quy đổi giờ làm thêm mà nhân viên chọn **Nghỉ bù** thành ngày nghỉ bù (một đổi một theo độ dài ngày công chuẩn của từng người) và cộng vào số dư nghỉ phép;
 - nếu khoá kèm lý do, ghi lại lý do và danh sách mục còn mở để kiểm toán.
 
-Sau khi khoá, khung hiện "Đã khoá lúc …" và (nếu có) "Khoá khi còn … mục mở: …".
+Sau khi khoá, khung hiện "Đã khoá lúc …" và (nếu có) "Khoá khi còn … mục mở: …". Mọi người có bảng công trong tháng nhận thông báo "Bảng công tháng … đã khoá".
+
+Nhân sự được khoá công của pháp nhân có thể bấm **Tải bảng công tháng (CSV)** để tải số liệu đã cố định của tháng đã khoá (tiêu đề cột theo ngôn ngữ của bạn; tối đa 5.000 dòng). Mỗi lần tải được ghi nhật ký.
 
 > [!CAUTION]
 > Khoá công **không mở lại được**. Sau khi khoá: không ai tạo, huỷ hay duyệt đơn chấm công cho ngày trong tháng đó; nhập nhật ký máy chấm công và nút **Tính lại** đều bỏ qua tháng đã khoá.

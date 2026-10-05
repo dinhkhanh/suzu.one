@@ -36,21 +36,24 @@ Khi đơn được duyệt, giờ trong đơn trở thành lượt chấm (ghi c
 
 ## Làm việc từ xa / ngoài văn phòng
 
-Dùng khi bạn làm việc tại nhà, ngoài văn phòng (quay phim, gặp khách, sự kiện) hoặc đi công tác.
+Dùng khi bạn làm việc tại nhà hoặc ngoài văn phòng (quay phim, gặp khách, sự kiện).
+
+> [!NOTE]
+> **Đi công tác** không còn tạo ở đây: hãy lập đề nghị đi công tác ở mục **Đề nghị**. Khi đề nghị được duyệt, ngày công tác được ghi vào bảng công tự động.
 
 | Trường | Cách điền |
 | --- | --- |
 | **Từ ngày**, **Đến ngày** | Tối đa 31 ngày một đơn; trong khoảng phải có ít nhất một ngày làm việc |
-| **Hình thức** | **Làm việc tại nhà**, **Ngoài văn phòng (quay, gặp khách, sự kiện)** hoặc **Công tác** |
+| **Hình thức** | **Làm việc tại nhà** hoặc **Ngoài văn phòng (quay, gặp khách, sự kiện)** |
 | **Thời gian trong ngày** | **Cả ngày**, **Buổi sáng** hoặc **Buổi chiều** (nửa ngày chỉ áp dụng cho đơn một ngày) |
-| **Địa điểm** | Bắt buộc với ngoài văn phòng và công tác |
-| **Vĩ độ**, **Kinh độ**, **Bán kính (m)** | Không bắt buộc. Nhập cả vĩ độ và kinh độ (hoặc để trống cả hai); bán kính từ 50 đến 5.000 m, mặc định 300 m |
+| **Địa điểm** | Bắt buộc với ngoài văn phòng |
+| **Vị trí trên bản đồ**, **Bán kính (m)** | Không bắt buộc. Bấm **Dùng vị trí của tôi** khi đang ở nơi đó (màn hình cho biết độ chính xác), hoặc mở **Dán liên kết bản đồ hoặc nhập toạ độ** và dán liên kết Google Maps / Apple Maps / OpenStreetMap hay cặp toạ độ. Liên kết rút gọn (maps.app.goo.gl) không chứa toạ độ. Bán kính từ 50 đến 5.000 m, mặc định 300 m |
 | **Lý do** | Mô tả ngắn |
 
 Khi được duyệt:
 
-- **Không nhập toạ độ**: phần ngày được đơn bao phủ được tính công mà không cần chấm. Ngày hiện **Từ xa / ngoài văn phòng**.
-- **Có nhập toạ độ**: bạn vẫn chấm công tại nơi đó như ở văn phòng. Lần chấm trong phạm vi đã đăng ký được chấp nhận ngay, không bị gắn cờ.
+- **Không khai báo vị trí**: phần ngày được đơn bao phủ được tính công mà không cần chấm. Ngày hiện **Từ xa / ngoài văn phòng**.
+- **Có khai báo vị trí**: bạn vẫn chấm công tại nơi đó như ở văn phòng. Lần chấm trong phạm vi đã đăng ký được chấp nhận ngay, không bị gắn cờ.
 
 ## Làm thêm giờ
 

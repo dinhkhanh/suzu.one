@@ -59,14 +59,14 @@ Thuế suất mặc định và các thuế suất được phép là tham số 
 
 ### Ước tính biên lợi nhuận
 
-Nếu bạn được xem chi phí, trang báo giá hiện dòng ước tính: số giờ theo giờ công bình quân của đội ≈ chi phí; biên lợi nhuận và tỷ lệ. Nếu đội thực hiện chưa có tháng lương đã ký để tính bình quân, trang ghi "Chưa ước tính được biên lợi nhuận…". Người không được xem chi phí không thấy dòng này.
+Nếu bạn được xem chi phí, trang báo giá hiện dòng ước tính: số giờ theo giờ công bình quân của đội ≈ chi phí; biên lợi nhuận và tỷ lệ. Nếu đội thực hiện chưa có tháng lương đã ký để tính bình quân, trang ghi "Chưa ước tính được biên lợi nhuận…". Người không được xem chi phí không thấy dòng này, và bản nháp của họ cũng không báo trước việc biên lợi nhuận có dưới mức sàn hay không — chỉ báo về chiết khấu.
 
 ### Gửi duyệt
 
 Bấm **Gửi duyệt**. Hệ thống kiểm tra:
 
 - Nếu **không có dòng nào chiết khấu vượt ngưỡng** và **biên lợi nhuận ước tính không dưới mức sàn**: báo giá được duyệt ngay, chuyển sang **Đã duyệt**.
-- Nếu có: báo giá chuyển sang **Chờ duyệt** và đi vào hộp **Phê duyệt** của quản lý kinh doanh trong pháp nhân. Khi còn là bản nháp, trang đã báo trước "Cần được duyệt trước khi gửi: chiết khấu vượt ngưỡng / biên lợi nhuận ước tính dưới mức sàn".
+- Nếu có: báo giá chuyển sang **Chờ duyệt** và đi vào hộp **Phê duyệt** của quản lý kinh doanh trong pháp nhân. Khi còn là bản nháp, trang đã báo trước "Cần được duyệt trước khi gửi: chiết khấu vượt ngưỡng / biên lợi nhuận ước tính dưới mức sàn" (phần biên lợi nhuận chỉ hiện với người được xem chi phí). Với người không được xem chi phí, biên lợi nhuận được kiểm tra lúc gửi duyệt; nếu dưới mức sàn, báo giá đi duyệt với lý do "quy định của công ty". Nếu không tính được đơn giá chi phí của đội, báo giá đi theo chiết khấu và người duyệt thấy *Biên lợi nhuận chưa được kiểm tra*.
 
 Ngưỡng chiết khấu và mức sàn biên lợi nhuận là quy định của công ty, xem ở tab **Cài đặt**.
 

@@ -49,13 +49,16 @@ Trên thanh bên có hai mục liên quan:
 | Duyệt chuyển hồ sơ Đầy đủ ↔ Đơn giản | [Hồ sơ trả lương](/payroll/profiles) | Chủ sở hữu |
 | Tính mức gross từ mức net thỏa thuận | [Quy đổi net → gross](/payroll/tools/net-to-gross) | C&B |
 | Tạo và tính bảng lương tháng | [Kỳ lương](/payroll/runs) → **Kỳ lương mới** | C&B |
+| Chi thưởng Tết, thưởng lễ ngoài kỳ lương định kỳ | [Kỳ lương](/payroll/runs) → **Kỳ lương ngoài kỳ** | C&B |
+| Xem, nhập khoản truy lĩnh, truy thu | [Truy lĩnh, truy thu](/payroll/retro), hoặc trên trang kỳ lương | C&B |
+| Nạp lương, hồ sơ trả lương của nhiều người từ bảng tính | [Cơ cấu lương nhân viên](/payroll/salaries) → **Nhập từ tệp** | C&B nhập, Chủ sở hữu duyệt |
 | Ký duyệt bảng lương | [Kỳ lương](/payroll/runs) → mở kỳ → **Ký duyệt** | CEO |
 | Lập tệp chuyển khoản, bảng chi tiền mặt | Mở kỳ lương → **Chi lương** | Kế toán |
 | Phát hành phiếu lương | Mở kỳ lương → **Phát hành phiếu lương** | C&B |
 | Trả lời thắc mắc của nhân viên | [Thắc mắc phiếu lương](/payroll/queries) | C&B |
 | Xem báo cáo lương, chi phí nhân sự | [Báo cáo lương](/payroll/reports) | C&B, CEO, kế toán, kiểm toán |
 | Lấy số liệu lập tờ khai BHXH, thuế TNCN | [Dữ liệu khai báo](/payroll/statutory) | C&B |
-| Đối chiếu với bảng lương cũ | [Chạy song song](/payroll/parallel) | C&B |
+| Đối chiếu với bảng lương cũ, xác nhận đối chiếu | [Chạy song song](/payroll/parallel) | C&B |
 | Nhập thu nhập, thuế của những tháng trước khi dùng hệ thống | [Số liệu luỹ kế](/payroll/ytd) | C&B |
 | Tổ chức thưởng tháng 13 | [Thưởng cuối năm](/payroll/bonus) | C&B, CEO, Chủ sở hữu |
 | Xem / đề xuất khoản lương, công thức | [Danh mục khoản lương](/payroll/components) | C&B đề xuất, Chủ sở hữu duyệt |
@@ -75,7 +78,8 @@ Trên thanh bên có hai mục liên quan:
 | **Thắc mắc phiếu lương** | Hàng chờ câu hỏi của nhân viên về phiếu lương. |
 | **Báo cáo lương** | Bảng lương chi tiết, chi phí theo phòng ban, đối chiếu bảo hiểm, tổng hợp thuế TNCN, công đoàn, xu hướng chi phí. |
 | **Dữ liệu khai báo** | Số liệu D02-LT, 05/KK-TNCN, 05/QTT-TNCN và danh sách người phụ thuộc, tải về dạng CSV. |
-| **Chạy song song** | So sánh từng người giữa hệ thống và bảng lương cũ, giải thích từng chênh lệch. |
+| **Chạy song song** | So sánh từng người giữa hệ thống và bảng lương cũ (cả thực nhận và chi phí công ty), giải thích từng chênh lệch, xuất CSV và ghi nhận **Xác nhận đối chiếu**. |
+| **Truy lĩnh, truy thu** | Chênh lệch của những tháng đã trả lương đang chờ kỳ lương kế tiếp. |
 | **Số liệu luỹ kế** | Thu nhập và thuế của những tháng hệ thống chưa chạy, phục vụ quyết toán năm. |
 | **Thưởng cuối năm** | Các đợt thưởng tháng 13, quy chế thưởng, mô phỏng chi phí, cách tính từng người. |
 | **Danh mục khoản lương** / **Chính sách tính lương** | Các quy tắc tính lương có ngày hiệu lực, do C&B đề xuất và Chủ sở hữu phê duyệt. |

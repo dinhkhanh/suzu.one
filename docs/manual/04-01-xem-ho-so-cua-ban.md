@@ -21,7 +21,10 @@ Các mục xếp từ trên xuống:
 | **Người phụ thuộc (giảm trừ gia cảnh)** | Người phụ thuộc đã đăng ký và các tháng được giảm trừ |
 | **Thông tin hạn chế** | CCCD, hộ chiếu, mã số thuế, số sổ BHXH, nơi đăng ký KCB, tài khoản ngân hàng (được che) |
 | **Quá trình công tác** | Dòng thời gian: tiếp nhận, điều chuyển, thăng chức, đạt thử việc, khen thưởng… |
+| **Văn bản của tôi** | Hợp đồng, quyết định, giấy xác nhận… công ty đã cấp về bạn, mở đúng bản PDF đã cấp |
 | **Thiết bị đang giữ** | Tài sản công ty đang giao cho bạn |
+| **Chấm công bằng khuôn mặt** | Chỉ hiện khi khuôn mặt bạn đã được đăng ký cho máy kiosk: ngày đồng ý và nút **Rút lại đồng ý** |
+| **Dữ liệu và quyền riêng tư** | Tải dữ liệu của bạn, lựa chọn về vị trí khi chấm công, thời gian lưu trữ (xem bên dưới) |
 | **Nghỉ việc** | Nơi gửi đơn xin nghỉ việc |
 
 > [!NOTE]
@@ -59,13 +62,23 @@ Các thông tin như số CCCD, mã số thuế, số sổ BHXH, tài khoản ng
 - Bản hợp đồng đã ký đính kèm cũng là thông tin lương. Muốn tải về, bạn cũng cần xác thực lại.
 - Ở mục **Hồ sơ, giấy tờ**, giấy tờ đã quá ngày hết hạn có nhãn **Đã hết hạn**. Khi giấy tờ sắp hết hạn, bạn nhận thông báo nhắc để kịp bổ sung bản mới cho HR.
 
-Hợp đồng, giấy tờ, người phụ thuộc và liên hệ khẩn cấp đều do HR cập nhật. Nếu thấy thiếu hay sai, bạn liên hệ Nhân sự.
+Hợp đồng, giấy tờ, người phụ thuộc và liên hệ khẩn cấp đều do HR cập nhật. Nếu thấy thiếu hay sai, bạn liên hệ Nhân sự — HR sửa được trực tiếp các mục này khi nhập nhầm.
+
+Văn bản công ty cấp về bạn (quyết định, giấy xác nhận…) nằm ở mục **Văn bản của tôi**; mỗi văn bản mở đúng như bản đã cấp.
 
 ## Quá trình công tác
 
 Mục **Quá trình công tác** liệt kê các sự kiện của bạn, mới nhất ở trên: ngày hiệu lực, loại sự kiện, nơi chuyển từ đâu sang đâu (pháp nhân, chức vụ, chức danh, phòng ban, nhóm, người quản lý). Sự kiện chưa tới ngày có nhãn **Chưa hiệu lực**. Sự kiện đã hủy bị gạch ngang và có nhãn **Đã hủy**.
 
 Nếu sự kiện có checklist (ví dụ lúc bạn mới vào), bạn thấy dòng **Checklist: x/y việc xong** và có thể mở ra xem từng bước.
+
+## Dữ liệu và quyền riêng tư
+
+Mục **Dữ liệu và quyền riêng tư** cho biết công ty đang lưu gì về bạn, bạn đã đồng ý những gì và thông tin được lưu trong bao lâu.
+
+- **Tải dữ liệu của tôi**: một tệp JSON gồm mọi thông tin SuZu One lưu về bạn — hồ sơ, quá trình làm việc, hợp đồng và điều khoản lương, nghỉ phép, chấm công, đề xuất, văn bản đã cấp, phiếu lương, thông báo, hội thoại với trợ lý và các lựa chọn về quyền riêng tư. Tệp có thông tin lương nên bạn có thể được yêu cầu **Xác thực rồi quay lại** trước khi tải.
+- **Vị trí khi chấm công**: cho biết bạn đã đồng ý đọc vị trí khi chấm công hay chưa. Bấm **Rút lại** để từ nay chấm công không kèm vị trí, hoặc **Cho phép đọc vị trí khi chấm công** để bật lại. Không có vị trí, lượt chấm công vẫn được tính khi bạn dùng mạng văn phòng; nếu không, quản lý trực tiếp sẽ xem xét.
+- **Thời gian lưu trữ**: vị trí chính xác của lượt chấm công được giữ 90 ngày; hội thoại với trợ lý 180 ngày kể từ tin nhắn cuối; sau khi nghỉ việc, thông tin liên hệ, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân và tài khoản ứng dụng được xoá sau 3 năm kể từ ngày làm việc cuối, khi Nhân sự xác nhận; hồ sơ lương, thuế và bảo hiểm được lưu theo thời hạn luật kế toán và thuế (tối thiểu mười năm).
 
 ## Các trang liên quan
 

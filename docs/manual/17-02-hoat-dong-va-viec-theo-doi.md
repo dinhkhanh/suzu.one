@@ -15,6 +15,7 @@ Cả hai đều gắn với một **khách hàng** (có thể kèm một **cơ h
 | --- | --- |
 | Ghi hoạt động, hẹn việc theo dõi ở một khách hàng | Nhóm phụ trách khách hàng (trừ cộng tác viên) và người bán hàng trong pháp nhân của khách; người phụ trách cơ hội trên trang cơ hội. |
 | Ghi hoạt động ở một khách tiềm năng | Người phụ trách khách tiềm năng và người bán hàng trong pháp nhân đó. |
+| Ghi hoạt động nêu nhiều bản ghi cùng lúc (khách tiềm năng + khách hàng, cơ hội…) | Bạn phải có quyền ghi ở **từng** bản ghi được nêu, và các bản ghi phải thuộc về nhau: cơ hội phải của đúng khách hàng; khách tiềm năng chỉ đi cùng khách hàng mà nó đến từ hoặc đã trở thành. |
 | Đánh dấu xong, dời lịch, bỏ một việc theo dõi | Người được giao việc, người đã tạo việc, và quản lý kinh doanh phụ trách khách đó. |
 
 ## Ghi một hoạt động hoặc hẹn việc theo dõi
