@@ -10,6 +10,7 @@ import { Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
+import { storedText } from "@/lib/stored-text";
 import type { RetroScreen } from "../run-views";
 import { formatVnd } from "./money";
 import { AddRetroItemRow, CancelRetroItemButton, DeriveRetroButton, UnpricedAdjustmentForm } from "./retro-forms";
@@ -32,7 +33,7 @@ type Props = {
 const signed = (amount: number) => `${amount > 0 ? "+" : "−"}${formatVnd(Math.abs(amount))}`;
 
 export async function RetroSection({ screen, entityId, runId, editable, people, viewerPersonId, action }: Props) {
-  const [t, format] = await Promise.all([getTranslations("payroll.retro"), getFormatter()]);
+  const [t, tStored, format] = await Promise.all([getTranslations("payroll.retro"), getTranslations("stored"), getFormatter()]);
   const { items, unpriced } = screen;
   const day = (value: Date) => format.dateTime(value, { dateStyle: "medium" });
 
@@ -83,7 +84,7 @@ export async function RetroSection({ screen, entityId, runId, editable, people, 
                   </span>
                 </TableCell>
                 <TableCell className="max-w-80 whitespace-normal">
-                  {item.reason}
+                  {storedText(item.reason ?? null, tStored)}
                   <span className="block text-xs text-faint">
                     {item.createdByPersonId ? (
                       <>

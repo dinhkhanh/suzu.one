@@ -77,9 +77,9 @@ Bạn chỉ thấy đề nghị của pháp nhân mình được giao chi trả.
 
 ### Đưa các khoản đã duyệt vào kỳ lương
 
-Khi một đề nghị được duyệt ở bước cuối, hệ thống **tự đưa** nó vào kỳ lương thường đang mở của pháp nhân người đề nghị. Nếu lúc đó chưa có kỳ lương nào mở, đề nghị nằm ở trạng thái **Chờ kỳ lương**.
+Khi một đề nghị được duyệt ở bước cuối, hệ thống **tự đưa** nó vào kỳ lương thường đang mở của pháp nhân người đề nghị. Nếu lúc đó chưa có kỳ lương nào mở, đề nghị nằm ở trạng thái **Chờ kỳ lương**. Mỗi đêm, ngay trước khi kỳ lương được tính tự động, hệ thống cũng tự đưa các đề nghị đang chờ (kể cả đề nghị của một kỳ lương đã bị hủy) vào kỳ lương đang mở — nên thường bạn không phải làm gì.
 
-Sau khi bạn mở kỳ lương mới:
+Muốn đưa vào ngay, không chờ đến đêm:
 
 1. Vào [Đề nghị thanh toán chi phí](/requests/claims).
 2. Bấm **Đưa vào kỳ lương**.

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { cancelFollowUpAction, completeFollowUpAction, recordActivityAction, rescheduleFollowUpAction } from "../account-actions";
 import { ACTIVITY_KINDS } from "../enums";
@@ -73,7 +74,7 @@ export function LogActivityForm({ target, contacts, people, meId, today }: { tar
             <Input id="activity-outcome" name="outcome" maxLength={1000} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={plan} onChange={(event) => setPlan(event.target.checked)} /> {t("alsoPlan")}
+            <Checkbox checked={plan} onCheckedChange={(checked) => setPlan(checked)} /> {t("alsoPlan")}
           </label>
         </>
       ) : null}
@@ -127,7 +128,7 @@ export function CompleteFollowUpForm({ activityId, people, meId, today }: { acti
         </Field>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={next} onChange={(event) => setNext(event.target.checked)} /> {t("alsoPlan")}
+        <Checkbox checked={next} onCheckedChange={(checked) => setNext(checked)} /> {t("alsoPlan")}
       </label>
       {next ? (
         <div className="grid gap-3 sm:grid-cols-3">

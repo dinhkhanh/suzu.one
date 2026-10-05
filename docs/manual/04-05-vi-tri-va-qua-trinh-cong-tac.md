@@ -22,6 +22,22 @@ Khung **Sửa hồ sơ và thông tin cá nhân** (dưới mục **Chi tiết c�
 
 HR cũng đổi được ảnh đại diện của nhân viên bằng **Thêm ảnh** / **Đổi ảnh** / **Gỡ ảnh** ở đầu hồ sơ.
 
+### Sửa ngày vào làm, ngày thâm niên, mã nhân viên
+
+Khi ngày hoặc mã của một quan hệ lao động nhập sai, mở khung **Sửa kỳ làm việc {mã}**. Đổi ngày bắt đầu sẽ dời luôn phân công đầu tiên và sự kiện tuyển dụng; không dời được sang sau hôm nay nếu người đó đã đi làm. Mọi lần sửa đều được ghi nhật ký.
+
+### Đổi tên một chức vụ
+
+Danh mục chức vụ dùng chung cho cả tập đoàn nằm ở [Chức vụ](/people/positions) (dành cho Nhân sự cấp tập đoàn). Bấm vào một chức vụ để **Đổi tên**: tên mới hiện ở mọi nơi, kể cả các phân công cũ.
+
+### Xóa hồ sơ tạo nhầm
+
+Hồ sơ bị trùng hoặc tạo thử có thể xoá bằng khung **Xóa nhân sự này (tạo nhầm)**: gõ đúng họ tên để xác nhận rồi bấm **Xóa vĩnh viễn**. Thao tác xoá người đó cùng sự kiện tuyển dụng, checklist kèm theo và hồ sơ cá nhân. Hệ thống từ chối khi đã có dữ liệu khác gắn với người này (hợp đồng, đơn từ, vai trò, phiếu lương, một bước checklist đã làm xong).
+
+### Tạm khoá tài khoản
+
+Khung **Tạm khóa tài khoản** đăng xuất người này khỏi mọi thiết bị ngay lập tức và chặn đăng nhập cho đến khi **Mở khóa**; quan hệ lao động, phân công và vai trò giữ nguyên. Phải ghi **Lý do tạm khóa**. Người bị tạm khoá có nhãn **Tạm khóa** trong danh sách nhân sự; các yêu cầu đang chờ họ duyệt cần được chuyển cho người khác — bấm **Xem yêu cầu đang chờ và ủy quyền thay** (xem trang **Ủy quyền phê duyệt**). Không tự tạm khoá được tài khoản của chính mình.
+
 ## Thay đổi vị trí công tác
 
 Dùng khi một người chuyển phòng ban, đổi chức vụ, lên cấp, đổi quản lý, đổi loại lao động (ví dụ từ Thử việc sang Chính thức)…
@@ -86,6 +102,14 @@ Kết quả:
 > [!IMPORTANT]
 > Sau khi chuyển, hãy **ký hợp đồng lao động mới** với pháp nhân mới và thêm vào mục **Hợp đồng**.
 
+## Đạt thử việc và gia hạn hợp đồng
+
+Khung **Đạt thử việc hoặc gia hạn hợp đồng** làm trọn việc trong một bước: ghi sự kiện, thêm hợp đồng lao động mới, kết thúc hợp đồng trước đó vào ngày hôm trước, và (khi đạt thử việc) chuyển **Loại nhân sự từ ngày đó**. Ở ô **Cấp quyết định** bạn có thể chọn một mẫu văn bản (ví dụ "Quyết định tiếp nhận sau thử việc") để cấp luôn quyết định gắn với sự kiện, hoặc **Không cấp văn bản**.
+
+## Điều chuyển, thăng chức và thôi việc cần duyệt
+
+Mặc định, thay đổi vị trí công tác và cho thôi việc có hiệu lực ngay khi Nhân sự lưu. Nếu quản trị viên đã lưu một luồng phê duyệt cho **Điều chuyển**, **Thăng chức / bổ nhiệm** hoặc **Chấm dứt hợp đồng** (cho cả tập đoàn hoặc một pháp nhân), việc lưu sẽ tạo một yêu cầu chờ duyệt; thay đổi được thực hiện khi người duyệt cuối đồng ý. Chuyển sang pháp nhân khác không đi qua luồng này.
+
 ## Ghi nhận sự kiện
 
 Ở cuối mục **Quá trình công tác**, khung **Ghi nhận sự kiện** dùng cho các sự kiện không tự thay đổi gì trong hệ thống, chỉ để lưu vết:
@@ -102,7 +126,7 @@ Chọn **Sự kiện**, **Ngày hiệu lực**, **Lý do**, **Ghi chú** rồi b
 > Ghi chú của sự kiện **Kỷ luật** chỉ người được xem thông tin hạn chế mới đọc được. Với **Điều chỉnh lương**, quản lý trực tiếp chỉ thấy là có điều chỉnh, không thấy lý do và ghi chú; chỉ người được xem thông tin lương mới ghi được loại sự kiện này. **Không ghi số tiền ở đây**: mức lương được quản lý ở phần Lương.
 
 > [!NOTE]
-> Ghi **Đạt thử việc** không tự đổi loại lao động. Nếu người này chuyển từ Thử việc sang Chính thức, hãy dùng thêm **Thay đổi vị trí công tác** và thêm hợp đồng mới.
+> Ghi **Đạt thử việc** bằng khung này chỉ lưu vết, không đổi loại lao động. Khi người này ký hợp đồng mới sau thử việc, hãy dùng khung **Đạt thử việc hoặc gia hạn hợp đồng** ở trên — nó đổi hợp đồng và loại lao động cùng lúc.
 
 ### Hủy một sự kiện
 

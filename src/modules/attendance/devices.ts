@@ -24,6 +24,7 @@ import { type Column, oneOf, type ParsedRow, type Problem, text } from "@/module
 import { defineImport, readSpreadsheet } from "@/modules/platform/import/service";
 import { listEntities } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
+import { faceWithdrawnAmong } from "@/modules/privacy/service";
 import { CANONICAL_HEADERS, type DeviceMapping, inferredDirection, mappingProblems, parseDat, parseTimestamp, toCanonicalTable } from "./engine/device-log";
 import type { PushedRow } from "./engine/device-push";
 import { vietnamDateAndMinute } from "./engine/merge";
@@ -464,7 +465,16 @@ export async function commitPushedRows(deviceId: string, rows: PushedRow[]): Pro
 
 /** Who the clock should know: its mapped IDs with names, for the kiosk's enrolment list. */
 export async function deviceRoster(deviceId: string): Promise<{ userId: string; fullName: string; employeeCode: string | null }[]> {
-  return (await listUserMap(deviceId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
+  // A clock that keeps its own faces (the NAS kiosk) learns who to forget from this list: somebody
+  // who has left, or who withdrew their consent to face check-in, is no longer on it — the NAS stops
+  // recognising them at its next sync and deletes their faces by its own purge (docs/privacy).
+  const [rows, gone] = await Promise.all([
+    listUserMap(deviceId),
+    db().select({ id: schema.person.id }).from(schema.person).innerJoin(schema.deviceUserMap, eq(schema.deviceUserMap.personId, schema.person.id)).where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.person.status, "offboarded"))),
+  ]);
+  const withdrawn = await faceWithdrawnAmong([...new Set(rows.map((row) => row.personId))]);
+  const left = new Set(gone.map((row) => row.id));
+  return rows.filter((row) => !left.has(row.personId) && !withdrawn.has(row.personId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
 }
 
 // ── The in-app kiosk ────────────────────────────────────────────────────────────────────────

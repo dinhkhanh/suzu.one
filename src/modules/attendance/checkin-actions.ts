@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { mayRecordPosition } from "@/modules/privacy/service";
 import { getLocation, saveLocation } from "./locations";
 import { canManageLocation, canReviewPunchOf } from "./policy";
 import { getPunch, recordAppPunch, reviewPunch } from "./punches";
@@ -27,7 +28,12 @@ const punchPipeline = createAction({
   // One's own punch needs no permission; the service refuses people who are not employed.
   authorize: () => true,
   run: async ({ user, input }) => {
-    const result = await recordAppPunch({ person: user.person, direction: input.direction, position: input.position, ipAddress: user.request.ipAddress, userAgent: user.request.userAgent, deviceInfo: input.deviceInfo, note: input.note });
+    // The position is kept only with the GPS notice agreed to (NFR-PRV-01): a tab opened before the
+    // person declined or withdrew still sends one, and it is dropped here, not stored and ignored.
+    const allowed = input.position ? await mayRecordPosition(user.person.id) : true;
+    const position = allowed ? input.position : null;
+    const deviceInfo = allowed ? input.deviceInfo : { ...input.deviceInfo, positionProblem: "not_agreed" };
+    const result = await recordAppPunch({ person: user.person, direction: input.direction, position, ipAddress: user.request.ipAddress, userAgent: user.request.userAgent, deviceInfo, note: input.note });
     revalidatePath("/attendance", "layout");
     return {
       data: { id: result.punch.id, at: result.punch.at.toISOString(), direction: result.punch.direction, outcome: result.outcome, flags: result.flags, locationName: result.locationName, distanceM: result.punch.distanceM, duplicate: result.duplicate },

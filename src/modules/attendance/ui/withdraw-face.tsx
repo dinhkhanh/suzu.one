@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { withdrawFaceConsentAction } from "../kiosk-actions";
-import { ConfirmDialog } from "./confirm";
+import { ConfirmDialog } from "@/components/ui/confirm";
 
 /** Withdrawing one's consent to face check-in: asked once in a sheet, then the face data is gone. */
 export function WithdrawFaceConsentButton() {

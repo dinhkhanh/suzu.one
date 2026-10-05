@@ -66,7 +66,7 @@ Người duyệt nhận thông báo *Bảng giờ chờ duyệt*. Sáng thứ Ha
 | Trạng thái | Ý nghĩa | Bạn làm gì |
 | --- | --- | --- |
 | **Đang mở** | Chưa nộp | Ghi giờ, rồi nộp |
-| **Đã nộp, chờ duyệt** | Đang chờ người duyệt; tạm thời không sửa được | Chờ |
+| **Đã nộp, chờ duyệt** | Đang chờ người duyệt; tạm thời không sửa được | Chờ — hoặc bấm **Rút lại bảng giờ** (khi chưa ai duyệt) để sửa rồi nộp lại |
 | **Đã duyệt** | Tuần bị khoá | Cần sửa thì nhờ người duyệt **mở lại** |
 | **Bị trả lại** | Người duyệt yêu cầu sửa (*… trả lại: lý do*) | Sửa rồi bấm **Nộp lại bảng giờ** |
 

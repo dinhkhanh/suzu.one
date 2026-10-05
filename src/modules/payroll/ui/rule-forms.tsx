@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -120,13 +122,13 @@ export function ProposeComponentForm({ entities }: { entities: EntityOption[] })
             </Select>
           </Field>
           <label className="flex items-center gap-2 text-sm sm:pt-6">
-            <input type="checkbox" name="subjectToInsurance" /> {t("subjectToInsurance")}
+            <Checkbox name="subjectToInsurance" /> {t("subjectToInsurance")}
           </label>
         </div>
         {source === "formula" ? (
           <div className="flex flex-col gap-2">
             <Field name="formula" label={t("formula")}>
-              <textarea id="formula" name="formula" required rows={3} maxLength={500} spellCheck={false} className="w-full rounded-md border bg-transparent p-2 font-mono text-xs" placeholder="round_half_up_to(pct(base_salary, 1000), 1000)" />
+              <Textarea id="formula" name="formula" required rows={3} maxLength={500} spellCheck={false} className="font-mono text-xs" placeholder="round_half_up_to(pct(base_salary, 1000), 1000)" />
             </Field>
             {formulaProblem ? (
               <p role="alert" className="text-xs text-destructive">
@@ -204,7 +206,7 @@ export function ProposePolicyForm({ entities, current }: { entities: EntityOptio
           </Field>
           {choice("payDayShift", ["previous_working_day", "next_working_day"])}
           <label className="flex items-center gap-2 text-sm sm:pt-6">
-            <input type="checkbox" name="value.unionEnabled" defaultChecked={start.unionEnabled} /> {t("fields.unionEnabled")}
+            <Checkbox name="value.unionEnabled" defaultChecked={start.unionEnabled} /> {t("fields.unionEnabled")}
           </label>
         </div>
         <Field name="note" label={t("note")}>

@@ -24,7 +24,9 @@ Thay đổi tuân theo nguyên tắc **bốn mắt**: nhân sự / C&B **đề x
 | **Giảm trừ gia cảnh**, **Biểu thuế TNCN lũy tiến**, **Thuế TNCN khấu trừ theo tỷ lệ cố định** | Tính thuế thu nhập cá nhân. |
 | **Thuế TNCN – phần tiền làm thêm, làm đêm được miễn** | Phần thu nhập không chịu thuế. |
 | **Hệ số lương tăng ca, làm đêm**, **Giới hạn giờ tăng ca**, **Giờ làm việc ban đêm** | Chấm công và tính lương làm thêm. |
+| **Làm việc ngày lễ – hệ số 300% đã gồm hay chưa gồm lương ngày lễ** | Hệ số làm việc ngày lễ được trả thêm ngoài lương ngày lễ (giá trị cài sẵn) hay đã gồm lương ngày lễ — cần kế toán trưởng xác nhận. |
 | **Phép năm** | Số ngày phép năm và cách cộng thâm niên. |
+| **Tiền lương làm căn cứ thanh toán phép năm chưa nghỉ khi nghỉ việc** | Những khoản lương nào được tính khi trả tiền ngày phép chưa nghỉ cho người nghỉ việc (giá trị cài sẵn: lương cơ bản cộng phụ cấp đóng bảo hiểm, chưa xác nhận). |
 | **Thử việc**, **Hợp đồng xác định thời hạn** | Giới hạn thời gian thử việc và hợp đồng. |
 | **Số ngày nhắc trước các hạn nhân sự** | Nhắc hết thử việc, hết hợp đồng… |
 | **Thuế GTGT trên dịch vụ bán ra** | Thuế suất mặc định và được phép trên báo giá, hoá đơn. |
@@ -64,6 +66,13 @@ Chủ sở hữu nhận thông báo **Có đề xuất thay đổi tham số ph�
 
 - **Phê duyệt** — phiên bản mới có hiệu lực từ ngày đã chọn và được tính là đã kiểm tra.
 - **Từ chối** — đề xuất bị bỏ.
+
+### Hủy bỏ một phiên bản đã duyệt nhưng sai
+
+Nếu một phiên bản đã phê duyệt hoá ra sai, Chủ sở hữu bấm **Hủy bỏ** trên phiên bản đó và ghi **Lý do hủy bỏ**. Phiên bản không còn hiệu lực nhưng vẫn được lưu (gạch ngang, nhãn **Đã hủy bỏ**, kèm người hủy và lý do); phiên bản trước đó tiếp tục áp dụng cho những ngày này. Sau đó đề xuất phiên bản đúng như bình thường — được phép dùng cùng ngày hiệu lực.
+
+- Không hủy bỏ được khi một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khoá dùng phiên bản này: hãy điều chỉnh bằng khoản truy lĩnh, truy thu.
+- Khi một kỳ lương đang chờ duyệt dùng phiên bản này, hãy trả kỳ lương về cho nhân sự trước. Kỳ lương còn ở C&B sẽ bị đánh dấu cần tính lại.
 
 Với giá trị đang áp dụng có nhãn **Chưa được kế toán trưởng xác nhận** (thường là giá trị cài sẵn khi khởi tạo hệ thống), sau khi đối chiếu, bấm **Xác nhận đã kiểm tra**. Khi một kỳ lương dùng tham số chưa được xác nhận, trang kỳ lương hiện cảnh báo.
 

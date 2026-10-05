@@ -62,7 +62,7 @@ Hệ thống tạo một việc nối tiếp trong **hàng chờ phân loại** 
 
 ## Làm thay khi nghỉ phép
 
-Khi bạn có đơn nghỉ phép (đang chờ hoặc đã duyệt) dài từ số ngày làm việc nhóm quy định trở lên (mặc định 2 ngày), SuZu One tự lập một **Kế hoạch làm thay khi nghỉ** nháp, liệt kê những gì rơi vào thời gian nghỉ.
+Khi bạn có đơn nghỉ phép (đang chờ hoặc đã duyệt) dài từ số ngày làm việc nhóm quy định trở lên (mặc định 2 ngày), SuZu One tự lập một **Kế hoạch làm thay khi nghỉ** nháp ngay lúc đơn được gửi, liệt kê những gì rơi vào thời gian nghỉ, và báo bạn *Chọn người làm thay khi bạn nghỉ*.
 
 ### Người nghỉ: điền kế hoạch
 
@@ -80,7 +80,7 @@ Lãnh đạo có quyền quản lý công việc ở pháp nhân của bạn có
 
 - Bạn nhận thông báo *Nhờ bạn làm thay*. Mở kế hoạch và bấm **Xác nhận làm thay (… việc)**.
 - Từ ngày đầu kỳ nghỉ, các việc tự chuyển sang bạn (nếu kỳ nghỉ đã bắt đầu thì chuyển ngay). Trên trang công việc ghi *Đang nghỉ — … làm thay*.
-- Sau kỳ nghỉ, người nghỉ (hoặc bạn, với những việc bạn đang giữ) bấm **Trả lại việc**. Không trả lại được trước ngày cuối của kỳ nghỉ.
+- Sau kỳ nghỉ, người nghỉ (hoặc bạn, với những việc bạn đang giữ) bấm **Trả lại việc**. Không trả lại được trước ngày cuối của kỳ nghỉ. Khi người nghỉ đi làm lại mà vẫn còn việc ở chỗ người làm thay, người nghỉ nhận nhắc *Bạn đã đi làm lại — nhận lại việc* và người làm thay nhận *Trả lại việc đã làm thay*.
 
 ## Bàn giao khi nghỉ việc hoặc chuyển bộ phận
 

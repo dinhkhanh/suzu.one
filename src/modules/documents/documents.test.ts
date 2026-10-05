@@ -22,6 +22,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { storedObjects } from "../../../tests/helpers/storage";
+import { buildIssuedDocumentsExport } from "./exports";
 import type { Principal } from "../platform/rbac/policy";
 import { generateDocument, listDocumentsAbout, listIssuedDocuments, openDocument, previewDocument, saveTemplate, type TemplateInput, vietnameseWords } from "./service";
 
@@ -268,6 +269,22 @@ describe("the salary letter and the compensation tier", () => {
     expect(officerSees.some((row) => row.tier === "compensation")).toBe(false);
     expect(await listIssuedDocuments(boss.principal)).toEqual([]);
     expect((await listIssuedDocuments(lead.principal, { kind: "decision" })).every((row) => row.kind === "decision")).toBe(true);
+  });
+
+  it("exports the register as each reader sees it, tier by tier", async () => {
+    const { document } = await generateDocument(lead, salaryTemplateId, ids.huy);
+    const listed = await listIssuedDocuments(lead.principal);
+    const leadFile = await buildIssuedDocumentsExport(lead.principal, {}, "en");
+    expect(leadFile.file.table.header).toEqual(["Number", "Template", "Kind", "About", "Sensitivity", "Issued by", "Issued"]);
+    expect(leadFile.file.table.rows).toHaveLength(listed.length);
+    expect(leadFile.file.table.rows.some((row) => row[0] === document.number && row[4] === "Compensation")).toBe(true);
+    // The officer's file, like the officer's register, holds no compensation paper.
+    const officerFile = await buildIssuedDocumentsExport(officer.principal, {}, "vi");
+    expect(officerFile.file.table.rows).toHaveLength((await listIssuedDocuments(officer.principal)).length);
+    expect(officerFile.file.table.rows.some((row) => row[4] === "Lương thưởng")).toBe(false);
+    expect((await buildIssuedDocumentsExport(boss.principal, {}, "en")).file.table.rows).toEqual([]);
+    const decisions = await buildIssuedDocumentsExport(lead.principal, { kind: "decision" }, "vi");
+    expect(decisions.file.table.rows.every((row) => row[2] === "Quyết định")).toBe(true);
   });
 
   it("is not even LISTED to somebody who could not open it", async () => {

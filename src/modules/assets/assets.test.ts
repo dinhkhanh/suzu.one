@@ -20,6 +20,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
+import { buildAssetsExport } from "./exports";
 import {
   assignAsset,
   cancelReturnTasks,
@@ -376,5 +377,30 @@ describe("telling the holder", () => {
     await assignAsset({ assetId: (await newAsset()).id, holderType: "team", holderId: ids.team, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
     await assignAsset({ assetId: (await newAsset()).id, holderType: "person", holderId: ids.keeper, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
     expect((await db().select().from(schema.notification).where(eq(schema.notification.kind, "approvals.asset_handover"))).length).toBe(before);
+  });
+});
+
+describe("the register as a file (FR-PLT-37)", () => {
+  it("holds the rows the register lists, price included, and nothing for someone with a narrower reach", async () => {
+    await newAsset({ purchasePrice: 52_000_000 });
+    await newAsset({ entityId: ids.szc, categoryId: ids.camera, name: "Sony FX6", purchasePrice: 90_000_000 });
+    const { file, total } = await buildAssetsExport(keeper, {}, "en");
+    const listed = await listAssetPage(keeper, {}, 1, 5000);
+    expect(total).toBe(listed.total);
+    expect(file.rowCount).toBe(listed.rows.length);
+    expect(file.table.rows.map((row) => row[0])).toEqual(listed.rows.map((row) => row.code));
+    expect(file.table.header).toContain("Purchase price (₫)");
+    const priceAt = file.table.header.indexOf("Purchase price (₫)");
+    expect(file.table.rows.some((row) => row[priceAt] === 52_000_000)).toBe(true);
+
+    // An entity's keeper gets that entity's rows only; someone with no register gets none and no price column.
+    const narrow = await buildAssetsExport(entityKeeperSzc, {}, "vi");
+    expect(narrow.file.rowCount).toBeGreaterThan(0);
+    expect(narrow.file.rowCount).toBeLessThan(file.rowCount);
+    expect(narrow.file.table.rows.every((row) => String(row[3]) === "Creative")).toBe(true);
+    expect((await buildAssetsExport(huy, {}, "en")).file.rowCount).toBe(0);
+    // The filters carry over.
+    const cameras = await buildAssetsExport(keeper, { categoryId: ids.camera }, "en");
+    expect(cameras.file.table.rows.every((row) => row[2] === "Máy quay")).toBe(true);
   });
 });

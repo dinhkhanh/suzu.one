@@ -47,7 +47,7 @@ Khi còn là **Nháp**, bạn có thể bấm **Sửa thư mời** để chỉnh
    - **Trưởng bộ phận** — đồng ý về con người và vị trí.
    - **Người có quyền duyệt lương** — đồng ý về con số.
 3. Người duyệt mở thư mời từ hộp **Phê duyệt** hoặc từ thông báo. Họ ra quyết định **ngay trên trang thư mời**, ở khung **Phê duyệt** (có liên kết sang yêu cầu duyệt). Thư mời **không thể duyệt hàng loạt**.
-4. Nội dung đi qua hộp duyệt, thông báo và email chỉ có **số thư mời** và **tên ứng viên** — không bao giờ có mức lương.
+4. Nội dung trong hộp duyệt chỉ có **số thư mời** và **tên ứng viên**; thông báo và email nội bộ chỉ có số thư mời và vị trí — không bao giờ có mức lương.
 
 Kết quả:
 
@@ -66,8 +66,8 @@ Nếu thư mời có chọn mẫu, mục **Thư mời** có liên kết **Tải 
 
 ## Gửi cho ứng viên và ghi nhận câu trả lời
 
-1. Gửi thư mời cho ứng viên theo cách bạn vẫn làm (email kèm PDF, gặp trực tiếp…).
-2. Trên trang thư mời, bấm **Đánh dấu đã gửi**. Thư mời chuyển sang **Đã gửi**. Từ đây, thư mời không sửa được nữa, vì ứng viên đã cầm trên tay.
+1. Trên trang thư mời đã duyệt, bấm **Gửi thư mời cho ứng viên**. Hệ thống gửi email **Thư báo đề nghị tuyển dụng** bằng ngôn ngữ của ứng viên, đính kèm thư mời đúng như bản PDF tải từ trang này, và thư mời chuyển sang **Đã gửi**. Từ đây, thư mời không sửa được nữa, vì ứng viên đã cầm trên tay. Bản PDF đính kèm bị xoá khỏi hàng chờ gửi ngay khi email đã đi.
+2. Tình trạng gửi email hiện trong **Lịch sử** của hồ sơ ứng tuyển. Nếu ứng viên chưa có email (hoặc mẫu thư đang tắt), thư mời vẫn chuyển sang **Đã gửi**, lịch sử ghi lý do thư không đi — hãy gửi bản PDF cho ứng viên bằng cách khác.
 3. Khi ứng viên trả lời, mở khung **Ứng viên trả lời** — người tuyển dụng ghi lại câu trả lời nhận được, ứng viên không tự bấm trên hệ thống:
    - **Ứng viên đồng ý**.
    - **Ứng viên từ chối** — chọn **Lý do từ chối** (Mức lương, Công ty hiện tại giữ lại, Đã nhận lời mời khác, Công việc không phù hợp, Nơi làm việc, Thời điểm chưa phù hợp, Lý do cá nhân, Lý do khác), thêm ghi chú, rồi **Xác nhận từ chối**.

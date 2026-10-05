@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableEmpty, TableGroupRow, TableHead, Tabl
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { PersonName } from "@/modules/platform/approvals/ui/person-name";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { entityReach } from "@/modules/platform/rbac/policy";
+import { exportPayoutsAction } from "@/modules/requests/export-actions";
 import { listPayouts, payoutTotals, type PayoutRow } from "@/modules/requests/payments";
 import { canPayRequests } from "@/modules/requests/policy";
 import { MarkPaidButton } from "@/modules/requests/ui/mark-paid";
@@ -27,7 +29,7 @@ export default async function RequestsToPayPage() {
   const today = todayInVietnam();
   const reach = entityReach(user.principal, "payroll:pay");
   // The list holds the oldest few hundred; the count and the sum are taken over everything waiting.
-  const [t, tRequests, format, locale, rows, totals] = await Promise.all([getTranslations("requests.pay"), getTranslations("requests"), getFormatter(), getLocale(), listPayouts(reach, { paidSince: addDays(today, -60) }), payoutTotals(reach)]);
+  const [t, tRequests, te, format, locale, rows, totals] = await Promise.all([getTranslations("requests.pay"), getTranslations("requests"), getTranslations("exports"), getFormatter(), getLocale(), listPayouts(reach, { paidSince: addDays(today, -60) }), payoutTotals(reach)]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
   const day = (value: Date | string | null) => (value ? format.dateTime(typeof value === "string" ? new Date(`${value}T00:00:00+07:00`) : value, { day: "numeric", month: "numeric", year: "numeric" }) : "—");
 
@@ -82,7 +84,7 @@ export default async function RequestsToPayPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("description", { count: totals.waiting, amount: money(owed) })} />
+      <PageHeader title={tRequests("hub")} description={t("description", { count: totals.waiting, amount: money(owed) })} actions={<ExportButton action={exportPayoutsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
       <RequestTabs active="pay" personId={user.person.id} principal={user.principal} payWaiting={totals.waiting} />
 
       <TileGrid>

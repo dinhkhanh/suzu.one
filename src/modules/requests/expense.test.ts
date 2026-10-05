@@ -13,8 +13,11 @@ import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import { findOpenRegularRun, findOpenRegularRuns } from "@/modules/payroll/service";
+import { tableToCsv } from "@/modules/platform/export/csv";
+import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { ExpenseLine } from "./engine/expense";
+import { buildExpenseClaimsExport } from "./exports";
 import { claimsOwed, fileExpenseClaim, getExpenseClaim, listExpenseClaims } from "./expense";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim, REIMBURSEMENT_COMPONENT, sweepApprovedClaims } from "./expense-posting";
 import { REQUEST_TYPE_SEED } from "./seed-types";
@@ -273,5 +276,22 @@ describe("what is owed", () => {
     }
     expect(await claimsOwed({ all: false, entityIds: [entity.id] })).toEqual({ count: 1, amount: 50_000 });
     expect((await claimsOwed({ all: true })).count).toBeGreaterThan(1);
+  });
+});
+
+describe("the claims export", () => {
+  const finance = (entityIds: string[] | null): Principal => ({ personId: ids.boss, workforceType: "employee", grants: entityIds ? entityIds.map((id) => ({ role: "finance" as const, scope: { type: "entity" as const, id } })) : [{ role: "finance" as const, scope: { type: "group" as const } }] });
+
+  it("holds the claims the desk lists for the entities the reader pays", async () => {
+    const all = await listExpenseClaims({ reach: { all: true } }, 100_000);
+    expect(all.length).toBeGreaterThan(0);
+    const { file, total } = await buildExpenseClaimsExport(finance(null), "en");
+    expect([total, file.rowCount]).toEqual([all.length, all.length]);
+    expect(file.table.header[2]).toBe("Amount");
+    expect(file.table.rows.map((cells) => cells[2]).sort()).toEqual(all.map((claim) => claim.total).sort());
+    expect(tableToCsv(file.table)).toContain("Công tác Đà Nẵng");
+
+    const [entity] = await db().insert(schema.entity).values({ code: "SZQ", legalName: "SuZu Q", shortName: "SZQ", taxCode: "0107", wageRegion: 1 }).returning();
+    expect((await buildExpenseClaimsExport(finance([entity.id]), "en")).total).toBe(0);
   });
 });

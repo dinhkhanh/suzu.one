@@ -11,6 +11,8 @@ Bảng giờ tuần của một người được duyệt bởi:
 
 Không ai tự duyệt bảng giờ của mình. Các cấp quản lý phía trên xem được bảng giờ nhưng không quyết định. Người không thuộc nhóm nào được quản lý trực tiếp duyệt.
 
+Nếu một người không có trưởng nhóm nào (ngoài chính họ) và cũng không có quản lý trực tiếp đang làm việc, tuần của họ được chuyển cho người có quyền quản lý công việc phía trên họ, và nếu không có ai, cho **Chủ sở hữu**. Người duyệt dự phòng này nhận thông báo và thấy tuần trong danh sách duyệt, nhưng chỉ đọc được bảng giờ đó.
+
 ## Duyệt bảng giờ
 
 Mở [Duyệt bảng giờ](/daily/timesheets) (nút trên trang **Báo cáo của tôi**, hoặc từ thông báo *Bảng giờ chờ duyệt*).

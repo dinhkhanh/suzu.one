@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -204,7 +205,7 @@ export function ClientForm({ client, parents, entities }: { client?: Client; /**
             <Input name="note" maxLength={1000} defaultValue={client?.note ?? ""} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="isActive" defaultChecked={client?.isActive ?? true} /> {t("fields.isActive")}
+            <Checkbox name="isActive" defaultChecked={client?.isActive ?? true} /> {t("fields.isActive")}
           </label>
         </div>
       </FieldErrors>

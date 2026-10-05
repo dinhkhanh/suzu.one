@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { getSalaryDecision } from "@/modules/payroll/salaries";
@@ -38,34 +39,34 @@ export default async function SalaryDecisionPage({ params }: PageProps<"/payroll
       <h1 className="text-center text-lg font-semibold uppercase">{initial ? t("titleInitial") : t("title")}</h1>
       <p>{t("basis")}</p>
       <p className="font-semibold">{t("article1", { name: decision.personName, code: decision.employeeCode ?? "—", date: day(structure.validFrom) })}</p>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-1 font-medium">{t("component")}</th>
-            {previous ? <th className="py-1 text-right font-medium">{t("before")}</th> : null}
-            <th className="py-1 text-right font-medium">{t("after")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{t("baseSalary")}</td>
-            {previous ? <td className="text-right tabular-nums">{formatVnd(previous.terms.baseSalary)}</td> : null}
-            <td className="text-right tabular-nums">{formatVnd(structure.terms.baseSalary)}</td>
-          </tr>
-          <tr>
-            <td>{t("insuranceSalary")}</td>
-            {previous ? <td className="text-right tabular-nums">{formatVnd(previous.terms.insuranceSalary)}</td> : null}
-            <td className="text-right tabular-nums">{formatVnd(structure.terms.insuranceSalary)}</td>
-          </tr>
+      <Table numbered={false}>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("component")}</TableHead>
+            {previous ? <TableHead kind="money">{t("before")}</TableHead> : null}
+            <TableHead kind="money">{t("after")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>{t("baseSalary")}</TableCell>
+            {previous ? <TableCell kind="money">{formatVnd(previous.terms.baseSalary)}</TableCell> : null}
+            <TableCell kind="money">{formatVnd(structure.terms.baseSalary)}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>{t("insuranceSalary")}</TableCell>
+            {previous ? <TableCell kind="money">{formatVnd(previous.terms.insuranceSalary)}</TableCell> : null}
+            <TableCell kind="money">{formatVnd(structure.terms.insuranceSalary)}</TableCell>
+          </TableRow>
           {[...new Set([...(previous?.terms.allowances ?? []), ...structure.terms.allowances].map((line) => line.code))].map((code) => (
-            <tr key={code}>
-              <td>{name(code)}</td>
-              {previous ? <td className="text-right tabular-nums">{formatVnd(previous.terms.allowances.find((line) => line.code === code)?.amount ?? 0)}</td> : null}
-              <td className="text-right tabular-nums">{formatVnd(structure.terms.allowances.find((line) => line.code === code)?.amount ?? 0)}</td>
-            </tr>
+            <TableRow key={code}>
+              <TableCell>{name(code)}</TableCell>
+              {previous ? <TableCell kind="money">{formatVnd(previous.terms.allowances.find((line) => line.code === code)?.amount ?? 0)}</TableCell> : null}
+              <TableCell kind="money">{formatVnd(structure.terms.allowances.find((line) => line.code === code)?.amount ?? 0)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <p>{t("article2")}</p>
       <p>{t("article3")}</p>
       <footer className="mt-8 flex justify-end">

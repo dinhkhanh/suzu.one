@@ -29,6 +29,10 @@ Mỗi khoản hiện: mã dự án và tên dự án (bấm được nếu bạn
 
 Mỗi khoản đang chờ có hai nút **Xuất hoá đơn** và **Không thu**.
 
+### Sửa số tiền
+
+Khoản chưa xuất hoá đơn mà sai số tiền: mở **Sửa số tiền**, nhập **Số tiền đúng (VND)** (để trống nếu chưa thoả thuận) và **Lý do sửa**, bấm **Lưu số tiền**. Khoản ghi lại số trước, số sau, người sửa và lý do.
+
 ### Khoản của khách hàng
 
 Với khoản có khách hàng, nút **Xuất hoá đơn** dẫn sang mục **Công nợ** (*Ghi nhận hoá đơn ở mục Công nợ — khoản này sẽ được đánh dấu đã xuất hoá đơn và công nợ của khách được theo dõi*). Ghi hoá đơn ở đó để số phải thu của khách được theo dõi — xem chương **Khách hàng & kinh doanh**.
@@ -52,6 +56,9 @@ Mở **Thêm khoản thủ công** cuối trang (hoặc cuối tab **Nghiệm th
 1. Nhập **Mã dự án** (khi thêm từ hàng chờ chung).
 2. Nhập **Nội dung**, **Số hợp đồng / PO** (không bắt buộc) và **Số tiền (VND)**.
 3. Lưu. Khoản mới vào hàng chờ với nguồn **Nhập tay**.
+
+> [!NOTE]
+> Trên tab **Kế hoạch**, mỗi mốc thanh toán cho biết vì sao chưa có khoản: *Chưa chuyển kế toán: chờ khách ký biên bản nghiệm thu*, *mốc chưa được đánh dấu hoàn thành*, hay *biên bản nghiệm thu toàn dự án đã tính phần phí này*. Mốc đang có biên bản nghiệm thu hoặc đã có khoản chuyển kế toán thì không xoá được.
 
 > [!TIP]
 > Trên tab **Nghiệm thu** của mỗi dự án, phần **Các khoản chuyển kế toán** cho account và trưởng dự án thấy khoản nào đã chuyển kế toán và đang ở trạng thái nào — người không có quyền thương mại sẽ không thấy số tiền.

@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { Pager, readPage } from "@/components/ui/pager";
 import { TableAddRow, TableCard } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
+import { exportAssetsAction } from "@/modules/assets/export-actions";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { listEntities } from "@/modules/platform/org/service";
 import { type AssetStatus, ASSET_STATUSES, canManageAssets, canReadAssetMoney, canReadRegister, listAssetPage, listCategories, summaryByStatus } from "@/modules/assets/service";
 import { AssetsNav } from "@/modules/assets/ui/nav";
@@ -34,13 +36,15 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
     return params.size ? `/assets?${params.toString()}` : "/assets";
   };
 
-  const [{ rows, total }, categories, entities, totals, t, tStatus] = await Promise.all([
+  const [{ rows, total }, categories, entities, totals, t, tStatus, te, locale] = await Promise.all([
     listAssetPage(user.principal, filter, page, PAGE_SIZE),
     listCategories(),
     listEntities(),
     summaryByStatus(user.principal),
     getTranslations("assets"),
     getTranslations("assets.enums.status"),
+    getTranslations("exports"),
+    getLocale(),
   ]);
   const showMoney = canReadAssetMoney(user.principal, filter.entityId);
   const manages = canManageAssets(user.principal);
@@ -53,6 +57,7 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
         actions={
           manages ? (
             <>
+              <ExportButton action={exportAssetsAction} input={{ ...filter, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
               <Button nativeButton={false} variant="outline" render={<Link href="/assets/labels" />}>
                 {t("nav.labels")}
               </Button>

@@ -31,10 +31,12 @@ Dữ liệu tuyển dụng là thông tin cá nhân của **người ngoài côn
 | Xem các vị trí đang tuyển (nội bộ) | Thanh bên → **Quản lý** → [Tuyển dụng](/recruit) |
 | Tạo một tin tuyển dụng mới | [Tạo tin tuyển dụng](/recruit/openings/new) |
 | Tìm một ứng viên trong kho | [Ứng viên](/recruit/candidates) |
+| Xem danh sách ứng viên tiềm năng | [Ứng viên tiềm năng](/recruit/candidates?pool=1) |
 | Thêm tay một ứng viên (CV được chuyển tới) | [Thêm ứng viên](/recruit/candidates/new) |
 | Kéo thả hồ sơ giữa các vòng | Mở vị trí → **Bảng tuyển dụng** |
 | Theo dõi thư mời nhận việc | [Thư mời nhận việc](/recruit/offers) |
 | Sửa mẫu email gửi ứng viên | [Gửi email cho ứng viên](/recruit/emails) |
+| Sửa quy trình tuyển (các vòng) | [Quy trình tuyển dụng](/recruit/pipelines) |
 | Xem phễu tuyển dụng, thời gian tuyển | [Báo cáo tuyển dụng](/recruit/reports) |
 | Xem trang tuyển dụng công khai | [Cơ hội nghề nghiệp](/careers) |
 
@@ -71,7 +73,8 @@ Mọi thứ về một ứng viên trong một vị trí: nguồn, ngày ứng t
 
 - **Mức lương** (ngân sách của đề nghị, dải lương của tin, mức lương mong muốn của ứng viên, lương trong thư mời) chỉ hiện với người có quyền xem lương — trong danh mục vai trò hiện tại là **Quản trị nhân sự** và **Chủ sở hữu**; riêng lương trong thư mời còn hiện với người duyệt phần lương. Người khác thấy một dòng nhắc rằng họ không có quyền xem, chứ không thấy con số.
 - **CV và bài làm** do ứng viên tải lên **chưa được quét virus**. Hệ thống chỉ cho người đang tuyển cho vị trí đó (và người phỏng vấn ứng viên đó) tải về. Hãy thận trọng khi mở tệp.
-- **Hồ sơ không trúng tuyển được ẩn danh tự động** sau thời hạn lưu trữ (mặc định 12 tháng kể từ ngày ứng tuyển), trừ khi ứng viên đồng ý cho giữ hồ sơ. Xem trang **Ứng viên & quy trình tuyển**.
+- **Hồ sơ không trúng tuyển được ẩn danh tự động** sau thời hạn lưu trữ (mặc định 12 tháng kể từ ngày ứng tuyển, và không sớm hơn 12 tháng sau khi đơn gần nhất khép lại), trừ khi ứng viên đồng ý cho giữ hồ sơ. Khi ứng viên yêu cầu, người quản lý tuyển dụng **Xoá dữ liệu** ngay. Xem trang **Ứng viên & quy trình tuyển**.
+- **Thông báo nội bộ về tuyển dụng không ghi tên ứng viên** — chỉ ghi vị trí, vòng phỏng vấn hoặc số thư mời.
 - Mọi thao tác đều được ghi vào **Nhật ký hệ thống**.
 
 ## Các trang trong chương này

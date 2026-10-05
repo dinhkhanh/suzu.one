@@ -24,23 +24,27 @@ Màn hình này chỉ có sau khi CEO đã ký duyệt kỳ lương.
 
 Đầu màn hình có ba ô: **Tổng chuyển khoản**, **Tổng chi tiền mặt** (kèm số người) và **Tình trạng** — **Đã chi xong** hoặc **Chưa chi xong**. Khi chưa xong, hệ thống liệt kê lý do, ví dụ:
 
-- "Chưa lập tệp chuyển khoản nào."
-- "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp đã lập."
+- "Còn ngân hàng chưa lập tệp chuyển khoản."
+- "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp mới nhất của ngân hàng đó và chưa được ghi nhận chi cách khác."
 - "Còn người trong bảng tiền mặt chưa ghi nhận đã chi."
+- "Còn dòng tiền mặt chi khác số thực nhận mà chưa có ghi chú lý do."
 
-Người hồ sơ **Đầy đủ** nhận lương chuyển khoản; người hồ sơ **Đơn giản** nhận tiền mặt.
+Người hồ sơ **Đầy đủ** nhận lương chuyển khoản; người hồ sơ **Đơn giản** nhận tiền mặt. Bảng **Ai được chi qua đâu** cho biết từng người được chi qua tệp nào (**Tệp … — cùng ngân hàng**, **Tệp … — liên ngân hàng tới …**, **Tiền mặt (bảng chi)**) và đã đến đâu (**Đã vào tệp**, **Chưa vào tệp**, **Đã chi cách khác**…). Người có thực nhận bằng 0 hoặc âm không nằm trong tệp nào và không chặn việc ghi nhận đã chi.
 
 ### Lập tệp chuyển khoản
 
-Mỗi ngân hàng một tệp, theo mẫu nộp lô của ngân hàng đó. Hiện hệ thống hỗ trợ mẫu của **Vietcombank** và **ACB**.
+Mỗi ngân hàng một tệp, theo mẫu nộp lô của ngân hàng đó. Hiện hệ thống hỗ trợ mẫu của **Vietcombank** và **ACB**. Người có tài khoản ở ngân hàng khác đi vào tệp ACB dưới dạng chuyển liên ngân hàng (mẫu tệp ACB có cột ngân hàng thụ hưởng; mẫu VCB thì không).
 
 1. Trong khung **Tệp chuyển khoản**, chọn **Ngân hàng** (kèm số người hưởng lương qua ngân hàng đó).
 2. Chọn **Ngày chi**.
-3. Nhập **Tài khoản công ty** và **Tên tài khoản công ty** dùng để chi.
+3. Chọn **Tài khoản chi** trong danh sách **Tài khoản chi lương** của pháp nhân. Nếu pháp nhân chưa khai báo tài khoản tại ngân hàng đó, nhập tay **Tài khoản công ty** và **Tên tài khoản công ty** — hoặc bấm **Khai báo tại trang pháp nhân** để thêm một lần cho các kỳ sau.
 4. Bấm **Lập tệp**. Tệp được tải về máy ngay; hệ thống báo "Đã lập … (… dòng)". Bấm **Tải lại** nếu cần tải lần nữa.
 5. Đăng tệp lên cổng ngân hàng doanh nghiệp như thường lệ.
 
-Bảng **Các tệp đã lập** ghi lại **Tên tệp**, **Phiên bản mẫu**, **Số dòng**, **Tổng tiền**, **Lập lúc**. Hệ thống không lưu nội dung tệp — chỉ lưu thông tin để đối chiếu.
+Bảng **Các tệp đã lập** ghi lại **Tên tệp**, **Phiên bản mẫu**, **Số dòng**, **Tổng tiền**, **Lập lúc**. Hệ thống không lưu nội dung tệp — chỉ lưu thông tin để đối chiếu. Mỗi ngân hàng chỉ tính tệp lập sau cùng: lập lại tệp thì tệp trước được đánh dấu **Đã thay thế**, giữ lại để đối chiếu nhưng không còn được tính.
+
+> [!NOTE]
+> **Tài khoản chi lương** của công ty được khai báo trên trang pháp nhân (ngân hàng, số tài khoản, tên tài khoản, chi nhánh, tài khoản mặc định) bởi người quản trị tổ chức hoặc kế toán chi lương của pháp nhân đó.
 
 > [!WARNING]
 > Mẫu tệp VCB và ACB được dựng theo hiểu biết tốt nhất và **chưa đối chiếu** với mẫu hiện hành của ngân hàng. Trước kỳ chi lương thật đầu tiên, kế toán trưởng hãy tải mẫu mới nhất trên cổng ngân hàng và kiểm tra tệp do hệ thống lập.
@@ -54,7 +58,7 @@ Hệ thống không bao giờ lặng lẽ bỏ ai. Người không đưa đượ
 - thực nhận bằng 0 hoặc thực nhận âm
 - hệ thống chưa hỗ trợ mẫu tệp của ngân hàng này
 
-Hãy nhờ nhân viên cập nhật tài khoản ngân hàng (qua yêu cầu thay đổi thông tin) hoặc chi cho họ theo cách khác rồi xử lý trước khi xác nhận đã chi.
+Hãy nhờ nhân viên cập nhật tài khoản ngân hàng (qua yêu cầu thay đổi thông tin) rồi lập lại tệp, hoặc chi riêng cho người đó (chuyển khoản lẻ, ủy nhiệm chi…) rồi bấm **Chi cách khác** trên dòng của họ: nhập **Ngày chi**, **Số tham chiếu / chứng từ** và **Lý do**, bấm **Ghi nhận**. Người đó được tính là đã chi và không nằm trong các tệp lập sau. **Bỏ ghi nhận** nếu ghi nhầm.
 
 ### Bảng chi tiền mặt
 
@@ -63,8 +67,10 @@ Dành cho người thuộc hồ sơ chi lương giản lược.
 1. Trong khung **Bảng chi tiền mặt**, bấm **Lập bảng chi**. Mỗi người nhận tiền mặt nhận thông báo **Xác nhận đã nhận lương tiền mặt**. Nếu kỳ lương có thay đổi, bấm **Cập nhật bảng chi** để thêm người còn thiếu.
 2. Bấm **In bảng chi (PDF)** để in **BẢNG THANH TOÁN LƯƠNG BẰNG TIỀN MẶT** với các cột **STT**, **Mã NV**, **Họ và tên**, **Số tiền**, **Ký nhận**, **Ngày**.
 3. Chi tiền và lấy chữ ký từng người.
-4. Với mỗi người đã nhận, chọn **Ngày chi** rồi bấm **Ghi nhận đã chi**.
+4. Với mỗi người đã nhận, chọn **Ngày chi**, ghi **Thực chi** (mặc định là số thực nhận) rồi bấm **Ghi nhận đã chi**. Nếu chi khác số thực nhận, bắt buộc ghi **Ghi chú** lý do. Bấm **Sửa** để chữa một dòng đã ghi.
 5. Cột **Xác nhận** cho biết nhân viên đã bấm **Tôi đã nhận đủ** trong ứng dụng (**Đã xác nhận**) hay chưa (**Chờ xác nhận**).
+6. Dòng **Đối chiếu** so tổng thực chi với tổng thực nhận ("Đã chi đủ theo số thực nhận." hoặc số còn chưa chi).
+7. Trong khung **Bảng chi đã ký (bản quét)**, bấm **Đính kèm bản quét (PDF hoặc ảnh)** để lưu bảng chi có chữ ký người nhận. Tệp được lưu ở mức bảo mật lương; mỗi lần mở đều được ghi nhật ký.
 
 > [!NOTE]
 > Xác nhận của nhân viên là bằng chứng bổ sung. Kỳ lương vẫn chuyển được sang **Đã chi** khi kế toán đã ghi nhận chi đủ cho mọi người.
@@ -92,7 +98,9 @@ Bấm **Xuất CSV** cạnh mỗi báo cáo để tải về (bảng lương chi
 
 ## Dữ liệu khai báo
 
-Vào [Dữ liệu khai báo](/payroll/statutory) (dành cho C&B). Trang tổng hợp số liệu để lập tờ khai bảo hiểm và thuế TNCN, lấy từ các bảng lương đã tính. Chọn **Pháp nhân**, **Tháng** và **Năm**.
+Vào [Dữ liệu khai báo](/payroll/statutory) (dành cho C&B). Trang tổng hợp số liệu để lập tờ khai bảo hiểm và thuế TNCN, chỉ lấy từ các kỳ lương CEO đã ký duyệt (đã ký, đã lập lệnh chi, đã chi, đã khóa). Chọn **Pháp nhân**, **Tháng** và **Năm**.
+
+Trong tháng có hai kỳ lương (ví dụ tháng chi thưởng ngoài kỳ), mỗi người chỉ được tính một lần: thu nhập và thuế đã khấu trừ cộng qua các kỳ của tháng, còn giảm trừ và thu nhập tính thuế lấy từ kỳ tính sau cùng. Tháng chưa có kỳ lương định kỳ nào được ký thì D02-LT báo không có gì để khai.
 
 | Phần | Nội dung | Tải về |
 |---|---|---|
@@ -116,6 +124,12 @@ Khi công ty mới chuyển sang tính lương bằng SuZu One, hãy chạy song
 4. Mỗi người có chênh lệch hiện các trường lệch (**Tổng thu nhập**, **Bảo hiểm (NLĐ)**, **Đoàn phí**, **Thuế TNCN**, **Khấu trừ khác**, **Thực nhận**) dạng hệ thống / bảng cũ, nhãn **Chưa giải thích**.
 5. Bấm **Giải thích**, chọn **Nguyên nhân** — **Lỗi hệ thống**, **Sai ở bảng tính cũ**, **Thiếu quy tắc**, **Chênh lệch làm tròn, chấp nhận** — và ghi **Diễn giải**, bấm **Lưu**.
 6. Khi mọi chênh lệch đã giải thích, trang báo "Tháng …: … người, không còn chênh lệch nào chưa giải thích."
+
+Bảng đối chiếu cũng so **Thực nhận** và **Chi phí công ty** của hai bên cho từng người và tổng cộng (chi phí công ty phía kế toán chỉ có cho những người bảng cũ có ghi). Bấm **Tải báo cáo** để xuất bảng đối chiếu ra CSV.
+
+### Xác nhận đối chiếu
+
+Khi không còn chênh lệch chưa giải thích, khung **Xác nhận đối chiếu** cho phép C&B ghi nhận tháng đó đã được đối chiếu: ghi tên người **Đối chiếu cùng** (thường là kế toán trưởng), thêm ghi chú nếu cần, rồi bấm **Xác nhận đối chiếu**. Mỗi xác nhận lưu lại số người, số khớp hoàn toàn và số chênh lệch đã giải thích. Nếu số liệu thay đổi sau đó, xác nhận chuyển thành **Đã cũ — số liệu thay đổi sau khi xác nhận** và cần xác nhận lại.
 
 > [!TIP]
 > Nếu bạn tính lại bảng lương sau khi đã giải thích, một số giải thích có thể hiện nhãn **Giải thích cũ không còn khớp số hiện tại**. Hãy bấm **Sửa giải thích** để cập nhật.

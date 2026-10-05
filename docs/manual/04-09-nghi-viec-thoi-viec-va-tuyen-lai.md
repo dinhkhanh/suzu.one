@@ -25,7 +25,7 @@ Việc duyệt đơn **không tự kết thúc gì cả**. Ngày cuối, thời 
 Sau khi gửi, bạn được đưa tới trang chi tiết đơn. Đơn cũng hiện trong mục **Nghỉ việc** của hồ sơ, với trạng thái **Đang chờ duyệt**, **Trả lại để chỉnh sửa**, **Đã duyệt**, **Từ chối** hoặc **Đã rút**.
 
 - Bạn có thể **Rút yêu cầu** khi đơn còn đang chờ hoặc đã bị trả lại.
-- Mỗi lúc chỉ có một đơn đang mở. Khi đơn đang chờ, bị trả lại hoặc đã được duyệt, khung gửi đơn mới tạm ẩn.
+- Mỗi lúc chỉ có một đơn đang mở. Khi đơn đang chờ, bị trả lại hoặc đã được duyệt cho lần làm việc hiện tại, khung gửi đơn mới tạm ẩn. Khung hiện lại khi không còn gì cản: sau khi được tuyển lại, hoặc khi HR huỷ quyết định thôi việc.
 - Khi quản lý trả lời, bạn nhận thông báo.
 - Khi đơn **Đã duyệt**, trang đơn ghi "Đơn đã được duyệt. Nhân sự sẽ thực hiện thủ tục thôi việc." HR sẽ liên hệ bạn và gửi checklist bàn giao.
 
@@ -59,6 +59,8 @@ Với các trường hợp khác (hết hạn hợp đồng, không đạt thử
 2. Chọn **Lý do thôi việc**: Nhân sự xin nghỉ, Hết hạn hợp đồng, Không đạt thử việc, Thỏa thuận chấm dứt, Sa thải / đơn phương chấm dứt, Nghỉ hưu, Khác.
 3. Thêm **Ghi chú** nếu cần, bấm **Cho thôi việc** và xác nhận.
 
+Nếu quản trị viên đã lưu luồng phê duyệt cho **Chấm dứt hợp đồng**, bấm **Cho thôi việc** sẽ gửi một yêu cầu chờ duyệt thay vì thực hiện ngay; thôi việc có hiệu lực khi người duyệt cuối đồng ý.
+
 ### Điều gì xảy ra khi bấm Cho thôi việc
 
 Ngay lập tức:
@@ -76,7 +78,7 @@ Cho tới hết ngày làm việc cuối, người đó **vẫn làm việc và 
 
 ### Hủy quyết định thôi việc
 
-Nếu nhân viên đổi ý hoặc nhập nhầm, và **ngày làm việc cuối chưa qua**, bấm **Hủy** trên sự kiện **Thôi việc** rồi xác nhận. Mọi thứ đã đóng được mở lại: quan hệ lao động, vị trí, hợp đồng, vai trò. Các bước checklist còn mở và việc thu hồi thiết bị bị hủy. Thiết bị đã trả rồi thì vẫn tính là đã trả.
+Nếu nhân viên đổi ý hoặc nhập nhầm, và **ngày làm việc cuối chưa qua**, bấm **Hủy** trên sự kiện **Thôi việc** rồi xác nhận. Mọi thứ đã đóng được mở lại: quan hệ lao động, vị trí, hợp đồng, vai trò. Sự kiện **Xin nghỉ việc** mà quyết định ấy thực hiện cũng được huỷ theo, nên nhân viên lại gửi được đơn mới nếu cần. Các bước checklist còn mở và việc thu hồi thiết bị bị hủy. Thiết bị đã trả rồi thì vẫn tính là đã trả.
 
 > [!NOTE]
 > Những thay đổi vị trí đặt cho sau ngày cuối đã bị bỏ lúc thôi việc sẽ **không** được khôi phục. Bạn nhập lại nếu cần.
@@ -89,6 +91,7 @@ HR cũng có thể bấm **Hủy** trên sự kiện **Xin nghỉ việc** khi �
 
 - Hồ sơ vẫn được giữ nguyên, với trạng thái **Đã nghỉ việc**. Đồng nghiệp bình thường không còn thấy người này trong danh bạ và sơ đồ tổ chức. HR, quản lý và các vai trò được xem chi tiết vẫn tìm được bằng bộ lọc **Trạng thái** → **Đã nghỉ việc**.
 - Lịch sử công tác, hợp đồng, giấy tờ và dòng thời gian vẫn còn để tra cứu.
+- **Sau 3 năm** kể từ ngày làm việc cuối, người đó xuất hiện trong danh sách **Đến hạn ẩn danh hoá** ở **Quản trị** → [Quyền riêng tư và lưu trữ](/admin/privacy). Nhân sự (người quản lý hồ sơ và được xem thông tin hạn chế của người đó) đọc danh sách **Bị xoá** / **Được giữ lại** rồi bấm **Ẩn danh hoá** để xoá thông tin cá nhân; hồ sơ lương, thuế, bảo hiểm và hợp đồng được giữ lại theo luật. Không thao tác được với người còn hợp đồng lao động hiệu lực, và không hoàn tác được. Xem thêm trang **Ai xem được thông tin nào**.
 
 ## Tuyển lại nhân viên cũ
 

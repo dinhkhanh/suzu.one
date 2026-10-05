@@ -18,7 +18,7 @@ Trên trang đăng nhập, bạn có thể đổi ngôn ngữ (**Tiếng Việt*
 
 Có email công ty không tự động cho bạn quyền vào SuZu One. Bộ phận Nhân sự phải tạo hồ sơ của bạn trong hệ thống trước. Nhân viên mới thường được tạo hồ sơ trước ngày đi làm.
 
-Khi bạn nghỉ việc hoặc bị tạm khoá, quyền truy cập bị thu hồi ngay, kể cả trên các thiết bị đang đăng nhập.
+Khi bạn nghỉ việc hoặc bị tạm khoá, quyền truy cập bị thu hồi ngay, kể cả trên các thiết bị đang đăng nhập. Nhân sự có thể tạm khoá một tài khoản (kèm lý do) và mở khoá lại; quan hệ lao động và vai trò của bạn giữ nguyên trong thời gian đó.
 
 ## Khi không đăng nhập được
 
@@ -31,6 +31,7 @@ Trang đăng nhập báo lỗi bằng một dòng màu đỏ. Ý nghĩa và các
 | Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. | Nhân sự chưa tạo hồ sơ cho bạn | Liên hệ phòng Nhân sự |
 | Quyền truy cập của bạn đã bị khóa. | Hồ sơ đang bị tạm khoá hoặc đã thôi việc | Liên hệ phòng Nhân sự |
 | Email chưa được Google xác minh. | Tài khoản Google chưa hoàn tất xác minh | Liên hệ người quản trị Google Workspace |
+| Có quá nhiều lượt đăng nhập từ mạng này. Vui lòng đợi một phút rồi thử lại. | Quá nhiều lượt đăng nhập từ cùng một mạng trong một phút (cả văn phòng dùng chung một địa chỉ mạng) | Đợi một phút rồi thử lại |
 | Không thể đăng nhập. Vui lòng thử lại… | Lỗi khác | Thử lại; nếu vẫn lỗi, liên hệ Nhân sự |
 
 > [!TIP]
@@ -38,7 +39,7 @@ Trang đăng nhập báo lỗi bằng một dòng màu đỏ. Ý nghĩa và các
 
 ## Phiên đăng nhập
 
-- Bạn không phải đăng nhập lại mỗi ngày: phiên đăng nhập được gia hạn khi bạn còn dùng ứng dụng. Nếu bạn không mở SuZu One khoảng một tuần, hệ thống sẽ yêu cầu đăng nhập lại.
+- Bạn không phải đăng nhập lại mỗi ngày: phiên đăng nhập được gia hạn khi bạn còn dùng ứng dụng. Nếu bạn không mở SuZu One trên một thiết bị **ba ngày liền**, phiên trên thiết bị đó kết thúc và hệ thống yêu cầu đăng nhập lại — người dùng ứng dụng vào các ngày làm việc gần như không bao giờ gặp.
 - Mỗi thiết bị (máy tính, điện thoại) có phiên riêng.
 
 ## Xác thực lại cho màn hình lương

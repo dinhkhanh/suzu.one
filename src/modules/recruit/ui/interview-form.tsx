@@ -66,7 +66,7 @@ function Interviewers({ options, selected, onToggle }: { options: InterviewerOpt
       <div className="grid max-h-48 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">
         {options.map((option) => (
           <label key={option.personId} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="interviewerPersonIds[]" value={option.personId} checked={selected.includes(option.personId)} onChange={() => onToggle(option.personId)} />
+            <Checkbox name="interviewerPersonIds[]" value={option.personId} checked={selected.includes(option.personId)} onCheckedChange={() => onToggle(option.personId)} />
             <span>{option.fullName}</span>
           </label>
         ))}

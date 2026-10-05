@@ -5,7 +5,7 @@
 // Project roles grant rights on that project only. Fees are never part of "reading the plan": a
 // project lead who plans hours does not see what the client pays unless their role says so.
 import { can, entityReach, type Principal } from "../platform/rbac/policy";
-import { canActForClient, canContributeToProject, canManageProject, canViewProject, type ProjectFacts, readsPrivateByPortfolio, type WorkViewer } from "../work/policy";
+import { canActForClient, canContributeToProject, canManageProject, canViewProject, type ProjectFacts, readsPrivateByPortfolio, type WorkViewer } from "../work/service";
 
 /**
  * A project as the plan rules see it: the work module's facts, and whether it has been closed

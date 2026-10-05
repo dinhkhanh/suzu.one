@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -388,7 +389,7 @@ function RecurrenceFields({ initial, people, today, idPrefix }: { initial?: Recu
           <span className="flex flex-wrap gap-2">
             {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
               <label key={weekday} htmlFor={`${idPrefix}-weekday-${weekday}`} className="flex items-center gap-1">
-                <input id={`${idPrefix}-weekday-${weekday}`} type="checkbox" name="weekdays" value={weekday} defaultChecked={weekdays.includes(weekday)} />
+                <Checkbox id={`${idPrefix}-weekday-${weekday}`} name="weekdays" value={String(weekday)} defaultChecked={weekdays.includes(weekday)} />
                 {t(`weekdays.${weekday}`)}
               </label>
             ))}

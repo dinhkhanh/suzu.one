@@ -7,14 +7,17 @@ import { type ReactNode, useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, reopenProjectAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updateBriefContactsAction, updatePlanSettingsAction } from "../actions";
 
 type Person = { id: string; fullName: string };
@@ -54,25 +57,22 @@ export function ActionButton({ action, input, label, confirm, variant = "outline
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const run = () =>
+    startTransition(async () => {
+      const result = await action(input);
+      const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
+      setError(key);
+      if (result.ok) router.refresh();
+    });
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        size="xs"
-        variant={variant}
-        disabled={pending}
-        onClick={() => {
-          if (confirm && !window.confirm(confirm)) return;
-          startTransition(async () => {
-            const result = await action(input);
-            const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
-            setError(key);
-            if (result.ok) router.refresh();
-          });
-        }}
-      >
-        {label}
-      </Button>
+      {confirm ? (
+        <ConfirmButton size="xs" variant={variant} disabled={pending} label={label} question={confirm} onConfirm={run} />
+      ) : (
+        <Button type="button" size="xs" variant={variant} disabled={pending} onClick={run}>
+          {label}
+        </Button>
+      )}
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {t.has(error) ? t(error) : t("generic")}
@@ -271,10 +271,10 @@ export function MilestoneForm({ projectId, milestone, phases, people, showAmount
           </Select>
         </Field>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isClientFacing" defaultChecked={milestone?.isClientFacing} /> {t("fields.isClientFacing")}
+          <Checkbox name="isClientFacing" defaultChecked={milestone?.isClientFacing} /> {t("fields.isClientFacing")}
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isBilling" defaultChecked={milestone?.isBilling} /> {t("fields.isBilling")}
+          <Checkbox name="isBilling" defaultChecked={milestone?.isBilling} /> {t("fields.isBilling")}
         </label>
         {showAmount ? (
           <Field name="billingAmountVnd" label={t("fields.billingAmountVnd")}>
@@ -487,13 +487,13 @@ export function StatusUpdateForm({ projectId, healths, draft }: { projectId: str
       ) : null}
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium">{t("fields.health")}</legend>
-        <div className="flex flex-wrap gap-3">
+        <RadioGroup name="health" required value={health ?? ""} onValueChange={(next) => setHealth(String(next))} className="flex flex-wrap gap-3">
           {healths.map((value) => (
-            <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-checked:bg-muted">
-              <input type="radio" name="health" value={value} required checked={health === value} onChange={() => setHealth(value)} /> {t(`health.${value as "on_track"}`)}
+            <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-data-checked:bg-muted">
+              <RadioGroupItem value={value} /> {t(`health.${value as "on_track"}`)}
             </label>
           ))}
-        </div>
+        </RadioGroup>
       </fieldset>
       <Field name="summary" label={t("fields.summary")}>
         <NoteEditor id="summary" name="summary" required rows={3} maxLength={4000} />

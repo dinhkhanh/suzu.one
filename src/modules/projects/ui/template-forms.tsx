@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { createProjectFromTemplatePlanAction, saveTemplatePlanAction } from "../actions";
 import type { ProjectBrief, RoleBudget, TemplateLine, TemplateMilestone, TemplatePhase } from "../schema";
 
@@ -181,10 +182,10 @@ export function TemplatePlanEditor({ templateId, values, kinds }: { templateId: 
                 ))}
               </Select>
               <label className="flex items-center gap-1.5 text-xs">
-                <input type="checkbox" name={`milestones.${index}.isClientFacing`} defaultChecked={milestone.isClientFacing} /> {t("fields.isClientFacing")}
+                <Checkbox name={`milestones.${index}.isClientFacing`} defaultChecked={milestone.isClientFacing} /> {t("fields.isClientFacing")}
               </label>
               <label className="flex items-center gap-1.5 text-xs">
-                <input type="checkbox" name={`milestones.${index}.isBilling`} defaultChecked={milestone.isBilling} /> {t("fields.isBilling")}
+                <Checkbox name={`milestones.${index}.isBilling`} defaultChecked={milestone.isBilling} /> {t("fields.isBilling")}
               </label>
             </div>
           ))}

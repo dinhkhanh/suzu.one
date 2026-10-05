@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ActionResult } from "@/lib/action";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -47,13 +49,13 @@ export function RaidForm({ projectId, people, item, today, onDone }: { projectId
       {item ? null : (
         <fieldset className="flex flex-col gap-1.5">
           <legend className="text-sm font-medium">{t("fields.kind")}</legend>
-          <div className="flex flex-wrap gap-2">
+          <RadioGroup name="kind" value={kind} onValueChange={(next) => setKind(next as RaidKind)} className="flex flex-wrap gap-2">
             {RAID_KINDS.map((value) => (
-              <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-checked:bg-muted">
-                <input type="radio" name="kind" value={value} checked={kind === value} onChange={() => setKind(value)} /> {t(`kinds.${value}`)}
+              <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-data-checked:bg-muted">
+                <RadioGroupItem value={value} /> {t(`kinds.${value}`)}
               </label>
             ))}
-          </div>
+          </RadioGroup>
         </fieldset>
       )}
       <Field name="title" label={t("fields.title")}>
@@ -216,7 +218,7 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
         <div className="flex flex-wrap gap-2">
           {people.map((person) => (
             <label key={person.id} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-checked:bg-muted">
-              <input type="checkbox" name="attendeeIds[]" value={person.id} defaultChecked={attendees.has(person.id)} /> {person.fullName}
+              <Checkbox name="attendeeIds[]" value={person.id} defaultChecked={attendees.has(person.id)} /> {person.fullName}
             </label>
           ))}
           {gone.map((personId) => (

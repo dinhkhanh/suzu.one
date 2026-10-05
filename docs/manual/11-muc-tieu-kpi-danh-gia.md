@@ -12,9 +12,9 @@ Bạn tìm thấy mục này trong menu **Của tôi → Mục tiêu & KPI**.
 | Bạn là | Bạn làm gì ở đây |
 |---|---|
 | Mọi nhân viên | Đặt mục tiêu cho mình, cập nhật kết quả then chốt hằng tuần, xem bảng điểm KPI của mình, tự đánh giá trong chu kỳ, mời và viết phản hồi đồng nghiệp, đọc và xác nhận phiếu đánh giá, đọc ghi chú 1:1 đã chia sẻ, xem kết quả năm khi được công bố. |
-| Quản lý trực tiếp (người có nhân viên báo cáo) | Đặt mục tiêu cho người dưới quyền, chốt mục tiêu của họ, nhập số thực đạt KPI, theo dõi tab **Đội của tôi**, viết phiếu quản lý đánh giá, duyệt người được mời phản hồi, cân đối và công bố phiếu, tổ chức gặp 1:1, đề xuất sau đánh giá. |
+| Quản lý trực tiếp (người có nhân viên báo cáo) | Đặt mục tiêu cho người dưới quyền, chốt mục tiêu của họ, nhập số thực đạt KPI, theo dõi tab **Đội của tôi**, viết phiếu quản lý đánh giá và đề xuất mức xếp loại, duyệt người được mời phản hồi, ghi nhận buổi trao đổi kết quả, tổ chức gặp 1:1, đề xuất sau đánh giá. |
 | Trưởng bộ phận, Giám đốc pháp nhân, Ban điều hành | Đặt mục tiêu cho đơn vị mình phụ trách, xem mục tiêu và điểm KPI của mọi người trong phạm vi; xem **Toàn cảnh** nếu được phân quyền trên cả pháp nhân. |
-| Quản trị nhân sự, Chuyên viên nhân sự | Mở **Quản trị KPI**: thư viện KPI, bộ KPI theo vị trí, phân bổ KPI, chốt tháng, nhập số liệu từ tệp, chu kỳ đánh giá, đề xuất trọng số kết quả; tính, chốt và công bố kết quả năm; quyết định các đề xuất sau đánh giá. |
+| Quản trị nhân sự, Chuyên viên nhân sự | Mở **Quản trị KPI**: thư viện KPI, bộ KPI theo vị trí, phân bổ KPI, chốt tháng, nhập số liệu từ tệp, biểu mẫu và chu kỳ đánh giá, cân đối và công bố phiếu đánh giá, đề xuất trọng số kết quả; tính, chốt và công bố kết quả năm; quyết định các đề xuất sau đánh giá. |
 | Chủ sở hữu | Phê duyệt trọng số kết quả hiệu suất, điều chỉnh kết quả năm (bắt buộc ghi lý do). |
 | Kiểm toán (chỉ xem) | Xem số liệu hiệu suất trong phạm vi, không thay đổi được gì. |
 
@@ -50,7 +50,7 @@ Bạn tìm thấy mục này trong menu **Của tôi → Mục tiêu & KPI**.
 - **Gặp 1:1** — các buổi gặp giữa quản lý và nhân viên.
 - **Đội của tôi** — chỉ hiện với người có nhân viên dưới quyền, hoặc có quyền xem/quản lý hiệu suất trong một phạm vi.
 - **Toàn cảnh** — chỉ hiện với người được xem hiệu suất trên cả một pháp nhân hoặc toàn tập đoàn.
-- **Quản trị KPI** — chỉ hiện với Nhân sự (Quản trị nhân sự, Chuyên viên nhân sự) và Chủ sở hữu. Bên trong có các thẻ con: **Chốt kỳ**, **Chu kỳ đánh giá**, **Trọng số kết quả**, **Phân bổ**, **Theo vị trí**, **Thư viện**, **Nhập từ tệp**.
+- **Quản trị KPI** — chỉ hiện với Nhân sự (Quản trị nhân sự, Chuyên viên nhân sự) và Chủ sở hữu. Bên trong có các thẻ con: **Chốt kỳ**, **Chu kỳ đánh giá**, **Biểu mẫu đánh giá**, **Trọng số kết quả**, **Phân bổ**, **Theo vị trí**, **Thư viện**, **Nhập từ tệp**.
 
 Ở các trang mục tiêu và kết quả, bạn chọn năm bằng dải nút năm (năm trước, năm nay, năm sau — mục tiêu năm sau thường được đặt từ cuối năm nay). Ở các trang KPI, bạn chuyển tháng bằng **Tháng trước** / **Tháng sau**.
 
@@ -67,7 +67,11 @@ Bạn tìm thấy mục này trong menu **Của tôi → Mục tiêu & KPI**.
 | Thông báo | Ai nhận | Khi nào |
 |---|---|---|
 | **Có người nhờ bạn phản hồi đồng nghiệp** | Đồng nghiệp được mời | Khi lời mời viết phản hồi 360° có hiệu lực (quản lý/Nhân sự mời, hoặc quản lý duyệt lời mời của nhân viên). |
-| **Phiếu đánh giá của bạn đã được công bố** | Người được đánh giá | Khi quản lý hoặc Nhân sự công bố phiếu. |
+| **Chu kỳ đánh giá … đã mở** / **Bạn cần viết đánh giá cho nhân sự** | Người tham gia / quản lý đánh giá | Khi Nhân sự mở chu kỳ, hoặc thêm bạn vào một chu kỳ đang chạy. |
+| **Phiếu đánh giá sắp đến hạn** / **Phiếu đánh giá đã quá hạn** | Người còn nợ phiếu | Buổi sáng: 3 ngày trước hạn (một lần), sau hạn (mỗi tuần). |
+| **Phiếu đánh giá được trả lại để sửa** | Người viết phiếu | Khi Nhân sự trả lại phiếu đã gửi. |
+| **Phiếu đánh giá của bạn đã được công bố** | Người được đánh giá | Khi Nhân sự công bố phiếu. |
+| **Chưa ghi nhận buổi trao đổi kết quả** / **Phiếu đánh giá đang chờ bạn xác nhận** | Quản lý / người được đánh giá | Buổi sáng, mỗi tuần, từ 3 ngày sau khi công bố. |
 | **Kết quả hiệu suất năm … đã có** | Người có kết quả | Khi Nhân sự công bố kết quả năm. |
 | **Có số liệu KPI đề xuất** | Quản lý trực tiếp (hoặc Nhân sự nếu người đó không có quản lý) | Khi hệ thống đề xuất số thực đạt từ dữ liệu công việc. |
 | **Có đề xuất trọng số kết quả hiệu suất** | Chủ sở hữu | Khi Nhân sự đề xuất một phiên bản trọng số mới. |

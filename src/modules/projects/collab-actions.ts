@@ -9,7 +9,7 @@ import { ActionError, createAction } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import type { CurrentUser } from "../platform/auth/session";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "../platform/files/service";
-import type { WorkViewer } from "../work/policy";
+import type { WorkViewer } from "../work/service";
 import { ensureProjectSpace } from "./documents";
 import { RAID_KINDS, RAID_SEVERITIES, RAID_STATUSES, RECORDABLE_MEETING_KINDS } from "./engine/raid";
 import { checkbox, idList, isoDate, optional, rows, text } from "./form-inputs";

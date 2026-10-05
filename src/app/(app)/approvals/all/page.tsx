@@ -11,7 +11,9 @@ import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { entityReach } from "@/modules/platform/rbac/policy";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { RequestTabs } from "@/modules/requests/ui/request-tabs";
+import { exportAllRequestsAction } from "../export-actions";
 import { allRequestTypes } from "../registry";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -27,7 +29,7 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
   const user = await requireUser();
   if (!canOverseeRequests(user.principal)) notFound();
   const query = await searchParams;
-  const [t, tRequests, locale, registered] = await Promise.all([getTranslations("approvals"), getTranslations("requests"), getLocale(), allRequestTypes()]);
+  const [t, tRequests, te, locale, registered] = await Promise.all([getTranslations("approvals"), getTranslations("requests"), getTranslations("exports"), getLocale(), allRequestTypes()]);
 
   const state = STATES.find((value) => value === query.state) ?? "open";
   const type = typeof query.type === "string" && registered.has(query.type) ? query.type : undefined;
@@ -46,7 +48,7 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
 
   return (
     <Page width="wide">
-      <PageHeader title={tRequests("hub")} description={t("oversight.description")} />
+      <PageHeader title={tRequests("hub")} description={t("oversight.description")} actions={<ExportButton action={exportAllRequestsAction} input={{ state: state === "all" ? undefined : state, type, since, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
       <RequestTabs active="all" personId={user.person.id} principal={user.principal} />
 
       <form action="/approvals/all" className="toolbar">

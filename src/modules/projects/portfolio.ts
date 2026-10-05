@@ -7,12 +7,11 @@ import { and, asc, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportColumn, type ExportFile, toTable } from "@/modules/platform/export/table";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { listEntities } from "../platform/org/service";
-import { type AccentColor, accentOf } from "../work/enums";
-import { projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
+import { type AccentColor, accentOf, projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
 import type { ProjectKind } from "./engine/brief";
@@ -164,7 +163,7 @@ const hours = (minutes: number | null) => (minutes === null ? null : Math.round(
  * The portfolio as CSV (FR-PLT-37): the same rows as the screen, the same filters, and the fee
  * column only when the viewer sees money — and then filled only on the rows they may read.
  */
-export async function buildPortfolioExport(viewer: WorkViewer, filters: PortfolioFilters, locale: Locale): Promise<{ file: CsvFile; withFees: boolean }> {
+export async function buildPortfolioExport(viewer: WorkViewer, filters: PortfolioFilters, locale: Locale): Promise<{ file: ExportFile; withFees: boolean }> {
   const rows = await listPortfolio(viewer, { today: todayInVietnam(), filters });
   const limited = rows.slice(0, EXPORT_ROW_LIMIT);
   const t = translator(locale);
@@ -196,5 +195,5 @@ export async function buildPortfolioExport(viewer: WorkViewer, filters: Portfoli
     { header: t("projects.raid.portfolio.openIssues"), value: (row) => row.raid.openIssues },
     ...(withFees ? [{ header: t("projects.fields.feeVnd"), value: (row: PortfolioRow) => row.feeVnd ?? null }] : []),
   ];
-  return { file: { fileName: `portfolio-${todayInVietnam()}.csv`, csv: toCsv(columns, limited), rowCount: limited.length, truncated: rows.length > limited.length }, withFees };
+  return { file: { fileName: `portfolio-${todayInVietnam()}`, table: toTable(columns, limited), rowCount: limited.length, truncated: rows.length > limited.length }, withFees };
 }

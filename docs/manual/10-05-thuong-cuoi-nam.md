@@ -131,6 +131,10 @@ CEO vẫn có thể trả lại một đợt đã duyệt, miễn là chưa chi.
 
 Thuế TNCN của khoản thưởng được tính gộp với lương tháng đó; phiếu lương ngoài kỳ ghi rõ phần thuế đã khấu trừ ở kỳ chính và ở kỳ này.
 
+Việc chuyển sang bảng lương làm trọn hoặc không làm gì: nếu lỗi ở một pháp nhân, không pháp nhân nào được tạo kỳ lương; bấm lại không tạo thêm kỳ nào. Khung **Chuyển sang bảng lương** cho biết từng pháp nhân **Đã chuyển** hay **Chưa chuyển**. Nếu bảng lương hủy kỳ ngoài kỳ của một pháp nhân, pháp nhân đó hiện **Chưa chuyển** — bấm **Chuyển lại** để chuyển riêng pháp nhân đó.
+
+Thưởng cuối năm không phải kỳ ngoài kỳ duy nhất: thưởng Tết, thưởng lễ có thể tạo trực tiếp bằng **Kỳ lương ngoài kỳ** (xem trang **Chạy lương hằng tháng**).
+
 > [!WARNING]
 > Nếu kỳ lương của tháng chi trả đã khóa sổ, hệ thống từ chối chi ("Kỳ lương của tháng chi đã khóa sổ"). Hãy chọn tháng chi trả chưa khóa khi tạo đợt.
 

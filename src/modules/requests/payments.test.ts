@@ -16,11 +16,13 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import { saveTemplate, type TemplateInput } from "@/modules/documents/service";
+import { tableToCsv } from "@/modules/platform/export/csv";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { issueConfirmationLetter } from "./letters";
+import { buildPayoutsExport } from "./exports";
 import { listPayouts, markRequestPaid, payoutOf, payoutTotals } from "./payments";
-import { canPayRequests } from "./policy";
+import { canPayRequests, canSettleExpenseClaims } from "./policy";
 import { REQUEST_TYPE_SEED } from "./seed-types";
 import { decideGenericRequest, fileRequest } from "./service";
 
@@ -235,5 +237,36 @@ describe("who pays", () => {
     expect(canPayRequests(holder("owner", null), ids.other)).toBe(true);
     // The screen's door: anywhere at all.
     expect(canPayRequests(holder("finance", ids.other))).toBe(true);
+  });
+
+  it("opens the claims desk to finance of one entity, and keeps the every-entity sweep group-wide", () => {
+    // The door asked "group-wide" by mistake, so finance of one entity never reached a list that
+    // is already cut to the entities they pay.
+    expect(canSettleExpenseClaims(holder("finance", ids.entity))).toBe(true);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), ids.entity)).toBe(true);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), ids.other)).toBe(false);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), null)).toBe(false);
+    expect(canSettleExpenseClaims(holder("finance", null), null)).toBe(true);
+    expect(canSettleExpenseClaims(holder("hr_admin", null))).toBe(false);
+  });
+});
+
+describe("the to-pay export", () => {
+  const finance = (entityId: string | null): Principal => ({ personId: ids.boss, workforceType: "employee", grants: [{ role: "finance", scope: entityId ? { type: "entity", id: entityId } : { type: "group" } }] });
+
+  it("holds the queue finance sees, cut to the entities they pay", async () => {
+    const requestId = await fileApproved(ids.lan, "payment", await invoice(ids.lan, 123_000));
+    const listed = await listPayouts(ALL, { paidSince: addDays(TODAY, -60) });
+    const { file, total } = await buildPayoutsExport(finance(null), "en");
+    expect(total).toBe(listed.length);
+    expect(file.rowCount).toBe(listed.length);
+    expect(file.table.header[4]).toBe("Amount");
+    expect(file.table.rows.some((cells) => cells[4] === 123_000)).toBe(true);
+    expect(listed.some((entry) => entry.requestId === requestId)).toBe(true);
+    expect(tableToCsv(file.table)).toContain("Lan");
+
+    // Finance of an entity with no requests gets an empty file, not the other entity's queue.
+    expect((await buildPayoutsExport(finance(ids.other), "en")).total).toBe(0);
+    expect((await buildPayoutsExport(finance(ids.entity), "en")).total).toBe(listed.length);
   });
 });

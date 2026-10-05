@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { ACCOUNT_TIERS, canCreateAccount, LIFECYCLES, type Lifecycle, listAccounts } from "@/modules/crm/service";
+import { exportAccountsAction } from "@/modules/crm/export-actions";
 import { crmShell } from "@/modules/crm/pages";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { NewAccountForm } from "@/modules/crm/ui/account-forms";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
@@ -35,7 +37,7 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
   const tier = (ACCOUNT_TIERS as readonly string[]).includes(one(params.tier) ?? "") ? (one(params.tier) as "a") : "all";
   const mine = one(params.mine) === "1";
   const today = todayInVietnam();
-  const [t, f, accounts, entities, people] = await Promise.all([getTranslations("crm"), formatters(), listAccounts(shell.viewer, { q, lifecycle, tier, mine }, today), listEntities(), listPersonNames()]);
+  const [t, f, te, locale, accounts, entities, people] = await Promise.all([getTranslations("crm"), formatters(), getTranslations("exports"), getLocale(), listAccounts(shell.viewer, { q, lifecycle, tier, mine }, today), listEntities(), listPersonNames()]);
   const activeEntities = entities.filter((entity) => entity.isActive);
   const creatable = activeEntities.filter((entity) => canCreateAccount(shell.viewer, entity.id));
   const canCreate = creatable.length > 0 || canCreateAccount(shell.viewer, null);
@@ -44,7 +46,7 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
 
   return (
     <Page width="wide">
-      <PageHeader title={t("accounts.title")} description={t("accounts.intro")} />
+      <PageHeader title={t("accounts.title")} description={t("accounts.intro")} actions={<ExportButton action={exportAccountsAction} input={{ q, lifecycle, tier, mine, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
       <CrmTabs current="accounts" show={shell.show} />
       <form method="get" className="toolbar">
         <Input name="q" defaultValue={q} placeholder={t("accounts.search")} aria-label={t("accounts.search")} className="w-full sm:w-56" />

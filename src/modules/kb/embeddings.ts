@@ -4,10 +4,16 @@
 //    multilingual, Vietnamese included, 1024 dimensions, no instruction prefixes — a question and a
 //    passage are embedded alike).
 //  - unset → the deterministic local fake (`engine/fake-embedding.ts`); nothing leaves the machine.
+// What leaves for Cloudflare loses its contact details first (`redactContacts`, the assistant's own
+// rule for what reaches a model): a page that quotes somebody's mobile, or a question with an email
+// typed into it, is embedded without them. A vector does not need a phone number to find the page,
+// and Cloudflare — a processor recorded in docs/privacy — never receives one. Names cannot be told
+// from other words, so they still go; that is why the processor note exists.
 // Every stored vector carries its model's name, so switching driver or model re-embeds everything
 // (the `kb-embeddings` job picks up chunks whose model is not the current one).
 import "server-only";
 import { env } from "@/lib/env";
+import { redactContacts } from "@/modules/ai/service";
 import { FAKE_EMBEDDING_MODEL, fakeEmbedding } from "./engine/fake-embedding";
 
 export type EmbeddingKind = "document" | "query";
@@ -25,7 +31,7 @@ function workersAiDriver(accountId: string, apiToken: string, model: string): Em
       const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/embeddings`, {
         method: "POST",
         headers: { authorization: `Bearer ${apiToken}`, "content-type": "application/json" },
-        body: JSON.stringify({ model, input: texts }),
+        body: JSON.stringify({ model, input: texts.map(redactContacts) }),
         signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) throw new Error(`embeddings: ${response.status} ${(await response.text()).slice(0, 200)}`);

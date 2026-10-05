@@ -50,12 +50,22 @@ Một số thao tác với thông tin lương, và thao tác lưu thông tin h�
 - Tải bản hợp đồng đã ký, quyết định.
 - Xem số liệu **Lịch sử cơ cấu lương**.
 - Lưu thay đổi ở **Thông tin hạn chế** (vì có tài khoản nhận lương).
+- **Tải dữ liệu của tôi** trên [Hồ sơ của tôi](/me) (tệp có thông tin lương của bạn).
 
 Khi cần, hệ thống hiện thông báo hoặc đường dẫn tới trang **Xác thực lại**. Làm xong bạn quay lại và thao tác tiếp. Xem thêm trang **Đăng nhập & bảo mật**.
 
 ## Quản trị viên xem với tư cách người khác
 
 Người giữ vai trò **Hỗ trợ hệ thống** (và Chủ sở hữu) có thể thấy nút **Xem với tư cách người này** trên hồ sơ của người khác, để xem đúng những gì người đó thấy khi cần hỗ trợ. Trong lúc đó, đầu trang luôn có dòng "Bạn đang xem với tư cách …". Mọi thao tác được ghi nhận dưới tài khoản của người hỗ trợ. Với người đang giữ một vai trò trong hệ thống (HR, trưởng bộ phận…), chỉ Chủ sở hữu mới được xem với tư cách họ.
+
+## Thông tin được lưu bao lâu
+
+Mục **Dữ liệu và quyền riêng tư** trên [Hồ sơ của tôi](/me) ghi thời gian lưu trữ áp dụng cho bạn. Tóm tắt:
+
+- Vị trí chính xác, địa chỉ mạng và trình duyệt của lượt chấm công trên ứng dụng: tự xoá sau 90 ngày (giờ chấm công vẫn ở trong bảng công).
+- Hội thoại với trợ lý: tự xoá 180 ngày sau tin nhắn cuối.
+- Dữ liệu khuôn mặt: xoá khi bạn nghỉ việc hoặc rút lại sự đồng ý.
+- Sau khi nghỉ việc 3 năm, Nhân sự **ẩn danh hoá** thông tin cá nhân của người cũ tại **Quản trị** → [Quyền riêng tư và lưu trữ](/admin/privacy): email công việc và tài khoản ứng dụng, ảnh, số điện thoại, email cá nhân, địa chỉ hiện tại, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân, giấy khám sức khoẻ, bằng cấp, thông báo, hội thoại, dữ liệu khuôn mặt và vị trí chấm công bị xoá. Hồ sơ lương, thuế và bảo hiểm (họ tên, mã nhân viên, số giấy tờ, mã số thuế, số bảo hiểm, hợp đồng, phiếu lương, bảng công…) được giữ theo luật kế toán, thuế và bảo hiểm (tối thiểu mười năm). Không có gì bị xoá cho đến khi Nhân sự xác nhận từng người; thao tác không hoàn tác được.
 
 ## Ai đã xem hồ sơ của tôi?
 

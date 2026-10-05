@@ -2,12 +2,14 @@
 // The publish log of a content task (FR-PJM-54) and its results (FR-PJM-57): plan a post (where,
 // on which page, when), mark it published with its URL — which is what lets the task enter its
 // "Published" state — and record the figures as they come in.
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -212,7 +214,7 @@ function PublishActions({ publish, accounts }: { publish: PublishItem; accounts:
         <div className="flex flex-wrap items-center gap-2">
           <DateTimePicker name="publishedAt" aria-label={t("publishedWhen")} className="w-auto" defaultValue={toVietnamLocal(new Date())} />
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={boosted} onChange={(event) => setBoosted(event.target.checked)} className="size-4" /> {t("boosted")}
+            <Checkbox checked={boosted} onCheckedChange={(checked) => setBoosted(checked)} className="size-4" /> {t("boosted")}
           </label>
           {boosted ? <Input name="adAccount" required maxLength={120} placeholder={t("adAccount")} aria-label={t("adAccount")} className="w-auto" /> : null}
         </div>
@@ -235,9 +237,7 @@ function PublishActions({ publish, accounts }: { publish: PublishItem; accounts:
       <Button type="button" size="sm" variant="ghost" onClick={() => setMode("edit")}>
         {t("reschedule")}
       </Button>
-      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm(t("cancelConfirm")) && run(() => cancelPublishAction({ publishId: publish.id }))}>
-        {t("cancelPost")}
-      </Button>
+      <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("cancelPost")} question={t("cancelConfirm")} onConfirm={() => run(() => cancelPublishAction({ publishId: publish.id }))} />
       <DeliveryError errorKey={errorKey} />
     </div>
   );

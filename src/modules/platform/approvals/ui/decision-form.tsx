@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { withdrawApprovalAction } from "../actions";
@@ -48,19 +49,15 @@ export function DecisionForm({ requestId, action, children, allowReturn = true }
 /** The requester takes the request back. The same for every request type. */
 export function WithdrawForm({ requestId }: { requestId: string }) {
   const t = useTranslations("approvals");
-  const { onSubmit, pending, errorKey } = useActionForm(withdrawApprovalAction, { extra: { requestId } });
+  const form = useActionForm(withdrawApprovalAction, { extra: { requestId } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: t("withdrawConfirm"), confirmLabel: t("withdraw") });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(t("withdrawConfirm"))) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex flex-col gap-3 md:flex-row md:items-center"
-    >
-      <Button type="submit" variant="outline" disabled={pending} className="w-full md:w-auto">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3 md:flex-row md:items-center">
+      <Button type="submit" variant="outline" disabled={form.pending} className="w-full md:w-auto">
         {t("withdraw")}
       </Button>
-      <FormError namespace="approvals.errors" errorKey={errorKey} />
+      {dialog}
+      <FormError namespace="approvals.errors" errorKey={form.errorKey} />
     </form>
   );
 }

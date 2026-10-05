@@ -28,6 +28,7 @@ Vào [Loại đề nghị](/admin/request-types). Mỗi dòng cho biết tên, m
 2. Điền **Thông tin chung**:
    - **Mã** — chữ thường không dấu, ví dụ `purchase`. Sau khi lưu, mã **không đổi được** vì các đề nghị đã gửi tham chiếu tới nó.
    - **Nhóm** — **Mua sắm**, **Tài chính**, **Nhân sự**, **IT**, **Hành chính** hoặc **Khác**; quyết định loại nằm dưới tiêu đề nào ở trang **Tạo đề nghị mới**.
+   - **Sau khi duyệt** — **Không cần chi tiền**, **Kế toán chi trả** hoặc **Kế toán chi tạm ứng**. Hai lựa chọn sau đưa đề nghị đã duyệt vào danh sách **Chi trả** của kế toán; tạm ứng được trừ vào đề nghị thanh toán lập dưới cùng đề nghị gốc.
    - **Tên (tiếng Việt)**, **Tên (tiếng Anh)**, **Mô tả (tiếng Việt)**, **Mô tả (tiếng Anh)**.
    - **Áp dụng cho** — một pháp nhân, hoặc **Toàn tập đoàn**. Nhân viên chỉ thấy loại của pháp nhân mình và loại dùng chung.
    - **Thứ tự hiển thị** — số nhỏ đứng trước.

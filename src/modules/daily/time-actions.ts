@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { canViewTask, loadTask, loadViewer } from "@/modules/work/service";
 import { weekStartOf } from "./engine/rules";
 import { parseRowKey } from "./engine/timesheet";
@@ -292,7 +292,7 @@ const exportUtilisationPipeline = createAction({
       view.weeks.forEach((week, index) => rows.push({ group: name, person: t("teamTotal"), week, cell: group.total[index] }));
     }
     const kept = rows.slice(0, EXPORT_ROW_LIMIT);
-    const csv = toCsv<ExportRow>(
+    const table = toTable<ExportRow>(
       [
         { header: t("csv.group"), value: (row) => row.group },
         { header: t("csv.person"), value: (row) => row.person },
@@ -305,7 +305,7 @@ const exportUtilisationPipeline = createAction({
       ],
       kept,
     );
-    const file: CsvFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}.csv`, csv, rowCount: kept.length, truncated: rows.length > kept.length };
+    const file: ExportFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}`, table, rowCount: kept.length, truncated: rows.length > kept.length };
     return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
   },
 });

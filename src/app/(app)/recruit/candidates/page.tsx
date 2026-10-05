@@ -1,14 +1,16 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pager, readPage } from "@/components/ui/pager";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
+import { exportCandidatesAction } from "@/modules/recruit/export-actions";
 import { canBrowseCandidates, listCandidatePage } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -29,6 +31,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
   const page = readPage(query.page);
   const t = await getTranslations("recruit");
   const format = await getFormatter();
+  const [te, locale] = await Promise.all([getTranslations("exports"), getLocale()]);
   const { rows, total } = await listCandidatePage(user.principal, { query: q, talentPool: inPool }, page, PAGE_SIZE);
   // The pages carry the search and the pool along.
   const pageHref = (to: number) => {
@@ -42,9 +45,12 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         title={t("candidates")}
         description={t("confidential")}
         actions={
-          <Link href="/recruit/candidates/new" className={buttonVariants()}>
-            {t("newCandidate")}
-          </Link>
+          <>
+            <ExportButton action={exportCandidatesAction} input={{ query: q, talentPool: inPool, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
+            <Link href="/recruit/candidates/new" className={buttonVariants()}>
+              {t("newCandidate")}
+            </Link>
+          </>
         }
       />
 
@@ -61,9 +67,9 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
       <form className="flex gap-2">
         {inPool ? <input type="hidden" name="pool" value="1" /> : null}
         <Input name="q" defaultValue={q ?? ""} placeholder={t("columns.candidate")} className="max-w-xs" />
-        <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
+        <Button type="submit" size="sm" variant="outline">
           {t("columns.candidate")}
-        </button>
+        </Button>
       </form>
 
       <TableCard>

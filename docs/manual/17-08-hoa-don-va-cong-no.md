@@ -32,6 +32,8 @@ Chọn nhóm: **Còn phải thu** (mặc định), **Quá hạn**, **Đã thu**,
 | **Thu một phần** | Đã nhận một phần. |
 | **Đã thu đủ** | Đã nhận đủ tổng tiền. |
 | **Đã xoá nợ** | Kế toán quyết định không thu nữa, có lý do. |
+| **Bản nháp** | Đã giữ các khoản nhưng chưa xuất; chưa phải thu. |
+| **Đã huỷ** | Hoá đơn đã xuất rồi bị huỷ, có lý do; giữ số, không còn phải thu. |
 
 ## Ghi nhận hoá đơn (kế toán)
 
@@ -40,7 +42,7 @@ Các khoản cần xuất hoá đơn đến từ dự án: khi trưởng dự á
 1. Trong một nhóm, tick các khoản thuộc hoá đơn bạn vừa xuất trên phần mềm kế toán. Mỗi hoá đơn chỉ cho **một khách hàng** và **một pháp nhân**.
 2. Với khoản chưa có số tiền, nhập **Số tiền**.
 3. Điền **Số hoá đơn**, **Ngày xuất**, chọn **Thuế GTGT** (trong các thuế suất được phép theo tham số đang hiệu lực), **Ghi chú**.
-4. Bấm **Ghi nhận hoá đơn**.
+4. Bấm **Ghi nhận hoá đơn**. Nếu chưa có số hoá đơn, tick **Lưu thành bản nháp — chưa xuất, có thể chưa có số hoá đơn** rồi **Lưu bản nháp**: bản nháp giữ các khoản (không hoá đơn nào khác lấy được), và trên trang hoá đơn bạn **Sửa bản nháp**, **Xuất hoá đơn** (nhập số và ngày theo hệ thống kế toán; mọi khoản phải có số tiền) hoặc **Xoá bản nháp** (các khoản trở lại danh sách chờ xuất hoá đơn).
 
 Hệ thống:
 
@@ -59,7 +61,11 @@ Phần đầu: pháp nhân, ngày xuất, hạn thu, số ngày trễ; dòng s�
 1. Ở khung **Ghi nhận thanh toán**, nhập **Ngày nhận**, **Số tiền (VNĐ)** (lớn hơn 0), **Hình thức** (Chuyển khoản, Tiền mặt, Cấn trừ, Khác), **Tham chiếu** (số giao dịch ngân hàng…).
 2. Bấm **Ghi nhận thanh toán**.
 
-Hoá đơn tự chuyển **Thu một phần** hoặc **Đã thu đủ**. Ghi nhầm thì bấm **Xoá** ở khoản thanh toán đó (hệ thống hỏi xác nhận).
+Số tiền không được lớn hơn số còn phải thu của hoá đơn. Hoá đơn tự chuyển **Thu một phần** hoặc **Đã thu đủ**. Ghi nhầm thì bấm **Huỷ khoản thu** ở khoản thanh toán đó và ghi **Lý do huỷ**: khoản thanh toán vẫn nằm trong danh sách, gạch ngang kèm lý do, và không còn được tính vào số đã thu, công nợ hay hoa hồng.
+
+### Huỷ hoá đơn
+
+Hoá đơn đã xuất không bị xoá. Nếu hoá đơn sai, huỷ nó trên phần mềm kế toán rồi bấm **Huỷ hoá đơn** ở đây, ghi **Lý do huỷ hoá đơn**: hoá đơn giữ số của nó, chuyển **Đã huỷ**, không còn phải thu, và các khoản trở lại hàng **Chờ xuất hoá đơn** để ghi vào hoá đơn thay thế. Hãy huỷ các khoản thanh toán của hoá đơn trước; hoá đơn đã xoá nợ không huỷ được.
 
 ### Xoá nợ
 

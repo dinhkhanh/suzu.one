@@ -16,6 +16,7 @@ Trang này dành cho **C&B / Tiền lương**, **Quản trị nhân sự** (ngư
 - **Phiên bản theo thời gian**: mỗi lần thay đổi là một phiên bản mới với **Hiệu lực từ**. Phiên bản đang áp dụng tự kết thúc vào ngày trước ngày hiệu lực của phiên bản mới. Lịch sử không bị ghi đè — bảng lương của tháng cũ vẫn tính theo quy tắc của tháng đó.
 - **Đề xuất rồi mới có hiệu lực**: phiên bản mới chỉ có hiệu lực sau khi Chủ sở hữu phê duyệt. Khi có đề xuất, Chủ sở hữu nhận thông báo **Có đề xuất thay đổi quy tắc tính lương**.
 - **Ngày hiệu lực phải sau phiên bản hiện tại** và không trùng ngày với một phiên bản đã có.
+- **Hủy bỏ một phiên bản đã duyệt nhưng sai**: Chủ sở hữu bấm **Hủy bỏ** cạnh phiên bản (khoản lương, chính sách, tham số pháp định) và nhập **Lý do hủy bỏ**. Phiên bản được giữ lại với nhãn **Đã hủy bỏ** kèm lý do; phiên bản trước nó áp dụng lại cho những ngày đó, và bạn đề xuất phiên bản đúng cho cùng những ngày ấy. Không hủy được khi một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản đó (khi ấy hãy điều chỉnh bằng khoản truy lĩnh, truy thu); kỳ lương đang chờ duyệt phải được trả về cho nhân sự trước.
 - **Toàn tập đoàn hoặc riêng một pháp nhân**: quy tắc **Toàn tập đoàn** áp dụng chung; pháp nhân có thể có quy tắc riêng thay thế.
 - Các màn hình quy tắc cũng yêu cầu xác thực lại, vì đổi một công thức là đổi phiếu lương của nhiều người.
 
@@ -97,7 +98,7 @@ Mỗi phiên bản chính sách gồm:
 
 ## Tham số pháp định
 
-Các con số của pháp luật — tỷ lệ bảo hiểm phần người lao động và doanh nghiệp, mức tham chiếu, trần đóng bảo hiểm, lương tối thiểu vùng, giảm trừ gia cảnh, biểu thuế TNCN lũy tiến, thuế khấu trừ theo tỷ lệ cố định, hệ số làm thêm và làm đêm, kinh phí và đoàn phí công đoàn… — nằm ở **Quản trị** → [Tham số pháp định](/admin/rules). Mỗi giá trị có ngày hiệu lực và căn cứ pháp lý.
+Các con số của pháp luật — tỷ lệ bảo hiểm phần người lao động và doanh nghiệp, mức tham chiếu, trần đóng bảo hiểm, lương tối thiểu vùng, giảm trừ gia cảnh, biểu thuế TNCN lũy tiến, thuế khấu trừ theo tỷ lệ cố định, hệ số làm thêm và làm đêm, kinh phí và đoàn phí công đoàn, cách hiểu hệ số làm thêm ngày lễ (`overtime.holiday_pay`: hệ số trả **thêm** ngoài lương ngày lễ, hay **đã gồm** lương ngày lễ), những phần lương làm căn cứ trả phép chưa nghỉ khi nghỉ việc (`leave.payout_basis`)… — nằm ở **Quản trị** → [Tham số pháp định](/admin/rules). Mỗi giá trị có ngày hiệu lực và căn cứ pháp lý.
 
 - C&B / Quản trị nhân sự **đề xuất thay đổi**; Chủ sở hữu **Phê duyệt** hoặc **Từ chối**.
 - Giá trị đang hiệu lực mà chưa được kiểm tra lại có nhãn **Chưa được kế toán trưởng xác nhận**; người có quyền phê duyệt bấm **Xác nhận đã kiểm tra** sau khi đối chiếu với văn bản pháp luật.

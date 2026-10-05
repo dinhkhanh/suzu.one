@@ -1,11 +1,13 @@
 "use client";
 // A team's hand-off packages (FR-PJM-40): per transition (from a state, or any, into a state) the
 // fields, checks, link and file a move requires, and whether the receiver must accept it.
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -176,7 +178,7 @@ function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; stat
               ))}
             </Select>
             <label className="flex items-center gap-1 text-sm">
-              <input type="checkbox" checked={field.required} onChange={(event) => setFields(fields.map((row, at) => (at === index ? { ...row, required: event.target.checked } : row)))} /> {t("required")}
+              <Checkbox checked={field.required} onCheckedChange={(checked) => setFields(fields.map((row, at) => (at === index ? { ...row, required: checked } : row)))} /> {t("required")}
             </label>
             <Button type="button" size="sm" variant="ghost" aria-label={t("remove")} onClick={() => setFields(fields.filter((_, at) => at !== index))}>
               ×
@@ -211,16 +213,16 @@ function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; stat
 
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="requireLink" defaultChecked={pkg?.requireLink ?? false} /> {t("requireLink")}
+          <Checkbox name="requireLink" defaultChecked={pkg?.requireLink ?? false} /> {t("requireLink")}
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="requireFile" defaultChecked={pkg?.requireFile ?? false} /> {t("requireFile")}
+          <Checkbox name="requireFile" defaultChecked={pkg?.requireFile ?? false} /> {t("requireFile")}
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="requireAccept" defaultChecked={pkg?.requireAccept ?? true} /> {t("requireAccept")}
+          <Checkbox name="requireAccept" defaultChecked={pkg?.requireAccept ?? true} /> {t("requireAccept")}
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="isActive" defaultChecked={pkg?.isActive ?? true} /> {t("active")}
+          <Checkbox name="isActive" defaultChecked={pkg?.isActive ?? true} /> {t("active")}
         </label>
       </div>
       {errorKey ? (
@@ -233,18 +235,7 @@ function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; stat
           {tWork("save")}
         </Button>
         {pkg ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("deleteConfirm"))) run(() => deleteHandoffPackageAction({ packageId: pkg.id }));
-            }}
-          >
-            {t("delete")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteHandoffPackageAction({ packageId: pkg.id }))} />
         ) : null}
       </div>
     </form>

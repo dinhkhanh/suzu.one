@@ -34,6 +34,7 @@ import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
 import { saveSchedule } from "./schedules";
 import { getTimesheetDays, recomputeDays } from "./timesheets";
+import { tableToCsv } from "../platform/export/csv";
 
 const OFFICE_DAY = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
 const WEEK: SchedulePattern = { days: { 1: OFFICE_DAY, 2: OFFICE_DAY, 3: OFFICE_DAY, 4: OFFICE_DAY, 5: OFFICE_DAY, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } };
@@ -289,8 +290,8 @@ describe("what payroll reads", () => {
 
   it("exports the locked month as a file in the lock's own figures, and nothing before the lock (ATT-02)", async () => {
     const file = await buildLockedMonthExport(ids.media, MONTH, "en");
-    expect(file).toMatchObject({ fileName: "timesheet-SZM-2026-08.csv", rowCount: 3, truncated: false });
-    const [header, ...lines] = file.csv.replace(/^﻿/, "").trim().split("\r\n");
+    expect(file).toMatchObject({ fileName: "timesheet-SZM-2026-08", rowCount: 3, truncated: false });
+    const [header, ...lines] = tableToCsv(file.table).replace(/^﻿/, "").trim().split("\r\n");
     expect(header.split(",").slice(0, 6)).toEqual(["Employee code", "Full name", "Standard days", "Paid days", "Unpaid days", "Hours worked"]);
     const huy = lines.find((line) => line.startsWith("SZM-0003,Huy,"))!.split(",");
     // Huy's August, as payroll reads it: 26 days asked and paid, 160 h in the office, 48 h credited;

@@ -72,6 +72,8 @@ Một số điều nên biết:
 - Câu hỏi về phiếu lương cần bạn đã **xác thực lại** trong 15 phút gần nhất, giống như khi mở trang phiếu lương.
 - Mọi câu hỏi và mỗi lần SuZu đọc số liệu cá nhân đều được ghi vào nhật ký hệ thống (ghi câu hỏi, kết quả và trang được trích — không ghi con số). Đừng gõ mật khẩu hay thông tin nhạy cảm của người khác vào ô hỏi.
 - Câu hỏi SuZu không trả lời được được đưa vào danh sách **Câu hỏi chưa trả lời được** mà người quản lý Tri thức trong phạm vi của bạn xem được.
+- Mỗi người được hỏi tối đa **100 câu một ngày** (và 10 câu một phút), và dùng trợ lý soạn nháp tối đa **40 lần một ngày** (5 lần một phút). Quá giới hạn, SuZu báo *Bạn đã hỏi hết số lượt của hôm nay. Mai hỏi tiếp nhé.* hoặc *Bạn hỏi nhanh quá. Chờ một phút rồi hỏi tiếp nhé.*
+- Một trang vừa xuất bản được SuZu tìm thấy ngay trong ngày (trang rất dài có thể cần đến lượt cập nhật tự động kế tiếp, tối đa nửa ngày).
 
 ## Trợ lý soạn nháp ở các màn hình khác
 

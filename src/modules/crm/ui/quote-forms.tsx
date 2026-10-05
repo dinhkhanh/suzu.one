@@ -12,7 +12,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { quoteTotals } from "../engine/quote";
 import { quoteStepAction, saveQuoteAction } from "../quote-actions";
 import { CrmButton, CrmForm } from "./common";

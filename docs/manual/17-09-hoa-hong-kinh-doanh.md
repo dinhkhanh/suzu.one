@@ -69,6 +69,6 @@ Người hưởng nhận thông báo **Bảng hoa hồng** ("Bảng hoa hồng t
 
 ## Mẹo
 
-- Hoa hồng phụ thuộc vào **thanh toán đã ghi nhận** ở tab **Công nợ**: thanh toán ghi sai tháng sẽ làm sai bảng kê.
+- Hoa hồng phụ thuộc vào **thanh toán đã ghi nhận** ở tab **Công nợ**: thanh toán ghi sai tháng sẽ làm sai bảng kê. Khi một khoản thanh toán được ghi thêm hoặc huỷ sau khi bảng kê tháng đó đã xác nhận, bảng kê (nếu chưa vào kỳ lương, hoặc kỳ lương còn mở) quay về **Nháp**, được tính lại và người xác nhận nhận thông báo *Hoa hồng cần xác nhận lại*. Nếu kỳ lương đã đóng, bảng kê giữ nguyên và người xác nhận nhận *Hoa hồng thay đổi sau kỳ lương* để điều chỉnh trong kỳ lương tới.
 - Người phụ trách cơ hội và người phụ trách khách hàng trên hệ thống chính là người được hưởng — hãy cập nhật khi bàn giao khách hàng hoặc cơ hội.
 - Thắc mắc về bảng kê của mình, hãy hỏi bộ phận C&B kèm tháng và số hoá đơn liên quan.

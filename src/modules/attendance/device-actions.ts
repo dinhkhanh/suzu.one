@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { can } from "@/modules/platform/rbac/policy";
 import { savePolicy } from "./attendance-policies";
 import { decideAttendanceRuleChange, decidesAttendanceRules, getAttendanceRuleChange, proposeAttendancePolicy } from "./rule-changes";
@@ -163,8 +163,8 @@ const unmappedExportPipeline = createAction({
     const lines = await listUnmappedLines(input.deviceId, EXPORT_ROW_LIMIT + 1);
     const rows = lines.slice(0, EXPORT_ROW_LIMIT);
     const local = (at: Date) => new Date(at.getTime() + 7 * 3_600_000).toISOString().slice(0, 19).replace("T", " ");
-    const csv = toCsv([{ header: "Thiết bị", value: () => device.name }, { header: "Mã trên máy", value: (row: (typeof rows)[number]) => row.deviceUserId }, { header: "Thời điểm", value: (row) => local(row.at) }, { header: "Chiều", value: (row) => row.direction ?? "" }], rows);
-    const file: CsvFile = { fileName: `unmapped-${device.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-${todayInVietnam()}.csv`, csv, rowCount: rows.length, truncated: lines.length > rows.length };
+    const table = toTable([{ header: "Thiết bị", value: () => device.name }, { header: "Mã trên máy", value: (row: (typeof rows)[number]) => row.deviceUserId }, { header: "Thời điểm", value: (row) => local(row.at) }, { header: "Chiều", value: (row) => row.direction ?? "" }], rows);
+    const file: ExportFile = { fileName: `unmapped-${device.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-${todayInVietnam()}`, table, rowCount: rows.length, truncated: lines.length > rows.length };
     return { data: file, audit: { resource: { type: "export:device_unmapped", id: device.id, entityId: device.entityId }, summary: `${file.rowCount} rows`, after: { rowCount: file.rowCount } } };
   },
 });

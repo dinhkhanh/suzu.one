@@ -1,13 +1,15 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Segmented } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { listBalancesForAdmin } from "@/modules/leave/admin";
+import { exportLeaveBalancesAction } from "@/modules/leave/export-actions";
 import { canOpenLeaveAdmin } from "@/modules/leave/policy";
 import { RunAccrualsButton } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
 import { RecordLink } from "@/components/ui/record-link";
@@ -20,6 +22,7 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
   if (!canOpenLeaveAdmin(user.principal)) notFound();
   const t = await getTranslations("leave.admin");
   const format = await getFormatter();
+  const [te, locale] = await Promise.all([getTranslations("exports"), getLocale()]);
   const current = Number(todayInVietnam().slice(0, 4));
   const asked = Number((await props.searchParams).year);
   const year = Number.isInteger(asked) && asked >= 2000 && asked <= 2100 ? asked : current;
@@ -31,7 +34,10 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
     <div className="flex flex-col gap-4">
       <div className="toolbar justify-between">
         <Segmented aria-label={t("balances.title")} value={String(year)} options={[year - 1, year, year + 1].map((value) => ({ value: String(value), label: String(value), href: `/leave/admin/balances?year=${value}` }))} />
-        {can(user.principal, "leave:manage", {}) ? <RunAccrualsButton /> : null}
+        <div className="flex items-center gap-2">
+          <ExportButton action={exportLeaveBalancesAction} input={{ year, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
+          {can(user.principal, "leave:manage", {}) ? <RunAccrualsButton /> : null}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">{t("balances.hint")}</p>
       <Table>
