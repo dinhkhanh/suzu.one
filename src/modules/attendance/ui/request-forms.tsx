@@ -103,7 +103,8 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field name="kind" label={t("fields.kind")}>
                   <Select id="kind" name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
-                    {(["wfh", "off_site", "business_trip"] as const).map((value) => (
+                    {/* A business trip is filed as a request with its money (REQ-02); its approval writes the days here. Only an old one being corrected still offers it. */}
+                    {(defaults.kind === "business_trip" ? (["wfh", "off_site", "business_trip"] as const) : (["wfh", "off_site"] as const)).map((value) => (
                       <option key={value} value={value}>
                         {t(`kinds.${value}`)}
                       </option>
@@ -120,6 +121,7 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
                   </Select>
                 </Field>
               </div>
+              <p className="text-xs text-muted-foreground">{t("tripHint")}</p>
               {kind === "wfh" ? null : (
                 <>
                   <Field name="locationName" label={t("fields.locationName")}>

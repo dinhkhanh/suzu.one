@@ -6,6 +6,7 @@
 // approve all work untouched. This table holds only what the engine has no business knowing: the
 // answers, the attachments, and the figure a report adds up.
 import { type AnyPgColumn, bigint, boolean, date, index, jsonb, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { generatedDocument } from "../documents/schema";
 import { payrollRun } from "../payroll/schema";
 import { approvalRequest } from "../platform/approvals/schema";
 import { storedFile } from "../platform/files/schema";
@@ -14,6 +15,7 @@ import { person } from "../platform/people/schema";
 import type { ExpenseCategory } from "./engine/expense";
 import type { FollowUpRule } from "./engine/follow-ups";
 import type { FormDefinition } from "./engine/form";
+import type { RequestPayout } from "./enums";
 
 export const requestType = pgTable(
   "request_type",
@@ -45,6 +47,9 @@ export const requestType = pgTable(
     followUps: jsonb("follow_ups").$type<FollowUpRule[]>().notNull().default([]),
     // False = only ever filed as a follow-up of another request; it is left off the picker.
     standalone: boolean("standalone").notNull().default(true),
+    // REQ-01: whether an approved request of this type waits in finance's "to pay" queue, and as
+    // what (enums.ts). An advance is netted against the payments filed under the same parent.
+    payout: text("payout").$type<RequestPayout>().notNull().default("none"),
     updatedByPersonId: uuid("updated_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -74,6 +79,16 @@ export const requestSubmission = pgTable(
     // FR-REQ-05: the request this one was filed under (an advance under its business trip). Set
     // once at filing and never changed; the parent type's rules decided it was allowed then.
     parentSubmissionId: uuid("parent_submission_id").references((): AnyPgColumn => requestSubmission.id),
+    // REQ-01: finance paid it. `paidAmount` is what actually changed hands, in whole đồng: the
+    // amount less any advance netted against it — negative when the requester paid the unspent
+    // rest of an advance back. Set once; the queue offers nothing more for a paid request.
+    paidOn: date("paid_on"),
+    paidAmount: bigint("paid_amount", { mode: "number" }),
+    paidReference: text("paid_reference"),
+    paidByPersonId: uuid("paid_by_person_id").references(() => person.id),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    // REQ-02: the letter an approved confirmation-letter request produced (documents module).
+    documentId: uuid("document_id").references(() => generatedDocument.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -1,6 +1,6 @@
 // Golden tests for the leave entitlement and accrual engine (FR-LVE-02, 03).
 import { describe, expect, it } from "vitest";
-import { accrualPostings, accrualTarget, carryOverExpiryDate, carryOverLapse, completedYears, countedMonths, type EmploymentFacts, fullYearDays, isOnProbation, type PolicyRules, roundDays, terminationPayout, yearEndCarryOver } from "./entitlement";
+import { accrualPostings, accrualTarget, type BookingAheadInput, bookingAhead, carryOverExpiryDate, carryOverLapse, completedYears, countedMonths, type EmploymentFacts, fullYearDays, isOnProbation, type PolicyRules, roundDays, terminationPayout, yearEndCarryOver } from "./entitlement";
 
 const STATUTORY = { baseDays: 12, yearsOfServicePerExtraDay: 5 };
 const ANNUAL: PolicyRules = {
@@ -232,5 +232,55 @@ describe("accrual postings", () => {
       ["2026-02-01", 400],
       ["2026-03-01", 200],
     ]);
+  });
+});
+
+describe("booking ahead (LVE-01)", () => {
+  // 20 November 2026, monthly accrual of 12 days, eleven months given, eight days used.
+  const ahead = (overrides: Partial<BookingAheadInput> = {}): BookingAheadInput => ({
+    today: "2026-11-20",
+    employment: employed("2024-01-15"),
+    policyAt: () => ANNUAL,
+    statutoryFor: () => STATUTORY,
+    thisYear: { givenCenti: 1100, availableCenti: 300, lastDate: "2026-07-03" },
+    nextYear: { givenCenti: 0, availableCenti: 0, lastDate: null },
+    ...overrides,
+  });
+
+  it("counts December's share for a December day asked for in November", () => {
+    expect(bookingAhead(ahead(), 2026, "2026-12-22").centi).toBe(100);
+    // Nothing more than the policy will have given: November's own day is already in the ledger.
+    expect(bookingAhead(ahead(), 2026, "2026-11-25").centi).toBe(0);
+  });
+
+  it("books Tết against next year's months so far and this year's projected carry-over", () => {
+    // January and February 2027 (2 days) + this year's 3 free days and December's 1, carried (cap 5).
+    expect(bookingAhead(ahead(), 2027, "2027-02-10").centi).toBe(600);
+    // After 31 March the carried days have lapsed: April's four months alone.
+    expect(bookingAhead(ahead(), 2027, "2027-04-10").centi).toBe(400);
+    // The cap holds: ten free days carry five.
+    expect(bookingAhead(ahead({ thisYear: { givenCenti: 1100, availableCenti: 1000, lastDate: null } }), 2027, "2027-02-10").centi).toBe(700);
+  });
+
+  it("gives next year's whole grant from its first day under a yearly grant", () => {
+    const grant = { ...ANNUAL, accrualMethod: "yearly_grant" as const, carryOverCapCenti: 0 };
+    expect(bookingAhead(ahead({ policyAt: () => grant, thisYear: { givenCenti: 1200, availableCenti: 300, lastDate: null } }), 2027, "2027-02-10").centi).toBe(1200);
+  });
+
+  it("takes from this year what next year's bookings already lean on", () => {
+    // Five days of Tết booked against two days of 2027 accrual: three come out of this year's carry.
+    const leaning = ahead({ nextYear: { givenCenti: 0, availableCenti: -500, lastDate: "2027-02-10" } });
+    expect(bookingAhead(leaning, 2026, "2026-12-22").centi).toBe(-200);
+  });
+
+  it("projects nothing for a year further ahead, a past year, or without the statutory figures", () => {
+    expect(bookingAhead(ahead(), 2028, "2028-02-10").centi).toBe(0);
+    expect(bookingAhead(ahead(), 2025, "2025-12-22").centi).toBe(0);
+    // Only the carry is left to count on: three free days, no December share.
+    expect(bookingAhead(ahead({ statutoryFor: () => null }), 2027, "2027-02-10").centi).toBe(300);
+  });
+
+  it("projects nothing for a type without a policy", () => {
+    expect(bookingAhead(ahead({ policyAt: () => null }), 2027, "2027-02-10").centi).toBe(0);
   });
 });

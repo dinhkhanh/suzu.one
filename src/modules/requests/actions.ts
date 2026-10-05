@@ -4,12 +4,15 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { reportError } from "@/lib/observability/report";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { approverRuleSchema, conditionSchema } from "@/modules/platform/approvals/flows";
 import { FOLLOW_UP_OPENS, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "./engine/follow-ups";
 import { FIELD_TYPES, MAX_FIELDS, MAX_OPTIONS, MAX_TEXT } from "./engine/form";
-import { canFileRequests, canManageRequestTypes } from "./policy";
-import { REQUEST_CATEGORIES } from "./enums";
+import { canFileRequests, canManageRequestTypes, canPayRequests } from "./policy";
+import { REQUEST_CATEGORIES, REQUEST_PAYOUTS } from "./enums";
+import { CONFIRMATION_LETTER_CODE, type IssuedLetter, issueConfirmationLetter } from "./letters";
+import { markRequestPaid, payoutEntityOf } from "./payments";
 import { decideGenericRequest, fileRequest, findRequestType, getGenericRequest, refileRequest, saveRequestType, setRequestTypeActive } from "./service";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -78,6 +81,7 @@ const savePipeline = createAction({
     form: jsonText(z.object({ fields: z.array(formField).max(MAX_FIELDS) })),
     followUps: jsonText(z.array(followUpRule).max(MAX_FOLLOW_UPS)).default([]),
     standalone: z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean()).default(true),
+    payout: z.enum(REQUEST_PAYOUTS).default("none"),
   }),
   authorize: (user, input) => canManageRequestTypes(user.principal, input.entityId),
   run: async ({ user, input }) => {
@@ -90,8 +94,8 @@ const savePipeline = createAction({
       audit: {
         resource: { type: "request_type", id: after.id, entityId: after.entityId },
         summary: `${after.code}: ${after.nameVi}`,
-        before: before ? { form: before.form, active: before.active, nameVi: before.nameVi, followUps: before.followUps, standalone: before.standalone } : null,
-        after: { form: after.form, active: after.active, nameVi: after.nameVi, followUps: after.followUps, standalone: after.standalone },
+        before: before ? { form: before.form, active: before.active, nameVi: before.nameVi, followUps: before.followUps, standalone: before.standalone, payout: before.payout } : null,
+        after: { form: after.form, active: after.active, nameVi: after.nameVi, followUps: after.followUps, standalone: after.standalone, payout: after.payout },
       },
     };
   },
@@ -176,16 +180,57 @@ const decidePipeline = createAction({
   authorize: async (user, input) => !!(await getGenericRequest({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
   run: async ({ user, input }) => {
     const { request, before, outcome } = await decideGenericRequest(input.requestId, user.person.id, { action: input.decision, comment: input.comment });
+    // REQ-02: an approved confirmation letter is made at once, by the documents module, as the
+    // approver who finished it. If they may not make it (a salary letter needs the compensation
+    // tier), the approval stands and HR makes the letter from the person page.
+    let letter: IssuedLetter | null = null;
+    if (outcome === "approved" && request.type === `request:${CONFIRMATION_LETTER_CODE}`) {
+      try {
+        letter = await issueConfirmationLetter(request.id, { principal: user.principal, personId: user.person.id });
+      } catch (error) {
+        await reportError(error, { event: "requests.confirmation_letter.failed", source: "action" });
+      }
+    }
     revalidatePath("/approvals");
     revalidatePath(`/approvals/request/${request.id}`);
     revalidatePath("/requests");
     return {
       data: { outcome },
-      audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status } },
+      audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, ...(letter && "documentId" in letter ? { documentId: letter.documentId, documentNumber: letter.number } : {}) } },
     };
   },
 });
 
 export async function decideRequestAction(input: unknown) {
   return decidePipeline(input);
+}
+
+// ── Paying (REQ-01) ─────────────────────────────────────────────────────────────────────────
+
+const paidPipeline = createAction({
+  name: "request.mark_paid",
+  input: z.object({ requestId: z.uuid(), paidOn: z.iso.date(), reference: z.string().trim().min(1).max(120) }),
+  // Finance of the request's own entity.
+  authorize: async (user, input) => {
+    const where = await payoutEntityOf(input.requestId);
+    return !!where && canPayRequests(user.principal, where.entityId);
+  },
+  run: async ({ user, input }) => {
+    const { before, after } = await markRequestPaid(input.requestId, { paidOn: input.paidOn, reference: input.reference }, user.person.id);
+    revalidatePath("/requests/pay");
+    revalidatePath(`/approvals/request/${input.requestId}`);
+    return {
+      data: { paidAmount: after.paidAmount },
+      audit: {
+        resource: { type: `approval:request:${after.code}`, id: input.requestId, entityId: after.entityId },
+        summary: `paid ${after.paidAmount} on ${input.paidOn} (${input.reference})`,
+        before: { paidOn: before.paidOn },
+        after: { paidOn: after.paidOn, paidAmount: after.paidAmount, paidReference: after.paidReference, nettedAdvance: after.settlement.nettedAdvance },
+      },
+    };
+  },
+});
+
+export async function markRequestPaidAction(input: unknown) {
+  return paidPipeline(input);
 }

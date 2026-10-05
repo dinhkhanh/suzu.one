@@ -92,6 +92,11 @@ export const KINDS = {
   "approvals.oversight_digest": "approvals",
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
+  // REQ-01: finance paid an approved request (a payment, a purchase, an advance, a trip's
+  // settlement), or recorded the unspent rest of an advance as paid back. The amount and the
+  // transfer reference only.
+  "approvals.request_paid": "approvals",
+  "approvals.request_repayment_recorded": "approvals",
   // The asset register (FR-AST-02, 08). Equipment handed to you waits for your confirmation; for a
   // page or a channel, somebody asks to be let in, the owner answers, access is given or taken
   // away, or the asset itself is now yours to answer for. The asset's name — never where its

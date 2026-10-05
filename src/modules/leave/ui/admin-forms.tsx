@@ -1,5 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,9 @@ export type LeaveTypeValues = {
 
 export function LeaveTypeForm({ type, entities, canGroup }: { type: LeaveTypeValues | null; entities: Option[]; canGroup: boolean }) {
   const t = useTranslations("leave.admin");
-  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveLeaveTypeAction, { extra: type ? { id: type.id, code: type.code } : {} });
+  // FR-PLT-39: HR's change waits for the owner; the owner's is saved at once.
+  const [proposed, setProposed] = useState(false);
+  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveLeaveTypeAction, { extra: type ? { id: type.id, code: type.code } : {}, onSuccess: (data) => setProposed(!!(data as { proposed?: boolean }).proposed) });
   return (
     <form onSubmit={onSubmit} key={!type && saved ? "saved" : "open"} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
@@ -143,7 +146,7 @@ export function LeaveTypeForm({ type, entities, canGroup }: { type: LeaveTypeVal
         <Button type="submit" disabled={pending}>
           {t("save")}
         </Button>
-        {saved ? <span className="text-sm text-muted-foreground">{t("saved")}</span> : null}
+        {saved ? <span className="text-sm text-muted-foreground">{proposed ? t("proposed") : t("saved")}</span> : null}
       </div>
     </form>
   );
@@ -169,7 +172,8 @@ export type LeavePolicyValues = {
 /** A new version from a date on; the one in force until then ends the day before. */
 export function LeavePolicyForm({ leaveTypeId, current, entities, canGroup, today }: { leaveTypeId: string; current: LeavePolicyValues | null; entities: Option[]; canGroup: boolean; today: string }) {
   const t = useTranslations("leave.admin");
-  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveLeavePolicyAction, { extra: { leaveTypeId } });
+  const [proposed, setProposed] = useState(false);
+  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveLeavePolicyAction, { extra: { leaveTypeId }, onSuccess: (data) => setProposed(!!(data as { proposed?: boolean }).proposed) });
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
@@ -244,7 +248,7 @@ export function LeavePolicyForm({ leaveTypeId, current, entities, canGroup, toda
         <Button type="submit" disabled={pending}>
           {t("policy.save")}
         </Button>
-        {saved ? <span className="text-sm text-muted-foreground">{t("saved")}</span> : null}
+        {saved ? <span className="text-sm text-muted-foreground">{proposed ? t("proposed") : t("saved")}</span> : null}
       </div>
     </form>
   );

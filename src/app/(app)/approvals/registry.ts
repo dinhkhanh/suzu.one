@@ -11,7 +11,9 @@
 import "server-only";
 import type { ActionResult } from "@/lib/action";
 import { decideAttendanceRequestAction } from "@/modules/attendance/request-actions";
+import { decideAttendanceRuleAction } from "@/modules/attendance/device-actions";
 import { REQUEST_DEFINITIONS as ATTENDANCE_REQUESTS } from "@/modules/attendance/requests";
+import { attendanceRuleRequest } from "@/modules/attendance/rule-changes";
 import { profileChangeRequest } from "@/modules/core-hr/change-requests";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
@@ -20,8 +22,9 @@ import { decideLifecycleChangeAction } from "@/modules/core-hr/lifecycle-actions
 import { promotionApprovalType, terminationApprovalType, transferApprovalType } from "@/modules/core-hr/lifecycle-approvals";
 import { decidePageReviewAction } from "@/modules/kb/actions";
 import { kbPublishRequest } from "@/modules/kb/service";
-import { decideLeaveAction } from "@/modules/leave/actions";
+import { decideLeaveAction, decideLeaveRuleAction } from "@/modules/leave/actions";
 import { leaveRequestType } from "@/modules/leave/requests";
+import { leaveRuleRequest } from "@/modules/leave/rule-changes";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
 import { decideBriefAction } from "@/modules/projects/actions";
 import { decideChangeAction } from "@/modules/projects/commercial-actions";
@@ -70,6 +73,10 @@ const REGISTERED: RegisteredRequestType[] = [
   // A salary is read before it is signed (SRS D17), never bulk-approvable; registered so an entity
   // can give it its own flow (a CEO step) in the flow administration, as its definition promises.
   { definition: salaryChangeRequest, approve: (requestId) => decideSalaryChangeAction({ requestId, decision: "approve", comment: null }) },
+  // A leave or attendance rule HR proposes is the owner's to decide (FR-PLT-39), on a fixed flow no
+  // administrator can reroute, and read field by field on its page: never bulk-approvable.
+  { definition: leaveRuleRequest, approve: (requestId) => decideLeaveRuleAction({ requestId, decision: "approve", comment: null }) },
+  { definition: attendanceRuleRequest, approve: (requestId) => decideAttendanceRuleAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

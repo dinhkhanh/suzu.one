@@ -1152,6 +1152,14 @@
         "title": "Confirm you received your pay",
         "body": "Please confirm that you received your {month} pay in cash."
       },
+      "approvals_request_paid": {
+        "title": "Your request was paid",
+        "body": "{summary} — {amount} paid on {date} (reference {reference})."
+      },
+      "approvals_request_repayment_recorded": {
+        "title": "Advance repayment recorded",
+        "body": "{summary} — {amount} of unspent advance received back on {date} (reference {reference})."
+      },
       "approvals_sla_reminder": {
         "title": "A request is waiting for your answer",
         "body": "{requestType} — {summary} — waiting {days} days."
@@ -1943,7 +1951,9 @@
       "crm_quote": "Quote",
       "lifecycle_transfer": "Transfer",
       "lifecycle_promotion": "Promotion / appointment",
-      "lifecycle_termination": "Termination"
+      "lifecycle_termination": "Termination",
+      "leave_rule": "Leave rule change",
+      "attendance_rule": "Attendance rule change"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1993,6 +2003,20 @@
       "approve": "Approve",
       "return": "Return for changes",
       "reject": "Reject"
+    },
+    "rule": {
+      "changes": "Proposed change",
+      "againstCurrent": "Against the rule in force; the lines in bold are the ones that change.",
+      "newRule": "A new rule, with nothing before it.",
+      "field": "Field",
+      "current": "In force",
+      "proposed": "Proposed",
+      "yes": "Yes",
+      "no": "No",
+      "days": "{days} day(s)",
+      "notYet": "This rule has not taken effect: it applies only once the owner approves it.",
+      "inForce": "Approved — the rule has been saved and applies from its start date.",
+      "ownerOnly": "Only the owner decides leave and attendance rules."
     },
     "errors": {
       "generic": "Something went wrong. Please try again.",
@@ -3502,6 +3526,7 @@
       "inForce": "In force",
       "save": "Save as a new version",
       "saved": "Saved.",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "versionHint": "Saving with a later start date closes the current version the day before.",
       "summary": "grace {late}′/{early}′ · rounding {rounding}′ · overtime from {ot}′",
       "mergeRules": {
@@ -3523,6 +3548,7 @@
         "otRequiresApproval": "Overtime counts only with an approved request"
       },
       "errors": {
+        "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
         "generic": "Could not save. Please try again.",
         "forbidden": "You may not change this policy.",
         "invalid": "Check the fields.",
@@ -3677,6 +3703,7 @@
         "off_site": "Off-site (shoot, client, event)",
         "business_trip": "Business trip"
       },
+      "tripHint": "Going on a business trip? File a business trip request under Requests — once it is approved, the days go onto your timesheet by themselves.",
       "portions": {
         "full": "Whole day",
         "am": "Morning",
@@ -4082,7 +4109,10 @@
       "title": "Available in {year}",
       "none": "You have no leave balance yet. Balances appear once HR has set up your leave.",
       "used": "{days} used",
-      "pending": "{days} waiting for approval"
+      "pending": "{days} waiting for approval",
+      "ledger": "Balance movements",
+      "ledgerHint": "Every addition, use, carry-over and adjustment of your balances, newest first — including days already booked for next year.",
+      "noLedger": "No movements yet."
     },
     "request": {
       "new": "Request leave",
@@ -4104,7 +4134,7 @@
       "minutes": "Minutes off (hourly leave)",
       "portionHint": "One date: choose whole day, morning, afternoon or hours. Several dates: the first day may start at noon (afternoon), the last may end at noon (morning).",
       "check": "Check",
-      "available": "Available in {year}: {days} day(s)",
+      "available": "Available for {year} by the leave date: {days} day(s)",
       "noBalance": "This type keeps no balance.",
       "colleaguesAway": "Also away on these days",
       "shortfall": "On {dates} fewer than {min} people of your team would be at work. You can still send the request; your manager sees this warning too.",
@@ -4151,6 +4181,7 @@
       "next": "Next month"
     },
     "errors": {
+      "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You are not allowed to do this.",
       "invalid": "Some fields are not valid.",
@@ -4207,6 +4238,7 @@
       "everyEntity": "Every entity",
       "save": "Save",
       "saved": "Saved",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "remove": "Remove",
       "removeConfirm": "Remove this row?",
       "types": {
@@ -9646,6 +9678,7 @@
       "mine": "Mine",
       "inbox": "To approve",
       "claims": "Settlement desk",
+      "pay": "To pay",
       "all": "All"
     },
     "elsewhere": {
@@ -9682,7 +9715,15 @@
       "no": "No",
       "correctAndResend": "Correct it and send it again",
       "details": "Details",
-      "resend": "Send again"
+      "resend": "Send again",
+      "payoutWaiting": "Approved — waiting for finance to pay {amount}.",
+      "payoutWaitingAdvance": "Approved — waits until the advance under the same request has been paid.",
+      "payoutPaid": "{amount} paid on {date} · reference {reference}.",
+      "payoutCollected": "{amount} of unspent advance received back on {date} · reference {reference}.",
+      "payoutNetted": "Less {advance} already advanced for this trip.",
+      "letter": "The confirmation letter has been made.",
+      "letterCollect": "Your confirmation letter has been made — collect the stamped copy from HR.",
+      "letterOpen": "Open the PDF"
     },
     "designer": {
       "on": "On",
@@ -9707,6 +9748,13 @@
       "descriptionEn": "Description (English)",
       "entity": "Applies to",
       "sortOrder": "Order",
+      "payout": "Once approved",
+      "payoutHint": "Approved requests go to finance's \"to pay\" queue. An advance is netted against the payment filed under the same parent request.",
+      "payouts": {
+        "none": "Nothing to pay",
+        "payment": "Finance pays it",
+        "advance": "Finance pays it as an advance"
+      },
       "sla": "Reminders and escalation",
       "slaHint": "Nudge an approver who has left it too long; escalate when still nobody has answered. 0 = off.",
       "remindAfter": "Remind after (days)",
@@ -9881,7 +9929,41 @@
       "follow_up_parent_closed": "That request is closed; nothing more can be filed under it.",
       "follow_up_parent_not_approved": "That request has to be approved first.",
       "follow_up_not_yet": "It is too early to file this under that request.",
-      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request."
+      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request.",
+      "request_not_payable": "This request is not waiting to be paid.",
+      "request_already_paid": "This request has already been recorded as paid.",
+      "request_advance_unpaid": "An approved advance under the same parent request has not been paid yet. Pay the advance first, then the settlement.",
+      "request_already_settled": "The parent request has been settled; no further advance is paid."
+    },
+    "pay": {
+      "title": "To pay",
+      "description": "{count, plural, =0 {Nothing is waiting to be paid.} one {One approved request waits to be paid, {amount} in all.} other {# approved requests wait to be paid, {amount} in all.}}",
+      "waiting": "Waiting",
+      "total": "To pay in all",
+      "none": "Nothing is waiting to be paid.",
+      "paidRecently": "Paid in the last 60 days ({count})",
+      "advanceUnpaid": "Advance not paid yet",
+      "toCollect": "Collect {amount}",
+      "columns": {
+        "requester": "Requester",
+        "request": "Request",
+        "amount": "Amount",
+        "advance": "Advanced",
+        "toPay": "To pay",
+        "approved": "Approved",
+        "paid": "Paid"
+      },
+      "kinds": {
+        "payment": "Payment",
+        "advance": "Advance"
+      },
+      "mark": "Record as paid",
+      "markTitle": "Record as paid: {summary}",
+      "markHint": "The figure is worked out for you: the amount less whatever was advanced under the same parent request. A negative figure means the requester returns unspent advance.",
+      "paidOn": "Paid on",
+      "reference": "Transfer or voucher reference",
+      "figure": "Figure recorded",
+      "save": "Save"
     },
     "expense": {
       "linesTitle": "Expense lines",
@@ -13525,6 +13607,8 @@
     "equipmentBooking": "Equipment booking",
     "equipmentBookings": "Equipment bookings",
     "expenseClaims": "Expense claims",
+    "ruleChange": "Proposed rule change",
+    "requestsToPay": "Requests to pay",
     "flaggedCheckIns": "Flagged check-ins",
     "goal": "Goal",
     "goals": "Goals",

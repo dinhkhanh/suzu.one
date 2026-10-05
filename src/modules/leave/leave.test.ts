@@ -341,3 +341,44 @@ describe("the team calendar", () => {
     ]);
   });
 });
+
+describe("booking ahead of the ledger (LVE-01)", () => {
+  let booker = "";
+
+  it("counts the months still to come this year by the last day asked for", async () => {
+    // Somebody at Creative, so the staffing figures of Media's department above stay as they are.
+    booker = await addPerson("Booker", { code: "SZC-0002", entityId: ids.creative, managerId: ids.head });
+    await runLeaveAccruals("2026-09-19", { personIds: [booker] });
+    expect((await balance(booker)).balanceCenti).toBe(900);
+    // Tuesday 1 – Wednesday 16 December: twelve working days against nine given and three still to come.
+    const preview = await previewLeave(booker, request({ startDate: "2026-12-01", endDate: "2026-12-16" }));
+    expect(preview.counted.totalCenti).toBe(1200);
+    expect(preview.problems).toEqual([]);
+    expect(preview.availableByYear[2026]).toBe(1200);
+  });
+
+  it("books Tết against next year's months and this year's carry-over, and holds at approval", async () => {
+    // 8–10 February 2027: two months of 2027 + the five days this year will carry (the cap).
+    const preview = await previewLeave(booker, request({ startDate: "2027-02-08", endDate: "2027-02-10" }));
+    expect(preview.problems).toEqual([]);
+    expect(preview.availableByYear[2027]).toBe(700);
+    const filed = await submitLeave(booker, request({ startDate: "2027-02-08", endDate: "2027-02-10" }), self(booker));
+    const { outcome } = await decideLeave(ids.head, filed.approvalRequestId, { action: "approve", comment: null });
+    expect(outcome).toBe("approved");
+    const uses = (await getLedger(booker, { year: 2027, leaveTypeId: types.ANNUAL })).filter((row) => row.kind === "use");
+    expect(uses.map((row) => [row.amountCenti, row.effectiveDate])).toEqual([[-300, "2027-02-08"]]);
+  });
+
+  it("no longer lets this year spend what Tết already leans on", async () => {
+    // February's two months of 2027 cover two of the three Tết days; the third comes out of this year's carry.
+    const preview = await previewLeave(booker, request({ startDate: "2026-12-01", endDate: "2026-12-16" }));
+    expect(preview.availableByYear[2026]).toBe(1100);
+    expect(preview.problems).toEqual(["leave_balance_insufficient"]);
+  });
+
+  it("projects nothing two years ahead", async () => {
+    const preview = await previewLeave(booker, request({ startDate: "2028-02-07", endDate: "2028-02-07" }));
+    expect(preview.availableByYear[2028]).toBe(0);
+    expect(preview.problems).toEqual(["leave_balance_insufficient"]);
+  });
+});

@@ -17,7 +17,7 @@ import { approvalsOversightDigestJob } from "@/modules/platform/approvals/jobs";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { candidateRetentionJob } from "@/modules/recruit/jobs";
 import { kpiFromWorkJob, reportSchedulesJob } from "@/modules/reports/service";
-import { requestSlaJob } from "@/modules/requests/jobs";
+import { expenseClaimSweepJob, requestSlaJob } from "@/modules/requests/jobs";
 import { workCoverJob, workCyclesJob, workExitHandoverJob, workPreviewSweepJob, workRecurringJob, workRemindersJob, workTriageWakeJob } from "@/modules/work/jobs";
 import { dailyMissedReportsJob, dailyPlanRemindersJob, dailyReportRemindersJob, dailyTimesheetRemindersJob, dailyWeeklyReportsJob } from "@/modules/daily/jobs";
 import { projectPlansJob, projectRemindersJob, projectRetainersJob } from "@/modules/projects/jobs";
@@ -36,7 +36,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // records of people whose window has passed, and it must run whether or not anybody logs in. So
   // does the face kiosk's: the faces of people who have left. The platform's own housekeeping
   // (expired approval links, staged import batches) closes the night.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, workTriageWakeJob, workCyclesJob, workCoverJob, workExitHandoverJob, workPreviewSweepJob, projectPlansJob, projectRetainersJob, crmNightlyJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob, candidateRetentionJob, faceLeaversJob, housekeepingJob],
+  // Approved expense claims are offered to the open payroll run just before it is calculated.
+  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, workTriageWakeJob, workCyclesJob, workCoverJob, workExitHandoverJob, workPreviewSweepJob, projectPlansJob, projectRetainersJob, crmNightlyJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, expenseClaimSweepJob, payrollCalculateJob, candidateRetentionJob, faceLeaversJob, housekeepingJob],
   // Alerts (and, on the 1st, "your month is ready to confirm"; flagged check-ins waiting for their
   // reviewers) first, so the digest that follows carries them.
   morning: [hrAlertsJob, timesheetMonthReadyJob, punchReviewRemindersJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, approvalsOversightDigestJob, workRemindersJob, projectRemindersJob, crmMorningJob, dailyPlanRemindersJob, dailyMissedReportsJob, dailyWeeklyReportsJob, dailyTimesheetRemindersJob, kbAckRemindersJob, performanceProbationJob, performanceRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, kpiFromWorkJob, reportSchedulesJob, notificationsDailyJob, filesCleanupJob],

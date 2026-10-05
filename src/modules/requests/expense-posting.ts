@@ -7,7 +7,7 @@
 // Kept apart from `service.ts` so nothing here imports it: `service.ts` calls this on approval and
 // `expense.ts` calls both. One direction, no cycle.
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { findOpenRegularRun, getRunHandle, removeRunInput, setRunInput } from "@/modules/payroll/service";
 
@@ -127,6 +127,8 @@ export type SweepResult = { posted: number; released: number; stillWaiting: numb
  * claims exist — the dependency goes one way, and one way only.
  */
 export async function sweepApprovedClaims(actorPersonId: string | null): Promise<SweepResult> {
+  // Only the claims with somewhere to go: not posted, or posted to a run since cancelled. A claim
+  // sitting in a live run would be left exactly where it is, so it is not read at all.
   const approved = await db()
     .select({
       submissionId: schema.requestSubmission.id,
@@ -136,7 +138,9 @@ export async function sweepApprovedClaims(actorPersonId: string | null): Promise
     })
     .from(schema.requestSubmission)
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
-    .where(and(eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE), eq(schema.approvalRequest.status, "approved")));
+    .leftJoin(schema.expenseClaimPosting, eq(schema.expenseClaimPosting.submissionId, schema.requestSubmission.id))
+    .leftJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.expenseClaimPosting.runId))
+    .where(and(eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE), eq(schema.approvalRequest.status, "approved"), or(isNull(schema.expenseClaimPosting.id), eq(schema.payrollRun.status, "cancelled"))));
 
   const result: SweepResult = { posted: 0, released: 0, stillWaiting: 0 };
   for (const claim of approved) {

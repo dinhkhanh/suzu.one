@@ -398,6 +398,18 @@ describe("a turn whose approver has left", () => {
   });
 });
 
+describe("sending a returned request round again", () => {
+  it("accepts it unchanged — the approver may have asked a question rather than for an edit", async () => {
+    await db().update(schema.person).set({ status: "active" });
+    const { request } = await submit(ids.huy, ids.media, 2);
+    await decide(request.id, ids.manager, "return");
+    const { request: after } = await db().transaction((tx) => resubmitRequest(tx, leave, request.id, ids.huy, {}));
+    expect(after.status).toBe("pending");
+    expect(after.summary).toBe("2 days");
+    expect((await listInbox(ids.manager)).map((row) => row.id)).toEqual([request.id]);
+  });
+});
+
 describe("an administrator moves a turn", () => {
   const hrPrincipal = () => ({ personId: ids.hr, workforceType: "employee" as const, grants: [{ role: "hr_staff" as const, scope: { type: "entity" as const, id: ids.media } }] });
   const ownerPrincipal = () => ({ personId: ids.owner, workforceType: "employee" as const, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] });
