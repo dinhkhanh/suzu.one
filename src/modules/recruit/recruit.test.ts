@@ -41,6 +41,7 @@ import {
   listApplications,
   listCandidatePage,
   listCandidates,
+  listHiringRequests,
   listOpenings,
   moveApplicationStage,
   newPublicSlug,
@@ -248,6 +249,31 @@ describe("who sees which openings", () => {
     expect(rows.map((row) => row.id)).toEqual([szmOpening]);
     expect(await isOpeningMember(szmOpening, ids.headPerson)).toBe(true);
     expect(await isOpeningMember(szcOpening, ids.headPerson)).toBe(false);
+  });
+
+  // The list reaches what the actions allow: `canRunRecruitment` admits a unit grant over the
+  // opening's department, so the lists — openings, their candidates, the hiring asks — must too.
+  it("a recruiter scoped to a department sees that department's openings and candidates, and no other", async () => {
+    const videoRecruiter = principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: ids.vid } }]);
+    const rows = (await listOpenings(videoRecruiter)).map((row) => row.id);
+    expect(rows).toContain(szmOpening);
+    expect(rows).not.toContain(szcOpening);
+    expect(await getOpeningView({ principal: videoRecruiter, personId: ids.employeePerson }, szmOpening)).not.toBeNull();
+
+    const candidate = await createCandidate({ fullName: "Ứng Viên Phòng Video", email: "unit.scope@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.recruiterPerson);
+    await createApplication({ candidateId: candidate.id, openingId: szmOpening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.recruiterPerson);
+    expect((await listCandidates(videoRecruiter)).map((row) => row.id)).toContain(candidate.id);
+    expect(await canReachCandidate(videoRecruiter, candidate.id)).toBe(true);
+    // A grant on Design reaches neither.
+    const designRecruiter = principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: ids.des } }]);
+    const designRows = (await listOpenings(designRecruiter)).map((row) => row.id);
+    expect(designRows).toContain(szcOpening);
+    expect(designRows).not.toContain(szmOpening);
+    expect((await listCandidates(designRecruiter)).map((row) => row.id)).not.toContain(candidate.id);
+
+    const [ask] = await db().insert(schema.hiringRequest).values({ entityId: ids.szm, departmentId: ids.vid, positionTitle: "Editor theo phòng", headcount: 1, reason: "Thử phạm vi", requestedByPersonId: ids.headPerson, status: "pending" }).returning();
+    expect((await listHiringRequests(videoRecruiter)).map((row) => row.id)).toContain(ask.id);
+    expect((await listHiringRequests(designRecruiter)).map((row) => row.id)).not.toContain(ask.id);
   });
 
   it("a department head who is on no hiring team sees nothing at all", async () => {
@@ -506,6 +532,10 @@ describe("headcount planning (FR-CHR-17)", () => {
     expect(video).toMatchObject({ approvedHeads: 3, openHeads: 2, hired: 1 });
     // Somebody with no recruitment reach gets no plan at all.
     expect(await headcountPlan(employee)).toEqual([]);
+    // A department-scoped recruiter plans their department's heads, and nobody else's.
+    const unitRecruiter = (unitId: string) => principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: unitId } }]);
+    expect((await headcountPlan(unitRecruiter(ids.vid))).find((row) => row.departmentName === "Video")).toMatchObject({ approvedHeads: 3, openHeads: 2, hired: 1 });
+    expect(await headcountPlan(unitRecruiter(ids.des))).toEqual([]);
   });
 });
 

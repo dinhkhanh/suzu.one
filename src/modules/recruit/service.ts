@@ -8,7 +8,7 @@ import "server-only";
 import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 import { randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, exists, inArray, isNull, notExists, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
@@ -16,7 +16,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listFileNames } from "@/modules/platform/files/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
-import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
+import { entityReach, permissionReach, type Principal } from "@/modules/platform/rbac/policy";
 import { slugify } from "@/lib/slug";
 import { toSearchKey } from "@/lib/text";
 import {
@@ -190,13 +190,30 @@ export async function savePipeline(pipelineId: string | null, input: PipelineInp
 // ── Who may see which openings ──────────────────────────────────────────────────────────────
 
 /**
- * The WHERE clause behind every list in this module: the openings whose entity the principal's
- * `recruit:manage` covers, plus the ones they are on the hiring team of. `sql\`false\`` for
- * somebody with neither, so a query returns nothing rather than everything.
+ * Where the principal's `recruit:manage` reaches, as a condition on a row that sits like an opening
+ * (an entity, a department, a team): the list form of `canRunRecruitment(principal, row)`, so a
+ * list shows exactly what the actions on it allow. An entity grant covers the entity's rows; a unit
+ * grant covers the rows whose department or team lies in its subtree, whatever their entity — the
+ * match `scopeCovers` makes. `undefined` when the principal holds the permission nowhere.
+ */
+export function recruitReach(principal: Principal, columns: { entityId: AnyPgColumn; departmentId: AnyPgColumn; teamId: AnyPgColumn }) {
+  const reach = permissionReach(principal, "recruit:manage");
+  if (reach.all) return sql`true`;
+  const units = reach.unitIds.length > 0 ? [...new Set(reach.unitIds)] : null;
+  return or(
+    reach.entityIds.length > 0 ? inArray(columns.entityId, reach.entityIds) : undefined,
+    units ? inArray(columns.departmentId, units) : undefined,
+    units ? inArray(columns.teamId, units) : undefined,
+  );
+}
+
+/**
+ * The WHERE clause behind every list in this module: the openings the principal's
+ * `recruit:manage` covers (`recruitReach`), plus the ones they are on the hiring team of.
+ * `sql\`false\`` for somebody with neither, so a query returns nothing rather than everything.
  */
 export function openingScope(principal: Principal) {
-  const reach = entityReach(principal, "recruit:manage");
-  const byEntity = reach.all ? sql`true` : reach.entityIds.length > 0 ? inArray(schema.jobOpening.entityId, reach.entityIds) : undefined;
+  const byEntity = recruitReach(principal, schema.jobOpening);
   const byMembership = principal.personId
     ? exists(
         db()
@@ -1122,8 +1139,7 @@ export type HiringRequestListRow = { id: string; positionTitle: string; headcoun
 
 /** The asks the principal may see: theirs, the ones they will manage, and the ones in their recruitment scope. */
 export async function listHiringRequests(principal: Principal): Promise<HiringRequestListRow[]> {
-  const reach = entityReach(principal, "recruit:manage");
-  const byReach = reach.all ? sql`true` : reach.entityIds.length > 0 ? inArray(schema.hiringRequest.entityId, reach.entityIds) : undefined;
+  const byReach = recruitReach(principal, schema.hiringRequest);
   const mine = principal.personId ? or(eq(schema.hiringRequest.requestedByPersonId, principal.personId), eq(schema.hiringRequest.hiringManagerPersonId, principal.personId)) : undefined;
   return db()
     .select({
@@ -1159,8 +1175,8 @@ export async function findHiringRequest(hiringRequestId: string, executor: Execu
 export type HeadcountRow = { departmentId: string | null; departmentName: string | null; entityId: string; entityName: string | null; approvedHeads: number; openHeads: number; hired: number };
 
 export async function headcountPlan(principal: Principal): Promise<HeadcountRow[]> {
-  const reach = entityReach(principal, "recruit:manage");
-  if (!reach.all && reach.entityIds.length === 0) return [];
+  const reach = recruitReach(principal, schema.hiringRequest);
+  if (!reach) return [];
   const rows = await db()
     .select({
       departmentId: schema.hiringRequest.departmentId,
@@ -1173,7 +1189,7 @@ export async function headcountPlan(principal: Principal): Promise<HeadcountRow[
     .from(schema.hiringRequest)
     .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.hiringRequest.departmentId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.hiringRequest.entityId))
-    .where(and(inArray(schema.hiringRequest.status, ["approved", "fulfilled"]), reach.all ? undefined : inArray(schema.hiringRequest.entityId, reach.entityIds)))
+    .where(and(inArray(schema.hiringRequest.status, ["approved", "fulfilled"]), reach))
     .groupBy(schema.hiringRequest.departmentId, schema.orgUnit.name, schema.hiringRequest.entityId, schema.entity.shortName);
 
   return rows.map((row) => ({
