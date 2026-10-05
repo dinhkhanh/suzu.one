@@ -18,6 +18,7 @@ import { PIT_RELIEF_CODES } from "@/modules/payroll/engine/components";
 import { RUN_STEPS, type RunStep } from "@/modules/payroll/lifecycle";
 import { canApprovePayroll, canManageCompensation, canPayPayroll } from "@/modules/payroll/policy";
 import { getRunView } from "@/modules/payroll/run-views";
+import { leavePayoutsAwaitingRun } from "@/modules/payroll/runs";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { listPayslipsOfRun } from "@/modules/payroll/payslips";
 import { PublishPayslipsButton } from "@/modules/payroll/ui/payslip-forms";
@@ -46,13 +47,15 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
   const proposable = readiness.stale.length === 0 && readiness.blockers.length === 0;
   const issues = [...readiness.blockers.map((issue) => ({ ...issue, blocking: true })), ...readiness.warnings.map((issue) => ({ ...issue, blocking: false }))];
   const nameOf = (personId: string) => view.names.get(personId)?.fullName ?? "—";
-  const [t, format, payslips, catalogue] = await Promise.all([
+  const [t, format, payslips, catalogue, leavePayouts] = await Promise.all([
     getTranslations("payroll"),
     getFormatter(),
     // Payslips exist only once the CEO has signed (FR-PAY-32); before that there is nothing to show.
     // The names are the ones the variance check already read.
     seesPayslips && run.approvedAt ? listPayslipsOfRun(run.id, variance.names) : [],
     seesPayslips && editable ? resolveCatalogue(run.entityId, `${run.month}-01` as `${number}-${number}-${number}`) : [],
+    // A signed regular run cannot take unused leave posted after it (FR-PAY-18): an off-cycle run of the month does.
+    run.kind === "regular" && !editable && run.status !== "cancelled" && canManageCompensation(user.principal, run) ? leavePayoutsAwaitingRun(run.entityId, run.month) : [],
   ]);
   const when = (value: Date | null) => (value ? format.dateTime(value, { dateStyle: "medium", timeStyle: "short" }) : "—");
   const percent = (bp: number | null) => (bp === null ? "—" : `${(bp / 100).toFixed(2)}%`);
@@ -114,6 +117,16 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       {!editable && view.unverifiedParameters.length > 0 ? <Alert variant="warning">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</Alert> : null}
       {progress.state === "queued" || progress.state === "running" ? <Alert variant="info">{t("runs.progress", { done: progress.done, total: progress.total })}</Alert> : null}
       {progress.state === "failed" ? <Alert variant="destructive">{t("runs.calcError", { error: progress.error ?? "" })}</Alert> : null}
+      {leavePayouts.length > 0 ? (
+        <Alert variant="warning">
+          <span>
+            {t("runs.leavePayoutAwaiting", { count: leavePayouts.length, month: run.month })}{" "}
+            <Link href={`/payroll/runs/new/off-cycle?entity=${run.entityId}&month=${run.month}`} className="text-link hover:underline">
+              {t("runs.leavePayoutStart")}
+            </Link>
+          </span>
+        </Alert>
+      ) : null}
       {/* Out of date: what the figures were worked out from has changed since (FR-PAY-30). */}
       {readiness.stale.length > 0 ? (
         <Alert variant="warning">

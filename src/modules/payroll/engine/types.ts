@@ -88,6 +88,11 @@ export type PriorInMonth = {
   otherDeductions: number;
   /** Tax already withheld by the earlier run(s) of this month. */
   tax: number;
+  /**
+   * Unused-leave days (hundredths) the other runs of this month already pay out to this leaver.
+   * Not read by the engine: the calculation hands it only the days still owed (`LeavePayout`).
+   */
+  leavePayoutDaysCenti?: number;
 };
 
 /**

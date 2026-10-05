@@ -8735,6 +8735,8 @@
       "progress": "Đang tính: {done}/{total} người.",
       "calcError": "Không tính được: {error}",
       "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, other {# người nghỉ việc}} có tiền phép năm chưa nghỉ được ghi sổ sau khi kỳ lương này đã tính, và chưa kỳ lương nào của tháng {month} chi trả.",
+      "leavePayoutStart": "Chi trả trong kỳ lương bổ sung",
       "bySystem": "Hệ thống",
       "reopened": "Số liệu đầu vào thay đổi, cần tính lại",
       "stale": {
@@ -8916,7 +8918,7 @@
           "fill": "Thêm cho mọi người"
         },
         "lines": "Các khoản chi ({count})",
-        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân.",
+        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân. Kỳ lương không có khoản nào chỉ chi trả tiền phép năm chưa nghỉ của người nghỉ việc trong tháng mà kỳ lương chính đã ký chưa trả.",
         "addLine": "Thêm một người",
         "noCodes": "Danh mục của pháp nhân chưa có khoản mục nhập tay nào.",
         "submit": "Tạo kỳ lương ngoài kỳ"

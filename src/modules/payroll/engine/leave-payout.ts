@@ -32,8 +32,10 @@ export function payoutMonthlySalary(terms: SalaryTerms, basis: StatutoryParams["
  */
 export function calculateLeavePayout(input: PersonPayInput): { lines: PayLine[]; trace: TraceStep[]; warnings: PayWarning[] } {
   const payout: LeavePayout | null | undefined = input.leavePayout;
-  // An off-cycle run pays only what is typed into it; the month's regular run pays the leaver.
-  if (!payout || payout.daysCenti <= 0 || input.runKind !== "regular") return { lines: [], trace: [], warnings: [] };
+  // Whichever run of the month is handed the days pays them: the regular run as a rule, an
+  // off-cycle run when the days were posted after the regular run was signed. The calculation hands
+  // each only what the month's other runs have not already paid (`PriorInMonth`).
+  if (!payout || payout.daysCenti <= 0) return { lines: [], trace: [], warnings: [] };
   const component = findComponent(input.components, LEAVE_PAYOUT_CODE);
   if (!component) return { lines: [], trace: [{ stage: "leave_payout", rule: "leave_payout_component_missing", detail: { code: LEAVE_PAYOUT_CODE, daysCenti: payout.daysCenti } }], warnings: ["leave_payout_component_missing"] };
 

@@ -8735,6 +8735,8 @@
       "progress": "Calculating: {done}/{total} people.",
       "calcError": "Could not calculate: {error}",
       "unverified": "These parameters are not confirmed by the chief accountant yet: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, one {One leaver's unused leave was} other {# leavers' unused leave was}} posted after this run was calculated and is not paid by any run of {month}.",
+      "leavePayoutStart": "Pay it in an off-cycle run",
       "bySystem": "The system",
       "reopened": "The inputs changed; calculate again",
       "stale": {
@@ -8916,7 +8918,7 @@
           "fill": "Add for everyone"
         },
         "lines": "Lines ({count})",
-        "noLines": "No lines yet. Add people one by one, or the whole entity.",
+        "noLines": "No lines yet. Add people one by one, or the whole entity. A run with no line pays only the unused leave of the month's leavers that its signed regular run did not pay.",
         "addLine": "Add a person",
         "noCodes": "The entity's catalogue has no input pay components.",
         "submit": "Create off-cycle run"

@@ -6,7 +6,7 @@
 // calls `calculatePerson` on each. It does not decide who may see the result — **no authorization
 // inside**; the run use-cases (week 4) check `canManageCompensation` before calling.
 import "server-only";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -103,7 +103,7 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
     // Unused leave the ledger pays out to the month's leavers (FR-LVE-03, FR-PAY-18).
     listPayoutTotals(entityId, period.start, period.end, executor),
   ]);
-  const leavePayouts = await leavePayoutsOf(entityId, month, payouts, structures, executor, options.executor);
+  const leavePayouts = await leavePayoutsOf(entityId, month, stillOwed(payouts, options.prior), structures, executor, options.executor);
 
   const components = catalogue.map(toComponentDefinition);
   // The month's own working days: the divisor, taken from the person the month asked most of —
@@ -175,26 +175,33 @@ export async function calculateOnePerson(entityId: string, month: string, person
 export async function calculateOffCycle(entityId: string, month: string, options: { inputs: RunInputs; prior?: RunPrior; onProgress?: CalculateOptions["onProgress"]; executor?: Executor }): Promise<EntityMonthCalculation> {
   const executor = options.executor ?? db();
   const period = payPeriodOf(month, 0);
-  const personIds = [...options.inputs.keys()];
+  // Besides the people typed in: once the month's regular run is signed, the month's leavers whose
+  // unused leave no run of the month pays (FR-PAY-18) — days the ledger posted after that run was
+  // calculated have no other way to be paid, and a run of the month taxes them with it.
+  const owed = await offCycleLeavePayouts(entityId, month, options.prior, executor);
+  const personIds = [...new Set([...options.inputs.keys(), ...owed.map((row) => row.personId)])];
   if (personIds.length === 0) throw new ActionError("run_has_no_lines");
 
   const [entity] = await executor.select().from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1);
   if (!entity) throw new ActionError("entity_not_found");
 
-  const [statutory, policy, catalogue, structures, facts, profiles] = await Promise.all([
+  const [statutory, policy, catalogue, structures, facts, profiles, monthProfiles] = await Promise.all([
     loadStatutoryParams(period.end, executor),
     getPayrollPolicy(entityId, period.end, executor),
     resolveCatalogue(entityId, period.end, executor),
     listStructuresBetween(entityId, period.start, period.end, executor),
     listPayrollFacts({ personIds }, month, executor),
     getProfilesOn(personIds, period.end, executor),
+    // A leaver's profile may have ended with them: the month's last one stands in, as on the regular run.
+    owed.length > 0 ? listProfilesBetween(entityId, period.start, period.end, executor) : Promise.resolve([]),
   ]);
+  const leavePayouts = await leavePayoutsOf(entityId, month, owed, structures, executor, options.executor);
   const components = catalogue.map(toComponentDefinition);
 
   const people: PersonCalculation[] = [];
   for (const personId of personIds) {
     const personFacts = facts.find((row) => row.personId === personId);
-    const profile = profiles.get(personId);
+    const profile = profiles.get(personId) ?? monthProfiles.filter((row) => row.personId === personId).at(-1);
     if (!personFacts || !profile) throw new ActionError("pay_profile_missing", { personId });
     const terms = structures.filter((row) => row.personId === personId).at(-1)?.terms ?? { baseSalary: 0, insuranceSalary: 0, allowances: [] };
     const input: PersonPayInput = {
@@ -214,6 +221,7 @@ export async function calculateOffCycle(entityId: string, month: string, options
       retro: [],
       otherPitDeductions: 0,
       priorInMonth: options.prior?.get(personId) ?? null,
+      leavePayout: leavePayouts.get(personId) ?? null,
       runKind: "off_cycle",
       policy: policy.value,
       statutory: statutory.params,
@@ -468,6 +476,33 @@ function shareOut(total: number, weights: readonly number[], totalWeight: number
 const dayCount = (from: IsoDate, to: IsoDate): number => Math.floor((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 const nextDay = (date: IsoDate | undefined): IsoDate | null => (date ? new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) : null);
 const centiToDays = (centi: number): number => Math.round(centi / 100);
+
+/**
+ * The unused-leave days the ledger posted for the month, less what the month's other runs already
+ * pay (`PriorInMonth.leavePayoutDaysCenti`): a leaver is paid once, whichever run of the month
+ * carries it — the regular run as a rule, an off-cycle run for days posted after it was signed.
+ */
+export const stillOwed = (payouts: readonly PayoutTotal[], prior?: RunPrior): PayoutTotal[] =>
+  payouts.map((row) => ({ ...row, daysCenti: row.daysCenti - (prior?.get(row.personId)?.leavePayoutDaysCenti ?? 0) })).filter((row) => row.daysCenti > 0);
+
+/**
+ * The unused leave an off-cycle run of the month takes over: none while the month's regular run is
+ * missing or still open — that run pays its leavers, and recalculating it picks up late days — and,
+ * once it has been signed (proposed, approved, paid), the days no run of the month pays.
+ */
+export async function offCycleLeavePayouts(entityId: string, month: string, prior: RunPrior | undefined | (() => Promise<RunPrior>), executor: Executor = db()): Promise<PayoutTotal[]> {
+  const [signed] = await executor
+    .select({ id: schema.payrollRun.id })
+    .from(schema.payrollRun)
+    .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, month), eq(schema.payrollRun.kind, "regular"), inArray(schema.payrollRun.status, ["proposed", "approved", "payment_prepared", "paid", "locked"])))
+    .limit(1);
+  if (!signed) return [];
+  const period = payPeriodOf(month, 0);
+  const posted = await listPayoutTotals(entityId, period.start, period.end, executor);
+  // What the month's runs already paid is read (and their results opened) only when a leaver is owed anything at all.
+  if (!posted.some((row) => row.daysCenti > 0)) return [];
+  return stillOwed(posted, typeof prior === "function" ? await prior() : prior);
+}
 
 /**
  * What each leaver's unused leave is priced on (Labour Code 2019 art. 113.3; Decree 145/2020 art.
