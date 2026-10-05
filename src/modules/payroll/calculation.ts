@@ -10,7 +10,7 @@ import { eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { getLockedTimesheets, getTimesheetDays, type LockedTimesheet, type TimesheetDayRow } from "@/modules/attendance/service";
+import { getLockedTimesheets, getTimesheetDays, type LockedPeriod, type LockedTimesheet, type TimesheetDayRow } from "@/modules/attendance/service";
 import { listPayrollFacts, type PayrollPersonFacts } from "@/modules/core-hr/service";
 import { getLeaveUsage, type LeaveUsage } from "@/modules/leave/service";
 import { resolveCatalogue, resolveCatalogueVersions } from "./components";
@@ -431,13 +431,18 @@ export function monthsOfService(from: IsoDate | null, to: IsoDate): number {
   return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth) - (toDay < fromDay ? 1 : 0));
 }
 
-/** The people of a month who have no pay profile yet — a run must not start with one missing. */
-export async function listPeopleWithoutProfile(entityId: string, month: string, executor: Executor = db()): Promise<string[]> {
-  const locked = await getLockedTimesheets(entityId, month, executor);
-  if (!locked) return [];
-  const personIds = locked.people.map((row) => row.personId);
+/**
+ * The people of a month who have no pay profile yet — a run must not start with one missing.
+ * A caller that already holds the locked month passes it, and it is not read a second time.
+ */
+export async function listPeopleWithoutProfile(entityId: string, month: string, executor: Executor = db(), locked?: LockedPeriod | null): Promise<{ personId: string; fullName: string }[]> {
+  const period = locked === undefined ? await getLockedTimesheets(entityId, month, executor) : locked;
+  if (!period) return [];
+  const personIds = period.people.map((row) => row.personId);
   if (personIds.length === 0) return [];
   const profiles = await getProfilesOn(personIds, payPeriodOf(month, 0).end, executor);
-  const rows = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds));
-  return rows.filter((row) => !profiles.has(row.id)).map((row) => row.fullName);
+  const missing = personIds.filter((personId) => !profiles.has(personId));
+  if (missing.length === 0) return [];
+  const rows = await executor.select({ personId: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, missing)).orderBy(schema.person.fullName);
+  return rows;
 }

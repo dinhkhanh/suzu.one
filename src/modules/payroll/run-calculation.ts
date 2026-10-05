@@ -16,7 +16,7 @@
 // sees figures straight away for the entities this company actually has. The job is the safety net.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
@@ -36,16 +36,34 @@ export const progressOf = (run: PayrollRunRow): CalcProgress => ({ state: run.ca
 export const isCalculating = (run: PayrollRunRow): boolean => run.calcState === "queued" || run.calcState === "running";
 
 /**
+ * Is somebody really working on it? A run that says `running` but whose claim has not beaten for
+ * `STALE_AFTER_MINUTES` belonged to a server that is gone — the same test `claim` makes, so what
+ * the button may take over and what a worker may take over are one rule.
+ */
+export const isBeingWorked = (run: Pick<PayrollRunRow, "calcState" | "calcHeartbeatAt">, now: Date = new Date()): boolean =>
+  run.calcState === "running" && !!run.calcHeartbeatAt && run.calcHeartbeatAt.getTime() >= now.getTime() - STALE_AFTER_MINUTES * 60_000;
+
+/**
  * Asks for the run to be calculated. Returns without calculating anything: the work is claimed by
  * `workOneRun`, here or in the job. Refuses a run that is past editing — a proposed month is
  * evidence, and a new calculation would quietly replace what the HR lead put forward.
+ *
+ * Refuses only while a calculation is **alive**. One that died with its server (a `running` claim
+ * gone quiet, or a run left `queued` by a request that never got to work it) is queued afresh, so
+ * the person at the screen is not locked out until the morning's job comes round.
  */
-export async function queueRunCalculation(runId: string): Promise<void> {
+export async function queueRunCalculation(runId: string, now: Date = new Date()): Promise<void> {
   const [run] = await db().select().from(schema.payrollRun).where(eq(schema.payrollRun.id, runId)).limit(1);
   if (!run) throw new ActionError("run_not_found");
   if (run.status !== "draft" && run.status !== "calculated") throw new ActionError("run_not_editable");
-  if (isCalculating(run)) throw new ActionError("run_calculating");
-  await db().update(schema.payrollRun).set({ calcState: "queued", calcDone: 0, calcTotal: 0, calcError: null, calcClaim: null, updatedAt: new Date() }).where(eq(schema.payrollRun.id, runId));
+  if (isBeingWorked(run, now)) throw new ActionError("run_calculating");
+  // Conditional on what was read: if a worker claimed the run in between, its claim stands.
+  const [queued] = await db()
+    .update(schema.payrollRun)
+    .set({ calcState: "queued", calcDone: 0, calcTotal: 0, calcError: null, calcClaim: null, updatedAt: now })
+    .where(and(eq(schema.payrollRun.id, runId), run.calcClaim ? eq(schema.payrollRun.calcClaim, run.calcClaim) : isNull(schema.payrollRun.calcClaim)))
+    .returning({ id: schema.payrollRun.id });
+  if (!queued) throw new ActionError("run_calculating");
 }
 
 /**

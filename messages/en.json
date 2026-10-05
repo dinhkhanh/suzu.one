@@ -1065,6 +1065,10 @@
         "title": "Your {month} payslip is ready",
         "body": "Your payslip for {month} has been released. Open the app to read it."
       },
+      "payroll_payslip_withdrawn": {
+        "title": "Your {month} payslip was withdrawn",
+        "body": "Your payslip for {month} was withdrawn for review and will be re-issued. You will be told when the new one is out."
+      },
       "payroll_payslip_query_raised": {
         "title": "A payslip query was raised",
         "body": "Someone asked about their {month} payslip."
@@ -8167,6 +8171,74 @@
       "employerCost": "Employer cost",
       "unverified": "{count} statutory values are not yet confirmed by the chief accountant."
     },
+    "retro": {
+      "title": "Retro items",
+      "pageTitle": "Retro items waiting",
+      "pageDescription": "Differences of months already paid — a salary decision approved late, a correction to a locked timesheet, an item C&B entered by hand — waiting for the next run.",
+      "hint": "Items no run has carried yet. The next regular run takes each one in as a line of its own.",
+      "hintRun": "Differences of earlier months this run has carried, or will carry the next time it is calculated.",
+      "empty": "Nothing is waiting.",
+      "emptyRun": "This run carries no retro items.",
+      "all": "All waiting items",
+      "person": "Person",
+      "sourceMonth": "Month it belongs to",
+      "source": "Source",
+      "reason": "Reason",
+      "amount": "Amount (+ owed, − to recover)",
+      "status": "Status",
+      "openDecision": "Open the decision",
+      "insuranceBaseChanged": "Insurance adjustment needed",
+      "bySystem": "Worked out by the system",
+      "kinds": {
+        "salary_change": "Late salary decision",
+        "timesheet_adjustment": "Timesheet correction",
+        "manual": "Entered by hand"
+      },
+      "statuses": {
+        "open": "Waiting",
+        "taken": "In a run",
+        "takenHere": "In this calculation",
+        "outsideRun": "This person is not in the run"
+      },
+      "add": {
+        "label": "Enter a retro item",
+        "hint": "A positive amount is owed to the person, a negative one is recovered. The reason is shown beside the line on the payslip.",
+        "save": "Save"
+      },
+      "cancel": {
+        "label": "Cancel",
+        "title": "Cancel {name}'s item",
+        "hint": "A cancelled item is not deleted: the reason is kept with it. If a run has already calculated it, that run goes back to draft to be calculated again.",
+        "reason": "Reason for cancelling",
+        "confirm": "Cancel this item"
+      },
+      "derive": {
+        "label": "Check for differences",
+        "done": "Checked."
+      },
+      "unpriced": {
+        "hint": "The system could not turn the timesheet corrections below into money. Work the amount out and enter it; the item goes into the next run.",
+        "enter": "Enter this item"
+      },
+      "skips": {
+        "month_not_run": "This month was never run in the system",
+        "engine_changed": "The calculation rules have changed since this month was paid",
+        "recalculation_failed": "Could not be recalculated"
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You have no access to this item.",
+        "step_up_required": "Please confirm who you are to continue.",
+        "invalid": "Something entered is not valid.",
+        "retro_amount_invalid": "The amount must not be zero.",
+        "retro_reason_required": "A reason is required.",
+        "retro_item_exists": "This difference has already been recorded.",
+        "retro_item_not_found": "Item not found.",
+        "retro_item_not_open": "This item is in a run that has been proposed and can no longer be cancelled.",
+        "retro_month_in_future": "The month cannot be later than the current one.",
+        "retro_adjustment_not_waiting": "This timesheet correction is no longer waiting to be entered."
+      }
+    },
     "runs": {
       "title": "Payroll runs",
       "description": "The month's payroll: calculated, proposed, signed, paid and locked.",
@@ -8192,6 +8264,39 @@
       "progress": "Calculating: {done}/{total} people.",
       "calcError": "Could not calculate: {error}",
       "unverified": "These parameters are not confirmed by the chief accountant yet: {keys}.",
+      "bySystem": "The system",
+      "reopened": "The inputs changed; calculate again",
+      "stale": {
+        "title": "These figures are out of date — calculate again before proposing.",
+        "reasons": {
+          "inputs_changed": "Typed-in figures or retro items changed since the last calculation.",
+          "retro_waiting": "A retro item is waiting that the calculation did not include.",
+          "timesheet_changed": "The month's timesheet changed since the last calculation.",
+          "salary_changed": "A new salary decision applies to this month."
+        }
+      },
+      "readiness": {
+        "title": "Blockers and warnings",
+        "blocked": "The run cannot be proposed while a blocker is open.",
+        "clean": "Nothing to deal with.",
+        "blocker": "Blocker",
+        "warning": "Warning",
+        "kinds": {
+          "no_pay_profile": "No pay profile — the run cannot be calculated",
+          "not_in_run": "On the locked timesheet but not in the run",
+          "input_outside_run": "A figure was typed in for this person, who is not in the run",
+          "figure_not_paid": "A figure that was entered is not in the result",
+          "no_salary_structure": "No salary structure",
+          "negative_net": "Negative net",
+          "missing_bank_account": "No bank account — needed before payment",
+          "missing_tax_code": "No tax code — needed before the declaration"
+        }
+      },
+      "lines": {
+        "open": "Lines",
+        "title": "Pay calculation for {month}",
+        "provisional": "Working figures, not signed yet: they may still change."
+      },
       "kinds": {
         "regular": "Regular",
         "off_cycle": "Off-cycle"
@@ -8251,7 +8356,10 @@
         "no_salary_structure": "No salary structure",
         "zero_paid_days": "No paid days",
         "insurance_base_below_minimum": "Insurance base below the minimum",
-        "insurance_base_above_declared": "Insurance base above the declared one"
+        "insurance_base_above_declared": "Insurance base above the declared one",
+        "input_code_unknown": "A typed-in figure is not under an input component — not paid",
+        "input_negative": "A typed-in figure is negative — not paid",
+        "retro_component_missing": "The catalogue has no retro component — not paid"
       },
       "new": {
         "link": "New run",
@@ -8289,7 +8397,12 @@
         "pay_profile_missing": "Somebody has no pay profile.",
         "amount_invalid": "That amount is not valid.",
         "run_has_no_lines": "There is nothing to pay.",
-        "run_not_settled": "Cannot mark this paid yet: a bank file or the cash sheet is still outstanding."
+        "run_not_settled": "Cannot mark this paid yet: a bank file or the cash sheet is still outstanding.",
+        "run_stale": "Something changed since the last calculation. Calculate again, then propose.",
+        "run_has_blockers": "A blocker is still open; the run cannot be proposed yet.",
+        "run_input_code_unknown": "This is not a typed-in component in the entity's catalogue.",
+        "run_input_negative_earning": "An earning cannot be negative. To take money back, enter a retro item or use a deduction component.",
+        "run_input_negative_deduction": "Enter a deduction as a positive amount — it is subtracted from the net by itself."
       },
       "payments": "Payment",
       "stages": {
@@ -8352,7 +8465,10 @@
         "no_salary_structure": "No salary structure",
         "zero_paid_days": "No paid days",
         "insurance_base_below_minimum": "Contribution base below the regional minimum",
-        "insurance_base_above_declared": "Contribution base above the declared salary"
+        "insurance_base_above_declared": "Contribution base above the declared salary",
+        "input_code_unknown": "A typed-in figure was not paid",
+        "input_negative": "A typed-in figure was not paid",
+        "retro_component_missing": "A retro item was not paid"
       },
       "insurance": {
         "title": "Compulsory insurance",
@@ -12957,6 +13073,8 @@
     "payrollPayment": "Payroll payment",
     "payrollReports": "Payroll reports",
     "payrollRun": "Payroll run",
+    "payrollRunPerson": "Pay calculation",
+    "payrollRetro": "Retro items",
     "payrollRuns": "Payroll runs",
     "payslip": "Payslip",
     "payslipQueries": "Payslip queries",

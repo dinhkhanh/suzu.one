@@ -1065,6 +1065,10 @@
         "title": "Phiếu lương tháng {month} đã có",
         "body": "Phiếu lương tháng {month} của bạn đã được phát hành. Mở ứng dụng để xem."
       },
+      "payroll_payslip_withdrawn": {
+        "title": "Phiếu lương tháng {month} đã được thu hồi",
+        "body": "Phiếu lương tháng {month} của bạn đã được thu hồi để rà soát lại và sẽ được phát hành lại. Bạn sẽ nhận thông báo khi có phiếu mới."
+      },
       "payroll_payslip_query_raised": {
         "title": "Có thắc mắc về phiếu lương",
         "body": "Một nhân viên gửi thắc mắc về phiếu lương tháng {month}."
@@ -8167,6 +8171,74 @@
       "employerCost": "Chi phí công ty",
       "unverified": "{count} tham số pháp lý chưa được kế toán trưởng xác nhận."
     },
+    "retro": {
+      "title": "Truy lĩnh, truy thu",
+      "pageTitle": "Truy lĩnh, truy thu đang chờ",
+      "pageDescription": "Chênh lệch của những tháng đã trả lương — quyết định lương duyệt muộn, điều chỉnh bảng công sau khi khóa, khoản C&B nhập tay — đang chờ kỳ lương kế tiếp.",
+      "hint": "Các khoản chưa được kỳ lương nào tính vào. Kỳ lương định kỳ kế tiếp sẽ đưa từng khoản vào thành một dòng riêng.",
+      "hintRun": "Chênh lệch của các tháng trước mà kỳ lương này đã tính, hoặc sẽ tính ở lần tính kế tiếp.",
+      "empty": "Không có khoản nào đang chờ.",
+      "emptyRun": "Kỳ lương này không có khoản truy lĩnh, truy thu nào.",
+      "all": "Tất cả khoản đang chờ",
+      "person": "Nhân viên",
+      "sourceMonth": "Tháng phát sinh",
+      "source": "Nguồn",
+      "reason": "Lý do",
+      "amount": "Số tiền (+ truy lĩnh, − truy thu)",
+      "status": "Trạng thái",
+      "openDecision": "Xem quyết định",
+      "insuranceBaseChanged": "Cần khai điều chỉnh BHXH",
+      "bySystem": "Hệ thống tự tính",
+      "kinds": {
+        "salary_change": "Quyết định lương duyệt muộn",
+        "timesheet_adjustment": "Điều chỉnh bảng công",
+        "manual": "Nhập tay"
+      },
+      "statuses": {
+        "open": "Chờ tính",
+        "taken": "Đã vào kỳ lương",
+        "takenHere": "Đã tính trong kỳ này",
+        "outsideRun": "Người này không có trong kỳ lương"
+      },
+      "add": {
+        "label": "Nhập khoản truy lĩnh, truy thu",
+        "hint": "Số dương là khoản công ty trả thêm cho nhân viên, số âm là khoản thu hồi. Lý do sẽ hiện bên cạnh dòng tương ứng trên phiếu lương.",
+        "save": "Lưu"
+      },
+      "cancel": {
+        "label": "Hủy",
+        "title": "Hủy khoản của {name}",
+        "hint": "Khoản đã hủy không bị xóa: lý do được lưu lại cùng khoản đó. Nếu một kỳ lương đã tính khoản này, kỳ lương đó quay về bản nháp để tính lại.",
+        "reason": "Lý do hủy",
+        "confirm": "Hủy khoản này"
+      },
+      "derive": {
+        "label": "Rà soát chênh lệch",
+        "done": "Đã rà soát."
+      },
+      "unpriced": {
+        "hint": "Hệ thống không tự quy các điều chỉnh bảng công dưới đây ra tiền được. Hãy tính và nhập số tiền; khoản đó sẽ vào kỳ lương kế tiếp.",
+        "enter": "Nhập khoản này"
+      },
+      "skips": {
+        "month_not_run": "Tháng này chưa từng tính lương trên hệ thống",
+        "engine_changed": "Quy tắc tính đã thay đổi từ khi trả lương tháng này",
+        "recalculation_failed": "Không tính lại được"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với khoản này.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "invalid": "Thông tin nhập chưa hợp lệ.",
+        "retro_amount_invalid": "Số tiền phải khác 0.",
+        "retro_reason_required": "Cần nêu lý do.",
+        "retro_item_exists": "Khoản chênh lệch này đã được ghi nhận.",
+        "retro_item_not_found": "Không tìm thấy khoản này.",
+        "retro_item_not_open": "Khoản này đã nằm trong một kỳ lương đã trình, không hủy được nữa.",
+        "retro_month_in_future": "Tháng phát sinh không được sau tháng hiện tại.",
+        "retro_adjustment_not_waiting": "Điều chỉnh bảng công này không còn chờ nhập tay."
+      }
+    },
     "runs": {
       "title": "Kỳ lương",
       "description": "Bảng lương từng tháng: tính, trình, ký duyệt, chi và khóa sổ.",
@@ -8192,6 +8264,39 @@
       "progress": "Đang tính: {done}/{total} người.",
       "calcError": "Không tính được: {error}",
       "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "bySystem": "Hệ thống",
+      "reopened": "Số liệu đầu vào thay đổi, cần tính lại",
+      "stale": {
+        "title": "Số liệu đã cũ — hãy tính lại trước khi trình.",
+        "reasons": {
+          "inputs_changed": "Các khoản nhập tay hoặc truy lĩnh, truy thu đã thay đổi sau lần tính gần nhất.",
+          "retro_waiting": "Có khoản truy lĩnh, truy thu chưa được tính vào.",
+          "timesheet_changed": "Bảng công của tháng đã thay đổi sau lần tính gần nhất.",
+          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này."
+        }
+      },
+      "readiness": {
+        "title": "Vướng mắc và cảnh báo",
+        "blocked": "Kỳ lương chưa thể trình khi còn vướng mắc.",
+        "clean": "Không có gì cần xử lý.",
+        "blocker": "Vướng mắc",
+        "warning": "Cảnh báo",
+        "kinds": {
+          "no_pay_profile": "Chưa có hồ sơ trả lương — kỳ lương không tính được",
+          "not_in_run": "Có trong bảng công đã khóa nhưng không có trong kỳ lương",
+          "input_outside_run": "Có khoản nhập tay nhưng người này không có trong kỳ lương",
+          "figure_not_paid": "Có khoản đã nhập nhưng không được tính vào kết quả",
+          "no_salary_structure": "Chưa có cơ cấu lương",
+          "negative_net": "Thực nhận âm",
+          "missing_bank_account": "Thiếu tài khoản ngân hàng — cần bổ sung trước khi chi",
+          "missing_tax_code": "Thiếu mã số thuế — cần bổ sung trước khi kê khai"
+        }
+      },
+      "lines": {
+        "open": "Chi tiết",
+        "title": "Bảng tính lương tháng {month}",
+        "provisional": "Số liệu đang tính, chưa được ký duyệt: có thể còn thay đổi."
+      },
       "kinds": {
         "regular": "Định kỳ",
         "off_cycle": "Ngoài kỳ"
@@ -8251,7 +8356,10 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Lương đóng BH dưới mức tối thiểu",
-        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai"
+        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai",
+        "input_code_unknown": "Có khoản nhập tay không thuộc danh mục khoản nhập — chưa được tính",
+        "input_negative": "Có khoản nhập tay mang số âm — chưa được tính",
+        "retro_component_missing": "Thiếu khoản mục truy lĩnh, truy thu trong danh mục — chưa được tính"
       },
       "new": {
         "link": "Kỳ lương mới",
@@ -8289,7 +8397,12 @@
         "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
         "amount_invalid": "Số tiền không hợp lệ.",
         "run_has_no_lines": "Chưa có khoản nào để chi.",
-        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất."
+        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
+        "run_stale": "Số liệu đã thay đổi sau lần tính gần nhất. Hãy tính lại rồi trình.",
+        "run_has_blockers": "Còn vướng mắc chưa xử lý, chưa thể trình kỳ lương.",
+        "run_input_code_unknown": "Khoản mục này không phải là khoản nhập tay trong danh mục của pháp nhân.",
+        "run_input_negative_earning": "Khoản thu nhập không nhập số âm. Để thu hồi, hãy nhập một khoản truy thu hoặc dùng khoản mục khấu trừ.",
+        "run_input_negative_deduction": "Khoản khấu trừ nhập bằng số dương — hệ thống tự trừ vào thực nhận."
       },
       "payments": "Chi lương",
       "stages": {
@@ -8352,7 +8465,10 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Mức đóng dưới lương tối thiểu vùng",
-        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo"
+        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo",
+        "input_code_unknown": "Có khoản nhập tay chưa được tính",
+        "input_negative": "Có khoản nhập tay chưa được tính",
+        "retro_component_missing": "Có khoản truy lĩnh, truy thu chưa được tính"
       },
       "insurance": {
         "title": "Bảo hiểm bắt buộc",
@@ -12957,6 +13073,8 @@
     "payrollPayment": "Chi trả lương",
     "payrollReports": "Báo cáo lương",
     "payrollRun": "Kỳ lương",
+    "payrollRunPerson": "Bảng tính lương",
+    "payrollRetro": "Truy lĩnh, truy thu",
     "payrollRuns": "Kỳ lương",
     "payslip": "Phiếu lương",
     "payslipQueries": "Thắc mắc phiếu lương",

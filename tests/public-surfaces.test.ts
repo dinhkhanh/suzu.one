@@ -40,6 +40,10 @@ vi.mock("@/modules/platform/auth/session", () => ({
 const publicDomain = { current: null as { origin: string; host: string } | null };
 vi.mock("@/lib/site", () => ({ publicSite: () => publicDomain.current }));
 
+// The proxy also writes the page's Content-Security-Policy (`tests/proxy-csp.test.ts` covers it),
+// which reads the configuration; this file is about surfaces, so the policy is off.
+vi.mock("@/lib/env", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/env")>()), env: () => ({ CSP_MODE: "off" }) }));
+
 import { config, proxy } from "@/proxy";
 import requestConfig from "@/i18n/request";
 import { namespacesForSurface, pickMessages, SURFACE_HEADER, surfaceForPath } from "@/i18n/surfaces";

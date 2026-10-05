@@ -38,7 +38,7 @@ import { loadRegisters } from "./metrics";
 import { ensurePlan, isProjectClosed, setAccountManager, setFee, updatePlanSettings } from "./plans";
 import { canEditPlan } from "./policy";
 import { seedAcceptanceTemplate } from "./seed";
-import { getRetainer, listPeriods, retainerConsumption, runRetainers, saveRetainer, sendQuotaAlerts, shapeRetainer } from "./retainers";
+import { getRetainer, listPeriods, type RetainerInput, retainerConsumption, runRetainers, saveRetainer, sendQuotaAlerts, shapeRetainer } from "./retainers";
 import { createTasksForLine, saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { summariseRetainers } from "../reports/engine/delivery";
 import { loadRetainerFacts } from "../reports/retainer-source";
@@ -361,7 +361,7 @@ describe("change requests (FR-PJM-11)", () => {
 
   it("refuses a changed monthly scope when the retainer's terms are saved after the kick-off", async () => {
     const stored = (await getRetainer(ids.retainer))!;
-    const terms = { startMonth: stored.startMonth, endMonth: stored.endMonth, lines: stored.lines, minutesPerMonth: stored.minutesPerMonth, rollover: stored.rollover, isActive: stored.isActive };
+    const terms = { startMonth: stored.startMonth, endMonth: stored.endMonth, lines: stored.lines, minutesPerMonth: stored.minutesPerMonth, rollover: stored.rollover, isActive: stored.isActive } as RetainerInput;
     const [plan] = await db().select({ briefStatus: schema.projectPlan.briefStatus }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, ids.retainer));
     await db().update(schema.projectPlan).set({ briefStatus: "approved" }).where(eq(schema.projectPlan.projectId, ids.retainer));
     try {

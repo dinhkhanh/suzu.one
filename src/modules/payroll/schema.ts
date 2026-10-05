@@ -383,6 +383,11 @@ export const payslip = pgTable(
     firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
     lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
     viewCount: integer("view_count").notNull().default(0),
+    /**
+     * Set when the run was sent back after its payslips were out: the person no longer sees this
+     * one, and re-approval releases it again under the same id (its questions stay attached).
+     */
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -591,8 +596,9 @@ export const payrollRetroItem = pgTable(
   (t) => [
     index("payroll_retro_item_entity_idx").on(t.entityId, t.status),
     index("payroll_retro_item_person_idx").on(t.personId, t.sourceMonth),
-    // One item per source of a difference: re-deriving a correction never doubles it.
-    uniqueIndex("payroll_retro_item_source_key").on(t.personId, t.kind, t.sourceRef).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
+    // One item per source of a difference and month it belongs to: re-deriving a correction never
+    // doubles it, and a raise back-dated over three paid months leaves three items, not one.
+    uniqueIndex("payroll_retro_item_source_month_key").on(t.personId, t.kind, t.sourceRef, t.sourceMonth).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
   ],
 ).enableRLS();
 

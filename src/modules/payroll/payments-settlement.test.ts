@@ -8,6 +8,13 @@ vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
   env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
 }));
+// A negative net is refused at proposal (`run-readiness.ts`, PAY-03, tested there). Payment still
+// has to treat one safely if it ever arrives — an older run, a later engine — so this file lets
+// its run past that one check to put a negative net in front of the payment code.
+vi.mock("./run-readiness", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./run-readiness")>();
+  return { ...original, getRunReadiness: async () => original.READY };
+});
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
     constructor(
