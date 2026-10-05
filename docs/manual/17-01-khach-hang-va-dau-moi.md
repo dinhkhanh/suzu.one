@@ -112,7 +112,7 @@ Khi một người yêu cầu công ty xoá dữ liệu của họ:
 2. Gõ `ERASE` vào ô xác nhận.
 3. Bấm **Xoá thông tin**.
 
-Chi tiết liên hệ bị xoá trắng. Họ tên chỉ được giữ ở những văn bản đã ký có nhắc tới người này (biên bản nghiệm thu, quyết định của khách). Thao tác này không hoàn tác được.
+Chi tiết liên hệ bị xoá trắng — cả ở khách tiềm năng ban đầu và mọi bản sao email, số điện thoại trong brief dự án hay ghi chú bàn giao (tên và vai trò được giữ). Họ tên chỉ được giữ ở những văn bản đã ký có nhắc tới người này (biên bản nghiệm thu, quyết định của khách). Ghi chú tự gõ trong các hoạt động **không** được dò tìm — hãy tự kiểm tra. Thao tác này không hoàn tác được.
 
 ## Mẹo
 

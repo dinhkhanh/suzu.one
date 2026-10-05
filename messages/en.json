@@ -147,7 +147,8 @@
       "admin": "Admin"
     },
     "kiosk": "Face kiosk",
-    "issuedDocuments": "Issued documents"
+    "issuedDocuments": "Issued documents",
+    "privacy": "Privacy and retention"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -3321,6 +3322,7 @@
       "flagged": "Recorded, and flagged for your manager to review:",
       "note": "Note (optional)",
       "notePlaceholder": "e.g. at the client's office this morning",
+      "withoutPosition": "Check in without location",
       "notExpected": "No punch is needed today — you can still record one.",
       "untracked": "Today is a working day without attendance tracking (working from home). It is credited automatically; no check-in is needed.",
       "onLeaveFull": "You are on approved leave today. You can still check in if plans changed — tell HR so the leave can be cancelled.",
@@ -13701,6 +13703,7 @@
     }
   },
   "pageTitles": {
+    "privacy": "Privacy and retention",
     "brands": "Brand kits",
     "brand": "Brand kit",
     "acceptance": "Acceptance",
@@ -15653,5 +15656,87 @@
     "toilGrant": "Time off in lieu of overtime in {month} ({minutes} min)",
     "retroSalaryChange": "Salary decision effective {validFrom}, approved after {month} was paid",
     "retroCancelled": "{reason} — cancelled: {why}"
+  },
+  "privacy": {
+    "gpsNotice": {
+      "title": "Your location at check-in",
+      "intro": "Before the check-in key reads your phone's location, here is what happens with it.",
+      "what": "What: your phone's position and its accuracy, read once at the moment you tap the key — never before or after, and never tracked.",
+      "why": "Why: to confirm the check-in was made at a work location (or at the place you declared for the day). A check-in that does not match goes to your line manager for review.",
+      "who": "Who sees it: you, your line manager and HR. Colleagues never do.",
+      "howLong": "How long: the exact position is deleted {days} days after the check-in; the time of the check-in and the office it matched stay with your timesheet.",
+      "choice": "Your choice: you may say no. Your check-ins then carry no position — an office network still counts, otherwise your manager reviews them. You can change your mind any time on your profile page.",
+      "agree": "I agree",
+      "notNow": "Not now",
+      "state": {
+        "unanswered": "You have not answered the location notice yet. The check-in key will show it before it reads your location.",
+        "declined": "You chose to check in without your location.",
+        "withdrawn": "You withdrew your agreement: check-ins no longer read your location."
+      },
+      "stateGiven": "Check-ins read your location, as agreed on {date}.",
+      "withoutIt": "Without it a check-in carries no position: an office network still counts, otherwise your line manager reviews it.",
+      "allow": "Allow location at check-in",
+      "withdraw": "Withdraw",
+      "withdrawConfirm": "Stop reading your location at check-in?",
+      "withdrawDetail": "From now on check-ins carry no position. Positions already recorded are deleted on their usual schedule, {days} days after each check-in.",
+      "failed": "That did not go through. Please try again."
+    },
+    "mine": {
+      "title": "Your data and privacy",
+      "description": "What the company holds about you, what you agreed to, and how long it is kept.",
+      "gpsTitle": "Location at check-in",
+      "exportTitle": "Export my data",
+      "exportWhat": "One file (JSON) with everything SuZu One holds about you: profile, employment, contracts and their pay terms, leave, attendance, requests, papers issued about you, payslips, notifications, assistant conversations and your privacy answers. It includes your pay, so you may be asked to sign in again first.",
+      "export": "Download my data",
+      "exporting": "Preparing the file…",
+      "stepUp": "Your pay is in the file, so please confirm it is you first.",
+      "stepUpLink": "Confirm and come back",
+      "exportFailed": "The file could not be prepared. Please try again.",
+      "keptTitle": "How long things are kept",
+      "keptPositions": "The exact position of a check-in: {days} days.",
+      "keptAssistant": "Conversations with the assistant: {days} days after the last message.",
+      "keptAfterLeaving": "After you leave: your contact details, emergency contacts, ID scans and app account are removed {years} years after your last day, once HR confirms it.",
+      "keptByLaw": "Payroll, tax and insurance records — payslips, contracts, timesheets, tax and insurance numbers — are kept for as long as accounting and tax law require (at least ten years)."
+    },
+    "admin": {
+      "title": "Privacy and retention",
+      "description": "Former employees whose personal details are due to be removed, and the schedule the nightly sweeps keep.",
+      "dueTitle": "Due for anonymisation",
+      "dueDescription": "Left more than {years} years ago. Nothing is removed until you confirm it here.",
+      "columns": {
+        "person": "Person",
+        "code": "Code",
+        "entity": "Company",
+        "lastDay": "Last day",
+        "dueOn": "Due since"
+      },
+      "none": "Nobody is due.",
+      "anonymise": "Anonymise",
+      "confirmTitle": "Anonymise {name}?",
+      "confirmIntro": "This cannot be undone.",
+      "goes": "Removed",
+      "goesList": "Work mailbox and app account, profile picture, phone, personal email, current address, marital status, emergency contacts, ID scans, health checks, diplomas and certificates, notifications and push devices, Messenger and Telegram links, assistant conversations, face data, and the location of every check-in.",
+      "stays": "Kept (required by accounting, tax and insurance law)",
+      "staysList": "Name and employee code, date of birth, gender, nationality, permanent address, identity, tax, insurance and bank numbers, dependants claimed for tax, employment periods, contracts and decisions, payslips and payroll runs, timesheets, leave, requests and issued papers.",
+      "cancel": "Cancel",
+      "errors": {
+        "generic": "That did not go through. Please try again.",
+        "retention_not_over": "The retention period is not over yet.",
+        "already_anonymised": "Already anonymised.",
+        "not_former_employee": "Only people who have left, with no open employment, can be anonymised.",
+        "anonymise_self": "You cannot anonymise yourself.",
+        "person_not_found": "This person no longer exists."
+      },
+      "scheduleTitle": "Retention schedule",
+      "scheduleDescription": "What goes by itself, every night, and what waits for HR.",
+      "schedule": {
+        "positions": "The exact position, network address and browser of a check-in from the app: deleted {days} days after the check-in (unless it still waits for review).",
+        "assistant": "Assistant conversations and unanswered questions: deleted {days} days after the last message.",
+        "faces": "Face data: deleted when the person leaves or withdraws their consent.",
+        "candidates": "Unsuccessful candidates: anonymised when their retention window passes, unless they joined the talent pool.",
+        "former": "Former employees: personal details anonymised {years} years after the last day, when HR confirms it here.",
+        "byLaw": "Payroll, tax and insurance records: kept at least ten years (Accounting Law 2015, art. 41)."
+      }
+    }
   }
 }

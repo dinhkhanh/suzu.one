@@ -30,12 +30,14 @@ Một đồng nghiệp được mời ngồi một vòng chuyên môn **chỉ** 
    - **Vòng** của quy trình mà buổi này thuộc về.
    - **Người phỏng vấn**: tick những người sẽ ngồi trong buổi. Danh sách gồm người trong phòng ban của vị trí và thành viên nhóm tuyển dụng.
    - **Địa điểm**, **Đường dẫn họp trực tuyến**, **Dặn dò ứng viên** (ví dụ "mang theo portfolio bản in").
+   - Ô **Gửi thư mời kèm thời gian và file lịch (.ics) cho ứng viên** — tích sẵn. Bỏ tick nếu bạn đã hẹn ứng viên bằng cách khác.
 4. Bấm **Đặt lịch phỏng vấn**.
 
 Sau khi đặt:
 
 - Mỗi người phỏng vấn nhận thông báo **Bạn có lịch phỏng vấn** và buổi này hiện trong **Lịch phỏng vấn** của họ.
 - Hồ sơ ghi thêm **Đặt lịch phỏng vấn** vào lịch sử.
+- Nếu đã tích ô gửi thư, ứng viên nhận thư **Lịch phỏng vấn (kèm thời gian)** bằng ngôn ngữ của họ, với giờ Việt Nam, địa điểm và lời dặn, kèm file lịch `.ics` chỉ ghi tên ứng viên. Tình trạng gửi hiện trong lịch sử hồ sơ.
 - Nếu công ty đã kết nối Google Calendar, sự kiện được tạo trên lịch. Nếu chưa, trang buổi phỏng vấn ghi rõ "Sự kiện nội bộ đã tạo…" và bạn dùng nút **Tải file lịch (.ics)** để thêm vào bất kỳ ứng dụng lịch nào. Nếu gửi sang Google Calendar lỗi, sự kiện nội bộ và file .ics vẫn dùng được.
 
 > [!NOTE]
@@ -49,11 +51,11 @@ Trên trang buổi phỏng vấn, nếu một người phỏng vấn đã có bu
 
 Trên trang buổi phỏng vấn (khi buổi còn **Đã đặt lịch**):
 
-- **Đổi lịch**: chọn ngày, giờ, thời lượng, địa điểm, đường dẫn họp, người phỏng vấn mới rồi lưu.
+- **Đổi lịch**: chọn ngày, giờ, thời lượng, địa điểm, đường dẫn họp, người phỏng vấn mới rồi lưu. Tích **Gửi thời gian mới cho ứng viên** để ứng viên nhận thư với giờ mới.
 - Khung **Kết quả buổi phỏng vấn**:
   - **Đã phỏng vấn** — buổi đã diễn ra.
   - **Ứng viên không đến**.
-  - **Đã huỷ** — ghi **Lý do (nếu huỷ)**. Người phỏng vấn nhận thông báo **Đã huỷ lịch phỏng vấn**.
+  - **Đã huỷ** — ghi **Lý do (nếu huỷ)**. Người phỏng vấn nhận thông báo **Đã huỷ lịch phỏng vấn**. Nếu tích **Khi huỷ: báo cho ứng viên (không kèm lý do)**, ứng viên nhận thư **Huỷ lịch phỏng vấn** kèm file lịch huỷ.
 
 Buổi đã khép lại (đã phỏng vấn, không đến, đã huỷ) không đổi lịch được nữa.
 
@@ -78,7 +80,7 @@ Mở buổi phỏng vấn để xem thời gian, thời lượng, hình thức, 
 
 Sau buổi phỏng vấn, ở khung **Phiếu đánh giá của tôi**:
 
-1. Chấm từng tiêu chí theo thang 4 điểm: **1 — Không đạt**, **2 — Còn thiếu**, **3 — Đạt**, **4 — Xuất sắc**. Bộ tiêu chí mặc định gồm **Chuyên môn**, **Giải quyết vấn đề**, **Phối hợp**, **Động lực**, mỗi tiêu chí có gợi ý ngắn.
+1. Chấm từng tiêu chí theo thang 4 điểm: **1 — Không đạt**, **2 — Còn thiếu**, **3 — Đạt**, **4 — Xuất sắc**. Bộ tiêu chí mặc định gồm **Chuyên môn**, **Giải quyết vấn đề**, **Phối hợp**, **Động lực**, mỗi tiêu chí có gợi ý ngắn. Một vị trí có thể có **Bộ tiêu chí phỏng vấn** riêng, soạn trên trang sửa tin tuyển dụng (xem trang **Tin tuyển dụng & trang tuyển dụng**); buổi phỏng vấn đã đặt giữ bộ tiêu chí lúc đặt lịch.
 2. Chọn **Kết luận**: Chắc chắn không, Không, Có, Chắc chắn có. Thang không có điểm giữa — phiếu đánh giá phải chọn một phía.
 3. Viết **Điểm mạnh**, **Điểm băn khoăn**, **Ghi chú**.
 4. Bấm **Lưu nháp** nếu chưa xong, hoặc **Gửi phiếu** khi đã chắc chắn.

@@ -23,6 +23,7 @@ Bấm vào một dòng để mở trang đánh giá của người đó.
 | **Quản lý đã đánh giá** | Quản lý đã gửi phiếu quản lý đánh giá. |
 | **Đã cân đối** | Điểm đã được cân đối (có lý do). |
 | **Đã công bố** | Nhân viên đã đọc được phiếu của quản lý. |
+| **Đã trao đổi kết quả** | Quản lý hoặc Nhân sự đã ghi nhận buổi trao đổi kết quả với nhân viên. |
 | **Đã xác nhận** | Nhân viên đã xác nhận đã đọc. |
 
 Trạng thái phiếu: **Chưa có**, **Bản nháp**, **Đã gửi**.
@@ -42,6 +43,10 @@ Phiếu gồm các câu hỏi do Nhân sự soạn trong biểu mẫu của chu 
 5. Khi xong, bấm **Gửi**. Hệ thống hỏi "Gửi rồi sẽ không sửa được nữa. Tiếp tục?" — bấm **Gửi luôn** (hoặc **Huỷ** để quay lại).
 
 Sau khi gửi, quản lý và Nhân sự đọc được phiếu. Nếu còn câu bắt buộc chưa trả lời, phiếu không gửi được.
+
+Khi chu kỳ còn nhận phiếu, Nhân sự có thể trả lại một phiếu đã gửi kèm lý do. Bạn nhận thông báo **Phiếu đánh giá được trả lại để sửa**, phiếu trở về bản nháp với dòng "Nhân sự đã trả lại phiếu này để chỉnh sửa: …" — sửa rồi gửi lại.
+
+Mỗi sáng, hệ thống nhắc bạn khi phiếu của bạn sắp đến hạn (**Phiếu đánh giá sắp đến hạn**) hoặc đã quá hạn (**Phiếu đánh giá đã quá hạn**). Trong chu kỳ hết thử việc cuốn chiếu, hạn là hạn riêng của từng người, tính theo ngày hết thử việc.
 
 > [!NOTE]
 > Bạn chỉ viết và gửi phiếu khi chu kỳ đang **Đang thu thập**. Khi Nhân sự chuyển chu kỳ sang cân đối, chu kỳ không còn nhận phiếu.
@@ -108,25 +113,31 @@ Nếu chu kỳ không ẩn danh, nhân viên đọc phản hồi đồng nghiệ
 
 Người viết phiếu quản lý là quản lý được ghi nhận khi chu kỳ mở. Nếu người đó đã rời đi, bất kỳ cấp nào phía trên nhân viên, hoặc Nhân sự, đều viết thay được — chu kỳ không bị kẹt.
 
-### Cân đối và công bố
+### Cân đối và công bố (Nhân sự)
 
-Sau khi phiếu quản lý đã gửi, quản lý đánh giá (hoặc Nhân sự) thấy khung **Công bố** trên trang của nhân viên:
+Quản lý viết phiếu và đề xuất mức xếp loại; **chỉ Nhân sự** cân đối và công bố, và chỉ khi chu kỳ đã sang **Đang cân đối** (với chu kỳ hết thử việc cuốn chiếu: ngay khi quản lý đã gửi phiếu). Sau khi gửi phiếu, quản lý thấy dòng "… đang chờ Nhân sự công bố." Không ai cân đối hay công bố phiếu của chính mình.
+
+Khi đến lượt, Nhân sự thấy khung **Công bố** trên trang của nhân viên:
 
 1. **Cân đối** (không bắt buộc): nhập **Điểm (%)** và **Lý do cân đối**, rồi **Lưu cân đối**. Phiếu của quản lý giữ nguyên như đã viết; chỉ con số dùng cho kết quả năm thay đổi, và lý do được lưu lại.
 2. **Công bố**: bấm **Công bố cho nhân viên** → xác nhận **Công bố**. Từ lúc này nhân viên đọc được phiếu của quản lý (và phản hồi đồng nghiệp theo quy tắc ẩn danh), và nhận thông báo **Phiếu đánh giá của bạn đã được công bố**.
 
-Điểm được công bố là **điểm đã cân đối** nếu có, nếu không là điểm của phiếu quản lý. Khung **Điểm đánh giá** hiện **Điểm hiện tại: …** cho người cân đối, và cho nhân viên sau khi công bố.
+Điểm được công bố là **điểm đã cân đối** nếu có, nếu không là điểm của phiếu quản lý. Khung **Điểm đánh giá** hiện **Điểm hiện tại: …** cho người cân đối, và cho nhân viên và quản lý sau khi công bố.
 
 > [!WARNING]
 > Chưa có phiếu quản lý đã gửi thì không công bố được. Đã công bố thì không cân đối lại được nữa.
 
 Nhân sự cũng có thể công bố một lượt cho cả chu kỳ (xem trang **Chu kỳ đánh giá & trọng số kết quả**).
 
+### Buổi trao đổi kết quả
+
+Sau khi công bố, quản lý (hoặc Nhân sự) gặp nhân viên và ghi lại trong khung **Buổi trao đổi kết quả**: **Ngày trao đổi**, **Nội dung đã thống nhất (không bắt buộc)**, rồi bấm **Ghi nhận đã trao đổi**. Nếu chu kỳ yêu cầu buổi trao đổi, nhân viên chỉ xác nhận được sau bước này; quá 3 ngày chưa ghi nhận, quản lý được nhắc mỗi tuần.
+
 ## Nhân viên: đọc và xác nhận
 
 1. Khi nhận thông báo công bố, mở chu kỳ trong **Đánh giá của tôi**.
 2. Đọc phiếu của quản lý, phản hồi đồng nghiệp và điểm.
-3. Trong khung **Xác nhận của nhân viên**, viết **Ý kiến của bạn (không bắt buộc)** nếu muốn, rồi bấm **Tôi đã đọc và xác nhận**.
+3. Trong khung **Xác nhận của nhân viên**, viết **Ý kiến của bạn (không bắt buộc)** nếu muốn, rồi bấm **Tôi đã đọc và xác nhận**. Nếu chu kỳ yêu cầu buổi trao đổi kết quả, trang ghi "Bạn sẽ xác nhận sau buổi trao đổi kết quả với quản lý." cho tới khi buổi trao đổi được ghi nhận.
 
 Trang ghi "Đã xác nhận ngày …". Xác nhận nghĩa là bạn đã đọc — không có nghĩa bạn đồng ý với mọi nội dung; hãy dùng ô ý kiến để ghi lại điều bạn muốn nói. Quản lý và Nhân sự đọc được ý kiến này.
 

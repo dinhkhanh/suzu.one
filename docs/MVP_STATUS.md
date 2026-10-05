@@ -4,6 +4,21 @@
 
 > **Superseded in part, 2026-10-04.** Everything described here — and Phases 10 and 11 after it — is merged into `main` and live on `suzu.one`, so §1 ("nothing is deployed") and §6 are history. Of §4.A, the DNS, secrets, OAuth client and production seed are done; branch protection is unconfirmed and the role grants are not made (only `owner` and `department_head` are granted). §4.B has moved: email, web push, Messenger and Telegram deliver; files are on Cloudflare R2 and embeddings on Workers AI; Google Chat, Google Calendar and the assistant's model still have no key; there is still no virus scanning. **§4.C (the accountant's and counsel's confirmations), §4.E and §4.F still stand in full** — production has 20 of 21 statutory parameters unverified and all 47 obligation templates unreviewed. The current state, the defects found and the list of what the owner must do now are in [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md) and in Phase 12 of the development plan.
 
+> **Phase 12, 2026-10-05 — on branch `phase-12-close-the-gaps`, not yet merged.** When it is merged, these parts of this file stop being true. The owner's reading list for the merge is [`PHASE_12_OWNER_REVIEW.md`](./PHASE_12_OWNER_REVIEW.md).
+> - **§4.A.5:** `pnpm db:seed` must be run once more after that deploy. It brings the `SEVERANCE` component, three starter review forms, the probation decision template and three new request types.
+> - **§4.B:**
+>   - *Outgoing email*: candidates are now written to. There are four letters by themselves, the offer carrying its PDF, but none has gone through Resend.
+>   - *KB embeddings*: production uses Workers AI, which now gets contact details redacted.
+>   - *Virus scanning*: still none. The options and a recommendation are in [`privacy/R5_PRIVACY_DECISIONS.md`](./privacy/R5_PRIVACY_DECISIONS.md) §5.
+> - **§4.C:** two new unverified parameters for the accountant: `overtime.holiday_pay` (Q13) and `leave.payout_basis`. Item 7's rate limits stand.
+> - **§4.F:** the build's newer decisions are listed in the owner review §3. Its "C&B rather than the accountant locks the period" is unchanged.
+> - **§5, no longer deferred:**
+>   - *Phase 1*: contract import, editing a contract.
+>   - *Phase 2*: SLA escalation to active approvers only.
+>   - *Phase 5*: probation pay ≥ the parameter `probation.limits.minimumPayPercent` (the offer form still uses a code constant of 85 %), final settlement on termination (leave payout, plus figures typed in), off-cycle runs on a screen.
+>   - *Phase 7*: the pipeline editor, the interview-kit editor, the offer email.
+> - **§6:** still true — no Phase 12 screen has been opened in a browser, and the new Playwright suite has never run.
+
 ---
 
 ## 1. Where the code is

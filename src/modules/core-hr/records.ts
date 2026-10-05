@@ -162,6 +162,17 @@ export async function getContractSalaryTerms(principal: Principal, contractId: s
   return unseal(row.salaryTerms, contractTermsContext(row.id));
 }
 
+/**
+ * The salary terms of every contract of a person, decrypted, by contract id — compensation tier, in
+ * one query. Only the person's own "export my data" calls it (their own pay, behind a fresh
+ * step-up); like `getContractSalaryTerms` it is a disclosure, audited by the action that calls it.
+ */
+export async function contractSalaryTermsOf(principal: Principal, personId: string): Promise<Map<string, string>> {
+  if (!(await readable(principal, personId, "compensation"))) return new Map();
+  const rows = await db().select({ id: schema.contract.id, salaryTerms: schema.contract.salaryTerms }).from(schema.contract).where(and(eq(schema.contract.personId, personId), isNull(schema.contract.deletedAt)));
+  return new Map(rows.flatMap((row) => (row.salaryTerms ? [[row.id, unseal(row.salaryTerms, contractTermsContext(row.id))!] as const] : [])));
+}
+
 export type ContractInput = {
   number: string;
   type: ContractType;

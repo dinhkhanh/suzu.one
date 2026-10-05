@@ -79,11 +79,16 @@ Thay vì chụp màn hình tin nhắn, bạn có thể gửi khách một **đư
 
 Phiên bản phải đi xong các bước duyệt nội bộ mới gửi khách được. Trang khách mở chỉ có phiên bản đó và lời nhắn của bạn: không có công việc khác, trao đổi nội bộ hay chi phí.
 
-Danh sách đường dẫn cho biết trạng thái **Đang mở**, **Khách đã xem**, **Đã phản hồi**, **Hết hạn** hoặc **Đã thu hồi**, số lượt xem và lần xem gần nhất. Bấm **Thu hồi** để khóa một đường dẫn gửi nhầm — người điều hành dự án cũng thu hồi được.
+Danh sách đường dẫn cho biết trạng thái **Đang mở**, **Khách đã xem**, **Đã phản hồi**, **Hết hạn** hoặc **Đã thu hồi**, số lượt xem và lần xem gần nhất. Bấm **Thu hồi** để khóa một đường dẫn gửi nhầm — người điều hành dự án cũng thu hồi được. Trang **Tổng quan** của dự án có mục **Đường dẫn duyệt đang ở chỗ khách** liệt kê mọi đường dẫn chưa hết hạn, chưa thu hồi của cả dự án, kèm nút thu hồi.
+
+Một lượt xem chỉ được tính khi có người thật mở trang: bản xem trước mà Zalo, Messenger, Telegram, Slack… tự tạo khi bạn dán đường dẫn vào tin nhắn không được tính là *Khách đã xem*. Mỗi lượt mở được ghi vào nhật ký hệ thống.
+
+> [!NOTE]
+> Khi dự án chuyển **Đã xong** hoặc **Lưu trữ**, hoặc khi người tạo đường dẫn nghỉ việc, hệ thống tự thu hồi các đường dẫn còn mở trong đêm. Dự án đã kết thúc hoặc đã lưu trữ không tạo được đường dẫn mới.
 
 ### Phía khách hàng thấy gì
 
-Khách mở đường dẫn, xem **Nội dung cần duyệt** (nút **Mở tệp**), đọc lời nhắn, rồi ở **Phản hồi của anh/chị** chọn **Duyệt**, **Duyệt, có chỉnh nhỏ** hoặc **Yêu cầu chỉnh sửa**, điền tên và ý kiến (bắt buộc nếu không duyệt thẳng), bấm **Gửi phản hồi**. Phản hồi được ghi như một quyết định của khách (kênh **Đường dẫn duyệt**) và người tạo đường dẫn nhận thông báo *Khách hàng đã phản hồi qua link duyệt*.
+Khách mở đường dẫn, xem **Nội dung cần duyệt** — ảnh hiện ngay trên trang, video phát ngay trên trang, tệp khác tải về bằng cách chạm vào tên tệp; tệp mở được cho đến khi đường dẫn hết hiệu lực — đọc lời nhắn, rồi ở **Phản hồi của anh/chị** tự chọn **Duyệt**, **Duyệt, có chỉnh nhỏ** hoặc **Yêu cầu chỉnh sửa** (không có lựa chọn nào được chọn sẵn), điền tên và ý kiến (bắt buộc nếu không duyệt thẳng), bấm **Gửi phản hồi**. Phản hồi được ghi như một quyết định của khách (kênh **Đường dẫn duyệt**) và người tạo đường dẫn nhận thông báo *Khách hàng đã phản hồi qua link duyệt*.
 
 ## Giao bản cuối cho khách
 

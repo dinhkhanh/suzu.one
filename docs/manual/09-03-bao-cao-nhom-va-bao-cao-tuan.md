@@ -19,12 +19,13 @@ Trang chia thành các khối: mỗi nhóm bạn làm trưởng nhóm, và khố
 - Trạng thái: **Đã nộp**, **Nộp muộn**, **Chưa nộp**, hoặc lý do không cần nộp — **Ngày nghỉ lễ**, **Nghỉ phép**, **Ngày nghỉ**, **Thứ Bảy làm tại nhà**, **Không phải ngày báo cáo**, **Không bắt buộc**, **Nhóm tắt báo cáo**.
 - Vướng mắc họ ghi trong báo cáo (chữ đỏ) và *Đang vướng … việc* nếu họ có việc đang báo vướng.
 - Số nhận xét và giờ gửi.
+- Kế hoạch buổi sáng của ngày đó: *Đã lên kế hoạch lúc …* (hoặc *Lên kế hoạch muộn, lúc …*) kèm các việc trong kế hoạch, hoặc *Chưa có kế hoạch buổi sáng*.
 
 Dùng **Ngày trước** / **Ngày sau** để xem các ngày khác.
 
 ### Nhắc người chưa nộp
 
-Trong ngày hôm nay, bấm **Nhắc** cạnh người **Chưa nộp**, hoặc **Nhắc tất cả (…)** cho cả khối. Họ nhận thông báo *Nhắc nộp báo cáo ngày*; nút chuyển thành **Đã nhắc**. Hệ thống cũng tự nhắc lúc 18:00, nên bạn chỉ cần nhắc thêm khi thật cần.
+Bấm **Nhắc** cạnh người **Chưa nộp**, hoặc **Nhắc tất cả (…)** cho cả khối — cho hôm nay hoặc cho một ngày đã qua trong bảy ngày gần đây (chọn ngày trên bảng; lời nhắc ghi rõ ngày). Họ nhận thông báo *Nhắc nộp báo cáo ngày*; nút chuyển thành **Đã nhắc**. Hệ thống cũng tự nhắc lúc 18:00, nên bạn chỉ cần nhắc thêm khi thật cần.
 
 > [!NOTE]
 > Báo cáo ngày không phải để chấm điểm. Hãy dùng nó để biết ai đang vướng và cần giúp gì — ví dụ ghé phần **Vướng mắc** trước tiên.
@@ -40,7 +41,7 @@ Người viết báo cáo nhận thông báo và có thể trả lời ngay tron
 
 ## Báo cáo tuần
 
-Mỗi sáng thứ Hai, hệ thống tự tạo **Báo cáo tuần** cho tuần trước của mỗi nhóm đang hoạt động, rồi gửi thông báo cho trưởng nhóm và trưởng bộ phận phía trên. Mở [Báo cáo tuần](/daily/weekly); mặc định là tuần vừa qua, dùng **Tuần trước** / **Tuần sau** để chuyển.
+Mỗi sáng thứ Hai, hệ thống tự tạo **Báo cáo tuần** cho tuần trước của mỗi nhóm đang hoạt động và của từng người phải báo cáo — kể cả người không thuộc nhóm nào — rồi gửi thông báo cho trưởng nhóm và trưởng bộ phận phía trên; tuần của người không có trưởng nhóm nào phía trên được gửi cho quản lý trực tiếp của họ. Mở [Báo cáo tuần](/daily/weekly); mặc định là tuần vừa qua, dùng **Tuần trước** / **Tuần sau** để chuyển.
 
 ### Báo cáo của nhóm
 

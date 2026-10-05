@@ -48,4 +48,8 @@ Sau khi đã lưu buổi rút kinh nghiệm, phần **Đăng bài học lên kho
 Đóng dự án tự chuyển trạng thái dự án sang **Đã xong** (dự án chuyển xuống mục **Tạm dừng và đã xong** trên trang **Công việc**). Đầu mọi tab có nhãn **Đã đóng**; tab **Đóng dự án** hiện **Đã đóng ngày …**, báo cáo tổng kết được lưu lại tại thời điểm đóng, và nếu đóng khi còn thiếu thì ghi *Đóng khi còn chưa đạt: … — lý do*.
 
 > [!TIP]
-> Chỉ đổi trạng thái sang **Đã xong** ở **Sửa dự án** thì *không* khóa kế hoạch và không lưu báo cáo tổng kết. Hãy dùng tab **Đóng dự án** để kết thúc dự án đúng cách. Khi không còn cần thấy dự án trên trang **Công việc**, người điều hành dự án có thể **Lưu trữ** nó.
+> Dự án làm cho khách chỉ sang **Đã xong** qua tab **Đóng dự án**; ô **Trạng thái** ở **Sửa dự án** không cho đi tắt. Dự án đã đóng không nhận việc mới, không đổi trạng thái việc và không ghi giờ được. Khi không còn cần thấy dự án trên trang **Công việc**, người điều hành dự án có thể **Lưu trữ** nó.
+
+## Mở lại dự án
+
+Khi khách cần thêm một vòng chỉnh sửa sau nghiệm thu, **phụ trách dự án** hoặc **trưởng nhóm** sở hữu mở lại dự án đã đóng ở tab **Đóng dự án** → **Mở lại dự án**: ghi **Lý do mở lại** (bắt buộc), bấm **Mở lại dự án**. Kế hoạch được mở khóa và dự án về **Đang chạy**; lần đóng trước được giữ trong mục **Những lần đóng đã được mở lại**, và việc mở lại được ghi vào nhật ký hệ thống. Retainer đã dừng khi đóng không tự chạy lại. Lấy dự án ra khỏi lưu trữ không mở lại dự án — dự án đã đóng vẫn là đã đóng.

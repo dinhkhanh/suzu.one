@@ -84,6 +84,23 @@ export async function publishPayslips(runId: string, actorPersonId: string | nul
 
 export type MyPayslipRow = { id: string; month: string; entityId: string; entityCode: string; net: number; publishedAt: Date; firstViewedAt: Date | null; kind: PayrollRunRow["kind"]; runName: string | null; openQueries: number };
 
+/**
+ * The person's own released payslips with every figure, newest month first — for their "export my
+ * data" (NFR-PRV-03), which a fresh step-up guards like the payslip pages. One query; the figures
+ * are decrypted here and never stored anywhere else.
+ */
+export async function payslipResultsOf(personId: string): Promise<{ month: string; entityCode: string; kind: PayrollRunRow["kind"]; runName: string | null; publishedAt: Date; result: PersonPayResult }[]> {
+  const rows = await db()
+    .select({ payslip: schema.payslip, runKind: schema.payrollRun.kind, runName: schema.payrollRun.name, entityCode: schema.entity.code, person: schema.payrollRunPerson })
+    .from(schema.payslip)
+    .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payslip.runId))
+    .innerJoin(schema.entity, eq(schema.entity.id, schema.payslip.entityId))
+    .innerJoin(schema.payrollRunPerson, and(eq(schema.payrollRunPerson.runId, schema.payslip.runId), eq(schema.payrollRunPerson.personId, schema.payslip.personId)))
+    .where(and(eq(schema.payslip.personId, personId), isNull(schema.payslip.withdrawnAt)))
+    .orderBy(desc(schema.payslip.month), desc(schema.payslip.publishedAt));
+  return rows.map((row) => ({ month: row.payslip.month, entityCode: row.entityCode, kind: row.runKind, runName: row.runName, publishedAt: row.payslip.publishedAt, result: openResult(row.person) }));
+}
+
 /** The person's own payslips, newest month first. Their own pay needs no permission. */
 export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> {
   // The count of questions still open rides along as a correlated subquery: one round trip.

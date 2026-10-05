@@ -2,7 +2,7 @@
 
 Khi bạn đi phép, đi công tác hay bận dài ngày, các yêu cầu chờ bạn duyệt sẽ ùn lại và người gửi phải chờ. **Ủy quyền phê duyệt** cho phép bạn chỉ định một người duyệt thay trong một khoảng thời gian: trong thời gian đó, yêu cầu mới lẽ ra đến bạn sẽ được chuyển thẳng tới người ấy.
 
-Mọi nhân viên đều tự quản lý ủy quyền của mình — không cần xin quyền ai.
+Mọi nhân viên đều tự quản lý ủy quyền của mình — không cần xin quyền ai. Khi một người vắng mặt mà chưa kịp ủy quyền, Nhân sự có thể làm thay (xem cuối trang).
 
 ## Mở trang ủy quyền
 
@@ -63,6 +63,14 @@ Về sớm? Bấm **Kết thúc ngay** cạnh ủy quyền **Đang hiệu lực*
 - Mục **Được ủy quyền cho tôi** cho biết ai đang nhờ bạn, trong thời gian nào, với loại yêu cầu nào.
 - Yêu cầu được giao xuất hiện trong mục **Đang chờ tôi** của hộp duyệt như mọi yêu cầu khác, và bạn được thông báo như thường lệ.
 - Bạn quyết định bằng các nút **Duyệt**, **Trả lại để chỉnh sửa**, **Từ chối** như khi duyệt yêu cầu của chính mình.
+
+## Khi người duyệt vắng mặt, bị tạm khoá hoặc đã nghỉ việc
+
+Không phải ai cũng kịp tạo ủy quyền trước khi vắng mặt. Khi đó yêu cầu không bị kẹt:
+
+- **Người duyệt nghỉ việc**: ngay khi người đó thôi việc (hoặc vào đêm ngày làm việc cuối cùng), mọi lượt duyệt họ chưa trả lời — ở bước đang chờ và các bước sau — được tìm lại người duyệt theo đúng quy tắc của bước, bỏ qua người đã nghỉ. Nếu bước không còn ai, Chủ sở hữu được hỏi. Lịch sử yêu cầu ghi sự kiện **Đổi người duyệt** kèm tên người cũ và người mới; người mới được thông báo.
+- **Đổi người duyệt**: Nhân sự (người có quyền quản lý hồ sơ của người được nói tới trong yêu cầu) có thể chuyển một lượt đang chờ sang người khác, kèm **Lý do** — từ trang chi tiết yêu cầu, từ danh sách mọi yêu cầu, hoặc từ màn hình ủy quyền của người vắng mặt. Không ai được nhận lượt duyệt yêu cầu của chính mình; yêu cầu chứa thông tin hạn chế chỉ chuyển được cho người xem được thông tin hạn chế của nhân viên đó.
+- **Ủy quyền thay người này**: từ trang hồ sơ của người vắng mặt, Nhân sự mở màn hình **Phê duyệt của người vắng mặt** để tạo hoặc kết thúc ủy quyền nhân danh họ, và tick **Chuyển luôn các yêu cầu đang chờ người này** nếu cần. Cả hai người đều được thông báo; nhật ký ghi tên cả hai.
 
 ## Lỗi thường gặp khi tạo ủy quyền
 

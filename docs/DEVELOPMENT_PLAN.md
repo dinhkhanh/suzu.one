@@ -590,6 +590,21 @@ This phase must be live by **November 2027** to serve the year-end review and th
 
 ### Phase 12 — Close the gaps (eight releases) → **M12**
 
+> **Status, 2026-10-05 — R0–R6 built on branch `phase-12-close-the-gaps`, not merged, not deployed.** The owner chose (5 October) to receive Phase 12 on the branch and merge it after reading the diff; [`PHASE_12_OWNER_REVIEW.md`](./PHASE_12_OWNER_REVIEW.md) is written for that reading — what is on the branch, the steps after the deploy, every decision an agent made that the owner may overrule, the defects found on the way, and what was never verified. The inspection's last column says item by item what is fixed, partly fixed or open.
+>
+> | Release | On the branch | Merges |
+> |---|---|---|
+> | R0 cut-over week | **Done.** All eight items. | `c8417f6`, `30138f7`, `64efa9e` |
+> | R1 safety | **Done**, with three items partly: the CSP ships report-only, CI gates nothing on Vercel until the owner switches on branch protection, a kiosk's liveness is still decided in the browser. | `350488a`, `3fb5f50`, `c0f25a5`, `ea31c6f`, `143c960` |
+> | R2 project figures | **Done.** | `4e04cc4`, `fac79bf`, `5ea3791`, `32abc4a`, `1deada6` |
+> | R3 payroll | **Done in code.** The accountant's half (night-OT multipliers, allowance proration, the PIT month basis, Appendix A, the VCB / ACB and statutory layouts, real golden cases) is untouched and is the gate for the first parallel run. | `13f437f`, `d87e0dd`, `470cd5a` + `bf03b01`, `7dc40f9` |
+> | R4 HR flows | **Done**, except FR-CHR-12's change requests for dependents, contacts and documents. | `e2cc81a`, `88939e3`, `7ffb58b`, `30f126f`, `12f51d0` |
+> | R5 operations and privacy | **Ops (R5-A) done in code**: cron hand-over and dead-man's ping, `/api/health`, Admin → Jobs "run now", housekeeping, migration lint, auth rate limits, three-day idle timeout, runbooks, a Playwright suite that has never run. Audit is retried, not written in the mutation's transaction. Staging, the restore drill and the uptime check are the owner's. **Privacy (R5-B) merged** (`f726af4`): export my data, the GPS notice, retention, HR-confirmed anonymisation — its decisions are in [`privacy/R5_PRIVACY_DECISIONS.md`](./privacy/R5_PRIVACY_DECISIONS.md). | `b8ab8fb`, `f726af4` |
+> | R6 speed and house rules | **Speed (R6-A) done** (`938a1f5`). **House rules (R6-B) in progress** — boundary lint, native controls and `window.confirm`, stored Vietnamese, `.xlsx` exports. *(Update this row when R6-B is merged: its merge commit, and ENG-06, UI-01 and FR-PLT-37 in the inspection.)* | `938a1f5`, R6-B: — |
+> | R7 deferred Should-haves | **Not started — the owner picks** from §5 of the inspection. AI-03's code half is done (R1); its eval rewrite is left. | — |
+>
+> A fix-up of the defects the bundles found on the way was running when this was written; the owner review lists them all as open, to be struck there as that fix-up is merged.
+
 > **Status, 2026-10-04 — planned, nothing built.** This phase adds no module. It is what the inspection of 4 October found: [`INSPECTION_2026-10-04.md`](./INSPECTION_2026-10-04.md) holds every item with its evidence, and the item numbers below (PJM-01, PAY-03, …) are that document's. Items marked ✔ there were re-checked; the others were found by one reading of the code and are read again before they are built on.
 
 **Why now.** Phases 0–11 were each built in a day or two and verified by tests and HTTP, not by people doing their work. They are now all in production, the company-wide cut-over to daily work in the app is 5 October (D28), and the first month lock, the payroll parallel run and the year-end review are each a few weeks out. The inspection found the app broad and mostly sound, with three kinds of debt: **defects** on paths nobody has walked yet (retro pay, a second payroll calculation, a must-read page for a unit), **flows that stop one step short** (no review template, a request that ends at "approved", a candidate who is never written to), and **operations that rest on nothing going wrong** (no staging, no restore drill, no test that opens a browser, CI that does not gate production). New features wait until these are closed.
@@ -628,20 +643,20 @@ This phase must be live by **November 2027** to serve the year-end review and th
 
 1. **Reporting lines and teams:** 17 of 35 active people have no line manager and 8 of them are in no work team either — their approvals fall to the owners and their reports and timesheets have no reader.
 2. **Role grants:** nobody holds an HR, payroll, finance, recruiter, sales or marketing role; six people hold `owner`.
-3. **Four decisions the build made:** who is asked for a plan, a report and time (today everyone active, collaborators and owners included); whether a line manager may calibrate and release a review; whether fixed allowances are pro-rated for joiners and leavers; whether a won deal may be set up for delivery more than once.
+3. **Four decisions the build made:** who is asked for a plan, a report and time (today everyone active, collaborators and owners included); whether a line manager may calibrate and release a review; whether fixed allowances are pro-rated for joiners and leavers; whether a won deal may be set up for delivery more than once. *Answered 2026-10-05 (inspection §7) and built that way; the decisions the build agents made since are listed in [`PHASE_12_OWNER_REVIEW.md`](./PHASE_12_OWNER_REVIEW.md) §3.*
 4. **The chief accountant:** 20 of 21 statutory parameters are unverified and all 47 obligation templates unreviewed (`MVP_STATUS.md` §4.C stands in full); the R3 questions; three months of real payroll files for the golden tests.
 5. **Open questions:** Q5, Q13, Q14, Q16 and Q26–Q30 of the SRS.
 6. **Keys or a decision to do without:** Google Chat, Google Calendar, the Anthropic key.
 7. **Branch protection on `main`**, and agreement that a push no longer deploys without a green check.
 8. **A real client list** — production has one client.
 
-**Exit criteria**
-- No S1 item of the inspection is open, and every S2 item is closed or carries the owner's dated decision to leave it.
-- A month is locked, a payroll run is calculated twice with a retro item in it and proposed, and the parallel-run report is signed by the chief accountant.
-- A review cycle is created, run and released in production from a template made on screen.
-- A candidate applies and receives each of the four emails; a purged candidate leaves no name and no file behind.
-- A restore drill has been performed and written down; the smoke suite runs on every push; production cannot be deployed past a red check.
-- The documents in `docs/` describe the system as it is.
+**Exit criteria** *(where each stands, 2026-10-05: **met on the branch** = built and tested there; **needs production** = can only be shown after the merge; **needs the owner** = nobody else can do it)*
+- No S1 item of the inspection is open, and every S2 item is closed or carries the owner's dated decision to leave it. — *Not yet.* S1: PAY-10 is open (the chief accountant) and four are partly (CRM-02 activity text, SEC-01 enforcement, SEC-02 Vercel ignores type errors and branch protection, SEC-03 liveness). S2: AST-01, OPS-01, COM-01 and KB-02 are open and AI-03 partly, all deferred to R7 — **needs the owner**'s dated decision to leave them, or R7.
+- A month is locked, a payroll run is calculated twice with a retro item in it and proposed, and the parallel-run report is signed by the chief accountant. — **Met on the branch** in tests (retro across a recalculation, the stale-run refusal, the sign-off record); **needs production** for a real month and **the chief accountant** for the signature.
+- A review cycle is created, run and released in production from a template made on screen. — The editor and the run are **met on the branch**; **needs production** (and `pnpm db:seed` for the starter forms).
+- A candidate applies and receives each of the four emails; a purged candidate leaves no name and no file behind. — **Met on the branch** in tests through the outbox; **needs production**: no letter has gone through Resend.
+- A restore drill has been performed and written down; the smoke suite runs on every push; production cannot be deployed past a red check. — The runbooks and the CI `e2e` job are on the branch, but the suite **has never run**; the drill, branch protection and making Vercel wait for CI **need the owner**.
+- The documents in `docs/` describe the system as it is. — **Met on the branch** for the inspection, this plan, `MVP_STATUS.md`, `PAYROLL_SECURITY_REVIEW.md`, the runbooks and the manual pages Phase 12 changed (documents pass of 5 October); still behind: README / `KEY_ROTATION.md` on `.env.local`, SRS A8, manual pages for the face kiosk, status sets and brand kits.
 
 ---
 

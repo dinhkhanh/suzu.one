@@ -4,6 +4,9 @@ Trang này dành cho nhân sự cấu hình nghỉ phép: các **loại phép** 
 
 Vào [Quản lý nghỉ phép → Loại phép & chính sách](/leave/admin/types).
 
+> [!IMPORTANT]
+> Loại phép và chính sách là **quy định** nên do **Chủ sở hữu** quyết định. Khi nhân sự bấm lưu, thay đổi không có hiệu lực ngay: màn hình báo "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt." và một yêu cầu **Thay đổi quy định nghỉ phép** được gửi tới Chủ sở hữu. Chủ sở hữu xem từng trường so với quy định đang áp dụng, rồi duyệt hoặc từ chối (xem trang **Luồng phê duyệt và loại đề nghị**). Thay đổi do chính Chủ sở hữu lưu có hiệu lực ngay. Quân số tối thiểu và số dư vẫn do nhân sự quản lý trực tiếp.
+
 ## Loại phép chung và loại phép riêng của pháp nhân
 
 - Loại phép **chung** (cột phải ghi **Mọi pháp nhân**) áp dụng cho mọi pháp nhân. Chỉ nhân sự được phân quyền cho **toàn tập đoàn** sửa được. Nhân sự của một pháp nhân mở loại chung sẽ thấy: "Loại phép chung: chỉ nhân sự tập đoàn sửa được. Bạn có thể đặt chính sách riêng cho pháp nhân của mình bên dưới."
