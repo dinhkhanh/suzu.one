@@ -16,6 +16,8 @@ import { getTimesheetDayCells } from "@/modules/attendance/timesheets";
 import { CheckInPanel, InstallHint } from "@/modules/attendance/ui/check-in";
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
 import { requireUser } from "@/modules/platform/auth/session";
+import { answerGpsNoticeAction } from "@/modules/privacy/actions";
+import { GPS_NOTICE_VERSION, gpsConsentOf, PUNCH_POSITION_RETENTION_DAYS } from "@/modules/privacy/service";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("checkIn");
@@ -28,7 +30,7 @@ const mondayOf = (date: string) => addDays(date, -((new Date(`${date}T00:00:00Z`
 export default async function CheckInPage() {
   const user = await requireUser();
   const [t, tAttendance, format] = await Promise.all([getTranslations("attendance.checkIn"), getTranslations("attendance"), getFormatter()]);
-  const state = await getCheckInState(user.person);
+  const [state, gps] = await Promise.all([getCheckInState(user.person), gpsConsentOf(user.person.id)]);
   const { plan } = state;
   const employed = user.person.status === "active" && !!user.person.primaryEntityId;
   const monday = mondayOf(state.today);
@@ -68,6 +70,8 @@ export default async function CheckInPage() {
           lastLocationName={lastPunch?.locationName ?? null}
           hasLocations={state.hasLocations}
           punchedToday={state.punches.length > 0}
+          gps={{ state: gps.state, version: GPS_NOTICE_VERSION, days: PUNCH_POSITION_RETENTION_DAYS }}
+          answerGps={answerGpsNoticeAction}
         />
       ) : (
         <Alert variant="destructive">{t("errors.punch_not_employed")}</Alert>

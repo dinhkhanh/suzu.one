@@ -34,6 +34,21 @@ describe("embeddings driver", () => {
     expect(vectors.map((vector) => vector[0])).toEqual(texts.map((text) => text.length));
   });
 
+  it("sends no contact details to Cloudflare: passages and questions lose emails, phones and chat links", async () => {
+    Object.assign(settings, { CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), CLOUDFLARE_AI_API_TOKEN: "token", EMBEDDINGS_MODEL: "@cf/baai/bge-m3" });
+    const sent: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { input: string[] };
+      sent.push(...body.input);
+      return Response.json({ data: body.input.map((_, index) => ({ index, embedding: [index] })) });
+    });
+    await embedTexts(["Hỏi chị Lan (lan.nguyen@gmail.com, 0912 345 678, zalo.me/0912345678) về nghỉ phép", "Nghỉ phép năm: 12 ngày"], "document");
+    await embedTexts(["số của anh Huy là 090.123.4567?"], "query");
+    expect(sent.join(" ")).not.toMatch(/@gmail|0912|090\.123|zalo/);
+    expect(sent[0]).toContain("về nghỉ phép");
+    expect(sent[1]).toBe("Nghỉ phép năm: 12 ngày");
+  });
+
   it("fails loudly on an error answer or a short one", async () => {
     Object.assign(settings, { CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), CLOUDFLARE_AI_API_TOKEN: "token", EMBEDDINGS_MODEL: "@cf/baai/bge-m3" });
     vi.stubGlobal("fetch", async () => new Response("rate limited", { status: 429 }));
