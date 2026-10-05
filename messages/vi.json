@@ -977,6 +977,22 @@
         "title": "Vui lòng kiểm tra chấm công tháng {month}",
         "body": "Nhân sự đề nghị bạn xem lại chấm công tháng {month}: bổ sung lần chấm còn thiếu hoặc gửi các đơn còn mở."
       },
+      "attendance_punches_to_review": {
+        "title": "{count} lần chấm công hôm qua chờ bạn xem xét",
+        "body": "Hôm qua có {count} lần chấm công bị gắn cờ (ngoài vị trí, không có toạ độ hoặc ngoài mạng văn phòng). Hãy chấp nhận những lần bạn xác nhận được, hoặc từ chối kèm lý do."
+      },
+      "attendance_punches_block_lock": {
+        "title": "{count} lần chấm công tháng {month} chờ bạn xem xét",
+        "body": "Còn {count} lần chấm công bị gắn cờ trong tháng {month} chờ bạn chấp nhận hoặc từ chối. Bảng công tháng này chưa khoá được cho đến khi các lần đó được xem xét."
+      },
+      "attendance_punch_rejected": {
+        "title": "Lần chấm công lúc {time} không được chấp nhận",
+        "body": "Lần chấm công lúc {time} của bạn đã bị từ chối: {reason}. Lần chấm này không còn được tính; nếu bạn thực sự có mặt, hãy gửi đơn bổ sung công trước khi bảng công khoá."
+      },
+      "attendance_month_locked": {
+        "title": "Bảng công tháng {month} đã khoá",
+        "body": "Nhân sự đã khoá bảng công tháng {month} và chuyển sang tính lương. Từ giờ mọi thay đổi do nhân sự điều chỉnh, không gửi đơn được nữa."
+      },
       "tasks_work_assigned": {
         "title": "{key} được giao cho bạn: {title}",
         "body": "Bạn vừa được giao công việc {key} “{title}”. Mở công việc để xem brief, hạn hoàn thành và những người cùng tham gia."
@@ -3060,6 +3076,7 @@
         "name": "Tên",
         "entity": "Pháp nhân",
         "address": "Địa chỉ",
+        "position": "Vị trí trên bản đồ",
         "latitude": "Vĩ độ",
         "longitude": "Kinh độ",
         "radius": "Bán kính (m)",
@@ -3540,6 +3557,7 @@
         "portion": "Thời gian trong ngày",
         "locationName": "Địa điểm",
         "positionHint": "Không bắt buộc: toạ độ địa điểm để chấm công tại đó được chấp nhận.",
+        "position": "Vị trí",
         "latitude": "Vĩ độ",
         "longitude": "Kinh độ",
         "radius": "Bán kính (m)",
@@ -3877,6 +3895,38 @@
         "kiosk_code_expired": "Mã đã hết hạn. Quét lại mã đang hiện trên máy chấm công.",
         "kiosk_not_yours": "Máy chấm công này không thuộc pháp nhân của bạn."
       }
+    },
+    "position": {
+      "useMine": "Dùng vị trí của tôi",
+      "locating": "Đang xác định vị trí…",
+      "none": "Chưa chọn vị trí.",
+      "accuracy": "Sai số khoảng {metres} m.",
+      "imprecise": "Điện thoại chỉ xác định được trong phạm vi {metres} m. Hãy ra chỗ thoáng rồi thử lại, hoặc dán liên kết bản đồ của địa điểm bên dưới.",
+      "clear": "Xoá",
+      "byHand": "Dán liên kết bản đồ hoặc nhập toạ độ",
+      "paste": "Liên kết bản đồ hoặc toạ độ",
+      "pasteHint": "Trên Google Maps, nhấn giữ vào địa điểm rồi sao chép toạ độ hiện ra, hoặc sao chép liên kết trên thanh địa chỉ của trình duyệt. Liên kết chia sẻ rút gọn (maps.app.goo.gl) không chứa toạ độ.",
+      "latitude": "Vĩ độ",
+      "longitude": "Kinh độ",
+      "problems": {
+        "denied": "Trang này chưa được phép truy cập vị trí. Hãy bật trong cài đặt của trình duyệt, hoặc dán liên kết bản đồ của địa điểm.",
+        "unavailable": "Điện thoại không xác định được vị trí. Hãy thử lại ở chỗ thoáng, hoặc dán liên kết bản đồ của địa điểm.",
+        "timeout": "Xác định vị trí quá lâu. Hãy thử lại, hoặc dán liên kết bản đồ của địa điểm.",
+        "unsupported": "Trình duyệt này không xác định được vị trí. Hãy dán liên kết bản đồ của địa điểm.",
+        "pasteInvalid": "Không tìm thấy toạ độ trong nội dung này."
+      }
+    },
+    "myFace": {
+      "title": "Chấm công bằng khuôn mặt",
+      "enrolled": "Khuôn mặt của bạn đã được đăng ký để chấm công tại máy kiosk ({count} mẫu), với sự đồng ý được ghi nhận ngày {date}.",
+      "what": "SuZu One chỉ lưu các con số mô tả khuôn mặt — không bao giờ lưu ảnh — và chỉ dùng để nhận diện bạn tại máy kiosk. Bạn có thể rút lại sự đồng ý bất cứ lúc nào; khi đó bạn chấm công bằng ứng dụng hoặc mã QR của máy kiosk.",
+      "withdraw": "Rút lại đồng ý",
+      "withdrawConfirm": "Rút lại đồng ý chấm công bằng khuôn mặt?",
+      "withdrawDetail": "Dữ liệu khuôn mặt và bản ghi đồng ý của bạn bị xoá ngay. Máy kiosk sẽ không nhận ra bạn nữa; nhân sự chỉ có thể đăng ký lại khi có bản đồng ý mới đã ký.",
+      "failed": "Không rút lại được sự đồng ý. Hãy thử lại."
+    },
+    "dialog": {
+      "cancel": "Huỷ"
     }
   },
   "leave": {

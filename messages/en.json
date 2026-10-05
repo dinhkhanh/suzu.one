@@ -977,6 +977,22 @@
         "title": "Please check your attendance for {month}",
         "body": "HR asks you to review your attendance for {month}: fix missing punches or file the requests that are still open."
       },
+      "attendance_punches_to_review": {
+        "title": "{count, plural, one {# check-in from yesterday waits} other {# check-ins from yesterday wait}} for your review",
+        "body": "{count, plural, one {# check-in was} other {# check-ins were}} flagged yesterday (away from the location, no position, or off the office network). Accept the ones you can vouch for, or reject them with a reason."
+      },
+      "attendance_punches_block_lock": {
+        "title": "{count, plural, one {# check-in} other {# check-ins}} in {month} wait for your review",
+        "body": "{count, plural, one {# flagged check-in} other {# flagged check-ins}} in {month} still wait for you to accept or reject. The month's timesheet cannot be locked until they are reviewed."
+      },
+      "attendance_punch_rejected": {
+        "title": "Your check-in at {time} was not accepted",
+        "body": "Your check-in at {time} was rejected: {reason}. It no longer counts; if you were there, file an attendance correction before the month is locked."
+      },
+      "attendance_month_locked": {
+        "title": "Your {month} timesheet is locked",
+        "body": "HR locked the {month} timesheet and handed it to payroll. From now on any change is an adjustment by HR, not a request."
+      },
       "tasks_work_assigned": {
         "title": "{key} is yours: {title}",
         "body": "You were put on the task {key} “{title}”. Open it to see the brief, the due date and who else is on it."
@@ -3060,6 +3076,7 @@
         "name": "Name",
         "entity": "Entity",
         "address": "Address",
+        "position": "Position on the map",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
@@ -3540,6 +3557,7 @@
         "portion": "Part of the day",
         "locationName": "Place",
         "positionHint": "Optional: coordinates of the place, so a check-in there is accepted.",
+        "position": "Position",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
@@ -3877,6 +3895,38 @@
         "kiosk_code_expired": "The code has expired. Scan the one on the kiosk now.",
         "kiosk_not_yours": "This kiosk does not serve your entity."
       }
+    },
+    "position": {
+      "useMine": "Use my position",
+      "locating": "Finding your position…",
+      "none": "No position chosen.",
+      "accuracy": "Accurate to about {metres} m.",
+      "imprecise": "The phone only knows this to within {metres} m. Step outside and try again, or paste the place's map link below.",
+      "clear": "Clear",
+      "byHand": "Paste a map link or type the coordinates",
+      "paste": "Map link or coordinates",
+      "pasteHint": "In Google Maps, press and hold the place and copy the coordinates it shows, or copy the link from the browser's address bar. Short share links (maps.app.goo.gl) carry no coordinates.",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "problems": {
+        "denied": "Location access is off for this site. Allow it in the browser's settings, or paste the place's map link.",
+        "unavailable": "The phone could not tell where it is. Try again outside, or paste the place's map link.",
+        "timeout": "Finding the position took too long. Try again, or paste the place's map link.",
+        "unsupported": "This browser cannot tell its position. Paste the place's map link instead.",
+        "pasteInvalid": "No coordinates found in this text."
+      }
+    },
+    "myFace": {
+      "title": "Face check-in",
+      "enrolled": "Your face is enrolled for check-in at the kiosk ({count, plural, one {# template} other {# templates}}), with your consent recorded on {date}.",
+      "what": "SuZu One keeps only numbers that describe your face — never a photo — and uses them only to recognise you at the kiosk. You may withdraw your consent at any time; you then check in with the app or the kiosk's QR code.",
+      "withdraw": "Withdraw consent",
+      "withdrawConfirm": "Withdraw your consent to face check-in?",
+      "withdrawDetail": "Your face data and the consent record are deleted at once. The kiosk will no longer recognise you; HR can enrol you again only with a newly signed consent.",
+      "failed": "Could not withdraw the consent. Try again."
+    },
+    "dialog": {
+      "cancel": "Cancel"
     }
   },
   "leave": {

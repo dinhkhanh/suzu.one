@@ -23,6 +23,7 @@ import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { getMonthSummaryFor } from "@/modules/attendance/service";
 import { hoursText } from "@/modules/attendance/ui/day-plan";
+import { MyFaceEnrolment } from "@/modules/attendance/ui/my-face";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
 import { countMyOpenRequests, listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
@@ -152,6 +153,7 @@ export default async function MyProfilePage() {
       <RecordSections principal={user.principal} personId={user.person.id} />
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
+      <MyFaceEnrolment personId={user.person.id} />
       <ResignationBlock personId={user.person.id} />
 
       <Section title={t("me.preferences")}>

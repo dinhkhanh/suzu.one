@@ -18,12 +18,13 @@ vi.mock("@/lib/action", () => ({
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
 
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { SchedulePattern } from "./engine/calendar";
 import { saveLocation } from "./locations";
-import { countPunchesToReview, getCheckInState, getWhoIsIn, listFlaggedPunches, listPunches, recordAppPunch, reviewPunch } from "./punches";
+import { countPunchesToReview, getCheckInState, getWhoIsIn, listFlaggedPunches, listPunches, recordAppPunch, remindPunchReviews, reviewPunch } from "./punches";
 import { saveSchedule } from "./schedules";
 
 const OFFICE = { latitude: 10.771595, longitude: 106.704758 };
@@ -32,7 +33,7 @@ const WEEK: SchedulePattern = { days: { 1: { type: "working", segments: [{ start
 
 // Wednesday 2026-09-16, Vietnam time.
 const at = (time: string, date = "2026-09-16") => new Date(`${date}T${time}:00+07:00`);
-const ids = {} as Record<"media" | "creative" | "video" | "lead" | "huy" | "nhu" | "lan" | "hr" | "office", string>;
+const ids = {} as Record<"media" | "creative" | "video" | "lead" | "huy" | "nhu" | "lan" | "hr" | "hoa" | "office", string>;
 const principal = (personId: string, grants: Grant[] = []): Principal => ({ personId, workforceType: "employee", grants });
 const me = (key: keyof typeof ids) => ({ id: ids[key], primaryEntityId: key === "lan" ? ids.creative : ids.media, status: "active" });
 const punchInput = (key: keyof typeof ids, direction: "in" | "out", position: ReturnType<typeof north> | null, ipAddress: string | null = "198.51.100.7") => ({ person: me(key), direction, position, ipAddress, userAgent: "vitest", deviceInfo: { standalone: true }, note: null });
@@ -131,6 +132,20 @@ describe("review of flagged punches", () => {
     await reviewPunch(noPosition.id, ids.lead, { decision: "reject", note: "Was not at the office" });
     expect((await listPunches([ids.nhu], "2026-09-16", "2026-09-16")).map((row) => row.direction)).toEqual(["in", "in"]);
     expect(await countPunchesToReview(hrBao(), now)).toBe(0);
+    // Nhu hears why, once: the accepted one says nothing (ATT-01).
+    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.nhu), eq(schema.notification.kind, "attendance.punch_rejected")));
+    expect(notices.map((row) => row.params)).toEqual([{ time: "12:00 16/09/2026", reason: "Was not at the office" }]);
+    expect(notices[0].link).toBe("/attendance?month=2026-09");
+  });
+
+  it("keeps a check-in that still waits in front of its reviewer until last month's lock", async () => {
+    // Waiting since the 1st of September; on 5 October that is more than 31 days, but September is not locked yet.
+    const [early] = await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: at("09:00", "2026-09-01"), direction: "in", source: "app", flags: ["no_position"], reviewStatus: "pending" }).returning();
+    expect((await listFlaggedPunches({ personId: ids.lead, principal: principal(ids.lead) }, { now: at("09:00", "2026-10-05") })).map((row) => row.id)).toContain(early.id);
+    expect(await countPunchesToReview({ personId: ids.lead, principal: principal(ids.lead) }, { now: at("09:00", "2026-10-05") })).toBe(1);
+    // In November it belongs to a month whose lock has come: no longer anybody's to-do.
+    expect(await countPunchesToReview({ personId: ids.lead, principal: principal(ids.lead) }, { now: at("09:00", "2026-11-05") })).toBe(0);
+    await reviewPunch(early.id, ids.lead, { decision: "accept", note: null });
   });
 });
 
@@ -174,5 +189,31 @@ describe("an office on a dynamic address", () => {
     await expect(recordAppPunch(input("in", "198.51.100.7"), at("08:00"))).rejects.toThrow("punch_blocked");
     expect(await recordAppPunch(input("in", "192.0.2.44"), at("08:05"))).toMatchObject({ outcome: "accepted", flags: [], locationName: "Dynamic HQ" });
     expect(resolveNetworkNames).toHaveBeenLastCalledWith(["wan1.office.example.com", "wan2.office.example.com"]);
+  });
+});
+
+describe("telling the reviewers (ATT-01)", () => {
+  const noticesOf = async (personId: string, kind: string) => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)))).map((row) => row.params);
+
+  it("tells each reviewer once a morning how many of yesterday's check-ins wait: the line manager, or HR without one", async () => {
+    const [hoa] = await db().insert(schema.person).values({ fullName: "Hoa", searchName: "hoa", primaryEntityId: ids.media, orgUnitId: ids.video, status: "active" }).returning();
+    ids.hoa = hoa.id;
+    await db().insert(schema.roleAssignment).values({ personId: hoa.id, role: "hr_staff", scopeType: "entity", scopeId: ids.media });
+    const flagged = (personId: string, time: string, date: string) => ({ personId, entityId: ids.media, at: at(time, date), direction: "in" as const, source: "app" as const, flags: ["outside_geofence" as const], reviewStatus: "pending" as const });
+    // Two of Huy's (his manager is Long), one of Bao's (no manager: HR), one of Huy's from the day before.
+    await db().insert(schema.punch).values([flagged(ids.huy, "08:10", "2026-09-22"), flagged(ids.huy, "17:40", "2026-09-22"), flagged(ids.hr, "08:20", "2026-09-22"), flagged(ids.huy, "08:00", "2026-09-21")]);
+
+    expect(await remindPunchReviews("2026-09-23")).toEqual({ reviewers: 2 });
+    expect(await noticesOf(ids.lead, "attendance.punches_to_review")).toEqual([{ count: 2 }]);
+    expect(await noticesOf(hoa.id, "attendance.punches_to_review")).toEqual([{ count: 1 }]);
+    // Nobody is told about their own flags, and a second trigger the same morning says nothing more.
+    expect(await noticesOf(ids.huy, "attendance.punches_to_review")).toEqual([]);
+    expect(await remindPunchReviews("2026-09-23")).toEqual({ reviewers: 0 });
+  });
+
+  it("on the 1st tells them about the whole month, whose lock the flags block", async () => {
+    expect(await remindPunchReviews("2026-10-01")).toEqual({ reviewers: 2 });
+    expect(await noticesOf(ids.lead, "attendance.punches_block_lock")).toEqual([{ count: 3, month: "2026-09" }]);
+    expect(await noticesOf(ids.hoa, "attendance.punches_block_lock")).toEqual([{ count: 1, month: "2026-09" }]);
   });
 });

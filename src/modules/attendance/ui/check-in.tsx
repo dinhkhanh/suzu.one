@@ -15,23 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { punchAction, reviewPunchAction } from "../checkin-actions";
 import { hoursText } from "./day-plan";
+import { readPosition } from "./geolocation";
 
 type PunchOutcome = { at: string; direction: "in" | "out"; outcome: "accepted" | "flagged"; flags: string[]; locationName: string | null; distanceM: number | null; duplicate: boolean };
-type PositionReading = { latitude: number; longitude: number; accuracyM: number };
 
 const ZONE = "Asia/Ho_Chi_Minh";
-
-// Ten seconds is as long as anyone waits at the door; without a fix the punch still goes through, flagged.
-function readPosition(): Promise<{ position: PositionReading | null; problem: string | null }> {
-  return new Promise((resolve) => {
-    if (!("geolocation" in navigator)) return resolve({ position: null, problem: "unsupported" });
-    navigator.geolocation.getCurrentPosition(
-      (reading) => resolve({ position: { latitude: reading.coords.latitude, longitude: reading.coords.longitude, accuracyM: reading.coords.accuracy }, problem: null }),
-      (error) => resolve({ position: null, problem: error.code === error.PERMISSION_DENIED ? "denied" : error.code === error.TIMEOUT ? "timeout" : "unavailable" }),
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 },
-    );
-  });
-}
 
 const deviceInfo = (positionProblem: string | null) => ({
   platform: navigator.platform ?? "",

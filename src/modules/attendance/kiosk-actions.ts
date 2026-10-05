@@ -114,6 +114,26 @@ export async function deleteFacesAction(input: unknown) {
   return deletePipeline(input);
 }
 
+/**
+ * The person withdraws their own consent (Law 91/2025, NFR-PRV-01): as easy as giving it, and the
+ * face data goes at once with the consent record — nothing is kept "disabled". Theirs alone: not
+ * while seeing the app as somebody else. HR may enrol them again only with a newly signed form.
+ */
+const withdrawPipeline = createAction({
+  name: "attendance.face.consent_withdrawn",
+  input: z.object({}),
+  authorize: (user) => !user.impersonator,
+  run: async ({ user }) => {
+    const deleted = await deleteFaces(user.person.id);
+    refresh();
+    revalidatePath("/me");
+    return { data: { deleted }, audit: { resource: { type: "face_enrolment", id: user.person.id, entityId: user.person.primaryEntityId }, summary: `consent withdrawn by the person; face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } } };
+  },
+});
+export async function withdrawFaceConsentAction(input: unknown) {
+  return withdrawPipeline(input);
+}
+
 // ── Checking in with the kiosk's QR code ────────────────────────────────────────────────────
 
 /**

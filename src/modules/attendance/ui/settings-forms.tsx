@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import type { DayRule, SchedulePattern, Weekday } from "../engine/calendar";
+import { useConfirmedSubmit } from "./confirm";
 import { assignScheduleAction, confirmCalendarDayAction, deleteCalendarDayAction, removeAssignmentAction, saveCalendarDayAction, saveScheduleAction, saveShiftAction, setRosterAction } from "../settings-actions";
 
 type Option = { id: string; name: string };
@@ -69,19 +70,15 @@ const ROW_ACTIONS = { confirmDay: confirmCalendarDayAction, deleteDay: deleteCal
 
 /** A one-click row action (confirm a seeded holiday, remove a row). */
 export function RowAction({ action, id, label, confirm }: { action: keyof typeof ROW_ACTIONS; id: string; label: string; confirm?: string }) {
-  const { onSubmit, pending, errorKey } = useActionForm(ROW_ACTIONS[action] as (input: unknown) => Promise<ActionResult<unknown>>, { extra: { id } });
+  const form = useActionForm(ROW_ACTIONS[action] as (input: unknown) => Promise<ActionResult<unknown>>, { extra: { id } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: action !== "confirmDay" });
   return (
-    <form
-      onSubmit={(event) => {
-        if (!confirm || window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex items-center gap-2"
-    >
-      <Button type="submit" variant="outline" size="sm" disabled={pending}>
+    <form onSubmit={onSubmit} className="flex items-center gap-2">
+      <Button type="submit" variant="outline" size="sm" disabled={form.pending}>
         {label}
       </Button>
-      <FormError namespace={ERRORS} errorKey={errorKey} />
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
+      {dialog}
     </form>
   );
 }
