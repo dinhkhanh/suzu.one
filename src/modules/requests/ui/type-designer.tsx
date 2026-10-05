@@ -18,7 +18,7 @@ import { Select } from "@/components/ui/select";
 import type { Condition } from "@/modules/platform/approvals/engine/flow";
 import { FOLLOW_UP_OPENS, type FollowUpOpens, type FollowUpRule, followUpProblems, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "../engine/follow-ups";
 import { allowsMultiple, FIELD_TYPES, type FieldType, type FormDefinition, type FormField, formProblems } from "../engine/form";
-import { REQUEST_CATEGORIES } from "../enums";
+import { REQUEST_CATEGORIES, REQUEST_PAYOUTS, type RequestPayout } from "../enums";
 import { saveRequestTypeAction, setRequestTypeActiveAction } from "../actions";
 
 type Editable = FormField & { options: NonNullable<FormField["options"]> };
@@ -45,6 +45,7 @@ export type TypeDraft = {
   form: FormDefinition;
   followUps: FollowUpRule[];
   standalone: boolean;
+  payout: RequestPayout;
 };
 
 /** Every other type, for the follow-up picker and for the check that no type ends up under itself. */
@@ -155,6 +156,17 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
           <label className="flex flex-col gap-1.5">
             <Label htmlFor="sortOrder">{t("sortOrder")}</Label>
             <Input id="sortOrder" type="number" min={0} max={999} value={type.sortOrder} onChange={(event) => set("sortOrder", Number(event.target.value))} />
+          </label>
+          <label className="flex flex-col gap-1.5 sm:col-span-2">
+            <Label htmlFor="payout">{t("payout")}</Label>
+            <Select id="payout" value={type.payout} onChange={(event) => set("payout", event.target.value as RequestPayout)}>
+              {REQUEST_PAYOUTS.map((payout) => (
+                <option key={payout} value={payout}>
+                  {t(`payouts.${payout}`)}
+                </option>
+              ))}
+            </Select>
+            <span className="text-xs text-muted-foreground">{t("payoutHint")}</span>
           </label>
         </div>
       </section>

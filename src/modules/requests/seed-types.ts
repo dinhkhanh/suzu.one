@@ -9,6 +9,7 @@
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import type { FollowUpRule } from "./engine/follow-ups";
 import type { FormDefinition } from "./engine/form";
+import type { RequestPayout } from "./enums";
 
 export type RequestTypeSeed = {
   code: string;
@@ -27,11 +28,14 @@ export type RequestTypeSeed = {
   slaEscalateTo: { rule: string; [key: string]: unknown } | null;
   /** FR-REQ-05: the types filed under one of this type's requests. */
   followUps?: FollowUpRule[];
+  /** REQ-01: what finance does once one is approved; "none" when left out. */
+  payout?: RequestPayout;
 };
 
 const finance = { rule: "permission", permission: "payroll:pay" } as const;
 const ceo = { rule: "role", role: "c_level" } as const;
 const hr = { rule: "permission", permission: "person:manage" } as const;
+const assets = { rule: "permission", permission: "asset:manage" } as const;
 
 // Above this, the CEO signs as well. Twenty million đồng — the owner moves it on the flow screen.
 const CEO_THRESHOLD = 20_000_000;
@@ -39,6 +43,7 @@ const CEO_THRESHOLD = 20_000_000;
 export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
   {
     code: "purchase",
+    payout: "payment",
     nameVi: "Đề nghị mua sắm",
     nameEn: "Purchase request",
     descriptionVi: "Đề nghị mua thiết bị, phần mềm, vật tư hoặc dịch vụ cho công việc.",
@@ -84,6 +89,7 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
   },
   {
     code: "payment",
+    payout: "payment",
     nameVi: "Đề nghị thanh toán",
     nameEn: "Payment request",
     descriptionVi: "Đề nghị chi tiền cho một khoản đã phát sinh: hóa đơn nhà cung cấp, chi phí dự án, tạm ứng đã quyết toán.",
@@ -140,8 +146,8 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
           labelVi: "Loại giấy cần cấp",
           labelEn: "Kind of letter",
           required: true,
-          // Week 3 generates the document itself; the salary letter is compensation tier and only
-          // a reader who holds that tier may ever see the figure.
+          // Approved, the letter is made from the documents module's template (letters.ts); the
+          // salary letter is compensation tier and only a reader who holds that tier may see it.
           options: [
             { value: "employment", labelVi: "Xác nhận đang công tác", labelEn: "Confirmation of employment" },
             { value: "salary", labelVi: "Xác nhận thu nhập (có số lương)", labelEn: "Confirmation of income (states the salary)" },
@@ -180,6 +186,7 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
   },
   {
     code: "advance",
+    payout: "advance",
     nameVi: "Đề nghị tạm ứng",
     nameEn: "Advance request",
     descriptionVi: "Tạm ứng tiền cho công tác, mua hàng hoặc chi phí sản xuất; quyết toán sau khi hoàn thành.",
@@ -299,5 +306,159 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
     slaRemindAfterDays: 2,
     slaEscalateAfterDays: 5,
     slaEscalateTo: { rule: "manager_level", level: 2 },
+  },
+  {
+    // REQ-02. A laptop, a screen, a phone or production gear to work with — issued from what the
+    // company has, which is why it goes to whoever keeps the asset register and not to finance (a
+    // purchase request is the path when something must be bought).
+    code: "equipment",
+    nameVi: "Đề nghị cấp thiết bị",
+    nameEn: "Equipment request",
+    descriptionVi: "Xin cấp, đổi hoặc sửa thiết bị làm việc: máy tính, màn hình, điện thoại, thiết bị quay dựng.",
+    descriptionEn: "Ask to be issued, swap or have repaired a piece of work equipment: a computer, a screen, a phone, production gear.",
+    category: "admin",
+    icon: "laptop",
+    sortOrder: 60,
+    form: {
+      fields: [
+        {
+          key: "equipment_kind",
+          type: "select",
+          labelVi: "Loại thiết bị",
+          labelEn: "Kind of equipment",
+          required: true,
+          options: [
+            { value: "computer", labelVi: "Máy tính", labelEn: "Computer" },
+            { value: "screen", labelVi: "Màn hình", labelEn: "Screen" },
+            { value: "phone", labelVi: "Điện thoại", labelEn: "Phone" },
+            { value: "production", labelVi: "Thiết bị quay, dựng", labelEn: "Production gear" },
+            { value: "accessory", labelVi: "Phụ kiện", labelEn: "Accessory" },
+            { value: "other", labelVi: "Khác", labelEn: "Other" },
+          ],
+        },
+        {
+          key: "need",
+          type: "select",
+          labelVi: "Nhu cầu",
+          labelEn: "What is needed",
+          required: true,
+          options: [
+            { value: "new", labelVi: "Cấp mới", labelEn: "A new one" },
+            { value: "replace", labelVi: "Đổi thiết bị đang dùng", labelEn: "A replacement" },
+            { value: "repair", labelVi: "Sửa chữa", labelEn: "A repair" },
+          ],
+        },
+        { key: "item", type: "text", labelVi: "Mô tả thiết bị", labelEn: "Which item", required: true, maxLength: 160, hintVi: "Ví dụ: Laptop cấu hình dựng phim, màn hình 27 inch", hintEn: "For example: an editing laptop, a 27-inch screen" },
+        { key: "asset_tag", type: "text", labelVi: "Mã tài sản đang dùng (nếu đổi hoặc sửa)", labelEn: "Asset tag of the current item (to replace or repair)", maxLength: 40 },
+        { key: "quantity", type: "number", labelVi: "Số lượng", labelEn: "Quantity", required: true, min: 1, max: 50 },
+        { key: "needed_by", type: "date", labelVi: "Cần có trước ngày", labelEn: "Needed by", required: true },
+        { key: "reason", type: "textarea", labelVi: "Lý do", labelEn: "Why it is needed", required: true, minLength: 10, maxLength: 2000 },
+      ],
+    },
+    flow: {
+      steps: [
+        { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+        { key: "assets", mode: "any", approvers: [assets] },
+      ],
+    },
+    slaRemindAfterDays: 2,
+    slaEscalateAfterDays: 5,
+    slaEscalateTo: { rule: "manager_level", level: 2 },
+  },
+  {
+    // REQ-02. The company seal goes on a document only with a director's yes: the request names the
+    // document, the entity whose seal it is, and carries the document itself.
+    code: "stamp",
+    nameVi: "Đề nghị đóng dấu",
+    nameEn: "Stamp / seal request",
+    descriptionVi: "Xin đóng dấu công ty lên hợp đồng, công văn, hồ sơ hoặc chứng từ.",
+    descriptionEn: "Ask for the company seal on a contract, an official letter, a file or a voucher.",
+    category: "admin",
+    icon: "stamp",
+    sortOrder: 70,
+    form: {
+      fields: [
+        { key: "seal_entity", type: "entity", labelVi: "Con dấu của pháp nhân", labelEn: "Whose seal", required: true },
+        {
+          key: "document_kind",
+          type: "select",
+          labelVi: "Loại tài liệu",
+          labelEn: "Kind of document",
+          required: true,
+          options: [
+            { value: "contract", labelVi: "Hợp đồng, phụ lục", labelEn: "Contract or annex" },
+            { value: "letter", labelVi: "Công văn, giấy giới thiệu", labelEn: "Official or introduction letter" },
+            { value: "acceptance", labelVi: "Biên bản nghiệm thu, thanh lý", labelEn: "Acceptance or liquidation record" },
+            { value: "finance", labelVi: "Hóa đơn, chứng từ", labelEn: "Invoice or voucher" },
+            { value: "other", labelVi: "Khác", labelEn: "Other" },
+          ],
+        },
+        { key: "document_title", type: "text", labelVi: "Tên tài liệu", labelEn: "Document title", required: true, maxLength: 200 },
+        { key: "counterparty", type: "text", labelVi: "Gửi cho / ký với", labelEn: "Counterparty", maxLength: 200 },
+        { key: "copies", type: "number", labelVi: "Số bản cần đóng dấu", labelEn: "Copies to stamp", required: true, min: 1, max: 50 },
+        { key: "needed_by", type: "date", labelVi: "Cần có trước ngày", labelEn: "Needed by", required: true },
+        { key: "document", type: "file", labelVi: "Tài liệu cần đóng dấu", labelEn: "The document", required: true },
+        { key: "purpose", type: "textarea", labelVi: "Mục đích", labelEn: "What it is for", maxLength: 1000 },
+      ],
+    },
+    flow: {
+      steps: [
+        { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+        { key: "ceo", mode: "any", approvers: [ceo] },
+      ],
+    },
+    slaRemindAfterDays: 1,
+    slaEscalateAfterDays: 3,
+    slaEscalateTo: { rule: "role", role: "c_level" },
+  },
+  {
+    // REQ-02. Something does not work. Not a permission anybody needs — the "approval" is whoever
+    // keeps the company's equipment and accounts taking it on, and "approved" means it was handled.
+    code: "it_support",
+    nameVi: "Yêu cầu hỗ trợ IT",
+    nameEn: "IT support request",
+    descriptionVi: "Báo sự cố máy tính, tài khoản, phần mềm, mạng hoặc email để được hỗ trợ.",
+    descriptionEn: "Report a problem with a computer, an account, software, the network or email.",
+    category: "it",
+    icon: "life-buoy",
+    sortOrder: 80,
+    form: {
+      fields: [
+        {
+          key: "issue",
+          type: "select",
+          labelVi: "Vấn đề",
+          labelEn: "What is wrong",
+          required: true,
+          options: [
+            { value: "account", labelVi: "Tài khoản, mật khẩu", labelEn: "Account or password" },
+            { value: "hardware", labelVi: "Máy tính, thiết bị", labelEn: "Computer or device" },
+            { value: "software", labelVi: "Phần mềm, bản quyền", labelEn: "Software or licence" },
+            { value: "network", labelVi: "Mạng, wifi", labelEn: "Network or wi-fi" },
+            { value: "email", labelVi: "Email, lịch", labelEn: "Email or calendar" },
+            { value: "other", labelVi: "Khác", labelEn: "Other" },
+          ],
+        },
+        {
+          key: "urgency",
+          type: "select",
+          labelVi: "Mức độ",
+          labelEn: "Urgency",
+          required: true,
+          options: [
+            { value: "low", labelVi: "Không gấp", labelEn: "Not urgent" },
+            { value: "normal", labelVi: "Bình thường", labelEn: "Normal" },
+            { value: "blocking", labelVi: "Không làm việc được", labelEn: "I cannot work" },
+          ],
+        },
+        { key: "asset_tag", type: "text", labelVi: "Mã tài sản / tên máy", labelEn: "Asset tag or device name", maxLength: 60 },
+        { key: "description", type: "textarea", labelVi: "Mô tả sự cố", labelEn: "What happens", required: true, minLength: 10, maxLength: 3000 },
+        { key: "screenshot", type: "file", labelVi: "Ảnh chụp màn hình", labelEn: "Screenshot", hintVi: "Nếu có thông báo lỗi.", hintEn: "If there is an error message." },
+      ],
+    },
+    flow: { steps: [{ key: "assets", mode: "any", approvers: [assets] }] },
+    slaRemindAfterDays: 1,
+    slaEscalateAfterDays: 2,
+    slaEscalateTo: { rule: "role", role: "c_level" },
   },
 ];

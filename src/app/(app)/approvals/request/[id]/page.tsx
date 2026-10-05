@@ -1,6 +1,7 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Page, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { getPersonTarget } from "@/modules/core-hr/service";
@@ -14,6 +15,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { decideRequestAction, refileRequestAction } from "@/modules/requests/actions";
 import { EXPENSE_CLAIM_CODE, getExpenseClaim } from "@/modules/requests/expense";
 import { refileExpenseClaimAction } from "@/modules/requests/expense-actions";
+import { payoutOf } from "@/modules/requests/payments";
 import { getGenericRequest, getRequestFamily } from "@/modules/requests/service";
 import { Answers } from "@/modules/requests/ui/answers";
 import { FollowUps, ParentRequest } from "@/modules/requests/ui/follow-ups";
@@ -42,14 +44,19 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
   const { request, type, submission } = view;
   const returned = view.isRequester && request.status === "returned";
   const fileIds = submission.attachmentFileIds ?? [];
-  const [family, fileNames, people, entities] = await Promise.all([
+  const [family, fileNames, people, entities, payout, format] = await Promise.all([
     // FR-REQ-05: what it was filed under and what was filed under it. The requester's entity only
     // decides which follow-up types they may file themselves.
     (view.isRequester && view.type.followUps.length > 0 ? getPersonTarget(user.person.id) : Promise.resolve(null)).then((target) => getRequestFamily(view, { entityId: target?.entityId ?? null })),
     fileIds.length ? listFileNames(fileIds) : Promise.resolve(new Map<string, string>()),
     type.form.fields.some((field) => field.type === "person") ? listPersonNames() : Promise.resolve([]),
     type.form.fields.some((field) => field.type === "entity") ? listEntities() : Promise.resolve([]),
+    // REQ-01: where an approved payment, purchase or advance stands with finance.
+    type.payout !== "none" && request.status === "approved" ? payoutOf(request.id) : Promise.resolve(null),
+    getFormatter(),
   ]);
+  const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+  const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
   const recordNames = new Map<string, string>([...people.map((person) => [person.id, person.fullName] as const), ...entities.map((entity) => [entity.id, entity.shortName] as const)]);
   const typeName = locale === "en" ? type.nameEn : type.nameVi;
 
@@ -74,6 +81,33 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
       <Section title={t("view.details")}>
         <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} recordNames={recordNames} />
       </Section>
+      {payout ? (
+        <Alert variant={payout.paidOn ? "success" : "info"}>
+          {payout.paidOn
+            ? payout.settlement.toPay < 0
+              ? t("view.payoutCollected", { amount: money(-payout.settlement.toPay), date: day(payout.paidOn), reference: payout.paidReference ?? "" })
+              : t("view.payoutPaid", { amount: money(payout.settlement.toPay), date: day(payout.paidOn), reference: payout.paidReference ?? "" })
+            : payout.blocked
+              ? t("view.payoutWaitingAdvance")
+              : t("view.payoutWaiting", { amount: money(payout.settlement.toPay) })}
+          {payout.settlement.nettedAdvance ? ` ${t("view.payoutNetted", { advance: money(payout.settlement.nettedAdvance) })}` : null}
+        </Alert>
+      ) : null}
+      {submission.documentId ? (
+        // REQ-02: the letter an approved confirmation-letter request made. The PDF route decides who may open it.
+        <Alert variant="success">
+          {view.isRequester ? (
+            t("view.letterCollect")
+          ) : (
+            <>
+              {t("view.letter")}{" "}
+              <a href={`/documents/${submission.documentId}/pdf`} className="text-link hover:underline">
+                {t("view.letterOpen")}
+              </a>
+            </>
+          )}
+        </Alert>
+      ) : null}
       {claim ? <ClaimLines lines={claim.lines} total={claim.total} byCategory={claim.byCategory} payment={claim.payment} requestId={request.id} fileNames={fileNames} /> : null}
 
       <FollowUps family={family} requestId={request.id} />

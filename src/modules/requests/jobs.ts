@@ -12,6 +12,7 @@ import { resolveApprovers } from "@/modules/platform/approvals/service";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { slaActionFor } from "./engine/sla";
+import { sweepApprovedClaims } from "./expense-posting";
 import { approvalTypeOf } from "./service";
 
 export type SlaResult = { checked: number; reminded: number; escalated: number };
@@ -110,4 +111,15 @@ async function personName(personId: string): Promise<string> {
 export const requestSlaJob: JobDefinition = {
   name: "request-sla",
   run: async () => runRequestSla(),
+};
+
+/**
+ * The nightly claim sweep (REQ-01): every approved expense claim not yet in a live payroll run is
+ * offered to the entity's open run — the same idempotent sweep finance can press by hand, so a
+ * claim approved before the month's run existed no longer waits for somebody to remember it.
+ * Run before the payroll calculation of the same night, which then counts it.
+ */
+export const expenseClaimSweepJob: JobDefinition = {
+  name: "expense-claim-sweep",
+  run: async () => sweepApprovedClaims(null),
 };

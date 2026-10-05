@@ -1081,6 +1081,14 @@
         "title": "Confirm you received your pay",
         "body": "Please confirm that you received your {month} pay in cash."
       },
+      "approvals_request_paid": {
+        "title": "Your request was paid",
+        "body": "{summary} — {amount} paid on {date} (reference {reference})."
+      },
+      "approvals_request_repayment_recorded": {
+        "title": "Advance repayment recorded",
+        "body": "{summary} — {amount} of unspent advance received back on {date} (reference {reference})."
+      },
       "approvals_sla_reminder": {
         "title": "A request is waiting for your answer",
         "body": "{requestType} — {summary} — waiting {days} days."
@@ -3506,6 +3514,7 @@
         "off_site": "Off-site (shoot, client, event)",
         "business_trip": "Business trip"
       },
+      "tripHint": "Going on a business trip? File a business trip request under Requests — once it is approved, the days go onto your timesheet by themselves.",
       "portions": {
         "full": "Whole day",
         "am": "Morning",
@@ -9205,6 +9214,7 @@
       "mine": "Mine",
       "inbox": "To approve",
       "claims": "Settlement desk",
+      "pay": "To pay",
       "all": "All"
     },
     "elsewhere": {
@@ -9241,7 +9251,15 @@
       "no": "No",
       "correctAndResend": "Correct it and send it again",
       "details": "Details",
-      "resend": "Send again"
+      "resend": "Send again",
+      "payoutWaiting": "Approved — waiting for finance to pay {amount}.",
+      "payoutWaitingAdvance": "Approved — waits until the advance under the same request has been paid.",
+      "payoutPaid": "{amount} paid on {date} · reference {reference}.",
+      "payoutCollected": "{amount} of unspent advance received back on {date} · reference {reference}.",
+      "payoutNetted": "Less {advance} already advanced for this trip.",
+      "letter": "The confirmation letter has been made.",
+      "letterCollect": "Your confirmation letter has been made — collect the stamped copy from HR.",
+      "letterOpen": "Open the PDF"
     },
     "designer": {
       "on": "On",
@@ -9266,6 +9284,13 @@
       "descriptionEn": "Description (English)",
       "entity": "Applies to",
       "sortOrder": "Order",
+      "payout": "Once approved",
+      "payoutHint": "Approved requests go to finance's \"to pay\" queue. An advance is netted against the payment filed under the same parent request.",
+      "payouts": {
+        "none": "Nothing to pay",
+        "payment": "Finance pays it",
+        "advance": "Finance pays it as an advance"
+      },
       "sla": "Reminders and escalation",
       "slaHint": "Nudge an approver who has left it too long; escalate when still nobody has answered. 0 = off.",
       "remindAfter": "Remind after (days)",
@@ -9440,7 +9465,41 @@
       "follow_up_parent_closed": "That request is closed; nothing more can be filed under it.",
       "follow_up_parent_not_approved": "That request has to be approved first.",
       "follow_up_not_yet": "It is too early to file this under that request.",
-      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request."
+      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request.",
+      "request_not_payable": "This request is not waiting to be paid.",
+      "request_already_paid": "This request has already been recorded as paid.",
+      "request_advance_unpaid": "An approved advance under the same parent request has not been paid yet. Pay the advance first, then the settlement.",
+      "request_already_settled": "The parent request has been settled; no further advance is paid."
+    },
+    "pay": {
+      "title": "To pay",
+      "description": "{count, plural, =0 {Nothing is waiting to be paid.} one {One approved request waits to be paid, {amount} in all.} other {# approved requests wait to be paid, {amount} in all.}}",
+      "waiting": "Waiting",
+      "total": "To pay in all",
+      "none": "Nothing is waiting to be paid.",
+      "paidRecently": "Paid in the last 60 days ({count})",
+      "advanceUnpaid": "Advance not paid yet",
+      "toCollect": "Collect {amount}",
+      "columns": {
+        "requester": "Requester",
+        "request": "Request",
+        "amount": "Amount",
+        "advance": "Advanced",
+        "toPay": "To pay",
+        "approved": "Approved",
+        "paid": "Paid"
+      },
+      "kinds": {
+        "payment": "Payment",
+        "advance": "Advance"
+      },
+      "mark": "Record as paid",
+      "markTitle": "Record as paid: {summary}",
+      "markHint": "The figure is worked out for you: the amount less whatever was advanced under the same parent request. A negative figure means the requester returns unspent advance.",
+      "paidOn": "Paid on",
+      "reference": "Transfer or voucher reference",
+      "figure": "Figure recorded",
+      "save": "Save"
     },
     "expense": {
       "linesTitle": "Expense lines",
@@ -13067,6 +13126,7 @@
     "equipmentBooking": "Equipment booking",
     "equipmentBookings": "Equipment bookings",
     "expenseClaims": "Expense claims",
+    "requestsToPay": "Requests to pay",
     "flaggedCheckIns": "Flagged check-ins",
     "goal": "Goal",
     "goals": "Goals",

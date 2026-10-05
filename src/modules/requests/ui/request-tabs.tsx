@@ -1,23 +1,25 @@
-// The row of tabs every request screen shares: mine, waiting for me, the settlement desk, and —
-// for whoever oversees — everything. Each tab is one of the existing pages; the counts come from
-// the same per-person live cache the inbox reads, so the row costs the page nothing extra.
+// The row of tabs every request screen shares: mine, waiting for me, the settlement desk, finance's
+// "to pay" queue, and — for whoever oversees — everything. Each tab is one of the existing pages;
+// the counts come from the same per-person live cache the inbox reads, so the row costs the page
+// nothing extra.
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { canOverseeRequests } from "@/modules/platform/approvals/policy";
 import { loadApprovalsPage } from "@/modules/platform/approvals/service";
-import { canSettleExpenseClaims } from "../policy";
+import { canPayRequests, canSettleExpenseClaims } from "../policy";
 
-export type RequestTab = "mine" | "inbox" | "claims" | "all";
+export type RequestTab = "mine" | "inbox" | "claims" | "pay" | "all";
 
 const OPEN = new Set(["pending", "returned"]);
 
-export async function RequestTabs({ active, personId, principal, claimsWaiting }: { active: RequestTab; personId: string; principal: Principal; /** Claims approved and not yet paid — known only to the desk that pays them. */ claimsWaiting?: number }) {
+export async function RequestTabs({ active, personId, principal, claimsWaiting, payWaiting }: { active: RequestTab; personId: string; principal: Principal; /** Claims approved and not yet paid — known only to the desk that pays them. */ claimsWaiting?: number; /** Approved requests finance has still to pay (REQ-01), the same. */ payWaiting?: number }) {
   const [t, { inbox, mine }] = await Promise.all([getTranslations("requests.tabs"), loadApprovalsPage(personId)]);
   const tabs: { key: RequestTab; href: string; label: string; count: number | null }[] = [
     { key: "mine", href: "/requests", label: t("mine"), count: mine.filter((row) => OPEN.has(row.status)).length || null },
     { key: "inbox", href: "/approvals", label: t("inbox"), count: inbox.length || null },
     ...(canSettleExpenseClaims(principal) ? [{ key: "claims" as const, href: "/requests/claims", label: t("claims"), count: claimsWaiting || null }] : []),
+    ...(canPayRequests(principal) ? [{ key: "pay" as const, href: "/requests/pay", label: t("pay"), count: payWaiting || null }] : []),
     ...(canOverseeRequests(principal) ? [{ key: "all" as const, href: "/approvals/all", label: t("all"), count: null }] : []),
   ];
   return (

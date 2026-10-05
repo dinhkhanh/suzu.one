@@ -22,3 +22,10 @@ export const canFileRequests = (principal: Principal) => principal.personId !== 
  * so the same hands do both. With no entity it asks "anywhere at all", for the screen's door.
  */
 export const canSettleExpenseClaims = (principal: Principal, entityId: string | null = null) => can(principal, "payroll:pay", entityId ? { entityId } : {});
+
+/**
+ * Paying approved requests (REQ-01): the "to pay" queue and recording that one was paid. Finance —
+ * whoever pays the company's money (`payroll:pay`) in the request's entity. With no entity it asks
+ * "anywhere at all", for the screen's door; a request of no entity needs a group-wide grant.
+ */
+export const canPayRequests = (principal: Principal, entityId?: string | null): boolean => can(principal, "payroll:pay", entityId === undefined ? undefined : { entityId });

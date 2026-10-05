@@ -1081,6 +1081,14 @@
         "title": "Xác nhận đã nhận lương tiền mặt",
         "body": "Vui lòng xác nhận bạn đã nhận lương tháng {month} bằng tiền mặt."
       },
+      "approvals_request_paid": {
+        "title": "Đề nghị đã được chi",
+        "body": "{summary} — đã chi {amount} ngày {date} (số chứng từ {reference})."
+      },
+      "approvals_request_repayment_recorded": {
+        "title": "Đã ghi nhận hoàn trả tạm ứng",
+        "body": "{summary} — đã nhận lại {amount} tiền tạm ứng chưa dùng ngày {date} (số chứng từ {reference})."
+      },
       "approvals_sla_reminder": {
         "title": "Đề nghị đang chờ bạn duyệt",
         "body": "{requestType} — {summary} — đã chờ {days} ngày."
@@ -3506,6 +3514,7 @@
         "off_site": "Ngoài văn phòng (quay, gặp khách, sự kiện)",
         "business_trip": "Công tác"
       },
+      "tripHint": "Đi công tác? Hãy lập đề nghị đi công tác ở mục Đề nghị — khi được duyệt, ngày công tác được ghi vào bảng công tự động.",
       "portions": {
         "full": "Cả ngày",
         "am": "Buổi sáng",
@@ -9205,6 +9214,7 @@
       "mine": "Của tôi",
       "inbox": "Cần duyệt",
       "claims": "Bàn thanh toán",
+      "pay": "Chi trả",
       "all": "Tất cả"
     },
     "elsewhere": {
@@ -9241,7 +9251,15 @@
       "no": "Không",
       "correctAndResend": "Chỉnh sửa và gửi lại",
       "details": "Nội dung đề nghị",
-      "resend": "Gửi lại"
+      "resend": "Gửi lại",
+      "payoutWaiting": "Đã duyệt — chờ kế toán chi {amount}.",
+      "payoutWaitingAdvance": "Đã duyệt — chờ hoàn tất tạm ứng trước khi quyết toán.",
+      "payoutPaid": "Đã chi {amount} ngày {date} · số chứng từ {reference}.",
+      "payoutCollected": "Đã nhận lại {amount} tạm ứng chưa dùng ngày {date} · số chứng từ {reference}.",
+      "payoutNetted": "Trừ {advance} đã tạm ứng cho chuyến đi này.",
+      "letter": "Giấy xác nhận đã được tạo.",
+      "letterCollect": "Giấy xác nhận đã được tạo — nhận bản có dấu tại phòng Nhân sự.",
+      "letterOpen": "Mở bản PDF"
     },
     "designer": {
       "on": "Đang bật",
@@ -9266,6 +9284,13 @@
       "descriptionEn": "Mô tả (tiếng Anh)",
       "entity": "Áp dụng cho",
       "sortOrder": "Thứ tự hiển thị",
+      "payout": "Sau khi duyệt",
+      "payoutHint": "Đề nghị đã duyệt sẽ vào danh sách chi trả của kế toán. Tạm ứng được trừ vào đề nghị thanh toán lập dưới cùng đề nghị gốc.",
+      "payouts": {
+        "none": "Không cần chi tiền",
+        "payment": "Kế toán chi trả",
+        "advance": "Kế toán chi tạm ứng"
+      },
       "sla": "Nhắc và leo thang",
       "slaHint": "Nhắc người duyệt khi để quá lâu; leo thang khi vẫn chưa ai trả lời. 0 = tắt.",
       "remindAfter": "Nhắc sau (ngày)",
@@ -9440,7 +9465,41 @@
       "follow_up_parent_closed": "Đề nghị gốc đã đóng; không thể lập thêm đề nghị kèm theo.",
       "follow_up_parent_not_approved": "Đề nghị gốc cần được duyệt trước.",
       "follow_up_not_yet": "Chưa đến lúc lập đề nghị này.",
-      "follow_up_limit_reached": "Đã lập đủ số đề nghị loại này cho đề nghị gốc."
+      "follow_up_limit_reached": "Đã lập đủ số đề nghị loại này cho đề nghị gốc.",
+      "request_not_payable": "Đề nghị này không ở trạng thái chờ chi.",
+      "request_already_paid": "Đề nghị này đã được ghi nhận chi rồi.",
+      "request_advance_unpaid": "Còn khoản tạm ứng đã duyệt nhưng chưa chi cho cùng đề nghị gốc. Hãy chi tạm ứng trước, rồi mới quyết toán.",
+      "request_already_settled": "Đề nghị gốc đã được quyết toán; không chi thêm tạm ứng."
+    },
+    "pay": {
+      "title": "Chi trả",
+      "description": "{count, plural, =0 {Không có đề nghị nào chờ chi.} other {# đề nghị đã duyệt chờ chi, tổng {amount}.}}",
+      "waiting": "Chờ chi",
+      "total": "Tổng cần chi",
+      "none": "Không có đề nghị nào chờ chi.",
+      "paidRecently": "Đã chi trong 60 ngày qua ({count})",
+      "advanceUnpaid": "Chờ chi tạm ứng",
+      "toCollect": "Thu lại {amount}",
+      "columns": {
+        "requester": "Người đề nghị",
+        "request": "Đề nghị",
+        "amount": "Số tiền",
+        "advance": "Đã tạm ứng",
+        "toPay": "Cần chi",
+        "approved": "Ngày duyệt",
+        "paid": "Đã chi"
+      },
+      "kinds": {
+        "payment": "Thanh toán",
+        "advance": "Tạm ứng"
+      },
+      "mark": "Ghi nhận đã chi",
+      "markTitle": "Ghi nhận đã chi: {summary}",
+      "markHint": "Số tiền được tính sẵn: số tiền đề nghị trừ phần tạm ứng đã chi cho cùng đề nghị gốc. Số âm là người đề nghị hoàn trả tạm ứng chưa dùng.",
+      "paidOn": "Ngày chi",
+      "reference": "Số chứng từ / mã giao dịch",
+      "figure": "Số tiền ghi nhận",
+      "save": "Lưu"
     },
     "expense": {
       "linesTitle": "Các khoản chi",
@@ -13067,6 +13126,7 @@
     "equipmentBooking": "Đặt thiết bị",
     "equipmentBookings": "Lịch đặt thiết bị",
     "expenseClaims": "Đề nghị thanh toán chi phí",
+    "requestsToPay": "Đề nghị chờ chi",
     "flaggedCheckIns": "Chấm công cần xem xét",
     "goal": "Mục tiêu",
     "goals": "Mục tiêu",
