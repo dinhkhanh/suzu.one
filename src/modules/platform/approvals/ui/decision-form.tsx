@@ -16,7 +16,8 @@ import { withdrawApprovalAction } from "../actions";
  * The note sits over the keys; the keys are the last thing on the page, in reach of a thumb: the
  * ink "Approve" and the outline "Reject" side by side, "Return" the quieter third.
  */
-export function DecisionForm({ requestId, action, children }: { requestId: string; action: (input: unknown) => Promise<ActionResult<unknown>>; children?: ReactNode }) {
+/** `allowReturn`: false for a request nobody can correct and send again (a proposed rule: it is approved or rejected). */
+export function DecisionForm({ requestId, action, children, allowReturn = true }: { requestId: string; action: (input: unknown) => Promise<ActionResult<unknown>>; children?: ReactNode; allowReturn?: boolean }) {
   const t = useTranslations("approvals");
   const { onSubmit, pending, errorKey } = useActionForm(action, { extra: { requestId } });
   return (
@@ -28,9 +29,11 @@ export function DecisionForm({ requestId, action, children }: { requestId: strin
       </Field>
       <FormError namespace="approvals.errors" errorKey={errorKey} />
       <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
-        <Button type="submit" name="decision" value="return" variant="ghost" size="lg" disabled={pending} className="col-span-2 md:order-first">
-          {t("decide.return")}
-        </Button>
+        {allowReturn ? (
+          <Button type="submit" name="decision" value="return" variant="ghost" size="lg" disabled={pending} className="col-span-2 md:order-first">
+            {t("decide.return")}
+          </Button>
+        ) : null}
         <Button type="submit" name="decision" value="reject" variant="outline" size="lg" disabled={pending}>
           {t("decide.reject")}
         </Button>

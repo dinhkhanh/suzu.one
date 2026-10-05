@@ -359,7 +359,9 @@ export type PolicyFormValue = { entityId: string | null; validFrom: string; merg
 
 export function PolicyForm({ policy, entities, canGroup, today }: { policy?: PolicyFormValue; entities: Option[]; canGroup: boolean; today: string }) {
   const t = useTranslations("attendance.policy");
-  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(savePolicyAction, { extra: policy ? { entityId: policy.entityId ?? "" } : {} });
+  // FR-PLT-39: HR's change waits for the owner; the owner's is saved at once.
+  const [proposed, setProposed] = useState(false);
+  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(savePolicyAction, { extra: policy ? { entityId: policy.entityId ?? "" } : {}, onSuccess: (data) => setProposed(!!(data as { proposed?: boolean }).proposed) });
   const number = (name: keyof PolicyFormValue, max: number, fallback: number | "") => (
     <Field name={name} label={t(`fields.${name}`)}>
       <Input id={name} name={name} type="number" min={0} max={max} defaultValue={(policy?.[name] as number | null | undefined) ?? fallback} />
@@ -405,7 +407,7 @@ export function PolicyForm({ policy, entities, canGroup, today }: { policy?: Pol
         <Button type="submit" disabled={pending}>
           {t("save")}
         </Button>
-        <Saved show={saved} label={t("saved")} />
+        <Saved show={saved} label={proposed ? t("proposed") : t("saved")} />
       </div>
     </form>
   );

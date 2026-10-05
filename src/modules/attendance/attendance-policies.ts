@@ -71,10 +71,14 @@ export async function listPolicies(): Promise<(AttendancePolicyRow & { entityNam
 
 export type PolicyInput = Omit<AttendancePolicyRow, "id" | "validTo" | "createdByPersonId" | "createdAt">;
 
-/** A new version from `validFrom`: the open version before it is closed the day before. History is never rewritten. */
-export async function savePolicy(input: PolicyInput, actorPersonId: string): Promise<{ before: AttendancePolicyRow | null; after: AttendancePolicyRow; affectedFrom: IsoDate }> {
+/**
+ * A new version from `validFrom`: the open version before it is closed the day before. History is
+ * never rewritten. `executor`: the owner's approval of a proposed change (FR-PLT-39) writes inside
+ * its own transaction.
+ */
+export async function savePolicy(input: PolicyInput, actorPersonId: string, executor: Executor = db()): Promise<{ before: AttendancePolicyRow | null; after: AttendancePolicyRow; affectedFrom: IsoDate }> {
   if (input.roundingMinutes < 0 || input.roundingMinutes > 60 || input.graceLateMinutes < 0 || input.graceEarlyMinutes < 0 || input.otMinMinutes < 0 || input.duplicateWindowMinutes < 0) throw new ActionError("attendance_policy_invalid");
-  const saved = await db().transaction(async (tx) => {
+  const saved = await executor.transaction(async (tx) => {
     const scope = input.entityId ? eq(schema.attendancePolicy.entityId, input.entityId) : isNull(schema.attendancePolicy.entityId);
     const [open] = await tx.select().from(schema.attendancePolicy).where(and(scope, isNull(schema.attendancePolicy.validTo))).orderBy(desc(schema.attendancePolicy.validFrom)).limit(1).for("update");
     if (open && open.validFrom >= input.validFrom) {

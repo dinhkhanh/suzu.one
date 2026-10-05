@@ -59,20 +59,21 @@ export async function getLeaveType(id: string, executor?: Executor): Promise<Lea
 
 export type LeaveTypeInput = Omit<typeof schema.leaveType.$inferInsert, "id" | "createdAt" | "updatedAt"> & { id: string | null };
 
-export async function saveLeaveType(input: LeaveTypeInput): Promise<{ before: LeaveTypeRow | null; after: LeaveTypeRow }> {
+/** `executor`: the owner's approval of a proposed change (FR-PLT-39) writes inside its own transaction. */
+export async function saveLeaveType(input: LeaveTypeInput, executor: Executor = db()): Promise<{ before: LeaveTypeRow | null; after: LeaveTypeRow }> {
   const { id, ...values } = input;
   // Insurance-paid and unpaid leave is not paid by the company; keep the two fields telling one story.
   if (values.isPaid !== (values.payrollTreatment !== "unpaid")) throw new ActionError("leave_type_paid_mismatch");
   try {
     if (!id) {
-      const [after] = await db().insert(schema.leaveType).values(values).returning();
+      const [after] = await executor.insert(schema.leaveType).values(values).returning();
       await invalidate(LEAVE_CACHE.types);
       return { before: null, after };
     }
-    const [before] = await db().select().from(schema.leaveType).where(eq(schema.leaveType.id, id)).limit(1);
+    const [before] = await executor.select().from(schema.leaveType).where(eq(schema.leaveType.id, id)).limit(1);
     if (!before) throw new ActionError("leave_type_not_found");
     // A type keeps its owner and its code: ledger rows and requests point at it.
-    const [after] = await db().update(schema.leaveType).set({ ...values, entityId: before.entityId, code: before.code, updatedAt: new Date() }).where(eq(schema.leaveType.id, id)).returning();
+    const [after] = await executor.update(schema.leaveType).set({ ...values, entityId: before.entityId, code: before.code, updatedAt: new Date() }).where(eq(schema.leaveType.id, id)).returning();
     await invalidate(LEAVE_CACHE.types);
     return { before, after };
   } catch (error) {
@@ -122,9 +123,10 @@ export type LeavePolicyInput = Omit<typeof schema.leavePolicy.$inferInsert, "id"
  * A new version of a policy from `validFrom` on. The version in force until then ends the day
  * before; history is never rewritten, except that a version can be corrected on its own start date.
  */
-export async function saveLeavePolicy(input: LeavePolicyInput, actorPersonId: string): Promise<{ before: LeavePolicyRow | null; after: LeavePolicyRow }> {
+/** `executor`: the owner's approval of a proposed change (FR-PLT-39) writes inside its own transaction. */
+export async function saveLeavePolicy(input: LeavePolicyInput, actorPersonId: string, executor: Executor = db()): Promise<{ before: LeavePolicyRow | null; after: LeavePolicyRow }> {
   if (input.carryOverExpiry && !/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(input.carryOverExpiry)) throw new ActionError("leave_policy_expiry_invalid");
-  const saved = await db().transaction(async (tx) => {
+  const saved = await executor.transaction(async (tx) => {
     const table = schema.leavePolicy;
     const sameScope = and(eq(table.leaveTypeId, input.leaveTypeId), input.entityId ? eq(table.entityId, input.entityId) : isNull(table.entityId));
     const [later] = await tx.select({ id: table.id }).from(table).where(and(sameScope, gt(table.validFrom, input.validFrom))).limit(1);

@@ -42,6 +42,12 @@ export type RequestTypeDefinition = {
    * the request builder's types are named in the database (FR-REQ-01).
    */
   name?: string;
+  /**
+   * The flow in code is the only flow: a configured `approval_flow` row for the type is ignored.
+   * For decisions whose approver is the point of the request — the owner deciding a rule
+   * (FR-PLT-39) — which an administrator of flows must not be able to route to somebody else.
+   */
+  fixedFlow?: boolean;
 };
 
 export const defineRequestType = (definition: RequestTypeDefinition): RequestTypeDefinition => definition;
@@ -112,7 +118,7 @@ export type ApproverStep = { /** The step's key in the flow, e.g. "manager" — 
 export async function previewApprovers(definition: RequestTypeDefinition, subjectPersonId: string, data: Record<string, unknown> = {}): Promise<ApproverStep[]> {
   const executor = db();
   const subject = await subjectTarget(executor, subjectPersonId);
-  const { flow } = await effectiveFlow(executor, definition.type, subject?.entityId ?? null, definition.flow);
+  const { flow } = definition.fixedFlow ? { flow: definition.flow } : await effectiveFlow(executor, definition.type, subject?.entityId ?? null, definition.flow);
   const steps: ApproverStep[] = [];
   for (const step of flow.steps) {
     if (!conditionHolds(step.condition, data)) continue;
@@ -293,7 +299,7 @@ export type SubmitInput = {
 export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, input: SubmitInput): Promise<{ request: ApprovalRequestRow; outcome: RequestStatus; approverIds: string[] }> {
   const id = input.id ?? randomUUID();
   const subject = await subjectTarget(tx, input.subjectPersonId);
-  const { flow, source } = await effectiveFlow(tx, definition.type, input.entityId, definition.flow);
+  const { flow, source } = definition.fixedFlow ? { flow: definition.flow, source: "default" as const } : await effectiveFlow(tx, definition.type, input.entityId, definition.flow);
   const resolved = await resolveFlow(tx, flow, { requestType: definition.type, requesterId: input.requesterPersonId, subject, target: input.target, data: input.conditionData ?? input.payload ?? {} });
   const state = startFlow(input.requesterPersonId, resolved, input.subjectPersonId);
 

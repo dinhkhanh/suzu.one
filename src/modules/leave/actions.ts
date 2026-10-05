@@ -14,6 +14,7 @@ import { openingBalanceImport } from "./import";
 import { adjustBalance, runLeaveAccruals } from "./ledger";
 import { canFileLeaveFor, canManageLeaveConfig, canManageLeaveOf } from "./policy";
 import { amendLeave, cancelLeave, decideLeave, findLeaveRequest, getLeaveRequestView, isPendingLeaveAttachment, submitLeave } from "./requests";
+import { decideLeaveRuleChange, decidesLeaveRules, getLeaveRuleChange, proposeLeaveRuleChange } from "./rule-changes";
 import { deleteStaffingRule, getLeaveType, getStaffingRule, saveLeavePolicy, saveLeaveType, saveStaffingRule } from "./types";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -267,11 +268,18 @@ const typePipeline = createAction({
     if (input.id && !existing) return false;
     return canManageLeaveConfig(user.principal, existing ? existing.entityId : input.entityId);
   },
-  run: async ({ input }) => {
+  run: async ({ user, input }) => {
     const { maxDays, eligibleWorkforceTypes, ...rest } = input;
-    const { before, after } = await saveLeaveType({ ...rest, isPaid: input.payrollTreatment !== "unpaid", maxDaysPerRequestCenti: maxDays, eligibleWorkforceTypes: eligibleWorkforceTypes.length ? eligibleWorkforceTypes : null });
+    const values = { ...rest, isPaid: input.payrollTreatment !== "unpaid", maxDaysPerRequestCenti: maxDays, eligibleWorkforceTypes: eligibleWorkforceTypes.length ? eligibleWorkforceTypes : null };
+    // FR-PLT-39: HR proposes, the owner decides. Nothing changes until the owner approves.
+    if (!decidesLeaveRules(user.principal)) {
+      const { requestId } = await proposeLeaveRuleChange({ kind: "leave_type", input: values }, user.person.id);
+      refresh();
+      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave type ${values.code}: ${values.name}`, after: values } };
+    }
+    const { before, after } = await saveLeaveType(values);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after } };
+    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after } };
   },
 });
 export async function saveLeaveTypeAction(input: unknown) {
@@ -302,13 +310,37 @@ const policyPipeline = createAction({
   authorize: async (user, input) => !!(await getLeaveType(input.leaveTypeId)) && canManageLeaveConfig(user.principal, input.entityId),
   run: async ({ user, input }) => {
     const { fixedDays, extraDays, carryOverCap, allowNegative, ...rest } = input;
-    const { before, after } = await saveLeavePolicy({ ...rest, fixedDaysCenti: fixedDays, extraDaysCenti: extraDays, carryOverCapCenti: carryOverCap, allowNegativeCenti: allowNegative }, user.person.id);
+    const values = { ...rest, fixedDaysCenti: fixedDays, extraDaysCenti: extraDays, carryOverCapCenti: carryOverCap, allowNegativeCenti: allowNegative };
+    // FR-PLT-39: HR proposes, the owner decides. Nothing changes until the owner approves.
+    if (!decidesLeaveRules(user.principal)) {
+      const { requestId } = await proposeLeaveRuleChange({ kind: "leave_policy", input: values }, user.person.id);
+      refresh();
+      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave policy from ${values.validFrom}`, after: values } };
+    }
+    const { before, after } = await saveLeavePolicy(values, user.person.id);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after } };
+    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after } };
   },
 });
 export async function saveLeavePolicyAction(input: unknown) {
   return policyPipeline(input);
+}
+
+// The owner's answer to a proposed leave rule (FR-PLT-39). Being asked is not enough: deciding
+// rules is the owner's (`payroll:rules`), so a delegate who is not cannot decide one.
+const decideRulePipeline = createAction({
+  name: "leave.rule.decide",
+  input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject"]), comment: text(1000) }),
+  authorize: async (user, input) => decidesLeaveRules(user.principal) && !!(await getLeaveRuleChange({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
+  run: async ({ user, input }) => {
+    const { request, before, outcome } = await decideLeaveRuleChange(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    refresh();
+    revalidatePath(`/approvals/rule/${request.id}`);
+    return { data: { outcome }, audit: { resource: { type: "approval:leave_rule", id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, change: request.payload } } };
+  },
+});
+export async function decideLeaveRuleAction(input: unknown) {
+  return decideRulePipeline(input);
 }
 
 const staffingPipeline = createAction({

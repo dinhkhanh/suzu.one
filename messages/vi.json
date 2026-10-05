@@ -1806,7 +1806,9 @@
       "salary_change": "Điều chỉnh lương",
       "project_brief": "Duyệt brief khởi động dự án",
       "project_change": "Yêu cầu thay đổi dự án",
-      "crm_quote": "Báo giá"
+      "crm_quote": "Báo giá",
+      "leave_rule": "Thay đổi quy định nghỉ phép",
+      "attendance_rule": "Thay đổi quy định chấm công"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -1856,6 +1858,20 @@
       "approve": "Duyệt",
       "return": "Trả lại để chỉnh sửa",
       "reject": "Từ chối"
+    },
+    "rule": {
+      "changes": "Thay đổi đề xuất",
+      "againstCurrent": "So với quy định đang áp dụng; dòng in đậm là dòng thay đổi.",
+      "newRule": "Quy định mới, chưa có bản nào trước đó.",
+      "field": "Mục",
+      "current": "Đang áp dụng",
+      "proposed": "Đề xuất",
+      "yes": "Có",
+      "no": "Không",
+      "days": "{days} ngày",
+      "notYet": "Quy định này chưa có hiệu lực: chỉ áp dụng khi chủ sở hữu duyệt.",
+      "inForce": "Đã duyệt — quy định đã được lưu và đang áp dụng từ ngày hiệu lực.",
+      "ownerOnly": "Chỉ chủ sở hữu quyết định quy định nghỉ phép và chấm công."
     },
     "errors": {
       "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
@@ -3339,6 +3355,7 @@
       "inForce": "Đang hiệu lực",
       "save": "Lưu thành phiên bản mới",
       "saved": "Đã lưu.",
+      "proposed": "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt.",
       "versionHint": "Lưu với ngày bắt đầu muộn hơn sẽ đóng phiên bản hiện tại vào ngày liền trước.",
       "summary": "châm chước {late}′/{early}′ · làm tròn {rounding}′ · làm thêm từ {ot}′",
       "mergeRules": {
@@ -3360,6 +3377,7 @@
         "otRequiresApproval": "Làm thêm chỉ tính khi có đơn được duyệt"
       },
       "errors": {
+        "rule_no_owner": "Chưa có chủ sở hữu nào để duyệt quy định này; thay đổi chưa được lưu.",
         "generic": "Không lưu được. Vui lòng thử lại.",
         "forbidden": "Bạn không được thay đổi quy định này.",
         "invalid": "Kiểm tra lại các trường.",
@@ -3930,6 +3948,7 @@
       "next": "Tháng sau"
     },
     "errors": {
+      "rule_no_owner": "Chưa có chủ sở hữu nào để duyệt quy định này; thay đổi chưa được lưu.",
       "generic": "Không thực hiện được. Vui lòng thử lại.",
       "forbidden": "Bạn không có quyền thực hiện việc này.",
       "invalid": "Một số trường chưa hợp lệ.",
@@ -3986,6 +4005,7 @@
       "everyEntity": "Mọi pháp nhân",
       "save": "Lưu",
       "saved": "Đã lưu",
+      "proposed": "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt.",
       "remove": "Xoá",
       "removeConfirm": "Xoá dòng này?",
       "types": {
@@ -13126,6 +13146,7 @@
     "equipmentBooking": "Đặt thiết bị",
     "equipmentBookings": "Lịch đặt thiết bị",
     "expenseClaims": "Đề nghị thanh toán chi phí",
+    "ruleChange": "Đề xuất thay đổi quy định",
     "requestsToPay": "Đề nghị chờ chi",
     "flaggedCheckIns": "Chấm công cần xem xét",
     "goal": "Mục tiêu",

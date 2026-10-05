@@ -1806,7 +1806,9 @@
       "salary_change": "Salary change",
       "project_brief": "Project kick-off brief",
       "project_change": "Project change request",
-      "crm_quote": "Quote"
+      "crm_quote": "Quote",
+      "leave_rule": "Leave rule change",
+      "attendance_rule": "Attendance rule change"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1856,6 +1858,20 @@
       "approve": "Approve",
       "return": "Return for changes",
       "reject": "Reject"
+    },
+    "rule": {
+      "changes": "Proposed change",
+      "againstCurrent": "Against the rule in force; the lines in bold are the ones that change.",
+      "newRule": "A new rule, with nothing before it.",
+      "field": "Field",
+      "current": "In force",
+      "proposed": "Proposed",
+      "yes": "Yes",
+      "no": "No",
+      "days": "{days} day(s)",
+      "notYet": "This rule has not taken effect: it applies only once the owner approves it.",
+      "inForce": "Approved — the rule has been saved and applies from its start date.",
+      "ownerOnly": "Only the owner decides leave and attendance rules."
     },
     "errors": {
       "generic": "Something went wrong. Please try again.",
@@ -3339,6 +3355,7 @@
       "inForce": "In force",
       "save": "Save as a new version",
       "saved": "Saved.",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "versionHint": "Saving with a later start date closes the current version the day before.",
       "summary": "grace {late}′/{early}′ · rounding {rounding}′ · overtime from {ot}′",
       "mergeRules": {
@@ -3360,6 +3377,7 @@
         "otRequiresApproval": "Overtime counts only with an approved request"
       },
       "errors": {
+        "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
         "generic": "Could not save. Please try again.",
         "forbidden": "You may not change this policy.",
         "invalid": "Check the fields.",
@@ -3930,6 +3948,7 @@
       "next": "Next month"
     },
     "errors": {
+      "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You are not allowed to do this.",
       "invalid": "Some fields are not valid.",
@@ -3986,6 +4005,7 @@
       "everyEntity": "Every entity",
       "save": "Save",
       "saved": "Saved",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "remove": "Remove",
       "removeConfirm": "Remove this row?",
       "types": {
@@ -13126,6 +13146,7 @@
     "equipmentBooking": "Equipment booking",
     "equipmentBookings": "Equipment bookings",
     "expenseClaims": "Expense claims",
+    "ruleChange": "Proposed rule change",
     "requestsToPay": "Requests to pay",
     "flaggedCheckIns": "Flagged check-ins",
     "goal": "Goal",
