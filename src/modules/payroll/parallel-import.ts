@@ -30,6 +30,8 @@ export const parallelColumns = {
   pit: { headers: ["Thuế TNCN", "PIT"], parse: vnd, sensitive: true, example: "310000" } as Column<number>,
   otherDeductions: { headers: ["Khấu trừ khác", "Other deductions"], parse: vnd, sensitive: true, example: "0" } as Column<number>,
   net: { headers: ["Thực nhận", "Net"], required: true, parse: vnd, sensitive: true, example: "22065000" } as Column<number>,
+  // Optional: what the person cost the company on the sheet — gross, employer insurance and union fund.
+  employerCost: { headers: ["Chi phí công ty", "Employer cost"], parse: vnd, sensitive: true, example: "29500000" } as Column<number>,
   note: { headers: ["Ghi chú", "Note"], parse: text(300), example: "Theo bảng lương Excel tháng 8" } as Column<string>,
 };
 
@@ -71,6 +73,7 @@ export async function resolveParallelRows(rows: Row[], user: { principal: Parame
       pit: row.values.pit ?? 0,
       otherDeductions: row.values.otherDeductions ?? 0,
       net,
+      employerCost: row.values.employerCost ?? null,
     };
     // The spreadsheet must at least agree with itself before it is used to judge the system.
     const expected = figures.gross - figures.employeeInsurance - figures.unionDues - figures.pit - figures.otherDeductions;

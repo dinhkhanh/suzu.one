@@ -100,6 +100,7 @@ const fixtureSchema = z.object({
         from: z.string(),
         to: z.string(),
         terms: salaryTermsSchema,
+        probationPercent: z.number().int().min(1).max(100).nullable().default(null),
         standardDays: z.number().int().nonnegative(),
         paidDaysCenti: z.number().int().nonnegative(),
         unpaidDaysCenti: z.number().int().nonnegative().default(0),

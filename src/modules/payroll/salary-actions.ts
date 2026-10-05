@@ -6,8 +6,8 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { SALARY_CHANGE_REASONS } from "./enums";
-import { canDecideSalaryChange, canManageCompensation } from "./policy";
-import { decideSalaryChange, resubmitSalaryChange, salaryChangeEntity, submitSalaryChange, withdrawSalaryChange } from "./salaries";
+import { canDecideSalaryChange, canManageCompensation, canVoidSalaryStructure } from "./policy";
+import { decideSalaryChange, resubmitSalaryChange, salaryChangeEntity, salaryStructureEntity, submitSalaryChange, voidSalaryStructure, withdrawSalaryChange } from "./salaries";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const text = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable().default(null));
@@ -24,10 +24,12 @@ const changeInput = z.object({
     insuranceSalary: vnd,
     // The form posts one field per catalogue component: { ALW_MEAL: "730000", … }.
     allowances: z.record(z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), vnd).default({}),
+    // FR-PAY-05: the share paid on probation days; blank = paid in full. The minimum is the service's.
+    probationPercent: z.preprocess(blankToNull, z.coerce.number().int().min(1).max(100).nullable().default(null)),
   }),
 });
 
-const toInput = (input: z.output<typeof changeInput>) => ({ ...input, terms: { baseSalary: input.terms.baseSalary, insuranceSalary: input.terms.insuranceSalary, allowances: Object.entries(input.terms.allowances).map(([code, amount]) => ({ code, amount })) } });
+const toInput = (input: z.output<typeof changeInput>) => ({ ...input, terms: { baseSalary: input.terms.baseSalary, insuranceSalary: input.terms.insuranceSalary, allowances: Object.entries(input.terms.allowances).map(([code, amount]) => ({ code, amount })), probationPercent: input.terms.probationPercent } });
 
 const refresh = (personId: string | null, requestId?: string) => {
   revalidatePath("/payroll/salaries");
@@ -106,4 +108,27 @@ const decidePipeline = createAction({
 });
 export async function decideSalaryChangeAction(input: unknown) {
   return decidePipeline(input);
+}
+
+// ── Voiding a structure approved wrong (PAY-13) ─────────────────────────────────────────────
+
+const voidStructurePipeline = createAction({
+  name: "salary_structure.void",
+  stepUp: true,
+  input: z.object({ id: z.uuid(), reason: z.string().trim().min(3).max(500) }),
+  // Judged by the structure's own entity. Every structure came out of the owner's approval, so it
+  // is the owner's to take back.
+  authorize: async (user, input) => {
+    const where = await salaryStructureEntity(input.id);
+    return !!where && canVoidSalaryStructure(user.principal, where);
+  },
+  run: async ({ user, input }) => {
+    const { after } = await voidSalaryStructure(input.id, input.reason, user.person.id);
+    refresh(after.personId);
+    // Dates and the reason — never the terms.
+    return { data: { id: after.id }, audit: { resource: { type: "salary_structure", id: after.id, entityId: after.entityId }, summary: `void structure from ${after.validFrom}: ${input.reason}`, before: { validFrom: after.validFrom, validTo: after.validTo, reason: after.reason }, after: { personId: after.personId, voidedAt: after.voidedAt, voidReason: after.voidReason } } };
+  },
+});
+export async function voidSalaryStructureAction(input: unknown) {
+  return voidStructurePipeline(input);
 }

@@ -7,6 +7,7 @@ vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
   env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
 }));
+vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 
 import { fieldCipher } from "@/lib/crypto";
 // Through the mock, so the transaction type is the app's own and the services type-check here.
@@ -14,7 +15,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { runResultContext, runTotalsContext } from "./field-contexts";
 import type { PersonPayResult } from "./engine/types";
-import { COMPARED_FIELDS, openReference, reconcile, saveFinding, saveReference } from "./parallel";
+import { COMPARED_FIELDS, listParallelSignoffs, openReference, reconcile, saveFinding, saveReference, signOffParallel } from "./parallel";
 
 const ids = { entity: randomUUID(), other: randomUUID(), person: randomUUID(), second: randomUUID(), run: randomUUID() };
 
@@ -142,6 +143,37 @@ describe("parallel run reconciliation", () => {
     expect(report.summary.differing).toBe(1);
   });
 
+  it("puts each side's figures and the employer cost beside each other (FR-PAY-38)", async () => {
+    const report = await reconcile(ids.entity, "2026-08");
+    const row = report.rows.find((candidate) => candidate.personId === ids.person)!;
+    expect(row.system).toMatchObject({ net: 22_065_000, employerCost: 30_875_000 });
+    expect(row.reference).toMatchObject({ net: 22_065_000 });
+    expect(report.totals.system).toEqual({ net: 44_130_000, employerCost: 61_750_000 });
+    // No sheet gave an employer cost yet: it is not compared, and not added up as zero.
+    expect(report.totals.reference).toMatchObject({ net: 44_140_000, withEmployerCost: 0 });
+
+    // A sheet that does give one is held against the system's like any other figure.
+    await db().transaction((tx) => saveReference(tx, { entityId: ids.entity, month: "2026-08", personId: ids.person, figures: { ...reference(), employerCost: 30_000_000 }, note: null }, null));
+    const costed = await reconcile(ids.entity, "2026-08");
+    expect(costed.rows.find((candidate) => candidate.personId === ids.person)!.differences).toMatchObject([{ field: "employerCost", system: 30_875_000, reference: 30_000_000, delta: 875_000, classification: null }]);
+    expect(costed.totals.reference).toMatchObject({ employerCost: 30_000_000, withEmployerCost: 1 });
+    expect(costed.summary.zeroUnexplained).toBe(false);
+    await db().transaction((tx) => saveReference(tx, { entityId: ids.entity, month: "2026-08", personId: ids.person, figures: { ...reference(), employerCost: 30_875_000 }, note: null }, null));
+    expect((await reconcile(ids.entity, "2026-08")).summary.zeroUnexplained).toBe(true);
+  });
+
+  it("records a sign-off of a clean month, which stops holding once the figures change", async () => {
+    const report = await reconcile(ids.entity, "2026-08");
+    const signed = await signOffParallel({ entityId: ids.entity, month: "2026-08", checkedWith: "Kế toán trưởng", note: "Khớp với bảng lương tháng 8" }, ids.person);
+    expect(signed).toMatchObject({ people: 2, matching: 1, explainedLines: 2, checkedWith: "Kế toán trưởng" });
+    expect(await listParallelSignoffs(ids.entity, "2026-08", report.summary)).toMatchObject([{ id: signed.id, current: true, signedByName: "Nguyễn Văn A" }]);
+
+    // The sheet is typed again after the sign-off: the sign-off no longer covers the month.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await db().transaction((tx) => saveReference(tx, { entityId: ids.entity, month: "2026-08", personId: ids.person, figures: { ...reference(), employerCost: 30_875_000 }, note: "nhập lại" }, null));
+    expect(await listParallelSignoffs(ids.entity, "2026-08", (await reconcile(ids.entity, "2026-08")).summary)).toMatchObject([{ id: signed.id, current: false }]);
+  });
+
   it("treats somebody present on one side only as an open difference", async () => {
     const stranger = randomUUID();
     await db().insert(schema.person).values({ id: stranger, fullName: "Lê Văn C", searchName: "le van c", workforceType: "employee", status: "active", primaryEntityId: ids.entity });
@@ -153,6 +185,8 @@ describe("parallel run reconciliation", () => {
     expect(report.summary.missingFromSystem).toBe(1);
     // Somebody the system never paid keeps the month from being clean, even with no differing line.
     expect(report.summary.zeroUnexplained).toBe(false);
+    // …and a month that is not clean is not signed off.
+    await expect(signOffParallel({ entityId: ids.entity, month: "2026-08", checkedWith: null, note: null }, ids.person)).rejects.toThrow("parallel_not_clean");
   });
 
   it("keeps one entity's reconciliation out of another's", async () => {

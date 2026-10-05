@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
@@ -34,7 +34,17 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
 
   return (
     <Page width="wide">
-      <PageHeader eyebrow={t("title")} title={t("salaries.title")} description={t("salaries.description")} />
+      <PageHeader
+        eyebrow={t("title")}
+        title={t("salaries.title")}
+        description={t("salaries.description")}
+        actions={
+          // Salaries and pay profiles from a spreadsheet, approved by the owner as one import (PAY-14).
+          <Link href="/payroll/salaries/import" className={buttonVariants({ variant: "outline" })}>
+            {t("imports.link")}
+          </Link>
+        }
+      />
       <PayrollTabs active="salaries" principal={user.principal} />
       <form className="toolbar" action="/payroll/salaries">
         <Input name="q" defaultValue={search ?? ""} placeholder={t("salaries.search")} aria-label={t("salaries.search")} className="w-full md:w-64" />

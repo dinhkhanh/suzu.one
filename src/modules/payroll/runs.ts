@@ -20,6 +20,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { markAdjustmentsTaken } from "@/modules/attendance/service";
 import { type CalculationContext, calculateEntityMonth, calculateOffCycle, type PersonCalculation } from "./calculation";
 import { resolveCatalogue } from "./components";
+import { isPitReliefCode } from "./engine/components";
 import { payPeriodOf } from "./engine/period";
 import type { PayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
 import { assertPeriodOpen, reopenCalculatedRun } from "./lifecycle";
@@ -109,6 +110,13 @@ async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunIn
 
   const catalogue = new Map((await resolveCatalogue(run.entityId, payPeriodOf(run.month, 0).end, tx)).map((component) => [component.code, component]));
   for (const line of lines) {
+    // A deduction from the assessable income (FR-PAY-13) belongs to the month's regular run, which
+    // works out the month's tax; it is entered as a positive figure like every deduction.
+    if (isPitReliefCode(line.code)) {
+      if (run.kind !== "regular") throw new ActionError("run_input_relief_regular_only", { code: line.code });
+      if (line.amount < 0) throw new ActionError("run_input_negative_deduction", { code: line.code });
+      continue;
+    }
     const component = catalogue.get(line.code);
     // The code is a catalogue entry, not pay: naming it is safe.
     if (!component || component.source !== "input") throw new ActionError("run_input_code_unknown", { code: line.code });
@@ -353,7 +361,9 @@ export async function priorInMonth(run: PayrollRunRow, executor: Executor = db()
       runId: before?.runId ?? row.runId,
       taxableIncome: (before?.taxableIncome ?? 0) + result.totals.taxableIncome,
       employeeInsurance: (before?.employeeInsurance ?? 0) + result.totals.employeeInsurance,
-      otherDeductions: before?.otherDeductions ?? 0,
+      // The deductions from the assessable income each run took itself (FR-PAY-13) — read from
+      // its input, not its result, whose figure already includes the runs before it.
+      otherDeductions: (before?.otherDeductions ?? 0) + (openInput(row).otherPitDeductions ?? 0),
       tax: (before?.tax ?? 0) + result.totals.pit,
     });
   }

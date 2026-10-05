@@ -515,3 +515,17 @@ describe("handing a run over two entities to payroll is all-or-nothing and safe 
     expect((await offCycleRuns("2028-02")).filter((row) => row.status !== "cancelled")).toHaveLength(2);
   });
 });
+
+describe("more than one bonus a year (PAY-11)", () => {
+  it("lets a Tết bonus stand beside the year-end bonus, and refuses the same run twice", async () => {
+    const year = 2031;
+    const yearEnd = await createBonusRun({ year, name: "Thưởng cuối năm 2031", entityIds: [ids.entity], payrollMonth: "2032-01" }, ids.actor);
+    const tet = await createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor);
+    expect(tet.id).not.toBe(yearEnd.id);
+    // The same name twice in one year is one run created twice.
+    await expect(createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor)).rejects.toThrow("bonus_run_exists");
+    // A cancelled run frees its name.
+    await db().update(schema.bonusRun).set({ status: "cancelled" }).where(eq(schema.bonusRun.id, tet.id));
+    await expect(createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor)).resolves.toMatchObject({ year });
+  });
+});

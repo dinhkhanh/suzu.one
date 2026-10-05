@@ -1,7 +1,9 @@
 import { boolean, date, index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { person } from "../people/schema";
 
-export const parameterStatus = pgEnum("parameter_status", ["proposed", "approved", "rejected"]);
+// `voided`: an approved version found to be wrong (PAY-13) — kept, with who voided it and why, but
+// no longer in force.
+export const parameterStatus = pgEnum("parameter_status", ["proposed", "approved", "rejected", "voided"]);
 
 // Legal rates, caps, brackets and multipliers (FR-PLT-38). Never constants in code: every version
 // says from when it applies, where it comes from, who proposed it and who approved it (FR-PLT-39).
@@ -24,6 +26,9 @@ export const statutoryParameter = pgTable(
     proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedByPersonId: uuid("voided_by_person_id").references(() => person.id),
+    voidReason: text("void_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("statutory_parameter_key_idx").on(t.key, t.validFrom)],

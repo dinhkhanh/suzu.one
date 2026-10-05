@@ -1420,6 +1420,10 @@
       "crm_cover_followups": {
         "title": "Client follow-ups while someone is away",
         "body": "You cover {count} client follow-ups of {name} during their leave."
+      },
+      "payroll_profile_import_proposed": {
+        "title": "Imported pay profiles are waiting",
+        "body": "{count} pay profiles imported from a spreadsheet are waiting for you to read and approve."
       }
     },
     "errors": {
@@ -1627,7 +1631,19 @@
       "proposal_not_found": "This proposal has already been handled.",
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the information (the value must be valid JSON).",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "version_not_voidable": "Only an approved version can be voided.",
+      "void_used_by_paid_run": "A payroll run being paid, paid or locked used this version, so it cannot be voided. Correct it with a retro item instead.",
+      "void_run_in_review": "A payroll run awaiting approval used this version. Return the run to HR first, then void it."
+    },
+    "void": {
+      "label": "Void",
+      "title": "Void version: {version}",
+      "hint": "An approved version that is wrong is voided: no longer in force, but kept with who voided it and why. The version before it applies to these days again; then propose the correct version as usual. A version a paid payroll run used cannot be voided.",
+      "reason": "Reason for voiding",
+      "confirm": "Void version",
+      "voided": "Voided",
+      "because": "Voided because: {reason}"
     }
   },
   "flags": {
@@ -1682,7 +1698,10 @@
       "saved": "saved",
       "unchanged": "unchanged",
       "periods": "periods recorded",
-      "adjusted": "periods on file moved to make room"
+      "adjusted": "periods on file moved to make room",
+      "requests": "salary changes waiting for approval",
+      "approved": "profiles in force at once",
+      "proposed": "profiles waiting for the owner"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -1753,7 +1772,17 @@
       "outside_employment": "Outside this person's employment",
       "covers_recorded_period": "Swallows a whole period already on file or in the file",
       "inside_recorded_period": "Falls inside one period and would split it; start from the oldest period",
-      "moves_recorded_event": "Would move the date of a transfer or promotion"
+      "moves_recorded_event": "Would move the date of a transfer or promotion",
+      "salary_change_open": "This person already has a salary change waiting.",
+      "allowance_unknown": "Allowance code not in the entity's catalogue",
+      "bad_allowances": "Allowances must read CODE=amount, separated by semicolons",
+      "version_exists": "A version already starts on this day.",
+      "before_current_version": "Starts before the version in force.",
+      "probation_below_minimum": "The probation pay share is below the legal minimum.",
+      "profile_proposal_open": "This person already has a pay profile proposal waiting.",
+      "profile_basis_required": "A Simple profile needs a basis; a Statutory one has none.",
+      "profile_review_date_simple_only": "A review date is for Simple profiles only.",
+      "profile_non_resident_method": "The PIT method does not fit the tax residency."
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -8064,7 +8093,10 @@
         "down": "Decrease",
         "same": "No change to base salary"
       },
-      "request": "Request"
+      "request": "Request",
+      "probationPercent": "Probation pay (%)",
+      "probationPercentHint": "Leave blank to pay in full",
+      "probationShort": "probation {percent}%"
     },
     "profiles": {
       "title": "Pay profile",
@@ -8122,11 +8154,16 @@
       "status": {
         "proposed": "Proposed",
         "approved": "Approved",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "voided": "Voided"
       },
       "waiting": "Waiting for the owner",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "voided": {
+        "title": "Voided versions",
+        "because": "Voided because: {reason}"
+      }
     },
     "exposure": {
       "title": "Simple profile — basis and time on it",
@@ -8356,7 +8393,12 @@
       "approval_own_request": "You cannot answer your own request.",
       "approval_comment_required": "Say why when returning or rejecting.",
       "approval_no_approver": "No approver could be found.",
-      "statutory_parameter_missing": "A statutory parameter is missing for this period."
+      "statutory_parameter_missing": "A statutory parameter is missing for this period.",
+      "version_not_voidable": "Only a version in force can be voided.",
+      "void_used_by_paid_run": "A payroll run being paid, paid or locked used this version, so it cannot be voided. Correct it with a retro item instead.",
+      "void_run_in_review": "A payroll run awaiting approval used this version. Return the run to HR first, then void it.",
+      "salary_probation_below_minimum": "The probation pay share is below the legal minimum ({minimum}%).",
+      "component_code_reserved": "This code is reserved for PIT deductions and cannot be a pay component."
     },
     "offers": {
       "title": "Net to gross",
@@ -8491,7 +8533,8 @@
           "retro_waiting": "A retro item is waiting that the calculation did not include.",
           "timesheet_changed": "The month's timesheet changed since the last calculation.",
           "salary_changed": "A new salary decision applies to this month.",
-          "leave_payout_posted": "The leave ledger paid out a leaver's unused leave after the last calculation."
+          "leave_payout_posted": "The leave ledger paid out a leaver's unused leave after the last calculation.",
+          "version_voided": "A rule version, pay profile or salary structure the figures were worked out from has been voided."
         }
       },
       "readiness": {
@@ -8625,7 +8668,8 @@
         "run_has_blockers": "A blocker is still open; the run cannot be proposed yet.",
         "run_input_code_unknown": "This is not a typed-in component in the entity's catalogue.",
         "run_input_negative_earning": "An earning cannot be negative. To take money back, enter a retro item or use a deduction component.",
-        "run_input_negative_deduction": "Enter a deduction as a positive amount — it is subtracted from the net by itself."
+        "run_input_negative_deduction": "Enter a deduction as a positive amount — it is subtracted from the net by itself.",
+        "run_input_relief_regular_only": "PIT deductions are entered in the month's regular run only."
       },
       "payments": "Payment",
       "stages": {
@@ -8642,6 +8686,29 @@
       "lineStatus": {
         "published": "Published",
         "read": "Read"
+      },
+      "relief": {
+        "PIT_CHARITY": "PIT deduction: charity and donations",
+        "PIT_VOLUNTARY_PENSION": "PIT deduction: voluntary pension",
+        "PIT_OTHER_RELIEF": "PIT deduction: other allowed deduction"
+      },
+      "offCycle": {
+        "link": "Off-cycle run",
+        "title": "New off-cycle run",
+        "hint": "A Tết or holiday bonus, a project bonus — paid inside a month on top of its regular run and taxed with that month. The run goes through every step: calculated, proposed, signed by the CEO, paid.",
+        "month": "Month paid",
+        "name": "Run name",
+        "namePlaceholder": "Tết bonus 2027",
+        "everyone": {
+          "title": "The whole entity",
+          "hint": "Adds a line for each of the entity's {count} people at one amount; change it person by person where it differs.",
+          "fill": "Add for everyone"
+        },
+        "lines": "Lines ({count})",
+        "noLines": "No lines yet. Add people one by one, or the whole entity.",
+        "addLine": "Add a person",
+        "noCodes": "The entity's catalogue has no input pay components.",
+        "submit": "Create off-cycle run"
       }
     },
     "payslips": {
@@ -9087,7 +9154,8 @@
         "unionDues": "Union dues",
         "pit": "PIT",
         "otherDeductions": "Other deductions",
-        "net": "Net"
+        "net": "Net",
+        "employerCost": "Employer cost"
       },
       "presence": {
         "system_only": "In the system only — the spreadsheet has no such person.",
@@ -9118,7 +9186,46 @@
       "errors": {
         "step_up_required": "Confirm it is you before opening payroll data.",
         "forbidden": "You may not reconcile this entity's payroll.",
-        "generic": "Could not save, please try again."
+        "generic": "Could not save, please try again.",
+        "parallel_not_clean": "Some differences are still unexplained; this month cannot be signed off yet."
+      },
+      "totals": {
+        "netSystem": "Net — system",
+        "netReference": "Net — accountant",
+        "difference": "Difference",
+        "costSystem": "Employer cost — system",
+        "costReference": "Employer cost — accountant",
+        "costCoverage": "Given by the accountant for {count}/{people} people"
+      },
+      "columns": {
+        "netSystem": "Net (system)",
+        "netReference": "Net (accountant)",
+        "netDifference": "Difference",
+        "costSystem": "Employer cost (system)",
+        "costReference": "Employer cost (accountant)"
+      },
+      "signoff": {
+        "title": "Sign-off",
+        "current": "This month is signed off and the reconciliation has not changed since.",
+        "ready": "Nothing is left unexplained — this month can be signed off.",
+        "notReady": "A month can be signed off once nothing is left unexplained.",
+        "none": "No sign-off yet.",
+        "holds": "Holds",
+        "outdated": "Outdated — figures changed after it",
+        "counts": "{people} people, {matching} matching exactly, {explained} differences explained",
+        "with": "checked with {name}",
+        "checkedWith": "Checked with",
+        "checkedWithHint": "Chief accountant",
+        "submit": "Sign off"
+      },
+      "export": {
+        "label": "Download report",
+        "employeeCode": "Employee code",
+        "presence": "Presence",
+        "system": "system",
+        "reference": "accountant",
+        "difference": "difference",
+        "explanations": "Explanations"
       }
     },
     "ytd": {
@@ -9325,7 +9432,7 @@
         "forbidden": "You may not act on this bonus run.",
         "step_up_required": "Please confirm who you are to continue.",
         "bonus_run_not_found": "Bonus run not found.",
-        "bonus_run_exists": "This year already has a live bonus run.",
+        "bonus_run_exists": "This year already has a live bonus run with this name.",
         "bonus_run_no_entities": "Choose at least one entity.",
         "bonus_run_not_editable": "The run has been proposed and can no longer be changed.",
         "bonus_run_empty": "The run has nobody in it yet. Recalculate first.",
@@ -9352,6 +9459,38 @@
         "people": "People",
         "approvedOn": "Approved on"
       }
+    },
+    "imports": {
+      "link": "Import from a file",
+      "title": "Import salaries and pay profiles",
+      "description": "Load a company's salaries and pay profiles from spreadsheets. Nothing takes effect until the owner has read the whole import on its review screen and approved it (a first Statutory profile takes effect at once, as when typed).",
+      "waiting": "Imports waiting for approval",
+      "noneWaiting": "No import is waiting for approval.",
+      "kinds": {
+        "salary": "Salaries",
+        "profile": "Pay profiles"
+      },
+      "pending": "{count} waiting",
+      "forEntity": "Importing for",
+      "salaries": {
+        "title": "Salaries",
+        "hint": "Each row becomes a salary change request to the owner, as if made on the pay file. Allowances by component code, e.g. ALW_MEAL=730000; ALW_PHONE=200000.",
+        "wizard": "Salary file"
+      },
+      "profiles": {
+        "title": "Pay profiles",
+        "hint": "A person's first Statutory profile takes effect at once; Simple profiles and every change wait for the owner.",
+        "wizard": "Pay profile file"
+      },
+      "review": {
+        "title": "Review the import",
+        "description": "Every proposal in the import, each salary beside the one in force. Approving here approves exactly the rows shown; any request can still be opened on its own and returned or rejected.",
+        "currentBase": "Current base salary",
+        "allowances": "Allowances in total",
+        "empty": "No proposals."
+      },
+      "approveAll": "Approve {count} proposals",
+      "approved": "Approved. Anything that could not be approved is still waiting."
     }
   },
   "requests": {
@@ -13423,7 +13562,10 @@
     "kioskFaces": "Kiosk faces",
     "kioskCheckIn": "Check in at the kiosk",
     "reviewTemplates": "Review forms",
-    "reviewTemplate": "Review form"
+    "reviewTemplate": "Review form",
+    "newOffCycleRun": "Off-cycle run",
+    "salaryImport": "Import salaries",
+    "salaryImportReview": "Review salary import"
   },
   "portfolio": {
     "title": "SuZu Group",

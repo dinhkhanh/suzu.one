@@ -157,8 +157,9 @@ export async function createBonusRun(input: { year: number; name: string; entity
     .values({ year: input.year, name: input.name, entityIds: [...input.entityIds], payrollMonth: input.payrollMonth, note: input.note ?? null, createdByPersonId: actorPersonId })
     .returning()
     .catch((error: unknown) => {
-      // The partial unique index: one live run per year.
-      if (String(error).includes("bonus_run_year_key")) throw new ActionError("bonus_run_exists");
+      // The partial unique index: a year may pay more than one bonus (PAY-11), but two live runs
+      // of one year under the same name are one run created twice.
+      if (String((error as { cause?: unknown }).cause ?? error).includes("bonus_run_year_name_key")) throw new ActionError("bonus_run_exists");
       throw error;
     });
   return created;

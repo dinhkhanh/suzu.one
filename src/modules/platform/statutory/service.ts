@@ -7,7 +7,8 @@ import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
 import { listOwnerPersonIds } from "../rbac/service";
 import { isParameterKey, type ParameterKey, PARAMETERS, type ParameterValue } from "./catalogue";
-import { planApproval, versionOn } from "./engine/versions";
+import { planApproval, planVoid, versionOn } from "./engine/versions";
+import { checkParameterVoid } from "./void-guards";
 
 export type ParameterRow = typeof schema.statutoryParameter.$inferSelect;
 type Executor = Tx | ReturnType<typeof db>;
@@ -106,6 +107,30 @@ export async function decideParameter(id: string, decision: "approve" | "reject"
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn }).where(eq(table.id, plan.closeId));
     // The owner's approval is also the confirmation that the value was checked against the law.
     const [after] = await tx.update(table).set({ status: "approved", isVerified: true, ...decided }).where(eq(table.id, id)).returning();
+    return { before, after };
+  });
+  await invalidate(PARAMETERS_CACHE);
+  return result;
+}
+
+/**
+ * Takes back an approved version that turned out to be wrong (PAY-13): the owner's call, with a
+ * reason, and kept — it is marked `voided`, never deleted, so a past payslip that cites it can
+ * still be reproduced. The version it took over from runs on for its dates (`planVoid`), and a
+ * correction is then proposed and approved like any other version. Refused while anything that
+ * cannot be undone was worked out from it (`void-guards.ts`: a run already paid).
+ */
+export async function voidParameter(id: string, reason: string, actorPersonId: string): Promise<{ before: ParameterRow; after: ParameterRow }> {
+  const result = await db().transaction(async (tx) => {
+    const table = schema.statutoryParameter;
+    const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
+    if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
+    const refusal = await checkParameterVoid(tx, id);
+    if (refusal) throw new ActionError(refusal);
+    const approved = await tx.select().from(table).where(and(eq(table.key, before.key), eq(table.status, "approved"))).for("update");
+    const [after] = await tx.update(table).set({ status: "voided", voidedAt: new Date(), voidedByPersonId: actorPersonId, voidReason: reason }).where(eq(table.id, id)).returning();
+    const plan = planVoid(approved, before);
+    if (plan.kind === "reopen") await tx.update(table).set({ validTo: plan.reopenTo }).where(eq(table.id, plan.reopenId));
     return { before, after };
   });
   await invalidate(PARAMETERS_CACHE);

@@ -45,6 +45,11 @@ export type PaySegment = {
   from: IsoDate;
   to: IsoDate;
   terms: SalaryTerms;
+  /**
+   * Set when a probation contract covers the segment and the terms carry a probation percentage
+   * (FR-PAY-05): the structure lines of the segment pay that share of the position's salary.
+   */
+  probationPercent?: number | null;
   /** Which working days of the month fall inside the segment, and how many of them were paid. */
   standardDays: number;
   paidDaysCenti: number;

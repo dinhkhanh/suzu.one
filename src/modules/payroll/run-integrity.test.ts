@@ -784,3 +784,71 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
     expect(readiness.blockers).toEqual([]);
   });
 });
+
+describe("deductions from the assessable income (FR-PAY-13)", () => {
+  let entityId = "";
+  let tu = "";
+  let runId = "";
+
+  beforeAll(async () => {
+    ({
+      entityId,
+      people: [tu],
+    } = await company("SZR", ["Nguyen Van Tu"]));
+    await lockMonth(entityId, "2026-07", [tu]);
+    runId = (await createRegularRun({ entityId, month: "2026-07" }, shared.actor)).id;
+  });
+
+  it("takes a voluntary pension off the assessable income without paying it", async () => {
+    const before = (await calculateRun(runId)).people.find((person) => person.result.personId === tu)!.result;
+    await setRunInput({ runId, personId: tu, code: "PIT_VOLUNTARY_PENSION", amount: 1_000_000, note: "Quỹ hưu trí tự nguyện" }, shared.actor);
+    const after = (await calculateRun(runId)).people.find((person) => person.result.personId === tu)!.result;
+    expect(after.pit.otherDeductions).toBe(1_000_000);
+    expect(after.pit.assessableIncome).toBe(before.pit.assessableIncome - 1_000_000);
+    expect(after.totals.pit).toBeLessThan(before.totals.pit);
+    // Not pay: no line, the same gross, and nothing the engine says it could not pay.
+    expect(after.lines.some((line) => line.code === "PIT_VOLUNTARY_PENSION")).toBe(false);
+    expect(after.totals.grossEarnings).toBe(before.totals.grossEarnings);
+    expect(after.warnings).toEqual([]);
+    expect((await getRunReadiness(await getRun(runId))).blockers).toEqual([]);
+  });
+
+  it("is refused on an off-cycle run, and refused negative", async () => {
+    await expect(createOffCycleRun({ entityId, month: "2026-07", name: "Thưởng", lines: [{ personId: tu, code: "PIT_CHARITY", amount: 500_000 }] }, shared.actor)).rejects.toThrow("run_input_relief_regular_only");
+    await expect(setRunInput({ runId, personId: tu, code: "PIT_CHARITY", amount: -1 }, shared.actor)).rejects.toThrow("run_input_negative_deduction");
+  });
+
+  it("counts for an off-cycle bonus paid in the same month: the month's tax is worked out once", async () => {
+    const bonus = await createOffCycleRun({ entityId, month: "2026-07", name: "Thưởng lễ", lines: [{ personId: tu, code: "BONUS", amount: 2_000_000 }] }, shared.actor);
+    const result = (await calculateRun(bonus.id)).people[0].result;
+    // The month's assessable income still has the regular run's deduction taken off it.
+    expect(result.pit.otherDeductions).toBe(1_000_000);
+  });
+});
+
+describe("probation pay (FR-PAY-05)", () => {
+  it("pays the probation share on the days a probation contract covers, and the whole after", async () => {
+    const {
+      entityId,
+      people: [an],
+    } = await company("SZP", ["Pham Thi An"]);
+    const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, an)).limit(1);
+    // The position's salary from 1 July, paid at 85% while the probation contract (1–14 July) runs.
+    await db().update(schema.salaryStructure).set({ validTo: "2026-06-30" }).where(eq(schema.salaryStructure.personId, an));
+    const id = crypto.randomUUID();
+    const terms = { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: 85 };
+    await db().insert(schema.salaryStructure).values({ id, personId: an, employmentId: employment.id, entityId, validFrom: "2026-07-01", reason: "raise", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+    await db().insert(schema.contract).values({ employmentId: employment.id, personId: an, entityId, number: "HDTV-001", type: "probation", startDate: "2026-07-01", endDate: "2026-07-14" });
+    await lockMonth(entityId, "2026-07", [an]);
+
+    const person = (await calculateRun((await createRegularRun({ entityId, month: "2026-07" }, shared.actor)).id)).people[0];
+    expect(person.input.segments.map((segment) => [segment.from, segment.to, segment.probationPercent ?? null])).toEqual([
+      ["2026-07-01", "2026-07-14", 85],
+      ["2026-07-15", "2026-07-31", null],
+    ]);
+    const [first, second] = person.input.segments;
+    const base = person.result.lines.find((line) => line.code === "BASE")!;
+    expect(base.amount).toBe(Math.round((17_000_000 * first.paidDaysCenti) / 2200) + Math.round((20_000_000 * second.paidDaysCenti) / 2200));
+    expect(base.inputs.probationPercent).toBe(85);
+  });
+});

@@ -14,6 +14,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
 import { UNPAID_FIGURE_WARNINGS } from "@/modules/payroll/engine/types";
+import { PIT_RELIEF_CODES } from "@/modules/payroll/engine/components";
 import { RUN_STEPS, type RunStep } from "@/modules/payroll/lifecycle";
 import { canApprovePayroll, canManageCompensation, canPayPayroll } from "@/modules/payroll/policy";
 import { getRunView } from "@/modules/payroll/run-views";
@@ -64,7 +65,12 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
   };
   // The action refuses a proposal that is stale or blocked; the key is not offered for one either.
   const mySteps = view.steps.filter((step) => holds[RUN_STEPS[step].permission] && (step !== "propose" || proposable));
-  const inputCodes = catalogue.filter((component) => component.source === "input").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` }));
+  // A regular run also takes the month's deductions from the assessable income — gifts to charity,
+  // a voluntary pension — which are typed in like a figure but never paid (FR-PAY-13).
+  const inputCodes = [
+    ...catalogue.filter((component) => component.source === "input").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` })),
+    ...(run.kind === "regular" ? PIT_RELIEF_CODES.map((code) => ({ code, name: `${code} — ${t(`runs.relief.${code}`)}` })) : []),
+  ];
   const payslipOf = new Map(payslips.map((row) => [row.personId, row]));
   const manages = canManageCompensation(user.principal, run);
   const hasActions = (editable && manages) || mySteps.length > 0;

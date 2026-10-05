@@ -15,7 +15,7 @@ import { listPayrollFacts, type PayrollPersonFacts } from "@/modules/core-hr/ser
 import { getLeaveUsage, type LeaveUsage, listPayoutTotals, type PayoutTotal } from "@/modules/leave/service";
 import { resolveCatalogue, resolveCatalogueVersions } from "./components";
 import { calculatePerson, PAYROLL_ENGINE_VERSION } from "./engine/calculate";
-import type { ComponentDefinition } from "./engine/components";
+import { type ComponentDefinition, isPitReliefCode } from "./engine/components";
 import { EMPTY_TIMESHEET, payableOvertime, payPeriodOf, type PaySegment, type ProfileFacts } from "./engine/period";
 import { isRoundingRule } from "./engine/rounding";
 import type { LeavePayout, PayInput, PersonPayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
@@ -320,7 +320,7 @@ export function buildPersonInput(source: {
       kpiScoreBp: 0,
     },
     profile: toProfileFacts(source.profile),
-    segments: buildSegments(source.structures, timesheet, period.start, period.end, source.days),
+    segments: buildSegments(source.structures, timesheet, period.start, period.end, source.days, source.facts.probation),
     timesheet: {
       standardDays: timesheet.standardDays,
       standardMinutes: timesheet.standardMinutes,
@@ -333,10 +333,12 @@ export function buildPersonInput(source: {
     insuranceLeaveDays,
     unpaidWorkingDays,
     components: source.components,
-    inputs: source.inputs,
+    // A deduction from the assessable income typed into the run is not pay: it leaves the lines
+    // and becomes the month's other PIT deductions (FR-PAY-13).
+    inputs: source.inputs.filter((line) => !isPitReliefCode(line.code)),
     retro: source.retro ?? [],
     leavePayout: source.leavePayout ?? null,
-    otherPitDeductions: 0,
+    otherPitDeductions: source.inputs.reduce((sum, line) => sum + (isPitReliefCode(line.code) ? line.amount : 0), 0),
     priorInMonth: source.priorInMonth ?? null,
     runKind: source.runKind ?? "regular",
     policy: source.policy,
@@ -368,8 +370,13 @@ export function dayWeight(day: TimesheetDayRow): { standardDays: number; paidDay
   };
 }
 
+/** A probation contract's dates (`end` null = still running), as `EmploymentFacts.probation` gives them. */
+export type ProbationRange = { start: IsoDate; end: IsoDate | null };
+
 /**
- * The month cut at every salary change (FR-PAY-16).
+ * The month cut at every salary change (FR-PAY-16) — and, for terms that carry a probation
+ * percentage (FR-PAY-05), where a probation contract begins or ends, so the days on probation pay
+ * their share of the position's salary and the days after it pay the whole.
  *
  * With the frozen daily rows of a locked month each piece gets exactly the days that fall inside
  * it — a raise on the 17th is paid on the days actually worked before and after, not on a share
@@ -377,19 +384,25 @@ export function dayWeight(day: TimesheetDayRow): { standardDays: number; paidDay
  * shared out in proportion to the days each piece spans, largest remainder first so the parts
  * still add up to the locked total.
  */
-export function buildSegments(structures: readonly SalaryStructureView[], timesheet: LockedTimesheet, start: IsoDate, end: IsoDate, days: readonly TimesheetDayRow[] = []): PaySegment[] {
+export function buildSegments(structures: readonly SalaryStructureView[], timesheet: LockedTimesheet, start: IsoDate, end: IsoDate, days: readonly TimesheetDayRow[] = [], probation: readonly ProbationRange[] = []): PaySegment[] {
   const sorted = [...structures].sort((a, b) => a.validFrom.localeCompare(b.validFrom));
   if (sorted.length === 0) {
     return [{ from: start, to: end, terms: { baseSalary: 0, insuranceSalary: 0, allowances: [] }, standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
   }
 
-  const bounds = sorted.map((structure, index) => ({
-    structure,
-    from: structure.validFrom > start ? structure.validFrom : start,
-    to: nextDay(sorted[index + 1]?.validFrom) && nextDay(sorted[index + 1]!.validFrom)! < end ? nextDay(sorted[index + 1]!.validFrom)! : structure.validTo && structure.validTo < end ? structure.validTo : end,
-  }));
+  const bounds = sorted
+    .map((structure, index) => ({
+      structure,
+      from: structure.validFrom > start ? structure.validFrom : start,
+      to: nextDay(sorted[index + 1]?.validFrom) && nextDay(sorted[index + 1]!.validFrom)! < end ? nextDay(sorted[index + 1]!.validFrom)! : structure.validTo && structure.validTo < end ? structure.validTo : end,
+    }))
+    .flatMap((bound) => {
+      const percent = bound.structure.terms.probationPercent;
+      if (!percent || percent >= 100) return [{ ...bound, probationPercent: null }];
+      return splitByProbation(bound.from, bound.to, probation).map((piece) => ({ ...bound, from: piece.from, to: piece.to, probationPercent: piece.onProbation ? percent : null }));
+    });
   if (bounds.length === 1) {
-    return [{ from: bounds[0].from, to: bounds[0].to, terms: bounds[0].structure.terms, standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
+    return [{ from: bounds[0].from, to: bounds[0].to, terms: bounds[0].structure.terms, ...probationOf(bounds[0]), standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
   }
 
   if (days.length > 0) {
@@ -399,6 +412,7 @@ export function buildSegments(structures: readonly SalaryStructureView[], timesh
         from: bound.from,
         to: bound.to,
         terms: bound.structure.terms,
+        ...probationOf(bound),
         standardDays: inside.reduce((sum, day) => sum + day.standardDays, 0),
         paidDaysCenti: inside.reduce((sum, day) => sum + day.paidDaysCenti, 0),
         unpaidDaysCenti: inside.reduce((sum, day) => sum + day.unpaidDaysCenti, 0),
@@ -411,8 +425,31 @@ export function buildSegments(structures: readonly SalaryStructureView[], timesh
   const paid = shareOut(timesheet.paidDaysCenti, spans, totalSpan);
   const unpaid = shareOut(timesheet.unpaidDaysCenti, spans, totalSpan);
   const standard = shareOut(timesheet.standardDays, spans, totalSpan);
-  return bounds.map((bound, index) => ({ from: bound.from, to: bound.to, terms: bound.structure.terms, standardDays: standard[index], paidDaysCenti: paid[index], unpaidDaysCenti: unpaid[index] }));
+  return bounds.map((bound, index) => ({ from: bound.from, to: bound.to, terms: bound.structure.terms, ...probationOf(bound), standardDays: standard[index], paidDaysCenti: paid[index], unpaidDaysCenti: unpaid[index] }));
 }
+
+/** Only a segment on probation says so, so a month without probation reads exactly as before. */
+const probationOf = (bound: { probationPercent: number | null }): Pick<PaySegment, "probationPercent"> => (bound.probationPercent ? { probationPercent: bound.probationPercent } : {});
+
+/** `from`–`to` cut where probation contracts begin and end, each piece saying whether it is on probation. */
+export function splitByProbation(from: IsoDate, to: IsoDate, ranges: readonly ProbationRange[]): { from: IsoDate; to: IsoDate; onProbation: boolean }[] {
+  const covered = (date: IsoDate) => ranges.some((range) => range.start <= date && (range.end === null || range.end >= date));
+  const pieces: { from: IsoDate; to: IsoDate; onProbation: boolean }[] = [];
+  // Every day a range starts, or the day after one ends, may change the answer.
+  const cuts = [...new Set(ranges.flatMap((range) => [range.start, ...(range.end ? [dayAfter(range.end)] : [])]))].filter((date) => date > from && date <= to).sort();
+  let pieceFrom = from;
+  for (const cut of [...cuts, dayAfter(to)]) {
+    const pieceTo = nextDay(cut)!;
+    const onProbation = covered(pieceFrom);
+    const last = pieces.at(-1);
+    if (last && last.onProbation === onProbation) last.to = pieceTo;
+    else pieces.push({ from: pieceFrom, to: pieceTo, onProbation });
+    pieceFrom = cut;
+  }
+  return pieces;
+}
+
+const dayAfter = (date: IsoDate): IsoDate => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) as IsoDate;
 
 /** Splits `total` over the given weights, largest remainder first, so the parts add back to `total`. */
 function shareOut(total: number, weights: readonly number[], totalWeight: number): number[] {

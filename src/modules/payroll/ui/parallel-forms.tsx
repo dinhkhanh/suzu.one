@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { classifyParallelDifferenceAction, setParallelReferenceAction } from "../parallel-actions";
+import { classifyParallelDifferenceAction, exportParallelReportAction, setParallelReferenceAction, signOffParallelAction } from "../parallel-actions";
 import type { ComparedField, DifferenceLine, FindingClass } from "../parallel";
 import { formatVnd } from "./money";
 
@@ -151,6 +151,10 @@ export function ReferenceForm({ entityId, month, people }: { entityId: string; m
               <MoneyInput id={field} name={field} defaultValue={0} required />
             </Field>
           ))}
+          {/* Optional: not every sheet works out what a person cost the company. */}
+          <Field name="employerCost" label={t("fields.employerCost")}>
+            <MoneyInput id="employerCost" name="employerCost" />
+          </Field>
         </div>
         <Field name="note" label={t("note")}>
           <Input id="note" name="note" maxLength={300} />
@@ -183,5 +187,62 @@ export function DifferenceCell({ line }: { line: DifferenceLine }) {
       </span>
       {line.note ? <span className="text-xs text-muted-foreground">{line.note}</span> : null}
     </div>
+  );
+}
+
+/**
+ * Signing a month off (FR-PAY-38): offered only when nothing is left unexplained. The record keeps
+ * who signed, who it was checked with on the existing method's side, and the counts it was accepted on.
+ */
+export function SignOffForm({ entityId, month }: { entityId: string; month: string }) {
+  const t = useTranslations("payroll.parallel");
+  const router = useRouter();
+  const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(signOffParallelAction, { extra: { entityId, month }, onSuccess: () => router.refresh() });
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <FieldErrors value={fieldErrors}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field name="checkedWith" label={t("signoff.checkedWith")}>
+            <Input id="checkedWith" name="checkedWith" maxLength={200} placeholder={t("signoff.checkedWithHint")} />
+          </Field>
+          <Field name="signoff-note" label={t("note")}>
+            <Input id="signoff-note" name="note" maxLength={1000} />
+          </Field>
+        </div>
+      </FieldErrors>
+      <FormError namespace="payroll.parallel.errors" errorKey={errorKey} />
+      <div>
+        <Button type="submit" disabled={pending} className="w-full md:w-auto">
+          {pending ? `${t("signoff.submit")}…` : t("signoff.submit")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** The report as a spreadsheet for the chief accountant's file — built on the server, saved by the browser. */
+export function ExportParallelButton({ entityId, month }: { entityId: string; month: string }) {
+  const t = useTranslations("payroll.parallel");
+  const { onSubmit, pending, errorKey } = useActionForm(exportParallelReportAction, {
+    extra: { entityId, month },
+    onSuccess: (file) => {
+      const { fileName, content, contentType } = file as { fileName: string; content: string; contentType: string };
+      const url = URL.createObjectURL(new Blob([content], { type: contentType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-2">
+      <Button type="submit" variant="outline" disabled={pending}>
+        {pending ? `${t("export.label")}…` : t("export.label")}
+      </Button>
+      <FormError namespace="payroll.parallel.errors" errorKey={errorKey} />
+    </form>
   );
 }
