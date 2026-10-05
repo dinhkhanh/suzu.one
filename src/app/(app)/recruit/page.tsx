@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { List, ListEmpty } from "@/components/ui/list";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -14,7 +14,7 @@ import { initialsOf } from "@/lib/text";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listMyInterviews } from "@/modules/recruit/interviews";
 import { canReadRecruitReports } from "@/modules/recruit/policy";
-import { canBrowseCandidates, canManagePipelines, canRunRecruitment, getOpeningView, listApplications, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
+import { canBrowseCandidates, canManagePipelines, canRunRecruitment, getOpeningView, listApplications, listOpenings, listUndeliveredLetters, recruitModuleOpen } from "@/modules/recruit/service";
 import { type BoardFlag, PipelineBoard } from "@/modules/recruit/ui/pipeline-board";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -30,7 +30,14 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
   const user = await requireUser();
   const params = await searchParams;
   // The list is scoped by itself, so it can be read alongside the navigation check.
-  const [open, t, format, openings, interviews] = await Promise.all([recruitModuleOpen(user.principal, user.person.id), getTranslations("recruit"), getFormatter(), listOpenings(user.principal), listMyInterviews(user.person.id)]);
+  const [open, t, format, openings, interviews, undelivered] = await Promise.all([
+    recruitModuleOpen(user.principal, user.person.id),
+    getTranslations("recruit"),
+    getFormatter(),
+    listOpenings(user.principal),
+    listMyInterviews(user.person.id),
+    listUndeliveredLetters(user.principal),
+  ]);
   if (!open) notFound();
   const runs = canRunRecruitment(user.principal);
   const viewer = { principal: user.principal, personId: user.person.id };
@@ -57,6 +64,8 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
     { href: "/recruit/referrals", label: t("referral.title"), shown: runs },
     // The wordings are the group's, so the entry shows for a group-wide grant only.
     { href: "/recruit/emails", label: t("email.title"), shown: canManagePipelines(user.principal) },
+    // The hiring pipelines each opening runs: the group's library, like the wordings.
+    { href: "/recruit/pipelines", label: t("pipelines"), shown: canManagePipelines(user.principal) },
   ].filter((section) => section.shown);
 
   return (
@@ -168,6 +177,29 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
           </Table>
         </TableCard>
       </Section>
+
+      {/* Letters to candidates that did not go: drawn only when there are some, so a failure is seen
+          without opening every application. */}
+      {undelivered.length > 0 ? (
+        <Section title={t("home.undelivered")} count={undelivered.length}>
+          <List>
+            {undelivered.map((row) => (
+              <ListItem key={row.eventId} className="flex-col items-start gap-0.5">
+                <span className="flex flex-wrap items-center gap-2">
+                  <RecordLink kind="application" id={row.applicationId} className="font-medium">
+                    {row.candidateName}
+                  </RecordLink>
+                  <Badge dot variant={row.status === "failed" ? "destructive" : "warning"}>{t(row.status === "failed" ? "delivery.failed" : "delivery.retrying")}</Badge>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {[row.templateName, row.openingTitle, format.dateTime(row.at, { dateStyle: "short", timeStyle: "short" })].filter(Boolean).join(" · ")}
+                </span>
+                {row.error ? <span className="text-xs break-all text-destructive">{row.error}</span> : null}
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : null}
 
       <Section title={t("home.allOpenings")} count={openings.length || null}>
         <TableCard>

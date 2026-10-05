@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -71,6 +72,19 @@ function Interviewers({ options, selected, onToggle }: { options: InterviewerOpt
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Whether the candidate is sent the time, the place and an `.ics` in their own language. Ticked by
+ * default; unticked for a room booked before the time is agreed with them.
+ */
+export function TellCandidate({ label }: { label: string }) {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <Checkbox name="tellCandidate" value="on" defaultChecked className="mt-0.5" />
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -160,6 +174,7 @@ export function ScheduleInterview({ applicationId, stages, options }: { applicat
         </Field>
       </FieldErrors>
       <Interviewers options={options} selected={selected} onToggle={(personId) => setSelected((current) => (current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId]))} />
+      <TellCandidate label={t("tellCandidate")} />
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={form.pending || !start || selected.length === 0}>
@@ -217,6 +232,7 @@ export function RescheduleInterview({
         </Field>
       </FieldErrors>
       <Interviewers options={options} selected={selected} onToggle={(personId) => setSelected((c) => (c.includes(personId) ? c.filter((id) => id !== personId) : [...c, personId]))} />
+      <TellCandidate label={t("tellCandidateMoved")} />
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />
       <Button type="submit" size="sm" disabled={form.pending || !start || selected.length === 0}>
         {t("reschedule")}

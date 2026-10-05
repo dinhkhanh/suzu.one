@@ -66,4 +66,19 @@ describe("renderEmail", () => {
     const rendered = renderEmail({ subject: "x", body: "{{candidate_name}}" }, { candidate_name: "{{company_name}}", company_name: "SuZu" });
     expect(rendered.body).toBe("{{company_name}}");
   });
+
+  it("leaves out a whole line naming an optional placeholder it has nothing for — and only that line", () => {
+    const template = { subject: "x", body: "Thời gian: {{interview_time}}\nGhi chú: {{interview_notes}}\nXem tại:\n{{privacy_url}}\nHẹn gặp" };
+    const rendered = renderEmail(template, { interview_time: "09:30" }, { optional: ["interview_notes", "privacy_url"] });
+    expect(rendered.body).toBe("Thời gian: 09:30\nXem tại:\nHẹn gặp");
+    expect(rendered.missing).toEqual([]);
+    // With a value, the line stays.
+    expect(renderEmail(template, { interview_time: "09:30", interview_notes: "Mang portfolio", privacy_url: "https://x" }, { optional: ["interview_notes", "privacy_url"] }).body).toContain("Ghi chú: Mang portfolio");
+  });
+
+  it("still leaves a required placeholder standing on a line it would otherwise keep", () => {
+    const rendered = renderEmail({ subject: "x", body: "Địa điểm: {{interview_place}}" }, {}, { optional: ["interview_notes"] });
+    expect(rendered.body).toBe("Địa điểm: {{interview_place}}");
+    expect(rendered.missing).toEqual(["interview_place"]);
+  });
 });

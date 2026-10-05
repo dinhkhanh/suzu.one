@@ -8,6 +8,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setInterviewStatusAction } from "../interview-actions";
+import { TellCandidate } from "./interview-form";
 
 export function InterviewStatusActions({ interviewId, status }: { interviewId: string; status: string }) {
   const t = useTranslations("recruit.interview");
@@ -20,6 +21,8 @@ export function InterviewStatusActions({ interviewId, status }: { interviewId: s
     <form onSubmit={form.onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
       <h3 className="text-sm font-medium">{t("outcome")}</h3>
       <Input name="reason" maxLength={500} placeholder={t("cancelReason")} />
+      {/* Read only on a cancellation: the candidate is told it is off — never the reason above. */}
+      <TellCandidate label={t("tellCandidateCancelled")} />
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" name="status" value="completed" disabled={form.pending}>

@@ -2,7 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
-import { canSetRecruitMoney, getOpeningView, listPipelines } from "@/modules/recruit/service";
+import { Section } from "@/components/ui/page";
+import { canSetRecruitMoney, DEFAULT_INTERVIEW_KIT, getOpeningView, listPipelines } from "@/modules/recruit/service";
+import { KitEditor, QuestionsEditor } from "@/modules/recruit/ui/opening-config";
 import { OpeningForm } from "@/modules/recruit/ui/opening-form";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -55,6 +57,15 @@ export default async function EditOpeningPage({ params }: PageProps<"/recruit/[o
         pipelines={pipelines}
         canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })}
       />
+
+      {/* What the application form asks beyond the standard fields (FR-REC-03), and what the
+          interviewers score (FR-REC-06). Saved on their own: neither is part of the advertisement's text. */}
+      <Section title={t("questions.title")}>
+        <QuestionsEditor openingId={view.opening.id} questions={view.opening.questions} />
+      </Section>
+      <Section title={t("kit.title")}>
+        <KitEditor openingId={view.opening.id} kit={view.opening.interviewKit} fallback={DEFAULT_INTERVIEW_KIT} />
+      </Section>
     </div>
   );
 }

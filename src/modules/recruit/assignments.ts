@@ -31,7 +31,7 @@ import type { Principal } from "@/modules/platform/rbac/policy";
 import { ASSIGNMENT_CLOSED, ASSIGNMENT_GRACE_DAYS, ASSIGNMENT_LIMITS, SCORE_MAX, SCORE_MIN } from "./enums";
 import { canRunAssignment, type OpeningTarget } from "./policy";
 import { countPublicHit } from "./public";
-import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
+import { findApplication, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -292,14 +292,17 @@ const submitPipeline = createPublicAction({
   },
 });
 
-/** The person who sent the brief hears that it came back. Nothing of the work itself travels. */
+/**
+ * The person who sent the brief hears that it came back. Nothing of the work itself travels, and
+ * nor does the candidate's name — the brief and the job say which one it is to the person who sent
+ * it, and a name in a notification outlives the candidate's erasure.
+ */
 async function tellTheRecruiter(assignment: AssignmentRow): Promise<void> {
-  const application = await findApplication(assignment.applicationId);
-  const candidate = application ? await findCandidate(application.candidateId) : undefined;
+  const opening = await findOpening(assignment.openingId);
   await notify({
     recipients: [assignment.sentByPersonId],
     kind: "recruit.assignment_received",
-    params: { title: assignment.title, candidate: candidate?.fullName ?? "" },
+    params: { title: assignment.title, job: opening?.title ?? "" },
     link: `/recruit/applications/${assignment.applicationId}`,
   });
 }

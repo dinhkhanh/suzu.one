@@ -287,7 +287,7 @@ describe("the offer's life, enforced in the service", () => {
   it("cannot be sent before it is approved, and cannot be edited after it is submitted", async () => {
     const applicationId = await freshApplication("Ứng viên chờ duyệt", "choduyet@example.test");
     const offer = await makeOffer(offerInput({ applicationId }), ids.hrAdmin);
-    expect(await fails(sendOffer(offer.id, ids.hrAdmin))).toBe("offer_not_sendable");
+    expect(await fails(sendOffer(offer.id, { personId: ids.hrAdmin, fullName: "Trưởng phòng Nhân sự" }))).toBe("offer_not_sendable");
 
     // The flow's first step is the opening's own department head — resolved from `role_assignment`,
     // not from whoever happened to file it.
@@ -300,7 +300,7 @@ describe("the offer's life, enforced in the service", () => {
 
     expect((await findOffer(offer.id))?.status).toBe("pending_approval");
     expect(await fails(updateOffer(offer.id, offerInput({ applicationId })))).toBe("offer_not_editable");
-    expect(await fails(sendOffer(offer.id, ids.hrAdmin))).toBe("offer_not_sendable");
+    expect(await fails(sendOffer(offer.id, { personId: ids.hrAdmin, fullName: "Trưởng phòng Nhân sự" }))).toBe("offer_not_sendable");
   });
 
   it("cannot be answered before it has been sent", async () => {

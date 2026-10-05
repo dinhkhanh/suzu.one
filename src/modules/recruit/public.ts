@@ -28,8 +28,11 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, softDeleteFile, storeIncomingFile } from "@/modules/platform/files/service";
+import { notify } from "@/modules/platform/notifications/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
-import { CONSENT_VERSION, OPENING_PUBLIC_STATUSES, type OpeningQuestion, PUBLIC_LIMITS } from "./enums";
+import { listPeopleHolding } from "@/modules/platform/rbac/service";
+import { type CandidateLocale, CONSENT_VERSION, OPENING_PUBLIC_STATUSES, type OpeningQuestion, PUBLIC_LIMITS } from "./enums";
+import { sendLetter } from "./letters";
 import { signFormToken, verifyFormToken } from "./engine/form-token";
 import { CAREERS_LIMITS, type CareersBucket, isRepeatRefusal, retryAfterSeconds, windowStartFor, withinLimit } from "./engine/rate-limit";
 import type { DuplicateMatch } from "./engine/duplicates";
@@ -207,6 +210,12 @@ const applicationSchema = z.object({
   // an application without it fails validation rather than being quietly stored unconsented.
   consent: z.preprocess((value) => value === true || value === "true" || value === "on", z.literal(true)),
   talentPool: z.preprocess((value) => value === true || value === "true" || value === "on", z.boolean().default(false)),
+  // The language the form was read in: the applicant's letters are written in it. Anything else is Vietnamese.
+  locale: z
+    .string()
+    .max(8)
+    .optional()
+    .transform((value): CandidateLocale => (value === "en" ? "en" : "vi")),
   cv: z.object({ fileName: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array) }).nullable().default(null),
 });
 
@@ -266,6 +275,7 @@ async function candidateFor(input: PublicApplication, tx: Executor): Promise<{ c
       referredByPersonId: null,
       tags: [],
       notes: null,
+      locale: input.locale,
     },
     null,
     // A name-only warning has nobody to answer it out here; see the note above.
@@ -273,6 +283,25 @@ async function candidateFor(input: PublicApplication, tx: Executor): Promise<{ c
     tx,
   );
   return { candidateId: created.id, matched: null };
+}
+
+/**
+ * Somebody applied: the opening's recruiters hear it at once — the people on its hiring team as
+ * recruiters, or, for an opening nobody has been put on, whoever runs recruitment where it sits.
+ * The card names the job and nothing about the applicant: a notification is read on a lock screen
+ * and kept in a mailbox, and outlives a candidate who later asks to be erased. The name is one
+ * tap away, behind the sign-in.
+ */
+async function tellTheRecruiters(tx: Tx, opening: { id: string; code: string; title: string; entityId: string; departmentId: string | null; teamId: string | null }, applicationId: string): Promise<void> {
+  const members = await tx
+    .select({ personId: schema.jobOpeningMember.personId })
+    .from(schema.jobOpeningMember)
+    .where(and(eq(schema.jobOpeningMember.openingId, opening.id), eq(schema.jobOpeningMember.role, "recruiter")));
+  const recipients =
+    members.length > 0
+      ? members.map((row) => row.personId)
+      : await listPeopleHolding("recruit:manage", { entityId: opening.entityId, unitPath: [opening.departmentId, opening.teamId].filter((id): id is string => !!id) }, { includeWildcard: false, executor: tx });
+  await notify({ recipients, kind: "recruit.application_received", params: { title: opening.title, code: opening.code }, link: `/recruit/applications/${applicationId}` }, tx);
 }
 
 /**
@@ -350,6 +379,16 @@ const applyPipeline = createPublicAction({
             detail: { possibleDuplicate: true, typedName: input.fullName, signals: matched.signals, consentVersion: CONSENT_VERSION },
           });
         }
+        // The thank-you, to the address typed and greeting the name typed (`letters.ts` says why
+        // never the record's), and the recruiters' notice — both with the application, or neither.
+        await sendLetter(tx, {
+          letter: "acknowledge",
+          applicationId: application.id,
+          actorPersonId: null,
+          senderName: null,
+          typed: { email: input.email, name: input.fullName, locale: input.locale },
+        });
+        await tellTheRecruiters(tx, opening, application.id);
         return application;
       });
 

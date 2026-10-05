@@ -9,20 +9,29 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { saveRecruitEmailTemplateAction } from "../actions";
-import { RECRUIT_EMAIL_KINDS, RECRUIT_EMAIL_PLACEHOLDERS } from "../enums";
+import { type AutomaticLetter, RECRUIT_EMAIL_KINDS, RECRUIT_EMAIL_PLACEHOLDERS } from "../enums";
 
 export type EmailTemplateDraft = { id: string; code: string; name: string; kind: string; subject: string; body: string; subjectEn: string | null; bodyEn: string | null; isActive: boolean } | null;
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs";
 
-export function EmailTemplateForm({ template }: { template: EmailTemplateDraft }) {
+export function EmailTemplateForm({ template, automatic = null }: { template: EmailTemplateDraft; /** When the system sends this wording by itself. */ automatic?: AutomaticLetter | null }) {
   const t = useTranslations("recruit");
   const router = useRouter();
   const form = useActionForm(saveRecruitEmailTemplateAction, { extra: template ? { templateId: template.id } : {}, onSuccess: () => router.refresh() });
 
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
+      {/* A wording the system sends on its own says when, so whoever edits it knows who reads it —
+          and that switching it off stops that letter. */}
+      {automatic ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="info">{t("email.automaticBadge")}</Badge>
+          {t(`email.automatic.${automatic}`)}
+        </p>
+      ) : null}
       <FieldErrors value={form.fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field name="code" label={t("form.code")}>

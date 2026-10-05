@@ -97,6 +97,8 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
         ) : (
         <form method="post" action={`/careers/${slug}/apply`} encType="multipart/form-data" className="flex flex-col gap-4">
           <input type="hidden" name="formToken" value={token} />
+          {/* The applicant's letters are written in the language they read this page in. */}
+          <input type="hidden" name="locale" value={locale} />
           {/* The honeypot. Hidden from people by CSS and from screen readers by aria-hidden, and
               taken out of the tab order — anything in it was put there by a machine. */}
           <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">

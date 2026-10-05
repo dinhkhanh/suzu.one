@@ -76,6 +76,8 @@ export async function POST(request: Request, context: RouteContext<"/careers/[sl
       // The checkbox is present or it is not; its value is never trusted to mean anything else.
       consent: form.get("consent") !== null,
       talentPool: form.get("talentPool") !== null,
+      // The language the page was read in; the schema accepts "vi" or "en" and nothing else.
+      locale: text("locale"),
       cv: cv ? { fileName: cv.name, bytes: new Uint8Array(await cv.arrayBuffer()) } : null,
     },
     visitor,

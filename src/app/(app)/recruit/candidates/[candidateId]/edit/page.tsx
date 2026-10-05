@@ -35,6 +35,7 @@ export default async function EditCandidatePage({ params }: PageProps<"/recruit/
           referredByPersonId: candidate.referredByPersonId,
           tags: candidate.tags,
           notes: candidate.notes,
+          locale: candidate.locale,
         }}
         people={people}
       />

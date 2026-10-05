@@ -34,8 +34,9 @@ import "server-only";
 //
 // The job is idempotent by construction: `anonymised_at` is set in the same statement that empties
 // the row, and `retentionOutcome` answers `already_done` for anything that carries it.
-import { and, asc, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, like, notExists, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { invalidateLive } from "@/lib/cache/live";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { eraseFiles } from "@/modules/platform/files/service";
@@ -139,8 +140,22 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
 
   // A CV belongs to its application, a submission to its take-home. Files already deleted but still
   // in storage are included: their bytes go now too.
-  const assignments = applicationIds.length === 0 ? [] : await db().select({ id: schema.recruitAssignment.id }).from(schema.recruitAssignment).where(inArray(schema.recruitAssignment.applicationId, applicationIds));
+  const [assignments, interviews, offers] =
+    applicationIds.length === 0
+      ? [[], [], []]
+      : await Promise.all([
+          db().select({ id: schema.recruitAssignment.id }).from(schema.recruitAssignment).where(inArray(schema.recruitAssignment.applicationId, applicationIds)),
+          db().select({ id: schema.interview.id }).from(schema.interview).where(inArray(schema.interview.applicationId, applicationIds)),
+          db().select({ id: schema.jobOffer.id }).from(schema.jobOffer).where(inArray(schema.jobOffer.applicationId, applicationIds)),
+        ]);
   const assignmentIds = assignments.map((row) => row.id);
+  // The pages the colleagues' notifications about this candidate point at: older notifications
+  // named the candidate, and those words are emptied with everything else.
+  const noticeLinks = [
+    ...applicationIds.map((id) => `/recruit/applications/${id}`),
+    ...interviews.map((row) => `/recruit/interviews/${row.id}`),
+    ...offers.map((row) => `/recruit/offers/${row.id}`),
+  ];
   const files = applicationIds.length === 0 ? [] : await db()
     .select({ id: schema.storedFile.id })
     .from(schema.storedFile)
@@ -171,6 +186,8 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
         tags: [],
         notes: null,
         sourceDetail: null,
+        // The privacy link stops opening anything: there is nobody left behind it.
+        privacyTokenHash: null,
         anonymisedAt: now(),
         updatedAt: now(),
       })
@@ -192,6 +209,8 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
           toEmail: "",
           subject: ANONYMISED_NAME,
           bodyText: "",
+          // An interview's `.ics` names them; an offer letter names them and their salary.
+          attachments: null,
           lastError: null,
           status: sql`case when ${schema.emailOutbox.status} = 'pending' then 'skipped'::email_status else ${schema.emailOutbox.status} end`,
         })
@@ -201,6 +220,19 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
             notExists(tx.select({ one: sql`1` }).from(schema.person).where(eq(schema.person.workEmail, candidate.email.toLowerCase()))),
           ),
         );
+    }
+
+    // Colleagues' notifications about them. Recruitment's notices stopped naming candidates
+    // (`interviews.ts`, `assignments.ts`, `offers.ts`); the ones written before that carried the
+    // name as a parameter, which goes here. The notice itself stays — it is the colleague's.
+    if (noticeLinks.length > 0) {
+      const scrubbed = await tx
+        .update(schema.notification)
+        .set({ params: sql`${schema.notification.params} - 'candidate'::text - 'name'::text` })
+        .where(and(like(schema.notification.kind, "recruit.%"), inArray(schema.notification.link, noticeLinks)))
+        .returning({ recipient: schema.notification.recipientPersonId });
+      // Their notification lists are cached (src/lib/cache/live.ts): dropped as the rows change.
+      await invalidateLive(...new Set(scrubbed.map((row) => row.recipient)));
     }
 
     if (applicationIds.length > 0) {
