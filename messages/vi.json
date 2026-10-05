@@ -11084,7 +11084,7 @@
       "offer_expiry_past": "Hạn hiệu lực đã qua.",
       "offer_expiry_after_start": "Thư mời không thể còn hiệu lực sau ngày bắt đầu làm việc.",
       "offer_probation_invalid": "Thời gian thử việc không hợp lệ.",
-      "offer_probation_percent_invalid": "Lương thử việc phải từ 85% đến 100% mức thoả thuận.",
+      "offer_probation_percent_invalid": "Lương thử việc phải từ mức tối thiểu luật định đến 100% mức thoả thuận.",
       "offer_position_empty": "Chưa có chức vụ.",
       "offer_note_too_long": "Ghi chú quá dài.",
       "offer_already_open": "Hồ sơ này đã có một thư mời đang hiệu lực.",

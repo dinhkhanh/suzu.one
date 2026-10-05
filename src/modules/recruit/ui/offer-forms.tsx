@@ -136,7 +136,7 @@ export function OfferForm({
             <Input id="probationMonths" name="probationMonths" type="number" min={0} max={OFFER_LIMITS.probationMonths} defaultValue={values?.probationMonths ?? 2} />
           </Field>
           <Field name="probationSalaryPercent" label={t("probationPercent")}>
-            <Input id="probationSalaryPercent" name="probationSalaryPercent" type="number" min={OFFER_LIMITS.probationPercentMin} max={100} defaultValue={values?.probationSalaryPercent ?? 85} />
+            <Input id="probationSalaryPercent" name="probationSalaryPercent" type="number" min={0} max={100} defaultValue={values?.probationSalaryPercent ?? 85} />
           </Field>
         </div>
 

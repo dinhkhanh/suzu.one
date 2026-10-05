@@ -16,6 +16,7 @@ vi.mock("@/lib/env", () => ({
 import { and, eq, like } from "drizzle-orm";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { deliverPendingEmails } from "../platform/notifications/service";
 import type { Principal } from "../platform/rbac/policy";
@@ -97,6 +98,8 @@ const slot = (offsetDays: number, startHourUtc: number) => {
 
 beforeAll(async () => {
   await migrateTestDb();
+  // The legal floor of probation pay an offer is held to (`probation.limits`), as `pnpm db:seed` ships it.
+  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });

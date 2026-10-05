@@ -11084,7 +11084,7 @@
       "offer_expiry_past": "That expiry date has already passed.",
       "offer_expiry_after_start": "An offer cannot stand past the day the job starts.",
       "offer_probation_invalid": "That probation period is not allowed.",
-      "offer_probation_percent_invalid": "Probation pay must be between 85% and 100% of the agreed package.",
+      "offer_probation_percent_invalid": "Probation pay must be at least the legal minimum and at most 100% of the agreed package.",
       "offer_position_empty": "The offer needs a job title.",
       "offer_note_too_long": "That note is too long.",
       "offer_already_open": "This application already has a live offer.",

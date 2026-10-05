@@ -72,6 +72,9 @@ export type OfferDraft = {
   probationSalaryPercent: number;
 };
 
+/** The legal figures an offer is checked against: `probation.limits.minimumPayPercent` on the start date. */
+export type OfferLegalLimits = { minimumProbationPayPercent: number };
+
 const wholeDong = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
 /**
@@ -79,7 +82,7 @@ const wholeDong = (value: number): boolean => Number.isSafeInteger(value) && val
  * again before it is submitted for approval, because the second is the one that matters: an
  * approver should never be shown a figure the form would have refused.
  */
-export function offerProblems(draft: OfferDraft, today: IsoDate): OfferProblem[] {
+export function offerProblems(draft: OfferDraft, today: IsoDate, limits: OfferLegalLimits): OfferProblem[] {
   const problems: OfferProblem[] = [];
   if (!draft.positionName.trim()) problems.push("offer_position_empty");
 
@@ -94,10 +97,10 @@ export function offerProblems(draft: OfferDraft, today: IsoDate): OfferProblem[]
   else if (draft.expiresOn > draft.startDate) problems.push("offer_expiry_after_start");
 
   if (!Number.isSafeInteger(draft.probationMonths) || draft.probationMonths < 0 || draft.probationMonths > OFFER_LIMITS.probationMonths) problems.push("offer_probation_invalid");
-  // Vietnam's Labour Code puts a floor under probation pay (85% of the agreed wage, art. 26).
-  // The floor is here rather than in a statutory table because it is a *validation* of what may be
-  // typed, not a rate anything is calculated from.
-  if (!Number.isSafeInteger(draft.probationSalaryPercent) || draft.probationSalaryPercent < OFFER_LIMITS.probationPercentMin || draft.probationSalaryPercent > 100) problems.push("offer_probation_percent_invalid");
+  // Vietnam's Labour Code puts a floor under probation pay (art. 26). The floor is law, so it comes
+  // from the statutory parameter store as in force on the start date — the figure payroll checks
+  // a probation salary against — and the caller hands it in.
+  if (!Number.isSafeInteger(draft.probationSalaryPercent) || draft.probationSalaryPercent < limits.minimumProbationPayPercent || draft.probationSalaryPercent > 100) problems.push("offer_probation_percent_invalid");
 
   return problems;
 }

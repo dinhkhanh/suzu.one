@@ -200,7 +200,7 @@ export type OfferDeclineReason = (typeof OFFER_DECLINE_REASONS)[number];
 export const DEFAULT_OFFER_VALID_DAYS = 7;
 
 /** What an offer may contain. Probation in Vietnam is capped at 60 days for most roles (Labour Code art. 25). */
-export const OFFER_LIMITS = { probationMonths: 6, probationPercentMin: 85, note: 5_000, maxMonthlyVnd: 2_000_000_000 } as const;
+export const OFFER_LIMITS = { probationMonths: 6, note: 5_000, maxMonthlyVnd: 2_000_000_000 } as const;
 
 // ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
 
