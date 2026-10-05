@@ -1,3 +1,4 @@
+import { storedText } from "@/lib/stored-text";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,6 +28,7 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
 
   const t = await getTranslations("leave.admin");
   const tLeave = await getTranslations("leave");
+  const tStored = await getTranslations("stored");
   const format = await getFormatter();
   const current = Number(todayInVietnam().slice(0, 4));
   const asked = Number((await props.searchParams).year);
@@ -82,7 +84,7 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
                   <Badge variant="secondary">{t(`ledgerKinds.${entry.kind}`)}</Badge>
                 </TableCell>
                 <TableCell kind="number">{days(entry.amountCenti)}</TableCell>
-                <TableCell className="whitespace-normal text-muted-foreground">{entry.reason ?? ""}</TableCell>
+                <TableCell className="whitespace-normal text-muted-foreground">{storedText(entry.reason, tStored) ?? ""}</TableCell>
                 <TableCell className="text-muted-foreground">{entry.createdByName ? <RecordLink kind="person" id={entry.createdByPersonId}>{entry.createdByName}</RecordLink> : t("balances.system")}</TableCell>
               </TableRow>
             ))}

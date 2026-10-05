@@ -22,7 +22,10 @@ import { db, schema } from "@/lib/db";
 import { withdrawRequest } from "@/modules/platform/approvals/service";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
+import { tableToCsv } from "@/modules/platform/export/csv";
+import { listBalancesForAdmin } from "./admin";
 import { getTeamCalendar } from "./calendar";
+import { buildLeaveBalancesExport } from "./exports";
 import { commitOpeningRows, resolveOpeningRows } from "./import";
 import { adjustBalance, getBalances, getLedger, listPayouts, listPayoutTotals, postCompensatoryLeave, postCompensatoryLeaves, runLeaveAccruals } from "./ledger";
 import { amendLeave, cancelLeave, decideLeave, getLeaveOnDays, getLeaveRequestView, getLeaveUsage, type LeaveInput, listLeaveRequestsOf, previewLeave, submitLeave } from "./requests";
@@ -421,5 +424,28 @@ describe("booking ahead of the ledger (LVE-01)", () => {
     const preview = await previewLeave(booker, request({ startDate: "2028-02-07", endDate: "2028-02-07" }));
     expect(preview.availableByYear[2028]).toBe(0);
     expect(preview.problems).toEqual(["leave_balance_insufficient"]);
+  });
+});
+
+describe("the balances export", () => {
+  it("holds the people and balances HR's screen lists, and only the viewer's own reach", async () => {
+    const hr = principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]);
+    const listed = await listBalancesForAdmin(hr, 2026);
+    expect(listed.length).toBeGreaterThan(0);
+    const { file, total } = await buildLeaveBalancesExport(hr, 2026, "en");
+    expect([total, file.rowCount]).toEqual([listed.length, listed.length]);
+    expect(file.table.header.slice(0, 3)).toEqual(["Person", "Entity", "Department"]);
+    const annual = file.table.header.indexOf("ANNUAL");
+    expect(annual).toBeGreaterThan(2);
+    const nam = (await listBalancesForAdmin(hr, 2026)).find((row) => row.personId === ids.nam)!;
+    expect(file.table.rows.find((cells) => cells[0] === "Nam")![annual]).toBe(nam.balances.find((balance) => balance.code === "ANNUAL")!.balanceCenti / 100);
+    expect(tableToCsv(file.table)).toContain("Nam");
+
+    // HR of another entity gets that entity's people, as the screen would list them; a colleague has no leave:manage and gets nothing.
+    const elsewhere = principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.creative } }]);
+    const narrower = await buildLeaveBalancesExport(elsewhere, 2026, "en");
+    expect(narrower.total).toBe((await listBalancesForAdmin(elsewhere, 2026)).length);
+    expect(narrower.total).toBeLessThan(total);
+    expect((await buildLeaveBalancesExport(principal(ids.mai), 2026, "en")).total).toBe(0);
   });
 });

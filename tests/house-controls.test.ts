@@ -30,6 +30,7 @@ const RULES: { name: string; pattern: RegExp; allowed: Record<string, string> }[
     pattern: /<textarea\b/,
     allowed: {
       "src/modules/platform/rich-text/ui/note-editor.tsx": "the hidden copy the editor posts and the browser validates",
+      "src/modules/platform/rich-text/ui/note-editor-impl.tsx": "the same hidden copy, once the editor has loaded",
       "src/modules/ai/ui/chat.tsx": "the assistant's borderless composer inside its own frame",
     },
   },

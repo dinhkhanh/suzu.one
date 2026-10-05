@@ -4,6 +4,8 @@ vi.mock("@/lib/db", () => import("../../../../tests/helpers/db"));
 
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
+import { tableToCsv } from "../export/csv";
+import { buildAuditExport } from "./exports";
 import { listAuditEntries, recordAudit } from "./service";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -36,6 +38,20 @@ it("filters by action, actor, resource and day, treating % and _ literally", asy
   expect(await actions({ all: true }, { resourceType: "person", resourceId: "p2" })).toEqual(["person.hire:p2"]);
   expect(await actions({ all: true }, { to: "2000-01-01" })).toEqual([]);
   expect((await listAuditEntries({ all: true }, { from: "2000-01-01" })).total).toBe(4);
+});
+
+it("exports what the list shows, without the snapshots, and no more to a narrower reach", async () => {
+  const all = await buildAuditExport({ all: true }, {}, "en");
+  expect(all.total).toBe(4);
+  expect(all.file.table.header).toEqual(["When", "Who", "Action", "Resource type", "Resource ID", "Entity", "Summary"]);
+  expect(all.file.table.rows.map((row) => [row[1], row[2], row[4]])).toEqual([["owner@suzu.vn", "role.grant", "r1"], ["huy_100%@suzu.group", "person.update.denied", null], ["bao@suzu.group", "person.hire", "p2"], ["mai@suzu.group", "person.hire", "p1"]]);
+  expect(all.file.table.rows[0][0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  expect(tableToCsv(all.file.table)).not.toContain("before");
+  const system = await buildAuditExport({ all: true }, { action: ".denied", actor: "" }, "vi");
+  expect(system.file.table.rows).toHaveLength(1);
+  const scoped = await buildAuditExport({ all: false, entityIds: [A] }, {}, "en");
+  expect(scoped.file.table.rows.map((row) => row[2])).toEqual(["person.hire"]);
+  expect((await buildAuditExport({ all: false, entityIds: [] }, {}, "en")).file.table.rows).toEqual([]);
 });
 
 it("cannot be rewritten", async () => {

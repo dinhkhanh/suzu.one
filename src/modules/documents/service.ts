@@ -407,7 +407,7 @@ export const REGISTER_LIMIT = 300;
  * narrowed by kind and year. The tier is checked per paper against its subject, as on a record
  * page — a register is not a way round the lock.
  */
-export async function listIssuedDocuments(viewer: Principal, filter: RegisterFilter = {}): Promise<DocumentListRow[]> {
+export async function listIssuedDocuments(viewer: Principal, filter: RegisterFilter = {}, options: { limit?: number } = {}): Promise<DocumentListRow[]> {
   const rows = await db()
     .select(listColumns)
     .from(schema.generatedDocument)
@@ -421,7 +421,7 @@ export async function listIssuedDocuments(viewer: Principal, filter: RegisterFil
       ),
     )
     .orderBy(desc(schema.generatedDocument.createdAt))
-    .limit(REGISTER_LIMIT);
+    .limit(options.limit ?? REGISTER_LIMIT);
   const subjects = await getPersonTargets([...new Set(rows.map((row) => row.document.subjectPersonId))]);
   return rows.filter((row) => {
     const subject = subjects.get(row.document.subjectPersonId);

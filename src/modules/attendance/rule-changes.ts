@@ -37,8 +37,8 @@ export async function proposeAttendancePolicy(input: PolicyInput, actorPersonId:
       subjectPersonId: null,
       subjectType: "attendance_policy",
       subjectId: current?.id ?? null,
-      // Read in the owner's inbox, in Vietnamese like every summary.
-      summary: `Chính sách chấm công từ ${formatDay(input.validFrom)}`,
+      // Read in the owner's inbox beside "Attendance rule change", in their language: the date only (UI-01).
+      summary: `→ ${formatDay(input.validFrom)}`,
       payload: change as unknown as Record<string, unknown>,
       link: (id) => `/approvals/rule/${id}`,
       target: entityId ? { entityId } : {},

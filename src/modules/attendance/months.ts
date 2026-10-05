@@ -7,6 +7,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { storedMessage } from "@/lib/stored-text";
 import { postCompensatoryLeaves } from "@/modules/leave/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { matchesReach, permissionReach, type Principal, type Target } from "@/modules/platform/rbac/policy";
@@ -219,7 +220,7 @@ function lockInTransaction(entityId: string, month: string, actorPersonId: strin
     if (toilPosted.length > 0) {
       await postCompensatoryLeaves(
         tx,
-        toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, amountCenti, effectiveDate: monthEnd(month), sourceKey: `${personId}:${month}`, reason: `Nghỉ bù làm thêm giờ tháng ${month.slice(5)}/${month.slice(0, 4)} (${minutes} phút)`, actorPersonId })),
+        toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, amountCenti, effectiveDate: monthEnd(month), sourceKey: `${personId}:${month}`, reason: storedMessage("toilGrant", { month: `${month.slice(5)}/${month.slice(0, 4)}`, minutes }), actorPersonId })),
       );
       await tx.insert(schema.attendanceToilPosting).values(toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, month, minutes, amountCenti }))).onConflictDoNothing();
     }

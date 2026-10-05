@@ -14,6 +14,7 @@ import { migrateTestDb } from "../../../../tests/helpers/db";
 import { findActionToken } from "./action-tokens";
 import { createDelegation, findDelegation, followDelegations, listDelegations, revokeDelegation } from "./delegations";
 import { deleteFlow, effectiveFlow, saveFlow } from "./flows";
+import { buildAllRequestsExport } from "./exports";
 import { sendOversightDigest } from "./jobs";
 import { commentOnRequest, decideRequest, defineRequestType, delegateRequest, getRequest, isRequestParty, listAllRequests, listInbox, listTurnsOf, mayReassignRequest, reassignRequest, reassignStrandedTurns, reassignTurnsOfLeaver, resubmitRequest, submitRequest, withdrawRequest } from "./service";
 
@@ -253,6 +254,18 @@ describe("oversight (approval:oversee)", () => {
     // An entity reach sees its own entity's requests only.
     expect((await listAllRequests({ all: false, entityIds: [ids.creative] })).map((row) => row.id)).toEqual([returned.request.id]);
     expect(await listAllRequests({ all: false, entityIds: [] })).toEqual([]);
+  });
+
+  it("exports the oversight list for the same reach, naming builder types from the labels it is given", async () => {
+    await submit(ids.huy, ids.media, 2);
+    await submit(ids.lan, ids.creative, 1);
+    const all = await buildAllRequestsExport({ all: true }, { state: "open" }, new Map([["test_leave", "Nghỉ thử"]]), "en");
+    expect(all.file.table.header).toEqual(["Type", "Request", "From", "Status", "Waiting for", "Sent", "Decided"]);
+    expect(all.file.table.rows.map((row) => [row[0], row[2], row[3], row[4]]).sort()).toEqual([["Nghỉ thử", "Ho Gia Huy", "Waiting for approval", "Line Manager"], ["Nghỉ thử", "Tran Lan", "Waiting for approval", "Line Manager"]]);
+    expect(all.file.table.rows[0][5]).toBe(todayInVietnam());
+    const scoped = await buildAllRequestsExport({ all: false, entityIds: [ids.creative] }, {}, new Map(), "vi");
+    expect(scoped.file.table.rows.map((row) => [row[0], row[2]])).toEqual([["test_leave", "Tran Lan"]]);
+    expect((await buildAllRequestsExport({ all: false, entityIds: [] }, {}, new Map(), "en")).file.table.rows).toEqual([]);
   });
 
   it("follows a project's requests too, reading them without a say in them", async () => {

@@ -848,6 +848,8 @@
     "close": "Đóng",
     "noDiff": "Bản ghi này không kèm dữ liệu trước/sau.",
     "appendOnly": "Nhật ký được ghi bởi trigger trong cơ sở dữ liệu: chỉ ghi thêm, không ai sửa hay xóa được.",
+    "resourceId": "Mã đối tượng",
+    "summary": "Tóm tắt",
     "removeFilter": "Bỏ lọc {filter}",
     "title": "Nhật ký hệ thống",
     "description": "Mọi thay đổi dữ liệu, mọi lần bị từ chối và mọi tác vụ tự động. Nhật ký chỉ ghi thêm, không ai sửa hay xóa được.",
@@ -1966,6 +1968,7 @@
       "request": "Yêu cầu",
       "requester": "Người gửi",
       "submitted": "Gửi lúc",
+      "decided": "Xử lý lúc",
       "status": "Trạng thái",
       "waitingOn": "Đang chờ",
       "type": "Loại",
@@ -2636,7 +2639,7 @@
     }
   },
   "exports": {
-    "button": "Xuất CSV",
+    "button": "Xuất tệp",
     "failed": "Không xuất được.",
     "truncated": "Danh sách quá dài: tệp chỉ chứa 5.000 dòng đầu."
   },
@@ -3480,7 +3483,7 @@
         "unmappedTitle": "{count} mã chưa gán cho ai",
         "unmappedHint": "Các dòng nhật ký được giữ lại. Gán mã là chúng thành lượt chấm ngay.",
         "lines": "{count} dòng",
-        "export": "Tải các dòng (CSV)",
+        "export": "Tải các dòng",
         "exportTruncated": "Tệp chỉ chứa 5.000 dòng đầu.",
         "bulkTitle": "Gán nhiều mã theo mã nhân viên",
         "bulkHint": "Mỗi dòng: mã trên máy, mã nhân viên. Chỉ lưu khi mọi dòng đều đúng.",
@@ -3941,7 +3944,7 @@
         "summary": "Tóm tắt"
       },
       "export": {
-        "button": "Tải bảng công tháng (CSV)",
+        "button": "Tải bảng công tháng",
         "failed": "Không tải được bảng công.",
         "truncated": "Tệp chỉ có 5.000 dòng đầu.",
         "columns": {
@@ -3976,7 +3979,7 @@
       "allEntities": "Tất cả pháp nhân",
       "allKinds": "Tất cả",
       "toTimesheets": "Bảng công tháng",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Xuất tệp không thành công.",
       "exportTruncated": "Tệp bị cắt ở giới hạn số dòng.",
       "clearPerson": "xem tất cả",
@@ -6643,7 +6646,7 @@
       "description": "Các kỳ đã qua của từng nghĩa vụ: ai hoàn thành, số tham chiếu, số tiền và chứng từ đã nộp — hồ sơ phục vụ thanh tra thuế, bảo hiểm.",
       "obligation": "Nghĩa vụ",
       "year": "Đến hạn trong năm",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Không xuất được tệp.",
       "exportTruncated": "Chỉ xuất 5.000 dòng đầu tiên.",
       "summary": "{count, plural, =0 {Chưa có kỳ nào đã qua} other {# kỳ đã qua}}{late, plural, =0 {} other {, # kỳ trễ hoặc còn mở}}.",
@@ -12224,7 +12227,7 @@
       "hoursOf": "{logged}/{available} giờ",
       "billableRatio": "{value}% tính phí",
       "cellTitle": "Đã ghi {logged} giờ trên {available} giờ làm việc",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Không xuất được tệp.",
       "exportTruncated": "Tệp chỉ gồm phần đầu của danh sách.",
       "csv": {
@@ -15645,5 +15648,10 @@
     "required": "Hãy điền mục này.",
     "draftRestored": "Đã khôi phục bản nháp chưa gửi từ {when}.",
     "draftDiscard": "Bỏ bản nháp"
+  },
+  "stored": {
+    "toilGrant": "Nghỉ bù làm thêm giờ tháng {month} ({minutes} phút)",
+    "retroSalaryChange": "Quyết định lương hiệu lực từ {validFrom} được duyệt sau khi trả lương tháng {month}",
+    "retroCancelled": "{reason} — huỷ: {why}"
   }
 }

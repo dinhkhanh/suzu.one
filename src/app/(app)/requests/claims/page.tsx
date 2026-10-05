@@ -1,4 +1,4 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,9 @@ import { statusTone } from "@/components/ui/tone";
 import { PersonName } from "@/modules/platform/approvals/ui/person-name";
 import { RequestAge } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { entityReach } from "@/modules/platform/rbac/policy";
+import { exportExpenseClaimsAction } from "@/modules/requests/export-actions";
 import { claimsOwed, listExpenseClaims } from "@/modules/requests/expense";
 import { canSettleExpenseClaims } from "@/modules/requests/policy";
 import { RequestTabs } from "@/modules/requests/ui/request-tabs";
@@ -26,7 +28,7 @@ export default async function ExpenseClaimsPage() {
 
   const reach = entityReach(user.principal, "payroll:pay");
   // What is owed is counted by Postgres over every claim, not over the newest the list shows.
-  const [t, tApprovals, tRequests, format, claims, owed] = await Promise.all([getTranslations("requests.expense"), getTranslations("approvals"), getTranslations("requests"), getFormatter(), listExpenseClaims({ reach }), claimsOwed(reach)]);
+  const [t, tApprovals, tRequests, te, locale, format, claims, owed] = await Promise.all([getTranslations("requests.expense"), getTranslations("approvals"), getTranslations("requests"), getTranslations("exports"), getLocale(), getFormatter(), listExpenseClaims({ reach }), claimsOwed(reach)]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
   // The desk's order: what is owed first, what is still being decided, then what is done with.
@@ -59,7 +61,13 @@ export default async function ExpenseClaimsPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: owed.count, amount: money(owed.amount) })} actions={canSettleExpenseClaims(user.principal, null) ? <SweepClaimsButton label={t("sweep")} /> : null} />
+      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: owed.count, amount: money(owed.amount) })} actions={
+          <>
+            <ExportButton action={exportExpenseClaimsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
+            {canSettleExpenseClaims(user.principal, null) ? <SweepClaimsButton label={t("sweep")} /> : null}
+          </>
+        }
+      />
       <RequestTabs active="claims" personId={user.person.id} principal={user.principal} claimsWaiting={owed.count} />
 
       <TileGrid>

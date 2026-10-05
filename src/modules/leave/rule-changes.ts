@@ -50,14 +50,15 @@ export async function proposeLeaveRuleChange(change: { kind: "leave_type"; input
       const current = change.input.id ? await getLeaveType(change.input.id, tx) : null;
       if (change.input.id && !current) throw new ActionError("leave_type_not_found");
       payload = { kind: "leave_type", input: change.input, before: pick(current, Object.keys(change.input)) };
-      // Read in the owner's inbox, in Vietnamese like every summary.
-      summary = `${current ? "Sửa" : "Thêm"} loại phép ${change.input.code}: ${change.input.name}`;
+      // Read in the owner's inbox beside "Leave rule change", in their language: facts only (UI-01) —
+      // the code and name, marked "+" when the type is new.
+      summary = `${current ? "" : "+ "}${change.input.code}: ${change.input.name}`;
     } else {
       const type = await getLeaveType(change.input.leaveTypeId, tx);
       if (!type) throw new ActionError("leave_type_not_found");
       const current = (await listPolicies([type.id], tx)).find((row) => row.entityId === (change.input.entityId ?? null) && row.validTo === null);
       payload = { kind: "leave_policy", input: change.input, before: pick(current, Object.keys(change.input)), typeName: type.name };
-      summary = `Chính sách ${type.name} từ ${formatDay(change.input.validFrom)}`;
+      summary = `${type.name} → ${formatDay(change.input.validFrom)}`;
     }
     const entityId = change.input.entityId ?? null;
     const { request, outcome } = await submitRequest(tx, leaveRuleRequest, {

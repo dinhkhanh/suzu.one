@@ -24,6 +24,7 @@ import { ActionError } from "@/lib/action";
 import { fieldCipher } from "@/lib/crypto";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { storedMessage } from "@/lib/stored-text";
 import { getTimesheetDays, listAdjustmentsForPayroll, listVoidedAdjustmentIds, releaseAdjustments, type TimesheetAdjustmentRow } from "@/modules/attendance/service";
 import { buildSegments, type CalculationContext } from "./calculation";
 import { calculatePerson, PAYROLL_ENGINE_VERSION } from "./engine/calculate";
@@ -199,7 +200,7 @@ export async function cancelRetroItem(id: string, reason: string, executor: Exec
   } else if (row.status !== "open") throw new ActionError("retro_item_not_open");
   const [cancelled] = await executor
     .update(schema.payrollRetroItem)
-    .set({ status: "cancelled", payrollMonth: null, runId: null, reason: `${row.reason} — huỷ: ${reason.trim().slice(0, 150)}`, updatedAt: new Date() })
+    .set({ status: "cancelled", payrollMonth: null, runId: null, reason: storedMessage("retroCancelled", { reason: row.reason, why: reason.trim().slice(0, 150) }), updatedAt: new Date() })
     .where(and(eq(schema.payrollRetroItem.id, id), eq(schema.payrollRetroItem.status, row.status)))
     .returning();
   if (!cancelled) throw new ActionError("retro_item_not_open");
@@ -432,7 +433,7 @@ export async function deriveRetroItems(entityId: string, beforeMonth: string, ac
       // was paid to what is due now: only the rest is new.
       const amount = difference.amount - (carried.get(`${row.personId}:${month}`) ?? 0);
       if (amount === 0) continue;
-      await add({ entityId, personId: row.personId, sourceMonth: month, amount, kind: "salary_change", reason: `Quyết định lương hiệu lực từ ${row.validFrom} được duyệt sau khi trả lương tháng ${month}`, insuranceBaseChanged: difference.insuranceBaseChanged, sourceRef: row.structureId });
+      await add({ entityId, personId: row.personId, sourceMonth: month, amount, kind: "salary_change", reason: storedMessage("retroSalaryChange", { validFrom: row.validFrom, month }), insuranceBaseChanged: difference.insuranceBaseChanged, sourceRef: row.structureId });
     }
   }
 
