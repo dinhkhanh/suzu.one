@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -64,11 +66,11 @@ export function LocationForm({ location, entities }: { location?: LocationFormVa
           </Field>
         </div>
         <Field name="ipAllowlist" label={t("locations.ipAllowlist")}>
-          <textarea id="ipAllowlist" name="ipAllowlist" rows={2} defaultValue={location?.ipAllowlist.join("\n") ?? ""} placeholder={"203.0.113.0/24\nwan1.office.example.com"} className="rounded-lg border bg-background px-2.5 py-1.5 font-mono text-sm" />
+          <Textarea id="ipAllowlist" name="ipAllowlist" rows={2} defaultValue={location?.ipAllowlist.join("\n") ?? ""} placeholder={"203.0.113.0/24\nwan1.office.example.com"} className="font-mono text-sm" />
         </Field>
         <p className="text-xs text-muted-foreground">{t("locations.ipHint")}</p>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={location?.isActive ?? true} className="size-4" />
+          <Checkbox name="isActive" defaultChecked={location?.isActive ?? true} />
           {t("active")}
         </label>
       </FieldErrors>

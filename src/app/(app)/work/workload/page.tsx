@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -54,39 +55,35 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
         </nav>
       ) : null}
 
-      {/* A week grid, not a register: the grid's frame and quiet headers, its own spaced cells. */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-background p-1">
-        <table className="w-full min-w-[860px] border-separate border-spacing-1 text-sm">
-          <thead>
-            <tr className="text-left text-xs text-foreground/65">
-              <th className="h-10 w-44 px-2 font-normal">{t("person")}</th>
+      {/* A week grid, not a register: the reference grid without its row numbers, one cell per person and week; an overloaded week is tinted. */}
+      <TableCard>
+        <Table numbered={false} className="min-w-[860px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person" className="w-44">
+                {t("person")}
+              </TableHead>
               {view.weeks.map((week, index) => (
-                <th key={week.start} className={`px-2 ${index === 0 ? "font-medium text-foreground" : "font-normal"}`}>
+                <TableHead key={week.start} kind="date" className={index === 0 ? "text-foreground" : undefined}>
                   {index === 0 ? t("thisWeek") : t("weekOf", { date: day(week.start) })}
                   <span className="block font-normal">
                     {day(week.start)} – {day(week.end)}
                   </span>
-                </th>
+                </TableHead>
               ))}
-              <th className="px-2 font-normal">{t("later")}</th>
-              <th className="px-2 font-normal">{t("unscheduled")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.rows.length === 0 ? (
-              <tr>
-                <td colSpan={view.weeks.length + 3} className="h-20 px-3 text-center text-muted-foreground">
-                  {t("empty")}
-                </td>
-              </tr>
-            ) : null}
+              <TableHead kind="date">{t("later")}</TableHead>
+              <TableHead kind="text">{t("unscheduled")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {view.rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
             {view.rows.map((row) => (
-              <tr key={row.person.id}>
-                <th scope="row" className="px-2 text-left align-top font-medium">
+              <TableRow key={row.person.id}>
+                <TableCell className="align-top font-medium">
                   <RecordLink kind="person" id={row.person.id}>{row.person.fullName}</RecordLink>
-                </th>
+                </TableCell>
                 {row.cells.map((cell) => (
-                  <td key={cell.week.start} className={`rounded-lg border p-2 align-top ${cell.over ? "border-destructive/50 bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>
+                  <TableCell key={cell.week.start} className={`py-2 align-top whitespace-normal ${cell.over ? "bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>
                     <p className="font-medium tabular-nums">
                       {t("hours", { hours: hours(cell.minutes) })} <span className="text-xs font-normal text-muted-foreground">/ {t("hours", { hours: hours(cell.capacityMinutes) })}</span>
                     </p>
@@ -97,10 +94,10 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
                     {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
                     {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
                     {cell.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
-                  </td>
+                  </TableCell>
                 ))}
                 {[row.later, row.unscheduled].map((rest, index) => (
-                  <td key={index} className="rounded-lg border p-2 align-top text-muted-foreground">
+                  <TableCell key={index} className="py-2 align-top whitespace-normal text-muted-foreground">
                     {rest.tasks === 0 && rest.minutes === 0 ? (
                       "—"
                     ) : (
@@ -109,13 +106,13 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
                         <p className="text-xs">{t("tasks", { count: rest.tasks })}</p>
                       </>
                     )}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableCard>
       {view.daysOff.length > 0 ? <p className="text-xs text-muted-foreground">{t("daysOff", { list: view.daysOff.map((off) => `${day(off.date)} ${off.name}`).join(", ") })}</p> : null}
       <p className="text-xs text-muted-foreground">{t("legend")}</p>
     </Page>

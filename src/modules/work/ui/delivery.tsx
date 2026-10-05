@@ -1,11 +1,13 @@
 "use client";
 // "Deliver to client" (FR-PJM-53): which version went, when, to whom, with the final files or Drive
 // links. The approved version is offered first; any other asks the person to confirm.
+import { Textarea } from "@/components/ui/textarea";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -19,7 +21,6 @@ import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
 export type DeliveryItem = { id: string; version: number | null; deliveredOn: string; recipient: string | null; links: string[]; note: string | null; deliveredByPersonId?: string | null; deliveredByName: string | null; canRemove: boolean };
 export type DeliverableChoice = { id: string; version: number; approved: boolean; frozen: boolean };
 
-const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
 export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }: { taskId: string; deliveries: DeliveryItem[]; versions: DeliverableChoice[]; canRecord: boolean; today: string }) {
   const t = useTranslations("work.delivery");
@@ -90,9 +91,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
                 {deliveries.some((row) => row.canRemove) ? (
                   <TableCell kind="actions">
                     {item.canRemove ? (
-                      <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => window.confirm(t("removeConfirm")) && run(() => removeDeliveryAction({ deliveryId: item.id }))}>
-                        {t("remove")}
-                      </Button>
+                      <ConfirmButton size="xs" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeDeliveryAction({ deliveryId: item.id }))} />
                     ) : null}
                   </TableCell>
                 ) : null}
@@ -146,7 +145,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
               ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="delivery-links">{t("links")}</Label>
-                <textarea id="delivery-links" name="links" placeholder={t("linksPlaceholder")} className={textareaClass} />
+                <Textarea id="delivery-links" name="links" placeholder={t("linksPlaceholder")} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="delivery-note">{t("note")}</Label>

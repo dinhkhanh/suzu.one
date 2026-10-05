@@ -19,9 +19,11 @@ export const canFileRequests = (principal: Principal) => principal.personId !== 
 /**
  * Settling expense claims (FR-REQ-03) — reading the list of what is owed and putting the waiting
  * ones into a run. Whoever pays the company's people: the claim is paid through the payroll run,
- * so the same hands do both. With no entity it asks "anywhere at all", for the screen's door.
+ * so the same hands do both. With no entity it asks "anywhere at all", for the screen's door — the
+ * list behind it is cut to the entities the reader pays. The sweep moves every entity's claims, so
+ * it asks with `null`: a group-wide grant.
  */
-export const canSettleExpenseClaims = (principal: Principal, entityId: string | null = null) => can(principal, "payroll:pay", entityId ? { entityId } : {});
+export const canSettleExpenseClaims = (principal: Principal, entityId?: string | null): boolean => can(principal, "payroll:pay", entityId === undefined ? undefined : { entityId });
 
 /**
  * Paying approved requests (REQ-01): the "to pay" queue and recording that one was paid. Finance —

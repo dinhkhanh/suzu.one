@@ -9,6 +9,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { RecordLink } from "@/components/ui/record-link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { accountMemberAction, createAccountAction, eraseContactAction, moveAccountWorkAction, saveContactAction, saveProfileAction, saveTermsAction, setLifecycleAction, setSalesOwnerAction } from "../account-actions";
 import { ACCOUNT_SIZES, ACCOUNT_TIERS, CONTACT_CHANNELS, CONTACT_SOURCES, CONTACT_STATUSES, DECISION_ROLES, LAWFUL_BASES, LIFECYCLES, SOURCES } from "../enums";
@@ -144,7 +145,7 @@ export function NewAccountForm({ entities, people, defaultEntityId }: { entities
                   ))}
                 </ul>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" name="confirmDuplicate" /> {t("accounts.confirmDuplicate")}
+                  <Checkbox name="confirmDuplicate" /> {t("accounts.confirmDuplicate")}
                 </label>
               </div>
             ) : null}
@@ -176,7 +177,7 @@ export function TermsForm({ clientId, terms }: { clientId: string; terms: { paym
           <MoneyInput id="creditLimitVnd" name="creditLimitVnd" defaultValue={terms.creditLimitVnd ?? ""} />
         </Field>
         <label className="flex items-center gap-2 pt-6 text-sm">
-          <input type="checkbox" name="creditHold" defaultChecked={terms.creditHold} /> {t("account.fields.creditHold")}
+          <Checkbox name="creditHold" defaultChecked={terms.creditHold} /> {t("account.fields.creditHold")}
         </label>
       </div>
       <Field name="creditHoldReason" label={t("account.fields.creditHoldReason")}>
@@ -336,7 +337,7 @@ export function ContactForm({ clientId, contact, brands }: { clientId: string; c
                 <legend className="mb-1 text-sm font-medium">{t("contacts.fields.brands")}</legend>
                 {brands.map((brand) => (
                   <label key={brand.id} className="flex items-center gap-1.5">
-                    <input type="checkbox" name="brandIds[]" value={brand.id} defaultChecked={contact?.brandIds.includes(brand.id)} /> {brand.name}
+                    <Checkbox name="brandIds[]" value={brand.id} defaultChecked={contact?.brandIds.includes(brand.id)} /> {brand.name}
                   </label>
                 ))}
               </fieldset>
@@ -345,13 +346,13 @@ export function ContactForm({ clientId, contact, brands }: { clientId: string; c
               <NoteEditor id={`notes-${id}`} name="notes" rows={2} maxLength={2000} defaultValue={details?.notes ?? ""} />
             </Field>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="isPrimary" defaultChecked={contact?.isPrimary} /> {t("contacts.fields.isPrimary")}
+              <Checkbox name="isPrimary" defaultChecked={contact?.isPrimary} /> {t("contacts.fields.isPrimary")}
             </label>
             {duplicates.length ? (
               <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
                 <p>{t("contacts.duplicates", { names: duplicates.map((duplicate) => duplicate.fullName).join(", ") })}</p>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" name="confirmDuplicate" /> {t("contacts.confirmDuplicate")}
+                  <Checkbox name="confirmDuplicate" /> {t("contacts.confirmDuplicate")}
                 </label>
               </div>
             ) : null}

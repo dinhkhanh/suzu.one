@@ -1,4 +1,4 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -37,11 +37,12 @@ export default async function DelegationPage({ searchParams }: PageProps<"/appro
   if (forId && !canDelegateFor(user.principal, await placeOfPerson(forId))) notFound();
   const personId = forId ?? user.person.id;
 
-  const [t, format, { given, received }, people, registered, turns] = await Promise.all([getTranslations("approvals"), getFormatter(), listDelegations(personId), listPersonNames(), allRequestTypes(), forId ? listTurnsOf(forId) : []]);
+  const [t, format, locale, { given, received }, people, registered, turns] = await Promise.all([getTranslations("approvals"), getFormatter(), getLocale(), listDelegations(personId), listPersonNames(), allRequestTypes(), forId ? listTurnsOf(forId) : []]);
   // The directory leaves out people who have left; so does this screen — their turns moved when they did.
   const absent = forId ? people.find((person) => person.id === forId) : null;
   if (forId && !absent) notFound();
-  const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
+  // A type built in the request designer carries its own name in each language.
+  const label = (type: string) => registered.get(type)?.names?.[locale === "en" ? "en" : "vi"] ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const types = (row: { requestTypes: string[] | null }) => (row.requestTypes ? row.requestTypes.map(label).join(", ") : t("delegation.allTypes"));
   const current = received.filter((row) => row.validTo >= today);

@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -78,7 +79,7 @@ export function AckSettingsForm({ pageId, required, dueDays, audience, choices }
       <h2 className="text-sm font-medium">{t("ack.settingsTitle")}</h2>
       <p className="text-xs text-muted-foreground">{t("ack.settingsHelp")}</p>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={on} onChange={(event) => setOn(event.target.checked)} />
+        <Checkbox checked={on} onCheckedChange={(checked) => setOn(checked)} />
         {t("ack.required")}
       </label>
       <label className="flex items-center gap-2 text-sm">

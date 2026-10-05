@@ -7,7 +7,7 @@ import { type ReactNode, useState, useTransition } from "react";
 import { FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm";
 import type { ActionResult } from "@/lib/action";
 
 export type Action = (input: unknown) => Promise<ActionResult<unknown>>;
@@ -49,7 +49,6 @@ export function CrmForm({ action, extra, children, submit, className, onDone, na
  */
 export function CrmButton({ action, input, label, confirm, variant = "outline", navigateTo }: { action: Action; input: unknown; label: string; confirm?: string; variant?: "outline" | "ghost" | "default" | "destructive"; navigateTo?: (data: unknown) => string | null }) {
   const t = useTranslations("crm.errors");
-  const tCrm = useTranslations("crm");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -70,23 +69,7 @@ export function CrmButton({ action, input, label, confirm, variant = "outline", 
       <Button type="button" size="xs" variant={variant} disabled={pending} onClick={() => (confirm ? setAsking(true) : run())}>
         {label}
       </Button>
-      {confirm ? (
-        <Dialog open={asking} onOpenChange={setAsking}>
-          <DialogContent showCloseButton={false}>
-            <DialogHeader>
-              <DialogTitle>{confirm}</DialogTitle>
-            </DialogHeader>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAsking(false)}>
-                {tCrm("cancel")}
-              </Button>
-              <Button type="button" variant={variant === "destructive" ? "destructive" : "default"} disabled={pending} onClick={run}>
-                {label}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      {confirm ? <ConfirmDialog open={asking} onOpenChange={setAsking} question={confirm} confirmLabel={label} destructive={variant === "destructive"} pending={pending} onConfirm={run} /> : null}
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {t.has(error) ? t(error) : t("generic")}

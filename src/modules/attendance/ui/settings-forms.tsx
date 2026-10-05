@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -10,7 +11,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import type { DayRule, SchedulePattern, Weekday } from "../engine/calendar";
-import { useConfirmedSubmit } from "./confirm";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { assignScheduleAction, confirmCalendarDayAction, deleteCalendarDayAction, removeAssignmentAction, saveCalendarDayAction, saveScheduleAction, saveShiftAction, setRosterAction } from "../settings-actions";
 
 type Option = { id: string; name: string };
@@ -116,7 +117,7 @@ export function ShiftForm({ shift, entities, canGroup }: { shift?: ShiftFormValu
           </Field>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" className="size-4" defaultChecked={shift?.isActive ?? true} />
+          <Checkbox name="isActive" defaultChecked={shift?.isActive ?? true} />
           {t("active")}
         </label>
       </FieldErrors>
@@ -251,7 +252,7 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
       </List>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" className="size-4" checked={alternate} onChange={(event) => setAlternate(event.target.checked)} />
+          <Checkbox checked={alternate} onCheckedChange={(checked) => setAlternate(checked)} />
           {t("schedules.alternateSaturday")}
         </label>
         {alternate ? (
@@ -263,12 +264,12 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="isActive" className="size-4" defaultChecked={schedule?.isActive ?? true} />
+          <Checkbox name="isActive" defaultChecked={schedule?.isActive ?? true} />
           {t("active")}
         </label>
         {canGroup && !(schedule && schedule.entityId) ? (
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="isDefault" className="size-4" defaultChecked={schedule?.isDefault ?? false} />
+            <Checkbox name="isDefault" defaultChecked={schedule?.isDefault ?? false} />
             {t("schedules.isDefault")}
           </label>
         ) : null}

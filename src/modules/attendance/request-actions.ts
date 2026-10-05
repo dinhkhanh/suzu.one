@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/modules/platform/files/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { can } from "@/modules/platform/rbac/policy";
@@ -370,8 +370,8 @@ const exportPipeline = createAction({
     // The screen's own function with the viewer's principal: the file holds what the screen shows.
     const { lines } = await listAnomalies(user.principal, input.month, input);
     const rows = lines.slice(0, EXPORT_ROW_LIMIT);
-    const csv = toCsv([{ header: "Loại", value: (row: (typeof rows)[number]) => row.kind }, { header: "Nhân viên", value: (row) => row.fullName ?? "" }, { header: "Ngày", value: (row) => row.date ?? "" }, { header: "Phút", value: (row) => row.minutes ?? "" }, { header: "Chi tiết", value: (row) => row.detail ?? "" }, { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") }], rows);
-    const file: CsvFile = { fileName: `attendance-anomalies-${input.month}-${todayInVietnam()}.csv`, csv, rowCount: rows.length, truncated: lines.length > rows.length };
+    const table = toTable([{ header: "Loại", value: (row: (typeof rows)[number]) => row.kind }, { header: "Nhân viên", value: (row) => row.fullName ?? "" }, { header: "Ngày", value: (row) => row.date ?? "" }, { header: "Phút", value: (row) => row.minutes ?? "" }, { header: "Chi tiết", value: (row) => row.detail ?? "" }, { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") }], rows);
+    const file: ExportFile = { fileName: `attendance-anomalies-${input.month}-${todayInVietnam()}`, table, rowCount: rows.length, truncated: lines.length > rows.length };
     return { data: file, audit: { resource: { type: "export:attendance_anomalies", id: input.month, entityId: input.entityId }, summary: `${file.rowCount} rows`, after: { filters: input, rowCount: file.rowCount } } };
   },
 });

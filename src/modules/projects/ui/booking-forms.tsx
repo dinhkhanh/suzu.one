@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { bookAction, deleteBookingAction, fillPlaceholderAction, updateBookingAction } from "../actions";
 import { ActionButton, ActionForm } from "./plan-forms";
 
@@ -19,14 +20,14 @@ export function BookForm({ projectId, people, weeks }: { projectId: string; peop
   const [who, setWho] = useState<"person" | "placeholder">("person");
   return (
     <ActionForm action={bookAction} extra={{ projectId }} submit={t("book")}>
-      <div role="radiogroup" aria-label={t("who")} className="flex flex-wrap gap-4 text-sm">
+      <RadioGroup name="whoKind" aria-label={t("who")} value={who} onValueChange={(next) => setWho(next as "person" | "placeholder")} className="flex flex-wrap gap-4 text-sm">
         <label className="flex items-center gap-2">
-          <input type="radio" name="whoKind" checked={who === "person"} onChange={() => setWho("person")} /> {t("aPerson")}
+          <RadioGroupItem value="person" /> {t("aPerson")}
         </label>
         <label className="flex items-center gap-2">
-          <input type="radio" name="whoKind" checked={who === "placeholder"} onChange={() => setWho("placeholder")} /> {t("aPlaceholder")}
+          <RadioGroupItem value="placeholder" /> {t("aPlaceholder")}
         </label>
-      </div>
+      </RadioGroup>
       <div className="grid gap-2 sm:grid-cols-[1fr_11rem_6rem_6rem_9rem]">
         {who === "person" ? (
           <Field name="personId" label={t("person")}>

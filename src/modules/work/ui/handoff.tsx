@@ -1,6 +1,8 @@
 "use client";
 // Hand-offs on screen (FR-PJM-40..43): the one note form every kind uses, the hand-off sheet a
 // refused move opens, the accept / return buttons, and the task page's hand-off panel.
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +25,6 @@ import { NOTE_PARTS, type Note, type NotePart } from "../engine/handoff";
 import { acceptHandoffAction, handOffTaskAction, returnHandoffAction, sendToTeamAction } from "../handoff-actions";
 
 type Result = { ok: boolean; error?: string; message?: string; details?: unknown };
-const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm dark:bg-input/30";
 const errorOf = (result: Result) => (result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
 
 function ErrorLine({ errorKey }: { errorKey: string | null }) {
@@ -77,7 +78,7 @@ export function HandoffNoteFields({
         <Label htmlFor={`${idPrefix}-links`} className="text-xs text-muted-foreground">
           {t("links")}
         </Label>
-        <textarea id={`${idPrefix}-links`} name="note.links" defaultValue={(defaultValue?.links ?? []).join("\n")} placeholder={t("linksHint")} className={textareaClass} />
+        <Textarea id={`${idPrefix}-links`} name="note.links" defaultValue={(defaultValue?.links ?? []).join("\n")} placeholder={t("linksHint")} />
       </div>
     </fieldset>
   );
@@ -228,7 +229,7 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
               <legend className="pb-1 text-sm font-medium">{t("sheet.checklist")}</legend>
               {pkg.checklist.map((check) => (
                 <label key={check.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="checked" value={check.id} /> {check.text}
+                  <Checkbox name="checked" value={String(check.id)} /> {check.text}
                 </label>
               ))}
             </fieldset>

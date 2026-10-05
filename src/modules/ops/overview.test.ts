@@ -27,6 +27,7 @@ import { buildHistoryExport, getDashboard, getHistory } from "./overview";
 import { sendOpsReminders } from "./reminders";
 import { generateInstances } from "./scheduler";
 import { saveTemplate, type TemplateInput } from "./templates";
+import { tableToCsv } from "../platform/export/csv";
 
 const ids = {} as Record<"szm" | "szc" | "fin" | "finance" | "accountant" | "head" | "hrSzm" | "ceo" | "owner" | "employee", string>;
 const base: TemplateInput = { code: "VAT", name: "VAT return", category: "external", authority: "tax", recurrence: "monthly", dueRule: { type: "after_period", monthsAfter: 1, day: 20 }, shift: "none", eventType: null, entityIds: null, ownerRule: "person", ownerPersonId: null, reviewerRule: "person", reviewerPersonId: null, checklist: [], guidance: null, links: [], reminderLeadDays: [7, 3, 1], escalation: { managerAfterDays: 3, executiveAfterDays: 7 }, evidence: NO_EVIDENCE, penaltyNote: null, isActive: true };
@@ -158,7 +159,7 @@ describe("dashboard, archive and export scoping", () => {
     expect(all.map((row) => `${row.entityCode} ${row.periodKey} ${row.colour}`)).toEqual(["SZC 2026-08 overdue", "SZM 2026-08 overdue", "SZC 2026-07 done_late", "SZM 2026-07 done_late"]);
     const file = await buildHistoryExport(entityViewer, { year: 2026 }, "en", today);
     expect(file.rowCount).toBe(1);
-    expect(file.csv).toContain("SZM,VAT,VAT return");
+    expect(tableToCsv(file.table)).toContain("SZM,VAT,VAT return");
     expect(await db().select().from(schema.obligationNoticeSent).where(and(inArray(schema.obligationNoticeSent.key, ["escalate:executive"]))).then((sent) => sent.length)).toBe(2);
   });
 });

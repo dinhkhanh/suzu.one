@@ -1,6 +1,7 @@
 "use client";
 // Registering a licence or subscription (FR-AST-05). The renewal date is the field that matters:
 // it is what the OPS tracker turns into an obligation, and the form says so.
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -122,7 +123,7 @@ export function LicenceForm({
         </div>
 
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="autoRenews" defaultChecked={value?.autoRenews ?? true} className="size-4" />
+          <Checkbox name="autoRenews" defaultChecked={value?.autoRenews ?? true} />
           {t("form.autoRenews")}
         </label>
 

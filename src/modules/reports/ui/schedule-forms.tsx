@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createScheduleAction, deleteScheduleAction, setScheduleActiveAction, updateScheduleAction } from "../actions";
@@ -139,17 +140,7 @@ export function ScheduleRowActions({ id, isActive }: { id: string; isActive: boo
       <Button type="button" variant="ghost" size="xs" disabled={pending} onClick={() => run(() => setScheduleActiveAction({ id, isActive: !isActive }))}>
         {isActive ? t("pause") : t("resume")}
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        disabled={pending}
-        onClick={() => {
-          if (confirm(t("deleteConfirm"))) void run(() => deleteScheduleAction({ id }));
-        }}
-      >
-        {t("delete")}
-      </Button>
+      <ConfirmButton variant="ghost" size="xs" disabled={pending} label={t("delete")} question={t("deleteConfirm")} onConfirm={() => void run(() => deleteScheduleAction({ id }))} />
     </span>
   );
 }

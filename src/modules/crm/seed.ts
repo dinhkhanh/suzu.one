@@ -4,7 +4,7 @@
 // outside the app.
 import { sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { documentTemplate } from "../documents/schema";
+import { documentTemplate } from "../../lib/db/schema";
 import type { StageCategory, StageGate } from "./enums";
 import { crmService, crmServicePrice, crmStage, type RoleMinutes } from "./schema";
 

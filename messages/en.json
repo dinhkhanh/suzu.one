@@ -31,7 +31,9 @@
     "nextYear": "Next year",
     "add": "Add “{name}”",
     "typeToAdd": "Type a name to add it",
-    "confirmNo": "Go back"
+    "confirmNo": "Go back",
+    "exportXlsx": "Excel (.xlsx)",
+    "exportCsv": "CSV (.csv)"
   },
   "signIn": {
     "title": "Sign in",
@@ -847,6 +849,8 @@
     "close": "Close",
     "noDiff": "This entry carries no before/after data.",
     "appendOnly": "The log is written by a database trigger: append-only, nobody can edit or delete it.",
+    "resourceId": "Resource ID",
+    "summary": "Summary",
     "removeFilter": "Remove filter {filter}",
     "title": "Audit log",
     "description": "Every data change, every refusal and every automated job. The log is append-only; nobody can edit or delete it.",
@@ -1965,6 +1969,7 @@
       "request": "Request",
       "requester": "From",
       "submitted": "Sent",
+      "decided": "Decided",
       "status": "Status",
       "waitingOn": "Waiting for",
       "type": "Type",
@@ -2635,7 +2640,7 @@
     }
   },
   "exports": {
-    "button": "Export CSV",
+    "button": "Export",
     "failed": "The export failed.",
     "truncated": "The list is too long: the file holds the first 5,000 rows."
   },
@@ -3480,7 +3485,7 @@
         "unmappedTitle": "{count, plural, one {# ID nobody is mapped to} other {# IDs nobody is mapped to}}",
         "unmappedHint": "Their log lines are kept. Map the ID and they become punches at once.",
         "lines": "{count, plural, one {# line} other {# lines}}",
-        "export": "Download the lines (CSV)",
+        "export": "Download the lines",
         "exportTruncated": "Only the first 5,000 lines are in the file.",
         "bulkTitle": "Map many at once by employee code",
         "bulkHint": "One per line: ID on the clock, employee code. Nothing is saved unless every line is right.",
@@ -3769,7 +3774,6 @@
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
-        "position": "Position",
         "otFrom": "From",
         "otTo": "To",
         "window": "Hours",
@@ -3942,7 +3946,7 @@
         "summary": "Summary"
       },
       "export": {
-        "button": "Download the month's timesheet (CSV)",
+        "button": "Download the month's timesheet",
         "failed": "The timesheet could not be downloaded.",
         "truncated": "The file holds the first 5,000 rows only.",
         "columns": {
@@ -3977,7 +3981,7 @@
       "allEntities": "All entities",
       "allKinds": "All",
       "toTimesheets": "Monthly timesheets",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "The file was cut at the row limit.",
       "clearPerson": "show everyone",
@@ -4132,9 +4136,6 @@
       "withdrawConfirm": "Withdraw your consent to face check-in?",
       "withdrawDetail": "Your face data and the consent record are deleted at once. The kiosk will no longer recognise you; HR can enrol you again only with a newly signed consent.",
       "failed": "Could not withdraw the consent. Try again."
-    },
-    "dialog": {
-      "cancel": "Cancel"
     }
   },
   "leave": {
@@ -6647,7 +6648,7 @@
       "description": "Past periods of every obligation with who closed them, the reference number, the amount and the filed papers — the trail for a tax or insurance inspection.",
       "obligation": "Obligation",
       "year": "Due in",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "Only the first 5,000 rows were exported.",
       "summary": "{count, plural, =0 {No past periods} =1 {1 past period} other {# past periods}}{late, plural, =0 {} =1 {, 1 late or still open} other {, # late or still open}}.",
@@ -9761,7 +9762,8 @@
       "payoutCollected": "{amount} of unspent advance received back on {date} · reference {reference}.",
       "payoutNetted": "Less {advance} already advanced for this trip.",
       "letter": "The confirmation letter has been made.",
-      "letterCollect": "Your confirmation letter has been made — collect the stamped copy from HR.",
+      "letterCollect": "Your confirmation letter has been made. It is kept under My documents on your profile.",
+      "letterMine": "Open My documents",
       "letterOpen": "Open the PDF"
     },
     "designer": {
@@ -12227,7 +12229,7 @@
       "hoursOf": "{logged}/{available} h",
       "billableRatio": "{value}% billable",
       "cellTitle": "{logged} h logged of {available} working hours",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "The file holds the first part of the list only.",
       "csv": {
@@ -15649,6 +15651,11 @@
     "required": "Please fill in this field.",
     "draftRestored": "Your unsaved draft from {when} is back.",
     "draftDiscard": "Discard draft"
+  },
+  "stored": {
+    "toilGrant": "Time off in lieu of overtime in {month} ({minutes} min)",
+    "retroSalaryChange": "Salary decision effective {validFrom}, approved after {month} was paid",
+    "retroCancelled": "{reason} — cancelled: {why}"
   },
   "privacy": {
     "gpsNotice": {

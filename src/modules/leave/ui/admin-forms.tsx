@@ -1,9 +1,11 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -17,7 +19,7 @@ const daysText = (centi: number | null | undefined) => (centi === null || centi 
 function Check({ name, label, defaultChecked }: { name: string; label: string; defaultChecked?: boolean }) {
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-4" />
+      <Checkbox name={name} defaultChecked={defaultChecked} />
       {label}
     </label>
   );
@@ -125,7 +127,7 @@ export function LeaveTypeForm({ type, entities, canGroup }: { type: LeaveTypeVal
           <legend className="mb-1 text-xs text-muted-foreground">{t("types.workforce")}</legend>
           {WORKFORCE_TYPES.map((value) => (
             <label key={value} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="eligibleWorkforceTypes[]" value={value} defaultChecked={type?.eligibleWorkforceTypes?.includes(value) ?? false} className="size-4" />
+              <Checkbox name="eligibleWorkforceTypes[]" value={value} defaultChecked={type?.eligibleWorkforceTypes?.includes(value) ?? false} />
               {t(`workforce.${value}`)}
             </label>
           ))}
@@ -346,19 +348,15 @@ export function StaffingRuleForm({ entities, canGroup, departments, teams }: { e
 }
 
 export function DeleteStaffingRuleButton({ id, label, confirm }: { id: string; label: string; confirm: string }) {
-  const { onSubmit, pending, errorKey } = useActionForm(deleteStaffingRuleAction, { extra: { id } });
+  const form = useActionForm(deleteStaffingRuleAction, { extra: { id } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: true });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex items-center gap-2"
-    >
-      <Button type="submit" variant="outline" size="sm" disabled={pending}>
+    <form onSubmit={onSubmit} className="flex items-center gap-2">
+      <Button type="submit" variant="outline" size="sm" disabled={form.pending}>
         {label}
       </Button>
-      <FormError namespace={ERRORS} errorKey={errorKey} />
+      {dialog}
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
     </form>
   );
 }

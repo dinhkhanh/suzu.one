@@ -62,8 +62,8 @@ export async function submitResignation(personId: string, input: ResignationPayl
       entityId: target.entityId,
       requesterPersonId: personId,
       subjectPersonId: personId,
-      // Read by the manager in the inbox and the email, in Vietnamese like the other summaries.
-      summary: `Ngày làm việc cuối: ${input.lastWorkingDay.split("-").reverse().join("/")}`,
+      // Read by the manager beside "Resignation", in whichever language they have: the last day only (UI-01).
+      summary: `→ ${input.lastWorkingDay.split("-").reverse().join("/")}`,
       payload: input,
       link: (requestId) => `/approvals/resignation/${requestId}`,
     });

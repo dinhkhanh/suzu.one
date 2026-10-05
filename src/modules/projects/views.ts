@@ -5,8 +5,7 @@
 import "server-only";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
-import type { ProjectFacts, WorkViewer } from "../work/policy";
-import { findProject, loadViewer, notePrivateProjectRead, projectFacts, type ProjectRow, projectsWithTeams, type TeamRow, workDirectory } from "../work/service";
+import { findProject, loadViewer, notePrivateProjectRead, projectFacts, type ProjectFacts, type ProjectRow, projectsWithTeams, type TeamRow, type WorkViewer, workDirectory } from "../work/service";
 import { getBriefRequest } from "./kickoff";
 import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";

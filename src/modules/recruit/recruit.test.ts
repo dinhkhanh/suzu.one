@@ -55,6 +55,8 @@ import {
   stagesOf,
   updateOpening,
 } from "./service";
+import { buildCandidatesExport } from "./exports";
+import { tableToCsv } from "../platform/export/csv";
 
 const fails = (promise: Promise<unknown>) =>
   promise.then(
@@ -548,5 +550,28 @@ describe("recruitment reports (FR-REC-11)", () => {
     expect(report.sources.length).toBeGreaterThanOrEqual(2);
     // Nobody in reach, nothing counted.
     expect((await getRecruitReport(employee)).applications).toBe(0);
+  });
+});
+
+describe("the candidates export", () => {
+  it("holds the rows the list shows for the viewer, and nothing for somebody without recruit:manage", async () => {
+    const listed = await listCandidates(hrAdmin);
+    const { file, total } = await buildCandidatesExport(hrAdmin, {}, "en");
+    expect(listed.length).toBeGreaterThan(0);
+    expect(total).toBe(listed.length);
+    expect(file.rowCount).toBe(listed.length);
+    expect(file.table.header[0]).toBe("Candidate");
+    const csv = tableToCsv(file.table);
+    for (const row of listed) expect(csv).toContain(row.fullName);
+
+    // The list's own filters carry over: the talent pool is a subset.
+    const pool = await buildCandidatesExport(hrAdmin, { talentPool: true }, "en");
+    expect(pool.total).toBe((await listCandidates(hrAdmin, { talentPool: true })).length);
+    expect(pool.total).toBeLessThanOrEqual(total);
+
+    for (const viewer of [head, employee, otherHead]) {
+      const none = await buildCandidatesExport(viewer, {}, "en");
+      expect([none.total, none.file.rowCount]).toEqual([0, 0]);
+    }
   });
 });

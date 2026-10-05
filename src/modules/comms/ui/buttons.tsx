@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import type { ActionResult } from "@/lib/action";
 import { acknowledgeAnnouncementAction, removeKudosAction, setAnnouncementStateAction } from "../actions";
 
@@ -54,17 +55,7 @@ export function AnnouncementStateButtons({ id, pinned, archived }: { id: string;
       <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => run(() => setAnnouncementStateAction({ id, change: pinned ? "unpin" : "pin" }))}>
         {pinned ? t("manage.unpin") : t("manage.pin")}
       </Button>
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        disabled={pending}
-        onClick={() => {
-          if (window.confirm(t("manage.archiveConfirm"))) run(() => setAnnouncementStateAction({ id, change: "archive" }));
-        }}
-      >
-        {t("manage.archive")}
-      </Button>
+      <ConfirmButton variant="destructive" size="sm" disabled={pending} destructive label={t("manage.archive")} question={t("manage.archiveConfirm")} onConfirm={() => run(() => setAnnouncementStateAction({ id, change: "archive" }))} />
       <ErrorLine errorKey={errorKey} />
     </span>
   );
@@ -75,17 +66,7 @@ export function RemoveKudosButton({ id }: { id: string }) {
   const { pending, errorKey, run } = useRun();
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        disabled={pending}
-        onClick={() => {
-          if (window.confirm(t("kudos.removeConfirm"))) run(() => removeKudosAction({ id }));
-        }}
-      >
-        {t("kudos.remove")}
-      </Button>
+      <ConfirmButton variant="ghost" size="xs" disabled={pending} label={t("kudos.remove")} question={t("kudos.removeConfirm")} onConfirm={() => run(() => removeKudosAction({ id }))} />
       <ErrorLine errorKey={errorKey} />
     </span>
   );

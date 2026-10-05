@@ -1,5 +1,5 @@
 import { CpuIcon, XIcon } from "lucide-react";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Form from "next/form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,6 +14,8 @@ import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
 import { cn } from "cn";
+import { exportAuditAction } from "@/modules/platform/audit/export-actions";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { AUDIT_PAGE_SIZE, type AuditFilters, listAuditEntries, listAuditResourceTypes } from "@/modules/platform/audit/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -62,7 +64,7 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
   const reach = entityReach(user.principal, "audit:read");
   if (!reach.all && reach.entityIds.length === 0) notFound();
 
-  const [t, format] = await Promise.all([getTranslations("audit"), getFormatter()]);
+  const [t, format, te, locale] = await Promise.all([getTranslations("audit"), getFormatter(), getTranslations("exports"), getLocale()]);
   const query = await props.searchParams;
   const one = (key: string) => (typeof query[key] === "string" && query[key] !== "" ? (query[key] as string) : undefined);
 
@@ -116,7 +118,7 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
 
   return (
     <Page width="wide">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader title={t("title")} description={t("description")} actions={<ExportButton action={exportAuditAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
 
       <Form action="/admin/audit" className="toolbar">
         <Input name="action" defaultValue={filters.action} placeholder={t("filters.action")} aria-label={t("filters.action")} className="w-full md:w-56" />

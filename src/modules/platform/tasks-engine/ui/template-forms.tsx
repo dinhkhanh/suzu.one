@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { Field, FormError } from "@/components/forms/field";
@@ -50,7 +51,7 @@ export function TemplateForm({ template, options }: { template?: Template; optio
         {pick("departmentId", options.departments, true)}
         {pick("positionId", options.positions, true)}
         <label className="flex items-center gap-2 self-end text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={template?.isActive ?? true} /> {t("fields.isActive")}
+          <Checkbox name="isActive" defaultChecked={template?.isActive ?? true} /> {t("fields.isActive")}
         </label>
       </div>
       <FormError namespace="checklists.errors" errorKey={errorKey} />

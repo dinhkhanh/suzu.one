@@ -10,7 +10,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/action";
-import { ConfirmDialog } from "./confirm";
+import { ConfirmDialog } from "@/components/ui/confirm";
 
 export type GpsConsentState = "unanswered" | "given" | "declined" | "withdrawn";
 export type GpsAnswer = "given" | "declined" | "withdrawn";

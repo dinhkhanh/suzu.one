@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
 import { SERVICE_LINES, SERVICE_UNITS, STAGE_CATEGORIES, STAGE_GATES } from "../enums";
 import { saveServiceAction, saveStageAction, setPriceAction } from "../quote-actions";
 import { CrmForm, type Named } from "./common";
@@ -47,16 +48,16 @@ export function StageForm({ stage, nextOrder }: { stage?: StageValues; nextOrder
         <legend className="mb-1 text-sm font-medium">{t("fields.gates")}</legend>
         {STAGE_GATES.map((gate) => (
           <label key={gate} className="flex items-center gap-1.5">
-            <input type="checkbox" name="gates[]" value={gate} defaultChecked={stage?.gates.includes(gate)} /> {tEnums(`gate.${gate}`)}
+            <Checkbox name="gates[]" value={gate} defaultChecked={stage?.gates.includes(gate)} /> {tEnums(`gate.${gate}`)}
           </label>
         ))}
       </fieldset>
       <div className="flex flex-wrap gap-4 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="allowsPitch" defaultChecked={stage?.allowsPitch} /> {t("fields.allowsPitch")}
+          <Checkbox name="allowsPitch" defaultChecked={stage?.allowsPitch} /> {t("fields.allowsPitch")}
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="isActive" defaultChecked={stage?.isActive ?? true} /> {t("fields.isActive")}
+          <Checkbox name="isActive" defaultChecked={stage?.isActive ?? true} /> {t("fields.isActive")}
         </label>
       </div>
     </CrmForm>
@@ -126,10 +127,10 @@ export function ServiceForm({ service }: { service?: ServiceValues }) {
         </Field>
         <div className="flex flex-col gap-2 pt-6 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="isRecurring" defaultChecked={service?.isRecurring} /> {t("fields.isRecurring")}
+            <Checkbox name="isRecurring" defaultChecked={service?.isRecurring} /> {t("fields.isRecurring")}
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="isActive" defaultChecked={service?.isActive ?? true} /> {t("fields.isActive")}
+            <Checkbox name="isActive" defaultChecked={service?.isActive ?? true} /> {t("fields.isActive")}
           </label>
         </div>
       </div>

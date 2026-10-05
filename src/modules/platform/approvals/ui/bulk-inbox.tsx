@@ -8,6 +8,7 @@ import { useState, useTransition, type CSSProperties } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,7 +36,7 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
   };
 
   function approveSelected() {
-    if (selected.length === 0 || !window.confirm(t("bulk.confirm", { count: selected.length }))) return;
+    if (selected.length === 0) return;
     startTransition(async () => {
       const result = await action({ requestIds: selected });
       setFailed(!result.ok);
@@ -65,9 +66,7 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
           <Button type="button" variant="outline" size="sm" onClick={() => setSelected(selected.length === tickable.length ? [] : tickable)}>
             {selected.length === tickable.length ? t("bulk.none") : t("bulk.all", { count: tickable.length })}
           </Button>
-          <Button type="button" size="sm" disabled={pending || selected.length === 0} onClick={approveSelected}>
-            {t("bulk.approve", { count: selected.length })}
-          </Button>
+          <ConfirmButton size="sm" disabled={pending || selected.length === 0} label={t("bulk.approve", { count: selected.length })} question={t("bulk.confirm", { count: selected.length })} onConfirm={approveSelected} />
           <span className="hidden text-xs text-faint md:inline">{t("bulk.hint")}</span>
         </div>
       ) : null}

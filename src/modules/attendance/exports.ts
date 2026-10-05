@@ -6,7 +6,7 @@ import { inArray } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
-import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportColumn, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { listEntities } from "@/modules/platform/org/service";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
@@ -19,7 +19,7 @@ type Row = LockedTimesheet & { fullName: string };
 const hours = (minutes: number) => Number((minutes / 60).toFixed(2));
 const days = (centi: number) => Number((centi / 100).toFixed(2));
 
-export async function buildLockedMonthExport(entityId: string, month: string, locale: Locale): Promise<CsvFile> {
+export async function buildLockedMonthExport(entityId: string, month: string, locale: Locale): Promise<ExportFile> {
   const locked = await getLockedTimesheets(entityId, month);
   // Only what the lock froze is exported: a month still moving is not a timesheet yet.
   if (!locked) throw new ActionError("timesheet_not_locked");
@@ -57,5 +57,5 @@ export async function buildLockedMonthExport(entityId: string, month: string, lo
     { header: t("otTimeOff"), value: (row) => hours(row.overtime.timeOffMinutes) },
     { header: t("otPayable"), value: (row) => hours(row.overtime.payableMinutes) },
   ];
-  return { fileName: `timesheet-${entities.find((entity) => entity.id === entityId)?.code ?? "entity"}-${month}.csv`, csv: toCsv(columns, rows), rowCount: rows.length, truncated: locked.people.length > rows.length };
+  return { fileName: `timesheet-${entities.find((entity) => entity.id === entityId)?.code ?? "entity"}-${month}`, table: toTable(columns, rows), rowCount: rows.length, truncated: locked.people.length > rows.length };
 }

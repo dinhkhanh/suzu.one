@@ -1,6 +1,8 @@
 "use client";
 // The year-end bonus screens' forms (FR-PAY-21). Every one of these posts a compensation action,
 // so every one can come back with `step_up_required` — `FormError` renders that like any other.
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -20,7 +22,7 @@ import { formatVnd } from "./money";
 type EntityOption = { id: string; code: string; shortName: string };
 
 const ERRORS = "payroll.bonus.errors";
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs";
+const textarea = "font-mono text-xs";
 
 /** The scheme as the form holds it: JSON text, parsed for the action, `null` while it is broken. */
 function useJsonValue(initial: unknown) {
@@ -92,10 +94,9 @@ export function NewBonusRunForm({ entities, year, payrollMonth }: { entities: En
           <div className="flex flex-wrap gap-3">
             {entities.map((entity) => (
               <label key={entity.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={chosen.includes(entity.id)}
-                  onChange={(event) => setChosen((current) => (event.target.checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))}
+                  onCheckedChange={(checked) => setChosen((current) => (checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))}
                 />
                 {entity.code} — {entity.shortName}
               </label>
@@ -247,7 +248,7 @@ export function ProposeSchemeForm({ entities, current }: { entities: EntityOptio
           </Field>
         </div>
         <Field name="value" label={t("scheme.value")}>
-          <textarea id="value" value={text} onChange={(event) => setText(event.target.value)} rows={18} spellCheck={false} className={textarea} />
+          <Textarea id="value" value={text} onChange={(event) => setText(event.target.value)} rows={18} spellCheck={false} className={textarea} />
         </Field>
       </FieldErrors>
       {broken ? <p className="text-sm text-destructive">{t("errors.scheme_not_json")}</p> : null}
@@ -297,7 +298,7 @@ export function WhatIfForm({ runId, current }: { runId: string; current: unknown
     <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
       <h2 className="text-sm font-medium">{t("whatIf.title")}</h2>
       <p className="text-sm text-muted-foreground">{t("whatIf.hint")}</p>
-      <textarea value={text} onChange={(event) => setText(event.target.value)} rows={12} spellCheck={false} className={textarea} aria-label={t("whatIf.title")} />
+      <Textarea value={text} onChange={(event) => setText(event.target.value)} rows={12} spellCheck={false} className={textarea} aria-label={t("whatIf.title")} />
       {broken ? <p className="text-sm text-destructive">{t("errors.scheme_not_json")}</p> : null}
       <FormError namespace={ERRORS} errorKey={errorKey} />
       <SchemeProblems fieldErrors={fieldErrors} details={details} />

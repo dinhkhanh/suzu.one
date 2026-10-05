@@ -97,7 +97,13 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
         // REQ-02: the letter an approved confirmation-letter request made. The PDF route decides who may open it.
         <Alert variant="success">
           {view.isRequester ? (
-            t("view.letterCollect")
+            // The person's own issued papers are listed on /me, and open there.
+            <>
+              {t("view.letterCollect")}{" "}
+              <Link href="/me#documents" className="text-link hover:underline">
+                {t("view.letterMine")}
+              </Link>
+            </>
           ) : (
             <>
               {t("view.letter")}{" "}

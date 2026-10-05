@@ -16,7 +16,9 @@ import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listTeams } from "@/modules/work/service";
 import { crmSettings, forecast, isStaleDeal, listDealBoard, listDealPage, listStages, SERVICE_LINES, type ServiceLine, stageName } from "@/modules/crm/service";
+import { exportDealsAction } from "@/modules/crm/export-actions";
 import { crmShell } from "@/modules/crm/pages";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { type BoardColumn, DealBoard } from "@/modules/crm/ui/board";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
@@ -46,9 +48,10 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
   const filters = { mine, teamId, serviceLine, status, q };
   // Each view reads only what it shows: the board its open and lately closed deals with each
   // stage's figures summed in SQL, the list one page and the count, the forecast its own sums.
-  const [t, f, locale, stages, teams, board, list, settings] = await Promise.all([
+  const [t, f, te, locale, stages, teams, board, list, settings] = await Promise.all([
     getTranslations("crm"),
     formatters(),
+    getTranslations("exports"),
     getLocale(),
     listStages(),
     listTeams(),
@@ -84,7 +87,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
 
   return (
     <Page width="wide">
-      <PageHeader title={t("deals.title")} description={t("deals.intro")} />
+      <PageHeader title={t("deals.title")} description={t("deals.intro")} actions={view === "list" ? <ExportButton action={exportDealsAction} input={{ ...filters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} /> : null} />
       <CrmTabs current="deals" show={shell.show} />
       <form method="get" className="toolbar">
         <input type="hidden" name="view" value={view} />

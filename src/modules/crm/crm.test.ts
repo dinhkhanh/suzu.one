@@ -42,6 +42,7 @@ import { listFollowUpsOf, recordActivity, sendFollowUpReminders } from "./activi
 import { eraseContact, listContacts, saveContact } from "./contacts";
 import { openRenewals, saveContract, signContract } from "./contracts";
 import { convertLead } from "./conversion";
+import { buildAccountsExport, buildDealsExport } from "./exports";
 import { createDeal, getDeal, listDealBoard, listDealPage, listDeals, moveDeal, pipelineTotals, setDealContacts } from "./deals";
 import { listSalesHandoffsFor, respondToHandoff, setUpDelivery } from "./delivery";
 import { agingSummary, listInvoices, recordInvoice, recordPayment, sendReceivableReminders } from "./invoices";
@@ -601,5 +602,43 @@ describe("the pipeline's pages and board figures (PERF-03)", () => {
     const valueless = await listDealBoard(member, { clientId: client.id, status: "all", closedSince: recent });
     expect([...valueless.totals.values()].every((row) => row.valued === 0 && row.totalVnd === 0)).toBe(true);
     expect([...valueless.totals.values()].reduce((sum, row) => sum + row.count, 0)).toBe(6);
+  });
+});
+
+describe("the lists as files (FR-PLT-37)", () => {
+  it("exports the accounts the list shows, blanking the money of a reader who may not see it", async () => {
+    const seller = viewerOf(ids.seller);
+    const listed = await listAccounts(seller, {});
+    const { file, total } = await buildAccountsExport(seller, {}, "en");
+    expect(total).toBe(listed.length);
+    expect(file.table.rows.map((row) => row[0])).toEqual(listed.map((row) => row.client.name));
+    expect(file.table.header).toContain("Pipeline");
+    // A reader with no ties to any account and no sales role sees no CRM rows at all.
+    expect((await buildAccountsExport(viewerOf(ids.colleague), {}, "en")).file.rowCount).toBe(
+      (await listAccounts(viewerOf(ids.colleague), {})).length,
+    );
+  });
+
+  it("exports the deals of the list under its filters, valued only for who may value them", async () => {
+    const seller = viewerOf(ids.seller);
+    const filters = { status: "all" as const };
+    const listed = await listDealPage(seller, filters, 1, 5000);
+    const { file, total } = await buildDealsExport(seller, filters, "en");
+    expect(total).toBe(listed.total);
+    expect(file.rowCount).toBe(listed.rows.length);
+    expect(listed.rows.length).toBeGreaterThan(0);
+    const valueAt = file.table.header.indexOf("Value");
+    expect(file.table.rows.map((row) => row[valueAt])).toEqual(listed.rows.map((row) => row.value?.totalVnd ?? null));
+    expect(file.table.rows.some((row) => typeof row[valueAt] === "number")).toBe(true);
+    // The delivery lead sees the deal but not its value: a blank, not a number.
+    const [clients, directory] = await Promise.all([db().select().from(schema.workClient), db().select().from(schema.workProject)]);
+    const members = await db().select().from(schema.workProjectMember).where(eq(schema.workProjectMember.personId, ids.lead));
+    const ties = tiesFrom({ personId: ids.lead, clients, own: { salesOwner: [], member: [], dealOwner: [] }, projectIds: members.map((row) => row.projectId), projects: directory });
+    const lead = await buildDealsExport({ principal: principalOf(ids.lead), ties }, filters, "en");
+    expect(lead.file.rowCount).toBeGreaterThan(0);
+    expect(lead.file.table.rows.every((row) => row[valueAt] === null)).toBe(true);
+    // A narrower filter and a viewer outside the pipeline.
+    expect((await buildDealsExport(seller, { status: "lost" }, "vi")).file.rowCount).toBe((await listDealPage(seller, { status: "lost" }, 1, 5000)).total);
+    expect((await buildDealsExport(viewerOf(ids.colleague), filters, "en")).file.rowCount).toBe(0);
   });
 });

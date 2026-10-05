@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/action";
@@ -70,20 +71,16 @@ export function SubmitLeaveForm({ draft, amends, needsAttachment, disabled }: { 
 /** Takes a pending request back, or cancels an approved one (the days return to the balance). */
 export function CancelLeaveButton({ leaveRequestId, label, confirm, askReason }: { leaveRequestId: string; label: string; confirm: string; askReason?: boolean }) {
   const t = useTranslations("leave");
-  const { onSubmit, pending, errorKey } = useActionForm(cancelLeaveAction, { extra: { leaveRequestId } });
+  const form = useActionForm(cancelLeaveAction, { extra: { leaveRequestId } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex flex-wrap items-center gap-2"
-    >
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
       {askReason ? <Input name="reason" maxLength={500} placeholder={t("request.cancelReason")} className="h-8 w-56" /> : null}
-      <Button type="submit" variant="outline" size="sm" disabled={pending}>
+      <Button type="submit" variant="outline" size="sm" disabled={form.pending}>
         {label}
       </Button>
-      <FormError namespace={ERRORS} errorKey={errorKey} />
+      {dialog}
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
     </form>
   );
 }

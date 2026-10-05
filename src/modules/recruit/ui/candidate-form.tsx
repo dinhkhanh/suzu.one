@@ -12,12 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RecordLink } from "@/components/ui/record-link";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { createCandidateAction, updateCandidateAction } from "../actions";
 import { CANDIDATE_SOURCES, type CandidateSource } from "../enums";
 import type { DuplicateSignal, RedactedDuplicateMatch } from "../engine/duplicates";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 export type CandidateFormValue = {
   id: string | null;
@@ -105,10 +106,10 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
         </div>
 
         <Field name="links" label={t("links")}>
-          <textarea id="links" name="links" rows={3} className={textarea} defaultValue={(value?.links ?? []).join("\n")} />
+          <Textarea id="links" name="links" rows={3} defaultValue={(value?.links ?? []).join("\n")} />
         </Field>
         <Field name="tags" label={t("tags")}>
-          <textarea id="tags" name="tags" rows={2} className={textarea} defaultValue={(value?.tags ?? []).join("\n")} />
+          <Textarea id="tags" name="tags" rows={2} defaultValue={(value?.tags ?? []).join("\n")} />
         </Field>
         <Field name="notes" label={t("notes")}>
           <NoteEditor id="notes" name="notes" rows={4} maxLength={5000} defaultValue={value?.notes ?? ""} />
@@ -135,7 +136,7 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
           </ul>
           {overrulable && !value?.id ? (
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="confirmedNotDuplicate" className="size-4" />
+              <Checkbox name="confirmedNotDuplicate" />
               {t("confirmedNotDuplicate")}
             </label>
           ) : null}

@@ -213,8 +213,9 @@ async function submitInTransaction(tx: Tx, personId: string, input: LeaveInput, 
     subjectPersonId: personId,
     subjectType: "leave_request",
     subjectId: leaveRequest.id,
-    // Read in the inbox and the notification, in Vietnamese like the other summaries.
-    summary: `${type.name}: ${range} (${formatDays(counted.totalCenti)} ngày)`,
+    // Read in the inbox and the notification beside the type's own name, in whichever language the
+    // reader has: so it holds facts only — the leave type, the dates and the number of days (UI-01).
+    summary: `${type.name}: ${range} (${formatDays(counted.totalCenti)})`,
     payload,
     conditionData: { days: counted.totalCenti / 100, typeCode: type.code, category: type.category },
     link: (requestId) => `/approvals/leave/${requestId}`,

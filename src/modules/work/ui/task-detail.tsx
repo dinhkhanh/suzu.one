@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -457,17 +458,7 @@ export function TaskDetailView({
           })}
         </p>
         {canDelete ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="self-start text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("deleteConfirm"))) run(deleteTaskAction, { taskId: task.id }, () => router.push(task.projectId ? `/work/projects/${task.projectId}` : "/work"));
-            }}
-          >
-            {t("delete")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" className="self-start text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(deleteTaskAction, { taskId: task.id }, () => router.push(task.projectId ? `/work/projects/${task.projectId}` : "/work"))} />
         ) : null}
       </aside>
 

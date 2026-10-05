@@ -8,7 +8,7 @@ import { asc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import type { ProjectFacts, WorkViewer } from "../work/policy";
+import type { ProjectFacts, WorkViewer } from "../work/service";
 import { lineLabel, type Month, monthOf, openLinesFirst } from "./engine/retainer";
 import { isProjectClosed } from "./plans";
 import { canEditPlan, canViewPlan } from "./policy";

@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
@@ -67,9 +69,9 @@ function IntakeFormEditor({ teamId, value, projects, checklists }: { teamId: str
                     </option>
                   ))}
                 </Select>
-                <textarea name={`fields.${index}.options`} defaultValue={(field?.options ?? []).join("\n")} placeholder={t("fieldOptions")} aria-label={t("fieldOptions")} className="min-h-9 w-full rounded-md border bg-transparent px-3 py-1.5 text-sm" rows={1} />
+                <Textarea name={`fields.${index}.options`} defaultValue={(field?.options ?? []).join("\n")} placeholder={t("fieldOptions")} aria-label={t("fieldOptions")} className="min-h-9" rows={1} />
                 <label className="flex items-center gap-1.5 pt-2 text-sm">
-                  <input type="checkbox" name={`fields.${index}.required`} defaultChecked={field?.required ?? false} />
+                  <Checkbox name={`fields.${index}.required`} defaultChecked={field?.required ?? false} />
                   {t("fieldRequired")}
                 </label>
               </div>
@@ -83,7 +85,7 @@ function IntakeFormEditor({ teamId, value, projects, checklists }: { teamId: str
         </fieldset>
         <ChecklistPicker choices={checklists} selected={value.checklistIds} legend={t("checklists")} />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={value.isActive} />
+          <Checkbox name="isActive" defaultChecked={value.isActive} />
           {t("active")}
         </label>
       </FieldErrors>

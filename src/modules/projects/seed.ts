@@ -7,7 +7,7 @@
 // Relative imports only: the seed script runs outside the app's path aliases.
 import { and, eq, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { documentTemplate } from "../documents/schema";
+import { documentTemplate } from "../../lib/db/schema";
 import { taskTemplate } from "../platform/tasks-engine/schema";
 import { type ProjectBrief, projectTemplatePlan, type RoleBudget, type TemplateLine, type TemplateMilestone, type TemplatePhase } from "./schema";
 

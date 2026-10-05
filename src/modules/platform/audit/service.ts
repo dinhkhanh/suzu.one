@@ -63,7 +63,7 @@ const contains = (value: string) => `%${value.replace(/[\\%_]/g, "\\$&")}%`;
  * Newest first. `reach` comes from `entityReach(principal, "audit:read")`: an entity-scoped reader
  * sees that entity's entries only, and never the group-level ones (sign-ins, role grants).
  */
-export async function listAuditEntries(reach: { all: true } | { all: false; entityIds: string[] }, filters: AuditFilters): Promise<{ rows: AuditRow[]; total: number }> {
+export async function listAuditEntries(reach: { all: true } | { all: false; entityIds: string[] }, filters: AuditFilters, options: { pageSize?: number } = {}): Promise<{ rows: AuditRow[]; total: number }> {
   if (!reach.all && reach.entityIds.length === 0) return { rows: [], total: 0 };
   const log = schema.auditLog;
   const where = and(
@@ -78,8 +78,9 @@ export async function listAuditEntries(reach: { all: true } | { all: false; enti
     filters.to ? lt(log.occurredAt, new Date(`${addDays(filters.to, 1)}T00:00:00+07:00`)) : undefined,
   );
   const page = Math.max(1, filters.page ?? 1);
+  const pageSize = options.pageSize ?? AUDIT_PAGE_SIZE;
   const [rows, total] = await Promise.all([
-    db().select().from(log).where(where).orderBy(desc(log.id)).limit(AUDIT_PAGE_SIZE).offset((page - 1) * AUDIT_PAGE_SIZE),
+    db().select().from(log).where(where).orderBy(desc(log.id)).limit(pageSize).offset((page - 1) * pageSize),
     db().$count(log, where),
   ]);
   return { rows, total };

@@ -21,7 +21,7 @@ import { getHeadcountReport } from "@/modules/core-hr/service";
 import { AGING_BUCKETS, agingSummary, canOpenPipeline, canOpenReceivables, forecast, listInvoices, loadCrm, managesAnAccount, ownsAnyDeal, salesDashboard } from "@/modules/crm/service";
 import { listInstances } from "@/modules/ops/service";
 import { costTrend, payrollReadReach } from "@/modules/payroll/service";
-import { type CsvFile, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
+import { type ExportColumn, type ExportFile, toTable } from "@/modules/platform/export/table";
 import type { PersonRow } from "@/modules/platform/people/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { canReadRecruitReports, getRecruitReport } from "@/modules/recruit/service";
@@ -401,9 +401,9 @@ export async function buildReportFor(user: ReportViewer, key: string, rawParamet
   return definition.build(user, parsed.data, period, locale);
 }
 
-export function reportToCsv(table: ReportTable, fileName: string): CsvFile {
+export function reportToFile(table: ReportTable, fileName: string): ExportFile {
   const columns: ExportColumn<(string | number)[]>[] = table.columns.map((header, index) => ({ header, value: (row) => row[index] ?? "" }));
-  return { fileName, csv: toCsv(columns, table.rows), rowCount: table.rows.length, truncated: false };
+  return { fileName, table: toTable(columns, table.rows), rowCount: table.rows.length, truncated: false };
 }
 
 /** The plain-text body of a scheduled report's email: the summary, the table, and where to look. */

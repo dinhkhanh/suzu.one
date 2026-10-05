@@ -1,3 +1,4 @@
+import { storedText } from "@/lib/stored-text";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ export const generateMetadata = pageTitle("leave");
 export default async function LeavePage() {
   const user = await requireUser();
   const t = await getTranslations("leave");
+  const tStored = await getTranslations("stored");
   const format = await getFormatter();
   const locale = await getLocale();
   const today = todayInVietnam();
@@ -168,7 +170,7 @@ export default async function LeavePage() {
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {date(entry.effectiveDate)}
-                  {entry.reason ? ` · ${entry.reason}` : ""}
+                  {entry.reason ? ` · ${storedText(entry.reason, tStored)}` : ""}
                 </span>
               </ListItem>
             ))}
@@ -195,7 +197,7 @@ export default async function LeavePage() {
                     <Badge variant="secondary">{tAdmin(`ledgerKinds.${entry.kind}`)}</Badge>
                   </TableCell>
                   <TableCell kind="number">{signed(entry.amountCenti)}</TableCell>
-                  <TableCell className="whitespace-normal text-muted-foreground">{entry.reason ?? ""}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground">{storedText(entry.reason, tStored) ?? ""}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

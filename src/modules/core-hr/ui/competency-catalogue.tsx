@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/select";
 import { TableAddRow } from "@/components/ui/table";
 import { addCompetencyAction, deleteCompetencyAction, updateCompetencyAction } from "../competency-actions";
 import { COMPETENCY_KINDS, MAX_COMPETENCY_NAME } from "../enums";
-import { ConfirmButton } from "./confirm";
+import { ConfirmButton } from "@/components/ui/confirm";
 
 type Entry = { id: string; kind: (typeof COMPETENCY_KINDS)[number]; name: string; holders: number };
 

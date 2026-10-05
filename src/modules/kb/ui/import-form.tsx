@@ -1,4 +1,5 @@
 "use client";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -65,7 +66,7 @@ export function ImportPageForm({ spaceId, parents, defaultParentId }: { spaceId:
       ) : (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="import-markdown">{t("import.markdown")}</Label>
-          <textarea id="import-markdown" value={markdown} onChange={(event) => setMarkdown(event.target.value)} rows={14} maxLength={400000} className="rounded-md border bg-transparent p-3 font-mono text-xs" placeholder={"# Tiêu đề\n\nNội dung…"} />
+          <Textarea id="import-markdown" value={markdown} onChange={(event) => setMarkdown(event.target.value)} rows={14} maxLength={400000} className="font-mono text-xs" placeholder={"# Tiêu đề\n\nNội dung…"} />
         </div>
       )}
       <div className="flex flex-col gap-1.5">
