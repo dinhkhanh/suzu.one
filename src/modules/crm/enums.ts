@@ -57,7 +57,7 @@ export type ContractKind = (typeof CONTRACT_KINDS)[number];
 export const CONTRACT_STATUSES = ["draft", "signed", "terminated"] as const;
 export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
-export const INVOICE_STATUSES = ["open", "paid", "written_off"] as const;
+export const INVOICE_STATUSES = ["draft", "open", "paid", "written_off", "void"] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 export const PAYMENT_METHODS = ["transfer", "cash", "offset", "other"] as const;
 

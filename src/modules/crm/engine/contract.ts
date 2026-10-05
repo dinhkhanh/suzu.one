@@ -54,9 +54,9 @@ export function reminderDue(dueOn: IsoDate, today: IsoDate, thresholds: readonly
 /** VAT on an invoice's subtotal, rounded half up to the dong — the same rounding as a quote's. */
 export const vatOf = (subtotalVnd: number, vatRateBp: number): number => Math.round((subtotalVnd * vatRateBp) / 10_000);
 
-/** Open → paid once payments reach the total; "part paid" is shown, never stored. */
-export function invoiceStanding(totalVnd: number, paidVnd: number, status: string): "open" | "part_paid" | "paid" | "written_off" {
-  if (status === "written_off") return "written_off";
+/** Open → paid once payments reach the total; "part paid" is shown, never stored. A draft and a voided invoice owe nothing. */
+export function invoiceStanding(totalVnd: number, paidVnd: number, status: string): "draft" | "open" | "part_paid" | "paid" | "written_off" | "void" {
+  if (status === "written_off" || status === "draft" || status === "void") return status;
   if (paidVnd >= totalVnd) return "paid";
   return paidVnd > 0 ? "part_paid" : "open";
 }

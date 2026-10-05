@@ -1381,6 +1381,14 @@
         "title": "Commission statement",
         "body": "Your commission statement for {month} is ready to read."
       },
+      "crm_commission_reopened": {
+        "title": "Commission to confirm again",
+        "body": "A payment of {month} changed after you confirmed its commission. The statements were worked out again and wait for you to confirm."
+      },
+      "crm_commission_after_payroll": {
+        "title": "Commission changed after payroll",
+        "body": "A payment of {month} changed after its commission was paid through payroll. Adjust it in the next payroll run."
+      },
       "crm_cover_followups": {
         "title": "Client follow-ups while someone is away",
         "body": "You cover {count} client follow-ups of {name} during their leave."
@@ -13868,6 +13876,7 @@
     "saved": "Saved.",
     "save": "Save",
     "filter": "Filter",
+    "cancel": "Cancel",
     "tabs": {
       "label": "Clients & sales",
       "home": "My sales",
@@ -14042,6 +14051,7 @@
       "save": "Save",
       "log": "Log an activity or plan a follow-up",
       "happened": "It happened",
+      "mode": "Log what happened or plan what is next",
       "planOnly": "Plan a follow-up only",
       "kind": "Kind",
       "subject": "Subject",
@@ -14404,6 +14414,8 @@
         "overdue": "Overdue",
         "paid": "Paid",
         "written_off": "Written off",
+        "draft": "Drafts",
+        "void": "Voided",
         "all": "All"
       },
       "columns": {
@@ -14432,9 +14444,25 @@
       "payments": "Payments",
       "noPayments": "No payments yet.",
       "recordPayment": "Record the payment",
-      "removePayment": "Remove",
-      "removePaymentConfirm": "Remove this payment?",
+      "reversePayment": "Reverse",
+      "reversePaymentTitle": "Reverse this payment?",
+      "reversePaymentHint": "The payment stays on the list, marked reversed with the reason, and no longer counts towards what was collected, what is owed or commission.",
+      "reversed": "Reversed by {name} on {date}: {reason}",
       "writeOff": "Write off",
+      "asDraft": "Save as a draft — not issued yet, the number may come later",
+      "recordDraft": "Save the draft",
+      "saveDraft": "Save the draft",
+      "draftHeading": "Draft invoice",
+      "draftIntro": "The draft holds these items until the invoice is issued. Change it, issue it or delete it here.",
+      "editDraft": "Change the draft",
+      "issueTitle": "Issue the invoice",
+      "issueIntro": "Give the number and date the accounting system issued it under. Every item needs an amount.",
+      "issue": "Issue",
+      "deleteDraft": "Delete the draft",
+      "deleteDraftConfirm": "Delete this draft? Its items go back to the queue waiting to be invoiced.",
+      "void": "Void the invoice",
+      "voidIntro": "An issued invoice is never deleted: void it with the reason, as the accounting system does. It is kept with its number, owes nothing, and its items go back to the queue waiting to be invoiced. Reverse its payments first if it has any.",
+      "voidedBecause": "Voided by {name} on {date}: {reason}",
       "methods": {
         "transfer": "Bank transfer",
         "cash": "Cash",
@@ -14450,7 +14478,10 @@
         "amount": "Amount (VND)",
         "method": "Method",
         "reference": "Reference",
-        "writeOffReason": "Why"
+        "writeOffReason": "Why",
+        "numberIfKnown": "Invoice number (if known)",
+        "reverseReason": "Why it is reversed",
+        "voidReason": "Why the invoice is voided"
       }
     },
     "reports": {
@@ -14677,7 +14708,9 @@
         "open": "Open",
         "part_paid": "Part paid",
         "paid": "Paid",
-        "written_off": "Written off"
+        "written_off": "Written off",
+        "draft": "Draft",
+        "void": "Voided"
       },
       "aging": {
         "current": "Not due",
@@ -14767,6 +14800,7 @@
       "deal_owner_ineligible": "That person cannot own a deal here.",
       "deal_has_projects": "The deal already became a project; it cannot be reopened.",
       "deal_not_won": "Only a won deal is set up for delivery.",
+      "delivery_exists": "The deal already has a delivery project of that name — it may have been sent twice. Give it another name if it is a new project.",
       "team_not_found": "That team is not active.",
       "stage_not_found": "That stage is not in use.",
       "stage_in_use": "Deals sit in this stage; its kind cannot change.",
@@ -14810,10 +14844,18 @@
       "invoice_mixed_items": "One invoice covers one client and one entity.",
       "invoice_number_taken": "That invoice number is already recorded.",
       "invoice_not_found": "That invoice no longer exists.",
-      "invoice_closed": "The invoice is paid or written off.",
-      "invoice_reason_required": "Say why it is written off.",
+      "invoice_closed": "The invoice is no longer open: paid, written off or voided.",
+      "invoice_reason_required": "Give the reason.",
       "payment_amount_invalid": "A payment is more than zero.",
       "payment_not_found": "That payment no longer exists.",
+      "invoice_number_required": "Give the invoice number, or save it as a draft.",
+      "invoice_item_held": "Some items are on another invoice (perhaps a draft).",
+      "invoice_not_draft": "The invoice is issued, so it is not changed or deleted. Void it if it is wrong.",
+      "invoice_not_issued": "This invoice is still a draft: delete the draft instead of voiding it.",
+      "invoice_has_payments": "The invoice has payments. Reverse them first.",
+      "payment_above_outstanding": "That is more than the invoice still owes.",
+      "payment_reason_required": "Say why the payment is reversed.",
+      "payment_reversed": "That payment is already reversed.",
       "service_code_taken": "That code is already used.",
       "service_not_found": "That service no longer exists.",
       "file_not_found": "Upload the signed scan first.",

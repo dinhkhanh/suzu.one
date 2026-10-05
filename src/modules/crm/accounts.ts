@@ -6,7 +6,7 @@
 // (reference tier) and is filtered here; every writer below drops it once committed. The figures
 // (open projects, pipeline, receivables, follow-ups) are live, and are computed in SQL per request.
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate, TTL } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -145,6 +145,7 @@ export async function receivablesByAccount(accountIds: readonly string[], today:
   const paid = executor
     .select({ invoiceId: schema.crmPayment.invoiceId, amount: sql<number>`sum(${schema.crmPayment.amountVnd})`.as("paid_amount") })
     .from(schema.crmPayment)
+    .where(isNull(schema.crmPayment.reversedAt))
     .groupBy(schema.crmPayment.invoiceId)
     .as("paid");
   const outstanding = sql`greatest(${schema.crmInvoice.totalVnd} - coalesce(${paid.amount}, 0), 0)`;

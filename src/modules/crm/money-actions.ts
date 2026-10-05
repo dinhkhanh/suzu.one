@@ -14,7 +14,7 @@ import { findAccount } from "./accounts";
 import { findContract, linkProjectToContract, saveContract, signContract, terminateContract } from "./contracts";
 import { CONTRACT_KINDS, PAYMENT_METHODS } from "./enums";
 import { checkbox, days, isoDate, optional, text, vnd } from "./form-inputs";
-import { findInvoice, recordInvoice, recordPayment, removePayment, writeOffInvoice } from "./invoices";
+import { deleteDraftInvoice, findInvoice, issueInvoice, recordInvoice, recordPayment, reversePayment, saveDraftInvoice, voidInvoice, writeOffInvoice } from "./invoices";
 import { type AccountFacts, canEditContracts, canRecordInvoices, canSeeAccountMoney, canViewContracts, type CrmViewer } from "./policy";
 import { loadCrm } from "./viewer";
 
@@ -173,28 +173,39 @@ export async function openContractScanAction(input: unknown) {
 
 // ── Invoices and payments ───────────────────────────────────────────────────────────────────
 
+const invoiceFields = {
+  itemIds: z.preprocess((value) => (value === undefined || value === null || value === "" ? [] : Array.isArray(value) ? value : [value]), z.array(z.uuid()).min(1).max(100)),
+  // Required to issue; a draft may wait for the accounting system's number.
+  number: optional(z.string().trim().min(1).max(60)),
+  issuedOn: isoDate,
+  vatRateBp: z.coerce.number().int().min(0).max(10_000),
+  amounts: z.record(z.string(), vnd).default({}),
+  note: text(1000),
+};
+const typedAmounts = (amounts: Record<string, number | null>) => Object.fromEntries(Object.entries(amounts).flatMap(([id, value]) => (value === null ? [] : [[id, value]])));
+
+/** Every item is in an entity this reader records invoices for. */
+async function mayItems(user: CurrentUser, itemIds: readonly string[]): Promise<boolean> {
+  const items = await billingItemsByIds(itemIds);
+  const { viewer } = await loadCrm(user);
+  return items.length > 0 && items.every((item) => canRecordInvoices(viewer, item.entityId));
+}
+
+function refreshInvoice(invoice: { id: string; clientId: string }) {
+  revalidatePath("/crm/invoices");
+  revalidatePath(`/crm/invoices/${invoice.id}`);
+  revalidatePath("/projects/billing");
+  revalidatePath(`/crm/accounts/${invoice.clientId}`);
+}
+
 const invoicePipeline = createAction({
   name: "crm.invoice.record",
-  input: z.object({
-    itemIds: z.preprocess((value) => (value === undefined || value === null || value === "" ? [] : Array.isArray(value) ? value : [value]), z.array(z.uuid()).min(1).max(100)),
-    number: z.string().trim().min(1).max(60),
-    issuedOn: isoDate,
-    vatRateBp: z.coerce.number().int().min(0).max(10_000),
-    amounts: z.record(z.string(), vnd).default({}),
-    note: text(1000),
-  }),
-  authorize: async (user, input) => {
-    const items = await billingItemsByIds(input.itemIds);
-    const { viewer } = await loadCrm(user);
-    return items.length > 0 && items.every((item) => canRecordInvoices(viewer, item.entityId));
-  },
+  input: z.object({ ...invoiceFields, draft: checkbox.default(false) }),
+  authorize: (user, input) => mayItems(user, input.itemIds),
   run: async ({ user, input }) => {
-    const amounts = Object.fromEntries(Object.entries(input.amounts).flatMap(([id, value]) => (value === null ? [] : [[id, value]])));
-    const invoice = await recordInvoice({ itemIds: input.itemIds, number: input.number, issuedOn: input.issuedOn, vatRateBp: input.vatRateBp, amounts, note: input.note }, user.person.id);
-    revalidatePath("/crm/invoices");
-    revalidatePath("/projects/billing");
-    revalidatePath(`/crm/accounts/${invoice.clientId}`);
-    return { data: { id: invoice.id }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: invoice.number, after: invoice } };
+    const invoice = await recordInvoice({ itemIds: input.itemIds, number: input.number, issuedOn: input.issuedOn, vatRateBp: input.vatRateBp, amounts: typedAmounts(input.amounts), note: input.note, draft: input.draft }, user.person.id);
+    refreshInvoice(invoice);
+    return { data: { id: invoice.id }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: invoice.number ?? "draft", after: invoice } };
   },
 });
 export async function recordInvoiceAction(input: unknown) {
@@ -206,37 +217,96 @@ async function mayInvoice(user: CurrentUser, invoiceId: string): Promise<boolean
   return !!invoice && canRecordInvoices((await loadCrm(user)).viewer, invoice.entityId);
 }
 
+const saveDraftPipeline = createAction({
+  name: "crm.invoice.save_draft",
+  input: z.object({ invoiceId: z.uuid(), ...invoiceFields }),
+  authorize: async (user, input) => (await mayInvoice(user, input.invoiceId)) && mayItems(user, input.itemIds),
+  run: async ({ input }) => {
+    const { before, after } = await saveDraftInvoice(input.invoiceId, { itemIds: input.itemIds, number: input.number, issuedOn: input.issuedOn, vatRateBp: input.vatRateBp, amounts: typedAmounts(input.amounts), note: input.note });
+    refreshInvoice(after);
+    return { data: { id: after.id }, audit: { resource: { type: "crm_invoice", id: after.id, entityId: after.entityId }, summary: after.number ?? "draft", before, after } };
+  },
+});
+export async function saveDraftInvoiceAction(input: unknown) {
+  return saveDraftPipeline(input);
+}
+
+const issuePipeline = createAction({
+  name: "crm.invoice.issue",
+  input: z.object({ invoiceId: z.uuid(), number: z.string().trim().min(1).max(60), issuedOn: isoDate }),
+  authorize: (user, input) => mayInvoice(user, input.invoiceId),
+  run: async ({ user, input }) => {
+    const { before, after } = await issueInvoice(input.invoiceId, { number: input.number, issuedOn: input.issuedOn }, user.person.id);
+    refreshInvoice(after);
+    return { data: { id: after.id }, audit: { resource: { type: "crm_invoice", id: after.id, entityId: after.entityId }, summary: after.number ?? "", before: { status: before.status, number: before.number }, after } };
+  },
+});
+export async function issueInvoiceAction(input: unknown) {
+  return issuePipeline(input);
+}
+
+const deleteDraftPipeline = createAction({
+  name: "crm.invoice.delete_draft",
+  input: z.object({ invoiceId: z.uuid() }),
+  authorize: (user, input) => mayInvoice(user, input.invoiceId),
+  run: async ({ input }) => {
+    const before = await deleteDraftInvoice(input.invoiceId);
+    refreshInvoice(before);
+    return { data: { ok: true }, audit: { resource: { type: "crm_invoice", id: before.id, entityId: before.entityId }, summary: before.number ?? "draft", before } };
+  },
+});
+export async function deleteDraftInvoiceAction(input: unknown) {
+  return deleteDraftPipeline(input);
+}
+
+const voidPipeline = createAction({
+  name: "crm.invoice.void",
+  input: z.object({ invoiceId: z.uuid(), reason: z.string().trim().min(1).max(1000) }),
+  authorize: (user, input) => mayInvoice(user, input.invoiceId),
+  run: async ({ user, input }) => {
+    const { before, after, released } = await voidInvoice(input.invoiceId, input.reason, user.person.id);
+    refreshInvoice(after);
+    return { data: { status: after.status, released }, audit: { resource: { type: "crm_invoice", id: after.id, entityId: after.entityId }, summary: after.number ?? "", before: { status: before.status }, after: { status: after.status, reason: after.voidedReason, itemsReleased: released } } };
+  },
+});
+export async function voidInvoiceAction(input: unknown) {
+  return voidPipeline(input);
+}
+
 const paymentPipeline = createAction({
   name: "crm.invoice.payment",
   input: z.object({ invoiceId: z.uuid(), receivedOn: isoDate, amountVnd: vnd.refine((value) => value !== null && value > 0), method: z.enum(PAYMENT_METHODS), reference: text(120), note: text(500) }),
   authorize: (user, input) => mayInvoice(user, input.invoiceId),
   run: async ({ user, input }) => {
-    const { payment, invoice } = await recordPayment(input.invoiceId, { receivedOn: input.receivedOn, amountVnd: input.amountVnd!, method: input.method, reference: input.reference, note: input.note }, user.person.id);
+    const { payment, invoice, commission } = await recordPayment(input.invoiceId, { receivedOn: input.receivedOn, amountVnd: input.amountVnd!, method: input.method, reference: input.reference, note: input.note }, user.person.id);
     revalidatePath(`/crm/invoices/${invoice.id}`);
     revalidatePath("/crm/invoices");
-    return { data: { id: payment.id, status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: `payment ${payment.amountVnd}`, after: payment } };
+    if (commission.reopened) revalidatePath("/crm/commission");
+    // The statements a late payment reopened are counted, never priced: commission is compensation.
+    return { data: { id: payment.id, status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: `payment ${payment.amountVnd}`, after: { ...payment, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled } } };
   },
 });
 export async function recordPaymentAction(input: unknown) {
   return paymentPipeline(input);
 }
 
-const removePaymentPipeline = createAction({
-  name: "crm.invoice.payment_remove",
-  input: z.object({ invoiceId: z.uuid(), paymentId: z.uuid() }),
+const reversePaymentPipeline = createAction({
+  name: "crm.invoice.payment_reverse",
+  input: z.object({ invoiceId: z.uuid(), paymentId: z.uuid(), reason: z.string().trim().min(1).max(500) }),
   authorize: async (user, input) => {
     const [row] = await db().select({ invoiceId: schema.crmPayment.invoiceId }).from(schema.crmPayment).where(eq(schema.crmPayment.id, input.paymentId)).limit(1);
     return row?.invoiceId === input.invoiceId && mayInvoice(user, input.invoiceId);
   },
-  run: async ({ input }) => {
-    const { payment, invoice } = await removePayment(input.paymentId);
+  run: async ({ user, input }) => {
+    const { before, after, invoice, commission } = await reversePayment(input.paymentId, input.reason, user.person.id);
     revalidatePath(`/crm/invoices/${invoice.id}`);
     revalidatePath("/crm/invoices");
-    return { data: { status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, before: payment } };
+    if (commission.reopened) revalidatePath("/crm/commission");
+    return { data: { status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: `payment ${before.amountVnd} reversed`, before, after: { ...after, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled } } };
   },
 });
-export async function removePaymentAction(input: unknown) {
-  return removePaymentPipeline(input);
+export async function reversePaymentAction(input: unknown) {
+  return reversePaymentPipeline(input);
 }
 
 const writeOffPipeline = createAction({

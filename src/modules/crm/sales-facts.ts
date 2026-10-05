@@ -3,7 +3,7 @@
 // was invoiced and collected on the accounts a person manages, and follow-ups done by their day.
 // Every figure summed in SQL per person; nothing read row by row.
 import "server-only";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { dealValueSql } from "./accounts";
@@ -32,14 +32,15 @@ export async function salesFactsOf(personIds: readonly string[], range: { from: 
       .select({ personId: schema.workClient.accountManagerPersonId, amount: sql<number>`coalesce(sum(${schema.crmInvoice.subtotalVnd}), 0)` })
       .from(schema.crmInvoice)
       .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmInvoice.clientId))
-      .where(and(inArray(schema.workClient.accountManagerPersonId, ids), sql`${schema.crmInvoice.issuedOn} between ${range.from}::date and ${range.to}::date`))
+      // Issued invoices only: a draft is not invoiced yet, a voided one never was.
+      .where(and(inArray(schema.workClient.accountManagerPersonId, ids), inArray(schema.crmInvoice.status, ["open", "paid", "written_off"]), sql`${schema.crmInvoice.issuedOn} between ${range.from}::date and ${range.to}::date`))
       .groupBy(schema.workClient.accountManagerPersonId),
     db()
       .select({ personId: schema.workClient.accountManagerPersonId, amount: sql<number>`coalesce(sum(${schema.crmPayment.amountVnd}), 0)` })
       .from(schema.crmPayment)
       .innerJoin(schema.crmInvoice, eq(schema.crmInvoice.id, schema.crmPayment.invoiceId))
       .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmInvoice.clientId))
-      .where(and(inArray(schema.workClient.accountManagerPersonId, ids), sql`${schema.crmPayment.receivedOn} between ${range.from}::date and ${range.to}::date`))
+      .where(and(inArray(schema.workClient.accountManagerPersonId, ids), isNull(schema.crmPayment.reversedAt), sql`${schema.crmPayment.receivedOn} between ${range.from}::date and ${range.to}::date`))
       .groupBy(schema.workClient.accountManagerPersonId),
     db()
       .select({ personId: schema.crmActivity.ownerPersonId, due: sql<number>`count(*)`, onTime: sql<number>`count(*) filter (where ${schema.crmActivity.doneAt} is not null and (${schema.crmActivity.doneAt} at time zone 'Asia/Ho_Chi_Minh')::date <= ${schema.crmActivity.dueOn})` })

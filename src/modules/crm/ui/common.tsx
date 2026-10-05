@@ -1,12 +1,13 @@
 "use client";
 // The CRM's form plumbing: a form that posts to one action and speaks the CRM's own error words,
-// and a one-tap button. Mobile first: fields stack on a phone and sit in a row from `sm`.
+// and a one-tap button that may ask first. Mobile first: fields stack on a phone and sit in a row from `sm`.
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
 import { FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ActionResult } from "@/lib/action";
 
 export type Action = (input: unknown) => Promise<ActionResult<unknown>>;
@@ -41,34 +42,51 @@ export function CrmForm({ action, extra, children, submit, className, onDone, na
   );
 }
 
-/** One tap, one action. A refusal is shown beside the button in the CRM's words. */
+/**
+ * One tap, one action. A refusal is shown beside the button in the CRM's words. With `confirm`, the
+ * tap asks first in a sheet (a card on a desk) that names what will happen — never the browser's
+ * own dialog, which a phone shows as a bare system alert.
+ */
 export function CrmButton({ action, input, label, confirm, variant = "outline", navigateTo }: { action: Action; input: unknown; label: string; confirm?: string; variant?: "outline" | "ghost" | "default" | "destructive"; navigateTo?: (data: unknown) => string | null }) {
   const t = useTranslations("crm.errors");
+  const tCrm = useTranslations("crm");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+  const run = () =>
+    startTransition(async () => {
+      const result = await action(input);
+      const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
+      setError(key);
+      setAsking(false);
+      if (!result.ok) return;
+      const to = navigateTo?.(result.data);
+      if (to) router.push(to);
+      else router.refresh();
+    });
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        size="xs"
-        variant={variant}
-        disabled={pending}
-        onClick={() => {
-          if (confirm && !window.confirm(confirm)) return;
-          startTransition(async () => {
-            const result = await action(input);
-            const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
-            setError(key);
-            if (!result.ok) return;
-            const to = navigateTo?.(result.data);
-            if (to) router.push(to);
-            else router.refresh();
-          });
-        }}
-      >
+      <Button type="button" size="xs" variant={variant} disabled={pending} onClick={() => (confirm ? setAsking(true) : run())}>
         {label}
       </Button>
+      {confirm ? (
+        <Dialog open={asking} onOpenChange={setAsking}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>{confirm}</DialogTitle>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAsking(false)}>
+                {tCrm("cancel")}
+              </Button>
+              <Button type="button" variant={variant === "destructive" ? "destructive" : "default"} disabled={pending} onClick={run}>
+                {label}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {t.has(error) ? t(error) : t("generic")}

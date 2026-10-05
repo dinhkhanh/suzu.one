@@ -5,7 +5,9 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { RecordLink } from "@/components/ui/record-link";
@@ -16,7 +18,7 @@ import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CONTRACT_KINDS, PAYMENT_METHODS } from "../enums";
-import { beginContractScanAction, completeContractScanAction, linkProjectContractAction, openContractScanAction, recordInvoiceAction, recordPaymentAction, removePaymentAction, saveContractAction, signContractAction, terminateContractAction, writeOffInvoiceAction } from "../money-actions";
+import { beginContractScanAction, completeContractScanAction, deleteDraftInvoiceAction, issueInvoiceAction, linkProjectContractAction, openContractScanAction, recordInvoiceAction, recordPaymentAction, reversePaymentAction, saveContractAction, saveDraftInvoiceAction, signContractAction, terminateContractAction, voidInvoiceAction, writeOffInvoiceAction } from "../money-actions";
 import { CrmButton, CrmForm, type Named } from "./common";
 
 type ContractValues = { id: string; number: string; title: string; kind: string; entityId: string | null; parentContractId: string | null; dealId: string | null; startDate: string | null; endDate: string | null; valueVnd?: number | null; paymentTermsDays: number | null; autoRenew: boolean; noticeDays: number | null; note: string | null };
@@ -200,20 +202,35 @@ export function UnlinkProjectButton({ clientId, projectId }: { clientId: string;
 
 export type ReadyItem = { id: string; projectId?: string; projectName: string; jobNumber: string | null; description: string; amountVnd: number | null; reference: string | null };
 
-/** An invoice over ready items of one client and entity: pick them, number and date it, choose the VAT. */
-export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { items: ReadyItem[]; vatRates: number[]; defaultVat: number; today: string }) {
+/** A draft being changed: what it holds now. `amounts` are the ones typed for items made without one. */
+export type DraftValues = { id: string; number: string | null; issuedOn: string; vatRateBp: number; note: string | null; itemIds: string[]; amounts: Record<string, number> };
+
+/**
+ * An invoice over ready items of one client and entity: pick them, number and date it, choose the VAT.
+ * Issued at once, or kept as a draft — which may wait for its number — and finished later. With
+ * `draft`, the same form changes that draft.
+ */
+export function RecordInvoiceForm({ items, vatRates, defaultVat, today, draft }: { items: ReadyItem[]; vatRates: number[]; defaultVat: number; today: string; draft?: DraftValues }) {
   const t = useTranslations("crm.invoice");
   const tCrm = useTranslations("crm");
   const tProjects = useTranslations("projects");
   const format = useFormatter();
-  const [picked, setPicked] = useState<Set<string>>(new Set(items.length === 1 ? [items[0].id] : []));
-  const [typed, setTyped] = useState<Record<string, string>>({});
-  const [vat, setVat] = useState(defaultVat);
+  const key = draft?.id ?? "new";
+  const [picked, setPicked] = useState<Set<string>>(new Set(draft ? draft.itemIds : items.length === 1 ? [items[0].id] : []));
+  const [typed, setTyped] = useState<Record<string, string>>(draft ? Object.fromEntries(Object.entries(draft.amounts).map(([id, amount]) => [id, String(amount)])) : {});
+  const [vat, setVat] = useState(draft?.vatRateBp ?? defaultVat);
+  const [asDraft, setAsDraft] = useState(false);
+  const preparing = !!draft || asDraft;
   const subtotal = useMemo(() => items.filter((item) => picked.has(item.id)).reduce((sum, item) => sum + (item.amountVnd ?? (Number((typed[item.id] ?? "").replace(/[.,\s]/g, "")) || 0)), 0), [items, picked, typed]);
   const money = (value: number) => format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
   const vatAmount = Math.round((subtotal * vat) / 10_000);
   return (
-    <CrmForm action={recordInvoiceAction} extra={{ itemIds: [...picked] }} submit={t("record")} navigateTo={(data) => `/crm/invoices/${(data as { id: string }).id}`}>
+    <CrmForm
+      action={draft ? saveDraftInvoiceAction : recordInvoiceAction}
+      extra={{ itemIds: [...picked], ...(draft ? { invoiceId: draft.id } : { draft: asDraft ? "on" : "" }) }}
+      submit={draft ? t("saveDraft") : asDraft ? t("recordDraft") : t("record")}
+      navigateTo={draft ? undefined : (data) => `/crm/invoices/${(data as { id: string }).id}`}
+    >
       <Table>
         <TableHeader>
           <TableRow>
@@ -256,7 +273,7 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
                 {item.amountVnd !== null ? (
                   money(item.amountVnd)
                 ) : (
-                  <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id)} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="ml-auto w-36" />
+                  <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id) && !preparing} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="ml-auto w-36" />
                 )}
               </TableCell>
             </TableRow>
@@ -264,14 +281,14 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
         </TableBody>
       </Table>
       <div className="grid gap-3 sm:grid-cols-4">
-        <Field name="number" label={t("fields.number")}>
-          <Input id="invoice-number" name="number" required maxLength={60} />
+        <Field name="number" label={preparing ? t("fields.numberIfKnown") : t("fields.number")}>
+          <Input id={`invoice-number-${key}`} name="number" required={!preparing} maxLength={60} defaultValue={draft?.number ?? ""} />
         </Field>
         <Field name="issuedOn" label={t("fields.issuedOn")}>
-          <DatePicker id="invoice-date" name="issuedOn" required max={today} defaultValue={today} />
+          <DatePicker id={`invoice-date-${key}`} name="issuedOn" required max={preparing ? undefined : today} defaultValue={draft?.issuedOn ?? today} />
         </Field>
         <Field name="vatRateBp" label={t("fields.vat")}>
-          <Select id="invoice-vat" name="vatRateBp" value={String(vat)} onChange={(event) => setVat(Number(event.target.value))}>
+          <Select id={`invoice-vat-${key}`} name="vatRateBp" value={String(vat)} onChange={(event) => setVat(Number(event.target.value))}>
             {vatRates.map((rate) => (
               <option key={rate} value={rate}>
                 {rate / 100}%
@@ -289,10 +306,37 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
         </dl>
       </div>
       <Field name="note" label={t("fields.note")}>
-        <Input id="invoice-note" name="note" maxLength={1000} />
+        <Input id={`invoice-note-${key}`} name="note" maxLength={1000} defaultValue={draft?.note ?? ""} />
       </Field>
+      {draft ? null : (
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={asDraft} onCheckedChange={(checked) => setAsDraft(!!checked)} /> {t("asDraft")}
+        </label>
+      )}
     </CrmForm>
   );
+}
+
+/** A draft issued under the number the accounting system gave it. */
+export function IssueInvoiceForm({ invoiceId, number, issuedOn, today }: { invoiceId: string; number: string | null; issuedOn: string; today: string }) {
+  const t = useTranslations("crm.invoice");
+  return (
+    <CrmForm action={issueInvoiceAction} extra={{ invoiceId }} submit={t("issue")} className="flex flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field name="number" label={t("fields.number")}>
+          <Input id={`issue-number-${invoiceId}`} name="number" required maxLength={60} defaultValue={number ?? ""} />
+        </Field>
+        <Field name="issuedOn" label={t("fields.issuedOn")}>
+          <DatePicker id={`issue-date-${invoiceId}`} name="issuedOn" required max={today} defaultValue={issuedOn > today ? today : issuedOn} />
+        </Field>
+      </div>
+    </CrmForm>
+  );
+}
+
+export function DeleteDraftButton({ invoiceId }: { invoiceId: string }) {
+  const t = useTranslations("crm.invoice");
+  return <CrmButton action={deleteDraftInvoiceAction} input={{ invoiceId }} label={t("deleteDraft")} variant="destructive" confirm={t("deleteDraftConfirm")} navigateTo={() => "/crm/invoices?status=draft"} />;
 }
 
 export function PaymentForm({ invoiceId, outstanding, today }: { invoiceId: string; outstanding: number; today: string }) {
@@ -323,9 +367,32 @@ export function PaymentForm({ invoiceId, outstanding, today }: { invoiceId: stri
   );
 }
 
-export function RemovePaymentButton({ invoiceId, paymentId }: { invoiceId: string; paymentId: string }) {
+/** A payment recorded by mistake: reversed with the reason, in a sheet over the invoice. It stays on the list, struck through. */
+export function ReversePaymentButton({ invoiceId, paymentId }: { invoiceId: string; paymentId: string }) {
   const t = useTranslations("crm.invoice");
-  return <CrmButton action={removePaymentAction} input={{ invoiceId, paymentId }} label={t("removePayment")} variant="ghost" confirm={t("removePaymentConfirm")} />;
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button type="button" size="xs" variant="ghost" onClick={() => setOpen(true)}>
+        {t("reversePayment")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("reversePaymentTitle")}</DialogTitle>
+            <DialogDescription>{t("reversePaymentHint")}</DialogDescription>
+          </DialogHeader>
+          {open ? (
+            <CrmForm action={reversePaymentAction} extra={{ invoiceId, paymentId }} submit={t("reversePayment")} onDone={() => setOpen(false)}>
+              <Field name="reason" label={t("fields.reverseReason")}>
+                <Input id={`reverse-reason-${paymentId}`} name="reason" required maxLength={500} />
+              </Field>
+            </CrmForm>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 export function WriteOffForm({ invoiceId }: { invoiceId: string }) {
@@ -334,6 +401,18 @@ export function WriteOffForm({ invoiceId }: { invoiceId: string }) {
     <CrmForm action={writeOffInvoiceAction} extra={{ invoiceId }} submit={t("writeOff")} className="flex flex-wrap items-end gap-3">
       <Field name="reason" label={t("fields.writeOffReason")}>
         <Input id="write-off-reason" name="reason" required maxLength={1000} />
+      </Field>
+    </CrmForm>
+  );
+}
+
+/** An issued invoice that was wrong, voided with the reason: it stays, owes nothing, and its items go back to the queue. */
+export function VoidInvoiceForm({ invoiceId }: { invoiceId: string }) {
+  const t = useTranslations("crm.invoice");
+  return (
+    <CrmForm action={voidInvoiceAction} extra={{ invoiceId }} submit={t("void")} className="flex flex-wrap items-end gap-3">
+      <Field name="reason" label={t("fields.voidReason")}>
+        <Input id="void-reason" name="reason" required maxLength={1000} />
       </Field>
     </CrmForm>
   );

@@ -1381,6 +1381,14 @@
         "title": "Bảng hoa hồng",
         "body": "Bảng hoa hồng tháng {month} của bạn đã sẵn sàng."
       },
+      "crm_commission_reopened": {
+        "title": "Hoa hồng cần xác nhận lại",
+        "body": "Một khoản thanh toán tháng {month} đã thay đổi sau khi bạn xác nhận hoa hồng. Bảng kê đã được tính lại, chờ bạn xác nhận."
+      },
+      "crm_commission_after_payroll": {
+        "title": "Hoa hồng thay đổi sau kỳ lương",
+        "body": "Một khoản thanh toán tháng {month} đã thay đổi sau khi hoa hồng được trả qua kỳ lương. Hãy điều chỉnh trong kỳ lương tới."
+      },
       "crm_cover_followups": {
         "title": "Việc theo dõi khách hàng khi đồng nghiệp nghỉ",
         "body": "Bạn đảm nhận {count} việc theo dõi khách hàng của {name} trong thời gian họ nghỉ phép."
@@ -13868,6 +13876,7 @@
     "saved": "Đã lưu.",
     "save": "Lưu",
     "filter": "Lọc",
+    "cancel": "Thôi",
     "tabs": {
       "label": "Khách hàng & kinh doanh",
       "home": "Việc bán hàng của tôi",
@@ -14042,6 +14051,7 @@
       "save": "Lưu",
       "log": "Ghi hoạt động hoặc hẹn việc theo dõi",
       "happened": "Đã diễn ra",
+      "mode": "Ghi nhận việc đã làm hay lên kế hoạch",
       "planOnly": "Chỉ hẹn việc theo dõi",
       "kind": "Loại",
       "subject": "Nội dung",
@@ -14404,6 +14414,8 @@
         "overdue": "Quá hạn",
         "paid": "Đã thu",
         "written_off": "Đã xoá nợ",
+        "draft": "Bản nháp",
+        "void": "Đã huỷ",
         "all": "Tất cả"
       },
       "columns": {
@@ -14432,9 +14444,25 @@
       "payments": "Thanh toán",
       "noPayments": "Chưa nhận thanh toán.",
       "recordPayment": "Ghi nhận thanh toán",
-      "removePayment": "Xoá",
-      "removePaymentConfirm": "Xoá khoản thanh toán này?",
+      "reversePayment": "Huỷ khoản thu",
+      "reversePaymentTitle": "Huỷ khoản thanh toán này?",
+      "reversePaymentHint": "Khoản thanh toán vẫn nằm trong danh sách, được đánh dấu đã huỷ cùng lý do, và không còn được tính vào số đã thu, công nợ hay hoa hồng.",
+      "reversed": "Đã huỷ bởi {name} ngày {date}: {reason}",
       "writeOff": "Xoá nợ",
+      "asDraft": "Lưu thành bản nháp — chưa xuất, có thể chưa có số hoá đơn",
+      "recordDraft": "Lưu bản nháp",
+      "saveDraft": "Lưu bản nháp",
+      "draftHeading": "Bản nháp hoá đơn",
+      "draftIntro": "Bản nháp giữ các khoản này cho đến khi hoá đơn được xuất. Sửa, xuất hoặc xoá bản nháp tại đây.",
+      "editDraft": "Sửa bản nháp",
+      "issueTitle": "Xuất hoá đơn",
+      "issueIntro": "Nhập số hoá đơn và ngày xuất theo hệ thống kế toán. Mọi khoản phải có số tiền.",
+      "issue": "Xuất hoá đơn",
+      "deleteDraft": "Xoá bản nháp",
+      "deleteDraftConfirm": "Xoá bản nháp này? Các khoản sẽ trở lại danh sách chờ xuất hoá đơn.",
+      "void": "Huỷ hoá đơn",
+      "voidIntro": "Hoá đơn đã xuất không bị xoá: huỷ hoá đơn kèm lý do, như trên hệ thống kế toán. Hoá đơn vẫn được giữ cùng số của nó, không còn phải thu, và các khoản trở lại danh sách chờ xuất hoá đơn. Hãy huỷ các khoản thanh toán trước nếu có.",
+      "voidedBecause": "Đã huỷ bởi {name} ngày {date}: {reason}",
       "methods": {
         "transfer": "Chuyển khoản",
         "cash": "Tiền mặt",
@@ -14450,7 +14478,10 @@
         "amount": "Số tiền (VNĐ)",
         "method": "Hình thức",
         "reference": "Tham chiếu",
-        "writeOffReason": "Lý do"
+        "writeOffReason": "Lý do",
+        "numberIfKnown": "Số hoá đơn (nếu đã có)",
+        "reverseReason": "Lý do huỷ",
+        "voidReason": "Lý do huỷ hoá đơn"
       }
     },
     "reports": {
@@ -14677,7 +14708,9 @@
         "open": "Chưa thu",
         "part_paid": "Thu một phần",
         "paid": "Đã thu đủ",
-        "written_off": "Đã xoá nợ"
+        "written_off": "Đã xoá nợ",
+        "draft": "Bản nháp",
+        "void": "Đã huỷ"
       },
       "aging": {
         "current": "Chưa đến hạn",
@@ -14767,6 +14800,7 @@
       "deal_owner_ineligible": "Người này không thể phụ trách cơ hội ở đây.",
       "deal_has_projects": "Cơ hội đã thành dự án nên không mở lại được.",
       "deal_not_won": "Chỉ cơ hội đã chốt mới thiết lập triển khai.",
+      "delivery_exists": "Cơ hội đã có một dự án triển khai mang tên này — có thể bạn đã gửi hai lần. Đặt tên khác nếu đây là một dự án mới.",
       "team_not_found": "Đội này không còn hoạt động.",
       "stage_not_found": "Giai đoạn này không còn dùng.",
       "stage_in_use": "Đang có cơ hội ở giai đoạn này nên không đổi loại được.",
@@ -14810,10 +14844,18 @@
       "invoice_mixed_items": "Một hoá đơn chỉ cho một khách hàng và một pháp nhân.",
       "invoice_number_taken": "Số hoá đơn này đã được ghi nhận.",
       "invoice_not_found": "Hoá đơn này không còn nữa.",
-      "invoice_closed": "Hoá đơn đã thu đủ hoặc đã xoá nợ.",
-      "invoice_reason_required": "Hãy ghi lý do xoá nợ.",
+      "invoice_closed": "Hoá đơn không còn mở: đã thu đủ, đã xoá nợ hoặc đã huỷ.",
+      "invoice_reason_required": "Hãy ghi lý do.",
       "payment_amount_invalid": "Số tiền thanh toán phải lớn hơn 0.",
       "payment_not_found": "Khoản thanh toán này không còn nữa.",
+      "invoice_number_required": "Hãy nhập số hoá đơn, hoặc lưu thành bản nháp.",
+      "invoice_item_held": "Một số khoản đang nằm trong hoá đơn khác (có thể là bản nháp).",
+      "invoice_not_draft": "Hoá đơn này đã xuất nên không sửa hay xoá được. Hãy huỷ hoá đơn nếu có sai sót.",
+      "invoice_not_issued": "Hoá đơn này còn là bản nháp: hãy xoá bản nháp thay vì huỷ.",
+      "invoice_has_payments": "Hoá đơn đã có thanh toán. Hãy huỷ các khoản thanh toán trước.",
+      "payment_above_outstanding": "Số tiền lớn hơn số còn phải thu của hoá đơn.",
+      "payment_reason_required": "Hãy ghi lý do huỷ khoản thanh toán.",
+      "payment_reversed": "Khoản thanh toán này đã được huỷ.",
       "service_code_taken": "Mã này đã được dùng.",
       "service_not_found": "Dịch vụ này không còn nữa.",
       "file_not_found": "Hãy tải bản scan đã ký lên trước.",

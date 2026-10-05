@@ -386,6 +386,21 @@ export async function invoiceItemsIn(tx: Tx, itemIds: readonly string[], invoice
   return after;
 }
 
+/**
+ * The items of an invoice finance voided (CRM, FR-CRM-30), inside the caller's transaction: each
+ * one still invoiced under that number goes back to ready — number, date and decider cleared — for
+ * the invoice that replaces it, or to be waived. Its amount stays what it was invoiced at, and can
+ * be corrected again (`correctBillingAmount`) now that it is ready.
+ */
+export async function releaseInvoicedItemsIn(tx: Tx, itemIds: readonly string[], invoiceNumber: string): Promise<BillingItemRow[]> {
+  if (itemIds.length === 0) return [];
+  return tx
+    .update(schema.projectBillingItem)
+    .set({ status: "ready", invoiceNumber: null, invoiceDate: null, decidedByPersonId: null, decidedAt: null, updatedAt: new Date() })
+    .where(and(inArray(schema.projectBillingItem.id, [...itemIds]), eq(schema.projectBillingItem.status, "invoiced"), eq(schema.projectBillingItem.invoiceNumber, invoiceNumber)))
+    .returning();
+}
+
 /** Ready items by id, for finance's invoice form (the CRM checks the reader's reach first). */
 export async function billingItemsByIds(itemIds: readonly string[], executor: Executor = db()): Promise<BillingItemRow[]> {
   if (itemIds.length === 0) return [];
