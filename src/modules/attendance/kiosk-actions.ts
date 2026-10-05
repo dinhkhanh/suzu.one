@@ -9,6 +9,7 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { recordConsentEvent } from "@/modules/privacy/service";
 import { invalidateSession } from "@/modules/platform/auth/session-cache";
 import { eq } from "drizzle-orm";
 import { commitKioskPunch, getDevice } from "./devices";
@@ -125,6 +126,9 @@ const withdrawPipeline = createAction({
   authorize: (user) => !user.impersonator,
   run: async ({ user }) => {
     const deleted = await deleteFaces(user.person.id);
+    // Kept as a fact, since the consent record went with the faces: the NAS kiosk's roster leaves
+    // the person out from now on (`deviceRoster`), so the NAS deletes its own copy too.
+    await recordConsentEvent({ personId: user.person.id, purpose: "face_check_in", decision: "withdrawn" });
     refresh();
     revalidatePath("/me");
     return { data: { deleted }, audit: { resource: { type: "face_enrolment", id: user.person.id, entityId: user.person.primaryEntityId }, summary: `consent withdrawn by the person; face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } } };

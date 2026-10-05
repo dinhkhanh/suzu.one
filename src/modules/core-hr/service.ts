@@ -1063,7 +1063,7 @@ export { listProbationsEnding, type ProbationEnding } from "./probation-facts";
 // `getSensitiveFields`, which checks the reader itself.
 export { type DocumentFacts, documentEventOf, documentFactsOf } from "./document-facts";
 export type { PlacementWords } from "./lifecycle-events";
-export { getSensitiveFields } from "./records";
+export { contractSalaryTermsOf, getSensitiveFields, listContracts, listDependents, listDocuments, listEmergencyContacts } from "./records";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
 /**
  * The headcount report (FR-RPT-02), for Phase 9's dashboard and scheduled reports. It takes the

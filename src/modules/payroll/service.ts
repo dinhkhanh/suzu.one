@@ -10,7 +10,7 @@ export { BASE_SALARY_CODE, getSalaryFile, listSalaryOverview, type SalaryFile, t
  * for anyone but the person, C&B over the entity, or the owner. A line manager reading a report's
  * pay is refused here, by the same rule that refuses them the payslip page.
  */
-export { getPayslipView, listMyPayslips, type MyPayslipRow, type PayslipView } from "./payslips";
+export { getPayslipView, listMyPayslips, type MyPayslipRow, payslipResultsOf, type PayslipView } from "./payslips";
 export { canApprovePayroll, canManageCompensation, canPayPayroll, canReadPayroll, canViewCompensationOf, hasPayrollDesk, payrollReadReach } from "./policy";
 /**
  * For the ops tracker (FR-OPS-10): how far each entity's month has got, so the payroll calendar

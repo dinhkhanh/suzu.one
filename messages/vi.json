@@ -145,7 +145,8 @@
       "admin": "Quản trị"
     },
     "kiosk": "Máy chấm công khuôn mặt",
-    "issuedDocuments": "Sổ văn bản"
+    "issuedDocuments": "Sổ văn bản",
+    "privacy": "Quyền riêng tư"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -3316,6 +3317,7 @@
       "flagged": "Đã ghi nhận và chuyển cho quản lý xem xét:",
       "note": "Ghi chú (không bắt buộc)",
       "notePlaceholder": "VD: sáng nay làm việc tại văn phòng khách hàng",
+      "withoutPosition": "Chấm công không kèm vị trí",
       "notExpected": "Hôm nay không cần chấm công — bạn vẫn có thể ghi nhận nếu muốn.",
       "untracked": "Hôm nay là ngày làm việc không chấm công (làm việc tại nhà). Ngày công được tính tự động, không cần chấm.",
       "onLeaveFull": "Hôm nay bạn có đơn nghỉ phép đã duyệt. Nếu kế hoạch thay đổi bạn vẫn có thể chấm công — hãy báo Nhân sự để huỷ đơn nghỉ.",
@@ -13699,6 +13701,7 @@
     }
   },
   "pageTitles": {
+    "privacy": "Quyền riêng tư và lưu trữ",
     "brands": "Bộ nhận diện thương hiệu",
     "brand": "Bộ nhận diện",
     "acceptance": "Nghiệm thu",
@@ -15646,5 +15649,87 @@
     "required": "Hãy điền mục này.",
     "draftRestored": "Đã khôi phục bản nháp chưa gửi từ {when}.",
     "draftDiscard": "Bỏ bản nháp"
+  },
+  "privacy": {
+    "gpsNotice": {
+      "title": "Vị trí của bạn khi chấm công",
+      "intro": "Trước khi nút chấm công đọc vị trí điện thoại, đây là những gì xảy ra với thông tin đó.",
+      "what": "Thu thập gì: vị trí và độ chính xác của điện thoại, đọc một lần đúng lúc bạn bấm nút — không đọc trước hay sau, và không bao giờ theo dõi liên tục.",
+      "why": "Để làm gì: xác nhận lượt chấm công được thực hiện tại nơi làm việc (hoặc tại nơi bạn đã khai báo trong ngày). Lượt chấm công không khớp sẽ được chuyển cho quản lý trực tiếp xem xét.",
+      "who": "Ai được xem: bạn, quản lý trực tiếp và phòng Nhân sự. Đồng nghiệp không bao giờ xem được.",
+      "howLong": "Lưu bao lâu: vị trí chính xác bị xoá sau {days} ngày kể từ lượt chấm công; giờ chấm công và văn phòng khớp vẫn được giữ trong bảng công.",
+      "choice": "Bạn có quyền từ chối. Khi đó lượt chấm công không kèm vị trí — mạng văn phòng vẫn được tính, nếu không quản lý sẽ xem xét. Bạn có thể đổi ý bất cứ lúc nào tại trang cá nhân.",
+      "agree": "Tôi đồng ý",
+      "notNow": "Để sau",
+      "state": {
+        "unanswered": "Bạn chưa trả lời thông báo về vị trí. Nút chấm công sẽ hiện thông báo này trước khi đọc vị trí.",
+        "declined": "Bạn đã chọn chấm công không kèm vị trí.",
+        "withdrawn": "Bạn đã rút lại sự đồng ý: lượt chấm công không còn đọc vị trí."
+      },
+      "stateGiven": "Lượt chấm công có đọc vị trí, theo sự đồng ý của bạn ngày {date}.",
+      "withoutIt": "Nếu không có vị trí, lượt chấm công vẫn được tính khi bạn dùng mạng văn phòng; nếu không, quản lý trực tiếp sẽ xem xét.",
+      "allow": "Cho phép đọc vị trí khi chấm công",
+      "withdraw": "Rút lại",
+      "withdrawConfirm": "Ngừng đọc vị trí khi chấm công?",
+      "withdrawDetail": "Từ nay lượt chấm công không kèm vị trí. Các vị trí đã ghi sẽ bị xoá theo lịch thông thường, {days} ngày sau mỗi lượt chấm công.",
+      "failed": "Chưa thực hiện được. Vui lòng thử lại."
+    },
+    "mine": {
+      "title": "Dữ liệu và quyền riêng tư",
+      "description": "Công ty đang lưu gì về bạn, bạn đã đồng ý những gì, và thông tin được lưu trong bao lâu.",
+      "gpsTitle": "Vị trí khi chấm công",
+      "exportTitle": "Tải dữ liệu của tôi",
+      "exportWhat": "Một tệp (JSON) gồm mọi thông tin SuZu One lưu về bạn: hồ sơ, quá trình làm việc, hợp đồng và điều khoản lương, nghỉ phép, chấm công, đề xuất, văn bản đã cấp cho bạn, phiếu lương, thông báo, hội thoại với trợ lý và các lựa chọn về quyền riêng tư. Tệp có thông tin lương nên bạn có thể được yêu cầu xác thực lại trước.",
+      "export": "Tải dữ liệu của tôi",
+      "exporting": "Đang chuẩn bị tệp…",
+      "stepUp": "Tệp có thông tin lương của bạn, vui lòng xác thực lại trước.",
+      "stepUpLink": "Xác thực rồi quay lại",
+      "exportFailed": "Chưa tạo được tệp. Vui lòng thử lại.",
+      "keptTitle": "Thời gian lưu trữ",
+      "keptPositions": "Vị trí chính xác của lượt chấm công: {days} ngày.",
+      "keptAssistant": "Hội thoại với trợ lý: {days} ngày kể từ tin nhắn cuối.",
+      "keptAfterLeaving": "Sau khi nghỉ việc: thông tin liên hệ, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân và tài khoản ứng dụng được xoá sau {years} năm kể từ ngày làm việc cuối cùng, khi phòng Nhân sự xác nhận.",
+      "keptByLaw": "Hồ sơ lương, thuế và bảo hiểm — phiếu lương, hợp đồng, bảng công, mã số thuế và số bảo hiểm — được lưu theo thời hạn luật kế toán và thuế yêu cầu (tối thiểu mười năm)."
+    },
+    "admin": {
+      "title": "Quyền riêng tư và lưu trữ",
+      "description": "Những người đã nghỉ việc đến hạn xoá thông tin cá nhân, và lịch tự động dọn dữ liệu hằng đêm.",
+      "dueTitle": "Đến hạn ẩn danh hoá",
+      "dueDescription": "Đã nghỉ việc hơn {years} năm. Không có gì bị xoá cho đến khi bạn xác nhận tại đây.",
+      "columns": {
+        "person": "Nhân sự",
+        "code": "Mã",
+        "entity": "Công ty",
+        "lastDay": "Ngày làm cuối",
+        "dueOn": "Đến hạn từ"
+      },
+      "none": "Chưa có ai đến hạn.",
+      "anonymise": "Ẩn danh hoá",
+      "confirmTitle": "Ẩn danh hoá {name}?",
+      "confirmIntro": "Thao tác này không thể hoàn tác.",
+      "goes": "Bị xoá",
+      "goesList": "Email công việc và tài khoản ứng dụng, ảnh đại diện, số điện thoại, email cá nhân, địa chỉ hiện tại, tình trạng hôn nhân, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân, giấy khám sức khoẻ, bằng cấp và chứng chỉ, thông báo và thiết bị nhận thông báo đẩy, liên kết Messenger và Telegram, hội thoại với trợ lý, dữ liệu khuôn mặt, và vị trí của mọi lượt chấm công.",
+      "stays": "Được giữ lại (theo luật kế toán, thuế và bảo hiểm)",
+      "staysList": "Họ tên và mã nhân viên, ngày sinh, giới tính, quốc tịch, địa chỉ thường trú, số giấy tờ tuỳ thân, mã số thuế, số bảo hiểm và tài khoản ngân hàng, người phụ thuộc đã đăng ký giảm trừ, quá trình làm việc, hợp đồng và quyết định, phiếu lương và bảng lương, bảng công, nghỉ phép, đề xuất và văn bản đã cấp.",
+      "cancel": "Huỷ",
+      "errors": {
+        "generic": "Chưa thực hiện được. Vui lòng thử lại.",
+        "retention_not_over": "Chưa hết thời hạn lưu trữ.",
+        "already_anonymised": "Đã được ẩn danh hoá trước đó.",
+        "not_former_employee": "Chỉ ẩn danh hoá được người đã nghỉ việc và không còn hợp đồng lao động nào đang hiệu lực.",
+        "anonymise_self": "Bạn không thể tự ẩn danh hoá chính mình.",
+        "person_not_found": "Nhân sự này không còn tồn tại."
+      },
+      "scheduleTitle": "Lịch lưu trữ",
+      "scheduleDescription": "Những gì tự động xoá hằng đêm, và những gì chờ phòng Nhân sự xác nhận.",
+      "schedule": {
+        "positions": "Vị trí chính xác, địa chỉ mạng và trình duyệt của lượt chấm công trên ứng dụng: xoá sau {days} ngày (trừ lượt còn chờ duyệt).",
+        "assistant": "Hội thoại với trợ lý và câu hỏi chưa trả lời được: xoá sau {days} ngày kể từ tin nhắn cuối.",
+        "faces": "Dữ liệu khuôn mặt: xoá khi nhân sự nghỉ việc hoặc rút lại sự đồng ý.",
+        "candidates": "Ứng viên không trúng tuyển: ẩn danh hoá khi hết thời hạn lưu, trừ người đã đồng ý vào kho ứng viên.",
+        "former": "Người đã nghỉ việc: ẩn danh hoá thông tin cá nhân sau {years} năm kể từ ngày làm việc cuối, khi phòng Nhân sự xác nhận tại đây.",
+        "byLaw": "Hồ sơ lương, thuế và bảo hiểm: lưu tối thiểu mười năm (Luật Kế toán 2015, điều 41)."
+      }
+    }
   }
 }

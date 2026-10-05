@@ -250,5 +250,15 @@ describe("one clock for an office several entities share", () => {
     expect(await servedEntityIds(kiosk)).toEqual([ids.media, ids.creative]);
     await saveDevice({ id: kiosk.id, entityId: ids.media, name: "Sảnh chung", model: null, serialNumber: null, locationId: null, profileId, isActive: true, alsoServes: [] });
     expect(await servedEntityIds(kiosk)).toEqual([ids.media]);
+
+    // The NAS kiosk forgets whom the roster leaves out: a face consent withdrawn (and not given
+    // again by a new enrolment) takes the person off it, and so does leaving.
+    await db().insert(schema.privacyConsentEvent).values({ personId: ids.huy, purpose: "face_check_in", decision: "withdrawn" });
+    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan"]);
+    await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, ids.lan));
+    expect(await deviceRoster(kiosk.id)).toEqual([]);
+    await db().update(schema.person).set({ status: "active" }).where(eq(schema.person.id, ids.lan));
+    await db().insert(schema.faceEnrolment).values({ personId: ids.huy, entityId: ids.media, consentAt: new Date(Date.now() + 1000), consentRecordedByPersonId: ids.hr });
+    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan", "Huy"]);
   });
 });

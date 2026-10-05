@@ -27,6 +27,10 @@ import { IssuedDocumentsTable } from "@/modules/documents/ui/issued-documents";
 import { getMonthSummaryFor } from "@/modules/attendance/service";
 import { hoursText } from "@/modules/attendance/ui/day-plan";
 import { MyFaceEnrolment } from "@/modules/attendance/ui/my-face";
+import { MyGpsConsent } from "@/modules/attendance/ui/gps-notice";
+import { answerGpsNoticeAction } from "@/modules/privacy/actions";
+import { GPS_NOTICE_VERSION, gpsConsentOf, PUNCH_POSITION_RETENTION_DAYS } from "@/modules/privacy/service";
+import { MyPrivacy } from "@/modules/privacy/ui/my-privacy";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
 import { countMyOpenRequests, listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
@@ -49,7 +53,7 @@ export default async function MyProfilePage() {
   const today = todayInVietnam();
   const year = Number(today.slice(0, 4));
   const month = today.slice(0, 7);
-  const [person, requests, balances, summary, openRequests, theme, appointments, directoryOpen] = await Promise.all([
+  const [person, requests, balances, summary, openRequests, theme, appointments, directoryOpen, gps] = await Promise.all([
     getPersonView(user.principal, user.person.id),
     listProfileChanges(viewer, user.person.id),
     getLeaveBalanceFor(user.principal, user.person.id, year),
@@ -59,6 +63,7 @@ export default async function MyProfilePage() {
     // The posts held in running projects: the automatic half of the position.
     loadViewer(user).then((viewer) => projectAppointmentsOf(viewer, user.person.id)),
     canBrowsePeople(user.principal) ? peopleModuleOpen(user) : false,
+    gpsConsentOf(user.person.id),
   ]);
   if (!person?.personal) notFound();
 
@@ -158,6 +163,7 @@ export default async function MyProfilePage() {
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
       <MyFaceEnrolment personId={user.person.id} />
+      <MyPrivacy gps={<MyGpsConsent notice={{ state: gps.state, version: GPS_NOTICE_VERSION, days: PUNCH_POSITION_RETENTION_DAYS }} since={gps.at ? format.dateTime(gps.at, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }) : null} answer={answerGpsNoticeAction} />} />
       <ResignationBlock personId={user.person.id} />
 
       <Section title={t("me.preferences")}>
