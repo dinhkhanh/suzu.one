@@ -20,8 +20,9 @@ export const generateMetadata = pageTitle("newOffCycleRun");
  * a month on top of its regular run and taxed with it. C&B over the entity only; the run then goes
  * through the same lifecycle as any other — calculated, proposed, signed by the CEO, paid.
  */
-export default async function NewOffCycleRunPage() {
+export default async function NewOffCycleRunPage({ searchParams }: PageProps<"/payroll/runs/new/off-cycle">) {
   const user = await requireUser();
+  const query = await searchParams;
   const reach = compensationReach(user.principal);
   if (!reach.all && reach.entityIds.length === 0) notFound();
   requireStepUp(user, "/payroll/runs/new/off-cycle");
@@ -50,7 +51,13 @@ export default async function NewOffCycleRunPage() {
       />
       <Card>
         <CardContent>
-          <OffCycleRunForm entities={entities} people={people} codes={codes} defaultMonth={today.slice(0, 7)} />
+          <OffCycleRunForm
+            entities={entities}
+            people={people}
+            codes={codes}
+            defaultMonth={typeof query.month === "string" && /^\d{4}-\d{2}$/.test(query.month) ? query.month : today.slice(0, 7)}
+            defaultEntityId={typeof query.entity === "string" && entities.some((entity) => entity.id === query.entity) ? query.entity : undefined}
+          />
         </CardContent>
       </Card>
     </Page>

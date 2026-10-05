@@ -190,10 +190,10 @@ type OffCycleLine = { key: number; personId: string; code: string; amount: strin
  * person and pay component; "everyone" fills a line for each person of the entity at one amount,
  * which is then changed person by person where it differs. Nobody is offered a line for themselves.
  */
-export function OffCycleRunForm({ entities, people, codes, defaultMonth }: { entities: EntityOption[]; people: OffCyclePerson[]; /** The input components of each entity's catalogue. */ codes: Record<string, { code: string; name: string }[]>; defaultMonth: string }) {
+export function OffCycleRunForm({ entities, people, codes, defaultMonth, defaultEntityId }: { entities: EntityOption[]; people: OffCyclePerson[]; /** The input components of each entity's catalogue. */ codes: Record<string, { code: string; name: string }[]>; defaultMonth: string; defaultEntityId?: string }) {
   const t = useTranslations("payroll.runs");
   const router = useRouter();
-  const [entityId, setEntityId] = useState(entities[0]?.id ?? "");
+  const [entityId, setEntityId] = useState(defaultEntityId ?? entities[0]?.id ?? "");
   const [lines, setLines] = useState<OffCycleLine[]>([]);
   const [bulk, setBulk] = useState({ code: "", amount: "" });
   const nextKey = useRef(1);
@@ -313,7 +313,7 @@ export function OffCycleRunForm({ entities, people, codes, defaultMonth }: { ent
       {entityCodes.length === 0 ? <p className="text-sm text-muted-foreground">{t("offCycle.noCodes")}</p> : null}
       <FormError namespace="payroll.runs.errors" errorKey={errorKey} />
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="w-full md:w-auto" disabled={pending || lines.length === 0}>
+        <Button type="submit" size="lg" className="w-full md:w-auto" disabled={pending}>
           {pending ? t("new.saving") : t("offCycle.submit")}
         </Button>
       </div>

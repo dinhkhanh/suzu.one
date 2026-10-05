@@ -40,6 +40,7 @@ import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { type Principal, unitsCovered } from "@/modules/platform/rbac/policy";
 import { ROLE_DEFINITIONS, type Tier } from "@/modules/platform/rbac/roles";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
+import { getParameter } from "@/modules/platform/statutory/service";
 import { submitSalaryChange } from "@/modules/payroll/service";
 import {
   DEFAULT_OFFER_VALID_DAYS,
@@ -49,7 +50,7 @@ import {
   type OfferDeclineReason,
   type OfferStatus,
 } from "./enums";
-import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
+import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, type OfferLegalLimits, type OfferProblem, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
 import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
 import { type LetterOutcome, sendLetter } from "./letters";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
@@ -141,10 +142,23 @@ export type OfferInput = {
   note: string | null;
 };
 
-function checkDraft(input: OfferInput, today: IsoDate): IsoDate {
+/**
+ * The legal figures an offer is held to, as in force on the day the job starts — the same
+ * `probation.limits` payroll checks the probation salary against when the offer becomes pay.
+ */
+async function offerLimitsOn(startDate: IsoDate, executor?: Executor): Promise<OfferLegalLimits> {
+  const { minimumPayPercent } = await getParameter("probation.limits", startDate, executor);
+  return { minimumProbationPayPercent: minimumPayPercent };
+}
+
+function refuse(problems: readonly OfferProblem[], limits: OfferLegalLimits) {
+  if (problems.length) throw new ActionError(problems[0], problems[0] === "offer_probation_percent_invalid" ? { minimum: limits.minimumProbationPayPercent } : undefined);
+}
+
+async function checkDraft(input: OfferInput, today: IsoDate): Promise<IsoDate> {
   const expiresOn = input.expiresOn ?? defaultExpiry(input.startDate, today, DEFAULT_OFFER_VALID_DAYS);
-  const problems = offerProblems({ ...input, expiresOn }, today);
-  if (problems.length) throw new ActionError(problems[0]);
+  const limits = await offerLimitsOn(input.startDate);
+  refuse(offerProblems({ ...input, expiresOn }, today, limits), limits);
   if (input.note && input.note.length > OFFER_LIMITS.note) throw new ActionError("offer_note_too_long");
   return expiresOn;
 }
@@ -155,7 +169,7 @@ function checkDraft(input: OfferInput, today: IsoDate): IsoDate {
  * saying what was actually promised.
  */
 export async function makeOffer(input: OfferInput, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<OfferRow> {
-  const expiresOn = checkDraft(input, today);
+  const expiresOn = await checkDraft(input, today);
 
   return db().transaction(async (tx) => {
     const application = await findApplication(input.applicationId, tx);
@@ -212,7 +226,7 @@ export async function makeOffer(input: OfferInput, actorPersonId: string, today:
 
 /** Changing a draft. Only a draft: once it is under approval the figure is in front of an approver. */
 export async function updateOffer(offerId: string, input: OfferInput, today: IsoDate = todayInVietnam()): Promise<{ before: OfferRow; after: OfferRow }> {
-  const expiresOn = checkDraft(input, today);
+  const expiresOn = await checkDraft(input, today);
 
   return db().transaction(async (tx) => {
     const before = await findOffer(offerId, tx);
@@ -253,8 +267,8 @@ export async function submitOfferForApproval(offerId: string, actorPersonId: str
     if (!offer) throw new ActionError("offer_not_found");
     const status = nextStatus(offer.status, "submit");
     if (!status) throw new ActionError("offer_not_submittable");
-    const problems = offerProblems({ ...offer, expiresOn: offer.expiresOn as IsoDate, startDate: offer.startDate as IsoDate }, today);
-    if (problems.length) throw new ActionError(problems[0]);
+    const limits = await offerLimitsOn(offer.startDate as IsoDate, tx);
+    refuse(offerProblems({ ...offer, expiresOn: offer.expiresOn as IsoDate, startDate: offer.startDate as IsoDate }, today, limits), limits);
 
     const candidate = await findCandidate(offer.candidateId, tx);
     const payload: OfferPayload = {

@@ -396,10 +396,14 @@ describe("unused leave paid out on leaving (FR-LVE-03, FR-PAY-18)", () => {
     expect(unpriced.warnings).toContain("leave_payout_unpriced");
   });
 
-  it("pays nothing on an off-cycle run: the leaver's regular run settles the leave", () => {
+  // Which run pays is the calculation's to decide (only days no run of the month pays reach an
+  // off-cycle run, once the regular run is signed); the engine prices whatever it is handed the same way.
+  it("prices the days it is handed the same way on an off-cycle run, and pays nothing when handed none", () => {
     const offCycle = calculatePerson(leaver({ runKind: "off_cycle", inputs: [{ code: "BONUS", amount: 1_000_000 }] }));
-    expect(payoutOf(offCycle)).toBeUndefined();
+    expect(payoutOf(offCycle)).toEqual(payoutOf(calculatePerson(leaver())));
     expect(offCycle.warnings).toEqual([]);
+    const none = calculatePerson(leaver({ runKind: "off_cycle", leavePayout: null, inputs: [{ code: "BONUS", amount: 1_000_000 }] }));
+    expect(payoutOf(none)).toBeUndefined();
   });
 });
 

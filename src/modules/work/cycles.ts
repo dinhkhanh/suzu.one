@@ -6,8 +6,8 @@ import "server-only";
 import { and, asc, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { cycleNumbered, cycleProgress, cyclesToMake, cycleSummary, rolloverIds, validCycleWeeks } from "./engine/cycles";
-import { listItems, logActivity, type TaskListItem } from "./tasks";
+import { cycleNumbered, cycleProgressOf, cyclesToMake, cycleSummary, rolloverIds, validCycleWeeks } from "./engine/cycles";
+import { listCycleItems, logActivity, type TaskListItem, WORK_KIND } from "./tasks";
 
 type Executor = Tx | ReturnType<typeof db>;
 // The daily module keeps the team rules (cycle length and start) and builds on work: loaded when
@@ -103,25 +103,42 @@ export async function runCycles(today: IsoDate): Promise<{ teams: number; made: 
 
 // ── The cycle page ──────────────────────────────────────────────────────────────────────────
 
+/** The most of the running cycle's tasks the page lists; past it the page says how many it left out. */
+export const CYCLE_TASK_LIMIT = 1000;
+
 export type CyclePage = {
-  current: (CycleRow & { progress: ReturnType<typeof cycleProgress>; tasks: TaskListItem[]; rolledIn: number }) | null;
+  /** `taskTotal`: every task in the cycle — more than `tasks` when the limit cut the list. Progress counts them all. */
+  current: (CycleRow & { progress: ReturnType<typeof cycleProgressOf>; tasks: TaskListItem[]; taskTotal: number; rolledIn: number }) | null;
   upcoming: (CycleRow & { planned: number }) | null;
   past: CycleRow[];
 };
 
 /** The running cycle with its tasks and progress, the next one's size, and the reviews of past ones. The caller checked the team is visible. */
-export async function getCyclePage(teamId: string, today: IsoDate, visibleTasks: (items: TaskListItem[]) => TaskListItem[]): Promise<CyclePage> {
+export async function getCyclePage(teamId: string, today: IsoDate, visibleTasks: (items: TaskListItem[]) => TaskListItem[], limit = CYCLE_TASK_LIMIT): Promise<CyclePage> {
   const cycles = await listTeamCycles(teamId);
   const current = cycles.find((cycle) => cycle.startDate <= today && cycle.endDate >= today && !cycle.closedAt) ?? null;
   const upcoming = cycles.filter((cycle) => cycle.startDate > today).at(-1) ?? null;
   const past = cycles.filter((cycle) => cycle.closedAt);
-  const [tasks, counts] = await Promise.all([
-    current ? listItems(eq(schema.workTask.cycleId, current.id), db(), 1000) : Promise.resolve([] as TaskListItem[]),
+  const [slice, counts, figures, rolledIn] = await Promise.all([
+    current ? listCycleItems(eq(schema.workTask.cycleId, current.id), limit) : Promise.resolve({ items: [] as TaskListItem[], total: 0 }),
     upcoming ? db().select({ count: sql<number>`count(*)::int` }).from(schema.workTask).innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live)).where(eq(schema.workTask.cycleId, upcoming.id)) : Promise.resolve([{ count: 0 }]),
+    // Progress over every task in the cycle, counted by Postgres — not over the rows the list kept.
+    current
+      ? db()
+          .select({
+            planned: sql<number>`count(*) filter (where ${schema.task.status} <> 'cancelled')::int`,
+            done: sql<number>`count(*) filter (where ${schema.task.status} = 'done')::int`,
+          })
+          .from(schema.workTask)
+          .innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live))
+          .where(and(eq(schema.task.kind, WORK_KIND), eq(schema.workTask.cycleId, current.id)))
+      : Promise.resolve([{ planned: 0, done: 0 }]),
+    current ? db().select({ count: sql<number>`count(*)::int` }).from(schema.workTask).where(and(eq(schema.workTask.cycleId, current.id), sql`${schema.workTask.cycleRollovers} > 0`)) : Promise.resolve([{ count: 0 }]),
   ]);
-  const rolledIn = current ? await db().select({ count: sql<number>`count(*)::int` }).from(schema.workTask).where(and(eq(schema.workTask.cycleId, current.id), sql`${schema.workTask.cycleRollovers} > 0`)) : [{ count: 0 }];
   return {
-    current: current ? { ...current, progress: cycleProgress(tasks), tasks: visibleTasks(tasks), rolledIn: Number(rolledIn[0]?.count ?? 0) } : null,
+    current: current
+      ? { ...current, progress: cycleProgressOf(Number(figures[0]?.planned ?? 0), Number(figures[0]?.done ?? 0)), tasks: visibleTasks(slice.items), taskTotal: slice.total, rolledIn: Number(rolledIn[0]?.count ?? 0) }
+      : null,
     upcoming: upcoming ? { ...upcoming, planned: Number(counts[0]?.count ?? 0) } : null,
     past,
   };

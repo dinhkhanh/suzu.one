@@ -317,5 +317,14 @@ describe("cycles (FR-PJM-10)", () => {
     expect(page.current!.tasks.map((task) => task.id)).toEqual([open.id]);
     expect(page.upcoming).toMatchObject({ number: 3, planned: 0 });
     expect(page.past.map((cycle) => cycle.number)).toEqual([1]);
+
+    // Past the limit the list is cut, open work first, and says how many there are; the progress
+    // still counts every task in the cycle rather than the rows the list kept.
+    const extra = (await createWorkTask({ teamId: ids.social, title: "Video tuần" }, ids.khoi)).task;
+    await updateWorkTask(extra.id, { cycleId: page.current!.id }, ids.khoi);
+    await updateWorkTask(extra.id, { stateId: done.id }, ids.khoi);
+    const cut = await getCyclePage(ids.social, "2026-09-15", (items) => items, 1);
+    expect(cut.current!.tasks.map((task) => task.id)).toEqual([open.id]);
+    expect(cut.current).toMatchObject({ taskTotal: 2, progress: { planned: 2, done: 1, percent: 50 } });
   });
 });

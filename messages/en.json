@@ -5117,7 +5117,8 @@
         "unscheduled": "no time set",
         "cancelled": "cancelled"
       },
-      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled."
+      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled.",
+      "truncated": "This month is too full to show at once: the calendar holds {shown} of its {total} tasks, open work first, then the earliest due."
     },
     "discussion": {
       "title": "Conversation ({count})",
@@ -5926,6 +5927,7 @@
       "next": "Next cycle #{number} ({range}): {count} tasks planned.",
       "past": "Past cycles",
       "noPast": "No cycle has ended yet.",
+      "truncated": "Listing {shown} of the cycle's {total} tasks, open work first. The progress above counts them all.",
       "planned": "{count} planned",
       "done": "{count} done",
       "rolled": "{count} rolled over",
@@ -8733,6 +8735,8 @@
       "progress": "Calculating: {done}/{total} people.",
       "calcError": "Could not calculate: {error}",
       "unverified": "These parameters are not confirmed by the chief accountant yet: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, one {One leaver's unused leave was} other {# leavers' unused leave was}} posted after this run was calculated and is not paid by any run of {month}.",
+      "leavePayoutStart": "Pay it in an off-cycle run",
       "bySystem": "The system",
       "reopened": "The inputs changed; calculate again",
       "stale": {
@@ -8914,7 +8918,7 @@
           "fill": "Add for everyone"
         },
         "lines": "Lines ({count})",
-        "noLines": "No lines yet. Add people one by one, or the whole entity.",
+        "noLines": "No lines yet. Add people one by one, or the whole entity. A run with no line pays only the unused leave of the month's leavers that its signed regular run did not pay.",
         "addLine": "Add a person",
         "noCodes": "The entity's catalogue has no input pay components.",
         "submit": "Create off-cycle run"
@@ -9983,6 +9987,7 @@
       "total": "To pay in all",
       "none": "Nothing is waiting to be paid.",
       "paidRecently": "Paid in the last 60 days ({count})",
+      "truncated": "Listing the {shown} oldest of {total} waiting requests. The figures above count them all.",
       "advanceUnpaid": "Advance not paid yet",
       "toCollect": "Collect {amount}",
       "columns": {
@@ -11028,6 +11033,7 @@
       "recruit_pipeline_empty": "A pipeline needs at least one stage.",
       "recruit_pipeline_no_entry": "A pipeline needs a stage for new applications.",
       "recruit_pipeline_not_found": "Pipeline not found.",
+      "recruit_opening_pipeline_in_use": "This opening already has applications on its current pipeline, so the pipeline cannot be changed.",
       "recruit_stage_key_duplicate": "Two stages share a key.",
       "recruit_stage_in_use": "A stage with applications on it cannot be removed.",
       "recruit_stage_not_found": "That stage does not belong to this opening's pipeline.",
@@ -11084,7 +11090,7 @@
       "offer_expiry_past": "That expiry date has already passed.",
       "offer_expiry_after_start": "An offer cannot stand past the day the job starts.",
       "offer_probation_invalid": "That probation period is not allowed.",
-      "offer_probation_percent_invalid": "Probation pay must be between 85% and 100% of the agreed package.",
+      "offer_probation_percent_invalid": "Probation pay must be at least the legal minimum and at most 100% of the agreed package.",
       "offer_position_empty": "The offer needs a job title.",
       "offer_note_too_long": "That note is too long.",
       "offer_already_open": "This application already has a live offer.",

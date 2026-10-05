@@ -18,9 +18,10 @@ import { ActionError } from "@/lib/action";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema, type Tx } from "@/lib/db";
 import { markAdjustmentsTaken } from "@/modules/attendance/service";
-import { type CalculationContext, calculateEntityMonth, calculateOffCycle, type PersonCalculation } from "./calculation";
+import { type CalculationContext, calculateEntityMonth, calculateOffCycle, offCycleLeavePayouts, type PersonCalculation } from "./calculation";
 import { resolveCatalogue } from "./components";
 import { isPitReliefCode } from "./engine/components";
+import { LEAVE_PAYOUT_CODE } from "./engine/leave-payout";
 import { payPeriodOf } from "./engine/period";
 import type { PayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
 import { assertPeriodOpen, reopenCalculatedRun } from "./lifecycle";
@@ -100,8 +101,17 @@ export async function setRunInput(input: { runId: string } & RunInputLine, actor
   return { reopened: await inTransaction(executor, (tx) => writeRunInputs(tx, input.runId, [input], actorPersonId)) };
 }
 
+/**
+ * `setRunInput` for several people of one run at once — one lock, one reading of the catalogue,
+ * one insert — under the same rules. `actorPersonId` null = the system (a nightly sweep).
+ */
+export async function setRunInputs(runId: string, lines: readonly RunInputLine[], actorPersonId: string | null, executor: Executor = db()): Promise<{ reopened: boolean }> {
+  if (lines.length === 0) return { reopened: false };
+  return { reopened: await inTransaction(executor, (tx) => writeRunInputs(tx, runId, lines, actorPersonId)) };
+}
+
 /** The lines of one run, checked against one reading of the catalogue and written under the run's lock. */
-async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunInputLine[], actorPersonId: string): Promise<boolean> {
+async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunInputLine[], actorPersonId: string | null): Promise<boolean> {
   if (lines.some((line) => !Number.isSafeInteger(line.amount))) throw new ActionError("amount_invalid");
   // The lock is what a proposal queues on: a figure cannot slip in beside one (`stepRun`).
   const [run] = await tx.select().from(schema.payrollRun).where(eq(schema.payrollRun.id, runId)).limit(1).for("update");
@@ -238,15 +248,27 @@ export async function createRegularRun(input: { entityId: string; month: string;
  * (aggregating the month's tax, the payslip, the bank file) is payroll's, not the scheme's.
  */
 export async function createOffCycleRun(input: { entityId: string; month: string; name: string; note?: string | null; lines: readonly { personId: string; code: string; amount: number; note?: string | null }[] }, actorPersonId: string, executor: Executor = db()): Promise<PayrollRunRow> {
-  if (input.lines.length === 0) throw new ActionError("run_has_no_lines");
   // One transaction: a line payroll refuses (an unknown code, a negative amount) leaves no run behind.
   return inTransaction(executor, async (tx) => {
     // A closed month takes nothing more, not even a bonus: it would change a filed month's tax.
     await assertPeriodOpen(input.entityId, input.month, tx);
     const [created] = await tx.insert(schema.payrollRun).values({ entityId: input.entityId, month: input.month, kind: "off_cycle", name: input.name, note: input.note ?? null, createdByPersonId: actorPersonId }).returning();
-    await writeRunInputs(tx, created.id, input.lines, actorPersonId);
+    if (input.lines.length > 0) await writeRunInputs(tx, created.id, input.lines, actorPersonId);
+    // A run with no typed line is one that pays leavers' unused leave the signed regular run did
+    // not (`calculateOffCycle`) — and is refused when there is none of that to pay either.
+    else if ((await offCycleLeavePayouts(input.entityId, input.month, () => priorInMonth(created, tx), tx)).length === 0) throw new ActionError("run_has_no_lines");
     return created;
   });
+}
+
+/**
+ * Leavers of an entity's month whose unused leave the signed regular run did not pay and no other
+ * run of the month pays yet — what an off-cycle run of that month would pay them (FR-PAY-18).
+ * Days only, never an amount; for the screen that starts such a run.
+ */
+export async function leavePayoutsAwaitingRun(entityId: string, month: string, executor: Executor = db()): Promise<{ personId: string; daysCenti: number }[]> {
+  const none = { id: "00000000-0000-0000-0000-000000000000", entityId, month } as PayrollRunRow;
+  return (await offCycleLeavePayouts(entityId, month, () => priorInMonth(none, executor), executor)).map(({ personId, daysCenti }) => ({ personId, daysCenti }));
 }
 
 export type CalculatedRun = { run: PayrollRunRow; totals: RunTotals; people: PersonCalculation[]; context: CalculationContext; retroTaken: number };
@@ -376,6 +398,8 @@ export async function priorInMonth(run: PayrollRunRow, executor: Executor = db()
       // its input, not its result, whose figure already includes the runs before it.
       otherDeductions: (before?.otherDeductions ?? 0) + (openInput(row).otherPitDeductions ?? 0),
       tax: (before?.tax ?? 0) + result.totals.pit,
+      // The leave days the run actually paid — its LEAVE_PAYOUT line — not the days it was handed.
+      leavePayoutDaysCenti: (before?.leavePayoutDaysCenti ?? 0) + result.lines.filter((line) => line.code === LEAVE_PAYOUT_CODE).reduce((sum, line) => sum + (line.inputs.daysCenti ?? 0), 0),
     });
   }
   return prior;

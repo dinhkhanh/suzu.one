@@ -41,7 +41,8 @@ const offerFields = {
   startDate: z.iso.date(),
   expiresOn: optional(z.iso.date()),
   probationMonths: z.coerce.number().int().min(0).max(OFFER_LIMITS.probationMonths),
-  probationSalaryPercent: z.coerce.number().int().min(OFFER_LIMITS.probationPercentMin).max(100),
+  // The legal floor is the statutory parameter in force on the start date, checked by the service.
+  probationSalaryPercent: z.coerce.number().int().min(0).max(100),
   baseSalaryVnd: vnd,
   allowancesVnd: vnd,
   letterTemplateId: optional(z.uuid()),

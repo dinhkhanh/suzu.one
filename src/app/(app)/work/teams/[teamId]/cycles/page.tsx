@@ -73,6 +73,7 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
               {tasks.length === 0 ? <TableEmpty>{t("cycles.empty")}</TableEmpty> : null}
             </TableBody>
           </Table>
+          {page.current.taskTotal > page.current.tasks.length ? <p className="border-t px-4 py-3 text-sm text-muted-foreground">{t("cycles.truncated", { shown: page.current.tasks.length, total: page.current.taskTotal })}</p> : null}
         </TableCard>
       ) : (
         <p className="text-sm text-muted-foreground">{t("cycles.none")}</p>

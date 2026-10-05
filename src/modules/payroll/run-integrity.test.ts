@@ -40,7 +40,7 @@ import { getPayslipView, listMyPayslips, publishPayslips } from "./payslips";
 import { addRetroItem, ALL_MONTHS, deriveRetroItems, enterRetroItem, getRetroItem, listRetroItems, listUnpricedAdjustments, refreshRetroItems, withdrawRetroItem } from "./retro";
 import { getRunReadiness } from "./run-readiness";
 import { findRunPerson, getRetroScreen, getRunView, openRunPerson } from "./run-views";
-import { calculateRun, cancelRun, createOffCycleRun, createRegularRun, getRun as loadRun, getRunPerson, listRunInputs, removeRunInput, setRunInput } from "./runs";
+import { calculateRun, cancelRun, createOffCycleRun, createRegularRun, getRun as loadRun, getRunPerson, leavePayoutsAwaitingRun, listRunInputs, removeRunInput, setRunInput } from "./runs";
 import { payComponentSeedRows } from "./seed-components";
 
 const shared = {} as Record<"actor" | "department", string>;
@@ -782,6 +782,35 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
     const readiness = await getRunReadiness(again.run);
     expect(readiness.stale).toEqual([]);
     expect(readiness.blockers).toEqual([]);
+  });
+
+  // Days posted once the month's regular run is signed have no run to go into but an off-cycle one
+  // of the same month: it takes the leaver without a typed line, pays only what no run of the month
+  // pays, and is refused while the regular run could still take them itself.
+  it("pays days posted after the regular run was signed in an off-cycle run of the month, once", async () => {
+    const [run] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09"), eq(schema.payrollRun.kind, "regular")));
+    const payoutOnly = { entityId, month: "2026-09", name: "Thanh toán phép", lines: [] };
+    // The regular run is still open: it pays its leavers itself, so there is nothing for an off-cycle run.
+    expect(await leavePayoutsAwaitingRun(entityId, "2026-09")).toEqual([]);
+    await expect(createOffCycleRun(payoutOnly, shared.actor)).rejects.toThrow("run_has_no_lines");
+
+    expect((await stepRun(run.id, "propose", { personId: shared.actor })).run.status).toBe("proposed");
+    // Signed with 2.5 days paid; one more day is posted the morning after.
+    expect(await leavePayoutsAwaitingRun(entityId, "2026-09")).toEqual([]);
+    await postPayout(100);
+    expect(await leavePayoutsAwaitingRun(entityId, "2026-09")).toEqual([{ personId: khoa, daysCenti: 100 }]);
+
+    const offCycle = await createOffCycleRun(payoutOnly, shared.actor);
+    await calculateRun(offCycle.id);
+    const { result } = (await getRunPerson(offCycle.id, khoa))!;
+    // The day the regular run did not pay, at the same month-before day rate: 30,000,000 ÷ 26.
+    expect(result.lines.filter((line) => line.code === "LEAVE_PAYOUT")).toEqual([expect.objectContaining({ amount: 1_153_846, inputs: { daysCenti: 100, monthlySalary: 30_000_000, workingDays: 26 } })]);
+    // Nothing of the regular run is paid again.
+    expect(result.totals.grossEarnings).toBe(1_153_846);
+
+    // Paid once: nothing is left for another run of the month.
+    expect(await leavePayoutsAwaitingRun(entityId, "2026-09")).toEqual([]);
+    await expect(createOffCycleRun({ ...payoutOnly, name: "Lần hai" }, shared.actor)).rejects.toThrow("run_has_no_lines");
   });
 });
 

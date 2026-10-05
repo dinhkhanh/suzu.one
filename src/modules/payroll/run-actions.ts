@@ -59,7 +59,8 @@ const offCyclePipeline = createAction({
     month,
     name: z.string().trim().min(1).max(200),
     note: text(500),
-    lines: z.array(z.object({ personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) })).min(1).max(1000),
+    // No line at all is a run that only pays leavers' unused leave; the service refuses it when there is none.
+    lines: z.array(z.object({ personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) })).max(1000),
   }),
   // Nobody puts a line for themselves into an off-cycle run, as nobody types into their own line.
   authorize: (user, input) => canManageCompensation(user.principal, { entityId: input.entityId }) && input.lines.every((line) => line.personId !== user.person.id),

@@ -15,6 +15,7 @@ vi.mock("@/lib/env", () => ({
 import { eq } from "drizzle-orm";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DOCUMENT_TEMPLATE_SEED } from "../documents/seed-templates";
 import type { Principal } from "../platform/rbac/policy";
@@ -75,6 +76,8 @@ async function freshApplication(name: string, email: string): Promise<string> {
 
 beforeAll(async () => {
   await migrateTestDb();
+  // The legal floor of probation pay an offer is held to (`probation.limits`), as `pnpm db:seed` ships it.
+  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
@@ -181,6 +184,22 @@ describe("making an offer", () => {
     expect(await fails(makeOffer(offerInput({ startDate: isoDay(-1) }), ids.hrAdmin))).toBe("offer_start_date_past");
     expect(await fails(makeOffer(offerInput({ expiresOn: isoDay(60) }), ids.hrAdmin))).toBe("offer_expiry_after_start");
     expect(await fails(makeOffer(offerInput({ probationSalaryPercent: 50 }), ids.hrAdmin))).toBe("offer_probation_percent_invalid");
+  });
+
+  // The floor of probation pay is the statutory parameter in force on the start date — the one
+  // payroll checks the salary against — not a figure written into recruitment.
+  it("holds probation pay to the legal floor in force on the day the job starts", async () => {
+    const seeded = STATUTORY_SEED.find((seed) => seed.key === "probation.limits")!;
+    await db().update(schema.statutoryParameter).set({ validTo: isoDay(59) }).where(eq(schema.statutoryParameter.key, "probation.limits"));
+    await db()
+      .insert(schema.statutoryParameter)
+      .values({ ...seeded, validFrom: isoDay(60), value: { ...(seeded.value as object), minimumPayPercent: 90 }, status: "approved" });
+    expect(await fails(makeOffer(offerInput({ startDate: isoDay(61), probationSalaryPercent: 85 }), ids.hrAdmin))).toBe("offer_probation_percent_invalid");
+    // Starting before the change, the old floor still applies.
+    const before = await makeOffer(offerInput({ startDate: isoDay(59), probationSalaryPercent: 85 }), ids.hrAdmin);
+    await withdrawOffer(before.id, ids.hrAdmin, null);
+    const after = await makeOffer(offerInput({ startDate: isoDay(61), probationSalaryPercent: 90 }), ids.hrAdmin);
+    await withdrawOffer(after.id, ids.hrAdmin, null);
   });
 
   it("will not be drafted against a closed application", async () => {

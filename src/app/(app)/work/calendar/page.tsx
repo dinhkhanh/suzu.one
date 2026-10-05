@@ -23,7 +23,7 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
   const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
   const grid = monthGrid(month);
 
-  const [tasks, teams, clients, daysOff] = await Promise.all([listCalendarTasks(viewer, grid), listTeams(), listClients({ activeOnly: true }), getDaysOff(user.person.primaryEntityId, grid.from, grid.to)]);
+  const [{ items: tasks, total: taskTotal }, teams, clients, daysOff] = await Promise.all([listCalendarTasks(viewer, grid), listTeams(), listClients({ activeOnly: true }), getDaysOff(user.person.primaryEntityId, grid.from, grid.to)]);
   // FR-PJM-54: the posts of the publish log over the tasks — planned against published, late and missing flagged.
   const content = await contentCalendar(viewer, grid, tasks);
   const ownTeams = teams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)) && (tasks.some((task) => task.teamId === team.id) || content.posts.some((post) => post.teamId === team.id)));
@@ -43,6 +43,7 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
         title={t("calendar.title")}
         description={t("calendar.description")}
       />
+      {taskTotal > tasks.length ? <p className="text-sm text-muted-foreground">{t("calendar.truncated", { shown: tasks.length, total: taskTotal })}</p> : null}
       <CalendarView
         tasks={tasks}
         options={{ states: [], people, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) }}

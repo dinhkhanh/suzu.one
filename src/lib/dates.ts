@@ -12,3 +12,13 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   result.setUTCDate(result.getUTCDate() + days);
   return result.toISOString().slice(0, 10);
 }
+
+/** The instant a Vietnam-local day begins: midnight in Hà Nội, 17:00 UTC the day before. */
+export function vietnamDayStart(date: IsoDate): Date {
+  return new Date(`${date}T00:00:00+07:00`);
+}
+
+/** A Vietnam-local calendar year as instants, both ends inclusive — for cutting timestamps (`created_at`) by year. */
+export function vietnamYearInstants(year: number): { from: Date; to: Date } {
+  return { from: vietnamDayStart(`${year}-01-01`), to: new Date(vietnamDayStart(`${year + 1}-01-01`).getTime() - 1) };
+}

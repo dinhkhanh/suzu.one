@@ -5117,7 +5117,8 @@
         "unscheduled": "chưa có giờ",
         "cancelled": "đã hủy"
       },
-      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng."
+      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng.",
+      "truncated": "Tháng này quá nhiều việc để hiện cùng lúc: lịch đang hiện {shown} trên {total} công việc, việc chưa xong trước, rồi đến việc có hạn sớm nhất."
     },
     "discussion": {
       "title": "Trao đổi ({count})",
@@ -5926,6 +5927,7 @@
       "next": "Chu kỳ tới #{number} ({range}): {count} việc đã lên kế hoạch.",
       "past": "Các chu kỳ đã qua",
       "noPast": "Chưa có chu kỳ nào kết thúc.",
+      "truncated": "Đang liệt kê {shown} trên {total} công việc của chu kỳ, việc chưa xong trước. Tiến độ ở trên tính đủ tất cả.",
       "planned": "{count} kế hoạch",
       "done": "{count} xong",
       "rolled": "{count} chuyển tiếp",
@@ -8733,6 +8735,8 @@
       "progress": "Đang tính: {done}/{total} người.",
       "calcError": "Không tính được: {error}",
       "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, other {# người nghỉ việc}} có tiền phép năm chưa nghỉ được ghi sổ sau khi kỳ lương này đã tính, và chưa kỳ lương nào của tháng {month} chi trả.",
+      "leavePayoutStart": "Chi trả trong kỳ lương bổ sung",
       "bySystem": "Hệ thống",
       "reopened": "Số liệu đầu vào thay đổi, cần tính lại",
       "stale": {
@@ -8914,7 +8918,7 @@
           "fill": "Thêm cho mọi người"
         },
         "lines": "Các khoản chi ({count})",
-        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân.",
+        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân. Kỳ lương không có khoản nào chỉ chi trả tiền phép năm chưa nghỉ của người nghỉ việc trong tháng mà kỳ lương chính đã ký chưa trả.",
         "addLine": "Thêm một người",
         "noCodes": "Danh mục của pháp nhân chưa có khoản mục nhập tay nào.",
         "submit": "Tạo kỳ lương ngoài kỳ"
@@ -9983,6 +9987,7 @@
       "total": "Tổng cần chi",
       "none": "Không có đề nghị nào chờ chi.",
       "paidRecently": "Đã chi trong 60 ngày qua ({count})",
+      "truncated": "Đang liệt kê {shown} đề nghị cũ nhất trên {total} đề nghị chờ chi. Các con số ở trên tính đủ tất cả.",
       "advanceUnpaid": "Chờ chi tạm ứng",
       "toCollect": "Thu lại {amount}",
       "columns": {
@@ -11028,6 +11033,7 @@
       "recruit_pipeline_empty": "Quy trình phải có ít nhất một vòng.",
       "recruit_pipeline_no_entry": "Quy trình phải có một vòng nhận hồ sơ mới.",
       "recruit_pipeline_not_found": "Không tìm thấy quy trình.",
+      "recruit_opening_pipeline_in_use": "Tin tuyển dụng đã có hồ sơ trên quy trình hiện tại nên không thể đổi quy trình.",
       "recruit_stage_key_duplicate": "Mã vòng bị trùng.",
       "recruit_stage_in_use": "Không thể xoá vòng đang có hồ sơ.",
       "recruit_stage_not_found": "Vòng này không thuộc quy trình của tin tuyển dụng.",
@@ -11084,7 +11090,7 @@
       "offer_expiry_past": "Hạn hiệu lực đã qua.",
       "offer_expiry_after_start": "Thư mời không thể còn hiệu lực sau ngày bắt đầu làm việc.",
       "offer_probation_invalid": "Thời gian thử việc không hợp lệ.",
-      "offer_probation_percent_invalid": "Lương thử việc phải từ 85% đến 100% mức thoả thuận.",
+      "offer_probation_percent_invalid": "Lương thử việc phải từ mức tối thiểu luật định đến 100% mức thoả thuận.",
       "offer_position_empty": "Chưa có chức vụ.",
       "offer_note_too_long": "Ghi chú quá dài.",
       "offer_already_open": "Hồ sơ này đã có một thư mời đang hiệu lực.",

@@ -153,6 +153,44 @@ export async function listPayouts(reach: Reach, options: { paidSince: IsoDate; l
   return withSettlements(db(), rows);
 }
 
+/**
+ * The queue's two figures over **everything** waiting in `reach`, not over the rows `listPayouts`
+ * keeps: how many approved requests are unpaid, and what finance owes on the ones it may pay now
+ * (a settlement waiting on an unpaid advance is counted but owes nothing yet; one that pays money
+ * back owes nothing). Counted and summed by Postgres; only a trip's settling payments go through
+ * the settlement engine, since netting an advance in filing order is the rule it keeps.
+ */
+export async function payoutTotals(reach: Reach): Promise<{ waiting: number; owed: number }> {
+  if (!reach.all && reach.entityIds.length === 0) return { waiting: 0, owed: 0 };
+  const settles = and(eq(schema.requestType.payout, "payment"), isNotNull(schema.requestSubmission.parentSubmissionId));
+  const waiting = and(
+    ne(schema.requestType.payout, "none"),
+    eq(schema.approvalRequest.status, "approved"),
+    reach.all ? undefined : inArray(schema.approvalRequest.entityId, reach.entityIds),
+    isNull(schema.requestSubmission.paidOn),
+  );
+  const [[plain], settling] = await Promise.all([
+    db()
+      .select({
+        waiting: sql<number>`count(*)::int`,
+        owed: sql<string>`coalesce(sum(greatest(coalesce(${schema.requestSubmission.amount}, 0), 0)) filter (where not (${settles})), 0)::bigint`,
+      })
+      .from(schema.requestSubmission)
+      .innerJoin(schema.requestType, eq(schema.requestType.id, schema.requestSubmission.requestTypeId))
+      .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+      .where(waiting),
+    db()
+      .select({ id: schema.requestSubmission.id, parentId: schema.requestSubmission.parentSubmissionId })
+      .from(schema.requestSubmission)
+      .innerJoin(schema.requestType, eq(schema.requestType.id, schema.requestSubmission.requestTypeId))
+      .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+      .where(and(waiting, settles)),
+  ]);
+  const { settlements, unpaidAdvances } = await settlementsUnder(db(), [...new Set(settling.map((row) => row.parentId!))]);
+  const owedOnSettlements = settling.filter((row) => !unpaidAdvances.has(row.parentId!)).reduce((total, row) => total + Math.max(0, settlements.get(row.id)?.toPay ?? 0), 0);
+  return { waiting: plain?.waiting ?? 0, owed: Number(plain?.owed ?? 0) + owedOnSettlements };
+}
+
 /** Where one request stands with finance, for its own page. null = not a payable type, or not approved. */
 export async function payoutOf(requestId: string, executor: Executor = db()): Promise<PayoutRow | null> {
   const rows = await payoutFrom(executor).where(and(eq(schema.approvalRequest.id, requestId), ne(schema.requestType.payout, "none"), eq(schema.approvalRequest.status, "approved"))).limit(1);

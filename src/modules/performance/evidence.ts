@@ -14,6 +14,7 @@
 // compensation — no salary, no bonus, no amount of any kind. Training completion (the fifth
 // source FR-PRF-07 names) has no module yet and is left out.
 import "server-only";
+import { vietnamYearInstants } from "@/lib/dates";
 import { db, type Tx } from "@/lib/db";
 import { summarisePersonYear } from "@/modules/attendance/service";
 import { type KudosCard, kudosReceived } from "@/modules/comms/service";
@@ -46,8 +47,9 @@ export async function loadReviewEvidence(input: { personId: string; year: number
     getPerformanceResults(input, executor),
     getPersonTaskStats({ personId: input.personId, from, to }, executor),
     summarisePersonYear(input.personId, input.year, executor),
-    // Counted by Postgres over the whole year, not over the newest fifty cards.
-    kudosReceived(input.personId, { from: new Date(`${from}T00:00:00Z`), to: new Date(`${to}T23:59:59Z`), recent: KUDOS_SHOWN }),
+    // Counted by Postgres over the whole year, not over the newest fifty cards — the year as it
+    // runs in Vietnam: a card sent at 06:30 on 1 January is this year's, not last year's.
+    kudosReceived(input.personId, { ...vietnamYearInstants(input.year), recent: KUDOS_SHOWN }),
   ]);
   return { ...input, performance, tasks, attendance, kudos };
 }

@@ -11,7 +11,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { entityReach } from "@/modules/platform/rbac/policy";
 import { exportPayoutsAction } from "@/modules/requests/export-actions";
-import { listPayouts, type PayoutRow } from "@/modules/requests/payments";
+import { listPayouts, payoutTotals, type PayoutRow } from "@/modules/requests/payments";
 import { canPayRequests } from "@/modules/requests/policy";
 import { MarkPaidButton } from "@/modules/requests/ui/mark-paid";
 import { RequestTabs } from "@/modules/requests/ui/request-tabs";
@@ -27,13 +27,15 @@ export default async function RequestsToPayPage() {
   if (!canPayRequests(user.principal)) redirect("/requests");
 
   const today = todayInVietnam();
-  const [t, tRequests, te, format, locale, rows] = await Promise.all([getTranslations("requests.pay"), getTranslations("requests"), getTranslations("exports"), getFormatter(), getLocale(), listPayouts(entityReach(user.principal, "payroll:pay"), { paidSince: addDays(today, -60) })]);
+  const reach = entityReach(user.principal, "payroll:pay");
+  // The list holds the oldest few hundred; the count and the sum are taken over everything waiting.
+  const [t, tRequests, te, format, locale, rows, totals] = await Promise.all([getTranslations("requests.pay"), getTranslations("requests"), getTranslations("exports"), getFormatter(), getLocale(), listPayouts(reach, { paidSince: addDays(today, -60) }), payoutTotals(reach)]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
   const day = (value: Date | string | null) => (value ? format.dateTime(typeof value === "string" ? new Date(`${value}T00:00:00+07:00`) : value, { day: "numeric", month: "numeric", year: "numeric" }) : "—");
 
   const waiting = rows.filter((row) => !row.paidOn);
   const paid = rows.filter((row) => !!row.paidOn);
-  const owed = waiting.filter((row) => !row.blocked).reduce((total, row) => total + Math.max(0, row.settlement.toPay), 0);
+  const owed = totals.owed;
   const typeName = (row: PayoutRow) => (locale === "en" ? row.nameEn : row.nameVi);
   const figure = (row: PayoutRow) => (row.settlement.toPay < 0 ? t("toCollect", { amount: money(-row.settlement.toPay) }) : money(row.settlement.toPay));
   const action = (row: PayoutRow) =>
@@ -82,15 +84,16 @@ export default async function RequestsToPayPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("description", { count: waiting.length, amount: money(owed) })} actions={<ExportButton action={exportPayoutsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
-      <RequestTabs active="pay" personId={user.person.id} principal={user.principal} payWaiting={waiting.length} />
+      <PageHeader title={tRequests("hub")} description={t("description", { count: totals.waiting, amount: money(owed) })} actions={<ExportButton action={exportPayoutsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
+      <RequestTabs active="pay" personId={user.person.id} principal={user.principal} payWaiting={totals.waiting} />
 
       <TileGrid>
-        <Tile label={t("waiting")} value={<>{waiting.length}</>} tone={waiting.length > 0 ? "warning" : undefined} />
+        <Tile label={t("waiting")} value={<>{totals.waiting}</>} tone={totals.waiting > 0 ? "warning" : undefined} />
         <Tile label={t("total")} value={<>{money(owed)}</>} />
       </TileGrid>
 
-      <Section title={t("title")} count={waiting.length || undefined}>
+      <Section title={t("title")} count={totals.waiting || undefined}>
+        {totals.waiting > waiting.length ? <p className="text-sm text-muted-foreground">{t("truncated", { shown: waiting.length, total: totals.waiting })}</p> : null}
         <Table containerClassName="hidden md:block">
           <TableHeader>
             <TableRow>

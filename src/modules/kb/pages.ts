@@ -53,8 +53,8 @@ export async function loadPageInSpace(spaceId: string, ref: string, executor: Ex
   return loadPageWhere(and(eq(schema.kbPage.spaceId, spaceId), or(eq(schema.kbPage.slug, ref), sql`${ref} = any(${schema.kbPage.formerSlugs})`))!, executor, sql`${schema.kbPage.slug} = ${ref} desc nulls last`);
 }
 
-async function loadPageWhere(where: SQL, executor: Executor, order?: SQL): Promise<LoadedPage | null> {
-  const [row] = await executor
+const loadedPagesQuery = (where: SQL, executor: Executor) =>
+  executor
     .select({
       page: schema.kbPage,
       space: schema.kbSpace,
@@ -63,13 +63,26 @@ async function loadPageWhere(where: SQL, executor: Executor, order?: SQL): Promi
     })
     .from(schema.kbPage)
     .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
-    .where(where)
-    .orderBy(...(order ? [order] : []))
-    .limit(1);
-  if (!row) return null;
+    .where(where);
+
+function toLoadedPage(row: Awaited<ReturnType<typeof loadedPagesQuery>>[number]): LoadedPage {
   const { page, space, access } = row;
   const rootAccess = page.accessRootId ? row.rootAccess : null;
   return { space, access, facts: spaceFacts(space, access), page, rootAccess, pageFacts: pageFacts(page, rootAccess) };
+}
+
+async function loadPageWhere(where: SQL, executor: Executor, order?: SQL): Promise<LoadedPage | null> {
+  const [row] = await loadedPagesQuery(where, executor)
+    .orderBy(...(order ? [order] : []))
+    .limit(1);
+  return row ? toLoadedPage(row) : null;
+}
+
+/** `loadPage` for several pages in one round trip, keyed by id; an unknown id is absent. */
+export async function loadPages(pageIds: readonly string[], executor: Executor = db()): Promise<Map<string, LoadedPage>> {
+  if (pageIds.length === 0) return new Map();
+  const rows = await loadedPagesQuery(inArray(schema.kbPage.id, [...new Set(pageIds)]), executor);
+  return new Map(rows.map((row) => [row.page.id, toLoadedPage(row)]));
 }
 
 export const levelOf = (viewer: KbViewer, loaded: LoadedPage): KbLevel | null => pageLevel(viewer, loaded.facts, loaded.pageFacts);

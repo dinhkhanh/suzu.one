@@ -466,7 +466,7 @@ describe("an administrator moves a turn", () => {
     expect(await mayReassignRequest(ownerPrincipal(), page.request.id)).toBe(true);
   });
 
-  it("moves the open turn, keeps the reason, tells both, and shows it on the request", async () => {
+  it("moves the open turn, keeps the reason, tells the new approver, and shows it on the request", async () => {
     const { request } = await submit(ids.huy, ids.media, 1);
     // The approver is suspended: nothing moves by itself.
     await db().update(schema.person).set({ status: "suspended" }).where(eq(schema.person.id, ids.manager));
@@ -480,7 +480,9 @@ describe("an administrator moves a turn", () => {
     const events = await db().select().from(schema.approvalEvent).where(eq(schema.approvalEvent.requestId, request.id));
     expect(events.at(-1)).toMatchObject({ type: "reassigned", actorPersonId: ids.hr, comment: "On sick leave", meta: { reason: "administrator", fromPersonId: ids.manager, toPersonId: ids.deputy, toName: "The Deputy" } });
     const notices = await db().select().from(schema.notification);
-    expect(notices.map((row) => [row.kind, row.recipientPersonId]).sort()).toEqual([["approvals.requested", ids.deputy], ["approvals.turn_reassigned", ids.manager]].sort());
+    // The approver it was taken from is suspended, and a suspended person is told nothing (notify);
+    // somebody merely away would have had "approvals.turn_reassigned".
+    expect(notices.map((row) => [row.kind, row.recipientPersonId])).toEqual([["approvals.requested", ids.deputy]]);
 
     const view = await getRequest({ personId: ids.hr, principal: hrPrincipal() }, { ...leave, canView: () => true }, request.id);
     expect(view).toMatchObject({ canReassign: true, canDecide: false });

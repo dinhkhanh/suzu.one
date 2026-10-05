@@ -30,7 +30,7 @@ export { createOffCycleRun } from "./runs";
  * fails and says so, rather than reporting "posted" for a line that would pay nothing. A figure
  * posted to (or taken out of) a run that was already calculated sends that run back to draft.
  */
-export { findOpenRegularRun, findOpenRegularRuns, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "./runs";
+export { findOpenRegularRun, findOpenRegularRuns, getRunHandle, removeRunInput, type RunHandle, setRunInput, setRunInputs } from "./runs";
 /**
  * The first salary of somebody who has just been hired (FR-REC-09). Recruitment knows what was
  * offered and accepted; it must not become a second way to set a salary, so it **proposes** the

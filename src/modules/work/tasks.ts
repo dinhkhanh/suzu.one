@@ -981,6 +981,13 @@ export function listTaskSlice(of: { projectId: string } | { backlogOf: string },
   return listItemsCounted(and(place, sliceCondition(slice)), executor, limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, desc(schema.task.updatedAt)]);
 }
 
+/** The content calendar's month (FR-WRK-05): past the limit, open work first, then the earliest due. */
+export const listCalendarItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> =>
+  listItemsCounted(where, db(), limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, sql`${schema.task.dueDate} asc`]);
+
+/** A running cycle's tasks (FR-PJM-10): past the limit, open work first. */
+export const listCycleItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> => listItemsCounted(where, db(), limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, desc(schema.task.updatedAt)]);
+
 /** The leader's view (FR-WRK-07): past the limit, the most urgent first — the earliest due, undated last. */
 export const listLeaderItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> => listItemsCounted(where, db(), limit, [sql`${schema.task.dueDate} asc nulls last`]);
 
