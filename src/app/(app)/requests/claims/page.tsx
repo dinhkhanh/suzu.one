@@ -39,7 +39,7 @@ export default async function ExpenseClaimsPage() {
   const cells = (claim: (typeof claims)[number]) => (
     <>
       <TableCell>
-        <PersonName name={claim.requesterName} />
+        <PersonName name={claim.requesterName} personId={claim.requesterPersonId} />
       </TableCell>
       <TableCell className="max-w-96 whitespace-normal">
         <Link href={`/approvals/request/${claim.requestId}`} className="font-medium hover:underline">

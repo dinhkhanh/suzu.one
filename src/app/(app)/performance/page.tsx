@@ -8,12 +8,13 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
 import { TableAddRow, TableCard } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { isAnnual, quarterOfMonth } from "@/modules/performance/enums";
 import { getScorecard } from "@/modules/performance/kpi-scores";
 import { listGoals } from "@/modules/performance/service";
 import { CheckInForm } from "@/modules/performance/ui/goal-forms";
-import { GoalLine, periodLabel, progressLabel } from "@/modules/performance/ui/goal-tree";
+import { GoalLine, GoalUnitLink, periodLabel, progressLabel } from "@/modules/performance/ui/goal-tree";
 import { readMonth } from "@/modules/performance/ui/kpi";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, GoalStatusBadge, metricText, ProgressBar } from "@/modules/performance/ui/progress";
@@ -91,11 +92,15 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
                   {/* The goal's row: what it is | how far it is | where it stands. Three columns on a desk, stacked on a phone. */}
                   <div className="grid gap-3 px-4 py-3.5 md:grid-cols-[minmax(0,1fr)_14rem_auto] md:items-center md:gap-6">
                     <div className="min-w-0">
-                      <Link href={`/performance/goals/${goal.id}`} className="font-semibold tracking-[-0.01em] hover:underline">
+                      <RecordLink kind="goal" id={goal.id} className="font-semibold tracking-[-0.01em]">
                         {goal.title}
-                      </Link>
+                      </RecordLink>
                       <p className="truncate text-xs text-faint">
-                        {[`${t(`enums.level.${goal.level}`)}${goal.unitName ? ` · ${goal.unitName}` : ""}`, periodLabel(t, goal.periodKey), goal.keyResults.length > 0 ? t("keyResultCount", { count: goal.keyResults.length }) : goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults"), stale ? t("stale") : null].filter(Boolean).join(" · ")}
+                        {t(`enums.level.${goal.level}`)}
+                        {goal.unitName ? " · " : null}
+                        <GoalUnitLink goal={goal} />
+                        {" · "}
+                        {[periodLabel(t, goal.periodKey), goal.keyResults.length > 0 ? t("keyResultCount", { count: goal.keyResults.length }) : goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults"), stale ? t("stale") : null].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <ProgressBar wide bp={goal.progress.progressBp} label={progressLabel(labels, goal.progress.progressBp)} />

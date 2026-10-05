@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOffers } from "@/modules/recruit/offers";
 import { canRunRecruitment } from "@/modules/recruit/policy";
@@ -47,12 +47,14 @@ export default async function OffersPage() {
           {rows.map((row) => (
             <TableRow key={row.id}>
               <TableCell className="max-w-64 truncate">
-                <Link href={`/recruit/offers/${row.id}`} className="font-medium hover:underline">
+                <RecordLink kind="offer" id={row.id} className="font-medium">
                   {row.candidateName}
-                </Link>
+                </RecordLink>
               </TableCell>
               <TableCell className="max-w-56 truncate">{row.positionName}</TableCell>
-              <TableCell kind="id">{row.openingCode}</TableCell>
+              <TableCell kind="id">
+                <RecordLink kind="opening" id={row.openingId}>{row.openingCode}</RecordLink>
+              </TableCell>
               <TableCell kind="id">{row.number}</TableCell>
               <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
               <TableCell>

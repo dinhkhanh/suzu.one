@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableAddRow, TableCard } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
@@ -40,7 +41,11 @@ export function CustomValueText({ field, value, people }: { field: FieldView; va
         </span>
       );
     case "person":
-      return <span>{people.find((person) => person.id === current)?.fullName ?? t("none")}</span>;
+      return (
+        <RecordLink kind="person" id={people.some((person) => person.id === current) ? (current as string) : null}>
+          {people.find((person) => person.id === current)?.fullName ?? t("none")}
+        </RecordLink>
+      );
     case "duration":
       return <span>{formatDuration(current as number)}</span>;
     case "checkbox":

@@ -8,8 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { RecordLink } from "@/components/ui/record-link";
+import { recordHref } from "@/lib/record-routes";
 import { hirePersonAction } from "../actions";
-import Link from "next/link";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { IdentityFields, PlacementFields, type PlacementOptions } from "./fields";
 import { useActionForm } from "@/components/forms/use-action-form";
@@ -20,7 +21,7 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
   const t = useTranslations("people");
   const router = useRouter();
   const [entityId, setEntityId] = useState(entities[0]?.id ?? "");
-  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(hirePersonAction, { onSuccess: (data) => router.push(`/people/${data.id}`) });
+  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(hirePersonAction, { onSuccess: (data) => router.push(recordHref("person", data.id)) });
   const duplicates = errorKey === "possible_duplicate" ? ((details as { duplicates?: Duplicate[] } | null)?.duplicates ?? []) : [];
 
   return (
@@ -68,9 +69,9 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
           <ul className="flex w-full flex-col gap-1 text-foreground">
             {duplicates.map((candidate) => (
               <li key={candidate.id}>
-                <Link href={`/people/${candidate.id}`} target="_blank" className="underline">
+                <RecordLink kind="person" id={candidate.id} target="_blank" className="underline">
                   {candidate.fullName}
-                </Link>{" "}
+                </RecordLink>{" "}
                 <span className="text-muted-foreground">
                   {[candidate.employeeCode, candidate.entityName, candidate.former ? t("duplicates.former") : null, ...candidate.reasons.map((reason) => t(`duplicates.reasons.${reason}`))].filter(Boolean).join(" · ")}
                 </span>

@@ -5,11 +5,12 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canManageAssets, canReadRegister, listAssetsOfPerson, listDigitalAccessOfPerson, listDigitalAssetsOwnedBy, listSeatsOfPerson } from "@/modules/assets/service";
+import { canManageAssets, canManageLicences, canReadRegister, listAssetsOfPerson, listDigitalAccessOfPerson, listDigitalAssetsOwnedBy, listSeatsOfPerson } from "@/modules/assets/service";
 import { PlatformBadge } from "@/modules/assets/ui/digital-views";
 import { ConfirmHandoverForm } from "@/modules/assets/ui/asset-forms";
 import { AssetsNav } from "@/modules/assets/ui/nav";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("myEquipment");
 
@@ -50,7 +51,9 @@ export default async function MyAssetsPage() {
           <ListItem key={item.assignmentId} className="flex-col items-stretch gap-3 py-4">
             <div>
               <p className="font-mono text-xs text-faint">{item.code}</p>
-              <p className="font-medium">{item.name}</p>
+              <p className="font-medium">
+                <RecordLink kind="asset" id={item.assetId}>{item.name}</RecordLink>
+              </p>
               <p className="text-sm text-muted-foreground">
                 {item.categoryName} · {t("since", { date: item.assignedAt.toLocaleDateString("vi-VN") })}
                 {item.dueBack ? ` · ${t("dueBack", { date: item.dueBack })}` : ""}
@@ -91,7 +94,9 @@ export default async function MyAssetsPage() {
           {seats.length === 0 ? <ListEmpty>{t("software.empty")}</ListEmpty> : null}
           {seats.map((seat) => (
             <ListItem key={seat.seatId} className="flex-wrap gap-x-3 gap-y-0.5">
-              <span className="min-w-0 flex-1 truncate font-medium">{seat.name}</span>
+              <RecordLink kind="licence" id={canManageLicences(user.principal) ? seat.licenceId : null} className="min-w-0 flex-1 truncate font-medium">
+                {seat.name}
+              </RecordLink>
               <span className="text-xs text-muted-foreground">{[seat.vendor, seat.viaAsset ? t("software.onDevice", { device: `${seat.viaAsset.code} ${seat.viaAsset.name}` }) : null].filter(Boolean).join(" · ")}</span>
             </ListItem>
           ))}

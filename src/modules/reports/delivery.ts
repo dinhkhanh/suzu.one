@@ -37,7 +37,7 @@ export type DeliveryDashboard = {
   /** The teams the filter bar may offer: those with a project the reader sees. */
   teams: { id: string; name: string }[];
   /** Projects to look at first: stale updates, off track, milestones slipped or overdue. */
-  attention: { id: string; name: string; teamName: string; health: Health | null; stale: boolean; overdueMilestones: number; slippedMilestones: number }[];
+  attention: { id: string; name: string; teamId: string; teamName: string; health: Health | null; stale: boolean; overdueMilestones: number; slippedMilestones: number }[];
   /** null when the projects module does not expose retainer consumption yet (see retainer-source.ts). */
   retainers: RetainerSummary | null;
   /** null when the reader leads no team and holds no `work:manage`. */
@@ -96,7 +96,7 @@ export async function getDeliveryDashboard(reader: DeliveryReader, filter: Deliv
 
   const attention = rows
     .filter(isLive)
-    .map((row) => ({ id: row.id, name: row.name, teamName: row.teamName, health: row.health, stale: row.stale, overdueMilestones: milestones.get(row.id)?.overdue ?? 0, slippedMilestones: milestones.get(row.id)?.slipped ?? 0 }))
+    .map((row) => ({ id: row.id, name: row.name, teamId: row.teamId, teamName: row.teamName, health: row.health, stale: row.stale, overdueMilestones: milestones.get(row.id)?.overdue ?? 0, slippedMilestones: milestones.get(row.id)?.slipped ?? 0 }))
     .filter((row) => row.stale || row.health === "off_track" || row.health === "at_risk" || row.overdueMilestones > 0)
     .sort((a, b) => Number(b.health === "off_track") - Number(a.health === "off_track") || b.overdueMilestones - a.overdueMilestones || Number(b.stale) - Number(a.stale) || a.name.localeCompare(b.name, "vi"))
     .slice(0, 12);

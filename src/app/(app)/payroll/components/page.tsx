@@ -14,6 +14,7 @@ import { formatVnd } from "@/modules/payroll/ui/money";
 import { ProposeComponentForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("payComponents");
 
@@ -94,7 +95,7 @@ export default async function ComponentsPage() {
                     {version.name}
                     {version.formula ? <code className="mt-1 block rounded bg-muted px-2 py-1 text-xs">{version.formula}</code> : null}
                   </TableCell>
-                  <TableCell>{version.entityId ? entityCode.get(version.entityId) : t("components.groupWide")}</TableCell>
+                  <TableCell>{version.entityId ? <RecordLink kind="entity" id={version.entityId}>{entityCode.get(version.entityId)}</RecordLink> : t("components.groupWide")}</TableCell>
                   <TableCell>{t(`components.kinds.${version.kind}`)}</TableCell>
                   <TableCell>{t(`components.sources.${version.source}`)}</TableCell>
                   <TableCell>

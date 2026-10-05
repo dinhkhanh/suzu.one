@@ -8,6 +8,7 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -82,12 +83,14 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  <Link href={`/payroll/runs/${row.id}`} className="font-mono font-medium tabular-nums hover:underline">
+                  <RecordLink kind="payrollRun" id={row.id} className="font-mono font-medium tabular-nums">
                     {row.month}
-                  </Link>
+                  </RecordLink>
                   {row.name ? <span className="ml-2 text-xs text-muted-foreground">{row.name}</span> : null}
                 </TableCell>
-                <TableCell>{row.entityCode}</TableCell>
+                <TableCell>
+                  <RecordLink kind="entity" id={row.entityId}>{row.entityCode}</RecordLink>
+                </TableCell>
                 <TableCell>
                   <Badge variant={row.kind === "off_cycle" ? "outline" : "secondary"}>{t(`runs.kinds.${row.kind}`)}</Badge>
                 </TableCell>

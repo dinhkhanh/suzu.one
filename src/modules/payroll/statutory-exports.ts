@@ -76,7 +76,7 @@ const entityOf = async (entityId: string) => (await listEntities()).find((row) =
  * started contributing, whose base moved, and who stopped and why. Built by holding the two
  * months' stored results side by side — the same comparison the accountant does by eye.
  */
-export async function insuranceChanges(principal: Principal, entityId: string, month: string): Promise<{ entityCode: string; month: string; rows: D02ltRow[] } | null> {
+export async function insuranceChanges(principal: Principal, entityId: string, month: string): Promise<{ entityCode: string; month: string; rows: (D02ltRow & { personId: string })[] } | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
   const previousMonth = shiftMonth(month, -1);
   const [entity, current, previous] = await Promise.all([entityOf(entityId), loadPeople(entityId, [month]), loadPeople(entityId, [previousMonth])]);
@@ -101,7 +101,8 @@ export async function insuranceChanges(principal: Principal, entityId: string, m
   const [facts, positions] = await Promise.all([payrollFactsOf(personIds, month), positionNames(personIds, `${month}-01` as IsoDate)]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
-  const rows: D02ltRow[] = [];
+  // `personId` rides along for the screen (the name links to the person); the D02-LT file has no such column.
+  const rows: (D02ltRow & { personId: string })[] = [];
   for (const personId of personIds) {
     const now = baseOf(currentRegular, personId);
     const before = baseOf(previousRegular, personId);
@@ -111,6 +112,7 @@ export async function insuranceChanges(principal: Principal, entityId: string, m
     const reason = changeReason(before, now, person);
     if (!reason) continue;
     rows.push({
+      personId,
       fullName: fact?.fullName ?? "—",
       socialInsuranceNumber: fact?.socialInsuranceNumber ?? null,
       nationalId: fact?.nationalId ?? null,

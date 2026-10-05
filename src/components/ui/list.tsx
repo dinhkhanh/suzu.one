@@ -1,6 +1,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { cn } from "cn"
+import { InsideLink } from "./record-link"
 
 // The grid's look for what is not a table: a feed, a thread, rows that each hold a small form,
 // a tree. Same frame, same hairlines, same roomy rows and hover wash as <Table>, so a page that
@@ -31,8 +32,9 @@ function List({
 const ROW = "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 px-4 py-2.5 md:min-h-12 md:px-3.5"
 
 /**
- * One row. Given `href`, the whole row is the link (with the hover wash); otherwise it holds
- * whatever it is given, laid out in a row. `className` styles the row's content box.
+ * One row. Given `href`, the whole row is the link (with the hover wash) and the names inside
+ * it stay text (`InsideLink`); otherwise it holds whatever it is given, laid out in a row.
+ * `className` styles the row's content box.
  */
 function ListItem({
   className,
@@ -54,7 +56,7 @@ function ListItem({
             className
           )}
         >
-          {children}
+          <InsideLink>{children}</InsideLink>
         </Link>
       ) : (
         <div className={cn(ROW, className)}>{children}</div>

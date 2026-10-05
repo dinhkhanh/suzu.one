@@ -11,6 +11,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { RecordLink } from "@/components/ui/record-link";
 import { createCandidateAction, updateCandidateAction } from "../actions";
 import { CANDIDATE_SOURCES, type CandidateSource } from "../enums";
 import type { DuplicateSignal, RedactedDuplicateMatch } from "../engine/duplicates";
@@ -114,9 +115,9 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
               <li key={match.id ?? `elsewhere-${index}`} className="flex flex-wrap items-center gap-2">
                 {/* A match outside the recruiter's reach arrives without an id or a name. */}
                 {match.id ? (
-                  <a href={`/recruit/candidates/${match.id}`} className="underline underline-offset-4">
+                  <RecordLink kind="candidate" id={match.id} className="underline">
                     {match.fullName}
-                  </a>
+                  </RecordLink>
                 ) : (
                   <span className="text-muted-foreground">{duplicates("elsewhere")}</span>
                 )}

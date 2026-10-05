@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
+import { recordHref } from "@/lib/record-routes";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { getOfferView } from "@/modules/recruit/offers";
@@ -40,9 +42,9 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
           <h1>{view.candidateName}</h1>
           <p className="text-sm text-muted-foreground">
             {view.offer.positionName} ·{" "}
-            <Link href={`/recruit/applications/${view.offer.applicationId}`} className="underline underline-offset-4">
+            <RecordLink kind="application" id={view.offer.applicationId} className="underline">
               {view.openingTitle}
-            </Link>{" "}
+            </RecordLink>{" "}
             · {view.offer.number}
           </p>
         </div>
@@ -68,11 +70,11 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("department")}</dt>
-          <dd>{view.departmentName ?? "—"}</dd>
+          <dd>{view.departmentName ? <RecordLink kind="unit" id={view.offer.departmentId}>{view.departmentName}</RecordLink> : "—"}</dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("manager")}</dt>
-          <dd>{view.managerName ?? "—"}</dd>
+          <dd>{view.managerName ? <RecordLink kind="person" id={view.offer.managerPersonId}>{view.managerName}</RecordLink> : "—"}</dd>
         </div>
       </dl>
 
@@ -145,7 +147,7 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
 
       {view.hiredPersonId ? (
         <p className="text-sm">
-          <Link href={`/people/${view.hiredPersonId}`} className="underline underline-offset-4">
+          <Link href={recordHref("person", view.hiredPersonId)} className="underline underline-offset-4">
             {t("openPerson")}
           </Link>
         </p>

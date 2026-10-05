@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getTimesheetView, loadTimeReader, weekStartOf } from "@/modules/daily/service";
 import { DecideWeek } from "@/modules/daily/ui/timesheet-decide";
@@ -40,7 +41,7 @@ export default async function PersonTimesheetPage({ params, searchParams }: Page
             {t("timesheets.title")}
           </Link>
         }
-        title={view.fullName}
+        title={<RecordLink kind="person" id={view.personId}>{view.fullName}</RecordLink>}
         description={view.partial ? t("timesheets.partial") : undefined}
         actions={
           <>

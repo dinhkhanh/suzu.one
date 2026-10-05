@@ -10,6 +10,7 @@ import { RunAccrualsButton } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("leaveBalances");
 
@@ -54,7 +55,11 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
                   {row.fullName}
                 </Link>
               </TableCell>
-              <TableCell className="text-muted-foreground">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</TableCell>
+              <TableCell className="text-muted-foreground">
+                <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>
+                {row.entityName && row.departmentName ? " · " : null}
+                <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink>
+              </TableCell>
               {codes.map((code) => {
                 const balance = row.balances.find((candidate) => candidate.code === code);
                 return (

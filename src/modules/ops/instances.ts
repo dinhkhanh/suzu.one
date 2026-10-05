@@ -56,9 +56,11 @@ export type InstanceListItem = {
   colour: StatusColour;
   assigneePersonId: string | null;
   assigneeName: string | null;
+  subjectPersonId: string | null;
   subjectName: string | null;
   completedAt: Date | null;
   completedLate: boolean | null;
+  completedByPersonId: string | null;
   completedByName: string | null;
   referenceNumber: string | null;
   submittedDate: IsoDate | null;
@@ -129,9 +131,11 @@ export async function listInstances(viewer: { principal: Principal; personId: st
     colour: statusColour({ status: task.status, dueDate: task.dueDate, completedLate: instance.completedLate }, today),
     assigneePersonId: task.assigneePersonId,
     assigneeName,
+    subjectPersonId: task.subjectPersonId,
     subjectName,
     completedAt: task.completedAt,
     completedLate: instance.completedLate,
+    completedByPersonId: task.completedByPersonId,
     completedByName,
     referenceNumber: instance.referenceNumber,
     submittedDate: instance.submittedDate,

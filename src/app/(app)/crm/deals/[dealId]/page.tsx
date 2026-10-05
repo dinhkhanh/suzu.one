@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -95,16 +96,27 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
             {t("deals.title")}
           </Link>{" "}
           ·{" "}
-          <Link href={`/crm/accounts/${account.client.id}`} className="underline">
+          <RecordLink kind="account" id={account.client.id} className="underline">
             {account.client.name}
-          </Link>
+          </RecordLink>
           {deal.brandName ? ` · ${deal.brandName}` : ""}</>} title={<span className="inline-flex flex-wrap items-center gap-2">{deal.title}
           <span className="font-mono text-sm text-muted-foreground">{deal.code}</span>
           <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
             {stageName(deal.stage, locale)}
           </Badge></span>}>
         <p className="text-sm text-muted-foreground">
-          {[t("deal.ownerIs", { name: deal.ownerName ?? "—" }), deal.teamName ? t("deal.teamIs", { name: deal.teamName }) : null, deal.entityName, deal.serviceLines.map((line) => t(`enums.serviceLine.${line as "social"}`)).join(", ") || null].filter(Boolean).join(" · ")}
+          {[
+            <span key="owner">{t.rich("deal.ownerIs", { name: deal.ownerName ?? "—", person: (chunks) => <RecordLink kind="person" id={deal.ownerPersonId}>{chunks}</RecordLink> })}</span>,
+            deal.teamName ? <span key="team">{t.rich("deal.teamIs", { name: deal.teamName, team: (chunks) => <RecordLink kind="team" id={deal.teamId}>{chunks}</RecordLink> })}</span> : null,
+            deal.entityName ? (
+              <RecordLink key="entity" kind="entity" id={deal.entityId}>
+                {deal.entityName}
+              </RecordLink>
+            ) : null,
+            deal.serviceLines.map((line) => t(`enums.serviceLine.${line as "social"}`)).join(", ") || null,
+          ]
+            .filter(Boolean)
+            .flatMap((part, index) => (index ? [" · ", part] : [part]))}
         </p>
         {deal.value ? (
           <p className="text-sm">
@@ -123,7 +135,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
 
       {handoffWaiting ? (
         <section className="flex flex-col gap-2 rounded-xl border border-amber-300 p-4">
-          <h2 className="text-sm font-medium">{t("deal.handoff.waiting", { project: handoffWaiting.projectName })}</h2>
+          <h2 className="text-sm font-medium">{t.rich("deal.handoff.waiting", { project: handoffWaiting.projectName, link: (chunks) => <RecordLink kind="project" id={handoffWaiting.projectId}>{chunks}</RecordLink> })}</h2>
           <HandoffNoteView note={handoffWaiting.handoffNote} />
           <HandoffAnswerForm projectId={handoffWaiting.projectId} />
         </section>
@@ -151,13 +163,13 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
                   <ListItem key={project.projectId} className="flex-col items-stretch gap-2">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{project.jobNumber ?? "—"}</span>
-                      <Link href={`/projects/${project.projectId}`} className="font-medium hover:underline">
+                      <RecordLink kind="project" id={project.projectId} className="font-medium">
                         {project.projectName}
-                      </Link>
+                      </RecordLink>
                       <Badge dot variant={statusTone(project.handoffStatus)}>
                         {t(`enums.handoffStatus.${project.handoffStatus as "pending"}`)}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{t("deal.handoff.to", { name: project.leadName ?? "—", date: f.when(project.createdAt) })}</span>
+                      <span className="text-xs text-muted-foreground">{t.rich("deal.handoff.to", { name: project.leadName ?? "—", date: f.when(project.createdAt), person: (chunks) => <RecordLink kind="person" id={project.handoffToPersonId}>{chunks}</RecordLink> })}</span>
                     </p>
                     {project.handoffStatus === "returned" ? <p className="text-sm text-destructive">{t("deal.handoff.returnedBecause", { reason: project.handoffReturnReason ?? "—" })}</p> : null}
                     <details>
@@ -271,7 +283,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
             <Timeline items={timeline} />
             <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
               {changes.map((change) => (
-                <li key={change.id}>{t("deal.stageChange", { from: change.fromName ?? "—", to: change.toName, by: change.byName ?? "—", date: f.when(change.changedAt) })}</li>
+                <li key={change.id}>{t.rich("deal.stageChange", { from: change.fromName ?? "—", to: change.toName, by: change.byName ?? "—", date: f.when(change.changedAt), person: (chunks) => <RecordLink kind="person" id={change.byPersonId}>{chunks}</RecordLink> })}</li>
               ))}
             </ul>
           </section>

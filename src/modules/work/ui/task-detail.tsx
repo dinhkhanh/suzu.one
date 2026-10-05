@@ -1,6 +1,5 @@
 "use client";
 import { useFormatter, useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { RecordLink } from "@/components/ui/record-link";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { MultiSelect, Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,7 +39,9 @@ export type DetailTask = {
   stateId: string;
   status: string;
   assigneePersonId: string | null;
+  requesterPersonId?: string | null;
   requesterName: string | null;
+  createdByPersonId?: string | null;
   createdByName: string | null;
   createdAt: string;
   priority: number | null;
@@ -88,6 +90,7 @@ export type DetailSubtask = {
   title: string;
   status: string;
   stateId: string;
+  assigneePersonId?: string | null;
   assigneeName: string | null;
   dueDate: string | null;
 };
@@ -106,6 +109,7 @@ export type DetailActivity = {
   fromValue: unknown;
   toValue: unknown;
   createdAt: string;
+  actorPersonId?: string | null;
   actorName: string | null;
 };
 
@@ -424,10 +428,12 @@ export function TaskDetailView({
           </div>
         ) : null}
         <p className="text-xs text-faint">
-          {t("meta", {
+          {t.rich("meta", {
             requester: task.requesterName ?? "—",
             creator: task.createdByName ?? "—",
             date: format.dateTime(new Date(task.createdAt), { dateStyle: "medium" }),
+            r: (chunks) => <RecordLink kind="person" id={task.requesterPersonId}>{chunks}</RecordLink>,
+            c: (chunks) => <RecordLink kind="person" id={task.createdByPersonId}>{chunks}</RecordLink>,
           })}
         </p>
         {canDelete ? (
@@ -483,14 +489,14 @@ export function TaskDetailView({
                       </TableCell>
                       <TableCell kind="id">{subtask.key}</TableCell>
                       <TableCell className="max-w-80">
-                        <Link href={`/work/tasks/${subtask.id}`} className={`block truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                        <RecordLink kind="task" id={subtask.id} className={`block truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
                           {subtask.title}
-                        </Link>
+                        </RecordLink>
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-2 text-muted-foreground">
                           <PersonAvatar name={subtask.assigneeName} />
-                          <span className="hidden truncate md:inline">{subtask.assigneeName ?? t("unassigned")}</span>
+                          <span className="hidden truncate md:inline">{subtask.assigneeName ? <RecordLink kind="person" id={subtask.assigneePersonId}>{subtask.assigneeName}</RecordLink> : t("unassigned")}</span>
                         </span>
                       </TableCell>
                       <TableCell kind="date" className="hidden md:table-cell">
@@ -546,9 +552,9 @@ export function TaskDetailView({
                     </TableCell>
                     <TableCell kind="id">{link.key}</TableCell>
                     <TableCell className="max-w-80">
-                      <Link href={`/work/tasks/${link.id}`} className={`block truncate hover:underline ${link.status === "done" ? "text-muted-foreground line-through" : ""}`}>
+                      <RecordLink kind="task" id={link.id} className={`block truncate ${link.status === "done" ? "text-muted-foreground line-through" : ""}`}>
                         {link.title}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     {canEdit ? (
                       <TableCell kind="actions">

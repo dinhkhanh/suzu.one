@@ -1,7 +1,7 @@
 "use client";
 import { ArrowUpDownIcon, LayersIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -230,7 +230,7 @@ export function TaskListView({
     const chips = (
       <>
         {task.blocker ? (
-          <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
+          <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })}` : task.blocker.reason}>
             {tWork("blockers.badge")}
           </Badge>
         ) : null}
@@ -268,9 +268,9 @@ export function TaskListView({
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="flex min-w-0 items-center gap-2">
               <PriorityMark priority={task.priority} title={task.priority ? tWork(`priority.${task.priority as 1}`) : undefined} />
-              <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+              <RecordLink kind="task" id={task.id.startsWith("new-") ? null : task.id} title={task.title} className={`min-w-0 truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
                 {task.title}
-              </Link>
+              </RecordLink>
               <span className="hidden min-w-0 items-center gap-1.5 md:flex">{chips}</span>
             </span>
             {/* On a phone the row's columns fold into a meta line under the title. */}
@@ -285,7 +285,7 @@ export function TaskListView({
         <TableCell className="w-px">
           <span className="flex items-center gap-2" title={assignee ?? t("unassigned")}>
             <PersonAvatar name={assignee} />
-            <span className="hidden max-w-32 truncate text-xs text-muted-foreground lg:inline">{assignee ?? t("unassigned")}</span>
+            <span className="hidden max-w-32 truncate text-xs text-muted-foreground lg:inline">{assignee ? <RecordLink kind="person" id={task.assigneePersonId}>{assignee}</RecordLink> : t("unassigned")}</span>
           </span>
         </TableCell>
         <TableCell kind="date" className="hidden w-px md:table-cell">

@@ -4,12 +4,13 @@
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { formatDuration } from "../engine/custom-fields";
 import { moveTaskAction, raiseBlockerAction, resolveBlockerAction } from "../foundation-actions";
@@ -42,7 +43,10 @@ function ErrorLine({ errorKey }: { errorKey: string | null }) {
   );
 }
 
-export type BlockerItem = { id: string; reason: string; neededName: string | null; raisedByName: string | null; raisedAt: string; resolvedAt: string | null; resolvedByName: string | null; resolution: string | null; minutes: number };
+export type BlockerItem = { id: string; reason: string; neededPersonId?: string | null; neededName: string | null; raisedByPersonId?: string | null; raisedByName: string | null; raisedAt: string; resolvedAt: string | null; resolvedByPersonId?: string | null; resolvedByName: string | null; resolution: string | null; minutes: number };
+
+/** The parts of a line, a dot between each. */
+const dotted = (parts: React.ReactNode[]) => parts.filter(Boolean).map((part, index) => <Fragment key={index}>{index ? " · " : null}{part}</Fragment>);
 
 /** "Mark blocked" with a reason and who can unblock it; "Resolve" with a note; the history below. */
 export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, closed }: { taskId: string; blockers: BlockerItem[]; people: { id: string; fullName: string }[]; canRaise: boolean; canResolve: boolean; closed: boolean }) {
@@ -54,6 +58,10 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
   const past = blockers.filter((blocker) => blocker.resolvedAt);
   const total = blockers.reduce((sum, blocker) => sum + blocker.minutes, 0);
   const when = (iso: string) => format.dateTime(new Date(iso), { dateStyle: "short", timeStyle: "short" });
+  const who = (personId: string | null | undefined, name: string | null) =>
+    function Who(chunks: React.ReactNode) {
+      return <RecordLink kind="person" id={name ? personId : null}>{chunks}</RecordLink>;
+    };
 
   return (
     <section className="flex flex-col gap-2">
@@ -61,7 +69,7 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
       {open ? (
         <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
           <p className="font-medium text-destructive">{t("open", { reason: open.reason })}</p>
-          <p className="text-xs text-muted-foreground">{[open.neededName ? t("waitingOn", { name: open.neededName }) : null, t("raisedBy", { name: open.raisedByName ?? "—", date: when(open.raisedAt) }), t("blockedFor", { duration: formatDuration(open.minutes) })].filter(Boolean).join(" · ")}</p>
+          <p className="text-xs text-muted-foreground">{dotted([open.neededName ? t.rich("waitingOn", { name: open.neededName, who: who(open.neededPersonId, open.neededName) }) : null, t.rich("raisedBy", { name: open.raisedByName ?? "—", date: when(open.raisedAt), who: who(open.raisedByPersonId, open.raisedByName) }), t("blockedFor", { duration: formatDuration(open.minutes) })])}</p>
           {canResolve ? (
             <form
               className="flex flex-wrap gap-2"
@@ -126,7 +134,7 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
             {past.map((blocker) => (
               <li key={blocker.id} className="flex flex-col text-xs">
                 <span className="font-medium">{blocker.reason}</span>
-                <span className="text-muted-foreground">{[t("raisedBy", { name: blocker.raisedByName ?? "—", date: when(blocker.raisedAt) }), t("resolvedBy", { name: blocker.resolvedByName ?? "—", date: when(blocker.resolvedAt!) }), t("blockedFor", { duration: formatDuration(blocker.minutes) }), blocker.resolution].filter(Boolean).join(" · ")}</span>
+                <span className="text-muted-foreground">{dotted([t.rich("raisedBy", { name: blocker.raisedByName ?? "—", date: when(blocker.raisedAt), who: who(blocker.raisedByPersonId, blocker.raisedByName) }), t.rich("resolvedBy", { name: blocker.resolvedByName ?? "—", date: when(blocker.resolvedAt!), who: who(blocker.resolvedByPersonId, blocker.resolvedByName) }), t("blockedFor", { duration: formatDuration(blocker.minutes) }), blocker.resolution])}</span>
               </li>
             ))}
           </ul>

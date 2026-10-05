@@ -1,5 +1,4 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -11,6 +10,7 @@ import { DeviceForm } from "@/modules/attendance/ui/device-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../settings/options";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("timeClocks");
 
@@ -31,9 +31,9 @@ export default async function DevicesPage() {
           {devices.map((device) => (
             <ListItem key={device.id} className="block">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Link href={`/attendance/devices/${device.id}`} className="font-medium underline-offset-4 hover:underline">
+                <RecordLink kind="device" id={device.id} className="font-medium">
                   {device.name}
-                </Link>
+                </RecordLink>
                 <span className="text-xs text-muted-foreground">{[device.entityName, ...device.alsoServes.map((entity) => entity.name)].join(" + ")}</span>
                 <Badge variant="secondary">{device.profileName}</Badge>
                 <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>

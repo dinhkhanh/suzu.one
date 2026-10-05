@@ -21,6 +21,7 @@ import { MonthDays, MonthNav, SummaryTiles } from "@/modules/attendance/ui/times
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("attendance");
 
@@ -95,7 +96,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
         </Link>
       </nav>
 
-      <Section title={subject ? t("timesheet.monthOf", { name: subject.fullName }) : t("timesheet.myMonth")} action={<MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />}>
+      <Section title={subject ? t.rich("timesheet.monthOf", { name: subject.fullName, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> }) : t("timesheet.myMonth")} action={<MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />}>
         <Alert icon={null}>
           <Badge dot variant={statusTone(monthStatus)}>
             {t(`months.status.${monthStatus}`)}

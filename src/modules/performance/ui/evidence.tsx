@@ -2,6 +2,7 @@
 // decided the viewer may read this person's performance data, and every figure here is personal
 // tier. Nothing in this panel is money.
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
+import { RecordLink } from "@/components/ui/record-link";
 import type { ReviewEvidence } from "../evidence";
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
@@ -55,7 +56,9 @@ export function EvidencePanel({ evidence, labels }: { evidence: ReviewEvidence; 
         <ul className="flex flex-col gap-1 border-t pt-2">
           {kudos.recent.map((card) => (
             <li key={card.id} className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{card.fromName}</span> — {noteToPlainText(card.message)}
+              <RecordLink kind="person" id={card.fromPersonId} className="font-medium text-foreground">
+                {card.fromName}
+              </RecordLink> — {noteToPlainText(card.message)}
             </li>
           ))}
         </ul>

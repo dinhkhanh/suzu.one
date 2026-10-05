@@ -12,6 +12,7 @@ import { listLeaveRequestsOf } from "@/modules/leave/requests";
 import { AdjustBalanceForm } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("leaveLedger");
 
@@ -40,7 +41,7 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">
-          {facts?.fullName ?? "—"}{facts?.employeeCode ? ` (${facts.employeeCode})` : ""} · {year}
+          <RecordLink kind="person" id={facts ? personId : null}>{facts?.fullName ?? "—"}</RecordLink>{facts?.employeeCode ? ` (${facts.employeeCode})` : ""} · {year}
         </h2>
         <Link href={`/leave/new?person=${personId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
           {t("balances.fileFor")}
@@ -82,7 +83,7 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
                 </TableCell>
                 <TableCell kind="number">{days(entry.amountCenti)}</TableCell>
                 <TableCell className="whitespace-normal text-muted-foreground">{entry.reason ?? ""}</TableCell>
-                <TableCell className="text-muted-foreground">{entry.createdByName ?? t("balances.system")}</TableCell>
+                <TableCell className="text-muted-foreground">{entry.createdByName ? <RecordLink kind="person" id={entry.createdByPersonId}>{entry.createdByName}</RecordLink> : t("balances.system")}</TableCell>
               </TableRow>
             ))}
           </TableBody>

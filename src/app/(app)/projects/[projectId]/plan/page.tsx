@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -80,9 +81,9 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
               {taskSlips.summary.worst && worstTask ? (
                 <p className="text-xs text-muted-foreground">
                   {t("baseline.worst", { days: taskSlips.summary.worst.slipDays })}{" "}
-                  <Link href={`/work/tasks/${worstTask.taskId}`} className="underline">
+                  <RecordLink kind="task" id={worstTask.taskId} className="underline">
                     <span className="font-mono">{worstTask.key}</span> {worstTask.title}
-                  </Link>
+                  </RecordLink>
                 </p>
               ) : null}
               <p className="text-xs text-muted-foreground">
@@ -147,15 +148,22 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                   {can.seeFees && milestone.isBilling && milestone.billingAmountVnd !== null ? <span className="text-sm">{format.number(milestone.billingAmountVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span> : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {[milestone.phaseId ? phaseName.get(milestone.phaseId) : null, milestone.ownerPersonId ? ownerName.get(milestone.ownerPersonId) : null, progress.total ? t("plan.progress", { done: progress.done, total: progress.total, percent: progress.percent ?? 0 }) : t("plan.noLinkedTasks"), lines.length ? t("plan.linesCount", { count: lines.length }) : null].filter(Boolean).join(" · ")}
+                  {milestone.phaseId && phaseName.get(milestone.phaseId) ? `${phaseName.get(milestone.phaseId)} · ` : null}
+                  {milestone.ownerPersonId && ownerName.get(milestone.ownerPersonId) ? (
+                    <>
+                      <RecordLink kind="person" id={milestone.ownerPersonId}>{ownerName.get(milestone.ownerPersonId)}</RecordLink>
+                      {" · "}
+                    </>
+                  ) : null}
+                  {[progress.total ? t("plan.progress", { done: progress.done, total: progress.total, percent: progress.percent ?? 0 }) : t("plan.noLinkedTasks"), lines.length ? t("plan.linesCount", { count: lines.length }) : null].filter(Boolean).join(" · ")}
                 </p>
                 {own.length ? (
                   <ul className="flex flex-col gap-1 text-sm">
                     {own.map((task) => (
                       <li key={task.taskId} className="flex flex-wrap items-center gap-2">
-                        <Link href={`/work/tasks/${task.taskId}`} className="hover:underline">
+                        <RecordLink kind="task" id={task.taskId}>
                           <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
-                        </Link>
+                        </RecordLink>
                         <Badge variant="secondary">{t(`plan.taskStatus.${task.status as "todo"}`)}</Badge>
                         {can.editPlan ? <UnlinkButton taskId={task.taskId} /> : null}
                       </li>

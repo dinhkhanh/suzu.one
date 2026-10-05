@@ -1,10 +1,12 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageSchedules, listSchedules } from "@/modules/reports/service";
@@ -61,7 +63,15 @@ export default async function SchedulesPage() {
                   {schedule.cadence === "weekly" && schedule.dayOfWeek ? ` · ${t(`days.${schedule.dayOfWeek}` as never)}` : ""}
                   {schedule.cadence === "monthly" && schedule.dayOfMonth ? ` · ${schedule.dayOfMonth}` : ""}
                 </TableCell>
-                <TableCell className="max-w-64 truncate text-muted-foreground">{schedule.recipients.map((recipient) => recipient.fullName).join(", ") || "—"}</TableCell>
+                <TableCell className="max-w-64 truncate text-muted-foreground">
+                  {schedule.recipients.length === 0 ? "—" : null}
+                  {schedule.recipients.map((recipient, index) => (
+                    <Fragment key={recipient.personId}>
+                      {index ? ", " : null}
+                      <RecordLink kind="person" id={recipient.personId}>{recipient.fullName}</RecordLink>
+                    </Fragment>
+                  ))}
+                </TableCell>
                 <TableCell kind="date">{day(schedule.nextRunOn)}</TableCell>
                 <TableCell kind="date">{day(schedule.lastRunOn)}</TableCell>
                 <TableCell>

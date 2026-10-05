@@ -190,7 +190,7 @@ export async function wakeSnoozedTriage(today: IsoDate): Promise<{ woken: number
 
 // ── Reading the queue ───────────────────────────────────────────────────────────────────────
 
-export type TriageItem = TaskListItem & { source: string | null; snoozedUntil: string | null; requesterName: string | null; createdAt: string; description: string | null; formName: string | null; projectName: string | null };
+export type TriageItem = TaskListItem & { source: string | null; snoozedUntil: string | null; requesterPersonId: string | null; requesterName: string | null; createdAt: string; description: string | null; formName: string | null; projectName: string | null };
 
 /**
  * A team's queue: pending first (oldest first — first come, first served), then snoozed by wake-up
@@ -207,7 +207,7 @@ export async function listTriage(teamId: string, viewer: WorkViewer): Promise<Tr
   if (items.length === 0) return [];
   const requester = alias(schema.person, "requester");
   const extras = await db()
-    .select({ id: schema.task.id, source: schema.workTask.triageSource, snoozedUntil: schema.workTask.triageSnoozedUntil, requesterName: requester.fullName, createdAt: schema.task.createdAt, description: schema.task.description, formName: schema.workIntakeForm.name, projectName: schema.workProject.name })
+    .select({ id: schema.task.id, source: schema.workTask.triageSource, snoozedUntil: schema.workTask.triageSnoozedUntil, requesterPersonId: schema.task.requesterPersonId, requesterName: requester.fullName, createdAt: schema.task.createdAt, description: schema.task.description, formName: schema.workIntakeForm.name, projectName: schema.workProject.name })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .leftJoin(requester, eq(requester.id, schema.task.requesterPersonId))
@@ -218,7 +218,7 @@ export async function listTriage(teamId: string, viewer: WorkViewer): Promise<Tr
   return items
     .map((item) => {
       const extra = extraOf.get(item.id)!;
-      return { ...item, source: extra.source, snoozedUntil: extra.snoozedUntil, requesterName: extra.requesterName, createdAt: extra.createdAt.toISOString(), description: extra.description, formName: extra.formName, projectName: extra.projectName };
+      return { ...item, source: extra.source, snoozedUntil: extra.snoozedUntil, requesterPersonId: extra.requesterPersonId, requesterName: extra.requesterName, createdAt: extra.createdAt.toISOString(), description: extra.description, formName: extra.formName, projectName: extra.projectName };
     })
     .sort((a, b) => Number(a.triageStatus === "snoozed") - Number(b.triageStatus === "snoozed") || (a.snoozedUntil ?? "").localeCompare(b.snoozedUntil ?? "") || a.createdAt.localeCompare(b.createdAt));
 }

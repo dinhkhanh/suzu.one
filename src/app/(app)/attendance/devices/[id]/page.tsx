@@ -13,6 +13,7 @@ import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
 import { appOrigin } from "@/lib/site";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("deviceUsers");
 
@@ -70,7 +71,7 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
               <TableRow key={row.id}>
                 <TableCell kind="id" className="font-medium text-foreground">{row.deviceUserId}</TableCell>
                 <TableCell>
-                  {row.fullName}
+                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                   {row.employeeCode ? <span className="text-muted-foreground"> · {row.employeeCode}</span> : null}
                 </TableCell>
                 <TableCell kind="actions">

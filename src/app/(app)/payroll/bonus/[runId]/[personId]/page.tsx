@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -42,7 +43,7 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
           ← {run.name}
         </Link>
         <h1 className="flex flex-wrap items-center gap-2">
-          {line.personName}
+          <RecordLink kind="person" id={personId}>{line.personName}</RecordLink>
           <Badge variant="outline">{run.year}</Badge>
         </h1>
         <p className="text-sm text-muted-foreground">{t("trace.description")}</p>
@@ -55,9 +56,9 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
       {line.row.payrollRunId ? (
         <p className="text-sm text-muted-foreground">
           {t("trace.paidThrough")}{" "}
-          <Link href={`/payroll/runs/${line.row.payrollRunId}`} className="underline">
+          <RecordLink kind="payrollRun" id={line.row.payrollRunId} className="underline">
             {t("trace.offCycleRun")}
-          </Link>
+          </RecordLink>
         </p>
       ) : null}
     </div>

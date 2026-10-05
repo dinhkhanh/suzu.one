@@ -9,6 +9,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { entityReach } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("kioskFaces");
 
@@ -48,10 +49,10 @@ export default async function KioskFacesPage() {
             return (
               <TableRow key={person.personId}>
                 <TableCell className="font-medium text-foreground">
-                  {person.fullName}
+                  <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
                   {person.employeeCode ? <span className="font-normal text-muted-foreground"> · {person.employeeCode}</span> : null}
                 </TableCell>
-                <TableCell>{person.entityId ? entityName.get(person.entityId) : "—"}</TableCell>
+                <TableCell>{person.entityId ? <RecordLink kind="entity" id={person.entityId}>{entityName.get(person.entityId)}</RecordLink> : "—"}</TableCell>
                 <TableCell>{templates > 0 ? <Badge variant="success" dot>{t("enrolled", { count: templates })}</Badge> : <Badge variant="secondary">{t("notEnrolled")}</Badge>}</TableCell>
                 <TableCell kind="date">{face ? format.dateTime(face.consentAt, { dateStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) : "—"}</TableCell>
                 <TableCell kind="actions">

@@ -5,6 +5,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
+import { RecordLink } from "@/components/ui/record-link";
 import { buildOrgTree, type OrgNode } from "@/modules/core-hr/engine/org-tree";
 import { canBrowsePeople } from "@/modules/core-hr/policy";
 import { listOrgChartPeople, type OrgChartPerson, peopleModuleOpen } from "@/modules/core-hr/service";
@@ -21,9 +22,9 @@ function Person({ node, dottedLabel, showEntity }: { node: OrgNode<OrgChartPerso
   const { person } = node;
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-2">
-      <Link href={`/people/${person.id}`} className="font-medium hover:underline">
+      <RecordLink kind="person" id={person.id} className="font-medium">
         {person.fullName}
-      </Link>
+      </RecordLink>
       <span className="text-muted-foreground">{[person.positionName, person.departmentName, showEntity ? person.entityName : null].filter(Boolean).join(" · ")}</span>
       {node.headcount > 0 ? <span className="text-xs text-muted-foreground">({node.headcount})</span> : null}
       {person.dottedManagerName ? <span className="text-xs text-muted-foreground">{dottedLabel(person.dottedManagerName)}</span> : null}

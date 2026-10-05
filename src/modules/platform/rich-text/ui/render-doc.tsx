@@ -3,6 +3,7 @@
 // not know is dropped, and every address goes through the same allow-list the validator used (a
 // second time, on purpose).
 import { cn } from "cn";
+import { RecordLink } from "@/components/ui/record-link";
 import { CheckSquare2, Square } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { type CalloutKind, CALLOUT_KINDS } from "../engine/callouts";
@@ -68,9 +69,9 @@ function renderNode(node: DocNode, key: string, context: Context): ReactNode {
       return <br key={key} />;
     case "mention":
       return (
-        <a key={key} href={`/people/${String(node.attrs?.personId ?? "")}`} className="rounded bg-muted px-1 text-primary">
+        <RecordLink key={key} kind="person" id={typeof node.attrs?.personId === "string" ? node.attrs.personId : null} className="rounded bg-muted px-1 text-primary">
           @{String(node.attrs?.label ?? "")}
-        </a>
+        </RecordLink>
       );
     case "paragraph":
       return (

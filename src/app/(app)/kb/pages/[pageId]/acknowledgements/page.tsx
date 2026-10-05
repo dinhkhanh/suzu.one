@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { canManageSpace, spaceOwner, getAckReport, loadPage } from "@/modules/kb/service";
 import { AckReportTools } from "@/modules/kb/ui/ack-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -81,9 +82,11 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
             <TableBody>
               {report.rows.map((row) => (
                 <TableRow key={row.personId}>
-                  <TableCell>{row.fullName}</TableCell>
-                  <TableCell>{row.entityName ?? "—"}</TableCell>
-                  <TableCell>{row.departmentName ?? "—"}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                  </TableCell>
+                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
                   <TableCell>
                     {row.acknowledgedAt ? (
                       <Badge variant="secondary">{t("ack.confirmedOn", { date: format.dateTime(row.acknowledgedAt, { dateStyle: "medium" }) })}</Badge>

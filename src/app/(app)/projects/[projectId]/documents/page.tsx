@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { atLeast, kbViewerOf } from "@/modules/kb/service";
 import { PageTree } from "@/modules/kb/ui/page-tree";
@@ -113,11 +114,11 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
                     </TableCell>
                     <TableCell kind="number" className="text-muted-foreground">{size(file.sizeBytes)}</TableCell>
                     <TableCell className="max-w-64 truncate">
-                      <Link href={`/kb/pages/${file.pageId}`} className="text-link hover:underline">
+                      <RecordLink kind="kbPage" id={file.pageId} className="text-link">
                         {file.pageTitle}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
-                    <TableCell>{file.uploadedByName ?? "—"}</TableCell>
+                    <TableCell>{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
                     <TableCell>{format.dateTime(file.createdAt, { dateStyle: "medium" })}</TableCell>
                   </TableRow>
                 ))}

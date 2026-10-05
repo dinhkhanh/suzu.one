@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canCommentOnReport, getReportView, loadReportReader, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
@@ -42,7 +43,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
             {mine ? t("index.title") : t("board.title")}
           </Link>
         }
-        title={mine ? t("report.title") : subject.fullName}
+        title={mine ? t("report.title") : <RecordLink kind="person" id={report.personId}>{subject.fullName}</RecordLink>}
         description={format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         actions={
           editable ? (
@@ -72,9 +73,9 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
                       <span className="italic opacity-80">{t("privateWork")}</span>
                     ) : (
                       <>
-                        <Link href={`/work/tasks/${blocker.taskId}`} className="hover:underline">
+                        <RecordLink kind="task" id={blocker.taskId}>
                           <span className="font-mono text-xs opacity-80">{blocker.key}</span> {blocker.title}
-                        </Link>{" "}
+                        </RecordLink>{" "}
                         <span className="text-xs opacity-80">· {blocker.reason}</span>
                       </>
                     )}
@@ -116,7 +117,10 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
             {view.comments.map((comment, index) => (
               <ListItem key={comment.id} className="rise flex-col items-stretch gap-1" style={{ "--i": index } as CSSProperties}>
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{comment.authorName}</span> · {format.dateTime(comment.createdAt, { dateStyle: "short", timeStyle: "short" })}
+                  <RecordLink kind="person" id={comment.authorPersonId} className="font-medium text-foreground">
+                    {comment.authorName}
+                  </RecordLink>{" "}
+                  · {format.dateTime(comment.createdAt, { dateStyle: "short", timeStyle: "short" })}
                 </p>
                 {comment.reaction ? <p className="text-lg leading-tight">{comment.reaction}</p> : null}
                 <RichText text={comment.body} />

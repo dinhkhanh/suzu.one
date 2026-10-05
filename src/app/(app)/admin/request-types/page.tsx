@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageRequestTypes } from "@/modules/requests/policy";
@@ -58,7 +59,7 @@ export default async function RequestTypesPage() {
                 </TableCell>
                 <TableCell kind="id">{type.code}</TableCell>
                 <TableCell>
-                  <Badge variant={type.entityId ? "info" : "secondary"}>{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
+                  <Badge variant={type.entityId ? "info" : "secondary"}>{type.entityId ? <RecordLink kind="entity" id={type.entityId}>{entityName.get(type.entityId) ?? "—"}</RecordLink> : t("wholeGroup")}</Badge>
                 </TableCell>
                 <TableCell kind="number">{type.form.fields.length}</TableCell>
                 <TableCell kind="number">{type.followUps.length || <span className="text-faint">—</span>}</TableCell>

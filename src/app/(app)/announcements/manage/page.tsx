@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { audienceNames, canPostAnywhere, listManagedAnnouncements } from "@/modules/comms/service";
 import { audienceLabel } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -62,7 +63,11 @@ export default async function ManageAnnouncementsPage() {
                 </TableCell>
                 <TableCell className="max-w-64 truncate">{row.audience.map((key) => audienceLabel(key, names, t)).join(", ")}</TableCell>
                 <TableCell>{row.publishAt ? format.dateTime(row.publishAt, { dateStyle: "medium", timeStyle: "short" }) : "—"}</TableCell>
-                <TableCell>{row.authorName}</TableCell>
+                <TableCell>
+                  <RecordLink kind="person" id={row.authorPersonId}>
+                    {row.authorName}
+                  </RecordLink>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

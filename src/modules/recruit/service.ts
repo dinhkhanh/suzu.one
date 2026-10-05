@@ -242,7 +242,9 @@ export type OpeningListRow = {
   code: string;
   title: string;
   status: OpeningStatus;
+  entityId: string;
   entityName: string | null;
+  departmentId: string | null;
   departmentName: string | null;
   headcount: number;
   publishedAt: Date | null;
@@ -267,7 +269,9 @@ export async function listOpenings(principal: Principal, filters: { status?: Ope
       code: schema.jobOpening.code,
       title: schema.jobOpening.title,
       status: schema.jobOpening.status,
+      entityId: schema.jobOpening.entityId,
       entityName: schema.entity.shortName,
+      departmentId: schema.jobOpening.departmentId,
       departmentName: schema.orgUnit.name,
       headcount: schema.jobOpening.headcount,
       publishedAt: schema.jobOpening.publishedAt,
@@ -894,7 +898,7 @@ export async function listApplications(viewer: { principal: Principal; personId:
     .orderBy(asc(schema.recruitPipelineStage.sortOrder), asc(schema.jobApplication.appliedAt));
 }
 
-export type ApplicationEventView = { id: number; type: ApplicationEventType; at: Date; actorName: string | null; note: string | null; fromStageName: string | null; toStageName: string | null; detail: Record<string, unknown> | null };
+export type ApplicationEventView = { id: number; type: ApplicationEventType; at: Date; actorPersonId: string | null; actorName: string | null; note: string | null; fromStageName: string | null; toStageName: string | null; detail: Record<string, unknown> | null };
 
 export type ApplicationView = {
   application: ApplicationRow;
@@ -926,6 +930,7 @@ export async function getApplicationView(viewer: { principal: Principal; personI
         id: schema.applicationEvent.id,
         type: schema.applicationEvent.type,
         at: schema.applicationEvent.at,
+        actorPersonId: schema.applicationEvent.actorPersonId,
         actorName: schema.person.fullName,
         note: schema.applicationEvent.note,
         fromStageName: fromStage.name,
@@ -966,7 +971,7 @@ export async function getApplicationView(viewer: { principal: Principal; personI
 
 // ── Hiring requests (FR-REC-01) ─────────────────────────────────────────────────────────────
 
-export type HiringRequestListRow = { id: string; positionTitle: string; headcount: number; status: HiringRequestRow["status"]; entityName: string | null; departmentName: string | null; requesterName: string; createdAt: Date; approvalRequestId: string | null; openingId: string | null };
+export type HiringRequestListRow = { id: string; positionTitle: string; headcount: number; status: HiringRequestRow["status"]; entityId: string; entityName: string | null; departmentId: string | null; departmentName: string | null; requesterPersonId: string; requesterName: string; createdAt: Date; approvalRequestId: string | null; openingId: string | null };
 
 /** The asks the principal may see: theirs, the ones they will manage, and the ones in their recruitment scope. */
 export async function listHiringRequests(principal: Principal): Promise<HiringRequestListRow[]> {
@@ -979,8 +984,11 @@ export async function listHiringRequests(principal: Principal): Promise<HiringRe
       positionTitle: schema.hiringRequest.positionTitle,
       headcount: schema.hiringRequest.headcount,
       status: schema.hiringRequest.status,
+      entityId: schema.hiringRequest.entityId,
       entityName: schema.entity.shortName,
+      departmentId: schema.hiringRequest.departmentId,
       departmentName: schema.orgUnit.name,
+      requesterPersonId: schema.hiringRequest.requestedByPersonId,
       requesterName: schema.person.fullName,
       createdAt: schema.hiringRequest.createdAt,
       approvalRequestId: schema.hiringRequest.approvalRequestId,
@@ -1001,7 +1009,7 @@ export async function findHiringRequest(hiringRequestId: string, executor: Execu
 }
 
 /** Headcount planning, in the small (FR-CHR-17): approved heads per department against what is filled. */
-export type HeadcountRow = { departmentId: string | null; departmentName: string | null; entityName: string | null; approvedHeads: number; openHeads: number; hired: number };
+export type HeadcountRow = { departmentId: string | null; departmentName: string | null; entityId: string; entityName: string | null; approvedHeads: number; openHeads: number; hired: number };
 
 export async function headcountPlan(principal: Principal): Promise<HeadcountRow[]> {
   const reach = entityReach(principal, "recruit:manage");
@@ -1010,6 +1018,7 @@ export async function headcountPlan(principal: Principal): Promise<HeadcountRow[
     .select({
       departmentId: schema.hiringRequest.departmentId,
       departmentName: schema.orgUnit.name,
+      entityId: schema.hiringRequest.entityId,
       entityName: schema.entity.shortName,
       approvedHeads: sql<number>`sum(${schema.hiringRequest.headcount})`,
       fulfilled: sql<number>`sum(case when ${schema.hiringRequest.status} = 'fulfilled' then ${schema.hiringRequest.headcount} else 0 end)`,
@@ -1018,11 +1027,12 @@ export async function headcountPlan(principal: Principal): Promise<HeadcountRow[
     .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.hiringRequest.departmentId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.hiringRequest.entityId))
     .where(and(inArray(schema.hiringRequest.status, ["approved", "fulfilled"]), reach.all ? undefined : inArray(schema.hiringRequest.entityId, reach.entityIds)))
-    .groupBy(schema.hiringRequest.departmentId, schema.orgUnit.name, schema.entity.shortName);
+    .groupBy(schema.hiringRequest.departmentId, schema.orgUnit.name, schema.hiringRequest.entityId, schema.entity.shortName);
 
   return rows.map((row) => ({
     departmentId: row.departmentId,
     departmentName: row.departmentName,
+    entityId: row.entityId,
     entityName: row.entityName,
     approvedHeads: Number(row.approvedHeads ?? 0),
     openHeads: Number(row.approvedHeads ?? 0) - Number(row.fulfilled ?? 0),

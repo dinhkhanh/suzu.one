@@ -1,9 +1,9 @@
 import { Fragment } from "react";
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -128,10 +128,12 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
                               <ul className="flex flex-col gap-1 text-sm">
                                 {own.map((task) => (
                                   <li key={task.taskId} className="flex flex-wrap items-center gap-2">
-                                    <Link href={`/work/tasks/${task.taskId}`} className="hover:underline">
+                                    <RecordLink kind="task" id={task.taskId}>
                                       <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
-                                    </Link>
-                                    {task.assigneeName ? <span className="text-xs text-muted-foreground">{task.assigneeName}</span> : null}
+                                    </RecordLink>
+                                    <RecordLink kind="person" id={task.assigneePersonId} className="text-xs text-muted-foreground">
+                                      {task.assigneeName}
+                                    </RecordLink>
                                     {can.editPlan ? <UnlinkButton taskId={task.taskId} /> : null}
                                   </li>
                                 ))}

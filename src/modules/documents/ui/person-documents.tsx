@@ -5,6 +5,7 @@
 // exists is itself worth something.
 import { getTranslations } from "next-intl/server";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { canGenerate, listDocumentsAbout, listTemplates } from "../service";
@@ -45,7 +46,7 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
                 <span className="ml-1 text-xs text-muted-foreground">({kinds(row.kind)})</span>
               </TableCell>
               <TableCell>{tiers(row.tier)}</TableCell>
-              <TableCell>{row.generatedByName ?? "—"}</TableCell>
+              <TableCell>{row.generatedByName ? <RecordLink kind="person" id={row.generatedByPersonId}>{row.generatedByName}</RecordLink> : "—"}</TableCell>
               <TableCell>{row.createdAt.toLocaleDateString("vi-VN")}</TableCell>
               <TableCell kind="actions">
                 <a href={`/documents/${row.id}/pdf`} className="text-sm underline">

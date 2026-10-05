@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
+import { RecordLink } from "@/components/ui/record-link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -135,9 +136,9 @@ export function NewAccountForm({ entities, people, defaultEntityId }: { entities
                 <ul className="list-disc pl-5">
                   {duplicates.map((duplicate) => (
                     <li key={duplicate.clientId}>
-                      <a href={`/crm/accounts/${duplicate.clientId}`} className="underline" target="_blank" rel="noreferrer">
+                      <RecordLink kind="account" id={duplicate.clientId} className="underline" target="_blank" rel="noreferrer">
                         {duplicate.name}
-                      </a>{" "}
+                      </RecordLink>{" "}
                       <span className="text-muted-foreground">({t(`accounts.duplicateReason.${duplicate.reason}`)})</span>
                     </li>
                   ))}

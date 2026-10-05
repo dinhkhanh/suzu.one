@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import { FLOW_PERMISSIONS, listFlows } from "@/modules/platform/approvals/flows";
 import { FlowEditor } from "@/modules/platform/approvals/ui/flow-editor";
@@ -73,7 +74,7 @@ export default async function ApprovalFlowsPage(props: PageProps<"/admin/approva
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={flow.entityId ? "info" : "secondary"}>{flow.entityName ?? t("flows.group")}</Badge>
+                      <Badge variant={flow.entityId ? "info" : "secondary"}>{flow.entityName ? <RecordLink kind="entity" id={flow.entityId}>{flow.entityName}</RecordLink> : t("flows.group")}</Badge>
                     </TableCell>
                     <TableCell className="max-w-md truncate text-muted-foreground" title={describe(flow.definition as FlowDefinition)}>
                       {describe(flow.definition as FlowDefinition)}
@@ -97,7 +98,7 @@ export default async function ApprovalFlowsPage(props: PageProps<"/admin/approva
           <Card>
             <CardHeader>
               <CardTitle>{label(selected.requestType)}</CardTitle>
-              <CardDescription>{selected.entityName ?? t("flows.group")}</CardDescription>
+              <CardDescription>{selected.entityName ? <RecordLink kind="entity" id={selected.entityId}>{selected.entityName}</RecordLink> : t("flows.group")}</CardDescription>
             </CardHeader>
             <CardContent>
               <FlowEditor key={selected.id} options={options} flow={{ id: selected.id, requestType: selected.requestType, entityId: selected.entityId, active: selected.active, definition: selected.definition as FlowDefinition }} />

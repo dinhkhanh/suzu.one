@@ -15,6 +15,7 @@ import { listYtd } from "@/modules/payroll/ytd";
 import { ytdTemplate } from "@/modules/payroll/ytd-import";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("yearToDateImport");
 
@@ -68,7 +69,7 @@ export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd"
           {rows.map(({ row, figures }) => (
             <TableRow key={row.id}>
               <TableCell>
-                {factOf.get(row.personId)?.fullName ?? "—"}
+                <RecordLink kind="person" id={row.personId}>{factOf.get(row.personId)?.fullName ?? "—"}</RecordLink>
                 <span className="ml-2 font-mono text-xs text-muted-foreground">{factOf.get(row.personId)?.employeeCode}</span>
               </TableCell>
               <TableCell kind="number">{row.months}</TableCell>

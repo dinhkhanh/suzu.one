@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { RecordLink } from "@/components/ui/record-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
@@ -25,9 +26,7 @@ export default async function EditKbPage(props: PageProps<"/kb/pages/[pageId]/ed
   return (
     <div className="flex max-w-4xl flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        <Link href={`/kb/spaces/${space.key}`} className="hover:underline">
-          {space.name}
-        </Link>
+        <RecordLink kind="kbSpace" id={space.key}>{space.name}</RecordLink>
         <span aria-hidden> / </span>
         <Link href={pagePath(space.key, page)} className="hover:underline">
           {t("page.backToPage")}

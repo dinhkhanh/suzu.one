@@ -11,7 +11,7 @@ import { unitsWithin } from "@/modules/platform/rbac/reach-sql";
 import { headcountSnapshot, type HeadcountSnapshot, movement, type Movement, type Span } from "./engine/headcount";
 
 export type HeadcountFilters = { asOf: IsoDate; from: IsoDate; to: IsoDate; entityId?: string };
-export type ContractDue = { personId: string; fullName: string; employeeCode: string; entity: string; department: string | null; type: string; endDate: IsoDate };
+export type ContractDue = { personId: string; fullName: string; employeeCode: string; entityId: string; entity: string; departmentId: string | null; department: string | null; type: string; endDate: IsoDate };
 export type HeadcountReport = { snapshot: HeadcountSnapshot; movement: Movement; contractsExpiring: ContractDue[]; probations: ContractDue[]; /** The viewer sees a slice, not the whole group. */ scoped: boolean };
 
 const EXPIRY_WINDOW_DAYS = 90;
@@ -71,7 +71,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
       .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
       .where(and(scope, lte(e.startDate, latest), or(isNull(e.endDate), gte(e.endDate, earliest)))),
     db()
-      .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entity: schema.entity.shortName, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
+      .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entityId: e.entityId, entity: schema.entity.shortName, departmentId: a.departmentId, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
       .from(c)
       .innerJoin(e, eq(e.id, c.employmentId))
       .innerJoin(schema.person, eq(schema.person.id, e.personId))

@@ -12,6 +12,7 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { matchesReach, permissionReach } from "@/modules/platform/rbac/policy";
 import { configOptions } from "../options";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("shifts");
 
@@ -74,7 +75,9 @@ export default async function ShiftsSettingsPage() {
             {roster.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{format.dateTime(new Date(`${row.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
-                <TableCell className="font-medium">{row.personName}</TableCell>
+                <TableCell className="font-medium">
+                  <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+                </TableCell>
                 <TableCell className="text-muted-foreground">{row.shiftCode ? `${row.shiftCode} · ${row.shiftName}` : t("roster.off")}</TableCell>
               </TableRow>
             ))}

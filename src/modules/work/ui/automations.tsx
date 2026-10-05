@@ -5,7 +5,6 @@
 // latest runs. Only whoever runs the team changes anything; the team's people read.
 import { Plus, Trash2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addAutomationPresetAction, removeAutomationAction, saveAutomationAction, toggleAutomationAction } from "../automation-actions";
@@ -209,9 +209,9 @@ export function AutomationManager({ teamId, projectId = null, rules, options, ru
                   <TableCell className="font-medium">{item.ruleName}</TableCell>
                   <TableCell className="max-w-80">
                     {item.taskId && item.taskKey ? (
-                      <Link href={`/work/tasks/${item.taskId}`} className="block truncate hover:underline">
+                      <RecordLink kind="task" id={item.taskId} className="block truncate">
                         <span className="font-mono text-xs text-muted-foreground">{item.taskKey}</span> {item.taskTitle}
-                      </Link>
+                      </RecordLink>
                     ) : (
                       "—"
                     )}

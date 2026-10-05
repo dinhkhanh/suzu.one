@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
 import { canOpenFeedbackInbox, canReadFeedback, canTriageFeedback } from "@/modules/feedback/policy";
 import { getFeedback } from "@/modules/feedback/service";
@@ -49,7 +50,12 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
             {t(`categories.${row.category}`)}
           </span>
         }
-        description={`${t("detail.sentBy", { name: own ? t("detail.you") : view.personName, when: when(row.createdAt) })}${staff && !own && view.personEmail ? ` · ${view.personEmail}` : ""}`}
+        description={
+          <>
+            {t.rich("detail.sentBy", { name: own ? t("detail.you") : view.personName, when: when(row.createdAt), person: (chunks) => <RecordLink kind="person" id={own ? null : row.personId}>{chunks}</RecordLink> })}
+            {staff && !own && view.personEmail ? ` · ${view.personEmail}` : ""}
+          </>
+        }
       >
         <div className="flex flex-wrap gap-1.5 pt-1">
           <StatusBadge status={row.status} label={t(`statuses.${row.status}`)} />
@@ -88,7 +94,7 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
             <span className="text-xs break-words text-muted-foreground">{row.userAgent}</span>
           </Fact>
         ) : null}
-        {view.handlerName && staff ? <Fact label={t("detail.handledBy")}>{t("detail.handledAt", { name: view.handlerName, when: when(row.updatedAt) })}</Fact> : null}
+        {view.handlerName && staff ? <Fact label={t("detail.handledBy")}>{t.rich("detail.handledAt", { name: view.handlerName, when: when(row.updatedAt), person: (chunks) => <RecordLink kind="person" id={row.handledByPersonId}>{chunks}</RecordLink> })}</Fact> : null}
       </FactSheet>
 
       {triage ? (

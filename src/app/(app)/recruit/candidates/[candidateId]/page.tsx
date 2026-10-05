@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -32,7 +33,7 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
     { key: "email", label: t("form.email"), value: candidate.email ?? "—", kind: "email" },
     { key: "phone", label: t("form.phone"), value: candidate.phone ?? "—", kind: "phone" },
     { key: "source", label: t("columns.source"), value: t(`source.${candidate.source}`) },
-    { key: "referredBy", label: t("form.referredBy"), value: view.referredByName ?? "—" },
+    { key: "referredBy", label: t("form.referredBy"), value: view.referredByName ? <RecordLink kind="person" id={candidate.referredByPersonId}>{view.referredByName}</RecordLink> : "—" },
     { key: "tags", label: t("columns.tags"), value: candidate.tags.length > 0 ? candidate.tags.join(", ") : "—" },
     ...candidate.links.map((link, index) => ({
       key: `link-${index}`,
@@ -109,9 +110,9 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
               {view.applications.map((row) => (
                 <TableRow key={row.applicationId}>
                   <TableCell className="max-w-80 truncate">
-                    <Link href={`/recruit/applications/${row.applicationId}`} className="font-medium hover:underline">
+                    <RecordLink kind="application" id={row.applicationId} className="font-medium">
                       {row.openingTitle}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
                   <TableCell>{row.stageName}</TableCell>
                   <TableCell>{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</TableCell>

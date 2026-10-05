@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -145,7 +146,15 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
                   <Badge dot variant={statusTone(status)}>{t(`status.${status}`)}</Badge>
                   <Badge variant="outline">{t(`requesters.${change.requestedBy as "client"}`)}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{[change.authorName, format.dateTime(change.createdAt, { dateStyle: "medium" }), change.appliedAt ? t("appliedOn", { date: format.dateTime(change.appliedAt, { dateStyle: "medium" }) }) : null].filter(Boolean).join(" · ")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {change.authorName ? (
+                    <>
+                      <RecordLink kind="person" id={change.createdByPersonId}>{change.authorName}</RecordLink>
+                      {" · "}
+                    </>
+                  ) : null}
+                  {[format.dateTime(change.createdAt, { dateStyle: "medium" }), change.appliedAt ? t("appliedOn", { date: format.dateTime(change.appliedAt, { dateStyle: "medium" }) }) : null].filter(Boolean).join(" · ")}
+                </p>
                 <RichText text={change.description} className="text-sm" />
                 {impactOf(change, can.seeFees)}
                 <p className="flex flex-wrap items-center gap-2 text-sm">

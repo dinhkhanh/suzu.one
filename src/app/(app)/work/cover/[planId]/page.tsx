@@ -49,6 +49,7 @@ export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[
         plan={{
           id: plan.id,
           status: plan.status,
+          personId: plan.personId,
           personName: plan.personName,
           fromDate: plan.fromDate,
           toDate: plan.toDate,

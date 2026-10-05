@@ -97,6 +97,7 @@ export async function getExpenseClaim(viewer: { personId: string; principal: imp
 export type ClaimListRow = {
   requestId: string;
   submissionId: string;
+  requesterPersonId: string;
   requesterName: string;
   status: string;
   summary: string;
@@ -119,6 +120,7 @@ export async function listExpenseClaims(filter: { personId?: string; status?: st
     .select({
       requestId: schema.approvalRequest.id,
       submissionId: schema.requestSubmission.id,
+      requesterPersonId: schema.approvalRequest.requesterPersonId,
       requesterName: schema.person.fullName,
       status: schema.approvalRequest.status,
       summary: schema.approvalRequest.summary,

@@ -12,6 +12,7 @@ import { formatVnd } from "@/modules/payroll/ui/money";
 import { StatutoryExportButton, StatutoryFilters } from "@/modules/payroll/ui/statutory-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("statutoryData");
 
@@ -79,7 +80,7 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
             {(insurance?.rows ?? []).map((row) => (
               <TableRow key={`${row.employeeCode}-${row.reason}`}>
                 <TableCell>
-                  {row.fullName}
+                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                 </TableCell>
                 <TableCell>{t(`d02lt.reasons.${row.reason}`)}</TableCell>
@@ -147,7 +148,7 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
             {(finalization?.rows ?? []).map((row) => (
               <TableRow key={row.personId}>
                 <TableCell>
-                  {row.fullName}
+                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                   {row.hasImportedPeriod ? <span className="ml-2 text-xs text-muted-foreground">{t("finalization.importedMark")}</span> : null}
                 </TableCell>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -70,9 +71,7 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
             <TableRow key={row.accountId ?? "none"}>
               <TableCell>
                 {row.accountId ? (
-                  <Link href={`/crm/accounts/${row.accountId}`} className="hover:underline">
-                    {row.accountName}
-                  </Link>
+                  <RecordLink kind="account" id={row.accountId}>{row.accountName}</RecordLink>
                 ) : (
                   <span className="text-muted-foreground">{t("profitability.noClient")}</span>
                 )}

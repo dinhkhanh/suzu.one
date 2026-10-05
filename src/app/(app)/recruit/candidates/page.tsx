@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, listCandidates } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -59,9 +60,9 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
               <TableRow key={row.id}>
                 <TableCell className="max-w-72">
                   <span className="flex items-center gap-2">
-                    <Link href={`/recruit/candidates/${row.id}`} className="truncate font-medium hover:underline">
+                    <RecordLink kind="candidate" id={row.id} className="truncate font-medium">
                       {row.fullName}
-                    </Link>
+                    </RecordLink>
                     {row.anonymised ? <Badge variant="outline">{t("event.anonymised")}</Badge> : null}
                   </span>
                 </TableCell>

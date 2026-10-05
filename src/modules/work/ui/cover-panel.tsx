@@ -5,6 +5,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import { getCoverPlanForLeaveAs } from "../service";
 
@@ -33,7 +34,7 @@ export async function CoverPlanPanel({ leaveRequestId, viewerPersonId }: { leave
             <li key={item.id} className="flex flex-wrap gap-x-2">
               <span className="text-muted-foreground">{t(`types.${item.itemType}`)}:</span>
               <span className={item.label === null ? "text-muted-foreground italic" : undefined}>{item.label ?? t("privateItem")}</span>
-              <span className="text-muted-foreground">→ {item.itemType === "booking" ? t("bookingInfo") : (item.effectiveCoverName ?? t("uncovered"))}</span>
+              <span className="text-muted-foreground">→ {item.itemType === "booking" ? t("bookingInfo") : item.effectiveCoverName ? <RecordLink kind="person" id={item.coverPersonId ?? plan.defaultCoverPersonId}>{item.effectiveCoverName}</RecordLink> : t("uncovered")}</span>
               {item.acknowledgedAt ? <span className="text-xs text-muted-foreground">({t("acknowledgedOn", { date: format.dateTime(item.acknowledgedAt, { dateStyle: "short" }) })})</span> : null}
             </li>
           ))}

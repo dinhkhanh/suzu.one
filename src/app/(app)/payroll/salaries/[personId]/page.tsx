@@ -6,6 +6,7 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -44,7 +45,7 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
             ← {file.canManage ? t("salaries.title") : t("title")}
           </Link>
         }
-        title={file.person.fullName}
+        title={<RecordLink kind="person" id={personId}>{file.person.fullName}</RecordLink>}
         description={<span className="font-mono text-xs tabular-nums">{file.person.employeeCode}</span>}
       />
 

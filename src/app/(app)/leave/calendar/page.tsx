@@ -9,6 +9,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { type CalendarCell, getTeamCalendar } from "@/modules/leave/calendar";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("teamLeaveCalendar");
 
@@ -102,7 +103,7 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
               return (
                 <TableRow key={person.personId}>
                   <TableCell className="sticky left-0 z-10 h-9 bg-background py-1 text-[0.8125rem]">
-                    <span className={cn("block max-w-44 truncate", person.isSelf && "font-medium")}>{person.fullName}</span>
+                    <RecordLink kind="person" id={person.personId} className={cn("block max-w-44 truncate", person.isSelf && "font-medium")}>{person.fullName}</RecordLink>
                   </TableCell>
                   {calendar.dates.map((day) => {
                     const cell = byDate.get(day.date);
@@ -146,7 +147,9 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
               {awayPeople.length === 0 ? <TableEmpty>{t("calendar.noneAway")}</TableEmpty> : null}
               {awayPeople.map((person) => (
                 <TableRow key={person.personId}>
-                  <TableCell className="font-medium">{person.fullName}</TableCell>
+                  <TableCell className="font-medium">
+                    <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
+                  </TableCell>
                   <TableCell className="whitespace-normal">
                     {[...person.cells]
                       .sort((a, b) => a.date.localeCompare(b.date))

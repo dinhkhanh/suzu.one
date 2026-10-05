@@ -10,12 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { recordDeliveryAction, removeDeliveryAction } from "../delivery-actions";
 import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
 
-export type DeliveryItem = { id: string; version: number | null; deliveredOn: string; recipient: string | null; links: string[]; note: string | null; deliveredByName: string | null; canRemove: boolean };
+export type DeliveryItem = { id: string; version: number | null; deliveredOn: string; recipient: string | null; links: string[]; note: string | null; deliveredByPersonId?: string | null; deliveredByName: string | null; canRemove: boolean };
 export type DeliverableChoice = { id: string; version: number; approved: boolean; frozen: boolean };
 
 const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
@@ -71,7 +72,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
                 <TableCell className="font-medium">{day(item.deliveredOn)}</TableCell>
                 <TableCell kind="id">{item.version ? `v${item.version}` : "—"}</TableCell>
                 <TableCell>{item.recipient ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{item.deliveredByName ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{item.deliveredByName ? <RecordLink kind="person" id={item.deliveredByPersonId}>{item.deliveredByName}</RecordLink> : "—"}</TableCell>
                 <TableCell kind="link" className="max-w-64">
                   {item.links.length ? (
                     <span className="flex flex-col">

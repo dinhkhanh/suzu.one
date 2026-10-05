@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -170,11 +171,13 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
               {view.attention.map((project) => (
                 <TableRow key={project.id}>
                   <TableCell className="max-w-80 truncate">
-                    <Link href={`/work/projects/${project.id}`} className="font-medium underline-offset-4 hover:underline">
+                    <RecordLink kind="project" id={project.id} className="font-medium">
                       {project.name}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
-                  <TableCell>{project.teamName}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="team" id={project.teamId}>{project.teamName}</RecordLink>
+                  </TableCell>
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
                       {project.health ? <Badge dot variant={project.health === "off_track" ? "destructive" : project.health === "at_risk" ? "warning" : "success"}>{t(`health.${project.health}`)}</Badge> : null}
@@ -263,7 +266,10 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                 </TableRow>
                 {view.compliance.teams.map((team) => (
                   <TableRow key={team.teamId}>
-                    <TableCell>{team.name}</TableCell>
+                    <TableCell>
+                      {/* "other" is the small teams added together: a row, not a team. */}
+                      <RecordLink kind="team" id={team.teamId === "other" ? null : team.teamId}>{team.name}</RecordLink>
+                    </TableCell>
                     <TableCell kind="number">{team.people}</TableCell>
                     <TableCell kind="percent">
                       <RateBar rate={team.reports.due === 0 ? null : team.reports.rate} label={compliance(team.reports)} />

@@ -5,9 +5,11 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KIOSK_COOKIE, kioskOfToken, listKioskDevices } from "@/modules/attendance/kiosk";
+import { canManageDevices } from "@/modules/attendance/policy";
 import { CloseKioskButton, OpenKioskButton } from "@/modules/attendance/ui/kiosk/kiosk-admin";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("kiosk");
 
@@ -29,8 +31,11 @@ export default async function KioskPage() {
           {devices.map((device) => (
             <ListItem key={device.id} className="flex-wrap justify-between">
               <span className="min-w-0">
-                <span className="font-medium">{device.name}</span>
-                <span className="text-muted-foreground"> · {device.entityName}</span>
+                <RecordLink kind="device" id={canManageDevices(user.principal, device.entityId) ? device.id : null} className="font-medium">{device.name}</RecordLink>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · <RecordLink kind="entity" id={device.entityId}>{device.entityName}</RecordLink>
+                </span>
                 {device.sessions.length ? <span className="text-muted-foreground"> · {t("openCount", { count: device.sessions.length })}</span> : null}
               </span>
               <OpenKioskButton deviceId={device.id} deviceName={device.name} />
@@ -58,7 +63,9 @@ export default async function KioskPage() {
                 <TableCell className="font-medium text-foreground">
                   {session.deviceName} {here?.session.id === session.id ? <Badge variant="info">{t("sessions.thisDevice")}</Badge> : null}
                 </TableCell>
-                <TableCell>{session.openedBy}</TableCell>
+                <TableCell>
+                  <RecordLink kind="person" id={session.openedByPersonId}>{session.openedBy}</RecordLink>
+                </TableCell>
                 <TableCell kind="date">{when(session.openedAt)}</TableCell>
                 <TableCell kind="date">{session.lastSeenAt ? when(session.lastSeenAt) : "—"}</TableCell>
                 <TableCell kind="actions">

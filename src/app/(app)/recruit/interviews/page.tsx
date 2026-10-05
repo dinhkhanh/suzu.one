@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listMyInterviews } from "@/modules/recruit/interviews";
 import { pageTitle } from "@/i18n/page-title";
@@ -46,9 +46,9 @@ export default async function MyInterviewsPage() {
           {items.map((row) => (
             <TableRow key={row.id}>
               <TableCell className="max-w-64 truncate">
-                <Link href={`/recruit/interviews/${row.id}`} className="font-medium hover:underline">
+                <RecordLink kind="interview" id={row.id} className="font-medium">
                   {row.title}
-                </Link>
+                </RecordLink>
               </TableCell>
               <TableCell>{row.candidateName}</TableCell>
               <TableCell className="max-w-56 truncate">{row.openingTitle}</TableCell>

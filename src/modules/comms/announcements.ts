@@ -104,7 +104,7 @@ function personInAudienceSql(keys: readonly string[], branchPeople: readonly str
     or ${branchPeople.length ? inArray(person.id, [...branchPeople]) : sql`false`})))`;
 }
 
-export type AudiencePerson = { personId: string; fullName: string; departmentName: string | null };
+export type AudiencePerson = { personId: string; fullName: string; departmentId: string | null; departmentName: string | null };
 
 /** The active people an audience names today. */
 export async function audiencePeople(keys: readonly string[], executor: Executor = db(), today: IsoDate = todayInVietnam()): Promise<AudiencePerson[]> {
@@ -114,7 +114,7 @@ export async function audiencePeople(keys: readonly string[], executor: Executor
   });
   const branchPeople = await listPeopleAtBranches(branchIds, today, executor);
   return executor
-    .select({ personId: person.id, fullName: person.fullName, departmentName: orgUnit.name })
+    .select({ personId: person.id, fullName: person.fullName, departmentId: person.departmentId, departmentName: orgUnit.name })
     .from(person)
     .leftJoin(orgUnit, eq(orgUnit.id, person.departmentId))
     .where(and(eq(person.status, "active"), personInAudienceSql(keys, branchPeople)))
@@ -131,7 +131,7 @@ export function visibleSql(viewer: CommsViewer): SQL {
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type AnnouncementCard = { id: string; title: string; excerpt: string; pinned: boolean; mustAcknowledge: boolean; publishAt: Date; authorName: string; read: boolean; acknowledged: boolean };
+export type AnnouncementCard = { id: string; title: string; excerpt: string; pinned: boolean; mustAcknowledge: boolean; publishAt: Date; authorPersonId: string; authorName: string; read: boolean; acknowledged: boolean };
 
 const excerptOf = (body: string, max = 220) => {
   const flat = noteToPlainText(body).replace(/\s+/g, " ").trim();
@@ -148,7 +148,7 @@ export async function listAnnouncementsFor(viewer: CommsViewer, options: { limit
     .orderBy(desc(announcement.pinned), desc(announcement.publishAt))
     .limit(options.limit ?? 50)
     .offset(options.offset ?? 0);
-  return rows.map(({ row, authorName, readAt, acknowledgedAt }) => ({ id: row.id, title: row.title, excerpt: excerptOf(row.body), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt!, authorName, read: !!readAt, acknowledged: !!acknowledgedAt }));
+  return rows.map(({ row, authorName, readAt, acknowledgedAt }) => ({ id: row.id, title: row.title, excerpt: excerptOf(row.body), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt!, authorPersonId: row.authorPersonId, authorName, read: !!readAt, acknowledged: !!acknowledgedAt }));
 }
 
 export async function countUnreadAnnouncements(viewer: CommsViewer): Promise<number> {
@@ -210,7 +210,7 @@ export async function acknowledgeAnnouncement(viewer: CommsViewer, id: string): 
 
 // ── Managing ────────────────────────────────────────────────────────────────────────────────
 
-export type ManagedRow = { id: string; title: string; phase: AnnouncementPhase; pinned: boolean; mustAcknowledge: boolean; publishAt: Date | null; expiresAt: Date | null; authorName: string; audience: string[]; updatedAt: Date };
+export type ManagedRow = { id: string; title: string; phase: AnnouncementPhase; pinned: boolean; mustAcknowledge: boolean; publishAt: Date | null; expiresAt: Date | null; authorPersonId: string; authorName: string; audience: string[]; updatedAt: Date };
 
 /** Everything the viewer may manage. The rule needs each row's resolved targets: the (short) list and all its audiences are loaded at once, then checked row by row with the pure policy. */
 export async function listManagedAnnouncements(principal: Principal, limit = 200): Promise<ManagedRow[]> {
@@ -229,7 +229,7 @@ export async function listManagedAnnouncements(principal: Principal, limit = 200
     const audience = (audiences.get(row.id) ?? []).map((found) => found.key);
     const loaded: LoadedAnnouncement = { row, authorName, audience, targets: [...new Set(audience)].map((key) => ({ key, target: targets.get(key) ?? null })) };
     if (!mayManage(principal, loaded)) continue;
-    result.push({ id: row.id, title: row.title, phase: phaseOf(row, now), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, authorName, audience: loaded.audience, updatedAt: row.updatedAt });
+    result.push({ id: row.id, title: row.title, phase: phaseOf(row, now), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, authorPersonId: row.authorPersonId, authorName, audience: loaded.audience, updatedAt: row.updatedAt });
   }
   return result;
 }
@@ -335,8 +335,8 @@ export type ReadReport = {
   total: number;
   read: number;
   acknowledged: number;
-  byDepartment: { departmentName: string | null; total: number; read: number; acknowledged: number }[];
-  people: { personId: string; fullName: string; departmentName: string | null; readAt: Date | null; acknowledgedAt: Date | null }[];
+  byDepartment: { departmentId: string | null; departmentName: string | null; total: number; read: number; acknowledged: number }[];
+  people: { personId: string; fullName: string; departmentId: string | null; departmentName: string | null; readAt: Date | null; acknowledgedAt: Date | null }[];
 };
 
 /** Pass the announcement when the screen has just loaded it. */
@@ -355,7 +355,7 @@ export async function getReadReport(id: string, preloaded?: Pick<LoadedAnnouncem
     }
     return { total: members.length, read, acknowledged };
   };
-  const byDepartment = [...Map.groupBy(people, (member) => member.departmentName)].map(([departmentName, members]) => ({ departmentName, ...count(members) }));
+  const byDepartment = [...Map.groupBy(people, (member) => member.departmentName)].map(([departmentName, members]) => ({ departmentId: members[0]?.departmentId ?? null, departmentName, ...count(members) }));
   return { ...count(people), byDepartment, people };
 }
 

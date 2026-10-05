@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { recordHref } from "@/lib/record-routes";
 import { List, ListItem } from "@/components/ui/list";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getHiringRequestView } from "@/modules/recruit/hiring";
 import { canOpenFromHiringRequest } from "@/modules/recruit/service";
@@ -37,7 +39,21 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
           <h1>
             {hiringRequest.positionTitle} × {hiringRequest.headcount}
           </h1>
-          <p className="text-sm text-muted-foreground">{[view.entityName, view.departmentName, view.requesterName].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-muted-foreground">
+            {view.entityName ? (
+              <>
+                <RecordLink kind="entity" id={hiringRequest.entityId}>{view.entityName}</RecordLink>
+                {" · "}
+              </>
+            ) : null}
+            {view.departmentName ? (
+              <>
+                <RecordLink kind="unit" id={hiringRequest.departmentId}>{view.departmentName}</RecordLink>
+                {" · "}
+              </>
+            ) : null}
+            <RecordLink kind="person" id={hiringRequest.requestedByPersonId}>{view.requesterName}</RecordLink>
+          </p>
         </div>
         <Badge dot variant={statusTone(hiringRequest.status)}>{t(`hiringStatus.${hiringRequest.status}`)}</Badge>
       </header>
@@ -49,7 +65,7 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("form.hiringManager")}</dt>
-          <dd>{view.hiringManagerName ?? "—"}</dd>
+          <dd>{view.hiringManagerName ? <RecordLink kind="person" id={hiringRequest.hiringManagerPersonId}>{view.hiringManagerName}</RecordLink> : "—"}</dd>
         </div>
         {hiringRequest.targetStartDate ? (
           <div className="flex justify-between gap-3">
@@ -84,7 +100,7 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
         </Link>
       ) : null}
       {hiringRequest.openingId ? (
-        <Link href={`/recruit/${hiringRequest.openingId}`} className="text-sm underline underline-offset-4">
+        <Link href={recordHref("opening", hiringRequest.openingId)} className="text-sm underline underline-offset-4">
           {t("actions.openOpening")}
         </Link>
       ) : null}
@@ -99,7 +115,9 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
                   {tApprovals(`event.${event.type}` as "event.submitted")}
                   {event.comment ? <span className="block text-xs text-muted-foreground">{event.comment}</span> : null}
                 </span>
-                <span className="text-xs text-muted-foreground">{event.actorName ?? ""}</span>
+                <span className="text-xs text-muted-foreground">
+                  <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink>
+                </span>
                 <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
               </ListItem>
             ))}

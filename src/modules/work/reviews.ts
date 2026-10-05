@@ -349,9 +349,9 @@ export async function recordClientDecision(deliverableId: string, input: { decis
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type DecisionView = { id: string; deliverableId: string; stageIndex: number; stageName: string | null; decision: string; comment: string | null; isClient: boolean; client: ClientDecisionFacts | null; decidedByName: string | null; createdAt: Date; evidenceFileName: string | null };
+export type DecisionView = { id: string; deliverableId: string; stageIndex: number; stageName: string | null; decision: string; comment: string | null; isClient: boolean; client: ClientDecisionFacts | null; decidedByPersonId: string | null; decidedByName: string | null; createdAt: Date; evidenceFileName: string | null };
 
-export type DeliverableView = Pick<DeliverableRow, "id" | "version" | "kind" | "fileId" | "url" | "note" | "submittedAt" | "decision" | "decidedAt" | "decisionComment" | "submittedByPersonId" | "chainId" | "stageIndex" | "stageReviewerPersonId" | "stageDueAt" | "frozenAt"> & {
+export type DeliverableView = Pick<DeliverableRow, "id" | "version" | "kind" | "fileId" | "url" | "note" | "submittedAt" | "decision" | "decidedAt" | "decisionComment" | "submittedByPersonId" | "decidedByPersonId" | "chainId" | "stageIndex" | "stageReviewerPersonId" | "stageDueAt" | "frozenAt"> & {
   fileName: string | null;
   contentType: string | null;
   submittedByName: string | null;
@@ -382,6 +382,7 @@ export async function listDeliverables(taskId: string): Promise<DeliverableView[
       decidedAt: schema.workDeliverable.decidedAt,
       decisionComment: schema.workDeliverable.decisionComment,
       submittedByPersonId: schema.workDeliverable.submittedByPersonId,
+      decidedByPersonId: schema.workDeliverable.decidedByPersonId,
       chainId: schema.workDeliverable.chainId,
       stageIndex: schema.workDeliverable.stageIndex,
       stageReviewerPersonId: schema.workDeliverable.stageReviewerPersonId,
@@ -421,11 +422,11 @@ export async function listDeliverables(taskId: string): Promise<DeliverableView[
       const index = (stages ?? []).findIndex((stage) => isClientStage(stage));
       return index >= 0 ? index : null;
     })(),
-    decisions: (byVersion.get(row.id) ?? []).map(({ decision, decidedByName, evidenceFileName }) => ({ id: decision.id, deliverableId: decision.deliverableId, stageIndex: decision.stageIndex, stageName: decision.stageName, decision: decision.decision, comment: decision.comment, isClient: decision.isClient, client: decision.client, decidedByName, createdAt: decision.createdAt, evidenceFileName })),
+    decisions: (byVersion.get(row.id) ?? []).map(({ decision, decidedByName, evidenceFileName }) => ({ id: decision.id, deliverableId: decision.deliverableId, stageIndex: decision.stageIndex, stageName: decision.stageName, decision: decision.decision, comment: decision.comment, isClient: decision.isClient, client: decision.client, decidedByPersonId: decision.decidedByPersonId, decidedByName, createdAt: decision.createdAt, evidenceFileName })),
   }));
 }
 
-export type ReviewWaiting = { taskId: string; key: string; title: string; dueDate: string | null; priority: number | null; projectName: string | null; version: number; submittedByName: string | null; submittedAt: Date; deliverableId: string; stageName: string | null; stageDueAt: Date | null; isClient: boolean };
+export type ReviewWaiting = { taskId: string; key: string; title: string; dueDate: string | null; priority: number | null; projectId: string | null; projectName: string | null; version: number; submittedByPersonId: string | null; submittedByName: string | null; submittedAt: Date; deliverableId: string; stageName: string | null; stageDueAt: Date | null; isClient: boolean };
 
 /**
  * Who a pending version waits for: the task's reviewer for a single-step review, the stage's
@@ -440,7 +441,7 @@ const waitingFor = (personId: string) =>
 /** Deliverables waiting for this person's decision — a section of My work (FR-WRK-06), with the stage it waits at. */
 export async function listReviewsWaitingFor(personId: string): Promise<ReviewWaiting[]> {
   const rows = await db()
-    .select({ taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, dueDate: schema.task.dueDate, priority: schema.task.priority, projectName: schema.workProject.name, version: schema.workDeliverable.version, submittedByName: schema.person.fullName, submittedAt: schema.workDeliverable.submittedAt, deliverableId: schema.workDeliverable.id, stageIndex: schema.workDeliverable.stageIndex, stageDueAt: schema.workDeliverable.stageDueAt, stages: schema.workReviewChain.stages })
+    .select({ taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, dueDate: schema.task.dueDate, priority: schema.task.priority, projectId: schema.workTask.projectId, projectName: schema.workProject.name, version: schema.workDeliverable.version, submittedByPersonId: schema.workDeliverable.submittedByPersonId, submittedByName: schema.person.fullName, submittedAt: schema.workDeliverable.submittedAt, deliverableId: schema.workDeliverable.id, stageIndex: schema.workDeliverable.stageIndex, stageDueAt: schema.workDeliverable.stageDueAt, stages: schema.workReviewChain.stages })
     .from(schema.workTask)
     .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))

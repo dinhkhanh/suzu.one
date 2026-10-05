@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { RecordLink } from "@/components/ui/record-link";
 import { confirmCashReceiptAction, generateBankFileAction, openCashSheetAction, recordCashDisbursementAction } from "../payment-actions";
 import type { SkippedRow } from "../exports/banks";
 
@@ -87,7 +88,7 @@ export function BankFileForm({ runId, banks, defaultValueDate }: { runId: string
           <li className="font-medium">{t("bank.skippedTitle")}</li>
           {generated.skipped.map((row) => (
             <li key={row.personId} className="text-muted-foreground">
-              {row.fullName} — {t(`bank.skipReasons.${row.reason}` as "bank.skipReasons.no_account")}
+              <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink> — {t(`bank.skipReasons.${row.reason}` as "bank.skipReasons.no_account")}
             </li>
           ))}
         </ul>

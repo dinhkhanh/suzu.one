@@ -427,7 +427,7 @@ export async function getRequestRows(requestIds: readonly string[]): Promise<App
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type RequestListRow = { id: string; type: string; summary: string; status: RequestStatus; link: string | null; createdAt: Date; decidedAt: Date | null; requesterName: string; subjectName: string | null };
+export type RequestListRow = { id: string; type: string; summary: string; status: RequestStatus; link: string | null; createdAt: Date; decidedAt: Date | null; requesterPersonId: string; requesterName: string; subjectName: string | null };
 
 const requester = alias(schema.person, "requester");
 const subject = alias(schema.person, "subject");
@@ -439,6 +439,7 @@ const LIST_COLUMNS = {
   link: schema.approvalRequest.link,
   createdAt: schema.approvalRequest.createdAt,
   decidedAt: schema.approvalRequest.decidedAt,
+  requesterPersonId: schema.approvalRequest.requesterPersonId,
   requesterName: requester.fullName,
   subjectName: subject.fullName,
 };
@@ -468,7 +469,7 @@ export const listInboxWithRows = cache(async (personId: string): Promise<(Reques
 
 /** Requests waiting for this person's answer, oldest first. */
 export async function listInbox(personId: string): Promise<RequestListRow[]> {
-  return (await listInboxWithRows(personId)).map(({ id, type, summary, status, link, createdAt, decidedAt, requesterName, subjectName }) => ({ id, type, summary, status, link, createdAt, decidedAt, requesterName, subjectName }));
+  return (await listInboxWithRows(personId)).map(({ id, type, summary, status, link, createdAt, decidedAt, requesterPersonId, requesterName, subjectName }) => ({ id, type, summary, status, link, createdAt, decidedAt, requesterPersonId, requesterName, subjectName }));
 }
 
 /** Once per request: the home feed and the dashboard both show it. */
@@ -571,7 +572,7 @@ export type RequestView = {
   subjectName: string | null;
   subject: SubjectTarget | null;
   steps: { key: string; mode: "any" | "all"; status: string; parallel: boolean; assignees: { personId: string; name: string; status: string; comment: string | null; decidedAt: Date | null; delegatedFromName: string | null }[] }[];
-  events: { id: number; type: string; actorName: string | null; comment: string | null; meta: Record<string, unknown> | null; at: Date }[];
+  events: { id: number; type: string; actorPersonId: string | null; actorName: string | null; comment: string | null; meta: Record<string, unknown> | null; at: Date }[];
   isRequester: boolean;
   /** It is this viewer's turn to answer. */
   canDecide: boolean;
@@ -593,7 +594,7 @@ export async function getRequest(viewer: { personId: string; principal: Principa
       .where(eq(schema.approvalAssignee.requestId, requestId))
       .orderBy(asc(schema.approvalAssignee.id)),
     db()
-      .select({ id: schema.approvalEvent.id, type: schema.approvalEvent.type, actorName: actor.fullName, comment: schema.approvalEvent.comment, meta: schema.approvalEvent.meta, at: schema.approvalEvent.at })
+      .select({ id: schema.approvalEvent.id, type: schema.approvalEvent.type, actorPersonId: schema.approvalEvent.actorPersonId, actorName: actor.fullName, comment: schema.approvalEvent.comment, meta: schema.approvalEvent.meta, at: schema.approvalEvent.at })
       .from(schema.approvalEvent)
       .leftJoin(actor, eq(actor.id, schema.approvalEvent.actorPersonId))
       .where(eq(schema.approvalEvent.requestId, requestId))

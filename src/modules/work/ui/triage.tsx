@@ -2,15 +2,15 @@
 // The triage queue (FR-PJM-32): one card per incoming task with the lead's four answers — accept,
 // decline, merge, snooze — and the team's triage rules below.
 import { useFormatter, useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -21,7 +21,7 @@ import { LabelChip } from "./team-forms";
 
 type Named = { id: string; name: string };
 type Person = { id: string; fullName: string };
-export type TriageCard = { id: string; key: string; title: string; description: string | null; source: string | null; triageStatus: string | null; snoozedUntil: string | null; requesterName: string | null; formName: string | null; createdAt: string; assigneePersonId: string | null; projectId: string | null; dueDate: string | null; priority: number | null; labelIds: string[] };
+export type TriageCard = { id: string; key: string; title: string; description: string | null; source: string | null; triageStatus: string | null; snoozedUntil: string | null; requesterPersonId?: string | null; requesterName: string | null; formName: string | null; createdAt: string; assigneePersonId: string | null; projectId: string | null; dueDate: string | null; priority: number | null; labelIds: string[] };
 export type TriageRuleView = { id: string; name: string; match: { source?: string; intakeFormId?: string; keyword?: string }; set: { assigneePersonId?: string; projectId?: string; labelIds?: string[]; priority?: number }; sortOrder: number; isActive: boolean };
 type Choices = { people: Person[]; projects: Named[]; labels: { id: string; name: string; color: string }[]; forms: Named[]; mergeTargets: { id: string; key: string; title: string }[] };
 
@@ -90,19 +90,24 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
   const { run, pending, errorKey } = useRun();
   const [mode, setMode] = useState<"accept" | "decline" | "merge" | "snooze" | null>(null);
   const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  const assignee = choices.people.find((person) => person.id === item.assigneePersonId);
+  const project = choices.projects.find((row) => row.id === item.projectId);
 
   return (
     <ListItem>
       <article className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">{item.key}</span>
-          <Link href={`/work/tasks/${item.id}`} className="min-w-0 flex-1 font-medium hover:underline">
+          <RecordLink kind="task" id={item.id} className="min-w-0 flex-1 font-medium">
             {item.title}
-          </Link>
+          </RecordLink>
           {item.source ? <Badge variant="outline">{t.has(`sources.${item.source}`) ? t(`sources.${item.source}`) : item.source}</Badge> : null}
           {item.snoozedUntil ? <Badge variant="warning">{t("until", { date: localDate(item.snoozedUntil) })}</Badge> : null}
         </div>
-        <p className="text-xs text-muted-foreground">{[t("from", { name: item.requesterName ?? "—", date: format.dateTime(new Date(item.createdAt), { dateStyle: "medium" }) }), item.formName ? t("viaForm", { form: item.formName }) : null].filter(Boolean).join(" · ")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t.rich("from", { name: item.requesterName ?? "—", date: format.dateTime(new Date(item.createdAt), { dateStyle: "medium" }), who: (chunks) => <RecordLink kind="person" id={item.requesterName ? item.requesterPersonId : null}>{chunks}</RecordLink> })}
+          {item.formName ? ` · ${t("viaForm", { form: item.formName })}` : null}
+        </p>
         {item.description ? (
           <details>
             <summary className="cursor-pointer text-xs text-muted-foreground">{tWork("task.fields.description")}</summary>
@@ -112,7 +117,18 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
         {item.assigneePersonId || item.projectId || item.priority || item.labelIds.length ? (
           <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {t("prefilled")}:{" "}
-            {[choices.people.find((person) => person.id === item.assigneePersonId)?.fullName, choices.projects.find((project) => project.id === item.projectId)?.name, item.priority ? tWork(`priority.${item.priority}`) : null].filter(Boolean).join(" · ")}
+            {[
+              assignee ? <RecordLink key="assignee" kind="person" id={assignee.id}>{assignee.fullName}</RecordLink> : null,
+              project ? <RecordLink key="project" kind="project" id={project.id}>{project.name}</RecordLink> : null,
+              item.priority ? tWork(`priority.${item.priority}`) : null,
+            ]
+              .filter(Boolean)
+              .map((part, index) => (
+                <Fragment key={index}>
+                  {index ? " · " : null}
+                  {part}
+                </Fragment>
+              ))}
             {item.labelIds.map((id) => {
               const label = choices.labels.find((row) => row.id === id);
               return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;

@@ -1,6 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -46,9 +47,9 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   };
 
   const empty = analytics.total.completed === 0 && analytics.total.open === 0;
-  const rows: { label: string; groups: NamedGroup[] }[] = [
-    { label: t("byTeam"), groups: analytics.byTeam },
-    { label: t("byClient"), groups: analytics.byClient },
+  const rows: { label: string; kind: "team" | "account"; groups: NamedGroup[] }[] = [
+    { label: t("byTeam"), kind: "team", groups: analytics.byTeam },
+    { label: t("byClient"), kind: "account", groups: analytics.byClient },
   ];
 
   return (
@@ -127,11 +128,13 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
             )}
             {empty
               ? null
-              : rows.flatMap(({ label, groups }) =>
+              : rows.flatMap(({ label, kind, groups }) =>
                   groups.map((group) => (
                     <TableRow key={`${label}-${group.id}`}>
                       <TableCell className="text-muted-foreground">{label}</TableCell>
-                      <TableCell>{group.name}</TableCell>
+                      <TableCell>
+                        <RecordLink kind={kind} id={group.id}>{group.name}</RecordLink>
+                      </TableCell>
                       <TableCell kind="number">{group.cell.completed}</TableCell>
                       <TableCell kind="number">{group.cell.onTime}</TableCell>
                       <TableCell kind="number">{group.cell.late}</TableCell>

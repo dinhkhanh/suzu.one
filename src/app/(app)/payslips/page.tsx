@@ -1,9 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listCashAwaitingReceipt } from "@/modules/payroll/payments";
@@ -61,12 +61,14 @@ export default async function MyPayslipsPage() {
           {payslips.map((payslip) => (
             <TableRow key={payslip.id}>
               <TableCell>
-                <Link href={`/payslips/${payslip.id}`} className="font-mono font-medium tabular-nums hover:underline">
+                <RecordLink kind="payslip" id={payslip.id} className="font-mono font-medium tabular-nums">
                   {monthLabel(payslip.month)}
-                </Link>
+                </RecordLink>
                 {payslip.kind === "off_cycle" ? <span className="ml-2 text-xs text-muted-foreground">{payslip.runName}</span> : null}
               </TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{payslip.entityCode}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                <RecordLink kind="entity" id={payslip.entityId}>{payslip.entityCode}</RecordLink>
+              </TableCell>
               <TableCell kind="money" className="font-medium">{formatVnd(payslip.net)}</TableCell>
               <TableCell className="text-muted-foreground">{format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}</TableCell>
               <TableCell>

@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { canCloseKpiMonth, canReopenKpiMonth, closeBlockersOf, consumedMonths, listPeriods } from "@/modules/performance/service";
 import { MonthPicker, monthLabel, readMonth, ScoreState } from "@/modules/performance/ui/kpi";
@@ -38,7 +39,9 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
           return (
             <ListItem key={entity.id} className="flex-col items-stretch gap-3">
               <header className="flex flex-wrap items-center gap-3">
-                <h2 className="text-sm font-medium">{`${entity.code} · ${entity.shortName}`}</h2>
+                <h2 className="text-sm font-medium">
+                  <RecordLink kind="entity" id={entity.id}>{`${entity.code} · ${entity.shortName}`}</RecordLink>
+                </h2>
                 <ScoreState state={closed ? "closed" : "open"} label={t(`kpi.state.${closed ? "closed" : "open"}`)} />
                 {closed && period?.closedAt ? <span className="text-xs text-muted-foreground">{t("periods.closedOn", { date: format.dateTime(period.closedAt, { dateStyle: "medium" }) })}</span> : null}
               </header>

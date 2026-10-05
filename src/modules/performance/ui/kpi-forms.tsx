@@ -11,6 +11,7 @@ import { List, ListItem } from "@/components/ui/list";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { MetricValueInput } from "./metric-input";
 import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText, WORK_METRIC_UNITS, WORK_METRICS, type WorkMetric } from "../enums";
 import { applyTemplatesAction, closeKpiMonthAction, endAssignmentAction, removePositionKpiAction, reopenKpiMonthAction, saveActualsAction, saveAssignmentAction, saveKpiAction, savePositionKpiAction } from "../kpi-actions";
@@ -37,7 +38,7 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
     <form onSubmit={form.onSubmit} className="flex flex-col gap-4">
       {people.map((person) => (
         <TableCard key={person.personId}>
-          <TableCardHeader title={person.fullName} actions={person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null} />
+          <TableCardHeader title={<RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>} actions={person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null} />
           <List>
             {person.lines.map((line) => {
               const name = `entries.${rowOf.get(line.assignmentId) ?? 0}`;
@@ -397,7 +398,10 @@ export function CloseMonthForm({ entityId, month, blockers }: { entityId: string
           <p className="text-sm text-warning">{t("periods.blocked", { count: listed.length })}</p>
           <ul className="list-disc pl-5 text-xs text-muted-foreground">
             {listed.slice(0, 30).map((item) => (
-              <li key={`${item.personId}:${item.kpiCode}:${item.periodKey}`}>{`${item.personName} — ${item.kpiName} (${item.periodKey})`}</li>
+              <li key={`${item.personId}:${item.kpiCode}:${item.periodKey}`}>
+                <RecordLink kind="person" id={item.personId}>{item.personName}</RecordLink>
+                {` — ${item.kpiName} (${item.periodKey})`}
+              </li>
             ))}
           </ul>
           <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("periods.overrideReason")} maxLength={1000} aria-label={t("periods.overrideReason")} />

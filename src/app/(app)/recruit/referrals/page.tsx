@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageReferrals } from "@/modules/recruit/policy";
 import { listMyReferrals, listOpeningsForReferral, listReferrals } from "@/modules/recruit/referrals";
@@ -99,12 +100,16 @@ export default async function ReferralsPage() {
               {book.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="max-w-64 truncate">
-                    <Link href={`/recruit/applications/${row.applicationId}`} className="font-medium hover:underline">
+                    <RecordLink kind="application" id={row.applicationId} className="font-medium">
                       {row.candidateName}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
-                  <TableCell>{row.referredByName}</TableCell>
-                  <TableCell className="max-w-56 truncate">{row.openingTitle}</TableCell>
+                  <TableCell>
+                    <RecordLink kind="person" id={row.referredByPersonId}>{row.referredByName}</RecordLink>
+                  </TableCell>
+                  <TableCell className="max-w-56 truncate">
+                    <RecordLink kind="opening" id={row.openingId}>{row.openingTitle}</RecordLink>
+                  </TableCell>
                   <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                   <TableCell>{row.stageName}</TableCell>
                   <TableCell>

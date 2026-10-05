@@ -11,6 +11,7 @@ import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/module
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("compliance");
 
@@ -74,7 +75,9 @@ export default async function OpsDashboardPage({ searchParams }: PageProps<"/ops
                   <Link href={`/ops/list${overviewParams(query, { entity: row.entity.id })}`} className="font-mono text-[0.8125rem] font-medium hover:underline">
                     {row.entity.code}
                   </Link>
-                  <p className="text-xs font-normal text-faint">{row.entity.shortName}</p>
+                  <p className="text-xs font-normal text-faint">
+                    <RecordLink kind="entity" id={row.entity.id}>{row.entity.shortName}</RecordLink>
+                  </p>
                 </th>
                 {row.cells.map((cell) => {
                   const worst = worstColour(cell);

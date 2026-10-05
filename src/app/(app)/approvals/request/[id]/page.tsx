@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Page, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
 import { ApprovalChain, RequestEvents, RequestHeader, RequestTools } from "@/modules/platform/approvals/ui/request-views";
@@ -60,7 +61,7 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
         kind={typeName}
         status={request.status}
         requestId={request.id}
-        who={view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>}
+        who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>}
         actions={
           <Link href="/approvals" className="text-sm text-link hover:underline">
             ← {t("backToApprovals")}

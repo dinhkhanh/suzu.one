@@ -9,8 +9,10 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { MultiSelect } from "@/components/ui/select";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
+import { recordHref } from "@/lib/record-routes";
 import { setProjectDigitalAssetsAction } from "../actions";
 
 export type DigitalAssetChip = { id: string; name: string; platform: string; status?: string };
@@ -22,7 +24,7 @@ export function DigitalAssetChips({ assets }: { assets: DigitalAssetChip[] }) {
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       {assets.map((asset) => (
-        <Badge key={asset.id} variant="secondary" render={<Link href={`/assets/digital/${asset.id}`} />}>
+        <Badge key={asset.id} variant="secondary" render={<Link href={recordHref("digitalAsset", asset.id)} />}>
           {t(asset.platform)} · {asset.name}
         </Badge>
       ))}
@@ -45,13 +47,13 @@ export function TaskDigitalAssets({ assets, assigneeName }: { assets: (DigitalAs
         {assets.map((asset) => (
           <ListItem key={asset.id} className="flex-wrap gap-x-3 gap-y-1">
             <Badge variant="secondary">{tPlatform(asset.platform)}</Badge>
-            <Link href={`/assets/digital/${asset.id}`} className="min-w-0 truncate font-medium hover:underline">
+            <RecordLink kind="digitalAsset" id={asset.id} className="min-w-0 truncate font-medium">
               {asset.name}
-            </Link>
+            </RecordLink>
             {asset.handle ? <span className="font-mono text-xs text-faint">{asset.handle}</span> : null}
             {asset.status === "retired" ? <Badge variant="outline">{t("retired")}</Badge> : null}
             {asset.assigneeHasAccess === false ? (
-              <Badge variant="warning" className="ml-auto" render={<Link href={`/assets/digital/${asset.id}`} />}>
+              <Badge variant="warning" className="ml-auto" render={<Link href={recordHref("digitalAsset", asset.id)} />}>
                 {t("noAccess", { name: assigneeName ?? "" })}
               </Badge>
             ) : null}

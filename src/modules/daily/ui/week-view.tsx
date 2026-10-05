@@ -2,8 +2,10 @@
 // reader's language. A server component: the person's own week page and the approver's page both
 // render it, editable only for the person and only while the week is open.
 import { getFormatter, getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import type { TimeWeekView } from "../timesheets";
 import { TIME_CATEGORIES } from "../enums";
@@ -11,21 +13,22 @@ import { hoursOf } from "./format";
 import { type EntryView, WeekEntries } from "./week-entries";
 import { type GridDayView, type GridRowView, type RowOption, WeekGrid } from "./week-grid";
 
-type OpenTask = { taskId: string; key: string; title: string; projectName: string | null };
+type OpenTask = { taskId: string; key: string; title: string; projectId?: string | null; projectName: string | null };
 
 export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; openTasks?: OpenTask[] }) {
   const [t, format] = await Promise.all([getTranslations("daily.time"), getFormatter()]);
   const categoryName = (category: string | null) => t(`categories.${(TIME_CATEGORIES as readonly string[]).includes(category ?? "") ? (category as "admin") : "internal"}`);
-  const labelOf = (key: string): { label: string; sub: string | null } => {
+  // With the ids of the task and the project the labels name, so the grid and the entries link them.
+  const labelOf = (key: string): { label: string; sub: string | null; taskId?: string | null; projectId?: string | null } => {
     const label = view.labels[key];
     if (!label) {
       const task = openTasks.find((row) => `task:${row.taskId}` === key);
-      if (task) return { label: `${task.key} ${task.title}`, sub: task.projectName };
+      if (task) return { label: `${task.key} ${task.title}`, sub: task.projectName, taskId: task.taskId, projectId: task.projectId };
       return key.startsWith("category:") ? { label: categoryName(key.slice("category:".length)), sub: null } : { label: "—", sub: null };
     }
     // A task this reader may not open: its hours belong on their screen, its name does not.
     if (label.hidden) return { label: t("privateWork"), sub: null };
-    return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName } : { label: categoryName(label.category), sub: null };
+    return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName, taskId: label.taskId, projectId: label.projectName ? label.projectId : null } : { label: categoryName(label.category), sub: null };
   };
   const dayLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "numeric" });
 
@@ -40,11 +43,14 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   const options: RowOption[] = view.editable
     ? [...openTasks.map((task) => ({ key: `task:${task.taskId}`, label: `${task.key} ${task.title}`, sub: task.projectName })), ...TIME_CATEGORIES.map((category) => ({ key: `category:${category}`, label: categoryName(category), sub: t("otherTime") }))]
     : [];
-  const copyRows: RowOption[] = view.lastWeekRows.map((key) => ({ key, ...labelOf(key) }));
+  const copyRows: RowOption[] = view.lastWeekRows.map((key) => {
+    const { label, sub } = labelOf(key);
+    return { key, label, sub };
+  });
   const entries: EntryView[] = view.entries.map((entry) => ({
     id: entry.id,
     day: format.dateTime(new Date(`${entry.date}T12:00:00Z`), { weekday: "short", day: "numeric" }),
-    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName } : { label: categoryName(entry.category), sub: null }),
+    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName, taskId: entry.taskId, projectId: entry.projectName ? entry.projectId : null } : { label: categoryName(entry.category), sub: null }),
     minutes: entry.minutes,
     billable: entry.billable,
     note: entry.note,
@@ -68,6 +74,7 @@ export async function WeekStatus({ view }: { view: TimeWeekView }) {
   const [t, format] = await Promise.all([getTranslations("daily.time"), getFormatter()]);
   const week = view.week;
   const when = (date: Date | null) => (date ? format.dateTime(date, { dateStyle: "short", timeStyle: "short" }) : "");
+  const person = (chunks: ReactNode) => <RecordLink kind="person" id={week?.decidedByPersonId}>{chunks}</RecordLink>;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -75,9 +82,9 @@ export async function WeekStatus({ view }: { view: TimeWeekView }) {
         {view.timeMode === "required" ? <Badge variant="outline">{t("requiredBadge")}</Badge> : null}
         {week?.submittedAt && view.status === "submitted" ? <span className="text-xs text-muted-foreground">{t("submittedAt", { time: when(week.submittedAt) })}</span> : null}
       </div>
-      {week && view.status === "returned" && week.comment ? <p className="text-sm text-warning">{t("returnedBy", { name: week.decidedByName ?? "—", comment: week.comment })}</p> : null}
-      {week && view.status === "approved" ? <p className="text-sm text-muted-foreground">{t("approvedBy", { name: week.decidedByName ?? "—", time: when(week.decidedAt) })}</p> : null}
-      {week && view.status === "open" && week.decidedByPersonId && week.comment ? <p className="text-sm text-muted-foreground">{t("reopenedBy", { name: week.decidedByName ?? "—", comment: week.comment })}</p> : null}
+      {week && view.status === "returned" && week.comment ? <p className="text-sm text-warning">{t.rich("returnedBy", { name: week.decidedByName ?? "—", comment: week.comment, person })}</p> : null}
+      {week && view.status === "approved" ? <p className="text-sm text-muted-foreground">{t.rich("approvedBy", { name: week.decidedByName ?? "—", time: when(week.decidedAt), person })}</p> : null}
+      {week && view.status === "open" && week.decidedByPersonId && week.comment ? <p className="text-sm text-muted-foreground">{t.rich("reopenedBy", { name: week.decidedByName ?? "—", comment: week.comment, person })}</p> : null}
     </div>
   );
 }

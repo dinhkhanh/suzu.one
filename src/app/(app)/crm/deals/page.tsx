@@ -1,5 +1,4 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -125,18 +125,22 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
             {deals.map((deal) => (
               <TableRow key={deal.id}>
                 <TableCell>
-                  <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                  <RecordLink kind="deal" id={deal.id} className="font-medium">
                     {deal.title}
-                  </Link>
+                  </RecordLink>
                   <p className="font-mono text-xs text-faint">{deal.code}</p>
                 </TableCell>
-                <TableCell>{deal.accountName}</TableCell>
+                <TableCell>
+                  <RecordLink kind="account" id={deal.clientId}>{deal.accountName}</RecordLink>
+                </TableCell>
                 <TableCell>
                   <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
                     {stageName(deal.stage, locale)}
                   </Badge>
                 </TableCell>
-                <TableCell>{deal.ownerName}</TableCell>
+                <TableCell>
+                  <RecordLink kind="person" id={deal.ownerPersonId}>{deal.ownerName}</RecordLink>
+                </TableCell>
                 <TableCell kind="date">{f.date(deal.expectedCloseOn)}</TableCell>
                 <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
                 <TableCell kind="money">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>

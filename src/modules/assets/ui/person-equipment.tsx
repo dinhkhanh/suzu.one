@@ -5,13 +5,13 @@
 // The same goes for what has no shelf: the pages and channels they can get into or answer for
 // (FR-AST-08) and the software seats in their name (FR-AST-11) — a leaver gives those back too.
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import { canReadPersonAssets } from "../policy";
+import { canManageLicences, canReadPersonAssets } from "../policy";
 import { listDigitalAccessOfPerson, listDigitalAssetsOwnedBy } from "../digital";
 import { listSeatsOfPerson } from "../seats";
 import { listAssetsOfPerson } from "../service";
+import { RecordLink } from "@/components/ui/record-link";
 
 export async function PersonEquipment({ principal, personId }: { principal: Principal; personId: string }) {
   const target = await getPersonTarget(personId);
@@ -28,9 +28,9 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
         <ul className="flex flex-col gap-2 text-sm">
           {held.map((item) => (
             <li key={item.assignmentId} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
-              <Link href={`/assets/${item.assetId}`} className="font-mono text-xs underline">
+              <RecordLink kind="asset" id={item.assetId} className="font-mono text-xs underline">
                 {item.code}
-              </Link>
+              </RecordLink>
               <span>{item.name}</span>
               <span className="text-xs text-muted-foreground">
                 {item.categoryName} · {t("since", { date: item.assignedAt.toLocaleDateString("vi-VN") })}
@@ -47,9 +47,9 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
           <ul className="flex flex-col gap-2 text-sm">
             {owned.map((asset) => (
               <li key={asset.id} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
-                <Link href={`/assets/digital/${asset.id}`} className="underline">
+                <RecordLink kind="digitalAsset" id={asset.id} className="underline">
                   {asset.name}
-                </Link>
+                </RecordLink>
                 <span className="text-xs text-muted-foreground">
                   {tDigital(`platform.${asset.platform}`)} · {t("answersFor")}
                 </span>
@@ -57,9 +57,9 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
             ))}
             {active.map((row) => (
               <li key={row.accessId} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
-                <Link href={`/assets/digital/${row.assetId}`} className="underline">
+                <RecordLink kind="digitalAsset" id={row.assetId} className="underline">
                   {row.name}
-                </Link>
+                </RecordLink>
                 <span className="text-xs text-muted-foreground">
                   {tDigital(`platform.${row.platform}`)} · {tDigital(`level.${row.level}`)}
                   {row.method === "shared_login" ? ` · ${tDigital("method.shared_login")}` : ""}
@@ -75,7 +75,7 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
           <ul className="flex flex-col gap-2 text-sm">
             {seats.map((seat) => (
               <li key={seat.seatId} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
-                <span>{seat.name}</span>
+                <RecordLink kind="licence" id={canManageLicences(principal) ? seat.licenceId : null}>{seat.name}</RecordLink>
                 <span className="text-xs text-muted-foreground">{[seat.vendor, seat.viaAsset ? t("onDevice", { device: seat.viaAsset.code }) : null].filter(Boolean).join(" · ")}</span>
               </li>
             ))}

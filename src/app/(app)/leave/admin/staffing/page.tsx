@@ -8,6 +8,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { unitChoices } from "@/modules/platform/org/service";
 import { leaveConfigOptions } from "../options";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("minimumStaffing");
 
@@ -35,7 +36,19 @@ export default async function StaffingPage() {
             {rules.length === 0 ? <TableEmpty>{t("staffing.none")}</TableEmpty> : null}
             {rules.map(({ rule, entityName, departmentName, teamName }) => (
               <TableRow key={rule.id}>
-                <TableCell className="font-medium">{[teamName, departmentName, entityName ?? t("everyEntity")].filter(Boolean).join(" · ")}</TableCell>
+                <TableCell className="font-medium">
+                  {teamName ? (
+                    <>
+                      <RecordLink kind="unit" id={rule.teamId}>{teamName}</RecordLink> ·{" "}
+                    </>
+                  ) : null}
+                  {departmentName ? (
+                    <>
+                      <RecordLink kind="unit" id={rule.departmentId}>{departmentName}</RecordLink> ·{" "}
+                    </>
+                  ) : null}
+                  {entityName ? <RecordLink kind="entity" id={rule.entityId}>{entityName}</RecordLink> : t("everyEntity")}
+                </TableCell>
                 <TableCell kind="number">{rule.minPresent}</TableCell>
                 <TableCell kind="actions">{canManageLeaveConfig(user.principal, rule.entityId) ? <DeleteStaffingRuleButton id={rule.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}</TableCell>
               </TableRow>

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageReviewChains, canViewTeam, findTeam, listReviewChains, listTeamMembers, loadViewer, teamFacts } from "@/modules/work/service";
@@ -24,9 +25,9 @@ export default async function TeamReviewChainsPage({ params }: PageProps<"/work/
             {t("title")}
           </Link>
           <span className="text-faint">/</span>
-          <Link href={`/work/teams/${team.id}`} className="hover:underline">
+          <RecordLink kind="team" id={team.id}>
             {team.name}
-          </Link></span>} title={t("chains.title")} description={t("chains.description")} />
+          </RecordLink></span>} title={t("chains.title")} description={t("chains.description")} />
       <ReviewChainManager
         teamId={team.id}
         chains={chains.map(({ id, name, projectId, contentFormat, isActive, stages }) => ({ id, name, projectId, contentFormat, isActive, stages }))}

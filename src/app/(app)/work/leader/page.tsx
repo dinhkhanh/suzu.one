@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -64,7 +65,7 @@ export default async function LeaderPage() {
       {view.people.map((person) => (
         <TableCard key={person.personId ?? "none"}>
           <TableCardHeader
-            title={person.name ?? t("unassigned")}
+            title={person.name ? <RecordLink kind="person" id={person.personId}>{person.name}</RecordLink> : t("unassigned")}
             description={t("counts", person.counts)}
             actions={
               person.blocked || person.tasks[0]?.away || person.overdue || person.atRisk ? (
@@ -85,12 +86,12 @@ export default async function LeaderPage() {
                 <TableRow key={task.id}>
                   <TableCell kind="id">{task.key}</TableCell>
                   <TableCell className="max-w-96">
-                    <Link href={`/work/tasks/${task.id}`} className="block truncate font-medium hover:underline">
+                    <RecordLink kind="task" id={task.id} className="block truncate font-medium">
                       {task.title}
-                    </Link>
-                    {task.blocker ? <p className="truncate text-xs text-muted-foreground">{t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork("blockers.waitingOn", { name: task.blocker.neededName })})` : task.blocker.reason })}</p> : null}
+                    </RecordLink>
+                    {task.blocker ? <p className="truncate text-xs text-muted-foreground">{t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })})` : task.blocker.reason })}</p> : null}
                   </TableCell>
-                  <TableCell>{task.projectName ?? "—"}</TableCell>
+                  <TableCell>{task.projectName ? <RecordLink kind="project" id={task.projectId}>{task.projectName}</RecordLink> : "—"}</TableCell>
                   <TableCell>{task.stateName ? <Badge variant="outline">{task.stateName}</Badge> : "—"}</TableCell>
                   <TableCell>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}</TableCell>
                   <TableCell>{t(`mine.${task.mine}`)}</TableCell>

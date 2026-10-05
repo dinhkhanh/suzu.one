@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -97,9 +98,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
               {t("title")}
             </Link>
             <span className="text-faint">/</span>
-            <Link href={`/work/teams/${team.id}`} className="hover:underline">
+            <RecordLink kind="team" id={team.id}>
               {team.name}
-            </Link>
+            </RecordLink>
           </span>
         }
         title={
@@ -111,7 +112,15 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             {project.status === "active" && !statusName ? null : <Badge dot variant={statusTone(project.status)}>{statusName ?? t(`projects.status.${project.status}`)}</Badge>}
           </span>
         }
-        description={[clientName, project.description].filter(Boolean).join(" · ") || undefined}
+        description={
+          clientName || project.description ? (
+            <>
+              {clientName ? <RecordLink kind="account" id={project.clientId}>{clientName}</RecordLink> : null}
+              {clientName && project.description ? " · " : null}
+              {project.description}
+            </>
+          ) : undefined
+        }
         actions={
           manage ? (
             <>
@@ -170,7 +179,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <h2 className="section-label">{t("recurrence.heading")}</h2>
             <RecurrenceManager
               projectId={project.id}
-              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }))}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneePersonId: draft.assigneePersonId ?? null, assigneeName, nextDate, made }))}
               people={assignable}
               canManage={canContribute}
               today={today}

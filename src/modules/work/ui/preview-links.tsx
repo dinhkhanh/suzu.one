@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
@@ -34,6 +35,7 @@ export type PreviewLinkItem = {
   expiresAt: string;
   viewCount: number;
   lastViewedAt: string | null;
+  createdByPersonId?: string | null;
   createdByName: string | null;
   createdAt: string;
   decision: { decision: string; decidedByName: string; comment: string | null; at: string } | null;
@@ -133,7 +135,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
                     <Badge dot variant={statusTone(link.state)}>{t(`states.${link.state}`)}</Badge>
                   </TableCell>
                   <TableCell kind="id">{link.version ? `v${link.version}` : t("currentVersion")}</TableCell>
-                  <TableCell>{link.createdByName ?? "—"}</TableCell>
+                  <TableCell>{link.createdByName ? <RecordLink kind="person" id={link.createdByPersonId}>{link.createdByName}</RecordLink> : "—"}</TableCell>
                   <TableCell>{day(link.createdAt)}</TableCell>
                   <TableCell>{day(link.expiresAt)}</TableCell>
                   <TableCell kind="number">{link.viewCount}</TableCell>

@@ -19,7 +19,7 @@ export default async function ApprovalsPage() {
   // Which waiting requests may be approved unopened is their type's call (the registry knows every type).
   const [{ inbox, mine }, registered, t, tRequests] = await Promise.all([loadApprovalsPage(user.person.id), allRequestTypes(), getTranslations("approvals"), getTranslations("requests")]);
   const labels = new Map([...registered].flatMap(([type, entry]) => (entry.names ? [[type, entry.names.vi] as const] : [])));
-  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterName: row.requesterName, bulk: !!registered.get(row.type)?.definition.bulkApprovable?.(row.request) }));
+  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterPersonId: row.requesterPersonId, requesterName: row.requesterName, bulk: !!registered.get(row.type)?.definition.bulkApprovable?.(row.request) }));
 
   return (
     <Page>

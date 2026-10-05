@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
@@ -72,7 +73,9 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
         return ["", ""];
     }
   };
-  const groups = [...Map.groupBy(rows, (row) => groupKey(row).join("\u0000")).entries()].map(([key, own]) => ({ label: key.split("\u0000")[1], rows: own })).sort((a, b) => a.label.localeCompare(b.label));
+  // A group named after a record (a team, a client, a lead, an entity) links to it.
+  const groupKind = group === "team" ? "team" : group === "client" ? "account" : group === "lead" ? "person" : group === "entity" ? "entity" : null;
+  const groups = [...Map.groupBy(rows, (row) => groupKey(row).join("\u0000")).entries()].map(([key, own]) => ({ id: key.split("\u0000")[0], label: key.split("\u0000")[1], rows: own })).sort((a, b) => a.label.localeCompare(b.label));
   const hours = (minutes: number | null) => (minutes === null ? "—" : format.number(minutes / 60, { maximumFractionDigits: 1 }));
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : null);
 
@@ -184,8 +187,8 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
       ) : group === "none" ? (
         <Section title={t("portfolio.count", { count: rows.length })}>{grid(rows)}</Section>
       ) : (
-        groups.map(({ label, rows: own }) => (
-          <Section key={label || "all"} title={label} count={own.length}>
+        groups.map(({ id, label, rows: own }) => (
+          <Section key={label || "all"} title={groupKind ? <RecordLink kind={groupKind} id={id}>{label}</RecordLink> : label} count={own.length}>
             {grid(own)}
           </Section>
         ))

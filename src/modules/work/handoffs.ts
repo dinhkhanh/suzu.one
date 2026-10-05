@@ -357,7 +357,7 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
   return result;
 }
 
-export type AccountHandoffView = { id: string; fromPersonId: string | null; fromName: string | null; toName: string | null; byName: string | null; note: Note; createdAt: Date };
+export type AccountHandoffView = { id: string; fromPersonId: string | null; fromName: string | null; toPersonId: string | null; toName: string | null; byName: string | null; note: Note; createdAt: Date };
 
 /** A client's account handovers, newest first — the relationship's own history. */
 export async function listAccountHandoffs(clientIds: readonly string[]): Promise<Map<string, AccountHandoffView[]>> {
@@ -366,7 +366,7 @@ export async function listAccountHandoffs(clientIds: readonly string[]): Promise
   const to = alias(schema.person, "to_person");
   const by = alias(schema.person, "by_person");
   const rows = await db()
-    .select({ id: schema.workHandoff.id, clientId: schema.workHandoff.clientId, fromPersonId: schema.workHandoff.fromPersonId, fromName: from.fullName, toName: to.fullName, byName: by.fullName, note: schema.workHandoff.note, createdAt: schema.workHandoff.createdAt })
+    .select({ id: schema.workHandoff.id, clientId: schema.workHandoff.clientId, fromPersonId: schema.workHandoff.fromPersonId, fromName: from.fullName, toPersonId: schema.workHandoff.toPersonId, toName: to.fullName, byName: by.fullName, note: schema.workHandoff.note, createdAt: schema.workHandoff.createdAt })
     .from(schema.workHandoff)
     .leftJoin(from, eq(from.id, schema.workHandoff.fromPersonId))
     .leftJoin(to, eq(to.id, schema.workHandoff.toPersonId))
@@ -451,9 +451,9 @@ export async function listTaskHandoffs(taskId: string, viewer: WorkViewer): Prom
 }
 
 /** Pending hand-offs addressed to a person, with the task — for "My work" (Today reads day-feed's). */
-export async function listPendingHandoffsFor(personId: string): Promise<{ id: string; taskId: string; key: string; title: string; kind: string; fromName: string | null; createdAt: Date; note: Note }[]> {
+export async function listPendingHandoffsFor(personId: string): Promise<{ id: string; taskId: string; key: string; title: string; kind: string; fromPersonId: string | null; fromName: string | null; createdAt: Date; note: Note }[]> {
   const rows = await db()
-    .select({ id: schema.workHandoff.id, taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, kind: schema.workHandoff.kind, fromName: schema.person.fullName, createdAt: schema.workHandoff.createdAt, note: schema.workHandoff.note })
+    .select({ id: schema.workHandoff.id, taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, kind: schema.workHandoff.kind, fromPersonId: schema.workHandoff.fromPersonId, fromName: schema.person.fullName, createdAt: schema.workHandoff.createdAt, note: schema.workHandoff.note })
     .from(schema.workHandoff)
     .innerJoin(schema.task, and(eq(schema.task.id, schema.workHandoff.taskId), isNull(schema.task.deletedAt)))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))

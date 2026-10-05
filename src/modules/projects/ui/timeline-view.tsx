@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { RecordLink } from "@/components/ui/record-link";
 import { moveTimelineTaskAction } from "../actions";
 import { criticalPath, labelWidth, type MovePlan, planMove, workCalendar } from "../engine/schedule";
 import type { TimelineMilestone, TimelinePhase, TimelineTask, TimelineView as View } from "../timeline";
@@ -34,7 +35,7 @@ type Dates = { startDate: string | null; dueDate: string | null };
 type Row =
   | { kind: "phases"; phases: TimelinePhase[] }
   | { kind: "milestones"; label: string; milestones: TimelineMilestone[] }
-  | { kind: "group"; label: string; phase: TimelinePhase | null; milestones: TimelineMilestone[] }
+  | { kind: "group"; label: string; personId?: string; phase: TimelinePhase | null; milestones: TimelineMilestone[] }
   | { kind: "task"; task: TimelineTask };
 type Drag = { taskId: string; mode: "move" | "start" | "end"; originX: number; delta: number; pointerId: number };
 type Pending = { task: TimelineTask; to: Dates; plan: MovePlan };
@@ -130,7 +131,7 @@ export function TimelineView({ view }: { view: View }) {
     if (view.milestones.length) result.push({ kind: "milestones", label: t("milestones"), milestones: view.milestones });
     const byPerson = [...Map.groupBy(dated, (task) => task.assigneePersonId ?? "").entries()].sort(([a, own], [b, others]) => (a === "" ? 1 : b === "" ? -1 : (own[0].assigneeName ?? "").localeCompare(others[0].assigneeName ?? "", "vi")));
     for (const [personId, own] of byPerson) {
-      result.push({ kind: "group", label: personId ? (own[0].assigneeName ?? "—") : t("unassigned"), phase: null, milestones: [] });
+      result.push({ kind: "group", label: personId ? (own[0].assigneeName ?? "—") : t("unassigned"), personId: personId || undefined, phase: null, milestones: [] });
       for (const task of own.sort(byDates)) result.push({ kind: "task", task });
     }
     return result;
@@ -383,15 +384,19 @@ export function TimelineView({ view }: { view: View }) {
       case "milestones":
         return <span className="text-xs font-medium text-muted-foreground">{row.label}</span>;
       case "group":
-        return <span className="truncate text-xs font-semibold">{row.label}</span>;
+        return (
+          <RecordLink kind="person" id={row.personId} className="truncate text-xs font-semibold">
+            {row.label}
+          </RecordLink>
+        );
       case "task":
         return (
-          <Link href={`/work/tasks/${row.task.id}`} className="flex min-w-0 flex-col leading-tight hover:underline">
+          <RecordLink kind="task" id={row.task.id} className="flex min-w-0 flex-col leading-tight">
             <span className="truncate text-xs">
               <span className="font-mono text-[10px] text-muted-foreground">{row.task.key}</span> {row.task.title}
             </span>
             {group === "phase" && row.task.assigneeName && !phone ? <span className="truncate text-[10px] text-muted-foreground">{row.task.assigneeName}</span> : null}
-          </Link>
+          </RecordLink>
         );
     }
   };
@@ -570,9 +575,9 @@ export function TimelineView({ view }: { view: View }) {
           <ul className="flex flex-col gap-1 pt-2">
             {undated.map((task) => (
               <li key={task.id}>
-                <Link href={`/work/tasks/${task.id}`} className="hover:underline">
+                <RecordLink kind="task" id={task.id}>
                   <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
-                </Link>
+                </RecordLink>
               </li>
             ))}
           </ul>

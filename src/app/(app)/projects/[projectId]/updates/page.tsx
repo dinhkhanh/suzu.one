@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { StatusDraftButton } from "@/modules/ai/ui/draft-button";
@@ -56,7 +57,15 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
             <ListItem key={update.id} className="flex-col items-stretch gap-2 py-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={healthVariant(update.health)}>{t(`health.${update.health as "on_track"}`)}</Badge>
-                <span className="text-sm text-muted-foreground">{[update.authorName, format.dateTime(update.createdAt, { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · ")}</span>
+                <span className="text-sm text-muted-foreground">
+                  {update.authorName ? (
+                    <>
+                      <RecordLink kind="person" id={update.authorPersonId}>{update.authorName}</RecordLink>
+                      {" · "}
+                    </>
+                  ) : null}
+                  {format.dateTime(update.createdAt, { dateStyle: "medium", timeStyle: "short" })}
+                </span>
               </div>
               <RichText text={update.summary} className="text-sm" />
               {update.highlights ? (

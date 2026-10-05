@@ -8,6 +8,7 @@ import { statusTone } from "@/components/ui/tone";
 import { getWhoIsIn, type PresenceStatus } from "@/modules/attendance/punches";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("whoSInToday");
 
@@ -58,7 +59,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
             <ListItem key={row.personId}>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">
-                  {row.fullName}
+                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                   {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
                 </span>
                 <span className="flex flex-wrap items-center gap-1.5">
@@ -90,7 +91,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
               {presence.rows.map((row) => (
                 <TableRow key={row.personId}>
                   <TableCell className="font-medium">
-                    {row.fullName}
+                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                     {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
                   </TableCell>
                   <TableCell>
@@ -103,7 +104,9 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
                     </span>
                   </TableCell>
                   <TableCell className="text-left font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{times(row)}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.departmentName ?? ""}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

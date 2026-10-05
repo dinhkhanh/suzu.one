@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Page, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { canConfirmHoursOf, canManageAttendanceOf } from "@/modules/attendance/policy";
 import { decideAttendanceRequestAction } from "@/modules/attendance/request-actions";
@@ -65,8 +66,15 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
         requestId={request.id}
         who={
           <>
-            {view.subjectName}
-            {view.requesterName !== view.subjectName ? ` · ${t("filedBy", { name: view.requesterName })}` : ""}
+            <RecordLink kind="person" id={request.subjectPersonId}>
+              {view.subjectName}
+            </RecordLink>
+            {view.requesterName !== view.subjectName ? (
+              <>
+                {" · "}
+                {t.rich("filedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={request.requesterPersonId}>{chunks}</RecordLink> })}
+              </>
+            ) : null}
           </>
         }
         actions={

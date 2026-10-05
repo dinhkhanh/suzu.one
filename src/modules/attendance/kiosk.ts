@@ -114,7 +114,7 @@ export type KioskDeviceView = {
   name: string;
   entityId: string;
   entityName: string;
-  sessions: { id: string; openedAt: Date; openedBy: string; lastSeenAt: Date | null; userAgent: string | null }[];
+  sessions: { id: string; openedAt: Date; openedByPersonId: string; openedBy: string; lastSeenAt: Date | null; userAgent: string | null }[];
 };
 
 /** The clocks the viewer may open a kiosk for, with the kiosks open on each. */
@@ -131,10 +131,10 @@ export async function listKioskDevices(principal: Principal): Promise<KioskDevic
   ).filter((device) => canOpenKiosk(principal, device.entityId));
   if (devices.length === 0) return [];
   const sessions = await db()
-    .select({ id: schema.kioskSession.id, deviceId: schema.kioskSession.deviceId, openedAt: schema.kioskSession.openedAt, openedBy: schema.person.fullName, lastSeenAt: schema.kioskSession.lastSeenAt, userAgent: schema.kioskSession.userAgent })
+    .select({ id: schema.kioskSession.id, deviceId: schema.kioskSession.deviceId, openedAt: schema.kioskSession.openedAt, openedByPersonId: schema.kioskSession.openedByPersonId, openedBy: schema.person.fullName, lastSeenAt: schema.kioskSession.lastSeenAt, userAgent: schema.kioskSession.userAgent })
     .from(schema.kioskSession)
     .innerJoin(schema.person, eq(schema.person.id, schema.kioskSession.openedByPersonId))
     .where(and(inArray(schema.kioskSession.deviceId, devices.map((device) => device.id)), isNull(schema.kioskSession.closedAt)))
     .orderBy(desc(schema.kioskSession.openedAt));
-  return devices.map((device) => ({ ...device, sessions: sessions.filter((session) => session.deviceId === device.id).map((session) => ({ id: session.id, openedAt: session.openedAt, openedBy: session.openedBy, lastSeenAt: session.lastSeenAt, userAgent: session.userAgent })) }));
+  return devices.map((device) => ({ ...device, sessions: sessions.filter((session) => session.deviceId === device.id).map((session) => ({ id: session.id, openedAt: session.openedAt, openedByPersonId: session.openedByPersonId, openedBy: session.openedBy, lastSeenAt: session.lastSeenAt, userAgent: session.userAgent })) }));
 }

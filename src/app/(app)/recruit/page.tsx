@@ -8,6 +8,7 @@ import { List, ListEmpty } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { initialsOf } from "@/lib/text";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -189,13 +190,13 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
               {openings.map((opening) => (
                 <TableRow key={opening.id}>
                   <TableCell className="max-w-80 truncate">
-                    <Link href={`/recruit/${opening.id}`} className="font-medium hover:underline">
+                    <RecordLink kind="opening" id={opening.id} className="font-medium">
                       {opening.title}
-                    </Link>
+                    </RecordLink>
                   </TableCell>
                   <TableCell kind="id">{opening.code}</TableCell>
-                  <TableCell>{opening.entityName ?? "—"}</TableCell>
-                  <TableCell>{opening.departmentName ?? "—"}</TableCell>
+                  <TableCell>{opening.entityName ? <RecordLink kind="entity" id={opening.entityId}>{opening.entityName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>{opening.departmentName ? <RecordLink kind="unit" id={opening.departmentId}>{opening.departmentName}</RecordLink> : "—"}</TableCell>
                   <TableCell kind="number">{opening.headcount}</TableCell>
                   <TableCell kind="number">{opening.activeApplications}</TableCell>
                   <TableCell kind="number">{opening.hiredCount}</TableCell>

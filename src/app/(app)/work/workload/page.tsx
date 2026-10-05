@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -82,7 +83,7 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
             {view.rows.map((row) => (
               <tr key={row.person.id}>
                 <th scope="row" className="px-2 text-left align-top font-medium">
-                  {row.person.fullName}
+                  <RecordLink kind="person" id={row.person.id}>{row.person.fullName}</RecordLink>
                 </th>
                 {row.cells.map((cell) => (
                   <td key={cell.week.start} className={`rounded-lg border p-2 align-top ${cell.over ? "border-destructive/50 bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>

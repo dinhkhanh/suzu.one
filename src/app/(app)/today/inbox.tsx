@@ -3,8 +3,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
 import { Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { IsoDate } from "@/lib/dates";
+import { recordHref } from "@/lib/record-routes";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { sortInbox } from "@/modules/platform/tasks-engine/engine/inbox";
 import { presentTasks } from "@/modules/platform/tasks-engine/service";
@@ -38,7 +40,7 @@ export function inboxCounts(mine: MyWork, followUps: number): Record<InboxView, 
 export async function Inbox({ view, user, today, mine, followUps }: { view: InboxView; user: CurrentUser; today: IsoDate; mine: MyWork; /** Every open follow-up, on the work tab. */ followUps: ActivityView[] }) {
   const [t, format, tWork, crm, people] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadCrm(user), followUps.length ? listPersonNames() : Promise.resolve([])]);
   const { tasks: { open, recentlyDone }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
-  const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? `/work/tasks/${task.id}` : task.kind === "obligation" ? `/ops/obligations/${task.id}` : null);
+  const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? recordHref("task", task.id) : task.kind === "obligation" ? recordHref("obligation", task.id) : null);
   const work = sortInbox(workItems, today);
   const obligations = sortInbox(open.filter((task) => task.kind === "obligation"), today);
   const checklist = sortInbox(open.filter((task) => task.kind !== "work" && task.kind !== "obligation"), today);
@@ -68,12 +70,22 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
             {handoffs.map((handoff) => (
               <ListItem key={handoff.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Link href={`/work/tasks/${handoff.taskId}`} className="flex min-w-0 flex-1 items-center gap-2 font-medium hover:underline">
+                  <Link href={recordHref("task", handoff.taskId)} className="flex min-w-0 flex-1 items-center gap-2 font-medium hover:underline">
                     <TaskKey>{handoff.key}</TaskKey>
                     <span className="truncate">{handoff.title}</span>
                   </Link>
                   <Badge variant="outline">{tWork(`handoff.kinds.${handoff.kind}`)}</Badge>
-                  <span className="text-xs text-muted-foreground">{[handoff.fromName, format.dateTime(handoff.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {handoff.fromName ? (
+                      <>
+                        <RecordLink kind="person" id={handoff.fromPersonId}>
+                          {handoff.fromName}
+                        </RecordLink>
+                        {" · "}
+                      </>
+                    ) : null}
+                    {format.dateTime(handoff.createdAt, { dateStyle: "medium" })}
+                  </span>
                 </div>
                 <HandoffNoteView note={handoff.note} />
                 <HandoffResponder handoffId={handoff.id} />
@@ -137,7 +149,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
           {/* On a phone: one row per deliverable, the title and a meta line. */}
           <List className="md:hidden">
             {reviews.map((review) => (
-              <ListItem key={review.taskId} href={`/work/tasks/${review.taskId}`} className="gap-3">
+              <ListItem key={review.taskId} href={recordHref("task", review.taskId)} className="gap-3">
                 <StateDot category="in_review" />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex min-w-0 items-center gap-2">
@@ -145,7 +157,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <span className="truncate font-medium">{review.title}</span>
                   </span>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {review.projectName ? <ProjectChip name={review.projectName} /> : null}
+                    {review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} /> : null}
                     <span>{review.submittedByName ?? "—"} · v{review.version}</span>
                     <DueText dueDate={review.dueDate} today={today} open />
                   </span>
@@ -175,16 +187,18 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <TableCell className="pr-0"><StateDot category="in_review" /></TableCell>
                     <TableCell kind="id">{review.key}</TableCell>
                     <TableCell className="max-w-80 truncate">
-                      <Link href={`/work/tasks/${review.taskId}`} className="font-medium hover:underline">
+                      <RecordLink kind="task" id={review.taskId} className="font-medium">
                         {review.title}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
-                    <TableCell className="max-w-56">{review.projectName ? <ProjectChip name={review.projectName} /> : "—"}</TableCell>
+                    <TableCell className="max-w-56">{review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} /> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{review.stageName ?? "—"}</TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2">
                         <PersonAvatar name={review.submittedByName} />
-                        <span className="truncate">{review.submittedByName ?? "—"}</span>
+                        <RecordLink kind="person" id={review.submittedByPersonId} className="truncate">
+                          {review.submittedByName ?? "—"}
+                        </RecordLink>
                       </span>
                     </TableCell>
                     <TableCell kind="number">{review.version}</TableCell>
@@ -204,7 +218,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
         <Section title={t("sections.blockers", { count: blockers.length })}>
           <List className="md:hidden">
             {blockers.map((blocker) => (
-              <ListItem key={blocker.id} href={`/work/tasks/${blocker.taskId}`} className="gap-3">
+              <ListItem key={blocker.id} href={recordHref("task", blocker.taskId)} className="gap-3">
                 <StateDot category="in_progress" />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex min-w-0 items-center gap-2">
@@ -233,14 +247,16 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                   <TableRow key={blocker.id}>
                     <TableCell kind="id">{blocker.key}</TableCell>
                     <TableCell className="max-w-80 truncate">
-                      <Link href={`/work/tasks/${blocker.taskId}`} className="font-medium hover:underline">
+                      <RecordLink kind="task" id={blocker.taskId} className="font-medium">
                         {blocker.title}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2">
                         <PersonAvatar name={blocker.raisedByName} />
-                        <span className="truncate">{blocker.raisedByName ?? "—"}</span>
+                        <RecordLink kind="person" id={blocker.raisedByPersonId} className="truncate">
+                          {blocker.raisedByName ?? "—"}
+                        </RecordLink>
                       </span>
                     </TableCell>
                     <TableCell className="max-w-80 truncate text-muted-foreground" title={blocker.reason}>
@@ -261,7 +277,11 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
         ? triageTeams.map((group) => (
             <Section
               key={group.teamId}
-              title={`${t("sections.triage", { count: group.items.length })} · ${group.teamName}`}
+              title={
+                <>
+                  {t("sections.triage", { count: group.items.length })} · <RecordLink kind="team" id={group.teamId}>{group.teamName}</RecordLink>
+                </>
+              }
               action={<Link href={`/work/teams/${group.teamId}/triage`}>{t("openTriage")}</Link>}
             >
               <TableCard>
@@ -279,9 +299,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                       <TableRow key={item.id}>
                         <TableCell kind="id">{item.key}</TableCell>
                         <TableCell className="max-w-80 truncate">
-                          <Link href={`/work/tasks/${item.id}`} className="font-medium hover:underline">
+                          <RecordLink kind="task" id={item.id} className="font-medium">
                             {item.title}
-                          </Link>
+                          </RecordLink>
                         </TableCell>
                         <TableCell kind="date" className="hidden md:table-cell">{format.dateTime(item.createdAt, { dateStyle: "medium" })}</TableCell>
                         <TableCell>
@@ -332,7 +352,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <TableCell>
                       <span className="flex items-center gap-2">
                         <PersonAvatar name={request.requesterName} />
-                        <span className="truncate">{request.requesterName}</span>
+                        <RecordLink kind="person" id={request.requesterPersonId} className="truncate">
+                          {request.requesterName}
+                        </RecordLink>
                       </span>
                     </TableCell>
                     <TableCell kind="date">{format.dateTime(request.createdAt, { dateStyle: "medium" })}</TableCell>
@@ -351,7 +373,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
         <Section title={t("sections.work", { count: work.length })}>
           <List className="md:hidden">
             {work.map((item) => (
-              <ListItem key={item.id} href={`/work/tasks/${item.id}`} className="gap-3">
+              <ListItem key={item.id} href={recordHref("task", item.id)} className="gap-3">
                 <StateDot category={dotOf(item.status, item.reviewStatus)} title={item.stateName} />
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex min-w-0 items-center gap-2">
@@ -359,7 +381,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <span className="truncate font-medium">{item.title}</span>
                   </span>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {item.projectName ? <ProjectChip name={item.projectName} /> : null}
+                    {item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} /> : null}
                     <span>{item.stateName}</span>
                     <DueText dueDate={item.dueDate} today={today} open />
                     {flags(item)}
@@ -387,11 +409,11 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <TableCell className="pr-0"><StateDot category={dotOf(item.status, item.reviewStatus)} /></TableCell>
                     <TableCell kind="id">{item.key}</TableCell>
                     <TableCell className="max-w-80 truncate">
-                      <Link href={`/work/tasks/${item.id}`} className="font-medium hover:underline">
+                      <RecordLink kind="task" id={item.id} className="font-medium">
                         {item.title}
-                      </Link>
+                      </RecordLink>
                     </TableCell>
-                    <TableCell className="max-w-56">{item.projectName ? <ProjectChip name={item.projectName} /> : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="max-w-56">{item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} /> : <span className="text-faint">—</span>}</TableCell>
                     <TableCell kind="date"><DueText dueDate={item.dueDate} today={today} open /></TableCell>
                     <TableCell className="text-muted-foreground">{item.stateName}</TableCell>
                     <TableCell>

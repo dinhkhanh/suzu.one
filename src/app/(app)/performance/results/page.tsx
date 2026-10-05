@@ -18,6 +18,7 @@ import {
 } from "@/modules/performance/service";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Segmented } from "@/components/ui/segmented";
+import { RecordLink } from "@/components/ui/record-link";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { BandBadge, percentText, ResultTraceTable, StatusBadge } from "@/modules/performance/ui/result";
 import { ComputeResultsForm, OverrideResultForm, RecomputeResultForm, ResultStepForm } from "@/modules/performance/ui/result-forms";
@@ -114,7 +115,9 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
               return (
                 <ListItem key={line.id} className="flex-col items-stretch gap-3">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="min-w-0 flex-1 basis-56 text-sm font-medium">{line.personName}</span>
+                    <RecordLink kind="person" id={line.personId} className="min-w-0 flex-1 basis-56 text-sm font-medium">
+                      {line.personName}
+                    </RecordLink>
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {t("list.review")} {percentText(format, line.reviewScoreBp)} · {t("list.kpi")} {percentText(format, line.kpiScoreBp)} · {t("list.okr")} {percentText(format, line.okrScoreBp)}
                     </span>

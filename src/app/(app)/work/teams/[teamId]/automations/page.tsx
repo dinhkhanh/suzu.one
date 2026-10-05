@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { automationPanel, canManageAutomations, canViewAutomations, findTeam, loadViewer, teamFacts } from "@/modules/work/service";
@@ -24,9 +25,9 @@ export default async function TeamAutomationsPage({ params }: PageProps<"/work/t
             {t("title")}
           </Link>
           <span className="text-faint">/</span>
-          <Link href={`/work/teams/${team.id}`} className="hover:underline">
+          <RecordLink kind="team" id={team.id}>
             {team.name}
-          </Link></span>} title={t("automations.title")} description={t("automations.description")} />
+          </RecordLink></span>} title={t("automations.title")} description={t("automations.description")} />
       <AutomationManager teamId={team.id} rules={panel.rules} options={panel.options} runs={panel.runs} canManage={canManageAutomations(viewer, teamFacts(team))} />
     </Page>
   );

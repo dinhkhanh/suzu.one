@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction } from "../planning-actions";
@@ -267,7 +268,7 @@ export function TemplateUseForm({
 
 // ── Recurring tasks ─────────────────────────────────────────────────────────────────────────
 
-export type RecurrenceItem = { id: string; title: string; rule: { freq: "daily" | "weekly" | "monthly"; interval: number; weekdays?: number[]; monthDay?: number | "last" }; startDate: string; endDate: string | null; isActive: boolean; assigneeName: string | null; nextDate: string | null; made: number };
+export type RecurrenceItem = { id: string; title: string; rule: { freq: "daily" | "weekly" | "monthly"; interval: number; weekdays?: number[]; monthDay?: number | "last" }; startDate: string; endDate: string | null; isActive: boolean; assigneePersonId?: string | null; assigneeName: string | null; nextDate: string | null; made: number };
 
 export function RecurrenceManager({ projectId, recurrences, people, canManage, today }: { projectId: string; recurrences: RecurrenceItem[]; people: Person[]; canManage: boolean; today: string }) {
   const t = useTranslations("work.recurrence");
@@ -307,7 +308,7 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.title}</TableCell>
                   <TableCell>{describe(item.rule)}</TableCell>
-                  <TableCell>{item.assigneeName ?? "—"}</TableCell>
+                  <TableCell>{item.assigneeName ? <RecordLink kind="person" id={item.assigneePersonId}>{item.assigneeName}</RecordLink> : "—"}</TableCell>
                   <TableCell kind="number">{item.made}</TableCell>
                   <TableCell>{item.nextDate ? day(item.nextDate) : "—"}</TableCell>
                   <TableCell>

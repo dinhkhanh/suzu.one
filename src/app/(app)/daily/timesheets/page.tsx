@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listApprovals, listProjectTime, loadTimeReader, weekStartOf } from "@/modules/daily/service";
@@ -113,7 +114,9 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
                       {row.name}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{row.projectName}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <RecordLink kind="project" id={row.projectId}>{row.projectName}</RecordLink>
+                  </TableCell>
                   <TableCell kind="time" className="text-muted-foreground">{row.billable > 0 ? hours(row.billable) : ""}</TableCell>
                   <TableCell kind="time">{hours(row.minutes)}</TableCell>
                 </TableRow>

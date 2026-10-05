@@ -1,5 +1,4 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -15,6 +14,7 @@ import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("complianceArchive");
 
@@ -104,14 +104,16 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
           {rows.length === 0 ? <TableEmpty>{t("history.empty")}</TableEmpty> : null}
           {rows.map((row) => (
             <TableRow key={row.taskId}>
-              <TableCell className="font-mono text-xs font-medium">{row.entityCode}</TableCell>
+              <TableCell className="font-mono text-xs font-medium">
+                <RecordLink kind="entity" id={row.entityId}>{row.entityCode}</RecordLink>
+              </TableCell>
               <TableCell className="whitespace-normal">
-                <Link href={`/ops/obligations/${row.taskId}`} className="font-medium hover:underline">
+                <RecordLink kind="obligation" id={row.taskId} className="font-medium">
                   {row.templateName}
-                </Link>
+                </RecordLink>
                 <p className="font-mono text-xs text-faint">{row.templateCode}</p>
               </TableCell>
-              <TableCell>{row.periodKey.startsWith("event:") ? (row.subjectName ?? t("instance.eventDriven")) : periodLabel(row.periodKey)}</TableCell>
+              <TableCell>{row.periodKey.startsWith("event:") ? (row.subjectName ? <RecordLink kind="person" id={row.subjectPersonId}>{row.subjectName}</RecordLink> : t("instance.eventDriven")) : periodLabel(row.periodKey)}</TableCell>
               <TableCell kind="date">{day(row.dueDate)}</TableCell>
               <TableCell>
                 <StatusBadge colour={row.colour} label={t(`enums.colour.${row.colour}`)} />
@@ -119,11 +121,11 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
               <TableCell>
                 {row.completedAt ? (
                   <>
-                    {row.completedByName ?? t("instance.bySystem")}
+                    {row.completedByName ? <RecordLink kind="person" id={row.completedByPersonId}>{row.completedByName}</RecordLink> : t("instance.bySystem")}
                     <p className="text-xs text-faint">{format.dateTime(row.completedAt, { dateStyle: "medium" })}</p>
                   </>
                 ) : (
-                  <span className="text-muted-foreground">{row.assigneeName ?? t("unassigned")}</span>
+                  <span className="text-muted-foreground">{row.assigneeName ? <RecordLink kind="person" id={row.assigneePersonId}>{row.assigneeName}</RecordLink> : t("unassigned")}</span>
                 )}
               </TableCell>
               <TableCell kind="date">{day(row.submittedDate)}</TableCell>

@@ -1,10 +1,11 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
+import { Fragment } from "react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { clashesFor, getInterviewView, interviewerOptions, scorecardsFor } from "@/modules/recruit/interviews";
 import { CvLink } from "@/modules/recruit/ui/cv-link";
@@ -53,14 +54,11 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
         title={interview.title}
         description={
           <>
-            {view.candidateName} ·{" "}
-            {view.canSchedule ? (
-              <Link href={`/recruit/applications/${view.applicationId}`} className="underline underline-offset-4">
-                {view.openingTitle}
-              </Link>
-            ) : (
-              view.openingTitle
-            )}
+            {/* An interviewer who is on no hiring team opens neither: the names stay text for them. */}
+            <RecordLink kind="candidate" id={view.canSchedule ? view.candidateId : null}>{view.candidateName}</RecordLink> ·{" "}
+            <RecordLink kind="application" id={view.canSchedule ? view.applicationId : null} className={view.canSchedule ? "underline" : undefined}>
+              {view.openingTitle}
+            </RecordLink>
           </>
         }
       >
@@ -104,7 +102,14 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
         ) : null}
         <div className="flex justify-between gap-3 sm:col-span-2">
           <dt className="text-muted-foreground">{t("interviewers")}</dt>
-          <dd>{view.interviewers.map((row) => row.fullName).join(", ")}</dd>
+          <dd>
+            {view.interviewers.map((row, index) => (
+              <Fragment key={row.personId}>
+                {index ? ", " : ""}
+                <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+              </Fragment>
+            ))}
+          </dd>
         </div>
       </dl>
 

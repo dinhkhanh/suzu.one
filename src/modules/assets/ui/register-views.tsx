@@ -1,12 +1,13 @@
 // Read-only pieces of the register: the list, the filters, the history and the QR square.
 // Server components — nothing here needs the browser.
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RecordLink } from "@/components/ui/record-link";
+import type { RecordKind } from "@/lib/record-routes";
 import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,17 +32,23 @@ const initialsOf = (name: string) => {
 };
 
 /** The holder as a disc of initials beside the name; a hollow dot on the disc while the handover is unconfirmed. */
-function Holder({ name, confirmed }: { name: string; confirmed: boolean }) {
+function Holder({ name, confirmed, kind, id }: { name: string; confirmed: boolean; kind: RecordKind; id: string | null }) {
   return (
     <span className="flex items-center gap-2">
       <Avatar size="sm" className="relative">
         <AvatarFallback className="text-[0.625rem] font-medium">{initialsOf(name)}</AvatarFallback>
         {confirmed ? null : <span aria-hidden className="absolute -top-0.5 -right-0.5 z-10 size-2 rounded-full bg-warning ring-2 ring-background" />}
       </Avatar>
-      <span className="truncate">{name}</span>
+      <RecordLink kind={kind} id={id} className="truncate">
+        {name}
+      </RecordLink>
     </span>
   );
 }
+
+/** Where a holder's name leads: the person, the team's people, or the entity that keeps it. */
+const holderLink = (row: Pick<AssetListRow, "holderType" | "holderPersonId" | "holderTeamId" | "holderEntityId">): { kind: RecordKind; id: string | null } =>
+  row.holderType === "person" ? { kind: "person", id: row.holderPersonId } : row.holderType === "team" ? { kind: "unit", id: row.holderTeamId } : { kind: "entity", id: row.holderEntityId };
 
 export type RegisterFilters = { entityId?: string; categoryId?: string; status?: string; search?: string };
 
@@ -111,9 +118,9 @@ export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetL
         {rows.map((row) => (
           <TableRow key={row.id}>
             <TableCell kind="id">
-              <Link href={`/assets/${row.id}`} className="font-medium text-foreground hover:underline">
+              <RecordLink kind="asset" id={row.id} className="font-medium text-foreground">
                 {row.code}
-              </Link>
+              </RecordLink>
             </TableCell>
             <TableCell>
               <span className="font-medium">{row.name}</span>
@@ -122,8 +129,10 @@ export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetL
             <TableCell>
               <Badge variant="outline">{row.categoryName}</Badge>
             </TableCell>
-            <TableCell className="text-muted-foreground">{row.entityName}</TableCell>
-            <TableCell>{row.holderName ? <Holder name={row.holderName} confirmed={!!row.handoverConfirmedAt} /> : <span className="text-faint">—</span>}</TableCell>
+            <TableCell className="text-muted-foreground">
+              <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>
+            </TableCell>
+            <TableCell>{row.holderName ? <Holder name={row.holderName} confirmed={!!row.handoverConfirmedAt} {...holderLink(row)} /> : <span className="text-faint">—</span>}</TableCell>
             <TableCell>
               <StatusBadge status={row.status} />
             </TableCell>
@@ -143,7 +152,11 @@ export async function AssetHistory({ entries }: { entries: readonly AssetHistory
         <ListItem key={entry.id} className="flex-wrap items-baseline gap-2">
           <Badge variant="secondary">{t.has(entry.type) ? t(entry.type) : entry.type}</Badge>
           <span className="font-mono text-xs text-faint tabular-nums">{entry.at.toLocaleString("vi-VN")}</span>
-          {entry.actorName ? <span className="text-xs text-faint">· {entry.actorName}</span> : null}
+          {entry.actorName ? (
+            <span className="text-xs text-faint">
+              · <RecordLink kind="person" id={entry.actorPersonId}>{entry.actorName}</RecordLink>
+            </span>
+          ) : null}
           <RichText text={entry.note} className="w-full text-muted-foreground" />
         </ListItem>
       ))}

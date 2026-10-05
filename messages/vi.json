@@ -3209,7 +3209,7 @@
     },
     "timesheet": {
       "myMonth": "Tháng của tôi",
-      "monthOf": "Bảng công của {name}",
+      "monthOf": "Bảng công của <person>{name}</person>",
       "previousMonth": "Tháng trước",
       "nextMonth": "Tháng sau",
       "tapHint": "Chạm vào một ngày để xem cách tính.",
@@ -3308,14 +3308,14 @@
       "newTitle": "Tạo đơn chấm công",
       "newDescription": "Bổ sung công, xin làm từ xa, làm thêm giờ hoặc làm việc ngày nghỉ. Quản lý trực tiếp sẽ duyệt.",
       "resubmitTitle": "Sửa và gửi lại",
-      "onBehalf": "Tạo thay cho {name}",
+      "onBehalf": "Tạo thay cho <person>{name}</person>",
       "mine": "Đơn của tôi trong tháng",
       "submit": "Gửi đơn",
       "resubmit": "Gửi lại",
       "withdraw": "Rút đơn",
       "cancel": "Huỷ đơn",
       "cancelConfirm": "Kết thúc đơn này?",
-      "filedBy": "người tạo: {name}",
+      "filedBy": "người tạo: <person>{name}</person>",
       "openEvidence": "Mở tệp",
       "fixAndResubmit": "Sửa và gửi lại",
       "dayNow": "Ngày công hiện tại",
@@ -3727,7 +3727,7 @@
       "openAttachment": "Mở",
       "submit": "Gửi đơn",
       "replace": "Thay đơn cũ bằng đơn này",
-      "filedBy": "{name} nộp thay",
+      "filedBy": "<person>{name}</person> nộp thay",
       "dates": "Thời gian",
       "cost": "Số ngày phép",
       "countedDays": "Các ngày được tính",
@@ -4328,7 +4328,7 @@
       "activityTitle": "Hoạt động",
       "system": "Hệ thống",
       "noProject": "Không thuộc dự án (việc tồn của nhóm)",
-      "meta": "Yêu cầu bởi {requester} · tạo bởi {creator} ngày {date}",
+      "meta": "Yêu cầu bởi <r>{requester}</r> · tạo bởi <c>{creator}</c> ngày {date}",
       "delete": "Xóa công việc",
       "deleteConfirm": "Xóa công việc này cùng các việc con?",
       "activity": {
@@ -4724,8 +4724,8 @@
         "changes_requested": "Cần chỉnh sửa",
         "superseded": "Đã thay thế"
       },
-      "submittedBy": "{name} · {when}",
-      "decidedBy": "{name} quyết định · {when}",
+      "submittedBy": "<who>{name}</who> · {when}",
+      "decidedBy": "<who>{name}</who> quyết định · {when}",
       "errors": {
         "generic": "Không thực hiện được.",
         "forbidden": "Bạn không có quyền làm việc này.",
@@ -5098,7 +5098,7 @@
         "handoff": "Bàn giao",
         "request": "Yêu cầu"
       },
-      "from": "{name} gửi {date}",
+      "from": "<who>{name}</who> gửi {date}",
       "viaForm": "qua “{form}”",
       "until": "Hoãn đến {date}",
       "prefilled": "Quy tắc đã điền sẵn",
@@ -5152,10 +5152,10 @@
       "resolve": "Đã gỡ vướng",
       "resolution": "Ghi chú khi gỡ (không bắt buộc)",
       "open": "Đang vướng: {reason}",
-      "waitingOn": "chờ {name}",
-      "raisedBy": "{name} báo lúc {date}",
+      "waitingOn": "chờ <who>{name}</who>",
+      "raisedBy": "<who>{name}</who> báo lúc {date}",
       "history": "Đã gỡ",
-      "resolvedBy": "{name} gỡ lúc {date}",
+      "resolvedBy": "<who>{name}</who> gỡ lúc {date}",
       "blockedFor": "vướng {duration}",
       "total": "Tổng thời gian vướng: {duration}",
       "badge": "Vướng",
@@ -5185,8 +5185,8 @@
         "cancelled": "Đã hủy",
         "recorded": "Đã ghi nhận"
       },
-      "fromTo": "{from} → {to}",
-      "toTeam": "{from} → nhóm {team}",
+      "fromTo": "<a>{from}</a> → <b>{to}</b>",
+      "toTeam": "<a>{from}</a> → nhóm {team}",
       "targetStatus": "Việc bên nhóm nhận:",
       "inTriage": "Đang chờ phân loại",
       "package": "Gói: {name}",
@@ -5312,12 +5312,12 @@
     "cover": {
       "title": "Kế hoạch làm thay khi nghỉ",
       "description": "Những việc rơi vào thời gian nghỉ và ai làm thay. Người làm thay nhận việc từ ngày đầu kỳ nghỉ; đi làm lại thì bấm trả lại.",
-      "absence": "{name} nghỉ từ {from} đến {to}",
+      "absence": "<who>{name}</who> nghỉ từ {from} đến {to}",
       "nothing": "Không có việc nào rơi vào thời gian nghỉ.",
       "defaultCover": "Một người làm thay cho tất cả",
       "noDefault": "Chọn riêng từng việc",
       "defaultHint": "Việc nào không chọn riêng sẽ giao cho người này.",
-      "coveredBy": "Làm thay: {name}",
+      "coveredBy": "Làm thay: <who>{name}</who>",
       "types": {
         "task": "Việc",
         "review": "Duyệt",
@@ -5471,7 +5471,7 @@
         "person": "Một người cụ thể"
       },
       "progress": "Tiến độ duyệt",
-      "waitingOn": "Đang chờ {name}",
+      "waitingOn": "Đang chờ <who>{name}</who>",
       "dueAt": "hạn {when}",
       "decideTitle": "Phiên bản {version} — bước “{stage}” đang chờ bạn",
       "decisions": {
@@ -5520,7 +5520,7 @@
       "frozen": "Đã khóa",
       "frozenHint": "Khách đã duyệt phiên bản này; không thể sửa hay xóa.",
       "clientSaid": "Khách hàng",
-      "recordedAs": "{client}, qua {channel} ngày {date} — {name} ghi nhận",
+      "recordedAs": "{client}, qua {channel} ngày {date} — <who>{name}</who> ghi nhận",
       "evidenceLink": "Xem bằng chứng",
       "evidenceFile": "Tệp bằng chứng",
       "record": "Ghi nhận ý kiến khách"
@@ -5587,7 +5587,7 @@
       },
       "boostedOn": "Chạy quảng cáo · {account}",
       "plannedAt": "Dự kiến {when}",
-      "publishedAt": "Đăng lúc {when} bởi {name}",
+      "publishedAt": "Đăng lúc {when} bởi <who>{name}</who>",
       "plan": "Lên lịch đăng",
       "platform": "Nền tảng",
       "page": "Trang / tài khoản",
@@ -6301,7 +6301,7 @@
     },
     "detail": {
       "alignedTo": "Đóng góp cho:",
-      "owner": "phụ trách: {name}",
+      "owner": "phụ trách: <person>{name}</person>",
       "weight": "trọng số {weight}",
       "frozen": "Đã chốt lúc {date}. Con số này là căn cứ cho đánh giá cuối năm.",
       "children": "Mục tiêu con",
@@ -6312,7 +6312,7 @@
     "kpi": {
       "mineTitle": "KPI của tôi",
       "mineDescription": "Những chỉ số bạn được đo trong tháng, điểm và cách tính. Số thực đạt do quản lý hoặc Nhân sự nhập.",
-      "personTitle": "KPI của {name}",
+      "personTitle": "KPI của <person>{name}</person>",
       "personDescription": "Dữ liệu cá nhân: chỉ người đó, các cấp quản lý phía trên, Nhân sự và lãnh đạo trong phạm vi được xem.",
       "previousMonth": "Tháng trước",
       "nextMonth": "Tháng sau",
@@ -6608,7 +6608,7 @@
       "title": "Đánh giá hiệu suất",
       "description": "Chu kỳ đánh giá: tự đánh giá, quản lý đánh giá, phản hồi đồng nghiệp, cân đối rồi công bố.",
       "back": "← Tất cả đánh giá",
-      "manager": "Quản lý đánh giá: {name}",
+      "manager": "Quản lý đánh giá: <person>{name}</person>",
       "notLaunched": "Chu kỳ chưa mở, chưa có biểu mẫu.",
       "mine": {
         "title": "Đánh giá của tôi",
@@ -7672,7 +7672,7 @@
         "reject": "Từ chối"
       },
       "withdraw": "Rút đề xuất",
-      "requestedBy": "Người đề xuất: {name}",
+      "requestedBy": "Người đề xuất: <person>{name}</person>",
       "effective": "hiệu lực {date}",
       "component": "Khoản",
       "currentTerms": "Hiện tại",
@@ -9265,7 +9265,7 @@
       },
       "work": {
         "tasks": "Việc đang làm cho tài sản này",
-        "projects": "Dự án: {names}",
+        "projects": "Dự án: <names></names>",
         "noTasks": "Chưa có việc đang mở nào gắn với tài sản này.",
         "posts": "Bài đăng",
         "noPosts": "Gần đây chưa có bài nào được lên lịch hoặc đăng tại đây.",
@@ -9289,7 +9289,7 @@
       "since": "Từ ngày",
       "by": "Người cấp",
       "empty": "Chưa cấp suất nào.",
-      "deviceWith": "Thiết bị do {name} giữ",
+      "deviceWith": "Thiết bị do <person>{name}</person> giữ",
       "deviceOnShelf": "Thiết bị — chưa ai giữ",
       "assign": "Cấp suất dùng",
       "assigned": "Đã cấp.",
@@ -9396,7 +9396,7 @@
     },
     "held": {
       "title": "Đang được giữ",
-      "by": "Người giữ: {holder}",
+      "by": "Người giữ: <link>{holder}</link>",
       "confirmed": "Đã xác nhận nhận",
       "awaitingConfirmation": "Chưa xác nhận nhận"
     },
@@ -10753,9 +10753,9 @@
       },
       "requiredBadge": "Bắt buộc ghi giờ",
       "submittedAt": "Nộp lúc {time}",
-      "returnedBy": "{name} trả lại: {comment}",
-      "approvedBy": "{name} đã duyệt lúc {time}",
-      "reopenedBy": "{name} đã mở lại: {comment}",
+      "returnedBy": "<person>{name}</person> trả lại: {comment}",
+      "approvedBy": "<person>{name}</person> đã duyệt lúc {time}",
+      "reopenedBy": "<person>{name}</person> đã mở lại: {comment}",
       "privateWork": "Việc riêng tư",
       "billableToggle": "Bật/tắt tính phí cho cả dòng trong tuần này",
       "billableState": {
@@ -11985,7 +11985,7 @@
       "attendeesCount": "{count, plural, =0 {chưa ghi người tham dự} other {# người tham dự}}",
       "decisionsCount": "{count} quyết định",
       "actionsCount": "{open}/{total} việc còn mở",
-      "recordedBy": "Ghi bởi {name}",
+      "recordedBy": "Ghi bởi <person>{name}</person>",
       "noDecisions": "Cuộc họp này chưa ghi quyết định nào.",
       "noActions": "Cuộc họp này chưa có việc cần làm.",
       "toLog": "Xem toàn bộ nhật ký quyết định",
@@ -12956,13 +12956,13 @@
     "detail": {
       "backInbox": "Hộp thư góp ý",
       "backMine": "Góp ý của tôi",
-      "sentBy": "Gửi bởi {name} · {when}",
+      "sentBy": "Gửi bởi <person>{name}</person> · {when}",
       "you": "bạn",
       "page": "Trang",
       "screenshot": "Ảnh chụp màn hình",
       "device": "Trình duyệt",
       "handledBy": "Xử lý gần nhất",
-      "handledAt": "{name} · {when}",
+      "handledAt": "<person>{name}</person> · {when}",
       "reply": "Phản hồi",
       "noReply": "Chưa có phản hồi. Bạn sẽ nhận thông báo khi có."
     },
@@ -13017,7 +13017,7 @@
     "home": {
       "intro": "Việc cần theo dõi, cơ hội và khách tiềm năng của bạn hôm nay, các hợp đồng sắp gia hạn và công nợ khách hàng.",
       "handoffs": "Cơ hội đã chốt được bàn giao cho bạn",
-      "handoffFrom": "từ {name}, {date}",
+      "handoffFrom": "từ <person>{name}</person>, {date}",
       "followUps": "Việc cần theo dõi",
       "myDeals": "Cơ hội đang mở của tôi",
       "noDeals": "Bạn không có cơ hội nào đang mở.",
@@ -13072,8 +13072,8 @@
       "groupWide": "Toàn tập đoàn",
       "creditHold": "Tạm ngưng tín dụng",
       "taxCodeIs": "MST {code}",
-      "managerIs": "Phụ trách khách hàng: {name}",
-      "salesOwnerIs": "Phụ trách kinh doanh: {name}",
+      "managerIs": "Phụ trách khách hàng: <person>{name}</person>",
+      "salesOwnerIs": "Phụ trách kinh doanh: <person>{name}</person>",
       "brands": "Thương hiệu: {names}",
       "lifecycleAuto": "Tự động (hiện là {lifecycle})",
       "defaultTerms": "Theo hợp đồng hoặc mặc định",
@@ -13081,7 +13081,7 @@
       "editTerms": "Hạn thanh toán và tín dụng",
       "termsAre": "Hạn thanh toán: {days} ngày",
       "changeManager": "Đổi người phụ trách khách hàng",
-      "handedOver": "{from} → {to}, {date}",
+      "handedOver": "<giver>{from}</giver> → <taker>{to}</taker>, {date}",
       "noProjects": "Chưa có dự án.",
       "noDeals": "Chưa có cơ hội.",
       "noContracts": "Chưa ghi nhận hợp đồng.",
@@ -13140,7 +13140,7 @@
         "creditHold": "Tạm ngưng tín dụng",
         "creditHoldReason": "Lý do"
       },
-      "leftBehind": "{name}, người phụ trách trước, vẫn giữ {deals} cơ hội đang mở và {followUps} việc theo dõi ở khách hàng này.",
+      "leftBehind": "<person>{name}</person>, người phụ trách trước, vẫn giữ {deals} cơ hội đang mở và {followUps} việc theo dõi ở khách hàng này.",
       "moveWork": "Chuyển cho {name}"
     },
     "contacts": {
@@ -13227,14 +13227,14 @@
       "mine": "Chỉ của tôi",
       "empty": "Không có khách tiềm năng.",
       "unassigned": "Chưa giao",
-      "referredBy": "{name} giới thiệu",
+      "referredBy": "<person>{name}</person> giới thiệu",
       "columns": {
         "createdAt": "Ngày nhận"
       }
     },
     "lead": {
       "me": "Tôi",
-      "ownerIs": "Phụ trách: {name}",
+      "ownerIs": "Phụ trách: <person>{name}</person>",
       "openDeal": "Mở cơ hội",
       "disqualifiedBecause": "Không theo đuổi: {reason}",
       "markContacted": "Đã liên hệ",
@@ -13304,8 +13304,8 @@
       }
     },
     "deal": {
-      "ownerIs": "Phụ trách: {name}",
-      "teamIs": "Đội thực hiện: {name}",
+      "ownerIs": "Phụ trách: <person>{name}</person>",
+      "teamIs": "Đội thực hiện: <team>{name}</team>",
       "valueIs": "Giá trị {total} · trọng số {weighted} ở {probability}%",
       "monthlyIs": "{amount} mỗi tháng trong {months} tháng",
       "closeIs": "Dự kiến chốt {date}",
@@ -13322,7 +13322,7 @@
       "edit": "Sửa cơ hội",
       "editContacts": "Đổi người phía khách",
       "noQuotes": "Chưa có báo giá.",
-      "stageChange": "{from} → {to} bởi {by}, {date}",
+      "stageChange": "{from} → {to} bởi <person>{by}</person>, {date}",
       "sections": {
         "delivery": "Triển khai",
         "quotes": "Báo giá",
@@ -13382,8 +13382,8 @@
         "create": "Tạo dự án và bàn giao"
       },
       "handoff": {
-        "waiting": "{project} được bàn giao cho bạn — nhận hoặc trả lại",
-        "to": "cho {name}, {date}",
+        "waiting": "<link>{project}</link> được bàn giao cho bạn — nhận hoặc trả lại",
+        "to": "cho <person>{name}</person>, {date}",
         "note": "Ghi chú bàn giao",
         "returnedBecause": "Bị trả lại: {reason}",
         "resend": "Gửi lại",

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -76,7 +77,7 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
                   </Badge>
                 ) : null}
               </TableCell>
-              <TableCell>{row.entityId ? entityCode.get(row.entityId) : "—"}</TableCell>
+              <TableCell>{row.entityId ? <RecordLink kind="entity" id={row.entityId}>{entityCode.get(row.entityId)}</RecordLink> : "—"}</TableCell>
               <TableCell>{row.profile ? <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge> : <Badge dot variant="destructive">{t("salaries.noProfile")}</Badge>}</TableCell>
               {row.structure ? (
                 <>

@@ -2,6 +2,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import {
   canAcknowledgeReview,
@@ -95,12 +96,15 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           {t("back")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1>{nameOf(participant.personId)}</h1>
+          <h1>
+            <RecordLink kind="person" id={participant.personId}>{nameOf(participant.personId)}</RecordLink>
+          </h1>
           <StageBadge stage={parties.stage} label={t(`stage.${parties.stage}`)} />
         </div>
         <p className="text-sm text-muted-foreground">
           {cycle.name} · {t(`cycle.kinds.${cycle.kind}`)} · {t(`cycleStatus.${cycle.status}`)}
-          {participant.managerPersonId ? ` · ${t("manager", { name: nameOf(participant.managerPersonId) })}` : ""}
+          {participant.managerPersonId ? " · " : null}
+          {participant.managerPersonId ? t.rich("manager", { name: nameOf(participant.managerPersonId), person: (chunks) => <RecordLink kind="person" id={participant.managerPersonId}>{chunks}</RecordLink> }) : null}
         </p>
       </header>
       <PerformanceNav active="reviews" />
@@ -169,7 +173,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
                   {nominations.length === 0 ? <TableEmpty>{t("peers.empty")}</TableEmpty> : null}
                   {nominations.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="font-medium">{nameOf(row.peerPersonId)}</TableCell>
+                      <TableCell className="font-medium">
+                        <RecordLink kind="person" id={row.peerPersonId}>{nameOf(row.peerPersonId)}</RecordLink>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{t(`peers.status.${row.status as PeerNominationStatus}`)}</TableCell>
                       {peersByCountOnly ? null : <TableCell className="text-muted-foreground">{peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}</TableCell>}
                       <TableCell kind="actions">

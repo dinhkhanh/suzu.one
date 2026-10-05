@@ -4,6 +4,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { ActivityView } from "../activities";
 import type { TimelineItem } from "../timeline";
@@ -78,7 +79,7 @@ export async function ActivityList({ items }: { items: ActivityView[] }) {
             <Badge variant="outline">{tEnums(`activityKind.${item.kind as "call"}`)}</Badge>
             <span className="font-medium">{item.subject}</span>
             <span className="text-xs text-muted-foreground">
-              {f.when(item.occurredAt ?? item.doneAt)} · {item.ownerName}
+              {f.when(item.occurredAt ?? item.doneAt)} · <RecordLink kind="person" id={item.ownerPersonId}>{item.ownerName}</RecordLink>
               {item.contactName ? ` · ${item.contactName}` : ""}
             </span>
           </p>
@@ -119,7 +120,23 @@ export async function Timeline({ items }: { items: TimelineItem[] }) {
               <span className="font-medium">{item.title}</span>
             )}
           </p>
-          <p className="text-xs text-muted-foreground">{[detail(item), item.projectName, item.actorName].filter(Boolean).join(" · ")}</p>
+          <p className="text-xs text-muted-foreground">
+            {[
+              detail(item),
+              item.projectName ? (
+                <RecordLink key="project" kind="project" id={item.projectId}>
+                  {item.projectName}
+                </RecordLink>
+              ) : null,
+              item.actorName ? (
+                <RecordLink key="actor" kind="person" id={item.actorId}>
+                  {item.actorName}
+                </RecordLink>
+              ) : null,
+            ]
+              .filter(Boolean)
+              .flatMap((part, index) => (index ? [" · ", part] : [part]))}
+          </p>
         </li>
       ))}
     </ol>

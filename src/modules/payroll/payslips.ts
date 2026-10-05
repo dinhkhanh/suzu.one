@@ -71,7 +71,7 @@ export async function publishPayslips(runId: string, actorPersonId: string | nul
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type MyPayslipRow = { id: string; month: string; entityCode: string; net: number; publishedAt: Date; firstViewedAt: Date | null; kind: PayrollRunRow["kind"]; runName: string | null; openQueries: number };
+export type MyPayslipRow = { id: string; month: string; entityId: string; entityCode: string; net: number; publishedAt: Date; firstViewedAt: Date | null; kind: PayrollRunRow["kind"]; runName: string | null; openQueries: number };
 
 /** The person's own payslips, newest month first. Their own pay needs no permission. */
 export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> {
@@ -95,6 +95,7 @@ export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> 
   return rows.map((row) => ({
     id: row.payslip.id,
     month: row.payslip.month,
+    entityId: row.payslip.entityId,
     entityCode: row.entityCode,
     net: openResult(row.person).totals.net,
     publishedAt: row.payslip.publishedAt,

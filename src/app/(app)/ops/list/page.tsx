@@ -15,6 +15,7 @@ import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("compliance");
 
@@ -65,14 +66,14 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
   const row = (item: InstanceListItem) => (
     <TableRow key={item.taskId}>
       <TableCell className="max-w-96 truncate">
-        <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
+        <RecordLink kind="obligation" id={item.taskId} className="font-medium">
           {item.title}
-        </Link>
+        </RecordLink>
       </TableCell>
       <TableCell>
         <Badge variant="outline">{t(`enums.authority.${item.authority}`)}</Badge>
       </TableCell>
-      <TableCell className={item.assigneeName ? undefined : "text-faint"}>{item.assigneeName ?? t("unassigned")}</TableCell>
+      <TableCell className={item.assigneeName ? undefined : "text-faint"}>{item.assigneeName ? <RecordLink kind="person" id={item.assigneePersonId}>{item.assigneeName}</RecordLink> : t("unassigned")}</TableCell>
       <TableCell kind="date" className={item.colour === "overdue" ? "text-destructive" : undefined}>
         {item.dueDate ? format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
         {item.dueDate && item.dueDate !== item.nominalDueDate ? <span className="ps-1.5 text-xs text-faint">({t("shifted")})</span> : null}

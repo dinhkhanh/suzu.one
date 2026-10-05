@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { startImpersonationAction, stopImpersonationAction } from "../impersonation-actions";
+import { recordHref } from "@/lib/record-routes";
 
 /** On a person's page: from here on, the session sees the app as them (FR-PLT-40). */
 export function ImpersonateButton({ personId }: { personId: string }) {
@@ -38,7 +39,7 @@ export function ImpersonationBanner({ name, personId }: { name: string; personId
   const { onSubmit, pending, errorKey } = useActionForm(stopImpersonationAction, {
     // Back where the borrowing started: the page of the person just seen as.
     onSuccess: () => {
-      router.push(`/people/${encodeURIComponent(personId)}`);
+      router.push(recordHref("person", personId));
       router.refresh();
     },
   });

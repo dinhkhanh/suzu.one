@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -51,7 +52,19 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
             {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
           </Badge></span>}>
         <p className="text-sm text-muted-foreground">
-          {[t(`enums.source.${lead.source as "referral"}`), lead.entityName, lead.ownerName ? t("lead.ownerIs", { name: lead.ownerName }) : t("leads.unassigned"), lead.referrerName ? t("leads.referredBy", { name: lead.referrerName }) : null, f.when(lead.createdAt)].filter(Boolean).join(" · ")}
+          {[
+            t(`enums.source.${lead.source as "referral"}`),
+            lead.entityName ? (
+              <RecordLink key="entity" kind="entity" id={lead.entityId}>
+                {lead.entityName}
+              </RecordLink>
+            ) : null,
+            lead.ownerName ? <span key="owner">{t.rich("lead.ownerIs", { name: lead.ownerName, person: (chunks) => <RecordLink kind="person" id={lead.ownerPersonId}>{chunks}</RecordLink> })}</span> : t("leads.unassigned"),
+            lead.referrerName ? <span key="referrer">{t.rich("leads.referredBy", { name: lead.referrerName, person: (chunks) => <RecordLink kind="person" id={lead.referrerPersonId}>{chunks}</RecordLink> })}</span> : null,
+            f.when(lead.createdAt),
+          ]
+            .filter(Boolean)
+            .flatMap((part, index) => (index ? [" · ", part] : [part]))}
         </p>
         {lead.status === "converted" && lead.convertedDealId ? (
           <p className="text-sm">
@@ -84,9 +97,9 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
         {lead.clientName ? (
           <p>
             <span className="text-muted-foreground">{t("lead.fields.existingAccount")}: </span>
-            <Link href={`/crm/accounts/${lead.clientId}`} className="underline">
+            <RecordLink kind="account" id={lead.clientId} className="underline">
               {lead.clientName}
-            </Link>
+            </RecordLink>
           </p>
         ) : null}
       </section>

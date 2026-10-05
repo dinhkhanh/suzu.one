@@ -14,6 +14,7 @@ import { unitChoices, unitPathsOf } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { configOptions } from "../options";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("workSchedules");
 
@@ -83,7 +84,17 @@ export default async function SchedulesSettingsPage() {
             {assignments.length === 0 ? <TableEmpty>{t("assignments.empty")}</TableEmpty> : null}
             {assignments.map((row) => {
               const state = row.validTo && row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
-              const who = row.scope === "person" ? row.personName : row.scope === "department" ? `${row.departmentName} · ${row.entityName ?? t("everyEntity")}` : row.entityName;
+              const entity = <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>;
+              const who =
+                row.scope === "person" ? (
+                  <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+                ) : row.scope === "department" ? (
+                  <>
+                    <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> · {row.entityName ? entity : t("everyEntity")}
+                  </>
+                ) : (
+                  entity
+                );
               return (
                 <TableRow key={row.id}>
                   <TableCell>

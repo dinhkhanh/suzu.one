@@ -17,6 +17,7 @@ import { AccessRequestActions, CredentialsRotatedButton, EndAccessButton, GrantA
 import { PlatformBadge } from "@/modules/assets/ui/digital-views";
 import { listWorkOfDigitalAsset, loadViewer } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("digitalAsset");
 
@@ -83,9 +84,9 @@ export default async function DigitalAssetPage({ params }: PageProps<"/assets/di
       ) : null}
 
       <dl className="grid grid-cols-2 gap-4 rounded-[14px] border border-border bg-background p-4 sm:grid-cols-3">
-        {fact(t("fields.owner"), asset.ownerName ?? <span className="text-warning">{t("noOwner")}</span>)}
-        {fact(t("fields.entity"), asset.entityName)}
-        {fact(asset.ownership === "client" ? t("fields.client") : t("fields.brand"), asset.clientName)}
+        {fact(t("fields.owner"), asset.ownerName ? <RecordLink kind="person" id={asset.ownerPersonId}>{asset.ownerName}</RecordLink> : <span className="text-warning">{t("noOwner")}</span>)}
+        {fact(t("fields.entity"), asset.entityName ? <RecordLink kind="entity" id={asset.entityId}>{asset.entityName}</RecordLink> : null)}
+        {fact(asset.ownership === "client" ? t("fields.client") : t("fields.brand"), asset.clientName ? <RecordLink kind="account" id={asset.clientId}>{asset.clientName}</RecordLink> : null)}
         {fact(t("fields.ownership"), t(`ownership.${asset.ownership}`))}
         {fact(
           t("fields.url"),
@@ -139,7 +140,7 @@ export default async function DigitalAssetPage({ params }: PageProps<"/assets/di
             {view.requests.map((row) => (
               <ListItem key={row.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-medium">{row.personName}</span>
+                  <RecordLink kind="person" id={row.personId} className="font-medium">{row.personName}</RecordLink>
                   <Badge variant="warning">{t(`level.${row.level}`)}</Badge>
                   <span className="text-xs text-faint">{moment(row.requestedAt)}</span>
                 </div>
@@ -169,7 +170,7 @@ export default async function DigitalAssetPage({ params }: PageProps<"/assets/di
             {view.access.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="whitespace-normal">
-                  <span className="font-medium">{row.personName}</span>
+                  <RecordLink kind="person" id={row.personId} className="font-medium">{row.personName}</RecordLink>
                   {row.note ? <p className="text-xs text-faint">{row.note}</p> : null}
                   {/* On a phone the columns to the right fold into this line. */}
                   <p className="text-xs text-faint md:hidden">
@@ -201,7 +202,19 @@ export default async function DigitalAssetPage({ params }: PageProps<"/assets/di
 
       {/* FR-AST-09: the work aimed at this asset, as far as this reader may open it. */}
       <TableCard>
-        <TableCardHeader title={t("work.tasks")} count={work.tasks.length || null} description={work.projects.length ? t("work.projects", { names: work.projects.map((project) => project.name).join(", ") }) : undefined} />
+        <TableCardHeader title={t("work.tasks")} count={work.tasks.length || null} description={
+            work.projects.length
+              ? t.rich("work.projects", {
+                  names: () =>
+                    work.projects.map((project, index) => (
+                      <span key={project.id}>
+                        {index ? ", " : ""}
+                        <RecordLink kind="project" id={project.id}>{project.name}</RecordLink>
+                      </span>
+                    )),
+                })
+              : undefined
+          } />
         <List>
           {work.tasks.length === 0 ? <ListEmpty>{t("work.noTasks")}</ListEmpty> : null}
           {work.tasks.map((task) => (
@@ -244,9 +257,16 @@ export default async function DigitalAssetPage({ params }: PageProps<"/assets/di
             {view.history.map((row) => (
               <ListItem key={row.id} className="flex-wrap gap-x-3 gap-y-0.5">
                 <Badge variant={statusTone(row.status)}>{t(`access.status.${row.status}`)}</Badge>
-                <span className="font-medium">{row.personName}</span>
+                <RecordLink kind="person" id={row.personId} className="font-medium">{row.personName}</RecordLink>
                 <span className="text-xs text-muted-foreground">
-                  {[t(`level.${row.level}`), row.grantedAt ? `${day(row.grantedAt)} → ${day(row.endedAt)}` : day(row.endedAt), row.endedByName, row.endNote].filter(Boolean).join(" · ")}
+                  {[t(`level.${row.level}`), row.grantedAt ? `${day(row.grantedAt)} → ${day(row.endedAt)}` : day(row.endedAt)].join(" · ")}
+                  {row.endedByName ? (
+                    <>
+                      {" · "}
+                      <RecordLink kind="person" id={row.endedByPersonId}>{row.endedByName}</RecordLink>
+                    </>
+                  ) : null}
+                  {row.endNote ? ` · ${row.endNote}` : null}
                 </span>
               </ListItem>
             ))}

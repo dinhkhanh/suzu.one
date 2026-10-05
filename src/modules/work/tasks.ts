@@ -88,11 +88,11 @@ export async function logActivity(tx: Executor, taskId: string, actorPersonId: s
   await tx.insert(schema.workActivity).values(entries.map((entry) => ({ taskId, actorPersonId, type: entry.type, field: entry.field ?? null, fromValue: entry.from ?? null, toValue: entry.to ?? null })));
 }
 
-export type ActivityView = { id: string; type: string; field: string | null; fromValue: unknown; toValue: unknown; createdAt: Date; actorName: string | null };
+export type ActivityView = { id: string; type: string; field: string | null; fromValue: unknown; toValue: unknown; createdAt: Date; actorPersonId: string | null; actorName: string | null };
 
 export async function listActivity(taskId: string, limit = 200): Promise<ActivityView[]> {
   return db()
-    .select({ id: schema.workActivity.id, type: schema.workActivity.type, field: schema.workActivity.field, fromValue: schema.workActivity.fromValue, toValue: schema.workActivity.toValue, createdAt: schema.workActivity.createdAt, actorName: schema.person.fullName })
+    .select({ id: schema.workActivity.id, type: schema.workActivity.type, field: schema.workActivity.field, fromValue: schema.workActivity.fromValue, toValue: schema.workActivity.toValue, createdAt: schema.workActivity.createdAt, actorPersonId: schema.workActivity.actorPersonId, actorName: schema.person.fullName })
     .from(schema.workActivity)
     .leftJoin(schema.person, eq(schema.person.id, schema.workActivity.actorPersonId))
     .where(eq(schema.workActivity.taskId, taskId))

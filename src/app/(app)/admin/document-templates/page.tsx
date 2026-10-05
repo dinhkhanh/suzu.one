@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageTemplates, canReadTemplates, listTemplates, tierNeededFor } from "@/modules/documents/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -62,7 +63,7 @@ export default async function DocumentTemplatesPage() {
                     {row.isActive ? null : <span className="ml-2 text-xs text-faint">{t("inactive")}</span>}
                   </TableCell>
                   <TableCell>{kinds(row.kind)}</TableCell>
-                  <TableCell>{row.entityName ?? <span className="text-muted-foreground">{t("groupWide")}</span>}</TableCell>
+                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : <span className="text-muted-foreground">{t("groupWide")}</span>}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5">
                       <Badge variant={row.tier === "compensation" ? "destructive" : row.tier === "restricted" ? "warning" : "outline"}>{tiers(row.tier)}</Badge>

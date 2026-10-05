@@ -15,6 +15,7 @@ import { MonthNav } from "@/modules/attendance/ui/timesheet-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { pageTitle } from "@/i18n/page-title";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("monthlyTimesheets");
 
@@ -61,7 +62,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
             <ApproveMonthsForm month={month} rows={team.map((row) => ({ personId: row.personId, fullName: row.fullName, status: row.status, canApprove: row.canApprove, href: `/attendance?month=${month}&person=${row.personId}`, line: t("team.line", { paid: days(row.summary.paidDaysCenti), standard: row.summary.standardDays, overtime: hours(row.summary.otTotalMinutes), anomalies: row.summary.anomalyDays }) }))} />
             {team.filter((row) => row.canApprove && (row.status === "confirmed" || row.status === "approved")).map((row) => (
               <div key={row.personId} className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="min-w-40">{row.fullName}</span>
+                <RecordLink kind="person" id={row.personId} className="min-w-40">{row.fullName}</RecordLink>
                 <ReopenMonthForm month={month} personId={row.personId} label={t("team.sendBack")} placeholder={t("team.sendBackWhy")} />
               </div>
             ))}
@@ -120,7 +121,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
                     {overview.issues.map((issue) => (
                       <ListItem key={`${issue.personId}:${issue.code}`} className={issue.blocking ? "" : "text-muted-foreground"}>
                         <span className="flex-1">
-                          <span className="font-medium">{nameOf.get(issue.personId)}</span> — {t(`issues.${issue.code}`, { count: issue.count })}
+                          <RecordLink kind="person" id={issue.personId} className="font-medium">{nameOf.get(issue.personId)}</RecordLink> — {t(`issues.${issue.code}`, { count: issue.count })}
                         </span>
                         {issue.blocking ? <Badge dot variant="destructive">{t("issues.blocking")}</Badge> : null}
                       </ListItem>
@@ -147,7 +148,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
                   {adjustments.map((row) => (
                     <ListItem key={row.id} className="flex-col items-stretch gap-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{row.fullName}</span>
+                        <RecordLink kind="person" id={row.personId} className="font-medium">{row.fullName}</RecordLink>
                         {row.date ? <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{row.date.split("-").reverse().join("/")}</span> : null}
                         <Badge variant={row.status === "voided" ? "outline" : "secondary"}>{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</Badge>
                       </div>

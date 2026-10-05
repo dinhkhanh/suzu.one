@@ -11,6 +11,7 @@ import { listSimpleProfileExposure } from "@/modules/payroll/profiles";
 import { SIMPLE_BASES } from "@/modules/payroll/enums";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("simpleProfileReport");
 
@@ -67,7 +68,9 @@ export default async function SimpleProfileReportPage() {
                 </Link>
                 <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
               </TableCell>
-              <TableCell>{entityCode.get(row.entityId)}</TableCell>
+              <TableCell>
+                <RecordLink kind="entity" id={row.entityId}>{entityCode.get(row.entityId)}</RecordLink>
+              </TableCell>
               <TableCell>{t(`profiles.bases.${row.basis}`)}</TableCell>
               <TableCell>{row.contractType ? t(`exposure.contracts.${row.contractType}` as "exposure.contracts.probation") : "—"}</TableCell>
               <TableCell>{day(row.since)}</TableCell>

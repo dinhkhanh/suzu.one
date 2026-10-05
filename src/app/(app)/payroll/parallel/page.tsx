@@ -16,6 +16,7 @@ import { canManageCompensation, compensationReach } from "@/modules/payroll/poli
 import { ClassifyForm, DifferenceCell, ParallelFilters, ReferenceForm } from "@/modules/payroll/ui/parallel-forms";
 import { pageTitle } from "@/i18n/page-title";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("parallelRun");
 
@@ -89,7 +90,7 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
               {report.rows.map((row) => (
                 <TableRow key={row.personId}>
                   <TableCell className="align-top">
-                    {row.fullName}
+                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                     {row.presence !== "both" ? <p className="text-xs text-warning">{t(`presence.${row.presence}`)}</p> : null}
                   </TableCell>

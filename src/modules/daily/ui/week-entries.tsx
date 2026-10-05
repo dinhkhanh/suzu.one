@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
 import { deleteTimeEntryAction, submitWeekAction, updateTimeEntryAction } from "../time-actions";
 import { durationText, parseCellDuration } from "./format";
 import { useRun } from "./use-run";
 
-export type EntryView = { id: string; day: string; label: string; sub: string | null; minutes: number; billable: boolean; note: string | null; timer: boolean; capped: boolean };
+export type EntryView = { id: string; day: string; label: string; sub: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; minutes: number; billable: boolean; note: string | null; timer: boolean; capped: boolean };
 
 function EntryRow({ entry, editable, index }: { entry: EntryView; editable: boolean; index: number }) {
   const t = useTranslations("daily.time");
@@ -29,8 +30,13 @@ function EntryRow({ entry, editable, index }: { entry: EntryView; editable: bool
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="w-14 shrink-0 text-xs text-muted-foreground">{entry.day}</span>
         <span className="min-w-0 flex-1 truncate">
-          {entry.label}
-          {entry.sub ? <span className="text-xs text-muted-foreground"> · {entry.sub}</span> : null}
+          <RecordLink kind="task" id={entry.taskId}>{entry.label}</RecordLink>
+          {entry.sub ? (
+            <span className="text-xs text-muted-foreground">
+              {" "}
+              · <RecordLink kind="project" id={entry.projectId}>{entry.sub}</RecordLink>
+            </span>
+          ) : null}
         </span>
         {entry.timer ? <Badge variant="outline">{t("timerSource")}</Badge> : null}
         {entry.billable ? <Badge variant="info">{t("billable")}</Badge> : null}

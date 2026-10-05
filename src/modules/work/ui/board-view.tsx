@@ -1,7 +1,7 @@
 "use client";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -142,9 +142,9 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                           <DueText dueDate={task.dueDate} today={today} open={open} />
                         </span>
                       </div>
-                      <Link href={`/work/tasks/${task.id}`} draggable={false} className={cn("line-clamp-2 leading-snug hover:underline", open ? "font-medium" : "text-muted-foreground line-through")}>
+                      <RecordLink kind="task" id={task.id} draggable={false} className={cn("line-clamp-2 leading-snug", open ? "font-medium" : "text-muted-foreground line-through")}>
                         {task.title}
-                      </Link>
+                      </RecordLink>
                       {task.blocker || task.blockedBy > 0 || task.labelIds.length || task.subtasks.total > 0 || task.checklist.total > 0 || cardFields.length ? (
                         <div className="flex flex-wrap items-center gap-1 empty:hidden">
                           {task.blocker ? (

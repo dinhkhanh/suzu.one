@@ -525,7 +525,7 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   };
 }
 
-export type OfferListRow = { id: string; number: string; candidateName: string; positionName: string; openingCode: string; status: OfferStatus; startDate: IsoDate; expiresOn: IsoDate; entityName: string | null; hiredPersonId: string | null };
+export type OfferListRow = { id: string; number: string; candidateName: string; positionName: string; openingId: string; openingCode: string; status: OfferStatus; startDate: IsoDate; expiresOn: IsoDate; entityName: string | null; hiredPersonId: string | null };
 
 /** Every offer the reader may see, newest first. No figure: this is a list, and a list is glanced at. */
 /**
@@ -605,6 +605,7 @@ export async function listOffers(principal: Principal, personId: string | null, 
       number: row.number,
       candidateName: row.candidateName,
       positionName: row.positionName,
+      openingId: row.openingId,
       openingCode: row.openingCode,
       status: effectiveOfferStatus({ status: row.status, expiresOn: row.expiresOn as IsoDate }, today),
       startDate: row.startDate as IsoDate,

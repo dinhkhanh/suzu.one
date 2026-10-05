@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
 import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
@@ -157,17 +158,17 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                   <div className="flex items-center gap-2.5">
                     <PersonAvatar person={row} />
                     <div className="min-w-0 leading-tight">
-                      <Link href={`/people/${row.id}`} className="font-medium hover:underline">
+                      <RecordLink kind="person" id={row.id} className="font-medium">
                         {row.fullName}
-                      </Link>
+                      </RecordLink>
                       <p className="truncate text-xs text-faint">{row.workEmail ?? "—"}</p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>{row.positionName ?? "—"}</TableCell>
-                <TableCell>{row.departmentName ?? "—"}</TableCell>
-                <TableCell>{row.entityName ?? "—"}</TableCell>
-                <TableCell>{row.managerName ?? "—"}</TableCell>
+                <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
+                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
+                <TableCell>{row.managerName ? <RecordLink kind="person" id={row.managerId}>{row.managerName}</RecordLink> : "—"}</TableCell>
                 {personalFacts ? (
                   <TableCell>
                     <span className="flex flex-wrap gap-1">

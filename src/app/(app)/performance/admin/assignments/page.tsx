@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageAssignmentsOf, coversMonth, listAssignments, listKpis, loadDirectory, metricValueText } from "@/modules/performance/service";
 import { kpiValueText, monthLabel } from "@/modules/performance/ui/kpi";
@@ -33,7 +34,7 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
         </Link>
         <TableCard>
           <TableCardHeader
-            title={person.fullName}
+            title={<RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>}
             count={assignments.length || null}
             actions={
               <Link href={`/performance/kpis/${person.personId}`} className="text-sm underline underline-offset-4">

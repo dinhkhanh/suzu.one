@@ -1,13 +1,15 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
+import type { RecordKind } from "@/lib/record-routes";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { canChangePhoto } from "@/modules/core-hr/policy";
-import { getPersonTarget, getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
+import { getPersonTarget, getPersonView, loadPlacementOptions } from "@/modules/core-hr/service";
 import { AssignmentForm, PastAssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
@@ -36,15 +38,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const user = await requireUser();
   const { id } = await props.params;
-  // Your own record is not behind the People feature flag, same as /me.
-  if (id !== user.person.id && !(await peopleModuleOpen(user))) notFound();
+  // Not behind the People feature flag: a colleague's name is a link everywhere in the app, and
+  // what opens here is decided per viewer by `getPersonView` — the directory entry for everybody,
+  // more for the person, their manager and HR. The flag holds back the list and its filters only.
   const person = UUID.test(id) ? await getPersonView(user.principal, id) : null;
   if (!person) notFound();
 
   const t = await getTranslations("people");
   const format = await getFormatter();
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
-  const personLink = (personId: string | null, name: string | null) => (personId && name ? <Link href={`/people/${personId}`} className="hover:underline">{name}</Link> : null);
+  // A name with the way to its record; null without a name, so an empty fact still shows its dash.
+  const record = (kind: RecordKind, id: string | null | undefined, name: string | null | undefined) => (name ? <RecordLink kind={kind} id={id}>{name}</RecordLink> : null);
   const { personal } = person;
   // HR sees what the employee has asked to change; listProfileChanges answers null to everyone else.
   const rehiring = person.canManage && personal?.status === "offboarded";
@@ -78,7 +82,14 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         <PageHeader
           eyebrow={person.employeeCode}
           title={person.fullName}
-          description={[person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}
+          description={[person.current?.positionName, record("unit", person.current?.departmentId, person.current?.departmentName), record("entity", person.entityId, person.entityName)]
+            .filter(Boolean)
+            .map((part, index) => (
+              <Fragment key={index}>
+                {index ? " · " : null}
+                {part}
+              </Fragment>
+            ))}
           actions={
             photoEditable || impersonable ? (
               <>
@@ -98,18 +109,18 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
       </div>
 
       <FactSheet>
-        <Fact label={t("fields.entity")}>{person.entityName}</Fact>
+        <Fact label={t("fields.entity")}>{record("entity", person.entityId, person.entityName)}</Fact>
         <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
-        <Fact label={t("fields.team")}>{person.current?.teamName}</Fact>
-        <Fact label={t("fields.managerId")}>{personLink(person.current?.managerId ?? null, person.current?.managerName ?? null)}</Fact>
+        <Fact label={t("fields.team")}>{record("unit", person.current?.teamId, person.current?.teamName)}</Fact>
+        <Fact label={t("fields.managerId")}>{record("person", person.current?.managerId, person.current?.managerName)}</Fact>
         {accounts.length ? (
           <Fact label={t("fields.accountsManaged")}>
             {accounts.map((account, index) => (
               <span key={account.id}>
                 {index ? ", " : ""}
-                <Link href={`/crm/accounts/${account.id}`} className="hover:underline">
+                <RecordLink kind="account" id={account.id}>
                   {account.name}
-                </Link>
+                </RecordLink>
               </span>
             ))}
           </Fact>
@@ -125,7 +136,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
               <Fact label={t("fields.endDate")}>{day(personal.endDate)}</Fact>
               <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>
-              <Fact label={t("fields.dottedManagerId")}>{personLink(personal.current?.dottedManagerId ?? null, personal.current?.dottedManagerName ?? null)}</Fact>
+              <Fact label={t("fields.dottedManagerId")}>{record("person", personal.current?.dottedManagerId, personal.current?.dottedManagerName)}</Fact>
               <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
               <Fact label={t("fields.workLocation")}>{personal.current?.workLocation}</Fact>
             </FactSheet>
@@ -181,12 +192,19 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      {row.entityName}
+                      <RecordLink kind="entity" id={row.entityId}>
+                        {row.entityName}
+                      </RecordLink>
                       <span className="ml-1 text-muted-foreground">{row.employeeCode}</span>
                     </TableCell>
                     <TableCell>{row.positionName ?? "—"}</TableCell>
-                    <TableCell>{[row.departmentName, row.teamName].filter(Boolean).join(" · ") || "—"}</TableCell>
-                    <TableCell>{row.managerName ?? "—"}</TableCell>
+                    <TableCell>
+                      {record("unit", row.departmentId, row.departmentName)}
+                      {row.departmentName && row.teamName ? " · " : null}
+                      {record("unit", row.teamId, row.teamName)}
+                      {row.departmentName || row.teamName ? null : "—"}
+                    </TableCell>
+                    <TableCell>{record("person", row.managerId, row.managerName) ?? "—"}</TableCell>
                     <TableCell>{t(`workforceType.${row.workforceType}`)}</TableCell>
                     <TableCell className="text-muted-foreground">{row.changeReason ?? "—"}</TableCell>
                   </TableRow>

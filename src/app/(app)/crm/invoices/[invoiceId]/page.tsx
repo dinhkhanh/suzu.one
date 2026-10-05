@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader } from "@/components/ui/page";
+import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -33,13 +34,26 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
             {t("invoices.title")}
           </Link>{" "}
           ·{" "}
-          <Link href={`/crm/accounts/${invoice.clientId}`} className="underline">
+          <RecordLink kind="account" id={invoice.clientId} className="underline">
             {invoice.accountName}
-          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{t("invoice.heading", { number: invoice.number })}
+          </RecordLink></>} title={<span className="inline-flex flex-wrap items-center gap-2">{t("invoice.heading", { number: invoice.number })}
           <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
             {t(`enums.invoiceStanding.${invoice.standing}`)}
           </Badge></span>}>
-        <p className="text-sm text-muted-foreground">{[invoice.entityName, t("invoice.issuedIs", { date: f.date(invoice.issuedOn) }), t("invoice.dueIs", { date: f.date(invoice.dueOn) }), invoice.daysPastDue > 0 ? t("invoices.daysLate", { days: invoice.daysPastDue }) : null].filter(Boolean).join(" · ")}</p>
+        <p className="text-sm text-muted-foreground">
+          {[
+            invoice.entityName ? (
+              <RecordLink key="entity" kind="entity" id={invoice.entityId}>
+                {invoice.entityName}
+              </RecordLink>
+            ) : null,
+            t("invoice.issuedIs", { date: f.date(invoice.issuedOn) }),
+            t("invoice.dueIs", { date: f.date(invoice.dueOn) }),
+            invoice.daysPastDue > 0 ? t("invoices.daysLate", { days: invoice.daysPastDue }) : null,
+          ]
+            .filter(Boolean)
+            .flatMap((part, index) => (index ? [" · ", part] : [part]))}
+        </p>
         <p className="text-sm">{t("invoice.figures", { subtotal: f.money(invoice.subtotalVnd), vat: f.money(invoice.vatVnd), rate: invoice.vatRateBp / 100, total: f.money(invoice.totalVnd), paid: f.money(invoice.paidVnd), outstanding: f.money(invoice.outstandingVnd) })}</p>
         {invoice.writtenOffReason ? <p className="text-sm text-muted-foreground">{t("invoice.writtenOffBecause", { reason: invoice.writtenOffReason })}</p> : null}
       </PageHeader>
@@ -95,7 +109,7 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
                   <Badge variant="outline">{t(`invoice.methods.${payment.method as "transfer"}`)}</Badge>
                 </TableCell>
                 <TableCell kind="id">{payment.reference ?? "—"}</TableCell>
-                <TableCell>{payment.recordedByName ?? "—"}</TableCell>
+                <TableCell>{payment.recordedByName ? <RecordLink kind="person" id={payment.recordedByPersonId}>{payment.recordedByName}</RecordLink> : "—"}</TableCell>
                 <TableCell kind="money">{f.money(payment.amountVnd)}</TableCell>
                 {records && invoice.status !== "written_off" ? (
                   <TableCell kind="actions">
