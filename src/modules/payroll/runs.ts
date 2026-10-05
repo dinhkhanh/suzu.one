@@ -100,8 +100,17 @@ export async function setRunInput(input: { runId: string } & RunInputLine, actor
   return { reopened: await inTransaction(executor, (tx) => writeRunInputs(tx, input.runId, [input], actorPersonId)) };
 }
 
+/**
+ * `setRunInput` for several people of one run at once — one lock, one reading of the catalogue,
+ * one insert — under the same rules. `actorPersonId` null = the system (a nightly sweep).
+ */
+export async function setRunInputs(runId: string, lines: readonly RunInputLine[], actorPersonId: string | null, executor: Executor = db()): Promise<{ reopened: boolean }> {
+  if (lines.length === 0) return { reopened: false };
+  return { reopened: await inTransaction(executor, (tx) => writeRunInputs(tx, runId, lines, actorPersonId)) };
+}
+
 /** The lines of one run, checked against one reading of the catalogue and written under the run's lock. */
-async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunInputLine[], actorPersonId: string): Promise<boolean> {
+async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunInputLine[], actorPersonId: string | null): Promise<boolean> {
   if (lines.some((line) => !Number.isSafeInteger(line.amount))) throw new ActionError("amount_invalid");
   // The lock is what a proposal queues on: a figure cannot slip in beside one (`stepRun`).
   const [run] = await tx.select().from(schema.payrollRun).where(eq(schema.payrollRun.id, runId)).limit(1).for("update");

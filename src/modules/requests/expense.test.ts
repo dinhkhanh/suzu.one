@@ -8,7 +8,7 @@ vi.mock("@/lib/env", () => ({
   env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
 }));
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
@@ -239,6 +239,34 @@ describe("a run cancelled underneath a claim", () => {
     const postings = await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, filed.submissionId));
     expect(postings).toHaveLength(1);
     expect(postings[0].runId).toBe(second.id);
+  });
+});
+
+describe("one sweep over many claims", () => {
+  // The sweep handles every claim in one transaction and a fixed number of statements; what it
+  // posts must be what offering the claims one by one did: one line per person, the sum of theirs.
+  it("posts them all in one transaction, one summed line per person, and counts what moved", async () => {
+    const [entity] = await db().insert(schema.entity).values({ code: "SZW", legalName: "SuZu W", shortName: "SZW", taxCode: "0106", wageRegion: 1 }).returning();
+    await db().update(schema.person).set({ primaryEntityId: entity.id }).where(inArray(schema.person.id, [ids.huy, ids.lan]));
+    // Filed while the entity has no open run: they wait.
+    for (const [person, amount] of [[ids.huy, 10_000], [ids.huy, 20_000], [ids.lan, 40_000]] as const) await fileAndApprove(person, [line({ amount })], [ids.boss]);
+    // And one freed from a cancelled run.
+    const cancelled = await openRun(entity.id, "2027-05");
+    await fileAndApprove(ids.lan, [line({ amount: 5_000 })], [ids.boss]);
+    await db().update(schema.payrollRun).set({ status: "cancelled" }).where(eq(schema.payrollRun.id, cancelled.id));
+    const run = await openRun(entity.id, "2027-06");
+
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await sweepApprovedClaims(null)).toEqual({ posted: 4, released: 1, stillWaiting: 0 });
+      expect(transaction).toHaveBeenCalledTimes(1);
+    } finally {
+      transaction.mockRestore();
+    }
+    expect((await reimbursementOf(run.id, ids.huy))?.amount).toBe(30_000);
+    expect((await reimbursementOf(run.id, ids.lan))?.amount).toBe(45_000);
+    expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.runId, cancelled.id))).toEqual([]);
+    expect(await sweepApprovedClaims(null)).toEqual({ posted: 0, released: 0, stillWaiting: 0 });
   });
 });
 
