@@ -55,8 +55,11 @@ export const rolloverIds = (tasks: readonly CycleTask[]): string[] => tasks.filt
 /** Progress of the running cycle: done ÷ planned, whole percent; an empty cycle is 0 %. */
 export function cycleProgress(tasks: readonly CycleTask[]): { planned: number; done: number; percent: number } {
   const { planned, done } = cycleSummary(tasks);
-  return { planned, done, percent: planned === 0 ? 0 : Math.round((done / planned) * 100) };
+  return cycleProgressOf(planned, done);
 }
+
+/** The same figure from counts already taken (the cycle page counts in SQL, over every task). */
+export const cycleProgressOf = (planned: number, done: number): { planned: number; done: number; percent: number } => ({ planned, done, percent: planned === 0 ? 0 : Math.round((done / planned) * 100) });
 
 /** Days left in a cycle, today included; 0 once it has ended. */
 export const daysLeft = (cycle: Pick<CycleWindow, "endDate">, today: IsoDate): number => Math.max(0, daysBetween(today, cycle.endDate) + 1);

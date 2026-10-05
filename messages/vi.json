@@ -5114,7 +5114,8 @@
         "unscheduled": "chưa có giờ",
         "cancelled": "đã hủy"
       },
-      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng."
+      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng.",
+      "truncated": "Tháng này quá nhiều việc để hiện cùng lúc: lịch đang hiện {shown} trên {total} công việc, việc chưa xong trước, rồi đến việc có hạn sớm nhất."
     },
     "discussion": {
       "title": "Trao đổi ({count})",
@@ -5923,6 +5924,7 @@
       "next": "Chu kỳ tới #{number} ({range}): {count} việc đã lên kế hoạch.",
       "past": "Các chu kỳ đã qua",
       "noPast": "Chưa có chu kỳ nào kết thúc.",
+      "truncated": "Đang liệt kê {shown} trên {total} công việc của chu kỳ, việc chưa xong trước. Tiến độ ở trên tính đủ tất cả.",
       "planned": "{count} kế hoạch",
       "done": "{count} xong",
       "rolled": "{count} chuyển tiếp",

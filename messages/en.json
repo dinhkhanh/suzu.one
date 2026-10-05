@@ -5114,7 +5114,8 @@
         "unscheduled": "no time set",
         "cancelled": "cancelled"
       },
-      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled."
+      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled.",
+      "truncated": "This month is too full to show at once: the calendar holds {shown} of its {total} tasks, open work first, then the earliest due."
     },
     "discussion": {
       "title": "Conversation ({count})",
@@ -5923,6 +5924,7 @@
       "next": "Next cycle #{number} ({range}): {count} tasks planned.",
       "past": "Past cycles",
       "noPast": "No cycle has ended yet.",
+      "truncated": "Listing {shown} of the cycle's {total} tasks, open work first. The progress above counts them all.",
       "planned": "{count} planned",
       "done": "{count} done",
       "rolled": "{count} rolled over",
