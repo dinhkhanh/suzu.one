@@ -40,11 +40,13 @@ export async function runRequestSla(now: Date = new Date()): Promise<SlaResult> 
       entityId: schema.approvalRequest.entityId,
       requesterPersonId: schema.approvalRequest.requesterPersonId,
       subjectPersonId: schema.approvalRequest.subjectPersonId,
+      approverStatus: schema.person.status,
       waitingSince: sql<Date>`greatest(${schema.approvalRequest.createdAt}, ${schema.approvalRequest.updatedAt})`,
     })
     .from(schema.approvalAssignee)
     .innerJoin(schema.approvalStep, eq(schema.approvalStep.id, schema.approvalAssignee.stepId))
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.approvalAssignee.requestId))
+    .innerJoin(schema.person, eq(schema.person.id, schema.approvalAssignee.approverPersonId))
     .where(and(eq(schema.approvalAssignee.status, "pending"), eq(schema.approvalStep.status, "pending"), eq(schema.approvalRequest.status, "pending")));
 
   for (const turn of turns) {
@@ -63,6 +65,9 @@ export async function runRequestSla(now: Date = new Date()): Promise<SlaResult> 
     const params = { requestType: turn.typeName ?? turn.type, summary: turn.summary, days };
 
     if (action === "remind") {
+      // Only somebody who can still answer is nudged: a suspended or departed approver's turn is
+      // left to the escalation (and to the leaver hand-over), not reminded into an empty inbox.
+      if (turn.approverStatus !== "active") continue;
       // Claim it first: two runs of the job at once must not send two nudges.
       const [claimed] = await db()
         .update(schema.approvalAssignee)

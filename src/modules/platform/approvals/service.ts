@@ -373,7 +373,10 @@ export async function resubmitRequest(tx: Tx, definition: RequestTypeDefinition,
   const loaded = await load(tx, requestId, definition.type);
   const result = resubmit(loaded.state, actorPersonId);
   if (!result.ok) throw new ActionError(REFUSALS[result.reason]);
-  await tx.update(schema.approvalRequest).set({ ...(changes.summary === undefined ? {} : { summary: changes.summary }), ...(changes.payload === undefined ? {} : { payload: changes.payload }), ...(changes.payloadEnc === undefined ? {} : { payloadEnc: changes.payloadEnc }) }).where(eq(schema.approvalRequest.id, requestId));
+  const edits = { ...(changes.summary === undefined ? {} : { summary: changes.summary }), ...(changes.payload === undefined ? {} : { payload: changes.payload }), ...(changes.payloadEnc === undefined ? {} : { payloadEnc: changes.payloadEnc }) };
+  // Sent round again unchanged is allowed (the approver asked a question, not for an edit); an
+  // UPDATE with nothing to set is not.
+  if (Object.keys(edits).length > 0) await tx.update(schema.approvalRequest).set(edits).where(eq(schema.approvalRequest.id, requestId));
   const request = await persist(tx, loaded, result.state, { personId: actorPersonId, comment: null });
   await voidActionTokens(tx, requestId);
   await tx.insert(schema.approvalEvent).values({ requestId, type: "resubmitted", actorPersonId, stepIndex: result.state.currentStep });
