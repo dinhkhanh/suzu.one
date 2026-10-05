@@ -13,7 +13,14 @@
   },
   "controls": {
     "search": "Search",
+    "pager": {
+      "label": "Pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {pageCount} · {total} in all"
+    },
     "noResults": "No matches",
+    "loading": "Loading…",
     "pickDate": "Pick a date",
     "pickMonth": "Pick a month",
     "today": "Today",
@@ -4677,6 +4684,7 @@
         "client": "Group by client"
       },
       "showClosed": "Show closed",
+      "truncated": "Showing the first {shown} of {total} tasks: open work first, then the most recently closed.",
       "clear": "Clear filters",
       "count": "{shown} of {total}",
       "quickCreate": "New task — type a title and press Enter",
@@ -5336,6 +5344,7 @@
       "open": "{count} open",
       "overdue": "{count} overdue",
       "atRisk": "{count} at risk",
+      "truncated": "Showing the {shown} due soonest of {total} open tasks; the figures above count them all.",
       "unassigned": "Unassigned",
       "counts": "{todo} to do · {in_progress} in progress · {in_review} in review",
       "due": "due {date}",
@@ -14676,6 +14685,7 @@
       "valuedOf": "{valued} of {count} valued",
       "gatesNeeded": "This stage needs: {gates}",
       "noForecast": "No open deals with a value you may see.",
+      "boardTruncated": "The board holds the first {shown} of {total} deals; each stage's figures count them all. Filter by team or service to see the rest.",
       "undatedOrLate": "No date, or the date has passed",
       "columns": {
         "deal": "Deal",
