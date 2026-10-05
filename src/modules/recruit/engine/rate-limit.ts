@@ -36,6 +36,10 @@ export const CAREERS_LIMITS = {
   assignment: { max: 4, windowSeconds: 60 * 60 },
   /** Opening a take-home brief. Generous: rereading the brief before starting is what people do. */
   assignment_view: { max: 60, windowSeconds: 60 * 60 },
+  /** Opening one's own privacy page from a letter (FR-REC-13). Counted so the token space is not free to walk. */
+  privacy_view: { max: 30, windowSeconds: 60 * 60 },
+  /** Leaving the talent pool. Once is enough; the allowance is for a double click and a retry. */
+  privacy: { max: 5, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimit>;
 
 export type CareersBucket = keyof typeof CAREERS_LIMITS;

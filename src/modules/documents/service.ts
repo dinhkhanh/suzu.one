@@ -28,6 +28,8 @@ import { canGenerate, canOpenDocument } from "./policy";
 export * from "./enums";
 export * from "./engine/template";
 export { canGenerate, canManageTemplates, canOpenDocument, canReadTemplates } from "./policy";
+// Recruitment attaches an offer letter to the email that sends it, as the same PDF the page
+// downloads; a project's acceptance record is drawn the same way.
 export { type DocumentPdfInput, renderDocumentPdf } from "./document-pdf";
 
 type Executor = Tx | ReturnType<typeof db>;

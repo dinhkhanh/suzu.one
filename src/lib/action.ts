@@ -1,6 +1,7 @@
 import "server-only";
 import type { z } from "zod";
 import { invalidateLive } from "@/lib/cache/live";
+import { reportError } from "@/lib/observability/report";
 import { recordAudit, type AuditEntry } from "@/modules/platform/audit/service";
 import { getCurrentUser, type CurrentUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
@@ -19,6 +20,34 @@ export class ActionError extends Error {
     readonly details?: unknown,
   ) {
     super(message);
+  }
+}
+
+/** How many times the audit entry of a change that already committed is tried before it is reported instead. */
+export const AUDIT_ATTEMPTS = 3;
+
+/**
+ * Writes the audit entry of a change that has **already committed** (ENG-09). The services own
+ * their transactions, so the entry cannot share one with the change without each service taking
+ * the caller's; what can be promised here is that a failed audit write neither hides the change
+ * nor tells the person it did not happen. It is tried again, and if the database still refuses it,
+ * the entry's identity (never its before/after, which may be compensation) goes to the error
+ * tracker and the structured log as `<action>.audit_failed`, where it can be written back by hand —
+ * and the person is told the truth: it worked.
+ */
+async function auditCommitted(name: string, entry: AuditEntry): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await recordAudit(entry);
+    } catch (error) {
+      if (attempt < AUDIT_ATTEMPTS) continue;
+      await reportError(error, {
+        event: `${name}.audit_failed`,
+        source: "action",
+        tags: { action: name, actorPersonId: entry.actor?.personId ?? undefined, resourceType: entry.resource?.type, resourceId: entry.resource?.id ?? undefined },
+      });
+      return;
+    }
   }
 }
 
@@ -69,7 +98,7 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
     try {
       const { data, audit } = await definition.run({ user, input: parsed.data });
       // Whatever the action changed is on the actor's own screens at once (src/lib/cache/live.ts).
-      await Promise.all([recordAudit({ ...audit, action: definition.name, actor, request: user.request }), invalidateLive(user.person.id)]);
+      await Promise.all([auditCommitted(definition.name, { ...audit, action: definition.name, actor, request: user.request }), invalidateLive(user.person.id)]);
       return { ok: true, data };
     } catch (error) {
       if (error instanceof ActionError) return { ok: false, error: "failed", message: error.message, ...(error.details === undefined ? {} : { details: error.details }) };

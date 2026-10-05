@@ -34,6 +34,7 @@ export type CandidateFormValue = {
   referredByPersonId: string | null;
   tags: string[];
   notes: string | null;
+  locale: string | null;
 };
 
 export function CandidateForm({ value, people }: { value: CandidateFormValue | null; people: { id: string; fullName: string }[] }) {
@@ -93,6 +94,13 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
                   {person.fullName}
                 </option>
               ))}
+            </Select>
+          </Field>
+          {/* The language the candidate's letters are written in — theirs, not the sender's. */}
+          <Field name="locale" label={tRoot("email.language")}>
+            <Select id="locale" name="locale" defaultValue={value?.locale === "en" ? "en" : "vi"}>
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
             </Select>
           </Field>
         </div>

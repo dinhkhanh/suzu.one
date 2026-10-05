@@ -218,9 +218,12 @@ describe("applying", () => {
     expect(application.salaryExpectationVnd).toBe(20_000_000);
 
     const events = await db().select().from(schema.applicationEvent).where(eq(schema.applicationEvent.applicationId, application.id));
-    expect(events.map((event) => event.type)).toEqual(["applied"]);
+    // The application, then its acknowledgement — which this database has no wording for, so the
+    // history says the letter did not go and why (`letters.test.ts` sends it).
+    expect(events.map((event) => event.type)).toEqual(["applied", "emailed"]);
+    expect(events[1].detail).toMatchObject({ templateCode: "ACK_APPLICATION", automatic: true, skipped: "switched_off" });
     // Nobody inside the company did this.
-    expect(events[0].actorPersonId).toBeNull();
+    expect(events.every((event) => event.actorPersonId === null)).toBe(true);
   });
 
   it("answers a repeat application exactly like a first one, and writes nothing the second time", async () => {

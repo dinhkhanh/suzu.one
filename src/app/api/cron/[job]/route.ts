@@ -1,54 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
+import { after } from "next/server";
 import { env } from "@/lib/env";
-import { faceLeaversJob } from "@/modules/attendance/faces";
-import { punchReviewRemindersJob } from "@/modules/attendance/punches";
-import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attendance/recompute";
-import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
-import { commsAnnouncementsJob } from "@/modules/comms/jobs";
-import { kbAckRemindersJob, kbEmbeddingsJob } from "@/modules/kb/jobs";
-import { filesCleanupJob } from "@/modules/platform/files/jobs";
-import { leaveAccrualJob } from "@/modules/leave/jobs";
-import { opsBackfillJob, opsRemindersJob, opsSchedulerJob } from "@/modules/ops/jobs";
-import { payrollCalculateJob } from "@/modules/payroll/run-calculation";
-import { performanceProbationJob, performanceRemindersJob } from "@/modules/performance/jobs";
-import { housekeepingJob } from "@/modules/platform/jobs/housekeeping";
-import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
-import { approvalsOversightDigestJob } from "@/modules/platform/approvals/jobs";
-import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
-import { candidateRetentionJob } from "@/modules/recruit/jobs";
-import { kpiFromWorkJob, reportSchedulesJob } from "@/modules/reports/service";
-import { expenseClaimSweepJob, requestSlaJob } from "@/modules/requests/jobs";
-import { workCoverJob, workCyclesJob, workExitHandoverJob, workPreviewSweepJob, workRecurringJob, workRemindersJob, workTriageWakeJob } from "@/modules/work/jobs";
-import { dailyMissedReportsJob, dailyPlanRemindersJob, dailyReportRemindersJob, dailyTimesheetRemindersJob, dailyWeeklyReportsJob } from "@/modules/daily/jobs";
-import { projectPlansJob, projectRemindersJob, projectRetainersJob } from "@/modules/projects/jobs";
-import { crmMorningJob, crmNightlyJob } from "@/modules/crm/service";
-import { aiEvalJob } from "../ai-eval";
-import { bonusDemoRunJob } from "./bonus-demo";
-import { cacheFlushJob } from "./cache-flush";
-import { payrollDemoRunsJob } from "./payroll-demo";
-
-// What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
-// allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
-const SCHEDULES: Record<string, JobDefinition[]> = {
-  // Leave after the roll-over: a new starter accrues from the day they become active. The timesheet
-  // last: it closes yesterday with the leave and the employment facts of today.
-  // Candidate retention runs with the other nightly housekeeping (FR-REC-13): it empties out the
-  // records of people whose window has passed, and it must run whether or not anybody logs in. So
-  // does the face kiosk's: the faces of people who have left. The platform's own housekeeping
-  // (expired approval links, staged import batches) closes the night.
-  // Approved expense claims are offered to the open payroll run just before it is calculated.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, workTriageWakeJob, workCyclesJob, workCoverJob, workExitHandoverJob, workPreviewSweepJob, projectPlansJob, projectRetainersJob, crmNightlyJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, expenseClaimSweepJob, payrollCalculateJob, candidateRetentionJob, faceLeaversJob, housekeepingJob],
-  // Alerts (and, on the 1st, "your month is ready to confirm"; flagged check-ins waiting for their
-  // reviewers) first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, punchReviewRemindersJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, approvalsOversightDigestJob, workRemindersJob, projectRemindersJob, crmMorningJob, dailyPlanRemindersJob, dailyMissedReportsJob, dailyWeeklyReportsJob, dailyTimesheetRemindersJob, kbAckRemindersJob, performanceProbationJob, performanceRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, kpiFromWorkJob, reportSchedulesJob, notificationsDailyJob, filesCleanupJob],
-  // 18:00 in Vietnam: the end-of-day report reminder (FR-PJM-22), before most people leave.
-  evening: [dailyReportRemindersJob],
-};
-
-// Run by hand only: /api/cron/<job name>.
-// `payroll-demo-runs`, `bonus-demo-run` and `ai-eval` refuse to run outside a development server.
-// `cache-flush` is what `pnpm cache:flush` calls.
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob, cacheFlushJob];
+import { pingSchedule, type JobOutcome, runJob, runSchedule, sweepTimedOutRuns } from "@/modules/platform/jobs/service";
+import { jobNamed, SCHEDULES } from "../registry";
 
 export const maxDuration = 300;
 
@@ -60,20 +14,64 @@ function authorized(request: Request): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
+const statusOf = (outcomes: JobOutcome[]) => (outcomes.some((outcome) => outcome.status === "failed") ? 500 : 200);
+
+/**
+ * Runs a schedule from job `from` onwards within this invocation's time budget, then hands what is
+ * left to a fresh invocation of this same URL — a function of its own, with five minutes of its own
+ * (ENG-01). The last invocation of the chain pings the dead-man's switch with the verdict of the
+ * whole run; `failed` carries the earlier invocations' part of it along.
+ */
+async function continueSchedule(request: Request, schedule: string, from: number, failedBefore: boolean): Promise<JobOutcome[]> {
+  const startedAt = new Date();
+  const progress = await runSchedule(SCHEDULES[schedule], from, { startedAt });
+  const failed = failedBefore || progress.outcomes.some((outcome) => outcome.status === "failed");
+  if (progress.next === null) {
+    await pingSchedule(env().CRON_PING_URL, schedule, failed ? "fail" : "success");
+    return progress.outcomes;
+  }
+  const next = new URL(request.url);
+  next.search = new URLSearchParams({ from: String(progress.next), ...(failed ? { failed: "1" } : {}) }).toString();
+  try {
+    // The next invocation answers at once and does its work after answering, so this waits seconds, not minutes.
+    const handed = await fetch(next, { headers: { authorization: request.headers.get("authorization") ?? "" }, signal: AbortSignal.timeout(30_000), cache: "no-store" });
+    if (!handed.ok) throw new Error(`continuation answered ${handed.status}`);
+  } catch (error) {
+    // The tail did not start: fail the run loudly. The jobs left will run at the next trigger.
+    console.error(JSON.stringify({ level: "error", event: "cron.continuation_failed", schedule, from: progress.next, message: error instanceof Error ? error.message : String(error) }));
+    await pingSchedule(env().CRON_PING_URL, schedule, "fail");
+  }
+  return progress.outcomes;
+}
+
 // Vercel Cron calls this with `Authorization: Bearer $CRON_SECRET`. Nothing else may.
-// `/api/cron/<schedule>` runs a whole schedule; `/api/cron/<job name>` runs one job by hand.
+// `/api/cron/<schedule>` runs a whole schedule; `/api/cron/<job name>` runs one job by hand;
+// `/api/cron/<schedule>?from=<n>` is a schedule handing its tail on to itself.
 export async function GET(request: Request, context: RouteContext<"/api/cron/[job]">) {
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
 
   const { job } = await context.params;
-  // A job may sit in two schedules (the ops scheduler): by name it still runs once.
-  const definitions = SCHEDULES[job] ?? [...new Set([...Object.values(SCHEDULES).flat(), ...ON_DEMAND])].filter((candidate) => candidate.name === job);
-  if (definitions.length === 0) return new Response("Unknown job", { status: 404 });
+  const query = new URL(request.url).searchParams;
 
-  const outcomes = [];
-  for (const definition of definitions) {
-    const run = await runJob(definition);
-    outcomes.push({ job: definition.name, status: run?.status ?? "already_running", result: run?.result ?? null, error: run?.error ?? null });
+  // Whatever died with its server since the last call is marked failed, and the owners hear of it.
+  await sweepTimedOutRuns();
+
+  if (SCHEDULES[job]) {
+    const from = Number(query.get("from") ?? 0);
+    if (!Number.isInteger(from) || from < 0 || from >= SCHEDULES[job].length) return new Response("Bad continuation", { status: 400 });
+    if (from > 0) {
+      // A continuation: answer the invocation that handed over, then work.
+      after(() => continueSchedule(request, job, from, query.get("failed") === "1"));
+      return Response.json({ accepted: { schedule: job, from } }, { status: 202 });
+    }
+    await pingSchedule(env().CRON_PING_URL, job, "start");
+    const outcomes = await continueSchedule(request, job, 0, false);
+    return Response.json({ outcomes }, { status: statusOf(outcomes) });
   }
-  return Response.json({ outcomes }, { status: outcomes.some((outcome) => outcome.status === "failed") ? 500 : 200 });
+
+  const definition = jobNamed(job);
+  if (!definition) return new Response("Unknown job", { status: 404 });
+  const run = await runJob(definition);
+  const outcomes: JobOutcome[] = [{ job: definition.name, status: run?.status === "succeeded" || run?.status === "failed" ? run.status : "already_running", result: run?.result ?? null, error: run?.error ?? null }];
+  return Response.json({ outcomes }, { status: statusOf(outcomes) });
 }

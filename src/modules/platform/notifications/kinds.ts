@@ -70,6 +70,8 @@ export const KINDS = {
   // The same for a Telegram chat (docs/TELEGRAM.md).
   "security.telegram_linked": "security",
   "system.job_failed": "system",
+  // A run the platform killed (it outlived its function): it never reached its own catch block.
+  "system.job_timed_out": "system",
   "system.rule_proposed": "system",
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",
@@ -158,6 +160,9 @@ export const KINDS = {
   // Recruitment (FR-REC-01): a hiring request cleared its flow, so there is a head to advertise.
   // The title and the count — never the budget.
   "recruit.hiring_approved": "recruit",
+  // Somebody applied through the careers page — to the opening's recruiters. The job, never the
+  // applicant: a candidate's name in a notification outlives their erasure (FR-REC-13).
+  "recruit.application_received": "recruit",
   // Interviews (FR-REC-06): you are in the room on Thursday, or you are no longer.
   "recruit.interview_scheduled": "recruit",
   "recruit.interview_cancelled": "recruit",
