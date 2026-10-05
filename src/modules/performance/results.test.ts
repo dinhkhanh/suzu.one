@@ -84,6 +84,8 @@ const cycleInput = (templateId: string, over: Partial<CycleInput> = {}): CycleIn
   peerMin: 1,
   peerMax: 2,
   peerAnonymous: true,
+  signOffRequired: false,
+  isRolling: false,
   ...over,
 });
 
@@ -117,7 +119,7 @@ beforeAll(async () => {
     ids[key] = row.id;
   }
 
-  const templateId = (await saveReviewTemplate(null, { name: "Đánh giá năm", nameEn: "Annual", description: null, sections: SECTIONS, ratingScale: SCALE, isActive: true }, ids.mai)).after.id;
+  const templateId = (await saveReviewTemplate(null, { name: "Đánh giá năm", nameEn: "Annual", description: null, kinds: [], sections: SECTIONS, ratingScale: SCALE, isActive: true }, ids.mai)).after.id;
   cycleId = (await saveReviewCycle(null, cycleInput(templateId), ids.mai)).after.id;
   await launchReviewCycle(cycleId, ids.mai);
   participantOf = new Map((await listCycleParticipants(cycleId)).map((line) => [line.personId, line.participantId]));

@@ -890,6 +890,13 @@
       "when": 1791161369296,
       "tag": "0126_crm_invoice_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791161835258,
+      "tag": "0127_reviews_operable",
+      "breakpoints": true
     }
   ]
 }

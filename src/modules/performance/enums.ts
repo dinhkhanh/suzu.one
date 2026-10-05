@@ -118,14 +118,26 @@ export type ReviewCycleStatus = (typeof REVIEW_CYCLE_STATUSES)[number];
  */
 export const reviewsAreIn = (status: ReviewCycleStatus): boolean => status === "calibration" || status === "released" || status === "closed";
 
+/**
+ * May a review in this cycle be calibrated and released yet? A cohort cycle waits for its
+ * calibration stage (above). A **rolling** probation cycle has no cohort to wait for: each person's
+ * probation ends on its own day, so their review is levelled and handed over as soon as it is in —
+ * still by HR alone, and still never before the manager has written (the use-case checks that).
+ */
+export const releasable = (cycle: { status: ReviewCycleStatus; rolling: boolean }): boolean => reviewsAreIn(cycle.status) || (cycle.rolling && cycle.status === "active");
+
 export const REVIEW_FORM_KINDS = ["self", "manager", "peer"] as const;
 export type ReviewFormKind = (typeof REVIEW_FORM_KINDS)[number];
 
 export const REVIEW_FORM_STATUSES = ["draft", "submitted"] as const;
 export type ReviewFormStatus = (typeof REVIEW_FORM_STATUSES)[number];
 
-/** Where one person's review has got to. Only ever moves forward. */
-export const REVIEW_STAGES = ["pending", "self_done", "manager_done", "calibrated", "released", "acknowledged"] as const;
+/**
+ * Where one person's review has got to. Only ever moves forward — except when HR returns a form
+ * for changes while the cycle is still collecting, which takes the stage back to what is actually in.
+ * `signed_off`: the manager recorded the sign-off conversation (FR-PRF-03), where the cycle asks for one.
+ */
+export const REVIEW_STAGES = ["pending", "self_done", "manager_done", "calibrated", "released", "signed_off", "acknowledged"] as const;
 export type ReviewStage = (typeof REVIEW_STAGES)[number];
 export const stageRank = (stage: ReviewStage): number => REVIEW_STAGES.indexOf(stage);
 /** Stages never go backwards: a re-release of an acknowledged review keeps the acknowledgement. */
@@ -160,6 +172,12 @@ export type ReviewSection = {
 export type RatingPoint = { value: number; label: string; labelEn: string | null; scoreBp: number };
 
 export type ReviewFormShape = { sections: ReviewSection[]; ratingScale: RatingPoint[] };
+
+/** A template with no kinds named suits every cycle; one that names some serves only those. */
+export const templateSuits = (template: { kinds: readonly ReviewCycleKind[] }, kind: ReviewCycleKind): boolean => template.kinds.length === 0 || template.kinds.includes(kind);
+
+/** What a section's key may look like: it is the name its answer is stored under. */
+export const SECTION_KEY = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 
 /** What one author wrote: section key → the chosen rating value, or the text. */
 export type ReviewAnswers = Record<string, number | string>;

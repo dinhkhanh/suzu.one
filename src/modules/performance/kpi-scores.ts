@@ -304,12 +304,31 @@ export type KpiResults = {
  * only; open months never enter the figure. No authorization here: the caller decides who sees it.
  */
 export async function getKpiResults(input: { personId: string; year: number }, executor: Executor = db()): Promise<KpiResults> {
-  const scores = await executor.select().from(schema.kpiScore).where(and(eq(schema.kpiScore.personId, input.personId), like(schema.kpiScore.month, `${input.year}-%`), isNull(schema.kpiScore.supersededAt))).orderBy(asc(schema.kpiScore.month));
-  const closedMonths = scores.map((score) => score.month);
-  const assignments = await executor.select({ assignment: schema.kpiAssignment, frequency: schema.kpiDefinition.frequency }).from(schema.kpiAssignment).innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId)).where(eq(schema.kpiAssignment.personId, input.personId));
-  const openMonths = monthsOfYear(input.year).filter((month) => !closedMonths.includes(month) && assignments.some(({ assignment, frequency }) => coversMonth(assignment, month) && periodDueIn(frequency as KpiFrequency, month) !== null));
-  const year = annualKpiScore(scores.map((score) => score.trace));
-  return { scoreBp: year.scoreBp, closedMonths, openMonths, months: scores.map((score) => ({ month: score.month, scoreBp: score.scoreBp, revision: score.revision, scoreId: score.id, closedAt: score.computedAt })), final: closedMonths.length > 0 && openMonths.length === 0, byKpi: year.byKpi };
+  return (await getKpiResultsOfPeople({ personIds: [input.personId], year: input.year }, executor)).get(input.personId)!;
+}
+
+/** `getKpiResults` for many people in two reads — what computing a year's results for everybody needs. */
+export async function getKpiResultsOfPeople(input: { personIds: readonly string[]; year: number }, executor: Executor = db()): Promise<Map<string, KpiResults>> {
+  const result = new Map<string, KpiResults>();
+  if (input.personIds.length === 0) return result;
+  const personIds = [...new Set(input.personIds)];
+  const [scores, assignments] = await Promise.all([
+    executor
+      .select()
+      .from(schema.kpiScore)
+      .where(and(inArray(schema.kpiScore.personId, personIds), like(schema.kpiScore.month, `${input.year}-%`), isNull(schema.kpiScore.supersededAt)))
+      .orderBy(asc(schema.kpiScore.month)),
+    executor.select({ assignment: schema.kpiAssignment, frequency: schema.kpiDefinition.frequency }).from(schema.kpiAssignment).innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId)).where(inArray(schema.kpiAssignment.personId, personIds)),
+  ]);
+  for (const personId of personIds) {
+    const own = scores.filter((score) => score.personId === personId);
+    const ownAssignments = assignments.filter(({ assignment }) => assignment.personId === personId);
+    const closedMonths = own.map((score) => score.month);
+    const openMonths = monthsOfYear(input.year).filter((month) => !closedMonths.includes(month) && ownAssignments.some(({ assignment, frequency }) => coversMonth(assignment, month) && periodDueIn(frequency as KpiFrequency, month) !== null));
+    const year = annualKpiScore(own.map((score) => score.trace));
+    result.set(personId, { scoreBp: year.scoreBp, closedMonths, openMonths, months: own.map((score) => ({ month: score.month, scoreBp: score.scoreBp, revision: score.revision, scoreId: score.id, closedAt: score.computedAt })), final: closedMonths.length > 0 && openMonths.length === 0, byKpi: year.byKpi });
+  }
+  return result;
 }
 
 /** The current stored scores of many people for one month — dashboards. */

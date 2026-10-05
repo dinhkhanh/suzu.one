@@ -60,7 +60,7 @@ const SECTIONS: ReviewSection[] = [
   { key: "highlights", title: "Điểm nổi bật", titleEn: "Highlights", kind: "text", weight: 0, required: false, askedOf: ["self", "manager", "peer"] },
 ];
 
-const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}) => ({ name: "Đánh giá năm", nameEn: "Annual", description: null, sections: SECTIONS, ratingScale: SCALE, isActive: true, ...over });
+const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}): Parameters<typeof saveReviewTemplate>[1] => ({ name: "Đánh giá năm", nameEn: "Annual", description: null, kinds: [], sections: SECTIONS, ratingScale: SCALE, isActive: true, ...over });
 const cycle = (over: Partial<CycleInput> = {}): CycleInput => ({
   entityId: ids.szm,
   name: "Đánh giá năm 2026",
@@ -78,6 +78,8 @@ const cycle = (over: Partial<CycleInput> = {}): CycleInput => ({
   peerMin: 1,
   peerMax: 3,
   peerAnonymous: true,
+  signOffRequired: false,
+  isRolling: false,
   ...over,
 });
 
@@ -317,8 +319,10 @@ describe("writing, releasing and acknowledging", () => {
     // The cycle is in calibration by now: writing has stopped, for the manager as for everyone.
     expect(parties.cycleStatus).toBe("calibration");
     expect(canWriteManagerReview(principal(ids.tam), parties)).toBe(false);
-    expect(canWriteManagerReview(principal(ids.tam), { ...parties, cycleStatus: "active" })).toBe(true);
-    expect(canWriteManagerReview(principal(ids.huy), { ...parties, cycleStatus: "active" })).toBe(false);
+    expect(canWriteManagerReview(principal(ids.tam), { ...parties, cycleStatus: "active", released: false })).toBe(true);
+    expect(canWriteManagerReview(principal(ids.huy), { ...parties, cycleStatus: "active", released: false })).toBe(false);
+    // A review that has been handed over is not written any more, whatever the cycle is doing.
+    expect(canWriteManagerReview(principal(ids.tam), { ...parties, cycleStatus: "active" })).toBe(false);
   });
 
   it("moves the cycle forward one step at a time", async () => {
@@ -337,7 +341,7 @@ describe("participants HR adds and removes by hand", () => {
     await launchReviewCycle(created.id, ids.mai);
     const directory = await loadDirectory();
     // The collaborator was left out; HR can still put them in deliberately.
-    const added = await addParticipant(created.id, ids.ngo, directory);
+    const { participant: added } = await addParticipant(created.id, ids.ngo, directory);
     expect(added.managerPersonId).toBe(ids.tam);
     expect(await fails(addParticipant(created.id, ids.ngo, directory))).toBe("review_participant_exists");
 

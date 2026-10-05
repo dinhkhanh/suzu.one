@@ -1129,6 +1129,34 @@
         "title": "Your {year} performance result is out",
         "body": "Your final performance result for {year} has been published. Open the results page to see how it was worked out."
       },
+      "performance_review_open": {
+        "title": "Review cycle {cycle} is open",
+        "body": "Please write your self review{date, select, none {.} other { by {date}.}}"
+      },
+      "performance_reviews_owed": {
+        "title": "You have reviews to write",
+        "body": "Cycle {cycle}: you have {count} reviews to write for your people{date, select, none {.} other { by {date}.}}"
+      },
+      "performance_review_due": {
+        "title": "A review is due soon",
+        "body": "You have {count} reviews not yet submitted; the nearest is due on {date}."
+      },
+      "performance_review_overdue": {
+        "title": "A review is overdue",
+        "body": "You have {count} reviews past their due date and not yet submitted. Open the reviews page to finish them."
+      },
+      "performance_review_returned": {
+        "title": "A review was sent back for changes",
+        "body": "Cycle {cycle}: HR sent your review back for changes. Open it to read why and submit it again."
+      },
+      "performance_sign_off_waiting": {
+        "title": "A review conversation is not recorded",
+        "body": "{count} released reviews have no sign-off conversation recorded yet. Meet with the person and record it on the review page."
+      },
+      "performance_ack_waiting": {
+        "title": "Your review is waiting for you",
+        "body": "Your review has been released. Please read it and acknowledge that you have seen it."
+      },
       "performance_rule_proposed": {
         "title": "A performance weighting version is waiting",
         "body": "A new weighting version has been proposed, effective from {validFrom}. It takes effect only once you approve it."
@@ -6685,7 +6713,8 @@
         "library": "Library",
         "import": "Import",
         "cycles": "Review cycles",
-        "weighting": "Result weighting"
+        "weighting": "Result weighting",
+        "templates": "Review forms"
       }
     },
     "library": {
@@ -6875,7 +6904,8 @@
         "manager_done": "Manager review in",
         "calibrated": "Calibrated",
         "released": "Released",
-        "acknowledged": "Acknowledged"
+        "acknowledged": "Acknowledged",
+        "signed_off": "Discussed"
       },
       "formStatus": {
         "none": "None",
@@ -6948,7 +6978,8 @@
         "note": "Your comment (optional)",
         "action": "I have read and acknowledge this",
         "done": "Acknowledged on {date}.",
-        "waiting": "Waiting for the employee to acknowledge."
+        "waiting": "Waiting for the employee to acknowledge.",
+        "afterSignOff": "You will acknowledge after the sign-off conversation with your manager."
       },
       "cycle": {
         "name": "Cycle name",
@@ -6971,7 +7002,12 @@
         "saved": "Saved.",
         "launch": "Launch cycle",
         "launchConfirm": "Launching freezes the form and snapshots each person's manager. Go ahead?",
-        "launchYes": "Launch"
+        "launchYes": "Launch",
+        "isRolling": "Rolling cycle, fed by probation contracts",
+        "rollingHint": "No shared deadlines: each person joins the cycle as their probation contract nears its end, with deadlines of their own from its last day. HR levels and releases each review as soon as it is in.",
+        "signOffRequired": "Hold a sign-off conversation before the employee acknowledges",
+        "rolling": "Rolling",
+        "signOffBadge": "Sign-off conversation"
       },
       "admin": {
         "description": "Build a cycle, launch it (which freezes the form and snapshots each person's manager), then calibrate and release.",
@@ -6991,7 +7027,13 @@
           "released": "Mark released",
           "closed": "Close cycle"
         },
-        "noParticipants": "Nobody is in this cycle yet."
+        "noParticipants": "Nobody is in this cycle yet.",
+        "editCycle": "Edit cycle — {name}",
+        "editHint": "The cycle is still a draft, so it can be changed. Once launched it cannot.",
+        "add": "Add a participant",
+        "addHint": "Their own deadlines, if given, replace the cycle's. If the cycle is open, the person and their manager are told at once.",
+        "addRollingHint": "A rolling cycle: give this person a self-review and a manager-review deadline.",
+        "noParticipantsRolling": "Nobody yet. Every morning, people whose probation contract is about to end are added."
       },
       "errors": {
         "generic": "That did not work. Try again.",
@@ -7035,7 +7077,22 @@
         "review_peer_max": "The cycle's maximum number of peers has been reached.",
         "review_nomination_not_found": "That request no longer exists.",
         "review_nomination_decided": "That request has already been answered.",
-        "review_nomination_has_form": "That colleague has already written feedback, so the request cannot be withdrawn."
+        "review_nomination_has_form": "That colleague has already written feedback, so the request cannot be withdrawn.",
+        "review_template_name_empty": "Give the form a name.",
+        "review_template_bad_key": "A question key is lowercase letters, digits, underscores or hyphens, up to 40 characters.",
+        "review_template_untitled_section": "Every question needs its text.",
+        "review_template_bad_section": "Weights must be whole numbers, zero or more.",
+        "review_template_bad_point": "Every point needs a label, a whole-number order and a worth of zero or more.",
+        "review_template_manager_unscored": "The manager's form needs at least one weighted rating question — its figure is the review rating the year's result reads.",
+        "review_template_bad_kind": "Unknown cycle kind.",
+        "review_template_wrong_kind": "This form is not meant for the kind of cycle chosen.",
+        "review_rolling_not_probation": "Only an end-of-probation cycle can be rolling.",
+        "review_form_not_found": "Form not found.",
+        "review_form_not_submitted": "The form has not been submitted.",
+        "review_form_settled": "The review has been calibrated or released; its forms can no longer be sent back.",
+        "review_sign_off_recorded": "The conversation has already been recorded.",
+        "review_sign_off_date": "The conversation must fall between the release and today.",
+        "review_sign_off_missing": "The sign-off conversation must be recorded before acknowledging."
       },
       "peers": {
         "title": "Peer feedback (360°)",
@@ -7099,6 +7156,70 @@
         "questions": "Questions",
         "scale": "Rating scale",
         "status": "Status"
+      },
+      "templates": {
+        "title": "Review forms",
+        "manage": "Manage review forms",
+        "new": "New form",
+        "copy": "Make a copy",
+        "copyName": "{name} (copy)",
+        "copyTitle": "Copy of {name}",
+        "back": "Back to the forms",
+        "readOnly": "Only group HR can change forms. You are reading this one.",
+        "basics": "General",
+        "name": "Form name",
+        "nameEn": "Name in English",
+        "description": "Description",
+        "kinds": "For cycle kinds",
+        "kindsHint": "Leave all unticked and the form suits every kind of cycle.",
+        "allKinds": "Any kind",
+        "active": "In use",
+        "sections": "Questions",
+        "sectionsHint": "The weighted rating questions make up a form's score; the manager's form needs at least one.",
+        "addSection": "Add a question",
+        "noSections": "No questions yet.",
+        "sectionTitle": "Question",
+        "sectionTitleEn": "Question (English)",
+        "sectionKind": "Kind",
+        "sectionKinds": {
+          "rating": "Rated on the scale",
+          "text": "Written answer"
+        },
+        "weight": "Weight",
+        "weightShare": "{share} % of the score",
+        "askedOf": "Asked on:",
+        "required": "Required",
+        "key": "Question key",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove",
+        "scale": "Rating scale",
+        "scaleHint": "Each point is worth a percentage — “meets expectations” is usually 100 %. The year's result and the bonus are computed from these figures.",
+        "addPoint": "Add a point",
+        "pointValue": "Order",
+        "pointPercent": "Worth (%)",
+        "pointLabel": "Label",
+        "pointLabelEn": "Label in English",
+        "problems": "To fix before saving:",
+        "snapshotNote": "A launched cycle keeps the form as it was at launch; changes here apply to cycles launched afterwards.",
+        "save": "Save form",
+        "saved": "Saved."
+      },
+      "returned": {
+        "title": "HR sent this form back for changes:",
+        "action": "Send back for changes",
+        "reason": "Reason (the author will read it)",
+        "yes": "Send back"
+      },
+      "signOff": {
+        "title": "Sign-off conversation",
+        "heldOn": "Held on",
+        "note": "What was agreed (optional)",
+        "action": "Record the conversation",
+        "done": "Held on {date} — recorded by {name}.",
+        "requiredHint": "This cycle asks for a sign-off conversation with the employee; they can acknowledge only once it is recorded.",
+        "optionalHint": "Record the conversation with the employee about their review, if it has taken place.",
+        "waiting": "Waiting for the manager to record the sign-off conversation."
       }
     },
     "results": {
@@ -13300,7 +13421,9 @@
     "crmCommission": "Sales commission",
     "kiosk": "Face kiosk",
     "kioskFaces": "Kiosk faces",
-    "kioskCheckIn": "Check in at the kiosk"
+    "kioskCheckIn": "Check in at the kiosk",
+    "reviewTemplates": "Review forms",
+    "reviewTemplate": "Review form"
   },
   "portfolio": {
     "title": "SuZu Group",

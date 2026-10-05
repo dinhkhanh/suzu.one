@@ -160,6 +160,15 @@ export const KINDS = {
   "performance.peer_requested": "performance",
   "performance.review_released": "performance",
   "performance.result_published": "performance",
+  // A cycle opened (or a probation review was opened) for you; reviews of your people to write;
+  // the morning reminders; a form HR sent back for changes (FR-PRF-03). Counts and deadlines only.
+  "performance.review_open": "performance",
+  "performance.reviews_owed": "performance",
+  "performance.review_due": "performance",
+  "performance.review_overdue": "performance",
+  "performance.review_returned": "performance",
+  "performance.sign_off_waiting": "performance",
+  "performance.ack_waiting": "performance",
   // The owner has a weighting version to decide (FR-PRF-09 is configuration, not code).
   "performance.rule_proposed": "performance",
   // Phase 10 — tasks: blocked on you, a hand-off to accept or that came back, triage, cover, exit

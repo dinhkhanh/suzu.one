@@ -2,7 +2,7 @@
 // log. Scores must be reproducible (SRS D13 — the year-end bonus is computed from them): current
 // values only ever change through a check-in row, and closing a goal freezes its figure.
 // Value lists are in enums.ts.
-import { type AnyPgColumn, bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, bigint, boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { position } from "../core-hr/schema";
 import { entity, orgUnit } from "../platform/org/schema";
@@ -10,7 +10,7 @@ import { person } from "../platform/people/schema";
 import type { KpiTrace } from "./engine/kpi-score";
 import type { ResultTrace } from "./engine/result";
 import type { ReviewScoreTrace } from "./engine/review-score";
-import type { Milestone, PerformanceWeightingValue, RatingPoint, ReviewAnswers, ReviewFormShape, ReviewSection } from "./enums";
+import type { Milestone, PerformanceWeightingValue, RatingPoint, ReviewAnswers, ReviewCycleKind, ReviewFormShape, ReviewSection } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -278,6 +278,11 @@ export const reviewTemplate = pgTable("review_template", {
   sections: jsonb("sections").$type<ReviewSection[]>().notNull(),
   // Each point carries what it is worth in basis points: the mapping is configuration (SRS D13).
   ratingScale: jsonb("rating_scale").$type<RatingPoint[]>().notNull(),
+  // The cycle kinds the form suits (probation | mid_year | annual). Empty = any kind.
+  kinds: jsonb("kinds").$type<ReviewCycleKind[]>().notNull().default([]),
+  // Set on a starter template the seed wrote: re-seeding adds only the keys that do not exist yet,
+  // so a starter HR edited or archived never comes back as it was.
+  seedKey: text("seed_key").unique(),
   isActive: boolean("is_active").notNull().default(true),
   createdByPersonId: uuid("created_by_person_id").references(() => person.id),
   ...timestamps,
@@ -310,6 +315,12 @@ export const reviewCycle = pgTable(
     peerMax: integer("peer_max").notNull().default(5),
     // Anonymous peer feedback is never shown to the subject with its author's name.
     peerAnonymous: boolean("peer_anonymous").notNull().default(true),
+    // FR-PRF-03's sign-off meeting: when set, the employee is asked to acknowledge only after the
+    // manager has recorded that the conversation happened.
+    signOffRequired: boolean("sign_off_required").notNull().default(false),
+    // A rolling cycle has no cohort: people are enrolled one at a time as their probation nears its
+    // end, each with their own deadlines, and each is released when their own review is in.
+    isRolling: boolean("is_rolling").notNull().default(false),
     launchedAt: timestamp("launched_at", { withTimezone: true }),
     launchedByPersonId: uuid("launched_by_person_id").references(() => person.id),
     closedAt: timestamp("closed_at", { withTimezone: true }),
@@ -334,7 +345,7 @@ export const reviewParticipant = pgTable(
     entityId: uuid("entity_id").references(() => entity.id),
     departmentId: uuid("department_id").references(() => orgUnit.id),
     managerPersonId: uuid("manager_person_id").references(() => person.id),
-    // pending | self_done | manager_done | calibrated | released | acknowledged
+    // pending | self_done | manager_done | calibrated | released | signed_off | acknowledged
     stage: text("stage").notNull().default("pending"),
     // The manager's overall figure, frozen when the review is released — what FR-PRF-09 reads.
     reviewScoreBp: integer("review_score_bp"),
@@ -345,6 +356,15 @@ export const reviewParticipant = pgTable(
     releasedByPersonId: uuid("released_by_person_id").references(() => person.id),
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     acknowledgementNote: text("acknowledgement_note"),
+    // This person's own deadlines, where the cycle has none for everybody (a rolling probation
+    // cycle, or a person HR added late): they win over the cycle's dates.
+    selfDueOn: date("self_due_on"),
+    managerDueOn: date("manager_due_on"),
+    // The sign-off conversation after release (FR-PRF-03): the day it was held, and who recorded it.
+    signOffOn: date("sign_off_on"),
+    signOffNote: text("sign_off_note"),
+    signOffByPersonId: uuid("sign_off_by_person_id").references(() => person.id),
+    signOffRecordedAt: timestamp("sign_off_recorded_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [unique("review_participant_unique").on(t.cycleId, t.personId), index("review_participant_person_idx").on(t.personId), index("review_participant_manager_idx").on(t.managerPersonId)],
@@ -378,6 +398,10 @@ export const reviewForm = pgTable(
     scoreTrace: jsonb("score_trace").$type<ReviewScoreTrace>(),
     comment: text("comment"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    // HR sent a submitted form back for changes: it is a draft again, and its author is told why.
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    returnedByPersonId: uuid("returned_by_person_id").references(() => person.id),
+    returnReason: text("return_reason"),
     ...timestamps,
   },
   (t) => [unique("review_form_unique").on(t.participantId, t.kind, t.authorPersonId), index("review_form_author_idx").on(t.authorPersonId, t.status), index("review_form_participant_idx").on(t.participantId)],
@@ -582,4 +606,21 @@ export const reviewOutcome = pgTable(
     ...timestamps,
   },
   (t) => [index("review_outcome_person_idx").on(t.personId, t.year), index("review_outcome_status_idx").on(t.status, t.year)],
+).enableRLS();
+
+// Reminders already sent (the morning job): one per person, kind and subject. The subject says
+// what the reminder was about and, for the ones that repeat, which week — so a second run of the
+// job on the same day, or a retry, tells nobody twice.
+export const performanceReminderSent = pgTable(
+  "performance_reminder_sent",
+  {
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // review_due | review_overdue | sign_off_waiting | ack_waiting
+    kind: text("kind").notNull(),
+    subject: text("subject").notNull(),
+    sentOn: date("sent_on").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.kind, t.subject] })],
 ).enableRLS();

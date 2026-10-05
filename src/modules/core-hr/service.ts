@@ -1003,6 +1003,8 @@ export { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, listPositio
 export type { BankAccount } from "./records";
 export { type DependantRegistration, entityPayrollFactsOf, listDependantRegistrations, listPayrollFacts, listPayrollNames, type PayrollName, type PayrollPersonFacts, payrollFactsOf, recordPayEvent } from "./payroll-facts";
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
+// Probations ending, for the probation review cycle (FR-PRF-03).
+export { listProbationsEnding, type ProbationEnding } from "./probation-facts";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
 /**
  * The headcount report (FR-RPT-02), for Phase 9's dashboard and scheduled reports. It takes the

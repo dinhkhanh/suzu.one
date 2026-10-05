@@ -10,12 +10,15 @@ import {
   canNominatePeer,
   canReadAnonymisedPeers,
   canReadReviewForm,
+  canRecordSignOff,
   canReleaseReview,
+  canReturnReviewForm,
   canSeeNominations,
   canSeeParticipant,
   canWriteManagerReview,
   canWritePeerReview,
   canWriteSelfReview,
+  dueDatesOf,
   getPublishedResult,
   isReviewCalibrator,
   isReviewingManager,
@@ -28,7 +31,7 @@ import { EvidencePanel } from "@/modules/performance/ui/evidence";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { BandBadge, ResultTraceTable } from "@/modules/performance/ui/result";
 import { FilledForm, ratingText, StageBadge, Timeline } from "@/modules/performance/ui/review";
-import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
+import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReturnFormForm, ReviewFormEditor, SignOffForm } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
@@ -56,7 +59,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const myManager = forms.find((form) => form.kind === "manager" && form.authorPersonId === user.person.id);
   const myPeer = forms.find((form) => form.kind === "peer" && form.authorPersonId === user.person.id);
   const selfSubmitted = forms.some((form) => form.kind === "self" && form.status === "submitted");
-  const selfOverdue = cycle.selfDueOn !== null && cycle.selfDueOn < today;
+  // This person's own deadlines (a probation review) win over the cycle's.
+  const due = dueDatesOf(participant, cycle);
+  const selfOverdue = due.selfDueOn !== null && due.selfDueOn < today;
   const managerBlocked = !selfSubmitted && !selfOverdue;
   // Anonymous peer feedback the subject may read: the content without its author.
   const anonymousPeers = canReadAnonymisedPeers(user.principal, parties) ? forms.filter((form) => form.kind === "peer" && form.status === "submitted") : [];
@@ -94,6 +99,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   ]);
   const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
   const peerWrote = new Set(forms.filter((form) => form.kind === "peer").map((form) => form.authorPersonId));
+  // HR over the person sends a submitted form back while the review is still being written.
+  const mayReturn = canReturnReviewForm(user.principal, parties) && !participant.calibratedAt;
+  const returnReasonOf = (form: (typeof forms)[number] | undefined) => (form && form.status === "draft" && form.returnedAt ? form.returnReason : null);
   const writtenCount = nominations.filter((row) => peerWrote.has(row.peerPersonId)).length;
 
   return (
@@ -117,8 +125,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       <PerformanceNav active="reviews" />
       <Timeline
         dates={[
-          { key: "selfDueOn", on: cycle.selfDueOn },
-          { key: "managerDueOn", on: cycle.managerDueOn },
+          { key: "selfDueOn", on: due.selfDueOn },
+          { key: "managerDueOn", on: due.managerDueOn },
           { key: "peerDueOn", on: cycle.peerDueOn },
           { key: "calibrationOn", on: cycle.calibrationOn },
           { key: "releaseOn", on: cycle.releaseOn },
@@ -133,22 +141,22 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       {shape && canWriteSelfReview(user.principal, parties) && mySelf?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
           <h2>{t("form.kind.self")}</h2>
-          <ReviewFormEditor value={{ participantId, kind: "self", shape, answers: mySelf?.answers ?? {}, comment: mySelf?.comment ?? null, submitted: false }} />
+          <ReviewFormEditor value={{ participantId, kind: "self", shape, answers: mySelf?.answers ?? {}, comment: mySelf?.comment ?? null, submitted: false, returnReason: returnReasonOf(mySelf) }} />
         </section>
       ) : null}
 
       {shape && canWriteManagerReview(user.principal, parties) && myManager?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
           <h2>{t("form.kind.manager")}</h2>
-          {managerBlocked ? <p className="text-sm text-warning">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
-          <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false }} />
+          {managerBlocked ? <p className="text-sm text-warning">{t("form.waitingForSelf", { date: due.selfDueOn ? formatDate(due.selfDueOn) : "—" })}</p> : null}
+          <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false, returnReason: returnReasonOf(myManager) }} />
         </section>
       ) : null}
 
       {shape && canWritePeerReview(user.principal, parties, nominated) && myPeer?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
           <h2>{t("form.kind.peer")}</h2>
-          <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false }} />
+          <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false, returnReason: returnReasonOf(myPeer) }} />
         </section>
       ) : null}
 
@@ -220,18 +228,20 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
         {readable.length === 0 && anonymousPeers.length === 0 ? <p className="text-sm text-muted-foreground">{t("submitted.empty")}</p> : null}
         {shape
           ? readable.map((form) => (
-              <FilledForm
-                key={form.id}
-                shape={shape}
-                kind={form.kind as ReviewFormKind}
-                answers={form.answers}
-                overallRatingBp={form.overallRatingBp}
-                comment={form.comment}
-                // One's own draft is not signed; somebody else's draft is read only by oversight, which is told whose it is.
-                author={form.status === "draft" && form.authorPersonId === user.person.id ? null : nameOf(form.authorPersonId)}
-                draft={form.status === "draft"}
-                labels={{ t, format }}
-              />
+              <div key={form.id} className="flex flex-col gap-2">
+                <FilledForm
+                  shape={shape}
+                  kind={form.kind as ReviewFormKind}
+                  answers={form.answers}
+                  overallRatingBp={form.overallRatingBp}
+                  comment={form.comment}
+                  // One's own draft is not signed; somebody else's draft is read only by oversight, which is told whose it is.
+                  author={form.status === "draft" && form.authorPersonId === user.person.id ? null : nameOf(form.authorPersonId)}
+                  draft={form.status === "draft"}
+                  labels={{ t, format }}
+                />
+                {mayReturn && form.status === "submitted" && form.authorPersonId !== user.person.id ? <ReturnFormForm formId={form.id} /> : null}
+              </div>
             ))
           : null}
         {/* The subject's copy of anonymous peer feedback: what was said, never who said it. */}
@@ -272,6 +282,27 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
         </section>
       ) : null}
 
+      {/* The sign-off conversation after release (FR-PRF-03): recorded by the manager or HR; read by
+          the person, their line and HR — not a nominated peer. */}
+      {parties.released && (cycle.signOffRequired || participant.signOffRecordedAt || canRecordSignOff(user.principal, parties)) && (seesNominations || canRecordSignOff(user.principal, parties)) ? (
+        <section className="flex flex-col gap-3 rounded-xl border p-3">
+          <h2 className="text-sm font-medium">{t("signOff.title")}</h2>
+          {participant.signOffOn ? (
+            <>
+              <p className="text-sm text-muted-foreground">{t("signOff.done", { date: formatDate(participant.signOffOn), name: participant.signOffByPersonId ? nameOf(participant.signOffByPersonId) : "—" })}</p>
+              <RichText text={participant.signOffNote} />
+            </>
+          ) : canRecordSignOff(user.principal, parties) ? (
+            <>
+              <p className="text-xs text-muted-foreground">{cycle.signOffRequired ? t("signOff.requiredHint") : t("signOff.optionalHint")}</p>
+              <SignOffForm participantId={participantId} today={today} />
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("signOff.waiting")}</p>
+          )}
+        </section>
+      ) : null}
+
       {parties.released ? (
         <section className="flex flex-col gap-3 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("acknowledge.title")}</h2>
@@ -283,6 +314,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
             </>
           ) : canAcknowledgeReview(user.principal, parties) ? (
             <AcknowledgeForm participantId={participantId} />
+          ) : isSubject && parties.signOffRequired && !parties.signedOff ? (
+            <p className="text-sm text-muted-foreground">{t("acknowledge.afterSignOff")}</p>
           ) : (
             <p className="text-sm text-muted-foreground">{t("acknowledge.waiting")}</p>
           )}
