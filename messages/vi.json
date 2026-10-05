@@ -3849,7 +3849,10 @@
       "title": "Còn lại trong năm {year}",
       "none": "Bạn chưa có số dư phép. Số dư sẽ hiện khi nhân sự thiết lập xong.",
       "used": "đã nghỉ {days}",
-      "pending": "{days} đang chờ duyệt"
+      "pending": "{days} đang chờ duyệt",
+      "ledger": "Biến động số dư phép",
+      "ledgerHint": "Mọi lần cộng, trừ, chuyển năm và điều chỉnh số dư của bạn, mới nhất trước — gồm cả ngày đã đặt trước cho năm sau.",
+      "noLedger": "Chưa có biến động nào."
     },
     "request": {
       "new": "Xin nghỉ",
@@ -3871,7 +3874,7 @@
       "minutes": "Số phút nghỉ (nghỉ theo giờ)",
       "portionHint": "Nghỉ một ngày: chọn cả ngày, buổi sáng, buổi chiều hoặc theo giờ. Nghỉ nhiều ngày: ngày đầu có thể bắt đầu từ buổi chiều, ngày cuối có thể kết thúc buổi sáng.",
       "check": "Kiểm tra",
-      "available": "Còn lại năm {year}: {days} ngày",
+      "available": "Có thể dùng cho năm {year} tính đến ngày nghỉ: {days} ngày",
       "noBalance": "Loại phép này không trừ vào số dư.",
       "colleaguesAway": "Cũng nghỉ trong những ngày này",
       "shortfall": "Vào {dates}, nhóm của bạn sẽ có dưới {min} người đi làm. Bạn vẫn gửi được đơn; quản lý cũng thấy cảnh báo này.",

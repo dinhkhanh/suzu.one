@@ -3849,7 +3849,10 @@
       "title": "Available in {year}",
       "none": "You have no leave balance yet. Balances appear once HR has set up your leave.",
       "used": "{days} used",
-      "pending": "{days} waiting for approval"
+      "pending": "{days} waiting for approval",
+      "ledger": "Balance movements",
+      "ledgerHint": "Every addition, use, carry-over and adjustment of your balances, newest first — including days already booked for next year.",
+      "noLedger": "No movements yet."
     },
     "request": {
       "new": "Request leave",
@@ -3871,7 +3874,7 @@
       "minutes": "Minutes off (hourly leave)",
       "portionHint": "One date: choose whole day, morning, afternoon or hours. Several dates: the first day may start at noon (afternoon), the last may end at noon (morning).",
       "check": "Check",
-      "available": "Available in {year}: {days} day(s)",
+      "available": "Available for {year} by the leave date: {days} day(s)",
       "noBalance": "This type keeps no balance.",
       "colleaguesAway": "Also away on these days",
       "shortfall": "On {dates} fewer than {min} people of your team would be at work. You can still send the request; your manager sees this warning too.",
