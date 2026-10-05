@@ -14,22 +14,30 @@ export type AuditEntry = {
   request?: { ipAddress?: string | null; userAgent?: string | null };
 };
 
+const auditValues = (entry: AuditEntry) => ({
+  action: entry.action,
+  actorUserId: entry.actor?.userId ?? null,
+  actorPersonId: entry.actor?.personId ?? null,
+  actorEmail: entry.actor?.email ?? null,
+  resourceType: entry.resource?.type ?? null,
+  resourceId: entry.resource?.id ?? null,
+  entityId: entry.resource?.entityId ?? null,
+  summary: entry.summary ?? null,
+  before: entry.before ?? null,
+  after: entry.after ?? null,
+  ipAddress: entry.request?.ipAddress ?? null,
+  userAgent: entry.request?.userAgent ?? null,
+});
+
 // Writes are insert-only; the table rejects UPDATE and DELETE at the database level.
 export async function recordAudit(entry: AuditEntry): Promise<void> {
-  await db().insert(schema.auditLog).values({
-    action: entry.action,
-    actorUserId: entry.actor?.userId ?? null,
-    actorPersonId: entry.actor?.personId ?? null,
-    actorEmail: entry.actor?.email ?? null,
-    resourceType: entry.resource?.type ?? null,
-    resourceId: entry.resource?.id ?? null,
-    entityId: entry.resource?.entityId ?? null,
-    summary: entry.summary ?? null,
-    before: entry.before ?? null,
-    after: entry.after ?? null,
-    ipAddress: entry.request?.ipAddress ?? null,
-    userAgent: entry.request?.userAgent ?? null,
-  });
+  await db().insert(schema.auditLog).values(auditValues(entry));
+}
+
+/** Several entries in one statement — for a job that changed a handful of records and says so of each. */
+export async function recordAudits(entries: readonly AuditEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  await db().insert(schema.auditLog).values(entries.map(auditValues));
 }
 
 export type AuditRow = typeof schema.auditLog.$inferSelect;
