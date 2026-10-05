@@ -439,8 +439,29 @@ describe("a purged candidate", () => {
     expect(await findPublicPrivacyView(token)).toEqual({ inTalentPool: false });
     // A notice written the old way, with the name in it, about this candidate's application.
     await db().insert(schema.notification).values({ recipientPersonId: ids.recruiterPerson, kind: "recruit.assignment_received", params: { title: "Bài test", candidate: "Tô Bích Ngọc" }, link: `/recruit/applications/${applicationId}` });
+    // And the same notice as it went to phones and chat before R4-D, the name in its words — one
+    // still waiting on each channel that can wait, one long sent.
+    const link = `/recruit/applications/${applicationId}`;
+    const words = { kind: "recruit.assignment_received", title: "Tô Bích Ngọc đã nộp bài", body: "Bài test của Tô Bích Ngọc đã về." };
+    const [messenger] = await db().insert(schema.messengerLink).values({ personId: ids.recruiterPerson, psid: "psid-ngoc-test" }).returning();
+    const [telegram] = await db().insert(schema.telegramLink).values({ personId: ids.recruiterPerson, chatId: "chat-ngoc-test" }).returning();
+    await db().insert(schema.pushDelivery).values([{ personId: ids.recruiterPerson, ...words, link }, { personId: ids.recruiterPerson, ...words, link, status: "sent" }]);
+    await db().insert(schema.chatDelivery).values({ personId: ids.recruiterPerson, ...words, link: `https://suzu.one${link}`, status: "sent" });
+    await db().insert(schema.messengerDelivery).values({ linkId: messenger.id, personId: ids.recruiterPerson, ...words, link });
+    await db().insert(schema.telegramDelivery).values({ linkId: telegram.id, personId: ids.recruiterPerson, ...words, link, status: "sent" });
+    // Another kind on the same link is not recruitment's to touch.
+    await db().insert(schema.pushDelivery).values({ personId: ids.recruiterPerson, kind: "approvals.request_paid", title: "Không liên quan", body: "Giữ nguyên", link });
 
     await anonymiseCandidate(candidateId, { reason: "erasure", actorPersonId: ids.hrAdmin });
+
+    const named = (rows: { title: string; body: string }[]) => rows.filter((row) => `${row.title} ${row.body}`.includes("Ngọc"));
+    const [pushes, chats, messages, telegrams] = await Promise.all([db().select().from(schema.pushDelivery), db().select().from(schema.chatDelivery), db().select().from(schema.messengerDelivery), db().select().from(schema.telegramDelivery)]);
+    expect([...named(pushes), ...named(chats), ...named(messages), ...named(telegrams)]).toEqual([]);
+    // What was waiting is never sent; what was sent stays a record of it.
+    expect(pushes.filter((row) => row.kind === words.kind).map((row) => row.status).sort()).toEqual(["failed", "sent"]);
+    expect(messages.map((row) => row.status)).toEqual(["dropped"]);
+    expect(telegrams.map((row) => row.status)).toEqual(["sent"]);
+    expect(pushes.find((row) => row.kind === "approvals.request_paid")).toMatchObject({ status: "pending", body: "Giữ nguyên" });
 
     expect(await findPublicPrivacyView(token)).toBeNull();
     const letters = await db().select().from(schema.emailOutbox).where(like(schema.emailOutbox.bodyText, "%Ngọc%"));

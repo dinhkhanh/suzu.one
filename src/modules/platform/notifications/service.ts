@@ -416,6 +416,47 @@ export async function withdrawNotices(input: { recipients: readonly string[]; ki
   return rows.length;
 }
 
+/**
+ * Empties the words of what was queued or sent to people's phones and chat about a record that is
+ * being erased (a candidate's anonymisation, NFR-PRV-04): the push, Google Chat, Messenger and
+ * Telegram rows of kinds starting `kindPrefix` whose link is one of `links` keep their row — what
+ * went to whom, and when — and lose the title and body, which were rendered from the notice's
+ * parameters and may name the person. One still waiting is never sent: push and chat have no
+ * "dropped", so it is closed as failed with the reason; Messenger and Telegram mark it dropped.
+ * Pass the transaction the erasure runs in. Returns how many rows were emptied.
+ */
+export async function scrubDeliveries(input: { kindPrefix: string; links: readonly string[]; title: string }, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+  const links = [...new Set(input.links)];
+  if (links.length === 0) return 0;
+  const reason = "erased: the person it named was anonymised";
+  const kindLike = `${input.kindPrefix.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+  // Google Chat stores the absolute link (whatever the app's address was then); the others the path.
+  const chatPath = sql`regexp_replace(${schema.chatDelivery.link}, '^[a-z]+://[^/]+', '')`;
+  const [pushes, chats, messages, telegrams] = await Promise.all([
+    executor
+      .update(schema.pushDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.pushDelivery.status} = 'pending' then 'failed'::push_status else ${schema.pushDelivery.status} end`, lastError: sql`case when ${schema.pushDelivery.status} = 'pending' then ${reason} else ${schema.pushDelivery.lastError} end` })
+      .where(and(sql`${schema.pushDelivery.kind} like ${kindLike}`, inArray(schema.pushDelivery.link, links)))
+      .returning({ id: schema.pushDelivery.id }),
+    executor
+      .update(schema.chatDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.chatDelivery.status} = 'pending' then 'failed'::chat_status else ${schema.chatDelivery.status} end`, lastError: sql`case when ${schema.chatDelivery.status} = 'pending' then ${reason} else ${schema.chatDelivery.lastError} end` })
+      .where(and(sql`${schema.chatDelivery.kind} like ${kindLike}`, inArray(chatPath, links)))
+      .returning({ id: schema.chatDelivery.id }),
+    executor
+      .update(schema.messengerDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.messengerDelivery.status} = 'pending' then 'dropped'::messenger_status else ${schema.messengerDelivery.status} end` })
+      .where(and(sql`${schema.messengerDelivery.kind} like ${kindLike}`, inArray(schema.messengerDelivery.link, links)))
+      .returning({ id: schema.messengerDelivery.id }),
+    executor
+      .update(schema.telegramDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.telegramDelivery.status} = 'pending' then 'dropped'::telegram_status else ${schema.telegramDelivery.status} end` })
+      .where(and(sql`${schema.telegramDelivery.kind} like ${kindLike}`, inArray(schema.telegramDelivery.link, links)))
+      .returning({ id: schema.telegramDelivery.id }),
+  ]);
+  return pushes.length + chats.length + messages.length + telegrams.length;
+}
+
 // Everyone's explicit choices in one entry (a few rows per person who ever changed one), read for
 // every recipient of every notification and on the notifications page; `setPreferences` drops it.
 const PREFERENCES_KEY = "notifications:preferences";

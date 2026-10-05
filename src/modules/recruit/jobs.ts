@@ -41,6 +41,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { eraseFiles } from "@/modules/platform/files/service";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
+import { scrubDeliveries } from "@/modules/platform/notifications/service";
 import { ANONYMISED_NAME, PUBLIC_HIT_RETENTION_DAYS, type RetentionFacts, retentionOutcome } from "./engine/retention";
 import { APPLICATION_CLOSED, DEFAULT_RETENTION_MONTHS } from "./enums";
 import { purgePublicHits } from "./public";
@@ -233,6 +234,9 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
         .returning({ recipient: schema.notification.recipientPersonId });
       // Their notification lists are cached (src/lib/cache/live.ts): dropped as the rows change.
       await invalidateLive(...new Set(scrubbed.map((row) => row.recipient)));
+      // The same notices as they went to phones and chat (push, Google Chat, Messenger, Telegram):
+      // their title and body were rendered from those parameters, so the name is in the words.
+      await scrubDeliveries({ kindPrefix: "recruit.", links: noticeLinks, title: ANONYMISED_NAME }, tx);
     }
 
     if (applicationIds.length > 0) {
