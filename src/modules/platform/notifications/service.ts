@@ -50,6 +50,14 @@ export type NotifyInput = {
 };
 
 /**
+ * Whether a person is told anything at all. Not a leaver, and not somebody suspended: they cannot
+ * sign in to read an in-app notice, and what goes to their mailbox or phone about the company's
+ * work is exactly what suspension withholds. No notice kind is meant to reach a suspended person
+ * today; one that ever must is to be sent to them explicitly, not by loosening this.
+ */
+const stillHere = (status: string): boolean => status !== "offboarded" && status !== "suspended";
+
+/**
  * Tells people that something happened, through the channels each of them chose.
  * Pass the transaction when the event is part of one, so nobody hears about a change that was
  * rolled back.
@@ -81,7 +89,7 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   const messages: (typeof schema.messengerDelivery.$inferInsert)[] = [];
   const telegrams: (typeof schema.telegramDelivery.$inferInsert)[] = [];
   for (const person of people) {
-    if (person.status === "offboarded") continue;
+    if (!stillHere(person.status)) continue;
     const choice = effectiveChoice(category, preferences.find((row) => row.personId === person.id));
     const wantsDigest = choice.email === "digest" && !!person.workEmail;
     if (choice.inApp || wantsDigest) {
@@ -111,13 +119,13 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   if (telegrams.length) await executor.insert(schema.telegramDelivery).values(telegrams);
   // What this tells them about is on their screens too (src/lib/cache/live.ts). Inside a
   // transaction the marker holds their entries off the cache until the commit lands.
-  await invalidateLive(...people.filter((person) => person.status !== "offboarded").map((person) => person.id));
+  await invalidateLive(...people.filter((person) => stillHere(person.status)).map((person) => person.id));
   // One card per recipient: the deep link belongs to one person, and a space with several
   // approvers in it must not let the wrong one press the button.
   if (input.chat) {
     const cards: (typeof schema.chatDelivery.$inferInsert)[] = [];
     for (const person of people) {
-      if (person.status === "offboarded") continue;
+      if (!stillHere(person.status)) continue;
       const { title, body } = wording(input.kind, params);
       const actionPath = input.chat.actionPathFor?.[person.id] ?? input.chat.actionPath;
       cards.push({
