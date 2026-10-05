@@ -14,14 +14,16 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("candidates");
 
 // The candidate database (FR-REC-04). `recruit:manage` and nobody else — a hiring manager reaches
-// the people applying for their job through the opening, not through here.
+// the people applying for their job through the opening, not through here. The talent pool is a
+// view of it: the people kept beyond their applications because they asked to be.
 export default async function CandidatesPage({ searchParams }: PageProps<"/recruit/candidates">) {
   const user = await requireUser();
   if (!canBrowseCandidates(user.principal)) notFound();
-  const { q } = await searchParams;
+  const { q, pool } = await searchParams;
+  const inPool = pool === "1";
   const t = await getTranslations("recruit");
   const format = await getFormatter();
-  const rows = await listCandidates(user.principal, { query: typeof q === "string" ? q : undefined });
+  const rows = await listCandidates(user.principal, { query: typeof q === "string" ? q : undefined, talentPool: inPool });
 
   return (
     <Page>
@@ -35,7 +37,18 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         }
       />
 
+      <nav className="tab-row" aria-label={t("candidates")}>
+        <Link href="/recruit/candidates" aria-current={inPool ? undefined : "page"}>
+          {t("pool.all")}
+        </Link>
+        <Link href="/recruit/candidates?pool=1" aria-current={inPool ? "page" : undefined}>
+          {t("pool.title")}
+        </Link>
+      </nav>
+      {inPool ? <p className="text-sm text-muted-foreground">{t("pool.description")}</p> : null}
+
       <form className="flex gap-2">
+        {inPool ? <input type="hidden" name="pool" value="1" /> : null}
         <Input name="q" defaultValue={typeof q === "string" ? q : ""} placeholder={t("columns.candidate")} className="max-w-xs" />
         <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
           {t("columns.candidate")}
@@ -55,7 +68,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? <TableEmpty>{t("noCandidates")}</TableEmpty> : null}
+            {rows.length === 0 ? <TableEmpty>{inPool ? t("pool.empty") : t("noCandidates")}</TableEmpty> : null}
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="max-w-72">
@@ -64,6 +77,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
                       {row.fullName}
                     </RecordLink>
                     {row.anonymised ? <Badge variant="outline">{t("event.anonymised")}</Badge> : null}
+                    {row.talentPool && !row.anonymised && !inPool ? <Badge variant="secondary">{t("pool.badge")}</Badge> : null}
                   </span>
                 </TableCell>
                 <TableCell className="max-w-56 truncate">{row.currentTitle || "—"}</TableCell>

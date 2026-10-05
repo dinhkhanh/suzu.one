@@ -253,6 +253,20 @@ export const candidate = pgTable(
     consentVersion: text("consent_version"),
     talentPoolConsent: boolean("talent_pool_consent").notNull().default(false),
     retainUntil: date("retain_until"),
+    /**
+     * The language the candidate reads ("vi" | "en"): the careers page they applied on, or what a
+     * recruiter chose. Their letters are written in it — it is a property of them, not of whoever
+     * presses send. Null reads as Vietnamese.
+     */
+    locale: text("locale"),
+    /**
+     * SHA-256 of the link to the candidate's own privacy page (`/careers/privacy/<token>`), where
+     * they see whether they are in the talent pool and can leave it. The token is derived from the
+     * record and its address under the application secret (`engine/privacy-token.ts`), so every
+     * letter carries the same link and a changed address retires the old one; only its hash is
+     * kept, so a database read is not a way in. Emptied by anonymisation.
+     */
+    privacyTokenHash: text("privacy_token_hash"),
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
     // Null when the candidate applied through the public page: nobody inside the company made them.
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
@@ -263,6 +277,7 @@ export const candidate = pgTable(
     index("candidate_phone_key_idx").on(t.phoneKey),
     index("candidate_search_name_idx").on(t.searchName),
     index("candidate_retention_idx").on(t.retainUntil, t.anonymisedAt),
+    index("candidate_privacy_token_idx").on(t.privacyTokenHash),
   ],
 ).enableRLS();
 

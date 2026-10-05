@@ -34,9 +34,12 @@ import {
   SCORE_MAX,
   SCORE_MIN,
   type ScorecardCriterion,
+  type CandidateLocale,
 } from "./enums";
 import { type BusyBlock, clashesWith, daysTouched, schedulingProblems } from "./engine/schedule";
 import { icsFileName, renderIcs } from "./engine/ics";
+import { interviewPlaceText, interviewTimeText } from "./engine/letters";
+import { type LetterOutcome, letterWords, sendLetter } from "./letters";
 import { canOverseeScorecards, canScheduleInterview, canScoreInterview, canViewInterview, type OpeningTarget } from "./policy";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent, stagesOf } from "./service";
 
@@ -407,7 +410,14 @@ async function setInterviewers(tx: Executor, interviewId: string, personIds: rea
  * is written back onto the row, which is how the page can say "the internal event exists, Google
  * has not been told".
  */
-export async function scheduleInterview(input: InterviewInput, actorPersonId: string): Promise<{ interview: InterviewRow; calendar: CalendarResult }> {
+/**
+ * `tell` sends the candidate the invitation with the time and an `.ics` — after the calendar call,
+ * so a meeting link Google minted is in the letter. Left out, nobody outside hears anything: a
+ * recruiter may book the room before the time is agreed with the candidate.
+ */
+export type TellCandidate = { senderName: string } | null;
+
+export async function scheduleInterview(input: InterviewInput, actorPersonId: string, tell: TellCandidate = null): Promise<{ interview: InterviewRow; calendar: CalendarResult; letter: LetterOutcome | null }> {
   checkDraft(input);
 
   const created = await db().transaction(async (tx) => {
@@ -454,7 +464,8 @@ export async function scheduleInterview(input: InterviewInput, actorPersonId: st
 
   const { interview, calendar } = await deliverAndRecord(created);
   await notifyInterviewers(interview, "recruit.interview_scheduled");
-  return { interview, calendar };
+  const letter = tell ? await tellTheCandidate(interview, "interview", { personId: actorPersonId, fullName: tell.senderName }) : null;
+  return { interview, calendar, letter };
 }
 
 async function countRounds(tx: Executor, applicationId: string): Promise<number> {
@@ -493,14 +504,70 @@ async function deliverAndRecord(interview: InterviewRow): Promise<{ interview: I
 async function notifyInterviewers(interview: InterviewRow, kind: "recruit.interview_scheduled" | "recruit.interview_cancelled"): Promise<void> {
   const interviewers = (await interviewersOf([interview.id])).get(interview.id) ?? [];
   if (interviewers.length === 0) return;
-  const application = await findApplication(interview.applicationId);
-  const candidate = application ? await findCandidate(application.candidateId) : undefined;
+  const opening = await findOpening(interview.openingId);
   await notify({
     recipients: interviewers.map((row) => row.personId),
     kind,
-    // The candidate's name is the point of the notification; no figure and no judgement appear.
-    params: { title: interview.title, candidate: candidate?.fullName ?? "" },
+    // The round and the job — **not the candidate**. A notification sits in a mailbox, on a lock
+    // screen and in the notification list long after the candidate may have asked to be erased,
+    // and nothing in it can be emptied then. The name is behind the link, behind the sign-in.
+    params: { title: interview.title, job: opening?.title ?? "" },
     link: `/recruit/interviews/${interview.id}`,
+  });
+}
+
+// ── The candidate's letters ─────────────────────────────────────────────────────────────────
+
+/**
+ * The invitation (or the word that it is off), with the time in the candidate's language and an
+ * `.ics` for their own calendar. The file is the candidate's, not the interviewers': it names the
+ * company and whoever booked it as the organiser — so a reply reaches a person — and the candidate
+ * as the one attendee. The panel's names and addresses are the company's business.
+ */
+async function tellTheCandidate(interview: InterviewRow, letter: "interview" | "interviewCancelled", actor: { personId: string; fullName: string }) {
+  const [organizer] = interview.scheduledByPersonId
+    ? await db().select({ fullName: schema.person.fullName, workEmail: schema.person.workEmail }).from(schema.person).where(eq(schema.person.id, interview.scheduledByPersonId)).limit(1)
+    : [];
+  const [opening] = await db()
+    .select({ title: schema.jobOpening.title, titleEn: schema.jobOpening.titleEn, companyName: schema.entity.shortName })
+    .from(schema.jobOpening)
+    .innerJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
+    .where(eq(schema.jobOpening.id, interview.openingId))
+    .limit(1);
+  const placeFor = (locale: CandidateLocale) => {
+    const words = letterWords(locale);
+    return interviewPlaceText(interview, { video: words("video"), phone: words("phone"), office: words("office", { company: opening?.companyName ?? "" }) });
+  };
+  return sendLetter(db(), {
+    letter,
+    applicationId: interview.applicationId,
+    actorPersonId: actor.personId,
+    senderName: actor.fullName,
+    extra: (locale) => ({
+      interview_time: interviewTimeText(interview.startAt, interview.endAt, locale, TIME_ZONE),
+      interview_place: placeFor(locale),
+      interview_notes: interview.notesForCandidate ?? "",
+    }),
+    attachments: (locale, to) => {
+      const job = locale === "en" && opening?.titleEn ? opening.titleEn : (opening?.title ?? "");
+      const summary = [interview.title, opening?.companyName].filter(Boolean).join(" — ");
+      const body = renderIcs({
+        uid: uidFor(interview.id),
+        // The row's version, as for the panel's file: a moved interview updates the event in place.
+        sequence: Math.floor(interview.updatedAt.getTime() / 1000) % 1_000_000,
+        stamp: now(),
+        start: interview.startAt,
+        end: interview.endAt,
+        summary,
+        description: [job, interview.notesForCandidate, interview.meetingUrl].filter(Boolean).join("\n"),
+        location: placeFor(locale),
+        url: interview.meetingUrl,
+        organizer: organizer?.workEmail ? { name: organizer.fullName, email: organizer.workEmail } : null,
+        attendees: [{ name: to.name, email: to.email }],
+        cancelled: letter === "interviewCancelled",
+      });
+      return [{ fileName: icsFileName(summary), contentType: `text/calendar; charset=utf-8; method=${letter === "interviewCancelled" ? "CANCEL" : "REQUEST"}`, contentBase64: Buffer.from(body, "utf8").toString("base64") }];
+    },
   });
 }
 
@@ -508,7 +575,8 @@ export async function rescheduleInterview(
   interviewId: string,
   input: { startAt: Date; endAt: Date; location: string | null; meetingUrl: string | null; interviewerPersonIds: string[] },
   actorPersonId: string,
-): Promise<{ interview: InterviewRow; calendar: CalendarResult }> {
+  tell: TellCandidate = null,
+): Promise<{ interview: InterviewRow; calendar: CalendarResult; letter: LetterOutcome | null }> {
   checkDraft(input);
 
   const moved = await db().transaction(async (tx) => {
@@ -527,10 +595,14 @@ export async function rescheduleInterview(
 
   const { interview, calendar } = await deliverAndRecord(moved);
   await notifyInterviewers(interview, "recruit.interview_scheduled");
-  return { interview, calendar };
+  // The same letter with the new time; the `.ics` keeps its UID, so the candidate's calendar moves
+  // the event rather than gaining a second one.
+  const letter = tell ? await tellTheCandidate(interview, "interview", { personId: actorPersonId, fullName: tell.senderName }) : null;
+  return { interview, calendar, letter };
 }
 
-export async function setInterviewStatus(interviewId: string, status: InterviewStatus, reason: string | null, actorPersonId: string): Promise<InterviewRow> {
+/** `tell` on a cancellation sends the candidate word that it is off, and an `.ics` that removes it. Never the reason. */
+export async function setInterviewStatus(interviewId: string, status: InterviewStatus, reason: string | null, actorPersonId: string, tell: TellCandidate = null): Promise<InterviewRow> {
   const after = await db().transaction(async (tx) => {
     const before = await findInterview(interviewId, tx);
     if (!before) throw new ActionError("recruit_interview_not_found");
@@ -554,6 +626,7 @@ export async function setInterviewStatus(interviewId: string, status: InterviewS
   if (status === "cancelled") {
     if (after.calendarEventId) await calendarDriver().cancel(after.calendarEventId);
     await notifyInterviewers(after, "recruit.interview_cancelled");
+    if (tell) await tellTheCandidate(after, "interviewCancelled", { personId: actorPersonId, fullName: tell.senderName });
   }
   return after;
 }

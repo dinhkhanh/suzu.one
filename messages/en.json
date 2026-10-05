@@ -1097,17 +1097,21 @@
         "title": "Hiring request approved",
         "body": "The request for {title} ({count}) was approved. Time to write the posting."
       },
+      "recruit_application_received": {
+        "title": "A new application",
+        "body": "Somebody has applied for {title} ({code}) through the careers page."
+      },
       "recruit_interview_scheduled": {
         "title": "You have an interview",
-        "body": "{title} with {candidate}."
+        "body": "{title} for the {job} role."
       },
       "recruit_interview_cancelled": {
         "title": "Interview cancelled",
-        "body": "{title} with {candidate} has been cancelled."
+        "body": "{title} for the {job} role has been cancelled."
       },
       "recruit_assignment_received": {
         "title": "Assignment submitted",
-        "body": "{candidate} has sent back {title}."
+        "body": "{title} for the {job} role has been sent back."
       },
       "recruit_offer_approved": {
         "title": "The offer was approved",
@@ -1115,7 +1119,7 @@
       },
       "recruit_offer_accepted": {
         "title": "The candidate accepted",
-        "body": "{name} accepted, starting {date}. Time to create the employee record."
+        "body": "The candidate for offer {number} ({title}) accepted, starting {date}. Time to create the employee record."
       },
       "performance_peer_requested": {
         "title": "You were asked for peer feedback",
@@ -10280,7 +10284,8 @@
       "interviewsToday": "Interviews today",
       "noInterviewsToday": "You have no interviews today.",
       "openInterview": "Open",
-      "allOpenings": "All job openings"
+      "allOpenings": "All job openings",
+      "undelivered": "Letters that did not reach the candidate"
     },
     "newCandidate": "Add candidate",
     "newHiring": "Request a hire",
@@ -10438,7 +10443,8 @@
       "code": "Code",
       "name": "Name",
       "kind": "Kind",
-      "isActive": "In use"
+      "isActive": "In use",
+      "tellCandidateRejected": "Send the candidate the outcome letter (in their language; the reason and the note stay out of it)"
     },
     "actions": {
       "editCandidate": "Edit candidate",
@@ -10562,6 +10568,12 @@
       "recruit_referral_not_found": "Referral not found.",
       "recruit_referral_not_earned": "This referral has not earned a bonus yet.",
       "recruit_referral_already_settled": "This referral has already been settled.",
+      "opening_question_label_required": "Every question needs its wording.",
+      "opening_question_choices_required": "A choice question needs at least two options.",
+      "opening_questions_too_many": "Too many questions for one opening.",
+      "interview_kit_label_required": "Every criterion needs a name.",
+      "interview_kit_too_many": "Too many criteria for one interview kit.",
+      "recruit_email_needs_interview": "This wording needs an interview's time and place, so it is sent from the interview.",
       "step_up_required": "Please confirm who you are to continue."
     },
     "duplicates": {
@@ -10651,6 +10663,21 @@
         "location": "Location",
         "workMode": "Work mode",
         "employmentType": "Employment type"
+      },
+      "privacy": {
+        "title": "Your application data",
+        "intro": "We keep your application to consider you for the role. Once your applications have closed, your details are deleted after {months} months — unless you agreed to stay in our talent pool.",
+        "poolTitle": "Talent pool",
+        "inPool": "You are in our talent pool: we keep your details to contact you when a suitable role comes up. You can leave at any time.",
+        "notInPool": "You are not in our talent pool. Your details will be deleted {months} months after your applications close.",
+        "left": "You have left our talent pool. Your details will be deleted {months} months after your applications close.",
+        "leave": "Leave the talent pool",
+        "erasure": "Want us to delete all your data now? Reply to any email we have sent you.",
+        "errors": {
+          "privacy_link_closed": "This link no longer works.",
+          "rate_limited": "Too many attempts. Please try again later.",
+          "failed": "That did not work. Please try again."
+        }
       }
     },
     "email": {
@@ -10664,7 +10691,15 @@
       "subject": "Subject",
       "body": "Body",
       "placeholders": "Placeholders you may use",
-      "new": "Add a wording"
+      "new": "Add a wording",
+      "automaticBadge": "Automatic",
+      "automatic": {
+        "acknowledge": "Sent by the system as soon as somebody applies through the careers page. Switch it off and no acknowledgement goes out.",
+        "interview": "Sent by the system when an interview is booked or moved (when \"tell the candidate\" is ticked), with an .ics attached.",
+        "interviewCancelled": "Sent by the system when an interview is cancelled (when \"tell the candidate\" is ticked). Never carries the reason.",
+        "reject": "Sent by the system when an application is turned down (when \"send the outcome letter\" is ticked). Never carries the reason or the note.",
+        "offer": "Sent by the system when the offer is sent, with the offer letter attached as a PDF."
+      }
     },
     "board": {
       "description": "Drag a card to another column, or select several and move them together.",
@@ -10682,13 +10717,91 @@
         "scheduled": "Scheduled",
         "today": "Today",
         "awaiting": "Awaiting"
-      }
+      },
+      "tellCandidates": "Send the outcome letter"
     },
     "emailKind": {
+      "acknowledge": "Acknowledgement",
       "invite": "Invitation",
       "reject": "Rejection",
       "offer": "Offer",
       "general": "General"
+    },
+    "letters": {
+      "team": "The {company} recruitment team",
+      "video": "Online",
+      "phone": "By phone",
+      "office": "The {company} office"
+    },
+    "letterStatus": {
+      "queued": "The letter is queued for the candidate.",
+      "no_address": "No letter sent: the candidate has no email address",
+      "anonymised": "No letter sent: the candidate's data has been anonymised",
+      "switched_off": "No letter sent: this wording is switched off"
+    },
+    "delivery": {
+      "pending": "Waiting to send",
+      "retrying": "Failed, retrying",
+      "sent": "Sent",
+      "failed": "Could not be sent",
+      "skipped": "Not sent: no email service is configured"
+    },
+    "pool": {
+      "title": "Talent pool",
+      "all": "All",
+      "description": "People who agreed to be kept on file after their applications closed. They can leave on their own, from the link in their emails.",
+      "badge": "Talent pool",
+      "empty": "Nobody is in the talent pool yet.",
+      "in": "Yes — agreed to be kept on file",
+      "out": "No",
+      "recordJoin": "Record that they agreed to stay",
+      "recordLeave": "Record that they asked to leave"
+    },
+    "questions": {
+      "title": "Application questions",
+      "description": "This opening's own questions on the application form. Renaming a question keeps the answers already given.",
+      "none": "No questions of its own.",
+      "label": "Question",
+      "labelEn": "Question (English)",
+      "kind": "Answer",
+      "kinds": {
+        "text": "One line",
+        "long_text": "Paragraph",
+        "choice": "Pick one"
+      },
+      "required": "Required",
+      "choices": "Options",
+      "choicesHint": "One option per line, at least two.",
+      "add": "Add a question"
+    },
+    "kit": {
+      "title": "Interview kit",
+      "description": "Interviewers score each criterion from 1 to 4.",
+      "usingDefault": "This opening uses the default kit below. Edit and save it to give the opening its own.",
+      "none": "No criteria — save like this to use the default kit.",
+      "label": "Criterion",
+      "labelEn": "Criterion (English)",
+      "hint": "Hint for the interviewer",
+      "copiedNote": "Interviews already booked keep the kit they were booked with; a change applies to interviews booked after it.",
+      "add": "Add a criterion"
+    },
+    "editor": {
+      "up": "Move up",
+      "down": "Move down",
+      "remove": "Remove this row",
+      "save": "Save",
+      "saved": "Saved."
+    },
+    "pipelineEditor": {
+      "description": "The hiring pipelines the whole group shares. Each opening picks one; every stage names its rung of the hiring funnel, so the report can compare openings.",
+      "new": "New pipeline",
+      "nameEn": "Name (English)",
+      "isDefault": "Default for new openings",
+      "stages": "Stages",
+      "noStages": "No stages yet.",
+      "category": "Funnel rung",
+      "addStage": "Add a stage",
+      "hint": "A pipeline needs an \"Applied\" stage. A stage somebody is still in cannot be removed."
     },
     "interview": {
       "heading": "Interviews",
@@ -10722,6 +10835,9 @@
       "clash": "Already booked: {names}",
       "cardDue": "Scorecard due",
       "cardIn": "Scorecard in",
+      "tellCandidate": "Send the candidate the invitation with the time and a calendar file (.ics)",
+      "tellCandidateMoved": "Send the candidate the new time",
+      "tellCandidateCancelled": "When cancelling: tell the candidate (never the reason)",
       "kinds": {
         "phone_screen": "Phone screen",
         "hiring_manager": "Hiring manager",
@@ -10850,7 +10966,7 @@
       "moneyNote": "Figures are whole Vietnamese đồng per month. Only a reader who may see compensation is shown this.",
       "note": "Internal note",
       "submitForApproval": "Send for approval",
-      "send": "Mark as sent",
+      "send": "Send the offer to the candidate",
       "withdraw": "Withdraw",
       "approval": "Approval",
       "letter": "Offer letter",
@@ -13116,6 +13232,7 @@
     "goals": "Goals",
     "handOffs": "Hand-offs",
     "headcount": "Headcount",
+    "hiringPipelines": "Hiring pipelines",
     "hiringRequest": "Hiring request",
     "hiringRequests": "Hiring requests",
     "home": "Home",

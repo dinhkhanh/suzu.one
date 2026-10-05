@@ -14,7 +14,7 @@ import { sendCandidateEmailAction } from "../actions";
 
 export type EmailTemplateOption = { id: string; name: string; kind: string };
 
-export function SendCandidateEmail({ applicationId, templates, hasEmail }: { applicationId: string; templates: EmailTemplateOption[]; hasEmail: boolean }) {
+export function SendCandidateEmail({ applicationId, templates, hasEmail, defaultLocale }: { applicationId: string; templates: EmailTemplateOption[]; hasEmail: boolean; /** The candidate's own language, as recorded. */ defaultLocale: string }) {
   const t = useTranslations("recruit");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const form = useActionForm<{ to: string }>(sendCandidateEmailAction, { extra: { applicationId }, onSuccess: (data) => setSentTo(data.to) });
@@ -38,7 +38,7 @@ export function SendCandidateEmail({ applicationId, templates, hasEmail }: { app
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="locale">{t("email.language")}</Label>
-          <Select id="locale" name="locale" defaultValue="vi" disabled={!hasEmail} className="w-auto">
+          <Select id="locale" name="locale" defaultValue={defaultLocale === "en" ? "en" : "vi"} disabled={!hasEmail} className="w-auto">
             <option value="vi">Tiếng Việt</option>
             <option value="en">English</option>
           </Select>

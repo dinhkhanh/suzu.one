@@ -1097,17 +1097,21 @@
         "title": "Đã duyệt nhu cầu tuyển dụng",
         "body": "Nhu cầu tuyển {title} ({count} người) đã được duyệt. Hãy tạo tin tuyển dụng."
       },
+      "recruit_application_received": {
+        "title": "Có hồ sơ ứng tuyển mới",
+        "body": "Một ứng viên vừa nộp hồ sơ cho vị trí {title} ({code}) qua trang tuyển dụng."
+      },
       "recruit_interview_scheduled": {
         "title": "Bạn có lịch phỏng vấn",
-        "body": "{title} với {candidate}."
+        "body": "{title} cho vị trí {job}."
       },
       "recruit_interview_cancelled": {
         "title": "Đã huỷ lịch phỏng vấn",
-        "body": "{title} với {candidate} đã bị huỷ."
+        "body": "{title} cho vị trí {job} đã bị huỷ."
       },
       "recruit_assignment_received": {
         "title": "Ứng viên đã nộp bài",
-        "body": "{candidate} đã nộp bài {title}."
+        "body": "Bài {title} cho vị trí {job} đã được nộp."
       },
       "recruit_offer_approved": {
         "title": "Thư mời đã được duyệt",
@@ -1115,7 +1119,7 @@
       },
       "recruit_offer_accepted": {
         "title": "Ứng viên đã đồng ý",
-        "body": "{name} đã đồng ý nhận việc, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
+        "body": "Ứng viên nhận thư mời {number} ({title}) đã đồng ý, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
       },
       "performance_peer_requested": {
         "title": "Có người nhờ bạn phản hồi đồng nghiệp",
@@ -10280,7 +10284,8 @@
       "interviewsToday": "Phỏng vấn hôm nay",
       "noInterviewsToday": "Hôm nay bạn không có buổi phỏng vấn nào.",
       "openInterview": "Mở",
-      "allOpenings": "Tất cả tin tuyển dụng"
+      "allOpenings": "Tất cả tin tuyển dụng",
+      "undelivered": "Thư chưa đến được ứng viên"
     },
     "newCandidate": "Thêm ứng viên",
     "newHiring": "Đề nghị tuyển dụng",
@@ -10438,7 +10443,8 @@
       "code": "Mã",
       "name": "Tên",
       "kind": "Loại",
-      "isActive": "Đang dùng"
+      "isActive": "Đang dùng",
+      "tellCandidateRejected": "Gửi thư báo kết quả cho ứng viên (bằng ngôn ngữ của họ; lý do và ghi chú không nằm trong thư)"
     },
     "actions": {
       "editCandidate": "Sửa hồ sơ",
@@ -10562,6 +10568,12 @@
       "recruit_referral_not_found": "Không tìm thấy giới thiệu.",
       "recruit_referral_not_earned": "Giới thiệu này chưa đủ điều kiện thưởng.",
       "recruit_referral_already_settled": "Giới thiệu này đã được tất toán.",
+      "opening_question_label_required": "Câu hỏi nào cũng cần có nội dung.",
+      "opening_question_choices_required": "Câu hỏi lựa chọn cần ít nhất hai phương án.",
+      "opening_questions_too_many": "Quá nhiều câu hỏi cho một tin tuyển dụng.",
+      "interview_kit_label_required": "Tiêu chí nào cũng cần có tên.",
+      "interview_kit_too_many": "Quá nhiều tiêu chí cho một bộ phỏng vấn.",
+      "recruit_email_needs_interview": "Mẫu thư này cần thời gian và địa điểm của một buổi phỏng vấn, nên được gửi từ buổi phỏng vấn.",
       "step_up_required": "Hãy xác thực lại để tiếp tục."
     },
     "duplicates": {
@@ -10651,6 +10663,21 @@
         "location": "Địa điểm",
         "workMode": "Hình thức làm việc",
         "employmentType": "Loại hình công việc"
+      },
+      "privacy": {
+        "title": "Dữ liệu ứng tuyển của bạn",
+        "intro": "Chúng tôi giữ hồ sơ ứng tuyển của bạn để xét tuyển. Khi các đơn ứng tuyển đã khép lại, hồ sơ được xoá sau {months} tháng — trừ khi bạn đồng ý ở lại danh sách ứng viên tiềm năng.",
+        "poolTitle": "Danh sách ứng viên tiềm năng",
+        "inPool": "Bạn đang ở trong danh sách ứng viên tiềm năng: chúng tôi giữ hồ sơ để liên hệ khi có vị trí phù hợp. Bạn có thể rút khỏi danh sách bất cứ lúc nào.",
+        "notInPool": "Bạn không ở trong danh sách ứng viên tiềm năng. Hồ sơ sẽ được xoá {months} tháng sau khi các đơn ứng tuyển khép lại.",
+        "left": "Bạn đã rút khỏi danh sách ứng viên tiềm năng. Hồ sơ sẽ được xoá {months} tháng sau khi các đơn ứng tuyển khép lại.",
+        "leave": "Rút khỏi danh sách ứng viên tiềm năng",
+        "erasure": "Muốn chúng tôi xoá toàn bộ dữ liệu của bạn ngay? Hãy trả lời một email bất kỳ chúng tôi đã gửi.",
+        "errors": {
+          "privacy_link_closed": "Đường dẫn này không còn dùng được.",
+          "rate_limited": "Bạn đã thử quá nhiều lần. Mời bạn thử lại sau.",
+          "failed": "Chưa thực hiện được. Mời bạn thử lại."
+        }
       }
     },
     "email": {
@@ -10664,7 +10691,15 @@
       "subject": "Tiêu đề",
       "body": "Nội dung",
       "placeholders": "Trường thay thế cho phép",
-      "new": "Thêm mẫu thư mới"
+      "new": "Thêm mẫu thư mới",
+      "automaticBadge": "Tự động",
+      "automatic": {
+        "acknowledge": "Hệ thống tự gửi ngay khi có người nộp hồ sơ qua trang tuyển dụng. Tắt mẫu này thì thư không được gửi.",
+        "interview": "Hệ thống tự gửi khi đặt hoặc đổi lịch phỏng vấn (nếu để đánh dấu \"gửi cho ứng viên\"), kèm file lịch .ics.",
+        "interviewCancelled": "Hệ thống tự gửi khi huỷ buổi phỏng vấn (nếu để đánh dấu \"gửi cho ứng viên\"). Không bao giờ kèm lý do huỷ.",
+        "reject": "Hệ thống tự gửi khi từ chối hồ sơ (nếu để đánh dấu \"gửi thư báo kết quả\"). Không bao giờ kèm lý do hay ghi chú.",
+        "offer": "Hệ thống tự gửi khi gửi thư mời nhận việc, kèm thư mời dạng PDF."
+      }
     },
     "board": {
       "description": "Kéo thẻ sang cột khác, hoặc chọn nhiều thẻ rồi chuyển cùng lúc.",
@@ -10682,13 +10717,91 @@
         "scheduled": "Đã hẹn",
         "today": "Hôm nay",
         "awaiting": "Chờ phản hồi"
-      }
+      },
+      "tellCandidates": "Gửi thư báo kết quả"
     },
     "emailKind": {
+      "acknowledge": "Xác nhận đã nhận hồ sơ",
       "invite": "Mời phỏng vấn",
       "reject": "Từ chối",
       "offer": "Đề nghị tuyển dụng",
       "general": "Chung"
+    },
+    "letters": {
+      "team": "Bộ phận Tuyển dụng {company}",
+      "video": "Trực tuyến",
+      "phone": "Qua điện thoại",
+      "office": "Văn phòng {company}"
+    },
+    "letterStatus": {
+      "queued": "Đã đưa thư vào hàng chờ gửi cho ứng viên.",
+      "no_address": "Không gửi thư: ứng viên chưa có email",
+      "anonymised": "Không gửi thư: dữ liệu ứng viên đã được ẩn danh",
+      "switched_off": "Không gửi thư: mẫu thư này đang tắt"
+    },
+    "delivery": {
+      "pending": "Đang chờ gửi",
+      "retrying": "Gửi lỗi, đang thử lại",
+      "sent": "Đã gửi",
+      "failed": "Không gửi được",
+      "skipped": "Chưa gửi: hệ thống chưa cấu hình dịch vụ email"
+    },
+    "pool": {
+      "title": "Ứng viên tiềm năng",
+      "all": "Tất cả",
+      "description": "Những người đồng ý để công ty giữ hồ sơ sau khi đơn ứng tuyển khép lại. Họ có thể tự rút khỏi danh sách bằng đường dẫn trong email.",
+      "badge": "Tiềm năng",
+      "empty": "Chưa có ai trong danh sách ứng viên tiềm năng.",
+      "in": "Có — đồng ý được giữ hồ sơ",
+      "out": "Không",
+      "recordJoin": "Ghi nhận ứng viên đồng ý ở lại",
+      "recordLeave": "Ghi nhận ứng viên rút khỏi danh sách"
+    },
+    "questions": {
+      "title": "Câu hỏi khi ứng tuyển",
+      "description": "Những câu hỏi riêng của vị trí này trên form ứng tuyển. Đổi tên câu hỏi không làm mất câu trả lời đã có.",
+      "none": "Chưa có câu hỏi riêng.",
+      "label": "Câu hỏi",
+      "labelEn": "Câu hỏi (tiếng Anh)",
+      "kind": "Kiểu trả lời",
+      "kinds": {
+        "text": "Một dòng",
+        "long_text": "Đoạn văn",
+        "choice": "Chọn một"
+      },
+      "required": "Bắt buộc",
+      "choices": "Các phương án",
+      "choicesHint": "Mỗi dòng một phương án, ít nhất hai.",
+      "add": "Thêm câu hỏi"
+    },
+    "kit": {
+      "title": "Bộ tiêu chí phỏng vấn",
+      "description": "Người phỏng vấn chấm từng tiêu chí trên thang 1–4.",
+      "usingDefault": "Vị trí này đang dùng bộ tiêu chí mặc định bên dưới. Sửa rồi lưu để có bộ riêng.",
+      "none": "Không có tiêu chí nào — lưu như vậy để dùng bộ mặc định.",
+      "label": "Tiêu chí",
+      "labelEn": "Tiêu chí (tiếng Anh)",
+      "hint": "Gợi ý cho người chấm",
+      "copiedNote": "Buổi phỏng vấn đã đặt giữ nguyên bộ tiêu chí lúc đặt lịch; thay đổi chỉ áp dụng cho các buổi đặt sau.",
+      "add": "Thêm tiêu chí"
+    },
+    "editor": {
+      "up": "Chuyển lên",
+      "down": "Chuyển xuống",
+      "remove": "Bỏ dòng này",
+      "save": "Lưu",
+      "saved": "Đã lưu."
+    },
+    "pipelineEditor": {
+      "description": "Các quy trình tuyển dụng dùng chung cho cả nhóm công ty. Mỗi tin tuyển dụng chọn một quy trình; vòng nào cũng thuộc một bậc của phễu tuyển dụng để báo cáo so sánh được.",
+      "new": "Quy trình mới",
+      "nameEn": "Tên (tiếng Anh)",
+      "isDefault": "Mặc định cho tin tuyển dụng mới",
+      "stages": "Các vòng",
+      "noStages": "Chưa có vòng nào.",
+      "category": "Bậc trong phễu",
+      "addStage": "Thêm vòng",
+      "hint": "Phải có một vòng \"Hồ sơ mới\". Không xoá được vòng đang có ứng viên."
     },
     "interview": {
       "heading": "Phỏng vấn",
@@ -10722,6 +10835,9 @@
       "clash": "Trùng lịch: {names}",
       "cardDue": "Chưa có phiếu",
       "cardIn": "Đã gửi phiếu",
+      "tellCandidate": "Gửi thư mời kèm thời gian và file lịch (.ics) cho ứng viên",
+      "tellCandidateMoved": "Gửi thời gian mới cho ứng viên",
+      "tellCandidateCancelled": "Khi huỷ: báo cho ứng viên (không kèm lý do)",
       "kinds": {
         "phone_screen": "Sàng lọc qua điện thoại",
         "hiring_manager": "Quản lý tuyển dụng",
@@ -10850,7 +10966,7 @@
       "moneyNote": "Số tiền là đồng Việt Nam, đơn vị đồng/tháng. Chỉ người có quyền xem lương mới thấy phần này.",
       "note": "Ghi chú nội bộ",
       "submitForApproval": "Trình duyệt",
-      "send": "Đánh dấu đã gửi",
+      "send": "Gửi thư mời cho ứng viên",
       "withdraw": "Thu hồi",
       "approval": "Phê duyệt",
       "letter": "Thư mời",
@@ -13116,6 +13232,7 @@
     "goals": "Mục tiêu",
     "handOffs": "Bàn giao",
     "headcount": "Nhân sự",
+    "hiringPipelines": "Quy trình tuyển dụng",
     "hiringRequest": "Nhu cầu tuyển dụng",
     "hiringRequests": "Nhu cầu tuyển dụng",
     "home": "Trang chủ",

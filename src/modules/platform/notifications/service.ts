@@ -13,6 +13,7 @@ import { sendEmail } from "./email";
 import { deliverPendingMessengers, mayReceive } from "./messenger-outbox";
 import { deliverPendingTelegrams } from "./telegram-outbox";
 import { pushDriver } from "./push";
+import type { EmailAttachment } from "./schema";
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, effectiveChoice, type Kind, KINDS, messageKey, resolveParams } from "./kinds";
 
 export type NotificationRow = typeof schema.notification.$inferSelect;
@@ -155,10 +156,22 @@ function composeEmail(to: string, kind: string, params: Params, link: string | n
  *
  * It still goes through the same outbox — same delivery, same retries, same "simulated" when no
  * `RESEND_API_KEY` is set — because a second mail path is a second thing to get wrong.
+ *
+ * Returns the outbox row's id, so the caller can show what became of it (sent, retrying, failed).
  */
-export async function queueRawEmail(to: string, subject: string, bodyText: string, executor: Tx | ReturnType<typeof db> = db()): Promise<void> {
-  await executor.insert(schema.emailOutbox).values({ toEmail: to, subject, bodyText });
+export async function queueRawEmail(
+  to: string,
+  subject: string,
+  bodyText: string,
+  executor: Tx | ReturnType<typeof db> = db(),
+  attachments: readonly EmailAttachment[] | null = null,
+): Promise<{ id: string }> {
+  const [row] = await executor
+    .insert(schema.emailOutbox)
+    .values({ toEmail: to, subject, bodyText, attachments: attachments?.length ? [...attachments] : null })
+    .returning({ id: schema.emailOutbox.id });
   deliverSoon();
+  return row;
 }
 
 /** An email to an address rather than a person — e.g. the address someone just lost. */
@@ -191,13 +204,18 @@ export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; 
       .returning({ id: outbox.id });
     if (!claimed) continue;
 
-    const result = await sendEmail({ to: email.toEmail, subject: email.subject, text: email.bodyText });
+    const result = await sendEmail({ to: email.toEmail, subject: email.subject, text: email.bodyText, attachments: email.attachments });
+    // An attachment is kept only while the email may still go: once it is sent, skipped or given
+    // up on, the bytes go (an offer letter prints a salary; the outbox is not where one is kept).
     if (result.status === "failed") {
       const givenUp = email.attempts + 1 >= MAX_ATTEMPTS;
-      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, email.id));
+      await db()
+        .update(outbox)
+        .set({ status: givenUp ? "failed" : "pending", lastError: result.error, ...(givenUp ? { attachments: null } : {}) })
+        .where(eq(outbox.id, email.id));
       tally.failed++;
     } else {
-      await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null }).where(eq(outbox.id, email.id));
+      await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null, attachments: null }).where(eq(outbox.id, email.id));
       tally[result.status]++;
     }
   }

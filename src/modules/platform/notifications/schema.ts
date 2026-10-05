@@ -42,6 +42,9 @@ export const notificationPreference = pgTable(
   (t) => [primaryKey({ columns: [t.personId, t.category] })],
 ).enableRLS();
 
+/** One file attached to an outgoing email. */
+export type EmailAttachment = { fileName: string; contentType: string; contentBase64: string };
+
 export const emailStatus = pgEnum("email_status", ["pending", "sent", "failed", "skipped"]);
 
 // "simulated" = no Chat webhook is configured: the local driver recorded the card instead of sending it.
@@ -55,6 +58,12 @@ export const emailOutbox = pgTable(
     toEmail: text("to_email").notNull(),
     subject: text("subject").notNull(),
     bodyText: text("body_text").notNull(),
+    /**
+     * Files riding along — an interview's `.ics`, an offer letter — base64, for the one caller that
+     * sends them (recruitment's candidate letters). Emptied once the email is sent, skipped or given
+     * up on: an offer letter prints a salary, and the outbox is not a place to keep one.
+     */
+    attachments: jsonb("attachments").$type<EmailAttachment[]>(),
     status: emailStatus("status").notNull().default("pending"),
     attempts: smallint("attempts").notNull().default(0),
     lastError: text("last_error"),

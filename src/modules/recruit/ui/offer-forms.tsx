@@ -173,11 +173,21 @@ export function OfferMoves({ offerId, canSubmit, canSend, canWithdraw }: { offer
   const router = useRouter();
   const refresh = () => router.refresh();
   const submit = useActionForm(submitOfferAction, { extra: { offerId }, onSuccess: refresh });
-  const send = useActionForm(sendOfferAction, { extra: { offerId }, onSuccess: refresh });
+  // What became of the email to the candidate: queued, or why it could not go.
+  const [letter, setLetter] = useState<string | null>(null);
+  const send = useActionForm<{ letter: string }>(sendOfferAction, {
+    extra: { offerId },
+    onSuccess: (data) => {
+      setLetter(data.letter);
+      refresh();
+    },
+  });
   const withdraw = useActionForm(withdrawOfferAction, { extra: { offerId }, onSuccess: refresh });
+  const tLetter = useTranslations("recruit.letterStatus");
 
   return (
     <div className="flex flex-col gap-2">
+      {letter ? <p className="text-xs text-muted-foreground">{tLetter(letter as "queued")}</p> : null}
       <div className="flex flex-wrap items-center gap-2">
         {canSubmit ? (
           <form onSubmit={submit.onSubmit}>

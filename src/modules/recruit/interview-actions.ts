@@ -23,6 +23,8 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 /** `datetime-local` gives "2026-09-24T09:30" with no zone; the browser's zone is the office's. */
 const instant = z.coerce.date();
 const personIds = z.preprocess((value) => (Array.isArray(value) ? value : typeof value === "string" && value ? value.split(",") : []), z.array(z.uuid()).max(12));
+/** "Tell the candidate": a ticked box posts "on"; an unticked one posts nothing, which is no. */
+const tellCandidate = z.preprocess((value) => value === "on" || value === true, z.boolean()).default(false);
 
 const openingTargetOf = (row: { entityId: string; departmentId: string | null; teamId: string | null }) => ({ entityId: row.entityId, departmentId: row.departmentId, teamId: row.teamId });
 
@@ -49,19 +51,21 @@ const scheduleInterviewPipeline = createAction({
     meetingUrl: optional(z.url().max(500)),
     notesForCandidate: optional(z.string().trim().max(2000)),
     interviewerPersonIds: personIds,
+    tellCandidate,
   }),
   authorize: (user, input) => mayScheduleOn(user, input.applicationId),
   run: async ({ user, input }) => {
-    const { interview, calendar } = await scheduleInterview(input, user.person.id);
+    const { tellCandidate: tell, ...draft } = input;
+    const { interview, calendar, letter } = await scheduleInterview(draft, user.person.id, tell ? { senderName: user.person.fullName } : null);
     const opening = await findOpening(interview.openingId);
     revalidatePath(`/recruit/applications/${input.applicationId}`);
     revalidatePath("/recruit/interviews");
     return {
-      data: { id: interview.id, calendar: calendar.status },
+      data: { id: interview.id, calendar: calendar.status, letter: letter ? (letter.queued ? "queued" : letter.reason) : null },
       audit: {
         resource: { type: "interview", id: interview.id, entityId: opening?.entityId ?? null },
         summary: `${interview.title} · ${interview.kind}`,
-        after: { startAt: interview.startAt.toISOString(), mode: interview.mode, interviewers: input.interviewerPersonIds.length, calendar: calendar.status },
+        after: { startAt: interview.startAt.toISOString(), mode: interview.mode, interviewers: input.interviewerPersonIds.length, calendar: calendar.status, candidateTold: letter?.queued ?? false },
       },
     };
   },
@@ -76,31 +80,32 @@ const rescheduleInterviewPipeline = createAction({
     location: optional(z.string().trim().max(300)),
     meetingUrl: optional(z.url().max(500)),
     interviewerPersonIds: personIds,
+    tellCandidate,
   }),
   authorize: async (user, input) => {
     const interview = await findInterview(input.interviewId);
     return !!interview && (await mayScheduleOn(user, interview.applicationId));
   },
   run: async ({ user, input }) => {
-    const { interview, calendar } = await rescheduleInterview(input.interviewId, input, user.person.id);
+    const { interview, calendar, letter } = await rescheduleInterview(input.interviewId, input, user.person.id, input.tellCandidate ? { senderName: user.person.fullName } : null);
     revalidatePath(`/recruit/interviews/${input.interviewId}`);
     revalidatePath(`/recruit/applications/${interview.applicationId}`);
     return {
-      data: { id: interview.id, calendar: calendar.status },
-      audit: { resource: { type: "interview", id: interview.id }, summary: interview.title, after: { startAt: interview.startAt.toISOString(), calendar: calendar.status } },
+      data: { id: interview.id, calendar: calendar.status, letter: letter ? (letter.queued ? "queued" : letter.reason) : null },
+      audit: { resource: { type: "interview", id: interview.id }, summary: interview.title, after: { startAt: interview.startAt.toISOString(), calendar: calendar.status, candidateTold: letter?.queued ?? false } },
     };
   },
 });
 
 const setInterviewStatusPipeline = createAction({
   name: "recruit.interview.status",
-  input: z.object({ interviewId: z.uuid(), status: z.enum(INTERVIEW_STATUSES), reason: optional(z.string().trim().max(500)) }),
+  input: z.object({ interviewId: z.uuid(), status: z.enum(INTERVIEW_STATUSES), reason: optional(z.string().trim().max(500)), tellCandidate }),
   authorize: async (user, input) => {
     const interview = await findInterview(input.interviewId);
     return !!interview && (await mayScheduleOn(user, interview.applicationId));
   },
   run: async ({ user, input }) => {
-    const interview = await setInterviewStatus(input.interviewId, input.status, input.reason, user.person.id);
+    const interview = await setInterviewStatus(input.interviewId, input.status, input.reason, user.person.id, input.tellCandidate ? { senderName: user.person.fullName } : null);
     revalidatePath(`/recruit/interviews/${input.interviewId}`);
     revalidatePath(`/recruit/applications/${interview.applicationId}`);
     return { data: { status: interview.status }, audit: { resource: { type: "interview", id: interview.id }, summary: interview.title, after: { status: interview.status } } };
