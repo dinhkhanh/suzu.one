@@ -28,8 +28,8 @@ export type ContractProblem =
   | "contract_overlap";
 
 // The contracts that *are* the employment relationship; only one runs at a time.
-const LABOUR: readonly ContractType[] = ["probation", "fixed_term", "indefinite"];
-export const isLabourContract = (type: ContractType) => LABOUR.includes(type);
+export const LABOUR_CONTRACT_TYPES: readonly ContractType[] = ["probation", "fixed_term", "indefinite"];
+export const isLabourContract = (type: ContractType) => LABOUR_CONTRACT_TYPES.includes(type);
 
 /** The day `months` calendar months after `date`; the 31st of a short month lands on its last day. */
 export function addMonths(date: IsoDate, months: number): IsoDate {
