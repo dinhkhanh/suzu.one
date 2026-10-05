@@ -18,6 +18,10 @@ export const LIFECYCLE_EVENT_TYPES = ["hire", "rehire", "probation_pass", "proba
 // Events HR writes down by hand with no side effects. The others are written by the use-case
 // that makes them true (hire, change of assignment, termination, an approved resignation).
 export const RECORD_ONLY_EVENT_TYPES = ["probation_pass", "probation_fail", "contract_renewal", "salary_change", "discipline", "reward", "long_leave"] as const;
+// What the "record an event" form offers. A probation pass and a renewal are not written down bare
+// any more: each comes with its new contract and workforce type (`CONTRACT_EVENT_TYPES`, FR-CHR-09).
+export const HAND_RECORDED_EVENT_TYPES = ["probation_fail", "salary_change", "discipline", "reward", "long_leave"] as const;
+export const CONTRACT_EVENT_TYPES = ["probation_pass", "contract_renewal"] as const;
 // What a change of assignment is, for the timeline. A correction fixes a mistake and is no event.
 export const ASSIGNMENT_CHANGE_KINDS = ["correction", "transfer", "promotion"] as const;
 // What a person is good at (FR-CHR-14): professional fields ("Social Media") and skills ("Problem Solving").

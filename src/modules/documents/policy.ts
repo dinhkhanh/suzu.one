@@ -31,5 +31,9 @@ export const canGenerate = (principal: Principal, subject: SubjectTarget, tier: 
 /**
  * May this person re-open a document that was made earlier? The same test, re-run now — never
  * "they generated it once, so they may have it again". A tier taken away takes the paper with it.
+ *
+ * And the person it is about may always read it (FR-CHR-12): a decision or a letter is addressed to
+ * them. They read every tier of their own record, so no paper about them is kept from them.
  */
-export const canOpenDocument = canGenerate;
+export const canOpenDocument = (principal: Principal, subject: SubjectTarget, tier: Tier): boolean =>
+  canGenerate(principal, subject, tier) || (!!principal.personId && principal.personId === subject.personId && canReadTier(principal, subject, tier));

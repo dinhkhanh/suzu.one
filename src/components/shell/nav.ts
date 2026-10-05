@@ -84,7 +84,7 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
   const admin: NavItem[] = [
     ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
     ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
-    ...(can(principal, "person:manage") ? [{ key: "documentTemplates", href: "/admin/document-templates" }] : []),
+    ...(can(principal, "person:manage") ? [{ key: "documentTemplates", href: "/admin/document-templates" }, { key: "issuedDocuments", href: "/documents" }] : []),
     ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }, { key: "requestTypes", href: "/admin/request-types" }] : []),
     ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
@@ -137,7 +137,7 @@ export const NAV_GROUPS: readonly { key: NavGroupKey; keys: readonly string[] }[
   { key: "company", keys: ["home", "announcements", "kudos", "people", "kb", "assistant", "referrals", "feedback"] },
   // How the app behaves for this person; the language and the theme switches sit under these rows.
   { key: "preferences", keys: ["notificationSettings"] },
-  { key: "admin", keys: ["entities", "org", "brands", "flags", "documentTemplates", "approvalFlows", "requestTypes", "roles", "rules", "audit", "jobs", "feedbackInbox"] },
+  { key: "admin", keys: ["entities", "org", "brands", "flags", "documentTemplates", "issuedDocuments", "approvalFlows", "requestTypes", "roles", "rules", "audit", "jobs", "feedbackInbox"] },
 ];
 
 /** Where an entry no section names is drawn, rather than not at all. */

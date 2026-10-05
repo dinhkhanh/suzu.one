@@ -1,12 +1,16 @@
 // Document generation from templates (FR-CHR-06): contracts, decisions and confirmation letters.
 //
-// Two tables and a deliberate absence. A template is text with `{{placeholders}}`; a generated
-// document is a *record that it happened* — who made what for whom, and when — and nothing else.
-// The rendered text is never stored, because storing it would create a second copy of the facts
-// with none of the tier checks attached to it: a salary letter sitting in a table is a salary
-// letter anybody who reaches the table can read. Re-opening one re-renders it, which re-runs
-// every check against who is asking *now*.
+// Two tables. A template is text with `{{placeholders}}`; a generated document is the record that
+// it happened — who made what for whom, and when — and the paper itself, as it was issued.
+//
+// The paper is a PDF in the files module, never text in a column: a salary letter sitting in a
+// table is a salary letter anybody who reaches the table can read, while a stored file carries the
+// document's tier and opens only through a one-minute link handed out after the tier is checked
+// again, *now*. What it must not do is change: a numbered decision re-rendered from today's
+// template, date and facts is not the decision that was signed (CHR-01), so opening one opens the
+// file that was made when it was issued.
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { storedFile } from "../platform/files/schema";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { Tier } from "../platform/rbac/roles";
@@ -45,7 +49,7 @@ export const documentTemplate = pgTable(
   (t) => [index("document_template_kind_idx").on(t.kind, t.isActive), index("document_template_entity_idx").on(t.entityId)],
 ).enableRLS();
 
-// One paper that was made. No content and no figures — see the note at the top of the file.
+// One paper that was made. No text and no figures in the row — see the note at the top of the file.
 export const generatedDocument = pgTable(
   "generated_document",
   {
@@ -67,6 +71,13 @@ export const generatedDocument = pgTable(
     generatedByPersonId: uuid("generated_by_person_id")
       .notNull()
       .references(() => person.id),
+    // The paper as issued, at the document's tier. null only for a document made before papers were
+    // kept: it is issued on its first opening, and that file is the paper from then on.
+    fileId: uuid("file_id").references(() => storedFile.id),
+    // The template's name on the day — the paper's title, and the register's.
+    title: text("title"),
+    // The lifecycle event the paper was issued for (a probation pass, a renewal). No foreign key across modules' tables.
+    eventId: uuid("event_id"),
     ...timestamps,
   },
   (t) => [index("generated_document_subject_idx").on(t.subjectPersonId, t.createdAt), index("generated_document_template_idx").on(t.templateId)],

@@ -46,6 +46,15 @@ export type RequestTypeDefinition = {
 
 export const defineRequestType = (definition: RequestTypeDefinition): RequestTypeDefinition => definition;
 
+/**
+ * Has an administrator saved a flow for this type that covers this entity — its own, or the
+ * group's? For the types that are asked only where somebody chose to (FR-CHR-09: a transfer, a
+ * promotion, a termination): without a saved flow the change applies at once, as it always did.
+ */
+export async function hasConfiguredFlow(definition: RequestTypeDefinition, entityId: string | null, executor: Executor = db()): Promise<boolean> {
+  return (await effectiveFlow(executor, definition.type, entityId, definition.flow)).source !== "default";
+}
+
 // ── Turning approver rules into people ──────────────────────────────────────────────────────
 
 async function subjectTarget(executor: Executor, personId: string | null): Promise<SubjectTarget | null> {

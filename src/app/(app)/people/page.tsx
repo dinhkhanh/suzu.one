@@ -11,7 +11,7 @@ import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableH
 import { RecordLink } from "@/components/ui/record-link";
 import { statusTone } from "@/components/ui/tone";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
-import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
+import { canBrowsePeople, canFilterByPersonalFacts, canManagePositions } from "@/modules/core-hr/policy";
 import { competencyChoices, listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { SavedViews } from "@/modules/core-hr/ui/saved-views";
@@ -82,6 +82,11 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                 <Link href="/people/competencies" className={cn(buttonVariants({ variant: "outline" }))}>
                   {t("competencies.title")}
                 </Link>
+                {canManagePositions(user.principal) ? (
+                  <Link href="/people/positions" className={cn(buttonVariants({ variant: "outline" }))}>
+                    {t("positions.title")}
+                  </Link>
+                ) : null}
                 <Link href="/people/import" className={cn(buttonVariants({ variant: "outline" }))}>
                   {t("import.title")}
                 </Link>

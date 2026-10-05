@@ -93,6 +93,32 @@ QUYẾT ĐỊNH:
 Điều 3. Quyết định này có hiệu lực kể từ ngày ký. Các bộ phận liên quan và Ông/Bà có tên tại Điều 1 chịu trách nhiệm thi hành quyết định này.${DRAFT}`,
   },
   {
+    // Issued with a passed probation (FR-CHR-09): the event, the new contract and the workforce type
+    // it starts are printed as they stood on the day it was issued.
+    code: "QD-DAT-THU-VIEC",
+    name: "Quyết định tiếp nhận sau thử việc",
+    entityId: null,
+    kind: "decision",
+    tier: "personal",
+    isActive: true,
+    letterhead: LETTERHEAD,
+    body: `QUYẾT ĐỊNH
+Về việc tiếp nhận người lao động sau thời gian thử việc
+
+{{company.representativeTitle}} {{company.name}}
+
+Căn cứ Bộ luật Lao động hiện hành;
+Căn cứ kết quả thử việc của Ông/Bà {{person.fullName}},
+
+QUYẾT ĐỊNH:
+
+Điều 1. Tiếp nhận Ông/Bà {{person.fullName}}, mã nhân viên {{person.employeeCode}}, chức vụ {{person.position}}, bộ phận {{person.department}}, làm việc theo hình thức {{employment.type}} kể từ ngày {{event.effectiveDate}}.
+
+Điều 2. Ông/Bà {{person.fullName}} ký {{contract.type}} số {{contract.number}}, thời hạn từ ngày {{contract.startDate}} đến ngày {{contract.endDate}}.
+
+Điều 3. Quyết định này có hiệu lực kể từ ngày {{event.effectiveDate}}. Các bộ phận liên quan và Ông/Bà có tên tại Điều 1 chịu trách nhiệm thi hành quyết định này.${DRAFT}`,
+  },
+  {
     code: "QD-THOI-VIEC",
     name: "Quyết định thôi việc",
     entityId: null,

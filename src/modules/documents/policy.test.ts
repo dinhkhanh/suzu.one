@@ -71,9 +71,20 @@ describe("generating a document", () => {
   });
 
   it("reads the same on the way back in: opening is generating, re-checked now", () => {
-    expect(canOpenDocument).toBe(canGenerate);
+    for (const who of [owner, hrAdmin, hrStaff, cAndB, manager, finance, employee]) {
+      for (const tier of ["public_internal", "personal", "restricted", "compensation"] as const) expect(canOpenDocument(who, subject, tier)).toBe(canGenerate(who, subject, tier));
+    }
     expect(canOpenDocument(hrStaff, subject, "compensation")).toBe(false);
     expect(canOpenDocument(hrAdmin, subject, "personal")).toBe(true);
+  });
+
+  // FR-CHR-12: a decision or a letter is addressed to the person it is about.
+  it("lets the person it is about open every paper about them — and nobody else's", () => {
+    const self = { ...subject, personId: "employee" };
+    for (const tier of ["public_internal", "personal", "restricted", "compensation"] as const) expect(canOpenDocument(employee, self, tier)).toBe(true);
+    expect(canOpenDocument(employee, subject, "personal")).toBe(false);
+    // Opening is not issuing: they still cannot make one.
+    expect(canGenerate(employee, self, "personal")).toBe(false);
   });
 
   /**

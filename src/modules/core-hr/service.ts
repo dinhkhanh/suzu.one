@@ -683,75 +683,129 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
 }
 
 function changeAssignmentInTransaction(personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
-  return inTransaction(async (tx) => {
-    const [employment] = await tx
-      .select()
-      .from(schema.employment)
-      .where(eq(schema.employment.personId, personId))
-      .orderBy(desc(schema.employment.startDate))
-      .limit(1)
-      .for("update");
-    if (!employment) throw new ActionError("no_employment");
+  return inTransaction((tx) => changeAssignmentIn(tx, personId, input, actorPersonId));
+}
 
-    const existing = await tx
-      .select()
-      .from(schema.assignment)
-      .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
-    const plan = planAssignmentChange(employment, existing, input.validFrom);
-    if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+/** The change of assignment in the caller's transaction — an approved transfer or promotion (FR-CHR-09). The caller drops the person's page once it has committed. */
+export async function changeAssignmentIn(tx: Tx, personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
+  const [employment] = await tx
+    .select()
+    .from(schema.employment)
+    .where(eq(schema.employment.personId, personId))
+    .orderBy(desc(schema.employment.startDate))
+    .limit(1)
+    .for("update");
+  if (!employment) throw new ActionError("no_employment");
 
-    const values = { ...(await resolvePlacement(tx, input.placement, { entityId: employment.entityId, personId })), changeReason: input.changeReason };
-    let before: typeof schema.assignment.$inferSelect | null = null;
-    let after: typeof schema.assignment.$inferSelect;
-    if (plan.kind === "replace") {
-      before = existing.find((row) => row.id === plan.id) ?? null;
-      [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
-    } else {
-      if (plan.kind === "succeed") {
-        before = existing.find((row) => row.id === plan.closeId) ?? null;
-        await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
-      }
-      [after] = await tx
-        .insert(schema.assignment)
-        .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
-        .returning();
+  const existing = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const plan = planAssignmentChange(employment, existing, input.validFrom);
+  if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+
+  const values = { ...(await resolvePlacement(tx, input.placement, { entityId: employment.entityId, personId })), changeReason: input.changeReason };
+  let before: typeof schema.assignment.$inferSelect | null = null;
+  let after: typeof schema.assignment.$inferSelect;
+  if (plan.kind === "replace") {
+    before = existing.find((row) => row.id === plan.id) ?? null;
+    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+  } else {
+    if (plan.kind === "succeed") {
+      before = existing.find((row) => row.id === plan.closeId) ?? null;
+      await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
     }
+    [after] = await tx
+      .insert(schema.assignment)
+      .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
+      .returning();
+  }
 
-    // Mirror the assignment in force today onto the person; a future-dated change leaves it alone.
-    const rows = await tx
-      .select()
-      .from(schema.assignment)
-      .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
-    const today = todayInVietnam();
-    const inForce = periodOn(rows, today > employment.startDate ? today : employment.startDate);
-    if (inForce) {
-      await setPersonPlacement(tx, personId, {
-        workforceType: inForce.workforceType,
-        primaryEntityId: employment.entityId,
-        orgUnitId: inForce.orgUnitId,
-        managerId: inForce.managerId,
-      });
-    }
-    const kind = input.kind ?? "correction";
-    const event =
-      kind === "correction"
-        ? null
-        : await recordLifecycleEvent(
-            tx,
-            {
-              personId,
-              employmentId: employment.id,
-              entityId: employment.entityId,
-              type: kind,
-              effectiveDate: input.validFrom,
-              reason: input.changeReason,
-              assignmentId: after.id,
-              details: { from: before ? await describePlacement(tx, before) : null, to: await describePlacement(tx, after) },
-            },
-            actorPersonId,
-          );
-    return { employment, before, after, event };
-  });
+  // Mirror the assignment in force today onto the person; a future-dated change leaves it alone.
+  const rows = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const today = todayInVietnam();
+  const inForce = periodOn(rows, today > employment.startDate ? today : employment.startDate);
+  if (inForce) {
+    await setPersonPlacement(tx, personId, {
+      workforceType: inForce.workforceType,
+      primaryEntityId: employment.entityId,
+      orgUnitId: inForce.orgUnitId,
+      managerId: inForce.managerId,
+    });
+  }
+  const kind = input.kind ?? "correction";
+  const event =
+    kind === "correction"
+      ? null
+      : await recordLifecycleEvent(
+          tx,
+          {
+            personId,
+            employmentId: employment.id,
+            entityId: employment.entityId,
+            type: kind,
+            effectiveDate: input.validFrom,
+            reason: input.changeReason,
+            assignmentId: after.id,
+            details: { from: before ? await describePlacement(tx, before) : null, to: await describePlacement(tx, after) },
+          },
+          actorPersonId,
+        );
+  return { employment, before, after, event };
+}
+
+/**
+ * The workforce type from a day on, everything else about the placement as it stands then — what a
+ * passed probation changes (FR-CHR-09). In the caller's transaction, beside the event and the new
+ * contract; null when the person is already of that type. The caller drops the person's page
+ * (`invalidatePersonView`) once it has committed.
+ */
+export async function changeWorkforceTypeIn(tx: Tx, personId: string, input: { validFrom: IsoDate; workforceType: WorkforceType; changeReason: string | null }, actorPersonId: string) {
+  const [employment] = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1).for("update");
+  if (!employment) throw new ActionError("no_employment");
+  const existing = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const base = periodOn(existing, input.validFrom) ?? existing.reduce<(typeof existing)[number] | null>((best, row) => (!best || row.validFrom > best.validFrom ? row : best), null);
+  if (!base) throw new ActionError("no_employment");
+  if (base.workforceType === input.workforceType) return null;
+  const plan = planAssignmentChange(employment, existing, input.validFrom);
+  if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+
+  // The placement as it stands, but for the type: the unit, its derived columns, the post, the ladders, the managers.
+  const values = {
+    kind: base.kind,
+    branchId: base.branchId,
+    orgUnitId: base.orgUnitId,
+    departmentId: base.departmentId,
+    teamId: base.teamId,
+    positionId: base.positionId,
+    seniorityLevel: base.seniorityLevel,
+    positionLevel: base.positionLevel,
+    managerId: base.managerId,
+    dottedManagerId: base.dottedManagerId,
+    workLocation: base.workLocation,
+    workforceType: input.workforceType,
+    changeReason: input.changeReason,
+  };
+  let after: typeof schema.assignment.$inferSelect;
+  if (plan.kind === "replace") {
+    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+  } else {
+    if (plan.kind === "succeed") await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
+    [after] = await tx
+      .insert(schema.assignment)
+      .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
+      .returning();
+  }
+  // Today's placement on the person, as `changeAssignment` does; a change dated ahead waits for the roll-over.
+  const today = todayInVietnam();
+  if (input.validFrom <= today) await setPersonPlacement(tx, personId, { workforceType: input.workforceType, primaryEntityId: employment.entityId, orgUnitId: after.orgUnitId, managerId: after.managerId });
+  return { before: base, after };
 }
 
 export type PastPeriodInput = { validFrom: IsoDate; validTo: IsoDate; changeReason: string | null; placement: PlacementInput };
@@ -1005,6 +1059,11 @@ export { type DependantRegistration, entityPayrollFactsOf, listDependantRegistra
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
 // Probations ending, for the probation review cycle (FR-PRF-03).
 export { listProbationsEnding, type ProbationEnding } from "./probation-facts";
+// What a generated document may print (the documents module). The restricted facts come through
+// `getSensitiveFields`, which checks the reader itself.
+export { type DocumentFacts, documentEventOf, documentFactsOf } from "./document-facts";
+export type { PlacementWords } from "./lifecycle-events";
+export { getSensitiveFields } from "./records";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
 /**
  * The headcount report (FR-RPT-02), for Phase 9's dashboard and scheduled reports. It takes the

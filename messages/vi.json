@@ -23,7 +23,8 @@
     "previousYear": "Năm trước",
     "nextYear": "Năm sau",
     "add": "Thêm “{name}”",
-    "typeToAdd": "Gõ tên để thêm mới"
+    "typeToAdd": "Gõ tên để thêm mới",
+    "confirmNo": "Quay lại"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -135,7 +136,8 @@
       "preferences": "Tuỳ chỉnh",
       "admin": "Quản trị"
     },
-    "kiosk": "Máy chấm công khuôn mặt"
+    "kiosk": "Máy chấm công khuôn mặt",
+    "issuedDocuments": "Sổ văn bản"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -310,7 +312,8 @@
         "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức vụ của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
         "from": "Từ ngày",
         "to": "Đến ngày (ngày cuối)"
-      }
+      },
+      "proposed": "Đã gửi duyệt. Thay đổi có hiệu lực khi được duyệt."
     },
     "fields": {
       "fullName": "Họ và tên",
@@ -462,7 +465,19 @@
       "assignment_not_ended": "Quá trình công tác phải kết thúc muộn nhất là hôm qua. Thay đổi từ hôm nay trở đi hãy dùng \"Thay đổi vị trí công tác\".",
       "assignment_covers_recorded_period": "Giai đoạn này bao trùm trọn một giai đoạn đã có. Hãy sửa giai đoạn đó bằng đúng ngày của nó.",
       "assignment_inside_recorded_period": "Giai đoạn này nằm gọn trong một giai đoạn đã có và sẽ chia đôi nó. Hãy nhập giai đoạn cũ nhất trước, bắt đầu từ ngày vào làm.",
-      "assignment_moves_recorded_event": "Thao tác này sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm trên dòng thời gian. Hãy kết thúc giai đoạn trước ngày đó."
+      "assignment_moves_recorded_event": "Thao tác này sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm trên dòng thời gian. Hãy kết thúc giai đoạn trước ngày đó.",
+      "employee_code_invalid": "Hãy nhập mã nhân viên.",
+      "employment_start_after_end": "Ngày bắt đầu sau ngày làm việc cuối của kỳ này.",
+      "seniority_after_start": "Ngày tính thâm niên không được sau ngày bắt đầu.",
+      "employment_start_after_today": "Người này đã đi làm: không thể dời ngày bắt đầu sang sau hôm nay.",
+      "employment_start_after_first_change": "Ngày bắt đầu mới rơi sau một lần đổi phân công. Hãy sửa các phân công trước.",
+      "position_name_empty": "Hãy nhập tên.",
+      "position_not_found": "Chức vụ này không còn nữa.",
+      "position_name_taken": "Đã có chức vụ khác mang tên này.",
+      "remove_self": "Bạn không thể xóa hồ sơ của chính mình.",
+      "remove_name_mismatch": "Tên không khớp.",
+      "person_in_use": "Không thể xóa nhân sự này: đã có dữ liệu khác gắn với họ.",
+      "lifecycle_change_open": "Đã có một đề xuất cùng loại cho người này đang chờ duyệt."
     },
     "orgChart": {
       "title": "Sơ đồ tổ chức",
@@ -483,7 +498,10 @@
       },
       "historyTitle": "Quá trình công tác trước đây",
       "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức vụ…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
-      "historyWizard": "Tệp quá trình công tác"
+      "historyWizard": "Tệp quá trình công tác",
+      "contractsTitle": "Hợp đồng lao động",
+      "contractsDescription": "Dành cho hợp đồng đã ký của nhân sự đã có trên hệ thống: mỗi dòng một hợp đồng. Mỗi hợp đồng được gắn vào kỳ làm việc chứa ngày bắt đầu của nó và được kiểm tra theo luật như khi nhập tay. Điều khoản lương không nhập ở đây; hãy nhập trên trang của từng người.",
+      "contractsWizard": "Nhập hợp đồng"
     },
     "duplicates": {
       "title": "Có thể người này đã có hồ sơ:",
@@ -503,6 +521,24 @@
       "remove": "Gỡ ảnh",
       "saving": "Đang tải lên…",
       "hint": "JPG, PNG hoặc WebP, tối đa 50 MB. Ảnh được cắt vuông và thu nhỏ trước khi tải lên."
+    },
+    "corrections": {
+      "employmentTitle": "Sửa kỳ làm việc {code}",
+      "employmentHint": "Dùng khi ngày hoặc mã nhập sai. Đổi ngày bắt đầu sẽ dời luôn phân công đầu tiên và sự kiện tuyển dụng.",
+      "seniorityFrom": "thâm niên từ {date}",
+      "removeTitle": "Xóa nhân sự này (tạo nhầm)",
+      "removeHint": "Chỉ dùng cho hồ sơ lẽ ra không được tạo — bị trùng hoặc tạo thử. Thao tác xóa nhân sự cùng sự kiện tuyển dụng, danh sách việc kèm theo và hồ sơ cá nhân. Hệ thống từ chối khi đã có dữ liệu khác gắn với người này: hợp đồng, đơn từ, vai trò, phiếu lương, một bước checklist đã làm xong.",
+      "removeConfirm": "Gõ “{name}” để xác nhận",
+      "removeSubmit": "Xóa vĩnh viễn"
+    },
+    "positions": {
+      "title": "Chức vụ",
+      "description": "{count, plural, other {# chức vụ}} trong danh mục chung của tập đoàn. Sửa tên ở đây là sửa cho mọi người đang giữ chức vụ đó.",
+      "name": "Chức vụ",
+      "holders": "Số người giữ",
+      "empty": "Chưa có chức vụ nào. Chức vụ được thêm vào lần đầu một phân công nhắc đến nó.",
+      "renameTitle": "Đổi tên “{name}”",
+      "renameHint": "{count, plural, =0 {Hôm nay không ai giữ chức vụ này.} other {Hôm nay có # người giữ chức vụ này.}} Tên mới hiện ở mọi nơi, kể cả các phân công cũ."
     }
   },
   "records": {
@@ -585,7 +621,10 @@
         "professional": "Cần trình độ cao đẳng trở lên (tối đa 60 ngày)",
         "intermediate": "Trung cấp, công nhân kỹ thuật, nghiệp vụ (tối đa 30 ngày)",
         "other": "Công việc khác (tối đa 6 ngày làm việc)"
-      }
+      },
+      "editTitle": "Sửa hợp đồng {number}",
+      "editHint": "Dùng khi hợp đồng nhập sai. Hợp đồng sửa được kiểm tra theo luật như hợp đồng mới; hợp đồng có ngày thuộc một kỳ làm việc trước sẽ chuyển về kỳ đó.",
+      "salaryTermsKeep": "Để trống để giữ điều khoản lương hiện tại"
     },
     "dependents": {
       "empty": "Chưa đăng ký người phụ thuộc.",
@@ -610,7 +649,9 @@
         "sibling": "Anh chị em ruột",
         "grandparent": "Ông / bà",
         "other": "Khác"
-      }
+      },
+      "editTitle": "Sửa thông tin {name}",
+      "editHint": "Số giấy tờ và mã số thuế không hiển thị; để trống để giữ nguyên."
     },
     "documents": {
       "empty": "Chưa có giấy tờ nào bạn được xem.",
@@ -630,7 +671,9 @@
         "contract": "Hợp đồng đã ký",
         "decision": "Quyết định",
         "other": "Khác"
-      }
+      },
+      "editTitle": "Sửa “{title}”",
+      "editHint": "Không đổi được loại giấy tờ: loại quyết định ai được mở tệp. Hãy tải lên lại với loại đúng."
     },
     "contacts": {
       "empty": "Chưa có liên hệ khẩn cấp.",
@@ -638,7 +681,8 @@
       "fullName": "Họ và tên",
       "relationship": "Quan hệ",
       "phone": "Số điện thoại",
-      "note": "Ghi chú"
+      "note": "Ghi chú",
+      "editTitle": "Sửa liên hệ {name}"
     },
     "errors": {
       "forbidden": "Bạn không có quyền thực hiện việc này.",
@@ -676,8 +720,19 @@
       "file_storage_limit": "Kho lưu trữ từ chối tệp vì quá lớn.",
       "file_upload_failed": "Tải lên thất bại. Kiểm tra kết nối và thử lại.",
       "file_owner_not_found": "Bản ghi chứa tệp này không còn tồn tại.",
-      "step_up_required": "Hãy xác thực lại để tiếp tục."
-    }
+      "step_up_required": "Hãy xác thực lại để tiếp tục.",
+      "contract_has_appendices": "Hợp đồng này đã có phụ lục nên không thể chuyển thành phụ lục.",
+      "event_before_start": "Ngày này trước ngày bắt đầu làm việc.",
+      "already_terminated": "Đến ngày đó quan hệ lao động đã kết thúc.",
+      "contract_start_not_effective": "Hợp đồng mới phải bắt đầu đúng ngày của sự kiện.",
+      "assignment_before_current_assignment": "Đã có một lần đổi phân công sau ngày này. Hãy chọn ngày sau đó.",
+      "assignment_before_employment_start": "Ngày này trước ngày bắt đầu làm việc.",
+      "assignment_after_employment_end": "Ngày này sau ngày kết thúc làm việc.",
+      "template_not_found": "Mẫu văn bản này không còn được dùng.",
+      "document_forbidden": "Bạn không có quyền cấp văn bản này."
+    },
+    "edit": "Sửa",
+    "keepSealed": "Giữ nguyên — gõ để thay"
   },
   "org": {
     "tree": "Cây đơn vị",
@@ -1717,7 +1772,8 @@
       "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa",
       "requests": "đề xuất lương chờ duyệt",
       "approved": "hồ sơ có hiệu lực ngay",
-      "proposed": "hồ sơ chờ Chủ sở hữu duyệt"
+      "proposed": "hồ sơ chờ Chủ sở hữu duyệt",
+      "contracts": "Hợp đồng"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -1798,7 +1854,10 @@
       "profile_proposal_open": "Người này đang có một đề xuất hồ sơ trả lương chờ duyệt.",
       "profile_basis_required": "Hồ sơ Đơn giản cần ghi cơ sở; hồ sơ Đầy đủ thì không.",
       "profile_review_date_simple_only": "Ngày xem lại chỉ dùng cho hồ sơ Đơn giản.",
-      "profile_non_resident_method": "Cách tính thuế không phù hợp với tình trạng cư trú."
+      "profile_non_resident_method": "Cách tính thuế không phù hợp với tình trạng cư trú.",
+      "contract_number_taken": "Số hợp đồng này đã được dùng trong pháp nhân",
+      "contract_overlap": "Đã có hợp đồng lao động khác còn hiệu lực trong khoảng thời gian này",
+      "contract_rule": "Không đúng quy định về hợp đồng lao động (loại, ngày, thời hạn hoặc thử việc)"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -1881,7 +1940,10 @@
       "salary_change": "Điều chỉnh lương",
       "project_brief": "Duyệt brief khởi động dự án",
       "project_change": "Yêu cầu thay đổi dự án",
-      "crm_quote": "Báo giá"
+      "crm_quote": "Báo giá",
+      "lifecycle_transfer": "Điều chuyển",
+      "lifecycle_promotion": "Thăng chức / bổ nhiệm",
+      "lifecycle_termination": "Chấm dứt hợp đồng"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -2444,7 +2506,8 @@
       "fromResignation": "Thực hiện thôi việc theo đơn đã duyệt",
       "hint": "Đến hết ngày làm việc cuối cùng: quan hệ lao động, phân công, hợp đồng và mọi vai trò kết thúc; checklist thôi việc được tạo. Sau ngày đó tài khoản bị khóa và các phiên đăng nhập bị xóa.",
       "confirm": "Xác nhận cho thôi việc?",
-      "submit": "Cho thôi việc"
+      "submit": "Cho thôi việc",
+      "proposed": "Đã gửi duyệt. Việc chấm dứt chỉ thực hiện khi được duyệt."
     },
     "transfer": {
       "title": "Chuyển sang pháp nhân khác",
@@ -2484,7 +2547,31 @@
       "event_before_start": "Ngày hiệu lực phải sau ngày bắt đầu làm việc.",
       "last_owner": "Không thể kết thúc quyền của Owner cuối cùng. Hãy trao quyền Owner cho người khác trước.",
       "resignation_open": "Bạn đang có một đơn xin nghỉ việc chưa xử lý.",
-      "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ."
+      "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ.",
+      "resignation_approved": "Đơn nghỉ việc của bạn đã được duyệt; HR đang xử lý.",
+      "event_has_effects": "Sự kiện này đã tạo hợp đồng hoặc đổi loại nhân sự. Hãy sửa các mục đó.",
+      "lifecycle_change_open": "Đã có một đề xuất cùng loại cho người này đang chờ duyệt."
+    },
+    "contractEvent": {
+      "title": "Đạt thử việc hoặc gia hạn hợp đồng",
+      "hint": "Ghi nhận sự kiện cùng hợp đồng lao động mới trong một bước: hợp đồng trước đó kết thúc vào ngày hôm trước, đạt thử việc thì chuyển loại nhân sự đã chọn từ ngày đó, và có thể cấp quyết định từ mẫu văn bản.",
+      "effectiveDate": "Từ ngày (ngày đầu của hợp đồng mới)",
+      "workforceType": "Loại nhân sự từ ngày đó",
+      "template": "Cấp quyết định",
+      "noPaper": "Không cấp văn bản",
+      "submit": "Ghi nhận",
+      "made": "Đã cấp văn bản số {number}.",
+      "download": "Tải PDF",
+      "contract": "Hợp đồng mới {number}"
+    },
+    "change": {
+      "person": "Nhân sự",
+      "title": {
+        "transfer": "Đề xuất điều chuyển",
+        "promotion": "Đề xuất thăng chức / bổ nhiệm",
+        "termination": "Đề xuất chấm dứt hợp đồng"
+      },
+      "appliedNote": "Đã duyệt và đã thực hiện."
     }
   },
   "exports": {
@@ -10495,7 +10582,8 @@
       "template": "Mẫu",
       "tier": "Mức nhạy cảm",
       "by": "Người cấp",
-      "at": "Ngày cấp"
+      "at": "Ngày cấp",
+      "subject": "Về"
     },
     "kind": {
       "contract": "Hợp đồng",
@@ -10557,7 +10645,23 @@
       "document_forbidden": "Bạn không có quyền cấp văn bản này.",
       "step_up_required": "Hãy xác thực lại để tiếp tục."
     },
-    "new": "Cấp văn bản mới"
+    "new": "Cấp văn bản mới",
+    "register": {
+      "title": "Sổ văn bản đã cấp",
+      "description": "Mọi hợp đồng, quyết định và giấy tờ đã cấp mà bạn được mở, mới nhất trước. Mỗi văn bản mở đúng như bản đã cấp.",
+      "kind": "Loại",
+      "allKinds": "Mọi loại",
+      "year": "Năm",
+      "allYears": "Mọi năm",
+      "apply": "Lọc",
+      "issued": "Sổ đăng ký",
+      "empty": "Chưa cấp văn bản nào.",
+      "limited": "Đang hiện {count} văn bản mới nhất. Lọc theo loại hoặc năm để xem văn bản cũ hơn."
+    },
+    "mine": {
+      "title": "Văn bản của tôi",
+      "empty": "Chưa có hợp đồng, quyết định hay giấy tờ nào được cấp về bạn."
+    }
   },
   "recruit": {
     "title": "Tuyển dụng",
@@ -13615,7 +13719,10 @@
     "reviewTemplate": "Biểu mẫu đánh giá",
     "newOffCycleRun": "Kỳ lương ngoài kỳ",
     "salaryImport": "Nhập lương từ tệp",
-    "salaryImportReview": "Duyệt lương nhập từ tệp"
+    "salaryImportReview": "Duyệt lương nhập từ tệp",
+    "issuedDocuments": "Sổ văn bản đã cấp",
+    "positions": "Chức vụ",
+    "lifecycleChange": "Đề xuất thay đổi nhân sự"
   },
   "portfolio": {
     "title": "SuZu Group",

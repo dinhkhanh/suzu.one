@@ -5,7 +5,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { employeeTemplate } from "@/modules/core-hr/import";
 import { historyTemplate } from "@/modules/core-hr/history-import";
-import { commitEmployeeImportAction, commitHistoryImportAction, stageEmployeeImportAction, stageHistoryImportAction } from "@/modules/core-hr/import-actions";
+import { contractTemplate } from "@/modules/core-hr/contract-import";
+import { commitContractImportAction, commitEmployeeImportAction, commitHistoryImportAction, stageContractImportAction, stageEmployeeImportAction, stageHistoryImportAction } from "@/modules/core-hr/import-actions";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -41,6 +42,10 @@ export default async function ImportPeoplePage() {
       <Section title={t("import.historyTitle")}>
         <p className="max-w-prose text-sm text-muted-foreground">{t("import.historyDescription")}</p>
         <ImportWizard title={t("import.historyWizard")} template={{ fileName: "work-history.csv", csv: historyTemplate() }} stageAction={stageHistoryImportAction} commitAction={commitHistoryImportAction} />
+      </Section>
+      <Section title={t("import.contractsTitle")}>
+        <p className="max-w-prose text-sm text-muted-foreground">{t("import.contractsDescription")}</p>
+        <ImportWizard title={t("import.contractsWizard")} template={{ fileName: "contracts.csv", csv: contractTemplate() }} stageAction={stageContractImportAction} commitAction={commitContractImportAction} />
       </Section>
     </Page>
   );

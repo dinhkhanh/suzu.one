@@ -23,7 +23,8 @@
     "previousYear": "Previous year",
     "nextYear": "Next year",
     "add": "Add “{name}”",
-    "typeToAdd": "Type a name to add it"
+    "typeToAdd": "Type a name to add it",
+    "confirmNo": "Go back"
   },
   "signIn": {
     "title": "Sign in",
@@ -135,7 +136,8 @@
       "preferences": "Preferences",
       "admin": "Admin"
     },
-    "kiosk": "Face kiosk"
+    "kiosk": "Face kiosk",
+    "issuedDocuments": "Issued documents"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -310,7 +312,8 @@
         "hint": "For history from before SuZu One: a period that is already over, e.g. the department and position someone held in earlier years. Enter the oldest period first. The new period takes over the days it covers: the period it starts in ends the day before, the one it ends in starts the day after. Entering the exact dates of an earlier period corrects it. Today's assignment is not changed.",
         "from": "From",
         "to": "To (last day)"
-      }
+      },
+      "proposed": "Sent for approval. The change applies once it is approved."
     },
     "fields": {
       "fullName": "Full name",
@@ -462,7 +465,19 @@
       "assignment_not_ended": "Work history must be over by yesterday. For a change from today on, use Change assignment.",
       "assignment_covers_recorded_period": "This period would swallow a whole period already on file. Correct that period with its exact dates instead.",
       "assignment_inside_recorded_period": "This period falls inside one period on file and would split it. Enter the oldest periods first, starting on the employment's first day.",
-      "assignment_moves_recorded_event": "This would move the date of a transfer or promotion on the timeline. End the period before that date."
+      "assignment_moves_recorded_event": "This would move the date of a transfer or promotion on the timeline. End the period before that date.",
+      "employee_code_invalid": "Enter an employee code.",
+      "employment_start_after_end": "The first day is after the last day of this employment.",
+      "seniority_after_start": "The seniority date cannot be after the first day.",
+      "employment_start_after_today": "This person is already at work: the first day cannot move past today.",
+      "employment_start_after_first_change": "The new first day is after a later change of assignment. Correct the assignments first.",
+      "position_name_empty": "Enter a name.",
+      "position_not_found": "That position no longer exists.",
+      "position_name_taken": "Another position already has that name.",
+      "remove_self": "You cannot remove your own record.",
+      "remove_name_mismatch": "The name does not match.",
+      "person_in_use": "This person cannot be removed: other records already name them.",
+      "lifecycle_change_open": "A proposal of this kind for this person is still waiting for approval."
     },
     "orgChart": {
       "title": "Org chart",
@@ -483,7 +498,10 @@
       },
       "historyTitle": "Past work history",
       "historyDescription": "For people already in the system: one row per past period (employee code, from, to, department, position…). Rows of one person are applied oldest first, each as in \"Add past work history\" on the person's page.",
-      "historyWizard": "Work history file"
+      "historyWizard": "Work history file",
+      "contractsTitle": "Labour contracts",
+      "contractsDescription": "For contracts already signed, of people already on the books: one row per contract. Each goes to the employment running on its first day and passes the same legal checks as one entered by hand. Pay terms are not imported; enter them on the person's page.",
+      "contractsWizard": "Import contracts"
     },
     "duplicates": {
       "title": "This person may already be on file:",
@@ -503,6 +521,24 @@
       "remove": "Remove photo",
       "saving": "Uploading…",
       "hint": "JPG, PNG or WebP, up to 50 MB. It is cropped to a square and resized before upload."
+    },
+    "corrections": {
+      "employmentTitle": "Correct employment {code}",
+      "employmentHint": "For dates or a code entered wrong. A new first day moves the first assignment and the hire with it.",
+      "seniorityFrom": "seniority from {date}",
+      "removeTitle": "Remove this person (created in error)",
+      "removeHint": "Only for a record that should never have been made — a duplicate or a test. It removes the person with their hire, its checklist and their profile. It is refused once anything else names them: a contract, a request, a role, a payslip, a finished checklist step.",
+      "removeConfirm": "Type “{name}” to confirm",
+      "removeSubmit": "Remove for good"
+    },
+    "positions": {
+      "title": "Positions",
+      "description": "{count, plural, one {# position} other {# positions}} in the group's catalogue. A correction here renames the position for everyone who holds it.",
+      "name": "Position",
+      "holders": "Held by",
+      "empty": "No positions yet. A position is added the first time a placement names it.",
+      "renameTitle": "Rename “{name}”",
+      "renameHint": "{count, plural, =0 {Nobody holds it today.} one {# person holds it today.} other {# people hold it today.}} The new name shows everywhere, past assignments included."
     }
   },
   "records": {
@@ -585,7 +621,10 @@
         "professional": "College degree or higher required (up to 60 days)",
         "intermediate": "Intermediate / technical (up to 30 days)",
         "other": "Other work (up to 6 working days)"
-      }
+      },
+      "editTitle": "Correct contract {number}",
+      "editHint": "For a contract entered wrong. The same legal checks apply as to a new one; a contract dated in an earlier employment moves to that employment.",
+      "salaryTermsKeep": "Leave blank to keep the current terms"
     },
     "dependents": {
       "empty": "No dependents registered.",
@@ -610,7 +649,9 @@
         "sibling": "Sibling",
         "grandparent": "Grandparent",
         "other": "Other"
-      }
+      },
+      "editTitle": "Correct {name}",
+      "editHint": "The ID number and tax code are not shown; leave them blank to keep them."
     },
     "documents": {
       "empty": "No documents you can see.",
@@ -630,7 +671,9 @@
         "contract": "Signed contract",
         "decision": "Decision",
         "other": "Other"
-      }
+      },
+      "editTitle": "Correct “{title}”",
+      "editHint": "The category cannot change: it set who may open the file. Upload it again under the right category instead."
     },
     "contacts": {
       "empty": "No emergency contact on file.",
@@ -638,7 +681,8 @@
       "fullName": "Name",
       "relationship": "Relationship",
       "phone": "Phone",
-      "note": "Note"
+      "note": "Note",
+      "editTitle": "Correct {name}"
     },
     "errors": {
       "forbidden": "You do not have permission to do this.",
@@ -676,8 +720,19 @@
       "file_storage_limit": "Storage refused the file: it is too large.",
       "file_upload_failed": "The upload failed. Check your connection and try again.",
       "file_owner_not_found": "The record this file belongs to no longer exists.",
-      "step_up_required": "Please confirm who you are to continue."
-    }
+      "step_up_required": "Please confirm who you are to continue.",
+      "contract_has_appendices": "This contract has appendices, so it cannot become an appendix itself.",
+      "event_before_start": "The date is before the employment started.",
+      "already_terminated": "The employment has already ended by then.",
+      "contract_start_not_effective": "The new contract starts on the event's date.",
+      "assignment_before_current_assignment": "A later change of assignment is already on file. Pick a date after it.",
+      "assignment_before_employment_start": "The date is before the employment started.",
+      "assignment_after_employment_end": "The date is after the employment ends.",
+      "template_not_found": "That template is no longer in use.",
+      "document_forbidden": "You may not issue this document."
+    },
+    "edit": "Edit",
+    "keepSealed": "Kept as is — type to replace"
   },
   "org": {
     "tree": "Unit tree",
@@ -1717,7 +1772,8 @@
       "adjusted": "periods on file moved to make room",
       "requests": "salary changes waiting for approval",
       "approved": "profiles in force at once",
-      "proposed": "profiles waiting for the owner"
+      "proposed": "profiles waiting for the owner",
+      "contracts": "Contracts"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -1798,7 +1854,10 @@
       "profile_proposal_open": "This person already has a pay profile proposal waiting.",
       "profile_basis_required": "A Simple profile needs a basis; a Statutory one has none.",
       "profile_review_date_simple_only": "A review date is for Simple profiles only.",
-      "profile_non_resident_method": "The PIT method does not fit the tax residency."
+      "profile_non_resident_method": "The PIT method does not fit the tax residency.",
+      "contract_number_taken": "This contract number is already used in the entity",
+      "contract_overlap": "Another labour contract is in force during this period",
+      "contract_rule": "Breaks the labour-contract rules (type, dates, length or probation)"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -1881,7 +1940,10 @@
       "salary_change": "Salary change",
       "project_brief": "Project kick-off brief",
       "project_change": "Project change request",
-      "crm_quote": "Quote"
+      "crm_quote": "Quote",
+      "lifecycle_transfer": "Transfer",
+      "lifecycle_promotion": "Promotion / appointment",
+      "lifecycle_termination": "Termination"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -2444,7 +2506,8 @@
       "fromResignation": "Carry out the approved resignation",
       "hint": "At the end of the last working day the employment, assignments, contracts and every role end, and the offboarding checklist is created. After that day the account is locked and all sessions are deleted.",
       "confirm": "Terminate this employment?",
-      "submit": "Terminate"
+      "submit": "Terminate",
+      "proposed": "Sent for approval. The employment ends only once it is approved."
     },
     "transfer": {
       "title": "Move to another entity",
@@ -2484,7 +2547,31 @@
       "event_before_start": "The effective date must be after the start date.",
       "last_owner": "The last Owner's access cannot be ended. Grant Owner to someone else first.",
       "resignation_open": "You already have an open resignation request.",
-      "resignation_date_past": "The last working day cannot be in the past."
+      "resignation_date_past": "The last working day cannot be in the past.",
+      "resignation_approved": "Your resignation has been approved; HR is carrying it out.",
+      "event_has_effects": "This event wrote a contract or changed the workforce type. Correct those instead.",
+      "lifecycle_change_open": "A proposal of this kind for this person is still waiting for approval."
+    },
+    "contractEvent": {
+      "title": "Probation passed or contract renewed",
+      "hint": "Records the event with its new labour contract in one step: the contract it follows ends the day before, a passed probation moves the person to the chosen workforce type from that day, and the decision can be issued from a template.",
+      "effectiveDate": "From (the new contract's first day)",
+      "workforceType": "Workforce type from that day",
+      "template": "Issue a decision",
+      "noPaper": "No document",
+      "submit": "Record",
+      "made": "Issued as {number}.",
+      "download": "Download PDF",
+      "contract": "New contract {number}"
+    },
+    "change": {
+      "person": "Employee",
+      "title": {
+        "transfer": "Proposed transfer",
+        "promotion": "Proposed promotion / appointment",
+        "termination": "Proposed termination"
+      },
+      "appliedNote": "Approved and carried out."
     }
   },
   "exports": {
@@ -10495,7 +10582,8 @@
       "template": "Template",
       "tier": "Sensitivity",
       "by": "Issued by",
-      "at": "Issued"
+      "at": "Issued",
+      "subject": "About"
     },
     "kind": {
       "contract": "Contract",
@@ -10557,7 +10645,23 @@
       "document_forbidden": "You may not issue this document.",
       "step_up_required": "Please confirm who you are to continue."
     },
-    "new": "Issue a document"
+    "new": "Issue a document",
+    "register": {
+      "title": "Issued documents",
+      "description": "Every contract, decision and letter issued that you may open, newest first. Each opens as it was issued.",
+      "kind": "Kind",
+      "allKinds": "All kinds",
+      "year": "Year",
+      "allYears": "All years",
+      "apply": "Apply",
+      "issued": "Register",
+      "empty": "No documents issued yet.",
+      "limited": "Showing the latest {count}. Narrow by kind or year to see older ones."
+    },
+    "mine": {
+      "title": "My documents",
+      "empty": "No contracts, decisions or letters have been issued about you yet."
+    }
   },
   "recruit": {
     "title": "Recruitment",
@@ -13615,7 +13719,10 @@
     "reviewTemplate": "Review form",
     "newOffCycleRun": "Off-cycle run",
     "salaryImport": "Import salaries",
-    "salaryImportReview": "Review salary import"
+    "salaryImportReview": "Review salary import",
+    "issuedDocuments": "Issued documents",
+    "positions": "Positions",
+    "lifecycleChange": "Proposed change"
   },
   "portfolio": {
     "title": "SuZu Group",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canBrowsePeople, canChangePhoto, canEditCompetencies, canManageCompetencies, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign, canSeePhoto } from "./policy";
+import { canBrowsePeople, canChangePhoto, canEditCompetencies, canManageCompetencies, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManagePositions, canManageRecords, canReadRecords, canReassign, canRemovePerson, canSeePhoto } from "./policy";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -134,5 +134,23 @@ describe("core HR policy", () => {
     expect(canSeePhoto(hrOfA, someone, "preboarding")).toBe(true);
     expect(canSeePhoto(principal([], { personId: "someone" }), someone, "offboarded")).toBe(true);
     expect(canSeePhoto(owner, null, "active")).toBe(false);
+  });
+
+  // CHR-02: a position renamed is renamed for every entity.
+  it("leaves the position catalogue to group-wide HR", () => {
+    expect(canManagePositions(owner)).toBe(true);
+    expect(canManagePositions(principal([{ role: "hr_admin", scope: { type: "group" } }]))).toBe(true);
+    expect(canManagePositions(hrOfA)).toBe(false);
+    expect(canManagePositions(head)).toBe(false);
+    expect(canManagePositions(principal([]))).toBe(false);
+  });
+
+  it("lets HR over a person remove one created in error — never themselves, never a manager", () => {
+    const target = { personId: "someone", entityId: ENTITY_A, managerId: "boss" };
+    expect(canRemovePerson(hrOfA, target)).toBe(true);
+    expect(canRemovePerson(hrOfA, { ...target, entityId: ENTITY_B })).toBe(false);
+    expect(canRemovePerson(principal([], { personId: "boss" }), target)).toBe(false);
+    expect(canRemovePerson(principal([...hrOfA.grants], { personId: "someone" }), target)).toBe(false);
+    expect(canRemovePerson(owner, null)).toBe(false);
   });
 });

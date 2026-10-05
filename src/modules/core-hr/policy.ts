@@ -89,3 +89,19 @@ export function canSeePhoto(principal: Principal, person: PersonTarget | null, s
   if (!person) return false;
   return status === "active" ? canReadTier(principal, person, "public_internal") : canReadTier(principal, person, "personal");
 }
+
+/**
+ * Correcting a position's name (CHR-02) renames it for every entity that uses it — the catalogue is
+ * the group's — so it takes a group-wide grant, not one entity's HR.
+ */
+export function canManagePositions(principal: Principal): boolean {
+  return can(principal, "person:manage", {});
+}
+
+/**
+ * Removing a person created in error: HR with authority over them, and never oneself. Whether there
+ * is anything that keeps them is the service's to find out (`removePersonCreatedInError`).
+ */
+export function canRemovePerson(principal: Principal, person: PersonTarget | null): boolean {
+  return !!person && principal.personId !== person.personId && can(principal, "person:manage", person);
+}

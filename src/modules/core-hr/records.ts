@@ -6,7 +6,7 @@
 // Writes are authorized by the actions (policy.ts) before they get here.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { fieldBlindIndex, fieldCipher } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
@@ -175,14 +175,32 @@ export type ContractInput = {
   note: string | null;
 };
 
-export async function createContract(personId: string, input: ContractInput, actorPersonId: string): Promise<ContractRow> {
+/**
+ * The employment a contract belongs to: the one running on its first day — so a contract of an
+ * earlier period (before a rehire, before a move to another entity) can be entered or corrected
+ * where it belongs, not only on the latest (CHR-02). A start date in no period falls to the latest,
+ * as a contract signed ahead of a first day does.
+ */
+async function employmentFor(tx: Tx, personId: string, startDate: IsoDate) {
+  const periods = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).for("update");
+  if (periods.length === 0) throw new ActionError("no_employment");
+  return periods.find((row) => row.startDate <= startDate && (row.endDate === null || row.endDate >= startDate)) ?? periods[0];
+}
+
+const contractLimits = async (startDate: IsoDate, executor?: Tx) => {
   // The law in force when the contract starts is the one it must satisfy.
-  const [fixedTerm, probation] = await Promise.all([getParameter("contract.fixed_term", input.startDate), getParameter("probation.limits", input.startDate)]);
-  return inTransaction(async (tx) => {
-    const [employment] = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1).for("update");
-    if (!employment) throw new ActionError("no_employment");
+  const fixedTerm = await getParameter("contract.fixed_term", startDate, executor);
+  const probation = await getParameter("probation.limits", startDate, executor);
+  return { fixedTerm, probation };
+};
+
+/** `executor`: the caller's transaction — a contract written as part of a lifecycle event (a probation pass, a renewal). */
+export async function createContract(personId: string, input: ContractInput, actorPersonId: string, executor?: Tx): Promise<ContractRow> {
+  const limits = executor ? null : await contractLimits(input.startDate);
+  const work = async (tx: Tx) => {
+    const employment = await employmentFor(tx, personId, input.startDate);
     const existing = await tx.select().from(schema.contract).where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt)));
-    const [problem] = checkContract(input, existing, { fixedTerm, probation });
+    const [problem] = checkContract(input, existing, limits ?? (await contractLimits(input.startDate, tx)));
     if (problem) throw new ActionError(problem);
 
     const id = randomUUID();
@@ -191,6 +209,39 @@ export async function createContract(personId: string, input: ContractInput, act
       .values({ ...input, id, employmentId: employment.id, personId, entityId: employment.entityId, salaryTerms: seal(input.salaryTerms, contractTermsContext(id)), createdByPersonId: actorPersonId })
       .returning();
     return created;
+  };
+  return executor ? work(executor) : inTransaction(work);
+}
+
+/**
+ * Corrects a contract that was entered wrong (CHR-02): number, type, dates, category, note — and the
+ * pay terms only when `salaryTerms` is given (the action passes it only for a reader of pay;
+ * `undefined` keeps what is there). The same legal checks as a new contract, against the other
+ * contracts of the employment it now falls in.
+ */
+export async function updateContract(contractId: string, input: Omit<ContractInput, "salaryTerms"> & { salaryTerms?: string | null }): Promise<{ before: ContractRow; after: ContractRow }> {
+  const limits = await contractLimits(input.startDate);
+  return inTransaction(async (tx) => {
+    const [before] = await tx.select().from(schema.contract).where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt))).limit(1).for("update");
+    if (!before) throw new ActionError("contract_not_found");
+    const employment = await employmentFor(tx, before.personId, input.startDate);
+    const existing = await tx.select().from(schema.contract).where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt), ne(schema.contract.id, contractId)));
+    const [problem] = checkContract(input, existing, limits);
+    if (problem) throw new ActionError(problem);
+    // A contract with appendices stays a contract: they would be left hanging off an appendix.
+    if (input.type === "appendix" && before.type !== "appendix") {
+      const [child] = await tx.select({ id: schema.contract.id }).from(schema.contract).where(and(eq(schema.contract.parentContractId, contractId), isNull(schema.contract.deletedAt))).limit(1);
+      if (child) throw new ActionError("contract_has_appendices");
+    }
+    if (before.terminatedOn && (before.terminatedOn < input.startDate || (input.endDate && before.terminatedOn > input.endDate))) throw new ActionError("contract_termination_outside_term");
+
+    const { salaryTerms, ...rest } = input;
+    const [after] = await tx
+      .update(schema.contract)
+      .set({ ...rest, employmentId: employment.id, entityId: employment.entityId, ...(salaryTerms === undefined ? {} : { salaryTerms: seal(salaryTerms, contractTermsContext(contractId)) }), updatedAt: new Date() })
+      .where(eq(schema.contract.id, contractId))
+      .returning();
+    return { before, after };
   });
 }
 
@@ -254,6 +305,29 @@ export async function createDependent(personId: string, input: DependentInput): 
   return created;
 }
 
+/**
+ * Corrects a dependent's register entry (CHR-02). The ID number and tax code are changed only when
+ * given (`undefined` keeps them): correcting a name must not need the numbers decrypted first.
+ */
+export async function updateDependent(dependentId: string, input: Omit<DependentInput, "idNumber" | "taxCode"> & { idNumber?: string | null; taxCode?: string | null }): Promise<{ before: DependentRow; after: DependentRow }> {
+  const before = await findDependent(dependentId);
+  if (!before) throw new ActionError("dependent_not_found");
+  if (input.deductionTo && input.deductionTo < input.deductionFrom) throw new ActionError("dependent_months");
+  const { idNumber, taxCode, ...rest } = input;
+  const [after] = await db()
+    .update(schema.dependent)
+    .set({
+      ...rest,
+      fullName: input.fullName.trim().replace(/\s+/g, " "),
+      ...(idNumber === undefined ? {} : { idNumber: seal(idNumber, dependentContext("idNumber", dependentId)) }),
+      ...(taxCode === undefined ? {} : { taxCode: seal(taxCode, dependentContext("taxCode", dependentId)) }),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.dependent.id, dependentId))
+    .returning();
+  return { before, after };
+}
+
 /** The last month the deduction counts (the child turned 18, the parent started a pension…). null re-opens it. */
 export async function endDependentDeduction(dependentId: string, deductionTo: IsoDate | null): Promise<{ before: DependentRow; after: DependentRow }> {
   const before = await findDependent(dependentId);
@@ -286,6 +360,14 @@ export async function addEmergencyContact(personId: string, input: { fullName: s
 export async function findEmergencyContact(id: string): Promise<EmergencyContactRow | undefined> {
   const [row] = await db().select().from(schema.emergencyContact).where(eq(schema.emergencyContact.id, id)).limit(1);
   return row;
+}
+
+/** Corrects a contact: a new phone number, a misspelt name. */
+export async function updateEmergencyContact(id: string, input: { fullName: string; relationship: string | null; phone: string; note: string | null }): Promise<{ before: EmergencyContactRow; after: EmergencyContactRow }> {
+  const before = await findEmergencyContact(id);
+  if (!before) throw new ActionError("contact_not_found");
+  const [after] = await db().update(schema.emergencyContact).set(input).where(eq(schema.emergencyContact.id, id)).returning();
+  return { before, after };
 }
 
 export async function removeEmergencyContact(id: string): Promise<EmergencyContactRow> {
@@ -338,6 +420,17 @@ export async function completeDocumentUpload(personId: string, input: { fileId: 
 export async function findDocument(documentId: string) {
   const [row] = await db().select().from(schema.personDocument).where(and(eq(schema.personDocument.id, documentId), isNull(schema.personDocument.deletedAt))).limit(1);
   return row;
+}
+
+/**
+ * Corrects a vault entry's title and expiry (CHR-02). The category stays: it fixed the file's tier
+ * when the file was uploaded, and a new category would re-label it — that is a new upload.
+ */
+export async function updateDocument(documentId: string, input: { title: string; expiresOn: IsoDate | null }) {
+  const before = await findDocument(documentId);
+  if (!before) throw new ActionError("document_not_found");
+  const [after] = await db().update(schema.personDocument).set(input).where(eq(schema.personDocument.id, documentId)).returning();
+  return { before, after };
 }
 
 export async function deleteDocument(documentId: string) {
