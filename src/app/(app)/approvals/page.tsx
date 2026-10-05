@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
@@ -17,8 +17,8 @@ export const generateMetadata = pageTitle("approvals");
 export default async function ApprovalsPage() {
   const user = await requireUser();
   // Which waiting requests may be approved unopened is their type's call (the registry knows every type).
-  const [{ inbox, mine }, registered, t, tRequests] = await Promise.all([loadApprovalsPage(user.person.id), allRequestTypes(), getTranslations("approvals"), getTranslations("requests")]);
-  const labels = new Map([...registered].flatMap(([type, entry]) => (entry.names ? [[type, entry.names.vi] as const] : [])));
+  const [{ inbox, mine }, registered, t, tRequests, locale] = await Promise.all([loadApprovalsPage(user.person.id), allRequestTypes(), getTranslations("approvals"), getTranslations("requests"), getLocale()]);
+  const labels = new Map([...registered].flatMap(([type, entry]) => (entry.names ? [[type, locale === "en" ? entry.names.en : entry.names.vi] as const] : [])));
   const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterPersonId: row.requesterPersonId, requesterName: row.requesterName, bulk: !!registered.get(row.type)?.definition.bulkApprovable?.(row.request) }));
 
   return (

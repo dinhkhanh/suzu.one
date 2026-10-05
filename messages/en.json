@@ -3732,7 +3732,6 @@
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
-        "position": "Position",
         "otFrom": "From",
         "otTo": "To",
         "window": "Hours",
@@ -9719,7 +9718,8 @@
       "payoutCollected": "{amount} of unspent advance received back on {date} · reference {reference}.",
       "payoutNetted": "Less {advance} already advanced for this trip.",
       "letter": "The confirmation letter has been made.",
-      "letterCollect": "Your confirmation letter has been made — collect the stamped copy from HR.",
+      "letterCollect": "Your confirmation letter has been made. It is kept under My documents on your profile.",
+      "letterMine": "Open My documents",
       "letterOpen": "Open the PDF"
     },
     "designer": {

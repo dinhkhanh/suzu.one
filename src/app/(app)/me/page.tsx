@@ -154,7 +154,9 @@ export default async function MyProfilePage() {
       </Section>
 
       <RecordSections principal={user.principal} personId={user.person.id} />
-      <MyLetters principal={user.principal} personId={user.person.id} />
+      <div id="documents" className="scroll-mt-16">
+        <MyLetters principal={user.principal} personId={user.person.id} />
+      </div>
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
       <MyFaceEnrolment personId={user.person.id} />

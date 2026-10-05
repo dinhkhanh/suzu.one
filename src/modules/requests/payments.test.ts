@@ -20,7 +20,7 @@ import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { issueConfirmationLetter } from "./letters";
 import { listPayouts, markRequestPaid, payoutOf } from "./payments";
-import { canPayRequests } from "./policy";
+import { canPayRequests, canSettleExpenseClaims } from "./policy";
 import { REQUEST_TYPE_SEED } from "./seed-types";
 import { decideGenericRequest, fileRequest } from "./service";
 
@@ -211,5 +211,16 @@ describe("who pays", () => {
     expect(canPayRequests(holder("owner", null), ids.other)).toBe(true);
     // The screen's door: anywhere at all.
     expect(canPayRequests(holder("finance", ids.other))).toBe(true);
+  });
+
+  it("opens the claims desk to finance of one entity, and keeps the every-entity sweep group-wide", () => {
+    // The door asked "group-wide" by mistake, so finance of one entity never reached a list that
+    // is already cut to the entities they pay.
+    expect(canSettleExpenseClaims(holder("finance", ids.entity))).toBe(true);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), ids.entity)).toBe(true);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), ids.other)).toBe(false);
+    expect(canSettleExpenseClaims(holder("finance", ids.entity), null)).toBe(false);
+    expect(canSettleExpenseClaims(holder("finance", null), null)).toBe(true);
+    expect(canSettleExpenseClaims(holder("hr_admin", null))).toBe(false);
   });
 });

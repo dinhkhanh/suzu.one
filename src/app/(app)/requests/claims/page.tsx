@@ -59,7 +59,7 @@ export default async function ExpenseClaimsPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: waiting.length, amount: money(owed) })} actions={<SweepClaimsButton label={t("sweep")} />} />
+      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: waiting.length, amount: money(owed) })} actions={canSettleExpenseClaims(user.principal, null) ? <SweepClaimsButton label={t("sweep")} /> : null} />
       <RequestTabs active="claims" personId={user.person.id} principal={user.principal} claimsWaiting={waiting.length} />
 
       <TileGrid>

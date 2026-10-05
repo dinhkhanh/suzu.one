@@ -3732,7 +3732,6 @@
         "latitude": "Vĩ độ",
         "longitude": "Kinh độ",
         "radius": "Bán kính (m)",
-        "position": "Vị trí",
         "otFrom": "Từ",
         "otTo": "Đến",
         "window": "Khung giờ",
@@ -9719,7 +9718,8 @@
       "payoutCollected": "Đã nhận lại {amount} tạm ứng chưa dùng ngày {date} · số chứng từ {reference}.",
       "payoutNetted": "Trừ {advance} đã tạm ứng cho chuyến đi này.",
       "letter": "Giấy xác nhận đã được tạo.",
-      "letterCollect": "Giấy xác nhận đã được tạo — nhận bản có dấu tại phòng Nhân sự.",
+      "letterCollect": "Giấy xác nhận đã được tạo và được lưu trong mục Văn bản của tôi trên trang hồ sơ của bạn.",
+      "letterMine": "Mở Văn bản của tôi",
       "letterOpen": "Mở bản PDF"
     },
     "designer": {

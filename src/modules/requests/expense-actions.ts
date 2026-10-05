@@ -83,8 +83,9 @@ export async function refileExpenseClaimAction(input: unknown) {
 const sweepPipeline = createAction({
   name: "expense_claim.sweep",
   input: z.object({}).default({}),
-  // Whoever pays the company's people decides when the waiting claims go into a run.
-  authorize: (user) => canSettleExpenseClaims(user.principal),
+  // Whoever pays the company's people decides when the waiting claims go into a run; the sweep
+  // reaches every entity's claims, so it takes a group-wide grant.
+  authorize: (user) => canSettleExpenseClaims(user.principal, null),
   run: async ({ user }) => {
     const result = await sweepApprovedClaims(user.person.id);
     revalidatePath("/requests/claims");
