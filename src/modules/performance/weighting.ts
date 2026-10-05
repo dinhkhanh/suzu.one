@@ -42,10 +42,18 @@ export async function listWeightingVersions(executor?: Executor): Promise<Perfor
  * Throws when there is none — a result is never computed by a rule nobody approved.
  */
 export async function getWeighting(entityId: string | null, date: IsoDate, executor?: Executor): Promise<ResolvedWeighting> {
+  return (await getWeightings([entityId], date, executor)).get(entityId)!;
+}
+
+/** `getWeighting` for several entities from one read of the versions. Throws when any of them has none. */
+export async function getWeightings(entityIds: readonly (string | null)[], date: IsoDate, executor?: Executor): Promise<Map<string | null, ResolvedWeighting>> {
   const approved = (await listWeightingVersions(executor)).filter((row) => row.status === "approved");
-  const version = (entityId ? versionOn(approved.filter((row) => row.entityId === entityId), date) : undefined) ?? versionOn(approved.filter((row) => row.entityId === null), date);
-  if (!version) throw new ActionError("weighting_missing");
-  return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: performanceWeightingSchema.parse(version.value) };
+  const resolve = (entityId: string | null): ResolvedWeighting => {
+    const version = (entityId ? versionOn(approved.filter((row) => row.entityId === entityId), date) : undefined) ?? versionOn(approved.filter((row) => row.entityId === null), date);
+    if (!version) throw new ActionError("weighting_missing");
+    return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: performanceWeightingSchema.parse(version.value) };
+  };
+  return new Map([...new Set(entityIds)].map((entityId) => [entityId, resolve(entityId)]));
 }
 
 /** The exact version a stored result used — for reading a locked figure back years later. */

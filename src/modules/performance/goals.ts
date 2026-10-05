@@ -483,8 +483,18 @@ export type OkrResults = { individual: OkrFigure; units: { team: OkrFigure; depa
  * twice. No authorization here: the caller decides who sees the result.
  */
 export async function getOkrResults(input: { personId: string; year: number }, executor?: Executor): Promise<OkrResults> {
+  return (await getOkrResultsOfPeople({ personIds: [input.personId], year: input.year }, executor)).get(input.personId)!;
+}
+
+/** `getOkrResults` for many people from one read of the year's goals and the directory. */
+export async function getOkrResultsOfPeople(input: { personIds: readonly string[]; year: number }, executor?: Executor): Promise<Map<string, OkrResults>> {
+  if (input.personIds.length === 0) return new Map();
   const [year, directory] = await Promise.all([loadYear(input.year, executor), loadDirectory(executor)]);
-  const person = directory.get(input.personId);
+  return new Map(input.personIds.map((personId) => [personId, okrResultsOf(personId, year, directory)]));
+}
+
+function okrResultsOf(personId: string, year: Year, directory: Directory): OkrResults {
+  const person = directory.get(personId);
   const counted = [...year.goals.values()].filter((goal) => goal.status === "active" || goal.status === "closed");
   const figure = (goals: GoalRow[]): OkrFigure => {
     const ids = new Set(goals.map((goal) => goal.id));
@@ -497,7 +507,7 @@ export async function getOkrResults(input: { personId: string; year: number }, e
   };
   const ofEntity = (goal: GoalRow) => !goal.entityId || goal.entityId === person?.entityId;
   return {
-    individual: figure(counted.filter((goal) => goal.level === "individual" && goal.personId === input.personId)),
+    individual: figure(counted.filter((goal) => goal.level === "individual" && goal.personId === personId)),
     units: {
       team: figure(person?.teamId ? counted.filter((goal) => goal.level === "team" && goal.teamId === person.teamId) : []),
       department: figure(person?.departmentId ? counted.filter((goal) => goal.level === "department" && goal.departmentId === person.departmentId && ofEntity(goal)) : []),

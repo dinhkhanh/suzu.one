@@ -15,17 +15,17 @@
 // `goalIds` the goals behind the OKR figure, so a bonus paid in 2028 can still be pointed at the
 // months it came from. No authorization inside; `result-actions.ts` checks first.
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { finalResult, type OkrLevelInput, type ResultTrace } from "./engine/result";
 import { type OkrLevel, type PerformanceResultStatus, type PerformanceWeightingValue } from "./enums";
-import { getOkrResults, type OkrResults } from "./goals";
-import { getKpiResults, type KpiResults } from "./kpi-scores";
+import { getOkrResultsOfPeople, type OkrResults } from "./goals";
+import { getKpiResultsOfPeople, type KpiResults } from "./kpi-scores";
 import { type Directory, loadDirectory } from "./people";
 import { listReleasedReviewScores } from "./reviews";
-import { getWeighting, getWeightingVersion, weightingDateOf } from "./weighting";
+import { getWeightingVersion, getWeightings, type ResolvedWeighting, weightingDateOf } from "./weighting";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PerformanceResultRow = typeof schema.performanceResult.$inferSelect;
@@ -56,12 +56,37 @@ export type ComputedResult = {
  * What one person's year comes to, without storing anything — the preview HR sees before it
  * computes, and the figures `computeResults` then writes.
  */
-export async function previewResult(input: { personId: string; entityId: string | null; year: number; override?: { scoreBp: number; reason: string; byPersonId: string | null; at: string | null } | null }, executor: Executor = db()): Promise<ComputedResult> {
-  const weighting = await getWeighting(input.entityId, weightingDateOf(input.year), executor);
-  const [kpi, okr, released] = await Promise.all([getKpiResults({ personId: input.personId, year: input.year }, executor), getOkrResults({ personId: input.personId, year: input.year }, executor), listReleasedReviewScores(input.year, executor)]);
-  const review = released.get(input.personId) ?? null;
-  const trace = finalResult({ reviewScoreBp: review?.reviewScoreBp ?? null, kpiScoreBp: kpi.scoreBp, okr: okrInput(okr), override: input.override ?? null, weightingVersionId: weighting.id }, weighting.value);
-  return { personId: input.personId, entityId: input.entityId, year: input.year, trace, kpi, okr, review: review ? { participantId: review.participantId, reviewScoreBp: review.reviewScoreBp } : null, weighting: { id: weighting.id, value: weighting.value } };
+type ResultOverrideInput = { scoreBp: number; reason: string; byPersonId: string | null; at: string | null } | null;
+
+export async function previewResult(input: { personId: string; entityId: string | null; year: number; override?: ResultOverrideInput }, executor: Executor = db()): Promise<ComputedResult> {
+  return (await previewResults([{ personId: input.personId, entityId: input.entityId, override: input.override ?? null }], input.year, executor))[0];
+}
+
+/**
+ * `previewResult` for many people at once: the weighting versions, the KPI scores, the year's goals
+ * and the released reviews are each read once for everybody, not once a person.
+ */
+async function previewResults(people: readonly { personId: string; entityId: string | null; override: ResultOverrideInput }[], year: number, executor: Executor): Promise<ComputedResult[]> {
+  if (people.length === 0) return [];
+  const personIds = people.map((person) => person.personId);
+  const [weightings, kpis, okrs, released] = await Promise.all([
+    getWeightings(
+      people.map((person) => person.entityId),
+      weightingDateOf(year),
+      executor,
+    ),
+    getKpiResultsOfPeople({ personIds, year }, executor),
+    getOkrResultsOfPeople({ personIds, year }, executor),
+    listReleasedReviewScores(year, executor),
+  ]);
+  return people.map((person) => {
+    const weighting: ResolvedWeighting = weightings.get(person.entityId)!;
+    const kpi = kpis.get(person.personId)!;
+    const okr = okrs.get(person.personId)!;
+    const review = released.get(person.personId) ?? null;
+    const trace = finalResult({ reviewScoreBp: review?.reviewScoreBp ?? null, kpiScoreBp: kpi.scoreBp, okr: okrInput(okr), override: person.override, weightingVersionId: weighting.id }, weighting.value);
+    return { personId: person.personId, entityId: person.entityId, year, trace, kpi, okr, review: review ? { participantId: review.participantId, reviewScoreBp: review.reviewScoreBp } : null, weighting: { id: weighting.id, value: weighting.value } };
+  });
 }
 
 const rowValues = (computed: ComputedResult) => ({
@@ -91,25 +116,37 @@ export type ComputeSummary = { computed: number; skipped: { personId: string; re
 export async function computeResults(input: { personIds: readonly string[]; year: number }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<ComputeSummary> {
   const directory = await loadDirectory(executor);
   const summary: ComputeSummary = { computed: 0, skipped: [] };
-  for (const personId of input.personIds) {
-    const person = directory.get(personId);
-    if (!person) continue;
-    const existing = await findResult(personId, input.year, executor);
-    if (existing && existing.status !== "draft") {
-      summary.skipped.push({ personId, reason: existing.status as "locked" | "published" });
-      continue;
-    }
-    // A draft keeps an override that was already typed in: recomputing refreshes the inputs, not the decision.
-    const override = existing?.overrideScoreBp !== null && existing?.overrideScoreBp !== undefined ? { scoreBp: existing.overrideScoreBp, reason: existing.overrideReason ?? "", byPersonId: existing.overrideByPersonId, at: existing.overrideAt?.toISOString() ?? null } : null;
-    const computed = await previewResult({ personId, entityId: person.entityId ?? null, year: input.year, override }, executor);
-    const values = rowValues(computed);
-    if (existing) await executor.update(schema.performanceResult).set(values).where(eq(schema.performanceResult.id, existing.id));
-    else await executor.insert(schema.performanceResult).values({ ...values, personId, year: input.year, overrideScoreBp: null, overrideReason: null, status: "draft" });
-    summary.computed += 1;
-  }
+  const personIds = [...new Set(input.personIds)].filter((personId) => directory.has(personId));
+  if (personIds.length === 0) return summary;
+  const existing = new Map((await executor.select().from(schema.performanceResult).where(and(eq(schema.performanceResult.year, input.year), inArray(schema.performanceResult.personId, personIds)))).map((row) => [row.personId, row]));
+  const drafts = personIds.filter((personId) => {
+    const row = existing.get(personId);
+    if (row && row.status !== "draft") summary.skipped.push({ personId, reason: row.status as "locked" | "published" });
+    return !row || row.status === "draft";
+  });
+  // A draft keeps an override that was already typed in: recomputing refreshes the inputs, not the decision.
+  const overrideOf = (row: PerformanceResultRow | undefined): ResultOverrideInput => (row && row.overrideScoreBp !== null ? { scoreBp: row.overrideScoreBp, reason: row.overrideReason ?? "", byPersonId: row.overrideByPersonId, at: row.overrideAt?.toISOString() ?? null } : null);
+  const computed = await previewResults(
+    drafts.map((personId) => ({ personId, entityId: directory.get(personId)!.entityId ?? null, override: overrideOf(existing.get(personId)) })),
+    input.year,
+    executor,
+  );
+  if (computed.length === 0) return summary;
+  // One statement for everybody. A row somebody locked in the meantime is left alone by the
+  // `where`: the figure they signed off is not quietly replaced.
+  const values = computed.map((result) => ({ ...rowValues(result), personId: result.personId, year: input.year, status: "draft" as const }));
+  const columns = getTableColumns(schema.performanceResult);
+  const replaced = Object.fromEntries(Object.keys(rowValues(computed[0])).map((key) => [key, sql.raw(`excluded."${columns[key as keyof typeof columns].name}"`)]));
+  const written = await executor
+    .insert(schema.performanceResult)
+    .values(values)
+    .onConflictDoUpdate({ target: [schema.performanceResult.personId, schema.performanceResult.year], set: replaced, setWhere: eq(schema.performanceResult.status, "draft") })
+    .returning({ id: schema.performanceResult.id });
+  summary.computed = written.length;
   void actorPersonId;
   return summary;
 }
+
 
 export async function findResult(personId: string, year: number, executor: Executor = db()): Promise<PerformanceResultRow | null> {
   const [row] = await executor.select().from(schema.performanceResult).where(and(eq(schema.performanceResult.personId, personId), eq(schema.performanceResult.year, year))).limit(1);

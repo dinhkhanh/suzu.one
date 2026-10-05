@@ -1129,6 +1129,34 @@
         "title": "Kết quả hiệu suất năm {year} đã có",
         "body": "Kết quả hiệu suất cả năm {year} của bạn đã được công bố. Hãy mở trang kết quả để xem cách tính."
       },
+      "performance_review_open": {
+        "title": "Chu kỳ đánh giá {cycle} đã mở",
+        "body": "Hãy viết bản tự đánh giá của bạn{date, select, none {.} other { trước ngày {date}.}}"
+      },
+      "performance_reviews_owed": {
+        "title": "Bạn cần viết đánh giá cho nhân sự",
+        "body": "Chu kỳ {cycle}: bạn cần viết đánh giá cho {count} người{date, select, none {.} other { trước ngày {date}.}}"
+      },
+      "performance_review_due": {
+        "title": "Phiếu đánh giá sắp đến hạn",
+        "body": "Bạn còn {count} phiếu đánh giá chưa nộp; hạn gần nhất là ngày {date}."
+      },
+      "performance_review_overdue": {
+        "title": "Phiếu đánh giá đã quá hạn",
+        "body": "Bạn còn {count} phiếu đánh giá đã quá hạn mà chưa nộp. Hãy mở trang đánh giá để hoàn thành."
+      },
+      "performance_review_returned": {
+        "title": "Phiếu đánh giá được trả lại để sửa",
+        "body": "Chu kỳ {cycle}: Nhân sự đã trả lại phiếu đánh giá của bạn để chỉnh sửa. Mở trang để xem lý do và nộp lại."
+      },
+      "performance_sign_off_waiting": {
+        "title": "Chưa ghi nhận buổi trao đổi kết quả",
+        "body": "{count} phiếu đánh giá đã công bố nhưng chưa ghi nhận buổi trao đổi kết quả với nhân sự. Hãy hẹn trao đổi và ghi nhận trên trang đánh giá."
+      },
+      "performance_ack_waiting": {
+        "title": "Phiếu đánh giá đang chờ bạn xác nhận",
+        "body": "Phiếu đánh giá của bạn đã được công bố. Hãy đọc và xác nhận đã xem."
+      },
       "performance_rule_proposed": {
         "title": "Có đề xuất trọng số kết quả hiệu suất",
         "body": "Một phiên bản trọng số mới được đề xuất, hiệu lực từ {validFrom}. Chỉ có hiệu lực sau khi bạn phê duyệt."
@@ -6588,7 +6616,8 @@
         "library": "Thư viện",
         "import": "Nhập từ tệp",
         "cycles": "Chu kỳ đánh giá",
-        "weighting": "Trọng số kết quả"
+        "weighting": "Trọng số kết quả",
+        "templates": "Biểu mẫu đánh giá"
       }
     },
     "library": {
@@ -6778,7 +6807,8 @@
         "manager_done": "Quản lý đã đánh giá",
         "calibrated": "Đã cân đối",
         "released": "Đã công bố",
-        "acknowledged": "Đã xác nhận"
+        "acknowledged": "Đã xác nhận",
+        "signed_off": "Đã trao đổi kết quả"
       },
       "formStatus": {
         "none": "Chưa có",
@@ -6851,7 +6881,8 @@
         "note": "Ý kiến của bạn (không bắt buộc)",
         "action": "Tôi đã đọc và xác nhận",
         "done": "Đã xác nhận ngày {date}.",
-        "waiting": "Đang chờ nhân viên xác nhận."
+        "waiting": "Đang chờ nhân viên xác nhận.",
+        "afterSignOff": "Bạn sẽ xác nhận sau buổi trao đổi kết quả với quản lý."
       },
       "cycle": {
         "name": "Tên chu kỳ",
@@ -6874,7 +6905,12 @@
         "saved": "Đã lưu.",
         "launch": "Mở chu kỳ",
         "launchConfirm": "Mở chu kỳ sẽ khoá biểu mẫu và ghi nhận quản lý của từng người. Tiếp tục?",
-        "launchYes": "Mở luôn"
+        "launchYes": "Mở luôn",
+        "isRolling": "Chu kỳ cuốn chiếu theo hợp đồng thử việc",
+        "rollingHint": "Không cần đặt hạn chung: mỗi người được đưa vào chu kỳ khi hợp đồng thử việc sắp hết, với hạn riêng theo ngày hết thử việc. Phiếu của ai xong thì Nhân sự cân đối và công bố cho người đó.",
+        "signOffRequired": "Cần buổi trao đổi kết quả trước khi nhân viên xác nhận",
+        "rolling": "Cuốn chiếu",
+        "signOffBadge": "Có trao đổi kết quả"
       },
       "admin": {
         "description": "Tạo chu kỳ, mở chu kỳ (khoá biểu mẫu và ghi nhận quản lý của từng người), rồi cân đối và công bố.",
@@ -6894,7 +6930,13 @@
           "released": "Đánh dấu đã công bố",
           "closed": "Đóng chu kỳ"
         },
-        "noParticipants": "Chu kỳ này chưa có người tham gia."
+        "noParticipants": "Chu kỳ này chưa có người tham gia.",
+        "editCycle": "Sửa chu kỳ — {name}",
+        "editHint": "Chu kỳ còn ở dạng nháp nên vẫn sửa được. Sau khi mở thì không sửa được nữa.",
+        "add": "Thêm người tham gia",
+        "addHint": "Hạn riêng (nếu nhập) thay cho hạn chung của chu kỳ. Nếu chu kỳ đã mở, người này và quản lý sẽ được thông báo ngay.",
+        "addRollingHint": "Chu kỳ cuốn chiếu: hãy nhập hạn tự đánh giá và hạn quản lý đánh giá cho người này.",
+        "noParticipantsRolling": "Chưa có ai. Mỗi sáng, người có hợp đồng thử việc sắp hết sẽ được đưa vào chu kỳ."
       },
       "errors": {
         "generic": "Không thực hiện được. Hãy thử lại.",
@@ -6938,7 +6980,22 @@
         "review_peer_max": "Đã đủ số người phản hồi tối đa.",
         "review_nomination_not_found": "Không tìm thấy lời mời.",
         "review_nomination_decided": "Lời mời đã được trả lời.",
-        "review_nomination_has_form": "Người này đã viết phản hồi, không rút lại được."
+        "review_nomination_has_form": "Người này đã viết phản hồi, không rút lại được.",
+        "review_template_name_empty": "Hãy đặt tên cho biểu mẫu.",
+        "review_template_bad_key": "Mã câu chỉ gồm chữ thường không dấu, số, gạch dưới hoặc gạch ngang, tối đa 40 ký tự.",
+        "review_template_untitled_section": "Câu hỏi nào cũng phải có nội dung.",
+        "review_template_bad_section": "Trọng số phải là số nguyên không âm.",
+        "review_template_bad_point": "Mỗi mức phải có tên, thứ tự là số nguyên và giá trị quy đổi không âm.",
+        "review_template_manager_unscored": "Phiếu của quản lý phải có ít nhất một câu chấm điểm có trọng số — điểm đó là điểm đánh giá tính vào kết quả năm.",
+        "review_template_bad_kind": "Loại chu kỳ không hợp lệ.",
+        "review_template_wrong_kind": "Biểu mẫu này không dùng cho loại chu kỳ đã chọn.",
+        "review_rolling_not_probation": "Chỉ chu kỳ hết thử việc mới chạy cuốn chiếu.",
+        "review_form_not_found": "Không tìm thấy phiếu.",
+        "review_form_not_submitted": "Phiếu chưa được gửi.",
+        "review_form_settled": "Đánh giá đã được cân đối hoặc công bố, không trả lại phiếu được nữa.",
+        "review_sign_off_recorded": "Buổi trao đổi đã được ghi nhận rồi.",
+        "review_sign_off_date": "Ngày trao đổi phải từ ngày công bố đến hôm nay.",
+        "review_sign_off_missing": "Cần ghi nhận buổi trao đổi kết quả trước khi xác nhận."
       },
       "peers": {
         "title": "Phản hồi đồng nghiệp (360°)",
@@ -7002,6 +7059,70 @@
         "questions": "Số câu",
         "scale": "Thang điểm",
         "status": "Trạng thái"
+      },
+      "templates": {
+        "title": "Biểu mẫu đánh giá",
+        "manage": "Quản lý biểu mẫu đánh giá",
+        "new": "Biểu mẫu mới",
+        "copy": "Tạo bản sao",
+        "copyName": "{name} (bản sao)",
+        "copyTitle": "Bản sao của {name}",
+        "back": "Về danh sách biểu mẫu",
+        "readOnly": "Chỉ Nhân sự cấp tập đoàn sửa được biểu mẫu. Bạn đang xem ở chế độ chỉ đọc.",
+        "basics": "Thông tin chung",
+        "name": "Tên biểu mẫu",
+        "nameEn": "Tên tiếng Anh",
+        "description": "Mô tả",
+        "kinds": "Dùng cho loại chu kỳ",
+        "kindsHint": "Không chọn loại nào nghĩa là dùng được cho mọi loại chu kỳ.",
+        "allKinds": "Mọi loại",
+        "active": "Đang dùng",
+        "sections": "Câu hỏi",
+        "sectionsHint": "Câu chấm điểm có trọng số tạo nên điểm của phiếu; phiếu của quản lý phải có ít nhất một câu như vậy.",
+        "addSection": "Thêm câu hỏi",
+        "noSections": "Chưa có câu hỏi nào.",
+        "sectionTitle": "Câu hỏi",
+        "sectionTitleEn": "Câu hỏi (tiếng Anh)",
+        "sectionKind": "Loại câu",
+        "sectionKinds": {
+          "rating": "Chấm điểm theo thang",
+          "text": "Tự luận"
+        },
+        "weight": "Trọng số",
+        "weightShare": "{share} % tổng điểm",
+        "askedOf": "Hỏi trong phiếu:",
+        "required": "Bắt buộc",
+        "key": "Mã câu",
+        "moveUp": "Lên trên",
+        "moveDown": "Xuống dưới",
+        "remove": "Xoá",
+        "scale": "Thang điểm",
+        "scaleHint": "Mỗi mức có giá trị quy đổi ra phần trăm — thường mức “Đạt yêu cầu” là 100 %. Kết quả cuối năm và thưởng được tính từ các giá trị này.",
+        "addPoint": "Thêm mức",
+        "pointValue": "Thứ tự",
+        "pointPercent": "Quy đổi (%)",
+        "pointLabel": "Tên mức",
+        "pointLabelEn": "Tên tiếng Anh",
+        "problems": "Cần sửa trước khi lưu:",
+        "snapshotNote": "Chu kỳ đã mở giữ nguyên biểu mẫu tại thời điểm mở; thay đổi ở đây chỉ áp dụng cho các chu kỳ mở sau.",
+        "save": "Lưu biểu mẫu",
+        "saved": "Đã lưu."
+      },
+      "returned": {
+        "title": "Nhân sự đã trả lại phiếu này để chỉnh sửa:",
+        "action": "Trả lại để sửa",
+        "reason": "Lý do (người viết sẽ đọc được)",
+        "yes": "Trả lại"
+      },
+      "signOff": {
+        "title": "Buổi trao đổi kết quả",
+        "heldOn": "Ngày trao đổi",
+        "note": "Nội dung đã thống nhất (không bắt buộc)",
+        "action": "Ghi nhận đã trao đổi",
+        "done": "Đã trao đổi ngày {date} — {name} ghi nhận.",
+        "requiredHint": "Chu kỳ này yêu cầu buổi trao đổi kết quả với nhân viên; nhân viên chỉ xác nhận được sau khi buổi trao đổi được ghi nhận.",
+        "optionalHint": "Ghi nhận buổi trao đổi kết quả với nhân viên, nếu đã có.",
+        "waiting": "Đang chờ quản lý ghi nhận buổi trao đổi kết quả."
       }
     },
     "results": {
@@ -13176,7 +13297,9 @@
     "crmCommission": "Hoa hồng kinh doanh",
     "kiosk": "Máy chấm công khuôn mặt",
     "kioskFaces": "Khuôn mặt chấm công",
-    "kioskCheckIn": "Chấm công tại máy"
+    "kioskCheckIn": "Chấm công tại máy",
+    "reviewTemplates": "Biểu mẫu đánh giá",
+    "reviewTemplate": "Biểu mẫu đánh giá"
   },
   "portfolio": {
     "title": "SuZu Group",

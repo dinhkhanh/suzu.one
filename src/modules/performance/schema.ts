@@ -345,7 +345,7 @@ export const reviewParticipant = pgTable(
     entityId: uuid("entity_id").references(() => entity.id),
     departmentId: uuid("department_id").references(() => orgUnit.id),
     managerPersonId: uuid("manager_person_id").references(() => person.id),
-    // pending | self_done | manager_done | calibrated | released | acknowledged
+    // pending | self_done | manager_done | calibrated | released | signed_off | acknowledged
     stage: text("stage").notNull().default("pending"),
     // The manager's overall figure, frozen when the review is released — what FR-PRF-09 reads.
     reviewScoreBp: integer("review_score_bp"),
@@ -357,7 +357,7 @@ export const reviewParticipant = pgTable(
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     acknowledgementNote: text("acknowledgement_note"),
     // This person's own deadlines, where the cycle has none for everybody (a rolling probation
-    // cycle): they win over the cycle's dates.
+    // cycle, or a person HR added late): they win over the cycle's dates.
     selfDueOn: date("self_due_on"),
     managerDueOn: date("manager_due_on"),
     // The sign-off conversation after release (FR-PRF-03): the day it was held, and who recorded it.
@@ -365,11 +365,6 @@ export const reviewParticipant = pgTable(
     signOffNote: text("sign_off_note"),
     signOffByPersonId: uuid("sign_off_by_person_id").references(() => person.id),
     signOffRecordedAt: timestamp("sign_off_recorded_at", { withTimezone: true }),
-    // Taken out of the cycle after something had been written: the row and its forms stay for the
-    // record, and every list leaves it out.
-    removedAt: timestamp("removed_at", { withTimezone: true }),
-    removedByPersonId: uuid("removed_by_person_id").references(() => person.id),
-    removalReason: text("removal_reason"),
     ...timestamps,
   },
   (t) => [unique("review_participant_unique").on(t.cycleId, t.personId), index("review_participant_person_idx").on(t.personId), index("review_participant_manager_idx").on(t.managerPersonId)],
@@ -622,7 +617,7 @@ export const performanceReminderSent = pgTable(
     personId: uuid("person_id")
       .notNull()
       .references(() => person.id),
-    // review_due | review_overdue | ack_waiting | kpi_actuals | okr_checkin
+    // review_due | review_overdue | sign_off_waiting | ack_waiting
     kind: text("kind").notNull(),
     subject: text("subject").notNull(),
     sentOn: date("sent_on").notNull(),

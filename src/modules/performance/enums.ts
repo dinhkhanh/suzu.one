@@ -118,6 +118,14 @@ export type ReviewCycleStatus = (typeof REVIEW_CYCLE_STATUSES)[number];
  */
 export const reviewsAreIn = (status: ReviewCycleStatus): boolean => status === "calibration" || status === "released" || status === "closed";
 
+/**
+ * May a review in this cycle be calibrated and released yet? A cohort cycle waits for its
+ * calibration stage (above). A **rolling** probation cycle has no cohort to wait for: each person's
+ * probation ends on its own day, so their review is levelled and handed over as soon as it is in —
+ * still by HR alone, and still never before the manager has written (the use-case checks that).
+ */
+export const releasable = (cycle: { status: ReviewCycleStatus; rolling: boolean }): boolean => reviewsAreIn(cycle.status) || (cycle.rolling && cycle.status === "active");
+
 export const REVIEW_FORM_KINDS = ["self", "manager", "peer"] as const;
 export type ReviewFormKind = (typeof REVIEW_FORM_KINDS)[number];
 

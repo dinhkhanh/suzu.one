@@ -11,7 +11,7 @@ const pill = "inline-flex h-5 w-fit shrink-0 items-center rounded-full px-2 text
 /** How far one person's review has got. The colour follows the order of the stages, not the mood. */
 export function StageBadge({ stage, label }: { stage: ReviewStage; label: string }) {
   const tone =
-    stage === "acknowledged" || stage === "released"
+    stage === "acknowledged" || stage === "released" || stage === "signed_off"
       ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
       : stage === "pending"
         ? "border border-dashed text-muted-foreground"
