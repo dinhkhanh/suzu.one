@@ -5,7 +5,7 @@
 // may view, CRM activities only for someone who works the account, invoices and payments only for
 // someone who reads receivables. Every item links to its own record.
 import "server-only";
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, schema } from "@/lib/db";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
@@ -200,18 +200,19 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
       db()
         .select({ id: schema.crmInvoice.id, number: schema.crmInvoice.number, issuedOn: schema.crmInvoice.issuedOn })
         .from(schema.crmInvoice)
-        .where(eq(schema.crmInvoice.clientId, scope.accountId))
+        // An invoice is history once issued; a draft is not yet.
+        .where(and(eq(schema.crmInvoice.clientId, scope.accountId), ne(schema.crmInvoice.status, "draft")))
         .orderBy(desc(schema.crmInvoice.issuedOn))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `i:${row.id}`, kind: "invoice" as const, at: iso(row.issuedOn), title: row.number, detail: null, actorName: null, projectName: null, link: `/crm/invoices/${row.id}` }))),
+        .then((rows) => rows.map((row) => ({ key: `i:${row.id}`, kind: "invoice" as const, at: iso(row.issuedOn), title: row.number ?? "", detail: null, actorName: null, projectName: null, link: `/crm/invoices/${row.id}` }))),
       db()
         .select({ id: schema.crmPayment.id, invoiceId: schema.crmPayment.invoiceId, number: schema.crmInvoice.number, receivedOn: schema.crmPayment.receivedOn })
         .from(schema.crmPayment)
         .innerJoin(schema.crmInvoice, eq(schema.crmInvoice.id, schema.crmPayment.invoiceId))
-        .where(eq(schema.crmInvoice.clientId, scope.accountId))
+        .where(and(eq(schema.crmInvoice.clientId, scope.accountId), isNull(schema.crmPayment.reversedAt)))
         .orderBy(desc(schema.crmPayment.receivedOn))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `p:${row.id}`, kind: "payment" as const, at: iso(row.receivedOn), title: row.number, detail: null, actorName: null, projectName: null, link: `/crm/invoices/${row.invoiceId}` }))),
+        .then((rows) => rows.map((row) => ({ key: `p:${row.id}`, kind: "payment" as const, at: iso(row.receivedOn), title: row.number ?? "", detail: null, actorName: null, projectName: null, link: `/crm/invoices/${row.invoiceId}` }))),
     );
   }
 

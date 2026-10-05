@@ -7,15 +7,18 @@ import { type ReactNode, useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
-import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updatePlanSettingsAction } from "../actions";
+import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
+import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, reopenProjectAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updateBriefContactsAction, updatePlanSettingsAction } from "../actions";
 
 type Person = { id: string; fullName: string };
 type Named = { id: string; name: string };
@@ -54,25 +57,22 @@ export function ActionButton({ action, input, label, confirm, variant = "outline
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const run = () =>
+    startTransition(async () => {
+      const result = await action(input);
+      const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
+      setError(key);
+      if (result.ok) router.refresh();
+    });
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        size="xs"
-        variant={variant}
-        disabled={pending}
-        onClick={() => {
-          if (confirm && !window.confirm(confirm)) return;
-          startTransition(async () => {
-            const result = await action(input);
-            const key = result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic");
-            setError(key);
-            if (result.ok) router.refresh();
-          });
-        }}
-      >
-        {label}
-      </Button>
+      {confirm ? (
+        <ConfirmButton size="xs" variant={variant} disabled={pending} label={label} question={confirm} onConfirm={run} />
+      ) : (
+        <Button type="button" size="xs" variant={variant} disabled={pending} onClick={run}>
+          {label}
+        </Button>
+      )}
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {t.has(error) ? t(error) : t("generic")}
@@ -118,12 +118,30 @@ export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { pr
   );
 }
 
+const contactLines = (contacts: readonly { name: string; role?: string; contact?: string }[]) => contacts.map((contact) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n");
+
+/** An approved brief's contacts and links — the two parts of it that stay editable (FR-PJM-03). */
+export function BriefContactsForm({ projectId, brief }: { projectId: string; brief: Pick<BriefValues, "clientContacts" | "links"> }) {
+  const t = useTranslations("projects.brief");
+  return (
+    <ActionForm action={updateBriefContactsAction} extra={{ projectId }} submit={t("saveContacts")}>
+      <Field name="clientContacts" label={t("fields.clientContacts")}>
+        <Textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={contactLines(brief.clientContacts ?? [])} placeholder={t("contactsHint")} />
+      </Field>
+      <Field name="links" label={t("fields.links")}>
+        <Textarea id="links" name="links" rows={2} defaultValue={(brief.links ?? []).join("\n")} placeholder="https://drive.google.com/…" className="font-mono" />
+      </Field>
+    </ActionForm>
+  );
+}
+
 export function SubmitBriefButton({ projectId, resubmit }: { projectId: string; resubmit: boolean }) {
   const t = useTranslations("projects.brief");
   return <ActionButton action={submitBriefAction} input={{ projectId }} label={resubmit ? t("resubmit") : t("submit")} variant="default" />;
 }
 
-export function PlanSettingsForm({ projectId, values, kinds }: { projectId: string; values: { kind: string; budgetMinutes: number | null; budgetByRole: { role: string; minutes: number }[]; updateCadenceDays: number; driveUrl: string | null }; kinds: readonly string[] }) {
+/** `scopeLocked`: after the kick-off the total hours budget moves only through a change request — it is shown, not typed; the split between roles stays. */
+export function PlanSettingsForm({ projectId, values, kinds, scopeLocked = false }: { projectId: string; values: { kind: string; budgetMinutes: number | null; budgetByRole: { role: string; minutes: number }[]; updateCadenceDays: number; driveUrl: string | null }; kinds: readonly string[]; scopeLocked?: boolean }) {
   const t = useTranslations("projects");
   const roles = [...values.budgetByRole, { role: "", minutes: 0 }, { role: "", minutes: 0 }];
   return (
@@ -142,9 +160,10 @@ export function PlanSettingsForm({ projectId, values, kinds }: { projectId: stri
           <Input id="updateCadenceDays" name="updateCadenceDays" type="number" min={1} max={60} defaultValue={values.updateCadenceDays} />
         </Field>
         <Field name="budgetHours" label={t("fields.budgetHours")}>
-          <Input id="budgetHours" name="budgetHours" type="number" min={0} step="0.5" defaultValue={hoursOf(values.budgetMinutes)} />
+          <Input id="budgetHours" name="budgetHours" type="number" min={0} step="0.5" defaultValue={hoursOf(values.budgetMinutes)} readOnly={scopeLocked} />
         </Field>
       </div>
+      {scopeLocked ? <p className="text-xs text-muted-foreground">{t("scope.budgetLocked")}</p> : null}
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm font-medium">{t("settings.byRole")}</legend>
         <p className="text-xs text-muted-foreground">{t("settings.byRoleHint")}</p>
@@ -252,10 +271,10 @@ export function MilestoneForm({ projectId, milestone, phases, people, showAmount
           </Select>
         </Field>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isClientFacing" defaultChecked={milestone?.isClientFacing} /> {t("fields.isClientFacing")}
+          <Checkbox name="isClientFacing" defaultChecked={milestone?.isClientFacing} /> {t("fields.isClientFacing")}
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isBilling" defaultChecked={milestone?.isBilling} /> {t("fields.isBilling")}
+          <Checkbox name="isBilling" defaultChecked={milestone?.isBilling} /> {t("fields.isBilling")}
         </label>
         {showAmount ? (
           <Field name="billingAmountVnd" label={t("fields.billingAmountVnd")}>
@@ -331,15 +350,21 @@ export function UnlinkButton({ taskId }: { taskId: string }) {
 
 // ── Deliverables register ───────────────────────────────────────────────────────────────────
 
-export function DeliverableForm({ projectId, line, milestones }: { projectId: string; line?: { id: string; title: string; quantity: number; format: string | null; channel: string | null; dueDate: string | null; milestoneId: string | null; sortOrder: number }; milestones: Named[] }) {
+/**
+ * `scopeLocked`: after the kick-off a line's quantity, format and channel are the promise and move
+ * only through a change request — they are shown and posted back unchanged; the wording, the
+ * milestone and the due date stay editable.
+ */
+export function DeliverableForm({ projectId, line, milestones, scopeLocked = false }: { projectId: string; line?: { id: string; title: string; quantity: number; format: string | null; channel: string | null; dueDate: string | null; milestoneId: string | null; sortOrder: number }; milestones: Named[]; scopeLocked?: boolean }) {
   const t = useTranslations("projects");
   const tWork = useTranslations("work");
   const id = line?.id ?? "new";
   return (
-    <ActionForm action={saveDeliverableAction} extra={{ projectId, deliverableId: line?.id ?? null }} submit={line ? t("settings.save") : t("register.add")}>
+    <ActionForm action={saveDeliverableAction} extra={{ projectId, deliverableId: line?.id ?? null, ...(scopeLocked ? { format: line?.format ?? "", channel: line?.channel ?? "" } : {}) }} submit={line ? t("settings.save") : t("register.add")}>
+      {scopeLocked ? <p className="text-xs text-muted-foreground">{t("scope.lineLocked")}</p> : null}
       <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
         <Field name="quantity" label={t("fields.quantity")}>
-          <Input id={`line-qty-${id}`} name="quantity" type="number" min={1} max={1000} required defaultValue={line?.quantity ?? 1} />
+          <Input id={`line-qty-${id}`} name="quantity" type="number" min={1} max={1000} required defaultValue={line?.quantity ?? 1} readOnly={scopeLocked} />
         </Field>
         <Field name="title" label={t("fields.deliverable")}>
           <Input id={`line-title-${id}`} name="title" required maxLength={200} defaultValue={line?.title ?? ""} placeholder={t("register.titleHint")} />
@@ -347,7 +372,7 @@ export function DeliverableForm({ projectId, line, milestones }: { projectId: st
       </div>
       <div className="grid gap-2 sm:grid-cols-4">
         <Field name="format" label={t("fields.format")}>
-          <Select id={`line-format-${id}`} name="format" defaultValue={line?.format ?? ""}>
+          <Select id={`line-format-${id}`} name={scopeLocked ? undefined : "format"} disabled={scopeLocked} defaultValue={line?.format ?? ""}>
             <option value="">—</option>
             {CONTENT_FORMATS.map((format) => (
               <option key={format} value={format}>
@@ -357,7 +382,7 @@ export function DeliverableForm({ projectId, line, milestones }: { projectId: st
           </Select>
         </Field>
         <Field name="channel" label={t("fields.channel")}>
-          <Select id={`line-channel-${id}`} name="channel" defaultValue={line?.channel ?? ""}>
+          <Select id={`line-channel-${id}`} name={scopeLocked ? undefined : "channel"} disabled={scopeLocked} defaultValue={line?.channel ?? ""}>
             <option value="">—</option>
             {CHANNELS.map((channel) => (
               <option key={channel} value={channel}>
@@ -381,6 +406,19 @@ export function DeliverableForm({ projectId, line, milestones }: { projectId: st
         </Field>
       </div>
       <input type="hidden" name="sortOrder" value={line?.sortOrder ?? 0} />
+    </ActionForm>
+  );
+}
+
+/** Re-opening a closed project: deliberate, with the reason on record (FR-PJM-59). */
+export function ReopenProjectForm({ projectId }: { projectId: string }) {
+  const t = useTranslations("projects.close");
+  return (
+    <ActionForm action={reopenProjectAction} extra={{ projectId }} submit={t("reopen.submit")}>
+      <Field name="reason" label={t("reopen.reason")}>
+        <Textarea id="reason" name="reason" rows={3} required maxLength={2000} placeholder={t("reopen.reasonHint")} />
+      </Field>
+      <p className="text-xs text-muted-foreground">{t("reopen.warning")}</p>
     </ActionForm>
   );
 }
@@ -449,13 +487,13 @@ export function StatusUpdateForm({ projectId, healths, draft }: { projectId: str
       ) : null}
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium">{t("fields.health")}</legend>
-        <div className="flex flex-wrap gap-3">
+        <RadioGroup name="health" required value={health ?? ""} onValueChange={(next) => setHealth(String(next))} className="flex flex-wrap gap-3">
           {healths.map((value) => (
-            <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-checked:bg-muted">
-              <input type="radio" name="health" value={value} required checked={health === value} onChange={() => setHealth(value)} /> {t(`health.${value as "on_track"}`)}
+            <label key={value} className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm has-data-checked:bg-muted">
+              <RadioGroupItem value={value} /> {t(`health.${value as "on_track"}`)}
             </label>
           ))}
-        </div>
+        </RadioGroup>
       </fieldset>
       <Field name="summary" label={t("fields.summary")}>
         <NoteEditor id="summary" name="summary" required rows={3} maxLength={4000} />

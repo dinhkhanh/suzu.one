@@ -26,6 +26,8 @@ Phiếu lương của một tháng chỉ xuất hiện sau khi:
 
 Khi phiếu lương được phát hành, bạn nhận thông báo **Phiếu lương tháng … đã có**. Thông báo không ghi số tiền — bạn mở ứng dụng để xem.
 
+Nếu CEO trả lại bảng lương sau khi phiếu đã phát hành, phiếu được **thu hồi** để rà soát: bạn nhận thông báo **Phiếu lương tháng … đã được thu hồi** và tạm thời không thấy phiếu đó. Khi bảng lương được ký lại, phiếu được phát hành lại và bạn nhận thông báo như lần đầu. Thắc mắc bạn đã gửi về phiếu đó vẫn được giữ.
+
 ## Xem danh sách phiếu lương
 
 1. Trên thanh bên, mở **Phiếu lương** (nhóm **Của tôi**), hoặc vào [Phiếu lương](/payslips).
@@ -43,7 +45,7 @@ Phiếu lương được trình bày giống bản giấy, gồm các phần:
 
 | Phần | Nội dung |
 |---|---|
-| Đầu phiếu | Tên và mã số thuế pháp nhân, **PHIẾU LƯƠNG THÁNG …**, **Nhân viên**, **Mã nhân viên**, **Chức danh**, **Phòng ban**, **Hồ sơ trả lương**, **Ngày công hưởng lương** |
+| Đầu phiếu | Tên và mã số thuế pháp nhân, **PHIẾU LƯƠNG THÁNG …**, **Nhân viên**, **Mã nhân viên**, **Chức vụ**, **Phòng ban**, **Hồ sơ trả lương**, **Ngày công hưởng lương** |
 | **Các khoản thu nhập** | Từng khoản (lương, phụ cấp, làm thêm, thưởng…) với **Phần chịu thuế** và **Số tiền**; dòng **Tổng thu nhập** |
 | **Các khoản khấu trừ** | Bảo hiểm phần người lao động, thuế TNCN, đoàn phí, tạm ứng…; dòng **Tổng khấu trừ** |
 | **Thực nhận** | Số tiền bạn thực nhận |

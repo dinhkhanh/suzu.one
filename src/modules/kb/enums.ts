@@ -24,6 +24,8 @@ export type PageStatus = (typeof PAGE_STATUSES)[number];
 // the row is written when a project's document space is made, never picked by hand.
 export const SUBJECT_TYPES = ["all", "entity", "unit", "unit_only", "role", "person"] as const;
 export type SubjectType = (typeof SUBJECT_TYPES)[number] | "project";
+/** Who a "must read" page may be aimed at (FR-KB-05): an access row's subjects without the roles. The form offers these and the server accepts these. */
+export const ACK_AUDIENCE_TYPES = ["all", "entity", "unit", "unit_only", "person"] as const satisfies readonly SubjectType[];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -147,6 +147,18 @@ describe("work and ops permissions (Phase 3)", () => {
     expect(can(head, "pjm:portfolio", { unitPath: [DESIGN] })).toBe(true);
     expect(can(head, "pjm:portfolio", { entityId: ENTITY_A })).toBe(false);
   });
+
+  it("keeps brand kits to marketing and the owner (FR-BRD-01), and gives marketing nothing else", () => {
+    const group = { type: "group" } as const;
+    expect(can(principal([{ role: "marketing", scope: group }]), "brand:manage")).toBe(true);
+    expect(can(principal([{ role: "owner", scope: group }]), "brand:manage")).toBe(true);
+    for (const role of ROLES.filter((role) => role !== "marketing" && role !== "owner")) expect(can(principal([{ role, scope: group }]), "brand:manage"), role).toBe(false);
+    const marketing = principal([{ role: "marketing", scope: { type: "entity", id: ENTITY_A } }]);
+    expect(can(marketing, "brand:manage", { entityId: ENTITY_A })).toBe(true);
+    expect(can(marketing, "brand:manage", { entityId: ENTITY_B })).toBe(false);
+    for (const permission of ["person:read", "person:manage", "payroll:read", "work:manage", "comms:manage", "crm:sell"] as const) expect(can(marketing, permission, { entityId: ENTITY_A }), permission).toBe(false);
+    expect(readableTier(marketing, lan)).toBe("public_internal");
+  });
 });
 
 describe("unit scopes reach down the tree (FR-PLT-16)", () => {

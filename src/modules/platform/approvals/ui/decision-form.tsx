@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { withdrawApprovalAction } from "../actions";
@@ -16,7 +17,8 @@ import { withdrawApprovalAction } from "../actions";
  * The note sits over the keys; the keys are the last thing on the page, in reach of a thumb: the
  * ink "Approve" and the outline "Reject" side by side, "Return" the quieter third.
  */
-export function DecisionForm({ requestId, action, children }: { requestId: string; action: (input: unknown) => Promise<ActionResult<unknown>>; children?: ReactNode }) {
+/** `allowReturn`: false for a request nobody can correct and send again (a proposed rule: it is approved or rejected). */
+export function DecisionForm({ requestId, action, children, allowReturn = true }: { requestId: string; action: (input: unknown) => Promise<ActionResult<unknown>>; children?: ReactNode; allowReturn?: boolean }) {
   const t = useTranslations("approvals");
   const { onSubmit, pending, errorKey } = useActionForm(action, { extra: { requestId } });
   return (
@@ -28,9 +30,11 @@ export function DecisionForm({ requestId, action, children }: { requestId: strin
       </Field>
       <FormError namespace="approvals.errors" errorKey={errorKey} />
       <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
-        <Button type="submit" name="decision" value="return" variant="ghost" size="lg" disabled={pending} className="col-span-2 md:order-first">
-          {t("decide.return")}
-        </Button>
+        {allowReturn ? (
+          <Button type="submit" name="decision" value="return" variant="ghost" size="lg" disabled={pending} className="col-span-2 md:order-first">
+            {t("decide.return")}
+          </Button>
+        ) : null}
         <Button type="submit" name="decision" value="reject" variant="outline" size="lg" disabled={pending}>
           {t("decide.reject")}
         </Button>
@@ -45,19 +49,15 @@ export function DecisionForm({ requestId, action, children }: { requestId: strin
 /** The requester takes the request back. The same for every request type. */
 export function WithdrawForm({ requestId }: { requestId: string }) {
   const t = useTranslations("approvals");
-  const { onSubmit, pending, errorKey } = useActionForm(withdrawApprovalAction, { extra: { requestId } });
+  const form = useActionForm(withdrawApprovalAction, { extra: { requestId } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: t("withdrawConfirm"), confirmLabel: t("withdraw") });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(t("withdrawConfirm"))) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex flex-col gap-3 md:flex-row md:items-center"
-    >
-      <Button type="submit" variant="outline" disabled={pending} className="w-full md:w-auto">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3 md:flex-row md:items-center">
+      <Button type="submit" variant="outline" disabled={form.pending} className="w-full md:w-auto">
         {t("withdraw")}
       </Button>
-      <FormError namespace="approvals.errors" errorKey={errorKey} />
+      {dialog}
+      <FormError namespace="approvals.errors" errorKey={form.errorKey} />
     </form>
   );
 }

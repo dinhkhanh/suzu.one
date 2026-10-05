@@ -2,15 +2,17 @@
 // modules and for the routes.
 import "server-only";
 
-export { BRIEF_STATUSES, type BriefStatus, briefEditable, briefProblems, briefSubmittable, PROJECT_KINDS, type ProjectKind } from "./engine/brief";
+export { BRIEF_STATUSES, type BriefStatus, briefContactsEditable, briefEditable, briefProblems, briefSubmittable, isClientWork, PROJECT_KINDS, type ProjectKind } from "./engine/brief";
+/** The gates a project's status passes (FR-PJM-03, 59) and the scope lock after the kick-off (FR-PJM-11). */
+export { type GateFacts, offeredStatuses, scopeLocked } from "./engine/gates";
 export { BUDGET_THRESHOLDS, type Burn, type BurnLevel } from "./engine/budget";
 export { type Slip, baselineSlip, slipWords } from "./engine/baseline";
 export { REGISTER_STATUSES, type RegisterStatus } from "./engine/register";
 export { HEALTHS, type Health, isStale, linkedProgress, updateDueOn } from "./engine/status";
-export { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan } from "./policy";
+export { canEditBriefContacts, canEditClientSide, canEditFees, canEditPlan, canPostStatus, canReopenProject, canSeeFees, canViewPlan } from "./policy";
 export { backfillPlans, ensurePlan, nextJobNumber, type PlanRow, type PlanView, readPlans, shapePlan, syncProjectAccountManager } from "./plans";
 export { GROUP_JOB_PREFIX, jobPrefix, jobYear } from "./engine/job-number";
-export { applySalePlanIn, finishPitchProjectIn, markPitchIn, type SalePlanInput } from "./from-sale";
+export { applySalePlanIn, eraseBriefContactDetailsIn, finishPitchProjectIn, markPitchIn, type SalePlanInput } from "./from-sale";
 export { briefRequestProject, getBriefRequest, projectBriefRequest } from "./kickoff";
 export { type DeliverableRow, listStructure, type MilestoneRow, type PhaseRow } from "./structure";
 export { loadBurns, loadMilestoneTasks, loadRegisters, loadStatusFacts, type Register, type RegisterLine } from "./metrics";
@@ -34,18 +36,21 @@ export { CAPACITY_WEEKS, capacityOfBooked, type CapacityPerson, type CapacityVie
  * for a reader without `pjm:commercial`; the billing queue is cut to the reader's entities in SQL.
  */
 export { billingReach, canCloseProject, canDecideBilling, canEditRetainer, canHoldRetro, canManageAcceptance, canManageChanges, canOpenBillingQueue, canWriteClientReport, type PlanFacts } from "./policy";
-export { getRetainer, listPeriodOptions, listPeriods, type PeriodLine, type PeriodView, type RetainerConsumption, retainerConsumption, type RetainerView, shapeRetainer } from "./retainers";
-export { hoursUsage, QUOTA_THRESHOLDS, RETAINER_ROLLOVERS, type RetainerRollover, type Usage, type UsageLevel } from "./engine/retainer";
+export { getRetainer, listMissedMonths, listPeriodOptions, listPeriods, type PeriodLine, type PeriodView, type RetainerConsumption, retainerConsumption, type RetainerView, shapeRetainer } from "./retainers";
+export { hoursUsage, lineLabel, openLinesFirst, QUOTA_THRESHOLDS, RETAINER_ROLLOVERS, type RetainerRollover, type Usage, type UsageLevel } from "./engine/retainer";
 export { changeRequestType, type ChangeView, getChangeLedger, getChangeRequest, listChanges, openChangesForApprover } from "./change-requests";
-export { CHANGE_REQUESTERS, CHANGE_STATUSES, type ChangeLedger, type ChangeStatus, changeEditable } from "./engine/change-request";
-export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, listAcceptances, signedTargets } from "./acceptance";
-export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus } from "./engine/acceptance";
-export { billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling } from "./billing";
+export { CHANGE_REQUESTERS, CHANGE_STATUSES, type ChangeLedger, type ChangeStatus, changeEditable, type LedgerStep } from "./engine/change-request";
+export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, issuedPaper, listAcceptances, signedTargets } from "./acceptance";
+export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, acceptanceRefreshable, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus, type MilestoneBillingState, signedCorrectable } from "./engine/acceptance";
+export { billingCorrectors, billingEntities, billingItemForAcceptance, billingItemsByIds, type BillingFilters, type BillingItemRow, type BillingItemView, invoiceItemsIn, listBillingQueue, listProjectBilling, type MilestoneBilling, milestoneBilling, readyBillingTotal, releaseInvoicedItemsIn } from "./billing";
 export { clientReportFigures, defaultReportPeriod, entityLetterhead, findClientReport, listClientReports } from "./client-reports";
 export { type ReportFigures, reportText, type ReportWords } from "./engine/client-report";
-export { getCloseChecklist, getRetro, previewCloseReport, type StoredCloseReport } from "./close";
+export { getCloseChecklist, getRetro, listCloseHistory, previewCloseReport, type StoredCloseReport } from "./close";
 export { CLOSE_CHECKS, type ChecklistItem, type CloseReport } from "./engine/close";
-export { planProjectFor } from "./views";
+export { openableProjectIds, planProjectFor } from "./views";
+/** The job number beside the project's name on the work itself (FR-PJM-02), and the register line a task fills. */
+export { invalidateJobNumbers, jobNumbersOf } from "./job-numbers";
+export { getTaskLine, type TaskLineOption, type TaskLineView } from "./task-line";
 export { ACCEPTANCE_TEMPLATE_CODE, seedAcceptanceTemplate } from "./seed";
 /**
  * Collaboration (FR-PJM-29..31): the risks, issues and decisions log, meeting notes with their
@@ -57,3 +62,6 @@ export { findRaidItem, listRaid, type RaidView } from "./raid-log";
 export { findMeeting, getMeeting, listMeetings, type MeetingActionView, type MeetingListItem, meetingPeople, type MeetingView, putMeetingInCalendar, removeMeetingFromCalendar } from "./meetings";
 export { getProjectDocuments, type ProjectDocuments, projectSpaceKey } from "./documents";
 export { loadRaidCounts } from "./metrics";
+
+/** What the project forms post, parsed once: the CRM's forms read a VND amount, a date or a checkbox the same way. */
+export { blankToNull, checkbox, idList, isoDate, month, optional, rows, text, vnd } from "./form-inputs";

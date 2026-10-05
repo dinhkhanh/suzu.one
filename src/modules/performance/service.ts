@@ -8,10 +8,10 @@ export { FULL_BP, type GoalProgress, type ProgressLine } from "./engine/progress
 
 // ── For Phase 8 (review cycles, the final result per person and year, the bonus scheme) ─────
 // "OKR progress for person X in year Y": their own goals and their units', frozen where closed.
-export { getOkrResults, type OkrFigure, type OkrGoalResult, type OkrResults } from "./goals";
+export { getOkrResults, getOkrResultsOfPeople, type OkrFigure, type OkrGoalResult, type OkrResults } from "./goals";
 // "Final KPI score for person X in year Y": from the stored (closed, not superseded) month scores only.
 // Neither function authorizes: the caller decides who may see the result.
-export { getKpiResults, isKpiMonthClosed, type KpiMonthResult, type KpiResults } from "./kpi-scores";
+export { getKpiResults, getKpiResultsOfPeople, isKpiMonthClosed, type KpiMonthResult, type KpiResults } from "./kpi-scores";
 export { getPerformanceResults, type PerformanceResults } from "./results";
 
 // ── KPIs (week 2) ───────────────────────────────────────────────────────────────────────────
@@ -22,10 +22,27 @@ export { loadDirectory, reportsBelow, type DirectoryPerson } from "./people";
 export type { AnnualKpiLine, KpiLineFlag, KpiTrace, KpiTraceLine } from "./engine/kpi-score";
 
 // ── Review cycles (Phase 8 week 1, FR-PRF-03, 08) ───────────────────────────────────────────
-export { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
+export {
+  canAcknowledgeReview,
+  canManageCycle,
+  canManageReviewTemplates,
+  canReadAnonymisedPeers,
+  canReadReviewForm,
+  canRecordSignOff,
+  canReleaseReview,
+  canReturnReviewForm,
+  canSeeParticipant,
+  canWriteManagerReview,
+  canWritePeerReview,
+  canWriteSelfReview,
+  isReviewCalibrator,
+  isReviewingManager,
+  type ReviewParties,
+} from "./review-policy";
 export {
   annualParticipantIds,
   cycleProgress,
+  dueDatesOf,
   eligibleParticipants,
   findParticipant,
   findReviewCycle,
@@ -49,6 +66,7 @@ export {
   listReviewsIOwe,
 } from "./reviews";
 export { isAnswered, missingRequired, type ReviewScoreLine, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
+export { type TemplateProblem, templateProblems } from "./engine/review-template";
 
 // ── Peer / 360 (week 2) ─────────────────────────────────────────────────────────────────────
 export { canDecideNomination, canNominatePeer, canSeeNominations, nominationIsApproved } from "./review-policy";

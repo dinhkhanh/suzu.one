@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { visitorOf } from "@/lib/public-action";
 import { MAX_SUBMISSION_BYTES, countAssignmentView, findPublicAssignment } from "@/modules/recruit/assignments";
@@ -76,13 +77,13 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="links">{t("links")}</Label>
-            <textarea id="links" name="links" rows={3} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" placeholder="https://" />
+            <Textarea id="links" name="links" rows={3} placeholder="https://" />
             <p className="text-xs text-muted-foreground">{t("linksHint", { count: ASSIGNMENT_LIMITS.links })}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="note">{t("note")}</Label>
-            <textarea id="note" name="note" rows={4} maxLength={ASSIGNMENT_LIMITS.note} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+            <Textarea id="note" name="note" rows={4} maxLength={ASSIGNMENT_LIMITS.note} />
           </div>
 
           <Button type="submit" className="self-start">

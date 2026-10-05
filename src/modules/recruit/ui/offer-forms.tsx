@@ -16,12 +16,14 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "../enums";
 import { convertOfferToEmployeeAction, decideOfferAction, makeOfferAction, respondToOfferAction, sendOfferAction, submitOfferAction, updateOfferAction, withdrawOfferAction } from "../offer-actions";
 
 export type OfferFormValues = {
   positionName: string;
-  jobLevel: string | null;
+  seniorityLevel: string | null;
+  positionLevel: string | null;
   employmentType: string;
   workLocation: string | null;
   managerPersonId: string | null;
@@ -58,6 +60,7 @@ export function OfferForm({
 }) {
   const t = useTranslations("recruit.offer");
   const tType = useTranslations("recruit.employmentType");
+  const tp = useTranslations("people");
   const router = useRouter();
   const form = useActionForm(offerId ? updateOfferAction : makeOfferAction, {
     extra: offerId ? { offerId } : { applicationId },
@@ -71,8 +74,25 @@ export function OfferForm({
           <Field name="positionName" label={t("positionName")}>
             <Input id="positionName" name="positionName" defaultValue={values?.positionName ?? ""} required maxLength={200} />
           </Field>
-          <Field name="jobLevel" label={t("jobLevel")}>
-            <Input id="jobLevel" name="jobLevel" defaultValue={values?.jobLevel ?? ""} maxLength={80} />
+          <Field name="seniorityLevel" label={tp("fields.seniorityLevel")}>
+            <Select id="seniorityLevel" name="seniorityLevel" defaultValue={values?.seniorityLevel ?? ""}>
+              <option value="">—</option>
+              {SENIORITY_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`seniorityLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field name="positionLevel" label={tp("fields.positionLevel")}>
+            <Select id="positionLevel" name="positionLevel" defaultValue={values?.positionLevel ?? ""}>
+              <option value="">—</option>
+              {POSITION_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`positionLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field name="employmentType" label={t("employmentType")}>
             <Select id="employmentType" name="employmentType" defaultValue={values?.employmentType ?? "employee"}>
@@ -116,7 +136,7 @@ export function OfferForm({
             <Input id="probationMonths" name="probationMonths" type="number" min={0} max={OFFER_LIMITS.probationMonths} defaultValue={values?.probationMonths ?? 2} />
           </Field>
           <Field name="probationSalaryPercent" label={t("probationPercent")}>
-            <Input id="probationSalaryPercent" name="probationSalaryPercent" type="number" min={OFFER_LIMITS.probationPercentMin} max={100} defaultValue={values?.probationSalaryPercent ?? 85} />
+            <Input id="probationSalaryPercent" name="probationSalaryPercent" type="number" min={0} max={100} defaultValue={values?.probationSalaryPercent ?? 85} />
           </Field>
         </div>
 
@@ -153,11 +173,21 @@ export function OfferMoves({ offerId, canSubmit, canSend, canWithdraw }: { offer
   const router = useRouter();
   const refresh = () => router.refresh();
   const submit = useActionForm(submitOfferAction, { extra: { offerId }, onSuccess: refresh });
-  const send = useActionForm(sendOfferAction, { extra: { offerId }, onSuccess: refresh });
+  // What became of the email to the candidate: queued, or why it could not go.
+  const [letter, setLetter] = useState<string | null>(null);
+  const send = useActionForm<{ letter: string }>(sendOfferAction, {
+    extra: { offerId },
+    onSuccess: (data) => {
+      setLetter(data.letter);
+      refresh();
+    },
+  });
   const withdraw = useActionForm(withdrawOfferAction, { extra: { offerId }, onSuccess: refresh });
+  const tLetter = useTranslations("recruit.letterStatus");
 
   return (
     <div className="flex flex-col gap-2">
+      {letter ? <p className="text-xs text-muted-foreground">{tLetter(letter as "queued")}</p> : null}
       <div className="flex flex-wrap items-center gap-2">
         {canSubmit ? (
           <form onSubmit={submit.onSubmit}>

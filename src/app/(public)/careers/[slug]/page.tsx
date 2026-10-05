@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { visitorOf } from "@/lib/public-action";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { CONSENT_VERSION, PUBLIC_LIMITS } from "@/modules/recruit/enums";
-import { findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
+import { CONSENT_VERSION, DEFAULT_RETENTION_MONTHS, PUBLIC_LIMITS } from "@/modules/recruit/enums";
+import { countFormLoad, findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
@@ -40,7 +44,10 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
   const t = await getTranslations("recruit.careers");
   const locale = await getLocale();
   const format = await getFormatter();
-  const token = issueFormToken(slug);
+  // Rendering the form mints a signed token, so form loads are counted per visitor. Over the limit
+  // the advertisement is still shown — it is public — but no token is minted and no form drawn.
+  const formAllowed = (await countFormLoad(visitorOf({ headers: new Headers(await headers()) }))).ok;
+  const token = formAllowed ? issueFormToken(slug) : null;
   const title = locale === "en" && opening.titleEn ? opening.titleEn : opening.title;
 
   const sections = [
@@ -87,8 +94,13 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
           </p>
         ) : null}
 
+        {token === null ? (
+          <p className="text-sm text-muted-foreground">{t("formLimited")}</p>
+        ) : (
         <form method="post" action={`/careers/${slug}/apply`} encType="multipart/form-data" className="flex flex-col gap-4">
           <input type="hidden" name="formToken" value={token} />
+          {/* The applicant's letters are written in the language they read this page in. */}
+          <input type="hidden" name="locale" value={locale} />
           {/* The honeypot. Hidden from people by CSS and from screen readers by aria-hidden, and
               taken out of the tab order — anything in it was put there by a machine. */}
           <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
@@ -131,13 +143,13 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="links">{t("fields.links")}</Label>
-            <textarea id="links" name="links" rows={3} maxLength={PUBLIC_LIMITS.link * PUBLIC_LIMITS.links} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" placeholder={t("fields.linksPlaceholder")} />
+            <Textarea id="links" name="links" rows={3} maxLength={PUBLIC_LIMITS.link * PUBLIC_LIMITS.links} placeholder={t("fields.linksPlaceholder")} />
             <p className="text-xs text-muted-foreground">{t("fields.linksHint")}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="coverLetter">{t("fields.coverLetter")}</Label>
-            <textarea id="coverLetter" name="coverLetter" rows={6} maxLength={PUBLIC_LIMITS.coverLetter} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+            <Textarea id="coverLetter" name="coverLetter" rows={6} maxLength={PUBLIC_LIMITS.coverLetter} />
           </div>
 
           {opening.questions.map((question) => (
@@ -156,7 +168,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
                   ))}
                 </Select>
               ) : question.kind === "long_text" ? (
-                <textarea id={`answers.${question.key}`} name={`answers.${question.key}`} rows={4} required={question.required} maxLength={PUBLIC_LIMITS.answer} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+                <Textarea id={`answers.${question.key}`} name={`answers.${question.key}`} rows={4} required={question.required} maxLength={PUBLIC_LIMITS.answer} />
               ) : (
                 <Input id={`answers.${question.key}`} name={`answers.${question.key}`} required={question.required} maxLength={PUBLIC_LIMITS.answer} />
               )}
@@ -172,14 +184,16 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
               with the form so the record says which wording this person actually agreed to. */}
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 text-xs">
             <p className="font-medium">{t("consent.title")}</p>
-            <p className="whitespace-pre-line text-muted-foreground">{t("consent.body", { months: 12 })}</p>
+            {/* The months are the retention job's own figure, and the address is where an erasure
+                request goes: HR acts on it from the candidate's page. */}
+            <p className="whitespace-pre-line text-muted-foreground">{t("consent.body", { months: DEFAULT_RETENTION_MONTHS, email: t("consent.contactEmail") })}</p>
             <input type="hidden" name="consentVersion" value={CONSENT_VERSION} />
             <label className="flex items-start gap-2">
-              <input type="checkbox" name="consent" value="true" required className="mt-0.5" />
+              <Checkbox name="consent" value="true" required className="mt-0.5" />
               <span>{t("consent.agree")} *</span>
             </label>
             <label className="flex items-start gap-2">
-              <input type="checkbox" name="talentPool" value="true" className="mt-0.5" />
+              <Checkbox name="talentPool" value="true" className="mt-0.5" />
               <span>{t("consent.talentPool")}</span>
             </label>
           </div>
@@ -188,6 +202,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
             {t("submit")}
           </Button>
         </form>
+        )}
       </section>
     </div>
   );

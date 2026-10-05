@@ -2,7 +2,7 @@
 // ends access), calling a termination off, rehire, a move to another entity, and the
 // likely-duplicate check before a hire.
 import "server-only";
-import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -11,11 +11,13 @@ import { toSearchKey } from "@/lib/text";
 // the boundary the module rule allows.
 import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
-import { endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
+import { assertNotLastActiveOwner, endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
-import { invalidatePeople } from "@/modules/platform/people/service";
+import { revokeSessionsOf } from "@/modules/platform/auth/service";
+import { invalidatePeople, type PersonRow, setPersonSuspended } from "@/modules/platform/people/service";
 import { describePlacement, findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
-import { getPersonTarget, type HireInput, inTransaction, invalidatePersonView, offboardLeavers, openEmployment, resolvePlacement } from "./service";
+import { type ContractInput, createContract } from "./records";
+import { changeWorkforceTypeIn, getPersonTarget, type HireInput, inTransaction, invalidatePersonView, offboardLeavers, openEmployment, resolvePlacement, type WorkforceType } from "./service";
 
 /** A person's timeline. null = the viewer does not read the personal tier of this person. */
 export async function listLifecycleEvents(principal: Principal, personId: string): Promise<LifecycleEventView[] | null> {
@@ -42,10 +44,82 @@ export async function recordEvent(personId: string, input: { type: RecordedEvent
   });
 }
 
+// ── A passed probation, a renewed contract ──────────────────────────────────────────────────
+
+export type ContractEventInput = {
+  type: "probation_pass" | "contract_renewal";
+  effectiveDate: IsoDate;
+  reason: string | null;
+  note: string | null;
+  /** The labour contract that starts with the event. */
+  contract: Omit<ContractInput, "parentContractId">;
+  /** A probation pass moves the person to this type from the effective date (an employee, usually). */
+  workforceType?: WorkforceType | null;
+};
+
+/**
+ * A probation passed, or a contract renewed, as one change (FR-CHR-09): the new labour contract,
+ * the workforce type from that day (for a probation, "employee" instead of "probation") and the
+ * event on the timeline, in one transaction — so the record never says "passed probation" while the
+ * person is still on probation terms, or the reverse. The contract it follows stops the day before,
+ * if it was still running; the decision paper is issued by the action, linked to the event.
+ */
+export async function recordContractEvent(personId: string, input: ContractEventInput, actorPersonId: string) {
+  const result = await inTransaction(async (tx) => {
+    const employment = await latestEmployment(tx, personId);
+    if (input.effectiveDate < employment.startDate) throw new ActionError("event_before_start");
+    if (employment.endDate && input.effectiveDate > employment.endDate) throw new ActionError("already_terminated");
+    if (input.contract.startDate !== input.effectiveDate) throw new ActionError("contract_start_not_effective");
+
+    // What it follows stops the day before: the probation contract after a pass, the running labour
+    // contract after a renewal. Ended, not deleted: it stays the record of what was signed.
+    const follows = input.type === "probation_pass" ? ["probation"] : ["probation", "fixed_term", "indefinite"];
+    const dayBefore = addDays(input.effectiveDate, -1);
+    const ended = await tx
+      .update(schema.contract)
+      .set({ terminatedOn: dayBefore, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.contract.employmentId, employment.id),
+          isNull(schema.contract.deletedAt),
+          isNull(schema.contract.terminatedOn),
+          inArray(schema.contract.type, follows as ("probation" | "fixed_term" | "indefinite")[]),
+          lte(schema.contract.startDate, dayBefore),
+          or(isNull(schema.contract.endDate), gte(schema.contract.endDate, input.effectiveDate)),
+        ),
+      )
+      .returning({ id: schema.contract.id, number: schema.contract.number });
+    const contract = await createContract(personId, { ...input.contract, parentContractId: null }, actorPersonId, tx);
+    const moved = input.workforceType ? await changeWorkforceTypeIn(tx, personId, { validFrom: input.effectiveDate, workforceType: input.workforceType, changeReason: input.reason }, actorPersonId) : null;
+    const event = await recordLifecycleEvent(
+      tx,
+      {
+        personId,
+        employmentId: employment.id,
+        entityId: employment.entityId,
+        type: input.type,
+        effectiveDate: input.effectiveDate,
+        reason: input.reason,
+        note: input.note,
+        assignmentId: moved?.after.id ?? null,
+        details: { contractId: contract.id, contractNumber: contract.number, endedContracts: ended.map((row) => row.id), ...(moved ? { workforceType: { from: moved.before.workforceType, to: moved.after.workforceType } } : {}) },
+      },
+      actorPersonId,
+    );
+    return { event, contract, ended, moved };
+  });
+  await invalidatePersonView(personId);
+  return result;
+}
+
+/** An event that wrote a contract or moved the placement mirrors a change still in force: struck only by correcting those. */
+const hasEffects = (event: LifecycleEventRow) => typeof event.details.contractId === "string" || !!event.details.workforceType;
+
 /** Only hand-recorded events can be struck: the others mirror a change that would still be in force. */
 export async function cancelRecordedEvent(eventId: string): Promise<{ before: LifecycleEventRow; after: LifecycleEventRow }> {
   const before = await findLifecycleEvent(eventId);
   if (!before || before.status === "cancelled") throw new ActionError("event_not_found");
+  if (hasEffects(before)) throw new ActionError("event_has_effects");
   const [after] = await db().update(schema.lifecycleEvent).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, eventId)).returning();
   return { before, after };
 }
@@ -62,48 +136,51 @@ type Closed = { assignments: { id: string; validTo: IsoDate | null }[]; grants: 
  * for a past date, otherwise through the daily roll-over; until then the person keeps working.
  */
 export async function terminateEmployment(personId: string, input: TerminationInput, actorPersonId: string) {
-  const result = await inTransaction(async (tx) => {
-    const employment = await latestEmployment(tx, personId);
-    if (employment.endDate) throw new ActionError("already_terminated");
-    if (input.lastDay < employment.startDate) throw new ActionError("termination_before_start");
-
-    const [ended] = await tx.update(schema.employment).set({ endDate: input.lastDay, updatedAt: new Date() }).where(eq(schema.employment.id, employment.id)).returning();
-
-    const assignments = await tx.select().from(schema.assignment).where(eq(schema.assignment.employmentId, employment.id));
-    const never = assignments.filter((row) => row.validFrom > input.lastDay);
-    const open = assignments.filter((row) => row.validFrom <= input.lastDay && (row.validTo === null || row.validTo > input.lastDay));
-    if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
-    if (open.length) await tx.update(schema.assignment).set({ validTo: input.lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
-    await invalidatePersonView(personId);
-    const current = open.find((row) => row.kind === "primary") ?? null;
-
-    const contracts = await tx
-      .update(schema.contract)
-      .set({ terminatedOn: input.lastDay, updatedAt: new Date() })
-      .where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt), isNull(schema.contract.terminatedOn), or(isNull(schema.contract.endDate), gt(schema.contract.endDate, input.lastDay))))
-      .returning({ id: schema.contract.id });
-    const { ended: grants } = await endRoleGrantsOf(tx, personId, input.lastDay);
-
-    const closed: Closed = { assignments: open.map((row) => ({ id: row.id, validTo: row.validTo })), grants, contracts: contracts.map((row) => row.id) };
-    const today = todayInVietnam();
-    const event = await recordLifecycleEvent(
-      tx,
-      { personId, employmentId: employment.id, entityId: employment.entityId, type: "termination", effectiveDate: input.lastDay, status: input.lastDay < today ? "applied" : "pending", reason: input.reason, note: input.note, details: { closed, droppedAssignments: never.length } },
-      actorPersonId,
-    );
-    if (input.resignationEventId) {
-      await tx.update(schema.lifecycleEvent).set({ status: "applied", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, input.resignationEventId), eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "resignation")));
-    }
-    const { tasks } = await startChecklist(tx, event, "offboarding", { departmentId: current?.departmentId ?? null, positionId: current?.positionId ?? null }, actorPersonId);
-    // Whatever the leaver is still holding becomes one return task each, due by the last working
-    // day, beside the checklist's own "collect the equipment" step (FR-AST-02). What happens to a
-    // camera is the register's business, so it decides who collects it and what it is called.
-    const returns = await openReturnTasks(tx, personId, input.lastDay, actorPersonId);
-    const offboardedNow = (await offboardLeavers(today, personId, tx)) > 0;
-    return { employment: ended, before: employment, event, tasks, closed, offboardedNow, returns };
-  });
+  const result = await inTransaction((tx) => terminateEmploymentIn(tx, personId, input, actorPersonId));
   await invalidateGrants(personId);
   return result;
+}
+
+/** The termination in the caller's transaction — an approved one (FR-CHR-09). The caller drops the person's grants (`invalidateGrants`) once it has committed. */
+export async function terminateEmploymentIn(tx: Tx, personId: string, input: TerminationInput, actorPersonId: string) {
+  const employment = await latestEmployment(tx, personId);
+  if (employment.endDate) throw new ActionError("already_terminated");
+  if (input.lastDay < employment.startDate) throw new ActionError("termination_before_start");
+
+  const [ended] = await tx.update(schema.employment).set({ endDate: input.lastDay, updatedAt: new Date() }).where(eq(schema.employment.id, employment.id)).returning();
+
+  const assignments = await tx.select().from(schema.assignment).where(eq(schema.assignment.employmentId, employment.id));
+  const never = assignments.filter((row) => row.validFrom > input.lastDay);
+  const open = assignments.filter((row) => row.validFrom <= input.lastDay && (row.validTo === null || row.validTo > input.lastDay));
+  if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
+  if (open.length) await tx.update(schema.assignment).set({ validTo: input.lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
+  await invalidatePersonView(personId);
+  const current = open.find((row) => row.kind === "primary") ?? null;
+
+  const contracts = await tx
+    .update(schema.contract)
+    .set({ terminatedOn: input.lastDay, updatedAt: new Date() })
+    .where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt), isNull(schema.contract.terminatedOn), or(isNull(schema.contract.endDate), gt(schema.contract.endDate, input.lastDay))))
+    .returning({ id: schema.contract.id });
+  const { ended: grants } = await endRoleGrantsOf(tx, personId, input.lastDay);
+
+  const closed: Closed = { assignments: open.map((row) => ({ id: row.id, validTo: row.validTo })), grants, contracts: contracts.map((row) => row.id) };
+  const today = todayInVietnam();
+  const event = await recordLifecycleEvent(
+    tx,
+    { personId, employmentId: employment.id, entityId: employment.entityId, type: "termination", effectiveDate: input.lastDay, status: input.lastDay < today ? "applied" : "pending", reason: input.reason, note: input.note, details: { closed, droppedAssignments: never.length, resignationEventId: input.resignationEventId ?? null } },
+    actorPersonId,
+  );
+  if (input.resignationEventId) {
+    await tx.update(schema.lifecycleEvent).set({ status: "applied", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, input.resignationEventId), eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "resignation")));
+  }
+  const { tasks } = await startChecklist(tx, event, "offboarding", { departmentId: current?.departmentId ?? null, positionId: current?.positionId ?? null }, actorPersonId);
+  // Whatever the leaver is still holding becomes one return task each, due by the last working
+  // day, beside the checklist's own "collect the equipment" step (FR-AST-02). What happens to a
+  // camera is the register's business, so it decides who collects it and what it is called.
+  const returns = await openReturnTasks(tx, personId, input.lastDay, actorPersonId);
+  const offboardedNow = (await offboardLeavers(today, personId, tx, actorPersonId)) > 0;
+  return { employment: ended, before: employment, event, tasks, closed, offboardedNow, returns };
 }
 
 /** Calls off a termination whose last day has not passed: everything it closed is reopened. Assignments it dropped are not brought back. */
@@ -120,6 +197,9 @@ export async function cancelTermination(eventId: string) {
     await invalidatePersonView(event.personId);
     if (closed.contracts.length) await tx.update(schema.contract).set({ terminatedOn: null, updatedAt: new Date() }).where(inArray(schema.contract.id, closed.contracts));
     await restoreRoleGrants(tx, closed.grants);
+    // The resignation it carried out is called off with it: the person is staying, and may resign again later.
+    const resignationEventId = typeof event.details.resignationEventId === "string" ? event.details.resignationEventId : null;
+    if (resignationEventId) await tx.update(schema.lifecycleEvent).set({ status: "cancelled", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, resignationEventId), eq(schema.lifecycleEvent.type, "resignation")));
     const cancelledTasks = await cancelOpenTasksOfContext(tx, { type: LIFECYCLE_CONTEXT, id: event.id });
     // The equipment is not going back after all. Anything already handed in stays handed in.
     const cancelledReturns = await cancelReturnTasks(tx, event.personId);
@@ -128,6 +208,37 @@ export async function cancelTermination(eventId: string) {
   });
   await invalidateGrants(result.before.personId);
   return result;
+}
+
+// ── Suspension (FR-PLT-05) ──────────────────────────────────────────────────────────────────
+
+/**
+ * Suspends a person's account: they are signed out everywhere at once and cannot sign in until it
+ * is lifted. Nothing else moves — employment, placement and role grants stay as they are, so
+ * lifting it gives back exactly what was there. Approvals waiting for them are not moved either:
+ * an administrator reassigns them or sets a delegation in their name (PLT-02). Only someone active
+ * is suspended (a leaver is already locked out, a newcomer has not started), never oneself, and
+ * never the last owner who can still sign in.
+ */
+export async function suspendPerson(personId: string, actorPersonId: string): Promise<{ person: PersonRow; sessionsRevoked: number }> {
+  if (personId === actorPersonId) throw new ActionError("suspend_self");
+  return inTransaction(async (tx) => {
+    const [before] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1).for("update");
+    if (!before) throw new ActionError("person_not_found");
+    if (before.status !== "active") throw new ActionError("suspend_not_active");
+    await assertNotLastActiveOwner(tx, personId);
+    const person = (await setPersonSuspended(tx, personId, true))!;
+    return { person, sessionsRevoked: await revokeSessionsOf(person.workEmail, tx) };
+  });
+}
+
+/** Lifts a suspension: the person is active again, with the grants and the placement they had, and signs in afresh. */
+export async function liftSuspension(personId: string): Promise<{ person: PersonRow }> {
+  return inTransaction(async (tx) => {
+    const person = await setPersonSuspended(tx, personId, false);
+    if (!person) throw new ActionError("suspend_not_suspended");
+    return { person };
+  });
 }
 
 // ── Rehire and duplicates ───────────────────────────────────────────────────────────────────

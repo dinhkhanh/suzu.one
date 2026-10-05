@@ -5,7 +5,8 @@ import "server-only";
 import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
-import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
+import { jobTitle } from "@/lib/job-levels";
+import { EXPORT_ROW_LIMIT, type ExportColumn, type ExportFile, toTable } from "@/modules/platform/export/table";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
@@ -15,7 +16,7 @@ import { listPeople, type PeopleFilters, type PeopleListRow } from "./service";
 type Locale = "vi" | "en";
 const translator = (locale: Locale) => createTranslator({ locale, messages: locale === "vi" ? vi : en });
 
-export async function buildPeopleExport(principal: Principal, filters: Omit<PeopleFilters, "page">, locale: Locale): Promise<{ file: CsvFile; total: number }> {
+export async function buildPeopleExport(principal: Principal, filters: Omit<PeopleFilters, "page">, locale: Locale): Promise<{ file: ExportFile; total: number }> {
   const { rows, total } = await listPeople(principal, { ...filters, page: 1 }, { pageSize: EXPORT_ROW_LIMIT });
   const t = translator(locale);
   // The tier shaping is the list's own: personal-tier cells are already null where the viewer may not read them.
@@ -25,16 +26,17 @@ export async function buildPeopleExport(principal: Principal, filters: Omit<Peop
     { header: t("people.fields.workEmail"), value: (row) => row.workEmail },
     { header: t("people.fields.entity"), value: (row) => row.entityName },
     { header: t("people.fields.department"), value: (row) => row.departmentName },
+    { header: t("people.fields.jobTitle"), value: (row) => jobTitle((key) => t(`people.${key}`), row) },
     { header: t("people.fields.position"), value: (row) => row.positionName },
     { header: t("people.fields.managerId"), value: (row) => row.managerName },
     { header: t("people.fields.workforceType"), value: (row) => (row.workforceType ? t(`people.workforceType.${row.workforceType}`) : null) },
     { header: t("people.fields.status"), value: (row) => (row.status ? t(`people.status.${row.status}`) : null) },
   ];
-  const file: CsvFile = { fileName: `people-${todayInVietnam()}.csv`, csv: toCsv(columns, rows), rowCount: rows.length, truncated: total > rows.length };
+  const file: ExportFile = { fileName: `people-${todayInVietnam()}`, table: toTable(columns, rows), rowCount: rows.length, truncated: total > rows.length };
   return { file, total };
 }
 
-export async function buildHeadcountExport(principal: Principal, filters: HeadcountFilters, locale: Locale): Promise<{ file: CsvFile; scoped: boolean }> {
+export async function buildHeadcountExport(principal: Principal, filters: HeadcountFilters, locale: Locale): Promise<{ file: ExportFile; scoped: boolean }> {
   const report = await getHeadcountReport(principal, filters);
   if (!report) throw new ActionError("forbidden");
   const t = translator(locale);
@@ -55,7 +57,7 @@ export async function buildHeadcountExport(principal: Principal, filters: Headco
     ...report.contractsExpiring.map((row) => ({ section: t("reports.headcount.contractsExpiring"), key: `${row.employeeCode} ${row.fullName} (${t(`records.contracts.types.${row.type}` as never)})`, count: row.endDate })),
     ...report.probations.map((row) => ({ section: t("reports.headcount.probations"), key: `${row.employeeCode} ${row.fullName}`, count: row.endDate })),
   ];
-  const csv = toCsv(
+  const table = toTable(
     [
       { header: t("reports.headcount.columns.section"), value: (row: (typeof lines)[number]) => row.section },
       { header: t("reports.headcount.columns.group"), value: (row) => row.key },
@@ -63,6 +65,6 @@ export async function buildHeadcountExport(principal: Principal, filters: Headco
     ],
     lines,
   );
-  const file: CsvFile = { fileName: `headcount-${filters.asOf}.csv`, csv, rowCount: lines.length, truncated: false };
+  const file: ExportFile = { fileName: `headcount-${filters.asOf}`, table, rowCount: lines.length, truncated: false };
   return { file, scoped: report.scoped };
 }

@@ -23,7 +23,8 @@ export function dotOf(status: string, reviewStatus?: string | null): DotCategory
 const DOT: Record<DotCategory, string> = {
   backlog: "border-2 border-dashed border-faint/70 bg-transparent",
   todo: "border-2 border-faint/70 bg-transparent",
-  in_progress: "bg-primary",
+  // `info`, not `primary`: a project page re-tints `primary` to the project's colour.
+  in_progress: "bg-info",
   in_review: "bg-tone-violet",
   done: "bg-success",
   cancelled: "bg-faint/40",
@@ -56,12 +57,14 @@ export function ColorSquare({ color, className }: { color?: string | null; class
 /**
  * The project chip of a row: a muted pill with the colour square and the name, cut short when
  * long. Given the project's id, the name is the way to the project — except in a row that is a
- * link itself, where `RecordLink` leaves it as text.
+ * link itself, where `RecordLink` leaves it as text. `jobNumber` is the project's job number
+ * (FR-PJM-02), a faint prefix: the page that knows it passes it in, the row itself does not look it up.
  */
-export function ProjectChip({ name, color, className, projectId }: { name: string; color?: string | null; className?: string; projectId?: string | null }) {
+export function ProjectChip({ name, color, className, projectId, jobNumber }: { name: string; color?: string | null; className?: string; projectId?: string | null; jobNumber?: string | null }) {
   return (
-    <span className={cn("inline-flex h-[22px] max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 text-xs text-muted-foreground", className)} title={name}>
+    <span className={cn("inline-flex h-[22px] max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 text-xs text-muted-foreground", className)} title={jobNumber ? `${jobNumber} ${name}` : name}>
       <ColorSquare color={color} />
+      {jobNumber ? <span className="shrink-0 font-mono text-[0.6875rem] text-faint">{jobNumber}</span> : null}
       <RecordLink kind="project" id={projectId} className="truncate">
         {name}
       </RecordLink>

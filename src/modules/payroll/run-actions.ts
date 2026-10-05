@@ -17,7 +17,9 @@ import { cancelRun, createOffCycleRun, createRegularRun, getRun, removeRunInput,
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const text = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable().default(null));
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-// Forms post "20.000.000" or "20,000,000"; a figure may be negative (an advance, a penalty).
+// Forms post "20.000.000" or "20,000,000". A sign is read, not dropped: `setRunInput` then refuses
+// a negative figure with the reason (a deduction is entered as a positive amount; a negative
+// correction to an earning is a retro item) instead of this schema answering "invalid".
 const signedVnd = z.preprocess(
   (value) => (typeof value === "string" ? (value.trim() === "" ? 0 : /^-?[\d.,\s_]+$/.test(value) ? Number(value.replace(/[.,\s_]/g, "")) : Number.NaN) : value),
   z.number().int().min(-100_000_000_000).max(100_000_000_000),
@@ -57,7 +59,8 @@ const offCyclePipeline = createAction({
     month,
     name: z.string().trim().min(1).max(200),
     note: text(500),
-    lines: z.array(z.object({ personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) })).min(1).max(1000),
+    // No line at all is a run that only pays leavers' unused leave; the service refuses it when there is none.
+    lines: z.array(z.object({ personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) })).max(1000),
   }),
   // Nobody puts a line for themselves into an off-cycle run, as nobody types into their own line.
   authorize: (user, input) => canManageCompensation(user.principal, { entityId: input.entityId }) && input.lines.every((line) => line.personId !== user.person.id),
@@ -108,10 +111,11 @@ const setInputPipeline = createAction({
   // nobody types figures into their own pay.
   authorize: async (user, input) => mayTouchInput(user.principal, input),
   run: async ({ user, input }) => {
-    await setRunInput(input, user.person.id);
+    const { reopened } = await setRunInput(input, user.person.id);
     const run = await runFor(input.runId);
     refresh(input.runId);
-    return { data: { ok: true }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code}`, after: { personId: input.personId, code: input.code } } };
+    // A calculated run that the change sent back to draft says so here, and in the run's own history.
+    return { data: { ok: true, reopened }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code}${reopened ? " — run back to draft" : ""}`, ...(reopened ? { before: { status: "calculated" } } : {}), after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) } } };
   },
 });
 export async function setPayrollRunInputAction(input: unknown) {
@@ -123,11 +127,11 @@ const removeInputPipeline = createAction({
   stepUp: true,
   input: z.object({ runId: z.uuid(), personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/) }),
   authorize: async (user, input) => mayTouchInput(user.principal, input),
-  run: async ({ input }) => {
-    await removeRunInput(input.runId, input.personId, input.code);
+  run: async ({ user, input }) => {
+    const { reopened } = await removeRunInput(input.runId, input.personId, input.code, undefined, user.person.id);
     const run = await runFor(input.runId);
     refresh(input.runId);
-    return { data: { ok: true }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code} removed`, after: { personId: input.personId, code: input.code } } };
+    return { data: { ok: true, reopened }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code} removed${reopened ? " — run back to draft" : ""}`, ...(reopened ? { before: { status: "calculated" } } : {}), after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) } } };
   },
 });
 export async function removePayrollRunInputAction(input: unknown) {
@@ -152,15 +156,18 @@ const stepPipeline = createAction({
     return !!run && allows[RUN_STEPS[input.step].permission](user.principal, run);
   },
   run: async ({ user, input }) => {
-    const { before, run } = await stepRun(input.runId, input.step, { personId: user.person.id }, { comment: input.comment });
+    const { before, run, withdrawn } = await stepRun(input.runId, input.step, { personId: user.person.id }, { comment: input.comment });
     refresh(input.runId);
+    // A return takes the payslips back: the people who had one stop seeing it at once.
+    if (withdrawn.length > 0) revalidatePath("/payslips");
     return {
       data: { status: run.status },
       audit: {
         resource: { type: "payroll_run", id: run.id, entityId: run.entityId },
         summary: `${run.month} ${before.status} → ${run.status}`,
         before: { status: before.status },
-        after: { status: run.status, step: input.step },
+        // How many payslips were withdrawn, not whose and not what they said.
+        after: { status: run.status, step: input.step, ...(withdrawn.length > 0 ? { payslipsWithdrawn: withdrawn.length } : {}) },
       },
     };
   },

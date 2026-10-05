@@ -13,13 +13,22 @@
 //   4. A locked run is evidence: a database trigger refuses to change it, and its period is
 //      closed (DR-07). A later correction is a retro item in the next month, never an edit.
 //
+// Two more keep what is signed equal to what is paid:
+//   5. Only figures that are current are proposed. Whatever changes what a calculated run was
+//      worked out from — a typed-in figure, a retro item — sends it back to `draft`
+//      (`reopenCalculatedRun`), and `stepRun` asks `run-readiness.ts` again before a proposal.
+//   6. A payslip never outlives the signature under it: a run sent back after its payslips went
+//      out withdraws them, and re-approval releases them again (FR-PAY-32).
+//
 // No authorization inside — the actions check the permission over the run's entity first, exactly
 // as `runs.ts` and `calculation.ts` do.
 import "server-only";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { notify } from "@/modules/platform/notifications/service";
 import { settlementOf } from "./payments";
+import { getRunReadiness } from "./run-readiness";
 import type { PayrollRunRow } from "./run-storage";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -84,8 +93,9 @@ function signature(step: RunStep, actorPersonId: string | null, now: Date): Part
     case "approve":
       return { approvedAt: now, approvedByPersonId: actorPersonId };
     case "return":
-      // Back with HR: nobody has proposed it and nobody has signed it any more.
-      return { proposedAt: null, proposedByPersonId: null, approvedAt: null, approvedByPersonId: null };
+      // Back with HR: nobody has proposed it and nobody has signed it any more — and the payslips
+      // released under that signature are withdrawn with it (below), so the run says none are out.
+      return { proposedAt: null, proposedByPersonId: null, approvedAt: null, approvedByPersonId: null, payslipsPublishedAt: null, payslipsPublishedByPersonId: null };
     case "prepare_payment":
       return { paymentPreparedAt: now, paymentPreparedByPersonId: actorPersonId };
     case "mark_paid":
@@ -95,12 +105,15 @@ function signature(step: RunStep, actorPersonId: string | null, now: Date): Part
   }
 }
 
-export type StepResult = { before: PayrollRunRow; run: PayrollRunRow; event: PayrollRunEventRow };
+export type StepResult = { before: PayrollRunRow; run: PayrollRunRow; event: PayrollRunEventRow; /** The people whose payslip a return took back. */ withdrawn: string[] };
 
 /**
  * Carries a run one step forward (or, for a return, back to HR). Refuses anything the lifecycle
  * does not allow from where the run stands — including a second attempt at a step already taken,
  * because the run is re-read and locked inside the transaction.
+ *
+ * A proposal is refused while the run is stale or something is in its way (`run-readiness.ts`):
+ * the details name the reasons and the people, never a figure.
  */
 export async function stepRun(runId: string, step: RunStep, actor: { personId: string | null }, input: { comment?: string | null } = {}, executor: Executor = db()): Promise<StepResult> {
   const rule = RUN_STEPS[step];
@@ -122,6 +135,14 @@ export async function stepRun(runId: string, step: RunStep, actor: { personId: s
     }
     // A calculation still in flight would overwrite what is being proposed.
     if (step === "propose" && (before.calcState === "queued" || before.calcState === "running")) throw new ActionError("run_calculating");
+    // What is put forward must be what would be paid: nothing changed since it was calculated,
+    // and nobody and no figure left out. Asked here, under the lock, so no writer in another
+    // module and no stale tab can get a proposal past it.
+    if (step === "propose") {
+      const readiness = await getRunReadiness(before, { executor: tx });
+      if (readiness.stale.length > 0) throw new ActionError("run_stale", { reasons: readiness.stale });
+      if (readiness.blockers.length > 0) throw new ActionError("run_has_blockers", { blockers: readiness.blockers });
+    }
 
     const now = new Date();
     const [run] = await tx
@@ -131,11 +152,52 @@ export async function stepRun(runId: string, step: RunStep, actor: { personId: s
       .returning();
     if (!run) throw new ActionError("run_step_not_allowed", { status: before.status, step });
 
+    // The figures are about to change, so nobody goes on reading the old ones (FR-PAY-32). The
+    // rows stay — a question asked about the month keeps its thread — and re-approval releases
+    // them again under the same id.
+    const withdrawn =
+      step === "return"
+        ? (await tx.update(schema.payslip).set({ withdrawnAt: now }).where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt))).returning({ personId: schema.payslip.personId })).map((row) => row.personId)
+        : [];
+
     const [event] = await tx.insert(schema.payrollRunEvent).values({ runId, fromStatus: before.status, toStatus: rule.to, actorPersonId: actor.personId, comment }).returning();
-    return { before, run, event };
+    return { before, run, event, withdrawn };
   };
 
-  return "transaction" in executor ? executor.transaction(work) : work(executor as Tx);
+  const result = "transaction" in executor ? await executor.transaction(work) : await work(executor as Tx);
+  // One notice, and only to the people who had a payslip to lose: the month, never a figure.
+  // Sent once the step has committed — or, given a caller's transaction, inside it, so nobody
+  // hears of a return that was undone.
+  if (result.withdrawn.length > 0) await notify({ recipients: result.withdrawn, kind: "payroll.payslip_withdrawn", params: { month: result.run.month }, link: "/payslips" }, executor);
+  return result;
+}
+
+/**
+ * Something a calculated run was worked out from has changed — a typed-in figure, a retro item —
+ * so its figures no longer say what it would pay: it goes back to `draft` until it is calculated
+ * again. A step in the run's history like any other (`calculated → draft`), with who caused it;
+ * the stored results stay, so the screen can still show what was last worked out. Does nothing to
+ * a run in any other status, and answers whether it did anything.
+ */
+export async function reopenCalculatedRun(executor: Executor, runId: string, actorPersonId: string | null): Promise<boolean> {
+  const [reopened] = await executor.update(schema.payrollRun).set({ status: "draft", updatedAt: new Date() }).where(and(eq(schema.payrollRun.id, runId), eq(schema.payrollRun.status, "calculated"))).returning({ id: schema.payrollRun.id });
+  if (!reopened) return false;
+  await executor.insert(schema.payrollRunEvent).values({ runId, fromStatus: "calculated", toStatus: "draft", actorPersonId, comment: null });
+  return true;
+}
+
+/**
+ * The same for every calculated regular run of an entity that pays a month after `sourceMonth`:
+ * a retro item of that month was added or taken away, and those runs would carry it.
+ */
+export async function reopenCalculatedRunsAfter(executor: Executor, entityId: string, sourceMonth: string, actorPersonId: string | null): Promise<string[]> {
+  const reopened = await executor
+    .update(schema.payrollRun)
+    .set({ status: "draft", updatedAt: new Date() })
+    .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.kind, "regular"), eq(schema.payrollRun.status, "calculated"), gt(schema.payrollRun.month, sourceMonth)))
+    .returning({ id: schema.payrollRun.id });
+  if (reopened.length > 0) await executor.insert(schema.payrollRunEvent).values(reopened.map((run) => ({ runId: run.id, fromStatus: "calculated" as const, toStatus: "draft" as const, actorPersonId, comment: null })));
+  return reopened.map((run) => run.id);
 }
 
 export async function listRunEvents(runId: string, executor: Executor = db()): Promise<PayrollRunEventRow[]> {

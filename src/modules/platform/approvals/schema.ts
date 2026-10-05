@@ -9,7 +9,9 @@ export const approvalRequestStatus = pgEnum("approval_request_status", ["pending
 export const approvalStepMode = pgEnum("approval_step_mode", ["any", "all"]);
 export const approvalStepStatus = pgEnum("approval_step_status", ["waiting", "pending", "approved", "rejected", "skipped"]);
 export const approvalAssigneeStatus = pgEnum("approval_assignee_status", ["pending", "approved", "rejected", "returned"]);
-export const approvalEventType = pgEnum("approval_event_type", ["submitted", "approved", "rejected", "returned", "resubmitted", "commented", "withdrawn", "delegated", "cancelled"]);
+// "reassigned": a turn moved without its approver handing it on — they left the company, or an
+// administrator moved it for someone who is away (PLT-02). The event's meta says which and to whom.
+export const approvalEventType = pgEnum("approval_event_type", ["submitted", "approved", "rejected", "returned", "resubmitted", "commented", "withdrawn", "delegated", "cancelled", "reassigned"]);
 
 export const approvalRequest = pgTable(
   "approval_request",

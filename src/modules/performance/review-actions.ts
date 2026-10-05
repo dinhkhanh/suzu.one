@@ -4,15 +4,33 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { notify } from "@/modules/platform/notifications/service";
-import { REVIEW_CYCLE_KINDS, REVIEW_CYCLE_STATUSES, REVIEW_FORM_KINDS, REVIEW_SECTION_KINDS } from "./enums";
+import { REVIEW_CYCLE_KINDS, REVIEW_CYCLE_STATUSES, REVIEW_FORM_KINDS, REVIEW_SECTION_KINDS, SECTION_KEY } from "./enums";
 import { loadDirectory } from "./people";
-import { canAcknowledgeReview, canDecideNomination, canManageCycle, canManageReviewTemplates, canNominatePeer, canReleaseReview, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, nominationIsApproved, type ReviewParties } from "./review-policy";
+import { enrolProbationReviews } from "./probation-reviews";
+import { sendOpenNotices } from "./review-notices";
+import {
+  canAcknowledgeReview,
+  canDecideNomination,
+  canManageCycle,
+  canManageReviewTemplates,
+  canNominatePeer,
+  canRecordSignOff,
+  canReleaseReview,
+  canReturnReviewForm,
+  canWriteManagerReview,
+  canWritePeerReview,
+  canWriteSelfReview,
+  nominationIsApproved,
+  type ReviewParties,
+} from "./review-policy";
 import {
   acknowledgeParticipant,
   addParticipant,
   advanceReviewCycle,
   calibrateParticipant,
   decideNomination,
+  enrolledOf,
+  findForm,
   findNomination,
   findParticipant,
   findReviewCycle,
@@ -21,9 +39,11 @@ import {
   listCycleParticipants,
   nominatePeer,
   partiesOfParticipant,
+  recordSignOff,
   releaseCycle,
   releaseParticipant,
   removeParticipant,
+  returnReviewForm,
   type ReviewCycleRow,
   type ReviewTemplateRow,
   saveReviewCycle,
@@ -42,8 +62,8 @@ function refresh(participantId?: string) {
   if (participantId) revalidatePath(`/performance/reviews/${participantId}`);
 }
 
-const templateFacts = (row: ReviewTemplateRow) => ({ name: row.name, sections: row.sections.length, scalePoints: row.ratingScale.length, isActive: row.isActive });
-const cycleFacts = (row: ReviewCycleRow) => ({ name: row.name, kind: row.kind, year: row.year, entityId: row.entityId, status: row.status, templateId: row.templateId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn, releaseOn: row.releaseOn, peersEnabled: row.peersEnabled });
+const templateFacts = (row: ReviewTemplateRow) => ({ name: row.name, kinds: row.kinds, sections: row.sections.length, scalePoints: row.ratingScale.length, isActive: row.isActive });
+const cycleFacts = (row: ReviewCycleRow) => ({ name: row.name, kind: row.kind, year: row.year, entityId: row.entityId, status: row.status, templateId: row.templateId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn, releaseOn: row.releaseOn, peersEnabled: row.peersEnabled, signOffRequired: row.signOffRequired, isRolling: row.isRolling });
 
 /** The parties of one participant, loaded once for both the authorize step and the run step. */
 async function partiesOf(participantId: string): Promise<ReviewParties | null> {
@@ -55,7 +75,7 @@ async function partiesOf(participantId: string): Promise<ReviewParties | null> {
 // ── Templates (HR) ──────────────────────────────────────────────────────────────────────────
 
 const sectionSchema = z.object({
-  key: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
+  key: z.string().trim().regex(SECTION_KEY),
   title: z.string().trim().min(1).max(300),
   titleEn: optional(z.string().trim().max(300)),
   kind: z.enum(REVIEW_SECTION_KINDS),
@@ -78,6 +98,8 @@ const saveTemplatePipeline = createAction({
     name: z.string().trim().min(1).max(200),
     nameEn: optional(z.string().trim().max(200)),
     description: optional(z.string().trim().max(2000)),
+    // The cycle kinds the form is for; none = any kind.
+    kinds: z.array(z.enum(REVIEW_CYCLE_KINDS)).max(REVIEW_CYCLE_KINDS.length).default([]),
     sections: z.array(sectionSchema).min(1).max(40),
     ratingScale: z.array(ratingPointSchema).min(2).max(10),
     isActive: checkbox,
@@ -90,6 +112,7 @@ const saveTemplatePipeline = createAction({
         name: input.name,
         nameEn: input.nameEn,
         description: input.description,
+        kinds: [...new Set(input.kinds)],
         sections: input.sections.map((section) => ({ ...section, askedOf: [...new Set(section.askedOf)] })),
         ratingScale: input.ratingScale.map((point) => ({ value: point.value, label: point.label, labelEn: point.labelEn, scoreBp: Math.round(point.scorePercent * 100) })),
         isActive: input.isActive,
@@ -124,6 +147,8 @@ const cycleSchema = z.object({
   peerMin: z.coerce.number().int().min(0).max(20).default(0),
   peerMax: z.coerce.number().int().min(0).max(20).default(5),
   peerAnonymous: checkbox,
+  signOffRequired: checkbox,
+  isRolling: checkbox,
 });
 
 const saveCyclePipeline = createAction({
@@ -157,8 +182,14 @@ const launchPipeline = createAction({
   },
   run: async ({ user, input }) => {
     const result = await launchReviewCycle(input.cycleId, user.person.id);
+    // A rolling probation cycle opens empty; whoever's probation is already ending goes in now
+    // rather than tomorrow morning. Everybody put in hears that their review is open.
+    // (The enrolment covers every open probation cycle, so whoever it puts in is told, whichever cycle.)
+    const enrolled = result.cycle.isRolling ? await enrolProbationReviews(todayInVietnam()) : result.enrolled;
+    await sendOpenNotices(enrolled);
     refresh();
-    return { data: { participants: result.participants }, audit: { resource: { type: "review_cycle", id: result.cycle.id, entityId: result.cycle.entityId }, summary: `launched: ${result.participants} participants`, after: cycleFacts(result.cycle) } };
+    const participants = result.participants + (result.cycle.isRolling ? enrolled.filter((row) => row.cycleId === result.cycle.id).length : 0);
+    return { data: { participants }, audit: { resource: { type: "review_cycle", id: result.cycle.id, entityId: result.cycle.entityId }, summary: `launched: ${participants} participants`, after: cycleFacts(result.cycle) } };
   },
 });
 export async function launchReviewCycleAction(input: unknown) {
@@ -184,15 +215,17 @@ export async function advanceReviewCycleAction(input: unknown) {
 
 const addParticipantPipeline = createAction({
   name: "performance.reviewParticipant.add",
-  input: z.object({ cycleId: z.uuid(), personId: z.uuid() }),
+  input: z.object({ cycleId: z.uuid(), personId: z.uuid(), selfDueOn: optional(isoDate), managerDueOn: optional(isoDate) }),
   authorize: async (user, input) => {
     const cycle = await findReviewCycle(input.cycleId);
     return !!cycle && canManageCycle(user.principal, cycle.entityId);
   },
   run: async ({ input }) => {
-    const row = await addParticipant(input.cycleId, input.personId, await loadDirectory());
+    const { participant: row, cycle } = await addParticipant(input.cycleId, input.personId, await loadDirectory(), undefined, { selfDueOn: input.selfDueOn, managerDueOn: input.managerDueOn });
+    // Into a cycle already open: the person and their manager are told now, as at the launch.
+    if (cycle.status === "active") await sendOpenNotices([enrolledOf(row, cycle)]);
     refresh();
-    return { data: { id: row.id }, audit: { resource: { type: "review_participant", id: row.id, entityId: row.entityId }, summary: "added", after: { personId: row.personId, managerPersonId: row.managerPersonId } } };
+    return { data: { id: row.id }, audit: { resource: { type: "review_participant", id: row.id, entityId: row.entityId }, summary: "added", after: { personId: row.personId, managerPersonId: row.managerPersonId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn } } };
   },
 });
 export async function addReviewParticipantAction(input: unknown) {
@@ -285,6 +318,46 @@ const releasePipeline = createAction({
 });
 export async function releaseReviewAction(input: unknown) {
   return releasePipeline(input);
+}
+
+// HR sends a submitted form back to its author with a reason; the author is told, never the content.
+const returnFormPipeline = createAction({
+  name: "performance.reviewForm.return",
+  input: z.object({ formId: z.uuid(), reason: z.string().trim().min(1).max(2000) }),
+  authorize: async (user, input) => {
+    const found = await findForm(input.formId);
+    if (!found) return false;
+    const parties = await partiesOf(found.participant.id);
+    return !!parties && canReturnReviewForm(user.principal, parties);
+  },
+  run: async ({ user, input }) => {
+    const { before, after, participant, cycle } = await returnReviewForm(input.formId, input.reason, user.person.id);
+    await notify({ recipients: [after.authorPersonId], kind: "performance.review_returned", params: { cycle: cycle.name }, link: `/performance/reviews/${participant.id}` });
+    refresh(participant.id);
+    // The reason is HR's note to the author, kept on the form; the audit says that it was sent back.
+    return { data: { stage: participant.stage }, audit: { resource: { type: "review_form", id: after.id, entityId: participant.entityId }, summary: `${after.kind} returned`, before: { status: before.status, overallRatingBp: before.overallRatingBp }, after: { status: after.status, stage: participant.stage } } };
+  },
+});
+export async function returnReviewFormAction(input: unknown) {
+  return returnFormPipeline(input);
+}
+
+// The sign-off conversation after release (FR-PRF-03): the day it was held and what was agreed.
+const signOffPipeline = createAction({
+  name: "performance.review.signOff",
+  input: z.object({ participantId: z.uuid(), heldOn: isoDate, note: optional(z.string().trim().max(4000)) }),
+  authorize: async (user, input) => {
+    const parties = await partiesOf(input.participantId);
+    return !!parties && canRecordSignOff(user.principal, parties);
+  },
+  run: async ({ user, input }) => {
+    const { after } = await recordSignOff(input.participantId, { heldOn: input.heldOn, note: input.note }, user.person.id, todayInVietnam());
+    refresh(input.participantId);
+    return { data: { stage: after.stage }, audit: { resource: { type: "review_participant", id: after.id, entityId: after.entityId }, summary: "signed off", after: { stage: after.stage, signOffOn: after.signOffOn } } };
+  },
+});
+export async function recordSignOffAction(input: unknown) {
+  return signOffPipeline(input);
 }
 
 // Release everybody who is ready. The ones the bulk action left alone come back in `data`.

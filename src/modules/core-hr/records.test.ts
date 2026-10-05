@@ -15,13 +15,14 @@ vi.mock("@/lib/env", () => ({
 }));
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { sendHrAlerts } from "./alerts";
+import { contractsToWatch, sendHrAlerts } from "./alerts";
+import { isLabourContract } from "./engine/contract-rules";
 import { createContract, createDependent, deleteContract, findPeopleByNationalId, getContractSalaryTerms, getSensitiveFields, getSensitiveSummary, listContracts, listDependents, listDocuments, type SensitiveFields, updateSensitiveFields } from "./records";
 import { rewrapEncryptedFields } from "./rewrap";
 import { hirePerson } from "./service";
@@ -60,7 +61,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-01",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, orgUnitId: video.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: video.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
       },
       actor.id,
     );
@@ -205,5 +206,54 @@ describe("daily alerts", () => {
     expect(await sendHrAlerts(today)).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 0 });
     expect(await sendHrAlerts(addDays(today, 1))).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 0 });
     expect(await sendHrAlerts(addDays(today, 15))).toMatchObject({ contractAlerts: 1 });
+  });
+
+  it("works out several people's alerts together, each to their own HR and their own person", async () => {
+    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: "test/colleague-id.pdf", fileName: "colleague-id.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: "colleague-id", entityId: ids.media, tier: "restricted", status: "ready" }).returning();
+    await db().insert(schema.personDocument).values({ personId: ids.colleague, entityId: ids.media, category: "id_scan", title: "Colleague ID", tier: "restricted", fileId: file.id, expiresOn: addDays(today, 12) });
+    // Huy's alerts are still due today but already claimed; only the colleague's is new.
+    expect(await sendHrAlerts(today)).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 1 });
+    const sent = (await db().select().from(schema.notification)).filter((row) => row.kind === "hr.document_expiring" && (row.params as { label?: string }).label === "Colleague ID");
+    expect(sent.map((row) => row.recipientPersonId).sort()).toEqual([ids.hrStaff, ids.hrAdmin, ids.colleague].sort());
+    expect(sent[0].link).toBe(`/people/${ids.colleague}`);
+  });
+});
+
+describe("which contracts are watched", () => {
+  // `contractsToWatch` decides "already renewed" in SQL; it used to be a scan of every contract in
+  // JavaScript. The old rule, kept here as the reference, must pick exactly the same contracts.
+  const oldRule = async () => {
+    const all = await db().select().from(schema.contract).where(isNull(schema.contract.deletedAt));
+    const running = all.filter((row) => !row.terminatedOn && row.endDate && row.endDate >= today);
+    const renewed = (contract: (typeof all)[number]) => all.some((other) => other.employmentId === contract.employmentId && other.id !== contract.id && isLabourContract(other.type) && other.startDate > contract.endDate!);
+    return running.filter((row) => (["fixed_term", "service", "internship"].includes(row.type) || row.type === "probation") && !renewed(row)).map((row) => row.id).sort();
+  };
+
+  it("picks exactly the contracts the in-memory scan picked, renewals and all", async () => {
+    const [huys] = await db().select().from(schema.contract).where(and(eq(schema.contract.personId, ids.huy), eq(schema.contract.number, "HD-001")));
+    const [colleagues] = await db().select({ employmentId: schema.employment.id }).from(schema.employment).where(eq(schema.employment.personId, ids.colleague));
+    const end = huys.endDate!;
+    const row = (number: string, values: Partial<typeof schema.contract.$inferInsert>) => ({ employmentId: huys.employmentId, personId: ids.huy, entityId: huys.entityId, number, type: "fixed_term" as const, startDate: addDays(today, -10), endDate: addDays(today, 20), ...values });
+    await db()
+      .insert(schema.contract)
+      .values([
+        // Not renewals of HD-001: an NDA after it, a labour contract starting on its last day, a deleted one, another employment's.
+        row("W-NDA", { type: "nda", startDate: addDays(end, 1), endDate: null }),
+        row("W-SAME-DAY", { type: "indefinite", startDate: end, endDate: null }),
+        row("W-DELETED", { type: "indefinite", startDate: addDays(end, 1), endDate: null, deletedAt: new Date() }),
+        row("W-OTHER", { employmentId: colleagues.employmentId, personId: ids.colleague, type: "indefinite", startDate: addDays(end, 1), endDate: null }),
+        // In their own right: a service contract and a probation (watched), an internship ended early (not).
+        row("W-SERVICE", { type: "service" }),
+        row("W-PROBATION", { type: "probation", endDate: addDays(today, 5) }),
+        row("W-ENDED", { type: "internship", terminatedOn: addDays(today, -1) }),
+      ]);
+    const watched = async () => (await contractsToWatch(today)).map((contract) => contract.id).sort();
+    expect(await watched()).toEqual(await oldRule());
+    expect(await watched()).toContain(huys.id);
+
+    // A real renewal on file: HD-001 is no longer watched, by either rule.
+    await db().insert(schema.contract).values(row("W-RENEWAL", { type: "indefinite", startDate: addDays(end, 1), endDate: null }));
+    expect(await watched()).toEqual(await oldRule());
+    expect(await watched()).not.toContain(huys.id);
   });
 });

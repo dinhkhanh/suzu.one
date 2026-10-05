@@ -13,14 +13,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { EMPTY, fieldIdOf, SET } from "../engine/custom-fields";
-import { filterEntries, isFilterKey, type TaskFilters } from "../engine/filter";
+import { filterEntries, isFilterKey, readFilters, type TaskFilters, wantsClosed } from "../engine/filter";
 import { PRIORITIES, WORK_VIEWS, type WorkView } from "../enums";
 import { CustomFieldFilters } from "./custom-fields";
 import type { ListOptions } from "./task-list-view";
 
-/** Writes the filters into the URL, custom fields' too, leaving other parameters (view, month…) alone. */
-export function writeFiltersToUrl(next: TaskFilters, extra: Record<string, string | null> = {}) {
+/**
+ * Writes the filters into the URL, custom fields' too, leaving other parameters (view, month…) alone.
+ * The page loads closed tasks only when they are asked for (`wantsClosed`): a change of that goes
+ * through `navigate`, so the server sends them; every other change stays in the browser.
+ */
+export function writeFiltersToUrl(next: TaskFilters, extra: Record<string, string | null> = {}, navigate?: (href: string) => void) {
   const params = new URLSearchParams(window.location.search);
+  const reload = !!navigate && wantsClosed(readFilters(Object.fromEntries(params))) !== wantsClosed(next);
   for (const key of [...params.keys()]) if (isFilterKey(key)) params.delete(key);
   for (const [key, value] of filterEntries(next)) params.set(key, value);
   for (const [key, value] of Object.entries(extra)) {
@@ -28,15 +33,18 @@ export function writeFiltersToUrl(next: TaskFilters, extra: Record<string, strin
     else params.delete(key);
   }
   const query = params.toString();
-  window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  const href = query ? `?${query}` : window.location.pathname;
+  if (reload) navigate(href);
+  else window.history.replaceState(null, "", href);
 }
 
-/** Filters live in the URL (shareable, survive a reload and a change of view) without a server round trip. */
+/** Filters live in the URL (shareable, survive a reload and a change of view) without a server round trip — but for closed tasks. */
 export function useUrlFilters(initial: TaskFilters) {
+  const router = useRouter();
   const [filters, setFilters] = useState<TaskFilters>(initial);
   const apply = (next: TaskFilters) => {
     setFilters(next);
-    writeFiltersToUrl(next);
+    writeFiltersToUrl(next, {}, (href) => router.replace(href, { scroll: false }));
   };
   return { filters, setFilter: (key: keyof TaskFilters, value: string) => apply({ ...filters, [key]: value || undefined }), clear: () => apply({}) };
 }
@@ -44,7 +52,7 @@ export function useUrlFilters(initial: TaskFilters) {
 const VIEW_ICON: Record<WorkView, React.ComponentType<{ className?: string }>> = { list: ListIcon, board: SquareKanbanIcon, calendar: CalendarDaysIcon, table: Table2Icon };
 
 /** List / Board / Calendar / Table as a segmented control of icon keys. The current filters travel along. */
-export function ViewTabs({ current, views = WORK_VIEWS }: { current: WorkView; /** A team's backlog has no board or calendar of its own. */ views?: readonly WorkView[] }) {
+export function ViewTabs({ current, views = WORK_VIEWS }: { current: WorkView; /** The views a place offers; every list has all four. */ views?: readonly WorkView[] }) {
   const t = useTranslations("work.views");
   const router = useRouter();
   const pathname = usePathname();

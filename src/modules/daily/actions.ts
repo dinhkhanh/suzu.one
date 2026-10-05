@@ -9,7 +9,7 @@ import { REPORT_REACTIONS, RULE_MODES } from "./enums";
 import { loadReportReader, loadSubjects } from "./people";
 import { addToPlan, savePlan } from "./plans";
 import { canCommentOnReport, canOverseeReport } from "./policy";
-import { commentOnReport, findReportById, remindMissing, REPORT_BACKFILL_DAYS, submitReport } from "./reports";
+import { commentOnReport, findReportById, remindMissing, submitReport, withinReportWindow } from "./reports";
 import { saveTeamRules } from "./team-rules";
 import { findWeekly, generateWeek, saveWeeklySummary } from "./weekly";
 
@@ -74,10 +74,7 @@ const submitReportPipeline = createAction({
     secondsToSubmit: optional(z.coerce.number().int().min(0).max(86400)),
   }),
   // One's own report, for today or the days of the past week.
-  authorize: (_user, input) => {
-    const today = todayInVietnam();
-    return input.date <= today && input.date >= addDays(today, -REPORT_BACKFILL_DAYS);
-  },
+  authorize: (_user, input) => withinReportWindow(input.date, todayInVietnam()),
   run: async ({ user, input }) => {
     const { before, after } = await submitReport(user.person.id, input.date, input);
     refreshDay();
@@ -116,9 +113,9 @@ export async function commentOnReportAction(input: unknown) {
 const remindPipeline = createAction({
   name: "daily.report.remind",
   input: z.object({ date: isoDate, personIds: z.array(z.uuid()).min(1).max(300) }),
-  // Only people the reader oversees; the service also skips whoever is not missing.
+  // Only people the reader oversees, for a day whose report can still be written; the service also skips whoever is not missing.
   authorize: async (user, input) => {
-    if (input.date !== todayInVietnam()) return false;
+    if (!withinReportWindow(input.date, todayInVietnam())) return false;
     const [reader, subjects] = await Promise.all([loadReportReader(user.person.id), loadSubjects(input.personIds)]);
     return input.personIds.every((personId) => {
       const subject = subjects.get(personId);

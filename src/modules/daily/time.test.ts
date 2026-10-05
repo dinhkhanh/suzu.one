@@ -25,7 +25,7 @@ import { createWorkTask, listStates } from "@/modules/work/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DEFAULT_TEAM_RULES } from "./engine/rules";
 import { sendTimesheetReminders } from "./jobs";
-import { loadReportReader, loadSubjects, loadTimeReader } from "./people";
+import { loadReportReader, loadTimeReader, loadTimesheetSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { saveTeamRules } from "./team-rules";
 import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
@@ -79,7 +79,7 @@ beforeAll(async () => {
   ids.client = (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name: "TVC Tết", leadPersonId: ids.vy }).returning())[0].id;
   ids.other = (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name: "Showreel", leadPersonId: ids.long }).returning())[0].id;
   await db().insert(schema.projectPlan).values([
-    { projectId: ids.client, kind: "client" },
+    { projectId: ids.client, kind: "client", jobNumber: "SZM-26-007" },
     { projectId: ids.other, kind: "internal" },
   ]);
   const doing = (await listStates([ids.video])).find((state) => state.category === "in_progress")!;
@@ -157,7 +157,9 @@ describe("the week grid", () => {
     // The note of the 30-minute entry survives: the cut came off it (newest) — 30 → 0 removed, then 120 → 100.
     expect(week.entries.filter((entry) => entry.date === "2026-09-22").map((entry) => entry.minutes)).toEqual([100]);
     expect(week).toMatchObject({ approvalRequired: true, timeMode: "required", status: "open", editable: true });
-    expect(week.labels[`task:${ids.t1}`]).toMatchObject({ title: "Rough cut", projectName: "TVC Tết" });
+    // The job number comes with the project's name, in the same read (FR-PJM-02).
+    expect(week.labels[`task:${ids.t1}`]).toMatchObject({ title: "Rough cut", projectName: "TVC Tết", jobNumber: "SZM-26-007" });
+    expect(week.entries.filter((entry) => entry.taskId === ids.t1).every((entry) => entry.jobNumber === "SZM-26-007")).toBe(true);
   });
 
   it("offers last week's rows to copy", async () => {
@@ -197,15 +199,15 @@ describe("the attendance hint", () => {
     expect(view.partial).toBe(true);
     expect(view.grid.rows.map((row) => row.key)).toEqual([`task:${ids.t1}`]);
     // The project she leads is hers to read: those rows keep their names (the rest of the week is not here at all).
-    expect(view.labels[`task:${ids.t1}`]).toMatchObject({ title: "Rough cut", projectName: "TVC Tết" });
+    expect(view.labels[`task:${ids.t1}`]).toMatchObject({ title: "Rough cut", projectName: "TVC Tết", jobNumber: "SZM-26-007" });
     expect(view.days.every((day) => day.hint === null && day.kind === null)).toBe(true);
     expect(view.week).toBeNull();
     expect(await getTimesheetView(await loadTimeReader(ids.bao), ids.huy, W, TODAY)).toBeNull();
     expect(await getTimesheetView(await loadTimeReader(ids.khoi), ids.huy, W, TODAY)).toBeNull();
     const rows = await listProjectTime(vy, W);
-    expect(rows.map((row) => [row.name, row.projectName, row.minutes])).toEqual([
-      ["Bao Tran", "TVC Tết", 615],
-      ["Huy Ho", "TVC Tết", 190],
+    expect(rows.map((row) => [row.name, row.jobNumber, row.projectName, row.minutes])).toEqual([
+      ["Bao Tran", "SZM-26-007", "TVC Tết", 615],
+      ["Huy Ho", "SZM-26-007", "TVC Tết", 190],
     ]);
   });
 });
@@ -280,7 +282,7 @@ describe("the weekly timesheet", () => {
     await submitWeek(ids.huy, W, TODAY);
     await submitWeek(ids.bao, W, TODAY);
     const submitted = await db().select().from(schema.timesheetWeek).where(eq(schema.timesheetWeek.status, "submitted"));
-    const subjects = await loadSubjects(PEOPLE.map((key) => ids[key]));
+    const subjects = await loadTimesheetSubjects(PEOPLE.map((key) => ids[key]));
     for (const key of PEOPLE) {
       const reader = await loadReportReader(ids[key]);
       const { waiting } = await listApprovals(reader, TODAY);

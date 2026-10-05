@@ -1,6 +1,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { cn } from "cn"
+import { LinkPending } from "@/components/shell/link-pending"
 
 // The bones of every page: a header with the title, a line under it and the actions on the
 // right (stacked on a phone, in a row on a desk); sections headed by the small uppercase caption;
@@ -139,8 +140,9 @@ function Tile({
   )
   if (href) {
     return (
-      <Link href={href} className={cn("tile press hover:bg-canvas", className)}>
+      <Link href={href} className={cn("tile press hover:bg-canvas has-[[data-link-pending]]:bg-canvas", className)}>
         {body}
+        <LinkPending />
       </Link>
     )
   }

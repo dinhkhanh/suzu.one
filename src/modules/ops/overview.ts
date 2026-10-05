@@ -6,7 +6,7 @@ import { createTranslator } from "next-intl";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { shiftMonth } from "@/lib/month-grid";
-import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "../platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportColumn, type ExportFile, toTable } from "../platform/export/table";
 import { listEntities } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import en from "../../../messages/en.json";
@@ -117,7 +117,7 @@ export async function getHistory(viewer: Viewer, filter: HistoryFilter, today: I
 type Locale = "vi" | "en";
 const display = (date: IsoDate | null) => (date ? date.split("-").reverse().join("/") : null);
 
-export async function buildHistoryExport(viewer: Viewer, filter: HistoryFilter, locale: Locale, today: IsoDate = todayInVietnam()): Promise<CsvFile> {
+export async function buildHistoryExport(viewer: Viewer, filter: HistoryFilter, locale: Locale, today: IsoDate = todayInVietnam()): Promise<ExportFile> {
   const rows = await getHistory(viewer, filter, today);
   const t = createTranslator({ locale, messages: locale === "vi" ? vi : en });
   const columns: ExportColumn<HistoryRow>[] = [
@@ -135,5 +135,5 @@ export async function buildHistoryExport(viewer: Viewer, filter: HistoryFilter, 
     { header: t("ops.history.columns.amount"), value: (row) => row.amountPaid },
     { header: t("ops.history.columns.files"), value: (row) => row.files.map((file) => file.fileName).join("; ") },
   ];
-  return { fileName: `compliance-history-${today}.csv`, csv: toCsv(columns, rows), rowCount: rows.length, truncated: rows.length >= EXPORT_ROW_LIMIT };
+  return { fileName: `compliance-history-${today}`, table: toTable(columns, rows), rowCount: rows.length, truncated: rows.length >= EXPORT_ROW_LIMIT };
 }

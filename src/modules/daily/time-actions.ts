@@ -7,16 +7,16 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { canViewTask, loadTask, loadViewer } from "@/modules/work/service";
 import { weekStartOf } from "./engine/rules";
 import { parseRowKey } from "./engine/timesheet";
 import type { Utilisation } from "./engine/utilisation";
 import { TIME_CATEGORIES, type TimeCategory } from "./enums";
-import { loadReportReader, loadSubjects } from "./people";
+import { loadReportReader, loadTimesheetSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { deleteTimeEntry, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
-import { approveWeeks, decideWeek, findTimesheetWeekById, submitWeek } from "./timesheets";
+import { approveWeeks, decideWeek, findTimesheetWeekById, recallWeek, submitWeek } from "./timesheets";
 import { getUtilisation } from "./utilisation";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -190,11 +190,27 @@ export async function submitWeekAction(input: unknown) {
   return submitWeekPipeline(input);
 }
 
-/** The reader approves this week's person (a lead of their team, or their line manager — never themself). */
+const recallWeekPipeline = createAction({
+  name: "daily.timesheet.recall",
+  input: z.object({ weekStart: monday }),
+  // One's own week; the service refuses a week that is not waiting any more.
+  authorize: () => true,
+  run: async ({ user, input }) => {
+    const { before, after } = await recallWeek(user.person.id, input.weekStart);
+    refresh();
+    revalidatePath("/daily/timesheets", "layout");
+    return { data: { id: after.id }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: recalled`, before: { status: before.status, submittedAt: before.submittedAt }, after: { status: after.status } } };
+  },
+});
+export async function recallWeekAction(input: unknown) {
+  return recallWeekPipeline(input);
+}
+
+/** The reader approves this week's person (a lead of their team, their line manager, or — where there is neither — the approver of last resort; never themself). */
 async function mayDecide(personId: string, weekId: string): Promise<boolean> {
   const week = await findTimesheetWeekById(weekId);
   if (!week) return false;
-  const [reader, subjects] = await Promise.all([loadReportReader(personId), loadSubjects([week.personId])]);
+  const [reader, subjects] = await Promise.all([loadReportReader(personId), loadTimesheetSubjects([week.personId])]);
   const subject = subjects.get(week.personId);
   return !!subject && canApproveTimesheet(reader, subject);
 }
@@ -276,7 +292,7 @@ const exportUtilisationPipeline = createAction({
       view.weeks.forEach((week, index) => rows.push({ group: name, person: t("teamTotal"), week, cell: group.total[index] }));
     }
     const kept = rows.slice(0, EXPORT_ROW_LIMIT);
-    const csv = toCsv<ExportRow>(
+    const table = toTable<ExportRow>(
       [
         { header: t("csv.group"), value: (row) => row.group },
         { header: t("csv.person"), value: (row) => row.person },
@@ -289,7 +305,7 @@ const exportUtilisationPipeline = createAction({
       ],
       kept,
     );
-    const file: CsvFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}.csv`, csv, rowCount: kept.length, truncated: rows.length > kept.length };
+    const file: ExportFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}`, table, rowCount: kept.length, truncated: rows.length > kept.length };
     return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
   },
 });

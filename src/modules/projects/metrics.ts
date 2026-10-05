@@ -6,8 +6,8 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import type { StateCategory } from "../work/enums";
-import { deliveryFactsByTask } from "../work/service";
+import { deliveryFactsByTask, type StateCategory } from "../work/service";
+import { isClientWork } from "./engine/brief";
 import { budgetBurn, type Burn } from "./engine/budget";
 import { type LineStatus, lineStatus, registerProgress, type UnitFacts } from "./engine/register";
 import type { RaidCounts } from "./engine/raid";
@@ -16,15 +16,17 @@ import type { DeliverableRow } from "./structure";
 import type { ProjectBaseline, StatusFacts } from "./schema";
 
 export type RegisterLine = DeliverableRow & LineStatus;
-export type Register = { lines: RegisterLine[]; promised: number; accepted: number; percent: number | null };
+export type Register = { lines: RegisterLine[]; promised: number; accepted: number; /** Finished on our side, not yet answered by the client. */ awaitingClient: number; percent: number | null };
 
 const liveTask = isNull(schema.task.deletedAt);
 
 /**
- * The units of these register lines: one per linked live task, placed by its state, its latest
- * internal review and what the work module's delivery records say about it (`deliveryFactsByTask`:
- * the client's latest decision or an approved, frozen version; a delivery; a post out with its URL).
- * Each is simply absent until someone records it.
+ * The units of these register lines: one per linked live task, placed by its state, the internal
+ * review of its current version and what the work module's delivery records say about it
+ * (`deliveryFactsByTask`: the client's decision, whether the current version is with the client, a
+ * delivery, a post out with its URL). Each is simply absent until someone records it. Whether the
+ * work has a client to accept it comes from the project's kind (`isClientWork`); a project with no
+ * plan row yet is client work when it names a client.
  */
 export async function loadLineUnits(lineIds: readonly string[]): Promise<Map<string, UnitFacts[]>> {
   const result = new Map<string, UnitFacts[]>();
@@ -36,18 +38,25 @@ export async function loadLineUnits(lineIds: readonly string[]): Promise<Map<str
       deliverableId: schema.projectTaskLink.deliverableId,
       category: schema.workState.category,
       review: sql<UnitFacts["review"]>`(select d.decision from work_deliverable d where d.task_id = ${taskId} order by d.version desc limit 1)`,
+      kind: sql<string>`coalesce(${schema.projectPlan.kind}, case when ${schema.workProject.clientId} is null then 'internal' else 'client' end)`,
     })
     .from(schema.projectTaskLink)
+    .innerJoin(schema.projectDeliverable, eq(schema.projectDeliverable.id, schema.projectTaskLink.deliverableId))
+    .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectDeliverable.projectId))
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.projectDeliverable.projectId))
     .innerJoin(schema.task, eq(schema.task.id, schema.projectTaskLink.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.projectTaskLink.taskId))
     .innerJoin(schema.workState, eq(schema.workState.id, schema.workTask.stateId))
     .where(and(inArray(schema.projectTaskLink.deliverableId, [...lineIds]), liveTask));
   const facts = await deliveryFactsByTask(units.map((unit) => unit.taskId));
-  for (const { taskId: id, deliverableId, category, review } of units) {
+  for (const { taskId: id, deliverableId, category, review, kind } of units) {
     if (!deliverableId) continue;
     const delivery = facts.get(id);
-    const clientDecision = (delivery?.lastClientDecision?.decision ?? (delivery?.clientApproved ? "approved" : null)) as UnitFacts["clientDecision"];
-    result.set(deliverableId, [...(result.get(deliverableId) ?? []), { category: category as StateCategory, review, clientDecision, delivered: !!delivery?.delivered, published: !!delivery?.published }]);
+    const last = delivery?.lastClientDecision;
+    // A request for changes stands on the version it was made on: a newer version answers it.
+    const standing = last && (last.decision !== "changes_required" || last.version === delivery?.currentVersion) ? last.decision : null;
+    const clientDecision = (last ? standing : delivery?.clientApproved ? "approved" : null) as UnitFacts["clientDecision"];
+    result.set(deliverableId, [...(result.get(deliverableId) ?? []), { category: category as StateCategory, review, clientDecision, sentToClient: !!delivery?.withClient, noClient: !isClientWork(kind), delivered: !!delivery?.delivered, published: !!delivery?.published }]);
   }
   return result;
 }
@@ -60,7 +69,7 @@ export async function withLineStatus(lines: readonly DeliverableRow[]): Promise<
 
 /** Every register of these projects, each line with its status and the register's progress. Retainer months keep their own registers. */
 export async function loadRegisters(projectIds: readonly string[]): Promise<Map<string, Register>> {
-  const result = new Map<string, Register>(projectIds.map((id) => [id, { lines: [], promised: 0, accepted: 0, percent: null }]));
+  const result = new Map<string, Register>(projectIds.map((id) => [id, { lines: [], promised: 0, accepted: 0, awaitingClient: 0, percent: null }]));
   if (projectIds.length === 0) return result;
   const lines = await db().select().from(schema.projectDeliverable).where(and(inArray(schema.projectDeliverable.projectId, [...projectIds]), isNull(schema.projectDeliverable.retainerPeriodId))).orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
   for (const line of await withLineStatus(lines)) result.get(line.projectId)?.lines.push(line);
@@ -124,7 +133,7 @@ export async function loadStatusFacts(projectId: string, plan: { budgetMinutes: 
     milestones: milestones.map((milestone) => ({ id: milestone.id, name: milestone.name, dueDate: milestone.dueDate, doneOn: milestone.doneAt ? todayInVietnam(milestone.doneAt) : null, baselineDue: planned.get(milestone.id) ?? null })),
     minutesLogged: burns.get(projectId)?.loggedMinutes ?? 0,
     budgetMinutes: plan.budgetMinutes,
-    register: { accepted: register.accepted, promised: register.promised },
+    register: { accepted: register.accepted, promised: register.promised, awaitingClient: register.awaitingClient },
     raid,
   });
 }

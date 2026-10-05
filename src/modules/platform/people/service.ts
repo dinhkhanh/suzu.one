@@ -6,6 +6,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { toSearchKey } from "@/lib/text";
 import { emailDomain, normalizeEmail, type PersonAccessState } from "../auth/sign-in-policy";
+import { invalidateGrants } from "../rbac/grants-cache";
 
 export type PersonRow = typeof schema.person.$inferSelect;
 
@@ -44,7 +45,7 @@ export function accessStateOf(person: PersonRow | undefined): PersonAccessState 
 
 /** First sign-in of an address listed in BOOTSTRAP_OWNER_EMAILS: create the person and the group-wide Owner grant. */
 export async function createBootstrapOwner(input: { email: string; name: string }): Promise<PersonRow> {
-  return db().transaction(async (tx) => {
+  const owner = await db().transaction(async (tx) => {
     const [created] = await tx
       .insert(schema.person)
       .values({
@@ -59,6 +60,9 @@ export async function createBootstrapOwner(input: { email: string; name: string 
     await invalidatePeople([created]);
     return created;
   });
+  // A row in `role_assignment`: "who are the owners?" must not be answered from before it.
+  await invalidateGrants(owner.id);
+  return owner;
 }
 
 export type PersonIdentity = { fullName: string; workEmail: string | null };
@@ -115,6 +119,22 @@ export async function setPersonPlacement(tx: Tx, personId: string, placement: Pe
 export async function activatePerson(tx: Tx, personId: string): Promise<void> {
   const rows = await tx.update(schema.person).set({ status: "active", updatedAt: new Date() }).where(and(eq(schema.person.id, personId), eq(schema.person.status, "preboarding"))).returning(identity());
   await invalidatePeople(rows);
+}
+
+/**
+ * Suspends an active person's access, or lifts the suspension (FR-PLT-05). Sign-in and every
+ * request re-check the status from the cache this drops, so it holds on the very next request; the
+ * caller deletes the sessions as well. Nothing but the status moves. Returns the row, or undefined
+ * when the person was not in the state to leave (not active; not suspended).
+ */
+export async function setPersonSuspended(tx: Tx, personId: string, suspended: boolean): Promise<PersonRow | undefined> {
+  const [row] = await tx
+    .update(schema.person)
+    .set({ status: suspended ? "suspended" : "active", updatedAt: new Date() })
+    .where(and(eq(schema.person.id, personId), eq(schema.person.status, suspended ? "active" : "suspended")))
+    .returning();
+  if (row) await invalidatePeople([row]);
+  return row;
 }
 
 export async function findPersonById(personId: string): Promise<PersonRow | undefined> {

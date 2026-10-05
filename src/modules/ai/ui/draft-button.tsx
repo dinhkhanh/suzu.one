@@ -21,6 +21,9 @@ function fill(id: string | undefined, value: string) {
   field.dispatchEvent(new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
 }
 
+/** What a refused draft says: the server's message key → the line under `assistant.drafts`. */
+const REFUSALS = { draft_not_available: "notAvailable", ai_limit_day: "limitDay", ai_limit_burst: "limitBurst" } as const;
+
 /** One button, one draft: busy while it runs, a line saying what happened after. */
 function useDraft<Data>(run: (locale: string) => Promise<ActionResult<Data>>, apply: (data: Data) => void) {
   const t = useTranslations("assistant.drafts");
@@ -30,7 +33,7 @@ function useDraft<Data>(run: (locale: string) => Promise<ActionResult<Data>>, ap
   const trigger = () =>
     start(async () => {
       const result = await run(locale);
-      if (!result.ok) return setMessage(t(result.message === "draft_not_available" ? "notAvailable" : "failed"));
+      if (!result.ok) return setMessage(t(REFUSALS[result.message as keyof typeof REFUSALS] ?? "failed"));
       apply(result.data);
       setMessage(t("filled"));
     });

@@ -308,10 +308,49 @@ describe("the whole calculation", () => {
     expect(plain.totals.net - withAdvance.totals.net).toBe(5_000_000);
   });
 
-  it("ignores a typed-in figure for a component the catalogue does not have as an input", () => {
+  it("does not pay a typed-in figure for a component the catalogue does not have as an input — and says so", () => {
     // BASE comes from the structure; a run may not overwrite it by typing a number in.
     const result = calculatePerson(personInput({ inputs: [{ code: "BASE", amount: 999_000_000 }, { code: "NOT_A_CODE", amount: 1_000 }] }));
     expect(result.totals.grossEarnings).toBe(30_000_000);
+    // Left out is never the same as nothing: the result carries a warning, once, and the trace names each code.
+    expect(result.warnings).toEqual(["input_code_unknown"]);
+    expect(result.trace.filter((step) => step.rule === "input_code_unknown").map((step) => step.detail.code)).toEqual(["BASE", "NOT_A_CODE"]);
+  });
+
+  it("never turns a negative typed-in figure into a payment: a clawback is not a bonus", () => {
+    // −500,000 of commission used to be paid as +500,000. It is refused where it is typed
+    // (`setRunInput`); if one reaches the engine all the same, it is not paid and the result says so.
+    const plain = calculatePerson(personInput());
+    const clawback = calculatePerson(personInput({ inputs: [{ code: "COMMISSION", amount: -500_000 }] }));
+    expect(clawback.lines.some((line) => line.code === "COMMISSION")).toBe(false);
+    expect(clawback.totals.grossEarnings).toBe(plain.totals.grossEarnings);
+    expect(clawback.totals.net).toBe(plain.totals.net);
+    expect(clawback.warnings).toContain("input_negative");
+    expect(clawback.trace.find((step) => step.rule === "input_negative")?.detail).toEqual({ code: "COMMISSION" });
+
+    // A deduction typed with a minus sign is not turned into a deduction either — nor into an earning.
+    const minusAdvance = calculatePerson(personInput({ inputs: [{ code: "ADVANCE", amount: -2_000_000 }] }));
+    expect(minusAdvance.lines.some((line) => line.code === "ADVANCE")).toBe(false);
+    expect(minusAdvance.totals.net).toBe(plain.totals.net);
+    expect(minusAdvance.warnings).toContain("input_negative");
+  });
+
+  it("subtracts a deduction entered as a positive amount, and warns about nothing", () => {
+    const plain = calculatePerson(personInput());
+    const result = calculatePerson(personInput({ inputs: [{ code: "PENALTY", amount: 300_000 }, { code: "BONUS", amount: 0 }] }));
+    expect(result.lines.find((line) => line.code === "PENALTY")).toMatchObject({ kind: "deduction", amount: 300_000 });
+    expect(plain.totals.net - result.totals.net).toBe(300_000);
+    // A zero is nothing entered: no line, and nothing lost to warn about.
+    expect(result.lines.some((line) => line.code === "BONUS")).toBe(false);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("warns when a retro item cannot be paid because the catalogue has no retro component", () => {
+    const withoutRetro = COMPONENTS.filter((component) => component.code !== "RETRO_PAY");
+    const result = calculatePerson(personInput({ components: withoutRetro, retro: [{ sourceMonth: "2026-07", amount: 1_200_000, kind: "manual" }] }));
+    expect(result.lines.some((line) => line.rule === "retro_pay")).toBe(false);
+    expect(result.totals.grossEarnings).toBe(30_000_000);
+    expect(result.warnings).toEqual(["retro_component_missing"]);
   });
 
   it("puts earnings, deductions and employer costs in that order, each by the catalogue's order", () => {
@@ -324,5 +363,61 @@ describe("the whole calculation", () => {
     // Change the law, and the result changes with it — nothing legal is frozen in the engine.
     const cheaper = calculatePerson(personInput({ statutory: { ...STATUTORY, pitDeductions: { personal: 20_000_000, dependent: 6_200_000 } } }));
     expect(cheaper.totals.pit).toBeLessThan(calculatePerson(personInput()).totals.pit);
+  });
+});
+
+describe("unused leave paid out on leaving (FR-LVE-03, FR-PAY-18)", () => {
+  // July's terms: base 26,000,000, an insurable responsibility allowance and an uninsured meal allowance.
+  const terms = { baseSalary: 26_000_000, insuranceSalary: 26_000_000, allowances: [{ code: "ALW_RESPONSIBILITY", amount: 2_600_000 }, { code: "ALW_MEAL", amount: 1_300_000 }] };
+  const leaver = (overrides: Partial<PersonPayInput> = {}) =>
+    personInput({ employment: { startDate: null, endDate: "2026-08-14", dependents: 0, serviceMonths: 40, kpiScoreBp: 0 }, leavePayout: { daysCenti: 200, basisMonth: "2026-07", terms, workingDays: 26 }, ...overrides });
+  const payoutOf = (result: ReturnType<typeof calculatePerson>) => result.lines.find((line) => line.code === "LEAVE_PAYOUT");
+
+  it("prices a day on the basis month's salary under `leave.payout_basis`, divided by that month's working days", () => {
+    // Seeded basis: base plus the allowances that count towards the insurance base = 28,600,000; × 2 days ÷ 26.
+    expect(payoutOf(calculatePerson(leaver()))).toMatchObject({ kind: "earning", amount: 2_200_000, rule: "leave_payout_day_rate", insurable: 0, taxable: 2_200_000, inputs: { daysCenti: 200, monthlySalary: 28_600_000, workingDays: 26 } });
+    const basis = (salary: "base" | "base_plus_allowances") => payoutOf(calculatePerson(leaver({ statutory: { ...STATUTORY, leavePayoutBasis: { salary } } })))?.amount;
+    expect(basis("base")).toBe(2_000_000);
+    expect(basis("base_plus_allowances")).toBe(2_300_000);
+  });
+
+  it("names the leaver so the rest of the final settlement is typed in, and only on a regular run", () => {
+    expect(calculatePerson(leaver()).warnings).toEqual(["leaves_in_period"]);
+    expect(calculatePerson(personInput()).warnings).not.toContain("leaves_in_period");
+  });
+
+  it("refuses to drop owed days in silence: no payout component, or nothing to price them on", () => {
+    const withoutPayout = COMPONENTS.filter((component) => component.code !== "LEAVE_PAYOUT");
+    const missing = calculatePerson(leaver({ components: withoutPayout }));
+    expect(payoutOf(missing)).toBeUndefined();
+    expect(missing.warnings).toContain("leave_payout_component_missing");
+    const unpriced = calculatePerson(leaver({ leavePayout: { daysCenti: 200, basisMonth: "2026-07", terms, workingDays: 0 } }));
+    expect(payoutOf(unpriced)).toBeUndefined();
+    expect(unpriced.warnings).toContain("leave_payout_unpriced");
+  });
+
+  // Which run pays is the calculation's to decide (only days no run of the month pays reach an
+  // off-cycle run, once the regular run is signed); the engine prices whatever it is handed the same way.
+  it("prices the days it is handed the same way on an off-cycle run, and pays nothing when handed none", () => {
+    const offCycle = calculatePerson(leaver({ runKind: "off_cycle", inputs: [{ code: "BONUS", amount: 1_000_000 }] }));
+    expect(payoutOf(offCycle)).toEqual(payoutOf(calculatePerson(leaver())));
+    expect(offCycle.warnings).toEqual([]);
+    const none = calculatePerson(leaver({ runKind: "off_cycle", leavePayout: null, inputs: [{ code: "BONUS", amount: 1_000_000 }] }));
+    expect(payoutOf(none)).toBeUndefined();
+  });
+});
+
+describe("holiday work and SRS Q13 (`overtime.holiday_pay`)", () => {
+  const holiday = (mode: "in_addition" | "inclusive") =>
+    calculatePerson(personInput({ timesheet: { ...personInput().timesheet, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 480, night: 0 }, holiday: { day: 480, night: 0 } } }, statutory: { ...STATUTORY, overtimeHolidayPay: { mode } } }));
+  const line = (result: ReturnType<typeof calculatePerson>, code: string) => result.lines.find((candidate) => candidate.code === code)!;
+
+  it("pays the holiday multiplier on top of the salary by default, and the multiplier less 100% when it is read as inclusive", () => {
+    // Hourly rate 30,000,000 / (22 × 8) = 170,455; 8 hours at 300% or 200%.
+    expect(STATUTORY.overtimeHolidayPay.mode).toBe("in_addition");
+    expect(line(holiday("in_addition"), "OT_HOLIDAY").amount).toBe(4_090_920);
+    expect(line(holiday("inclusive"), "OT_HOLIDAY")).toMatchObject({ amount: 2_727_280, rule: "overtime_multiplier_holiday_inclusive" });
+    // Rest-day work is not a holiday: the answer to Q13 does not touch it.
+    expect(line(holiday("inclusive"), "OT_REST_DAY").amount).toBe(line(holiday("in_addition"), "OT_REST_DAY").amount);
   });
 });

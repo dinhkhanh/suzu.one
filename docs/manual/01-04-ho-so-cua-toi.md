@@ -27,7 +27,10 @@ Bạn không sửa trực tiếp hồ sơ của mình — trừ ảnh đại di�
 - **Yêu cầu thay đổi thông tin của tôi**: biểu mẫu gửi yêu cầu và danh sách các yêu cầu đã gửi.
 - Các mục hồ sơ mà công ty đã lưu, ví dụ **Hợp đồng**, **Liên hệ khẩn cấp**, **Hồ sơ, giấy tờ** (kèm ngày hết hạn), **Người phụ thuộc (giảm trừ gia cảnh)** và **Thông tin hạn chế**.
 - **Quá trình công tác**: các sự kiện như tiếp nhận, đạt thử việc, điều chuyển, thay đổi vị trí… kèm ngày hiệu lực. Với sự kiện có checklist (ví dụ tiếp nhận), dòng **Checklist** cho biết đã xong bao nhiêu bước.
+- **Văn bản của tôi**: hợp đồng, quyết định, thư xác nhận và các giấy tờ công ty đã cấp về bạn — mở ra là đúng bản đã cấp (PDF), không bị in lại theo mẫu mới.
+- **Chấm công bằng khuôn mặt** (chỉ hiện khi khuôn mặt bạn đã được đăng ký cho máy kiosk): ngày bạn đồng ý và nút **Rút lại đồng ý** — xem chương **Chấm công**.
 - **Thiết bị đang giữ**: thiết bị công ty giao cho bạn, ngày nhận, ngày hẹn trả (nếu có). Nhãn **chưa xác nhận nhận** nghĩa là bạn chưa xác nhận đã nhận thiết bị — xem chương **Tài sản & đề nghị**.
+- **Dữ liệu và quyền riêng tư**: **Tải dữ liệu của tôi** (một tệp JSON mọi thông tin công ty lưu về bạn), lựa chọn về vị trí khi chấm công, và thời gian lưu trữ từng loại thông tin. Xem trang **Xem hồ sơ nhân sự của bạn**.
 - **Nghỉ việc**: đơn xin nghỉ việc.
 
 > [!NOTE]
@@ -99,6 +102,6 @@ Sau đó:
 
 **Quản lý của tôi ghi sai.** Quản lý trực tiếp, phòng ban, vị trí do Nhân sự cập nhật theo quyết định. Hãy báo Nhân sự.
 
-**Hợp đồng hay giấy tờ của tôi chưa có trên trang.** Nhân sự nhập hợp đồng, giấy tờ vào hồ sơ; nếu thiếu, hãy báo Nhân sự.
+**Hợp đồng hay giấy tờ của tôi chưa có trên trang.** Nhân sự nhập hợp đồng, giấy tờ vào hồ sơ; nếu thiếu, hãy báo Nhân sự. Văn bản công ty cấp về bạn (quyết định, thư xác nhận…) nằm ở mục **Văn bản của tôi**.
 
 **Tôi muốn xem phiếu lương.** Phiếu lương nằm ở mục riêng [Phiếu lương](/payslips) — xem chương **Lương**.

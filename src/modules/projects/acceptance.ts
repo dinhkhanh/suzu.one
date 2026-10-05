@@ -4,24 +4,34 @@
 // (`TM-NGHIEM-THU`, rendered with the documents engine and the entity's letterhead), and the life
 // is draft → sent → signed (the signed scan, date and signer attached) → or void before signing.
 //
+// **The paper that was issued is the paper that is kept.** A draft is rendered from the template as
+// it stands each time it is opened. When the record is sent — or signed without ever being sent —
+// the PDF is rendered once and stored with the record's files (`generatedFileId`), and that file is
+// what opens from then on: an edit of the template changes tomorrow's papers, never one a client
+// already holds. Refreshing a sent, unsigned record issues it again and retires the earlier file.
+//
 // Signing hands finance a billing item (FR-PJM-56) in the same transaction: a billing milestone's
 // or a retainer month's own item — made now if it was not yet — with the acceptance attached, or,
 // for the whole project, the fee not yet billed by milestones and months.
 import "server-only";
-import { and, asc, desc, eq, max, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, max, ne, or } from "drizzle-orm";
+import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { type LetterheadFields, renderTemplate } from "../documents/service";
+import vi from "../../../messages/vi.json";
+import { type LetterheadFields, listTemplates, renderDocumentPdf, renderTemplate } from "../documents/service";
+import { findFile, softDeleteFile, type StoredFileRow, storeIncomingFile } from "../platform/files/service";
 import { notify } from "../platform/notifications/service";
 import { attachAcceptance, billMilestone, ensureBillingItem, financeOf, lockFee } from "./billing";
 import { adapterLineLinks } from "./delivery-adapter";
-import { acceptanceItems, acceptanceItemsText, type AcceptanceAction, acceptanceNext, acceptanceNumber, type AcceptanceScope, type AcceptanceStatus, acceptanceTotals, linesInScope, projectFeeLeft, type ScopedLine } from "./engine/acceptance";
+import { type AcceptanceAction, acceptanceBody, acceptanceHasScope, acceptanceItems, acceptanceNext, acceptanceNumber, acceptanceRefreshable, type AcceptanceScope, type AcceptanceStatus, acceptanceTotals, linesInScope, projectFeeLeft, type ScopedLine, signedCorrectable } from "./engine/acceptance";
 import type { BillingStatus } from "./engine/acceptance";
 import { monthOf } from "./engine/retainer";
 import { withLineStatus } from "./metrics";
 import { ensurePlan, readPlan } from "./plans";
 import { feeOfPeriod, retainerMonthLabel } from "./retainers";
+import type { AcceptanceCorrection } from "./schema";
 import { ACCEPTANCE_TEMPLATE_BODY, ACCEPTANCE_TEMPLATE_CODE } from "./seed";
 
 export type AcceptanceRow = typeof schema.projectAcceptance.$inferSelect;
@@ -70,13 +80,21 @@ async function snapshot(projectId: string, target: AcceptanceTarget) {
   return acceptanceItems(lines, links);
 }
 
-/** A new record, numbered per project under the plan's lock, with the register as it stands now. */
-export async function createAcceptance(projectId: string, input: AcceptanceTarget, actorPersonId: string): Promise<AcceptanceRow> {
+export type NewAcceptance = AcceptanceTarget & { /** What is accepted, in the lead's words: required when the scope has no register lines, a remark otherwise. */ description?: string | null };
+
+/**
+ * A new record, numbered per project under the plan's lock, with the register as it stands now.
+ * A scope with no register lines — a billing milestone on a project that keeps no register — is
+ * not refused: it is accepted in words, and the record carries them. With neither lines nor words
+ * there is nothing for the client to sign, and the answer says so.
+ */
+export async function createAcceptance(projectId: string, input: NewAcceptance, actorPersonId: string): Promise<AcceptanceRow> {
   await ensurePlan(projectId);
   // The snapshot is a reading of the register, taken before the numbering transaction opens.
   const target = await checkTarget(db(), projectId, input);
   const items = await snapshot(projectId, target);
-  if (items.length === 0) throw new ActionError("acceptance_empty");
+  const description = input.description?.trim() || null;
+  if (!acceptanceHasScope(items, description)) throw new ActionError("acceptance_empty");
   return db().transaction(async (tx) => {
     await tx.select({ id: schema.projectPlan.projectId }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).for("update");
     // One whole-project record at a time (void it to start again): two of them would each bill
@@ -88,23 +106,40 @@ export async function createAcceptance(projectId: string, input: AcceptanceTarge
     const [top] = await tx.select({ value: max(schema.projectAcceptance.number) }).from(schema.projectAcceptance).where(eq(schema.projectAcceptance.projectId, projectId));
     const [row] = await tx
       .insert(schema.projectAcceptance)
-      .values({ projectId, number: (top?.value ?? 0) + 1, ...target, items, createdByPersonId: actorPersonId })
+      .values({ projectId, number: (top?.value ?? 0) + 1, ...target, items, description, createdByPersonId: actorPersonId })
       .returning();
     return row;
   });
 }
 
-/** A draft taken again from the register — the work moved on since it was made. Sent or signed papers do not change. */
+/**
+ * A record taken again from the register — the work moved on since it was made. A draft simply
+ * takes the new reading. A paper that was sent and not yet signed is **issued again**: rendered
+ * from the new reading and the template as it stands today, stored, and the earlier file retired
+ * (soft-deleted, so it can still be found). A signed paper does not change.
+ */
 export async function refreshAcceptance(acceptanceId: string): Promise<{ before: AcceptanceRow; after: AcceptanceRow }> {
   const found = await findAcceptance(acceptanceId);
   if (!found) throw new ActionError("acceptance_not_found");
+  if (!acceptanceRefreshable(found.status as AcceptanceStatus)) throw new ActionError("acceptance_locked");
   const items = await snapshot(found.projectId, { scope: found.scope as AcceptanceScope, milestoneId: found.milestoneId, retainerPeriodId: found.retainerPeriodId });
-  return db().transaction(async (tx) => {
-    const before = await lockAcceptance(tx, acceptanceId);
-    if (before.status !== "draft") throw new ActionError("acceptance_locked");
-    const [after] = await tx.update(schema.projectAcceptance).set({ items, updatedAt: new Date() }).where(eq(schema.projectAcceptance.id, acceptanceId)).returning();
-    return { before, after };
-  });
+  if (!acceptanceHasScope(items, found.description)) throw new ActionError("acceptance_empty");
+  const paper = found.status === "sent" ? await storePaper({ ...found, items }) : null;
+  const result = await keepingPaper(paper, () =>
+    db().transaction(async (tx) => {
+      const before = await lockAcceptance(tx, acceptanceId);
+      // Sent, signed or voided while the register was being read: the reading is for another record now.
+      if (before.status !== found.status) throw new ActionError("acceptance_changed");
+      const [after] = await tx
+        .update(schema.projectAcceptance)
+        .set({ items, ...(paper ? { generatedFileId: paper } : {}), updatedAt: new Date() })
+        .where(eq(schema.projectAcceptance.id, acceptanceId))
+        .returning();
+      return { before, after };
+    }),
+  );
+  if (paper && result.before.generatedFileId) await softDeleteFile(result.before.generatedFileId);
+  return result;
 }
 
 // ── Its life ────────────────────────────────────────────────────────────────────────────────
@@ -120,11 +155,24 @@ async function move(tx: Tx, row: AcceptanceRow, action: AcceptanceAction, values
   return after;
 }
 
+/**
+ * Sent to the client: the paper is issued now — rendered once from the record and the template as
+ * they stand, stored, and kept as `generatedFileId`. The file is written before the row moves, so
+ * a record is never "sent" without the paper that was sent; a move that fails takes the file back.
+ */
 export async function sendAcceptance(acceptanceId: string): Promise<{ before: AcceptanceRow; after: AcceptanceRow }> {
-  return db().transaction(async (tx) => {
-    const before = await lockAcceptance(tx, acceptanceId);
-    return { before, after: await move(tx, before, "send", { sentAt: new Date() }) };
-  });
+  const found = await findAcceptance(acceptanceId);
+  if (!found) throw new ActionError("acceptance_not_found");
+  if (!acceptanceNext(found.status as AcceptanceStatus, "send")) throw new ActionError("acceptance_wrong_status");
+  const paper = await storePaper(found);
+  return keepingPaper(paper, () =>
+    db().transaction(async (tx) => {
+      const before = await lockAcceptance(tx, acceptanceId);
+      // Refreshed in the moment between: the paper just rendered is of the reading before.
+      if (before.updatedAt.getTime() !== found.updatedAt.getTime()) throw new ActionError("acceptance_changed");
+      return { before, after: await move(tx, before, "send", { sentAt: new Date(), generatedFileId: paper }) };
+    }),
+  );
 }
 
 export async function voidAcceptance(acceptanceId: string): Promise<{ before: AcceptanceRow; after: AcceptanceRow }> {
@@ -170,9 +218,20 @@ async function billSigned(tx: Tx, row: AcceptanceRow, number: string, actorPerso
  */
 export async function signAcceptance(acceptanceId: string, signature: Signature, actorPersonId: string): Promise<{ before: AcceptanceRow; after: AcceptanceRow; billingItemId: string | null }> {
   if (signature.signedOn > todayInVietnam()) throw new ActionError("acceptance_signed_in_future");
+  const found = await findAcceptance(acceptanceId);
+  // Signed in the meeting without ever being "sent": the paper is issued now, dated the day it was
+  // signed. One that was sent keeps the paper it was sent with — a signed record is never rendered again.
+  const paper = found && !found.generatedFileId && acceptanceNext(found.status as AcceptanceStatus, "sign") ? await storePaper({ ...found, signedOn: signature.signedOn }) : null;
+  const result = await keepingPaper(paper, () => signIn(acceptanceId, signature, actorPersonId, paper));
+  // Sent by somebody else in the moment between: that paper stands, this one goes.
+  if (paper && result.after.generatedFileId !== paper) await softDeleteFile(paper);
+  return result;
+}
+
+function signIn(acceptanceId: string, signature: Signature, actorPersonId: string, paper: string | null): Promise<{ before: AcceptanceRow; after: AcceptanceRow; billingItemId: string | null }> {
   return db().transaction(async (tx) => {
     const before = await lockAcceptance(tx, acceptanceId);
-    const after = await move(tx, before, "sign", { signedFileId: signature.signedFileId, signedOn: signature.signedOn, signedByClient: signature.signedByClient });
+    const after = await move(tx, before, "sign", { signedFileId: signature.signedFileId, signedOn: signature.signedOn, signedByClient: signature.signedByClient, ...(paper && !before.generatedFileId ? { generatedFileId: paper } : {}) });
     const [project] = await tx.select({ name: schema.workProject.name, entityId: schema.workProject.entityId }).from(schema.workProject).where(eq(schema.workProject.id, after.projectId)).limit(1);
     const plan = await ensurePlan(after.projectId, tx);
     const number = acceptanceNumber(plan.jobNumber, after.number);
@@ -184,9 +243,41 @@ export async function signAcceptance(acceptanceId: string, signature: Signature,
   });
 }
 
+export type SignatureCorrection = { /** A new scan, when the wrong one was attached; null keeps the one on record. */ signedFileId: string | null; signedOn: IsoDate; signedByClient: string; reason: string };
+
+/**
+ * Corrects what was recorded about a signature — the scan, the signer's name, the day — with a
+ * reason. The record stays signed and its items stay as the client signed them; what it said
+ * before is kept on the record (`corrections`), and an earlier scan stays in its files, so the
+ * history can be read and the old scan still opened. Refused once finance has invoiced the item
+ * this signature earned: the invoice quotes the record, and from then it does not move. Voiding is
+ * untouched: a signed record still cannot be voided.
+ */
+export async function correctSignedAcceptance(acceptanceId: string, correction: SignatureCorrection, actorPersonId: string): Promise<{ before: AcceptanceRow; after: AcceptanceRow }> {
+  if (correction.signedOn > todayInVietnam()) throw new ActionError("acceptance_signed_in_future");
+  return db().transaction(async (tx) => {
+    const before = await lockAcceptance(tx, acceptanceId);
+    const billing = await tx.select({ status: schema.projectBillingItem.status }).from(schema.projectBillingItem).where(eq(schema.projectBillingItem.acceptanceId, acceptanceId));
+    if (before.status !== "signed") throw new ActionError("acceptance_wrong_status");
+    if (!signedCorrectable(before.status, billing.map((item) => item.status as BillingStatus))) throw new ActionError("acceptance_invoiced");
+    const values = { signedFileId: correction.signedFileId ?? before.signedFileId, signedOn: correction.signedOn, signedByClient: correction.signedByClient };
+    if (values.signedFileId === before.signedFileId && values.signedOn === before.signedOn && values.signedByClient === before.signedByClient) throw new ActionError("acceptance_correction_empty");
+    const corrections = [...before.corrections, { at: new Date().toISOString(), byPersonId: actorPersonId, reason: correction.reason, before: { signedFileId: before.signedFileId, signedOn: before.signedOn, signedByClient: before.signedByClient } }];
+    const [after] = await tx
+      .update(schema.projectAcceptance)
+      .set({ ...values, corrections, updatedAt: new Date() })
+      .where(eq(schema.projectAcceptance.id, acceptanceId))
+      .returning();
+    return { before, after };
+  });
+}
+
+/** Is this file one of the record's scans — the one on record, or one a correction replaced? */
+export const isScanOf = (acceptance: Pick<AcceptanceRow, "signedFileId" | "corrections">, fileId: string): boolean => acceptance.signedFileId === fileId || acceptance.corrections.some((correction) => correction.before.signedFileId === fileId);
+
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type AcceptanceView = AcceptanceRow & { code: string; targetName: string | null; totals: ReturnType<typeof acceptanceTotals>; authorName: string | null };
+export type AcceptanceView = AcceptanceRow & { code: string; targetName: string | null; totals: ReturnType<typeof acceptanceTotals>; authorName: string | null; /** The corrections of the signed record, oldest first, each with who made it. */ history: (AcceptanceCorrection & { byName: string | null })[] };
 
 /** A project's acceptance records, newest first. Nothing on them is money. */
 export async function listAcceptances(projectId: string): Promise<AcceptanceView[]> {
@@ -199,7 +290,18 @@ export async function listAcceptances(projectId: string): Promise<AcceptanceView
     .leftJoin(schema.person, eq(schema.person.id, schema.projectAcceptance.createdByPersonId))
     .where(eq(schema.projectAcceptance.projectId, projectId))
     .orderBy(desc(schema.projectAcceptance.number));
-  return rows.map(({ acceptance, milestoneName, month, authorName }) => ({ ...acceptance, code: acceptanceNumber(plan.jobNumber, acceptance.number), targetName: milestoneName ?? month ?? null, totals: acceptanceTotals(acceptance.items), authorName }));
+  // Who corrected what: the names of every corrector on the page in one query.
+  const correctorIds = [...new Set(rows.flatMap(({ acceptance }) => acceptance.corrections.map((correction) => correction.byPersonId)))];
+  const correctors = correctorIds.length ? await db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, correctorIds)) : [];
+  const nameOf = new Map(correctors.map((person) => [person.id, person.name]));
+  return rows.map(({ acceptance, milestoneName, month, authorName }) => ({
+    ...acceptance,
+    code: acceptanceNumber(plan.jobNumber, acceptance.number),
+    targetName: milestoneName ?? month ?? null,
+    totals: acceptanceTotals(acceptance.items),
+    authorName,
+    history: acceptance.corrections.map((correction) => ({ ...correction, byName: nameOf.get(correction.byPersonId) ?? null })),
+  }));
 }
 
 export type AcceptanceWaiting = { scope: AcceptanceScope; milestoneId: string | null; retainerPeriodId: string | null; /** The milestone's name or the retainer month; null for the project as a whole. */ name: string | null };
@@ -246,8 +348,8 @@ export async function signedTargets(projectId: string): Promise<{ milestoneIds: 
 
 // ── The paper ───────────────────────────────────────────────────────────────────────────────
 
-export type AcceptanceWords = { /** What to call the paper when the template library has no name for it. */ title: string; scope: Record<AcceptanceScope, string>; promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string };
-export type AcceptanceDocument = { title: string; number: string; text: string; missing: string[]; letterhead: LetterheadFields };
+export type AcceptanceWords = { /** What to call the paper when the template library has no name for it. */ title: string; scope: Record<AcceptanceScope, string>; promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string; /** The summary line of a record made of words alone. */ described: string };
+export type AcceptanceDocument = { title: string; number: string; text: string; missing: string[]; letterhead: LetterheadFields; /** The project's entity: whose files the stored paper belongs to. */ entityId: string | null };
 
 const formatDay = (date: IsoDate) => date.split("-").reverse().join("/");
 
@@ -259,7 +361,8 @@ const formatDay = (date: IsoDate) => date.split("-").reverse().join("/");
 export async function acceptanceDocument(acceptance: AcceptanceRow, words: AcceptanceWords): Promise<AcceptanceDocument> {
   // A record exists only under a plan that was made for it (`createAcceptance`); the fallback is for type safety.
   const plan = (await readPlan(acceptance.projectId)) ?? { jobNumber: null };
-  const [[project], [template]] = await Promise.all([
+  // The template comes from the documents module's cached library (reference data), not a query of its own.
+  const [[project], templates] = await Promise.all([
     db()
       .select({ name: schema.workProject.name, clientName: schema.workClient.name, entity: schema.entity })
       .from(schema.workProject)
@@ -267,8 +370,9 @@ export async function acceptanceDocument(acceptance: AcceptanceRow, words: Accep
       .leftJoin(schema.entity, eq(schema.entity.id, schema.workProject.entityId))
       .where(eq(schema.workProject.id, acceptance.projectId))
       .limit(1),
-    db().select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.code, ACCEPTANCE_TEMPLATE_CODE), eq(schema.documentTemplate.isActive, true))).limit(1),
+    listTemplates(),
   ]);
+  const template = templates.find((row) => row.code === ACCEPTANCE_TEMPLATE_CODE && row.isActive);
   const entity = project?.entity;
   const own = Object.fromEntries(Object.entries({ companyName: entity?.legalName, address: entity?.address, taxCode: entity?.taxCode, representative: entity?.legalRepresentative }).filter(([, value]) => !!value)) as LetterheadFields;
   const letterhead: LetterheadFields = { ...(template?.letterhead ?? {}), ...own };
@@ -278,6 +382,7 @@ export async function acceptanceDocument(acceptance: AcceptanceRow, words: Accep
     : acceptance.retainerPeriodId
       ? await db().select({ name: schema.projectRetainerPeriod.month }).from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.id, acceptance.retainerPeriodId)).limit(1)
       : [undefined];
+  const body = acceptanceBody(acceptance.items, acceptance.description, words);
   const context: Record<string, string> = {
     "company.name": letterhead.companyName ?? "",
     "company.address": letterhead.address ?? "",
@@ -292,9 +397,66 @@ export async function acceptanceDocument(acceptance: AcceptanceRow, words: Accep
     "project.jobNumber": plan.jobNumber ?? "",
     "client.name": project?.clientName ?? "",
     "acceptance.scope": [words.scope[acceptance.scope as AcceptanceScope], target?.name].filter(Boolean).join(" — "),
-    "acceptance.items": acceptanceItemsText(acceptance.items, words),
-    "acceptance.totals": words.totals(acceptanceTotals(acceptance.items)),
+    "acceptance.items": body.items,
+    "acceptance.totals": body.totals,
   };
   const { text, missing } = renderTemplate(template?.body ?? ACCEPTANCE_TEMPLATE_BODY, context);
-  return { title: template?.name ?? words.title, number, text, missing, letterhead };
+  return { title: template?.name ?? words.title, number, text, missing, letterhead, entityId: entity?.id ?? null };
+}
+
+// ── The paper that is kept ──────────────────────────────────────────────────────────────────
+
+// The stored paper is filed where the signed scan is: the record's own files, at the scan's tier
+// (`commercial-actions.ts` begins the scan's upload with the same two).
+const PAPER_OWNER = "project_acceptance";
+const PAPER_TIER = "personal" as const;
+
+// The paper that is kept is the one the client signs, so its words are Vietnamese whoever presses
+// "send" — from the messages, never a literal here (FR-PLT-02).
+const paperWord = createTranslator({ locale: "vi", messages: vi, namespace: "projects.acceptance" });
+const documentWord = createTranslator({ locale: "vi", messages: vi, namespace: "documents" });
+const ISSUED_WORDS: AcceptanceWords = {
+  title: paperWord("documentTitle"),
+  scope: { milestone: paperWord("scopes.milestone"), retainer_period: paperWord("scopes.retainer_period"), project: paperWord("scopes.project") },
+  promised: paperWord("promised"),
+  delivered: paperWord("delivered"),
+  accepted: paperWord("accepted"),
+  totals: (totals) => paperWord("totals", totals),
+  described: paperWord("described"),
+};
+
+/** Renders the paper as the record stands and stores it through the files module. Returns the file's id. */
+async function storePaper(acceptance: AcceptanceRow): Promise<string> {
+  const document = await acceptanceDocument(acceptance, ISSUED_WORDS);
+  const bytes = renderDocumentPdf({ title: document.title, number: document.number, text: document.text, letterhead: document.letterhead, footer: documentWord("pdfFooter", { number: document.number }), today: todayInVietnam() });
+  const file = await storeIncomingFile({ ownerType: PAPER_OWNER, ownerId: acceptance.id, entityId: document.entityId, tier: PAPER_TIER }, { fileName: `${document.number.replaceAll("/", "_")}.pdf`, bytes });
+  return file.id;
+}
+
+/** Runs the step that records a paper just stored; a step that fails takes the file back with it. */
+async function keepingPaper<Result>(paper: string | null, step: () => Promise<Result>): Promise<Result> {
+  try {
+    return await step();
+  } catch (error) {
+    if (paper) await softDeleteFile(paper);
+    throw error;
+  }
+}
+
+/**
+ * The stored paper of a sent or signed record — the file that opens instead of a fresh rendering.
+ * null for a draft (rendered live) and for a void record. A record sent or signed before papers
+ * were kept has none yet: it is issued on this first opening, and that file is the paper from then
+ * on. The update takes only a row that still has no file, so two readers opening it at once keep
+ * one paper between them.
+ */
+export async function issuedPaper(acceptance: AcceptanceRow): Promise<StoredFileRow | null> {
+  if (acceptance.status !== "sent" && acceptance.status !== "signed") return null;
+  if (acceptance.generatedFileId) return (await findFile(acceptance.generatedFileId)) ?? null;
+  const paper = await storePaper(acceptance);
+  const [kept] = await db().update(schema.projectAcceptance).set({ generatedFileId: paper }).where(and(eq(schema.projectAcceptance.id, acceptance.id), isNull(schema.projectAcceptance.generatedFileId))).returning({ id: schema.projectAcceptance.id });
+  if (kept) return (await findFile(paper)) ?? null;
+  await softDeleteFile(paper);
+  const again = await findAcceptance(acceptance.id);
+  return again?.generatedFileId ? ((await findFile(again.generatedFileId)) ?? null) : null;
 }

@@ -1,13 +1,16 @@
 # Vị trí và quá trình công tác
 
-Trang này dành cho **Nhân sự**: sửa thông tin cơ bản của một người, đổi vị trí công tác (phòng ban, chức danh, quản lý…), ghi lại lịch sử cũ, chuyển người sang pháp nhân khác và ghi nhận các sự kiện như đạt thử việc, khen thưởng, kỷ luật.
+Trang này dành cho **Nhân sự**: sửa thông tin cơ bản của một người, đổi vị trí công tác (phòng ban, chức danh, chức vụ, quản lý…), ghi lại lịch sử cũ, chuyển người sang pháp nhân khác và ghi nhận các sự kiện như đạt thử việc, khen thưởng, kỷ luật.
 
 Mọi thao tác dưới đây làm trên **trang hồ sơ** của người đó: mở [Nhân sự](/people), tìm tên rồi bấm vào. Các khung thao tác chỉ hiện với người có quyền quản lý hồ sơ nhân sự trong phạm vi của nhân viên đó.
 
 ## Một vài khái niệm
 
 - **Quan hệ lao động**: một giai đoạn làm việc với một pháp nhân, từ **Ngày vào làm** tới **Ngày nghỉ việc**. Mỗi giai đoạn có một **mã nhân viên** riêng. Một người có thể có nhiều giai đoạn (nghỉ rồi quay lại, hoặc chuyển pháp nhân).
-- **Vị trí công tác**: trong một quan hệ lao động, người đó ở đơn vị nào, chức danh, cấp bậc, loại lao động, quản lý trực tiếp, quản lý gián tiếp, chi nhánh, nơi làm việc, **trong khoảng thời gian nào**. Mỗi lần thay đổi tạo thêm một dòng trong **Lịch sử công tác**.
+- **Vị trí công tác**: trong một quan hệ lao động, người đó ở đơn vị nào, chức vụ, cấp bậc, cấp vị trí, loại lao động, quản lý trực tiếp, quản lý gián tiếp, chi nhánh, nơi làm việc, **trong khoảng thời gian nào**. Mỗi lần thay đổi tạo thêm một dòng trong **Lịch sử công tác**.
+- **Chức danh** không nhập trực tiếp: hệ thống ghép **Cấp bậc** (Intern, Junior, Mid-level, Senior) với **Cấp vị trí** (Executive, Leader, Manager, Director, C-level), ví dụ "Senior Manager". Thiếu một trong hai thì chức danh chỉ hiện phần còn lại.
+- **Chuyên môn & kỹ năng** do chính nhân viên kê trên hồ sơ của mình; Nhân sự có quyền với người đó cũng sửa được, bằng nút **Sửa chuyên môn và kỹ năng** trên trang của họ. Tên được dùng chung cho cả tập đoàn: gõ "social media" sẽ ra đúng mục "Social Media" đã có, không tạo mục trùng. Toàn bộ danh mục nằm trong một danh sách ở [Nhân sự](/people) → **Chuyên môn & kỹ năng**: mỗi dòng là một mục, kèm loại và số người đang có. Bấm **Sửa** để sửa tên sai chính tả hoặc đổi loại (tên tự viết hoa chữ đầu mỗi từ; nếu tên sau khi sửa trùng với mục đã có cùng loại thì hai mục gộp làm một), **Xóa mục** để bỏ mục khỏi danh mục và khỏi hồ sơ của mọi người, **Thêm mục** để thêm sẵn một mục. Danh mục ban đầu (khoảng 80 mục cho ngành marketing và truyền thông) được nạp bằng `pnpm db:seed`.
+- **Chức vụ** có hai phần. Phần Nhân sự nhập là ô **Chức vụ** của vị trí công tác. Phần **Chức vụ trong dự án** tự hiện khi người đó được giao phụ trách dự án hoặc phụ trách khách hàng của một dự án đang chạy, và tự mất khi dự án đóng hoặc đổi người; người xem chỉ thấy những dự án họ được mở.
 - **Quá trình công tác**: dòng thời gian các **sự kiện** (Tiếp nhận, Điều chuyển, Thăng chức / bổ nhiệm, Đạt thử việc, Thôi việc…). Có sự kiện do hệ thống tự ghi khi bạn thao tác, có sự kiện bạn ghi bằng tay.
 
 ## Sửa thông tin cơ bản
@@ -19,18 +22,34 @@ Khung **Sửa hồ sơ và thông tin cá nhân** (dưới mục **Chi tiết c�
 
 HR cũng đổi được ảnh đại diện của nhân viên bằng **Thêm ảnh** / **Đổi ảnh** / **Gỡ ảnh** ở đầu hồ sơ.
 
+### Sửa ngày vào làm, ngày thâm niên, mã nhân viên
+
+Khi ngày hoặc mã của một quan hệ lao động nhập sai, mở khung **Sửa kỳ làm việc {mã}**. Đổi ngày bắt đầu sẽ dời luôn phân công đầu tiên và sự kiện tuyển dụng; không dời được sang sau hôm nay nếu người đó đã đi làm. Mọi lần sửa đều được ghi nhật ký.
+
+### Đổi tên một chức vụ
+
+Danh mục chức vụ dùng chung cho cả tập đoàn nằm ở [Chức vụ](/people/positions) (dành cho Nhân sự cấp tập đoàn). Bấm vào một chức vụ để **Đổi tên**: tên mới hiện ở mọi nơi, kể cả các phân công cũ.
+
+### Xóa hồ sơ tạo nhầm
+
+Hồ sơ bị trùng hoặc tạo thử có thể xoá bằng khung **Xóa nhân sự này (tạo nhầm)**: gõ đúng họ tên để xác nhận rồi bấm **Xóa vĩnh viễn**. Thao tác xoá người đó cùng sự kiện tuyển dụng, checklist kèm theo và hồ sơ cá nhân. Hệ thống từ chối khi đã có dữ liệu khác gắn với người này (hợp đồng, đơn từ, vai trò, phiếu lương, một bước checklist đã làm xong).
+
+### Tạm khoá tài khoản
+
+Khung **Tạm khóa tài khoản** đăng xuất người này khỏi mọi thiết bị ngay lập tức và chặn đăng nhập cho đến khi **Mở khóa**; quan hệ lao động, phân công và vai trò giữ nguyên. Phải ghi **Lý do tạm khóa**. Người bị tạm khoá có nhãn **Tạm khóa** trong danh sách nhân sự; các yêu cầu đang chờ họ duyệt cần được chuyển cho người khác — bấm **Xem yêu cầu đang chờ và ủy quyền thay** (xem trang **Ủy quyền phê duyệt**). Không tự tạm khoá được tài khoản của chính mình.
+
 ## Thay đổi vị trí công tác
 
-Dùng khi một người chuyển phòng ban, đổi chức danh, lên cấp, đổi quản lý, đổi loại lao động (ví dụ từ Thử việc sang Chính thức)…
+Dùng khi một người chuyển phòng ban, đổi chức vụ, lên cấp, đổi quản lý, đổi loại lao động (ví dụ từ Thử việc sang Chính thức)…
 
 1. Ở mục **Lịch sử công tác**, mở khung **Thay đổi vị trí công tác**. Các ô đã điền sẵn vị trí hiện tại.
 2. Chọn **Hiệu lực từ**: ngày thay đổi bắt đầu áp dụng (có thể là ngày trong tương lai).
 3. Chọn **Loại thay đổi**:
    - **Điều chuyển**: chuyển đơn vị, đổi quản lý…, có ghi sự kiện vào **Quá trình công tác**.
-   - **Thăng chức / bổ nhiệm**: lên chức danh hoặc cấp bậc, có ghi sự kiện.
+   - **Thăng chức / bổ nhiệm**: lên chức vụ, cấp bậc hoặc cấp vị trí, có ghi sự kiện.
    - **Sửa thông tin (không ghi sự kiện)**: sửa một chỗ nhập nhầm, không phải thay đổi thật.
 4. Ghi **Lý do** nếu cần.
-5. Sửa các ô vị trí: loại lao động, đơn vị, chức danh, cấp bậc, quản lý trực tiếp, quản lý gián tiếp, chi nhánh, nơi làm việc.
+5. Sửa các ô vị trí: loại lao động, đơn vị, chức vụ, cấp bậc, cấp vị trí, quản lý trực tiếp, quản lý gián tiếp, chi nhánh, nơi làm việc.
 6. Bấm **Lưu**.
 
 Thay đổi có hiệu lực từ ngày đã chọn, và vị trí hiện tại được đóng vào ngày liền trước. Nếu bạn chọn **đúng ngày bắt đầu** của vị trí hiện tại, hệ thống sửa luôn vị trí đó thay vì tạo dòng mới.
@@ -45,7 +64,7 @@ Bạn cần có quyền quản lý nhân sự ở **cả nơi cũ lẫn nơi m�
 
 ## Thêm quá trình công tác trước đây
 
-Dùng cho lịch sử trước khi có SuZu One: ví dụ nhân viên này những năm trước ở phòng nào, chức danh gì. Khung **Thêm quá trình công tác trước đây** chỉ có khi người đó đã vào làm trước hôm nay.
+Dùng cho lịch sử trước khi có SuZu One: ví dụ nhân viên này những năm trước ở phòng nào, chức vụ gì. Khung **Thêm quá trình công tác trước đây** chỉ có khi người đó đã vào làm trước hôm nay.
 
 1. Mở khung **Thêm quá trình công tác trước đây**.
 2. Nhập **Từ ngày** và **Đến ngày (ngày cuối)**. Ngày cuối muộn nhất là hôm qua.
@@ -83,6 +102,14 @@ Kết quả:
 > [!IMPORTANT]
 > Sau khi chuyển, hãy **ký hợp đồng lao động mới** với pháp nhân mới và thêm vào mục **Hợp đồng**.
 
+## Đạt thử việc và gia hạn hợp đồng
+
+Khung **Đạt thử việc hoặc gia hạn hợp đồng** làm trọn việc trong một bước: ghi sự kiện, thêm hợp đồng lao động mới, kết thúc hợp đồng trước đó vào ngày hôm trước, và (khi đạt thử việc) chuyển **Loại nhân sự từ ngày đó**. Ở ô **Cấp quyết định** bạn có thể chọn một mẫu văn bản (ví dụ "Quyết định tiếp nhận sau thử việc") để cấp luôn quyết định gắn với sự kiện, hoặc **Không cấp văn bản**.
+
+## Điều chuyển, thăng chức và thôi việc cần duyệt
+
+Mặc định, thay đổi vị trí công tác và cho thôi việc có hiệu lực ngay khi Nhân sự lưu. Nếu quản trị viên đã lưu một luồng phê duyệt cho **Điều chuyển**, **Thăng chức / bổ nhiệm** hoặc **Chấm dứt hợp đồng** (cho cả tập đoàn hoặc một pháp nhân), việc lưu sẽ tạo một yêu cầu chờ duyệt; thay đổi được thực hiện khi người duyệt cuối đồng ý. Chuyển sang pháp nhân khác không đi qua luồng này.
+
 ## Ghi nhận sự kiện
 
 Ở cuối mục **Quá trình công tác**, khung **Ghi nhận sự kiện** dùng cho các sự kiện không tự thay đổi gì trong hệ thống, chỉ để lưu vết:
@@ -99,7 +126,7 @@ Chọn **Sự kiện**, **Ngày hiệu lực**, **Lý do**, **Ghi chú** rồi b
 > Ghi chú của sự kiện **Kỷ luật** chỉ người được xem thông tin hạn chế mới đọc được. Với **Điều chỉnh lương**, quản lý trực tiếp chỉ thấy là có điều chỉnh, không thấy lý do và ghi chú; chỉ người được xem thông tin lương mới ghi được loại sự kiện này. **Không ghi số tiền ở đây**: mức lương được quản lý ở phần Lương.
 
 > [!NOTE]
-> Ghi **Đạt thử việc** không tự đổi loại lao động. Nếu người này chuyển từ Thử việc sang Chính thức, hãy dùng thêm **Thay đổi vị trí công tác** và thêm hợp đồng mới.
+> Ghi **Đạt thử việc** bằng khung này chỉ lưu vết, không đổi loại lao động. Khi người này ký hợp đồng mới sau thử việc, hãy dùng khung **Đạt thử việc hoặc gia hạn hợp đồng** ở trên — nó đổi hợp đồng và loại lao động cùng lúc.
 
 ### Hủy một sự kiện
 
@@ -111,7 +138,7 @@ Mỗi sự kiện hiện:
 
 - Ngày hiệu lực và tên sự kiện.
 - Nhãn **Chưa hiệu lực** (chưa tới ngày), **Đã hủy**, hoặc không có nhãn khi đã có hiệu lực.
-- Với điều chuyển, thăng chức: từ đâu → sang đâu (pháp nhân, chức danh, cấp bậc, phòng ban, nhóm, "báo cáo cho …").
+- Với điều chuyển, thăng chức: từ đâu → sang đâu (pháp nhân, chức vụ, chức danh, phòng ban, nhóm, "báo cáo cho …").
 - Lý do và ghi chú (tùy quyền xem).
 - Với sự kiện thôi việc: lý do thôi việc. Với đơn xin nghỉ: đường dẫn **Xem đơn**.
 - Nếu có checklist: dòng **Checklist: x/y việc xong** (kèm số việc quá hạn). Mở ra để xem từng bước, người phụ trách và hạn. HR có thể giao lại bước cho người khác.

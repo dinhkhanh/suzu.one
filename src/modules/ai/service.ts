@@ -7,9 +7,12 @@ export { type ChatTurn, QUESTION_MAX, type ToolAnswer, type ToolOutcome, type To
 export { ANSWER_THRESHOLD, type Citation, type Passage, type RankedPassage } from "./engine/answer";
 export { GLOSSARY, languageOf, questionVariants, translateWords } from "./engine/glossary";
 export { assemblePrompt, SYSTEM_PROMPT } from "./engine/prompt";
+export { redactContacts } from "./engine/redact";
 export { type ApproverKind, APPROVER_KINDS, routeQuestion, type ToolName, type ToolRoute, TOOLS } from "./engine/routing";
 export { buildToolUserMessage, ToolPromptRefusal } from "./engine/tool-prompt";
 export { runTool, type ToolAudit, type ToolRun, type ToolUser } from "./tools";
 export { chatDriver, type ChatDriver, LOCAL_DRIVER_NAME } from "./model";
-export { canAskAssistant, canReadUnansweredLog } from "./policy";
+export { AI_HIT_RETENTION_DAYS, AI_LIMITS } from "./engine/limits";
+export { type AssistantUsage, assistantUsage, purgeAiUsageHits, USAGE_DAYS } from "./limits";
+export { canAskAssistant, canReadAssistantUsage, canReadUnansweredLog } from "./policy";
 export { CANDIDATES, retrievePassages } from "./retrieval";

@@ -18,6 +18,7 @@ import { DueText, dotOf, PersonAvatar, ProjectChip, StateDot, TaskKey } from "@/
 import { listPersonNames } from "@/modules/platform/people/service";
 import { type ActivityView, canEditActivity, loadCrm } from "@/modules/crm/service";
 import { FollowUpList } from "@/modules/crm/ui/views";
+import { jobNumbersOf } from "@/modules/projects/service";
 
 export const INBOX_VIEWS = ["work", "reviews", "approvals", "handoffs"] as const;
 export type InboxView = (typeof INBOX_VIEWS)[number];
@@ -38,8 +39,10 @@ export function inboxCounts(mine: MyWork, followUps: number): Record<InboxView, 
 // are rows of the one task table). The Today page holds it under its tabs (`?view=`), one kind of
 // waiting per tab; each item is worked on in its own screen, checklist steps right here.
 export async function Inbox({ view, user, today, mine, followUps }: { view: InboxView; user: CurrentUser; today: IsoDate; mine: MyWork; /** Every open follow-up, on the work tab. */ followUps: ActivityView[] }) {
-  const [t, format, tWork, crm, people] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadCrm(user), followUps.length ? listPersonNames() : Promise.resolve([])]);
   const { tasks: { open, recentlyDone }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
+  // The job number beside each project's name (FR-PJM-02): every project on the tab in one read.
+  const [t, format, tWork, crm, people, jobNumbers] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadCrm(user), followUps.length ? listPersonNames() : Promise.resolve([]), jobNumbersOf([...workItems, ...reviews].map((row) => row.projectId))]);
+  const jobOf = (projectId: string | null | undefined) => (projectId ? (jobNumbers.get(projectId) ?? null) : null);
   const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? recordHref("task", task.id) : task.kind === "obligation" ? recordHref("obligation", task.id) : null);
   const work = sortInbox(workItems, today);
   const obligations = sortInbox(open.filter((task) => task.kind === "obligation"), today);
@@ -157,7 +160,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <span className="truncate font-medium">{review.title}</span>
                   </span>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} /> : null}
+                    {review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} jobNumber={jobOf(review.projectId)} /> : null}
                     <span>{review.submittedByName ?? "—"} · v{review.version}</span>
                     <DueText dueDate={review.dueDate} today={today} open />
                   </span>
@@ -191,7 +194,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                         {review.title}
                       </RecordLink>
                     </TableCell>
-                    <TableCell className="max-w-56">{review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} /> : "—"}</TableCell>
+                    <TableCell className="max-w-56">{review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} jobNumber={jobOf(review.projectId)} /> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{review.stageName ?? "—"}</TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2">
@@ -381,7 +384,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <span className="truncate font-medium">{item.title}</span>
                   </span>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} /> : null}
+                    {item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} jobNumber={jobOf(item.projectId)} /> : null}
                     <span>{item.stateName}</span>
                     <DueText dueDate={item.dueDate} today={today} open />
                     {flags(item)}
@@ -413,7 +416,7 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                         {item.title}
                       </RecordLink>
                     </TableCell>
-                    <TableCell className="max-w-56">{item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} /> : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="max-w-56">{item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} jobNumber={jobOf(item.projectId)} /> : <span className="text-faint">—</span>}</TableCell>
                     <TableCell kind="date"><DueText dueDate={item.dueDate} today={today} open /></TableCell>
                     <TableCell className="text-muted-foreground">{item.stateName}</TableCell>
                     <TableCell>

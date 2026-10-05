@@ -1,6 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -17,9 +18,13 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
   const t = useTranslations("people");
   const details = useRef<HTMLDetailsElement>(null);
   const form = useRef<HTMLFormElement>(null);
-  const { onSubmit, pending, errorKey } = useActionForm(changeAssignmentAction, {
+  // Where a flow was saved for transfers or promotions, the change waits for its approval (FR-CHR-09).
+  const [proposed, setProposed] = useState(false);
+  const { onSubmit, pending, errorKey } = useActionForm<{ pendingApproval: boolean }>(changeAssignmentAction, {
     extra: { personId: person.id },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setProposed(data.pendingApproval);
+      if (data.pendingApproval) return;
       details.current?.removeAttribute("open");
       form.current?.reset();
     },
@@ -52,6 +57,7 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
         {/* Keyed so the defaults follow the assignment once it changes. */}
         <PlacementFields key={current?.id} options={options} defaults={current ?? undefined} exceptPersonId={person.id} />
         <FormError namespace="people.errors" errorKey={errorKey} />
+        {proposed ? <Alert variant="info">{t("assignment.proposed")}</Alert> : null}
         <div>
           <Button type="submit" disabled={pending}>
             {pending ? t("saving") : t("save")}

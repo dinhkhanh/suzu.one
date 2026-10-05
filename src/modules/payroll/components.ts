@@ -8,8 +8,10 @@ import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { listOwnerPersonIds } from "@/modules/platform/rbac/service";
-import { planApproval } from "@/modules/platform/statutory/engine/versions";
+import { planApproval, planVoid } from "@/modules/platform/statutory/engine/versions";
 import { checkComponentDraft, pickCatalogue } from "./engine/catalogue";
+import { isPitReliefCode } from "./engine/components";
+import { ruleVersionRefusal } from "./version-use";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PayComponentRow = typeof schema.payComponent.$inferSelect;
@@ -52,6 +54,8 @@ export async function resolveCatalogueVersions(versionIds: readonly string[], ex
 }
 
 export async function proposeComponent(input: ComponentInput, actorPersonId: string): Promise<PayComponentRow> {
+  // The deductions from the assessable income are not pay components (FR-PAY-13): their codes are kept free.
+  if (isPitReliefCode(input.code)) throw new ActionError("component_code_reserved");
   const catalogue = await resolveCatalogue(input.entityId, input.validFrom);
   const problem = checkComponentDraft(input, catalogue.map((row) => row.code));
   // The formula's text is a rule, not pay, so saying where it went wrong gives nothing away.
@@ -82,6 +86,30 @@ export async function decideComponent(id: string, decision: "approve" | "reject"
     if (plan.kind === "rejected") throw new ActionError(`rule_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
     const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    return { before, after };
+  });
+  await invalidate(COMPONENTS_CACHE);
+  return result;
+}
+
+/**
+ * Takes back an approved component version that was wrong (PAY-13): kept and marked `voided` with
+ * the reason — a past payslip that used it still reads it (`resolveCatalogueVersions`) — the
+ * version before it runs on for its dates, and a correction is proposed like any other. Refused
+ * while a run that has gone past C&B was calculated with it (`version-use.ts`).
+ */
+export async function voidComponent(id: string, reason: string, actorPersonId: string): Promise<{ before: PayComponentRow; after: PayComponentRow }> {
+  const result = await db().transaction(async (tx) => {
+    const table = schema.payComponent;
+    const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
+    if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
+    const refusal = await ruleVersionRefusal("component", id, tx);
+    if (refusal) throw new ActionError(refusal);
+    const approved = await tx.select().from(table).where(and(eq(table.code, before.code), before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const now = new Date();
+    const [after] = await tx.update(table).set({ status: "voided", voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, id)).returning();
+    const plan = planVoid(approved, before);
+    if (plan.kind === "reopen") await tx.update(table).set({ validTo: plan.reopenTo, updatedAt: now }).where(eq(table.id, plan.reopenId));
     return { before, after };
   });
   await invalidate(COMPONENTS_CACHE);

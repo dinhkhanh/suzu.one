@@ -448,6 +448,8 @@ export const crmContractProject = pgTable(
 // ── Invoices, payments (FR-CRM-30..32) ──────────────────────────────────────────────────────
 
 // Finance's record of an invoice issued in the accounting system, over one or more billing items.
+// A draft is one being prepared: it holds its items, may have no number yet, and is changed or
+// deleted freely. An issued invoice is never deleted — a mistake is voided, with the reason.
 export const crmInvoice = pgTable(
   "crm_invoice",
   {
@@ -456,16 +458,20 @@ export const crmInvoice = pgTable(
     clientId: uuid("client_id")
       .notNull()
       .references(() => workClient.id),
-    number: text("number").notNull(),
+    // null only on a draft that has no number yet.
+    number: text("number"),
     issuedOn: date("issued_on").notNull(),
     dueOn: date("due_on").notNull(),
     vatRateBp: integer("vat_rate_bp").notNull().default(0),
     subtotalVnd: bigint("subtotal_vnd", { mode: "number" }).notNull(),
     vatVnd: bigint("vat_vnd", { mode: "number" }).notNull().default(0),
     totalVnd: bigint("total_vnd", { mode: "number" }).notNull(),
-    // open | paid | written_off — "part paid" and "overdue" are read from the payments and the date.
+    // draft | open | paid | written_off | void — "part paid" and "overdue" are read from the payments and the date.
     status: text("status").notNull().default("open"),
     writtenOffReason: text("written_off_reason"),
+    voidedReason: text("voided_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedByPersonId: uuid("voided_by_person_id").references(() => person.id),
     note: text("note"),
     // Reminder days already sent (days past due: 1, 15, 30…).
     reminded: integer("reminded").array().notNull().default([]),
@@ -475,17 +481,21 @@ export const crmInvoice = pgTable(
   (t) => [unique("crm_invoice_number_unique").on(t.entityId, t.number), index("crm_invoice_client_idx").on(t.clientId, t.status), index("crm_invoice_due_idx").on(t.dueOn).where(sql`${t.status} = 'open'`)],
 ).enableRLS();
 
+// An item is on one live invoice at a time — a draft holds it too, the service checks under the
+// item's lock. A voided invoice keeps its rows, so the item can go on the invoice that replaces it.
 export const crmInvoiceItem = pgTable(
   "crm_invoice_item",
   {
     billingItemId: uuid("billing_item_id")
-      .primaryKey()
+      .notNull()
       .references(() => projectBillingItem.id, { onDelete: "cascade" }),
     invoiceId: uuid("invoice_id")
       .notNull()
       .references(() => crmInvoice.id, { onDelete: "cascade" }),
+    // On a draft, the amount finance typed for an item made without one; once issued, the amount invoiced.
+    amountVnd: bigint("amount_vnd", { mode: "number" }),
   },
-  (t) => [index("crm_invoice_item_invoice_idx").on(t.invoiceId)],
+  (t) => [primaryKey({ columns: [t.billingItemId, t.invoiceId] }), index("crm_invoice_item_invoice_idx").on(t.invoiceId)],
 ).enableRLS();
 
 export const crmPayment = pgTable(
@@ -503,6 +513,10 @@ export const crmPayment = pgTable(
     note: text("note"),
     recordedByPersonId: uuid("recorded_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // A payment recorded by mistake is reversed, never deleted: it stays on the invoice and counts for nothing.
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversedByPersonId: uuid("reversed_by_person_id").references(() => person.id),
+    reversedReason: text("reversed_reason"),
   },
   (t) => [index("crm_payment_invoice_idx").on(t.invoiceId), index("crm_payment_received_idx").on(t.receivedOn)],
 ).enableRLS();

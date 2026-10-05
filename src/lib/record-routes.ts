@@ -36,6 +36,7 @@ const ROUTES = {
   device: (id) => `/attendance/devices/${id}`,
   dailyReport: (id) => `/daily/reports/${id}`,
   feedback: (id) => `/feedback/${id}`,
+  brandKit: (id) => `/admin/brands/${id}`,
 } as const satisfies Record<string, (id: string) => string>;
 
 export type RecordKind = keyof typeof ROUTES;

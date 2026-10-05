@@ -6,6 +6,7 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 import { toSearchKey } from "@/lib/text";
 import { featureEnabled } from "@/modules/platform/flags/service";
 import { notify, queueEmail } from "@/modules/platform/notifications/service";
@@ -15,6 +16,8 @@ import { activatePerson, createPerson, invalidatePeople, listPersonNames, type P
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
 import { revokeSessionsOf } from "@/modules/platform/auth/service";
+// The approval engine's entry point: a leaver's unanswered turns move on with the offboarding.
+import { reassignTurnsOfLeaver } from "@/modules/platform/approvals/service";
 import { periodOn, planAssignmentChange, planPastPeriod } from "./engine/assignment-plan";
 import { defaultCodeScheme, formatEmployeeCode, normalizeEmployeeCode } from "./engine/employee-code";
 import { describePlacement, markDueTerminationsApplied, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
@@ -86,6 +89,8 @@ export type PeopleFilters = {
   entityId?: string;
   departmentId?: string;
   workforceType?: WorkforceType;
+  /** People who hold this professional field or skill (FR-CHR-13). */
+  competencyId?: string;
   // Defaults to "active". Anything else is personal-tier information.
   status?: PersonStatus | "all";
   page?: number;
@@ -102,6 +107,9 @@ export type PeopleListRow = {
   departmentId: string | null;
   departmentName: string | null;
   positionName: string | null;
+  // The job title's two halves (src/lib/job-levels.ts): directory information, like the position.
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   managerName: string | null;
   // null when the viewer may only see this person's directory entry.
@@ -129,6 +137,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
     status === "all" ? undefined : eq(schema.person.status, status),
     filters.workforceType ? eq(a.workforceType, filters.workforceType) : undefined,
     filters.entityId ? eq(e.entityId, filters.entityId) : undefined,
+    filters.competencyId ? sql`exists (select 1 from ${schema.personCompetency} where ${schema.personCompetency.personId} = ${schema.person.id} and ${schema.personCompetency.competencyId} = ${filters.competencyId})` : undefined,
     filters.departmentId ? or(eq(a.departmentId, filters.departmentId), filterUnits.length ? inArray(a.orgUnitId, filterUnits) : undefined) : undefined,
     pattern
       ? or(ilike(schema.person.searchName, `%${toSearchKey(q!).replace(/[\\%_]/g, "\\$&")}%`), ilike(schema.person.workEmail, pattern), ilike(e.employeeCode, pattern))
@@ -153,6 +162,8 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         departmentName: schema.orgUnit.name,
         teamId: a.teamId,
         positionName: schema.position.name,
+        seniorityLevel: a.seniorityLevel,
+        positionLevel: a.positionLevel,
         managerId: a.managerId,
         managerName: manager.fullName,
         workforceType: a.workforceType,
@@ -191,6 +202,8 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         departmentId: row.departmentId,
         departmentName: row.departmentName,
         positionName: row.positionName,
+        seniorityLevel: row.seniorityLevel,
+        positionLevel: row.positionLevel,
         managerId: row.managerId,
         managerName: row.managerName,
         workforceType: personal ? row.workforceType : null,
@@ -295,7 +308,8 @@ export type AssignmentView = {
   teamId: string | null;
   teamName: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   managerName: string | null;
   dottedManagerId: string | null;
@@ -316,7 +330,7 @@ export type PersonView = {
   entityId: string | null;
   entityName: string | null;
   // The assignment in force today; only its directory fields are filled below the personal tier.
-  current: Pick<AssignmentView, "departmentId" | "departmentName" | "teamId" | "teamName" | "positionName" | "managerId" | "managerName"> | null;
+  current: Pick<AssignmentView, "departmentId" | "departmentName" | "teamId" | "teamName" | "positionName" | "seniorityLevel" | "positionLevel" | "managerId" | "managerName"> | null;
   personal: {
     status: PersonStatus;
     startDate: IsoDate | null;
@@ -409,6 +423,9 @@ export async function getPersonView(principal: Principal, personId: string): Pro
       teamId: current.teamId,
       teamName: current.teamName,
       positionName: current.positionName,
+      // Rows cached before the columns existed have neither.
+      seniorityLevel: current.seniorityLevel ?? null,
+      positionLevel: current.positionLevel ?? null,
       managerId: current.managerId,
       managerName: current.managerName,
     },
@@ -451,7 +468,8 @@ async function loadAssignments(personId: string): Promise<AssignmentView[]> {
       teamId: schema.assignment.teamId,
       teamName: teamUnit.name,
       positionName: schema.position.name,
-      jobLevel: schema.assignment.jobLevel,
+      seniorityLevel: schema.assignment.seniorityLevel,
+      positionLevel: schema.assignment.positionLevel,
       managerId: schema.assignment.managerId,
       managerName: manager.fullName,
       dottedManagerId: schema.assignment.dottedManagerId,
@@ -544,7 +562,8 @@ export type PlacementInput = {
   // One unit, at any depth (FR-PLT-16); `departmentId` and `teamId` are derived from it.
   orgUnitId: string | null;
   positionName: string | null;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   managerId: string | null;
   dottedManagerId: string | null;
   workLocation: string | null;
@@ -664,75 +683,129 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
 }
 
 function changeAssignmentInTransaction(personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
-  return inTransaction(async (tx) => {
-    const [employment] = await tx
-      .select()
-      .from(schema.employment)
-      .where(eq(schema.employment.personId, personId))
-      .orderBy(desc(schema.employment.startDate))
-      .limit(1)
-      .for("update");
-    if (!employment) throw new ActionError("no_employment");
+  return inTransaction((tx) => changeAssignmentIn(tx, personId, input, actorPersonId));
+}
 
-    const existing = await tx
-      .select()
-      .from(schema.assignment)
-      .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
-    const plan = planAssignmentChange(employment, existing, input.validFrom);
-    if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+/** The change of assignment in the caller's transaction — an approved transfer or promotion (FR-CHR-09). The caller drops the person's page once it has committed. */
+export async function changeAssignmentIn(tx: Tx, personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
+  const [employment] = await tx
+    .select()
+    .from(schema.employment)
+    .where(eq(schema.employment.personId, personId))
+    .orderBy(desc(schema.employment.startDate))
+    .limit(1)
+    .for("update");
+  if (!employment) throw new ActionError("no_employment");
 
-    const values = { ...(await resolvePlacement(tx, input.placement, { entityId: employment.entityId, personId })), changeReason: input.changeReason };
-    let before: typeof schema.assignment.$inferSelect | null = null;
-    let after: typeof schema.assignment.$inferSelect;
-    if (plan.kind === "replace") {
-      before = existing.find((row) => row.id === plan.id) ?? null;
-      [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
-    } else {
-      if (plan.kind === "succeed") {
-        before = existing.find((row) => row.id === plan.closeId) ?? null;
-        await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
-      }
-      [after] = await tx
-        .insert(schema.assignment)
-        .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
-        .returning();
+  const existing = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const plan = planAssignmentChange(employment, existing, input.validFrom);
+  if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+
+  const values = { ...(await resolvePlacement(tx, input.placement, { entityId: employment.entityId, personId })), changeReason: input.changeReason };
+  let before: typeof schema.assignment.$inferSelect | null = null;
+  let after: typeof schema.assignment.$inferSelect;
+  if (plan.kind === "replace") {
+    before = existing.find((row) => row.id === plan.id) ?? null;
+    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+  } else {
+    if (plan.kind === "succeed") {
+      before = existing.find((row) => row.id === plan.closeId) ?? null;
+      await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
     }
+    [after] = await tx
+      .insert(schema.assignment)
+      .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
+      .returning();
+  }
 
-    // Mirror the assignment in force today onto the person; a future-dated change leaves it alone.
-    const rows = await tx
-      .select()
-      .from(schema.assignment)
-      .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
-    const today = todayInVietnam();
-    const inForce = periodOn(rows, today > employment.startDate ? today : employment.startDate);
-    if (inForce) {
-      await setPersonPlacement(tx, personId, {
-        workforceType: inForce.workforceType,
-        primaryEntityId: employment.entityId,
-        orgUnitId: inForce.orgUnitId,
-        managerId: inForce.managerId,
-      });
-    }
-    const kind = input.kind ?? "correction";
-    const event =
-      kind === "correction"
-        ? null
-        : await recordLifecycleEvent(
-            tx,
-            {
-              personId,
-              employmentId: employment.id,
-              entityId: employment.entityId,
-              type: kind,
-              effectiveDate: input.validFrom,
-              reason: input.changeReason,
-              assignmentId: after.id,
-              details: { from: before ? await describePlacement(tx, before) : null, to: await describePlacement(tx, after) },
-            },
-            actorPersonId,
-          );
-    return { employment, before, after, event };
-  });
+  // Mirror the assignment in force today onto the person; a future-dated change leaves it alone.
+  const rows = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const today = todayInVietnam();
+  const inForce = periodOn(rows, today > employment.startDate ? today : employment.startDate);
+  if (inForce) {
+    await setPersonPlacement(tx, personId, {
+      workforceType: inForce.workforceType,
+      primaryEntityId: employment.entityId,
+      orgUnitId: inForce.orgUnitId,
+      managerId: inForce.managerId,
+    });
+  }
+  const kind = input.kind ?? "correction";
+  const event =
+    kind === "correction"
+      ? null
+      : await recordLifecycleEvent(
+          tx,
+          {
+            personId,
+            employmentId: employment.id,
+            entityId: employment.entityId,
+            type: kind,
+            effectiveDate: input.validFrom,
+            reason: input.changeReason,
+            assignmentId: after.id,
+            details: { from: before ? await describePlacement(tx, before) : null, to: await describePlacement(tx, after) },
+          },
+          actorPersonId,
+        );
+  return { employment, before, after, event };
+}
+
+/**
+ * The workforce type from a day on, everything else about the placement as it stands then — what a
+ * passed probation changes (FR-CHR-09). In the caller's transaction, beside the event and the new
+ * contract; null when the person is already of that type. The caller drops the person's page
+ * (`invalidatePersonView`) once it has committed.
+ */
+export async function changeWorkforceTypeIn(tx: Tx, personId: string, input: { validFrom: IsoDate; workforceType: WorkforceType; changeReason: string | null }, actorPersonId: string) {
+  const [employment] = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1).for("update");
+  if (!employment) throw new ActionError("no_employment");
+  const existing = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const base = periodOn(existing, input.validFrom) ?? existing.reduce<(typeof existing)[number] | null>((best, row) => (!best || row.validFrom > best.validFrom ? row : best), null);
+  if (!base) throw new ActionError("no_employment");
+  if (base.workforceType === input.workforceType) return null;
+  const plan = planAssignmentChange(employment, existing, input.validFrom);
+  if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+
+  // The placement as it stands, but for the type: the unit, its derived columns, the post, the ladders, the managers.
+  const values = {
+    kind: base.kind,
+    branchId: base.branchId,
+    orgUnitId: base.orgUnitId,
+    departmentId: base.departmentId,
+    teamId: base.teamId,
+    positionId: base.positionId,
+    seniorityLevel: base.seniorityLevel,
+    positionLevel: base.positionLevel,
+    managerId: base.managerId,
+    dottedManagerId: base.dottedManagerId,
+    workLocation: base.workLocation,
+    workforceType: input.workforceType,
+    changeReason: input.changeReason,
+  };
+  let after: typeof schema.assignment.$inferSelect;
+  if (plan.kind === "replace") {
+    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+  } else {
+    if (plan.kind === "succeed") await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
+    [after] = await tx
+      .insert(schema.assignment)
+      .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: employment.endDate, createdByPersonId: actorPersonId })
+      .returning();
+  }
+  // Today's placement on the person, as `changeAssignment` does; a change dated ahead waits for the roll-over.
+  const today = todayInVietnam();
+  if (input.validFrom <= today) await setPersonPlacement(tx, personId, { workforceType: input.workforceType, primaryEntityId: employment.entityId, orgUnitId: after.orgUnitId, managerId: after.managerId });
+  return { before: base, after };
 }
 
 export type PastPeriodInput = { validFrom: IsoDate; validTo: IsoDate; changeReason: string | null; placement: PlacementInput };
@@ -842,8 +915,12 @@ export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUp
  * Termination ends access (FR-CHR-11): anyone whose latest employment ended before `today` and
  * who is not offboarded yet becomes so, and their sessions are deleted. Called by the daily
  * roll-over for last days that have now passed, and by the termination itself for past dates.
+ *
+ * In the same transaction every approval the leaver had not answered moves on to whoever the
+ * request's own rules name without them (PLT-02): a request never waits for someone who has gone.
+ * `actorPersonId` is who ended the employment — nobody, when the roll-over does it.
  */
-export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, executor: Tx | ReturnType<typeof db> = db(), actorPersonId: string | null = null): Promise<number> {
   const { e } = placementOn(today);
   const leavers = await executor
     .select({ personId: schema.person.id, workEmail: schema.person.workEmail })
@@ -856,6 +933,7 @@ export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, exe
       await invalidatePeople([{ id: leaver.personId, workEmail: leaver.workEmail }]);
       await revokeSessionsOf(leaver.workEmail, tx);
       await markDueTerminationsApplied(tx, leaver.personId, today);
+      await reassignTurnsOfLeaver(tx, leaver.personId, { actorPersonId });
     };
     if (onlyPersonId) await work(executor);
     else await db().transaction(work);
@@ -950,7 +1028,7 @@ export async function listSavedViews(ownerPersonId: string, list: string): Promi
       .select()
       .from(schema.savedView)
       .where(and(eq(schema.savedView.ownerPersonId, ownerPersonId), eq(schema.savedView.list, list)))
-      .orderBy(asc(schema.savedView.name)),
+      .orderBy(asc(schema.savedView.name), asc(schema.savedView.id)),
   );
 }
 
@@ -979,10 +1057,18 @@ export { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, listPositio
 export type { BankAccount } from "./records";
 export { type DependantRegistration, entityPayrollFactsOf, listDependantRegistrations, listPayrollFacts, listPayrollNames, type PayrollName, type PayrollPersonFacts, payrollFactsOf, recordPayEvent } from "./payroll-facts";
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
+// Probations ending, for the probation review cycle (FR-PRF-03).
+export { listProbationsEnding, type ProbationEnding } from "./probation-facts";
+// What a generated document may print (the documents module). The restricted facts come through
+// `getSensitiveFields`, which checks the reader itself.
+export { type DocumentFacts, documentEventOf, documentFactsOf } from "./document-facts";
+export type { PlacementWords } from "./lifecycle-events";
+export { contractSalaryTermsOf, getSensitiveFields, listContracts, listDependents, listDocuments, listEmergencyContacts } from "./records";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
 /**
  * The headcount report (FR-RPT-02), for Phase 9's dashboard and scheduled reports. It takes the
  * reader's principal and scopes itself — a viewer with no `report:read` reach gets null, exactly
  * as on `/reports/headcount`.
  */
-export { getHeadcountReport, type HeadcountFilters, type HeadcountReport } from "./reports";
+export { getHeadcountReport, getHeadcountTotals, type HeadcountFilters, type HeadcountReport, type HeadcountTotals } from "./reports";
+export { type CatalogueEntry, competenciesOf, type Competency, competencyChoices, type CompetencyKind, type CompetencyLists, invalidateCompetencies, listCompetencies, listCompetencyCatalogue } from "./competencies";

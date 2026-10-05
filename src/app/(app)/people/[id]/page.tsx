@@ -1,21 +1,30 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
 import { addDays, todayInVietnam } from "@/lib/dates";
+import { jobTitle } from "@/lib/job-levels";
 import type { RecordKind } from "@/lib/record-routes";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
-import { canChangePhoto } from "@/modules/core-hr/policy";
-import { getPersonTarget, getPersonView, loadPlacementOptions } from "@/modules/core-hr/service";
+import { canBrowsePeople, canChangePhoto, canEditCompetencies } from "@/modules/core-hr/policy";
+import { getPersonTarget, getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm, PastAssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
+import { PersonCompetencies } from "@/modules/core-hr/ui/competencies";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
-import { RehireForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
+import { RehireForm, SuspensionForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { listEmploymentsOf } from "@/modules/core-hr/corrections";
+import { canRemovePerson } from "@/modules/core-hr/policy";
+import { CorrectEmploymentButton, RemovePersonForm } from "@/modules/core-hr/ui/correction-forms";
+import { List, ListItem } from "@/components/ui/list";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { PersonDocuments } from "@/modules/documents/ui/person-documents";
 import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history";
@@ -30,6 +39,7 @@ import { listEntities } from "@/modules/platform/org/service";
 import { can, canImpersonate } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
 import { accountsManagedBy } from "@/modules/crm/service";
+import { loadViewer, projectAppointmentsOf } from "@/modules/work/service";
 
 export const generateMetadata = pageTitle("person");
 
@@ -45,6 +55,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   if (!person) notFound();
 
   const t = await getTranslations("people");
+  const tLifecycle = await getTranslations("lifecycle");
   const format = await getFormatter();
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
   // A name with the way to its record; null without a name, so an empty fact still shows its dash.
@@ -55,7 +66,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
   const today = todayInVietnam();
   const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
-  const [changeRequests, options, pastOptions, otherEntityOptions, entities, borrowable, target, managed] = await Promise.all([
+  const [changeRequests, options, pastOptions, otherEntityOptions, entities, borrowable, target, managed, appointments, directoryOpen, employments] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
     // Work history that is already over (roll-out): only for someone who started before today.
@@ -68,6 +79,12 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
     getPersonTarget(person.id),
     // The clients this person looks after (FR-CRM-46): directory information, like their team.
     user.principal.workforceType === "collaborator" ? new Map<string, { id: string; name: string }[]>() : accountsManagedBy([person.id]),
+    // The posts held in running projects: the automatic half of the position, as far as this viewer may open each project.
+    loadViewer(user).then((viewer) => projectAppointmentsOf(viewer, person.id)),
+    // A skill on the profile leads to everyone who holds it — for a viewer who has the directory.
+    canBrowsePeople(user.principal) ? peopleModuleOpen(user) : false,
+    // Each employment period, for HR to correct its first day and code (CHR-02).
+    person.canManage ? listEmploymentsOf(person.id) : [],
   ]);
   const photoEditable = canChangePhoto(user.principal, target);
   const accounts = managed.get(person.id) ?? [];
@@ -102,7 +119,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         >
           {personal && personal.status !== "active" ? (
             <div className="pt-1">
-              <Badge variant="outline">{t(`status.${personal.status}`)}</Badge>
+              <Badge dot variant={statusTone(personal.status)}>{t(`status.${personal.status}`)}</Badge>
             </div>
           ) : null}
         </PageHeader>
@@ -113,6 +130,9 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
         <Fact label={t("fields.team")}>{record("unit", person.current?.teamId, person.current?.teamName)}</Fact>
         <Fact label={t("fields.managerId")}>{record("person", person.current?.managerId, person.current?.managerName)}</Fact>
+        <Fact label={t("fields.jobTitle")}>{jobTitle(t, person.current)}</Fact>
+        <Fact label={t("fields.position")}>{person.current?.positionName}</Fact>
+        <ProjectPositions appointments={appointments} />
         {accounts.length ? (
           <Fact label={t("fields.accountsManaged")}>
             {accounts.map((account, index) => (
@@ -127,6 +147,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         ) : null}
       </FactSheet>
 
+      <PersonCompetencies personId={person.id} canEdit={canEditCompetencies(user.principal, target)} browsable={directoryOpen} />
+
       {personal ? (
         <>
           <Section title={t("sections.employment")}>
@@ -135,7 +157,6 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
               <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
               <Fact label={t("fields.endDate")}>{day(personal.endDate)}</Fact>
-              <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>
               <Fact label={t("fields.dottedManagerId")}>{record("person", personal.current?.dottedManagerId, personal.current?.dottedManagerName)}</Fact>
               <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
               <Fact label={t("fields.workLocation")}>{personal.current?.workLocation}</Fact>
@@ -172,6 +193,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                 <TableRow>
                   <TableHead kind="date">{t("assignment.period")}</TableHead>
                   <TableHead kind="org">{t("fields.entity")}</TableHead>
+                  <TableHead kind="text">{t("fields.jobTitle")}</TableHead>
                   <TableHead kind="text">{t("fields.position")}</TableHead>
                   <TableHead kind="org">{t("fields.department")}</TableHead>
                   <TableHead kind="person">{t("fields.managerId")}</TableHead>
@@ -197,6 +219,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                       </RecordLink>
                       <span className="ml-1 text-muted-foreground">{row.employeeCode}</span>
                     </TableCell>
+                    <TableCell>{jobTitle(t, row) ?? "—"}</TableCell>
                     <TableCell>{row.positionName ?? "—"}</TableCell>
                     <TableCell>
                       {record("unit", row.departmentId, row.departmentName)}
@@ -213,6 +236,19 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={today} /> : null}
             {pastOptions ? <PastAssignmentForm person={person} options={pastOptions} today={addDays(today, -1)} /> : null}
+            {employments.length > 0 ? (
+              <List>
+                {employments.map((row) => (
+                  <ListItem key={row.id} className="flex-wrap gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="font-mono text-xs">{row.employeeCode}</span> · {row.entityName} · {day(row.startDate)} → {day(row.endDate) ?? t("assignment.ongoing")}
+                      <span className="ml-1 text-muted-foreground">({t("corrections.seniorityFrom", { date: day(row.seniorityDate) ?? "" })})</span>
+                    </span>
+                    <CorrectEmploymentButton employment={row} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : null}
             {transferring && otherEntityOptions && transferTargets.length > 0 && personal.startDate ? (
               <TransferEntityForm
                 personId={person.id}
@@ -222,7 +258,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                 minDate={addDays(personal.startDate, 1)}
                 defaults={
                   personal.current
-                    ? { workforceType: personal.current.workforceType, positionName: personal.current.positionName, jobLevel: personal.current.jobLevel, managerId: personal.current.managerId, dottedManagerId: personal.current.dottedManagerId, workLocation: personal.current.workLocation }
+                    ? { workforceType: personal.current.workforceType, positionName: personal.current.positionName, seniorityLevel: personal.current.seniorityLevel, positionLevel: personal.current.positionLevel, managerId: personal.current.managerId, dottedManagerId: personal.current.dottedManagerId, workLocation: personal.current.workLocation }
                     : undefined
                 }
               />
@@ -233,8 +269,22 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           <PersonSalaryHistory viewer={{ personId: user.person.id, principal: user.principal }} personId={person.id} stepUpFresh={isStepUpFresh(user.reauthAt)} />
 
           <LifecycleSection principal={user.principal} personId={person.id} canManage={person.canManage} employed={personal.endDate === null} />
+          {/* Locking the account, and looking after the approvals that wait for it (FR-PLT-05, PLT-02): HR's, and never one's own. */}
+          {person.canManage && person.id !== user.person.id && (personal.status === "active" || personal.status === "suspended") ? (
+            <>
+              <SuspensionForm personId={person.id} suspended={personal.status === "suspended"} />
+              <p className="text-sm text-muted-foreground">
+                {tLifecycle("suspend.approvalsHint")}{" "}
+                <Link href={`/approvals/delegation?for=${person.id}`} className="text-link underline-offset-4 hover:underline">
+                  {tLifecycle("suspend.approvalsLink")}
+                </Link>
+              </p>
+            </>
+          ) : null}
           <PersonEquipment principal={user.principal} personId={person.id} />
           <PersonDocuments principal={user.principal} personId={person.id} />
+          {/* A record that should never have been made (CHR-02): the service refuses once anything else names the person. */}
+          {canRemovePerson(user.principal, target) ? <RemovePersonForm personId={person.id} fullName={person.fullName} /> : null}
           {/* A former employee comes back on the same record (FR-CHR-16). */}
           {rehiring && otherEntityOptions ? (
             <RehireForm personId={person.id} today={today} defaultEntityId={person.entityId} options={otherEntityOptions} entities={manageableEntities} />

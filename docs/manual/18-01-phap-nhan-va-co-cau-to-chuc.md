@@ -33,10 +33,11 @@ Mã pháp nhân không đổi được về sau và xuất hiện trong nhiều 
 Bấm vào một pháp nhân để mở trang chi tiết:
 
 - Sửa **Tên ngắn**, **Tên pháp lý**, **Người đại diện pháp luật**, **Mã số thuế**, **Mã đơn vị BHXH**, **Vùng lương**, **Địa chỉ**, ô **Hoạt động**; bấm **Lưu**.
+- Mục **Tài khoản chi lương**: tài khoản ngân hàng của công ty dùng để chi lương (**Ngân hàng**, **Số tài khoản**, **Tên tài khoản**, **Chi nhánh**, **Mặc định**; **Thêm tài khoản**). Màn hình lập tệp chuyển khoản lương chọn từ danh sách này thay vì nhập tay. Người quản lý pháp nhân hoặc người chi lương của pháp nhân đó sửa được; người đọc bảng lương xem được.
 - Mục **Chi nhánh / địa điểm**: thêm chi nhánh (**Tên chi nhánh**, **Địa chỉ**, **Thêm chi nhánh**), sửa hoặc ngừng chi nhánh có sẵn. Chi nhánh dùng được ở những nơi cần chọn địa điểm, ví dụ đối tượng nhận thông báo.
 
 > [!NOTE]
-> **Vùng lương** quyết định mức lương tối thiểu vùng áp dụng cho người lao động của pháp nhân (mức cụ thể nằm trong **Tham số pháp định**). **Mã đơn vị BHXH** và **Người đại diện pháp luật** được dùng trong hồ sơ bảo hiểm và các văn bản in ra.
+> **Vùng lương** quyết định mức lương tối thiểu vùng áp dụng cho người lao động của pháp nhân (mức cụ thể nằm trong **Tham số pháp định**). **Mã đơn vị BHXH** và **Người đại diện pháp luật** được dùng trong hồ sơ bảo hiểm và các văn bản in ra. **Tên pháp lý**, **Địa chỉ**, **Mã số thuế** và **Người đại diện pháp luật** đã khai ở đây được in lên đầu văn bản cấp cho nhân viên của pháp nhân, thay cho giá trị trong mẫu.
 
 Không thể chuyển một pháp nhân sang **Ngừng** khi vẫn còn nhân sự thuộc pháp nhân đó.
 

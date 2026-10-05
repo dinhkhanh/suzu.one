@@ -48,7 +48,7 @@ Với nhân viên mới chưa có cơ cấu lương, biểu mẫu có tiêu đ�
 1. Mở hồ sơ lương của nhân viên.
 2. Nhập **Hiệu lực từ** (không được trước ngày vào làm).
 3. **Lý do** mặc định là **Thiết lập lương ban đầu**.
-4. Nhập **Lương cơ bản**, **Lương đóng bảo hiểm** và từng phụ cấp theo danh mục của pháp nhân — tất cả là số tiền VND/tháng (gross).
+4. Nhập **Lương cơ bản**, **Lương đóng bảo hiểm** và từng phụ cấp theo danh mục của pháp nhân — tất cả là số tiền VND/tháng (gross). Nếu người này thử việc với mức lương thấp hơn, nhập **Tỷ lệ lương thử việc (%)** (để trống nếu trả đủ): tỷ lệ này chỉ áp dụng cho những ngày có hợp đồng thử việc và không được thấp hơn mức tối thiểu luật định. Khi chuyển ứng viên thành nhân viên, tỷ lệ trong thư mời được điền sẵn.
 5. Ghi chú nếu cần ở ô **Ghi chú (chỉ người duyệt thấy)**.
 6. Bấm **Gửi đề xuất**.
 
@@ -96,7 +96,14 @@ Người đề xuất mở lại đề xuất (từ hồ sơ lương → **Đề
 
 ### Đề xuất được duyệt sau khi tháng đã trả lương
 
-Ngày hiệu lực có thể nằm trong quá khứ. Bảng lương của những tháng **chưa trình** sẽ dùng mức lương mới khi bạn bấm **Tính lại**. Còn kỳ lương đã khóa sổ thì là chứng từ, không bị sửa lại — hãy thống nhất với kế toán cách xử lý phần chênh lệch trước khi duyệt một đề xuất hồi tố.
+Ngày hiệu lực có thể nằm trong quá khứ. Kỳ lương của tháng còn mở (chưa trình, hoặc được trả lại) báo số liệu đã cũ và dùng mức lương mới khi bạn bấm **Tính lại**. Với những tháng đã trả, kỳ lương định kỳ kế tiếp tự đưa phần chênh lệch vào thành khoản **Truy lĩnh, truy thu** — mỗi tháng một khoản, kể cả khi mức mới bắt đầu giữa tháng. Kỳ lương đã khóa sổ vẫn là chứng từ, không bị sửa lại. Xem trang **Chạy lương hằng tháng**.
+
+### Hủy bỏ một phiên bản đã duyệt nhưng sai
+
+Nếu một cơ cấu lương hay hồ sơ trả lương đã được duyệt nhưng nhập sai (ví dụ gõ nhầm một con số), Chủ sở hữu (hoặc C&B, với hồ sơ Đầy đủ đầu tiên không qua ai duyệt) bấm **Hủy bỏ** cạnh phiên bản đó trên hồ sơ lương và nhập **Lý do hủy bỏ**. Phiên bản không bị xóa: nó được giữ kèm người hủy và lý do, nhãn **Đã hủy bỏ**. Phiên bản trước đó tiếp tục áp dụng cho những ngày này; sau đó hãy đề xuất phiên bản đúng như bình thường (cùng ngày hiệu lực).
+
+- Không hủy được khi một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản này — hãy điều chỉnh bằng khoản truy lĩnh, truy thu.
+- Nếu một kỳ lương đang chờ duyệt dùng phiên bản này, hãy trả kỳ lương về cho nhân sự trước. Kỳ lương còn ở tay C&B thì báo số liệu đã cũ và cần tính lại.
 
 ## In quyết định lương
 
@@ -107,6 +114,14 @@ Khi đề xuất được duyệt, giai đoạn lương mới trong **Lịch s�
 3. Dùng chức năng in của trình duyệt để in hoặc lưu PDF, sau đó trình ký và đóng dấu.
 
 Hệ thống không lưu bản in; mỗi lần mở, văn bản được tạo lại từ cơ cấu lương đã duyệt. Nhân viên cũng mở được quyết định của chính mình.
+
+## Nhập lương và hồ sơ trả lương từ tệp
+
+Khi nạp lương của cả công ty (ví dụ lúc bắt đầu dùng hệ thống), trên [Cơ cấu lương](/payroll/salaries) bấm **Nhập từ tệp**, chọn **Nhập cho pháp nhân**, rồi dùng **Tệp lương** hoặc **Tệp hồ sơ trả lương**: tải file mẫu, điền, chọn file, kiểm tra và ghi vào hệ thống.
+
+- Mỗi dòng lương trở thành một đề xuất thay đổi lương gửi Chủ sở hữu, như khi lập trên hồ sơ lương. Phụ cấp ghi theo mã khoản mục, ví dụ `ALW_MEAL=730000; ALW_PHONE=200000`.
+- Hồ sơ Đầy đủ đầu tiên của một người có hiệu lực ngay; hồ sơ Đơn giản và mọi thay đổi hồ sơ chờ Chủ sở hữu duyệt.
+- Không có gì có hiệu lực cho đến khi Chủ sở hữu mở đợt nhập trong danh sách **Đợt nhập chờ duyệt**. Màn hình **Duyệt đợt nhập** đặt mỗi mức lương cạnh mức đang áp dụng; bấm **Phê duyệt … đề xuất** là phê duyệt đúng những dòng đang hiển thị. Mỗi đề xuất vẫn có thể mở riêng để trả lại hoặc từ chối.
 
 ## Hồ sơ trả lương: Đầy đủ và Đơn giản
 

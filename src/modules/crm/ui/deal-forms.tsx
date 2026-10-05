@@ -5,12 +5,15 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field } from "@/components/forms/field";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
+import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, eraseLeadContactAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
 import { ACCOUNT_TIERS, LOST_REASONS, SERVICE_LINES, SOURCES } from "../enums";
 import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
@@ -135,6 +138,26 @@ export function DisqualifyForm({ leadId }: { leadId: string }) {
   );
 }
 
+/** Erasure on request for somebody who is only a lead's contact: typed confirmation, because it cannot be undone. */
+export function EraseLeadContactForm({ leadId }: { leadId: string }) {
+  const t = useTranslations("crm");
+  const [open, setOpen] = useState(false);
+  if (!open)
+    return (
+      <Button type="button" variant="link" size="xs" className="self-start px-0 text-destructive" onClick={() => setOpen(true)}>
+        {t("lead.eraseContact")}
+      </Button>
+    );
+  return (
+    <CrmForm action={eraseLeadContactAction} extra={{ leadId }} submit={t("contacts.eraseConfirm")} className="flex flex-wrap items-end gap-3 rounded-lg border border-destructive/40 p-3">
+      <p className="w-full text-xs text-muted-foreground">{t("lead.eraseContactReach")}</p>
+      <Field name="confirm" label={t("contacts.eraseType")}>
+        <Input id={`erase-lead-${leadId}`} name="confirm" required placeholder="ERASE" />
+      </Field>
+    </CrmForm>
+  );
+}
+
 export function AssignLeadForm({ leadId, current, sellers }: { leadId: string; current: string | null; sellers: Person[] }) {
   const t = useTranslations("crm");
   return (
@@ -162,7 +185,7 @@ function ServiceLineChecks({ selected }: { selected?: readonly string[] }) {
       <legend className="mb-1 text-sm font-medium">{t("deal.fields.serviceLines")}</legend>
       {SERVICE_LINES.map((line) => (
         <label key={line} className="flex items-center gap-1.5">
-          <input type="checkbox" name="serviceLines[]" value={line} defaultChecked={selected?.includes(line)} /> {t(`enums.serviceLine.${line}`)}
+          <Checkbox name="serviceLines[]" value={line} defaultChecked={selected?.includes(line)} /> {t(`enums.serviceLine.${line}`)}
         </label>
       ))}
     </fieldset>
@@ -590,14 +613,14 @@ export function ConvertLeadForm({ leadId, lead, accounts, entities, teams, stage
         const duplicates = (details as { duplicates?: { clientId: string; name: string }[] } | null)?.duplicates ?? [];
         return (
           <>
-            <div className="flex flex-wrap gap-3 text-sm">
+            <RadioGroup name="accountMode" value={existing ? "existing" : "new"} onValueChange={(next) => setExisting(next === "existing")} className="flex flex-wrap gap-3 text-sm">
               <label className="flex items-center gap-1.5">
-                <input type="radio" name="accountMode" checked={existing} onChange={() => setExisting(true)} /> {t("lead.existingAccount")}
+                <RadioGroupItem value="existing" /> {t("lead.existingAccount")}
               </label>
               <label className="flex items-center gap-1.5">
-                <input type="radio" name="accountMode" checked={!existing} onChange={() => setExisting(false)} /> {t("lead.newAccount")}
+                <RadioGroupItem value="new" /> {t("lead.newAccount")}
               </label>
-            </div>
+            </RadioGroup>
             {existing ? (
               <Field name="clientId" label={t("lead.fields.existingAccount")}>
                 <Select id="convert-client" name="clientId" required defaultValue={lead.clientId ?? ""}>
@@ -641,14 +664,14 @@ export function ConvertLeadForm({ leadId, lead, accounts, entities, teams, stage
                 </Field>
                 {duplicates.length ? (
                   <label className="flex items-center gap-2 text-sm sm:col-span-4">
-                    <input type="checkbox" name="confirmDuplicate" /> {t("lead.confirmDuplicate", { names: duplicates.map((duplicate) => duplicate.name).join(", ") })}
+                    <Checkbox name="confirmDuplicate" /> {t("lead.confirmDuplicate", { names: duplicates.map((duplicate) => duplicate.name).join(", ") })}
                   </label>
                 ) : null}
               </div>
             )}
             {lead.contactName ? (
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="createContact" defaultChecked /> {t("lead.createContact", { name: lead.contactName })}
+                <Checkbox name="createContact" defaultChecked /> {t("lead.createContact", { name: lead.contactName })}
               </label>
             ) : null}
             <div className="grid gap-3 sm:grid-cols-3">

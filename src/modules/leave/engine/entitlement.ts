@@ -198,3 +198,79 @@ export function accrualPostings(input: Omit<TargetInput, "policy"> & { policyAt:
   }
   return postings;
 }
+
+// ── Booking ahead (LVE-01) ──────────────────────────────────────────────────────────────────
+//
+// The ledger holds what has been given *so far*; a request is for days ahead. With monthly accrual
+// a day in December is earned on 1 December, and next year's days — Tết leave asked for in
+// December — have no ledger row at all until 1 January. So a request is checked against what the
+// policy *will* have given by the leave date, and never against more:
+//
+//  · this year: the accrual target on the last day asked for, less what was already given;
+//  · next year: that year's own accrual or grant by the leave date, plus what this year's balance
+//    is projected to carry over (capped by the policy) — the carried days only while they have not
+//    lapsed on the leave date;
+//  · and the other way round: whatever next year's bookings already lean on this year's carry is
+//    no longer free to spend this year.
+//
+// A year further ahead, or one already closed, gets nothing projected: the ledger alone decides.
+
+export type AheadYear = {
+  /** Accrual and grant rows already in the ledger for that year. */
+  givenCenti: number;
+  /** The ledger's balance less what open requests already ask for. */
+  availableCenti: number;
+  /** The last day of leave booked or asked for in that year; null = none. */
+  lastDate: IsoDate | null;
+};
+
+export type BookingAheadInput = {
+  /** Which year is "this year". */
+  today: IsoDate;
+  employment: EmploymentFacts;
+  /** The policy of the type in force on a date (the entity's own, else the group's). */
+  policyAt: (date: IsoDate) => PolicyRules | null;
+  /** `leave.annual` in force for a leave year; null = not configured, and nothing is projected. */
+  statutoryFor: (year: number) => StatutoryAnnual | null;
+  openingDateFor?: (year: number) => IsoDate | null;
+  thisYear: AheadYear;
+  nextYear: AheadYear;
+};
+
+/** What a leave year will have given by `asOf` that the ledger does not hold yet. */
+function stillToCome(year: number, asOf: IsoDate, input: BookingAheadInput, givenCenti: number): number {
+  const policy = input.policyAt(asOf);
+  const statutory = input.statutoryFor(year);
+  if (!policy || !statutory) return 0;
+  const { targetCenti } = accrualTarget({ year, asOf, policy, statutory, employment: input.employment, openingDate: input.openingDateFor?.(year) ?? null });
+  return Math.max(0, targetCenti - givenCenti);
+}
+
+/**
+ * Days to add to the ledger's available figure of a leave year when booking leave whose last day
+ * in that year is `asOf`. Negative when this year gives up what next year has already leaned on.
+ * Every year other than this one and the next gets 0.
+ */
+export function bookingAhead(input: BookingAheadInput, year: number, asOf: IsoDate): { centi: number; trace: string[] } {
+  const current = Number(input.today.slice(0, 4));
+  const yearEnd = `${current}-12-31`;
+  // This year as it will close: what is free now and what the rest of the year still brings.
+  const closing = input.thisYear.availableCenti + stillToCome(current, yearEnd, input, input.thisYear.givenCenti);
+  const closingPolicy = input.policyAt(yearEnd);
+  const carry = closingPolicy ? Math.max(0, yearEndCarryOver(closing, closingPolicy).carryCenti) : 0;
+
+  if (year === current + 1) {
+    const own = stillToCome(year, asOf, input, input.nextYear.givenCenti);
+    const expiresOn = carryOverExpiryDate(year, input.policyAt(asOf)?.carryOverExpiry ?? null);
+    const carried = expiresOn && asOf > expiresOn ? 0 : carry;
+    return { centi: own + carried, trace: [`năm ${year}: +${own / 100} ngày được hưởng đến ${asOf}`, `+${carried / 100} ngày dự kiến chuyển từ năm ${current}`] };
+  }
+  if (year !== current) return { centi: 0, trace: [] };
+
+  const own = stillToCome(current, asOf, input, input.thisYear.givenCenti);
+  // Next year's bookings beyond what next year itself gives by their last day come out of the carry.
+  const next = input.nextYear;
+  const nextOwn = next.lastDate ? stillToCome(current + 1, next.lastDate, input, next.givenCenti) : 0;
+  const leaning = Math.max(0, -(next.availableCenti + nextOwn));
+  return { centi: own - leaning, trace: [`năm ${current}: +${own / 100} ngày được hưởng đến ${asOf}`, ...(leaning ? [`−${leaning / 100} ngày đã dùng trước cho năm ${current + 1}`] : [])] };
+}

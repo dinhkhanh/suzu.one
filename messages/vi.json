@@ -13,7 +13,14 @@
   },
   "controls": {
     "search": "Tìm kiếm",
+    "pager": {
+      "label": "Các trang",
+      "previous": "Trước",
+      "next": "Sau",
+      "page": "Trang {page}/{pageCount} · tổng {total}"
+    },
     "noResults": "Không có kết quả phù hợp",
+    "loading": "Đang tải…",
     "pickDate": "Chọn ngày",
     "pickMonth": "Chọn tháng",
     "today": "Hôm nay",
@@ -21,7 +28,12 @@
     "clear": "Xóa",
     "time": "Giờ",
     "previousYear": "Năm trước",
-    "nextYear": "Năm sau"
+    "nextYear": "Năm sau",
+    "add": "Thêm “{name}”",
+    "typeToAdd": "Gõ tên để thêm mới",
+    "confirmNo": "Quay lại",
+    "exportXlsx": "Excel (.xlsx)",
+    "exportCsv": "CSV (.csv)"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -33,6 +45,7 @@
       "not_provisioned": "Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. Vui lòng liên hệ phòng Nhân sự.",
       "access_revoked": "Quyền truy cập của bạn đã bị khóa. Vui lòng liên hệ phòng Nhân sự.",
       "email_not_verified": "Email chưa được Google xác minh.",
+      "rate_limited": "Có quá nhiều lượt đăng nhập từ mạng này. Vui lòng đợi một phút rồi thử lại.",
       "generic": "Không thể đăng nhập. Vui lòng thử lại hoặc liên hệ phòng Nhân sự."
     }
   },
@@ -67,6 +80,7 @@
     "kb": "Tri thức",
     "admin": "Quản trị",
     "entities": "Pháp nhân",
+    "brands": "Thương hiệu",
     "soon": "Sắp có",
     "signOut": "Đăng xuất",
     "org": "Cơ cấu tổ chức",
@@ -132,7 +146,9 @@
       "preferences": "Tuỳ chỉnh",
       "admin": "Quản trị"
     },
-    "kiosk": "Máy chấm công khuôn mặt"
+    "kiosk": "Máy chấm công khuôn mặt",
+    "issuedDocuments": "Sổ văn bản",
+    "privacy": "Quyền riêng tư"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -180,7 +196,8 @@
     "asset_admin": "Quản lý tài sản",
     "auditor": "Kiểm toán (chỉ xem)",
     "support": "Hỗ trợ hệ thống",
-    "sales": "Kinh doanh / phát triển khách hàng"
+    "sales": "Kinh doanh / phát triển khách hàng",
+    "marketing": "Marketing / thương hiệu"
   },
   "entities": {
     "details": "Thông tin pháp nhân",
@@ -205,7 +222,21 @@
       "invalid": "Vui lòng kiểm tra lại thông tin.",
       "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
       "entity_in_use": "Vẫn còn nhân sự thuộc pháp nhân này nên chưa thể ngừng hoạt động.",
-      "not_found": "Không tìm thấy dữ liệu."
+      "not_found": "Không tìm thấy dữ liệu.",
+      "bank_unknown": "Ngân hàng này chưa nằm trong danh sách ngân hàng chi lương.",
+      "bank_account_exists": "Pháp nhân đã có tài khoản này tại ngân hàng đó.",
+      "bank_account_number_invalid": "Số tài khoản chỉ gồm chữ số, từ 6 đến 32 số."
+    },
+    "bankAccounts": "Tài khoản chi lương",
+    "bankAccountsHint": "Tài khoản của công ty dùng để chi lương. Màn hình lập tệp chuyển khoản chọn từ danh sách này thay vì nhập tay.",
+    "bankAccount": {
+      "bank": "Ngân hàng",
+      "accountNumber": "Số tài khoản",
+      "accountName": "Tên tài khoản",
+      "branch": "Chi nhánh",
+      "default": "Mặc định",
+      "add": "Thêm tài khoản",
+      "none": "Chưa khai báo tài khoản chi lương nào."
     },
     "insuranceUnitCode": "Mã đơn vị BHXH",
     "legalRepresentative": "Người đại diện pháp luật",
@@ -230,6 +261,7 @@
       "allEntities": "Tất cả pháp nhân",
       "allDepartments": "Tất cả phòng ban",
       "allTypes": "Tất cả loại lao động",
+      "allCompetencies": "Tất cả chuyên môn & kỹ năng",
       "apply": "Lọc",
       "clear": "Xóa lọc"
     },
@@ -288,10 +320,11 @@
       },
       "past": {
         "title": "Thêm quá trình công tác trước đây",
-        "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức danh của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
+        "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức vụ của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
         "from": "Từ ngày",
         "to": "Đến ngày (ngày cuối)"
-      }
+      },
+      "proposed": "Đã gửi duyệt. Thay đổi có hiệu lực khi được duyệt."
     },
     "fields": {
       "fullName": "Họ và tên",
@@ -317,14 +350,57 @@
       "team": "Nhóm",
       "orgUnit": "Đơn vị",
       "branch": "Chi nhánh",
-      "position": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "position": "Chức vụ",
+      "jobTitle": "Chức danh",
+      "seniorityLevel": "Cấp bậc",
+      "positionLevel": "Cấp vị trí",
+      "projectPositions": "Chức vụ trong dự án",
       "managerId": "Quản lý trực tiếp",
       "dottedManagerId": "Quản lý gián tiếp",
       "workLocation": "Nơi làm việc",
       "validFrom": "Hiệu lực từ",
       "changeReason": "Lý do",
       "accountsManaged": "Khách hàng phụ trách"
+    },
+    "seniorityLevel": {
+      "intern": "Intern",
+      "junior": "Junior",
+      "mid": "Mid-level",
+      "senior": "Senior"
+    },
+    "positionLevel": {
+      "executive": "Executive",
+      "leader": "Leader",
+      "manager": "Manager",
+      "director": "Director",
+      "c_level": "C-level"
+    },
+    "projectPosition": {
+      "lead": "Phụ trách dự án",
+      "account_manager": "Phụ trách khách hàng"
+    },
+    "competencies": {
+      "title": "Chuyên môn & kỹ năng",
+      "profession": "Chuyên môn",
+      "skill": "Kỹ năng",
+      "edit": "Sửa chuyên môn và kỹ năng",
+      "hint": "Chọn trong những tên đồng nghiệp đã dùng, hoặc gõ tên mới rồi chọn “Thêm”. Tên mới tự viết hoa chữ đầu mỗi từ và sẽ có sẵn cho mọi người chọn. Cả công ty đều thấy hai danh sách này trên hồ sơ.",
+      "find": "Xem mọi người có {name}",
+      "catalogueDescription": "{count, plural, =0 {Chưa có mục nào} other {# mục}} dùng chung cho cả tập đoàn. Sửa tên sai chính tả, gộp mục trùng hoặc xóa mục không dùng.",
+      "name": "Tên",
+      "kind": "Loại",
+      "holders": "Số người",
+      "allKinds": "Tất cả loại",
+      "searchName": "Tìm theo tên",
+      "empty": "Chưa có mục nào.",
+      "noMatch": "Không có mục nào khớp.",
+      "add": "Thêm mục",
+      "editItem": "Sửa",
+      "editTitle": "Sửa “{name}”",
+      "editHint": "Tên tự viết hoa chữ đầu mỗi từ. Nếu tên sau khi sửa trùng với một mục đã có cùng loại, hai mục được gộp làm một: ai đang có mục này sẽ chuyển sang mục kia.",
+      "delete": "Xóa mục",
+      "deleteConfirm": "Xóa “{name}” khỏi danh mục{count, plural, =0 {} other { và khỏi hồ sơ của # người}}?",
+      "seeHolders": "Xem {count, plural, other {# người}} có {name}"
     },
     "workforceType": {
       "employee": "Chính thức",
@@ -364,6 +440,11 @@
       "employee_code_exhausted": "Không tìm được mã nhân viên trống. Vui lòng nhập mã thủ công.",
       "entity_not_found": "Pháp nhân không tồn tại hoặc đã ngừng hoạt động.",
       "person_not_found": "Hồ sơ này không còn tồn tại.",
+      "competencies_too_many": "Mỗi danh sách tối đa 30 mục.",
+      "competency_name_too_long": "Tên chuyên môn hoặc kỹ năng tối đa 60 ký tự.",
+      "competency_name_empty": "Chưa có tên.",
+      "competency_not_found": "Mục này không còn trong danh mục. Vui lòng tải lại trang.",
+      "competency_exists": "Danh mục đã có mục này.",
       "employment_overlap": "Người này đã có quan hệ lao động trong khoảng thời gian đó.",
       "assignment_conflict": "Có người khác vừa thay đổi vị trí công tác của người này. Vui lòng tải lại và thử lại.",
       "no_employment": "Người này chưa có quan hệ lao động để phân công.",
@@ -395,7 +476,19 @@
       "assignment_not_ended": "Quá trình công tác phải kết thúc muộn nhất là hôm qua. Thay đổi từ hôm nay trở đi hãy dùng \"Thay đổi vị trí công tác\".",
       "assignment_covers_recorded_period": "Giai đoạn này bao trùm trọn một giai đoạn đã có. Hãy sửa giai đoạn đó bằng đúng ngày của nó.",
       "assignment_inside_recorded_period": "Giai đoạn này nằm gọn trong một giai đoạn đã có và sẽ chia đôi nó. Hãy nhập giai đoạn cũ nhất trước, bắt đầu từ ngày vào làm.",
-      "assignment_moves_recorded_event": "Thao tác này sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm trên dòng thời gian. Hãy kết thúc giai đoạn trước ngày đó."
+      "assignment_moves_recorded_event": "Thao tác này sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm trên dòng thời gian. Hãy kết thúc giai đoạn trước ngày đó.",
+      "employee_code_invalid": "Hãy nhập mã nhân viên.",
+      "employment_start_after_end": "Ngày bắt đầu sau ngày làm việc cuối của kỳ này.",
+      "seniority_after_start": "Ngày tính thâm niên không được sau ngày bắt đầu.",
+      "employment_start_after_today": "Người này đã đi làm: không thể dời ngày bắt đầu sang sau hôm nay.",
+      "employment_start_after_first_change": "Ngày bắt đầu mới rơi sau một lần đổi phân công. Hãy sửa các phân công trước.",
+      "position_name_empty": "Hãy nhập tên.",
+      "position_not_found": "Chức vụ này không còn nữa.",
+      "position_name_taken": "Đã có chức vụ khác mang tên này.",
+      "remove_self": "Bạn không thể xóa hồ sơ của chính mình.",
+      "remove_name_mismatch": "Tên không khớp.",
+      "person_in_use": "Không thể xóa nhân sự này: đã có dữ liệu khác gắn với họ.",
+      "lifecycle_change_open": "Đã có một đề xuất cùng loại cho người này đang chờ duyệt."
     },
     "orgChart": {
       "title": "Sơ đồ tổ chức",
@@ -415,8 +508,11 @@
         "phone": "Hãy định dạng cột số điện thoại là văn bản trong Excel, nếu không số 0 đầu sẽ bị mất."
       },
       "historyTitle": "Quá trình công tác trước đây",
-      "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức danh…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
-      "historyWizard": "Tệp quá trình công tác"
+      "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức vụ…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
+      "historyWizard": "Tệp quá trình công tác",
+      "contractsTitle": "Hợp đồng lao động",
+      "contractsDescription": "Dành cho hợp đồng đã ký của nhân sự đã có trên hệ thống: mỗi dòng một hợp đồng. Mỗi hợp đồng được gắn vào kỳ làm việc chứa ngày bắt đầu của nó và được kiểm tra theo luật như khi nhập tay. Điều khoản lương không nhập ở đây; hãy nhập trên trang của từng người.",
+      "contractsWizard": "Nhập hợp đồng"
     },
     "duplicates": {
       "title": "Có thể người này đã có hồ sơ:",
@@ -436,6 +532,24 @@
       "remove": "Gỡ ảnh",
       "saving": "Đang tải lên…",
       "hint": "JPG, PNG hoặc WebP, tối đa 50 MB. Ảnh được cắt vuông và thu nhỏ trước khi tải lên."
+    },
+    "corrections": {
+      "employmentTitle": "Sửa kỳ làm việc {code}",
+      "employmentHint": "Dùng khi ngày hoặc mã nhập sai. Đổi ngày bắt đầu sẽ dời luôn phân công đầu tiên và sự kiện tuyển dụng.",
+      "seniorityFrom": "thâm niên từ {date}",
+      "removeTitle": "Xóa nhân sự này (tạo nhầm)",
+      "removeHint": "Chỉ dùng cho hồ sơ lẽ ra không được tạo — bị trùng hoặc tạo thử. Thao tác xóa nhân sự cùng sự kiện tuyển dụng, danh sách việc kèm theo và hồ sơ cá nhân. Hệ thống từ chối khi đã có dữ liệu khác gắn với người này: hợp đồng, đơn từ, vai trò, phiếu lương, một bước checklist đã làm xong.",
+      "removeConfirm": "Gõ “{name}” để xác nhận",
+      "removeSubmit": "Xóa vĩnh viễn"
+    },
+    "positions": {
+      "title": "Chức vụ",
+      "description": "{count, plural, other {# chức vụ}} trong danh mục chung của tập đoàn. Sửa tên ở đây là sửa cho mọi người đang giữ chức vụ đó.",
+      "name": "Chức vụ",
+      "holders": "Số người giữ",
+      "empty": "Chưa có chức vụ nào. Chức vụ được thêm vào lần đầu một phân công nhắc đến nó.",
+      "renameTitle": "Đổi tên “{name}”",
+      "renameHint": "{count, plural, =0 {Hôm nay không ai giữ chức vụ này.} other {Hôm nay có # người giữ chức vụ này.}} Tên mới hiện ở mọi nơi, kể cả các phân công cũ."
     }
   },
   "records": {
@@ -518,7 +632,10 @@
         "professional": "Cần trình độ cao đẳng trở lên (tối đa 60 ngày)",
         "intermediate": "Trung cấp, công nhân kỹ thuật, nghiệp vụ (tối đa 30 ngày)",
         "other": "Công việc khác (tối đa 6 ngày làm việc)"
-      }
+      },
+      "editTitle": "Sửa hợp đồng {number}",
+      "editHint": "Dùng khi hợp đồng nhập sai. Hợp đồng sửa được kiểm tra theo luật như hợp đồng mới; hợp đồng có ngày thuộc một kỳ làm việc trước sẽ chuyển về kỳ đó.",
+      "salaryTermsKeep": "Để trống để giữ điều khoản lương hiện tại"
     },
     "dependents": {
       "empty": "Chưa đăng ký người phụ thuộc.",
@@ -543,7 +660,9 @@
         "sibling": "Anh chị em ruột",
         "grandparent": "Ông / bà",
         "other": "Khác"
-      }
+      },
+      "editTitle": "Sửa thông tin {name}",
+      "editHint": "Số giấy tờ và mã số thuế không hiển thị; để trống để giữ nguyên."
     },
     "documents": {
       "empty": "Chưa có giấy tờ nào bạn được xem.",
@@ -563,7 +682,9 @@
         "contract": "Hợp đồng đã ký",
         "decision": "Quyết định",
         "other": "Khác"
-      }
+      },
+      "editTitle": "Sửa “{title}”",
+      "editHint": "Không đổi được loại giấy tờ: loại quyết định ai được mở tệp. Hãy tải lên lại với loại đúng."
     },
     "contacts": {
       "empty": "Chưa có liên hệ khẩn cấp.",
@@ -571,7 +692,8 @@
       "fullName": "Họ và tên",
       "relationship": "Quan hệ",
       "phone": "Số điện thoại",
-      "note": "Ghi chú"
+      "note": "Ghi chú",
+      "editTitle": "Sửa liên hệ {name}"
     },
     "errors": {
       "forbidden": "Bạn không có quyền thực hiện việc này.",
@@ -609,8 +731,19 @@
       "file_storage_limit": "Kho lưu trữ từ chối tệp vì quá lớn.",
       "file_upload_failed": "Tải lên thất bại. Kiểm tra kết nối và thử lại.",
       "file_owner_not_found": "Bản ghi chứa tệp này không còn tồn tại.",
-      "step_up_required": "Hãy xác thực lại để tiếp tục."
-    }
+      "step_up_required": "Hãy xác thực lại để tiếp tục.",
+      "contract_has_appendices": "Hợp đồng này đã có phụ lục nên không thể chuyển thành phụ lục.",
+      "event_before_start": "Ngày này trước ngày bắt đầu làm việc.",
+      "already_terminated": "Đến ngày đó quan hệ lao động đã kết thúc.",
+      "contract_start_not_effective": "Hợp đồng mới phải bắt đầu đúng ngày của sự kiện.",
+      "assignment_before_current_assignment": "Đã có một lần đổi phân công sau ngày này. Hãy chọn ngày sau đó.",
+      "assignment_before_employment_start": "Ngày này trước ngày bắt đầu làm việc.",
+      "assignment_after_employment_end": "Ngày này sau ngày kết thúc làm việc.",
+      "template_not_found": "Mẫu văn bản này không còn được dùng.",
+      "document_forbidden": "Bạn không có quyền cấp văn bản này."
+    },
+    "edit": "Sửa",
+    "keepSealed": "Giữ nguyên — gõ để thay"
   },
   "org": {
     "tree": "Cây đơn vị",
@@ -716,6 +849,8 @@
     "close": "Đóng",
     "noDiff": "Bản ghi này không kèm dữ liệu trước/sau.",
     "appendOnly": "Nhật ký được ghi bởi trigger trong cơ sở dữ liệu: chỉ ghi thêm, không ai sửa hay xóa được.",
+    "resourceId": "Mã đối tượng",
+    "summary": "Tóm tắt",
     "removeFilter": "Bỏ lọc {filter}",
     "title": "Nhật ký hệ thống",
     "description": "Mọi thay đổi dữ liệu, mọi lần bị từ chối và mọi tác vụ tự động. Nhật ký chỉ ghi thêm, không ai sửa hay xóa được.",
@@ -814,6 +949,10 @@
         "title": "Tác vụ tự động thất bại: {job}",
         "body": "Tác vụ {job} vừa chạy lỗi: {error}"
       },
+      "system_job_timed_out": {
+        "title": "Tác vụ tự động bị dừng giữa chừng: {job}",
+        "body": "Tác vụ {job} vẫn chạy sau {minutes} phút và đã bị máy chủ dừng lại. Có thể việc mới làm được một nửa: hãy mở Quản trị → Tác vụ tự động và chạy lại."
+      },
       "system_rule_proposed": {
         "title": "Có đề xuất thay đổi tham số pháp định",
         "body": "Tham số {parameter} được đề xuất giá trị mới, hiệu lực từ {validFrom}. Đề xuất chỉ có hiệu lực sau khi bạn phê duyệt."
@@ -878,6 +1017,14 @@
         "title": "{delegator} ủy quyền phê duyệt cho bạn",
         "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới {delegator} sẽ được chuyển cho bạn."
       },
+      "approvals_delegation_set_for_you": {
+        "title": "{actor} đã ủy quyền phê duyệt của bạn cho {delegate}",
+        "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới bạn sẽ được chuyển cho {delegate}. {actor} đã thiết lập thay bạn; bạn có thể kết thúc tại mục Ủy quyền."
+      },
+      "approvals_turn_reassigned": {
+        "title": "{actor} đã chuyển một yêu cầu từ bạn sang {to}: {requestType}",
+        "body": "Yêu cầu ({requestType}) đang chờ bạn duyệt nay chờ {to}. Bạn không cần trả lời nữa."
+      },
       "approvals_leave_cancelled": {
         "title": "Nhân sự đã huỷ đơn nghỉ của bạn",
         "body": "Nhân sự đã huỷ đơn nghỉ đã duyệt của bạn ({range}). Số ngày đã được cộng lại vào số dư."
@@ -901,6 +1048,22 @@
       "attendance_nudge": {
         "title": "Vui lòng kiểm tra chấm công tháng {month}",
         "body": "Nhân sự đề nghị bạn xem lại chấm công tháng {month}: bổ sung lần chấm còn thiếu hoặc gửi các đơn còn mở."
+      },
+      "attendance_punches_to_review": {
+        "title": "{count} lần chấm công hôm qua chờ bạn xem xét",
+        "body": "Hôm qua có {count} lần chấm công bị gắn cờ (ngoài vị trí, không có toạ độ hoặc ngoài mạng văn phòng). Hãy chấp nhận những lần bạn xác nhận được, hoặc từ chối kèm lý do."
+      },
+      "attendance_punches_block_lock": {
+        "title": "{count} lần chấm công tháng {month} chờ bạn xem xét",
+        "body": "Còn {count} lần chấm công bị gắn cờ trong tháng {month} chờ bạn chấp nhận hoặc từ chối. Bảng công tháng này chưa khoá được cho đến khi các lần đó được xem xét."
+      },
+      "attendance_punch_rejected": {
+        "title": "Lần chấm công lúc {time} không được chấp nhận",
+        "body": "Lần chấm công lúc {time} của bạn đã bị từ chối: {reason}. Lần chấm này không còn được tính; nếu bạn thực sự có mặt, hãy gửi đơn bổ sung công trước khi bảng công khoá."
+      },
+      "attendance_month_locked": {
+        "title": "Bảng công tháng {month} đã khoá",
+        "body": "Nhân sự đã khoá bảng công tháng {month} và chuyển sang tính lương. Từ giờ mọi thay đổi do nhân sự điều chỉnh, không gửi đơn được nữa."
       },
       "tasks_work_assigned": {
         "title": "{key} được giao cho bạn: {title}",
@@ -990,6 +1153,10 @@
         "title": "Phiếu lương tháng {month} đã có",
         "body": "Phiếu lương tháng {month} của bạn đã được phát hành. Mở ứng dụng để xem."
       },
+      "payroll_payslip_withdrawn": {
+        "title": "Phiếu lương tháng {month} đã được thu hồi",
+        "body": "Phiếu lương tháng {month} của bạn đã được thu hồi để rà soát lại và sẽ được phát hành lại. Bạn sẽ nhận thông báo khi có phiếu mới."
+      },
       "payroll_payslip_query_raised": {
         "title": "Có thắc mắc về phiếu lương",
         "body": "Một nhân viên gửi thắc mắc về phiếu lương tháng {month}."
@@ -1001,6 +1168,14 @@
       "payroll_cash_receipt_due": {
         "title": "Xác nhận đã nhận lương tiền mặt",
         "body": "Vui lòng xác nhận bạn đã nhận lương tháng {month} bằng tiền mặt."
+      },
+      "approvals_request_paid": {
+        "title": "Đề nghị đã được chi",
+        "body": "{summary} — đã chi {amount} ngày {date} (số chứng từ {reference})."
+      },
+      "approvals_request_repayment_recorded": {
+        "title": "Đã ghi nhận hoàn trả tạm ứng",
+        "body": "{summary} — đã nhận lại {amount} tiền tạm ứng chưa dùng ngày {date} (số chứng từ {reference})."
       },
       "approvals_sla_reminder": {
         "title": "Đề nghị đang chờ bạn duyệt",
@@ -1018,17 +1193,21 @@
         "title": "Đã duyệt nhu cầu tuyển dụng",
         "body": "Nhu cầu tuyển {title} ({count} người) đã được duyệt. Hãy tạo tin tuyển dụng."
       },
+      "recruit_application_received": {
+        "title": "Có hồ sơ ứng tuyển mới",
+        "body": "Một ứng viên vừa nộp hồ sơ cho vị trí {title} ({code}) qua trang tuyển dụng."
+      },
       "recruit_interview_scheduled": {
         "title": "Bạn có lịch phỏng vấn",
-        "body": "{title} với {candidate}."
+        "body": "{title} cho vị trí {job}."
       },
       "recruit_interview_cancelled": {
         "title": "Đã huỷ lịch phỏng vấn",
-        "body": "{title} với {candidate} đã bị huỷ."
+        "body": "{title} cho vị trí {job} đã bị huỷ."
       },
       "recruit_assignment_received": {
         "title": "Ứng viên đã nộp bài",
-        "body": "{candidate} đã nộp bài {title}."
+        "body": "Bài {title} cho vị trí {job} đã được nộp."
       },
       "recruit_offer_approved": {
         "title": "Thư mời đã được duyệt",
@@ -1036,7 +1215,7 @@
       },
       "recruit_offer_accepted": {
         "title": "Ứng viên đã đồng ý",
-        "body": "{name} đã đồng ý nhận việc, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
+        "body": "Ứng viên nhận thư mời {number} ({title}) đã đồng ý, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
       },
       "performance_peer_requested": {
         "title": "Có người nhờ bạn phản hồi đồng nghiệp",
@@ -1049,6 +1228,34 @@
       "performance_result_published": {
         "title": "Kết quả hiệu suất năm {year} đã có",
         "body": "Kết quả hiệu suất cả năm {year} của bạn đã được công bố. Hãy mở trang kết quả để xem cách tính."
+      },
+      "performance_review_open": {
+        "title": "Chu kỳ đánh giá {cycle} đã mở",
+        "body": "Hãy viết bản tự đánh giá của bạn{date, select, none {.} other { trước ngày {date}.}}"
+      },
+      "performance_reviews_owed": {
+        "title": "Bạn cần viết đánh giá cho nhân sự",
+        "body": "Chu kỳ {cycle}: bạn cần viết đánh giá cho {count} người{date, select, none {.} other { trước ngày {date}.}}"
+      },
+      "performance_review_due": {
+        "title": "Phiếu đánh giá sắp đến hạn",
+        "body": "Bạn còn {count} phiếu đánh giá chưa nộp; hạn gần nhất là ngày {date}."
+      },
+      "performance_review_overdue": {
+        "title": "Phiếu đánh giá đã quá hạn",
+        "body": "Bạn còn {count} phiếu đánh giá đã quá hạn mà chưa nộp. Hãy mở trang đánh giá để hoàn thành."
+      },
+      "performance_review_returned": {
+        "title": "Phiếu đánh giá được trả lại để sửa",
+        "body": "Chu kỳ {cycle}: Nhân sự đã trả lại phiếu đánh giá của bạn để chỉnh sửa. Mở trang để xem lý do và nộp lại."
+      },
+      "performance_sign_off_waiting": {
+        "title": "Chưa ghi nhận buổi trao đổi kết quả",
+        "body": "{count} phiếu đánh giá đã công bố nhưng chưa ghi nhận buổi trao đổi kết quả với nhân sự. Hãy hẹn trao đổi và ghi nhận trên trang đánh giá."
+      },
+      "performance_ack_waiting": {
+        "title": "Phiếu đánh giá đang chờ bạn xác nhận",
+        "body": "Phiếu đánh giá của bạn đã được công bố. Hãy đọc và xác nhận đã xem."
       },
       "performance_rule_proposed": {
         "title": "Có đề xuất trọng số kết quả hiệu suất",
@@ -1085,6 +1292,18 @@
       "tasks_cover_handed_back": {
         "title": "Việc làm thay đã được trả lại",
         "body": "{actor} đã đi làm lại và nhận lại {count} việc."
+      },
+      "tasks_cover_drafted": {
+        "title": "Chọn người làm thay khi bạn nghỉ",
+        "body": "Đợt nghỉ từ {from} đến {to} của bạn có {count} việc rơi vào thời gian nghỉ. Hãy chọn người làm thay cho từng việc."
+      },
+      "tasks_cover_return_due": {
+        "title": "Bạn đã đi làm lại — nhận lại việc",
+        "body": "Còn {count} việc đang ở chỗ người làm thay. Mở kế hoạch làm thay để nhận lại."
+      },
+      "tasks_cover_return_ask": {
+        "title": "Trả lại việc đã làm thay",
+        "body": "{actor} đã đi làm lại. Hãy trả lại {count} việc bạn đã làm thay."
       },
       "tasks_exit_handover": {
         "title": "Cần bàn giao công việc",
@@ -1130,6 +1349,10 @@
         "title": "Hạn mức retainer",
         "body": "{project}: “{line}” đã đạt {percent}% hạn mức tháng."
       },
+      "projects_retainer_hours_alert": {
+        "title": "Giờ retainer",
+        "body": "{project}: tháng {month} đã dùng {percent}% số giờ cho phép."
+      },
       "projects_change_decided": {
         "title": "Yêu cầu thay đổi đã có quyết định",
         "body": "Yêu cầu thay đổi “{title}” của {project} đã được xử lý."
@@ -1166,13 +1389,29 @@
         "title": "Nhắc nộp báo cáo ngày",
         "body": "{actor} nhắc bạn nộp báo cáo công việc hôm nay."
       },
+      "daily_report_nudge_past": {
+        "title": "Nhắc nộp báo cáo ngày",
+        "body": "{actor} nhắc bạn nộp báo cáo công việc ngày {date}."
+      },
+      "daily_report_missed": {
+        "title": "Thiếu báo cáo hôm qua",
+        "body": "Bạn chưa nộp báo cáo công việc ngày {date}. Bạn vẫn nộp bù được — báo cáo sẽ được ghi là nộp muộn."
+      },
       "daily_report_commented": {
         "title": "Nhận xét về báo cáo của bạn",
         "body": "{actor} đã nhận xét báo cáo ngày {date} của bạn."
       },
+      "daily_report_blockers": {
+        "title": "Báo cáo có vướng mắc",
+        "body": "Báo cáo ngày {date} của {actor} có ghi vướng mắc."
+      },
       "daily_weekly_report": {
         "title": "Báo cáo tuần",
         "body": "Báo cáo tuần {week} của {subject} đã sẵn sàng."
+      },
+      "daily_weekly_reports": {
+        "title": "Báo cáo tuần",
+        "body": "Có {count} báo cáo tuần {week} đã sẵn sàng để bạn đọc."
       },
       "daily_timesheet_reminder": {
         "title": "Nộp bảng giờ tuần",
@@ -1270,9 +1509,21 @@
         "title": "Bảng hoa hồng",
         "body": "Bảng hoa hồng tháng {month} của bạn đã sẵn sàng."
       },
+      "crm_commission_reopened": {
+        "title": "Hoa hồng cần xác nhận lại",
+        "body": "Một khoản thanh toán tháng {month} đã thay đổi sau khi bạn xác nhận hoa hồng. Bảng kê đã được tính lại, chờ bạn xác nhận."
+      },
+      "crm_commission_after_payroll": {
+        "title": "Hoa hồng thay đổi sau kỳ lương",
+        "body": "Một khoản thanh toán tháng {month} đã thay đổi sau khi hoa hồng được trả qua kỳ lương. Hãy điều chỉnh trong kỳ lương tới."
+      },
       "crm_cover_followups": {
         "title": "Việc theo dõi khách hàng khi đồng nghiệp nghỉ",
         "body": "Bạn đảm nhận {count} việc theo dõi khách hàng của {name} trong thời gian họ nghỉ phép."
+      },
+      "payroll_profile_import_proposed": {
+        "title": "Có hồ sơ trả lương nhập từ tệp chờ duyệt",
+        "body": "{count} hồ sơ trả lương nhập từ tệp đang chờ bạn đọc và phê duyệt."
       }
     },
     "errors": {
@@ -1378,7 +1629,26 @@
       "failed": "Lỗi",
       "last24h": "trong 24 giờ qua",
       "median": "Thời gian chạy trung vị",
-      "next": "Lần chạy tiếp"
+      "next": "Lần chạy tiếp",
+      "deliveries": "Gửi tin thất bại",
+      "lastDays": "trong {days} ngày qua"
+    },
+    "channels": {
+      "email": "Email",
+      "push": "Thông báo đẩy",
+      "chat": "Chat",
+      "messenger": "Messenger",
+      "telegram": "Telegram"
+    },
+    "jobsSection": "Danh sách tác vụ",
+    "lastRun": "Lần chạy cuối",
+    "onDemand": "Chạy khi cần",
+    "runNow": {
+      "label": "Chạy ngay",
+      "running": "Đang chạy…",
+      "succeeded": "Xong",
+      "failed": "Lỗi — xem các lần chạy bên dưới",
+      "alreadyRunning": "Đang chạy rồi"
     },
     "runs": "Lần chạy gần đây",
     "schedule": "Lịch",
@@ -1458,8 +1728,10 @@
       "pit_brackets": "Biểu thuế TNCN lũy tiến",
       "pit_flat_rates": "Thuế TNCN khấu trừ theo tỷ lệ cố định",
       "overtime_multipliers": "Hệ số lương tăng ca, làm đêm",
+      "overtime_holiday_pay": "Làm việc ngày lễ – hệ số 300% đã gồm hay chưa gồm lương ngày lễ",
       "overtime_caps": "Giới hạn giờ tăng ca",
       "leave_annual": "Phép năm",
+      "leave_payout_basis": "Tiền lương làm căn cứ thanh toán phép năm chưa nghỉ khi nghỉ việc",
       "probation_limits": "Thử việc",
       "contract_fixed_term": "Hợp đồng xác định thời hạn",
       "union_dues_cap": "Công đoàn – mức trần đoàn phí",
@@ -1478,7 +1750,19 @@
       "proposal_not_found": "Đề xuất này đã được xử lý.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin (giá trị phải là JSON hợp lệ).",
-      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
+      "version_not_voidable": "Chỉ có thể hủy bỏ phiên bản đang ở trạng thái đã duyệt.",
+      "void_used_by_paid_run": "Một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản này — không thể hủy bỏ. Hãy điều chỉnh bằng khoản truy lĩnh, truy thu.",
+      "void_run_in_review": "Một kỳ lương đang chờ duyệt dùng phiên bản này. Hãy trả kỳ lương về cho nhân sự trước, rồi hủy bỏ."
+    },
+    "void": {
+      "label": "Hủy bỏ",
+      "title": "Hủy bỏ phiên bản: {version}",
+      "hint": "Phiên bản đã duyệt nhưng sai sẽ được hủy bỏ: không còn hiệu lực, nhưng vẫn được lưu kèm người hủy và lý do. Phiên bản trước đó tiếp tục áp dụng cho những ngày này; sau đó hãy đề xuất phiên bản đúng như bình thường. Không thể hủy khi một kỳ lương đã chi đã dùng phiên bản này.",
+      "reason": "Lý do hủy bỏ",
+      "confirm": "Hủy bỏ phiên bản",
+      "voided": "Đã hủy bỏ",
+      "because": "Lý do hủy bỏ: {reason}"
     }
   },
   "flags": {
@@ -1533,7 +1817,11 @@
       "saved": "đã lưu",
       "unchanged": "không đổi",
       "periods": "giai đoạn đã ghi",
-      "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa"
+      "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa",
+      "requests": "đề xuất lương chờ duyệt",
+      "approved": "hồ sơ có hiệu lực ngay",
+      "proposed": "hồ sơ chờ Chủ sở hữu duyệt",
+      "contracts": "Hợp đồng"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -1604,7 +1892,20 @@
       "outside_employment": "Nằm ngoài thời gian làm việc của nhân viên này",
       "covers_recorded_period": "Bao trùm trọn một giai đoạn đã có hoặc có trong tệp",
       "inside_recorded_period": "Nằm gọn trong một giai đoạn và sẽ chia đôi nó; hãy bắt đầu từ giai đoạn cũ nhất",
-      "moves_recorded_event": "Sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm"
+      "moves_recorded_event": "Sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm",
+      "salary_change_open": "Người này đang có một đề xuất thay đổi lương chờ duyệt.",
+      "allowance_unknown": "Mã phụ cấp không có trong danh mục của pháp nhân",
+      "bad_allowances": "Phụ cấp phải ghi dạng MÃ=số tiền, cách nhau bởi dấu chấm phẩy",
+      "version_exists": "Đã có một phiên bản bắt đầu đúng ngày này.",
+      "before_current_version": "Ngày hiệu lực sớm hơn phiên bản đang áp dụng.",
+      "probation_below_minimum": "Tỷ lệ lương thử việc thấp hơn mức tối thiểu luật định.",
+      "profile_proposal_open": "Người này đang có một đề xuất hồ sơ trả lương chờ duyệt.",
+      "profile_basis_required": "Hồ sơ Đơn giản cần ghi cơ sở; hồ sơ Đầy đủ thì không.",
+      "profile_review_date_simple_only": "Ngày xem lại chỉ dùng cho hồ sơ Đơn giản.",
+      "profile_non_resident_method": "Cách tính thuế không phù hợp với tình trạng cư trú.",
+      "contract_number_taken": "Số hợp đồng này đã được dùng trong pháp nhân",
+      "contract_overlap": "Đã có hợp đồng lao động khác còn hiệu lực trong khoảng thời gian này",
+      "contract_rule": "Không đúng quy định về hợp đồng lao động (loại, ngày, thời hạn hoặc thử việc)"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -1668,6 +1969,7 @@
       "request": "Yêu cầu",
       "requester": "Người gửi",
       "submitted": "Gửi lúc",
+      "decided": "Xử lý lúc",
       "status": "Trạng thái",
       "waitingOn": "Đang chờ",
       "type": "Loại",
@@ -1687,7 +1989,12 @@
       "salary_change": "Điều chỉnh lương",
       "project_brief": "Duyệt brief khởi động dự án",
       "project_change": "Yêu cầu thay đổi dự án",
-      "crm_quote": "Báo giá"
+      "crm_quote": "Báo giá",
+      "lifecycle_transfer": "Điều chuyển",
+      "lifecycle_promotion": "Thăng chức / bổ nhiệm",
+      "lifecycle_termination": "Chấm dứt hợp đồng",
+      "leave_rule": "Thay đổi quy định nghỉ phép",
+      "attendance_rule": "Thay đổi quy định chấm công"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -1712,6 +2019,7 @@
       "commented": "Ý kiến",
       "withdrawn": "Đã rút",
       "delegated": "Ủy quyền",
+      "reassigned": "Đổi người duyệt",
       "cancelled": "Đã hủy"
     },
     "history": {
@@ -1720,6 +2028,11 @@
       "verified": "Đã xác minh qua kênh thứ hai",
       "parallel": "· cùng lúc với bước trước",
       "standingInFor": "thay {name}",
+      "othersOnStep": "những người duyệt còn lại của bước",
+      "moved": {
+        "offboarded": "Người duyệt đã nghỉ việc",
+        "administrator": "Quản trị viên chuyển"
+      },
       "chain": "Chuỗi phê duyệt",
       "stepTitle": "Bước {number}",
       "mode": "{mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}"
@@ -1731,6 +2044,20 @@
       "approve": "Duyệt",
       "return": "Trả lại để chỉnh sửa",
       "reject": "Từ chối"
+    },
+    "rule": {
+      "changes": "Thay đổi đề xuất",
+      "againstCurrent": "So với quy định đang áp dụng; dòng in đậm là dòng thay đổi.",
+      "newRule": "Quy định mới, chưa có bản nào trước đó.",
+      "field": "Mục",
+      "current": "Đang áp dụng",
+      "proposed": "Đề xuất",
+      "yes": "Có",
+      "no": "Không",
+      "days": "{days} ngày",
+      "notYet": "Quy định này chưa có hiệu lực: chỉ áp dụng khi chủ sở hữu duyệt.",
+      "inForce": "Đã duyệt — quy định đã được lưu và đang áp dụng từ ngày hiệu lực.",
+      "ownerOnly": "Chỉ chủ sở hữu quyết định quy định nghỉ phép và chấm công."
     },
     "errors": {
       "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
@@ -1745,6 +2072,8 @@
       "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
       "change_request_verification_required": "Hãy xác nhận rằng bạn đã xác minh tài khoản ngân hàng mới với nhân viên qua kênh thứ hai.",
       "approval_delegate_refused": "Không thể chuyển yêu cầu này cho người đó: chưa đến lượt bạn, hoặc họ đã được hỏi.",
+      "approval_reassign_refused": "Không thể chuyển lượt duyệt này: người được chọn không còn lượt đang chờ, hoặc người nhận đã có mặt ở bước này.",
+      "approval_reassign_tier": "Yêu cầu này chứa thông tin hạn chế. Chỉ chuyển được cho người có quyền xem thông tin hạn chế của nhân viên đó.",
       "approval_open_to_decide": "Hãy mở yêu cầu này để quyết định.",
       "delegation_self": "Bạn không thể ủy quyền cho chính mình.",
       "delegation_dates": "Ngày kết thúc trước ngày bắt đầu.",
@@ -1762,6 +2091,13 @@
       "delegateHint": "Người được chọn sẽ trả lời thay bạn. Các điều kiện để quyết định loại yêu cầu này (ví dụ quyền nhân sự) vẫn áp dụng với họ.",
       "delegateTo": "Chuyển cho",
       "delegateNote": "Ghi chú",
+      "reassign": "Đổi người duyệt",
+      "reassignShort": "Đổi người duyệt",
+      "reassignHint": "Dành cho khi người duyệt vắng mặt, bị tạm khóa hoặc không trả lời. Người nhận sẽ trả lời thay; người tạo yêu cầu và người mà yêu cầu nói đến không thể nhận. Lý do được lưu trong lịch sử yêu cầu.",
+      "reassignFrom": "Lấy lượt của",
+      "reassignTo": "Chuyển cho",
+      "reassignReason": "Lý do",
+      "reassignSubmit": "Đổi người duyệt",
       "delegateSubmit": "Chuyển"
     },
     "bulk": {
@@ -1776,6 +2112,16 @@
     "delegation": {
       "link": "Ủy quyền phê duyệt",
       "title": "Ủy quyền",
+      "onBehalf": {
+        "title": "Phê duyệt của người vắng mặt",
+        "description": "Bạn đang thiết lập thay cho <person>{name}</person>. Các yêu cầu mới lẽ ra chờ người này sẽ được chuyển tới người bạn chỉ định; người này được thông báo và có thể tự kết thúc ủy quyền.",
+        "waiting": "Yêu cầu đang chờ người này duyệt",
+        "waitingEmpty": "Không có yêu cầu nào đang chờ mà bạn có thể chuyển.",
+        "hidden": "Còn {count} yêu cầu đang chờ người này nhưng thuộc về nhân viên ngoài phạm vi quản lý của bạn.",
+        "given": "Ủy quyền của người này",
+        "link": "Ủy quyền thay người này",
+        "includePending": "Chuyển luôn các yêu cầu đang chờ người này"
+      },
       "description": "Khi bạn vắng mặt, các yêu cầu mới lẽ ra chờ bạn sẽ được chuyển tới người bạn chỉ định. Bạn có thể kết thúc ủy quyền bất cứ lúc nào.",
       "to": "Ủy quyền cho",
       "types": "Loại yêu cầu",
@@ -2208,12 +2554,25 @@
       "submit": "Ghi nhận",
       "noteHint": "Ghi chú của sự kiện kỷ luật chỉ người có quyền xem thông tin hạn chế mới đọc được. Điều chỉnh lương: không ghi số tiền ở đây."
     },
+    "suspend": {
+      "title": "Tạm khóa tài khoản",
+      "hint": "Người này bị đăng xuất khỏi mọi thiết bị ngay lập tức và không đăng nhập được cho đến khi mở khóa. Quan hệ lao động, phân công và các vai trò giữ nguyên. Các yêu cầu đang chờ người này duyệt không tự chuyển đi.",
+      "reason": "Lý do tạm khóa",
+      "submit": "Tạm khóa",
+      "liftTitle": "Mở khóa tài khoản",
+      "liftHint": "Tài khoản đang bị tạm khóa. Mở khóa trả lại đúng quyền truy cập như trước; người này đăng nhập lại từ đầu.",
+      "liftReason": "Ghi chú (không bắt buộc)",
+      "liftSubmit": "Mở khóa",
+      "approvalsHint": "Khi người này vắng mặt hoặc bị tạm khóa, các yêu cầu chờ họ duyệt cần có người trả lời thay.",
+      "approvalsLink": "Xem yêu cầu đang chờ và ủy quyền thay"
+    },
     "terminate": {
       "title": "Cho thôi việc",
       "fromResignation": "Thực hiện thôi việc theo đơn đã duyệt",
       "hint": "Đến hết ngày làm việc cuối cùng: quan hệ lao động, phân công, hợp đồng và mọi vai trò kết thúc; checklist thôi việc được tạo. Sau ngày đó tài khoản bị khóa và các phiên đăng nhập bị xóa.",
       "confirm": "Xác nhận cho thôi việc?",
-      "submit": "Cho thôi việc"
+      "submit": "Cho thôi việc",
+      "proposed": "Đã gửi duyệt. Việc chấm dứt chỉ thực hiện khi được duyệt."
     },
     "transfer": {
       "title": "Chuyển sang pháp nhân khác",
@@ -2239,6 +2598,10 @@
     },
     "errors": {
       "generic": "Không lưu được.",
+      "suspend_self": "Bạn không thể tạm khóa tài khoản của chính mình.",
+      "suspend_not_active": "Chỉ tạm khóa được tài khoản đang hoạt động.",
+      "suspend_not_suspended": "Tài khoản này không bị tạm khóa.",
+      "person_not_found": "Không tìm thấy nhân viên.",
       "forbidden": "Bạn không có quyền thực hiện việc này.",
       "invalid": "Kiểm tra lại các ô đã nhập.",
       "no_employment": "Người này chưa có quan hệ lao động.",
@@ -2249,11 +2612,35 @@
       "event_before_start": "Ngày hiệu lực phải sau ngày bắt đầu làm việc.",
       "last_owner": "Không thể kết thúc quyền của Owner cuối cùng. Hãy trao quyền Owner cho người khác trước.",
       "resignation_open": "Bạn đang có một đơn xin nghỉ việc chưa xử lý.",
-      "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ."
+      "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ.",
+      "resignation_approved": "Đơn nghỉ việc của bạn đã được duyệt; HR đang xử lý.",
+      "event_has_effects": "Sự kiện này đã tạo hợp đồng hoặc đổi loại nhân sự. Hãy sửa các mục đó.",
+      "lifecycle_change_open": "Đã có một đề xuất cùng loại cho người này đang chờ duyệt."
+    },
+    "contractEvent": {
+      "title": "Đạt thử việc hoặc gia hạn hợp đồng",
+      "hint": "Ghi nhận sự kiện cùng hợp đồng lao động mới trong một bước: hợp đồng trước đó kết thúc vào ngày hôm trước, đạt thử việc thì chuyển loại nhân sự đã chọn từ ngày đó, và có thể cấp quyết định từ mẫu văn bản.",
+      "effectiveDate": "Từ ngày (ngày đầu của hợp đồng mới)",
+      "workforceType": "Loại nhân sự từ ngày đó",
+      "template": "Cấp quyết định",
+      "noPaper": "Không cấp văn bản",
+      "submit": "Ghi nhận",
+      "made": "Đã cấp văn bản số {number}.",
+      "download": "Tải PDF",
+      "contract": "Hợp đồng mới {number}"
+    },
+    "change": {
+      "person": "Nhân sự",
+      "title": {
+        "transfer": "Đề xuất điều chuyển",
+        "promotion": "Đề xuất thăng chức / bổ nhiệm",
+        "termination": "Đề xuất chấm dứt hợp đồng"
+      },
+      "appliedNote": "Đã duyệt và đã thực hiện."
     }
   },
   "exports": {
-    "button": "Xuất CSV",
+    "button": "Xuất tệp",
     "failed": "Không xuất được.",
     "truncated": "Danh sách quá dài: tệp chỉ chứa 5.000 dòng đầu."
   },
@@ -2898,6 +3285,7 @@
         "name": "Tên",
         "entity": "Pháp nhân",
         "address": "Địa chỉ",
+        "position": "Vị trí trên bản đồ",
         "latitude": "Vĩ độ",
         "longitude": "Kinh độ",
         "radius": "Bán kính (m)",
@@ -2934,6 +3322,7 @@
       "flagged": "Đã ghi nhận và chuyển cho quản lý xem xét:",
       "note": "Ghi chú (không bắt buộc)",
       "notePlaceholder": "VD: sáng nay làm việc tại văn phòng khách hàng",
+      "withoutPosition": "Chấm công không kèm vị trí",
       "notExpected": "Hôm nay không cần chấm công — bạn vẫn có thể ghi nhận nếu muốn.",
       "untracked": "Hôm nay là ngày làm việc không chấm công (làm việc tại nhà). Ngày công được tính tự động, không cần chấm.",
       "onLeaveFull": "Hôm nay bạn có đơn nghỉ phép đã duyệt. Nếu kế hoạch thay đổi bạn vẫn có thể chấm công — hãy báo Nhân sự để huỷ đơn nghỉ.",
@@ -3096,7 +3485,7 @@
         "unmappedTitle": "{count} mã chưa gán cho ai",
         "unmappedHint": "Các dòng nhật ký được giữ lại. Gán mã là chúng thành lượt chấm ngay.",
         "lines": "{count} dòng",
-        "export": "Tải các dòng (CSV)",
+        "export": "Tải các dòng",
         "exportTruncated": "Tệp chỉ chứa 5.000 dòng đầu.",
         "bulkTitle": "Gán nhiều mã theo mã nhân viên",
         "bulkHint": "Mỗi dòng: mã trên máy, mã nhân viên. Chỉ lưu khi mọi dòng đều đúng.",
@@ -3179,6 +3568,7 @@
       "inForce": "Đang hiệu lực",
       "save": "Lưu thành phiên bản mới",
       "saved": "Đã lưu.",
+      "proposed": "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt.",
       "versionHint": "Lưu với ngày bắt đầu muộn hơn sẽ đóng phiên bản hiện tại vào ngày liền trước.",
       "summary": "châm chước {late}′/{early}′ · làm tròn {rounding}′ · làm thêm từ {ot}′",
       "mergeRules": {
@@ -3200,6 +3590,7 @@
         "otRequiresApproval": "Làm thêm chỉ tính khi có đơn được duyệt"
       },
       "errors": {
+        "rule_no_owner": "Chưa có chủ sở hữu nào để duyệt quy định này; thay đổi chưa được lưu.",
         "generic": "Không lưu được. Vui lòng thử lại.",
         "forbidden": "Bạn không được thay đổi quy định này.",
         "invalid": "Kiểm tra lại các trường.",
@@ -3354,6 +3745,7 @@
         "off_site": "Ngoài văn phòng (quay, gặp khách, sự kiện)",
         "business_trip": "Công tác"
       },
+      "tripHint": "Đi công tác? Hãy lập đề nghị đi công tác ở mục Đề nghị — khi được duyệt, ngày công tác được ghi vào bảng công tự động.",
       "portions": {
         "full": "Cả ngày",
         "am": "Buổi sáng",
@@ -3378,10 +3770,10 @@
         "portion": "Thời gian trong ngày",
         "locationName": "Địa điểm",
         "positionHint": "Không bắt buộc: toạ độ địa điểm để chấm công tại đó được chấp nhận.",
+        "position": "Vị trí",
         "latitude": "Vĩ độ",
         "longitude": "Kinh độ",
         "radius": "Bán kính (m)",
-        "position": "Vị trí",
         "otFrom": "Từ",
         "otTo": "Đến",
         "window": "Khung giờ",
@@ -3552,6 +3944,35 @@
       "columns": {
         "status": "Trạng thái",
         "summary": "Tóm tắt"
+      },
+      "export": {
+        "button": "Tải bảng công tháng",
+        "failed": "Không tải được bảng công.",
+        "truncated": "Tệp chỉ có 5.000 dòng đầu.",
+        "columns": {
+          "employeeCode": "Mã nhân viên",
+          "fullName": "Họ tên",
+          "standardDays": "Ngày công chuẩn",
+          "paidDays": "Ngày công hưởng lương",
+          "unpaidDays": "Ngày không lương",
+          "workedHours": "Giờ làm việc",
+          "creditedHours": "Giờ ghi nhận không chấm công",
+          "leavePaidHours": "Giờ nghỉ phép có lương",
+          "leaveUnpaidHours": "Giờ nghỉ không lương",
+          "holidayHours": "Giờ nghỉ lễ, nghỉ bù",
+          "absenceHours": "Giờ vắng mặt",
+          "lateMinutes": "Phút đi muộn",
+          "earlyMinutes": "Phút về sớm",
+          "nightHours": "Giờ làm đêm",
+          "otWeekday": "Tăng ca ngày thường (giờ)",
+          "otWeekdayNight": "Tăng ca đêm ngày thường (giờ)",
+          "otRestDay": "Tăng ca ngày nghỉ (giờ)",
+          "otRestDayNight": "Tăng ca đêm ngày nghỉ (giờ)",
+          "otHoliday": "Tăng ca ngày lễ (giờ)",
+          "otHolidayNight": "Tăng ca đêm ngày lễ (giờ)",
+          "otTimeOff": "Tăng ca chuyển nghỉ bù (giờ)",
+          "otPayable": "Tăng ca được trả lương (giờ)"
+        }
       }
     },
     "console": {
@@ -3560,7 +3981,7 @@
       "allEntities": "Tất cả pháp nhân",
       "allKinds": "Tất cả",
       "toTimesheets": "Bảng công tháng",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Xuất tệp không thành công.",
       "exportTruncated": "Tệp bị cắt ở giới hạn số dòng.",
       "clearPerson": "xem tất cả",
@@ -3627,7 +4048,10 @@
         "openedAt": "Mở lúc",
         "lastSeen": "Hoạt động gần nhất",
         "empty": "Chưa có máy tính bảng nào đang mở.",
-        "thisDevice": "Máy này"
+        "thisDevice": "Máy này",
+        "expires": "Hết hạn",
+        "expired": "Đã hết hạn, cần mở lại",
+        "punchesToday": "Lượt chấm hôm nay"
       },
       "faces": {
         "listTitle": "Khuôn mặt đã đăng ký",
@@ -3683,6 +4107,35 @@
         "kiosk_code_expired": "Mã đã hết hạn. Quét lại mã đang hiện trên máy chấm công.",
         "kiosk_not_yours": "Máy chấm công này không thuộc pháp nhân của bạn."
       }
+    },
+    "position": {
+      "useMine": "Dùng vị trí của tôi",
+      "locating": "Đang xác định vị trí…",
+      "none": "Chưa chọn vị trí.",
+      "accuracy": "Sai số khoảng {metres} m.",
+      "imprecise": "Điện thoại chỉ xác định được trong phạm vi {metres} m. Hãy ra chỗ thoáng rồi thử lại, hoặc dán liên kết bản đồ của địa điểm bên dưới.",
+      "clear": "Xoá",
+      "byHand": "Dán liên kết bản đồ hoặc nhập toạ độ",
+      "paste": "Liên kết bản đồ hoặc toạ độ",
+      "pasteHint": "Trên Google Maps, nhấn giữ vào địa điểm rồi sao chép toạ độ hiện ra, hoặc sao chép liên kết trên thanh địa chỉ của trình duyệt. Liên kết chia sẻ rút gọn (maps.app.goo.gl) không chứa toạ độ.",
+      "latitude": "Vĩ độ",
+      "longitude": "Kinh độ",
+      "problems": {
+        "denied": "Trang này chưa được phép truy cập vị trí. Hãy bật trong cài đặt của trình duyệt, hoặc dán liên kết bản đồ của địa điểm.",
+        "unavailable": "Điện thoại không xác định được vị trí. Hãy thử lại ở chỗ thoáng, hoặc dán liên kết bản đồ của địa điểm.",
+        "timeout": "Xác định vị trí quá lâu. Hãy thử lại, hoặc dán liên kết bản đồ của địa điểm.",
+        "unsupported": "Trình duyệt này không xác định được vị trí. Hãy dán liên kết bản đồ của địa điểm.",
+        "pasteInvalid": "Không tìm thấy toạ độ trong nội dung này."
+      }
+    },
+    "myFace": {
+      "title": "Chấm công bằng khuôn mặt",
+      "enrolled": "Khuôn mặt của bạn đã được đăng ký để chấm công tại máy kiosk ({count} mẫu), với sự đồng ý được ghi nhận ngày {date}.",
+      "what": "SuZu One chỉ lưu các con số mô tả khuôn mặt — không bao giờ lưu ảnh — và chỉ dùng để nhận diện bạn tại máy kiosk. Bạn có thể rút lại sự đồng ý bất cứ lúc nào; khi đó bạn chấm công bằng ứng dụng hoặc mã QR của máy kiosk.",
+      "withdraw": "Rút lại đồng ý",
+      "withdrawConfirm": "Rút lại đồng ý chấm công bằng khuôn mặt?",
+      "withdrawDetail": "Dữ liệu khuôn mặt và bản ghi đồng ý của bạn bị xoá ngay. Máy kiosk sẽ không nhận ra bạn nữa; nhân sự chỉ có thể đăng ký lại khi có bản đồng ý mới đã ký.",
+      "failed": "Không rút lại được sự đồng ý. Hãy thử lại."
     }
   },
   "leave": {
@@ -3694,7 +4147,10 @@
       "title": "Còn lại trong năm {year}",
       "none": "Bạn chưa có số dư phép. Số dư sẽ hiện khi nhân sự thiết lập xong.",
       "used": "đã nghỉ {days}",
-      "pending": "{days} đang chờ duyệt"
+      "pending": "{days} đang chờ duyệt",
+      "ledger": "Biến động số dư phép",
+      "ledgerHint": "Mọi lần cộng, trừ, chuyển năm và điều chỉnh số dư của bạn, mới nhất trước — gồm cả ngày đã đặt trước cho năm sau.",
+      "noLedger": "Chưa có biến động nào."
     },
     "request": {
       "new": "Xin nghỉ",
@@ -3716,7 +4172,7 @@
       "minutes": "Số phút nghỉ (nghỉ theo giờ)",
       "portionHint": "Nghỉ một ngày: chọn cả ngày, buổi sáng, buổi chiều hoặc theo giờ. Nghỉ nhiều ngày: ngày đầu có thể bắt đầu từ buổi chiều, ngày cuối có thể kết thúc buổi sáng.",
       "check": "Kiểm tra",
-      "available": "Còn lại năm {year}: {days} ngày",
+      "available": "Có thể dùng cho năm {year} tính đến ngày nghỉ: {days} ngày",
       "noBalance": "Loại phép này không trừ vào số dư.",
       "colleaguesAway": "Cũng nghỉ trong những ngày này",
       "shortfall": "Vào {dates}, nhóm của bạn sẽ có dưới {min} người đi làm. Bạn vẫn gửi được đơn; quản lý cũng thấy cảnh báo này.",
@@ -3763,6 +4219,7 @@
       "next": "Tháng sau"
     },
     "errors": {
+      "rule_no_owner": "Chưa có chủ sở hữu nào để duyệt quy định này; thay đổi chưa được lưu.",
       "generic": "Không thực hiện được. Vui lòng thử lại.",
       "forbidden": "Bạn không có quyền thực hiện việc này.",
       "invalid": "Một số trường chưa hợp lệ.",
@@ -3819,6 +4276,7 @@
       "everyEntity": "Mọi pháp nhân",
       "save": "Lưu",
       "saved": "Đã lưu",
+      "proposed": "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt.",
       "remove": "Xoá",
       "removeConfirm": "Xoá dòng này?",
       "types": {
@@ -3967,6 +4425,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Đã xóa gần đây ({count})",
+      "hint": "Công việc đã xóa có thể khôi phục trong {days} ngày, cùng với các việc con bị xóa theo.",
+      "empty": "Không có công việc nào bị xóa trong {days} ngày qua.",
+      "deletedBy": "Người xóa",
+      "deletedAt": "Thời điểm xóa",
+      "restore": "Khôi phục",
+      "subtasks": "{count, plural, other {kèm # việc con}}"
+    },
     "title": "Công việc",
     "digitalAssets": {
       "title": "Trang & kênh",
@@ -4248,6 +4715,7 @@
         "client": "Nhóm theo khách hàng"
       },
       "showClosed": "Hiện việc đã đóng",
+      "truncated": "Đang hiện {shown} trên {total} việc: việc đang mở trước, rồi đến việc mới đóng gần nhất.",
       "clear": "Xóa bộ lọc",
       "count": "{shown} / {total}",
       "quickCreate": "Công việc mới — gõ tiêu đề rồi nhấn Enter",
@@ -4259,6 +4727,9 @@
       "blocked": "Bị chặn",
       "subtasks": "{done}/{total} việc con",
       "views": {
+        "update": "Cập nhật “{name}”",
+        "saveNew": "Lưu thành bộ lọc mới",
+        "shareTeam": "Chia sẻ với nhóm",
         "shared": "dùng chung",
         "delete": "Xóa bộ lọc đã lưu {name}",
         "name": "Đặt tên bộ lọc…",
@@ -4283,6 +4754,7 @@
       "inTriage": "Chờ phân loại"
     },
     "task": {
+      "noParent": "Không có (cấp cao nhất)",
       "fields": {
         "title": "Tiêu đề",
         "description": "Mô tả",
@@ -4332,6 +4804,7 @@
       "delete": "Xóa công việc",
       "deleteConfirm": "Xóa công việc này cùng các việc con?",
       "activity": {
+        "restored": "đã khôi phục công việc",
         "changed": "đổi {field}: {from} → {to}",
         "changedPlain": "đã sửa {field}",
         "checklist": "cập nhật checklist ({done}/{total})",
@@ -4419,6 +4892,7 @@
       "createSubmit": "Tạo"
     },
     "errors": {
+      "task_restore_too_late": "Công việc này đã bị xóa quá lâu nên không thể khôi phục.",
       "generic": "Thao tác không thành công. Vui lòng thử lại.",
       "forbidden": "Bạn không được làm việc này ở đây.",
       "invalid": "Vui lòng kiểm tra lại các trường.",
@@ -4444,6 +4918,10 @@
       "project_not_found": "Không tìm thấy dự án.",
       "project_other_team": "Dự án đó thuộc nhóm khác; công việc giữ quy trình của nhóm mình.",
       "project_archived": "Dự án đó đã lưu trữ.",
+      "project_closed": "Dự án này đã đóng: không thêm việc, đổi trạng thái việc hay ghi giờ được cho đến khi dự án được mở lại.",
+      "project_needs_kickoff": "Dự án làm cho khách chỉ chuyển sang Đang chạy khi brief được duyệt khởi động (trang Tổng quan của dự án).",
+      "project_needs_closeout": "Dự án làm cho khách chỉ chuyển sang Đã xong qua bước đóng dự án (tab Đóng dự án).",
+      "project_closed_reopen": "Dự án đã đóng. Hãy mở lại dự án ở tab Đóng dự án trước khi đổi trạng thái.",
       "project_dates_invalid": "Hạn trước ngày bắt đầu.",
       "project_last_member": "Dự án phải còn ít nhất một thành viên.",
       "task_not_found": "Không tìm thấy công việc.",
@@ -4587,6 +5065,7 @@
       "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
       "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa.",
       "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được.",
+      "preview_project_closed": "Dự án đã kết thúc hoặc đã lưu trữ nên không tạo được đường dẫn duyệt mới.",
       "checklist_name_required": "Hãy đặt tên cho checklist.",
       "checklist_empty": "Thêm ít nhất một mục.",
       "checklist_too_many": "Một checklist có tối đa 40 mục.",
@@ -4611,12 +5090,13 @@
       "label": "Cách xem"
     },
     "board": {
+      "changeState": "Chuyển {title} sang trạng thái khác",
       "moveUp": "Chuyển lên",
       "moveDown": "Chuyển xuống",
-      "moveTo": "Chuyển sang cột",
       "emptyColumn": "Chưa có gì"
     },
     "calendar": {
+      "dueOn": "Hạn vào ngày",
       "title": "Lịch nội dung",
       "description": "Mọi công việc có hạn mà bạn được xem, đặt theo ngày đến hạn. Lọc theo khách hàng hoặc kênh để có lịch nội dung của một thương hiệu.",
       "previous": "Tháng trước",
@@ -4637,7 +5117,8 @@
         "unscheduled": "chưa có giờ",
         "cancelled": "đã hủy"
       },
-      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng."
+      "postLegend": "Bài đăng: ✓ đã đăng · ◷ đã lên lịch · ⚠ trễ giờ, chưa đăng · ! nội dung đến hạn mà chưa lên lịch đăng.",
+      "truncated": "Tháng này quá nhiều việc để hiện cùng lúc: lịch đang hiện {shown} trên {total} công việc, việc chưa xong trước, rồi đến việc có hạn sớm nhất."
     },
     "discussion": {
       "title": "Trao đổi ({count})",
@@ -4744,6 +5225,10 @@
       }
     },
     "templates": {
+      "edit": "Sửa",
+      "editItem": "Sửa bước “{title}”",
+      "editItemHint": "Lần dùng mẫu tiếp theo sẽ lấy bước theo nội dung mới. Các việc đã tạo từ mẫu giữ nguyên.",
+      "saveItem": "Lưu bước",
       "title": "Mẫu công việc",
       "description": "Cây công việc với số ngày tính từ ngày bắt đầu hoặc ngày kết thúc và vai trò cho từng bước. Khi dùng mẫu, bạn chọn ai đảm nhận từng vai trò.",
       "newProject": "Tạo dự án từ mẫu",
@@ -4803,6 +5288,7 @@
         "person_not_found": "Không tìm thấy một người đã chọn hoặc họ đã nghỉ việc.",
         "team_not_found": "Không tìm thấy nhóm.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ.",
         "state_not_found": "Nhóm chưa có trạng thái cho việc mới."
       },
@@ -4810,6 +5296,18 @@
       "noChecklist": "Không có checklist"
     },
     "recurrence": {
+      "emptyTeam": "Danh sách việc của nhóm chưa có việc lặp lại nào.",
+      "estimate": "Số giờ",
+      "onDayOff": "Nếu rơi vào ngày nghỉ",
+      "dayOff": {
+        "shift": "Dời hạn sang ngày làm việc kế tiếp",
+        "skip": "Bỏ qua lần đó",
+        "keep": "Vẫn giữ đúng ngày"
+      },
+      "edit": "Sửa",
+      "editTitle": "Sửa việc lặp lại “{title}”",
+      "editHint": "Thay đổi áp dụng cho các việc được tạo từ nay về sau. Các việc đã tạo giữ nguyên tiêu đề, hạn và người phụ trách.",
+      "save": "Lưu",
       "heading": "Việc lặp lại",
       "empty": "Dự án này chưa có việc lặp lại.",
       "title": "Tên công việc",
@@ -4854,6 +5352,7 @@
         "monthlyLast": "{interval, plural, =1 {mỗi tháng} other {mỗi # tháng}} vào ngày cuối tháng"
       },
       "errors": {
+        "team_not_found": "Không tìm thấy nhóm hoặc nhóm đã lưu trữ.",
         "generic": "Không thực hiện được.",
         "forbidden": "Bạn không có quyền làm việc này.",
         "invalid": "Kiểm tra lại: chọn ít nhất một ngày trong tuần.",
@@ -4861,6 +5360,7 @@
         "recurrence_dates_invalid": "Ngày kết thúc trước ngày bắt đầu.",
         "recurrence_not_found": "Không tìm thấy.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ."
       },
       "columns": {
@@ -4876,6 +5376,7 @@
       "open": "{count} việc đang mở",
       "overdue": "{count} quá hạn",
       "atRisk": "{count} có rủi ro",
+      "truncated": "Đang hiện {shown} việc đến hạn sớm nhất trên {total} việc đang mở; các con số phía trên tính đủ tất cả.",
       "unassigned": "Chưa giao",
       "counts": "{todo} chưa làm · {in_progress} đang làm · {in_review} chờ duyệt",
       "due": "hạn {date}",
@@ -5069,6 +5570,7 @@
         "custom_field_not_found": "việc này không có trường đó",
         "task_not_found": "không còn tồn tại",
         "other": "không hợp lệ",
+        "project_closed": "dự án đã đóng",
         "handoff_required": "cần gói bàn giao",
         "cycle_not_found": "chu kỳ không thuộc nhóm",
         "cycle_closed": "chu kỳ đã đóng",
@@ -5358,7 +5860,11 @@
       "toHandBack": "Có thể trả lại",
       "away": "Đang nghỉ",
       "awayCovered": "Đang nghỉ — {name} làm thay",
-      "privateItem": "Việc riêng tư"
+      "privateItem": "Việc riêng tư",
+      "panelTooShort": "Không cần kế hoạch làm thay: đợt nghỉ này ngắn hơn {days} ngày làm việc.",
+      "panelNotDrafted": "Chưa có kế hoạch làm thay. Kế hoạch được tạo khi gửi đơn nghỉ; với đơn gửi từ trước, hệ thống sẽ tạo trong đêm.",
+      "panelCancelled": "Kế hoạch làm thay đã hủy cùng với đơn nghỉ.",
+      "panelDraft": "{name} chưa chọn đủ người làm thay cho các việc."
     },
     "exit": {
       "title": "Bàn giao công việc của {name}",
@@ -5421,6 +5927,7 @@
       "next": "Chu kỳ tới #{number} ({range}): {count} việc đã lên kế hoạch.",
       "past": "Các chu kỳ đã qua",
       "noPast": "Chưa có chu kỳ nào kết thúc.",
+      "truncated": "Đang liệt kê {shown} trên {total} công việc của chu kỳ, việc chưa xong trước. Tiến độ ở trên tính đủ tất cả.",
       "planned": "{count} kế hoạch",
       "done": "{count} xong",
       "rolled": "{count} chuyển tiếp",
@@ -5824,6 +6331,14 @@
       "viewOnly": "chỉ xem",
       "revoke": "Thu hồi",
       "revokeConfirm": "Thu hồi đường dẫn này? Khách sẽ không mở được nữa.",
+      "revokeTitle": "Thu hồi đường dẫn",
+      "project": {
+        "title": "Đường dẫn duyệt đang ở chỗ khách",
+        "explainer": "Các đường dẫn duyệt của dự án chưa hết hạn và chưa bị thu hồi. Đường dẫn mới được tạo ở trang công việc.",
+        "task": "Công việc",
+        "version": "Phiên bản",
+        "none": "Không có đường dẫn nào đang mở."
+      },
       "meta": "{name} tạo ngày {created} · hết hạn {expires}",
       "views": "{count} lượt xem, gần nhất {last}",
       "noViews": "khách chưa mở",
@@ -6135,7 +6650,7 @@
       "description": "Các kỳ đã qua của từng nghĩa vụ: ai hoàn thành, số tham chiếu, số tiền và chứng từ đã nộp — hồ sơ phục vụ thanh tra thuế, bảo hiểm.",
       "obligation": "Nghĩa vụ",
       "year": "Đến hạn trong năm",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Không xuất được tệp.",
       "exportTruncated": "Chỉ xuất 5.000 dòng đầu tiên.",
       "summary": "{count, plural, =0 {Chưa có kỳ nào đã qua} other {# kỳ đã qua}}{late, plural, =0 {} other {, # kỳ trễ hoặc còn mở}}.",
@@ -6438,7 +6953,8 @@
         "library": "Thư viện",
         "import": "Nhập từ tệp",
         "cycles": "Chu kỳ đánh giá",
-        "weighting": "Trọng số kết quả"
+        "weighting": "Trọng số kết quả",
+        "templates": "Biểu mẫu đánh giá"
       }
     },
     "library": {
@@ -6628,7 +7144,8 @@
         "manager_done": "Quản lý đã đánh giá",
         "calibrated": "Đã cân đối",
         "released": "Đã công bố",
-        "acknowledged": "Đã xác nhận"
+        "acknowledged": "Đã xác nhận",
+        "signed_off": "Đã trao đổi kết quả"
       },
       "formStatus": {
         "none": "Chưa có",
@@ -6692,6 +7209,8 @@
         "yes": "Công bố",
         "cycleAction": "Công bố cả chu kỳ",
         "cycleConfirm": "Sẽ công bố cho tất cả những người đã có phiếu quản lý. Tiếp tục?",
+        "waitingForHr": "Bạn đã gửi phiếu đánh giá và mức xếp loại đề xuất. Phòng Nhân sự sẽ cân đối và công bố cho nhân viên — đang chờ Nhân sự công bố.",
+        "notYet": "Chỉ cân đối và công bố được khi chu kỳ đã sang giai đoạn cân đối. Hiện chu kỳ vẫn đang nhận phiếu.",
         "cycleDone": "Đã công bố {released} người, bỏ qua {skipped} người."
       },
       "acknowledge": {
@@ -6699,7 +7218,8 @@
         "note": "Ý kiến của bạn (không bắt buộc)",
         "action": "Tôi đã đọc và xác nhận",
         "done": "Đã xác nhận ngày {date}.",
-        "waiting": "Đang chờ nhân viên xác nhận."
+        "waiting": "Đang chờ nhân viên xác nhận.",
+        "afterSignOff": "Bạn sẽ xác nhận sau buổi trao đổi kết quả với quản lý."
       },
       "cycle": {
         "name": "Tên chu kỳ",
@@ -6722,7 +7242,12 @@
         "saved": "Đã lưu.",
         "launch": "Mở chu kỳ",
         "launchConfirm": "Mở chu kỳ sẽ khoá biểu mẫu và ghi nhận quản lý của từng người. Tiếp tục?",
-        "launchYes": "Mở luôn"
+        "launchYes": "Mở luôn",
+        "isRolling": "Chu kỳ cuốn chiếu theo hợp đồng thử việc",
+        "rollingHint": "Không cần đặt hạn chung: mỗi người được đưa vào chu kỳ khi hợp đồng thử việc sắp hết, với hạn riêng theo ngày hết thử việc. Phiếu của ai xong thì Nhân sự cân đối và công bố cho người đó.",
+        "signOffRequired": "Cần buổi trao đổi kết quả trước khi nhân viên xác nhận",
+        "rolling": "Cuốn chiếu",
+        "signOffBadge": "Có trao đổi kết quả"
       },
       "admin": {
         "description": "Tạo chu kỳ, mở chu kỳ (khoá biểu mẫu và ghi nhận quản lý của từng người), rồi cân đối và công bố.",
@@ -6742,7 +7267,13 @@
           "released": "Đánh dấu đã công bố",
           "closed": "Đóng chu kỳ"
         },
-        "noParticipants": "Chu kỳ này chưa có người tham gia."
+        "noParticipants": "Chu kỳ này chưa có người tham gia.",
+        "editCycle": "Sửa chu kỳ — {name}",
+        "editHint": "Chu kỳ còn ở dạng nháp nên vẫn sửa được. Sau khi mở thì không sửa được nữa.",
+        "add": "Thêm người tham gia",
+        "addHint": "Hạn riêng (nếu nhập) thay cho hạn chung của chu kỳ. Nếu chu kỳ đã mở, người này và quản lý sẽ được thông báo ngay.",
+        "addRollingHint": "Chu kỳ cuốn chiếu: hãy nhập hạn tự đánh giá và hạn quản lý đánh giá cho người này.",
+        "noParticipantsRolling": "Chưa có ai. Mỗi sáng, người có hợp đồng thử việc sắp hết sẽ được đưa vào chu kỳ."
       },
       "errors": {
         "generic": "Không thực hiện được. Hãy thử lại.",
@@ -6763,6 +7294,8 @@
         "review_cycle_no_participants": "Không có ai thuộc phạm vi chu kỳ này.",
         "review_cycle_bad_step": "Không chuyển được sang trạng thái đó.",
         "review_cycle_not_collecting": "Chu kỳ không còn nhận phiếu.",
+        "review_cycle_not_calibrating": "Chu kỳ chưa sang giai đoạn cân đối: chưa thể cân đối hay công bố.",
+        "review_own": "Bạn không thể cân đối hay công bố đánh giá của chính mình.",
         "review_period_backwards": "Ngày kết thúc phải sau ngày bắt đầu.",
         "review_timeline_backwards": "Các mốc thời gian phải theo thứ tự.",
         "review_timeline_before_period": "Mốc thời gian không được trước ngày bắt đầu kỳ.",
@@ -6784,7 +7317,22 @@
         "review_peer_max": "Đã đủ số người phản hồi tối đa.",
         "review_nomination_not_found": "Không tìm thấy lời mời.",
         "review_nomination_decided": "Lời mời đã được trả lời.",
-        "review_nomination_has_form": "Người này đã viết phản hồi, không rút lại được."
+        "review_nomination_has_form": "Người này đã viết phản hồi, không rút lại được.",
+        "review_template_name_empty": "Hãy đặt tên cho biểu mẫu.",
+        "review_template_bad_key": "Mã câu chỉ gồm chữ thường không dấu, số, gạch dưới hoặc gạch ngang, tối đa 40 ký tự.",
+        "review_template_untitled_section": "Câu hỏi nào cũng phải có nội dung.",
+        "review_template_bad_section": "Trọng số phải là số nguyên không âm.",
+        "review_template_bad_point": "Mỗi mức phải có tên, thứ tự là số nguyên và giá trị quy đổi không âm.",
+        "review_template_manager_unscored": "Phiếu của quản lý phải có ít nhất một câu chấm điểm có trọng số — điểm đó là điểm đánh giá tính vào kết quả năm.",
+        "review_template_bad_kind": "Loại chu kỳ không hợp lệ.",
+        "review_template_wrong_kind": "Biểu mẫu này không dùng cho loại chu kỳ đã chọn.",
+        "review_rolling_not_probation": "Chỉ chu kỳ hết thử việc mới chạy cuốn chiếu.",
+        "review_form_not_found": "Không tìm thấy phiếu.",
+        "review_form_not_submitted": "Phiếu chưa được gửi.",
+        "review_form_settled": "Đánh giá đã được cân đối hoặc công bố, không trả lại phiếu được nữa.",
+        "review_sign_off_recorded": "Buổi trao đổi đã được ghi nhận rồi.",
+        "review_sign_off_date": "Ngày trao đổi phải từ ngày công bố đến hôm nay.",
+        "review_sign_off_missing": "Cần ghi nhận buổi trao đổi kết quả trước khi xác nhận."
       },
       "peers": {
         "title": "Phản hồi đồng nghiệp (360°)",
@@ -6848,6 +7396,70 @@
         "questions": "Số câu",
         "scale": "Thang điểm",
         "status": "Trạng thái"
+      },
+      "templates": {
+        "title": "Biểu mẫu đánh giá",
+        "manage": "Quản lý biểu mẫu đánh giá",
+        "new": "Biểu mẫu mới",
+        "copy": "Tạo bản sao",
+        "copyName": "{name} (bản sao)",
+        "copyTitle": "Bản sao của {name}",
+        "back": "Về danh sách biểu mẫu",
+        "readOnly": "Chỉ Nhân sự cấp tập đoàn sửa được biểu mẫu. Bạn đang xem ở chế độ chỉ đọc.",
+        "basics": "Thông tin chung",
+        "name": "Tên biểu mẫu",
+        "nameEn": "Tên tiếng Anh",
+        "description": "Mô tả",
+        "kinds": "Dùng cho loại chu kỳ",
+        "kindsHint": "Không chọn loại nào nghĩa là dùng được cho mọi loại chu kỳ.",
+        "allKinds": "Mọi loại",
+        "active": "Đang dùng",
+        "sections": "Câu hỏi",
+        "sectionsHint": "Câu chấm điểm có trọng số tạo nên điểm của phiếu; phiếu của quản lý phải có ít nhất một câu như vậy.",
+        "addSection": "Thêm câu hỏi",
+        "noSections": "Chưa có câu hỏi nào.",
+        "sectionTitle": "Câu hỏi",
+        "sectionTitleEn": "Câu hỏi (tiếng Anh)",
+        "sectionKind": "Loại câu",
+        "sectionKinds": {
+          "rating": "Chấm điểm theo thang",
+          "text": "Tự luận"
+        },
+        "weight": "Trọng số",
+        "weightShare": "{share} % tổng điểm",
+        "askedOf": "Hỏi trong phiếu:",
+        "required": "Bắt buộc",
+        "key": "Mã câu",
+        "moveUp": "Lên trên",
+        "moveDown": "Xuống dưới",
+        "remove": "Xoá",
+        "scale": "Thang điểm",
+        "scaleHint": "Mỗi mức có giá trị quy đổi ra phần trăm — thường mức “Đạt yêu cầu” là 100 %. Kết quả cuối năm và thưởng được tính từ các giá trị này.",
+        "addPoint": "Thêm mức",
+        "pointValue": "Thứ tự",
+        "pointPercent": "Quy đổi (%)",
+        "pointLabel": "Tên mức",
+        "pointLabelEn": "Tên tiếng Anh",
+        "problems": "Cần sửa trước khi lưu:",
+        "snapshotNote": "Chu kỳ đã mở giữ nguyên biểu mẫu tại thời điểm mở; thay đổi ở đây chỉ áp dụng cho các chu kỳ mở sau.",
+        "save": "Lưu biểu mẫu",
+        "saved": "Đã lưu."
+      },
+      "returned": {
+        "title": "Nhân sự đã trả lại phiếu này để chỉnh sửa:",
+        "action": "Trả lại để sửa",
+        "reason": "Lý do (người viết sẽ đọc được)",
+        "yes": "Trả lại"
+      },
+      "signOff": {
+        "title": "Buổi trao đổi kết quả",
+        "heldOn": "Ngày trao đổi",
+        "note": "Nội dung đã thống nhất (không bắt buộc)",
+        "action": "Ghi nhận đã trao đổi",
+        "done": "Đã trao đổi ngày {date} — {name} ghi nhận.",
+        "requiredHint": "Chu kỳ này yêu cầu buổi trao đổi kết quả với nhân viên; nhân viên chỉ xác nhận được sau khi buổi trao đổi được ghi nhận.",
+        "optionalHint": "Ghi nhận buổi trao đổi kết quả với nhân viên, nếu đã có.",
+        "waiting": "Đang chờ quản lý ghi nhận buổi trao đổi kết quả."
       }
     },
     "results": {
@@ -7692,7 +8304,10 @@
         "down": "Giảm",
         "same": "Lương cơ bản không đổi"
       },
-      "request": "Đề xuất"
+      "request": "Đề xuất",
+      "probationPercent": "Tỷ lệ lương thử việc (%)",
+      "probationPercentHint": "Để trống nếu trả đủ",
+      "probationShort": "thử việc {percent}%"
     },
     "profiles": {
       "title": "Hồ sơ trả lương",
@@ -7750,11 +8365,16 @@
       "status": {
         "proposed": "Đề xuất",
         "approved": "Đã duyệt",
-        "rejected": "Từ chối"
+        "rejected": "Từ chối",
+        "voided": "Đã hủy bỏ"
       },
       "waiting": "Chờ Chủ sở hữu quyết định",
       "approve": "Phê duyệt",
-      "reject": "Từ chối"
+      "reject": "Từ chối",
+      "voided": {
+        "title": "Phiên bản đã hủy bỏ",
+        "because": "Lý do hủy bỏ: {reason}"
+      }
     },
     "exposure": {
       "title": "Hồ sơ Đơn giản — căn cứ và thời gian",
@@ -7984,7 +8604,12 @@
       "approval_own_request": "Không thể tự duyệt đề xuất của mình.",
       "approval_comment_required": "Hãy ghi lý do khi trả lại hoặc từ chối.",
       "approval_no_approver": "Không tìm thấy người duyệt.",
-      "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này."
+      "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này.",
+      "version_not_voidable": "Chỉ có thể hủy bỏ phiên bản đang có hiệu lực.",
+      "void_used_by_paid_run": "Một kỳ lương đã chuẩn bị chi, đã chi hoặc đã khóa dùng phiên bản này — không thể hủy bỏ. Hãy điều chỉnh bằng khoản truy lĩnh, truy thu.",
+      "void_run_in_review": "Một kỳ lương đang chờ duyệt dùng phiên bản này. Hãy trả kỳ lương về cho nhân sự trước, rồi hủy bỏ.",
+      "salary_probation_below_minimum": "Tỷ lệ lương thử việc thấp hơn mức tối thiểu luật định ({minimum}%).",
+      "component_code_reserved": "Mã này dành cho các khoản giảm trừ khi tính thuế TNCN, không dùng cho khoản mục lương."
     },
     "offers": {
       "title": "Quy đổi lương net sang gross",
@@ -8017,6 +8642,74 @@
       "employerCost": "Chi phí công ty",
       "unverified": "{count} tham số pháp lý chưa được kế toán trưởng xác nhận."
     },
+    "retro": {
+      "title": "Truy lĩnh, truy thu",
+      "pageTitle": "Truy lĩnh, truy thu đang chờ",
+      "pageDescription": "Chênh lệch của những tháng đã trả lương — quyết định lương duyệt muộn, điều chỉnh bảng công sau khi khóa, khoản C&B nhập tay — đang chờ kỳ lương kế tiếp.",
+      "hint": "Các khoản chưa được kỳ lương nào tính vào. Kỳ lương định kỳ kế tiếp sẽ đưa từng khoản vào thành một dòng riêng.",
+      "hintRun": "Chênh lệch của các tháng trước mà kỳ lương này đã tính, hoặc sẽ tính ở lần tính kế tiếp.",
+      "empty": "Không có khoản nào đang chờ.",
+      "emptyRun": "Kỳ lương này không có khoản truy lĩnh, truy thu nào.",
+      "all": "Tất cả khoản đang chờ",
+      "person": "Nhân viên",
+      "sourceMonth": "Tháng phát sinh",
+      "source": "Nguồn",
+      "reason": "Lý do",
+      "amount": "Số tiền (+ truy lĩnh, − truy thu)",
+      "status": "Trạng thái",
+      "openDecision": "Xem quyết định",
+      "insuranceBaseChanged": "Cần khai điều chỉnh BHXH",
+      "bySystem": "Hệ thống tự tính",
+      "kinds": {
+        "salary_change": "Quyết định lương duyệt muộn",
+        "timesheet_adjustment": "Điều chỉnh bảng công",
+        "manual": "Nhập tay"
+      },
+      "statuses": {
+        "open": "Chờ tính",
+        "taken": "Đã vào kỳ lương",
+        "takenHere": "Đã tính trong kỳ này",
+        "outsideRun": "Người này không có trong kỳ lương"
+      },
+      "add": {
+        "label": "Nhập khoản truy lĩnh, truy thu",
+        "hint": "Số dương là khoản công ty trả thêm cho nhân viên, số âm là khoản thu hồi. Lý do sẽ hiện bên cạnh dòng tương ứng trên phiếu lương.",
+        "save": "Lưu"
+      },
+      "cancel": {
+        "label": "Hủy",
+        "title": "Hủy khoản của {name}",
+        "hint": "Khoản đã hủy không bị xóa: lý do được lưu lại cùng khoản đó. Nếu một kỳ lương đã tính khoản này, kỳ lương đó quay về bản nháp để tính lại.",
+        "reason": "Lý do hủy",
+        "confirm": "Hủy khoản này"
+      },
+      "derive": {
+        "label": "Rà soát chênh lệch",
+        "done": "Đã rà soát."
+      },
+      "unpriced": {
+        "hint": "Hệ thống không tự quy các điều chỉnh bảng công dưới đây ra tiền được. Hãy tính và nhập số tiền; khoản đó sẽ vào kỳ lương kế tiếp.",
+        "enter": "Nhập khoản này"
+      },
+      "skips": {
+        "month_not_run": "Tháng này chưa từng tính lương trên hệ thống",
+        "engine_changed": "Quy tắc tính đã thay đổi từ khi trả lương tháng này",
+        "recalculation_failed": "Không tính lại được"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với khoản này.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "invalid": "Thông tin nhập chưa hợp lệ.",
+        "retro_amount_invalid": "Số tiền phải khác 0.",
+        "retro_reason_required": "Cần nêu lý do.",
+        "retro_item_exists": "Khoản chênh lệch này đã được ghi nhận.",
+        "retro_item_not_found": "Không tìm thấy khoản này.",
+        "retro_item_not_open": "Khoản này đã nằm trong một kỳ lương đã trình, không hủy được nữa.",
+        "retro_month_in_future": "Tháng phát sinh không được sau tháng hiện tại.",
+        "retro_adjustment_not_waiting": "Điều chỉnh bảng công này không còn chờ nhập tay."
+      }
+    },
     "runs": {
       "title": "Kỳ lương",
       "description": "Bảng lương từng tháng: tính, trình, ký duyệt, chi và khóa sổ.",
@@ -8042,6 +8735,44 @@
       "progress": "Đang tính: {done}/{total} người.",
       "calcError": "Không tính được: {error}",
       "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, other {# người nghỉ việc}} có tiền phép năm chưa nghỉ được ghi sổ sau khi kỳ lương này đã tính, và chưa kỳ lương nào của tháng {month} chi trả.",
+      "leavePayoutStart": "Chi trả trong kỳ lương bổ sung",
+      "bySystem": "Hệ thống",
+      "reopened": "Số liệu đầu vào thay đổi, cần tính lại",
+      "stale": {
+        "title": "Số liệu đã cũ — hãy tính lại trước khi trình.",
+        "reasons": {
+          "inputs_changed": "Các khoản nhập tay hoặc truy lĩnh, truy thu đã thay đổi sau lần tính gần nhất.",
+          "retro_waiting": "Có khoản truy lĩnh, truy thu chưa được tính vào.",
+          "timesheet_changed": "Bảng công của tháng đã thay đổi sau lần tính gần nhất.",
+          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này.",
+          "leave_payout_posted": "Sổ phép vừa ghi khoản thanh toán phép chưa nghỉ cho người nghỉ việc sau lần tính gần nhất.",
+          "version_voided": "Một phiên bản quy tắc, hồ sơ trả lương hoặc cấu trúc lương dùng để tính đã bị hủy bỏ."
+        }
+      },
+      "readiness": {
+        "title": "Vướng mắc và cảnh báo",
+        "blocked": "Kỳ lương chưa thể trình khi còn vướng mắc.",
+        "clean": "Không có gì cần xử lý.",
+        "blocker": "Vướng mắc",
+        "warning": "Cảnh báo",
+        "kinds": {
+          "no_pay_profile": "Chưa có hồ sơ trả lương — kỳ lương không tính được",
+          "not_in_run": "Có trong bảng công đã khóa nhưng không có trong kỳ lương",
+          "input_outside_run": "Có khoản nhập tay nhưng người này không có trong kỳ lương",
+          "figure_not_paid": "Có khoản đã nhập nhưng không được tính vào kết quả",
+          "no_salary_structure": "Chưa có cơ cấu lương",
+          "final_settlement": "Nghỉ việc trong tháng — quyết toán: phép chưa nghỉ đã tính tự động; nhập trợ cấp thôi việc, bồi thường tài sản, tạm ứng cần thu hồi nếu có",
+          "negative_net": "Thực nhận âm",
+          "missing_bank_account": "Thiếu tài khoản ngân hàng — cần bổ sung trước khi chi",
+          "missing_tax_code": "Thiếu mã số thuế — cần bổ sung trước khi kê khai"
+        }
+      },
+      "lines": {
+        "open": "Chi tiết",
+        "title": "Bảng tính lương tháng {month}",
+        "provisional": "Số liệu đang tính, chưa được ký duyệt: có thể còn thay đổi."
+      },
       "kinds": {
         "regular": "Định kỳ",
         "off_cycle": "Ngoài kỳ"
@@ -8101,7 +8832,13 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Lương đóng BH dưới mức tối thiểu",
-        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai"
+        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai",
+        "input_code_unknown": "Có khoản nhập tay không thuộc danh mục khoản nhập — chưa được tính",
+        "input_negative": "Có khoản nhập tay mang số âm — chưa được tính",
+        "retro_component_missing": "Thiếu khoản mục truy lĩnh, truy thu trong danh mục — chưa được tính",
+        "leaves_in_period": "Nghỉ việc trong tháng — kiểm tra quyết toán",
+        "leave_payout_component_missing": "Thiếu khoản mục thanh toán phép chưa nghỉ trong danh mục — chưa được tính",
+        "leave_payout_unpriced": "Không có lương hoặc ngày công tháng căn cứ để tính phép chưa nghỉ — chưa được tính"
       },
       "new": {
         "link": "Kỳ lương mới",
@@ -8139,7 +8876,13 @@
         "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
         "amount_invalid": "Số tiền không hợp lệ.",
         "run_has_no_lines": "Chưa có khoản nào để chi.",
-        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất."
+        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
+        "run_stale": "Số liệu đã thay đổi sau lần tính gần nhất. Hãy tính lại rồi trình.",
+        "run_has_blockers": "Còn vướng mắc chưa xử lý, chưa thể trình kỳ lương.",
+        "run_input_code_unknown": "Khoản mục này không phải là khoản nhập tay trong danh mục của pháp nhân.",
+        "run_input_negative_earning": "Khoản thu nhập không nhập số âm. Để thu hồi, hãy nhập một khoản truy thu hoặc dùng khoản mục khấu trừ.",
+        "run_input_negative_deduction": "Khoản khấu trừ nhập bằng số dương — hệ thống tự trừ vào thực nhận.",
+        "run_input_relief_regular_only": "Khoản giảm trừ khi tính thuế chỉ nhập vào kỳ lương định kỳ của tháng."
       },
       "payments": "Chi lương",
       "stages": {
@@ -8156,6 +8899,29 @@
       "lineStatus": {
         "published": "Đã phát hành",
         "read": "Đã xem"
+      },
+      "relief": {
+        "PIT_CHARITY": "Giảm trừ thuế: từ thiện, nhân đạo, khuyến học",
+        "PIT_VOLUNTARY_PENSION": "Giảm trừ thuế: hưu trí tự nguyện",
+        "PIT_OTHER_RELIEF": "Giảm trừ thuế: khoản khác được trừ"
+      },
+      "offCycle": {
+        "link": "Kỳ lương ngoài kỳ",
+        "title": "Tạo kỳ lương ngoài kỳ",
+        "hint": "Thưởng Tết, thưởng lễ, thưởng dự án — chi thêm trong tháng, ngoài kỳ lương định kỳ, và tính thuế cùng tháng đó. Kỳ lương này đi qua đủ các bước: tính, trình, Tổng giám đốc duyệt, chi.",
+        "month": "Tháng chi",
+        "name": "Tên kỳ lương",
+        "namePlaceholder": "Thưởng Tết 2027",
+        "everyone": {
+          "title": "Cả pháp nhân",
+          "hint": "Thêm một dòng cho mỗi người của pháp nhân ({count} người) với cùng một số tiền, rồi sửa riêng từng người nếu khác.",
+          "fill": "Thêm cho mọi người"
+        },
+        "lines": "Các khoản chi ({count})",
+        "noLines": "Chưa có khoản nào. Thêm từng người, hoặc thêm cho cả pháp nhân. Kỳ lương không có khoản nào chỉ chi trả tiền phép năm chưa nghỉ của người nghỉ việc trong tháng mà kỳ lương chính đã ký chưa trả.",
+        "addLine": "Thêm một người",
+        "noCodes": "Danh mục của pháp nhân chưa có khoản mục nhập tay nào.",
+        "submit": "Tạo kỳ lương ngoài kỳ"
       }
     },
     "payslips": {
@@ -8180,7 +8946,7 @@
       "taxCode": "Mã số thuế",
       "person": "Nhân viên",
       "employeeCode": "Mã nhân viên",
-      "position": "Chức danh",
+      "position": "Chức vụ",
       "department": "Phòng ban",
       "profile": "Hồ sơ trả lương",
       "paidDays": "Ngày công hưởng lương",
@@ -8202,7 +8968,13 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Mức đóng dưới lương tối thiểu vùng",
-        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo"
+        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo",
+        "input_code_unknown": "Có khoản nhập tay chưa được tính",
+        "input_negative": "Có khoản nhập tay chưa được tính",
+        "retro_component_missing": "Có khoản truy lĩnh, truy thu chưa được tính",
+        "leaves_in_period": "Nghỉ việc trong tháng",
+        "leave_payout_component_missing": "Có ngày phép chưa nghỉ chưa được thanh toán",
+        "leave_payout_unpriced": "Có ngày phép chưa nghỉ chưa được thanh toán"
       },
       "insurance": {
         "title": "Bảo hiểm bắt buộc",
@@ -8298,10 +9070,47 @@
       "settledNo": "Chưa chi xong",
       "people": "{count} người",
       "unroutableTitle": "Những người chưa thể chuyển khoản",
+      "unroutableHint": "Sửa tài khoản rồi lập lại tệp, hoặc chi riêng cho người đó và ghi nhận “chi cách khác” ở bảng bên dưới.",
+      "owedNothing": "{count} người không phải chi (thực nhận bằng 0 hoặc âm)",
+      "routing": {
+        "title": "Ai được chi qua đâu",
+        "rule": "Hồ sơ giản lược nhận tiền mặt. Hồ sơ đầy đủ được xếp theo ngân hàng của chính tài khoản nhận lương: tài khoản tại {ownBanks} vào tệp của ngân hàng đó; tài khoản ở ngân hàng khác đi qua tệp {interbank} dưới dạng chuyển liên ngân hàng, vì mẫu tệp này có cột ngân hàng thụ hưởng (giả định chưa đối chiếu với ngân hàng). Ai không tệp nào chở được thì chi riêng rồi ghi nhận “chi cách khác”. Người có thực nhận bằng 0 hoặc âm không nằm trong tệp nào và không chặn việc ghi nhận “đã chi”.",
+        "person": "Nhân viên",
+        "net": "Thực nhận",
+        "route": "Chi qua",
+        "state": "Tình trạng",
+        "action": "Thao tác",
+        "empty": "Bảng lương chưa có ai.",
+        "cash": "Tiền mặt (bảng chi)",
+        "ownBank": "Tệp {bank} — cùng ngân hàng",
+        "interbank": "Tệp {bank} — liên ngân hàng tới {other}",
+        "noInterbank": "không có",
+        "states": {
+          "in_file": "Đã vào tệp",
+          "awaiting_file": "Chưa vào tệp",
+          "cannot_transfer": "Chưa tệp nào chở được",
+          "paid_other": "Đã chi cách khác",
+          "cash_disbursed": "Đã chi tiền mặt",
+          "cash_pending": "Chưa chi tiền mặt",
+          "nothing_owed": "Thực nhận bằng 0 — không phải chi",
+          "negative_net": "Thực nhận âm — không chi; thu hồi vào tháng sau"
+        }
+      },
+      "other": {
+        "mark": "Chi cách khác",
+        "title": "Ghi nhận đã chi cách khác — {name}",
+        "hint": "Dùng khi đã trả lương cho người này ngoài tệp chuyển khoản lô (chuyển khoản lẻ, ủy nhiệm chi…). Người này được tính là đã chi và sẽ không nằm trong các tệp lập sau đó.",
+        "paidOn": "Ngày chi",
+        "reference": "Số tham chiếu / chứng từ",
+        "reason": "Lý do",
+        "save": "Ghi nhận",
+        "remove": "Bỏ ghi nhận"
+      },
       "blockers": {
-        "bank_file_missing": "Chưa lập tệp chuyển khoản nào.",
-        "bank_people_uncovered": "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp đã lập.",
-        "cash_not_disbursed": "Còn người trong bảng tiền mặt chưa ghi nhận đã chi."
+        "bank_file_missing": "Còn ngân hàng chưa lập tệp chuyển khoản.",
+        "bank_people_uncovered": "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp mới nhất của ngân hàng đó và chưa được ghi nhận chi cách khác.",
+        "cash_not_disbursed": "Còn người trong bảng tiền mặt chưa ghi nhận đã chi.",
+        "cash_difference_unexplained": "Còn dòng tiền mặt chi khác số thực nhận mà chưa có ghi chú lý do."
       },
       "bank": {
         "title": "Tệp chuyển khoản",
@@ -8311,6 +9120,15 @@
         "valueDate": "Ngày chi",
         "accountNumber": "Tài khoản công ty",
         "accountName": "Tên tài khoản công ty",
+        "payingAccount": "Tài khoản chi",
+        "noPayingAccount": "Pháp nhân chưa khai báo tài khoản chi lương tại {bank}, nên lần này phải nhập tay.",
+        "configurePayingAccount": "Khai báo tại trang pháp nhân",
+        "typedAccount": "nhập tay",
+        "interbankNote": "{count} người trong tệp {bank} có tài khoản ở ngân hàng khác: các dòng này là chuyển liên ngân hàng.",
+        "fileState": "Hiệu lực",
+        "current": "Đang tính",
+        "superseded": "Đã thay thế",
+        "supersededHint": "Mỗi ngân hàng chỉ tính tệp lập sau cùng. Tệp cũ hơn đã bị thay thế: giữ lại để đối chiếu, không còn được tính.",
         "generate": "Lập tệp",
         "saveAgain": "Tải lại",
         "generated": "Đã lập {file} ({rows} dòng).",
@@ -8322,6 +9140,7 @@
           "no_holder": "chưa có tên chủ tài khoản",
           "zero_amount": "thực nhận bằng 0",
           "negative_amount": "thực nhận âm",
+          "no_bank_name": "tài khoản chưa ghi tên ngân hàng",
           "no_format_for_bank": "hệ thống chưa hỗ trợ mẫu tệp của ngân hàng này"
         },
         "generatedFiles": "Các tệp đã lập",
@@ -8348,6 +9167,20 @@
         "confirmed": "Đã xác nhận",
         "awaitingReceipt": "Chờ xác nhận",
         "receiptNote": "Xác nhận của nhân viên là bằng chứng bổ sung; bảng lương vẫn có thể chuyển sang “đã chi” khi kế toán đã ghi nhận chi đủ.",
+        "disbursedAmount": "Thực chi",
+        "note": "Ghi chú",
+        "notePlaceholder": "Ghi chú nếu chi khác số thực nhận",
+        "correct": "Sửa",
+        "difference": "chênh {amount}",
+        "reconciliation": "Đối chiếu",
+        "reconciled": "Đã chi đủ theo số thực nhận.",
+        "notYetHandedOver": "Còn {amount} chưa chi so với số thực nhận.",
+        "scanTitle": "Bảng chi đã ký (bản quét)",
+        "scanHint": "Đính kèm bản quét bảng chi tiền mặt có chữ ký người nhận. Tệp được lưu ở mức bảo mật lương; mỗi lần mở đều được ghi nhật ký.",
+        "scanEmpty": "Chưa đính kèm bản quét nào.",
+        "scanAttach": "Đính kèm bản quét (PDF hoặc ảnh)",
+        "scanUploading": "Đang tải lên…",
+        "scanRemove": "Gỡ",
         "sheetTitle": "BẢNG THANH TOÁN LƯƠNG BẰNG TIỀN MẶT",
         "sheetMonth": "Kỳ lương",
         "taxCode": "Mã số thuế",
@@ -8373,7 +9206,29 @@
         "cash_payment_not_found": "Không tìm thấy dòng chi tiền mặt.",
         "run_not_settled": "Chưa chi xong: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
-        "failed": "Không thực hiện được. Vui lòng thử lại."
+        "failed": "Không thực hiện được. Vui lòng thử lại.",
+        "generic": "Không thực hiện được. Vui lòng thử lại.",
+        "invalid": "Vui lòng kiểm tra lại thông tin.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "paying_account_required": "Chưa có tài khoản chi của công ty. Hãy chọn hoặc nhập tài khoản chi.",
+        "paying_account_not_found": "Tài khoản chi đã chọn không còn dùng được. Vui lòng chọn lại.",
+        "reference_required": "Cần nhập số tham chiếu.",
+        "reason_required": "Cần nêu lý do.",
+        "run_already_paid": "Bảng lương đã ghi nhận “đã chi”, không sửa cách chi được nữa.",
+        "run_locked": "Bảng lương đã khóa sổ.",
+        "other_payment_not_applicable": "Chỉ ghi nhận “chi cách khác” cho người hưởng lương qua ngân hàng và có thực nhận lớn hơn 0.",
+        "other_payment_not_found": "Không tìm thấy ghi nhận chi cách khác.",
+        "cash_difference_needs_note": "Số thực chi khác số thực nhận — cần ghi chú lý do.",
+        "amount_invalid": "Số tiền không hợp lệ.",
+        "file_not_found": "Không tìm thấy tệp.",
+        "file_empty": "Hãy chọn một tệp.",
+        "file_name_invalid": "Tên tệp không hợp lệ.",
+        "file_too_large": "Tệp lớn hơn 50 MB.",
+        "file_type_not_allowed": "Loại tệp này không được phép. Hãy dùng PDF, JPG, PNG hoặc WEBP.",
+        "file_not_uploaded": "Tệp chưa được tải lên. Hãy thử lại.",
+        "file_content_mismatch": "Nội dung tệp không khớp với loại tệp; tệp đã bị xóa.",
+        "file_storage_limit": "Kho lưu trữ từ chối tệp vì quá lớn.",
+        "file_upload_failed": "Tải lên thất bại. Kiểm tra kết nối và thử lại."
       }
     },
     "reports": {
@@ -8386,6 +9241,7 @@
       "total": "Tổng cộng",
       "export": "Xuất CSV",
       "noRuns": "Chưa có bảng lương nào trong phạm vi của bạn.",
+      "signedOnly": "Bảng tổng hợp bảo hiểm, thuế TNCN và công đoàn chỉ lấy số từ bảng lương đã được CEO ký duyệt. Kỳ này chưa có bảng lương nào được ký, nên ba bảng đó chưa có số.",
       "register": {
         "title": "Bảng lương chi tiết",
         "department": "Phòng ban",
@@ -8426,7 +9282,7 @@
     },
     "statutory": {
       "title": "Dữ liệu khai báo",
-      "description": "Số liệu để lập tờ khai bảo hiểm và thuế TNCN: tăng/giảm lao động (D02-LT), tờ khai tháng/quý (05/KK-TNCN), quyết toán năm (05/QTT-TNCN) và danh sách người phụ thuộc. Lấy từ các bảng lương đã tính, không tính lại.",
+      "description": "Số liệu để lập tờ khai bảo hiểm và thuế TNCN: tăng/giảm lao động (D02-LT), tờ khai tháng/quý (05/KK-TNCN), quyết toán năm (05/QTT-TNCN) và danh sách người phụ thuộc. Lấy từ các bảng lương đã được CEO ký duyệt, không tính lại; tháng có cả kỳ lương chính và kỳ ngoài kỳ chỉ tính một lần.",
       "back": "Lương",
       "entity": "Pháp nhân",
       "month": "Tháng",
@@ -8511,7 +9367,8 @@
         "unionDues": "Đoàn phí",
         "pit": "Thuế TNCN",
         "otherDeductions": "Khấu trừ khác",
-        "net": "Thực nhận"
+        "net": "Thực nhận",
+        "employerCost": "Chi phí công ty"
       },
       "presence": {
         "system_only": "Chỉ có trong hệ thống — bảng cũ không có người này.",
@@ -8542,7 +9399,46 @@
       "errors": {
         "step_up_required": "Cần xác thực lại trước khi xem dữ liệu lương.",
         "forbidden": "Bạn không có quyền đối chiếu lương của pháp nhân này.",
-        "generic": "Không lưu được, vui lòng thử lại."
+        "generic": "Không lưu được, vui lòng thử lại.",
+        "parallel_not_clean": "Còn chênh lệch chưa giải thích, chưa thể xác nhận đối chiếu tháng này."
+      },
+      "totals": {
+        "netSystem": "Thực nhận — hệ thống",
+        "netReference": "Thực nhận — kế toán",
+        "difference": "Chênh lệch",
+        "costSystem": "Chi phí công ty — hệ thống",
+        "costReference": "Chi phí công ty — kế toán",
+        "costCoverage": "Kế toán ghi cho {count}/{people} người"
+      },
+      "columns": {
+        "netSystem": "Thực nhận (hệ thống)",
+        "netReference": "Thực nhận (kế toán)",
+        "netDifference": "Chênh lệch",
+        "costSystem": "Chi phí công ty (hệ thống)",
+        "costReference": "Chi phí công ty (kế toán)"
+      },
+      "signoff": {
+        "title": "Xác nhận đối chiếu",
+        "current": "Tháng này đã được xác nhận và kết quả đối chiếu chưa thay đổi.",
+        "ready": "Không còn chênh lệch chưa giải thích — có thể xác nhận đối chiếu tháng này.",
+        "notReady": "Chỉ xác nhận được khi không còn chênh lệch chưa giải thích.",
+        "none": "Chưa có xác nhận nào.",
+        "holds": "Còn hiệu lực",
+        "outdated": "Đã cũ — số liệu thay đổi sau khi xác nhận",
+        "counts": "{people} người, {matching} khớp hoàn toàn, {explained} chênh lệch đã giải thích",
+        "with": "đối chiếu cùng {name}",
+        "checkedWith": "Đối chiếu cùng",
+        "checkedWithHint": "Kế toán trưởng",
+        "submit": "Xác nhận đối chiếu"
+      },
+      "export": {
+        "label": "Tải báo cáo",
+        "employeeCode": "Mã nhân viên",
+        "presence": "Có mặt",
+        "system": "hệ thống",
+        "reference": "kế toán",
+        "difference": "chênh lệch",
+        "explanations": "Giải thích"
       }
     },
     "ytd": {
@@ -8603,6 +9499,30 @@
         "payHint": "Tạo một kỳ lương ngoài kỳ cho mỗi pháp nhân; thuế, bảo hiểm và phiếu lương do bảng lương lo.",
         "comment": "Ghi chú",
         "reason": "Lý do trả lại"
+      },
+      "handoff": {
+        "title": "Chuyển sang bảng lương",
+        "hint": "Mỗi pháp nhân một kỳ lương ngoài kỳ. Bấm lại không tạo thêm kỳ nào: pháp nhân đã có kỳ lương thì giữ nguyên.",
+        "attention": "{count} pháp nhân chưa được chuyển sang bảng lương: kỳ lương ngoài kỳ của pháp nhân đó đã bị hủy, nên khoản thưởng chưa được chi. Hãy chuyển lại cho pháp nhân đó.",
+        "entity": "Pháp nhân",
+        "people": "Số người",
+        "state": "Tình trạng",
+        "payrollRun": "Kỳ lương ngoài kỳ",
+        "handedOver": "Đã chuyển",
+        "notHandedOver": "Chưa chuyển",
+        "cancelled": "kỳ lương trước đã bị hủy",
+        "again": "Chuyển lại",
+        "lineCancelled": "Kỳ lương ngoài kỳ chi khoản này đã bị hủy; khoản thưởng chưa được chuyển lại sang bảng lương."
+      },
+      "schemeProblems": {
+        "title": "Các trường cần sửa:",
+        "whole": "(toàn bộ cấu hình)",
+        "no_bottom_service_band": "Cần một bậc thâm niên bắt đầu từ 0 tháng (minMonths = 0).",
+        "duplicate_service_band": "Hai bậc thâm niên trùng số tháng tối thiểu (minMonths).",
+        "no_bottom_performance_band": "Cần một bậc hệ số cá nhân bắt đầu từ 0 điểm (minScoreBp = 0).",
+        "duplicate_performance_band": "Hai bậc hệ số cá nhân trùng khóa (key).",
+        "no_bottom_okr_band": "Cần một bậc hệ số tập thể bắt đầu từ 0 (minProgressBp = 0).",
+        "unrecognized_keys": "Có trường không thuộc cấu hình."
       },
       "lines": {
         "title": "Từng người",
@@ -8725,12 +9645,14 @@
         "forbidden": "Bạn không có quyền với đợt thưởng này.",
         "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
         "bonus_run_not_found": "Không tìm thấy đợt thưởng.",
-        "bonus_run_exists": "Năm này đã có một đợt thưởng đang chạy.",
+        "bonus_run_exists": "Năm này đã có một đợt thưởng cùng tên đang chạy.",
         "bonus_run_no_entities": "Chọn ít nhất một pháp nhân.",
         "bonus_run_not_editable": "Đợt thưởng đã trình, không sửa được nữa.",
         "bonus_run_empty": "Đợt thưởng chưa có ai. Bấm “Tính lại” trước.",
         "bonus_run_not_approved": "Đợt thưởng chưa được CEO duyệt.",
         "bonus_run_nothing_to_pay": "Không có khoản nào để chi.",
+        "bonus_entity_not_in_run": "Pháp nhân này không thuộc đợt thưởng.",
+        "invalid": "Thông tin chưa đúng. Vui lòng kiểm tra lại.",
         "bonus_step_not_allowed": "Không thực hiện được bước này ở trạng thái hiện tại.",
         "bonus_line_not_found": "Không tìm thấy dòng thưởng.",
         "bonus_scheme_missing": "Chưa có quy chế thưởng cho pháp nhân và năm này.",
@@ -8750,6 +9672,38 @@
         "people": "Số người",
         "approvedOn": "Ngày duyệt"
       }
+    },
+    "imports": {
+      "link": "Nhập từ tệp",
+      "title": "Nhập lương và hồ sơ trả lương",
+      "description": "Nạp lương và hồ sơ trả lương của cả công ty từ bảng tính. Không có gì có hiệu lực cho đến khi Chủ sở hữu đọc toàn bộ đợt nhập trên màn hình duyệt và phê duyệt (hồ sơ Đầy đủ đầu tiên có hiệu lực ngay, như khi nhập tay).",
+      "waiting": "Đợt nhập chờ duyệt",
+      "noneWaiting": "Không có đợt nhập nào đang chờ duyệt.",
+      "kinds": {
+        "salary": "Lương",
+        "profile": "Hồ sơ trả lương"
+      },
+      "pending": "{count} đang chờ duyệt",
+      "forEntity": "Nhập cho pháp nhân",
+      "salaries": {
+        "title": "Lương",
+        "hint": "Mỗi dòng trở thành một đề xuất thay đổi lương gửi Chủ sở hữu, như khi lập trên hồ sơ lương. Phụ cấp ghi theo mã khoản mục, ví dụ: ALW_MEAL=730000; ALW_PHONE=200000.",
+        "wizard": "Tệp lương"
+      },
+      "profiles": {
+        "title": "Hồ sơ trả lương",
+        "hint": "Hồ sơ Đầy đủ đầu tiên của một người có hiệu lực ngay; hồ sơ Đơn giản và mọi thay đổi hồ sơ chờ Chủ sở hữu duyệt.",
+        "wizard": "Tệp hồ sơ trả lương"
+      },
+      "review": {
+        "title": "Duyệt đợt nhập",
+        "description": "Mọi đề xuất trong đợt nhập, mỗi mức lương đặt cạnh mức đang áp dụng. Phê duyệt tại đây là phê duyệt đúng những dòng đang hiển thị; mỗi đề xuất vẫn có thể mở riêng để trả lại hoặc từ chối.",
+        "currentBase": "Lương cơ bản hiện tại",
+        "allowances": "Tổng phụ cấp",
+        "empty": "Không có đề xuất nào."
+      },
+      "approveAll": "Phê duyệt {count} đề xuất",
+      "approved": "Đã phê duyệt. Những đề xuất không duyệt được vẫn ở trạng thái chờ."
     }
   },
   "requests": {
@@ -8768,6 +9722,7 @@
       "mine": "Của tôi",
       "inbox": "Cần duyệt",
       "claims": "Bàn thanh toán",
+      "pay": "Chi trả",
       "all": "Tất cả"
     },
     "elsewhere": {
@@ -8804,7 +9759,16 @@
       "no": "Không",
       "correctAndResend": "Chỉnh sửa và gửi lại",
       "details": "Nội dung đề nghị",
-      "resend": "Gửi lại"
+      "resend": "Gửi lại",
+      "payoutWaiting": "Đã duyệt — chờ kế toán chi {amount}.",
+      "payoutWaitingAdvance": "Đã duyệt — chờ hoàn tất tạm ứng trước khi quyết toán.",
+      "payoutPaid": "Đã chi {amount} ngày {date} · số chứng từ {reference}.",
+      "payoutCollected": "Đã nhận lại {amount} tạm ứng chưa dùng ngày {date} · số chứng từ {reference}.",
+      "payoutNetted": "Trừ {advance} đã tạm ứng cho chuyến đi này.",
+      "letter": "Giấy xác nhận đã được tạo.",
+      "letterCollect": "Giấy xác nhận đã được tạo và được lưu trong mục Văn bản của tôi trên trang hồ sơ của bạn.",
+      "letterMine": "Mở Văn bản của tôi",
+      "letterOpen": "Mở bản PDF"
     },
     "designer": {
       "on": "Đang bật",
@@ -8829,6 +9793,13 @@
       "descriptionEn": "Mô tả (tiếng Anh)",
       "entity": "Áp dụng cho",
       "sortOrder": "Thứ tự hiển thị",
+      "payout": "Sau khi duyệt",
+      "payoutHint": "Đề nghị đã duyệt sẽ vào danh sách chi trả của kế toán. Tạm ứng được trừ vào đề nghị thanh toán lập dưới cùng đề nghị gốc.",
+      "payouts": {
+        "none": "Không cần chi tiền",
+        "payment": "Kế toán chi trả",
+        "advance": "Kế toán chi tạm ứng"
+      },
       "sla": "Nhắc và leo thang",
       "slaHint": "Nhắc người duyệt khi để quá lâu; leo thang khi vẫn chưa ai trả lời. 0 = tắt.",
       "remindAfter": "Nhắc sau (ngày)",
@@ -9003,7 +9974,42 @@
       "follow_up_parent_closed": "Đề nghị gốc đã đóng; không thể lập thêm đề nghị kèm theo.",
       "follow_up_parent_not_approved": "Đề nghị gốc cần được duyệt trước.",
       "follow_up_not_yet": "Chưa đến lúc lập đề nghị này.",
-      "follow_up_limit_reached": "Đã lập đủ số đề nghị loại này cho đề nghị gốc."
+      "follow_up_limit_reached": "Đã lập đủ số đề nghị loại này cho đề nghị gốc.",
+      "request_not_payable": "Đề nghị này không ở trạng thái chờ chi.",
+      "request_already_paid": "Đề nghị này đã được ghi nhận chi rồi.",
+      "request_advance_unpaid": "Còn khoản tạm ứng đã duyệt nhưng chưa chi cho cùng đề nghị gốc. Hãy chi tạm ứng trước, rồi mới quyết toán.",
+      "request_already_settled": "Đề nghị gốc đã được quyết toán; không chi thêm tạm ứng."
+    },
+    "pay": {
+      "title": "Chi trả",
+      "description": "{count, plural, =0 {Không có đề nghị nào chờ chi.} other {# đề nghị đã duyệt chờ chi, tổng {amount}.}}",
+      "waiting": "Chờ chi",
+      "total": "Tổng cần chi",
+      "none": "Không có đề nghị nào chờ chi.",
+      "paidRecently": "Đã chi trong 60 ngày qua ({count})",
+      "truncated": "Đang liệt kê {shown} đề nghị cũ nhất trên {total} đề nghị chờ chi. Các con số ở trên tính đủ tất cả.",
+      "advanceUnpaid": "Chờ chi tạm ứng",
+      "toCollect": "Thu lại {amount}",
+      "columns": {
+        "requester": "Người đề nghị",
+        "request": "Đề nghị",
+        "amount": "Số tiền",
+        "advance": "Đã tạm ứng",
+        "toPay": "Cần chi",
+        "approved": "Ngày duyệt",
+        "paid": "Đã chi"
+      },
+      "kinds": {
+        "payment": "Thanh toán",
+        "advance": "Tạm ứng"
+      },
+      "mark": "Ghi nhận đã chi",
+      "markTitle": "Ghi nhận đã chi: {summary}",
+      "markHint": "Số tiền được tính sẵn: số tiền đề nghị trừ phần tạm ứng đã chi cho cùng đề nghị gốc. Số âm là người đề nghị hoàn trả tạm ứng chưa dùng.",
+      "paidOn": "Ngày chi",
+      "reference": "Số chứng từ / mã giao dịch",
+      "figure": "Số tiền ghi nhận",
+      "save": "Lưu"
     },
     "expense": {
       "linesTitle": "Các khoản chi",
@@ -9704,7 +10710,8 @@
       "template": "Mẫu",
       "tier": "Mức nhạy cảm",
       "by": "Người cấp",
-      "at": "Ngày cấp"
+      "at": "Ngày cấp",
+      "subject": "Về"
     },
     "kind": {
       "contract": "Hợp đồng",
@@ -9766,7 +10773,23 @@
       "document_forbidden": "Bạn không có quyền cấp văn bản này.",
       "step_up_required": "Hãy xác thực lại để tiếp tục."
     },
-    "new": "Cấp văn bản mới"
+    "new": "Cấp văn bản mới",
+    "register": {
+      "title": "Sổ văn bản đã cấp",
+      "description": "Mọi hợp đồng, quyết định và giấy tờ đã cấp mà bạn được mở, mới nhất trước. Mỗi văn bản mở đúng như bản đã cấp.",
+      "kind": "Loại",
+      "allKinds": "Mọi loại",
+      "year": "Năm",
+      "allYears": "Mọi năm",
+      "apply": "Lọc",
+      "issued": "Sổ đăng ký",
+      "empty": "Chưa cấp văn bản nào.",
+      "limited": "Đang hiện {count} văn bản mới nhất. Lọc theo loại hoặc năm để xem văn bản cũ hơn."
+    },
+    "mine": {
+      "title": "Văn bản của tôi",
+      "empty": "Chưa có hợp đồng, quyết định hay giấy tờ nào được cấp về bạn."
+    }
   },
   "recruit": {
     "title": "Tuyển dụng",
@@ -9781,6 +10804,13 @@
       "properties": "Thông tin",
       "links": "Liên kết"
     },
+    "erase": {
+      "open": "Xoá dữ liệu",
+      "title": "Xoá dữ liệu của ứng viên này?",
+      "hint": "Dùng khi ứng viên yêu cầu xoá dữ liệu của mình. Họ tên, thông tin liên hệ, CV và các tệp khác, câu trả lời và mọi ghi chú về ứng viên sẽ bị xoá ngay khỏi tất cả hồ sơ ứng tuyển. Các hồ sơ vẫn được tính trong báo cáo dưới dạng ẩn danh. Không thể hoàn tác.",
+      "confirm": "Xoá ngay",
+      "cancel": "Huỷ"
+    },
     "home": {
       "newOpening": "Vị trí mới",
       "careers": "Trang tuyển dụng",
@@ -9792,7 +10822,8 @@
       "interviewsToday": "Phỏng vấn hôm nay",
       "noInterviewsToday": "Hôm nay bạn không có buổi phỏng vấn nào.",
       "openInterview": "Mở",
-      "allOpenings": "Tất cả tin tuyển dụng"
+      "allOpenings": "Tất cả tin tuyển dụng",
+      "undelivered": "Thư chưa đến được ứng viên"
     },
     "newCandidate": "Thêm ứng viên",
     "newHiring": "Đề nghị tuyển dụng",
@@ -9907,8 +10938,7 @@
       "entity": "Pháp nhân",
       "department": "Phòng ban",
       "team": "Nhóm",
-      "positionName": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "positionName": "Chức vụ",
       "employmentType": "Hình thức làm việc",
       "workMode": "Hình thức địa điểm",
       "workLocation": "Địa điểm làm việc",
@@ -9951,7 +10981,8 @@
       "code": "Mã",
       "name": "Tên",
       "kind": "Loại",
-      "isActive": "Đang dùng"
+      "isActive": "Đang dùng",
+      "tellCandidateRejected": "Gửi thư báo kết quả cho ứng viên (bằng ngôn ngữ của họ; lý do và ghi chú không nằm trong thư)"
     },
     "actions": {
       "editCandidate": "Sửa hồ sơ",
@@ -9995,12 +11026,14 @@
       "offer_accepted": "Ứng viên đồng ý",
       "offer_declined": "Ứng viên từ chối",
       "converted": "Chuyển thành nhân sự",
-      "anonymised": "Ẩn danh theo chính sách lưu trữ"
+      "anonymised": "Ẩn danh theo chính sách lưu trữ",
+      "erased": "Xoá theo yêu cầu của ứng viên"
     },
     "errors": {
       "recruit_pipeline_empty": "Quy trình phải có ít nhất một vòng.",
       "recruit_pipeline_no_entry": "Quy trình phải có một vòng nhận hồ sơ mới.",
       "recruit_pipeline_not_found": "Không tìm thấy quy trình.",
+      "recruit_opening_pipeline_in_use": "Tin tuyển dụng đã có hồ sơ trên quy trình hiện tại nên không thể đổi quy trình.",
       "recruit_stage_key_duplicate": "Mã vòng bị trùng.",
       "recruit_stage_in_use": "Không thể xoá vòng đang có hồ sơ.",
       "recruit_stage_not_found": "Vòng này không thuộc quy trình của tin tuyển dụng.",
@@ -10017,6 +11050,8 @@
       "recruit_candidate_name_required": "Vui lòng nhập họ tên ứng viên.",
       "recruit_candidate_not_found": "Không tìm thấy ứng viên.",
       "recruit_candidate_anonymised": "Dữ liệu ứng viên đã được ẩn danh theo chính sách lưu trữ.",
+      "recruit_candidate_hired": "Ứng viên này đã trở thành nhân sự. Hồ sơ được lưu theo hồ sơ nhân sự và không thể xoá tại đây.",
+      "recruit_candidate_in_progress": "Ứng viên vẫn còn hồ sơ đang xử lý. Hãy ghi nhận rút hồ sơ hoặc từ chối trước, rồi mới xoá.",
       "recruit_candidate_duplicate": "Ứng viên này đã có trong hệ thống (trùng email hoặc số điện thoại).",
       "recruit_candidate_possible_duplicate": "Có ứng viên trùng tên trong hệ thống. Hãy kiểm tra rồi xác nhận nếu đây là người khác.",
       "recruit_already_applied": "Ứng viên đã ứng tuyển vị trí này.",
@@ -10055,8 +11090,8 @@
       "offer_expiry_past": "Hạn hiệu lực đã qua.",
       "offer_expiry_after_start": "Thư mời không thể còn hiệu lực sau ngày bắt đầu làm việc.",
       "offer_probation_invalid": "Thời gian thử việc không hợp lệ.",
-      "offer_probation_percent_invalid": "Lương thử việc phải từ 85% đến 100% mức thoả thuận.",
-      "offer_position_empty": "Chưa có chức danh.",
+      "offer_probation_percent_invalid": "Lương thử việc phải từ mức tối thiểu luật định đến 100% mức thoả thuận.",
+      "offer_position_empty": "Chưa có chức vụ.",
       "offer_note_too_long": "Ghi chú quá dài.",
       "offer_already_open": "Hồ sơ này đã có một thư mời đang hiệu lực.",
       "offer_not_found": "Không tìm thấy thư mời.",
@@ -10072,6 +11107,12 @@
       "recruit_referral_not_found": "Không tìm thấy giới thiệu.",
       "recruit_referral_not_earned": "Giới thiệu này chưa đủ điều kiện thưởng.",
       "recruit_referral_already_settled": "Giới thiệu này đã được tất toán.",
+      "opening_question_label_required": "Câu hỏi nào cũng cần có nội dung.",
+      "opening_question_choices_required": "Câu hỏi lựa chọn cần ít nhất hai phương án.",
+      "opening_questions_too_many": "Quá nhiều câu hỏi cho một tin tuyển dụng.",
+      "interview_kit_label_required": "Tiêu chí nào cũng cần có tên.",
+      "interview_kit_too_many": "Quá nhiều tiêu chí cho một bộ phỏng vấn.",
+      "recruit_email_needs_interview": "Mẫu thư này cần thời gian và địa điểm của một buổi phỏng vấn, nên được gửi từ buổi phỏng vấn.",
       "step_up_required": "Hãy xác thực lại để tiếp tục."
     },
     "duplicates": {
@@ -10085,9 +11126,13 @@
     },
     "careers": {
       "brand": "SuZu Group · Tuyển dụng",
+      "brandShort": "Tuyển dụng",
       "footer": "© SuZu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
       "title": "Cơ hội nghề nghiệp",
       "intro": "Những vị trí SuZu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
+      "viewJob": "Xem vị trí",
+      "allDepartments": "Tất cả",
+      "filterDepartment": "Phòng ban",
       "noOpenings": "Hiện chưa có vị trí nào đang tuyển. Mời bạn quay lại sau.",
       "description": "Mô tả công việc",
       "requirements": "Yêu cầu",
@@ -10095,6 +11140,7 @@
       "salary": "Mức lương",
       "apply": "Ứng tuyển",
       "submit": "Gửi hồ sơ",
+      "formLimited": "Trang này vừa được mở quá nhiều lần trong thời gian ngắn nên biểu mẫu ứng tuyển tạm ngưng. Mời bạn thử lại sau.",
       "workMode": {
         "onsite": "Tại văn phòng",
         "hybrid": "Kết hợp",
@@ -10124,7 +11170,8 @@
       },
       "consent": {
         "title": "Thông báo xử lý dữ liệu cá nhân",
-        "body": "Khi gửi hồ sơ, bạn đồng ý để SuZu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
+        "body": "Khi gửi hồ sơ, bạn đồng ý để SuZu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ khi đợt ứng tuyển của bạn kết thúc, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách gửi email đến {email}.",
+        "contactEmail": "privacy@suzu.one",
         "agree": "Tôi đồng ý cho SuZu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
         "talentPool": "Tôi đồng ý để SuZu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
       },
@@ -10155,6 +11202,21 @@
         "location": "Địa điểm",
         "workMode": "Hình thức làm việc",
         "employmentType": "Loại hình công việc"
+      },
+      "privacy": {
+        "title": "Dữ liệu ứng tuyển của bạn",
+        "intro": "Chúng tôi giữ hồ sơ ứng tuyển của bạn để xét tuyển. Khi các đơn ứng tuyển đã khép lại, hồ sơ được xoá sau {months} tháng — trừ khi bạn đồng ý ở lại danh sách ứng viên tiềm năng.",
+        "poolTitle": "Danh sách ứng viên tiềm năng",
+        "inPool": "Bạn đang ở trong danh sách ứng viên tiềm năng: chúng tôi giữ hồ sơ để liên hệ khi có vị trí phù hợp. Bạn có thể rút khỏi danh sách bất cứ lúc nào.",
+        "notInPool": "Bạn không ở trong danh sách ứng viên tiềm năng. Hồ sơ sẽ được xoá {months} tháng sau khi các đơn ứng tuyển khép lại.",
+        "left": "Bạn đã rút khỏi danh sách ứng viên tiềm năng. Hồ sơ sẽ được xoá {months} tháng sau khi các đơn ứng tuyển khép lại.",
+        "leave": "Rút khỏi danh sách ứng viên tiềm năng",
+        "erasure": "Muốn chúng tôi xoá toàn bộ dữ liệu của bạn ngay? Hãy trả lời một email bất kỳ chúng tôi đã gửi.",
+        "errors": {
+          "privacy_link_closed": "Đường dẫn này không còn dùng được.",
+          "rate_limited": "Bạn đã thử quá nhiều lần. Mời bạn thử lại sau.",
+          "failed": "Chưa thực hiện được. Mời bạn thử lại."
+        }
       }
     },
     "email": {
@@ -10168,7 +11230,15 @@
       "subject": "Tiêu đề",
       "body": "Nội dung",
       "placeholders": "Trường thay thế cho phép",
-      "new": "Thêm mẫu thư mới"
+      "new": "Thêm mẫu thư mới",
+      "automaticBadge": "Tự động",
+      "automatic": {
+        "acknowledge": "Hệ thống tự gửi ngay khi có người nộp hồ sơ qua trang tuyển dụng. Tắt mẫu này thì thư không được gửi.",
+        "interview": "Hệ thống tự gửi khi đặt hoặc đổi lịch phỏng vấn (nếu để đánh dấu \"gửi cho ứng viên\"), kèm file lịch .ics.",
+        "interviewCancelled": "Hệ thống tự gửi khi huỷ buổi phỏng vấn (nếu để đánh dấu \"gửi cho ứng viên\"). Không bao giờ kèm lý do huỷ.",
+        "reject": "Hệ thống tự gửi khi từ chối hồ sơ (nếu để đánh dấu \"gửi thư báo kết quả\"). Không bao giờ kèm lý do hay ghi chú.",
+        "offer": "Hệ thống tự gửi khi gửi thư mời nhận việc, kèm thư mời dạng PDF."
+      }
     },
     "board": {
       "description": "Kéo thẻ sang cột khác, hoặc chọn nhiều thẻ rồi chuyển cùng lúc.",
@@ -10186,13 +11256,91 @@
         "scheduled": "Đã hẹn",
         "today": "Hôm nay",
         "awaiting": "Chờ phản hồi"
-      }
+      },
+      "tellCandidates": "Gửi thư báo kết quả"
     },
     "emailKind": {
+      "acknowledge": "Xác nhận đã nhận hồ sơ",
       "invite": "Mời phỏng vấn",
       "reject": "Từ chối",
       "offer": "Đề nghị tuyển dụng",
       "general": "Chung"
+    },
+    "letters": {
+      "team": "Bộ phận Tuyển dụng {company}",
+      "video": "Trực tuyến",
+      "phone": "Qua điện thoại",
+      "office": "Văn phòng {company}"
+    },
+    "letterStatus": {
+      "queued": "Đã đưa thư vào hàng chờ gửi cho ứng viên.",
+      "no_address": "Không gửi thư: ứng viên chưa có email",
+      "anonymised": "Không gửi thư: dữ liệu ứng viên đã được ẩn danh",
+      "switched_off": "Không gửi thư: mẫu thư này đang tắt"
+    },
+    "delivery": {
+      "pending": "Đang chờ gửi",
+      "retrying": "Gửi lỗi, đang thử lại",
+      "sent": "Đã gửi",
+      "failed": "Không gửi được",
+      "skipped": "Chưa gửi: hệ thống chưa cấu hình dịch vụ email"
+    },
+    "pool": {
+      "title": "Ứng viên tiềm năng",
+      "all": "Tất cả",
+      "description": "Những người đồng ý để công ty giữ hồ sơ sau khi đơn ứng tuyển khép lại. Họ có thể tự rút khỏi danh sách bằng đường dẫn trong email.",
+      "badge": "Tiềm năng",
+      "empty": "Chưa có ai trong danh sách ứng viên tiềm năng.",
+      "in": "Có — đồng ý được giữ hồ sơ",
+      "out": "Không",
+      "recordJoin": "Ghi nhận ứng viên đồng ý ở lại",
+      "recordLeave": "Ghi nhận ứng viên rút khỏi danh sách"
+    },
+    "questions": {
+      "title": "Câu hỏi khi ứng tuyển",
+      "description": "Những câu hỏi riêng của vị trí này trên form ứng tuyển. Đổi tên câu hỏi không làm mất câu trả lời đã có.",
+      "none": "Chưa có câu hỏi riêng.",
+      "label": "Câu hỏi",
+      "labelEn": "Câu hỏi (tiếng Anh)",
+      "kind": "Kiểu trả lời",
+      "kinds": {
+        "text": "Một dòng",
+        "long_text": "Đoạn văn",
+        "choice": "Chọn một"
+      },
+      "required": "Bắt buộc",
+      "choices": "Các phương án",
+      "choicesHint": "Mỗi dòng một phương án, ít nhất hai.",
+      "add": "Thêm câu hỏi"
+    },
+    "kit": {
+      "title": "Bộ tiêu chí phỏng vấn",
+      "description": "Người phỏng vấn chấm từng tiêu chí trên thang 1–4.",
+      "usingDefault": "Vị trí này đang dùng bộ tiêu chí mặc định bên dưới. Sửa rồi lưu để có bộ riêng.",
+      "none": "Không có tiêu chí nào — lưu như vậy để dùng bộ mặc định.",
+      "label": "Tiêu chí",
+      "labelEn": "Tiêu chí (tiếng Anh)",
+      "hint": "Gợi ý cho người chấm",
+      "copiedNote": "Buổi phỏng vấn đã đặt giữ nguyên bộ tiêu chí lúc đặt lịch; thay đổi chỉ áp dụng cho các buổi đặt sau.",
+      "add": "Thêm tiêu chí"
+    },
+    "editor": {
+      "up": "Chuyển lên",
+      "down": "Chuyển xuống",
+      "remove": "Bỏ dòng này",
+      "save": "Lưu",
+      "saved": "Đã lưu."
+    },
+    "pipelineEditor": {
+      "description": "Các quy trình tuyển dụng dùng chung cho cả nhóm công ty. Mỗi tin tuyển dụng chọn một quy trình; vòng nào cũng thuộc một bậc của phễu tuyển dụng để báo cáo so sánh được.",
+      "new": "Quy trình mới",
+      "nameEn": "Tên (tiếng Anh)",
+      "isDefault": "Mặc định cho tin tuyển dụng mới",
+      "stages": "Các vòng",
+      "noStages": "Chưa có vòng nào.",
+      "category": "Bậc trong phễu",
+      "addStage": "Thêm vòng",
+      "hint": "Phải có một vòng \"Hồ sơ mới\". Không xoá được vòng đang có ứng viên."
     },
     "interview": {
       "heading": "Phỏng vấn",
@@ -10226,6 +11374,9 @@
       "clash": "Trùng lịch: {names}",
       "cardDue": "Chưa có phiếu",
       "cardIn": "Đã gửi phiếu",
+      "tellCandidate": "Gửi thư mời kèm thời gian và file lịch (.ics) cho ứng viên",
+      "tellCandidateMoved": "Gửi thời gian mới cho ứng viên",
+      "tellCandidateCancelled": "Khi huỷ: báo cho ứng viên (không kèm lý do)",
       "kinds": {
         "phone_screen": "Sàng lọc qua điện thoại",
         "hiring_manager": "Quản lý tuyển dụng",
@@ -10335,8 +11486,7 @@
       "editTitle": "Sửa thư mời cho {name}",
       "edit": "Sửa thư mời",
       "save": "Lưu thư mời",
-      "positionName": "Chức danh",
-      "jobLevel": "Cấp bậc",
+      "positionName": "Chức vụ",
       "employmentType": "Hình thức làm việc",
       "workLocation": "Nơi làm việc",
       "manager": "Quản lý trực tiếp",
@@ -10355,7 +11505,7 @@
       "moneyNote": "Số tiền là đồng Việt Nam, đơn vị đồng/tháng. Chỉ người có quyền xem lương mới thấy phần này.",
       "note": "Ghi chú nội bộ",
       "submitForApproval": "Trình duyệt",
-      "send": "Đánh dấu đã gửi",
+      "send": "Gửi thư mời cho ứng viên",
       "withdraw": "Thu hồi",
       "approval": "Phê duyệt",
       "letter": "Thư mời",
@@ -10504,13 +11654,29 @@
       "resolve": "Đánh dấu đã xử lý",
       "note": "Ghi chú",
       "notePlaceholder": "Đã viết trang nào?",
-      "resolvedOn": "Đã xử lý ngày {date}"
+      "resolvedOn": "Đã xử lý ngày {date}",
+      "usage": {
+        "tab": "Mức dùng",
+        "title": "Mức dùng trợ lý — {days} ngày qua",
+        "intro": "Mỗi người được hỏi tối đa {askDay} câu một ngày ({askBurst} câu một phút) và soạn tối đa {draftDay} bản nháp một ngày ({draftBurst} bản một phút). Token chỉ phát sinh khi câu trả lời do mô hình viết.",
+        "byPerson": "Theo người",
+        "byDay": "Theo ngày",
+        "person": "Người hỏi",
+        "day": "Ngày",
+        "answers": "Lượt trả lời",
+        "modelAnswers": "Do mô hình viết",
+        "inputTokens": "Token gửi đi",
+        "outputTokens": "Token nhận về",
+        "empty": "Chưa có lượt hỏi nào trong khoảng này."
+      }
     },
     "errors": {
       "generic": "Không gửi được câu hỏi. Thử lại nhé.",
       "forbidden": "Bạn không có quyền dùng trợ lý.",
       "ai_conversation_not_found": "Không tìm thấy cuộc trò chuyện.",
-      "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi."
+      "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi.",
+      "ai_limit_day": "Bạn đã hỏi hết số lượt của hôm nay. Mai hỏi tiếp nhé.",
+      "ai_limit_burst": "Bạn hỏi nhanh quá. Chờ một phút rồi hỏi tiếp nhé."
     },
     "tools": {
       "fromYourRecord": "Số liệu lấy từ hồ sơ của chính bạn, không phải từ trang Tri thức. Mở màn hình gốc để xem chi tiết.",
@@ -10567,6 +11733,8 @@
       "filled": "Đã điền bản nháp — hãy đọc và sửa trước khi gửi.",
       "notAvailable": "Không soạn được bản nháp cho mục này.",
       "failed": "Chưa soạn được. Hãy thử lại.",
+      "limitDay": "Bạn đã dùng hết số lượt soạn nháp của hôm nay. Mai dùng tiếp nhé.",
+      "limitBurst": "Bạn bấm soạn nhanh quá. Chờ một phút rồi thử lại.",
       "lines": {
         "eod": {
           "done": "Đã xong {count, plural, other {# việc}}: {items}.",
@@ -10717,6 +11885,15 @@
       "submitHint": "Bảng giờ hằng tuần cần được duyệt. Kiểm tra đủ giờ rồi hãy nộp.",
       "submit": "Nộp bảng giờ tuần",
       "resubmit": "Nộp lại bảng giờ",
+      "recall": "Rút lại bảng giờ",
+      "recallHint": "Chưa ai duyệt tuần này. Rút lại để sửa giờ rồi nộp lại.",
+      "date": "Ngày",
+      "notePlaceholder": "Làm việc gì? (không bắt buộc)",
+      "onTask": "Giờ làm của việc này",
+      "taskMine": "Bạn: {value} giờ",
+      "taskTotal": "Mọi người: {value} giờ",
+      "taskBillable": "{value} giờ tính phí",
+      "taskNone": "Chưa ai ghi giờ cho việc này.",
       "start": "Bấm giờ",
       "stop": "Dừng",
       "running": "Đang bấm giờ:",
@@ -10789,6 +11966,7 @@
     },
     "activity": {
       "empty": "Hôm nay chưa có hoạt động nào được ghi nhận.",
+      "emptyPast": "Ngày này không có hoạt động nào được ghi nhận.",
       "categories": {
         "internal": "Việc nội bộ",
         "admin": "Hành chính",
@@ -10837,10 +12015,23 @@
       "send": "Gửi báo cáo",
       "dueBy": "Hạn nộp {time}",
       "optional": "Không bắt buộc hôm nay",
+      "missed": "Chưa nộp — nộp bây giờ sẽ ghi là nộp muộn",
       "prefilledHint": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày — bạn chỉ cần thêm vướng mắc và kế hoạch ngày mai.",
       "tomorrowPlanned": "Kế hoạch ngày mai ({count})",
       "noTomorrow": "Chưa lên kế hoạch cho ngày mai.",
-      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới."
+      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới.",
+      "noneDonePast": "Ngày này không có việc nào xong.",
+      "activityPast": "Hoạt động trong ngày ({count})",
+      "tomorrowPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "optionalPast": "Ngày này không bắt buộc",
+      "prefilledHintPast": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày đó — bạn chỉ cần thêm vướng mắc và kế hoạch cho ngày làm việc kế tiếp.",
+      "tomorrowPlannedPast": "Kế hoạch cho ngày làm việc kế tiếp ({count})",
+      "noTomorrowPast": "Chưa lên kế hoạch cho ngày làm việc kế tiếp.",
+      "noTimeLoggedPast": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng ngày này bạn chưa ghi giờ nào. Ghi bổ sung ở phần hoạt động bên dưới.",
+      "edited": "Đã sửa sau khi nộp",
+      "editedHint": "Báo cáo này đã được sửa sau lần nộp đầu. Nội dung trước đó:",
+      "revisionAt": "Nộp lúc {time}",
+      "revisionEmpty": "Không ghi gì."
     },
     "thread": {
       "react": "Thả {reaction}",
@@ -10872,6 +12063,11 @@
       "myReports": "Nhân sự tôi quản lý",
       "counts": "{submitted} đã nộp · {missing} chưa nộp · {notRequired} không bắt buộc",
       "remindAll": "Nhắc tất cả ({count})",
+      "planFiled": "Đã lên kế hoạch lúc {time}",
+      "planLate": "Lên kế hoạch muộn, lúc {time}",
+      "planTasks": "{count, plural, =0 {chưa có việc nào} other {# việc}}",
+      "planMissing": "Chưa có kế hoạch buổi sáng",
+      "planEmpty": "Kế hoạch chưa có việc nào.",
       "columns": {
         "person": "Người",
         "status": "Báo cáo",
@@ -10933,6 +12129,7 @@
       "people": "Từng người ({count})",
       "myWeek": "Tuần của tôi",
       "done": "Đã xong ({count})",
+      "noneDone": "Tuần này không có việc nào xong.",
       "slipped": "Chưa xong như kế hoạch ({count})",
       "columns": {
         "person": "Người",
@@ -10951,6 +12148,9 @@
       "plan": "Kế hoạch hôm nay",
       "report": "Báo cáo hôm nay",
       "recent": "Báo cáo gần đây",
+      "missing": "Báo cáo chưa nộp",
+      "missingHint": "Bạn vẫn nộp bù được báo cáo của những ngày này; báo cáo nộp bù được ghi là nộp muộn.",
+      "write": "Viết báo cáo",
       "empty": "Bạn chưa gửi báo cáo ngày nào.",
       "hasBlockers": "Có vướng mắc",
       "screens": "Các màn hình",
@@ -10969,6 +12169,7 @@
       "report_date_invalid": "Chỉ nộp được báo cáo của hôm nay hoặc bảy ngày gần đây.",
       "report_not_found": "Không tìm thấy báo cáo.",
       "comment_empty": "Hãy viết nhận xét hoặc chọn một biểu tượng.",
+      "project_closed": "Dự án của việc này đã đóng: không ghi thêm giờ được cho đến khi dự án được mở lại.",
       "time_week_locked": "Tuần này đã nộp hoặc đã duyệt bảng giờ, không sửa được nữa.",
       "time_task_or_category": "Chọn một việc hoặc một loại thời gian khác — không chọn cả hai.",
       "time_entry_not_found": "Không tìm thấy dòng giờ này.",
@@ -10991,7 +12192,7 @@
     },
     "timesheets": {
       "title": "Duyệt bảng giờ",
-      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn.",
+      "intro": "Bảng giờ tuần của những người trong nhóm bạn phụ trách và những người báo cáo trực tiếp cho bạn — và của những người không có trưởng nhóm hay quản lý trực tiếp nào duyệt được, nên bảng giờ được chuyển đến bạn.",
       "waiting": "Chờ bạn duyệt ({count})",
       "none": "Không có bảng giờ nào đang chờ bạn duyệt.",
       "recent": "Đã xử lý gần đây",
@@ -11034,7 +12235,7 @@
       "hoursOf": "{logged}/{available} giờ",
       "billableRatio": "{value}% tính phí",
       "cellTitle": "Đã ghi {logged} giờ trên {available} giờ làm việc",
-      "export": "Xuất CSV",
+      "export": "Xuất tệp",
       "exportFailed": "Không xuất được tệp.",
       "exportTruncated": "Tệp chỉ gồm phần đầu của danh sách.",
       "csv": {
@@ -11129,6 +12330,9 @@
         }
       },
       "contactsHint": "Mỗi dòng một người: Tên — vai trò — số điện thoại hoặc email",
+      "editContacts": "Sửa liên hệ và đường dẫn",
+      "approvedLocked": "Brief đã duyệt: mục tiêu, phạm vi và tiêu chí thành công chỉ thay đổi qua yêu cầu thay đổi hoặc một lần duyệt mới. Liên hệ phía khách và đường dẫn vẫn cập nhật được.",
+      "saveContacts": "Lưu liên hệ và đường dẫn",
       "save": "Lưu brief",
       "submit": "Gửi duyệt khởi động",
       "resubmit": "Gửi duyệt lại",
@@ -11202,6 +12406,7 @@
       "endDate": "Kết thúc",
       "dueSlip": "Trễ so với baseline (ngày)",
       "accepted": "Sản phẩm đã nghiệm thu",
+      "awaitingClient": "Sản phẩm xong nội bộ, chờ khách duyệt",
       "promised": "Sản phẩm đã cam kết",
       "hoursUsed": "Giờ đã ghi",
       "hoursBurn": "Giờ dự kiến (đã ghi + còn lại)",
@@ -11294,7 +12499,7 @@
       "edit": "Sửa mốc",
       "linkTasks": "Gắn công việc vào kế hoạch",
       "linkHint": "{count, plural, =0 {Mọi công việc đều đã được gắn.} other {# công việc chưa gắn vào mốc, sản phẩm hay giai đoạn nào.}}",
-      "nothingToLink": "Dự án chưa có công việc đang mở.",
+      "nothingToLink": "Dự án chưa có công việc nào để gắn.",
       "pickTask": "Chọn công việc",
       "link": "Gắn",
       "unlink": "Gỡ",
@@ -11303,6 +12508,17 @@
       "remove": "Xóa",
       "removeConfirm": "Xóa mục này? Công việc đã gắn vẫn giữ nguyên."
     },
+    "scope": {
+      "budgetLocked": "Sau khi duyệt khởi động, tổng ngân sách giờ chỉ thay đổi qua yêu cầu thay đổi. Bạn vẫn có thể chia lại tổng đó giữa các vai trò.",
+      "lineLocked": "Sau khi duyệt khởi động, số lượng, định dạng và kênh là phạm vi đã thống nhất với khách: chỉ thay đổi qua yêu cầu thay đổi. Tên dòng, mốc và hạn vẫn sửa được ở đây.",
+      "registerLocked": "Sau khi duyệt khởi động, thêm hoặc bỏ sản phẩm cần một yêu cầu thay đổi.",
+      "feeLocked": "Sau khi duyệt khởi động, phí chỉ thay đổi qua yêu cầu thay đổi.",
+      "raiseChange": "Tạo yêu cầu thay đổi"
+    },
+    "gates": {
+      "clientHint": "Dự án làm cho khách chuyển sang Đang chạy khi <brief>brief được duyệt khởi động</brief>, và sang Đã xong khi <close>đóng dự án</close>.",
+      "closedHint": "Dự án đã đóng. Muốn đổi trạng thái, hãy <close>mở lại dự án</close>."
+    },
     "register": {
       "title": "Danh mục sản phẩm bàn giao",
       "progress": "Đã nghiệm thu {accepted}/{promised} ({percent}%)",
@@ -11310,12 +12526,14 @@
       "status": {
         "promised": "Đã cam kết",
         "in_production": "Đang sản xuất",
+        "ready_for_client": "Xong nội bộ",
         "client_review": "Chờ khách duyệt",
         "accepted": "Đã nghiệm thu",
         "delivered": "Đã bàn giao",
         "published": "Đã đăng",
         "cancelled": "Đã hủy"
       },
+      "awaitingClient": "{count} đã xong nội bộ, chờ khách duyệt",
       "lineProgress": "nghiệm thu {accepted}/{promised} · {linked} việc đã gắn",
       "columns": {
         "progress": "Nghiệm thu",
@@ -11394,7 +12612,7 @@
       "state_not_found": "Nhóm chưa có trạng thái cho việc mới.",
       "task_not_found": "Công việc không thuộc dự án này.",
       "account_manager_is_lead": "Người phụ trách dự án không thể đồng thời là account phụ trách.",
-      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được.",
+      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được. Brief đã duyệt chỉ sửa được liên hệ và đường dẫn; phần còn lại thay đổi qua yêu cầu thay đổi.",
       "brief_not_submittable": "Brief đang chờ duyệt hoặc đã được duyệt.",
       "brief_incomplete": "Brief còn thiếu thông tin bắt buộc.",
       "plan_dates_invalid": "Ngày kết thúc phải sau ngày bắt đầu.",
@@ -11427,16 +12645,30 @@
       "change_evidence_required": "Thay đổi do khách hàng yêu cầu cần có bằng chứng (tệp hoặc đường dẫn).",
       "change_empty": "Yêu cầu chưa thay đổi gì: thêm/bỏ sản phẩm, giờ, phí hoặc hạn.",
       "acceptance_not_found": "Không tìm thấy biên bản nghiệm thu.",
-      "acceptance_locked": "Chỉ cập nhật số liệu được khi biên bản còn là nháp.",
+      "acceptance_locked": "Biên bản đã ký hoặc đã huỷ thì không cập nhật số liệu được nữa.",
       "acceptance_wrong_status": "Biên bản không ở trạng thái cho phép thao tác này.",
       "acceptance_milestone_internal": "Chỉ nghiệm thu các mốc làm việc với khách hàng.",
-      "acceptance_empty": "Phạm vi này chưa có sản phẩm nào để nghiệm thu.",
+      "acceptance_empty": "Phạm vi này chưa có sản phẩm cam kết nào. Hãy ghi nội dung nghiệm thu bằng lời để tạo biên bản.",
+      "acceptance_changed": "Biên bản vừa được người khác thay đổi. Tải lại trang rồi thử lại.",
+      "acceptance_invoiced": "Kế toán đã xuất hoá đơn theo biên bản này nên không sửa được nữa.",
+      "acceptance_correction_empty": "Chưa có gì thay đổi so với thông tin đã ghi.",
+      "billing_amount_unchanged": "Số tiền mới giống số tiền hiện tại.",
+      "milestone_has_acceptance": "Mốc này đang có biên bản nghiệm thu. Huỷ biên bản trước khi xoá mốc; biên bản đã ký thì mốc phải được giữ lại.",
+      "milestone_has_billing": "Mốc này đã có khoản chuyển kế toán. Chỉ xoá được mốc sau khi kế toán xác nhận không thu khoản đó.",
+      "retainer_not_found": "Dự án chưa có điều khoản retainer.",
+      "retainer_paused": "Retainer đang tạm dừng hoặc dự án đã đóng nên không tạo thêm tháng.",
+      "retainer_month_exists": "Tháng này đã có kỳ retainer.",
+      "retainer_month_not_missed": "Chỉ tạo bổ sung được các tháng đã qua nằm trong thời hạn của retainer.",
       "acceptance_signed_in_future": "Ngày ký không được sau hôm nay.",
       "billing_not_found": "Không tìm thấy khoản cần xuất hoá đơn.",
       "billing_decided": "Khoản này đã được xử lý.",
       "billing_conflict": "Khoản này đã tồn tại.",
       "report_not_found": "Không tìm thấy báo cáo.",
-      "project_closed": "Dự án đã đóng.",
+      "project_closed": "Dự án đã đóng: kế hoạch chỉ xem được. Người phụ trách có thể mở lại dự án ở tab Đóng dự án.",
+      "scope_locked": "Sau khi duyệt khởi động, phạm vi, ngân sách giờ và phí chỉ thay đổi qua yêu cầu thay đổi. Hãy tạo yêu cầu thay đổi ở tab Thay đổi.",
+      "brief_not_approved": "Chỉ brief đã duyệt mới sửa riêng phần liên hệ và đường dẫn.",
+      "project_not_closed": "Dự án này chưa đóng.",
+      "reopen_reason_required": "Hãy ghi lý do mở lại dự án.",
       "close_unmet": "Còn mục chưa đạt: hãy ghi lý do nếu vẫn muốn đóng.",
       "retro_in_future": "Ngày họp không được sau hôm nay.",
       "retro_missing": "Hãy lưu buổi rút kinh nghiệm trước.",
@@ -11596,6 +12828,13 @@
     },
     "uploading": "Đang tải lên…",
     "uploaded": "Đã tải lên: {name}",
+    "taskLine": {
+      "title": "Sản phẩm cam kết",
+      "label": "Việc này thực hiện sản phẩm cam kết",
+      "none": "Không gắn với sản phẩm nào",
+      "save": "Lưu",
+      "empty": "Dự án chưa có sản phẩm cam kết nào đang mở."
+    },
     "retainer": {
       "terms": "Điều khoản retainer",
       "termsLine": "Từ {start} đến {end} · {rollover}",
@@ -11646,6 +12885,22 @@
         "open": "Đang mở",
         "closed": "Đã khoá"
       },
+      "delivered": "Đã giao",
+      "accepted": "Đã duyệt",
+      "linkTask": "Gắn việc vào sản phẩm cam kết",
+      "linkHint": "Chọn một việc của dự án (kể cả việc đã xong) và sản phẩm cam kết của tháng mà việc đó thực hiện. Mỗi việc là một đơn vị của sản phẩm.",
+      "linkTaskField": "Công việc",
+      "linkLineField": "Sản phẩm cam kết",
+      "pickTask": "Chọn công việc",
+      "pickLine": "Chọn sản phẩm cam kết",
+      "linkSubmit": "Gắn việc",
+      "nothingToLink": "Không còn việc nào của dự án chưa gắn vào sản phẩm cam kết.",
+      "missed": {
+        "title": "Tạo tháng còn thiếu",
+        "hint": "Điều khoản retainer được nhập sau khi hợp đồng đã chạy nên các tháng trước đó chưa có kỳ. Tạo kỳ để gắn việc, nghiệm thu và tính phí cho tháng ấy. Phí của tháng chỉ chuyển kế toán sau khi khách ký biên bản nghiệm thu.",
+        "month": "Tháng",
+        "submit": "Tạo kỳ cho tháng này"
+      },
       "billingDescription": "Phí retainer tháng {month}",
       "monthsLocked": "Chỉ người có quyền xem phí (pjm:commercial) mới đổi được tháng bắt đầu, tháng kết thúc và trạng thái chạy của retainer."
     },
@@ -11656,6 +12911,9 @@
       "dueDate": "Hạn dự án",
       "original": "Ban đầu",
       "current": "Hiện tại",
+      "unexplained": "Sửa trực tiếp, không qua yêu cầu thay đổi",
+      "unexplainedNote": "Có số liệu đã bị sửa trực tiếp nên ban đầu + yêu cầu thay đổi không bằng hiện tại. Phần chênh lệch được ghi thành dòng riêng ở trên.",
+      "retainerHint": "Phạm vi hằng tháng của retainer, áp dụng từ tháng được tạo tiếp theo. Để nguyên nếu không thay đổi.",
       "list": "Yêu cầu thay đổi",
       "empty": "Chưa có yêu cầu thay đổi nào.",
       "new": "Yêu cầu thay đổi mới",
@@ -11685,6 +12943,9 @@
         "withdrawn": "Đã rút"
       },
       "impact": {
+        "retainerLines": "Định mức hằng tháng mới:",
+        "retainerHours": "Giờ mỗi tháng: {hours}",
+        "retainerFee": "Phí mỗi tháng: {fee}",
         "hours": "Giờ: {hours}",
         "fee": "Phí: {fee}",
         "dueDate": "Hạn mới: {date}"
@@ -11698,6 +12959,9 @@
         "hoursDelta": "Thay đổi giờ (+/−)",
         "feeDelta": "Thay đổi phí (VND, +/−)",
         "dueDateTo": "Hạn mới của dự án",
+        "retainerLines": "Định mức hằng tháng của retainer",
+        "retainerHours": "Giờ mỗi tháng",
+        "retainerFee": "Phí mỗi tháng (VND)",
         "evidenceFile": "Tệp bằng chứng",
         "evidenceUrl": "Hoặc đường dẫn bằng chứng"
       }
@@ -11747,6 +13011,20 @@
       "waitingMilestone": "Mốc: {name}",
       "waitingMonth": "Tháng retainer: {name}",
       "waitingLink": "Mở trang nghiệm thu",
+      "described": "Nghiệm thu theo nội dung mô tả nêu trên.",
+      "description": "Nội dung nghiệm thu",
+      "descriptionHint": "Bắt buộc khi phạm vi chưa có sản phẩm cam kết nào: ghi rõ khách hàng nghiệm thu những gì. Khi đã có sản phẩm cam kết, đây là ghi chú thêm in trên biên bản.",
+      "pdfIssued": "Tải biên bản đã phát hành (PDF)",
+      "refreshSent": "Cập nhật và phát hành lại",
+      "correct": "Sửa thông tin đã ký",
+      "correctHint": "Dùng khi đính nhầm bản scan, ghi sai tên người ký hoặc ngày ký. Thông tin và bản scan cũ được giữ lại trong lịch sử. Không sửa được sau khi kế toán đã xuất hoá đơn.",
+      "replaceScan": "Bản scan thay thế (nếu đính nhầm)",
+      "correctReason": "Lý do chỉnh sửa",
+      "correctSubmit": "Lưu chỉnh sửa",
+      "history": "Lịch sử chỉnh sửa",
+      "historyBefore": "Trước đó: {name} ký ngày {date}.",
+      "earlierScan": "Bản scan trước",
+      "invoicedLocked": "Kế toán đã xuất hoá đơn theo biên bản này nên thông tin đã ký không sửa được nữa.",
       "monthNotBilled": "Chưa chuyển kế toán: đang chờ biên bản nghiệm thu đã ký."
     },
     "billing": {
@@ -11776,6 +13054,21 @@
         "milestone": "Mốc thanh toán",
         "retainer": "Phí retainer tháng",
         "manual": "Nhập tay"
+      },
+      "correctAmount": "Sửa số tiền",
+      "correctHint": "Chỉ sửa được khi khoản này chưa xuất hoá đơn. Để trống nếu chưa thoả thuận số tiền. Số tiền trước và sau cùng lý do được lưu lại.",
+      "newAmount": "Số tiền đúng (VND)",
+      "correctReason": "Lý do sửa",
+      "correctSubmit": "Lưu số tiền",
+      "corrected": "{date} · {name} sửa số tiền: {before} → {after}. Lý do: {reason}",
+      "milestone": {
+        "ready": "Đã chuyển kế toán, chờ xuất hoá đơn",
+        "invoiced": "Đã xuất hoá đơn",
+        "waived": "Kế toán xác nhận không thu",
+        "awaiting_acceptance": "Chưa chuyển kế toán: chờ khách ký biên bản nghiệm thu",
+        "covered_by_project": "Không tạo khoản riêng: biên bản nghiệm thu toàn dự án đã tính phần phí này",
+        "awaiting_done": "Chưa chuyển kế toán: mốc chưa được đánh dấu hoàn thành",
+        "noAmount": "Chưa có số tiền thoả thuận cho mốc này."
       },
       "invoice": "Xuất hoá đơn",
       "waive": "Không thu",
@@ -11835,6 +13128,16 @@
     },
     "close": {
       "closedBadge": "Đã đóng",
+      "reopen": {
+        "title": "Mở lại dự án",
+        "submit": "Mở lại dự án",
+        "reason": "Lý do mở lại",
+        "reasonHint": "Ví dụ: khách yêu cầu thêm một vòng chỉnh sửa sau nghiệm thu…",
+        "warning": "Mở lại sẽ mở khóa kế hoạch và đưa dự án về Đang chạy. Lần đóng trước được giữ lại làm lịch sử. Retainer đã dừng khi đóng không tự chạy lại.",
+        "history": "Những lần đóng đã được mở lại",
+        "closedLine": "Đóng ngày {date}",
+        "reopenedLine": "Mở lại ngày {date}"
+      },
       "checklist": "Danh sách kiểm tra trước khi đóng",
       "met": "Đạt",
       "unmet": "Chưa đạt",
@@ -12076,13 +13379,17 @@
     "version": "Phiên bản {version}",
     "forWhom": "gửi {name}",
     "work": "Nội dung cần duyệt",
-    "openFile": "Mở tệp",
-    "fileHint": "Đường dẫn tệp chỉ có hiệu lực trong ít phút. Hết hạn thì tải lại trang này.",
+    "fileHint": "Chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "videoHint": "Bấm phát để xem ngay trên trang. Nếu video không phát được, chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "unfurl": {
+      "title": "Nội dung gửi anh/chị duyệt",
+      "body": "Mở đường dẫn này trong trình duyệt để xem nội dung."
+    },
     "unavailable": "Chưa mở được tệp. Vui lòng tải lại trang sau giây lát.",
     "messageFrom": "Lời nhắn từ {name}",
     "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
     "expiresOn": "Đường dẫn có hiệu lực đến hết ngày {date}.",
-    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
+    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở, và ghi lượt mở vào nhật ký truy cập. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động và phân biệt các lượt mở trong nhật ký, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
     "decide": {
       "title": "Phản hồi của anh/chị",
       "choice": "Anh/chị chọn",
@@ -12113,7 +13420,7 @@
     },
     "errors": {
       "failed": "Chưa gửi được phản hồi. Vui lòng thử lại.",
-      "invalid": "Vui lòng kiểm tra lại tên và ý kiến rồi gửi lại.",
+      "invalid": "Vui lòng chọn một phản hồi, kiểm tra lại tên và ý kiến rồi gửi lại.",
       "rejected": "Chưa gửi được phản hồi. Vui lòng thử lại.",
       "rate_limited": "Anh/chị vừa gửi nhiều lần. Vui lòng thử lại sau ít phút.",
       "preview_link_closed": "Đường dẫn này không còn nhận phản hồi.",
@@ -12127,6 +13434,7 @@
     "loading": "Đang chuẩn bị máy chấm công…",
     "cameraError": "Không mở được camera. Hãy cho phép trang này dùng camera, rồi tải lại.",
     "loadError": "Không tải được bộ nhận diện khuôn mặt. Kiểm tra kết nối mạng rồi tải lại trang.",
+    "loadErrorDetail": "Chi tiết kỹ thuật: {detail}",
     "offline": "Mất kết nối với SuZu One. Đang thử lại…",
     "notMe": "Không phải tôi",
     "manage": "Quản lý máy chấm công",
@@ -12137,6 +13445,10 @@
       "title": "Máy chấm công đã đóng",
       "body": "HR đã đóng máy chấm công trên máy tính bảng này. Để mở lại, HR đăng nhập và chọn Chấm công → Máy chấm công khuôn mặt.",
       "signIn": "HR đăng nhập"
+    },
+    "expired": {
+      "title": "Máy chấm công này cần được mở lại",
+      "body": "Máy chấm công tự đóng sau {idle} ngày không dùng, hoặc {max} ngày kể từ khi mở. Để mở lại, HR đăng nhập trên máy tính bảng này và chọn Chấm công → Máy chấm công khuôn mặt."
     },
     "notOpen": {
       "title": "Đây chưa phải máy chấm công",
@@ -12183,7 +13495,223 @@
       "title": "Đã huỷ lượt chấm"
     }
   },
+  "brands": {
+    "title": "Bộ nhận diện thương hiệu",
+    "lede": "Hướng dẫn sử dụng của từng thương hiệu — cách thể hiện đúng và những điều cần tránh, màu sắc, kiểu chữ — cùng logo và brochure để đối tác tải về từ trang công khai.",
+    "columns": {
+      "name": "Thương hiệu",
+      "address": "Địa chỉ công khai",
+      "visibility": "Hiển thị",
+      "sections": "Mục",
+      "files": "Tệp",
+      "downloads": "Lượt tải"
+    },
+    "empty": "Chưa có bộ nhận diện nào. Thêm thương hiệu đầu tiên bên dưới.",
+    "add": "Thêm thương hiệu",
+    "wholeGroup": "Toàn tập đoàn",
+    "addressPreview": "Địa chỉ công khai:",
+    "name": "Tên thương hiệu",
+    "namePlaceholder": "SuZu Coffee",
+    "slug": "Địa chỉ (slug)",
+    "entity": "Thuộc về",
+    "creating": "Đang tạo…",
+    "create": "Tạo bộ nhận diện",
+    "slugChangeHint": "Địa chỉ cũ /brands/{old} vẫn dùng được và sẽ chuyển người xem sang địa chỉ mới.",
+    "tagline": "Khẩu hiệu",
+    "taglinePlaceholder": "Một dòng nói thương hiệu là gì",
+    "description": "Giới thiệu thương hiệu",
+    "descriptionEn": "Giới thiệu thương hiệu (tiếng Anh)",
+    "website": "Trang web",
+    "contactEmail": "Liên hệ khi có câu hỏi về thương hiệu",
+    "visibility": "Hiển thị",
+    "visibilities": {
+      "hidden": "Ẩn — đang chuẩn bị",
+      "unlisted": "Ai có đường dẫn",
+      "listed": "Hiện trên trang công khai"
+    },
+    "visibilityHint": "Ẩn: người ngoài không mở được. Ai có đường dẫn: dành cho đối tác được gửi link; không hiện trong danh sách và không được công cụ tìm kiếm lập chỉ mục. Hiện trên trang công khai: có trong trang thương hiệu và tìm được.",
+    "saved": "Đã lưu.",
+    "saving": "Đang lưu…",
+    "save": "Lưu",
+    "cancel": "Huỷ",
+    "details": "Thông tin",
+    "style": "Màu sắc và kiểu chữ",
+    "styleHint": "Hiển thị trong các mục loại Bảng màu và Kiểu chữ.",
+    "palette": "Bảng màu",
+    "noColors": "Chưa có màu nào.",
+    "pickColor": "Chọn màu {index}",
+    "colorName": "Tên",
+    "colorHex": "HEX",
+    "colorNote": "Ghi chú",
+    "colorNotePlaceholder": "Pantone 485 C · màu chính",
+    "removeColor": "Bỏ màu",
+    "addColor": "Thêm màu",
+    "typography": "Kiểu chữ",
+    "noFonts": "Chưa có kiểu chữ nào.",
+    "fontName": "Kiểu chữ",
+    "fontUsage": "Dùng cho",
+    "fontUsagePlaceholder": "Tiêu đề, chữ đậm",
+    "fontUrl": "Nơi tải",
+    "removeFont": "Bỏ kiểu chữ",
+    "addFont": "Thêm kiểu chữ",
+    "saveStyle": "Lưu màu sắc và kiểu chữ",
+    "guideline": "Hướng dẫn sử dụng",
+    "guidelineHint": "Trang công khai đọc từ trên xuống theo thứ tự này. Viết thương hiệu là gì, cách sử dụng, và thêm những điều nên và không nên làm kèm hình minh hoạ.",
+    "noSections": "Chưa có mục nào. Thêm mục đầu tiên bên dưới.",
+    "sectionKinds": {
+      "content": "Văn bản",
+      "palette": "Bảng màu",
+      "typography": "Kiểu chữ",
+      "downloads": "Tải về"
+    },
+    "sectionTitle": "Tiêu đề mục",
+    "sectionTitlePlaceholder": "Khoảng cách an toàn và kích thước tối thiểu",
+    "sectionTitleEn": "Tiêu đề (tiếng Anh)",
+    "sectionKind": "Hiển thị",
+    "sectionAdded": "Đã thêm mục.",
+    "addSection": "Thêm mục",
+    "moveUp": "Đưa lên",
+    "moveDown": "Đưa xuống",
+    "deleteSection": "Xoá mục",
+    "deleteSectionYes": "Xoá mục này",
+    "deleteSectionConfirm": "Xoá mục này cùng những điều nên và không nên? Các tệp vẫn ở trong bộ nhận diện và chuyển sang Tải về.",
+    "sectionBody": "Nội dung",
+    "sectionBodyPlaceholder": {
+      "content": "Điều người đọc cần biết: khi nào dùng phiên bản nào, khoảng cách an toàn, kích thước nhỏ nhất…",
+      "palette": "Các màu phối hợp ra sao: màu nào là chính, màu nào là điểm nhấn…",
+      "typography": "Kiểu chữ nào dùng ở đâu, cỡ và độ đậm…",
+      "downloads": "Các tệp gồm những gì, và điều kiện sử dụng…"
+    },
+    "englishVersion": "Bản tiếng Anh (không bắt buộc)",
+    "sectionBodyEn": "Nội dung (tiếng Anh)",
+    "saveSection": "Lưu mục",
+    "rules": "Nên và không nên",
+    "noRules": "Mục này chưa có điều nên hay không nên.",
+    "addRule": "Thêm",
+    "verdict": "Nên hay không nên",
+    "verdicts": {
+      "do": "Nên",
+      "dont": "Không nên"
+    },
+    "ruleText": "Nội dung",
+    "ruleTextDoPlaceholder": "Dùng logo đủ màu trên nền trắng hoặc đen.",
+    "ruleTextDontPlaceholder": "Không kéo giãn, xoay hay đổi màu logo.",
+    "ruleTextEn": "Nội dung (tiếng Anh)",
+    "example": "Hình minh hoạ",
+    "noExample": "Không có hình",
+    "exampleHint": "Tải hình lên bên dưới (loại: Hình minh hoạ cho nên/không nên) để hiển thị cạnh một điều.",
+    "deleteRule": "Xoá",
+    "filesSection": "Tệp",
+    "filesSectionHint": "Tệp công khai được đưa ra tải về ở mục bạn chọn, hoặc ở Tải về. Hình minh hoạ chỉ đi kèm một điều nên/không nên.",
+    "noFiles": "Chưa có tệp nào.",
+    "addFiles": "Tải tệp lên",
+    "files": "Tệp",
+    "filesHint": "SVG, AI, EPS, PDF, PNG, JPG, WebP, PSD, ZIP, MP4 hoặc MOV, mỗi tệp tối đa 500 MB. Có thể chọn nhiều tệp cùng lúc.",
+    "kindAuto": "Đoán theo tên tệp",
+    "assetKinds": {
+      "logo": "Logo",
+      "guideline": "Cẩm nang thương hiệu",
+      "brochure": "Brochure",
+      "image": "Hình ảnh",
+      "video": "Video",
+      "pack": "Bộ tệp nén (ZIP)",
+      "other": "Khác",
+      "example": "Hình minh hoạ (cho nên/không nên)"
+    },
+    "assetKind": "Loại",
+    "assetSection": "Đưa ra ở",
+    "inDownloads": "Tải về",
+    "isPublic": "Công khai",
+    "uploading": "Đang tải lên {done}/{total}…",
+    "uploadingShort": "Đang tải lên…",
+    "filesAdded": "Đã thêm {count} tệp.",
+    "upload": "Tải lên",
+    "downloadsCount": "{total} lượt tải ({recent} trong 30 ngày)",
+    "assetTitle": "Tiêu đề",
+    "deleteFile": "Xoá tệp",
+    "deleteFileYes": "Xoá",
+    "openPublic": "Mở trang công khai",
+    "danger": "Xoá bộ nhận diện",
+    "deleteKit": "Xoá bộ nhận diện",
+    "deleteKitConfirm": "Xoá hẳn bộ nhận diện này và hướng dẫn của nó?",
+    "deleteKitYes": "Xoá",
+    "deleteKitHasFiles": "Chỉ xoá được khi đã bỏ hết tệp. Muốn gỡ khỏi trang công khai, hãy đặt là Ẩn.",
+    "starter": {
+      "overview": "Tổng quan",
+      "logo": "Logo",
+      "colour": "Màu sắc",
+      "typography": "Kiểu chữ",
+      "downloads": "Tải về"
+    },
+    "errors": {
+      "generic": "Chưa thực hiện được. Vui lòng thử lại.",
+      "forbidden": "Bạn không thể thay đổi bộ nhận diện này.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.",
+      "invalid": "Một vài trường cần xem lại.",
+      "slug_invalid": "Địa chỉ chỉ gồm chữ thường, chữ số và dấu gạch ngang (2–60 ký tự).",
+      "slug_taken": "Một thương hiệu khác đã dùng địa chỉ này.",
+      "brand_not_found": "Bộ nhận diện này không còn nữa.",
+      "brand_has_files": "Hãy xoá các tệp trước, hoặc đặt bộ nhận diện là Ẩn.",
+      "section_not_found": "Mục này không còn nữa.",
+      "rule_not_found": "Điều này không còn nữa.",
+      "file_not_found": "Tệp này không còn nữa.",
+      "too_many_files": "Mỗi bộ nhận diện có tối đa 200 tệp.",
+      "too_many_sections": "Mỗi bộ nhận diện có tối đa 30 mục.",
+      "too_many_rules": "Mỗi mục có tối đa 30 điều nên và không nên.",
+      "color_invalid": "Màu cần có mã HEX, ví dụ #EA3026.",
+      "too_many_colors": "Bảng màu có tối đa 16 màu.",
+      "too_many_fonts": "Liệt kê tối đa 8 kiểu chữ.",
+      "font_url_invalid": "Đường dẫn kiểu chữ phải bắt đầu bằng https://.",
+      "file_empty": "Tệp trống.",
+      "file_too_large": "Tệp lớn hơn 500 MB.",
+      "file_type_not_allowed": "Không thể thêm loại tệp này vào bộ nhận diện.",
+      "file_name_invalid": "Tên tệp không dùng được.",
+      "file_content_mismatch": "Nội dung tệp không khớp với đuôi tệp.",
+      "file_not_uploaded": "Tệp chưa đến nơi. Vui lòng thử lại.",
+      "file_upload_failed": "Tải lên không thành công. Kiểm tra kết nối và thử lại.",
+      "file_storage_limit": "Kho lưu trữ không nhận tệp lớn như vậy."
+    },
+    "public": {
+      "brand": "Thương hiệu SuZu Group",
+      "metaTitle": "Tài nguyên thương hiệu",
+      "metaDescription": "Logo, màu sắc, kiểu chữ và hướng dẫn sử dụng các thương hiệu của SuZu Group.",
+      "title": "Tài nguyên thương hiệu",
+      "intro": "Logo, màu sắc, kiểu chữ và hướng dẫn sử dụng dành cho đối tác, nhà cung cấp và báo chí. Chọn một thương hiệu để xem cách thể hiện đúng — và tải về những gì bạn cần.",
+      "noBrands": "Chưa có thương hiệu nào được công bố.",
+      "viewGuideline": "Hướng dẫn và tải về",
+      "contents": "Trong trang này",
+      "allBrands": "Tất cả thương hiệu",
+      "website": "Trang web",
+      "contact": "Có câu hỏi về cách dùng thương hiệu? Hãy viết cho <link>{email}</link>.",
+      "do": "Nên",
+      "dont": "Không nên",
+      "hex": "HEX",
+      "rgb": "RGB",
+      "copy": "Sao chép {value}",
+      "copied": "Đã sao chép",
+      "getFont": "Tải kiểu chữ",
+      "noPalette": "Bảng màu chưa được công bố.",
+      "noFonts": "Kiểu chữ chưa được công bố.",
+      "download": "Tải về",
+      "downloadAll": "Tải tệp",
+      "noFiles": "Chưa có tệp nào ở đây.",
+      "footer": "Các thương hiệu, tên gọi và logo này thuộc về SuZu Group và các công ty thành viên. Chỉ sử dụng theo hướng dẫn này; việc sử dụng không có nghĩa là hợp tác hay được bảo trợ.",
+      "kinds": {
+        "logo": "Logo",
+        "guideline": "Cẩm nang thương hiệu",
+        "brochure": "Brochure",
+        "image": "Hình ảnh",
+        "video": "Video",
+        "pack": "Bộ tệp nén",
+        "other": "Tệp khác",
+        "example": "Hình minh hoạ"
+      }
+    }
+  },
   "pageTitles": {
+    "privacy": "Quyền riêng tư và lưu trữ",
+    "brands": "Bộ nhận diện thương hiệu",
+    "brand": "Bộ nhận diện",
     "acceptance": "Nghiệm thu",
     "access": "Quyền truy cập",
     "acknowledgementReport": "Báo cáo xác nhận đã đọc",
@@ -12239,11 +13767,14 @@
     "equipmentBooking": "Đặt thiết bị",
     "equipmentBookings": "Lịch đặt thiết bị",
     "expenseClaims": "Đề nghị thanh toán chi phí",
+    "ruleChange": "Đề xuất thay đổi quy định",
+    "requestsToPay": "Đề nghị chờ chi",
     "flaggedCheckIns": "Chấm công cần xem xét",
     "goal": "Mục tiêu",
     "goals": "Mục tiêu",
     "handOffs": "Bàn giao",
     "headcount": "Nhân sự",
+    "hiringPipelines": "Quy trình tuyển dụng",
     "hiringRequest": "Nhu cầu tuyển dụng",
     "hiringRequests": "Nhu cầu tuyển dụng",
     "home": "Trang chủ",
@@ -12311,6 +13842,7 @@
     "oneOnOneMeeting": "Buổi gặp 1:1",
     "oneOnOneMeetings": "Gặp 1:1",
     "orgChart": "Sơ đồ tổ chức",
+    "competencies": "Chuyên môn & kỹ năng",
     "orgUnits": "Cơ cấu tổ chức",
     "overview": "Tổng quan",
     "pageHistory": "Lịch sử trang",
@@ -12324,6 +13856,8 @@
     "payrollPayment": "Chi trả lương",
     "payrollReports": "Báo cáo lương",
     "payrollRun": "Kỳ lương",
+    "payrollRunPerson": "Bảng tính lương",
+    "payrollRetro": "Truy lĩnh, truy thu",
     "payrollRuns": "Kỳ lương",
     "payslip": "Phiếu lương",
     "payslipQueries": "Thắc mắc phiếu lương",
@@ -12425,7 +13959,15 @@
     "crmCommission": "Hoa hồng kinh doanh",
     "kiosk": "Máy chấm công khuôn mặt",
     "kioskFaces": "Khuôn mặt chấm công",
-    "kioskCheckIn": "Chấm công tại máy"
+    "kioskCheckIn": "Chấm công tại máy",
+    "reviewTemplates": "Biểu mẫu đánh giá",
+    "reviewTemplate": "Biểu mẫu đánh giá",
+    "newOffCycleRun": "Kỳ lương ngoài kỳ",
+    "salaryImport": "Nhập lương từ tệp",
+    "salaryImportReview": "Duyệt lương nhập từ tệp",
+    "issuedDocuments": "Sổ văn bản đã cấp",
+    "positions": "Chức vụ",
+    "lifecycleChange": "Đề xuất thay đổi nhân sự"
   },
   "portfolio": {
     "title": "SuZu Group",
@@ -12455,6 +13997,7 @@
     "careersTitle": "Làm việc cùng chúng tôi",
     "careersBody": "Chúng tôi luôn tìm người giỏi và yêu nghề.",
     "careersLink": "Xem vị trí đang tuyển",
+    "brandsLink": "Tài nguyên thương hiệu",
     "footer": "© SuZu Group"
   },
   "site": {
@@ -12556,7 +14099,7 @@
           ],
           "list": [
             "Nhận dạng và liên lạc: họ tên, ngày sinh, giới tính, số điện thoại, địa chỉ, thông tin CCCD hoặc hộ chiếu, người liên hệ khẩn cấp.",
-            "Việc làm: công ty tuyển dụng bạn, đơn vị, chức danh, quản lý, loại và thời hạn hợp đồng, hồ sơ tiếp nhận và nghỉ việc, tài liệu như hợp đồng và quyết định.",
+            "Việc làm: công ty tuyển dụng bạn, đơn vị, chức danh, chức vụ, quản lý, loại và thời hạn hợp đồng, hồ sơ tiếp nhận và nghỉ việc, tài liệu như hợp đồng và quyết định.",
             "Chấm công và nghỉ phép: giờ vào và giờ ra; khi bạn chấm công trên ứng dụng, vị trí thiết bị báo về và địa chỉ mạng tại thời điểm đó, chỉ để xác nhận bạn đang ở địa điểm làm việc của công ty; dữ liệu nhập từ máy chấm công tại văn phòng (thời gian và mã nhân viên, không phải dấu vân tay hay dữ liệu khuôn mặt); số ngày phép và đơn nghỉ.",
             "Tiền lương và thu nhập: lương, phụ cấp, thưởng, thông tin bảo hiểm xã hội, bảo hiểm y tế, bảo hiểm thất nghiệp, thông tin thuế thu nhập cá nhân và người phụ thuộc, tài khoản ngân hàng, phiếu lương.",
             "Hiệu suất: mục tiêu, KPI, đánh giá và ghi nhận.",
@@ -12608,9 +14151,8 @@
             "Chúng tôi không bán dữ liệu cá nhân. Chúng tôi chỉ chia sẻ dữ liệu với các nhà cung cấp vận hành một phần Dịch vụ cho chúng tôi, theo hợp đồng giới hạn việc sử dụng dữ liệu vào việc cung cấp dịch vụ của họ:"
           ],
           "list": [
-            "Vercel Inc. — lưu trữ ứng dụng;",
+            "Vercel Inc. — lưu trữ ứng dụng, và bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
             "Supabase Inc. — cơ sở dữ liệu, đặt tại Singapore;",
-            "Upstash Inc. — bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
             "Cloudflare, Inc. — kho tệp riêng tư (R2), lưu tại khu vực châu Á – Thái Bình Dương, và phân tích văn bản phục vụ tìm kiếm kho tri thức (Workers AI), nhận nội dung kho tri thức và các câu hỏi được đặt ra;",
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",
@@ -13001,6 +14543,7 @@
     "saved": "Đã lưu.",
     "save": "Lưu",
     "filter": "Lọc",
+    "cancel": "Thôi",
     "tabs": {
       "label": "Khách hàng & kinh doanh",
       "home": "Việc bán hàng của tôi",
@@ -13153,6 +14696,7 @@
       "erase": "Xoá theo yêu cầu",
       "eraseType": "Gõ ERASE để xác nhận",
       "eraseConfirm": "Xoá thông tin",
+      "eraseReach": "Thao tác này cũng xoá thông tin ở khách tiềm năng ban đầu và mọi bản sao email, số điện thoại trong brief dự án hay ghi chú bàn giao. Ghi chú tự gõ trong các hoạt động không được dò tìm — hãy tự kiểm tra.",
       "fields": {
         "fullName": "Họ và tên",
         "title": "Chức danh",
@@ -13174,6 +14718,7 @@
       "save": "Lưu",
       "log": "Ghi hoạt động hoặc hẹn việc theo dõi",
       "happened": "Đã diễn ra",
+      "mode": "Ghi nhận việc đã làm hay lên kế hoạch",
       "planOnly": "Chỉ hẹn việc theo dõi",
       "kind": "Loại",
       "subject": "Nội dung",
@@ -13248,6 +14793,8 @@
       "newAccount": "Khách hàng mới",
       "createContact": "Thêm {name} làm đầu mối",
       "confirmDuplicate": "Có thể đã có khách hàng: {names}. Đánh dấu để vẫn tạo mới.",
+      "eraseContact": "Xoá đầu mối theo yêu cầu",
+      "eraseContactReach": "Tên, chức danh, email và số điện thoại của đầu mối sẽ bị xoá; tên công ty và nhu cầu được giữ lại. Ghi chú tự gõ trong các hoạt động không được dò tìm — hãy tự kiểm tra.",
       "fields": {
         "companyName": "Công ty",
         "existingAccount": "Khách hàng",
@@ -13290,6 +14837,7 @@
       "valuedOf": "{valued}/{count} có giá trị",
       "gatesNeeded": "Giai đoạn này cần: {gates}",
       "noForecast": "Không có cơ hội đang mở nào bạn được xem giá trị.",
+      "boardTruncated": "Bảng chỉ hiện {shown} trên {total} cơ hội; số liệu mỗi giai đoạn vẫn tính đủ. Lọc theo nhóm hoặc dịch vụ để xem phần còn lại.",
       "undatedOrLate": "Chưa có ngày, hoặc đã quá ngày",
       "columns": {
         "deal": "Cơ hội",
@@ -13443,6 +14991,7 @@
       "policy": "quy định của công ty",
       "margin": "Ước tính: {hours} giờ theo giờ công bình quân của đội ≈ {cost}; biên lợi nhuận {margin} ({percent})",
       "noMargin": "Chưa ước tính được biên lợi nhuận: đội thực hiện chưa có tháng lương đã ký để tính bình quân.",
+      "marginUnchecked": "Biên lợi nhuận chưa được kiểm tra: không tính được đơn giá chi phí của đội thực hiện.",
       "documentTitle": "Báo giá",
       "monthsCount": "{count} tháng",
       "steps": {
@@ -13533,6 +15082,8 @@
         "overdue": "Quá hạn",
         "paid": "Đã thu",
         "written_off": "Đã xoá nợ",
+        "draft": "Bản nháp",
+        "void": "Đã huỷ",
         "all": "Tất cả"
       },
       "columns": {
@@ -13561,9 +15112,25 @@
       "payments": "Thanh toán",
       "noPayments": "Chưa nhận thanh toán.",
       "recordPayment": "Ghi nhận thanh toán",
-      "removePayment": "Xoá",
-      "removePaymentConfirm": "Xoá khoản thanh toán này?",
+      "reversePayment": "Huỷ khoản thu",
+      "reversePaymentTitle": "Huỷ khoản thanh toán này?",
+      "reversePaymentHint": "Khoản thanh toán vẫn nằm trong danh sách, được đánh dấu đã huỷ cùng lý do, và không còn được tính vào số đã thu, công nợ hay hoa hồng.",
+      "reversed": "Đã huỷ bởi {name} ngày {date}: {reason}",
       "writeOff": "Xoá nợ",
+      "asDraft": "Lưu thành bản nháp — chưa xuất, có thể chưa có số hoá đơn",
+      "recordDraft": "Lưu bản nháp",
+      "saveDraft": "Lưu bản nháp",
+      "draftHeading": "Bản nháp hoá đơn",
+      "draftIntro": "Bản nháp giữ các khoản này cho đến khi hoá đơn được xuất. Sửa, xuất hoặc xoá bản nháp tại đây.",
+      "editDraft": "Sửa bản nháp",
+      "issueTitle": "Xuất hoá đơn",
+      "issueIntro": "Nhập số hoá đơn và ngày xuất theo hệ thống kế toán. Mọi khoản phải có số tiền.",
+      "issue": "Xuất hoá đơn",
+      "deleteDraft": "Xoá bản nháp",
+      "deleteDraftConfirm": "Xoá bản nháp này? Các khoản sẽ trở lại danh sách chờ xuất hoá đơn.",
+      "void": "Huỷ hoá đơn",
+      "voidIntro": "Hoá đơn đã xuất không bị xoá: huỷ hoá đơn kèm lý do, như trên hệ thống kế toán. Hoá đơn vẫn được giữ cùng số của nó, không còn phải thu, và các khoản trở lại danh sách chờ xuất hoá đơn. Hãy huỷ các khoản thanh toán trước nếu có.",
+      "voidedBecause": "Đã huỷ bởi {name} ngày {date}: {reason}",
       "methods": {
         "transfer": "Chuyển khoản",
         "cash": "Tiền mặt",
@@ -13579,7 +15146,10 @@
         "amount": "Số tiền (VNĐ)",
         "method": "Hình thức",
         "reference": "Tham chiếu",
-        "writeOffReason": "Lý do"
+        "writeOffReason": "Lý do",
+        "numberIfKnown": "Số hoá đơn (nếu đã có)",
+        "reverseReason": "Lý do huỷ",
+        "voidReason": "Lý do huỷ hoá đơn"
       }
     },
     "reports": {
@@ -13806,7 +15376,9 @@
         "open": "Chưa thu",
         "part_paid": "Thu một phần",
         "paid": "Đã thu đủ",
-        "written_off": "Đã xoá nợ"
+        "written_off": "Đã xoá nợ",
+        "draft": "Bản nháp",
+        "void": "Đã huỷ"
       },
       "aging": {
         "current": "Chưa đến hạn",
@@ -13885,6 +15457,7 @@
       "lead_not_found": "Khách tiềm năng này không còn nữa.",
       "lead_closed": "Khách tiềm năng này đã được chuyển hoặc đã đóng.",
       "lead_reason_required": "Hãy ghi lý do không theo đuổi.",
+      "lead_contact_erased": "Khách tiềm năng này không còn ghi tên đầu mối nào.",
       "deal_not_found": "Cơ hội này không còn nữa.",
       "deal_closed": "Cơ hội đã chốt hoặc đã không thành công.",
       "deal_open": "Cơ hội vẫn đang mở.",
@@ -13895,6 +15468,7 @@
       "deal_owner_ineligible": "Người này không thể phụ trách cơ hội ở đây.",
       "deal_has_projects": "Cơ hội đã thành dự án nên không mở lại được.",
       "deal_not_won": "Chỉ cơ hội đã chốt mới thiết lập triển khai.",
+      "delivery_exists": "Cơ hội đã có một dự án triển khai mang tên này — có thể bạn đã gửi hai lần. Đặt tên khác nếu đây là một dự án mới.",
       "team_not_found": "Đội này không còn hoạt động.",
       "stage_not_found": "Giai đoạn này không còn dùng.",
       "stage_in_use": "Đang có cơ hội ở giai đoạn này nên không đổi loại được.",
@@ -13938,10 +15512,18 @@
       "invoice_mixed_items": "Một hoá đơn chỉ cho một khách hàng và một pháp nhân.",
       "invoice_number_taken": "Số hoá đơn này đã được ghi nhận.",
       "invoice_not_found": "Hoá đơn này không còn nữa.",
-      "invoice_closed": "Hoá đơn đã thu đủ hoặc đã xoá nợ.",
-      "invoice_reason_required": "Hãy ghi lý do xoá nợ.",
+      "invoice_closed": "Hoá đơn không còn mở: đã thu đủ, đã xoá nợ hoặc đã huỷ.",
+      "invoice_reason_required": "Hãy ghi lý do.",
       "payment_amount_invalid": "Số tiền thanh toán phải lớn hơn 0.",
       "payment_not_found": "Khoản thanh toán này không còn nữa.",
+      "invoice_number_required": "Hãy nhập số hoá đơn, hoặc lưu thành bản nháp.",
+      "invoice_item_held": "Một số khoản đang nằm trong hoá đơn khác (có thể là bản nháp).",
+      "invoice_not_draft": "Hoá đơn này đã xuất nên không sửa hay xoá được. Hãy huỷ hoá đơn nếu có sai sót.",
+      "invoice_not_issued": "Hoá đơn này còn là bản nháp: hãy xoá bản nháp thay vì huỷ.",
+      "invoice_has_payments": "Hoá đơn đã có thanh toán. Hãy huỷ các khoản thanh toán trước.",
+      "payment_above_outstanding": "Số tiền lớn hơn số còn phải thu của hoá đơn.",
+      "payment_reason_required": "Hãy ghi lý do huỷ khoản thanh toán.",
+      "payment_reversed": "Khoản thanh toán này đã được huỷ.",
       "service_code_taken": "Mã này đã được dùng.",
       "service_not_found": "Dịch vụ này không còn nữa.",
       "file_not_found": "Hãy tải bản scan đã ký lên trước.",
@@ -14075,5 +15657,92 @@
     "required": "Hãy điền mục này.",
     "draftRestored": "Đã khôi phục bản nháp chưa gửi từ {when}.",
     "draftDiscard": "Bỏ bản nháp"
+  },
+  "stored": {
+    "toilGrant": "Nghỉ bù làm thêm giờ tháng {month} ({minutes} phút)",
+    "retroSalaryChange": "Quyết định lương hiệu lực từ {validFrom} được duyệt sau khi trả lương tháng {month}",
+    "retroCancelled": "{reason} — huỷ: {why}"
+  },
+  "privacy": {
+    "gpsNotice": {
+      "title": "Vị trí của bạn khi chấm công",
+      "intro": "Trước khi nút chấm công đọc vị trí điện thoại, đây là những gì xảy ra với thông tin đó.",
+      "what": "Thu thập gì: vị trí và độ chính xác của điện thoại, đọc một lần đúng lúc bạn bấm nút — không đọc trước hay sau, và không bao giờ theo dõi liên tục.",
+      "why": "Để làm gì: xác nhận lượt chấm công được thực hiện tại nơi làm việc (hoặc tại nơi bạn đã khai báo trong ngày). Lượt chấm công không khớp sẽ được chuyển cho quản lý trực tiếp xem xét.",
+      "who": "Ai được xem: bạn, quản lý trực tiếp và phòng Nhân sự. Đồng nghiệp không bao giờ xem được.",
+      "howLong": "Lưu bao lâu: vị trí chính xác bị xoá sau {days} ngày kể từ lượt chấm công; giờ chấm công và văn phòng khớp vẫn được giữ trong bảng công.",
+      "choice": "Bạn có quyền từ chối. Khi đó lượt chấm công không kèm vị trí — mạng văn phòng vẫn được tính, nếu không quản lý sẽ xem xét. Bạn có thể đổi ý bất cứ lúc nào tại trang cá nhân.",
+      "agree": "Tôi đồng ý",
+      "notNow": "Để sau",
+      "state": {
+        "unanswered": "Bạn chưa trả lời thông báo về vị trí. Nút chấm công sẽ hiện thông báo này trước khi đọc vị trí.",
+        "declined": "Bạn đã chọn chấm công không kèm vị trí.",
+        "withdrawn": "Bạn đã rút lại sự đồng ý: lượt chấm công không còn đọc vị trí."
+      },
+      "stateGiven": "Lượt chấm công có đọc vị trí, theo sự đồng ý của bạn ngày {date}.",
+      "withoutIt": "Nếu không có vị trí, lượt chấm công vẫn được tính khi bạn dùng mạng văn phòng; nếu không, quản lý trực tiếp sẽ xem xét.",
+      "allow": "Cho phép đọc vị trí khi chấm công",
+      "withdraw": "Rút lại",
+      "withdrawConfirm": "Ngừng đọc vị trí khi chấm công?",
+      "withdrawDetail": "Từ nay lượt chấm công không kèm vị trí. Các vị trí đã ghi sẽ bị xoá theo lịch thông thường, {days} ngày sau mỗi lượt chấm công.",
+      "failed": "Chưa thực hiện được. Vui lòng thử lại."
+    },
+    "mine": {
+      "title": "Dữ liệu và quyền riêng tư",
+      "description": "Công ty đang lưu gì về bạn, bạn đã đồng ý những gì, và thông tin được lưu trong bao lâu.",
+      "gpsTitle": "Vị trí khi chấm công",
+      "exportTitle": "Tải dữ liệu của tôi",
+      "exportWhat": "Một tệp (JSON) gồm mọi thông tin SuZu One lưu về bạn: hồ sơ, quá trình làm việc, hợp đồng và điều khoản lương, nghỉ phép, chấm công, đề xuất, văn bản đã cấp cho bạn, phiếu lương, thông báo, hội thoại với trợ lý và các lựa chọn về quyền riêng tư. Tệp có thông tin lương nên bạn có thể được yêu cầu xác thực lại trước.",
+      "export": "Tải dữ liệu của tôi",
+      "exporting": "Đang chuẩn bị tệp…",
+      "stepUp": "Tệp có thông tin lương của bạn, vui lòng xác thực lại trước.",
+      "stepUpLink": "Xác thực rồi quay lại",
+      "exportFailed": "Chưa tạo được tệp. Vui lòng thử lại.",
+      "keptTitle": "Thời gian lưu trữ",
+      "keptPositions": "Vị trí chính xác của lượt chấm công: {days} ngày.",
+      "keptAssistant": "Hội thoại với trợ lý: {days} ngày kể từ tin nhắn cuối.",
+      "keptAfterLeaving": "Sau khi nghỉ việc: thông tin liên hệ, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân và tài khoản ứng dụng được xoá sau {years} năm kể từ ngày làm việc cuối cùng, khi phòng Nhân sự xác nhận.",
+      "keptByLaw": "Hồ sơ lương, thuế và bảo hiểm — phiếu lương, hợp đồng, bảng công, mã số thuế và số bảo hiểm — được lưu theo thời hạn luật kế toán và thuế yêu cầu (tối thiểu mười năm)."
+    },
+    "admin": {
+      "title": "Quyền riêng tư và lưu trữ",
+      "description": "Những người đã nghỉ việc đến hạn xoá thông tin cá nhân, và lịch tự động dọn dữ liệu hằng đêm.",
+      "dueTitle": "Đến hạn ẩn danh hoá",
+      "dueDescription": "Đã nghỉ việc hơn {years} năm. Không có gì bị xoá cho đến khi bạn xác nhận tại đây.",
+      "columns": {
+        "person": "Nhân sự",
+        "code": "Mã",
+        "entity": "Công ty",
+        "lastDay": "Ngày làm cuối",
+        "dueOn": "Đến hạn từ"
+      },
+      "none": "Chưa có ai đến hạn.",
+      "anonymise": "Ẩn danh hoá",
+      "confirmTitle": "Ẩn danh hoá {name}?",
+      "confirmIntro": "Thao tác này không thể hoàn tác.",
+      "goes": "Bị xoá",
+      "goesList": "Email công việc và tài khoản ứng dụng, ảnh đại diện, số điện thoại, email cá nhân, địa chỉ hiện tại, tình trạng hôn nhân, người liên hệ khẩn cấp, bản chụp giấy tờ tuỳ thân, giấy khám sức khoẻ, bằng cấp và chứng chỉ, thông báo và thiết bị nhận thông báo đẩy, liên kết Messenger và Telegram, hội thoại với trợ lý, dữ liệu khuôn mặt, và vị trí của mọi lượt chấm công.",
+      "stays": "Được giữ lại (theo luật kế toán, thuế và bảo hiểm)",
+      "staysList": "Họ tên và mã nhân viên, ngày sinh, giới tính, quốc tịch, địa chỉ thường trú, số giấy tờ tuỳ thân, mã số thuế, số bảo hiểm và tài khoản ngân hàng, người phụ thuộc đã đăng ký giảm trừ, quá trình làm việc, hợp đồng và quyết định, phiếu lương và bảng lương, bảng công, nghỉ phép, đề xuất và văn bản đã cấp.",
+      "cancel": "Huỷ",
+      "errors": {
+        "generic": "Chưa thực hiện được. Vui lòng thử lại.",
+        "retention_not_over": "Chưa hết thời hạn lưu trữ.",
+        "already_anonymised": "Đã được ẩn danh hoá trước đó.",
+        "not_former_employee": "Chỉ ẩn danh hoá được người đã nghỉ việc và không còn hợp đồng lao động nào đang hiệu lực.",
+        "anonymise_self": "Bạn không thể tự ẩn danh hoá chính mình.",
+        "person_not_found": "Nhân sự này không còn tồn tại."
+      },
+      "scheduleTitle": "Lịch lưu trữ",
+      "scheduleDescription": "Những gì tự động xoá hằng đêm, và những gì chờ phòng Nhân sự xác nhận.",
+      "schedule": {
+        "positions": "Vị trí chính xác, địa chỉ mạng và trình duyệt của lượt chấm công trên ứng dụng: xoá sau {days} ngày (trừ lượt còn chờ duyệt).",
+        "assistant": "Hội thoại với trợ lý và câu hỏi chưa trả lời được: xoá sau {days} ngày kể từ tin nhắn cuối.",
+        "faces": "Dữ liệu khuôn mặt: xoá khi nhân sự nghỉ việc hoặc rút lại sự đồng ý.",
+        "candidates": "Ứng viên không trúng tuyển: ẩn danh hoá khi hết thời hạn lưu, trừ người đã đồng ý vào kho ứng viên.",
+        "former": "Người đã nghỉ việc: ẩn danh hoá thông tin cá nhân sau {years} năm kể từ ngày làm việc cuối, khi phòng Nhân sự xác nhận tại đây.",
+        "byLaw": "Hồ sơ lương, thuế và bảo hiểm: lưu tối thiểu mười năm (Luật Kế toán 2015, điều 41)."
+      }
+    }
   }
 }

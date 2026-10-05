@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -249,18 +250,7 @@ function SetEditor({ kind, set, owners, onDone }: { kind: SetKind; set?: SetCard
           {set ? tWork("save") : t(`create.${kind}`)}
         </Button>
         {set ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("deleteConfirm"))) run(() => config.remove({ setId: set.id }), onDone);
-            }}
-          >
-            {t("delete")}
-          </Button>
+          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => config.remove({ setId: set.id }), onDone)} />
         ) : null}
       </div>
     </form>

@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -7,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { saveLocationAction } from "../checkin-actions";
+import { PositionPicker } from "./position-picker";
 
 type Option = { id: string; name: string };
 export type LocationFormValue = { id: string; entityId: string; name: string; address: string | null; latitude: number | null; longitude: number | null; radiusM: number | null; accuracyLimitM: number; ipAllowlist: string[]; rule: string; mode: string; isActive: boolean };
@@ -34,12 +37,9 @@ export function LocationForm({ location, entities }: { location?: LocationFormVa
           <Field name="address" label={t("locations.address")}>
             <Input id="address" name="address" maxLength={300} defaultValue={location?.address ?? ""} />
           </Field>
-          <Field name="latitude" label={t("locations.latitude")}>
-            <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={location?.latitude ?? ""} placeholder="10.7716" />
-          </Field>
-          <Field name="longitude" label={t("locations.longitude")}>
-            <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={location?.longitude ?? ""} placeholder="106.7048" />
-          </Field>
+          <div className="sm:col-span-3">
+            <PositionPicker label={t("locations.position")} defaultValue={{ latitude: location?.latitude, longitude: location?.longitude }} />
+          </div>
           <Field name="radiusM" label={t("locations.radius")}>
             <Input id="radiusM" name="radiusM" type="number" min={10} max={50000} defaultValue={location?.radiusM ?? ""} placeholder="150" />
           </Field>
@@ -66,11 +66,11 @@ export function LocationForm({ location, entities }: { location?: LocationFormVa
           </Field>
         </div>
         <Field name="ipAllowlist" label={t("locations.ipAllowlist")}>
-          <textarea id="ipAllowlist" name="ipAllowlist" rows={2} defaultValue={location?.ipAllowlist.join("\n") ?? ""} placeholder={"203.0.113.0/24\nwan1.office.example.com"} className="rounded-lg border bg-background px-2.5 py-1.5 font-mono text-sm" />
+          <Textarea id="ipAllowlist" name="ipAllowlist" rows={2} defaultValue={location?.ipAllowlist.join("\n") ?? ""} placeholder={"203.0.113.0/24\nwan1.office.example.com"} className="font-mono text-sm" />
         </Field>
         <p className="text-xs text-muted-foreground">{t("locations.ipHint")}</p>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={location?.isActive ?? true} className="size-4" />
+          <Checkbox name="isActive" defaultChecked={location?.isActive ?? true} />
           {t("active")}
         </label>
       </FieldErrors>

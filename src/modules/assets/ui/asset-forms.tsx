@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +16,6 @@ import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { assignAssetAction, confirmHandoverAction, registerAssetAction, returnAssetAction, saveAssetCategoryAction, setAssetStatusAction, updateAssetAction } from "../actions";
 import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, type AssetCondition, type HolderType } from "../enums";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 export type AssetFormValue = {
   id: string | null;
@@ -183,7 +184,7 @@ export function AssignForm({ assetId, options }: { assetId: string; options: Pic
         <Input id="purpose" name="purpose" maxLength={500} />
       </Field>
       <Field name="accessories" label={t("accessories")}>
-        <textarea id="accessories" name="accessories" rows={3} className={textarea} />
+        <Textarea id="accessories" name="accessories" rows={3} />
       </Field>
       <FormError namespace="assets.errors" errorKey={form.errorKey} />
       <div>
@@ -319,13 +320,13 @@ export function CategoryForm({ value }: { value: CategoryFormValue }) {
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="requiresSerial" defaultChecked={value.requiresSerial} /> {t("requiresSerial")}
+          <Checkbox name="requiresSerial" defaultChecked={value.requiresSerial} /> {t("requiresSerial")}
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="bookable" defaultChecked={value.bookable} /> {t("bookable")}
+          <Checkbox name="bookable" defaultChecked={value.bookable} /> {t("bookable")}
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="isActive" defaultChecked={value.isActive} /> {t("isActive")}
+          <Checkbox name="isActive" defaultChecked={value.isActive} /> {t("isActive")}
         </label>
       </div>
       <FormError namespace="assets.errors" errorKey={form.errorKey} />

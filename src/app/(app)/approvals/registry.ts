@@ -11,15 +11,20 @@
 import "server-only";
 import type { ActionResult } from "@/lib/action";
 import { decideAttendanceRequestAction } from "@/modules/attendance/request-actions";
+import { decideAttendanceRuleAction } from "@/modules/attendance/device-actions";
 import { REQUEST_DEFINITIONS as ATTENDANCE_REQUESTS } from "@/modules/attendance/requests";
+import { attendanceRuleRequest } from "@/modules/attendance/rule-changes";
 import { profileChangeRequest } from "@/modules/core-hr/change-requests";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
 import { resignationRequest } from "@/modules/core-hr/resignation";
+import { decideLifecycleChangeAction } from "@/modules/core-hr/lifecycle-actions";
+import { promotionApprovalType, terminationApprovalType, transferApprovalType } from "@/modules/core-hr/lifecycle-approvals";
 import { decidePageReviewAction } from "@/modules/kb/actions";
 import { kbPublishRequest } from "@/modules/kb/service";
-import { decideLeaveAction } from "@/modules/leave/actions";
+import { decideLeaveAction, decideLeaveRuleAction } from "@/modules/leave/actions";
 import { leaveRequestType } from "@/modules/leave/requests";
+import { leaveRuleRequest } from "@/modules/leave/rule-changes";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
 import { decideBriefAction } from "@/modules/projects/actions";
 import { decideChangeAction } from "@/modules/projects/commercial-actions";
@@ -29,6 +34,8 @@ import { hiringRequestType } from "@/modules/recruit/hiring";
 import { decideOfferAction } from "@/modules/recruit/offer-actions";
 import { offerRequestType } from "@/modules/recruit/offers";
 import { decideQuoteAction } from "@/modules/crm/quote-actions";
+import { decideSalaryChangeAction } from "@/modules/payroll/salary-actions";
+import { salaryChangeRequest } from "@/modules/payroll/service";
 import { quoteRequestType } from "@/modules/crm/service";
 import { decideRequestAction } from "@/modules/requests/actions";
 import { registeredGenericTypes } from "@/modules/requests/service";
@@ -46,6 +53,9 @@ const REGISTERED: RegisteredRequestType[] = [
   { definition: leaveRequestType, approve: (requestId) => decideLeaveAction({ requestId, decision: "approve", comment: null }) },
   ...Object.values(ATTENDANCE_REQUESTS).map((definition) => ({ definition, approve: (requestId: string) => decideAttendanceRequestAction({ requestId, decision: "approve", comment: null }) })),
   { definition: resignationRequest, approve: (requestId) => decideResignationAction({ requestId, decision: "approve", comment: null }) },
+  // A transfer, a promotion, a termination (FR-CHR-09): asked only where a flow was saved for it —
+  // which is done here, in the flow administration — and read on its page, never in bulk.
+  ...[transferApprovalType, promotionApprovalType, terminationApprovalType].map((definition) => ({ definition, approve: (requestId: string) => decideLifecycleChangeAction({ requestId, decision: "approve", comment: null }) })),
   // Never bulk-approvable (a reviewer reads the revision first); registered for the flow administration.
   { definition: kbPublishRequest, approve: (requestId) => decidePageReviewAction({ requestId, decision: "approve", comment: null }) },
   // A head is a budget decision and its budget is not in the summary, so this one is never bulk-
@@ -60,6 +70,13 @@ const REGISTERED: RegisteredRequestType[] = [
   { definition: changeRequestType, approve: (requestId) => decideChangeAction({ requestId, decision: "approve", comment: null }) },
   // A quote asking for approval has a discount or a margin someone must look at (FR-CRM-22): read on its page, never bulk-approvable.
   { definition: quoteRequestType, approve: (requestId) => decideQuoteAction({ requestId, decision: "approve", comment: null }) },
+  // A salary is read before it is signed (SRS D17), never bulk-approvable; registered so an entity
+  // can give it its own flow (a CEO step) in the flow administration, as its definition promises.
+  { definition: salaryChangeRequest, approve: (requestId) => decideSalaryChangeAction({ requestId, decision: "approve", comment: null }) },
+  // A leave or attendance rule HR proposes is the owner's to decide (FR-PLT-39), on a fixed flow no
+  // administrator can reroute, and read field by field on its page: never bulk-approvable.
+  { definition: leaveRuleRequest, approve: (requestId) => decideLeaveRuleAction({ requestId, decision: "approve", comment: null }) },
+  { definition: attendanceRuleRequest, approve: (requestId) => decideAttendanceRuleAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

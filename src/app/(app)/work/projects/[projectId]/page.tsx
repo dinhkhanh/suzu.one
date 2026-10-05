@@ -5,14 +5,13 @@ import { ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
-import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { readFilters, readGrouping, readSort, taskSliceFor } from "@/modules/work/engine/filter";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listDeletedTasks, listLabels, listProjectMembers, listRecurrences, listTaskSlice, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, RESTORE_WINDOW_DAYS, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
 import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
 import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains, projectStatusChoices, projectStatusNames } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
@@ -27,6 +26,8 @@ import { accentOf } from "@/modules/work/enums";
 import { ArchiveButton, EditProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { DeletedTasks } from "@/modules/work/ui/deleted-tasks";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
@@ -53,19 +54,26 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const t = await getTranslations("work");
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
+  const filters = readFilters(query);
+  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
+  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
+  const grid = monthGrid(month);
 
-  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows] = await Promise.all([
-    listSavedViews(project.id, user.person.id),
-    listProjectTasks(project.id),
+  const [views, { items: tasks, total: taskTotal }, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows, deleted] = await Promise.all([
+    listSavedViews({ projectId: project.id }, user.person.id),
+    // PERF-03: open work, and closed work only as far as this view shows it.
+    listTaskSlice({ projectId: project.id }, taskSliceFor(view, filters, today, grid)),
     listStates([team.id]),
     listLabels([team.id]),
     listClients({ activeOnly: true }),
     listProjectMembers(project.id),
     listAssignable(team.id, project.id),
     manage ? listPersonNames() : [],
-    listRecurrences(project.id, today),
+    listRecurrences({ projectId: project.id }, today),
     listWorkTemplates([team.id], { activeOnly: true }),
     listCustomFields({ teamId: team.id, projectId: project.id }, { includeInactive: true }),
+    // Recently deleted, for the people who run the project: they may put a task back (FR-WRK-03).
+    manage ? listDeletedTasks({ projectId: project.id }) : [],
   ]);
   const [chains, automations] = await Promise.all([listReviewChains({ teamId: team.id, projectId: project.id }), canViewAutomations(viewer, teamFacts(team)) ? automationPanel({ teamId: team.id, projectId: project.id }, viewer) : null]);
   const [statusChoices, statusNames] = await Promise.all([projectStatusChoices(team.projectStatusSetId, project.statusId), projectStatusNames()]);
@@ -73,20 +81,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const [digitalAssets, digitalOptions] = await Promise.all([digitalAssetsByProject([project.id]).then((byProject) => byProject.get(project.id) ?? []), manage ? listLinkableDigitalAssets() : []]);
   const chip = ({ id, name, platform, status }: (typeof digitalAssets)[number]) => ({ id, name, platform, status });
   const statusName = project.statusId ? statusNames.get(project.statusId) : undefined;
-  const filters = readFilters(query);
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
   const fields = toFieldViews(fieldRows);
   const clientName = clients.find((client) => client.id === project.clientId)?.name;
-  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
   // FR-PJM-10: the owning team's open cycles, for the filter and bulk edit.
   const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
   const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields, cycles };
   const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
   // Logged time per task is for the project's lead and the team's leads (PJM access rules).
   const logged = view === "table" && canSeeLoggedTime(viewer, { team: teamFacts(team), project: facts }) ? Object.fromEntries(await loggedMinutesByTask(tasks.map((task) => task.id))) : null;
-  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
-  const grid = monthGrid(month);
   const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
 
   return (
@@ -109,7 +113,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <ColorSquare color={accentOf(project.color, team.color)} className="size-2.5 rounded-[3px]" />
             {project.name}
             <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-            {project.status === "active" && !statusName ? null : <Badge dot variant={statusTone(project.status)}>{statusName ?? t(`projects.status.${project.status}`)}</Badge>}
+            <ProjectStatusBadge status={project.status} name={statusName ?? t(`projects.status.${project.status}`)} />
           </span>
         }
         description={
@@ -136,10 +140,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <ProjectTabs projectId={project.id} current={view === "board" ? "board" : "tasks"} />
       <Section>
         <ViewTabs current={view} />
+        {taskTotal > tasks.length ? <p className="text-sm text-muted-foreground">{t("list.truncated", { shown: tasks.length, total: taskTotal })}</p> : null}
       {view === "table" ? (
-        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} />
+        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} scope={{ teamId: team.id, projectId: project.id }} />
       ) : view === "board" ? (
-        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} />
+        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} scope={{ teamId: team.id, projectId: project.id }} />
       ) : view === "calendar" ? (
         <CalendarView
           tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
@@ -152,6 +157,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           today={today}
           posts={content?.posts}
           missingTaskIds={content?.missingTaskIds}
+          scope={canContribute ? { teamId: team.id, projectId: project.id } : undefined}
         />
       ) : (
         <TaskListView
@@ -164,7 +170,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           selfId={user.person.id}
           today={today}
           canContribute={canContribute}
-          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
+          // One's own view is one's own to change; a shared one of somebody else's, the project's leads'.
+          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canEdit: view.ownerPersonId === user.person.id || manage, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
         />
       )}
       </Section>
@@ -178,8 +185,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           <section className="flex flex-col gap-2">
             <h2 className="section-label">{t("recurrence.heading")}</h2>
             <RecurrenceManager
-              projectId={project.id}
-              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneePersonId: draft.assigneePersonId ?? null, assigneeName, nextDate, made }))}
+              target={{ projectId: project.id }}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, assigneePersonId: draft.assigneePersonId ?? null, estimateMinutes: draft.estimateMinutes ?? null, assigneeName, nextDate, made }))}
               people={assignable}
               canManage={canContribute}
               today={today}
@@ -193,6 +200,18 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           ) : null}
         </div>
       </details>
+
+      {manage && deleted.length ? (
+        <details className="group/details rounded-[14px] border border-border bg-background">
+          <summary className={DETAILS_SUMMARY}>
+            <ChevronRightIcon className="size-4 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/details:rotate-90" />
+            {t("deleted.title", { count: deleted.length })}
+          </summary>
+          <div className="border-t p-4">
+            <DeletedTasks tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))} days={RESTORE_WINDOW_DAYS} />
+          </div>
+        </details>
+      ) : null}
 
       <details className="group/details rounded-[14px] border border-border bg-background">
         <summary className={DETAILS_SUMMARY}>

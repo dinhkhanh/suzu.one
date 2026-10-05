@@ -32,6 +32,17 @@ export function taxablePart(component: Pick<ComponentDefinition, "taxTreatment" 
   return amount;
 }
 
+/**
+ * Deductions from the month's assessable income that are not pay (FR-PAY-13): a charitable gift,
+ * a voluntary pension contribution and the like, typed into a regular run for one person. They are
+ * never paid and never a payslip line: the calculation adds them up as `otherPitDeductions`, and
+ * the progressive PIT takes them off before the brackets. Reserved — no catalogue component may
+ * use one of these codes.
+ */
+export const PIT_RELIEF_CODES = ["PIT_CHARITY", "PIT_VOLUNTARY_PENSION", "PIT_OTHER_RELIEF"] as const;
+export type PitReliefCode = (typeof PIT_RELIEF_CODES)[number];
+export const isPitReliefCode = (code: string): code is PitReliefCode => (PIT_RELIEF_CODES as readonly string[]).includes(code);
+
 /** The codes the engine itself produces. They must exist in the catalogue or their line is left out. */
 export const ENGINE_CODES = {
   overtimeWeekday: "OT_WEEKDAY",

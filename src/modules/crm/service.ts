@@ -7,15 +7,15 @@ export { type AccountAbilities, accountAbilities, type AccountPage, accountsMana
 export { activityLink, type ActivityView, countOpenFollowUps, listActivities, listAllFollowUpsOf, listDoneBy, listFollowUpsOf, listOpenFollowUps } from "./activities";
 export { contactChoicesFor, type ContactName, type ContactView, findContact, listContacts } from "./contacts";
 export { contractChoices, contractNumbersOfProjects, type ContractView, expiringContracts, findContract, listContracts } from "./contracts";
-export { type DealFilters, type DealView, dealContext, gateFacts, getDeal, listDealContacts, listDeals, listStageChanges, openDealsOf, ownsAnyDeal, pipelineTotals } from "./deals";
+export { type DealFilters, type DealView, dealContext, gateFacts, getDeal, listDealBoard, listDealContacts, listDealPage, listDeals, listStageChanges, openDealsOf, ownsAnyDeal, pipelineTotals } from "./deals";
 export { dealOfProject, type DealProjectView, listDealProjects, listSalesHandoffsFor, type SalesHandoffWaiting } from "./delivery";
-export { agingSummary, collectedByAccount, getInvoice, type InvoiceDetail, type InvoiceView, listInvoices } from "./invoices";
+export { agingSummary, collectedByAccount, getInvoice, heldBillingItemIds, type InvoiceDetail, type InvoiceView, listInvoices } from "./invoices";
 export { crmMorningJob, crmNightlyJob } from "./jobs";
 export { getLead, leadFacts, type LeadView, listLeads, listOpenLeadsOf } from "./leads";
 export * from "./policy";
 export { dealValue, isStale as isStaleDeal, weightedValue } from "./engine/deal";
 export { dealValueReach, forecast, revenueOutlook, salesDashboard, type SalesTile, salesTile } from "./pipeline";
-export { estimateMargin, getQuote, listQuotes, quoteApprovalReasons, quoteOfRequest, quoteRequestType } from "./quotes";
+export { getQuote, listQuotes, quoteOfRequest, type QuotePayload, quoteReaderView, quoteRequestType } from "./quotes";
 export { getRateCard, priceOn, rateCardView, type ServiceView } from "./rate-card";
 export { crmSettings, firstStageOf, listStages, stageName, type StageRow, vatRates } from "./stages";
 export { accountTimeline, TIMELINE_KINDS, type TimelineItem } from "./timeline";

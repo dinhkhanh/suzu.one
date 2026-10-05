@@ -31,7 +31,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { listEntities } from "@/modules/platform/org/service";
-import { getKpiResults, getOkrResults, listFinalResults, markScoresConsumed, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
+import { getKpiResultsOfPeople, getOkrResultsOfPeople, listFinalResults, markScoresConsumed, type OkrResults, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
 import { getBonusScheme, getBonusSchemeVersion, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 import { type BonusOkrLevel, type BonusRunStatus, type BonusSchemeValue, bonusSchemeSchema } from "./enums";
 import { bonusForPerson, type BonusOverride, type BonusPersonInput, type BonusResultInput, type BonusTotals, type BonusTrace, EMPTY_BONUS_TOTALS, sumBonus } from "./engine/bonus";
@@ -157,15 +157,16 @@ export async function createBonusRun(input: { year: number; name: string; entity
     .values({ year: input.year, name: input.name, entityIds: [...input.entityIds], payrollMonth: input.payrollMonth, note: input.note ?? null, createdByPersonId: actorPersonId })
     .returning()
     .catch((error: unknown) => {
-      // The partial unique index: one live run per year.
-      if (String(error).includes("bonus_run_year_key")) throw new ActionError("bonus_run_exists");
+      // The partial unique index: a year may pay more than one bonus (PAY-11), but two live runs
+      // of one year under the same name are one run created twice.
+      if (String((error as { cause?: unknown }).cause ?? error).includes("bonus_run_year_name_key")) throw new ActionError("bonus_run_exists");
       throw error;
     });
   return created;
 }
 
 /** Which OKR figure the scheme's collective level asks for, out of what performance published. */
-function unitProgressOf(okr: Awaited<ReturnType<typeof getOkrResults>>, level: BonusOkrLevel): number | null {
+function unitProgressOf(okr: OkrResults, level: BonusOkrLevel): number | null {
   switch (level) {
     case "team":
       return okr.units.team.goals.length > 0 ? okr.units.team.progressBp : null;
@@ -215,8 +216,6 @@ export type BonusSimulation = { cost: BonusCost; lines: { personId: string; pers
  * salary on the reference day, and the scheme in force. Pure reads — nothing is written, so this
  * is both what `simulateBonusRun` stores and what a what-if hands back.
  */
-const PERFORMANCE_READS_AT_ONCE = 4;
-
 async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, executor: Executor = db()): Promise<{ lines: { input: BonusPersonInput; trace: BonusTrace; personId: string; personName: string; entityId: string; schemeVersionId: string; result: PerformanceResultRow | null; kpiScoreIds: string[] }[] }> {
   const entityIds = run.entityIds;
   const referenceDates = new Map<string, IsoDate>();
@@ -239,23 +238,20 @@ async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, exe
   for (const forEntity of perEntity) for (const [personId, amount] of forEntity) salaries.set(personId, amount);
 
   const inRun = people.filter((person) => person.entityId && entityIds.includes(person.entityId));
-  // Each person's OKR and KPI results, a few people at a time. Simulations run as server actions,
-  // where React's per-request cache does not apply, so every call reads the year's goals again:
-  // all at once would be dozens of full reads competing for the pool.
-  const performance: [Awaited<ReturnType<typeof getOkrResults>>, Awaited<ReturnType<typeof getKpiResults>>][] = [];
-  for (let start = 0; start < inRun.length; start += PERFORMANCE_READS_AT_ONCE) {
-    const batch = inRun.slice(start, start + PERFORMANCE_READS_AT_ONCE);
-    performance.push(...(await Promise.all(batch.map((person) => Promise.all([getOkrResults({ personId: person.personId, year: run.year }, executor), getKpiResults({ personId: person.personId, year: run.year }, executor)])))));
-  }
+  // Everybody's OKR and KPI results together: one read of the year's goals and the directory, and
+  // two of the year's KPI scores and assignments, however many people the run holds.
+  const personIds = inRun.map((person) => person.personId);
+  const [okrs, kpis] = await Promise.all([getOkrResultsOfPeople({ personIds, year: run.year }, executor), getKpiResultsOfPeople({ personIds, year: run.year }, executor)]);
 
   const lines = [];
-  for (const [index, person] of inRun.entries()) {
+  for (const person of inRun) {
     if (!person.entityId) continue;
     const scheme = schemes.get(person.entityId)!;
     const referenceDate = referenceDates.get(person.entityId)!;
     const result = results.get(person.personId) ?? null;
     // The stored month scores behind the result — what approval freezes.
-    const [okr, kpi] = performance[index];
+    const okr = okrs.get(person.personId)!;
+    const kpi = kpis.get(person.personId)!;
     const input: BonusPersonInput = {
       baseSalaryVnd: salaries.get(person.personId) ?? null,
       serviceMonths: serviceMonthsOn(person.seniorityDate ?? person.startDate, referenceDate),
@@ -468,47 +464,122 @@ async function freezeScores(run: BonusRunRow, executor: Executor): Promise<numbe
 
 // ── Payment ─────────────────────────────────────────────────────────────────────────────────
 
-export type BonusPaymentResult = { runId: string; payrollRuns: { entityId: string; payrollRunId: string; headcount: number }[] };
+/** `created` is false for an entity that had already been handed over: the call found its run and made nothing. */
+export type BonusPaymentResult = { runId: string; payrollRuns: { entityId: string; payrollRunId: string; headcount: number; created: boolean }[] };
+
+export type BonusHandoffRow = typeof schema.bonusRunHandoff.$inferSelect;
+type PayrollRunStatus = (typeof schema.payrollRun.$inferSelect)["status"];
+
+/** Every hand-over of a bonus run, oldest first, each with how its payroll run stands today. */
+export async function listBonusHandoffs(runId: string, executor: Executor = db()): Promise<(BonusHandoffRow & { payrollRunStatus: PayrollRunStatus })[]> {
+  const rows = await executor
+    .select({ handoff: schema.bonusRunHandoff, payrollRunStatus: schema.payrollRun.status })
+    .from(schema.bonusRunHandoff)
+    .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.bonusRunHandoff.payrollRunId))
+    .where(eq(schema.bonusRunHandoff.bonusRunId, runId))
+    .orderBy(asc(schema.bonusRunHandoff.createdAt));
+  return rows.map((row) => ({ ...row.handoff, payrollRunStatus: row.payrollRunStatus }));
+}
+
+/** Where one entity of a bonus run stands with payroll. */
+export type BonusEntityHandoff = {
+  entityId: string;
+  /** Lines worth something — what a hand-over would put into a payroll run. */
+  payable: number;
+  /** The off-cycle run that stands for this entity, or null: never handed over, or its run was cancelled. */
+  payrollRunId: string | null;
+  payrollRunStatus: PayrollRunStatus | null;
+  /** The cancelled payroll run this entity was last handed to, when that is why it has none now. */
+  cancelledPayrollRunId: string | null;
+};
 
 /**
- * Pay an approved run: one **off-cycle payroll run per entity** (FR-PAY-19), each carrying the
- * amounts as lines under the scheme's pay component. Payroll then does everything money needs —
- * the month's aggregated tax, the payslip, the bank file — and this module does none of it.
+ * Entity by entity: handed over or not. A hand-over stands while its payroll run does; once that
+ * run is **cancelled** in payroll the entity reads as "not handed over" again — the bonus run is
+ * still `paid`, since that is frozen, but nothing is going to pay those people until the entity
+ * is handed over once more (`payBonusRun`, for that entity alone).
+ */
+export function bonusHandoffState(run: Pick<BonusRunRow, "entityIds">, lines: readonly { entityId: string; finalAmountVnd: number }[], handoffs: readonly (BonusHandoffRow & { payrollRunStatus: PayrollRunStatus })[]): BonusEntityHandoff[] {
+  return run.entityIds.map((entityId) => {
+    const mine = handoffs.filter((handoff) => handoff.entityId === entityId);
+    const standing = mine.findLast((handoff) => handoff.payrollRunStatus !== "cancelled") ?? null;
+    return {
+      entityId,
+      payable: lines.filter((line) => line.entityId === entityId && line.finalAmountVnd > 0).length,
+      payrollRunId: standing?.payrollRunId ?? null,
+      payrollRunStatus: standing?.payrollRunStatus ?? null,
+      cancelledPayrollRunId: standing ? null : (mine.at(-1)?.payrollRunId ?? null),
+    };
+  });
+}
+
+/**
+ * Hand an approved run to payroll: one **off-cycle payroll run per entity** (FR-PAY-19), each
+ * carrying the amounts as lines under the scheme's pay component. Payroll then does everything
+ * money needs — the month's aggregated tax, the payslip, the bank file — and this module does none.
+ *
+ * **All or nothing, and safe to repeat.** The whole hand-over is one transaction with the bonus
+ * run's row locked first: a failure on the second entity leaves the first without a run too, and a
+ * second call (a double click, a retry) waits, then finds in `bonus_run_handoff` the run each
+ * entity already got and creates nothing. Off-cycle payroll runs have no uniqueness of their own —
+ * a month may hold several — so that table is what keeps an entity to one.
+ *
+ * The bonus run says `paid` from the first hand-over on, and that is frozen. If payroll later
+ * **cancels** an entity's off-cycle run, that entity is no longer handed over (`bonusHandoffState`)
+ * and calling this again — for that entity, or for all — gives it a new run and points its lines
+ * at it. Entities whose run still stands are left exactly as they are.
  *
  * Lines worth nothing are left out of the payroll run (there is nothing to pay) but keep their
  * bonus line and their trace, so "why did I get nothing" is still answered.
  */
-export async function payBonusRun(runId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BonusPaymentResult> {
-  const run = await getBonusRun(runId, executor);
-  if (!run) throw new ActionError("bonus_run_not_found");
-  if (run.status !== "approved") throw new ActionError("bonus_run_not_approved");
+export async function payBonusRun(runId: string, actorPersonId: string, options: { entityIds?: readonly string[] } = {}, executor: ReturnType<typeof db> = db()): Promise<BonusPaymentResult> {
+  return executor.transaction(async (tx) => {
+    const [run] = await tx.select().from(schema.bonusRun).where(eq(schema.bonusRun.id, runId)).limit(1).for("update");
+    if (!run) throw new ActionError("bonus_run_not_found");
+    // `approved`: the first hand-over. `paid`: only what a cancelled payroll run left without one.
+    if (run.status !== "approved" && run.status !== "paid") throw new ActionError("bonus_run_not_approved");
+    const wanted = options.entityIds ?? run.entityIds;
+    if (wanted.some((entityId) => !run.entityIds.includes(entityId))) throw new ActionError("bonus_entity_not_in_run");
 
-  const lines = await listBonusLines(runId, {}, executor);
-  const payrollRuns: BonusPaymentResult["payrollRuns"] = [];
-  for (const entityId of run.entityIds) {
-    const payable = lines.filter((line) => line.row.entityId === entityId && line.trace.finalAmountVnd > 0);
-    if (payable.length === 0) continue;
-    const scheme = await schemeValueFor(payable[0].row.schemeVersionId ?? "", run.year, entityId, executor);
-    const created = await createOffCycleRun(
-      {
-        entityId,
-        month: run.payrollMonth,
-        name: run.name,
-        note: `bonus_run:${runId}`,
-        lines: payable.map((line) => ({ personId: line.row.personId, code: scheme.payComponentCode, amount: line.trace.finalAmountVnd, note: `${run.year}` })),
-      },
-      actorPersonId,
-      executor,
-    );
-    // Only the lines that were actually in the payroll run. A line worth nothing was never paid,
-    // and must not claim on its explanation page that it was.
-    await executor.update(schema.bonusRunLine).set({ payrollRunId: created.id, updatedAt: new Date() }).where(and(eq(schema.bonusRunLine.runId, runId), inArray(schema.bonusRunLine.personId, payable.map((line) => line.row.personId))));
-    payrollRuns.push({ entityId, payrollRunId: created.id, headcount: payable.length });
-  }
-  if (payrollRuns.length === 0) throw new ActionError("bonus_run_nothing_to_pay");
+    const lines = await listBonusLines(runId, {}, tx);
+    const state = new Map(bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), await listBonusHandoffs(runId, tx)).map((entity) => [entity.entityId, entity]));
+    const headcountOf = (entityId: string) => state.get(entityId)?.payable ?? 0;
 
-  // Last, because the trigger freezes the run and its lines the moment it says `paid`.
-  await executor.update(schema.bonusRun).set({ status: "paid", paidAt: new Date(), paidByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.bonusRun.id, runId));
-  await executor.insert(schema.bonusRunEvent).values({ runId, fromStatus: "approved", toStatus: "paid", actorPersonId, comment: null });
-  return { runId, payrollRuns };
+    const payrollRuns: BonusPaymentResult["payrollRuns"] = [];
+    for (const entityId of wanted) {
+      const standing = state.get(entityId)?.payrollRunId;
+      if (standing) {
+        payrollRuns.push({ entityId, payrollRunId: standing, headcount: headcountOf(entityId), created: false });
+        continue;
+      }
+      const payable = lines.filter((line) => line.row.entityId === entityId && line.trace.finalAmountVnd > 0);
+      if (payable.length === 0) continue;
+      const scheme = await schemeValueFor(payable[0].row.schemeVersionId ?? "", run.year, entityId, tx);
+      const created = await createOffCycleRun(
+        {
+          entityId,
+          month: run.payrollMonth,
+          name: run.name,
+          note: `bonus_run:${runId}`,
+          lines: payable.map((line) => ({ personId: line.row.personId, code: scheme.payComponentCode, amount: line.trace.finalAmountVnd, note: `${run.year}` })),
+        },
+        actorPersonId,
+        tx,
+      );
+      await tx.insert(schema.bonusRunHandoff).values({ bonusRunId: runId, entityId, payrollRunId: created.id, headcount: payable.length, createdByPersonId: actorPersonId });
+      // Only the lines that were actually in the payroll run. A line worth nothing was never paid,
+      // and must not claim on its explanation page that it was. (On a paid run this is the one
+      // change the database still lets a line take — migration 0115.)
+      await tx.update(schema.bonusRunLine).set({ payrollRunId: created.id, updatedAt: new Date() }).where(and(eq(schema.bonusRunLine.runId, runId), inArray(schema.bonusRunLine.personId, payable.map((line) => line.row.personId))));
+      payrollRuns.push({ entityId, payrollRunId: created.id, headcount: payable.length, created: true });
+    }
+    if (payrollRuns.length === 0) throw new ActionError("bonus_run_nothing_to_pay");
+
+    if (run.status === "approved") {
+      // Last, because the trigger freezes the run and its lines the moment it says `paid`.
+      await tx.update(schema.bonusRun).set({ status: "paid", paidAt: new Date(), paidByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.bonusRun.id, runId));
+      await tx.insert(schema.bonusRunEvent).values({ runId, fromStatus: "approved", toStatus: "paid", actorPersonId, comment: null });
+    }
+    return { runId, payrollRuns };
+  });
 }

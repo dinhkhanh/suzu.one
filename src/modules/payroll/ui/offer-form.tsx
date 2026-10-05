@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -59,7 +60,7 @@ export function NetToGrossForm({ entities, allowances, defaultMonth }: { entitie
               <MoneyInput id="insuranceSalary" name="insuranceSalary" placeholder={t("followGross")} />
             </Field>
             <label className="flex items-center gap-2 self-end text-sm">
-              <input type="checkbox" name="insuranceExempt" value="true" className="size-4" />
+              <Checkbox name="insuranceExempt" value="true" />
               {t("insuranceExempt")}
             </label>
           </div>

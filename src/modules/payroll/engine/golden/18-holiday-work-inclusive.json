@@ -1,0 +1,35 @@
+{
+  "name": "Holiday work under the 'inclusive' reading of the 300% (SRS Q13 answered the other way)",
+  "source": "synthetic — replace with anonymised real cases; the seed reads Q13 as in_addition until the chief accountant answers",
+  "requirements": ["FR-ATT-18", "FR-PAY-13", "FR-PAY-15"],
+  "derivation": [
+    "Base 22,000,000, 22 working days, 8 hours a day: the hourly rate is 22,000,000 / 176 = 125,000 exactly. The policy multiplies the base salary only.",
+    "The case sets overtime.holiday_pay = inclusive: the 300% for hours worked on a public holiday includes the holiday's own salary, which the monthly salary has already paid. So the line pays 300% - 100% = 200% by day.",
+    "Holiday work 480 minutes by day: 125,000 x (480 x 200) / 6000 = 125,000 x 16 = 2,000,000.",
+    "Holiday work 60 minutes at night: (300% - 100%) + 30% night premium + 20% extra for overtime at night = 250%; 125,000 x (60 x 250) / 6000 = 312,500. OT_HOLIDAY = 2,312,500.",
+    "For comparison, the seeded in_addition reading would pay 125,000 x 480 x 300 / 6000 + 125,000 x 60 x 350 / 6000 = 3,000,000 + 437,500 = 3,437,500.",
+    "Gross = 22,000,000 + 2,312,500 = 24,312,500.",
+    "PIT exemption, seeded mode 'premium_only': the ordinary pay for these hours is in the salary, so all of the line is premium and all of it is exempt. Taxable income = 24,312,500 - 2,312,500 = 22,000,000.",
+    "Insurance on 22,000,000: employee 1,760,000 + 330,000 + 220,000 = 2,310,000; employer 3,850,000 + 660,000 + 220,000 = 4,730,000.",
+    "Assessable = 22,000,000 - 2,310,000 - 15,500,000 = 4,190,000; PIT = 4,190,000 x 5% = 209,500.",
+    "Net = 24,312,500 - 2,310,000 - 209,500 = 21,793,000."
+  ],
+  "month": "2026-09",
+  "monthStandardDays": 22,
+  "statutory": { "overtime.holiday_pay": { "mode": "inclusive" } },
+  "segments": [
+    { "from": "2026-09-01", "to": "2026-09-30", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }
+  ],
+  "timesheet": {
+    "standardDays": 22,
+    "paidDaysCenti": 2200,
+    "overtime": { "holiday": { "day": 480, "night": 60 } }
+  },
+  "expect": {
+    "lines": { "BASE": 22000000, "OT_HOLIDAY": 2312500, "PIT": 209500 },
+    "totals": { "grossEarnings": 24312500, "taxableIncome": 22000000, "employeeInsurance": 2310000, "employerInsurance": 4730000, "pit": 209500, "net": 21793000 },
+    "insurance": { "covered": true, "bhxhBhytBase": 22000000 },
+    "pit": { "assessableIncome": 4190000, "tax": 209500 },
+    "warnings": []
+  }
+}

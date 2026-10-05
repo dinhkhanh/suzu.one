@@ -22,7 +22,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { RatingPoint, ReviewSection } from "./enums";
 import { loadDirectory } from "./people";
-import { canReadReviewForm, canWriteManagerReview } from "./review-policy";
+import { canReadReviewForm, canReleaseReview, canWriteManagerReview, isReviewCalibrator } from "./review-policy";
 import {
   acknowledgeParticipant,
   addParticipant,
@@ -60,7 +60,7 @@ const SECTIONS: ReviewSection[] = [
   { key: "highlights", title: "Điểm nổi bật", titleEn: "Highlights", kind: "text", weight: 0, required: false, askedOf: ["self", "manager", "peer"] },
 ];
 
-const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}) => ({ name: "Đánh giá năm", nameEn: "Annual", description: null, sections: SECTIONS, ratingScale: SCALE, isActive: true, ...over });
+const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}): Parameters<typeof saveReviewTemplate>[1] => ({ name: "Đánh giá năm", nameEn: "Annual", description: null, kinds: [], sections: SECTIONS, ratingScale: SCALE, isActive: true, ...over });
 const cycle = (over: Partial<CycleInput> = {}): CycleInput => ({
   entityId: ids.szm,
   name: "Đánh giá năm 2026",
@@ -78,6 +78,8 @@ const cycle = (over: Partial<CycleInput> = {}): CycleInput => ({
   peerMin: 1,
   peerMax: 3,
   peerAnonymous: true,
+  signOffRequired: false,
+  isRolling: false,
   ...over,
 });
 
@@ -210,28 +212,61 @@ describe("writing, releasing and acknowledging", () => {
     // (3 × 10000 + 2 × 13000) / 5 = 56000 / 5 = 11200
     expect(manager.after.overallRatingBp).toBe(11200);
 
-    // Release before calibration takes the manager's figure as it stands.
-    const other = await releaseParticipant(linhParticipant, ids.tam);
+    // PRF-02: HR calibrates and releases, and only once the cycle has reached its calibration
+    // stage. The rules are asked against the real rows: mai is HR over the entity, tam the manager
+    // who wrote the review, long the manager above him.
+    const principalOf = (personId: string, hr = false) => ({ personId, workforceType: "employee" as const, grants: hr ? [{ role: "hr_admin" as const, scope: { type: "group" as const } }] : [] });
+    const partiesNow = async () => {
+      const loaded = (await loadParticipant(huyParticipant))!;
+      return partiesOfParticipant(loaded.participant, loaded.cycle, loaded.directory)!;
+    };
+
+    // While the cycle is still collecting nobody levels or hands over anything — not even HR.
+    const collecting = await partiesNow();
+    expect(collecting.cycleStatus).toBe("active");
+    expect(isReviewCalibrator(principalOf(ids.mai, true), collecting)).toBe(true);
+    expect(canReleaseReview(principalOf(ids.mai, true), collecting)).toBe(false);
+    expect(await fails(calibrateParticipant(huyParticipant, { reviewScoreBp: 10800, note: "too early" }, ids.mai))).toBe("review_cycle_not_calibrating");
+    expect(await fails(releaseParticipant(linhParticipant, ids.mai))).toBe("review_cycle_not_calibrating");
+    expect((await loadParticipant(linhParticipant))!.participant.releasedAt).toBeNull();
+
+    // One step at a time: the cycle cannot jump over calibration.
+    expect(await fails(advanceReviewCycle(cycleId, "released"))).toBe("review_cycle_bad_step");
+    expect((await advanceReviewCycle(cycleId, "calibration")).after.status).toBe("calibration");
+
+    // From calibration on HR may; the manager who wrote the review, and the one above, never do.
+    const calibrating = await partiesNow();
+    expect(canReleaseReview(principalOf(ids.mai, true), calibrating)).toBe(true);
+    expect(canReleaseReview(principalOf(ids.tam), calibrating)).toBe(false);
+    expect(canReleaseReview(principalOf(ids.long), calibrating)).toBe(false);
+    expect(canReleaseReview(principalOf(ids.huy, true), calibrating)).toBe(false); // never one's own, whatever one holds
+
+    // Release without calibration freezes the rating the manager proposed.
+    const other = await releaseParticipant(linhParticipant, ids.mai);
     expect(other.after.reviewScoreBp).toBe(10000);
     expect(other.after.stage).toBe("released");
-    expect(await fails(releaseParticipant(linhParticipant, ids.tam))).toBe("review_already_released");
+    expect(other.after.calibratedAt).toBeNull();
+    expect(await fails(releaseParticipant(linhParticipant, ids.mai))).toBe("review_already_released");
 
     // Calibration moves the figure the yearly result reads, with a note, and leaves the form alone.
-    const levelled = await calibrateParticipant(huyParticipant, { reviewScoreBp: 10800, note: "Cân đối với phòng." }, ids.long);
+    const levelled = await calibrateParticipant(huyParticipant, { reviewScoreBp: 10800, note: "Cân đối với phòng." }, ids.mai);
     expect(levelled.after.reviewScoreBp).toBe(10800);
     expect(levelled.after.stage).toBe("calibrated");
     const forms = await loadParticipant(huyParticipant);
     expect(forms!.forms.find((form) => form.kind === "manager")!.overallRatingBp).toBe(11200);
 
-    const released = await releaseParticipant(huyParticipant, ids.tam);
+    const released = await releaseParticipant(huyParticipant, ids.mai);
     expect(released.after.reviewScoreBp).toBe(10800); // the calibrated one wins
-    expect(await fails(calibrateParticipant(huyParticipant, { reviewScoreBp: 9000, note: "too late" }, ids.long))).toBe("review_already_released");
+    expect(await fails(calibrateParticipant(huyParticipant, { reviewScoreBp: 9000, note: "too late" }, ids.mai))).toBe("review_already_released");
   });
 
-  it("refuses to release before the manager has written", async () => {
+  it("refuses to release before the manager has written, and never by the person the review is about", async () => {
     const lines = await listCycleParticipants(cycleId);
     const untouched = lines.find((line) => line.personName === "owner")!;
     expect(await fails(releaseParticipant(untouched.participantId, ids.mai))).toBe("review_manager_not_submitted");
+    const own = lines.find((line) => line.personName === "mai")!;
+    expect(await fails(releaseParticipant(own.participantId, ids.mai))).toBe("review_own");
+    expect(await fails(calibrateParticipant(own.participantId, { reviewScoreBp: 13000, note: "mine" }, ids.mai))).toBe("review_own");
   });
 
   it("takes the acknowledgement once, and only after release", async () => {
@@ -281,13 +316,18 @@ describe("writing, releasing and acknowledging", () => {
     const shape = { kind: "manager" as const, authorPersonId: managerForm.authorPersonId, status: "submitted" as const };
     expect(canReadReviewForm(principal(ids.huy), parties, shape)).toBe(true); // released
     expect(canReadReviewForm(principal(ids.linh), parties, shape)).toBe(false); // a colleague
-    expect(canWriteManagerReview(principal(ids.tam), parties)).toBe(true);
-    expect(canWriteManagerReview(principal(ids.huy), parties)).toBe(false);
+    // The cycle is in calibration by now: writing has stopped, for the manager as for everyone.
+    expect(parties.cycleStatus).toBe("calibration");
+    expect(canWriteManagerReview(principal(ids.tam), parties)).toBe(false);
+    expect(canWriteManagerReview(principal(ids.tam), { ...parties, cycleStatus: "active", released: false })).toBe(true);
+    expect(canWriteManagerReview(principal(ids.huy), { ...parties, cycleStatus: "active", released: false })).toBe(false);
+    // A review that has been handed over is not written any more, whatever the cycle is doing.
+    expect(canWriteManagerReview(principal(ids.tam), { ...parties, cycleStatus: "active" })).toBe(false);
   });
 
   it("moves the cycle forward one step at a time", async () => {
     expect(await fails(advanceReviewCycle(cycleId, "closed"))).toBe("review_cycle_bad_step");
-    expect((await advanceReviewCycle(cycleId, "calibration")).after.status).toBe("calibration");
+    expect(await fails(advanceReviewCycle(cycleId, "calibration"))).toBe("review_cycle_bad_step"); // already there
     // Writing stops once the cycle leaves "active".
     expect(await fails(saveReviewForm({ participantId: huyParticipant, kind: "self", answers: {}, comment: null, submit: false }, ids.huy))).toBe("review_cycle_not_collecting");
     expect((await advanceReviewCycle(cycleId, "released")).after.status).toBe("released");
@@ -301,7 +341,7 @@ describe("participants HR adds and removes by hand", () => {
     await launchReviewCycle(created.id, ids.mai);
     const directory = await loadDirectory();
     // The collaborator was left out; HR can still put them in deliberately.
-    const added = await addParticipant(created.id, ids.ngo, directory);
+    const { participant: added } = await addParticipant(created.id, ids.ngo, directory);
     expect(added.managerPersonId).toBe(ids.tam);
     expect(await fails(addParticipant(created.id, ids.ngo, directory))).toBe("review_participant_exists");
 

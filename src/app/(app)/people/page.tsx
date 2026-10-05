@@ -9,9 +9,10 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
+import { statusTone } from "@/components/ui/tone";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
-import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
-import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
+import { canBrowsePeople, canFilterByPersonalFacts, canManagePositions } from "@/modules/core-hr/policy";
+import { competencyChoices, listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { SavedViews } from "@/modules/core-hr/ui/saved-views";
 import { exportPeopleAction } from "@/modules/core-hr/export-actions";
@@ -20,6 +21,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { jobTitle } from "@/lib/job-levels";
 import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("people");
@@ -42,6 +44,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
     q: one("q")?.slice(0, 100),
     entityId: UUID.test(one("entityId") ?? "") ? one("entityId") : undefined,
     departmentId: UUID.test(one("departmentId") ?? "") ? one("departmentId") : undefined,
+    competencyId: UUID.test(one("competencyId") ?? "") ? one("competencyId") : undefined,
     workforceType: personalFacts ? WORKFORCE_TYPES.find((value) => value === one("workforceType")) : undefined,
     status: personalFacts ? STATUSES.find((value) => value === one("status")) : undefined,
     page: Number.parseInt(one("page") ?? "1", 10) || 1,
@@ -51,11 +54,12 @@ export default async function PeoplePage(props: PageProps<"/people">) {
     Object.entries({ ...filters, page: undefined }).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   );
 
-  const [{ rows, total, pageSize }, entities, departments, views] = await Promise.all([
+  const [{ rows, total, pageSize }, entities, departments, views, competencies] = await Promise.all([
     listPeople(user.principal, filters),
     listEntities(),
     unitChoices(),
     listSavedViews(user.person.id, "people"),
+    competencyChoices(),
   ]);
   const page = filters.page ?? 1;
   const [te, locale] = await Promise.all([getTranslations("exports"), getLocale()]);
@@ -75,6 +79,14 @@ export default async function PeoplePage(props: PageProps<"/people">) {
             </Link>
             {can(user.principal, "person:manage") ? (
               <>
+                <Link href="/people/competencies" className={cn(buttonVariants({ variant: "outline" }))}>
+                  {t("competencies.title")}
+                </Link>
+                {canManagePositions(user.principal) ? (
+                  <Link href="/people/positions" className={cn(buttonVariants({ variant: "outline" }))}>
+                    {t("positions.title")}
+                  </Link>
+                ) : null}
                 <Link href="/people/import" className={cn(buttonVariants({ variant: "outline" }))}>
                   {t("import.title")}
                 </Link>
@@ -105,6 +117,25 @@ export default async function PeoplePage(props: PageProps<"/people">) {
             </option>
           ))}
         </Select>
+        {competencies.profession.length + competencies.skill.length > 0 ? (
+          <Select name="competencyId" defaultValue={filters.competencyId ?? ""} aria-label={t("competencies.title")} className="w-auto" searchable>
+            <option value="">{t("filters.allCompetencies")}</option>
+            <optgroup label={t("competencies.profession")}>
+              {competencies.profession.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label={t("competencies.skill")}>
+              {competencies.skill.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        ) : null}
         {personalFacts ? (
           <>
             <Select name="workforceType" defaultValue={filters.workforceType ?? ""} aria-label={t("fields.workforceType")} className="w-auto">
@@ -142,6 +173,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
             <TableRow>
               <TableHead kind="id">{t("fields.employeeCode")}</TableHead>
               <TableHead kind="text">{t("fields.fullName")}</TableHead>
+              <TableHead kind="text">{t("fields.jobTitle")}</TableHead>
               <TableHead kind="text">{t("fields.position")}</TableHead>
               <TableHead kind="org">{t("fields.department")}</TableHead>
               <TableHead kind="org">{t("fields.entity")}</TableHead>
@@ -165,6 +197,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                     </div>
                   </div>
                 </TableCell>
+                <TableCell>{jobTitle(t, row) ?? "—"}</TableCell>
                 <TableCell>{row.positionName ?? "—"}</TableCell>
                 <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
                 <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
@@ -173,7 +206,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
                       {row.workforceType ? <Badge variant="secondary">{t(`workforceType.${row.workforceType}`)}</Badge> : "—"}
-                      {row.status && row.status !== "active" ? <Badge variant="outline">{t(`status.${row.status}`)}</Badge> : null}
+                      {row.status && row.status !== "active" ? <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge> : null}
                     </span>
                   </TableCell>
                 ) : null}

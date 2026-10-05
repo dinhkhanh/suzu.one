@@ -66,6 +66,11 @@ const schema = z.object({
   STEP_UP_DRIVER: z.enum(["google", "local"]).default("google"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
+  // A dead-man's switch for the schedules (ENG-01, docs/runbooks/incidents.md): a ping URL base at
+  // an uptime service, e.g. healthchecks.io's `https://hc-ping.com/<ping key>`. Each schedule pings
+  // `<base>/<schedule>/start`, then `<base>/<schedule>` or `<base>/<schedule>/fail`; the service
+  // alerts when a ping is late. Unset = no pings.
+  CRON_PING_URL: z.url().optional(),
   // Google Chat (FR-PLT-31): an incoming-webhook URL for the space that gets approval cards.
   // Unset = the local driver records each card as "simulated" and nothing leaves the machine.
   GOOGLE_CHAT_WEBHOOK_URL: z.url().optional(),
@@ -102,11 +107,20 @@ const schema = z.object({
   GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
   GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY: z.string().min(1).optional(),
   GOOGLE_CALENDAR_IMPERSONATE: z.string().min(1).optional(),
-  // Shared read cache (Upstash Redis over REST; the Vercel integration provides both). Unset = no
-  // cache: every read goes to Postgres. Only reference data and non-sensitive counters are cached
-  // (src/lib/cache): never personal, restricted or compensation data.
-  KV_REST_API_URL: z.url().optional(),
-  KV_REST_API_TOKEN: z.string().min(1).optional(),
+  // The shared read cache (Vercel's Data Cache, src/lib/cache) is on wherever the app runs in a
+  // Vercel function and off everywhere else. `off` turns it off on Vercel too: every read goes to
+  // Postgres. Never restricted or compensation data either way.
+  DATA_CACHE: z.enum(["on", "off"]).optional(),
+  // The Content-Security-Policy the proxy puts on every page (src/lib/csp.ts). "report-only", the
+  // default, sends it as Content-Security-Policy-Report-Only: browsers block nothing and report
+  // what they would have. "enforce" sends the same policy as the enforcing header — after the
+  // reports have been read; "off" sends neither.
+  CSP_MODE: z.enum(["report-only", "enforce", "off"]).default("report-only"),
+  // Sentry's DSN, here only for that policy: the host the browser SDK posts to, and the endpoint
+  // that takes violation reports, are both read off it. The SDK itself reads these names directly
+  // (src/lib/observability), so any value passes here; one that is not a DSN is ignored.
+  SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 /**

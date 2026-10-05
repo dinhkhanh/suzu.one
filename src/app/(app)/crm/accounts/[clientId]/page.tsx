@@ -266,7 +266,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                     <TableRow key={invoice.id}>
                       <TableCell kind="id">
                         <RecordLink kind="invoice" id={invoice.id} className="font-medium text-foreground">
-                          {invoice.number}
+                          {invoice.number ?? t("invoice.draftHeading")}
                         </RecordLink>
                       </TableCell>
                       <TableCell>{f.date(invoice.issuedOn)}</TableCell>

@@ -19,7 +19,7 @@ vi.mock("@/lib/action", () => ({
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { getLeaderView, listMyWorkItems, nudgeTask } from "./leader";
+import { getLeaderView, leaderTotals, listMyWorkItems, nudgeTask } from "./leader";
 import { canDecideReview, canManageTemplate, canNudgeTask, canSubmitDeliverable } from "./policy";
 import { createProject } from "./projects";
 import { changeRecurrence, createRecurrence, generateOccurrences, listRecurrences } from "./recurrences";
@@ -139,6 +139,10 @@ describe("templates", () => {
       ids.long,
     );
     expect(taskIds).toHaveLength(3);
+    // The project layer's plan and job number came with it, through the platform's
+    // project-creation hooks — no caller has to ask for them (PJM-01).
+    const [plan] = await db().select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, project.id));
+    expect(plan?.jobNumber).toMatch(/^[A-Z0-9]+-\d{2}-\d{3}$/);
     const tasks = await listProjectTasks(project.id);
     const byTitle = Object.fromEntries(tasks.map((task) => [task.title, task]));
     expect(byTitle["Tiền kỳ"]).toMatchObject({ dueDate: "2026-10-06", assigneePersonId: ids.tam, parentTaskId: null });
@@ -179,7 +183,7 @@ describe("recurring tasks", () => {
     expect(await generateOccurrences("2026-10-10")).toMatchObject({ made: 2 });
     await changeRecurrence(recurrence.id, { endDate: "2026-10-10" });
     expect(await generateOccurrences("2026-11-01")).toMatchObject({ made: 0 });
-    const [view] = await listRecurrences(ids.project, "2026-11-01");
+    const [view] = await listRecurrences({ projectId: ids.project }, "2026-11-01");
     expect(view).toMatchObject({ made: 4, nextDate: null, assigneeName: "Huy Ho" });
     expect(await fails(createRecurrence({ projectId: ids.project, title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: {} }, ids.long, "2026-09-20"))).toBe("recurrence_rule_invalid");
   });
@@ -198,6 +202,22 @@ describe("leader view and nudge", () => {
     expect(view.people.find((person) => person.personId === ids.tam)!.tasks.find((task) => task.title === "Colour grade")).toMatchObject({ risk: "at_risk" });
     expect(view.people.some((person) => person.personId === ids.long)).toBe(false);
     expect(view.totals.overdue).toBeGreaterThanOrEqual(1);
+
+    // PERF-03: the totals are counted in SQL (`leaderTotals`, the reports tile's) and equal what
+    // the rows say — overdue, at risk (blocked by an open task, or due within two days and not
+    // started), flagged — with a flagged task and a soon-due one among them.
+    const { task: soon } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Due Tuesday", assigneePersonId: ids.tam, dueDate: "2026-09-22" }, ids.long);
+    await db().insert(schema.workBlocker).values({ taskId: soon.id, reason: "Waiting for the client", raisedByPersonId: ids.tam });
+    const longViewer = (await viewerOfPerson(db(), ids.long))!;
+    const again = await getLeaderView(longViewer, "2026-09-20");
+    const rows = again.people.flatMap((person) => person.tasks);
+    const fromRows = { open: rows.length, overdue: rows.filter((task) => task.risk === "overdue").length, atRisk: rows.filter((task) => task.risk === "at_risk").length, blocked: rows.filter((task) => task.blocker).length };
+    expect(fromRows.atRisk).toBeGreaterThanOrEqual(2);
+    expect(fromRows.blocked).toBe(1);
+    expect(again.totals).toEqual(fromRows);
+    expect(await leaderTotals(longViewer, "2026-09-20")).toEqual(fromRows);
+    expect(again.shown).toBeNull();
+    expect(await leaderTotals((await viewerOfPerson(db(), ids.khoi))!, "2026-09-20")).toEqual({ open: 0, overdue: 0, atRisk: 0, blocked: 0 });
     // A plain member leads nothing and asked for nothing.
     expect((await getLeaderView((await viewerOfPerson(db(), ids.khoi))!, "2026-09-20")).people).toEqual([]);
 

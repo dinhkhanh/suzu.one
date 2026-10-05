@@ -94,7 +94,7 @@ export const DEFAULT_RETENTION_MONTHS = 12;
  *
  * **Bump this whenever `recruit.careers.consent.*` changes in either message bundle.**
  */
-export const CONSENT_VERSION = "2026-09-pdpl-1";
+export const CONSENT_VERSION = "2026-10-pdpl-2";
 
 /** What the public form is allowed to contain, so a probe cannot post a 10 MB cover letter. */
 export const PUBLIC_LIMITS = {
@@ -200,12 +200,12 @@ export type OfferDeclineReason = (typeof OFFER_DECLINE_REASONS)[number];
 export const DEFAULT_OFFER_VALID_DAYS = 7;
 
 /** What an offer may contain. Probation in Vietnam is capped at 60 days for most roles (Labour Code art. 25). */
-export const OFFER_LIMITS = { probationMonths: 6, probationPercentMin: 85, note: 5_000, maxMonthlyVnd: 2_000_000_000 } as const;
+export const OFFER_LIMITS = { probationMonths: 6, note: 5_000, maxMonthlyVnd: 2_000_000_000 } as const;
 
 // ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
 
 /** What a wording is for. The kind decides which templates a screen offers, nothing more. */
-export const RECRUIT_EMAIL_KINDS = ["invite", "reject", "offer", "general"] as const;
+export const RECRUIT_EMAIL_KINDS = ["acknowledge", "invite", "reject", "offer", "general"] as const;
 export type RecruitEmailKind = (typeof RECRUIT_EMAIL_KINDS)[number];
 
 /**
@@ -220,5 +220,47 @@ export const RECRUIT_EMAIL_PLACEHOLDERS = [
   "stage_name",
   "sender_name",
   "careers_url",
+  // Filled for an interview's own letters (invitation, cancellation), in the candidate's language
+  // and Vietnam time; a letter sent by hand from the application has no interview to name.
+  "interview_time",
+  "interview_place",
+  "interview_notes",
+  /**
+   * The candidate's own page about what is kept of them (`/careers/privacy/<token>`): whether they
+   * are in the talent pool, and a button to leave it. Only ever filled for a letter going to the
+   * address on the record it is about — see `letters.ts`.
+   */
+  "privacy_url",
 ] as const;
 export type RecruitEmailPlaceholder = (typeof RECRUIT_EMAIL_PLACEHOLDERS)[number];
+
+/**
+ * Placeholders a letter may lack without anything being wrong: a line naming one is left out of
+ * the letter rather than reaching the candidate as braces (`renderEmail`'s `optional`) — an
+ * interview with no note for the candidate, a letter that may not carry the privacy link.
+ */
+export const OPTIONAL_LETTER_PLACEHOLDERS: readonly RecruitEmailPlaceholder[] = ["interview_notes", "privacy_url"];
+
+/**
+ * The wordings the system sends **by itself**, by code: the moment is the trigger and nobody picks
+ * a template. A letter switched off (`is_active = false`) is not sent, and the application's
+ * history says so. A saved template's code cannot be changed (the form shows it read-only).
+ */
+export const AUTOMATIC_LETTERS = {
+  /** Straight after an application through the careers page. */
+  acknowledge: "ACK_APPLICATION",
+  /** An interview booked or moved: the time, the place, and an `.ics` attached. */
+  interview: "INTERVIEW_SCHEDULED",
+  /** An interview called off. */
+  interviewCancelled: "INTERVIEW_CANCELLED",
+  /** An application turned down, when the recruiter leaves "tell the candidate" ticked. */
+  reject: "REJECT_AFTER_REVIEW",
+  /** The offer goes out, with the letter attached. */
+  offer: "OFFER_NOTE",
+} as const;
+export type AutomaticLetter = keyof typeof AUTOMATIC_LETTERS;
+
+/** The languages a candidate's letters are written in. */
+export const CANDIDATE_LOCALES = ["vi", "en"] as const;
+export type CandidateLocale = (typeof CANDIDATE_LOCALES)[number];
+export const candidateLocale = (value: string | null | undefined): CandidateLocale => (value === "en" ? "en" : "vi");

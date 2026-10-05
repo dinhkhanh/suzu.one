@@ -14,7 +14,7 @@ import vi_ from "../../../../messages/vi.json";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { loadShellCounts } from "../shell/service";
 import { KINDS, messageKey } from "./kinds";
-import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
+import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueRawEmail, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
 
 const people = {} as Record<"an" | "binh" | "ctv" | "gone", string>;
 
@@ -65,6 +65,24 @@ describe("notify", () => {
     expect(outbox.map((email) => email.toEmail)).toEqual(["an@suzu.vn"]);
     expect(outbox[0].subject).toBe("Tác vụ tự động thất bại: people-roll-over");
     expect(outbox[0].bodyText).toContain("https://suzu.one/admin/jobs");
+  });
+
+  // Somebody suspended cannot sign in, and suspension withholds the company's work from them: no
+  // in-app notice, no email, no push, no chat card — and they come back to nothing stale either.
+  it("tells a suspended person nothing, on any channel", async () => {
+    const [held] = await db().insert(schema.person).values({ fullName: "Held", searchName: "held", workEmail: "held@suzu.vn", status: "suspended" }).returning();
+    await db().insert(schema.pushSubscription).values([
+      { personId: held.id, endpoint: "https://push.example/held", p256dh: "k", auth: "a" },
+      { personId: people.an, endpoint: "https://push.example/an", p256dh: "k", auth: "a" },
+    ]);
+    await db().delete(schema.chatDelivery);
+    // A kind that reaches every channel by default: An, beside them, gets it everywhere.
+    await notify({ recipients: [held.id, people.an], kind: "approvals.requested", params: { requester: "Huy", requestType: "leave" }, link: "/approvals", chat: {} });
+    expect(await countUnread(held.id)).toBe(0);
+    expect(await countUnread(people.an)).toBe(1);
+    expect((await db().select().from(schema.emailOutbox)).map((email) => email.toEmail)).not.toContain("held@suzu.vn");
+    expect((await db().select().from(schema.pushDelivery)).map((push) => push.personId)).toEqual([people.an]);
+    expect((await db().select().from(schema.chatDelivery)).map((card) => card.personId)).toEqual([people.an]);
   });
 
   it("follows each person's preferences, except for mandatory categories", async () => {
@@ -125,6 +143,22 @@ describe("the daily job", () => {
     sendEmail.mockResolvedValue({ status: "skipped" });
     expect(await deliverPendingEmails()).toEqual({ sent: 0, failed: 0, skipped: 1 });
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "an@suzu.vn" }));
+  });
+
+  it("hands a letter's attachment to the provider, keeps it while a retry may need it, and drops it once done", async () => {
+    const file = { fileName: "interview.ics", contentType: "text/calendar; charset=utf-8; method=REQUEST", contentBase64: Buffer.from("BEGIN:VCALENDAR").toString("base64") };
+    const { id } = await queueRawEmail("candidate@example.com", "Lịch phỏng vấn", "Chào bạn", db(), [file]);
+
+    sendEmail.mockResolvedValue({ status: "failed", error: "503" });
+    await deliverPendingEmails();
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "candidate@example.com", attachments: [file] }));
+    let [email] = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.id, id));
+    expect(email.attachments).toEqual([file]);
+
+    sendEmail.mockResolvedValue({ status: "sent" });
+    await deliverPendingEmails();
+    [email] = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.id, id));
+    expect(email).toMatchObject({ status: "sent", attachments: null });
   });
 });
 

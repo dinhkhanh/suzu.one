@@ -36,7 +36,7 @@ import { toSearchKey } from "@/lib/text"
 /** Above this many options the field itself is the search box; at or below, a button opens the list. */
 const SEARCH_THRESHOLD = 8
 
-type Option = { key: string; value: string; label: string; disabled: boolean }
+type Option = { key: string; value: string; label: string; disabled: boolean; /** The entry that offers to add what was typed (a creatable MultiSelect). */ create?: boolean }
 type Group = { value: string; label: string | null; items: Option[] }
 
 type SelectProps = {
@@ -107,8 +107,25 @@ function useOptions(children: React.ReactNode) {
   return { items: grouped ? groups : options, options, grouped }
 }
 
-function OptionList({ grouped }: { grouped: boolean }) {
+function OptionList({ grouped, creatable }: { grouped: boolean; creatable?: boolean }) {
   const t = useTranslations("controls")
+  if (creatable)
+    return (
+      <>
+        <ComboboxEmpty>{t("typeToAdd")}</ComboboxEmpty>
+        <ComboboxList>
+          {(item: Option) =>
+            item.create ? (
+              <ComboboxItem key={item.key} value={item}>
+                {t("add", { name: item.label })}
+              </ComboboxItem>
+            ) : (
+              renderItem(item)
+            )
+          }
+        </ComboboxList>
+      </>
+    )
   return (
     <>
       <ComboboxEmpty>{t("noResults")}</ComboboxEmpty>
@@ -235,17 +252,36 @@ type MultiSelectProps = {
   "aria-label"?: string
   /** Called with every chosen value whenever the choice changes, for a form that keeps its own state. */
   onValueChange?: (values: string[]) => void
+  /**
+   * Lets the person add an entry that is not among the options (skills, tags): what they typed is
+   * offered as "Add …", and the value posted for it is the text itself — so give the options their
+   * names as values, and let the server find or create each name. Flat lists only.
+   */
+  creatable?: boolean
+  /** How an added entry is written, e.g. capitalised: the chip and the posted value show it that way at once. */
+  formatNew?: (typed: string) => string
   children?: React.ReactNode
 }
 
-function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-label": ariaLabel, onValueChange, children }: MultiSelectProps) {
+const typedOption = (text: string): Option => ({ key: `new:${text}`, value: text, label: text, disabled: false })
+
+function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-label": ariaLabel, onValueChange, creatable, formatNew, children }: MultiSelectProps) {
   const { items, options, grouped } = useOptions(children)
   const anchor = useComboboxAnchor()
   const [initial] = React.useState<readonly string[]>(defaultValue ?? [])
   const [values, setValues] = React.useState(initial)
-  const selected = options.filter((option) => values.includes(option.value))
+  // What this person added themselves — and, to begin with, any chosen value the options do not list.
+  const [added, setAdded] = React.useState<Option[]>(() => (creatable ? initial.filter((value) => !options.some((option) => option.value === value)).map(typedOption) : []))
+  const [query, setQuery] = React.useState("")
+  const known = creatable ? [...options, ...added.filter((entry) => !options.some((option) => option.value === entry.value))] : options
+  const selected = known.filter((option) => values.includes(option.value))
+  const spaced = query.trim().replace(/\s+/g, " ")
+  const typed = formatNew ? formatNew(spaced) : spaced
+  // Offered only for a name nobody has yet: "social media" finds "Social Media" instead of doubling it.
+  const offer = creatable && typed !== "" && !known.some((option) => toSearchKey(option.label) === toSearchKey(typed)) ? { ...typedOption(typed), key: `create:${typed}`, create: true } : null
 
   const hidden = React.useRef<HTMLInputElement | null>(null)
+  const listOpen = React.useRef(false)
   useFormReset(hidden, () => setValues(initial))
   const classes = splitClasses(className)
 
@@ -253,17 +289,25 @@ function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-
     <div className={classes.wrapper}>
       <Combobox<Option, true>
         multiple
-        items={items}
+        items={creatable ? (offer ? [...known, offer] : known) : items}
         value={selected}
         onValueChange={(next) => {
+          const fresh = next.filter((option) => option.create).map((option) => typedOption(option.value))
+          if (fresh.length > 0) setAdded((current) => [...current, ...fresh])
+          // Chosen: the field is ready for the next entry.
+          if (creatable) setQuery("")
           const chosen = next.map((option) => option.value)
           setValues(chosen)
           onValueChange?.(chosen)
         }}
+        {...(creatable ? { inputValue: query, onInputValueChange: (value: string) => setQuery(value) } : {})}
+        onOpenChange={(next) => {
+          listOpen.current = next
+        }}
         isItemEqualToValue={sameOption}
         itemToStringLabel={(item) => item.label}
         itemToStringValue={(item) => item.value}
-        filter={matches}
+        filter={creatable ? (item, text) => !!item.create || matches(item, text) : matches}
         autoHighlight
         name={name}
         form={form}
@@ -277,13 +321,20 @@ function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-
                 {chosen.map((option) => (
                   <ComboboxChip key={option.key}>{option.label}</ComboboxChip>
                 ))}
-                <ComboboxChipsInput id={id} aria-label={ariaLabel} disabled={disabled} />
+                <ComboboxChipsInput
+                  id={id}
+                  aria-label={ariaLabel}
+                  disabled={disabled}
+                  // Escape closes the list. Pressed again it would empty the field — every entry the
+                  // person has just typed in — so on a closed list it does nothing here.
+                  onKeyDown={creatable ? (event) => event.key === "Escape" && !listOpen.current && event.preventBaseUIHandler() : undefined}
+                />
               </>
             )}
           </ComboboxValue>
         </ComboboxChips>
         <ComboboxContent anchor={anchor}>
-          <OptionList grouped={grouped} />
+          <OptionList grouped={grouped} creatable={creatable} />
         </ComboboxContent>
       </Combobox>
     </div>

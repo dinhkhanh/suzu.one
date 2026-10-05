@@ -16,6 +16,8 @@ Mọi thành viên của một nhóm (và trưởng nhóm, lãnh đạo điều 
 
 Vào [Mẫu công việc](/work/templates) → **Tạo dự án từ mẫu** (xem chi tiết ở trang **Yêu cầu, mẫu & khách hàng** của chương **Công việc**). Dự án mới bắt đầu ở trạng thái **Dự kiến**, kèm giai đoạn, mốc, danh mục sản phẩm, ngân sách giờ và brief mẫu. Dự án chuyển sang **Đang chạy** khi brief được duyệt khởi động; trong lúc chờ, mọi người vẫn tạo công việc bình thường.
 
+Dự án có **Mã dự án** (số job) ngay khi được tạo, dù tạo bằng cách nào, nên **Tạo không gian tài liệu** dùng được ngay.
+
 ### Cách 3 — Từ một cơ hội đã chốt
 
 Khi một cơ hội bán hàng được chốt ở phân hệ **Khách hàng & kinh doanh**, dự án có thể được tạo kèm những gì đã bán: loại dự án, phí, mục tiêu và phạm vi trong brief, đầu mối khách hàng, danh mục sản phẩm, hạn mức retainer, ngân sách giờ theo vai trò và người phụ trách khách hàng. Tab **Tổng quan** ghi rõ **Từ cơ hội** và hợp đồng gốc.
@@ -23,6 +25,9 @@ Khi một cơ hội bán hàng được chốt ở phân hệ **Khách hàng & k
 ### Sửa thông tin dự án
 
 Người điều hành dự án (phụ trách dự án, trưởng nhóm, lãnh đạo điều hành nhóm với dự án không riêng tư) có nút **Sửa dự án** ở mọi tab: đổi tên, khách hàng, mức mở, người phụ trách, **Trạng thái** (**Dự kiến**, **Đang chạy**, **Tạm dừng**, **Đã xong**, **Lưu trữ**), ngày, mô tả, màu và **Ảnh đại diện dự án** (**Thêm poster** / **Đổi poster** / **Gỡ poster** — JPG, PNG hoặc WebP).
+
+> [!IMPORTANT]
+> Với dự án làm cho khách (**Dự án khách hàng**, **Retainer**), ô **Trạng thái** không đưa dự án qua hai cửa: dự án chỉ sang **Đang chạy** khi brief được duyệt khởi động, và chỉ sang **Đã xong** qua tab **Đóng dự án**. Dự án **Nội bộ** và **Pitch / đề xuất** đổi trạng thái tự do. Dự án đã đóng chỉ đổi được trạng thái sau khi được mở lại (xem **Đóng dự án**).
 
 ## Viết brief
 
@@ -54,7 +59,7 @@ Người duyệt mở dự án sẽ thấy brief và khung quyết định ngay 
 
 ### Kết quả
 
-- **Được duyệt** — brief chuyển **Đã duyệt khởi động** và được khóa; **baseline** (ngày bắt đầu, hạn, các mốc, ngày của mọi công việc, ngân sách giờ) được ghi lại; dự án đang **Dự kiến** chuyển sang **Đang chạy**. Sau đó, thay đổi phạm vi / giờ / phí / hạn đi qua tab **Thay đổi**.
+- **Được duyệt** — brief chuyển **Đã duyệt khởi động** và được khóa (riêng liên hệ phía khách và đường dẫn vẫn sửa được bằng **Sửa liên hệ và đường dẫn**); **baseline** (ngày bắt đầu, hạn, các mốc, ngày của mọi công việc, ngân sách giờ) được ghi lại; dự án đang **Dự kiến** chuyển sang **Đang chạy**. Sau đó, thay đổi phạm vi / giờ / phí / hạn đi qua tab **Thay đổi**.
 - **Bị trả lại / từ chối** — brief về **Brief bị trả lại** kèm góp ý của người duyệt (*Brief bị trả lại với góp ý: "…"*). Sửa rồi **Gửi duyệt lại**.
 
 Mục **Lịch sử duyệt** (gập) cho xem toàn bộ các bước và ý kiến.

@@ -3,22 +3,23 @@
 // reactions, and the one-click reminder. Who may read a report is policy.ts; every read here takes
 // the reader and asks it.
 import "server-only";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { countOpenBlockersRaisedBy, type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
-import { dayOf, type PersonDay } from "./days";
+import { dayOf, daysOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
 import { dayActivities } from "../platform/day-activity/registry";
 import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
 import { DEFAULT_TEAM_RULES, isLate, type NotRequiredReason } from "./engine/rules";
 import { loadSeen, readsOwn } from "./labels";
-import { listOverseen, loadReportReader, loadSubjects, readerMaySee, type Subject } from "./people";
+import { firstReadersOf, listOverseen, loadReportReader, loadSubjects, readerMaySee, type Subject } from "./people";
 import { findPlan } from "./plans";
 import { canOverseeReport, canViewReport, type ReportReader } from "./policy";
-import type { PlannedItem } from "./schema";
+import { claimReminders } from "./reminders";
+import type { PlannedItem, ReportRevision } from "./schema";
 import { billableProjects, listTimeOf } from "./time";
 
 export type ReportRow = typeof schema.dailyReport.$inferSelect;
@@ -27,6 +28,10 @@ export type ReportCommentRow = typeof schema.dailyReportComment.$inferSelect;
 /** How far back a report may still be written: the rest of the week, not last month. */
 export const REPORT_BACKFILL_DAYS = 7;
 const dayLabel = (date: IsoDate) => date.split("-").reverse().join("/");
+/** May a report for this day still be written, or asked for: today or one of the days of the back-fill window. */
+export const withinReportWindow = (date: IsoDate, today: IsoDate): boolean => date <= today && date >= addDays(today, -REPORT_BACKFILL_DAYS);
+/** The day's report form. Every link to it names its day: a reminder opened after midnight still opens the day it was about. */
+export const reportLink = (date: IsoDate) => `/daily/report?date=${date}`;
 
 export async function findReport(personId: string, date: IsoDate): Promise<ReportRow | null> {
   const [row] = await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, date))).limit(1);
@@ -82,8 +87,7 @@ export type ReportInput = { blockers: string | null; notes: string | null; tomor
  * afterwards changes the words, not the record of when it came in.
  */
 export async function submitReport(personId: string, date: IsoDate, input: ReportInput, now: Date = new Date()): Promise<{ before: ReportRow | null; after: ReportRow }> {
-  const today = todayInVietnam(now);
-  if (date > today || date < addDays(today, -REPORT_BACKFILL_DAYS)) throw new ActionError("report_date_invalid");
+  if (!withinReportWindow(date, todayInVietnam(now))) throw new ActionError("report_date_invalid");
   const [before, draft, day, open] = await Promise.all([findReport(personId, date), buildDraft(personId, date), dayOf([personId], date), listOpenWorkOf(personId, date)]);
   const tomorrow: PlannedItem[] = [...new Set(input.tomorrow)].map((taskId) => {
     const task = open.find((row) => row.taskId === taskId);
@@ -92,6 +96,11 @@ export async function submitReport(personId: string, date: IsoDate, input: Repor
   });
   const deadline = day.get(personId)?.rules.reportDeadline ?? DEFAULT_TEAM_RULES.reportDeadline;
   const first = !before || before.status !== "submitted";
+  // A re-submission rewrites the row. What the person had written before stays on the report — the
+  // readers see that it was edited after it was sent, and what it said (the audit log keeps who
+  // submitted and when, not the words, and the readers of a report do not read the audit log).
+  const reworded = !first && ((before.blockers ?? "") !== (input.blockers ?? "") || (before.notes ?? "") !== (input.notes ?? ""));
+  const revisions: ReportRevision[] | null = reworded ? [...before.revisions, { at: before.updatedAt.toISOString(), blockers: before.blockers, notes: before.notes }].slice(-MAX_REPORT_REVISIONS) : null;
   const values = {
     activity: draft.activity,
     done: draft.done,
@@ -103,13 +112,38 @@ export async function submitReport(personId: string, date: IsoDate, input: Repor
     status: "submitted",
     updatedAt: now,
     ...(first ? { submittedAt: now, late: isLate(now, date, deadline), secondsToSubmit: input.secondsToSubmit } : {}),
+    ...(revisions ? { revisions } : {}),
   };
-  const [after] = await db()
-    .insert(schema.dailyReport)
-    .values({ personId, date, ...values })
-    .onConflictDoUpdate({ target: [schema.dailyReport.personId, schema.dailyReport.date], set: values })
-    .returning();
-  return { before, after };
+  const told = await blockerReaders(personId, input.blockers);
+  return db().transaction(async (tx) => {
+    const [after] = await tx
+      .insert(schema.dailyReport)
+      .values({ personId, date, ...values })
+      .onConflictDoUpdate({ target: [schema.dailyReport.personId, schema.dailyReport.date], set: values })
+      .returning();
+    if (told) {
+      // Once per report, however often it is sent again: claimed by person and report day in the
+      // reminders' bookkeeping, in the transaction that writes the report.
+      const [claimed] = await claimReminders(tx, [personId], "report_blockers", date);
+      if (claimed) await notify({ recipients: told.recipients, kind: "daily.report_blockers", params: { actor: told.name, date: dayLabel(date) }, link: `/daily/reports/${after.id}` }, tx);
+    }
+    return { before, after };
+  });
+}
+
+/** How many earlier versions of a report's words are kept: the last few, not every keystroke of a person who saves often. */
+export const MAX_REPORT_REVISIONS = 20;
+
+/**
+ * A report that carries blockers — the person wrote some, or has raised a blocker on a task that
+ * is still open — is told to the people it is sent to (`firstReadersOf`: the leads of their teams,
+ * or their line manager where no lead stands over them). A report without blockers tells nobody:
+ * the leads read the board. Null when there is nothing to tell or nobody to tell it to.
+ */
+async function blockerReaders(personId: string, blockers: string | null): Promise<{ recipients: string[]; name: string } | null> {
+  if (!blockers?.trim() && !(await countOpenBlockersRaisedBy([personId])).get(personId)) return null;
+  const readers = (await firstReadersOf([personId])).get(personId);
+  return readers && readers.told.length > 0 ? { recipients: readers.told, name: readers.fullName } : null;
 }
 
 export async function findReportById(reportId: string): Promise<ReportRow | null> {
@@ -160,6 +194,29 @@ export async function getReportView(reader: ReportReader, reportId: string): Pro
   return { report: shown, subject, comments, openBlockers: blockers, tomorrow: tomorrow.map((line) => showLine(line, seen)) };
 }
 
+/**
+ * The days before today the person can still report on and has not: inside the back-fill window,
+ * a report required of them that day (never a holiday, leave or a day off) and none submitted.
+ * Newest first. Filed now, each is marked late — the deadline was that day's.
+ */
+export async function listMissingReportDays(personId: string, today: IsoDate): Promise<IsoDate[]> {
+  const from = addDays(today, -REPORT_BACKFILL_DAYS);
+  const to = addDays(today, -1);
+  const [days, submitted] = await Promise.all([
+    daysOf([personId], from, to),
+    db()
+      .select({ date: schema.dailyReport.date })
+      .from(schema.dailyReport)
+      .where(and(eq(schema.dailyReport.personId, personId), gte(schema.dailyReport.date, from), lte(schema.dailyReport.date, to), eq(schema.dailyReport.status, "submitted"))),
+  ]);
+  const sent = new Set(submitted.map((row) => row.date));
+  return [...(days.get(personId)?.values() ?? [])]
+    .filter((day) => day.report.required && !sent.has(day.day.date))
+    .map((day) => day.day.date)
+    .sort()
+    .reverse();
+}
+
 /** The person's own recent reports. */
 export async function listMyReports(personId: string, limit = 30): Promise<Pick<ReportRow, "id" | "date" | "status" | "late" | "submittedAt" | "blockers" | "minutesLogged">[]> {
   return db()
@@ -200,9 +257,16 @@ export async function commentOnReport(reader: ReportReader, reportId: string, in
 // ── The team daily board ────────────────────────────────────────────────────────────────────
 
 export type BoardStatus = "submitted" | "missing" | "not_required";
+/**
+ * The person's morning plan for the day (FR-PJM-21, D23): whether one was filed and when, late
+ * against their cut-off, and what it holds — each task named only where the reader may open it.
+ * `required` is what the day asked of the person, so a missing plan reads as missing only then.
+ */
+export type BoardPlan = { filed: boolean; required: boolean; late: boolean; submittedAt: Date | null; note: string | null; items: (ShownLine & { minutes: number | null })[] };
 export type BoardRow = {
   personId: string;
   name: string;
+  plan: BoardPlan;
   status: BoardStatus;
   reason: NotRequiredReason | null;
   reportId: string | null;
@@ -222,15 +286,20 @@ const ORDER: Record<BoardStatus, number> = { missing: 0, submitted: 1, not_requi
  * Every person the reader oversees on a date (FR-PJM-22): submitted, missing, or not required
  * (leave, holiday, untracked day, the team's rules) — blockers first, then the missing. The rows
  * are exactly `listOverseen`, the list form of the policy.
+ *
+ * Beside the report, the day's morning plan (D23: whoever reads the reports reads the plans — the
+ * same rows, so the same rule): filed or not, when, late or not, and its tasks. The tasks of every
+ * plan on the board are resolved for the reader in one pass, like a report's lines.
  */
 export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise<BoardGroup[]> {
   const groups = await listOverseen(reader);
   const personIds = [...new Set(groups.flatMap((group) => group.personIds))];
   if (personIds.length === 0) return [];
-  const [subjects, days, reports, blockers, reminded] = await Promise.all([
+  const [subjects, days, reports, plans, blockers, reminded] = await Promise.all([
     loadSubjects(personIds),
     dayOf(personIds, date),
     db().select().from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, personIds), eq(schema.dailyReport.date, date))),
+    db().select().from(schema.dailyPlan).where(and(inArray(schema.dailyPlan.personId, personIds), eq(schema.dailyPlan.date, date), isNotNull(schema.dailyPlan.submittedAt))),
     // The board shows how many, never which: the count comes from Postgres.
     countOpenBlockersRaisedBy(personIds),
     db()
@@ -247,6 +316,20 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
   const submittedOf = new Map(reports.filter((row) => row.status === "submitted").map((row) => [row.personId, row]));
   const commentsOf = new Map(commentCounts.map((row) => [row.reportId, row.value]));
   const remindedOf = new Set(reminded.map((row) => row.personId));
+  const planOf = new Map(plans.map((row) => [row.personId, row]));
+  // Every planned task on the board, once: the ones that still exist, and what this reader may open.
+  const plannedIds = plans.flatMap((row) => row.items.map((item) => item.taskId));
+  const [existing, seen] = await Promise.all([listDayTasks(plannedIds), loadSeen(reader.personId, { taskIds: plannedIds })]);
+  const stillThere = new Set(existing.map((task) => task.taskId));
+
+  const planView = (personId: string): BoardPlan => {
+    const plan = planOf.get(personId);
+    const required = !!days.get(personId)?.plan.required;
+    if (!plan) return { filed: false, required, late: false, submittedAt: null, note: null, items: [] };
+    // In the plan's order; a task deleted since is left out.
+    const items = plan.items.filter((item) => stillThere.has(item.taskId)).map((item) => ({ ...showLine({ taskId: item.taskId, title: "", ref: null }, seen), minutes: item.minutes }));
+    return { filed: true, required, late: plan.late, submittedAt: plan.submittedAt, note: plan.note, items };
+  };
 
   const rowOf = (personId: string): BoardRow => {
     const report = submittedOf.get(personId);
@@ -255,6 +338,7 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
     return {
       personId,
       name: subjects.get(personId)?.fullName ?? "",
+      plan: planView(personId),
       status,
       reason: status === "not_required" ? (day?.report.reason ?? null) : null,
       reportId: report?.id ?? null,
@@ -275,11 +359,14 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
 }
 
 /**
- * "Please send today's report" to one person or everyone missing (FR-PJM-22). Only to people the
- * reader oversees whose report is required and not in; once per person and day however often
- * anyone presses the button (`daily_reminder_sent`). Returns who was told.
+ * "Please send your report" to one person or everyone missing (FR-PJM-22), for today or a day of
+ * the back-fill window — a report that can still be written can still be asked for. Only to people
+ * the reader oversees whose report was required that day and is not in; once per person and report
+ * day however often anyone presses the button (`daily_reminder_sent`). The notice for a past day
+ * names it, and the link opens that day's form. Returns who was told.
  */
-export async function remindMissing(reader: ReportReader, personIds: readonly string[], date: IsoDate, actorName: string): Promise<string[]> {
+export async function remindMissing(reader: ReportReader, personIds: readonly string[], date: IsoDate, actorName: string, today: IsoDate = todayInVietnam()): Promise<string[]> {
+  if (!withinReportWindow(date, today)) throw new ActionError("report_date_invalid");
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return [];
   const [subjects, days, reports] = await Promise.all([loadSubjects(ids), dayOf(ids, date), db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, ids), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")))]);
@@ -295,7 +382,7 @@ export async function remindMissing(reader: ReportReader, personIds: readonly st
       .onConflictDoNothing()
       .returning({ personId: schema.dailyReminderSent.personId });
     const told = fresh.map((row) => row.personId);
-    await notify({ recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: `/daily/report?date=${date}` }, tx);
+    await notify(date === today ? { recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: reportLink(date) } : { recipients: told, kind: "daily.report_nudge_past", params: { actor: actorName, date: dayLabel(date) }, link: reportLink(date) }, tx);
     return told;
   });
 }

@@ -41,6 +41,7 @@ const PERMISSIONS = [
   "feedback:manage",
   "feedback:read",
   "auth:impersonate",
+  "brand:manage",
 ] as const satisfies readonly Exclude<Permission, "*">[];
 
 const ENTITY = "entity-a";

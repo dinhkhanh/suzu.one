@@ -86,6 +86,17 @@ export const canBrowseCandidates = (principal: Principal): boolean => can(princi
 /** Creating and editing a candidate record by hand (a CV somebody forwarded). */
 export const canManageCandidates = (principal: Principal): boolean => canBrowseCandidates(principal);
 
+/**
+ * Erasing a candidate on their request (PDPL; NFR-PRV-04). It empties the record **everywhere it
+ * has been used**, so it takes `recruit:manage` over *every* opening the candidate applied to: a
+ * recruiter for one company cannot wipe what another company's pipeline holds. A lead who has
+ * applied nowhere carries no entity to scope a narrower grant against, so — as with reading one —
+ * that takes a group-wide grant. Hiring-team membership is not enough: a hiring manager reads the
+ * candidates for their job and decides nothing about what the company keeps.
+ */
+export const canEraseCandidate = (principal: Principal, appliedTo: readonly OpeningTarget[]): boolean =>
+  appliedTo.length === 0 ? can(principal, "recruit:manage", {}) : appliedTo.every((opening) => canRunRecruitment(principal, opening));
+
 // ── Money ───────────────────────────────────────────────────────────────────────────────────
 
 /**

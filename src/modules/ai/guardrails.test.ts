@@ -91,7 +91,7 @@ beforeAll(async () => {
 
   const hire = async (who: Who, name: string, startDate: string, managerId: string | null = null) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
@@ -238,6 +238,42 @@ describe("the subject of a tool is always the asker (FR-AI-02)", () => {
     const lan = await toolOf("lan", "Tháng 8/2026 tôi đi muộn mấy lần?");
     expect(huy.status === "answered" && huy.params.lateCount).toBe(3);
     expect(lan.status === "answered" && lan.params.lateCount).toBe(1);
+  });
+
+  it("answers a person's own question when it merely holds a capital letter — a district, their entity", async () => {
+    // "Quận" and "Media" used to be read as colleagues: the asker was refused their own figures.
+    const district = await toolOf("huy", "Tôi làm ở văn phòng Quận 1, tháng 8/2026 tôi đi muộn mấy lần?");
+    expect(district).toMatchObject({ status: "answered", tool: "attendance_summary" });
+    expect(district.status === "answered" && district.params.lateCount).toBe(3);
+    const entity = await toolOf("lan", "Tôi làm ở Media, tôi còn bao nhiêu ngày phép?");
+    expect(entity).toMatchObject({ status: "answered", tool: "leave_balance" });
+    // Lan's own seven days — the word in the question chose nobody.
+    expect(entity.status === "answered" && entity.params.available).toBe(7);
+    const payslip = await toolOf("huy", "Giải thích phiếu lương tháng 8/2026 của tôi ở SuZu Media");
+    expect(payslip).toMatchObject({ status: "answered", tool: "payslip_explain" });
+  });
+
+  it("still refuses the real third-person question, however it names the colleague", async () => {
+    for (const question of ["Tháng 8/2026 anh Huy đi muộn mấy lần?", "Tôi muốn xem Ho Gia Huy còn bao nhiêu ngày phép ở Quận 1", "Chị Tran Thi Lan còn bao nhiêu ngày phép?", "How many leave days does Tran Thi Lan have left?"]) {
+      const outcome = await toolOf("manager", question);
+      expect(outcome, question).toMatchObject({ status: "refused", reason: "other_person" });
+      expectNoLeak(outcome, ["Ho Gia Huy", "Tran Thi Lan"]);
+    }
+  });
+
+  it("gives a question that names nobody for certain to the knowledge base, never a colleague's figure", async () => {
+    // One bare capitalised word and no "me": not a tool question at all. Whatever the handbook
+    // says, a tool was not run — so there is no figure of Huy's for it to hold.
+    const resolved = await answerOf("manager", "Tháng 8/2026 Huy đi muộn mấy lần?");
+    expect(resolved.kind).toBe("kb");
+    // And with "tôi" in it, the tool runs about the asker — the manager's own nought, not Huy's three.
+    const own = await toolOf("manager", "Tôi muốn biết tháng 8/2026 Huy và tôi đi muộn mấy lần?");
+    expect(own.status === "answered" && own.params.lateCount).toBe(0);
+  });
+
+  it("sends a parent's question about a sick child to the leave policy, not the leave ledger", async () => {
+    const resolved = await answerOf("huy", "Tôi nghỉ phép chăm con ốm được không?");
+    expect(resolved.kind).toBe("kb");
   });
 });
 

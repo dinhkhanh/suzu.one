@@ -117,6 +117,8 @@ describe("bulk edit (FR-PJM-36)", () => {
     expect([after.work.stateId, after.task.assigneePersonId, after.task.dueDate, after.work.customValues[ids.editor]]).toEqual([inProgress.id, ids.huy, "2026-10-01", ids.tam]);
     const labels = await db().select().from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, mine.id));
     expect(labels.map((label) => label.labelId)).toEqual([ids.sharedLabel]);
+    // The labels were read for all the tasks at once; each still got its own arithmetic.
+    expect((await db().select().from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, also.id))).map((label) => label.labelId)).toEqual([ids.sharedLabel]);
     expect((await loadTask(theirs.id))!.task.assigneePersonId).toBeNull();
     expect((await loadTask(secret.id))!.task.dueDate).toBeNull();
   });

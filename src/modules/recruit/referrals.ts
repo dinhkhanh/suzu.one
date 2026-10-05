@@ -27,11 +27,11 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, storeIncomingFile, softDeleteFile } from "@/modules/platform/files/service";
-import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
+import type { Principal } from "@/modules/platform/rbac/policy";
 import { type ReferralBonusState, referralBonusState } from "./engine/referral";
 import { type ApplicationStatus, OPENING_PUBLIC_STATUSES } from "./enums";
 import { canRunRecruitment } from "./policy";
-import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpening, inTransaction, recordApplicationEvent } from "./service";
+import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpening, inTransaction, recordApplicationEvent, recruitReach } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -365,9 +365,7 @@ export async function listMyReferrals(personId: string, today: IsoDate = todayIn
 /** Every referral in the reader's recruitment scope — the list HR settles bonuses from. */
 export async function listReferrals(principal: Principal, today: IsoDate = todayInVietnam()): Promise<ReferralListRow[]> {
   if (!canRunRecruitment(principal)) return [];
-  const reach = entityReach(principal, "recruit:manage");
-  const scope = reach.all ? sql`true` : reach.entityIds.length > 0 ? inArray(schema.jobOpening.entityId, reach.entityIds) : sql`false`;
-  const rows = await baseQuery().where(scope).orderBy(desc(schema.referral.createdAt)).limit(500);
+  const rows = await baseQuery().where(recruitReach(principal, schema.jobOpening) ?? sql`false`).orderBy(desc(schema.referral.createdAt)).limit(500);
   return rows.map((row) => toListRow(row, today));
 }
 

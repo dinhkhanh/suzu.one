@@ -21,7 +21,7 @@ export default async function PlanPage({ searchParams }: PageProps<"/daily/plan"
     day?.plan.required ? <Badge key="required" variant="outline">{t("plan.requiredBy", { time: day.rules.planCutoff })}</Badge> : null,
     day?.dayOff ? <Badge key="off" variant="secondary">{t("plan.dayOff")}</Badge> : null,
     page.carried ? <Badge key="carried" variant="info">{t("plan.carried")}</Badge> : null,
-    page.plan?.submittedAt ? <Badge key="saved" dot variant="success">{t("plan.savedAt", { time: format.dateTime(page.plan.submittedAt, { timeStyle: "short" }) })}</Badge> : null,
+    page.plan?.submittedAt ? <Badge key="saved" dot variant="success">{t("plan.savedAt", { time: format.dateTime(page.plan.updatedAt, { timeStyle: "short" }) })}</Badge> : null,
   ].filter(Boolean);
 
   return (

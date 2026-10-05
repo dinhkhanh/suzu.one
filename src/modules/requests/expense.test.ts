@@ -8,13 +8,17 @@ vi.mock("@/lib/env", () => ({
   env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
 }));
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
+import { findOpenRegularRun, findOpenRegularRuns } from "@/modules/payroll/service";
+import { tableToCsv } from "@/modules/platform/export/csv";
+import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { ExpenseLine } from "./engine/expense";
-import { fileExpenseClaim, getExpenseClaim } from "./expense";
+import { buildExpenseClaimsExport } from "./exports";
+import { claimsOwed, fileExpenseClaim, getExpenseClaim, listExpenseClaims } from "./expense";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim, REIMBURSEMENT_COMPONENT, sweepApprovedClaims } from "./expense-posting";
 import { REQUEST_TYPE_SEED } from "./seed-types";
 import { decideGenericRequest } from "./service";
@@ -59,6 +63,9 @@ async function reimbursementOf(runId: string, personId: string): Promise<{ amoun
 
 beforeAll(async () => {
   await migrateTestDb();
+  // Payroll takes a figure only under a code its catalogue holds as a typed-in component — what
+  // `pnpm db:seed` gives every real database. Without it the posting is refused, not skipped.
+  await db().insert(schema.payComponent).values({ code: REIMBURSEMENT_COMPONENT, name: "Hoàn ứng chi phí", kind: "earning", category: "other", source: "input", taxTreatment: "exempt", validFrom: "2026-01-01", status: "approved" });
   const [group, other] = await db()
     .insert(schema.entity)
     .values([
@@ -82,7 +89,7 @@ beforeAll(async () => {
           employeeCode: null,
           startDate: "2024-01-01",
           seniorityDate: null,
-          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
         },
         actor.id,
         { onboarding: false },
@@ -161,9 +168,21 @@ describe("approving one", () => {
     const filed = await fileAndApprove(ids.huy, [line({ amount: 90_000 })], [ids.boss]);
 
     expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, filed.submissionId))).toEqual([]);
+    // A sweep with still no run for it counts it as waiting, without a transaction for it.
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await sweepApprovedClaims(ids.boss)).toMatchObject({ posted: 0, released: 0, stillWaiting: 1 });
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      transaction.mockRestore();
+    }
 
     // …until a run exists, and the sweep offers it again.
     const run = await openRun(lonely.id, "2026-11");
+    // The sweep asks for every entity's open run at once: the same answer as one at a time.
+    const open = await findOpenRegularRuns([lonely.id, ids.entity, ids.other, lonely.id]);
+    for (const entityId of [lonely.id, ids.entity, ids.other]) expect(open.get(entityId) ?? null).toEqual(await findOpenRegularRun(entityId));
+    expect(open.get(lonely.id)?.id).toBe(run.id);
     expect((await sweepApprovedClaims(ids.boss)).posted).toBe(1);
     expect((await reimbursementOf(run.id, ids.huy))?.amount).toBe(90_000);
 
@@ -223,6 +242,34 @@ describe("a run cancelled underneath a claim", () => {
   });
 });
 
+describe("one sweep over many claims", () => {
+  // The sweep handles every claim in one transaction and a fixed number of statements; what it
+  // posts must be what offering the claims one by one did: one line per person, the sum of theirs.
+  it("posts them all in one transaction, one summed line per person, and counts what moved", async () => {
+    const [entity] = await db().insert(schema.entity).values({ code: "SZW", legalName: "SuZu W", shortName: "SZW", taxCode: "0106", wageRegion: 1 }).returning();
+    await db().update(schema.person).set({ primaryEntityId: entity.id }).where(inArray(schema.person.id, [ids.huy, ids.lan]));
+    // Filed while the entity has no open run: they wait.
+    for (const [person, amount] of [[ids.huy, 10_000], [ids.huy, 20_000], [ids.lan, 40_000]] as const) await fileAndApprove(person, [line({ amount })], [ids.boss]);
+    // And one freed from a cancelled run.
+    const cancelled = await openRun(entity.id, "2027-05");
+    await fileAndApprove(ids.lan, [line({ amount: 5_000 })], [ids.boss]);
+    await db().update(schema.payrollRun).set({ status: "cancelled" }).where(eq(schema.payrollRun.id, cancelled.id));
+    const run = await openRun(entity.id, "2027-06");
+
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await sweepApprovedClaims(null)).toEqual({ posted: 4, released: 1, stillWaiting: 0 });
+      expect(transaction).toHaveBeenCalledTimes(1);
+    } finally {
+      transaction.mockRestore();
+    }
+    expect((await reimbursementOf(run.id, ids.huy))?.amount).toBe(30_000);
+    expect((await reimbursementOf(run.id, ids.lan))?.amount).toBe(45_000);
+    expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.runId, cancelled.id))).toEqual([]);
+    expect(await sweepApprovedClaims(null)).toEqual({ posted: 0, released: 0, stillWaiting: 0 });
+  });
+});
+
 describe("a run that has moved past calculated", () => {
   it("keeps the figure it was signed with", async () => {
     const [entity] = await db().insert(schema.entity).values({ code: "SZY", legalName: "SuZu Y", shortName: "SZY", taxCode: "0105", wageRegion: 1 }).returning();
@@ -235,5 +282,44 @@ describe("a run that has moved past calculated", () => {
     const filed = await fileAndApprove(ids.lan, [line({ amount: 66_000 })], [ids.boss]);
     expect(await db().select().from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, filed.submissionId))).toEqual([]);
     expect((await reimbursementOf(run.id, ids.lan))?.amount).toBe(55_000);
+  });
+});
+
+describe("what is owed", () => {
+  it("is counted and summed in SQL, the same as the claims list adds it up", async () => {
+    // One still being decided (never owed), and one whose run is cancelled under it (owed again).
+    await fileExpenseClaim({ values: { title: "Chưa duyệt", project_tag: null, note: null }, lines: [line({ amount: 77_000 })] }, await requester(ids.huy), money);
+    const [entity] = await db().insert(schema.entity).values({ code: "SZZ", legalName: "SuZu Z", shortName: "SZZ", taxCode: "0106", wageRegion: 1 }).returning();
+    await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.huy));
+    const run = await openRun(entity.id, "2027-05");
+    await fileAndApprove(ids.huy, [line({ amount: 44_000 }), line({ amount: 6_000 })], [ids.boss]);
+    await db().update(schema.payrollRun).set({ status: "cancelled" }).where(eq(schema.payrollRun.id, run.id));
+
+    const entities = (await db().select({ id: schema.entity.id }).from(schema.entity)).map((row) => row.id);
+    const reaches = [{ all: true as const }, { all: false as const, entityIds: [entity.id] }, { all: false as const, entityIds: entities.slice(0, 2) }, { all: false as const, entityIds: [] }];
+    for (const reach of reaches) {
+      // What the claims page used to add up from the list.
+      const waiting = (await listExpenseClaims({ reach }, 100_000)).filter((claim) => claim.status === "approved" && !claim.payment);
+      expect(await claimsOwed(reach)).toEqual({ count: waiting.length, amount: waiting.reduce((total, claim) => total + claim.total, 0) });
+    }
+    expect(await claimsOwed({ all: false, entityIds: [entity.id] })).toEqual({ count: 1, amount: 50_000 });
+    expect((await claimsOwed({ all: true })).count).toBeGreaterThan(1);
+  });
+});
+
+describe("the claims export", () => {
+  const finance = (entityIds: string[] | null): Principal => ({ personId: ids.boss, workforceType: "employee", grants: entityIds ? entityIds.map((id) => ({ role: "finance" as const, scope: { type: "entity" as const, id } })) : [{ role: "finance" as const, scope: { type: "group" as const } }] });
+
+  it("holds the claims the desk lists for the entities the reader pays", async () => {
+    const all = await listExpenseClaims({ reach: { all: true } }, 100_000);
+    expect(all.length).toBeGreaterThan(0);
+    const { file, total } = await buildExpenseClaimsExport(finance(null), "en");
+    expect([total, file.rowCount]).toEqual([all.length, all.length]);
+    expect(file.table.header[2]).toBe("Amount");
+    expect(file.table.rows.map((cells) => cells[2]).sort()).toEqual(all.map((claim) => claim.total).sort());
+    expect(tableToCsv(file.table)).toContain("Công tác Đà Nẵng");
+
+    const [entity] = await db().insert(schema.entity).values({ code: "SZQ", legalName: "SuZu Q", shortName: "SZQ", taxCode: "0107", wageRegion: 1 }).returning();
+    expect((await buildExpenseClaimsExport(finance([entity.id]), "en")).total).toBe(0);
   });
 });

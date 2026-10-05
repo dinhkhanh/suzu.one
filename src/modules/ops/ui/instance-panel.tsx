@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -65,7 +66,7 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
               <legend className="mb-1 text-sm font-medium text-muted-foreground">{t("checklist")}</legend>
               {checklist.map((step, index) => (
                 <label key={index} className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" name={`checklist.${index}`} defaultChecked={!!checklistState[String(index)]} className="mt-0.5" />
+                  <Checkbox name={`checklist.${index}`} defaultChecked={!!checklistState[String(index)]} className="mt-0.5" />
                   <span className={missing?.checklist.includes(index) ? "text-destructive" : undefined}>{step}</span>
                 </label>
               ))}

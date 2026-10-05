@@ -34,7 +34,21 @@ const SEEDS: Seed[] = [
   { code: "BONUS", name: "Thưởng khác", nameEn: "Other bonus", kind: "earning", category: "bonus", source: "input" },
   { code: "THIRTEENTH_MONTH", name: "Lương tháng 13", nameEn: "13th-month salary", kind: "earning", category: "thirteenth_month", source: "input" },
   { code: "HOLIDAY_BONUS", name: "Thưởng lễ, Tết", nameEn: "Holiday bonus", kind: "earning", category: "holiday_bonus", source: "input" },
-  { code: "LEAVE_PAYOUT", name: "Thanh toán phép năm chưa nghỉ", nameEn: "Unused leave payout", kind: "earning", category: "leave_payout", source: "engine" },
+  { code: "LEAVE_PAYOUT", name: "Thanh toán phép năm chưa nghỉ", nameEn: "Unused leave payout", kind: "earning", category: "leave_payout", source: "engine", note: "Tính tự động khi nghỉ việc: số ngày phép sổ phép chi trả × lương theo hợp đồng của tháng liền kề trước tháng nghỉ việc ÷ số ngày làm việc bình thường của tháng đó (Điều 113.3 BLLĐ 2019, Điều 67.3 NĐ 145/2020)." },
+  // FR-PAY-18: the severance allowance a leaver may be owed is typed in by C&B — whether it is owed
+  // at all turns on why the contract ended and on the months not covered by unemployment insurance.
+  {
+    code: "SEVERANCE",
+    name: "Trợ cấp thôi việc",
+    nameEn: "Severance allowance",
+    kind: "earning",
+    category: "other",
+    source: "input",
+    taxTreatment: "exempt",
+    subjectToInsurance: false,
+    proration: "fixed",
+    note: "Trợ cấp thôi việc theo Điều 46 BLLĐ 2019 không tính thuế TNCN; phần chi cao hơn mức luật định là thu nhập chịu thuế và nhập dưới khoản thưởng khác. Kế toán trưởng xác nhận.",
+  },
   { code: "RETRO_PAY", name: "Truy lĩnh kỳ trước", nameEn: "Retroactive pay", kind: "earning", category: "retro", source: "engine", note: "Chênh lệch của kỳ đã trả, tính thuế vào tháng chi trả (FR-PAY-17)." },
   { code: "RETRO_RECOVERY", name: "Truy thu kỳ trước", nameEn: "Retroactive recovery", kind: "deduction", category: "retro", source: "engine", note: "Khoản thu hồi của kỳ đã trả (FR-PAY-17)." },
   { code: "INS_BHXH_EE", name: "BHXH (người lao động)", nameEn: "Social insurance (employee)", kind: "deduction", category: "insurance", source: "engine" },

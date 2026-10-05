@@ -6,11 +6,12 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/modules/platform/files/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { ANOMALY_KINDS, listAnomalies } from "./anomalies";
+import { buildLockedMonthExport } from "./exports";
 import { ADJUSTMENT_FIELDS, approveMonth, confirmMonth, createAdjustment, findAdjustment, isMonth, lockPeriod, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
 import { canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
 import { ATTENDANCE_REQUEST_TYPES, type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, findAttendanceRequest, findByApproval, getAttendanceRequestView, isPendingEvidence, resubmitAttendanceRequest, submitAttendanceRequest } from "./requests";
@@ -301,8 +302,8 @@ const remindPipeline = createAction({
   input: z.object({ entityId: z.uuid(), month }),
   authorize: (user, input) => canLockPeriod(user.principal, input.entityId),
   run: async ({ input }) => {
-    const told = await remindToConfirm(input.entityId, input.month);
-    return { data: { told }, audit: { resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId }, summary: `reminded ${told} people to confirm ${input.month}` } };
+    const { told, reviewers } = await remindToConfirm(input.entityId, input.month);
+    return { data: { told, reviewers }, audit: { resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId }, summary: `reminded ${told} people to confirm ${input.month}${reviewers ? ` and ${reviewers} reviewer(s) of flagged check-ins` : ""}` } };
   },
 });
 export async function remindToConfirmAction(input: unknown) {
@@ -369,11 +370,25 @@ const exportPipeline = createAction({
     // The screen's own function with the viewer's principal: the file holds what the screen shows.
     const { lines } = await listAnomalies(user.principal, input.month, input);
     const rows = lines.slice(0, EXPORT_ROW_LIMIT);
-    const csv = toCsv([{ header: "Loại", value: (row: (typeof rows)[number]) => row.kind }, { header: "Nhân viên", value: (row) => row.fullName ?? "" }, { header: "Ngày", value: (row) => row.date ?? "" }, { header: "Phút", value: (row) => row.minutes ?? "" }, { header: "Chi tiết", value: (row) => row.detail ?? "" }, { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") }], rows);
-    const file: CsvFile = { fileName: `attendance-anomalies-${input.month}-${todayInVietnam()}.csv`, csv, rowCount: rows.length, truncated: lines.length > rows.length };
+    const table = toTable([{ header: "Loại", value: (row: (typeof rows)[number]) => row.kind }, { header: "Nhân viên", value: (row) => row.fullName ?? "" }, { header: "Ngày", value: (row) => row.date ?? "" }, { header: "Phút", value: (row) => row.minutes ?? "" }, { header: "Chi tiết", value: (row) => row.detail ?? "" }, { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") }], rows);
+    const file: ExportFile = { fileName: `attendance-anomalies-${input.month}-${todayInVietnam()}`, table, rowCount: rows.length, truncated: lines.length > rows.length };
     return { data: file, audit: { resource: { type: "export:attendance_anomalies", id: input.month, entityId: input.entityId }, summary: `${file.rowCount} rows`, after: { filters: input, rowCount: file.rowCount } } };
   },
 });
 export async function exportAnomaliesAction(input: unknown) {
   return exportPipeline(input);
+}
+
+// A locked month's timesheet for an entity (FR-ATT-14): for whoever may lock it.
+const exportMonthPipeline = createAction({
+  name: "attendance.timesheet.export",
+  input: z.object({ entityId: z.uuid(), month, locale: z.enum(["vi", "en"]).default("vi") }),
+  authorize: (user, input) => canLockPeriod(user.principal, input.entityId),
+  run: async ({ input }) => {
+    const file = await buildLockedMonthExport(input.entityId, input.month, input.locale);
+    return { data: file, audit: { resource: { type: "export:timesheet_month", id: input.month, entityId: input.entityId }, summary: `${file.rowCount} rows`, after: { month: input.month, rowCount: file.rowCount } } };
+  },
+});
+export async function exportLockedMonthAction(input: unknown) {
+  return exportMonthPipeline(input);
 }

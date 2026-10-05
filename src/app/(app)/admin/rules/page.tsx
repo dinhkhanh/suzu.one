@@ -20,7 +20,9 @@ import { can } from "@/modules/platform/rbac/policy";
 import { isParameterKey, PARAMETER_KEYS, type ParameterKey } from "@/modules/platform/statutory/catalogue";
 import { versionOn } from "@/modules/platform/statutory/engine/versions";
 import { listParameterVersions, type ParameterRow } from "@/modules/platform/statutory/service";
+import { voidParameterAction } from "@/modules/platform/statutory/actions";
 import { DecisionButtons, ProposeParameterForm } from "@/modules/platform/statutory/ui/rule-forms";
+import { VoidVersionButton } from "@/modules/platform/statutory/ui/void-version";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("statutoryParameters");
@@ -103,7 +105,9 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
   if (selectedKey) {
     const approved = approvedOf(selectedKey);
     const inForce = versionOn(approved, today);
-    const timeline = [...proposals.filter((proposal) => proposal.key === selectedKey), ...approved].sort((a, b) => (a.validFrom < b.validFrom ? 1 : a.validFrom > b.validFrom ? -1 : 0));
+    // Voided versions stay on the line of time with who took them back and why (PAY-13).
+    const voided = (byKey.get(selectedKey) ?? []).filter((version) => version.status === "voided");
+    const timeline = [...proposals.filter((proposal) => proposal.key === selectedKey), ...approved, ...voided].sort((a, b) => (a.validFrom < b.validFrom ? 1 : a.validFrom > b.validFrom ? -1 : 0));
     detail = (
       <Card className="order-first lg:order-none lg:sticky lg:top-0 lg:self-start">
         <CardHeader>
@@ -129,11 +133,14 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
                   <li key={version.id} className="relative flex flex-col gap-0.5 py-2 pl-4">
                     <span aria-hidden className={cn("absolute top-3.5 -left-[7px] size-3 rounded-full border-2 border-background", live ? "bg-primary" : version.status === "proposed" ? "bg-warning" : "bg-input")} />
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono text-[0.8125rem] font-medium tabular-nums">{day(version.validFrom)}</span>
+                      <span className={cn("font-mono text-[0.8125rem] font-medium tabular-nums", version.status === "voided" && "text-faint line-through")}>{day(version.validFrom)}</span>
                       {live ? <Badge variant="info">{t("inForce")}</Badge> : null}
                       {version.status === "proposed" ? <Badge variant="warning">{t("proposed")}</Badge> : null}
+                      {version.status === "voided" ? <Badge variant="outline">{t("void.voided")}</Badge> : null}
                       {version.status === "approved" && !version.isVerified ? <Badge variant="destructive">{t("unverifiedShort")}</Badge> : null}
+                      {canDecide && version.status === "approved" ? <VoidVersionButton action={voidParameterAction} id={version.id} title={`${label(selectedKey)} — ${day(version.validFrom)}`} errorNamespace="rules.errors" /> : null}
                     </div>
+                    {version.status === "voided" && version.voidReason ? <p className="text-xs text-muted-foreground">{t("void.because", { reason: version.voidReason })}</p> : null}
                     {version.legalReference ? <p className="truncate text-xs text-faint" title={version.legalReference}>{version.legalReference}</p> : null}
                     {live ? null : <p className="truncate text-xs text-muted-foreground" title={summarize(version.value, format)}>{summarize(version.value, format)}</p>}
                   </li>

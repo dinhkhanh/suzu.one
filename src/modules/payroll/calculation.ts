@@ -6,23 +6,24 @@
 // calls `calculatePerson` on each. It does not decide who may see the result — **no authorization
 // inside**; the run use-cases (week 4) check `canManageCompensation` before calling.
 import "server-only";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { getLockedTimesheets, getTimesheetDays, type LockedTimesheet, type TimesheetDayRow } from "@/modules/attendance/service";
+import { type DayPlan, getDayPlans, getLockedTimesheets, getTimesheetDays, type LockedPeriod, type LockedTimesheet, type TimesheetDayRow } from "@/modules/attendance/service";
 import { listPayrollFacts, type PayrollPersonFacts } from "@/modules/core-hr/service";
-import { getLeaveUsage, type LeaveUsage } from "@/modules/leave/service";
+import { getLeaveUsage, type LeaveUsage, listPayoutTotals, type PayoutTotal } from "@/modules/leave/service";
 import { resolveCatalogue, resolveCatalogueVersions } from "./components";
 import { calculatePerson, PAYROLL_ENGINE_VERSION } from "./engine/calculate";
-import type { ComponentDefinition } from "./engine/components";
+import { type ComponentDefinition, isPitReliefCode } from "./engine/components";
 import { EMPTY_TIMESHEET, payableOvertime, payPeriodOf, type PaySegment, type ProfileFacts } from "./engine/period";
 import { isRoundingRule } from "./engine/rounding";
-import type { PayInput, PersonPayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
+import type { LeavePayout, PayInput, PersonPayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
 import { getPayrollPolicy, getPayrollPolicyVersion } from "./policies";
 import { getProfilesOn, listProfilesBetween, type PayProfileRow } from "./profiles";
 import { listStructuresBetween, type SalaryStructureView } from "./salaries";
 import { loadStatutoryParams, loadStatutoryParamsByVersion, type LoadedStatutoryParams } from "./statutory";
+import { previousMonth } from "./variance";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -88,7 +89,7 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
 
   const personIds = locked.people.map((row) => row.personId);
   const replay = options.context ?? null;
-  const [statutory, policy, catalogue, structures, profiles, facts, leave, days] = await Promise.all([
+  const [statutory, policy, catalogue, structures, profiles, facts, leave, days, payouts] = await Promise.all([
     replay ? loadStatutoryParamsByVersion(replay.parameterVersions, executor) : loadStatutoryParams(period.end, executor),
     replay ? getPayrollPolicyVersion(replay.policyVersionId, executor) : getPayrollPolicy(entityId, period.end, executor),
     replay ? resolveCatalogueVersions(replay.componentVersionIds, executor) : resolveCatalogue(entityId, period.end, executor),
@@ -99,7 +100,10 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
     // The frozen daily rows: how a month with a mid-month salary change is split exactly, rather
     // than in proportion to the calendar.
     getTimesheetDays(personIds, period.start, period.end, executor),
+    // Unused leave the ledger pays out to the month's leavers (FR-LVE-03, FR-PAY-18).
+    listPayoutTotals(entityId, period.start, period.end, executor),
   ]);
+  const leavePayouts = await leavePayoutsOf(entityId, month, stillOwed(payouts, options.prior), structures, executor, options.executor);
 
   const components = catalogue.map(toComponentDefinition);
   // The month's own working days: the divisor, taken from the person the month asked most of —
@@ -127,6 +131,7 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
       components,
       inputs: options.inputs?.get(timesheet.personId) ?? [],
       retro: options.retro?.get(timesheet.personId) ?? [],
+      leavePayout: leavePayouts.get(timesheet.personId) ?? null,
       priorInMonth: options.prior?.get(timesheet.personId) ?? null,
       runKind: options.kind ?? "regular",
       policy: policy.value,
@@ -170,26 +175,33 @@ export async function calculateOnePerson(entityId: string, month: string, person
 export async function calculateOffCycle(entityId: string, month: string, options: { inputs: RunInputs; prior?: RunPrior; onProgress?: CalculateOptions["onProgress"]; executor?: Executor }): Promise<EntityMonthCalculation> {
   const executor = options.executor ?? db();
   const period = payPeriodOf(month, 0);
-  const personIds = [...options.inputs.keys()];
+  // Besides the people typed in: once the month's regular run is signed, the month's leavers whose
+  // unused leave no run of the month pays (FR-PAY-18) — days the ledger posted after that run was
+  // calculated have no other way to be paid, and a run of the month taxes them with it.
+  const owed = await offCycleLeavePayouts(entityId, month, options.prior, executor);
+  const personIds = [...new Set([...options.inputs.keys(), ...owed.map((row) => row.personId)])];
   if (personIds.length === 0) throw new ActionError("run_has_no_lines");
 
   const [entity] = await executor.select().from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1);
   if (!entity) throw new ActionError("entity_not_found");
 
-  const [statutory, policy, catalogue, structures, facts, profiles] = await Promise.all([
+  const [statutory, policy, catalogue, structures, facts, profiles, monthProfiles] = await Promise.all([
     loadStatutoryParams(period.end, executor),
     getPayrollPolicy(entityId, period.end, executor),
     resolveCatalogue(entityId, period.end, executor),
     listStructuresBetween(entityId, period.start, period.end, executor),
     listPayrollFacts({ personIds }, month, executor),
     getProfilesOn(personIds, period.end, executor),
+    // A leaver's profile may have ended with them: the month's last one stands in, as on the regular run.
+    owed.length > 0 ? listProfilesBetween(entityId, period.start, period.end, executor) : Promise.resolve([]),
   ]);
+  const leavePayouts = await leavePayoutsOf(entityId, month, owed, structures, executor, options.executor);
   const components = catalogue.map(toComponentDefinition);
 
   const people: PersonCalculation[] = [];
   for (const personId of personIds) {
     const personFacts = facts.find((row) => row.personId === personId);
-    const profile = profiles.get(personId);
+    const profile = profiles.get(personId) ?? monthProfiles.filter((row) => row.personId === personId).at(-1);
     if (!personFacts || !profile) throw new ActionError("pay_profile_missing", { personId });
     const terms = structures.filter((row) => row.personId === personId).at(-1)?.terms ?? { baseSalary: 0, insuranceSalary: 0, allowances: [] };
     const input: PersonPayInput = {
@@ -209,6 +221,7 @@ export async function calculateOffCycle(entityId: string, month: string, options
       retro: [],
       otherPitDeductions: 0,
       priorInMonth: options.prior?.get(personId) ?? null,
+      leavePayout: leavePayouts.get(personId) ?? null,
       runKind: "off_cycle",
       policy: policy.value,
       statutory: statutory.params,
@@ -282,6 +295,8 @@ export function buildPersonInput(source: {
   inputs: PayInput[];
   /** Differences from months already paid (FR-PAY-17); empty on an ordinary month. */
   retro?: RetroItem[];
+  /** Unused leave paid out to a leaver (FR-LVE-03, FR-PAY-18). */
+  leavePayout?: LeavePayout | null;
   /** An off-cycle run: what the month's regular run already taxed (FR-PAY-19). */
   priorInMonth?: PriorInMonth | null;
   runKind?: "regular" | "off_cycle";
@@ -305,14 +320,15 @@ export function buildPersonInput(source: {
     wageRegion: source.wageRegion,
     employment: {
       startDate: source.facts.startDate && source.facts.startDate > period.start ? source.facts.startDate : null,
-      endDate: source.facts.endDate && source.facts.endDate < period.end ? source.facts.endDate : null,
+      // Someone whose last day is the month's last day is still a leaver: this run is their final settlement.
+      endDate: source.facts.endDate && source.facts.endDate <= period.end ? source.facts.endDate : null,
       dependents: source.facts.dependents,
       serviceMonths: monthsOfService(source.facts.seniorityDate ?? source.facts.startDate, period.end),
       // The month's KPI score is a Phase 8 input; nothing reads it until a formula does.
       kpiScoreBp: 0,
     },
     profile: toProfileFacts(source.profile),
-    segments: buildSegments(source.structures, timesheet, period.start, period.end, source.days),
+    segments: buildSegments(source.structures, timesheet, period.start, period.end, source.days, source.facts.probation),
     timesheet: {
       standardDays: timesheet.standardDays,
       standardMinutes: timesheet.standardMinutes,
@@ -325,9 +341,12 @@ export function buildPersonInput(source: {
     insuranceLeaveDays,
     unpaidWorkingDays,
     components: source.components,
-    inputs: source.inputs,
+    // A deduction from the assessable income typed into the run is not pay: it leaves the lines
+    // and becomes the month's other PIT deductions (FR-PAY-13).
+    inputs: source.inputs.filter((line) => !isPitReliefCode(line.code)),
     retro: source.retro ?? [],
-    otherPitDeductions: 0,
+    leavePayout: source.leavePayout ?? null,
+    otherPitDeductions: source.inputs.reduce((sum, line) => sum + (isPitReliefCode(line.code) ? line.amount : 0), 0),
     priorInMonth: source.priorInMonth ?? null,
     runKind: source.runKind ?? "regular",
     policy: source.policy,
@@ -359,8 +378,13 @@ export function dayWeight(day: TimesheetDayRow): { standardDays: number; paidDay
   };
 }
 
+/** A probation contract's dates (`end` null = still running), as `EmploymentFacts.probation` gives them. */
+export type ProbationRange = { start: IsoDate; end: IsoDate | null };
+
 /**
- * The month cut at every salary change (FR-PAY-16).
+ * The month cut at every salary change (FR-PAY-16) — and, for terms that carry a probation
+ * percentage (FR-PAY-05), where a probation contract begins or ends, so the days on probation pay
+ * their share of the position's salary and the days after it pay the whole.
  *
  * With the frozen daily rows of a locked month each piece gets exactly the days that fall inside
  * it — a raise on the 17th is paid on the days actually worked before and after, not on a share
@@ -368,19 +392,25 @@ export function dayWeight(day: TimesheetDayRow): { standardDays: number; paidDay
  * shared out in proportion to the days each piece spans, largest remainder first so the parts
  * still add up to the locked total.
  */
-export function buildSegments(structures: readonly SalaryStructureView[], timesheet: LockedTimesheet, start: IsoDate, end: IsoDate, days: readonly TimesheetDayRow[] = []): PaySegment[] {
+export function buildSegments(structures: readonly SalaryStructureView[], timesheet: LockedTimesheet, start: IsoDate, end: IsoDate, days: readonly TimesheetDayRow[] = [], probation: readonly ProbationRange[] = []): PaySegment[] {
   const sorted = [...structures].sort((a, b) => a.validFrom.localeCompare(b.validFrom));
   if (sorted.length === 0) {
     return [{ from: start, to: end, terms: { baseSalary: 0, insuranceSalary: 0, allowances: [] }, standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
   }
 
-  const bounds = sorted.map((structure, index) => ({
-    structure,
-    from: structure.validFrom > start ? structure.validFrom : start,
-    to: nextDay(sorted[index + 1]?.validFrom) && nextDay(sorted[index + 1]!.validFrom)! < end ? nextDay(sorted[index + 1]!.validFrom)! : structure.validTo && structure.validTo < end ? structure.validTo : end,
-  }));
+  const bounds = sorted
+    .map((structure, index) => ({
+      structure,
+      from: structure.validFrom > start ? structure.validFrom : start,
+      to: nextDay(sorted[index + 1]?.validFrom) && nextDay(sorted[index + 1]!.validFrom)! < end ? nextDay(sorted[index + 1]!.validFrom)! : structure.validTo && structure.validTo < end ? structure.validTo : end,
+    }))
+    .flatMap((bound) => {
+      const percent = bound.structure.terms.probationPercent;
+      if (!percent || percent >= 100) return [{ ...bound, probationPercent: null }];
+      return splitByProbation(bound.from, bound.to, probation).map((piece) => ({ ...bound, from: piece.from, to: piece.to, probationPercent: piece.onProbation ? percent : null }));
+    });
   if (bounds.length === 1) {
-    return [{ from: bounds[0].from, to: bounds[0].to, terms: bounds[0].structure.terms, standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
+    return [{ from: bounds[0].from, to: bounds[0].to, terms: bounds[0].structure.terms, ...probationOf(bounds[0]), standardDays: timesheet.standardDays, paidDaysCenti: timesheet.paidDaysCenti, unpaidDaysCenti: timesheet.unpaidDaysCenti }];
   }
 
   if (days.length > 0) {
@@ -390,6 +420,7 @@ export function buildSegments(structures: readonly SalaryStructureView[], timesh
         from: bound.from,
         to: bound.to,
         terms: bound.structure.terms,
+        ...probationOf(bound),
         standardDays: inside.reduce((sum, day) => sum + day.standardDays, 0),
         paidDaysCenti: inside.reduce((sum, day) => sum + day.paidDaysCenti, 0),
         unpaidDaysCenti: inside.reduce((sum, day) => sum + day.unpaidDaysCenti, 0),
@@ -402,8 +433,31 @@ export function buildSegments(structures: readonly SalaryStructureView[], timesh
   const paid = shareOut(timesheet.paidDaysCenti, spans, totalSpan);
   const unpaid = shareOut(timesheet.unpaidDaysCenti, spans, totalSpan);
   const standard = shareOut(timesheet.standardDays, spans, totalSpan);
-  return bounds.map((bound, index) => ({ from: bound.from, to: bound.to, terms: bound.structure.terms, standardDays: standard[index], paidDaysCenti: paid[index], unpaidDaysCenti: unpaid[index] }));
+  return bounds.map((bound, index) => ({ from: bound.from, to: bound.to, terms: bound.structure.terms, ...probationOf(bound), standardDays: standard[index], paidDaysCenti: paid[index], unpaidDaysCenti: unpaid[index] }));
 }
+
+/** Only a segment on probation says so, so a month without probation reads exactly as before. */
+const probationOf = (bound: { probationPercent: number | null }): Pick<PaySegment, "probationPercent"> => (bound.probationPercent ? { probationPercent: bound.probationPercent } : {});
+
+/** `from`–`to` cut where probation contracts begin and end, each piece saying whether it is on probation. */
+export function splitByProbation(from: IsoDate, to: IsoDate, ranges: readonly ProbationRange[]): { from: IsoDate; to: IsoDate; onProbation: boolean }[] {
+  const covered = (date: IsoDate) => ranges.some((range) => range.start <= date && (range.end === null || range.end >= date));
+  const pieces: { from: IsoDate; to: IsoDate; onProbation: boolean }[] = [];
+  // Every day a range starts, or the day after one ends, may change the answer.
+  const cuts = [...new Set(ranges.flatMap((range) => [range.start, ...(range.end ? [dayAfter(range.end)] : [])]))].filter((date) => date > from && date <= to).sort();
+  let pieceFrom = from;
+  for (const cut of [...cuts, dayAfter(to)]) {
+    const pieceTo = nextDay(cut)!;
+    const onProbation = covered(pieceFrom);
+    const last = pieces.at(-1);
+    if (last && last.onProbation === onProbation) last.to = pieceTo;
+    else pieces.push({ from: pieceFrom, to: pieceTo, onProbation });
+    pieceFrom = cut;
+  }
+  return pieces;
+}
+
+const dayAfter = (date: IsoDate): IsoDate => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) as IsoDate;
 
 /** Splits `total` over the given weights, largest remainder first, so the parts add back to `total`. */
 function shareOut(total: number, weights: readonly number[], totalWeight: number): number[] {
@@ -423,6 +477,82 @@ const dayCount = (from: IsoDate, to: IsoDate): number => Math.floor((Date.parse(
 const nextDay = (date: IsoDate | undefined): IsoDate | null => (date ? new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) : null);
 const centiToDays = (centi: number): number => Math.round(centi / 100);
 
+/**
+ * The unused-leave days the ledger posted for the month, less what the month's other runs already
+ * pay (`PriorInMonth.leavePayoutDaysCenti`): a leaver is paid once, whichever run of the month
+ * carries it — the regular run as a rule, an off-cycle run for days posted after it was signed.
+ */
+export const stillOwed = (payouts: readonly PayoutTotal[], prior?: RunPrior): PayoutTotal[] =>
+  payouts.map((row) => ({ ...row, daysCenti: row.daysCenti - (prior?.get(row.personId)?.leavePayoutDaysCenti ?? 0) })).filter((row) => row.daysCenti > 0);
+
+/**
+ * The unused leave an off-cycle run of the month takes over: none while the month's regular run is
+ * missing or still open — that run pays its leavers, and recalculating it picks up late days — and,
+ * once it has been signed (proposed, approved, paid), the days no run of the month pays.
+ */
+export async function offCycleLeavePayouts(entityId: string, month: string, prior: RunPrior | undefined | (() => Promise<RunPrior>), executor: Executor = db()): Promise<PayoutTotal[]> {
+  const [signed] = await executor
+    .select({ id: schema.payrollRun.id })
+    .from(schema.payrollRun)
+    .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, month), eq(schema.payrollRun.kind, "regular"), inArray(schema.payrollRun.status, ["proposed", "approved", "payment_prepared", "paid", "locked"])))
+    .limit(1);
+  if (!signed) return [];
+  const period = payPeriodOf(month, 0);
+  const posted = await listPayoutTotals(entityId, period.start, period.end, executor);
+  // What the month's runs already paid is read (and their results opened) only when a leaver is owed anything at all.
+  if (!posted.some((row) => row.daysCenti > 0)) return [];
+  return stillOwed(posted, typeof prior === "function" ? await prior() : prior);
+}
+
+/**
+ * What each leaver's unused leave is priced on (Labour Code 2019 art. 113.3; Decree 145/2020 art.
+ * 67.3): the salary terms in force at the end of the **month before the month of leaving**, and
+ * that month's normal working days on the person's own schedule. Someone who joined in the month
+ * they leave has no month before; their own month stands in for it. Two reads for the whole
+ * month, and none at all in a month nobody leaves.
+ */
+async function leavePayoutsOf(entityId: string, month: string, payouts: readonly PayoutTotal[], structures: readonly SalaryStructureView[], executor: Executor, planReader?: Executor): Promise<Map<string, LeavePayout>> {
+  const result = new Map<string, LeavePayout>();
+  const owed = payouts.filter((row) => row.daysCenti > 0);
+  if (owed.length === 0) return result;
+  const current = payPeriodOf(month, 0);
+  const basisMonth = previousMonth(month);
+  const basis = payPeriodOf(basisMonth, 0);
+  const [earlier, plans] = await Promise.all([
+    listStructuresBetween(entityId, basis.start, basis.end, executor),
+    // Outside a transaction the calendar and schedules come from the shared cache.
+    getDayPlans(
+      owed.map((row) => row.personId),
+      basis.start,
+      current.end,
+      planReader,
+    ),
+  ]);
+  const latest = (rows: readonly SalaryStructureView[]) => [...rows].sort((a, b) => a.validFrom.localeCompare(b.validFrom)).at(-1);
+  for (const row of owed) {
+    const before = latest(earlier.filter((structure) => structure.personId === row.personId && structure.validFrom <= basis.end));
+    const own = before ? null : latest(structures.filter((structure) => structure.personId === row.personId));
+    const range = before ? basis : current;
+    const days = (plans.get(row.personId)?.days ?? []).filter((day) => day.date >= range.start && day.date <= range.end);
+    result.set(row.personId, {
+      daysCenti: row.daysCenti,
+      basisMonth: before ? basisMonth : month,
+      terms: (before ?? own)?.terms ?? { baseSalary: 0, insuranceSalary: 0, allowances: [] },
+      workingDays: normalWorkingDays(days),
+    });
+  }
+  return result;
+}
+
+/**
+ * The days a month asks of a person on their schedule — working and untracked days, and the paid
+ * days off (holidays) that fell on one — counted as the locked timesheet counts `standardDays`.
+ */
+export function normalWorkingDays(days: readonly DayPlan[]): number {
+  const asks = (kind: DayPlan["kind"]) => kind === "working" || kind === "untracked";
+  return days.filter((day) => asks(day.kind) || ((day.kind === "holiday" || day.kind === "company_off" || day.kind === "compensatory_off") && asks(day.baseline.kind))).length;
+}
+
 /** Whole months from a start date to the period's end — what a seniority formula reads. */
 export function monthsOfService(from: IsoDate | null, to: IsoDate): number {
   if (!from || from > to) return 0;
@@ -431,13 +561,18 @@ export function monthsOfService(from: IsoDate | null, to: IsoDate): number {
   return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth) - (toDay < fromDay ? 1 : 0));
 }
 
-/** The people of a month who have no pay profile yet — a run must not start with one missing. */
-export async function listPeopleWithoutProfile(entityId: string, month: string, executor: Executor = db()): Promise<string[]> {
-  const locked = await getLockedTimesheets(entityId, month, executor);
-  if (!locked) return [];
-  const personIds = locked.people.map((row) => row.personId);
+/**
+ * The people of a month who have no pay profile yet — a run must not start with one missing.
+ * A caller that already holds the locked month passes it, and it is not read a second time.
+ */
+export async function listPeopleWithoutProfile(entityId: string, month: string, executor: Executor = db(), locked?: LockedPeriod | null): Promise<{ personId: string; fullName: string }[]> {
+  const period = locked === undefined ? await getLockedTimesheets(entityId, month, executor) : locked;
+  if (!period) return [];
+  const personIds = period.people.map((row) => row.personId);
   if (personIds.length === 0) return [];
   const profiles = await getProfilesOn(personIds, payPeriodOf(month, 0).end, executor);
-  const rows = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds));
-  return rows.filter((row) => !profiles.has(row.id)).map((row) => row.fullName);
+  const missing = personIds.filter((personId) => !profiles.has(personId));
+  if (missing.length === 0) return [];
+  const rows = await executor.select({ personId: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, missing)).orderBy(schema.person.fullName);
+  return rows;
 }

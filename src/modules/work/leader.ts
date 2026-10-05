@@ -1,21 +1,24 @@
 // The leader's view (FR-WRK-07) and the work half of "My work" (FR-WRK-06).
 import "server-only";
-import { and, asc, eq, inArray, isNull, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, notInArray, or, type SQL, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
-import type { IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
-import { type Risk, riskOf } from "./engine/risk";
+import { AT_RISK_WITHIN_DAYS, type Risk, riskOf } from "./engine/risk";
 import type { StateCategory } from "./enums";
 import type { WorkViewer } from "./policy";
-import { type LoadedTask, listItems, loadTask, logActivity, type TaskListItem, taskKey, WORK_KIND } from "./tasks";
+import { type LoadedTask, listLeaderItems, loadTask, logActivity, type TaskListItem, taskKey, WORK_KIND } from "./tasks";
 
 const open = inArray(schema.task.status, ["todo", "in_progress"]);
 // Work still waiting in triage (FR-PJM-32) is nobody's yet: it is on the triage page, not here.
 const notInTriage = or(isNull(schema.workTask.triageStatus), notInArray(schema.workTask.triageStatus, ["pending", "snoozed"]));
 
 export type LeaderTask = TaskListItem & { stateName: string; category: StateCategory; projectName: string | null; risk: Risk; mine: "requested" | "led" };
-export type LeaderView = { people: { personId: string | null; name: string | null; tasks: LeaderTask[]; counts: Record<"todo" | "in_progress" | "in_review", number>; overdue: number; atRisk: number; blocked: number }[]; totals: { open: number; overdue: number; atRisk: number; blocked: number } };
+export type LeaderView = { people: { personId: string | null; name: string | null; tasks: LeaderTask[]; counts: Record<"todo" | "in_progress" | "in_review", number>; overdue: number; atRisk: number; blocked: number }[]; totals: { open: number; overdue: number; atRisk: number; blocked: number }; /** How many tasks are on the page when the limit cut the list; null when all of them are. */ shown: number | null };
+
+/** The most the leader's view lists; past it, the earliest due come first and the page says so. */
+export const LEADER_LIMIT = 1000;
 
 /**
  * Open tasks other people are doing for this viewer: those they asked for or created, and
@@ -23,15 +26,11 @@ export type LeaderView = { people: { personId: string | null; name: string | nul
  * (a lead sees the team's work; a requester sees their task), so no further filter is needed.
  */
 export async function getLeaderView(viewer: WorkViewer, today: IsoDate): Promise<LeaderView> {
-  const self = viewer.principal.personId;
-  if (!self) return { people: [], totals: { open: 0, overdue: 0, atRisk: 0, blocked: 0 } };
-  const ledTeams = [...viewer.teamRoles].filter(([, role]) => role === "lead").map(([id]) => id);
-  const ledProjects = [...viewer.projectRoles].filter(([, role]) => role === "lead").map(([id]) => id);
-  const asked = or(eq(schema.task.requesterPersonId, self), eq(schema.task.createdByPersonId, self));
-  const scope = or(asked, ledTeams.length ? inArray(schema.workTask.teamId, ledTeams) : undefined, ledProjects.length ? inArray(schema.workTask.projectId, ledProjects) : undefined);
-  // Work the viewer does themselves is on "My work", not here.
-  const items = await listItems(and(open, scope, notInTriage, or(isNull(schema.task.assigneePersonId), ne(schema.task.assigneePersonId, self))), db(), 1000);
-  if (items.length === 0) return { people: [], totals: { open: 0, overdue: 0, atRisk: 0, blocked: 0 } };
+  const scoped = leaderScope(viewer);
+  if (!scoped) return { people: [], totals: NO_TOTALS, shown: null };
+  const { where, asked } = scoped;
+  const [{ items }, totals] = await Promise.all([listLeaderItems(where, LEADER_LIMIT), countLeaderTotals(where, today)]);
+  if (items.length === 0) return { people: [], totals: NO_TOTALS, shown: null };
 
   const [states, projects, requested] = await Promise.all([
     db().select({ id: schema.workState.id, name: schema.workState.name, category: schema.workState.category }).from(schema.workState).where(inArray(schema.workState.id, [...new Set(items.map((item) => item.stateId))])),
@@ -57,7 +56,59 @@ export async function getLeaderView(viewer: WorkViewer, today: IsoDate): Promise
   }));
   // Whoever has the most trouble first; unassigned work last.
   people.sort((a, b) => Number(a.personId === null) - Number(b.personId === null) || b.blocked - a.blocked || b.overdue - a.overdue || b.atRisk - a.atRisk || (a.name ?? "").localeCompare(b.name ?? "", "vi"));
-  return { people, totals: { open: tasks.length, overdue: tasks.filter((task) => task.risk === "overdue").length, atRisk: tasks.filter((task) => task.risk === "at_risk").length, blocked: tasks.filter((task) => task.blocker).length } };
+  // The totals count everything that matched, in SQL — not only what fitted on the page.
+  return { people, shown: totals.open > tasks.length ? tasks.length : null, totals };
+}
+
+const NO_TOTALS: LeaderTotals = { open: 0, overdue: 0, atRisk: 0, blocked: 0 };
+export type LeaderTotals = LeaderView["totals"];
+
+/**
+ * The leader view's question as SQL: open tasks other people are doing for this viewer — those they
+ * asked for or created, and everything in the teams and projects they lead — outside triage, and
+ * not their own. `asked` marks the first kind. null = a viewer who is nobody.
+ */
+function leaderScope(viewer: WorkViewer): { where: SQL; asked: SQL } | null {
+  const self = viewer.principal.personId;
+  if (!self) return null;
+  const ledTeams = [...viewer.teamRoles].filter(([, role]) => role === "lead").map(([id]) => id);
+  const ledProjects = [...viewer.projectRoles].filter(([, role]) => role === "lead").map(([id]) => id);
+  const asked = or(eq(schema.task.requesterPersonId, self), eq(schema.task.createdByPersonId, self))!;
+  const scope = or(asked, ledTeams.length ? inArray(schema.workTask.teamId, ledTeams) : undefined, ledProjects.length ? inArray(schema.workTask.projectId, ledProjects) : undefined);
+  // Work the viewer does themselves is on "My work", not here.
+  return { where: and(open, scope, notInTriage, or(isNull(schema.task.assigneePersonId), ne(schema.task.assigneePersonId, self)))!, asked };
+}
+
+/**
+ * The leader view's four figures over everything it matches, counted in SQL by the rule of
+ * `riskOf` (engine/risk.ts) — for the reports dashboard's tile, which needs no rows, and for the
+ * page itself once the list is cut. Kept in step with `riskOf` by a test.
+ */
+export async function leaderTotals(viewer: WorkViewer, today: IsoDate): Promise<LeaderTotals> {
+  const scoped = leaderScope(viewer);
+  return scoped ? countLeaderTotals(scoped.where, today) : NO_TOTALS;
+}
+
+async function countLeaderTotals(where: SQL, today: IsoDate): Promise<LeaderTotals> {
+  // A task with no state reads as "todo", as on the page.
+  const category = sql`coalesce(${schema.workState.category}, 'todo')`;
+  const closed = sql`${category} in ('done', 'cancelled')`;
+  const overdue = sql`(not ${closed} and ${schema.task.dueDate} < ${today})`;
+  const blockedByOpen = sql`exists (select 1 from ${schema.workTaskDependency} d join ${schema.task} b on b.id = d.blocker_task_id where d.blocked_task_id = ${schema.task.id} and d.type = 'blocks' and b.deleted_at is null and b.status in ('todo', 'in_progress'))`;
+  const atRisk = sql`(not ${closed} and not coalesce(${overdue}, false) and (${blockedByOpen} or (${category} in ('backlog', 'todo') and ${schema.task.dueDate} <= ${addDays(today, AT_RISK_WITHIN_DAYS)})))`;
+  const flagged = sql`exists (select 1 from ${schema.workBlocker} r where r.task_id = ${schema.task.id} and r.resolved_at is null)`;
+  const [row] = await db()
+    .select({
+      open: sql<number>`count(*)`.mapWith(Number),
+      overdue: sql<number>`count(*) filter (where ${overdue})`.mapWith(Number),
+      atRisk: sql<number>`count(*) filter (where ${atRisk})`.mapWith(Number),
+      blocked: sql<number>`count(*) filter (where ${flagged})`.mapWith(Number),
+    })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .leftJoin(schema.workState, eq(schema.workState.id, schema.workTask.stateId))
+    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), where));
+  return row ?? NO_TOTALS;
 }
 
 /** "How is this going?" — once per task per day, whoever asks (the table's key is task + assignee + kind + day). */

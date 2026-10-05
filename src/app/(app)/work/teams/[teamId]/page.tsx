@@ -4,13 +4,18 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
-import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
-import { addableMembers, canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
+import { readFilters, readGrouping, readSort, taskSliceFor } from "@/modules/work/engine/filter";
+import { addableMembers, canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listDeletedTasks, listRecurrences, listSavedViews, listTeamIntakeForms, listLabels, listStates, listTaskSlice, listTeamMembers, loadViewer, RESTORE_WINDOW_DAYS, teamFacts, visibleProjects, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { getDaysOff } from "@/modules/attendance/service";
+import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
+import { BoardView } from "@/modules/work/ui/board-view";
+import { CalendarView } from "@/modules/work/ui/calendar-view";
+import { DeletedTasks } from "@/modules/work/ui/deleted-tasks";
+import { RecurrenceManager } from "@/modules/work/ui/planning-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { canManageCustomFields, canSeeLoggedTime, canViewTriage, countTriage, listCustomFields, loggedMinutesByTask, toFieldViews } from "@/modules/work/service";
 import { CustomFieldManager } from "@/modules/work/ui/custom-fields";
@@ -22,6 +27,7 @@ import { accentOf, teamStatusOf } from "@/modules/work/enums";
 import { ArchiveButton, EditTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
 import { checklistChoices, listStateChecklists, projectStatusNames, projectStatusSetChoices } from "@/modules/work/service";
 import { StageChecklists } from "@/modules/work/ui/checklists";
@@ -41,39 +47,51 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const status = teamStatusOf(team);
   const seesBacklog = canViewTeamBacklog(viewer, facts);
   const today = todayInVietnam();
+  const filters = readFilters(query);
+  const backlogView: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
+  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
+  const grid = monthGrid(month);
 
-  const [members, states, labels, projects, backlog, clients, assignable, intakeForms, [addable, entities, departments]] = await Promise.all([
+  const [members, states, labels, projects, { items: backlog, total: backlogTotal }, clients, assignable, intakeForms, [addable, entities, departments]] = await Promise.all([
     listTeamMembers(team.id),
     listStates([team.id]),
     listLabels([team.id]),
     visibleProjects(viewer, { today }),
-    seesBacklog ? listTeamBacklog(team.id) : [],
+    // PERF-03: open work, and closed work only as far as this view shows it.
+    seesBacklog ? listTaskSlice({ backlogOf: team.id }, taskSliceFor(backlogView, filters, today, grid)) : { items: [], total: 0 },
     listClients({ activeOnly: true }),
     listAssignable(team.id, null),
     listTeamIntakeForms(team.id),
     // The picker offers only the people this viewer may actually add (`canAddTeamMember`).
     admin ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()]) : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
-  const [fieldRows, triageCounts, checklists, stageHooks, statusNames, statusSets] = await Promise.all([
+  const contribute = canContributeToTeam(viewer, facts) && team.isActive;
+  const [fieldRows, triageCounts, checklists, stageHooks, statusNames, statusSets, views, recurrences, deleted] = await Promise.all([
     listCustomFields({ teamId: team.id }, { includeInactive: true }),
     canViewTriage(viewer, facts) ? countTriage([team.id]) : null,
     checklistChoices(),
     listStateChecklists(states.map((state) => state.id)),
     projectStatusNames(),
     admin ? projectStatusSetChoices(team.id, team.projectStatusSetId) : [],
+    // The backlog is a list of its own (WRK-02): its saved filters, its recurring tasks, and — for
+    // whoever runs the team — what was deleted from it lately.
+    seesBacklog ? listSavedViews({ teamId: team.id }, user.person.id) : [],
+    seesBacklog ? listRecurrences({ teamId: team.id }, today) : [],
+    admin && seesBacklog ? listDeletedTasks({ teamId: team.id }) : [],
   ]);
   const fields = toFieldViews(fieldRows);
   // FR-PJM-10: the team's open cycles, for the filter and bulk edit.
   const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
-  const backlogView = query.view === "table" ? "table" : "list";
   const logged = seesBacklog && backlogView === "table" && canSeeLoggedTime(viewer, { team: facts, project: null }) ? Object.fromEntries(await loggedMinutesByTask(backlog.map((task) => task.id))) : null;
   const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
-  const filters = readFilters(query);
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
   const teamProjects = projects.filter((project) => project.teamId === team.id);
 
   const listOptions = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles };
+  const scope = { teamId: team.id, projectId: null };
+  // The backlog's calendar: its dated tasks on the team's own working calendar (no content posts — those belong to projects).
+  const [calendarTasks, daysOff] = seesBacklog && backlogView === "calendar" ? await Promise.all([withEditable(viewer, backlog), getDaysOff(team.entityId, grid.from, grid.to)]) : [[], []];
 
   return (
     <Page width="wide" data-accent={accentOf(team.color)}>
@@ -140,7 +158,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(project.status)}>{(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)}</Badge>
+                  <ProjectStatusBadge status={project.status} name={(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)} />
                 </TableCell>
                 <TableCell kind="number">{project.openTasks}</TableCell>
                 <TableCell>
@@ -155,12 +173,57 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       </Section>
 
       {seesBacklog ? (
-        <Section title={t("teams.backlog")} count={backlog.length || undefined} action={<ViewTabs current={backlogView} views={["list", "table"]} />}>
+        <Section title={t("teams.backlog")} count={backlogTotal || undefined} action={<ViewTabs current={backlogView} />}>
+          {backlogTotal > backlog.length ? <p className="text-sm text-muted-foreground">{t("list.truncated", { shown: backlog.length, total: backlogTotal })}</p> : null}
           {backlogView === "table" ? (
-            <TaskTableView tasks={backlog} options={listOptions} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContributeToTeam(viewer, facts)} logged={logged} />
+            <TaskTableView tasks={backlog} options={listOptions} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={contribute} logged={logged} scope={scope} />
+          ) : backlogView === "board" ? (
+            <BoardView tasks={backlog} options={listOptions} initialFilters={filters} selfId={user.person.id} today={today} canContribute={contribute} scope={scope} />
+          ) : backlogView === "calendar" ? (
+            <CalendarView
+              tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && team.isActive }))}
+              options={listOptions}
+              month={month}
+              daysOff={daysOff.map(({ date, name }) => ({ date, name }))}
+              initialFilters={filters}
+              initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
+              selfId={user.person.id}
+              today={today}
+              scope={contribute ? scope : undefined}
+            />
           ) : (
-            <TaskListView tasks={backlog} options={listOptions} scope={{ teamId: team.id, projectId: null }} initialFilters={filters} initialGrouping={grouping} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContributeToTeam(viewer, facts)} />
+            <TaskListView
+              tasks={backlog}
+              options={listOptions}
+              scope={scope}
+              initialFilters={filters}
+              initialGrouping={grouping}
+              initialSort={sort}
+              selfId={user.person.id}
+              today={today}
+              canContribute={contribute}
+              // One's own view is one's own to change; a shared one of somebody else's, the team's leads'.
+              savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canEdit: view.ownerPersonId === user.person.id || admin, canDelete: view.ownerPersonId === user.person.id || admin, filters: view.filters }))}
+            />
           )}
+        </Section>
+      ) : null}
+
+      {seesBacklog ? (
+        <Section title={t("recurrence.heading")} count={recurrences.filter((row) => row.isActive).length || undefined}>
+          <RecurrenceManager
+            target={{ teamId: team.id }}
+            recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, assigneePersonId: draft.assigneePersonId ?? null, estimateMinutes: draft.estimateMinutes ?? null, assigneeName, nextDate, made }))}
+            people={assignable}
+            canManage={contribute}
+            today={today}
+          />
+        </Section>
+      ) : null}
+
+      {deleted.length ? (
+        <Section title={t("deleted.title", { count: deleted.length })}>
+          <DeletedTasks tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))} days={RESTORE_WINDOW_DAYS} />
         </Section>
       ) : null}
 

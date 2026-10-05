@@ -13,7 +13,14 @@
   },
   "controls": {
     "search": "Search",
+    "pager": {
+      "label": "Pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {pageCount} · {total} in all"
+    },
     "noResults": "No matches",
+    "loading": "Loading…",
     "pickDate": "Pick a date",
     "pickMonth": "Pick a month",
     "today": "Today",
@@ -21,7 +28,12 @@
     "clear": "Clear",
     "time": "Time",
     "previousYear": "Previous year",
-    "nextYear": "Next year"
+    "nextYear": "Next year",
+    "add": "Add “{name}”",
+    "typeToAdd": "Type a name to add it",
+    "confirmNo": "Go back",
+    "exportXlsx": "Excel (.xlsx)",
+    "exportCsv": "CSV (.csv)"
   },
   "signIn": {
     "title": "Sign in",
@@ -33,6 +45,7 @@
       "not_provisioned": "Your account has no profile in the system yet. Please contact HR.",
       "access_revoked": "Your access has been revoked. Please contact HR.",
       "email_not_verified": "Google has not verified this email.",
+      "rate_limited": "Too many sign-in attempts from this network. Wait a minute and try again.",
       "generic": "Could not sign in. Try again or contact HR."
     }
   },
@@ -67,6 +80,7 @@
     "kb": "Knowledge",
     "admin": "Admin",
     "entities": "Entities",
+    "brands": "Brand kits",
     "soon": "Soon",
     "signOut": "Sign out",
     "org": "Org units",
@@ -132,7 +146,9 @@
       "preferences": "Preferences",
       "admin": "Admin"
     },
-    "kiosk": "Face kiosk"
+    "kiosk": "Face kiosk",
+    "issuedDocuments": "Issued documents",
+    "privacy": "Privacy and retention"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -180,7 +196,8 @@
     "asset_admin": "Asset admin",
     "auditor": "Auditor (read-only)",
     "support": "Support",
-    "sales": "Sales / business development"
+    "sales": "Sales / business development",
+    "marketing": "Marketing / brand"
   },
   "entities": {
     "details": "Entity details",
@@ -205,7 +222,21 @@
       "invalid": "Please check the form.",
       "generic": "Something went wrong. Please try again.",
       "entity_in_use": "People still belong to this entity, so it cannot be deactivated yet.",
-      "not_found": "Not found."
+      "not_found": "Not found.",
+      "bank_unknown": "That bank is not one the group pays salary from.",
+      "bank_account_exists": "The entity already has this account at that bank.",
+      "bank_account_number_invalid": "An account number is digits only, 6 to 32 of them."
+    },
+    "bankAccounts": "Paying bank accounts",
+    "bankAccountsHint": "The company's own accounts that salary is paid from. The bank-file screen picks from this list instead of typing an account.",
+    "bankAccount": {
+      "bank": "Bank",
+      "accountNumber": "Account number",
+      "accountName": "Account name",
+      "branch": "Branch",
+      "default": "Default",
+      "add": "Add account",
+      "none": "No paying account configured yet."
     },
     "insuranceUnitCode": "Social insurance unit code",
     "legalRepresentative": "Legal representative",
@@ -230,6 +261,7 @@
       "allEntities": "All entities",
       "allDepartments": "All departments",
       "allTypes": "All workforce types",
+      "allCompetencies": "All professional fields & skills",
       "apply": "Filter",
       "clear": "Clear"
     },
@@ -291,7 +323,8 @@
         "hint": "For history from before SuZu One: a period that is already over, e.g. the department and position someone held in earlier years. Enter the oldest period first. The new period takes over the days it covers: the period it starts in ends the day before, the one it ends in starts the day after. Entering the exact dates of an earlier period corrects it. Today's assignment is not changed.",
         "from": "From",
         "to": "To (last day)"
-      }
+      },
+      "proposed": "Sent for approval. The change applies once it is approved."
     },
     "fields": {
       "fullName": "Full name",
@@ -318,13 +351,56 @@
       "orgUnit": "Org unit",
       "branch": "Branch",
       "position": "Position",
-      "jobLevel": "Job level",
+      "jobTitle": "Job title",
+      "seniorityLevel": "Seniority level",
+      "positionLevel": "Position level",
+      "projectPositions": "Project positions",
       "managerId": "Line manager",
       "dottedManagerId": "Dotted-line manager",
       "workLocation": "Work location",
       "validFrom": "Effective from",
       "changeReason": "Reason",
       "accountsManaged": "Clients looked after"
+    },
+    "seniorityLevel": {
+      "intern": "Intern",
+      "junior": "Junior",
+      "mid": "Mid-level",
+      "senior": "Senior"
+    },
+    "positionLevel": {
+      "executive": "Executive",
+      "leader": "Leader",
+      "manager": "Manager",
+      "director": "Director",
+      "c_level": "C-level"
+    },
+    "projectPosition": {
+      "lead": "Project lead",
+      "account_manager": "Account manager"
+    },
+    "competencies": {
+      "title": "Professional fields & skills",
+      "profession": "Professional fields",
+      "skill": "Skills",
+      "edit": "Edit professional fields and skills",
+      "hint": "Pick from the names colleagues already use, or type a new one and choose “Add”. A new name is capitalised by itself and offered to everyone after. The whole company sees both lists on the profile.",
+      "find": "See everyone with {name}",
+      "catalogueDescription": "{count, plural, =0 {No entries yet} one {# entry} other {# entries}} shared by the whole group. Correct a misspelt name, merge a double or remove an entry nobody needs.",
+      "name": "Name",
+      "kind": "Kind",
+      "holders": "People",
+      "allKinds": "All kinds",
+      "searchName": "Search by name",
+      "empty": "No entries yet.",
+      "noMatch": "No entry matches.",
+      "add": "Add an entry",
+      "editItem": "Edit",
+      "editTitle": "Edit “{name}”",
+      "editHint": "Every word of the name is capitalised by itself. If the corrected name is one the catalogue already has in the same kind, the two become one: whoever holds this entry holds the other instead.",
+      "delete": "Remove entry",
+      "deleteConfirm": "Remove “{name}” from the catalogue{count, plural, =0 {} one { and from the profile of # person} other { and from the profiles of # people}}?",
+      "seeHolders": "See the {count, plural, one {# person} other {# people}} with {name}"
     },
     "workforceType": {
       "employee": "Employee",
@@ -364,6 +440,11 @@
       "employee_code_exhausted": "Could not find a free employee code. Enter one by hand.",
       "entity_not_found": "That entity does not exist or is inactive.",
       "person_not_found": "That person no longer exists.",
+      "competencies_too_many": "Each list holds 30 entries at most.",
+      "competency_name_too_long": "A professional field or skill is 60 characters at most.",
+      "competency_name_empty": "The name is missing.",
+      "competency_not_found": "That entry is no longer in the catalogue. Reload the page.",
+      "competency_exists": "The catalogue already has that entry.",
       "employment_overlap": "This person already has an employment in that period.",
       "assignment_conflict": "Someone else changed this person's assignment at the same time. Reload and try again.",
       "no_employment": "This person has no employment to assign.",
@@ -395,7 +476,19 @@
       "assignment_not_ended": "Work history must be over by yesterday. For a change from today on, use Change assignment.",
       "assignment_covers_recorded_period": "This period would swallow a whole period already on file. Correct that period with its exact dates instead.",
       "assignment_inside_recorded_period": "This period falls inside one period on file and would split it. Enter the oldest periods first, starting on the employment's first day.",
-      "assignment_moves_recorded_event": "This would move the date of a transfer or promotion on the timeline. End the period before that date."
+      "assignment_moves_recorded_event": "This would move the date of a transfer or promotion on the timeline. End the period before that date.",
+      "employee_code_invalid": "Enter an employee code.",
+      "employment_start_after_end": "The first day is after the last day of this employment.",
+      "seniority_after_start": "The seniority date cannot be after the first day.",
+      "employment_start_after_today": "This person is already at work: the first day cannot move past today.",
+      "employment_start_after_first_change": "The new first day is after a later change of assignment. Correct the assignments first.",
+      "position_name_empty": "Enter a name.",
+      "position_not_found": "That position no longer exists.",
+      "position_name_taken": "Another position already has that name.",
+      "remove_self": "You cannot remove your own record.",
+      "remove_name_mismatch": "The name does not match.",
+      "person_in_use": "This person cannot be removed: other records already name them.",
+      "lifecycle_change_open": "A proposal of this kind for this person is still waiting for approval."
     },
     "orgChart": {
       "title": "Org chart",
@@ -416,7 +509,10 @@
       },
       "historyTitle": "Past work history",
       "historyDescription": "For people already in the system: one row per past period (employee code, from, to, department, position…). Rows of one person are applied oldest first, each as in \"Add past work history\" on the person's page.",
-      "historyWizard": "Work history file"
+      "historyWizard": "Work history file",
+      "contractsTitle": "Labour contracts",
+      "contractsDescription": "For contracts already signed, of people already on the books: one row per contract. Each goes to the employment running on its first day and passes the same legal checks as one entered by hand. Pay terms are not imported; enter them on the person's page.",
+      "contractsWizard": "Import contracts"
     },
     "duplicates": {
       "title": "This person may already be on file:",
@@ -436,6 +532,24 @@
       "remove": "Remove photo",
       "saving": "Uploading…",
       "hint": "JPG, PNG or WebP, up to 50 MB. It is cropped to a square and resized before upload."
+    },
+    "corrections": {
+      "employmentTitle": "Correct employment {code}",
+      "employmentHint": "For dates or a code entered wrong. A new first day moves the first assignment and the hire with it.",
+      "seniorityFrom": "seniority from {date}",
+      "removeTitle": "Remove this person (created in error)",
+      "removeHint": "Only for a record that should never have been made — a duplicate or a test. It removes the person with their hire, its checklist and their profile. It is refused once anything else names them: a contract, a request, a role, a payslip, a finished checklist step.",
+      "removeConfirm": "Type “{name}” to confirm",
+      "removeSubmit": "Remove for good"
+    },
+    "positions": {
+      "title": "Positions",
+      "description": "{count, plural, one {# position} other {# positions}} in the group's catalogue. A correction here renames the position for everyone who holds it.",
+      "name": "Position",
+      "holders": "Held by",
+      "empty": "No positions yet. A position is added the first time a placement names it.",
+      "renameTitle": "Rename “{name}”",
+      "renameHint": "{count, plural, =0 {Nobody holds it today.} one {# person holds it today.} other {# people hold it today.}} The new name shows everywhere, past assignments included."
     }
   },
   "records": {
@@ -518,7 +632,10 @@
         "professional": "College degree or higher required (up to 60 days)",
         "intermediate": "Intermediate / technical (up to 30 days)",
         "other": "Other work (up to 6 working days)"
-      }
+      },
+      "editTitle": "Correct contract {number}",
+      "editHint": "For a contract entered wrong. The same legal checks apply as to a new one; a contract dated in an earlier employment moves to that employment.",
+      "salaryTermsKeep": "Leave blank to keep the current terms"
     },
     "dependents": {
       "empty": "No dependents registered.",
@@ -543,7 +660,9 @@
         "sibling": "Sibling",
         "grandparent": "Grandparent",
         "other": "Other"
-      }
+      },
+      "editTitle": "Correct {name}",
+      "editHint": "The ID number and tax code are not shown; leave them blank to keep them."
     },
     "documents": {
       "empty": "No documents you can see.",
@@ -563,7 +682,9 @@
         "contract": "Signed contract",
         "decision": "Decision",
         "other": "Other"
-      }
+      },
+      "editTitle": "Correct “{title}”",
+      "editHint": "The category cannot change: it set who may open the file. Upload it again under the right category instead."
     },
     "contacts": {
       "empty": "No emergency contact on file.",
@@ -571,7 +692,8 @@
       "fullName": "Name",
       "relationship": "Relationship",
       "phone": "Phone",
-      "note": "Note"
+      "note": "Note",
+      "editTitle": "Correct {name}"
     },
     "errors": {
       "forbidden": "You do not have permission to do this.",
@@ -609,8 +731,19 @@
       "file_storage_limit": "Storage refused the file: it is too large.",
       "file_upload_failed": "The upload failed. Check your connection and try again.",
       "file_owner_not_found": "The record this file belongs to no longer exists.",
-      "step_up_required": "Please confirm who you are to continue."
-    }
+      "step_up_required": "Please confirm who you are to continue.",
+      "contract_has_appendices": "This contract has appendices, so it cannot become an appendix itself.",
+      "event_before_start": "The date is before the employment started.",
+      "already_terminated": "The employment has already ended by then.",
+      "contract_start_not_effective": "The new contract starts on the event's date.",
+      "assignment_before_current_assignment": "A later change of assignment is already on file. Pick a date after it.",
+      "assignment_before_employment_start": "The date is before the employment started.",
+      "assignment_after_employment_end": "The date is after the employment ends.",
+      "template_not_found": "That template is no longer in use.",
+      "document_forbidden": "You may not issue this document."
+    },
+    "edit": "Edit",
+    "keepSealed": "Kept as is — type to replace"
   },
   "org": {
     "tree": "Unit tree",
@@ -716,6 +849,8 @@
     "close": "Close",
     "noDiff": "This entry carries no before/after data.",
     "appendOnly": "The log is written by a database trigger: append-only, nobody can edit or delete it.",
+    "resourceId": "Resource ID",
+    "summary": "Summary",
     "removeFilter": "Remove filter {filter}",
     "title": "Audit log",
     "description": "Every data change, every refusal and every automated job. The log is append-only; nobody can edit or delete it.",
@@ -814,6 +949,10 @@
         "title": "Scheduled job failed: {job}",
         "body": "The job {job} just failed: {error}"
       },
+      "system_job_timed_out": {
+        "title": "Scheduled job stopped before it finished: {job}",
+        "body": "The job {job} was still running after {minutes} minutes and the server stopped it. Its work may be half done: open Admin → Jobs and run it again."
+      },
       "system_rule_proposed": {
         "title": "A statutory parameter change needs your decision",
         "body": "A new value was proposed for {parameter}, in force from {validFrom}. It takes effect only once you approve it."
@@ -878,6 +1017,14 @@
         "title": "{delegator} delegated their approvals to you",
         "body": "From {from} to {to}, requests that would go to {delegator} come to you instead."
       },
+      "approvals_delegation_set_for_you": {
+        "title": "{actor} delegated your approvals to {delegate}",
+        "body": "From {from} to {to}, requests that would come to you go to {delegate} instead. {actor} set this for you; you can end it under Delegation."
+      },
+      "approvals_turn_reassigned": {
+        "title": "{actor} moved a request from you to {to}: {requestType}",
+        "body": "A request ({requestType}) that was waiting for your answer now waits for {to}. You no longer need to answer it."
+      },
       "approvals_leave_cancelled": {
         "title": "Your leave was cancelled by HR",
         "body": "HR cancelled your approved leave ({range}). The days are back in your balance."
@@ -901,6 +1048,22 @@
       "attendance_nudge": {
         "title": "Please check your attendance for {month}",
         "body": "HR asks you to review your attendance for {month}: fix missing punches or file the requests that are still open."
+      },
+      "attendance_punches_to_review": {
+        "title": "{count, plural, one {# check-in from yesterday waits} other {# check-ins from yesterday wait}} for your review",
+        "body": "{count, plural, one {# check-in was} other {# check-ins were}} flagged yesterday (away from the location, no position, or off the office network). Accept the ones you can vouch for, or reject them with a reason."
+      },
+      "attendance_punches_block_lock": {
+        "title": "{count, plural, one {# check-in} other {# check-ins}} in {month} wait for your review",
+        "body": "{count, plural, one {# flagged check-in} other {# flagged check-ins}} in {month} still wait for you to accept or reject. The month's timesheet cannot be locked until they are reviewed."
+      },
+      "attendance_punch_rejected": {
+        "title": "Your check-in at {time} was not accepted",
+        "body": "Your check-in at {time} was rejected: {reason}. It no longer counts; if you were there, file an attendance correction before the month is locked."
+      },
+      "attendance_month_locked": {
+        "title": "Your {month} timesheet is locked",
+        "body": "HR locked the {month} timesheet and handed it to payroll. From now on any change is an adjustment by HR, not a request."
       },
       "tasks_work_assigned": {
         "title": "{key} is yours: {title}",
@@ -990,6 +1153,10 @@
         "title": "Your {month} payslip is ready",
         "body": "Your payslip for {month} has been released. Open the app to read it."
       },
+      "payroll_payslip_withdrawn": {
+        "title": "Your {month} payslip was withdrawn",
+        "body": "Your payslip for {month} was withdrawn for review and will be re-issued. You will be told when the new one is out."
+      },
       "payroll_payslip_query_raised": {
         "title": "A payslip query was raised",
         "body": "Someone asked about their {month} payslip."
@@ -1001,6 +1168,14 @@
       "payroll_cash_receipt_due": {
         "title": "Confirm you received your pay",
         "body": "Please confirm that you received your {month} pay in cash."
+      },
+      "approvals_request_paid": {
+        "title": "Your request was paid",
+        "body": "{summary} — {amount} paid on {date} (reference {reference})."
+      },
+      "approvals_request_repayment_recorded": {
+        "title": "Advance repayment recorded",
+        "body": "{summary} — {amount} of unspent advance received back on {date} (reference {reference})."
       },
       "approvals_sla_reminder": {
         "title": "A request is waiting for your answer",
@@ -1018,17 +1193,21 @@
         "title": "Hiring request approved",
         "body": "The request for {title} ({count}) was approved. Time to write the posting."
       },
+      "recruit_application_received": {
+        "title": "A new application",
+        "body": "Somebody has applied for {title} ({code}) through the careers page."
+      },
       "recruit_interview_scheduled": {
         "title": "You have an interview",
-        "body": "{title} with {candidate}."
+        "body": "{title} for the {job} role."
       },
       "recruit_interview_cancelled": {
         "title": "Interview cancelled",
-        "body": "{title} with {candidate} has been cancelled."
+        "body": "{title} for the {job} role has been cancelled."
       },
       "recruit_assignment_received": {
         "title": "Assignment submitted",
-        "body": "{candidate} has sent back {title}."
+        "body": "{title} for the {job} role has been sent back."
       },
       "recruit_offer_approved": {
         "title": "The offer was approved",
@@ -1036,7 +1215,7 @@
       },
       "recruit_offer_accepted": {
         "title": "The candidate accepted",
-        "body": "{name} accepted, starting {date}. Time to create the employee record."
+        "body": "The candidate for offer {number} ({title}) accepted, starting {date}. Time to create the employee record."
       },
       "performance_peer_requested": {
         "title": "You were asked for peer feedback",
@@ -1049,6 +1228,34 @@
       "performance_result_published": {
         "title": "Your {year} performance result is out",
         "body": "Your final performance result for {year} has been published. Open the results page to see how it was worked out."
+      },
+      "performance_review_open": {
+        "title": "Review cycle {cycle} is open",
+        "body": "Please write your self review{date, select, none {.} other { by {date}.}}"
+      },
+      "performance_reviews_owed": {
+        "title": "You have reviews to write",
+        "body": "Cycle {cycle}: you have {count} reviews to write for your people{date, select, none {.} other { by {date}.}}"
+      },
+      "performance_review_due": {
+        "title": "A review is due soon",
+        "body": "You have {count} reviews not yet submitted; the nearest is due on {date}."
+      },
+      "performance_review_overdue": {
+        "title": "A review is overdue",
+        "body": "You have {count} reviews past their due date and not yet submitted. Open the reviews page to finish them."
+      },
+      "performance_review_returned": {
+        "title": "A review was sent back for changes",
+        "body": "Cycle {cycle}: HR sent your review back for changes. Open it to read why and submit it again."
+      },
+      "performance_sign_off_waiting": {
+        "title": "A review conversation is not recorded",
+        "body": "{count} released reviews have no sign-off conversation recorded yet. Meet with the person and record it on the review page."
+      },
+      "performance_ack_waiting": {
+        "title": "Your review is waiting for you",
+        "body": "Your review has been released. Please read it and acknowledge that you have seen it."
       },
       "performance_rule_proposed": {
         "title": "A performance weighting version is waiting",
@@ -1085,6 +1292,18 @@
       "tasks_cover_handed_back": {
         "title": "Cover handed back",
         "body": "{actor} is back and took back {count} item(s)."
+      },
+      "tasks_cover_drafted": {
+        "title": "Name who covers your work",
+        "body": "Your leave from {from} to {to} has {count} item(s) falling in it. Name who covers them while you are away."
+      },
+      "tasks_cover_return_due": {
+        "title": "Welcome back — take your work back",
+        "body": "{count} item(s) are still with whoever covered for you. Open the cover plan to take them back."
+      },
+      "tasks_cover_return_ask": {
+        "title": "Hand the work back",
+        "body": "{actor} is back from leave. Hand back the {count} item(s) you covered."
       },
       "tasks_exit_handover": {
         "title": "Work to hand over",
@@ -1130,6 +1349,10 @@
         "title": "Retainer quota",
         "body": "{project}: “{line}” reached {percent}% of this month's quota."
       },
+      "projects_retainer_hours_alert": {
+        "title": "Retainer hours",
+        "body": "{project}: {month} has used {percent}% of its hours allowance."
+      },
       "projects_change_decided": {
         "title": "Change request decided",
         "body": "Change request “{title}” on {project} has been decided."
@@ -1166,13 +1389,29 @@
         "title": "Daily report reminder",
         "body": "{actor} reminds you to submit today's report."
       },
+      "daily_report_nudge_past": {
+        "title": "Daily report reminder",
+        "body": "{actor} reminds you to submit the report for {date}."
+      },
+      "daily_report_missed": {
+        "title": "Yesterday's report is missing",
+        "body": "No end-of-day report came in for {date}. You can still send it — it will be marked late."
+      },
       "daily_report_commented": {
         "title": "Comment on your report",
         "body": "{actor} commented on your report of {date}."
       },
+      "daily_report_blockers": {
+        "title": "A report with blockers",
+        "body": "{actor}'s report of {date} came in with blockers."
+      },
       "daily_weekly_report": {
         "title": "Weekly report",
         "body": "The weekly report of {subject} for the week of {week} is ready."
+      },
+      "daily_weekly_reports": {
+        "title": "Weekly reports",
+        "body": "{count} weekly reports for the week of {week} are ready for you to read."
       },
       "daily_timesheet_reminder": {
         "title": "Submit your timesheet",
@@ -1270,9 +1509,21 @@
         "title": "Commission statement",
         "body": "Your commission statement for {month} is ready to read."
       },
+      "crm_commission_reopened": {
+        "title": "Commission to confirm again",
+        "body": "A payment of {month} changed after you confirmed its commission. The statements were worked out again and wait for you to confirm."
+      },
+      "crm_commission_after_payroll": {
+        "title": "Commission changed after payroll",
+        "body": "A payment of {month} changed after its commission was paid through payroll. Adjust it in the next payroll run."
+      },
       "crm_cover_followups": {
         "title": "Client follow-ups while someone is away",
         "body": "You cover {count} client follow-ups of {name} during their leave."
+      },
+      "payroll_profile_import_proposed": {
+        "title": "Imported pay profiles are waiting",
+        "body": "{count} pay profiles imported from a spreadsheet are waiting for you to read and approve."
       }
     },
     "errors": {
@@ -1378,7 +1629,26 @@
       "failed": "Failed",
       "last24h": "in the last 24 hours",
       "median": "Median run",
-      "next": "Next run"
+      "next": "Next run",
+      "deliveries": "Failed deliveries",
+      "lastDays": "in the last {days} days"
+    },
+    "channels": {
+      "email": "Email",
+      "push": "Push",
+      "chat": "Chat",
+      "messenger": "Messenger",
+      "telegram": "Telegram"
+    },
+    "jobsSection": "Jobs",
+    "lastRun": "Last run",
+    "onDemand": "On demand",
+    "runNow": {
+      "label": "Run now",
+      "running": "Running…",
+      "succeeded": "Done",
+      "failed": "Failed — see the runs below",
+      "alreadyRunning": "Already running"
     },
     "runs": "Recent runs",
     "schedule": "Schedule",
@@ -1458,8 +1728,10 @@
       "pit_brackets": "Progressive income tax brackets",
       "pit_flat_rates": "Flat-rate income tax withholding",
       "overtime_multipliers": "Overtime and night-work multipliers",
+      "overtime_holiday_pay": "Holiday work – whether the 300% includes the holiday's own salary",
       "overtime_caps": "Overtime limits",
       "leave_annual": "Annual leave",
+      "leave_payout_basis": "Salary that unused leave paid out on leaving is priced on",
       "probation_limits": "Probation",
       "contract_fixed_term": "Fixed-term contracts",
       "union_dues_cap": "Union – cap on member dues",
@@ -1478,7 +1750,19 @@
       "proposal_not_found": "This proposal has already been handled.",
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the information (the value must be valid JSON).",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "version_not_voidable": "Only an approved version can be voided.",
+      "void_used_by_paid_run": "A payroll run being paid, paid or locked used this version, so it cannot be voided. Correct it with a retro item instead.",
+      "void_run_in_review": "A payroll run awaiting approval used this version. Return the run to HR first, then void it."
+    },
+    "void": {
+      "label": "Void",
+      "title": "Void version: {version}",
+      "hint": "An approved version that is wrong is voided: no longer in force, but kept with who voided it and why. The version before it applies to these days again; then propose the correct version as usual. A version a paid payroll run used cannot be voided.",
+      "reason": "Reason for voiding",
+      "confirm": "Void version",
+      "voided": "Voided",
+      "because": "Voided because: {reason}"
     }
   },
   "flags": {
@@ -1533,7 +1817,11 @@
       "saved": "saved",
       "unchanged": "unchanged",
       "periods": "periods recorded",
-      "adjusted": "periods on file moved to make room"
+      "adjusted": "periods on file moved to make room",
+      "requests": "salary changes waiting for approval",
+      "approved": "profiles in force at once",
+      "proposed": "profiles waiting for the owner",
+      "contracts": "Contracts"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -1604,7 +1892,20 @@
       "outside_employment": "Outside this person's employment",
       "covers_recorded_period": "Swallows a whole period already on file or in the file",
       "inside_recorded_period": "Falls inside one period and would split it; start from the oldest period",
-      "moves_recorded_event": "Would move the date of a transfer or promotion"
+      "moves_recorded_event": "Would move the date of a transfer or promotion",
+      "salary_change_open": "This person already has a salary change waiting.",
+      "allowance_unknown": "Allowance code not in the entity's catalogue",
+      "bad_allowances": "Allowances must read CODE=amount, separated by semicolons",
+      "version_exists": "A version already starts on this day.",
+      "before_current_version": "Starts before the version in force.",
+      "probation_below_minimum": "The probation pay share is below the legal minimum.",
+      "profile_proposal_open": "This person already has a pay profile proposal waiting.",
+      "profile_basis_required": "A Simple profile needs a basis; a Statutory one has none.",
+      "profile_review_date_simple_only": "A review date is for Simple profiles only.",
+      "profile_non_resident_method": "The PIT method does not fit the tax residency.",
+      "contract_number_taken": "This contract number is already used in the entity",
+      "contract_overlap": "Another labour contract is in force during this period",
+      "contract_rule": "Breaks the labour-contract rules (type, dates, length or probation)"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -1668,6 +1969,7 @@
       "request": "Request",
       "requester": "From",
       "submitted": "Sent",
+      "decided": "Decided",
       "status": "Status",
       "waitingOn": "Waiting for",
       "type": "Type",
@@ -1687,7 +1989,12 @@
       "salary_change": "Salary change",
       "project_brief": "Project kick-off brief",
       "project_change": "Project change request",
-      "crm_quote": "Quote"
+      "crm_quote": "Quote",
+      "lifecycle_transfer": "Transfer",
+      "lifecycle_promotion": "Promotion / appointment",
+      "lifecycle_termination": "Termination",
+      "leave_rule": "Leave rule change",
+      "attendance_rule": "Attendance rule change"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1712,6 +2019,7 @@
       "commented": "Comment",
       "withdrawn": "Withdrawn",
       "delegated": "Delegated",
+      "reassigned": "Reassigned",
       "cancelled": "Cancelled"
     },
     "history": {
@@ -1720,6 +2028,11 @@
       "verified": "Verified through a second channel",
       "parallel": "· together with the previous step",
       "standingInFor": "for {name}",
+      "othersOnStep": "the other approvers of the step",
+      "moved": {
+        "offboarded": "The approver left the company",
+        "administrator": "Moved by an administrator"
+      },
       "chain": "Approval chain",
       "stepTitle": "Step {number}",
       "mode": "{mode, select, all {everyone must approve} other {one approval is enough}}"
@@ -1731,6 +2044,20 @@
       "approve": "Approve",
       "return": "Return for changes",
       "reject": "Reject"
+    },
+    "rule": {
+      "changes": "Proposed change",
+      "againstCurrent": "Against the rule in force; the lines in bold are the ones that change.",
+      "newRule": "A new rule, with nothing before it.",
+      "field": "Field",
+      "current": "In force",
+      "proposed": "Proposed",
+      "yes": "Yes",
+      "no": "No",
+      "days": "{days} day(s)",
+      "notYet": "This rule has not taken effect: it applies only once the owner approves it.",
+      "inForce": "Approved — the rule has been saved and applies from its start date.",
+      "ownerOnly": "Only the owner decides leave and attendance rules."
     },
     "errors": {
       "generic": "Something went wrong. Please try again.",
@@ -1745,6 +2072,8 @@
       "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
       "change_request_verification_required": "Confirm that you verified the new bank account with the employee through a second channel.",
       "approval_delegate_refused": "This request cannot be handed to that person: it is not your turn, or they are already asked.",
+      "approval_reassign_refused": "This turn cannot be moved: the person chosen has no open turn any more, or the new approver is already on the step.",
+      "approval_reassign_tier": "This request carries restricted data. It can only go to someone who may read that employee's restricted data.",
       "approval_open_to_decide": "Open this request to decide it.",
       "delegation_self": "You cannot delegate to yourself.",
       "delegation_dates": "The end date is before the start date.",
@@ -1762,6 +2091,13 @@
       "delegateHint": "The person you choose answers instead of you. What they need to decide this kind of request (for example HR rights) still applies to them.",
       "delegateTo": "Hand over to",
       "delegateNote": "Note",
+      "reassign": "Reassign the approver",
+      "reassignShort": "Reassign",
+      "reassignHint": "For an approver who is away, suspended or not answering. The person you choose answers instead; the requester and the person the request is about cannot. The reason is kept in the request's history.",
+      "reassignFrom": "Take the turn from",
+      "reassignTo": "Give it to",
+      "reassignReason": "Reason",
+      "reassignSubmit": "Reassign",
       "delegateSubmit": "Hand over"
     },
     "bulk": {
@@ -1776,6 +2112,16 @@
     "delegation": {
       "link": "Delegate my approvals",
       "title": "Delegation",
+      "onBehalf": {
+        "title": "Approvals of someone who is away",
+        "description": "You are setting this up for <person>{name}</person>. New requests that would wait for them go to the person you name; they are told, and can end the delegation themselves.",
+        "waiting": "Requests waiting for this person",
+        "waitingEmpty": "Nothing is waiting that you can move.",
+        "hidden": "{count, plural, one {# more request is} other {# more requests are}} waiting for this person, about employees outside your scope.",
+        "given": "This person's delegations",
+        "link": "Delegate for this person",
+        "includePending": "Also hand over the requests waiting for this person now"
+      },
       "description": "While you are away, new requests that would wait for you go to the person you name. You can end a delegation at any time.",
       "to": "Delegate to",
       "types": "Request types",
@@ -2208,12 +2554,25 @@
       "submit": "Record",
       "noteHint": "Notes on disciplinary events are readable only by people who see restricted data. Salary changes: no amounts here."
     },
+    "suspend": {
+      "title": "Suspend the account",
+      "hint": "The person is signed out everywhere at once and cannot sign in until the suspension is lifted. Employment, assignments and roles stay as they are. Requests waiting for their approval are not moved by themselves.",
+      "reason": "Reason for the suspension",
+      "submit": "Suspend",
+      "liftTitle": "Lift the suspension",
+      "liftHint": "This account is suspended. Lifting it gives back exactly the access it had; the person signs in afresh.",
+      "liftReason": "Note (optional)",
+      "liftSubmit": "Lift the suspension",
+      "approvalsHint": "While this person is away or suspended, the requests waiting for their approval need someone to answer in their place.",
+      "approvalsLink": "See what is waiting and delegate for them"
+    },
     "terminate": {
       "title": "Terminate employment",
       "fromResignation": "Carry out the approved resignation",
       "hint": "At the end of the last working day the employment, assignments, contracts and every role end, and the offboarding checklist is created. After that day the account is locked and all sessions are deleted.",
       "confirm": "Terminate this employment?",
-      "submit": "Terminate"
+      "submit": "Terminate",
+      "proposed": "Sent for approval. The employment ends only once it is approved."
     },
     "transfer": {
       "title": "Move to another entity",
@@ -2239,6 +2598,10 @@
     },
     "errors": {
       "generic": "Could not save.",
+      "suspend_self": "You cannot suspend your own account.",
+      "suspend_not_active": "Only an active account can be suspended.",
+      "suspend_not_suspended": "This account is not suspended.",
+      "person_not_found": "The person was not found.",
       "forbidden": "You may not do this.",
       "invalid": "Check the fields you entered.",
       "no_employment": "This person has no employment.",
@@ -2249,11 +2612,35 @@
       "event_before_start": "The effective date must be after the start date.",
       "last_owner": "The last Owner's access cannot be ended. Grant Owner to someone else first.",
       "resignation_open": "You already have an open resignation request.",
-      "resignation_date_past": "The last working day cannot be in the past."
+      "resignation_date_past": "The last working day cannot be in the past.",
+      "resignation_approved": "Your resignation has been approved; HR is carrying it out.",
+      "event_has_effects": "This event wrote a contract or changed the workforce type. Correct those instead.",
+      "lifecycle_change_open": "A proposal of this kind for this person is still waiting for approval."
+    },
+    "contractEvent": {
+      "title": "Probation passed or contract renewed",
+      "hint": "Records the event with its new labour contract in one step: the contract it follows ends the day before, a passed probation moves the person to the chosen workforce type from that day, and the decision can be issued from a template.",
+      "effectiveDate": "From (the new contract's first day)",
+      "workforceType": "Workforce type from that day",
+      "template": "Issue a decision",
+      "noPaper": "No document",
+      "submit": "Record",
+      "made": "Issued as {number}.",
+      "download": "Download PDF",
+      "contract": "New contract {number}"
+    },
+    "change": {
+      "person": "Employee",
+      "title": {
+        "transfer": "Proposed transfer",
+        "promotion": "Proposed promotion / appointment",
+        "termination": "Proposed termination"
+      },
+      "appliedNote": "Approved and carried out."
     }
   },
   "exports": {
-    "button": "Export CSV",
+    "button": "Export",
     "failed": "The export failed.",
     "truncated": "The list is too long: the file holds the first 5,000 rows."
   },
@@ -2898,6 +3285,7 @@
         "name": "Name",
         "entity": "Entity",
         "address": "Address",
+        "position": "Position on the map",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
@@ -2934,6 +3322,7 @@
       "flagged": "Recorded, and flagged for your manager to review:",
       "note": "Note (optional)",
       "notePlaceholder": "e.g. at the client's office this morning",
+      "withoutPosition": "Check in without location",
       "notExpected": "No punch is needed today — you can still record one.",
       "untracked": "Today is a working day without attendance tracking (working from home). It is credited automatically; no check-in is needed.",
       "onLeaveFull": "You are on approved leave today. You can still check in if plans changed — tell HR so the leave can be cancelled.",
@@ -3096,7 +3485,7 @@
         "unmappedTitle": "{count, plural, one {# ID nobody is mapped to} other {# IDs nobody is mapped to}}",
         "unmappedHint": "Their log lines are kept. Map the ID and they become punches at once.",
         "lines": "{count, plural, one {# line} other {# lines}}",
-        "export": "Download the lines (CSV)",
+        "export": "Download the lines",
         "exportTruncated": "Only the first 5,000 lines are in the file.",
         "bulkTitle": "Map many at once by employee code",
         "bulkHint": "One per line: ID on the clock, employee code. Nothing is saved unless every line is right.",
@@ -3179,6 +3568,7 @@
       "inForce": "In force",
       "save": "Save as a new version",
       "saved": "Saved.",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "versionHint": "Saving with a later start date closes the current version the day before.",
       "summary": "grace {late}′/{early}′ · rounding {rounding}′ · overtime from {ot}′",
       "mergeRules": {
@@ -3200,6 +3590,7 @@
         "otRequiresApproval": "Overtime counts only with an approved request"
       },
       "errors": {
+        "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
         "generic": "Could not save. Please try again.",
         "forbidden": "You may not change this policy.",
         "invalid": "Check the fields.",
@@ -3354,6 +3745,7 @@
         "off_site": "Off-site (shoot, client, event)",
         "business_trip": "Business trip"
       },
+      "tripHint": "Going on a business trip? File a business trip request under Requests — once it is approved, the days go onto your timesheet by themselves.",
       "portions": {
         "full": "Whole day",
         "am": "Morning",
@@ -3378,10 +3770,10 @@
         "portion": "Part of the day",
         "locationName": "Place",
         "positionHint": "Optional: coordinates of the place, so a check-in there is accepted.",
+        "position": "Position",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "radius": "Radius (m)",
-        "position": "Position",
         "otFrom": "From",
         "otTo": "To",
         "window": "Hours",
@@ -3552,6 +3944,35 @@
       "columns": {
         "status": "Status",
         "summary": "Summary"
+      },
+      "export": {
+        "button": "Download the month's timesheet",
+        "failed": "The timesheet could not be downloaded.",
+        "truncated": "The file holds the first 5,000 rows only.",
+        "columns": {
+          "employeeCode": "Employee code",
+          "fullName": "Full name",
+          "standardDays": "Standard days",
+          "paidDays": "Paid days",
+          "unpaidDays": "Unpaid days",
+          "workedHours": "Hours worked",
+          "creditedHours": "Hours credited without punches",
+          "leavePaidHours": "Paid leave hours",
+          "leaveUnpaidHours": "Unpaid leave hours",
+          "holidayHours": "Holiday and day-off hours",
+          "absenceHours": "Absence hours",
+          "lateMinutes": "Minutes late",
+          "earlyMinutes": "Minutes left early",
+          "nightHours": "Night hours",
+          "otWeekday": "Overtime, weekday (h)",
+          "otWeekdayNight": "Overtime, weekday night (h)",
+          "otRestDay": "Overtime, rest day (h)",
+          "otRestDayNight": "Overtime, rest day night (h)",
+          "otHoliday": "Overtime, holiday (h)",
+          "otHolidayNight": "Overtime, holiday night (h)",
+          "otTimeOff": "Overtime taken as time off (h)",
+          "otPayable": "Overtime paid (h)"
+        }
       }
     },
     "console": {
@@ -3560,7 +3981,7 @@
       "allEntities": "All entities",
       "allKinds": "All",
       "toTimesheets": "Monthly timesheets",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "The file was cut at the row limit.",
       "clearPerson": "show everyone",
@@ -3627,7 +4048,10 @@
         "openedAt": "Opened",
         "lastSeen": "Last seen",
         "empty": "No tablet is open as a kiosk.",
-        "thisDevice": "This device"
+        "thisDevice": "This device",
+        "expires": "Expires",
+        "expired": "Expired, open it again",
+        "punchesToday": "Punches today"
       },
       "faces": {
         "listTitle": "Enrolled faces",
@@ -3683,6 +4107,35 @@
         "kiosk_code_expired": "The code has expired. Scan the one on the kiosk now.",
         "kiosk_not_yours": "This kiosk does not serve your entity."
       }
+    },
+    "position": {
+      "useMine": "Use my position",
+      "locating": "Finding your position…",
+      "none": "No position chosen.",
+      "accuracy": "Accurate to about {metres} m.",
+      "imprecise": "The phone only knows this to within {metres} m. Step outside and try again, or paste the place's map link below.",
+      "clear": "Clear",
+      "byHand": "Paste a map link or type the coordinates",
+      "paste": "Map link or coordinates",
+      "pasteHint": "In Google Maps, press and hold the place and copy the coordinates it shows, or copy the link from the browser's address bar. Short share links (maps.app.goo.gl) carry no coordinates.",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "problems": {
+        "denied": "Location access is off for this site. Allow it in the browser's settings, or paste the place's map link.",
+        "unavailable": "The phone could not tell where it is. Try again outside, or paste the place's map link.",
+        "timeout": "Finding the position took too long. Try again, or paste the place's map link.",
+        "unsupported": "This browser cannot tell its position. Paste the place's map link instead.",
+        "pasteInvalid": "No coordinates found in this text."
+      }
+    },
+    "myFace": {
+      "title": "Face check-in",
+      "enrolled": "Your face is enrolled for check-in at the kiosk ({count, plural, one {# template} other {# templates}}), with your consent recorded on {date}.",
+      "what": "SuZu One keeps only numbers that describe your face — never a photo — and uses them only to recognise you at the kiosk. You may withdraw your consent at any time; you then check in with the app or the kiosk's QR code.",
+      "withdraw": "Withdraw consent",
+      "withdrawConfirm": "Withdraw your consent to face check-in?",
+      "withdrawDetail": "Your face data and the consent record are deleted at once. The kiosk will no longer recognise you; HR can enrol you again only with a newly signed consent.",
+      "failed": "Could not withdraw the consent. Try again."
     }
   },
   "leave": {
@@ -3694,7 +4147,10 @@
       "title": "Available in {year}",
       "none": "You have no leave balance yet. Balances appear once HR has set up your leave.",
       "used": "{days} used",
-      "pending": "{days} waiting for approval"
+      "pending": "{days} waiting for approval",
+      "ledger": "Balance movements",
+      "ledgerHint": "Every addition, use, carry-over and adjustment of your balances, newest first — including days already booked for next year.",
+      "noLedger": "No movements yet."
     },
     "request": {
       "new": "Request leave",
@@ -3716,7 +4172,7 @@
       "minutes": "Minutes off (hourly leave)",
       "portionHint": "One date: choose whole day, morning, afternoon or hours. Several dates: the first day may start at noon (afternoon), the last may end at noon (morning).",
       "check": "Check",
-      "available": "Available in {year}: {days} day(s)",
+      "available": "Available for {year} by the leave date: {days} day(s)",
       "noBalance": "This type keeps no balance.",
       "colleaguesAway": "Also away on these days",
       "shortfall": "On {dates} fewer than {min} people of your team would be at work. You can still send the request; your manager sees this warning too.",
@@ -3763,6 +4219,7 @@
       "next": "Next month"
     },
     "errors": {
+      "rule_no_owner": "There is no owner to approve this rule; the change was not saved.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You are not allowed to do this.",
       "invalid": "Some fields are not valid.",
@@ -3819,6 +4276,7 @@
       "everyEntity": "Every entity",
       "save": "Save",
       "saved": "Saved",
+      "proposed": "Sent to the owner for approval — the change takes effect only once approved.",
       "remove": "Remove",
       "removeConfirm": "Remove this row?",
       "types": {
@@ -3967,6 +4425,15 @@
     }
   },
   "work": {
+    "deleted": {
+      "title": "Recently deleted ({count})",
+      "hint": "A deleted task can be put back for {days} days, with the sub-tasks that were deleted with it.",
+      "empty": "Nothing was deleted in the last {days} days.",
+      "deletedBy": "Deleted by",
+      "deletedAt": "Deleted",
+      "restore": "Restore",
+      "subtasks": "{count, plural, one {with # sub-task} other {with # sub-tasks}}"
+    },
     "title": "Work",
     "digitalAssets": {
       "title": "Pages & channels",
@@ -4248,6 +4715,7 @@
         "client": "Group by client"
       },
       "showClosed": "Show closed",
+      "truncated": "Showing the first {shown} of {total} tasks: open work first, then the most recently closed.",
       "clear": "Clear filters",
       "count": "{shown} of {total}",
       "quickCreate": "New task — type a title and press Enter",
@@ -4259,6 +4727,9 @@
       "blocked": "Blocked",
       "subtasks": "{done}/{total} sub-tasks",
       "views": {
+        "update": "Update “{name}”",
+        "saveNew": "Save as a new filter",
+        "shareTeam": "Share with the team",
         "shared": "shared",
         "delete": "Delete the saved filter {name}",
         "name": "Name this filter…",
@@ -4283,6 +4754,7 @@
       "inTriage": "In triage"
     },
     "task": {
+      "noParent": "None (top level)",
       "fields": {
         "title": "Title",
         "description": "Description",
@@ -4332,6 +4804,7 @@
       "delete": "Delete task",
       "deleteConfirm": "Delete this task and its sub-tasks?",
       "activity": {
+        "restored": "restored the task",
         "changed": "changed {field}: {from} → {to}",
         "changedPlain": "changed the {field}",
         "checklist": "updated the checklist ({done}/{total})",
@@ -4419,6 +4892,7 @@
       "createSubmit": "Create"
     },
     "errors": {
+      "task_restore_too_late": "This task was deleted too long ago to be put back.",
       "generic": "That did not work. Please try again.",
       "forbidden": "You may not do that here.",
       "invalid": "Please check the fields.",
@@ -4444,6 +4918,10 @@
       "project_not_found": "Project not found.",
       "project_other_team": "That project belongs to another team; a task keeps its team's workflow.",
       "project_archived": "That project is archived.",
+      "project_closed": "This project is closed: no new tasks, state changes or time until it is re-opened.",
+      "project_needs_kickoff": "A client project becomes Active only when its brief is approved at kick-off (the project's Overview page).",
+      "project_needs_closeout": "A client project becomes Done only through its close-out (the Close tab).",
+      "project_closed_reopen": "This project is closed. Re-open it on the Close tab before changing its status.",
       "project_dates_invalid": "The due date is before the start date.",
       "project_last_member": "A project keeps at least one member.",
       "task_not_found": "Task not found.",
@@ -4587,6 +5065,7 @@
       "preview_link_closed": "That link is no longer active.",
       "preview_comment_required": "Say what needs changing.",
       "preview_version_not_ready": "This version has not cleared internal review, so it cannot go to the client yet.",
+      "preview_project_closed": "The project is finished or archived, so no new review link can be made.",
       "checklist_name_required": "Give the checklist a name.",
       "checklist_empty": "Add at least one item.",
       "checklist_too_many": "A checklist holds at most 40 items.",
@@ -4611,12 +5090,13 @@
       "label": "View"
     },
     "board": {
+      "changeState": "Move {title} to another state",
       "moveUp": "Move up",
       "moveDown": "Move down",
-      "moveTo": "Move to column",
       "emptyColumn": "Nothing here"
     },
     "calendar": {
+      "dueOn": "Due on",
       "title": "Content calendar",
       "description": "Every dated task you can see, on its due date. Filter by client or channel to get one brand's calendar.",
       "previous": "Previous month",
@@ -4637,7 +5117,8 @@
         "unscheduled": "no time set",
         "cancelled": "cancelled"
       },
-      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled."
+      "postLegend": "Posts: ✓ published · ◷ scheduled · ⚠ late, not published · ! content due with no post scheduled.",
+      "truncated": "This month is too full to show at once: the calendar holds {shown} of its {total} tasks, open work first, then the earliest due."
     },
     "discussion": {
       "title": "Conversation ({count})",
@@ -4744,6 +5225,10 @@
       }
     },
     "templates": {
+      "edit": "Edit",
+      "editItem": "Edit the step “{title}”",
+      "editItemHint": "The next use of the template reads the step as it now is. Tasks already made from it stay as they are.",
+      "saveItem": "Save step",
       "title": "Templates",
       "description": "Task trees with days from a start or end date and a role per step. Using one asks who plays each role.",
       "newProject": "New project from a template",
@@ -4803,6 +5288,7 @@
         "person_not_found": "A chosen person was not found or has left.",
         "team_not_found": "Team not found.",
         "project_not_found": "Project not found.",
+        "project_closed": "This project is closed: no new tasks until it is re-opened.",
         "project_archived": "This project is archived.",
         "state_not_found": "The team has no state for new tasks."
       },
@@ -4810,6 +5296,18 @@
       "noChecklist": "No checklist"
     },
     "recurrence": {
+      "emptyTeam": "Nothing recurs in this team's backlog yet.",
+      "estimate": "Hours",
+      "onDayOff": "On a day off",
+      "dayOff": {
+        "shift": "Due the next working day",
+        "skip": "Skip that time",
+        "keep": "Keep the day anyway"
+      },
+      "edit": "Edit",
+      "editTitle": "Edit the recurring task “{title}”",
+      "editHint": "Changes apply to the tasks it makes from now on. Tasks it has already made keep their title, date and assignee.",
+      "save": "Save",
       "heading": "Recurring tasks",
       "empty": "Nothing recurs in this project yet.",
       "title": "Task title",
@@ -4854,6 +5352,7 @@
         "monthlyLast": "{interval, plural, one {every month} other {every # months}} on the last day"
       },
       "errors": {
+        "team_not_found": "Team not found or archived.",
         "generic": "That did not work.",
         "forbidden": "You may not do that.",
         "invalid": "Check the fields: pick at least one weekday.",
@@ -4861,6 +5360,7 @@
         "recurrence_dates_invalid": "The end date is before the start date.",
         "recurrence_not_found": "Not found.",
         "project_not_found": "Project not found.",
+        "project_closed": "This project is closed: no new tasks until it is re-opened.",
         "project_archived": "This project is archived."
       },
       "columns": {
@@ -4876,6 +5376,7 @@
       "open": "{count} open",
       "overdue": "{count} overdue",
       "atRisk": "{count} at risk",
+      "truncated": "Showing the {shown} due soonest of {total} open tasks; the figures above count them all.",
       "unassigned": "Unassigned",
       "counts": "{todo} to do · {in_progress} in progress · {in_review} in review",
       "due": "due {date}",
@@ -5069,6 +5570,7 @@
         "custom_field_not_found": "it does not have that field",
         "task_not_found": "it no longer exists",
         "other": "the value does not fit",
+        "project_closed": "its project is closed",
         "handoff_required": "needs a hand-off package",
         "cycle_not_found": "cycle of another team",
         "cycle_closed": "cycle is closed",
@@ -5358,7 +5860,11 @@
       "toHandBack": "Ready to hand back",
       "away": "Away",
       "awayCovered": "Away — covered by {name}",
-      "privateItem": "Private work"
+      "privateItem": "Private work",
+      "panelTooShort": "No cover plan is asked for: this leave is shorter than {days, plural, one {# working day} other {# working days}}.",
+      "panelNotDrafted": "The cover plan has not been drafted yet. It is made when a request is filed, and overnight for one filed earlier.",
+      "panelCancelled": "The cover plan was cancelled with the leave.",
+      "panelDraft": "{name} has not yet named who covers every item."
     },
     "exit": {
       "title": "Work handover of {name}",
@@ -5421,6 +5927,7 @@
       "next": "Next cycle #{number} ({range}): {count} tasks planned.",
       "past": "Past cycles",
       "noPast": "No cycle has ended yet.",
+      "truncated": "Listing {shown} of the cycle's {total} tasks, open work first. The progress above counts them all.",
       "planned": "{count} planned",
       "done": "{count} done",
       "rolled": "{count} rolled over",
@@ -5824,6 +6331,14 @@
       "viewOnly": "view only",
       "revoke": "Revoke",
       "revokeConfirm": "Revoke this link? The client will not be able to open it.",
+      "revokeTitle": "Revoke the link",
+      "project": {
+        "title": "Client review links",
+        "explainer": "The project's review links that have not expired or been revoked. New links are made on the task.",
+        "task": "Task",
+        "version": "Version",
+        "none": "No live links."
+      },
       "meta": "{name} created it {created} · expires {expires}",
       "views": "{count} views, last {last}",
       "noViews": "not opened yet",
@@ -6135,7 +6650,7 @@
       "description": "Past periods of every obligation with who closed them, the reference number, the amount and the filed papers — the trail for a tax or insurance inspection.",
       "obligation": "Obligation",
       "year": "Due in",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "Only the first 5,000 rows were exported.",
       "summary": "{count, plural, =0 {No past periods} =1 {1 past period} other {# past periods}}{late, plural, =0 {} =1 {, 1 late or still open} other {, # late or still open}}.",
@@ -6438,7 +6953,8 @@
         "library": "Library",
         "import": "Import",
         "cycles": "Review cycles",
-        "weighting": "Result weighting"
+        "weighting": "Result weighting",
+        "templates": "Review forms"
       }
     },
     "library": {
@@ -6628,7 +7144,8 @@
         "manager_done": "Manager review in",
         "calibrated": "Calibrated",
         "released": "Released",
-        "acknowledged": "Acknowledged"
+        "acknowledged": "Acknowledged",
+        "signed_off": "Discussed"
       },
       "formStatus": {
         "none": "None",
@@ -6692,6 +7209,8 @@
         "yes": "Release",
         "cycleAction": "Release the whole cycle",
         "cycleConfirm": "Everyone whose manager review is in will be released. Continue?",
+        "waitingForHr": "Your review and the rating you proposed are in. HR calibrates and releases it to the employee — waiting for HR to release.",
+        "notYet": "Calibration and release open once the cycle reaches its calibration stage. It is still collecting forms.",
         "cycleDone": "Released {released}, skipped {skipped}."
       },
       "acknowledge": {
@@ -6699,7 +7218,8 @@
         "note": "Your comment (optional)",
         "action": "I have read and acknowledge this",
         "done": "Acknowledged on {date}.",
-        "waiting": "Waiting for the employee to acknowledge."
+        "waiting": "Waiting for the employee to acknowledge.",
+        "afterSignOff": "You will acknowledge after the sign-off conversation with your manager."
       },
       "cycle": {
         "name": "Cycle name",
@@ -6722,7 +7242,12 @@
         "saved": "Saved.",
         "launch": "Launch cycle",
         "launchConfirm": "Launching freezes the form and snapshots each person's manager. Go ahead?",
-        "launchYes": "Launch"
+        "launchYes": "Launch",
+        "isRolling": "Rolling cycle, fed by probation contracts",
+        "rollingHint": "No shared deadlines: each person joins the cycle as their probation contract nears its end, with deadlines of their own from its last day. HR levels and releases each review as soon as it is in.",
+        "signOffRequired": "Hold a sign-off conversation before the employee acknowledges",
+        "rolling": "Rolling",
+        "signOffBadge": "Sign-off conversation"
       },
       "admin": {
         "description": "Build a cycle, launch it (which freezes the form and snapshots each person's manager), then calibrate and release.",
@@ -6742,7 +7267,13 @@
           "released": "Mark released",
           "closed": "Close cycle"
         },
-        "noParticipants": "Nobody is in this cycle yet."
+        "noParticipants": "Nobody is in this cycle yet.",
+        "editCycle": "Edit cycle — {name}",
+        "editHint": "The cycle is still a draft, so it can be changed. Once launched it cannot.",
+        "add": "Add a participant",
+        "addHint": "Their own deadlines, if given, replace the cycle's. If the cycle is open, the person and their manager are told at once.",
+        "addRollingHint": "A rolling cycle: give this person a self-review and a manager-review deadline.",
+        "noParticipantsRolling": "Nobody yet. Every morning, people whose probation contract is about to end are added."
       },
       "errors": {
         "generic": "That did not work. Try again.",
@@ -6763,6 +7294,8 @@
         "review_cycle_no_participants": "Nobody falls inside this cycle.",
         "review_cycle_bad_step": "That is not the next step.",
         "review_cycle_not_collecting": "The cycle is no longer taking forms.",
+        "review_cycle_not_calibrating": "The cycle has not reached its calibration stage: nothing can be calibrated or released yet.",
+        "review_own": "You cannot calibrate or release your own review.",
         "review_period_backwards": "The end date must be after the start date.",
         "review_timeline_backwards": "The timeline dates must run forwards.",
         "review_timeline_before_period": "A timeline date cannot fall before the period starts.",
@@ -6784,7 +7317,22 @@
         "review_peer_max": "The cycle's maximum number of peers has been reached.",
         "review_nomination_not_found": "That request no longer exists.",
         "review_nomination_decided": "That request has already been answered.",
-        "review_nomination_has_form": "That colleague has already written feedback, so the request cannot be withdrawn."
+        "review_nomination_has_form": "That colleague has already written feedback, so the request cannot be withdrawn.",
+        "review_template_name_empty": "Give the form a name.",
+        "review_template_bad_key": "A question key is lowercase letters, digits, underscores or hyphens, up to 40 characters.",
+        "review_template_untitled_section": "Every question needs its text.",
+        "review_template_bad_section": "Weights must be whole numbers, zero or more.",
+        "review_template_bad_point": "Every point needs a label, a whole-number order and a worth of zero or more.",
+        "review_template_manager_unscored": "The manager's form needs at least one weighted rating question — its figure is the review rating the year's result reads.",
+        "review_template_bad_kind": "Unknown cycle kind.",
+        "review_template_wrong_kind": "This form is not meant for the kind of cycle chosen.",
+        "review_rolling_not_probation": "Only an end-of-probation cycle can be rolling.",
+        "review_form_not_found": "Form not found.",
+        "review_form_not_submitted": "The form has not been submitted.",
+        "review_form_settled": "The review has been calibrated or released; its forms can no longer be sent back.",
+        "review_sign_off_recorded": "The conversation has already been recorded.",
+        "review_sign_off_date": "The conversation must fall between the release and today.",
+        "review_sign_off_missing": "The sign-off conversation must be recorded before acknowledging."
       },
       "peers": {
         "title": "Peer feedback (360°)",
@@ -6848,6 +7396,70 @@
         "questions": "Questions",
         "scale": "Rating scale",
         "status": "Status"
+      },
+      "templates": {
+        "title": "Review forms",
+        "manage": "Manage review forms",
+        "new": "New form",
+        "copy": "Make a copy",
+        "copyName": "{name} (copy)",
+        "copyTitle": "Copy of {name}",
+        "back": "Back to the forms",
+        "readOnly": "Only group HR can change forms. You are reading this one.",
+        "basics": "General",
+        "name": "Form name",
+        "nameEn": "Name in English",
+        "description": "Description",
+        "kinds": "For cycle kinds",
+        "kindsHint": "Leave all unticked and the form suits every kind of cycle.",
+        "allKinds": "Any kind",
+        "active": "In use",
+        "sections": "Questions",
+        "sectionsHint": "The weighted rating questions make up a form's score; the manager's form needs at least one.",
+        "addSection": "Add a question",
+        "noSections": "No questions yet.",
+        "sectionTitle": "Question",
+        "sectionTitleEn": "Question (English)",
+        "sectionKind": "Kind",
+        "sectionKinds": {
+          "rating": "Rated on the scale",
+          "text": "Written answer"
+        },
+        "weight": "Weight",
+        "weightShare": "{share} % of the score",
+        "askedOf": "Asked on:",
+        "required": "Required",
+        "key": "Question key",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove",
+        "scale": "Rating scale",
+        "scaleHint": "Each point is worth a percentage — “meets expectations” is usually 100 %. The year's result and the bonus are computed from these figures.",
+        "addPoint": "Add a point",
+        "pointValue": "Order",
+        "pointPercent": "Worth (%)",
+        "pointLabel": "Label",
+        "pointLabelEn": "Label in English",
+        "problems": "To fix before saving:",
+        "snapshotNote": "A launched cycle keeps the form as it was at launch; changes here apply to cycles launched afterwards.",
+        "save": "Save form",
+        "saved": "Saved."
+      },
+      "returned": {
+        "title": "HR sent this form back for changes:",
+        "action": "Send back for changes",
+        "reason": "Reason (the author will read it)",
+        "yes": "Send back"
+      },
+      "signOff": {
+        "title": "Sign-off conversation",
+        "heldOn": "Held on",
+        "note": "What was agreed (optional)",
+        "action": "Record the conversation",
+        "done": "Held on {date} — recorded by {name}.",
+        "requiredHint": "This cycle asks for a sign-off conversation with the employee; they can acknowledge only once it is recorded.",
+        "optionalHint": "Record the conversation with the employee about their review, if it has taken place.",
+        "waiting": "Waiting for the manager to record the sign-off conversation."
       }
     },
     "results": {
@@ -7692,7 +8304,10 @@
         "down": "Decrease",
         "same": "No change to base salary"
       },
-      "request": "Request"
+      "request": "Request",
+      "probationPercent": "Probation pay (%)",
+      "probationPercentHint": "Leave blank to pay in full",
+      "probationShort": "probation {percent}%"
     },
     "profiles": {
       "title": "Pay profile",
@@ -7750,11 +8365,16 @@
       "status": {
         "proposed": "Proposed",
         "approved": "Approved",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "voided": "Voided"
       },
       "waiting": "Waiting for the owner",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "voided": {
+        "title": "Voided versions",
+        "because": "Voided because: {reason}"
+      }
     },
     "exposure": {
       "title": "Simple profile — basis and time on it",
@@ -7984,7 +8604,12 @@
       "approval_own_request": "You cannot answer your own request.",
       "approval_comment_required": "Say why when returning or rejecting.",
       "approval_no_approver": "No approver could be found.",
-      "statutory_parameter_missing": "A statutory parameter is missing for this period."
+      "statutory_parameter_missing": "A statutory parameter is missing for this period.",
+      "version_not_voidable": "Only a version in force can be voided.",
+      "void_used_by_paid_run": "A payroll run being paid, paid or locked used this version, so it cannot be voided. Correct it with a retro item instead.",
+      "void_run_in_review": "A payroll run awaiting approval used this version. Return the run to HR first, then void it.",
+      "salary_probation_below_minimum": "The probation pay share is below the legal minimum ({minimum}%).",
+      "component_code_reserved": "This code is reserved for PIT deductions and cannot be a pay component."
     },
     "offers": {
       "title": "Net to gross",
@@ -8017,6 +8642,74 @@
       "employerCost": "Employer cost",
       "unverified": "{count} statutory values are not yet confirmed by the chief accountant."
     },
+    "retro": {
+      "title": "Retro items",
+      "pageTitle": "Retro items waiting",
+      "pageDescription": "Differences of months already paid — a salary decision approved late, a correction to a locked timesheet, an item C&B entered by hand — waiting for the next run.",
+      "hint": "Items no run has carried yet. The next regular run takes each one in as a line of its own.",
+      "hintRun": "Differences of earlier months this run has carried, or will carry the next time it is calculated.",
+      "empty": "Nothing is waiting.",
+      "emptyRun": "This run carries no retro items.",
+      "all": "All waiting items",
+      "person": "Person",
+      "sourceMonth": "Month it belongs to",
+      "source": "Source",
+      "reason": "Reason",
+      "amount": "Amount (+ owed, − to recover)",
+      "status": "Status",
+      "openDecision": "Open the decision",
+      "insuranceBaseChanged": "Insurance adjustment needed",
+      "bySystem": "Worked out by the system",
+      "kinds": {
+        "salary_change": "Late salary decision",
+        "timesheet_adjustment": "Timesheet correction",
+        "manual": "Entered by hand"
+      },
+      "statuses": {
+        "open": "Waiting",
+        "taken": "In a run",
+        "takenHere": "In this calculation",
+        "outsideRun": "This person is not in the run"
+      },
+      "add": {
+        "label": "Enter a retro item",
+        "hint": "A positive amount is owed to the person, a negative one is recovered. The reason is shown beside the line on the payslip.",
+        "save": "Save"
+      },
+      "cancel": {
+        "label": "Cancel",
+        "title": "Cancel {name}'s item",
+        "hint": "A cancelled item is not deleted: the reason is kept with it. If a run has already calculated it, that run goes back to draft to be calculated again.",
+        "reason": "Reason for cancelling",
+        "confirm": "Cancel this item"
+      },
+      "derive": {
+        "label": "Check for differences",
+        "done": "Checked."
+      },
+      "unpriced": {
+        "hint": "The system could not turn the timesheet corrections below into money. Work the amount out and enter it; the item goes into the next run.",
+        "enter": "Enter this item"
+      },
+      "skips": {
+        "month_not_run": "This month was never run in the system",
+        "engine_changed": "The calculation rules have changed since this month was paid",
+        "recalculation_failed": "Could not be recalculated"
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You have no access to this item.",
+        "step_up_required": "Please confirm who you are to continue.",
+        "invalid": "Something entered is not valid.",
+        "retro_amount_invalid": "The amount must not be zero.",
+        "retro_reason_required": "A reason is required.",
+        "retro_item_exists": "This difference has already been recorded.",
+        "retro_item_not_found": "Item not found.",
+        "retro_item_not_open": "This item is in a run that has been proposed and can no longer be cancelled.",
+        "retro_month_in_future": "The month cannot be later than the current one.",
+        "retro_adjustment_not_waiting": "This timesheet correction is no longer waiting to be entered."
+      }
+    },
     "runs": {
       "title": "Payroll runs",
       "description": "The month's payroll: calculated, proposed, signed, paid and locked.",
@@ -8042,6 +8735,44 @@
       "progress": "Calculating: {done}/{total} people.",
       "calcError": "Could not calculate: {error}",
       "unverified": "These parameters are not confirmed by the chief accountant yet: {keys}.",
+      "leavePayoutAwaiting": "{count, plural, one {One leaver's unused leave was} other {# leavers' unused leave was}} posted after this run was calculated and is not paid by any run of {month}.",
+      "leavePayoutStart": "Pay it in an off-cycle run",
+      "bySystem": "The system",
+      "reopened": "The inputs changed; calculate again",
+      "stale": {
+        "title": "These figures are out of date — calculate again before proposing.",
+        "reasons": {
+          "inputs_changed": "Typed-in figures or retro items changed since the last calculation.",
+          "retro_waiting": "A retro item is waiting that the calculation did not include.",
+          "timesheet_changed": "The month's timesheet changed since the last calculation.",
+          "salary_changed": "A new salary decision applies to this month.",
+          "leave_payout_posted": "The leave ledger paid out a leaver's unused leave after the last calculation.",
+          "version_voided": "A rule version, pay profile or salary structure the figures were worked out from has been voided."
+        }
+      },
+      "readiness": {
+        "title": "Blockers and warnings",
+        "blocked": "The run cannot be proposed while a blocker is open.",
+        "clean": "Nothing to deal with.",
+        "blocker": "Blocker",
+        "warning": "Warning",
+        "kinds": {
+          "no_pay_profile": "No pay profile — the run cannot be calculated",
+          "not_in_run": "On the locked timesheet but not in the run",
+          "input_outside_run": "A figure was typed in for this person, who is not in the run",
+          "figure_not_paid": "A figure that was entered is not in the result",
+          "no_salary_structure": "No salary structure",
+          "final_settlement": "Leaves this month — final settlement: unused leave is paid automatically; type in severance, asset compensation and advances to recover, if any",
+          "negative_net": "Negative net",
+          "missing_bank_account": "No bank account — needed before payment",
+          "missing_tax_code": "No tax code — needed before the declaration"
+        }
+      },
+      "lines": {
+        "open": "Lines",
+        "title": "Pay calculation for {month}",
+        "provisional": "Working figures, not signed yet: they may still change."
+      },
       "kinds": {
         "regular": "Regular",
         "off_cycle": "Off-cycle"
@@ -8101,7 +8832,13 @@
         "no_salary_structure": "No salary structure",
         "zero_paid_days": "No paid days",
         "insurance_base_below_minimum": "Insurance base below the minimum",
-        "insurance_base_above_declared": "Insurance base above the declared one"
+        "insurance_base_above_declared": "Insurance base above the declared one",
+        "input_code_unknown": "A typed-in figure is not under an input component — not paid",
+        "input_negative": "A typed-in figure is negative — not paid",
+        "retro_component_missing": "The catalogue has no retro component — not paid",
+        "leaves_in_period": "Leaves this month — check the final settlement",
+        "leave_payout_component_missing": "The catalogue has no unused-leave payout component — not paid",
+        "leave_payout_unpriced": "No salary or working days in the basis month to price unused leave on — not paid"
       },
       "new": {
         "link": "New run",
@@ -8139,7 +8876,13 @@
         "pay_profile_missing": "Somebody has no pay profile.",
         "amount_invalid": "That amount is not valid.",
         "run_has_no_lines": "There is nothing to pay.",
-        "run_not_settled": "Cannot mark this paid yet: a bank file or the cash sheet is still outstanding."
+        "run_not_settled": "Cannot mark this paid yet: a bank file or the cash sheet is still outstanding.",
+        "run_stale": "Something changed since the last calculation. Calculate again, then propose.",
+        "run_has_blockers": "A blocker is still open; the run cannot be proposed yet.",
+        "run_input_code_unknown": "This is not a typed-in component in the entity's catalogue.",
+        "run_input_negative_earning": "An earning cannot be negative. To take money back, enter a retro item or use a deduction component.",
+        "run_input_negative_deduction": "Enter a deduction as a positive amount — it is subtracted from the net by itself.",
+        "run_input_relief_regular_only": "PIT deductions are entered in the month's regular run only."
       },
       "payments": "Payment",
       "stages": {
@@ -8156,6 +8899,29 @@
       "lineStatus": {
         "published": "Published",
         "read": "Read"
+      },
+      "relief": {
+        "PIT_CHARITY": "PIT deduction: charity and donations",
+        "PIT_VOLUNTARY_PENSION": "PIT deduction: voluntary pension",
+        "PIT_OTHER_RELIEF": "PIT deduction: other allowed deduction"
+      },
+      "offCycle": {
+        "link": "Off-cycle run",
+        "title": "New off-cycle run",
+        "hint": "A Tết or holiday bonus, a project bonus — paid inside a month on top of its regular run and taxed with that month. The run goes through every step: calculated, proposed, signed by the CEO, paid.",
+        "month": "Month paid",
+        "name": "Run name",
+        "namePlaceholder": "Tết bonus 2027",
+        "everyone": {
+          "title": "The whole entity",
+          "hint": "Adds a line for each of the entity's {count} people at one amount; change it person by person where it differs.",
+          "fill": "Add for everyone"
+        },
+        "lines": "Lines ({count})",
+        "noLines": "No lines yet. Add people one by one, or the whole entity. A run with no line pays only the unused leave of the month's leavers that its signed regular run did not pay.",
+        "addLine": "Add a person",
+        "noCodes": "The entity's catalogue has no input pay components.",
+        "submit": "Create off-cycle run"
       }
     },
     "payslips": {
@@ -8202,7 +8968,13 @@
         "no_salary_structure": "No salary structure",
         "zero_paid_days": "No paid days",
         "insurance_base_below_minimum": "Contribution base below the regional minimum",
-        "insurance_base_above_declared": "Contribution base above the declared salary"
+        "insurance_base_above_declared": "Contribution base above the declared salary",
+        "input_code_unknown": "A typed-in figure was not paid",
+        "input_negative": "A typed-in figure was not paid",
+        "retro_component_missing": "A retro item was not paid",
+        "leaves_in_period": "Leaves this month",
+        "leave_payout_component_missing": "Unused leave was not paid",
+        "leave_payout_unpriced": "Unused leave was not paid"
       },
       "insurance": {
         "title": "Compulsory insurance",
@@ -8298,10 +9070,47 @@
       "settledNo": "Not settled",
       "people": "{count} people",
       "unroutableTitle": "People who cannot be paid by transfer",
+      "unroutableHint": "Correct the account and generate the file again, or pay the person separately and record \"paid another way\" in the table below.",
+      "owedNothing": "{count} owed nothing (net pay is zero or negative)",
+      "routing": {
+        "title": "Who is paid how",
+        "rule": "The Simple profile is paid in cash. The Statutory profile is split by the bank of the person's own pay account: an account at {ownBanks} goes into that bank's file; an account anywhere else goes through the {interbank} file as an interbank transfer, because that layout carries a beneficiary bank (an assumption not yet confirmed with the bank). Anyone no file can carry is paid separately and recorded as \"paid another way\". A net of zero or below is in no file and never blocks \"paid\".",
+        "person": "Employee",
+        "net": "Net pay",
+        "route": "Paid through",
+        "state": "Status",
+        "action": "Action",
+        "empty": "Nobody is in this run.",
+        "cash": "Cash (payment sheet)",
+        "ownBank": "{bank} file — same bank",
+        "interbank": "{bank} file — interbank to {other}",
+        "noInterbank": "none",
+        "states": {
+          "in_file": "In the file",
+          "awaiting_file": "Not in a file yet",
+          "cannot_transfer": "No file can carry them",
+          "paid_other": "Paid another way",
+          "cash_disbursed": "Cash handed over",
+          "cash_pending": "Cash not handed over",
+          "nothing_owed": "Net is zero — nothing to pay",
+          "negative_net": "Net is negative — nothing to pay; recover next month"
+        }
+      },
+      "other": {
+        "mark": "Paid another way",
+        "title": "Record paid another way — {name}",
+        "hint": "For somebody who was paid outside the bulk-transfer file (a single transfer, a payment order…). They count as paid and are left out of any file generated afterwards.",
+        "paidOn": "Paid on",
+        "reference": "Reference / voucher number",
+        "reason": "Reason",
+        "save": "Record",
+        "remove": "Take back"
+      },
       "blockers": {
-        "bank_file_missing": "No bulk-transfer file has been generated.",
-        "bank_people_uncovered": "Some people paid by transfer are not in a generated file.",
-        "cash_not_disbursed": "Some cash rows have no disbursement recorded."
+        "bank_file_missing": "A bank still has no bulk-transfer file.",
+        "bank_people_uncovered": "Some people paid by transfer are not in the latest file of their bank and have not been recorded as paid another way.",
+        "cash_not_disbursed": "Some cash rows have no disbursement recorded.",
+        "cash_difference_unexplained": "A cash row was paid a different amount from the net with no note saying why."
       },
       "bank": {
         "title": "Bulk-transfer file",
@@ -8311,6 +9120,15 @@
         "valueDate": "Value date",
         "accountNumber": "Company account",
         "accountName": "Account name",
+        "payingAccount": "Paying account",
+        "noPayingAccount": "The entity has no paying account configured at {bank}, so it is typed this once.",
+        "configurePayingAccount": "Configure it on the entity's page",
+        "typedAccount": "typed",
+        "interbankNote": "{count} in the {bank} file bank elsewhere: those rows are interbank transfers.",
+        "fileState": "Counts",
+        "current": "Current",
+        "superseded": "Superseded",
+        "supersededHint": "Only the last file generated for each bank counts. An earlier one is superseded: kept for reference, counted for nothing.",
         "generate": "Generate file",
         "saveAgain": "Save again",
         "generated": "Generated {file} ({rows} rows).",
@@ -8322,6 +9140,7 @@
           "no_holder": "no account holder name",
           "zero_amount": "net pay is zero",
           "negative_amount": "net pay is negative",
+          "no_bank_name": "the account does not say which bank",
           "no_format_for_bank": "no bulk-transfer format for this bank yet"
         },
         "generatedFiles": "Generated files",
@@ -8348,6 +9167,20 @@
         "confirmed": "Confirmed",
         "awaitingReceipt": "Awaiting confirmation",
         "receiptNote": "The employee's confirmation is extra evidence; a run can still be marked paid once the accountant has recorded every disbursement.",
+        "disbursedAmount": "Handed over",
+        "note": "Note",
+        "notePlaceholder": "A note, if not the net amount",
+        "correct": "Correct",
+        "difference": "{amount} off",
+        "reconciliation": "Reconciliation",
+        "reconciled": "Handed over in full against net pay.",
+        "notYetHandedOver": "{amount} of net pay not handed over yet.",
+        "scanTitle": "Signed sheet (scan)",
+        "scanHint": "Attach a scan of the cash sheet with the recipients' signatures. It is stored at the compensation tier; every opening is written to the audit log.",
+        "scanEmpty": "No scan attached yet.",
+        "scanAttach": "Attach a scan (PDF or picture)",
+        "scanUploading": "Uploading…",
+        "scanRemove": "Remove",
         "sheetTitle": "CASH PAYROLL PAYMENT SHEET",
         "sheetMonth": "Period",
         "taxCode": "Tax code",
@@ -8373,7 +9206,29 @@
         "cash_payment_not_found": "Cash row not found.",
         "run_not_settled": "Not settled yet: a bank file or the cash sheet is still outstanding.",
         "forbidden": "You are not allowed to do this.",
-        "failed": "That did not work. Please try again."
+        "failed": "That did not work. Please try again.",
+        "generic": "That did not work. Please try again.",
+        "invalid": "Please check what you entered.",
+        "step_up_required": "Please confirm it is you to continue.",
+        "paying_account_required": "No company paying account. Pick one, or type it.",
+        "paying_account_not_found": "The paying account chosen is no longer in use. Please pick again.",
+        "reference_required": "A reference is required.",
+        "reason_required": "A reason is required.",
+        "run_already_paid": "The run is already marked paid; how it was paid can no longer be changed.",
+        "run_locked": "The run is locked.",
+        "other_payment_not_applicable": "\"Paid another way\" is only for somebody paid by transfer whose net pay is above zero.",
+        "other_payment_not_found": "No paid-another-way record found.",
+        "cash_difference_needs_note": "The amount handed over is not the net pay — a note saying why is required.",
+        "amount_invalid": "That amount is not valid.",
+        "file_not_found": "File not found.",
+        "file_empty": "Choose a file.",
+        "file_name_invalid": "The file name is not valid.",
+        "file_too_large": "The file is larger than 50 MB.",
+        "file_type_not_allowed": "This file type is not allowed. Use PDF, JPG, PNG or WEBP.",
+        "file_not_uploaded": "The file was not uploaded. Please try again.",
+        "file_content_mismatch": "The file's content does not match its type; it was removed.",
+        "file_storage_limit": "Storage refused the file as too large.",
+        "file_upload_failed": "The upload failed. Check your connection and try again."
       }
     },
     "reports": {
@@ -8386,6 +9241,7 @@
       "total": "Total",
       "export": "Export CSV",
       "noRuns": "No payroll run in your scope yet.",
+      "signedOnly": "The insurance, PIT and union summaries take their figures only from runs the CEO has signed. No run of this month is signed yet, so the three have nothing to show.",
       "register": {
         "title": "Payroll register",
         "department": "Department",
@@ -8426,7 +9282,7 @@
     },
     "statutory": {
       "title": "Statutory data",
-      "description": "The data behind the insurance and PIT filings: the increase/decrease list (D02-LT), the monthly or quarterly declaration (05/KK-TNCN), the annual finalization (05/QTT-TNCN) and the dependants register. Taken from calculated runs, never recalculated.",
+      "description": "The data behind the insurance and PIT filings: the increase/decrease list (D02-LT), the monthly or quarterly declaration (05/KK-TNCN), the annual finalization (05/QTT-TNCN) and the dependants register. Taken from runs the CEO has signed, never recalculated; a month with a regular and an off-cycle run is counted once.",
       "back": "Payroll",
       "entity": "Entity",
       "month": "Month",
@@ -8511,7 +9367,8 @@
         "unionDues": "Union dues",
         "pit": "PIT",
         "otherDeductions": "Other deductions",
-        "net": "Net"
+        "net": "Net",
+        "employerCost": "Employer cost"
       },
       "presence": {
         "system_only": "In the system only — the spreadsheet has no such person.",
@@ -8542,7 +9399,46 @@
       "errors": {
         "step_up_required": "Confirm it is you before opening payroll data.",
         "forbidden": "You may not reconcile this entity's payroll.",
-        "generic": "Could not save, please try again."
+        "generic": "Could not save, please try again.",
+        "parallel_not_clean": "Some differences are still unexplained; this month cannot be signed off yet."
+      },
+      "totals": {
+        "netSystem": "Net — system",
+        "netReference": "Net — accountant",
+        "difference": "Difference",
+        "costSystem": "Employer cost — system",
+        "costReference": "Employer cost — accountant",
+        "costCoverage": "Given by the accountant for {count}/{people} people"
+      },
+      "columns": {
+        "netSystem": "Net (system)",
+        "netReference": "Net (accountant)",
+        "netDifference": "Difference",
+        "costSystem": "Employer cost (system)",
+        "costReference": "Employer cost (accountant)"
+      },
+      "signoff": {
+        "title": "Sign-off",
+        "current": "This month is signed off and the reconciliation has not changed since.",
+        "ready": "Nothing is left unexplained — this month can be signed off.",
+        "notReady": "A month can be signed off once nothing is left unexplained.",
+        "none": "No sign-off yet.",
+        "holds": "Holds",
+        "outdated": "Outdated — figures changed after it",
+        "counts": "{people} people, {matching} matching exactly, {explained} differences explained",
+        "with": "checked with {name}",
+        "checkedWith": "Checked with",
+        "checkedWithHint": "Chief accountant",
+        "submit": "Sign off"
+      },
+      "export": {
+        "label": "Download report",
+        "employeeCode": "Employee code",
+        "presence": "Presence",
+        "system": "system",
+        "reference": "accountant",
+        "difference": "difference",
+        "explanations": "Explanations"
       }
     },
     "ytd": {
@@ -8603,6 +9499,30 @@
         "payHint": "Creates one off-cycle payroll run per entity; tax, insurance and payslips are payroll's.",
         "comment": "Comment",
         "reason": "Reason for sending it back"
+      },
+      "handoff": {
+        "title": "Handed to payroll",
+        "hint": "One off-cycle payroll run per entity. Pressing again creates nothing more: an entity that has its run keeps it.",
+        "attention": "{count, plural, one {# entity has} other {# entities have}} not been handed to payroll: the off-cycle run was cancelled there, so that bonus is not being paid. Hand it over again.",
+        "entity": "Entity",
+        "people": "People",
+        "state": "Status",
+        "payrollRun": "Off-cycle run",
+        "handedOver": "Handed over",
+        "notHandedOver": "Not handed over",
+        "cancelled": "the earlier run was cancelled",
+        "again": "Hand over again",
+        "lineCancelled": "The off-cycle run that was to pay this was cancelled; the bonus has not been handed to payroll again yet."
+      },
+      "schemeProblems": {
+        "title": "Fields to correct:",
+        "whole": "(the whole configuration)",
+        "no_bottom_service_band": "A service band starting at 0 months is needed (minMonths = 0).",
+        "duplicate_service_band": "Two service bands start at the same number of months (minMonths).",
+        "no_bottom_performance_band": "An individual-multiplier band starting at a score of 0 is needed (minScoreBp = 0).",
+        "duplicate_performance_band": "Two individual-multiplier bands share a key.",
+        "no_bottom_okr_band": "A collective-multiplier band starting at 0 is needed (minProgressBp = 0).",
+        "unrecognized_keys": "A field that is not part of the configuration."
       },
       "lines": {
         "title": "Per person",
@@ -8725,12 +9645,14 @@
         "forbidden": "You may not act on this bonus run.",
         "step_up_required": "Please confirm who you are to continue.",
         "bonus_run_not_found": "Bonus run not found.",
-        "bonus_run_exists": "This year already has a live bonus run.",
+        "bonus_run_exists": "This year already has a live bonus run with this name.",
         "bonus_run_no_entities": "Choose at least one entity.",
         "bonus_run_not_editable": "The run has been proposed and can no longer be changed.",
         "bonus_run_empty": "The run has nobody in it yet. Recalculate first.",
         "bonus_run_not_approved": "The CEO has not approved this run.",
         "bonus_run_nothing_to_pay": "There is nothing to pay.",
+        "bonus_entity_not_in_run": "That entity is not part of this bonus run.",
+        "invalid": "Something entered is not right. Please check it.",
         "bonus_step_not_allowed": "That step is not available in this state.",
         "bonus_line_not_found": "Bonus line not found.",
         "bonus_scheme_missing": "No bonus scheme for this entity and year.",
@@ -8750,6 +9672,38 @@
         "people": "People",
         "approvedOn": "Approved on"
       }
+    },
+    "imports": {
+      "link": "Import from a file",
+      "title": "Import salaries and pay profiles",
+      "description": "Load a company's salaries and pay profiles from spreadsheets. Nothing takes effect until the owner has read the whole import on its review screen and approved it (a first Statutory profile takes effect at once, as when typed).",
+      "waiting": "Imports waiting for approval",
+      "noneWaiting": "No import is waiting for approval.",
+      "kinds": {
+        "salary": "Salaries",
+        "profile": "Pay profiles"
+      },
+      "pending": "{count} waiting",
+      "forEntity": "Importing for",
+      "salaries": {
+        "title": "Salaries",
+        "hint": "Each row becomes a salary change request to the owner, as if made on the pay file. Allowances by component code, e.g. ALW_MEAL=730000; ALW_PHONE=200000.",
+        "wizard": "Salary file"
+      },
+      "profiles": {
+        "title": "Pay profiles",
+        "hint": "A person's first Statutory profile takes effect at once; Simple profiles and every change wait for the owner.",
+        "wizard": "Pay profile file"
+      },
+      "review": {
+        "title": "Review the import",
+        "description": "Every proposal in the import, each salary beside the one in force. Approving here approves exactly the rows shown; any request can still be opened on its own and returned or rejected.",
+        "currentBase": "Current base salary",
+        "allowances": "Allowances in total",
+        "empty": "No proposals."
+      },
+      "approveAll": "Approve {count} proposals",
+      "approved": "Approved. Anything that could not be approved is still waiting."
     }
   },
   "requests": {
@@ -8768,6 +9722,7 @@
       "mine": "Mine",
       "inbox": "To approve",
       "claims": "Settlement desk",
+      "pay": "To pay",
       "all": "All"
     },
     "elsewhere": {
@@ -8804,7 +9759,16 @@
       "no": "No",
       "correctAndResend": "Correct it and send it again",
       "details": "Details",
-      "resend": "Send again"
+      "resend": "Send again",
+      "payoutWaiting": "Approved — waiting for finance to pay {amount}.",
+      "payoutWaitingAdvance": "Approved — waits until the advance under the same request has been paid.",
+      "payoutPaid": "{amount} paid on {date} · reference {reference}.",
+      "payoutCollected": "{amount} of unspent advance received back on {date} · reference {reference}.",
+      "payoutNetted": "Less {advance} already advanced for this trip.",
+      "letter": "The confirmation letter has been made.",
+      "letterCollect": "Your confirmation letter has been made. It is kept under My documents on your profile.",
+      "letterMine": "Open My documents",
+      "letterOpen": "Open the PDF"
     },
     "designer": {
       "on": "On",
@@ -8829,6 +9793,13 @@
       "descriptionEn": "Description (English)",
       "entity": "Applies to",
       "sortOrder": "Order",
+      "payout": "Once approved",
+      "payoutHint": "Approved requests go to finance's \"to pay\" queue. An advance is netted against the payment filed under the same parent request.",
+      "payouts": {
+        "none": "Nothing to pay",
+        "payment": "Finance pays it",
+        "advance": "Finance pays it as an advance"
+      },
       "sla": "Reminders and escalation",
       "slaHint": "Nudge an approver who has left it too long; escalate when still nobody has answered. 0 = off.",
       "remindAfter": "Remind after (days)",
@@ -9003,7 +9974,42 @@
       "follow_up_parent_closed": "That request is closed; nothing more can be filed under it.",
       "follow_up_parent_not_approved": "That request has to be approved first.",
       "follow_up_not_yet": "It is too early to file this under that request.",
-      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request."
+      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request.",
+      "request_not_payable": "This request is not waiting to be paid.",
+      "request_already_paid": "This request has already been recorded as paid.",
+      "request_advance_unpaid": "An approved advance under the same parent request has not been paid yet. Pay the advance first, then the settlement.",
+      "request_already_settled": "The parent request has been settled; no further advance is paid."
+    },
+    "pay": {
+      "title": "To pay",
+      "description": "{count, plural, =0 {Nothing is waiting to be paid.} one {One approved request waits to be paid, {amount} in all.} other {# approved requests wait to be paid, {amount} in all.}}",
+      "waiting": "Waiting",
+      "total": "To pay in all",
+      "none": "Nothing is waiting to be paid.",
+      "paidRecently": "Paid in the last 60 days ({count})",
+      "truncated": "Listing the {shown} oldest of {total} waiting requests. The figures above count them all.",
+      "advanceUnpaid": "Advance not paid yet",
+      "toCollect": "Collect {amount}",
+      "columns": {
+        "requester": "Requester",
+        "request": "Request",
+        "amount": "Amount",
+        "advance": "Advanced",
+        "toPay": "To pay",
+        "approved": "Approved",
+        "paid": "Paid"
+      },
+      "kinds": {
+        "payment": "Payment",
+        "advance": "Advance"
+      },
+      "mark": "Record as paid",
+      "markTitle": "Record as paid: {summary}",
+      "markHint": "The figure is worked out for you: the amount less whatever was advanced under the same parent request. A negative figure means the requester returns unspent advance.",
+      "paidOn": "Paid on",
+      "reference": "Transfer or voucher reference",
+      "figure": "Figure recorded",
+      "save": "Save"
     },
     "expense": {
       "linesTitle": "Expense lines",
@@ -9704,7 +10710,8 @@
       "template": "Template",
       "tier": "Sensitivity",
       "by": "Issued by",
-      "at": "Issued"
+      "at": "Issued",
+      "subject": "About"
     },
     "kind": {
       "contract": "Contract",
@@ -9766,7 +10773,23 @@
       "document_forbidden": "You may not issue this document.",
       "step_up_required": "Please confirm who you are to continue."
     },
-    "new": "Issue a document"
+    "new": "Issue a document",
+    "register": {
+      "title": "Issued documents",
+      "description": "Every contract, decision and letter issued that you may open, newest first. Each opens as it was issued.",
+      "kind": "Kind",
+      "allKinds": "All kinds",
+      "year": "Year",
+      "allYears": "All years",
+      "apply": "Apply",
+      "issued": "Register",
+      "empty": "No documents issued yet.",
+      "limited": "Showing the latest {count}. Narrow by kind or year to see older ones."
+    },
+    "mine": {
+      "title": "My documents",
+      "empty": "No contracts, decisions or letters have been issued about you yet."
+    }
   },
   "recruit": {
     "title": "Recruitment",
@@ -9781,6 +10804,13 @@
       "properties": "Details",
       "links": "Link"
     },
+    "erase": {
+      "open": "Erase data",
+      "title": "Erase this candidate's data?",
+      "hint": "Use this when the candidate asks for their data to be deleted. Their name, contact details, CV and other files, answers and every note about them are removed from all their applications at once. The applications stay in the reports as anonymous counts. This cannot be undone.",
+      "confirm": "Erase now",
+      "cancel": "Cancel"
+    },
     "home": {
       "newOpening": "New opening",
       "careers": "Careers site",
@@ -9792,7 +10822,8 @@
       "interviewsToday": "Interviews today",
       "noInterviewsToday": "You have no interviews today.",
       "openInterview": "Open",
-      "allOpenings": "All job openings"
+      "allOpenings": "All job openings",
+      "undelivered": "Letters that did not reach the candidate"
     },
     "newCandidate": "Add candidate",
     "newHiring": "Request a hire",
@@ -9908,7 +10939,6 @@
       "department": "Department",
       "team": "Team",
       "positionName": "Position",
-      "jobLevel": "Level",
       "employmentType": "Employment type",
       "workMode": "Work mode",
       "workLocation": "Location",
@@ -9951,7 +10981,8 @@
       "code": "Code",
       "name": "Name",
       "kind": "Kind",
-      "isActive": "In use"
+      "isActive": "In use",
+      "tellCandidateRejected": "Send the candidate the outcome letter (in their language; the reason and the note stay out of it)"
     },
     "actions": {
       "editCandidate": "Edit candidate",
@@ -9995,12 +11026,14 @@
       "offer_accepted": "Offer accepted",
       "offer_declined": "Offer declined",
       "converted": "Became an employee",
-      "anonymised": "Anonymised under the retention policy"
+      "anonymised": "Anonymised under the retention policy",
+      "erased": "Erased at the candidate's request"
     },
     "errors": {
       "recruit_pipeline_empty": "A pipeline needs at least one stage.",
       "recruit_pipeline_no_entry": "A pipeline needs a stage for new applications.",
       "recruit_pipeline_not_found": "Pipeline not found.",
+      "recruit_opening_pipeline_in_use": "This opening already has applications on its current pipeline, so the pipeline cannot be changed.",
       "recruit_stage_key_duplicate": "Two stages share a key.",
       "recruit_stage_in_use": "A stage with applications on it cannot be removed.",
       "recruit_stage_not_found": "That stage does not belong to this opening's pipeline.",
@@ -10017,6 +11050,8 @@
       "recruit_candidate_name_required": "A candidate needs a name.",
       "recruit_candidate_not_found": "No such candidate.",
       "recruit_candidate_anonymised": "The candidate's data has been anonymised under the retention policy.",
+      "recruit_candidate_hired": "This candidate became an employee. Their record is kept with the employee register and cannot be erased here.",
+      "recruit_candidate_in_progress": "This candidate still has an application in progress. Withdraw or reject it first, then erase.",
       "recruit_candidate_duplicate": "This candidate is already on file (same email or phone).",
       "recruit_candidate_possible_duplicate": "Somebody with this name is already on file. Check the matches, then confirm if this is someone else.",
       "recruit_already_applied": "This candidate has already applied to this opening.",
@@ -10055,7 +11090,7 @@
       "offer_expiry_past": "That expiry date has already passed.",
       "offer_expiry_after_start": "An offer cannot stand past the day the job starts.",
       "offer_probation_invalid": "That probation period is not allowed.",
-      "offer_probation_percent_invalid": "Probation pay must be between 85% and 100% of the agreed package.",
+      "offer_probation_percent_invalid": "Probation pay must be at least the legal minimum and at most 100% of the agreed package.",
       "offer_position_empty": "The offer needs a job title.",
       "offer_note_too_long": "That note is too long.",
       "offer_already_open": "This application already has a live offer.",
@@ -10072,6 +11107,12 @@
       "recruit_referral_not_found": "Referral not found.",
       "recruit_referral_not_earned": "This referral has not earned a bonus yet.",
       "recruit_referral_already_settled": "This referral has already been settled.",
+      "opening_question_label_required": "Every question needs its wording.",
+      "opening_question_choices_required": "A choice question needs at least two options.",
+      "opening_questions_too_many": "Too many questions for one opening.",
+      "interview_kit_label_required": "Every criterion needs a name.",
+      "interview_kit_too_many": "Too many criteria for one interview kit.",
+      "recruit_email_needs_interview": "This wording needs an interview's time and place, so it is sent from the interview.",
       "step_up_required": "Please confirm who you are to continue."
     },
     "duplicates": {
@@ -10085,9 +11126,13 @@
     },
     "careers": {
       "brand": "SuZu Group · Careers",
+      "brandShort": "Careers",
       "footer": "© SuZu Group. Applications are handled under the privacy notice shown on the application form.",
       "title": "Open roles",
       "intro": "The roles SuZu Group is hiring for. Pick one to read the description and apply.",
+      "viewJob": "View job",
+      "allDepartments": "View all",
+      "filterDepartment": "Department",
       "noOpenings": "No roles are open at the moment. Please check back.",
       "description": "About the role",
       "requirements": "What we are looking for",
@@ -10095,6 +11140,7 @@
       "salary": "Salary",
       "apply": "Apply",
       "submit": "Send application",
+      "formLimited": "This page has been opened many times in a short while, so the application form is paused. Please try again later.",
       "workMode": {
         "onsite": "On site",
         "hybrid": "Hybrid",
@@ -10124,7 +11170,8 @@
       },
       "consent": {
         "title": "How we handle your personal data",
-        "body": "By sending this application you agree that SuZu Group may collect and process the information in it for the purpose of recruiting for the role you applied to.\nYour application is kept for {months} months from the day you apply and is then deleted or anonymised, unless you agree below that we may keep it for other opportunities.\nYou may ask to see, correct or delete your data at any time by contacting HR.",
+        "body": "By sending this application you agree that SuZu Group may collect and process the information in it for the purpose of recruiting for the role you applied to.\nYour application is kept for {months} months after it is closed and is then deleted or anonymised, unless you agree below that we may keep it for other opportunities.\nYou may ask to see, correct or delete your data at any time by writing to {email}.",
+        "contactEmail": "privacy@suzu.one",
         "agree": "I agree that SuZu Group may process this application for the role I applied to.",
         "talentPool": "I also agree that SuZu Group may keep my details for other suitable roles in future."
       },
@@ -10155,6 +11202,21 @@
         "location": "Location",
         "workMode": "Work mode",
         "employmentType": "Employment type"
+      },
+      "privacy": {
+        "title": "Your application data",
+        "intro": "We keep your application to consider you for the role. Once your applications have closed, your details are deleted after {months} months — unless you agreed to stay in our talent pool.",
+        "poolTitle": "Talent pool",
+        "inPool": "You are in our talent pool: we keep your details to contact you when a suitable role comes up. You can leave at any time.",
+        "notInPool": "You are not in our talent pool. Your details will be deleted {months} months after your applications close.",
+        "left": "You have left our talent pool. Your details will be deleted {months} months after your applications close.",
+        "leave": "Leave the talent pool",
+        "erasure": "Want us to delete all your data now? Reply to any email we have sent you.",
+        "errors": {
+          "privacy_link_closed": "This link no longer works.",
+          "rate_limited": "Too many attempts. Please try again later.",
+          "failed": "That did not work. Please try again."
+        }
       }
     },
     "email": {
@@ -10168,7 +11230,15 @@
       "subject": "Subject",
       "body": "Body",
       "placeholders": "Placeholders you may use",
-      "new": "Add a wording"
+      "new": "Add a wording",
+      "automaticBadge": "Automatic",
+      "automatic": {
+        "acknowledge": "Sent by the system as soon as somebody applies through the careers page. Switch it off and no acknowledgement goes out.",
+        "interview": "Sent by the system when an interview is booked or moved (when \"tell the candidate\" is ticked), with an .ics attached.",
+        "interviewCancelled": "Sent by the system when an interview is cancelled (when \"tell the candidate\" is ticked). Never carries the reason.",
+        "reject": "Sent by the system when an application is turned down (when \"send the outcome letter\" is ticked). Never carries the reason or the note.",
+        "offer": "Sent by the system when the offer is sent, with the offer letter attached as a PDF."
+      }
     },
     "board": {
       "description": "Drag a card to another column, or select several and move them together.",
@@ -10186,13 +11256,91 @@
         "scheduled": "Scheduled",
         "today": "Today",
         "awaiting": "Awaiting"
-      }
+      },
+      "tellCandidates": "Send the outcome letter"
     },
     "emailKind": {
+      "acknowledge": "Acknowledgement",
       "invite": "Invitation",
       "reject": "Rejection",
       "offer": "Offer",
       "general": "General"
+    },
+    "letters": {
+      "team": "The {company} recruitment team",
+      "video": "Online",
+      "phone": "By phone",
+      "office": "The {company} office"
+    },
+    "letterStatus": {
+      "queued": "The letter is queued for the candidate.",
+      "no_address": "No letter sent: the candidate has no email address",
+      "anonymised": "No letter sent: the candidate's data has been anonymised",
+      "switched_off": "No letter sent: this wording is switched off"
+    },
+    "delivery": {
+      "pending": "Waiting to send",
+      "retrying": "Failed, retrying",
+      "sent": "Sent",
+      "failed": "Could not be sent",
+      "skipped": "Not sent: no email service is configured"
+    },
+    "pool": {
+      "title": "Talent pool",
+      "all": "All",
+      "description": "People who agreed to be kept on file after their applications closed. They can leave on their own, from the link in their emails.",
+      "badge": "Talent pool",
+      "empty": "Nobody is in the talent pool yet.",
+      "in": "Yes — agreed to be kept on file",
+      "out": "No",
+      "recordJoin": "Record that they agreed to stay",
+      "recordLeave": "Record that they asked to leave"
+    },
+    "questions": {
+      "title": "Application questions",
+      "description": "This opening's own questions on the application form. Renaming a question keeps the answers already given.",
+      "none": "No questions of its own.",
+      "label": "Question",
+      "labelEn": "Question (English)",
+      "kind": "Answer",
+      "kinds": {
+        "text": "One line",
+        "long_text": "Paragraph",
+        "choice": "Pick one"
+      },
+      "required": "Required",
+      "choices": "Options",
+      "choicesHint": "One option per line, at least two.",
+      "add": "Add a question"
+    },
+    "kit": {
+      "title": "Interview kit",
+      "description": "Interviewers score each criterion from 1 to 4.",
+      "usingDefault": "This opening uses the default kit below. Edit and save it to give the opening its own.",
+      "none": "No criteria — save like this to use the default kit.",
+      "label": "Criterion",
+      "labelEn": "Criterion (English)",
+      "hint": "Hint for the interviewer",
+      "copiedNote": "Interviews already booked keep the kit they were booked with; a change applies to interviews booked after it.",
+      "add": "Add a criterion"
+    },
+    "editor": {
+      "up": "Move up",
+      "down": "Move down",
+      "remove": "Remove this row",
+      "save": "Save",
+      "saved": "Saved."
+    },
+    "pipelineEditor": {
+      "description": "The hiring pipelines the whole group shares. Each opening picks one; every stage names its rung of the hiring funnel, so the report can compare openings.",
+      "new": "New pipeline",
+      "nameEn": "Name (English)",
+      "isDefault": "Default for new openings",
+      "stages": "Stages",
+      "noStages": "No stages yet.",
+      "category": "Funnel rung",
+      "addStage": "Add a stage",
+      "hint": "A pipeline needs an \"Applied\" stage. A stage somebody is still in cannot be removed."
     },
     "interview": {
       "heading": "Interviews",
@@ -10226,6 +11374,9 @@
       "clash": "Already booked: {names}",
       "cardDue": "Scorecard due",
       "cardIn": "Scorecard in",
+      "tellCandidate": "Send the candidate the invitation with the time and a calendar file (.ics)",
+      "tellCandidateMoved": "Send the candidate the new time",
+      "tellCandidateCancelled": "When cancelling: tell the candidate (never the reason)",
       "kinds": {
         "phone_screen": "Phone screen",
         "hiring_manager": "Hiring manager",
@@ -10335,8 +11486,7 @@
       "editTitle": "Edit the offer for {name}",
       "edit": "Edit the offer",
       "save": "Save the offer",
-      "positionName": "Job title",
-      "jobLevel": "Level",
+      "positionName": "Position",
       "employmentType": "Employment type",
       "workLocation": "Work location",
       "manager": "Line manager",
@@ -10355,7 +11505,7 @@
       "moneyNote": "Figures are whole Vietnamese đồng per month. Only a reader who may see compensation is shown this.",
       "note": "Internal note",
       "submitForApproval": "Send for approval",
-      "send": "Mark as sent",
+      "send": "Send the offer to the candidate",
       "withdraw": "Withdraw",
       "approval": "Approval",
       "letter": "Offer letter",
@@ -10504,13 +11654,29 @@
       "resolve": "Mark done",
       "note": "Note",
       "notePlaceholder": "Which page did you write?",
-      "resolvedOn": "Done on {date}"
+      "resolvedOn": "Done on {date}",
+      "usage": {
+        "tab": "Usage",
+        "title": "Assistant usage — last {days} days",
+        "intro": "Each person may ask up to {askDay} questions a day ({askBurst} a minute) and draft up to {draftDay} texts a day ({draftBurst} a minute). Tokens are only spent when a model writes the answer.",
+        "byPerson": "By person",
+        "byDay": "By day",
+        "person": "Asked by",
+        "day": "Day",
+        "answers": "Answers",
+        "modelAnswers": "Written by a model",
+        "inputTokens": "Tokens sent",
+        "outputTokens": "Tokens received",
+        "empty": "Nobody has asked anything in this period."
+      }
     },
     "errors": {
       "generic": "The question could not be sent. Please try again.",
       "forbidden": "You may not use the assistant.",
       "ai_conversation_not_found": "That conversation was not found.",
-      "ai_unanswered_not_found": "That question has already been dealt with."
+      "ai_unanswered_not_found": "That question has already been dealt with.",
+      "ai_limit_day": "You have reached today's limit of questions. Ask again tomorrow.",
+      "ai_limit_burst": "That is a lot of questions at once. Wait a minute, then ask again."
     },
     "tools": {
       "fromYourRecord": "These figures come from your own record, not from a knowledge-base page. Open the screen to see the detail.",
@@ -10567,6 +11733,8 @@
       "filled": "Draft filled in — read and edit it before you submit.",
       "notAvailable": "No draft is available for this.",
       "failed": "Could not draft it. Try again.",
+      "limitDay": "You have reached today's limit of drafts. Try again tomorrow.",
+      "limitBurst": "That is a lot of drafts at once. Wait a minute, then try again.",
       "lines": {
         "eod": {
           "done": "Finished {count, plural, one {# task} other {# tasks}}: {items}.",
@@ -10717,6 +11885,15 @@
       "submitHint": "Weekly timesheets are approved. Check your hours, then submit.",
       "submit": "Submit week",
       "resubmit": "Submit again",
+      "recall": "Take back",
+      "recallHint": "Nobody has decided this week yet. Take it back to change your hours, then submit again.",
+      "date": "Day",
+      "notePlaceholder": "What was it for? (optional)",
+      "onTask": "Time on this task",
+      "taskMine": "You: {value} h",
+      "taskTotal": "Everyone: {value} h",
+      "taskBillable": "{value} h billable",
+      "taskNone": "No time logged on this task yet.",
       "start": "Start timer",
       "stop": "Stop",
       "running": "Timer running:",
@@ -10789,6 +11966,7 @@
     },
     "activity": {
       "empty": "No recorded activity today yet.",
+      "emptyPast": "No activity was recorded that day.",
       "categories": {
         "internal": "Internal",
         "admin": "Admin",
@@ -10837,10 +12015,23 @@
       "send": "Send report",
       "dueBy": "Due by {time}",
       "optional": "Not required today",
+      "missed": "Not sent — sending it now is marked late",
       "prefilledHint": "What you did is filled in from today's activity — just add blockers and tomorrow's plan.",
       "tomorrowPlanned": "Tomorrow's plan ({count})",
       "noTomorrow": "No plan for tomorrow.",
-      "noTimeLogged": "Time logging is required every day, and nothing is logged today yet. Log it quickly under today's activity below."
+      "noTimeLogged": "Time logging is required every day, and nothing is logged today yet. Log it quickly under today's activity below.",
+      "noneDonePast": "Nothing was finished that day.",
+      "activityPast": "The day's activity ({count})",
+      "tomorrowPast": "Plan for the next working day ({count})",
+      "optionalPast": "Not required that day",
+      "prefilledHintPast": "What you did is filled in from that day's activity — just add blockers and the plan for the next working day.",
+      "tomorrowPlannedPast": "Plan for the next working day ({count})",
+      "noTomorrowPast": "No plan for the next working day.",
+      "noTimeLoggedPast": "Time logging is required every day, and nothing is logged for this day. Log it under the day's activity below.",
+      "edited": "Edited after submitting",
+      "editedHint": "This report was changed after it was first sent. What it said before:",
+      "revisionAt": "Sent {time}",
+      "revisionEmpty": "Nothing written."
     },
     "thread": {
       "react": "React {reaction}",
@@ -10872,6 +12063,11 @@
       "myReports": "People I manage",
       "counts": "{submitted} in · {missing} missing · {notRequired} not required",
       "remindAll": "Remind all ({count})",
+      "planFiled": "Plan filed {time}",
+      "planLate": "Plan filed late, {time}",
+      "planTasks": "{count, plural, =0 {no tasks} one {# task} other {# tasks}}",
+      "planMissing": "No morning plan",
+      "planEmpty": "The plan names no task.",
       "columns": {
         "person": "Person",
         "status": "Report",
@@ -10933,6 +12129,7 @@
       "people": "People ({count})",
       "myWeek": "My week",
       "done": "Done ({count})",
+      "noneDone": "Nothing was finished this week.",
       "slipped": "Planned, not done ({count})",
       "columns": {
         "person": "Person",
@@ -10951,6 +12148,9 @@
       "plan": "Today's plan",
       "report": "Today's report",
       "recent": "Recent reports",
+      "missing": "Reports not sent",
+      "missingHint": "You can still send the reports of these days; each will be marked late.",
+      "write": "Write report",
       "empty": "You have not sent a daily report yet.",
       "hasBlockers": "Blockers",
       "screens": "Screens",
@@ -10969,6 +12169,7 @@
       "report_date_invalid": "Reports can be sent for today or the past seven days only.",
       "report_not_found": "Report not found.",
       "comment_empty": "Write a comment or pick a reaction.",
+      "project_closed": "This task's project is closed: no more time can be logged until it is re-opened.",
       "time_week_locked": "This week's timesheet is submitted or approved and can no longer change.",
       "time_task_or_category": "Pick a task or a kind of other time — not both.",
       "time_entry_not_found": "Time entry not found.",
@@ -10991,7 +12192,7 @@
     },
     "timesheets": {
       "title": "Timesheets",
-      "intro": "Weekly timesheets of the people in the teams you lead and of your direct reports.",
+      "intro": "Weekly timesheets of the people in the teams you lead and of your direct reports — and of anyone whose week comes to you because no lead or line manager is there to approve it.",
       "waiting": "Waiting for you ({count})",
       "none": "No timesheets are waiting for you.",
       "recent": "Decided recently",
@@ -11034,7 +12235,7 @@
       "hoursOf": "{logged}/{available} h",
       "billableRatio": "{value}% billable",
       "cellTitle": "{logged} h logged of {available} working hours",
-      "export": "Export CSV",
+      "export": "Export",
       "exportFailed": "The export failed.",
       "exportTruncated": "The file holds the first part of the list only.",
       "csv": {
@@ -11129,6 +12330,9 @@
         }
       },
       "contactsHint": "One person per line: Name — role — phone or email",
+      "editContacts": "Edit contacts and links",
+      "approvedLocked": "The brief is approved: its objective, scope and success criteria change only through a change request or a new approval. Client contacts and links can still be updated.",
+      "saveContacts": "Save contacts and links",
       "save": "Save brief",
       "submit": "Submit for kick-off",
       "resubmit": "Submit again",
@@ -11202,6 +12406,7 @@
       "endDate": "End",
       "dueSlip": "Slip against baseline (days)",
       "accepted": "Deliverables accepted",
+      "awaitingClient": "Deliverables finished, waiting on the client",
       "promised": "Deliverables promised",
       "hoursUsed": "Hours logged",
       "hoursBurn": "Hours forecast (logged + remaining)",
@@ -11294,7 +12499,7 @@
       "edit": "Edit milestone",
       "linkTasks": "Link tasks to the plan",
       "linkHint": "{count, plural, =0 {Every task is linked.} one {# task is not linked to a milestone, deliverable or phase.} other {# tasks are not linked to a milestone, deliverable or phase.}}",
-      "nothingToLink": "The project has no open tasks.",
+      "nothingToLink": "The project has no tasks to link.",
       "pickTask": "Choose a task",
       "link": "Link",
       "unlink": "Unlink",
@@ -11303,6 +12508,17 @@
       "remove": "Remove",
       "removeConfirm": "Remove this? Linked tasks stay as they are."
     },
+    "scope": {
+      "budgetLocked": "After kick-off the total hours budget changes only through a change request. You can still re-split that total between roles.",
+      "lineLocked": "After kick-off the quantity, format and channel are the scope agreed with the client: they change only through a change request. The wording, milestone and due date can still be edited here.",
+      "registerLocked": "After kick-off, adding or dropping a deliverable takes a change request.",
+      "feeLocked": "After kick-off the fee changes only through a change request.",
+      "raiseChange": "Raise a change request"
+    },
+    "gates": {
+      "clientHint": "A client project becomes Active when its <brief>brief is approved at kick-off</brief>, and Done when it is <close>closed out</close>.",
+      "closedHint": "This project is closed. To change its status, <close>re-open it</close>."
+    },
     "register": {
       "title": "Deliverables register",
       "progress": "Accepted {accepted}/{promised} ({percent}%)",
@@ -11310,12 +12526,14 @@
       "status": {
         "promised": "Promised",
         "in_production": "In production",
+        "ready_for_client": "Ready for client",
         "client_review": "Client review",
         "accepted": "Accepted",
         "delivered": "Delivered",
         "published": "Published",
         "cancelled": "Cancelled"
       },
+      "awaitingClient": "{count} finished, waiting on the client",
       "lineProgress": "accepted {accepted}/{promised} · {linked} tasks linked",
       "columns": {
         "progress": "Accepted",
@@ -11394,7 +12612,7 @@
       "state_not_found": "The team has no state for new tasks.",
       "task_not_found": "The task is not in this project.",
       "account_manager_is_lead": "The project lead cannot also be its account manager.",
-      "brief_locked": "The brief is awaiting approval or already approved and cannot be edited.",
+      "brief_locked": "The brief is awaiting approval or already approved and cannot be edited. An approved brief keeps only its contacts and links editable; the rest changes through a change request.",
       "brief_not_submittable": "The brief is awaiting approval or already approved.",
       "brief_incomplete": "The brief is missing required information.",
       "plan_dates_invalid": "The end date must be after the start date.",
@@ -11427,16 +12645,30 @@
       "change_evidence_required": "A change the client asked for needs evidence (a file or a link).",
       "change_empty": "The change changes nothing yet: add or remove deliverables, hours, fee or due date.",
       "acceptance_not_found": "Acceptance record not found.",
-      "acceptance_locked": "Only a draft can be refreshed.",
+      "acceptance_locked": "A signed or void record can no longer be refreshed.",
       "acceptance_wrong_status": "The record's status does not allow this.",
       "acceptance_milestone_internal": "Only client-facing milestones are accepted by the client.",
-      "acceptance_empty": "There is nothing in this scope to accept yet.",
+      "acceptance_empty": "This scope has no promised deliverables yet. State in words what is accepted to make the record.",
+      "acceptance_changed": "The record was just changed by someone else. Reload the page and try again.",
+      "acceptance_invoiced": "Finance has invoiced against this record, so it can no longer be corrected.",
+      "acceptance_correction_empty": "Nothing differs from what is on record.",
+      "billing_amount_unchanged": "The new amount is the same as the current one.",
+      "milestone_has_acceptance": "This milestone has an acceptance record. Void the record before removing the milestone; a signed record keeps its milestone.",
+      "milestone_has_billing": "This milestone has an item with finance. It can be removed only after finance waives that item.",
+      "retainer_not_found": "The project has no retainer terms yet.",
+      "retainer_paused": "The retainer is paused or the project is closed, so no more months are made.",
+      "retainer_month_exists": "This month already has a retainer period.",
+      "retainer_month_not_missed": "Only past months within the retainer's term can be made by hand.",
       "acceptance_signed_in_future": "The signing date cannot be after today.",
       "billing_not_found": "Billing item not found.",
       "billing_decided": "This item has already been handled.",
       "billing_conflict": "This item already exists.",
       "report_not_found": "Report not found.",
-      "project_closed": "The project is closed.",
+      "project_closed": "The project is closed and its plan is read-only. Its lead can re-open it on the Close tab.",
+      "scope_locked": "After kick-off, scope, hours budget and fee change only through a change request. Raise one on the Changes tab.",
+      "brief_not_approved": "Only an approved brief has its contacts and links edited on their own.",
+      "project_not_closed": "This project is not closed.",
+      "reopen_reason_required": "Give the reason for re-opening the project.",
       "close_unmet": "Some items are not met: give a reason to close anyway.",
       "retro_in_future": "The meeting date cannot be after today.",
       "retro_missing": "Save the retrospective first.",
@@ -11596,6 +12828,13 @@
     },
     "uploading": "Uploading…",
     "uploaded": "Uploaded: {name}",
+    "taskLine": {
+      "title": "Promised deliverable",
+      "label": "This task delivers",
+      "none": "None",
+      "save": "Save",
+      "empty": "The project has no open promised deliverables."
+    },
     "retainer": {
       "terms": "Retainer terms",
       "termsLine": "From {start} to {end} · {rollover}",
@@ -11646,6 +12885,22 @@
         "open": "Open",
         "closed": "Closed"
       },
+      "delivered": "Delivered",
+      "accepted": "Accepted",
+      "linkTask": "Link a task to a deliverable",
+      "linkHint": "Pick a task of the project — a finished one too — and the month's deliverable it was done for. Each task is one unit of its deliverable.",
+      "linkTaskField": "Task",
+      "linkLineField": "Promised deliverable",
+      "pickTask": "Pick a task",
+      "pickLine": "Pick a deliverable",
+      "linkSubmit": "Link",
+      "nothingToLink": "Every task of the project is already linked to a deliverable.",
+      "missed": {
+        "title": "Make a missing month",
+        "hint": "The retainer's terms were entered after it began, so the months before have no period. Make one to link its work, have it accepted and bill it. A month's fee goes to finance only after the client signs its acceptance record.",
+        "month": "Month",
+        "submit": "Make this month's period"
+      },
       "billingDescription": "Retainer fee for {month}",
       "monthsLocked": "Only someone who may see fees (pjm:commercial) can change the retainer's start month, end month and whether it runs."
     },
@@ -11656,6 +12911,9 @@
       "dueDate": "Due date",
       "original": "Original",
       "current": "Current",
+      "unexplained": "Edited directly, not through a change request",
+      "unexplainedNote": "Some figures were edited directly, so original + change requests does not equal current. The difference is shown as its own row above.",
+      "retainerHint": "The retainer's monthly scope, applied from the next month made. Leave it as it is if nothing changes.",
       "list": "Change requests",
       "empty": "No change requests yet.",
       "new": "New change request",
@@ -11685,6 +12943,9 @@
         "withdrawn": "Withdrawn"
       },
       "impact": {
+        "retainerLines": "New monthly quota:",
+        "retainerHours": "Hours per month: {hours}",
+        "retainerFee": "Fee per month: {fee}",
         "hours": "Hours: {hours}",
         "fee": "Fee: {fee}",
         "dueDate": "New due date: {date}"
@@ -11698,6 +12959,9 @@
         "hoursDelta": "Hours change (+/−)",
         "feeDelta": "Fee change (VND, +/−)",
         "dueDateTo": "New project due date",
+        "retainerLines": "The retainer's monthly quota",
+        "retainerHours": "Hours per month",
+        "retainerFee": "Fee per month (VND)",
         "evidenceFile": "Evidence file",
         "evidenceUrl": "Or a link to the evidence"
       }
@@ -11747,6 +13011,20 @@
       "waitingMilestone": "Milestone: {name}",
       "waitingMonth": "Retainer month: {name}",
       "waitingLink": "Open the acceptance page",
+      "described": "Accepted as described above.",
+      "description": "What is accepted",
+      "descriptionHint": "Required when the scope has no promised deliverables: say in words what the client accepts. When there are, this is a remark printed on the paper.",
+      "pdfIssued": "Download the issued paper (PDF)",
+      "refreshSent": "Refresh and re-issue",
+      "correct": "Correct the signed record",
+      "correctHint": "For a wrong scan, a misspelt signer or the wrong date. What was recorded before, and the earlier scan, stay in the history. Not possible once finance has invoiced.",
+      "replaceScan": "Replacement scan (if the wrong one was attached)",
+      "correctReason": "Reason for the correction",
+      "correctSubmit": "Save correction",
+      "history": "Corrections",
+      "historyBefore": "Before: signed by {name} on {date}.",
+      "earlierScan": "Earlier scan",
+      "invoicedLocked": "Finance has invoiced against this record, so what was signed can no longer be corrected.",
       "monthNotBilled": "Not handed to finance yet: waiting for a signed acceptance record."
     },
     "billing": {
@@ -11776,6 +13054,21 @@
         "milestone": "Billing milestone",
         "retainer": "Monthly retainer fee",
         "manual": "Manual"
+      },
+      "correctAmount": "Correct the amount",
+      "correctHint": "Possible only while the item is not invoiced. Leave blank when no amount is agreed yet. The amount before and after, and the reason, are kept.",
+      "newAmount": "Correct amount (VND)",
+      "correctReason": "Reason",
+      "correctSubmit": "Save amount",
+      "corrected": "{date} · {name} corrected the amount: {before} → {after}. Reason: {reason}",
+      "milestone": {
+        "ready": "With finance, ready to invoice",
+        "invoiced": "Invoiced",
+        "waived": "Waived by finance",
+        "awaiting_acceptance": "Not with finance yet: waiting for the client's signed acceptance",
+        "covered_by_project": "No item of its own: the whole-project acceptance billed this share of the fee",
+        "awaiting_done": "Not with finance yet: the milestone is not marked done",
+        "noAmount": "No amount agreed for this milestone yet."
       },
       "invoice": "Invoice",
       "waive": "Waive",
@@ -11835,6 +13128,16 @@
     },
     "close": {
       "closedBadge": "Closed",
+      "reopen": {
+        "title": "Re-open the project",
+        "submit": "Re-open project",
+        "reason": "Why it is re-opened",
+        "reasonHint": "For example: the client asked for one more revision round after acceptance…",
+        "warning": "Re-opening unlocks the plan and makes the project Active again. The earlier close-out is kept as history. A retainer stopped by the close does not restart by itself.",
+        "history": "Close-outs that were re-opened",
+        "closedLine": "Closed on {date}",
+        "reopenedLine": "Re-opened on {date}"
+      },
       "checklist": "Close-out checklist",
       "met": "Met",
       "unmet": "Not met",
@@ -12076,13 +13379,17 @@
     "version": "Version {version}",
     "forWhom": "for {name}",
     "work": "For your review",
-    "openFile": "Open the file",
-    "fileHint": "The file link works for a few minutes. Reload this page if it stops.",
+    "fileHint": "Tap the file name to download it. The file stays available for as long as this link is active.",
+    "videoHint": "Press play to watch it here. If the video does not play, tap the file name to download it. The file stays available for as long as this link is active.",
+    "unfurl": {
+      "title": "Work shared for your review",
+      "body": "Open this link in a browser to see it."
+    },
     "unavailable": "The file cannot be opened right now. Please reload this page in a moment.",
     "messageFrom": "A note from {name}",
     "viewOnly": "This link is for viewing. Please send your comments to whoever shared it with you.",
     "expiresOn": "This link works until {date}.",
-    "privacy": "Opening this page is recorded as a count and a time. When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address: to stop automated abuse we keep a one-way fingerprint of your connection, which changes every day and is used for nothing else.",
+    "privacy": "Opening this page is recorded as a count and a time, and noted in our access log. When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address: to stop automated abuse and to tell one visit from another in that log, we keep a one-way fingerprint of your connection, which changes every day and is used for nothing else.",
     "decide": {
       "title": "Your answer",
       "choice": "Your choice",
@@ -12113,7 +13420,7 @@
     },
     "errors": {
       "failed": "Your answer could not be sent. Please try again.",
-      "invalid": "Please check your name and comment, then send again.",
+      "invalid": "Please choose an answer and check your name and comment, then send again.",
       "rejected": "Your answer could not be sent. Please try again.",
       "rate_limited": "That is a lot of attempts. Please try again in a few minutes.",
       "preview_link_closed": "This link no longer takes an answer.",
@@ -12127,6 +13434,7 @@
     "loading": "Getting the kiosk ready…",
     "cameraError": "Could not open the camera. Allow this page to use the camera, then reload.",
     "loadError": "Could not load face recognition. Check the network, then reload the page.",
+    "loadErrorDetail": "Technical detail: {detail}",
     "offline": "Lost the connection to SuZu One. Retrying…",
     "notMe": "Not me",
     "manage": "Manage the kiosk",
@@ -12137,6 +13445,10 @@
       "title": "This kiosk is closed",
       "body": "HR closed the kiosk on this tablet. To open it again, HR signs in and goes to Attendance → Face kiosk.",
       "signIn": "HR sign-in"
+    },
+    "expired": {
+      "title": "This kiosk needs to be opened again",
+      "body": "A kiosk closes by itself after {idle} days without use, or {max} days after it was opened. To open it again, HR signs in on this tablet and goes to Attendance → Face kiosk."
     },
     "notOpen": {
       "title": "This is not a kiosk yet",
@@ -12183,7 +13495,223 @@
       "title": "Check-in cancelled"
     }
   },
+  "brands": {
+    "title": "Brand kits",
+    "lede": "Each brand's guideline — how to show it and how not to, its colours and typefaces — with the logos and brochures partners download from the public site.",
+    "columns": {
+      "name": "Brand",
+      "address": "Public address",
+      "visibility": "Visibility",
+      "sections": "Sections",
+      "files": "Files",
+      "downloads": "Downloads"
+    },
+    "empty": "No brand kits yet. Add the first brand below.",
+    "add": "Add brand",
+    "wholeGroup": "The whole group",
+    "addressPreview": "Public address:",
+    "name": "Brand name",
+    "namePlaceholder": "SuZu Coffee",
+    "slug": "Address (slug)",
+    "entity": "Belongs to",
+    "creating": "Creating…",
+    "create": "Create kit",
+    "slugChangeHint": "The old address /brands/{old} will keep working and send visitors to the new one.",
+    "tagline": "Tagline",
+    "taglinePlaceholder": "One line that says what the brand is",
+    "description": "About the brand",
+    "descriptionEn": "About the brand (English)",
+    "website": "Website",
+    "contactEmail": "Contact for brand questions",
+    "visibility": "Visibility",
+    "visibilities": {
+      "hidden": "Hidden — being prepared",
+      "unlisted": "Anyone with the link",
+      "listed": "Listed on the public site"
+    },
+    "visibilityHint": "Hidden: nobody outside can open it. Anyone with the link: for partners you send it to; not listed and not indexed by search engines. Listed: shown on the brands page and findable.",
+    "saved": "Saved.",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "details": "Details",
+    "style": "Colours and typefaces",
+    "styleHint": "Shown in the sections of kind Colour palette and Typography.",
+    "palette": "Colour palette",
+    "noColors": "No colours yet.",
+    "pickColor": "Pick colour {index}",
+    "colorName": "Name",
+    "colorHex": "HEX",
+    "colorNote": "Note",
+    "colorNotePlaceholder": "Pantone 485 C · primary",
+    "removeColor": "Remove colour",
+    "addColor": "Add colour",
+    "typography": "Typefaces",
+    "noFonts": "No typefaces yet.",
+    "fontName": "Typeface",
+    "fontUsage": "Used for",
+    "fontUsagePlaceholder": "Headings, bold",
+    "fontUrl": "Where to get it",
+    "removeFont": "Remove typeface",
+    "addFont": "Add typeface",
+    "saveStyle": "Save colours and typefaces",
+    "guideline": "Guideline",
+    "guidelineHint": "The page reads top to bottom in this order. Write what the brand is, how to use it, and add do's and don'ts with example pictures.",
+    "noSections": "No sections. Add the first one below.",
+    "sectionKinds": {
+      "content": "Text",
+      "palette": "Colour palette",
+      "typography": "Typography",
+      "downloads": "Downloads"
+    },
+    "sectionTitle": "Section title",
+    "sectionTitlePlaceholder": "Clear space and minimum size",
+    "sectionTitleEn": "Title (English)",
+    "sectionKind": "Shows",
+    "sectionAdded": "Section added.",
+    "addSection": "Add section",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "deleteSection": "Delete section",
+    "deleteSectionYes": "Yes, delete the section",
+    "deleteSectionConfirm": "Delete this section and its do's and don'ts? Its files stay in the kit and move to Downloads.",
+    "sectionBody": "Text",
+    "sectionBodyPlaceholder": {
+      "content": "What the reader needs to know: when to use which version, the clear space, the smallest size…",
+      "palette": "How the colours work together: which is primary, which are accents…",
+      "typography": "Which typeface goes where, sizes and weights…",
+      "downloads": "What is in the files, and the terms of use…"
+    },
+    "englishVersion": "English version (optional)",
+    "sectionBodyEn": "Text (English)",
+    "saveSection": "Save section",
+    "rules": "Do's and don'ts",
+    "noRules": "No do's or don'ts in this section.",
+    "addRule": "Add",
+    "verdict": "Do or don't",
+    "verdicts": {
+      "do": "Do",
+      "dont": "Don't"
+    },
+    "ruleText": "Text",
+    "ruleTextDoPlaceholder": "Use the full-colour logo on white or black backgrounds.",
+    "ruleTextDontPlaceholder": "Don't stretch, rotate or recolour the logo.",
+    "ruleTextEn": "Text (English)",
+    "example": "Example picture",
+    "noExample": "No picture",
+    "exampleHint": "Upload pictures (kind: Example for do's and don'ts) below to show them beside a rule.",
+    "deleteRule": "Delete",
+    "filesSection": "Files",
+    "filesSectionHint": "Public files are offered for download in the section you choose, or under Downloads. Examples only illustrate a rule.",
+    "noFiles": "No files yet.",
+    "addFiles": "Upload files",
+    "files": "Files",
+    "filesHint": "SVG, AI, EPS, PDF, PNG, JPG, WebP, PSD, ZIP, MP4 or MOV, up to 500 MB each. Several at once is fine.",
+    "kindAuto": "Guess from the file name",
+    "assetKinds": {
+      "logo": "Logo",
+      "guideline": "Brand guideline",
+      "brochure": "Brochure",
+      "image": "Image",
+      "video": "Video",
+      "pack": "Packed set (ZIP)",
+      "other": "Other",
+      "example": "Example (for do's and don'ts)"
+    },
+    "assetKind": "Kind",
+    "assetSection": "Offered in",
+    "inDownloads": "Downloads",
+    "isPublic": "Public",
+    "uploading": "Uploading {done} of {total}…",
+    "uploadingShort": "Uploading…",
+    "filesAdded": "{count, plural, one {# file added.} other {# files added.}}",
+    "upload": "Upload",
+    "downloadsCount": "{total, plural, one {# download} other {# downloads}} ({recent} in 30 days)",
+    "assetTitle": "Title",
+    "deleteFile": "Delete file",
+    "deleteFileYes": "Delete",
+    "openPublic": "Open public page",
+    "danger": "Delete kit",
+    "deleteKit": "Delete kit",
+    "deleteKitConfirm": "Delete this kit and its guideline for good?",
+    "deleteKitYes": "Yes, delete",
+    "deleteKitHasFiles": "A kit can be deleted once its files are removed. To take it offline, set it to Hidden.",
+    "starter": {
+      "overview": "Overview",
+      "logo": "Logo",
+      "colour": "Colour",
+      "typography": "Typography",
+      "downloads": "Downloads"
+    },
+    "errors": {
+      "generic": "That didn't work. Please try again.",
+      "forbidden": "You can't change this brand kit.",
+      "unauthenticated": "Your session has ended. Please sign in again.",
+      "invalid": "Some fields need another look.",
+      "slug_invalid": "The address may use lower-case letters, digits and hyphens (2–60 characters).",
+      "slug_taken": "Another brand already has this address.",
+      "brand_not_found": "This brand kit no longer exists.",
+      "brand_has_files": "Remove the kit's files first, or set it to Hidden.",
+      "section_not_found": "This section no longer exists.",
+      "rule_not_found": "This rule no longer exists.",
+      "file_not_found": "This file no longer exists.",
+      "too_many_files": "A kit holds at most 200 files.",
+      "too_many_sections": "A kit holds at most 30 sections.",
+      "too_many_rules": "A section holds at most 30 do's and don'ts.",
+      "color_invalid": "A colour needs a HEX code such as #EA3026.",
+      "too_many_colors": "A palette holds at most 16 colours.",
+      "too_many_fonts": "List at most 8 typefaces.",
+      "font_url_invalid": "A typeface link must start with https://.",
+      "file_empty": "The file is empty.",
+      "file_too_large": "The file is larger than 500 MB.",
+      "file_type_not_allowed": "This kind of file can't be added to a brand kit.",
+      "file_name_invalid": "The file name isn't usable.",
+      "file_content_mismatch": "The file's contents don't match its extension.",
+      "file_not_uploaded": "The file didn't arrive. Please try again.",
+      "file_upload_failed": "The upload failed. Check the connection and try again.",
+      "file_storage_limit": "Storage refused a file this large."
+    },
+    "public": {
+      "brand": "SuZu Group brands",
+      "metaTitle": "Brand resources",
+      "metaDescription": "Logos, colours, typefaces and guidelines of the SuZu Group brands.",
+      "title": "Brand resources",
+      "intro": "Logos, colours, typefaces and guidelines for partners, suppliers and the press. Choose a brand to see how to show it — and download what you need.",
+      "noBrands": "No brands are published yet.",
+      "viewGuideline": "Guideline and downloads",
+      "contents": "On this page",
+      "allBrands": "All brands",
+      "website": "Website",
+      "contact": "Questions about using the brand? Write to <link>{email}</link>.",
+      "do": "Do",
+      "dont": "Don't",
+      "hex": "HEX",
+      "rgb": "RGB",
+      "copy": "Copy {value}",
+      "copied": "Copied",
+      "getFont": "Get the typeface",
+      "noPalette": "The palette has not been published yet.",
+      "noFonts": "The typefaces have not been published yet.",
+      "download": "Download",
+      "downloadAll": "Download files",
+      "noFiles": "No files here yet.",
+      "footer": "These brands, names and logos belong to SuZu Group and its companies. Use them only as this guideline describes; using them does not imply partnership or endorsement.",
+      "kinds": {
+        "logo": "Logos",
+        "guideline": "Brand guidelines",
+        "brochure": "Brochures",
+        "image": "Images",
+        "video": "Videos",
+        "pack": "Packed sets",
+        "other": "Other files",
+        "example": "Examples"
+      }
+    }
+  },
   "pageTitles": {
+    "privacy": "Privacy and retention",
+    "brands": "Brand kits",
+    "brand": "Brand kit",
     "acceptance": "Acceptance",
     "access": "Access",
     "acknowledgementReport": "Acknowledgement report",
@@ -12239,11 +13767,14 @@
     "equipmentBooking": "Equipment booking",
     "equipmentBookings": "Equipment bookings",
     "expenseClaims": "Expense claims",
+    "ruleChange": "Proposed rule change",
+    "requestsToPay": "Requests to pay",
     "flaggedCheckIns": "Flagged check-ins",
     "goal": "Goal",
     "goals": "Goals",
     "handOffs": "Hand-offs",
     "headcount": "Headcount",
+    "hiringPipelines": "Hiring pipelines",
     "hiringRequest": "Hiring request",
     "hiringRequests": "Hiring requests",
     "home": "Home",
@@ -12311,6 +13842,7 @@
     "oneOnOneMeeting": "1:1 meeting",
     "oneOnOneMeetings": "1:1 meetings",
     "orgChart": "Org chart",
+    "competencies": "Professional fields & skills",
     "orgUnits": "Org units",
     "overview": "Overview",
     "pageHistory": "Page history",
@@ -12324,6 +13856,8 @@
     "payrollPayment": "Payroll payment",
     "payrollReports": "Payroll reports",
     "payrollRun": "Payroll run",
+    "payrollRunPerson": "Pay calculation",
+    "payrollRetro": "Retro items",
     "payrollRuns": "Payroll runs",
     "payslip": "Payslip",
     "payslipQueries": "Payslip queries",
@@ -12425,7 +13959,15 @@
     "crmCommission": "Sales commission",
     "kiosk": "Face kiosk",
     "kioskFaces": "Kiosk faces",
-    "kioskCheckIn": "Check in at the kiosk"
+    "kioskCheckIn": "Check in at the kiosk",
+    "reviewTemplates": "Review forms",
+    "reviewTemplate": "Review form",
+    "newOffCycleRun": "Off-cycle run",
+    "salaryImport": "Import salaries",
+    "salaryImportReview": "Review salary import",
+    "issuedDocuments": "Issued documents",
+    "positions": "Positions",
+    "lifecycleChange": "Proposed change"
   },
   "portfolio": {
     "title": "SuZu Group",
@@ -12455,6 +13997,7 @@
     "careersTitle": "Work with us",
     "careersBody": "We are always looking for talented people who love the craft.",
     "careersLink": "See open roles",
+    "brandsLink": "Brand resources",
     "footer": "© SuZu Group"
   },
   "site": {
@@ -12608,9 +14151,8 @@
             "We do not sell personal data. We share it only with the providers that run parts of the Service for us, under contracts that limit their use of it to providing their service:"
           ],
           "list": [
-            "Vercel Inc. — application hosting;",
+            "Vercel Inc. — application hosting, and a cache for configuration and reference data (never salary or other sensitive personal data);",
             "Supabase Inc. — database, hosted in Singapore;",
-            "Upstash Inc. — a cache for configuration and reference data (never salary or other sensitive personal data);",
             "Cloudflare, Inc. — private file storage (R2), kept in the Asia-Pacific region, and the text analysis behind knowledge base search (Workers AI), which receives the knowledge base content and the questions asked;",
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
@@ -13001,6 +14543,7 @@
     "saved": "Saved.",
     "save": "Save",
     "filter": "Filter",
+    "cancel": "Cancel",
     "tabs": {
       "label": "Clients & sales",
       "home": "My sales",
@@ -13153,6 +14696,7 @@
       "erase": "Erase on request",
       "eraseType": "Type ERASE to confirm",
       "eraseConfirm": "Erase the details",
+      "eraseReach": "This also blanks the lead they came from and any copy of their email or phone in a project brief or hand-off note. Notes typed into activities are not searched — check those by hand.",
       "fields": {
         "fullName": "Full name",
         "title": "Job title",
@@ -13174,6 +14718,7 @@
       "save": "Save",
       "log": "Log an activity or plan a follow-up",
       "happened": "It happened",
+      "mode": "Log what happened or plan what is next",
       "planOnly": "Plan a follow-up only",
       "kind": "Kind",
       "subject": "Subject",
@@ -13248,6 +14793,8 @@
       "newAccount": "A new account",
       "createContact": "Add {name} as a contact",
       "confirmDuplicate": "Probably already an account: {names}. Tick to create a new one anyway.",
+      "eraseContact": "Erase the contact on request",
+      "eraseContactReach": "The contact's name, title, email and phone are blanked; the company and the enquiry stay. Notes typed into activities are not searched — check those by hand.",
       "fields": {
         "companyName": "Company",
         "existingAccount": "Account",
@@ -13290,6 +14837,7 @@
       "valuedOf": "{valued} of {count} valued",
       "gatesNeeded": "This stage needs: {gates}",
       "noForecast": "No open deals with a value you may see.",
+      "boardTruncated": "The board holds the first {shown} of {total} deals; each stage's figures count them all. Filter by team or service to see the rest.",
       "undatedOrLate": "No date, or the date has passed",
       "columns": {
         "deal": "Deal",
@@ -13443,6 +14991,7 @@
       "policy": "the company's rules",
       "margin": "Estimated: {hours} h at the team's average hour ≈ {cost}; margin {margin} ({percent})",
       "noMargin": "No margin estimate: the delivering team has no signed payroll months to average.",
+      "marginUnchecked": "The margin was not checked: no cost rate could be worked out for the delivering team.",
       "documentTitle": "Quotation",
       "monthsCount": "{count} months",
       "steps": {
@@ -13533,6 +15082,8 @@
         "overdue": "Overdue",
         "paid": "Paid",
         "written_off": "Written off",
+        "draft": "Drafts",
+        "void": "Voided",
         "all": "All"
       },
       "columns": {
@@ -13561,9 +15112,25 @@
       "payments": "Payments",
       "noPayments": "No payments yet.",
       "recordPayment": "Record the payment",
-      "removePayment": "Remove",
-      "removePaymentConfirm": "Remove this payment?",
+      "reversePayment": "Reverse",
+      "reversePaymentTitle": "Reverse this payment?",
+      "reversePaymentHint": "The payment stays on the list, marked reversed with the reason, and no longer counts towards what was collected, what is owed or commission.",
+      "reversed": "Reversed by {name} on {date}: {reason}",
       "writeOff": "Write off",
+      "asDraft": "Save as a draft — not issued yet, the number may come later",
+      "recordDraft": "Save the draft",
+      "saveDraft": "Save the draft",
+      "draftHeading": "Draft invoice",
+      "draftIntro": "The draft holds these items until the invoice is issued. Change it, issue it or delete it here.",
+      "editDraft": "Change the draft",
+      "issueTitle": "Issue the invoice",
+      "issueIntro": "Give the number and date the accounting system issued it under. Every item needs an amount.",
+      "issue": "Issue",
+      "deleteDraft": "Delete the draft",
+      "deleteDraftConfirm": "Delete this draft? Its items go back to the queue waiting to be invoiced.",
+      "void": "Void the invoice",
+      "voidIntro": "An issued invoice is never deleted: void it with the reason, as the accounting system does. It is kept with its number, owes nothing, and its items go back to the queue waiting to be invoiced. Reverse its payments first if it has any.",
+      "voidedBecause": "Voided by {name} on {date}: {reason}",
       "methods": {
         "transfer": "Bank transfer",
         "cash": "Cash",
@@ -13579,7 +15146,10 @@
         "amount": "Amount (VND)",
         "method": "Method",
         "reference": "Reference",
-        "writeOffReason": "Why"
+        "writeOffReason": "Why",
+        "numberIfKnown": "Invoice number (if known)",
+        "reverseReason": "Why it is reversed",
+        "voidReason": "Why the invoice is voided"
       }
     },
     "reports": {
@@ -13806,7 +15376,9 @@
         "open": "Open",
         "part_paid": "Part paid",
         "paid": "Paid",
-        "written_off": "Written off"
+        "written_off": "Written off",
+        "draft": "Draft",
+        "void": "Voided"
       },
       "aging": {
         "current": "Not due",
@@ -13885,6 +15457,7 @@
       "lead_not_found": "That lead no longer exists.",
       "lead_closed": "That lead is already converted or closed.",
       "lead_reason_required": "Say why it is not pursued.",
+      "lead_contact_erased": "This lead no longer names a contact.",
       "deal_not_found": "That deal no longer exists.",
       "deal_closed": "The deal is already won or lost.",
       "deal_open": "The deal is still open.",
@@ -13895,6 +15468,7 @@
       "deal_owner_ineligible": "That person cannot own a deal here.",
       "deal_has_projects": "The deal already became a project; it cannot be reopened.",
       "deal_not_won": "Only a won deal is set up for delivery.",
+      "delivery_exists": "The deal already has a delivery project of that name — it may have been sent twice. Give it another name if it is a new project.",
       "team_not_found": "That team is not active.",
       "stage_not_found": "That stage is not in use.",
       "stage_in_use": "Deals sit in this stage; its kind cannot change.",
@@ -13938,10 +15512,18 @@
       "invoice_mixed_items": "One invoice covers one client and one entity.",
       "invoice_number_taken": "That invoice number is already recorded.",
       "invoice_not_found": "That invoice no longer exists.",
-      "invoice_closed": "The invoice is paid or written off.",
-      "invoice_reason_required": "Say why it is written off.",
+      "invoice_closed": "The invoice is no longer open: paid, written off or voided.",
+      "invoice_reason_required": "Give the reason.",
       "payment_amount_invalid": "A payment is more than zero.",
       "payment_not_found": "That payment no longer exists.",
+      "invoice_number_required": "Give the invoice number, or save it as a draft.",
+      "invoice_item_held": "Some items are on another invoice (perhaps a draft).",
+      "invoice_not_draft": "The invoice is issued, so it is not changed or deleted. Void it if it is wrong.",
+      "invoice_not_issued": "This invoice is still a draft: delete the draft instead of voiding it.",
+      "invoice_has_payments": "The invoice has payments. Reverse them first.",
+      "payment_above_outstanding": "That is more than the invoice still owes.",
+      "payment_reason_required": "Say why the payment is reversed.",
+      "payment_reversed": "That payment is already reversed.",
       "service_code_taken": "That code is already used.",
       "service_not_found": "That service no longer exists.",
       "file_not_found": "Upload the signed scan first.",
@@ -14075,5 +15657,92 @@
     "required": "Please fill in this field.",
     "draftRestored": "Your unsaved draft from {when} is back.",
     "draftDiscard": "Discard draft"
+  },
+  "stored": {
+    "toilGrant": "Time off in lieu of overtime in {month} ({minutes} min)",
+    "retroSalaryChange": "Salary decision effective {validFrom}, approved after {month} was paid",
+    "retroCancelled": "{reason} — cancelled: {why}"
+  },
+  "privacy": {
+    "gpsNotice": {
+      "title": "Your location at check-in",
+      "intro": "Before the check-in key reads your phone's location, here is what happens with it.",
+      "what": "What: your phone's position and its accuracy, read once at the moment you tap the key — never before or after, and never tracked.",
+      "why": "Why: to confirm the check-in was made at a work location (or at the place you declared for the day). A check-in that does not match goes to your line manager for review.",
+      "who": "Who sees it: you, your line manager and HR. Colleagues never do.",
+      "howLong": "How long: the exact position is deleted {days} days after the check-in; the time of the check-in and the office it matched stay with your timesheet.",
+      "choice": "Your choice: you may say no. Your check-ins then carry no position — an office network still counts, otherwise your manager reviews them. You can change your mind any time on your profile page.",
+      "agree": "I agree",
+      "notNow": "Not now",
+      "state": {
+        "unanswered": "You have not answered the location notice yet. The check-in key will show it before it reads your location.",
+        "declined": "You chose to check in without your location.",
+        "withdrawn": "You withdrew your agreement: check-ins no longer read your location."
+      },
+      "stateGiven": "Check-ins read your location, as agreed on {date}.",
+      "withoutIt": "Without it a check-in carries no position: an office network still counts, otherwise your line manager reviews it.",
+      "allow": "Allow location at check-in",
+      "withdraw": "Withdraw",
+      "withdrawConfirm": "Stop reading your location at check-in?",
+      "withdrawDetail": "From now on check-ins carry no position. Positions already recorded are deleted on their usual schedule, {days} days after each check-in.",
+      "failed": "That did not go through. Please try again."
+    },
+    "mine": {
+      "title": "Your data and privacy",
+      "description": "What the company holds about you, what you agreed to, and how long it is kept.",
+      "gpsTitle": "Location at check-in",
+      "exportTitle": "Export my data",
+      "exportWhat": "One file (JSON) with everything SuZu One holds about you: profile, employment, contracts and their pay terms, leave, attendance, requests, papers issued about you, payslips, notifications, assistant conversations and your privacy answers. It includes your pay, so you may be asked to sign in again first.",
+      "export": "Download my data",
+      "exporting": "Preparing the file…",
+      "stepUp": "Your pay is in the file, so please confirm it is you first.",
+      "stepUpLink": "Confirm and come back",
+      "exportFailed": "The file could not be prepared. Please try again.",
+      "keptTitle": "How long things are kept",
+      "keptPositions": "The exact position of a check-in: {days} days.",
+      "keptAssistant": "Conversations with the assistant: {days} days after the last message.",
+      "keptAfterLeaving": "After you leave: your contact details, emergency contacts, ID scans and app account are removed {years} years after your last day, once HR confirms it.",
+      "keptByLaw": "Payroll, tax and insurance records — payslips, contracts, timesheets, tax and insurance numbers — are kept for as long as accounting and tax law require (at least ten years)."
+    },
+    "admin": {
+      "title": "Privacy and retention",
+      "description": "Former employees whose personal details are due to be removed, and the schedule the nightly sweeps keep.",
+      "dueTitle": "Due for anonymisation",
+      "dueDescription": "Left more than {years} years ago. Nothing is removed until you confirm it here.",
+      "columns": {
+        "person": "Person",
+        "code": "Code",
+        "entity": "Company",
+        "lastDay": "Last day",
+        "dueOn": "Due since"
+      },
+      "none": "Nobody is due.",
+      "anonymise": "Anonymise",
+      "confirmTitle": "Anonymise {name}?",
+      "confirmIntro": "This cannot be undone.",
+      "goes": "Removed",
+      "goesList": "Work mailbox and app account, profile picture, phone, personal email, current address, marital status, emergency contacts, ID scans, health checks, diplomas and certificates, notifications and push devices, Messenger and Telegram links, assistant conversations, face data, and the location of every check-in.",
+      "stays": "Kept (required by accounting, tax and insurance law)",
+      "staysList": "Name and employee code, date of birth, gender, nationality, permanent address, identity, tax, insurance and bank numbers, dependants claimed for tax, employment periods, contracts and decisions, payslips and payroll runs, timesheets, leave, requests and issued papers.",
+      "cancel": "Cancel",
+      "errors": {
+        "generic": "That did not go through. Please try again.",
+        "retention_not_over": "The retention period is not over yet.",
+        "already_anonymised": "Already anonymised.",
+        "not_former_employee": "Only people who have left, with no open employment, can be anonymised.",
+        "anonymise_self": "You cannot anonymise yourself.",
+        "person_not_found": "This person no longer exists."
+      },
+      "scheduleTitle": "Retention schedule",
+      "scheduleDescription": "What goes by itself, every night, and what waits for HR.",
+      "schedule": {
+        "positions": "The exact position, network address and browser of a check-in from the app: deleted {days} days after the check-in (unless it still waits for review).",
+        "assistant": "Assistant conversations and unanswered questions: deleted {days} days after the last message.",
+        "faces": "Face data: deleted when the person leaves or withdraws their consent.",
+        "candidates": "Unsuccessful candidates: anonymised when their retention window passes, unless they joined the talent pool.",
+        "former": "Former employees: personal details anonymised {years} years after the last day, when HR confirms it here.",
+        "byLaw": "Payroll, tax and insurance records: kept at least ten years (Accounting Law 2015, art. 41)."
+      }
+    }
   }
 }

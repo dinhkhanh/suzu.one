@@ -28,6 +28,8 @@ export type RetentionFacts = {
   retainUntil: IsoDate | null;
   /** The day the record was created, used only when `retainUntil` is missing. */
   createdOn: IsoDate;
+  /** The day their latest application closed (rejected, withdrawn). Null when none has. */
+  lastClosedOn: IsoDate | null;
   talentPoolConsent: boolean;
   anonymised: boolean;
   /** Any application still open: they are in a live process, not in an archive. */
@@ -45,11 +47,21 @@ export function retainUntilFrom(from: IsoDate, months: number = DEFAULT_RETENTIO
 }
 
 /**
- * The date this record is actually kept until. A candidate written before the column existed, or
- * created by a path that forgot it, is not thereby kept forever: the window runs from the day the
- * record was made.
+ * The date this record is actually kept until: the later of two clocks.
+ *
+ *   · the one written on the record when it came in. A candidate written before the column
+ *     existed, or created by a path that forgot it, is not thereby kept forever: the window then
+ *     runs from the day the record was made.
+ *   · the window counted from **the day their latest application closed**. The date on the record
+ *     is set once, so without this somebody who applies again a year later would be anonymised the
+ *     night that new application closed — the notice promises them the window from that close.
  */
-export const effectiveRetainUntil = (facts: Pick<RetentionFacts, "retainUntil" | "createdOn">): IsoDate => facts.retainUntil ?? retainUntilFrom(facts.createdOn);
+export function effectiveRetainUntil(facts: Pick<RetentionFacts, "retainUntil" | "createdOn"> & Partial<Pick<RetentionFacts, "lastClosedOn">>): IsoDate {
+  const written = facts.retainUntil ?? retainUntilFrom(facts.createdOn);
+  if (!facts.lastClosedOn) return written;
+  const fromLastClose = retainUntilFrom(facts.lastClosedOn);
+  return fromLastClose > written ? fromLastClose : written;
+}
 
 /**
  * What should happen to one candidate today. The order matters and is the order of the reasons at

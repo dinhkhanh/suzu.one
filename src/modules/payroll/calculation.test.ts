@@ -25,7 +25,8 @@ import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService } from "./calculation";
+import type { DayPlan } from "@/modules/attendance/service";
+import { buildSegments, calculateEntityMonth, calculateOnePerson, dayWeight, listPeopleWithoutProfile, monthsOfService, normalWorkingDays, splitByProbation } from "./calculation";
 import { DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
 import { payComponentSeedRows } from "./seed-components";
@@ -83,7 +84,7 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
@@ -206,7 +207,8 @@ describe("calculating an entity's month", () => {
   it("refuses a person with no pay profile rather than paying them by guesswork", async () => {
     const [stranger] = await db().insert(schema.person).values({ fullName: "No Profile", searchName: "no profile", primaryEntityId: ids.entity, status: "active" }).returning();
     await db().insert(schema.timesheetMonth).values({ personId: stranger.id, entityId: ids.entity, month: MONTH, status: "locked", summary: summary(), lockedAt: new Date(), lockedByPersonId: ids.actor });
-    expect(await listPeopleWithoutProfile(ids.entity, MONTH)).toContain("No Profile");
+    // Named with their id, so the run screen can link to the person who is missing a profile.
+    expect(await listPeopleWithoutProfile(ids.entity, MONTH)).toEqual([{ personId: stranger.id, fullName: "No Profile" }]);
     await expect(calculateEntityMonth(ids.entity, MONTH)).rejects.toThrow("pay_profile_missing");
     await db().delete(schema.timesheetMonth).where(eq(schema.timesheetMonth.personId, stranger.id));
   });
@@ -284,6 +286,34 @@ describe("splitting a month into segments", () => {
     expect(dayWeight({ ...base, requiredMinutes: 0, holidayMinutes: 480 })).toEqual({ standardDays: 1, paidDaysCenti: 100, unpaidDaysCenti: 0 });
   });
 
+  // FR-PAY-05: a structure with a probation share is cut where the probation contract ends.
+  const onProbation = (validFrom: string, percent: number) => ({ ...structure(validFrom, null, 20_000_000), terms: { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: percent } }) as unknown as Structure;
+
+  it("cuts the month where probation ends, and marks only the days on probation", () => {
+    const segments = buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }]);
+    expect(segments.map((segment) => [segment.from, segment.to, segment.probationPercent ?? null])).toEqual([
+      ["2026-08-01", "2026-08-14", 85],
+      ["2026-08-15", "2026-08-31", null],
+    ]);
+    expect(segments.reduce((sum, segment) => sum + segment.paidDaysCenti, 0)).toBe(2200);
+  });
+
+  it("leaves a month alone when no probation contract covers it, or the terms carry no share", () => {
+    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-05-01", end: "2026-06-30" }]).map((segment) => segment.probationPercent ?? null)).toEqual([null]);
+    expect(buildSegments([structure("2026-07-15", null, 20_000_000)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }])).toHaveLength(1);
+    // A probation still running covers the whole month.
+    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: null }]).map((segment) => [segment.from, segment.to, segment.probationPercent])).toEqual([["2026-08-01", "2026-08-31", 85]]);
+  });
+
+  it("finds every piece of a month cut by probation more than once", () => {
+    expect(splitByProbation("2026-08-01", "2026-08-31", [{ start: "2026-08-05", end: "2026-08-10" }, { start: "2026-08-20", end: null }])).toEqual([
+      { from: "2026-08-01", to: "2026-08-04", onProbation: false },
+      { from: "2026-08-05", to: "2026-08-10", onProbation: true },
+      { from: "2026-08-11", to: "2026-08-19", onProbation: false },
+      { from: "2026-08-20", to: "2026-08-31", onProbation: true },
+    ]);
+  });
+
   it("gives an empty structure rather than nothing when a person has no pay terms", () => {
     const segments = buildSegments([], timesheet, "2026-08-01", "2026-08-31");
     expect(segments).toHaveLength(1);
@@ -299,5 +329,12 @@ describe("months of service", () => {
     expect(monthsOfService(null, "2026-08-31")).toBe(0);
     // The day of the month has not come round yet.
     expect(monthsOfService("2025-08-20", "2026-08-19")).toBe(11);
+  });
+});
+
+describe("the normal working days a leaver's unused leave is divided by", () => {
+  const plan = (kind: DayPlan["kind"], baseline: DayPlan["kind"] = kind) => ({ kind, baseline: { kind: baseline } }) as DayPlan;
+  it("counts working and untracked days and the holidays that fell on one, as the lock counts standard days", () => {
+    expect(normalWorkingDays([plan("working"), plan("untracked"), plan("holiday", "working"), plan("company_off", "untracked"), plan("holiday", "rest"), plan("rest"), plan("unscheduled")])).toBe(4);
   });
 });

@@ -5,10 +5,13 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { runProjectCreationHooks } from "@/modules/platform/project-creation/registry";
+import { checkProjectStatusChange } from "@/modules/platform/project-guards/registry";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
-import { invalidateMemberships } from "./viewer";
-import type { ProjectRole, Visibility } from "./enums";
+import { invalidateMemberships, projectRolesOf } from "./viewer";
+import type { ProjectRole, ProjectStatus, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
+import { notePrivateProjectReads } from "./private-reads";
 import { resolveProjectStatus } from "./status-sets";
 import { teamFacts, type TeamRow } from "./teams";
 
@@ -24,7 +27,7 @@ export async function findProject(projectId: string, executor: Executor = db()):
   return row;
 }
 
-export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; clientName: string | null; leadName: string | null; openTasks: number; doneTasks: number; overdueTasks: number };
+export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; /** The team's colour, which a project without its own wears. */ teamColor: string | null; clientName: string | null; leadName: string | null; openTasks: number; doneTasks: number; overdueTasks: number };
 
 /** Every project the viewer may open, with task counts. */
 export async function visibleProjects(viewer: WorkViewer, options: { today: string; includeArchived?: boolean; executor?: Executor } = { today: "9999-12-31" }): Promise<ProjectSummary[]> {
@@ -65,7 +68,7 @@ export async function visibleProjects(viewer: WorkViewer, options: { today: stri
     const team = teams.get(project.teamId);
     if (!team || !allowed(project)) return [];
     const tally = byProject.get(project.id);
-    return [{ ...project, teamKey: team.key, teamName: team.name, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 }];
+    return [{ ...project, teamKey: team.key, teamName: team.name, teamColor: team.color, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 }];
   });
 }
 
@@ -109,7 +112,14 @@ export async function createProject(input: ProjectInput, actorPersonId: string):
   return project;
 }
 
-/** Inside the caller's transaction: the caller calls `invalidateWorkDirectory()` once it commits. */
+/**
+ * Inside the caller's transaction: the caller calls `invalidateWorkDirectory()` once it commits.
+ *
+ * The one place a project row is made — the form, a template and a deal won in the CRM all come
+ * through here — so it is also where the modules built on top of projects add what a project must
+ * never be without (the project layer's plan row and job number), through the platform's
+ * project-creation hooks and in this same transaction.
+ */
 export async function createProjectIn(tx: Executor, input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
   {
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, input.teamId)).limit(1);
@@ -121,11 +131,19 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     await invalidateMemberships(...members.keys());
+    await runProjectCreationHooks(tx, { id: project.id });
     return project;
   }
 }
 
-/** The team stays: task numbers and workflow states belong to it. */
+/**
+ * The team stays: task numbers and workflow states belong to it.
+ *
+ * A change of the status category is put to the platform's project guards first, in this
+ * transaction: the project layer refuses a client project made Active past its kick-off gate or
+ * Done past its close-out, and a closed project moved out of Done (FR-PJM-03, 59). The kick-off, the
+ * close-out and the re-open make those moves themselves.
+ */
 export async function updateProject(projectId: string, input: Omit<ProjectInput, "teamId">): Promise<{ before: ProjectRow; after: ProjectRow }> {
   const updated = await db().transaction(async (tx) => {
     const found = await findProject(projectId, tx);
@@ -133,6 +151,10 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
     await checkProjectInput(tx, { ...input, teamId: found.project.teamId });
     // The status as posted: unchanged keeps the project's own, even one its set has since retired.
     const status = input.status === found.project.statusId ? { status: found.project.status, statusId: found.project.statusId } : await resolveProjectStatus(tx, found.project.teamId, input.status, found.project.statusId);
+    if (status.status !== found.project.status) {
+      const { refusal } = await checkProjectStatusChange(tx, { projectId, from: found.project.status, to: status.status, restoring: false });
+      if (refusal) throw new ActionError(refusal.reason, refusal.details);
+    }
     const [after] = await tx.update(schema.workProject).set({ ...input, ...status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
     if (input.leadPersonId && input.leadPersonId !== found.project.leadPersonId) {
       await tx.insert(schema.workProjectMember).values({ projectId, personId: input.leadPersonId, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
@@ -144,17 +166,26 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
   return updated;
 }
 
-/** Archive a project, or bring it back as active. */
+/**
+ * Archive a project, or bring it back. It comes back active unless a project guard names another
+ * category: un-archiving by itself never re-opens a closed project (it returns Done) and never
+ * walks a client project past its kick-off gate (it returns Planned).
+ */
 export async function setProjectArchived(projectId: string, archived: boolean): Promise<{ before: ProjectRow; after: ProjectRow }> {
-  const found = await findProject(projectId);
-  if (!found) throw new ActionError("project_not_found");
-  const [after] = await db()
-    .update(schema.workProject)
-    .set({ status: archived ? "archived" : "active", updatedAt: new Date() })
-    .where(eq(schema.workProject.id, projectId))
-    .returning();
+  const changed = await db().transaction(async (tx) => {
+    const found = await findProject(projectId, tx);
+    if (!found) throw new ActionError("project_not_found");
+    let status: ProjectStatus = "archived";
+    if (!archived) {
+      const { refusal, to } = await checkProjectStatusChange(tx, { projectId, from: found.project.status, to: "active", restoring: true });
+      if (refusal) throw new ActionError(refusal.reason, refusal.details);
+      status = to as ProjectStatus;
+    }
+    const [after] = await tx.update(schema.workProject).set({ status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
+    return { before: found.project, after };
+  });
   await invalidateWorkDirectory();
-  return { before: found.project, after };
+  return changed;
 }
 
 export type ProjectMemberView = { personId: string; fullName: string; role: ProjectRole; workforceType: string };
@@ -167,6 +198,32 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
     .where(eq(schema.workProjectMember.projectId, projectId))
     .orderBy(asc(schema.workProjectMember.role), asc(schema.person.searchName));
   return rows.map((row) => ({ ...row, role: row.role as ProjectRole }));
+}
+
+export type ProjectAppointment = { projectId: string; projectName: string; role: Extract<ProjectRole, "lead" | "account_manager"> };
+
+/**
+ * The posts a person holds in projects that are still running — its lead (named on the project, or
+ * holding the role) and its account manager — as far as the viewer may open the project: a
+ * person's page shows them beside the position HR typed, and nobody learns of a project there
+ * that /projects would not list for them. Ordered by project name, the lead before the account
+ * manager. No query of its own: the projects come from the directory and the person's roles from
+ * their memberships, both already in the shared cache and dropped by their writers.
+ */
+export async function projectAppointmentsOf(viewer: WorkViewer, personId: string): Promise<ProjectAppointment[]> {
+  const [directory, roles] = await Promise.all([workDirectory(), projectRolesOf(personId)]);
+  const shown = projectsWithTeams(directory).flatMap(({ project, team }) => {
+    if (project.status === "done" || project.status === "archived") return [];
+    const role = roles.get(project.id);
+    const posts: ProjectAppointment["role"][] = [];
+    if (project.leadPersonId === personId || role === "lead") posts.push("lead");
+    if (role === "account_manager") posts.push("account_manager");
+    const facts = projectFacts(project, team);
+    return posts.length && canViewProject(viewer, facts) ? [{ project, facts, posts }] : [];
+  });
+  // A leader who is none of a private project's people has just been told its name.
+  await notePrivateProjectReads(viewer, shown.map((row) => row.facts));
+  return shown.flatMap(({ project, posts }) => posts.map((role) => ({ projectId: project.id, projectName: project.name, role })));
 }
 
 /** The person's role in the project, or null when they are not one of its members. */

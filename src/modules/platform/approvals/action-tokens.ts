@@ -26,15 +26,16 @@ const hashOf = (token: string) => createHash("sha256").update(token).digest("hex
  * the token itself is never stored, only its hash.
  */
 export async function issueActionToken(executor: Executor, requestId: string, personId: string, now: Date = new Date()): Promise<{ token: string; path: string }> {
-  const token = randomBytes(TOKEN_BYTES).toString("base64url");
-  await executor.insert(schema.approvalActionToken).values({
-    requestId,
-    personId,
-    action: "approve",
-    tokenHash: hashOf(token),
-    expiresAt: new Date(now.getTime() + TOKEN_TTL_HOURS * 60 * 60 * 1000),
-  });
-  return { token, path: `/approvals/act/${token}` };
+  return (await issueActionTokens(executor, requestId, [personId], now)).get(personId)!;
+}
+
+/** `issueActionToken` for everybody whose turn it is on one request: a key each, in one insert. */
+export async function issueActionTokens(executor: Executor, requestId: string, personIds: readonly string[], now: Date = new Date()): Promise<Map<string, { token: string; path: string }>> {
+  const issued = new Map([...new Set(personIds)].map((personId) => [personId, randomBytes(TOKEN_BYTES).toString("base64url")]));
+  if (issued.size === 0) return new Map();
+  const expiresAt = new Date(now.getTime() + TOKEN_TTL_HOURS * 60 * 60 * 1000);
+  await executor.insert(schema.approvalActionToken).values([...issued].map(([personId, token]) => ({ requestId, personId, action: "approve" as const, tokenHash: hashOf(token), expiresAt })));
+  return new Map([...issued].map(([personId, token]) => [personId, { token, path: `/approvals/act/${token}` }]));
 }
 
 export type TokenLookup = { ok: true; row: ApprovalActionTokenRow } | { ok: false; reason: "unknown" | "expired" | "used" };
@@ -63,9 +64,12 @@ export async function spendActionToken(tokenId: string, now: Date = new Date()):
   return rows.length === 1;
 }
 
-/** Tokens of a request that is no longer waiting for this person — spent so they cannot be replayed. */
-export async function voidActionTokens(executor: Executor, requestId: string): Promise<void> {
-  await executor.update(schema.approvalActionToken).set({ usedAt: new Date() }).where(and(eq(schema.approvalActionToken.requestId, requestId), isNull(schema.approvalActionToken.usedAt)));
+/** Tokens of a request that is no longer waiting for this person — spent so they cannot be replayed. With `personId`, only that person's: the others on the step keep their links. */
+export async function voidActionTokens(executor: Executor, requestId: string, personId?: string): Promise<void> {
+  await executor
+    .update(schema.approvalActionToken)
+    .set({ usedAt: new Date() })
+    .where(and(eq(schema.approvalActionToken.requestId, requestId), isNull(schema.approvalActionToken.usedAt), personId ? eq(schema.approvalActionToken.personId, personId) : undefined));
 }
 
 /** Housekeeping: an expired token has nothing left to say. */

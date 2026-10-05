@@ -1,12 +1,13 @@
 // Seeds editable starter data: placeholder legal entities, the shared departments (SRS D8) and the
 // statutory parameter snapshot (SRS Appendix A), the starter onboarding/offboarding checklists,
-// the public holidays of this year and the next, and the default work schedule.
+// the public holidays of this year and the next, the default work schedule, and the starter
+// catalogue of professional fields and skills, and the starter review forms.
 // Safe to re-run: existing codes are left untouched. Run with `pnpm db:seed`.
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, competency, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, reviewTemplate, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -15,6 +16,8 @@ import { obligationSeedRows } from "../src/modules/ops/seed-library";
 import { STARTER_COMPANY_VALUES } from "../src/modules/comms/seed-values";
 import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
+import { REVIEW_TEMPLATE_SEED, reviewTemplateSeedRows } from "../src/modules/performance/seed-review-templates";
+import { templateProblems as reviewTemplateProblems } from "../src/modules/performance/engine/review-template";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { seedAcceptanceTemplate, seedProjectTemplatePlans } from "../src/modules/projects/seed";
 import { seedQuoteTemplate, seedRateCard, seedStages } from "../src/modules/crm/seed";
@@ -23,6 +26,7 @@ import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
 import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
 import { CATEGORY_SEED } from "../src/modules/assets/seed-categories";
+import { competencySeedRows } from "../src/modules/core-hr/seed-competencies";
 import { PIPELINE_SEED, pipelineSeedProblems } from "../src/modules/recruit/seed-pipelines";
 import { EMAIL_TEMPLATE_SEED } from "../src/modules/recruit/seed-email-templates";
 import { emailTemplateProblems } from "../src/modules/recruit/engine/email-template";
@@ -154,6 +158,17 @@ async function main() {
   if (newKpis.length) await db.insert(kpiDefinition).values(newKpis);
   console.log(`Seeded ${newKpis.length} KPI definitions (existing codes left untouched).`);
 
+  // The starter review forms (FR-PRF-03, PRF-01): annual, mid-year and end of probation. Only seed
+  // keys that do not exist yet, so a starter HR has edited or switched off stays as HR left it.
+  // Checked by the same engine as the editor first — a form that scores nothing would release
+  // reviews worth nothing. `pnpm db:seed` flushes the cached template list afterwards.
+  const brokenReviewTemplates = REVIEW_TEMPLATE_SEED.filter((seed) => reviewTemplateProblems(seed).length > 0);
+  if (brokenReviewTemplates.length) throw new Error(`review template seed is invalid: ${brokenReviewTemplates.map((seed) => `${seed.seedKey} (${reviewTemplateProblems(seed).join(", ")})`).join("; ")}`);
+  const reviewSeedKeys = new Set((await db.select({ seedKey: reviewTemplate.seedKey }).from(reviewTemplate)).map((row) => row.seedKey));
+  const newReviewTemplates = reviewTemplateSeedRows().filter((row) => !reviewSeedKeys.has(row.seedKey));
+  if (newReviewTemplates.length) await db.insert(reviewTemplate).values(newReviewTemplates).onConflictDoNothing();
+  console.log(`Seeded ${newReviewTemplates.length} review form templates (existing seed keys left untouched).`);
+
   // Knowledge-base page templates (FR-KB-09): only keys that do not exist yet.
   const templateKeys = new Set((await db.select({ key: kbTemplate.key }).from(kbTemplate)).map((row) => row.key));
   const newTemplates = kbTemplateSeedRows().filter((row) => !templateKeys.has(row.key));
@@ -226,6 +241,12 @@ async function main() {
   }
   if (newEmailTemplates.length) await db.insert(recruitEmailTemplate).values(newEmailTemplates.map((row) => ({ ...row })));
   console.log(`Seeded ${newEmailTemplates.length} candidate email templates (existing codes left untouched).`);
+
+  // Professional fields and skills (FR-CHR-14): a starter catalogue, so the first profiles are filled
+  // in from a list. Only names the catalogue does not have yet — under any spelling: an entry HR
+  // has corrected, or one somebody typed first, is left as it stands.
+  const newCompetencies = await db.insert(competency).values(competencySeedRows()).onConflictDoNothing().returning({ id: competency.id });
+  console.log(`Seeded ${newCompetencies.length} professional fields and skills (existing names left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));

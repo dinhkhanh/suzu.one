@@ -46,7 +46,7 @@ const pick = <Row extends object, Key extends keyof Row>(row: Row, keys: readonl
 async function resave(code: string, change: Partial<SaveTypeInput>) {
   const row = (await findRequestTypeByCode(code))!;
   const input: SaveTypeInput = {
-    ...pick(row, ["code", "nameVi", "nameEn", "descriptionVi", "descriptionEn", "entityId", "form", "icon", "sortOrder", "active", "slaRemindAfterDays", "slaEscalateAfterDays", "followUps", "standalone"]),
+    ...pick(row, ["code", "nameVi", "nameEn", "descriptionVi", "descriptionEn", "entityId", "form", "icon", "sortOrder", "active", "slaRemindAfterDays", "slaEscalateAfterDays", "followUps", "standalone", "payout"]),
     category: row.category as RequestCategory,
     slaEscalateTo: row.slaEscalateTo ?? null,
   };
@@ -84,7 +84,7 @@ beforeAll(async () => {
           employeeCode: null,
           startDate: "2024-01-01",
           seniorityDate: null,
-          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
         },
         actor.id,
         { onboarding: false },

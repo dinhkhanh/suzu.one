@@ -1,7 +1,9 @@
 // The daily loop's scheduled jobs: the morning plan reminder, the evening report reminder, the
-// Monday weekly reports and the Monday timesheet reminder. They concern every active person (Q18),
-// each told once per kind and day (`daily_reminder_sent`); days off — holidays, leave, rest days —
-// ask nothing of anyone, while the untracked Saturday of D15 is a working day like any other.
+// next morning's notice of a report that never came, the Monday weekly reports and the Monday
+// timesheet reminder. They concern every active person the loop asks anything of (Q18;
+// `listDailyPeople`), each told once per kind and day (`daily_reminder_sent`); days off —
+// holidays, leave, rest days — ask nothing of anyone, while the untracked Saturday of D15 is a
+// working day like any other.
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
@@ -10,14 +12,16 @@ import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { dayOf, daysOf } from "./days";
 import { isoWeekday, weekStartOf } from "./engine/rules";
+import { claimReminders } from "./reminders";
 import { listDailyPeople, rulesOfPeople } from "./team-rules";
+import { reportLink } from "./reports";
 import { generateWeek } from "./weekly";
 
 /** Marks the people as told for the day and returns the ones not told before. */
 async function claim(personIds: readonly string[], kind: string, today: IsoDate, tell: (fresh: string[], tx: Tx) => Promise<void>): Promise<number> {
   if (personIds.length === 0) return 0;
   return db().transaction(async (tx) => {
-    const fresh = (await tx.insert(schema.dailyReminderSent).values(personIds.map((personId) => ({ personId, kind, sentOn: today }))).onConflictDoNothing().returning({ personId: schema.dailyReminderSent.personId })).map((row) => row.personId);
+    const fresh = await claimReminders(tx, personIds, kind, today);
     if (fresh.length > 0) await tell(fresh, tx);
     return fresh.length;
   });
@@ -50,12 +54,30 @@ export async function sendReportReminders(today: IsoDate): Promise<{ reminded: n
   let reminded = 0;
   // One notice per deadline: the wording names it.
   for (const [deadline, group] of Map.groupBy(missing, (personId) => days.get(personId)!.rules.reportDeadline)) {
-    reminded += await claim(group, "report", today, (fresh, tx) => notify({ recipients: fresh, kind: "daily.report_reminder", params: { deadline }, link: "/daily/report" }, tx));
+    reminded += await claim(group, "report", today, (fresh, tx) => notify({ recipients: fresh, kind: "daily.report_reminder", params: { deadline }, link: reportLink(today) }, tx));
   }
   return { reminded };
 }
 
-/** Mondays (FR-PJM-23): last week's reports, to the leads and the department heads above the teams. */
+/**
+ * The morning after (FR-PJM-22): people whose report was required yesterday — a day they were
+ * scheduled to work, so never a day of leave, a holiday or a day off — and still is not in. One
+ * notice each, naming the day and opening its form; the report can be filed for a week yet, late.
+ */
+export async function sendMissedReportReminders(today: IsoDate): Promise<{ date: IsoDate; reminded: number }> {
+  const date = addDays(today, -1);
+  const people = await listDailyPeople();
+  const days = await dayOf(people, date);
+  const due = people.filter((personId) => days.get(personId)?.report.required);
+  if (due.length === 0) return { date, reminded: 0 };
+  const submitted = await db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, due), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")));
+  const sent = new Set(submitted.map((row) => row.personId));
+  const missing = due.filter((personId) => !sent.has(personId));
+  const reminded = await claim(missing, "report_missed", today, (fresh, tx) => notify({ recipients: fresh, kind: "daily.report_missed", params: { date: date.split("-").reverse().join("/") }, link: reportLink(date) }, tx));
+  return { date, reminded };
+}
+
+/** Mondays (FR-PJM-23): last week's reports — of everyone the loop asks and of every team — to the leads, the heads above the teams, and the line manager of someone no lead stands over. */
 export async function runWeeklyReports(today: IsoDate): Promise<Record<string, unknown>> {
   if (isoWeekday(today) !== 1) return { skipped: "not_monday" };
   const weekStart = addDays(weekStartOf(today), -7);
@@ -93,6 +115,8 @@ export async function sendTimesheetReminders(today: IsoDate): Promise<Record<str
 
 /** 07:00 Vietnam, the morning slot. */
 export const dailyPlanRemindersJob: JobDefinition = { name: "daily-plan-reminders", run: ({ today }) => sendPlanReminders(today) };
+/** The morning slot: yesterday's report, where it is still missing. */
+export const dailyMissedReportsJob: JobDefinition = { name: "daily-missed-reports", run: ({ today }) => sendMissedReportReminders(today) };
 /** 18:00 Vietnam, the evening slot — well before the 23:00 deadline the report has by default. */
 export const dailyReportRemindersJob: JobDefinition = { name: "daily-report-reminders", run: ({ today }) => sendReportReminders(today) };
 /** The morning slot; does its work on Mondays only. */

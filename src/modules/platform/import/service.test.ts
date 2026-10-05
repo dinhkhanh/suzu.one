@@ -7,11 +7,11 @@ vi.mock("@/lib/env", () => ({ env: () => ({ DATA_ENCRYPTION_KEYS: `k1:${Buffer.a
 const session = vi.hoisted(() => ({ user: null as unknown }));
 vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => session.user }));
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { type Column, text } from "./engine/table";
-import { defineImport } from "./service";
+import { defineImport, purgeImportBatches } from "./service";
 
 const committed: unknown[] = [];
 const columns = {
@@ -60,4 +60,51 @@ it("keeps sensitive cells encrypted while the batch waits, masks them in the pre
 it("validates against the real values, not the ciphertext", async () => {
   const staged = await sample.stage(upload("Name,Citizen ID\nChi,000\n"));
   expect(staged.ok && staged.data).toMatchObject({ status: "invalid", problemCount: 1 });
+});
+
+// ── What a batch leaves behind ──────────────────────────────────────────────────────────────
+
+it("empties the staged rows when the batch is committed, and keeps its summary", async () => {
+  const staged = await sample.stage(upload("Name,Citizen ID\nDung,079201009999\n"));
+  if (!staged.ok) throw new Error(staged.message ?? staged.error);
+  expect(await sample.commit({ batchId: staged.data.batchId })).toEqual({ ok: true, data: { created: 1 } });
+
+  const [batch] = await db().select().from(schema.importBatch).where(eq(schema.importBatch.id, staged.data.batchId));
+  expect(batch.rows).toEqual([]);
+  // The names that sat in clear beside the encrypted cells are gone with them…
+  expect(JSON.stringify(batch)).not.toContain("Dung");
+  // …and what the import history shows is still there.
+  expect(batch).toMatchObject({ status: "committed", fileName: "sample.csv", rowCount: 1, result: { created: 1 } });
+  expect(batch.committedAt).not.toBeNull();
+});
+
+it("deletes a batch nobody committed once a day has passed, and empties a committed one that still holds its rows", async () => {
+  await db().delete(schema.importBatch);
+  const stage = async (csv: string) => {
+    const staged = await sample.stage(upload(csv));
+    if (!staged.ok) throw new Error(staged.message ?? staged.error);
+    return staged.data.batchId;
+  };
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+  const abandoned = await stage("Name,Citizen ID\nGiang,079201001111\n");
+  const refused = await stage("Name,Citizen ID\nHoa,000\n");
+  const waiting = await stage("Name,Citizen ID\nKhanh,079201002222\n");
+  await db().update(schema.importBatch).set({ createdAt: twoDaysAgo }).where(inArray(schema.importBatch.id, [abandoned, refused]));
+  // A batch committed before a commit emptied its own rows: old, done, and still holding them.
+  const old = await stage("Name,Citizen ID\nLan,079201003333\n");
+  await db().update(schema.importBatch).set({ status: "committed", committedAt: twoDaysAgo, createdAt: twoDaysAgo, result: { created: 1 } }).where(eq(schema.importBatch.id, old));
+
+  expect(await purgeImportBatches()).toEqual({ importBatchesDeleted: 2, importBatchesEmptied: 1 });
+
+  const left = await db().select().from(schema.importBatch);
+  expect(left.map((batch) => batch.id).sort()).toEqual([waiting, old].sort());
+  // Today's upload is untouched and can still be committed.
+  expect(left.find((batch) => batch.id === waiting)?.rows).toHaveLength(1);
+  expect(left.find((batch) => batch.id === old)).toMatchObject({ rows: [], status: "committed", rowCount: 1, result: { created: 1 } });
+  expect(JSON.stringify(left)).not.toContain("Lan");
+  expect(await sample.commit({ batchId: waiting })).toEqual({ ok: true, data: { created: 1 } });
+
+  // A second night finds nothing more to do.
+  expect(await purgeImportBatches()).toEqual({ importBatchesDeleted: 0, importBatchesEmptied: 0 });
 });

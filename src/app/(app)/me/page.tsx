@@ -8,21 +8,34 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
-import { getPersonView } from "@/modules/core-hr/service";
+import { canBrowsePeople } from "@/modules/core-hr/policy";
+import { getPersonView, peopleModuleOpen } from "@/modules/core-hr/service";
+import { PersonCompetencies } from "@/modules/core-hr/ui/competencies";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
 import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
 import { IconTile, MenuList } from "@/modules/core-hr/ui/me-menu";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
+import { ProjectPositions } from "@/modules/core-hr/ui/project-positions";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { resignationBlocker } from "@/modules/core-hr/resignation";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
+import { listDocumentsAbout } from "@/modules/documents/service";
+import { IssuedDocumentsTable } from "@/modules/documents/ui/issued-documents";
 import { getMonthSummaryFor } from "@/modules/attendance/service";
 import { hoursText } from "@/modules/attendance/ui/day-plan";
+import { MyFaceEnrolment } from "@/modules/attendance/ui/my-face";
+import { MyGpsConsent } from "@/modules/attendance/ui/gps-notice";
+import { answerGpsNoticeAction } from "@/modules/privacy/actions";
+import { GPS_NOTICE_VERSION, gpsConsentOf, PUNCH_POSITION_RETENTION_DAYS } from "@/modules/privacy/service";
+import { MyPrivacy } from "@/modules/privacy/ui/my-privacy";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
 import { countMyOpenRequests, listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
+import { jobTitle } from "@/lib/job-levels";
+import { loadViewer, projectAppointmentsOf } from "@/modules/work/service";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getTheme } from "@/theme/server";
@@ -40,13 +53,17 @@ export default async function MyProfilePage() {
   const today = todayInVietnam();
   const year = Number(today.slice(0, 4));
   const month = today.slice(0, 7);
-  const [person, requests, balances, summary, openRequests, theme] = await Promise.all([
+  const [person, requests, balances, summary, openRequests, theme, appointments, directoryOpen, gps] = await Promise.all([
     getPersonView(user.principal, user.person.id),
     listProfileChanges(viewer, user.person.id),
     getLeaveBalanceFor(user.principal, user.person.id, year),
     getMonthSummaryFor(user.principal, user.person.id, month),
     countMyOpenRequests(user.person.id),
     getTheme(),
+    // The posts held in running projects: the automatic half of the position.
+    loadViewer(user).then((viewer) => projectAppointmentsOf(viewer, user.person.id)),
+    canBrowsePeople(user.principal) ? peopleModuleOpen(user) : false,
+    gpsConsentOf(user.person.id),
   ]);
   if (!person?.personal) notFound();
 
@@ -106,10 +123,15 @@ export default async function MyProfilePage() {
           <Fact label={t("fields.team")}>{person.current?.teamName ? <RecordLink kind="unit" id={person.current.teamId}>{person.current.teamName}</RecordLink> : null}</Fact>
           <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
           <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
-          <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>
+          <Fact label={t("fields.jobTitle")}>{jobTitle(t, person.current)}</Fact>
+          <Fact label={t("fields.position")}>{person.current?.positionName}</Fact>
+          <ProjectPositions appointments={appointments} />
           <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
         </FactSheet>
       </Section>
+
+      {/* Yours to keep up, straight away: what you are good at is not a fact HR vouches for. */}
+      <PersonCompetencies personId={user.person.id} canEdit browsable={directoryOpen} />
 
       <Section title={t("sections.personal")}>
         <FactSheet>
@@ -137,8 +159,13 @@ export default async function MyProfilePage() {
       </Section>
 
       <RecordSections principal={user.principal} personId={user.person.id} />
+      <div id="documents" className="scroll-mt-16">
+        <MyLetters principal={user.principal} personId={user.person.id} />
+      </div>
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
+      <MyFaceEnrolment personId={user.person.id} />
+      <MyPrivacy gps={<MyGpsConsent notice={{ state: gps.state, version: GPS_NOTICE_VERSION, days: PUNCH_POSITION_RETENTION_DAYS }} since={gps.at ? format.dateTime(gps.at, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }) : null} answer={answerGpsNoticeAction} />} />
       <ResignationBlock personId={user.person.id} />
 
       <Section title={t("me.preferences")}>
@@ -168,15 +195,22 @@ export default async function MyProfilePage() {
   );
 }
 
+// The contracts, decisions and letters issued about the person, as they were issued (FR-CHR-12).
+async function MyLetters({ principal, personId }: { principal: Parameters<typeof listDocumentsAbout>[1]; personId: string }) {
+  const [t, rows] = await Promise.all([getTranslations("documents"), listDocumentsAbout(personId, principal)]);
+  return <IssuedDocumentsTable rows={rows} title={t("mine.title")} empty={t("mine.empty")} />;
+}
+
 // Last on the page on purpose. A resignation is a request like any other: the line manager answers, HR carries it out.
+// The form is offered whenever nothing about the *current* employment stands in the way — so it
+// comes back after a rehire, or after HR called the termination off (CHR-03).
 async function ResignationBlock({ personId }: { personId: string }) {
   const t = await getTranslations("lifecycle");
-  const requests = await listRequestsAbout("resignation", personId);
-  const open = requests.some((request) => request.status === "pending" || request.status === "returned" || request.status === "approved");
+  const [requests, blocker] = await Promise.all([listRequestsAbout("resignation", personId), resignationBlocker(personId)]);
   return (
     <Section title={t("resign.section")}>
       {requests.length > 0 ? <RequestTable rows={requests} empty="" showRequester={false} /> : null}
-      {open ? null : <ResignationForm today={todayInVietnam()} />}
+      {blocker === null ? <ResignationForm today={todayInVietnam()} /> : null}
     </Section>
   );
 }

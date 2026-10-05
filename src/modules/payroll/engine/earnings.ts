@@ -8,7 +8,8 @@ import { computeFormula } from "./formula";
 import { componentVariable } from "./formula/variables";
 import { findComponent, taxablePart } from "./components";
 import { applyShare, divisorDays, employedDaysIn, segmentShare } from "./proration";
-import type { PayLine, PersonPayInput } from "./types";
+import { ratio } from "./rounding";
+import type { PayLine, PayWarning, PersonPayInput, TraceStep } from "./types";
 
 export const BASE_CODE = "BASE";
 
@@ -53,9 +54,13 @@ export function calculateEarnings(input: PersonPayInput): EarningsResult {
     let amount = 0;
     let fullAmount = 0;
     let paidDaysCenti = 0;
+    let probationPercent: number | null = null;
     for (const segment of segments) {
-      const monthly = component.code === BASE_CODE ? segment.terms.baseSalary : (segment.terms.allowances.find((allowance) => allowance.code === component.code)?.amount ?? 0);
-      if (monthly === 0) continue;
+      const position = component.code === BASE_CODE ? segment.terms.baseSalary : (segment.terms.allowances.find((allowance) => allowance.code === component.code)?.amount ?? 0);
+      if (position === 0) continue;
+      // On probation days the month's figure is the probation share of the position's (FR-PAY-05).
+      const monthly = onProbation(segment, position, component.roundingRule);
+      if (monthly !== position) probationPercent = segment.probationPercent!;
       const share = segmentShare(segment, component.proration, divisor, employedDays);
       amount += applyShare(monthly, share, component.roundingRule);
       fullAmount += monthly;
@@ -71,7 +76,7 @@ export function calculateEarnings(input: PersonPayInput): EarningsResult {
       insurable: component.subjectToInsurance ? amount : 0,
       rule: component.proration === "attendance" ? "structure_attendance_prorated" : "structure_fixed",
       roundingRule: component.roundingRule,
-      inputs: { monthlyAmount: fullAmount, paidDaysCenti, divisorDays: divisor, segments: segments.length, employedDays },
+      inputs: { monthlyAmount: fullAmount, paidDaysCenti, divisorDays: divisor, segments: segments.length, employedDays, ...(probationPercent !== null ? { probationPercent } : {}) },
     });
   }
 
@@ -79,10 +84,17 @@ export function calculateEarnings(input: PersonPayInput): EarningsResult {
   // the month's contribution is declared once, on one salary (rule `last_segment`).
   const last = segments.at(-1);
   const declaredInsuranceSalary = last?.terms.insuranceSalary ?? 0;
-  const baseSalaryForOvertime = last?.terms.baseSalary ?? 0;
-  const insurableAllowancesForOvertime = (last?.terms.allowances ?? []).reduce((sum, allowance) => sum + (findComponent(components, allowance.code)?.subjectToInsurance ? allowance.amount : 0), 0);
+  // Overtime worked on probation is paid on the probation salary it is worked for.
+  const baseSalaryForOvertime = last ? onProbation(last, last.terms.baseSalary, "half_up") : 0;
+  const insurableAllowancesForOvertime = (last?.terms.allowances ?? []).reduce((sum, allowance) => sum + (findComponent(components, allowance.code)?.subjectToInsurance ? onProbation(last!, allowance.amount, "half_up") : 0), 0);
 
   return { lines, declaredInsuranceSalary, baseSalaryForOvertime, insurableAllowancesForOvertime, divisor };
+}
+
+/** A monthly figure of the position as paid in this segment: its probation share, or all of it. */
+function onProbation(segment: PersonPayInput["segments"][number], amount: number, rule: Parameters<typeof ratio>[3]): number {
+  const percent = segment.probationPercent;
+  return percent && percent < 100 ? ratio(amount, percent, 100, rule) : amount;
 }
 
 /** The values a formula may read, built from what is known so far. */
@@ -149,13 +161,33 @@ export function calculateFormulaLines(input: PersonPayInput, existing: readonly 
   return lines;
 }
 
-/** Figures typed into the run (bonus, commission, advance, penalty): taken as given, never pro-rated. */
-export function calculateInputLines(input: PersonPayInput): PayLine[] {
+/**
+ * Figures typed into the run (bonus, commission, advance, penalty): taken as given, never pro-rated.
+ *
+ * An amount is entered as a positive figure and the component's kind says which way it goes: an
+ * earning is added, a deduction is taken off. `setRunInput` refuses anything else where it is
+ * typed; the checks here are the second line, and what they leave out is **named as a warning**,
+ * never dropped in silence and never paid with its sign turned round.
+ */
+export function calculateInputLines(input: PersonPayInput): { lines: PayLine[]; warnings: PayWarning[]; trace: TraceStep[] } {
   const lines: PayLine[] = [];
+  const warnings = new Set<PayWarning>();
+  const trace: TraceStep[] = [];
   for (const entry of input.inputs) {
+    // Nothing was entered, so nothing is lost by leaving it out.
+    if (entry.amount === 0) continue;
     const component = findComponent(input.components, entry.code);
-    if (!component || component.source !== "input" || entry.amount === 0) continue;
-    const amount = Math.abs(entry.amount);
+    if (!component || component.source !== "input") {
+      warnings.add("input_code_unknown");
+      trace.push({ stage: "inputs", rule: "input_code_unknown", detail: { code: entry.code } });
+      continue;
+    }
+    if (entry.amount < 0) {
+      warnings.add("input_negative");
+      trace.push({ stage: "inputs", rule: "input_negative", detail: { code: entry.code } });
+      continue;
+    }
+    const amount = entry.amount;
     lines.push({
       code: component.code,
       kind: component.kind,
@@ -168,5 +200,5 @@ export function calculateInputLines(input: PersonPayInput): PayLine[] {
       inputs: { entered: amount },
     });
   }
-  return lines;
+  return { lines, warnings: [...warnings], trace };
 }

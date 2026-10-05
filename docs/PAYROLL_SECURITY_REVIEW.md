@@ -53,6 +53,46 @@ Compensation never follows the org chart (`src/modules/payroll/policy.ts`):
   nothing. `readableTier()` and its "a manager reads their reports' personal data" clause is
   deliberately never consulted by this module.
 
+> **Addendum, 2026-10-05 — Phase 12 (branch `phase-12-close-the-gaps`, not yet merged).** This review was not repeated: what follows is an inventory of what Phase 12 added, read in the code. It is not a new probe over HTTP. The verdict above covers the module as it was on 2026-09-20.
+>
+> **New compensation read paths.** Each one calls `requireStepUp` and then authorizes against the row's own entity:
+> - `/payroll/retro` — an entity's open retro items;
+> - `/payroll/runs/[runId]/people/[personId]` — a person's lines and trace before release, audited as a compensation read;
+> - `/payroll/runs/new/off-cycle`;
+> - `/payroll/salaries/import` (`canManageCompensation`);
+> - `/payroll/salaries/imports/[batchId]` (`canDecidePayRules`: the owner reads the whole batch).
+>
+> **New compensation data outside `payroll/`:**
+> - **Export my data.** `/me` → "Download my data" puts the person's own payslips and contract pay terms in a JSON file. It runs through `createAction` with `stepUp`, reads with the person's own principal, is refused while impersonating, and is audited with counts only.
+> - **The offer email.** It attaches the offer PDF with the salary; the attachment is emptied from `email_outbox` once the email is sent, skipped or given up on.
+> - **Salary confirmation letters.** A letter generated on approval is refused without the compensation tier (`requests/letters.ts`).
+> - **Issued documents.** They are now stored as PDFs at the document's tier and opened through the files module's one-minute link.
+> - **The cash sheet's signed scan.** It is stored at the compensation tier.
+>
+> **New actions.** All payroll actions still go through `createAction` with `stepUp: true`: 57 across the twelve `*actions*.ts` files, counted on the branch. They now include:
+> - voiding an approved version — owner only, with a reason, refused once a run past C&B used the version;
+> - retro add / cancel / derive — audited without amounts;
+> - the salary and pay-profile imports — each row an owner-approved request;
+> - "paid another way";
+> - the parallel-run sign-off.
+>
+> The statutory-parameter void (`platform/statutory/actions.ts`) needs `payroll:rules` and no step-up, like approving a parameter.
+>
+> **Run integrity**, which bears on what the CEO signs:
+> - Returning a run withdraws its payslips.
+> - A figure typed after the calculation sends the run back to draft.
+> - A stale run cannot be proposed.
+> - Filings read only CEO-approved runs, and count a person-month once.
+> - A leaver's unused leave is paid from the leave ledger.
+> - Off-cycle runs, several per year, have a screen.
+>
+> **Still open from §Residual risks:**
+> - the statutory and bank layouts are unverified, with a new ACB interbank row;
+> - the Google step-up driver is untested;
+> - time-boxed auditor grants do not exist.
+>
+> **Partly closed:** sign-in is now rate-limited per address, and step-up per session (10 calls in 10 minutes). Signed-in page requests are still not limited, so §Not covered's "enumerating payslip ids quickly" stands. A Content-Security-Policy now runs on every page, report-only.
+
 ---
 
 ## 3. Read paths and actions — the inventory

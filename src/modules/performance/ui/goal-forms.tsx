@@ -1,10 +1,13 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -12,7 +15,6 @@ import { createCheckInAction, createGoalAction, moveGoalAction, removeKeyResultA
 import { MetricValueInput } from "./metric-input";
 import { CONFIDENCES, type GoalLevel, isAnnual, levelRank, METRIC_TYPES, type MetricType, metricValueText, type Milestone, periodsOfYear } from "../enums";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 type Option = { id: string; name: string };
 export type ParentOption = { id: string; title: string; level: GoalLevel; periodKey: string; unitName: string | null };
 export type GoalFormChoices = { levels: GoalLevel[]; entities: Option[]; departments: Option[]; teams: Option[]; people: Option[]; owners: Option[] };
@@ -100,7 +102,7 @@ export function NewGoalForm({ year, choices, parents, defaults }: { year: number
         </div>
         <p className="text-xs text-muted-foreground">{t("form.weightHint")}</p>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="activate" defaultChecked /> {t("form.activate")}
+          <Checkbox name="activate" defaultChecked /> {t("form.activate")}
         </label>
       </FieldErrors>
       <FormError namespace="performance.errors" errorKey={form.errorKey} />
@@ -194,7 +196,6 @@ export function GoalMoves({ goalId, moves }: { goalId: string; moves: Move[] }) 
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const run = (move: Move) => {
-    if ((move === "close" || move === "cancel") && !window.confirm(t(`moves.${move}Confirm`))) return;
     startTransition(async () => {
       const result = await moveGoalAction({ goalId, move, reason });
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
@@ -206,11 +207,16 @@ export function GoalMoves({ goalId, moves }: { goalId: string; moves: Move[] }) 
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {moves.includes("reopen") ? <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("moves.reason")} maxLength={500} className="max-w-xs" aria-label={t("moves.reason")} /> : null}
-        {moves.map((move) => (
-          <Button key={move} type="button" size="sm" variant={move === "activate" || move === "close" ? "default" : "outline"} disabled={pending || (move === "reopen" && reason.trim() === "")} onClick={() => run(move)}>
-            {t(`moves.${move}`)}
-          </Button>
-        ))}
+        {moves.map((move) =>
+          // Closing and cancelling ask first; activating and reopening do not.
+          move === "close" || move === "cancel" ? (
+            <ConfirmButton key={move} size="sm" variant={move === "close" ? "default" : "outline"} disabled={pending} label={t(`moves.${move}`)} question={t(`moves.${move}Confirm`)} onConfirm={() => run(move)} />
+          ) : (
+            <Button key={move} type="button" size="sm" variant={move === "activate" ? "default" : "outline"} disabled={pending || (move === "reopen" && reason.trim() === "")} onClick={() => run(move)}>
+              {t(`moves.${move}`)}
+            </Button>
+          ),
+        )}
       </div>
       <FormError namespace="performance.errors" errorKey={errorKey} />
     </div>
@@ -258,7 +264,7 @@ export function KeyResultForm({ goalId, value }: { goalId: string; value: KeyRes
         </div>
         {metricType === "milestone" ? (
           <Field name="milestones" label={t("kr.milestones")}>
-            <textarea id="milestones" name="milestones" rows={4} maxLength={2000} defaultValue={(value.milestones ?? []).map((milestone) => milestone.title).join("\n")} className={textarea} required />
+            <Textarea id="milestones" name="milestones" rows={4} maxLength={2000} defaultValue={(value.milestones ?? []).map((milestone) => milestone.title).join("\n")} required />
           </Field>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -290,22 +296,20 @@ export function RemoveKeyResultButton({ keyResultId }: { keyResultId: string }) 
   const [errorKey, setErrorKey] = useState<string | null>(null);
   return (
     <span className="flex items-center gap-2">
-      <Button
-        type="button"
+      <ConfirmButton
         size="sm"
         variant="ghost"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm(t("kr.removeConfirm"))) return;
+        label={t("kr.remove")}
+        question={t("kr.removeConfirm")}
+        onConfirm={() =>
           startTransition(async () => {
             const result = await removeKeyResultAction({ keyResultId });
             setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
             if (result.ok) router.refresh();
-          });
-        }}
-      >
-        {t("kr.remove")}
-      </Button>
+          })
+        }
+      />
       <FormError namespace="performance.errors" errorKey={errorKey} />
     </span>
   );
@@ -325,7 +329,7 @@ export function CheckInForm({ keyResult }: { keyResult: CheckInTarget }) {
           <fieldset className="flex flex-col gap-1 text-sm">
             {(keyResult.milestones ?? []).map((milestone, index) => (
               <label key={index} className="flex items-center gap-2">
-                <input type="checkbox" name="doneMilestones[]" value={index} defaultChecked={milestone.done} /> {milestone.title}
+                <Checkbox name="doneMilestones[]" value={String(index)} defaultChecked={milestone.done} /> {milestone.title}
               </label>
             ))}
           </fieldset>

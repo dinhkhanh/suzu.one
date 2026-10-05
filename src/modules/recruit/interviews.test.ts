@@ -97,7 +97,7 @@ beforeAll(async () => {
       departmentId: vid.id,
       teamId: null,
       positionName: null,
-      jobLevel: null,
+      seniorityLevel: null, positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: "Hà Nội",

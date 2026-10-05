@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { RecordLink } from "@/components/ui/record-link";
+import { Checkbox } from "@/components/ui/checkbox";
 import { moveTimelineTaskAction } from "../actions";
 import { criticalPath, labelWidth, type MovePlan, planMove, workCalendar } from "../engine/schedule";
 import type { TimelineMilestone, TimelinePhase, TimelineTask, TimelineView as View } from "../timeline";
@@ -442,11 +443,11 @@ export function TimelineView({ view }: { view: View }) {
         </div>
         {view.hasBaseline ? (
           <label className="flex items-center gap-1.5 text-xs">
-            <input type="checkbox" checked={showBaseline} onChange={(event) => setShowBaseline(event.target.checked)} /> {t("showBaseline")}
+            <Checkbox checked={showBaseline} onCheckedChange={(checked) => setShowBaseline(checked)} /> {t("showBaseline")}
           </label>
         ) : null}
         <label className="flex items-center gap-1.5 text-xs">
-          <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} /> {t("showCritical")}
+          <Checkbox checked={showCritical} onCheckedChange={(checked) => setShowCritical(checked)} /> {t("showCritical")}
         </label>
         <button
           type="button"

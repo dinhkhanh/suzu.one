@@ -9,11 +9,13 @@ vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {}
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
+import { eq } from "drizzle-orm";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { buildHeadcountExport, buildPeopleExport } from "./exports";
 import { terminateEmployment } from "./lifecycle";
-import { getHeadcountReport } from "./reports";
+import { getHeadcountReport, getHeadcountTotals } from "./reports";
 import { hirePerson } from "./service";
+import { tableToCsv } from "../platform/export/csv";
 
 const today = todayInVietnam();
 const ids = {} as Record<"media" | "creative" | "video" | "design" | "actor" | "head" | "huy" | "khoi", string>;
@@ -30,7 +32,7 @@ async function hire(name: string, entityId: string, orgUnitId: string, managerId
       employeeCode: null,
       startDate: more.start ?? "2022-01-01",
       seniorityDate: null,
-      placement: { workforceType: more.type ?? "employee", branchId: null, orgUnitId, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      placement: { workforceType: more.type ?? "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
     },
     ids.actor,
     { onboarding: false },
@@ -85,12 +87,34 @@ describe("headcount report", () => {
     expect((await getHeadcountReport(principal("d", [{ role: "entity_director", scope: { type: "entity", id: ids.creative } }]), { ...period, entityId: ids.media }))!.snapshot.total).toBe(0);
   });
 
+  it("gives the dashboard the report's headline figures, counted in SQL, for every slice", async () => {
+    const [{ employmentId, entityId }] = await db().select({ employmentId: schema.employment.id, entityId: schema.employment.entityId }).from(schema.employment).where(eq(schema.employment.personId, ids.khoi)).limit(1);
+    // A fixed-term contract running out within the window, and one already terminated (not counted).
+    await db().insert(schema.contract).values([
+      { employmentId, personId: ids.khoi, entityId, number: "FT-1", type: "fixed_term", startDate: "2024-01-01", endDate: addDays(today, 20) },
+      { employmentId, personId: ids.khoi, entityId, number: "FT-0", type: "fixed_term", startDate: "2023-01-01", endDate: addDays(today, 10), terminatedOn: addDays(today, -100) },
+    ]);
+    const readers = [
+      principal("x", [{ role: "hr_admin", scope: { type: "group" } }]),
+      principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]),
+      principal("d", [{ role: "entity_director", scope: { type: "entity", id: ids.creative } }]),
+    ];
+    for (const reader of readers) {
+      for (const filters of [period, { ...period, entityId: ids.media }, { asOf: addDays(today, -60), from: addDays(today, -90), to: addDays(today, -60) }]) {
+        const report = (await getHeadcountReport(reader, filters))!;
+        expect(await getHeadcountTotals(reader, filters)).toEqual({ total: report.snapshot.total, joiners: report.movement.joiners, leavers: report.movement.leavers, contractsExpiring: report.contractsExpiring.length, probations: report.probations.length, scoped: report.scoped });
+      }
+    }
+    expect(await getHeadcountTotals(readers[0], period)).toMatchObject({ total: 6, joiners: 1, leavers: 1, contractsExpiring: 1 });
+    expect(await getHeadcountTotals(principal(ids.huy), period)).toBeNull();
+  });
+
   it("exports the same scoped figures", async () => {
     const { file, scoped } = await buildHeadcountExport(principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]), period, "en");
     expect(scoped).toBe(true);
-    expect(file.csv).toContain("Total headcount");
-    expect(file.csv).toContain("By department,Video,3");
-    expect(file.csv).not.toContain("Design");
+    expect(tableToCsv(file.table)).toContain("Total headcount");
+    expect(tableToCsv(file.table)).toContain("By department,Video,3");
+    expect(tableToCsv(file.table)).not.toContain("Design");
   });
 });
 
@@ -99,7 +123,7 @@ describe("people export", () => {
     const { file, total } = await buildPeopleExport(principal(ids.head), {}, "en");
     expect(total).toBe(6);
     expect(file.rowCount).toBe(6);
-    const lines = file.csv.trim().split("\r\n");
+    const lines = tableToCsv(file.table).trim().split("\r\n");
     const header = lines[0].replace("﻿", "").split(",");
     const cells = (name: string) => lines.find((line) => line.includes(name))!.split(",");
     const [type, status] = [header.indexOf("Workforce type"), header.indexOf("Status")];
@@ -110,11 +134,11 @@ describe("people export", () => {
     expect([cells("Ly Minh Khoi")[type], cells("Ly Minh Khoi")[status]]).toEqual(["", ""]);
     expect(cells("Ly Minh Khoi")[header.indexOf("Department")]).toBe("Design");
     // A former colleague is not part of the directory at all.
-    expect(file.csv).not.toContain("Video Leaver");
+    expect(tableToCsv(file.table)).not.toContain("Video Leaver");
   });
 
   it("defuses a name that a spreadsheet would run", async () => {
     const { file } = await buildPeopleExport(principal(ids.head), {}, "en");
-    expect(file.csv).toContain("'=cmd Injection");
+    expect(tableToCsv(file.table)).toContain("'=cmd Injection");
   });
 });

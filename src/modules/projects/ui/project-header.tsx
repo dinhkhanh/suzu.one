@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/text";
-import { accentOf } from "../../work/enums";
-import { canManageProject, listAssignable, listClients, projectStatusChoices, projectStatusNames } from "../../work/service";
-import { EditProjectButton } from "../../work/ui/edit-dialogs";
-import { posterUrlOf } from "../../work/ui/project-poster";
+import { EditProjectButton, posterUrlOf } from "../../work/client";
+import { accentOf, canManageProject, listAssignable, listClients, PROJECT_STATUSES, projectStatusChoices, projectStatusNames } from "../../work/service";
+import { isClientWork } from "../engine/brief";
+import { type GateFacts, offeredStatuses } from "../engine/gates";
 import type { ProjectContext } from "../views";
 import { type ProjectTab, ProjectTabs } from "./project-tabs";
 
@@ -42,6 +42,22 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
     manage ? Promise.all([listClients({ activeOnly: true }), listAssignable(team.id, project.id), projectStatusChoices(team.projectStatusSetId, project.statusId)]) : ([null, null, []] as const),
     projectStatusNames(),
   ]);
+  // The status control offers only what the gates allow by hand (FR-PJM-03, 59): a client project
+  // becomes Active through its kick-off and Done through its close-out, and a closed project is
+  // re-opened on the close page. The hint under the control says where; the server refuses either way.
+  const gate: GateFacts = { kind: plan.kind, briefApproved: plan.briefStatus === "approved", closed: !!plan.closedAt };
+  const statusCategories = offeredStatuses(gate, project.status, PROJECT_STATUSES);
+  const closeLink = (chunks: React.ReactNode) => (
+    <Link href={`/projects/${project.id}/close`} className="text-link hover:underline">
+      {chunks}
+    </Link>
+  );
+  const briefLink = (chunks: React.ReactNode) => (
+    <Link href={`/projects/${project.id}`} className="text-link hover:underline">
+      {chunks}
+    </Link>
+  );
+  const statusHint = gate.closed ? t.rich("gates.closedHint", { close: closeLink }) : isClientWork(gate.kind) ? t.rich("gates.clientHint", { brief: briefLink, close: closeLink }) : null;
   return (
     <header className="flex flex-col gap-4">
       <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-muted-foreground">
@@ -78,7 +94,7 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
         </div>
         {clients && people ? (
           <div className="flex shrink-0 items-center gap-2 md:pt-1">
-            <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} statuses={statuses} />
+            <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} statuses={statuses} statusCategories={statusCategories} statusHint={statusHint} />
           </div>
         ) : null}
       </div>

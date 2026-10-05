@@ -1,4 +1,4 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,10 @@ import { statusTone } from "@/components/ui/tone";
 import { PersonName } from "@/modules/platform/approvals/ui/person-name";
 import { RequestAge } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { entityReach } from "@/modules/platform/rbac/policy";
-import { listExpenseClaims } from "@/modules/requests/expense";
+import { exportExpenseClaimsAction } from "@/modules/requests/export-actions";
+import { claimsOwed, listExpenseClaims } from "@/modules/requests/expense";
 import { canSettleExpenseClaims } from "@/modules/requests/policy";
 import { RequestTabs } from "@/modules/requests/ui/request-tabs";
 import { SweepClaimsButton } from "@/modules/requests/ui/sweep-claims";
@@ -24,11 +26,11 @@ export default async function ExpenseClaimsPage() {
   const user = await requireUser();
   if (!canSettleExpenseClaims(user.principal)) redirect("/requests");
 
-  const [t, tApprovals, tRequests, format, claims] = await Promise.all([getTranslations("requests.expense"), getTranslations("approvals"), getTranslations("requests"), getFormatter(), listExpenseClaims({ reach: entityReach(user.principal, "payroll:pay") })]);
+  const reach = entityReach(user.principal, "payroll:pay");
+  // What is owed is counted by Postgres over every claim, not over the newest the list shows.
+  const [t, tApprovals, tRequests, te, locale, format, claims, owed] = await Promise.all([getTranslations("requests.expense"), getTranslations("approvals"), getTranslations("requests"), getTranslations("exports"), getLocale(), getFormatter(), listExpenseClaims({ reach }), claimsOwed(reach)]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
-  const waiting = claims.filter((claim) => claim.status === "approved" && !claim.payment);
-  const owed = waiting.reduce((total, claim) => total + claim.total, 0);
   // The desk's order: what is owed first, what is still being decided, then what is done with.
   const settled = claims.filter((claim) => !!claim.payment || (claim.status !== "approved" && claim.status !== "pending" && claim.status !== "returned"));
   const live = claims.filter((claim) => !settled.includes(claim));
@@ -59,12 +61,18 @@ export default async function ExpenseClaimsPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: waiting.length, amount: money(owed) })} actions={<SweepClaimsButton label={t("sweep")} />} />
-      <RequestTabs active="claims" personId={user.person.id} principal={user.principal} claimsWaiting={waiting.length} />
+      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: owed.count, amount: money(owed.amount) })} actions={
+          <>
+            <ExportButton action={exportExpenseClaimsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
+            {canSettleExpenseClaims(user.principal, null) ? <SweepClaimsButton label={t("sweep")} /> : null}
+          </>
+        }
+      />
+      <RequestTabs active="claims" personId={user.person.id} principal={user.principal} claimsWaiting={owed.count} />
 
       <TileGrid>
-        <Tile label={t("awaitingPayroll")} value={<>{waiting.length}</>} tone={waiting.length > 0 ? "warning" : undefined} />
-        <Tile label={t("owed")} value={<>{money(owed)}</>} />
+        <Tile label={t("awaitingPayroll")} value={<>{owed.count}</>} tone={owed.count > 0 ? "warning" : undefined} />
+        <Tile label={t("owed")} value={<>{money(owed.amount)}</>} />
       </TileGrid>
 
       <Section title={t("financeTitle")} count={claims.length || undefined}>

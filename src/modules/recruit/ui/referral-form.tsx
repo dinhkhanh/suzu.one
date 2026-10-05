@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { submitReferralAction } from "../referral-actions";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 export type ReferralOpening = { id: string; title: string; code: string; departmentName: string | null; entityName: string | null };
 
@@ -93,7 +93,7 @@ export function ReferralForm({ openings }: { openings: ReferralOpening[] }) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="referral-links">{t("links")}</Label>
-        <textarea id="referral-links" name="links" rows={2} className={textarea} placeholder={t("linksHint")} />
+        <Textarea id="referral-links" name="links" rows={2} placeholder={t("linksHint")} />
       </div>
 
       <div className="flex flex-col gap-1.5">

@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
+import { POSITION_SPELLINGS, type PositionLevel, SENIORITY_SPELLINGS, type SeniorityLevel } from "@/lib/job-levels";
 import { toSearchKey } from "@/lib/text";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { emailDomain } from "@/modules/platform/auth/sign-in-policy";
@@ -31,8 +32,9 @@ export const employeeColumns = {
   entityCode: column<string>({ headers: ["Pháp nhân (mã)", "Entity code", "Công ty"], required: true, parse: code(12), example: "SZM" }),
   departmentCode: column<string>({ headers: ["Phòng ban (mã)", "Department code", "Phòng ban"], parse: code(12), example: "VID" }),
   teamName: optionalText(["Nhóm", "Team"], 120),
-  positionName: optionalText(["Chức danh", "Position", "Vị trí"], 120, "Dựng phim"),
-  jobLevel: optionalText(["Cấp bậc", "Job level"], 60),
+  positionName: optionalText(["Chức vụ", "Position", "Vị trí", "Chức danh"], 120, "Dựng phim"),
+  seniorityLevel: column<SeniorityLevel>({ headers: ["Cấp bậc", "Seniority level", "Job level"], parse: oneOf<SeniorityLevel>(SENIORITY_SPELLINGS), example: "Senior" }),
+  positionLevel: column<PositionLevel>({ headers: ["Cấp vị trí", "Position level"], parse: oneOf<PositionLevel>(POSITION_SPELLINGS), example: "Executive" }),
   workforceType: column<WorkforceType>({
     headers: ["Loại lao động", "Workforce type"],
     parse: oneOf<WorkforceType>({ employee: ["Chính thức", "Nhân viên chính thức"], probation: ["Thử việc"], intern: ["Thực tập", "Thực tập sinh"], part_time: ["Bán thời gian", "Part-time"], collaborator: ["Cộng tác viên", "CTV", "Freelancer"], advisor: ["Cố vấn"] }),
@@ -205,7 +207,8 @@ export const employeeImport = defineImport({
             // The deepest unit the row names: its team if it has one, otherwise its department.
             orgUnitId: (values.teamName ? findTeam(units, department?.id, values.teamName) : department)?.id ?? null,
             positionName: values.positionName,
-            jobLevel: values.jobLevel,
+            seniorityLevel: values.seniorityLevel,
+            positionLevel: values.positionLevel,
             managerId: link.kind === "person" ? link.personId : null,
             dottedManagerId: null,
             workLocation: null,

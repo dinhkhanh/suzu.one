@@ -10,10 +10,13 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listComponentVersions } from "@/modules/payroll/components";
 import { listEntityOptions } from "@/modules/payroll/options";
 import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
+import { voidComponentAction } from "@/modules/payroll/rule-actions";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { VoidVersionButton } from "@/modules/platform/statutory/ui/void-version";
 import { ProposeComponentForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
-import { Page, PageHeader } from "@/components/ui/page";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { statusTone } from "@/components/ui/tone";
 import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("payComponents");
@@ -32,6 +35,7 @@ export default async function ComponentsPage() {
   const entityCode = new Map(entities.map((entity) => [entity.id, entity.code]));
   const proposals = versions.filter((version) => version.status === "proposed");
   const approved = versions.filter((version) => version.status === "approved");
+  const voided = versions.filter((version) => version.status === "voided");
 
   return (
     <Page width="wide">
@@ -82,6 +86,7 @@ export default async function ComponentsPage() {
               <TableHead kind="select">{t("components.taxTreatment")}</TableHead>
               <TableHead kind="select">{t("components.proration")}</TableHead>
               <TableHead kind="date">{t("components.validFrom")}</TableHead>
+              {canDecide ? <TableHead kind="actions" /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -112,6 +117,11 @@ export default async function ComponentsPage() {
                     {day(version.validFrom)}
                     {version.validTo ? ` → ${day(version.validTo)}` : ""}
                   </TableCell>
+                  {canDecide ? (
+                    <TableCell kind="actions">
+                      <VoidVersionButton action={voidComponentAction} id={version.id} title={`${version.code} — ${day(version.validFrom)}`} errorNamespace="payroll.errors" />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}
@@ -123,6 +133,25 @@ export default async function ComponentsPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
+
+      {/* Versions taken back as wrong (PAY-13): kept, with who and why. */}
+      {voided.length > 0 ? (
+        <Section title={t("rules.voided.title")} count={voided.length}>
+          <List>
+            {voided.map((version) => (
+              <ListItem key={version.id} className="flex-col items-stretch gap-1 py-3">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs">{version.code}</span>
+                  <span className="font-medium">{version.name}</span>
+                  <span className="text-muted-foreground line-through">{day(version.validFrom)}</span>
+                  <Badge dot variant={statusTone(version.status)}>{t("rules.status.voided")}</Badge>
+                </span>
+                <span className="text-sm text-muted-foreground">{t("rules.voided.because", { reason: version.voidReason ?? "—" })}</span>
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : null}
     </Page>
   );
 }

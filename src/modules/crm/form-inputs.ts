@@ -2,8 +2,8 @@
 // (no "use server"): an actions file may export only its async actions. The same helpers as the
 // project forms', so a VND amount, a date or a checkbox reads the same everywhere.
 import { z } from "zod";
-export { blankToNull, checkbox, idList, isoDate, month, optional, rows, text, vnd } from "../projects/form-inputs";
-import { blankToNull } from "../projects/form-inputs";
+export { blankToNull, checkbox, idList, isoDate, month, optional, rows, text, vnd } from "../projects/service";
+import { blankToNull } from "../projects/service";
 
 /** Whole percent on screen, basis points in the database: "12.5" → 1250. */
 export const percentBp = z.preprocess(blankToNull, z.coerce.number().min(0).max(100).nullable().default(null)).transform((value) => (value === null ? 0 : Math.round(value * 100)));

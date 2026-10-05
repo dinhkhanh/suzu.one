@@ -17,10 +17,19 @@
 //
 // FR-AI-06's "zero-data-retention provider setting" is not a request parameter — it is a property
 // of the Anthropic organisation the key belongs to. It is listed under "Needs the owner".
+//
+// WHAT A CLAUDE DRIVER SENDS is decided in `engine/redact.ts` and nowhere else: each of the two
+// builds its request from `chatRequestForModel` / `draftRequestForModel`, so no passage, thread or
+// question reaches the network with a contact detail in it, and no passage or thread with an
+// amount of money. The request a driver would send is tested with the network replaced
+// (`model.test.ts`). Every answer says what it cost (`usage`), which `ask` stores on the message
+// and a draft keeps in its audit entry.
 import "server-only";
 import { env } from "@/lib/env";
 import { citationHref, type ExtractedAnswer, extractAnswer, type RankedPassage, renderExtractedAnswer } from "./engine/answer";
+import { NO_USAGE, type TokenUsage, usageOf } from "./engine/limits";
 import { assemblePrompt, type PromptSource } from "./engine/prompt";
+import { chatRequestForModel, draftRequestForModel } from "./engine/redact";
 
 export type ChatRequest = {
   question: string;
@@ -35,6 +44,8 @@ export type ChatAnswer = {
   /** Empty when the driver has nothing to say — the caller logs the question as unanswered. */
   body: string;
   extracted: ExtractedAnswer;
+  /** Tokens in and out as the provider reported them; zero when nothing was sent to a model. */
+  usage: TokenUsage;
 };
 
 export type ChatDriver = {
@@ -52,7 +63,8 @@ const localDriver: ChatDriver = {
   model: LOCAL_DRIVER_NAME,
   complete: async ({ question, passages }) => {
     const extracted = extractAnswer(question, passages);
-    return { body: renderExtractedAnswer(extracted), extracted };
+    // Nothing is sent anywhere, so nothing was spent: zero, not an estimate.
+    return { body: renderExtractedAnswer(extracted), extracted, usage: NO_USAGE };
   },
 };
 
@@ -69,9 +81,11 @@ function claudeDriver(apiKey: string, model: string): ChatDriver {
       // model wrote. A model that cites a page it was not given, or invents one, changes nothing:
       // the links under the answer are the passages the asker's own permissions produced.
       const extracted = extractAnswer(question, passages);
-      const used = passages.slice(0, CLAUDE_SOURCES);
-      const sources: PromptSource[] = used.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, href: citationHref(passage), content: passage.content }));
-      const { system, user } = assemblePrompt(question, sources, links);
+      // FR-AI-06: the prompt is built from what `chatRequestForModel` hands back and from nothing
+      // else — no contact detail and no amount of money in a passage, whichever page it is from.
+      const outbound = chatRequestForModel({ question, passages: passages.slice(0, CLAUDE_SOURCES) });
+      const sources: PromptSource[] = outbound.passages.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, href: citationHref(passage), content: passage.content }));
+      const { system, user } = assemblePrompt(outbound.question, sources, links);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -88,9 +102,11 @@ function claudeDriver(apiKey: string, model: string): ChatDriver {
         signal: AbortSignal.timeout(60_000),
       });
       if (!response.ok) throw new Error(`assistant: ${response.status} ${(await response.text()).slice(0, 200)}`);
-      const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[] };
+      const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: Record<string, unknown> };
+      // Whatever came back was paid for, answer or not.
+      const usage = usageOf(body.usage);
       // A safety decline is not an answer; it is a question the knowledge base did not resolve.
-      if (body.stop_reason === "refusal") return { body: "", extracted: { passages: [] } };
+      if (body.stop_reason === "refusal") return { body: "", extracted: { passages: [] }, usage };
       const text = (body.content ?? [])
         .filter((block) => block.type === "text")
         .map((block) => block.text ?? "")
@@ -98,8 +114,8 @@ function claudeDriver(apiKey: string, model: string): ChatDriver {
         .trim();
       // No text, or nothing retrieved to stand behind it: treat as unanswered rather than show a
       // sentence with no source. Every answer in this module carries a citation or is not shown.
-      if (!text || extracted.passages.length === 0) return { body: "", extracted: { passages: [] } };
-      return { body: text, extracted };
+      if (!text || extracted.passages.length === 0) return { body: "", extracted: { passages: [] }, usage };
+      return { body: text, extracted, usage };
     },
   };
 }
@@ -113,10 +129,12 @@ export function chatDriver(): ChatDriver {
 //
 // The same two drivers for the drafting helpers. The local driver has nothing to add: the caller
 // already holds the extractive draft (`engine/drafts.ts`) and uses it. The Claude driver is given
-// the facts — already permission-checked and passed through `redactCompensation` — and asked to
-// write them up; like the chat driver it is **unverified until run against a real key**, and any
-// failure, refusal or empty answer falls back to the extractive draft, never to an error the
-// person has to understand. Nothing a driver returns is saved: the person edits and submits.
+// the facts — already permission-checked, and passed through `draftRequestForModel` on its own
+// first line, so no caller can send a thread's phone numbers or a sentence about pay by forgetting
+// a step — and asked to write them up. Like the chat driver it is **unverified until run against a
+// real key**, and any failure, refusal or empty answer falls back to the extractive draft, never to
+// an error the person has to understand. Nothing a driver returns is saved: the person edits and
+// submits. What a call cost comes back with it, and is kept in the draft's audit entry.
 
 export type DraftRequest = {
   /** What to write, in one or two sentences. */
@@ -128,23 +146,29 @@ export type DraftRequest = {
   schema?: Record<string, unknown>;
 };
 
-export type DraftDriver = { name: string; isLocal: boolean; model: string; draft: (request: DraftRequest) => Promise<string | null> };
+/** `text` is null when the driver has nothing usable — the caller keeps its extractive draft. */
+export type DraftAnswer = { text: string | null; usage: TokenUsage };
+
+export type DraftDriver = { name: string; isLocal: boolean; model: string; draft: (request: DraftRequest) => Promise<DraftAnswer> };
 
 const DRAFT_SYSTEM = [
   "You draft short work texts for employees of a Vietnamese agency, who will edit them before anyone sees them.",
   "Use only the facts you are given. Do not add tasks, people, dates, numbers or opinions that are not in the facts.",
-  "Never write about pay, salaries, bonuses or amounts of money; where the facts show [...], leave it out.",
+  "Never write about pay, salaries, bonuses or amounts of money, and never write a phone number, an email address or a chat handle; where the facts show […], something was withheld — leave it out and do not guess it.",
   "Write plainly, without headings or greetings.",
 ].join(" ");
 
-const localDraftDriver: DraftDriver = { name: LOCAL_DRIVER_NAME, isLocal: true, model: LOCAL_DRIVER_NAME, draft: async () => null };
+const localDraftDriver: DraftDriver = { name: LOCAL_DRIVER_NAME, isLocal: true, model: LOCAL_DRIVER_NAME, draft: async () => ({ text: null, usage: NO_USAGE }) };
 
 function claudeDraftDriver(apiKey: string, model: string): DraftDriver {
   return {
     name: "claude",
     isLocal: false,
     model,
-    draft: async ({ instruction, facts, locale, schema }) => {
+    draft: async (request) => {
+      // FR-AI-06, SRS §4.15 rule 4: contact details, sentences about pay and amounts of money are
+      // taken out here, whoever called and whatever they already did.
+      const { instruction, facts, locale, schema } = draftRequestForModel(request);
       try {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -159,17 +183,19 @@ function claudeDraftDriver(apiKey: string, model: string): DraftDriver {
           }),
           signal: AbortSignal.timeout(30_000),
         });
-        if (!response.ok) return null;
-        const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[] };
-        if (body.stop_reason === "refusal" || body.stop_reason === "max_tokens") return null;
+        if (!response.ok) return { text: null, usage: NO_USAGE };
+        const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: Record<string, unknown> };
+        // A refusal or a cut-off draft is thrown away, and was still paid for.
+        const usage = usageOf(body.usage);
+        if (body.stop_reason === "refusal" || body.stop_reason === "max_tokens") return { text: null, usage };
         const text = (body.content ?? [])
           .filter((block) => block.type === "text")
           .map((block) => block.text ?? "")
           .join("")
           .trim();
-        return text || null;
+        return { text: text || null, usage };
       } catch {
-        return null;
+        return { text: null, usage: NO_USAGE };
       }
     },
   };

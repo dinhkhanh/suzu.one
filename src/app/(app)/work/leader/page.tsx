@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
+import { jobNumbersOf } from "@/modules/projects/service";
 import { getLeaderView, loadViewer } from "@/modules/work/service";
 import { NudgeButton } from "@/modules/work/ui/planning-forms";
+import { StateBadge } from "@/modules/work/ui/status-badge";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("leaderView");
@@ -21,6 +23,8 @@ export default async function LeaderPage() {
   const format = await getFormatter();
   const today = todayInVietnam();
   const view = await getLeaderView(viewer, today);
+  // The job number beside each project's name (FR-PJM-02): every project on the page in one read.
+  const jobNumbers = await jobNumbersOf(view.people.flatMap((person) => person.tasks.map((task) => task.projectId)));
   const head = (
     <TableHeader>
       <TableRow>
@@ -53,6 +57,7 @@ export default async function LeaderPage() {
           <Badge variant={view.totals.overdue ? "destructive" : "outline"}>{t("overdue", { count: view.totals.overdue })}</Badge>
           <Badge variant={view.totals.atRisk ? "warning" : "outline"}>{t("atRisk", { count: view.totals.atRisk })}</Badge>
         </p>
+        {view.shown !== null ? <p className="text-sm text-muted-foreground">{t("truncated", { shown: view.shown, total: view.totals.open })}</p> : null}
       </PageHeader>
       {view.people.length === 0 ? (
         <Table>
@@ -91,8 +96,11 @@ export default async function LeaderPage() {
                     </RecordLink>
                     {task.blocker ? <p className="truncate text-xs text-muted-foreground">{t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })})` : task.blocker.reason })}</p> : null}
                   </TableCell>
-                  <TableCell>{task.projectName ? <RecordLink kind="project" id={task.projectId}>{task.projectName}</RecordLink> : "—"}</TableCell>
-                  <TableCell>{task.stateName ? <Badge variant="outline">{task.stateName}</Badge> : "—"}</TableCell>
+                  <TableCell>
+                    {task.projectId && jobNumbers.get(task.projectId) ? <span className="mr-1.5 font-mono text-xs text-faint">{jobNumbers.get(task.projectId)}</span> : null}
+                    {task.projectName ? <RecordLink kind="project" id={task.projectId}>{task.projectName}</RecordLink> : "—"}
+                  </TableCell>
+                  <TableCell>{task.stateName ? <StateBadge category={task.category} name={task.stateName} /> : "—"}</TableCell>
                   <TableCell>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}</TableCell>
                   <TableCell>{t(`mine.${task.mine}`)}</TableCell>
                   <TableCell>

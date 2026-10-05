@@ -17,7 +17,8 @@ import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { missingRequired, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
-import { laterStage, type RatingPoint, type ReviewAnswers, type ReviewCycleKind, type ReviewCycleStatus, type ReviewFormKind, type ReviewFormShape, type ReviewFormStatus, type ReviewSection, type ReviewStage } from "./enums";
+import { templateProblems } from "./engine/review-template";
+import { laterStage, releasable, type RatingPoint, type ReviewAnswers, type ReviewCycleKind, type ReviewCycleStatus, type ReviewFormKind, type ReviewFormShape, type ReviewFormStatus, type ReviewSection, type ReviewStage, templateSuits } from "./enums";
 import { type Directory, loadDirectory } from "./people";
 import type { PersonContext } from "./policy";
 import type { ReviewParties } from "./review-policy";
@@ -31,8 +32,10 @@ export type ReviewPeerNominationRow = typeof schema.reviewPeerNomination.$inferS
 
 // ── Templates ───────────────────────────────────────────────────────────────────────────────
 
-// Templates are configuration, a few rows: cached whole, cleared by `saveReviewTemplate`.
-const TEMPLATES_CACHE = "performance:review-templates";
+// Templates are configuration, a few rows: cached whole, cleared by `saveReviewTemplate` (and by
+// `pnpm cache:flush` after the seed writes the starter forms). The key names the row's shape: an
+// entry cached before templates had `kinds` is never read as one that has them.
+const TEMPLATES_CACHE = "performance:review-templates:v2";
 const TEMPLATES_TTL = 60 * 60;
 
 /** Every template. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
@@ -45,22 +48,22 @@ export async function findReviewTemplate(templateId: string, executor?: Executor
   return (await listReviewTemplates(executor)).find((row) => row.id === templateId) ?? null;
 }
 
-export type TemplateInput = { name: string; nameEn: string | null; description: string | null; sections: ReviewSection[]; ratingScale: RatingPoint[]; isActive: boolean };
+export type TemplateInput = { name: string; nameEn: string | null; description: string | null; kinds: ReviewCycleKind[]; sections: ReviewSection[]; ratingScale: RatingPoint[]; isActive: boolean };
 
-/** A template with no rating section scores nothing, and a scale with one point cannot rank anybody. */
+/**
+ * A usable template, or the first thing wrong with it — every problem rides along in the details,
+ * so the editor can show them all. The rules are the pure engine's, which the editor also runs as
+ * HR types and the seed runs on the starter forms.
+ */
 export function checkTemplate(input: TemplateInput): TemplateInput {
-  if (input.sections.length === 0) throw new ActionError("review_template_empty");
-  if (new Set(input.sections.map((section) => section.key)).size !== input.sections.length) throw new ActionError("review_template_duplicate_key");
-  if (input.sections.some((section) => section.askedOf.length === 0)) throw new ActionError("review_template_unasked_section");
-  if (input.ratingScale.length < 2) throw new ActionError("review_template_scale_short");
-  if (new Set(input.ratingScale.map((point) => point.value)).size !== input.ratingScale.length) throw new ActionError("review_template_duplicate_point");
-  if (!input.sections.some((section) => section.kind === "rating" && section.weight > 0)) throw new ActionError("review_template_unscored");
+  const problems = templateProblems(input);
+  if (problems.length > 0) throw new ActionError(problems[0], { problems });
   return input;
 }
 
 export async function saveReviewTemplate(templateId: string | null, input: TemplateInput, actorPersonId: string): Promise<{ before: ReviewTemplateRow | null; after: ReviewTemplateRow }> {
   checkTemplate(input);
-  const values = { name: input.name, nameEn: input.nameEn, description: input.description, sections: input.sections, ratingScale: input.ratingScale, isActive: input.isActive, updatedAt: new Date() };
+  const values = { name: input.name, nameEn: input.nameEn, description: input.description, kinds: input.kinds, sections: input.sections, ratingScale: input.ratingScale, isActive: input.isActive, updatedAt: new Date() };
   if (!templateId) {
     const [after] = await db().insert(schema.reviewTemplate).values({ ...values, createdByPersonId: actorPersonId }).returning();
     await invalidate(TEMPLATES_CACHE);
@@ -105,10 +108,14 @@ export type CycleInput = {
   peerMin: number;
   peerMax: number;
   peerAnonymous: boolean;
+  signOffRequired: boolean;
+  isRolling: boolean;
 };
 
 function checkCycle(input: CycleInput): void {
   if (input.periodEnd < input.periodStart) throw new ActionError("review_period_backwards");
+  // Only probation ends one person at a time; a mid-year or annual review has a cohort.
+  if (input.isRolling && input.kind !== "probation") throw new ActionError("review_rolling_not_probation");
   const timeline = [input.selfDueOn, input.managerDueOn, input.peerDueOn, input.calibrationOn, input.releaseOn].filter((date): date is IsoDate => date !== null);
   // The dates the cycle does set must run forwards; any of them may be left out.
   const ordered = [input.selfDueOn, input.managerDueOn, input.calibrationOn, input.releaseOn].filter((date): date is IsoDate => date !== null);
@@ -122,6 +129,8 @@ export async function saveReviewCycle(cycleId: string | null, input: CycleInput,
   checkCycle(input);
   const template = await findReviewTemplate(input.templateId);
   if (!template || !template.isActive) throw new ActionError("review_template_not_found");
+  // A probation form on an annual cycle would ask the wrong questions of everybody.
+  if (!templateSuits(template, input.kind)) throw new ActionError("review_template_wrong_kind");
   const values = { ...input, updatedAt: new Date() };
   if (!cycleId) {
     const [after] = await db().insert(schema.reviewCycle).values({ ...values, createdByPersonId: actorPersonId }).returning();
@@ -139,11 +148,17 @@ export async function eligibleParticipants(cycle: Pick<ReviewCycleRow, "entityId
   return [...directory.values()].filter((row) => row.status === "active" && row.workforceType !== "collaborator" && (cycle.entityId === null || row.entityId === cycle.entityId));
 }
 
-export type LaunchResult = { cycle: ReviewCycleRow; participants: number };
+/** Who was put into a cycle, as the launch and enrolment notices need them. */
+export type Enrolled = { participantId: string; personId: string; managerPersonId: string | null; cycleId: string; cycleName: string; selfDueOn: IsoDate | null; managerDueOn: IsoDate | null };
+
+export type LaunchResult = { cycle: ReviewCycleRow; participants: number; enrolled: Enrolled[] };
 
 /**
  * Launch: freeze the form, work out who is in, snapshot each one's manager, and open the cycle for
  * writing. Idempotent in the sense that relaunching is refused — a cycle is launched once.
+ *
+ * A **rolling** probation cycle launches empty: nobody is due yet. People are enrolled one at a
+ * time as their probation nears its end (`probation-reviews.ts`), each with deadlines of their own.
  */
 export async function launchReviewCycle(cycleId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<LaunchResult> {
   return executor.transaction(async (tx) => {
@@ -154,29 +169,58 @@ export async function launchReviewCycle(cycleId: string, actorPersonId: string, 
     const template = await findReviewTemplate(cycle.templateId, tx);
     if (!template) throw new ActionError("review_template_not_found");
     const shape: ReviewFormShape = { sections: template.sections, ratingScale: template.ratingScale };
-    checkTemplate({ name: template.name, nameEn: template.nameEn, description: template.description, sections: template.sections, ratingScale: template.ratingScale, isActive: template.isActive });
+    checkTemplate({ name: template.name, nameEn: template.nameEn, description: template.description, kinds: template.kinds, sections: template.sections, ratingScale: template.ratingScale, isActive: template.isActive });
+    if (!templateSuits(template, cycle.kind as ReviewCycleKind)) throw new ActionError("review_template_wrong_kind");
 
     const directory = await loadDirectory(tx);
-    const people = await eligibleParticipants(cycle, directory);
-    if (people.length === 0) throw new ActionError("review_cycle_no_participants");
-    await tx.insert(schema.reviewParticipant).values(people.map((row) => ({ cycleId, personId: row.personId, entityId: row.entityId ?? null, departmentId: directory.get(row.personId)?.departmentId ?? null, managerPersonId: row.managerId ?? null }))).onConflictDoNothing();
+    const people = cycle.isRolling ? [] : await eligibleParticipants(cycle, directory);
+    if (people.length === 0 && !cycle.isRolling) throw new ActionError("review_cycle_no_participants");
+    if (people.length > 0) {
+      await tx
+        .insert(schema.reviewParticipant)
+        .values(people.map((row) => ({ cycleId, personId: row.personId, entityId: row.entityId ?? null, departmentId: directory.get(row.personId)?.departmentId ?? null, managerPersonId: row.managerId ?? null })))
+        .onConflictDoNothing();
+    }
     const [after] = await tx
       .update(schema.reviewCycle)
       .set({ status: "active", formSnapshot: shape, launchedAt: new Date(), launchedByPersonId: actorPersonId, updatedAt: new Date() })
       .where(eq(schema.reviewCycle.id, cycleId))
       .returning();
-    return { cycle: after, participants: people.length };
+    // Anybody HR put in by hand before the launch is told too, so read the cycle's people back whole.
+    const everyone = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.cycleId, cycleId));
+    return { cycle: after, participants: everyone.length, enrolled: everyone.map((row) => enrolledOf(row, after)) };
   });
 }
 
-/** draft → active → calibration → released → closed, one step at a time and never backwards. */
+/** A participant as the notices need it: their own deadlines, or the cycle's. */
+export const enrolledOf = (participant: ReviewParticipantRow, cycle: ReviewCycleRow): Enrolled => ({
+  participantId: participant.id,
+  personId: participant.personId,
+  managerPersonId: participant.managerPersonId,
+  cycleId: cycle.id,
+  cycleName: cycle.name,
+  ...dueDatesOf(participant, cycle),
+});
+
+/** One person's deadlines: their own where they have them (a probation review), else the cycle's. */
+export const dueDatesOf = (participant: Pick<ReviewParticipantRow, "selfDueOn" | "managerDueOn">, cycle: Pick<ReviewCycleRow, "selfDueOn" | "managerDueOn">): { selfDueOn: IsoDate | null; managerDueOn: IsoDate | null } => ({
+  selfDueOn: participant.selfDueOn ?? cycle.selfDueOn,
+  managerDueOn: participant.managerDueOn ?? cycle.managerDueOn,
+});
+
+/**
+ * draft → active → calibration → released → closed, one step at a time and never backwards.
+ * A rolling probation cycle has no calibration round of its own — each review is released as it
+ * comes in — so it goes from active straight to closed.
+ */
 const CYCLE_NEXT: Partial<Record<ReviewCycleStatus, ReviewCycleStatus>> = { active: "calibration", calibration: "released", released: "closed" };
+const ROLLING_NEXT: Partial<Record<ReviewCycleStatus, ReviewCycleStatus>> = { active: "closed" };
 
 export async function advanceReviewCycle(cycleId: string, to: ReviewCycleStatus, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewCycleRow; after: ReviewCycleRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewCycle).where(eq(schema.reviewCycle.id, cycleId)).limit(1).for("update");
     if (!before) throw new ActionError("review_cycle_not_found");
-    if (CYCLE_NEXT[before.status as ReviewCycleStatus] !== to) throw new ActionError("review_cycle_bad_step");
+    if (nextCycleStatus(before.status as ReviewCycleStatus, before.isRolling) !== to) throw new ActionError("review_cycle_bad_step");
     const [after] = await tx
       .update(schema.reviewCycle)
       .set({ status: to, closedAt: to === "closed" ? new Date() : before.closedAt, updatedAt: new Date() })
@@ -186,7 +230,7 @@ export async function advanceReviewCycle(cycleId: string, to: ReviewCycleStatus,
   });
 }
 
-export const nextCycleStatus = (status: ReviewCycleStatus): ReviewCycleStatus | null => CYCLE_NEXT[status] ?? null;
+export const nextCycleStatus = (status: ReviewCycleStatus, rolling = false): ReviewCycleStatus | null => (rolling ? ROLLING_NEXT : CYCLE_NEXT)[status] ?? null;
 
 // ── Participants ────────────────────────────────────────────────────────────────────────────
 
@@ -203,19 +247,42 @@ export async function findParticipant(participantId: string, executor: Executor 
 /** The parties the confidentiality rules are decided against. */
 export const partiesOfParticipant = (participant: ReviewParticipantRow, cycle: ReviewCycleRow, directory: Directory): ReviewParties | null => {
   const subject = directory.get(participant.personId);
-  return subject ? { subject, managerPersonId: participant.managerPersonId, stage: participant.stage as ReviewStage, released: participant.releasedAt !== null, cycleStatus: cycle.status as ReviewCycleStatus, peerAnonymous: cycle.peerAnonymous } : null;
+  return subject
+    ? {
+        subject,
+        managerPersonId: participant.managerPersonId,
+        stage: participant.stage as ReviewStage,
+        released: participant.releasedAt !== null,
+        cycleStatus: cycle.status as ReviewCycleStatus,
+        peerAnonymous: cycle.peerAnonymous,
+        rolling: cycle.isRolling,
+        signOffRequired: cycle.signOffRequired,
+        signedOff: participant.signOffRecordedAt !== null,
+      }
+    : null;
 };
 
-export async function addParticipant(cycleId: string, personId: string, directory: Directory, executor: Executor = db()): Promise<ReviewParticipantRow> {
+export type OwnDueDates = { selfDueOn: IsoDate | null; managerDueOn: IsoDate | null };
+
+/**
+ * Putting one person into a cycle by hand — somebody the launch missed, or a probation HR does not
+ * want to wait for. Their own deadlines, if given, win over the cycle's; a rolling cycle's people
+ * all have their own. Only into a cycle that is still being built or written.
+ */
+export async function addParticipant(cycleId: string, personId: string, directory: Directory, executor: Executor = db(), due: OwnDueDates = { selfDueOn: null, managerDueOn: null }): Promise<{ participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
   const row = directory.get(personId);
   if (!row) throw new ActionError("review_person_not_found");
+  const cycle = await findReviewCycle(cycleId, executor);
+  if (!cycle) throw new ActionError("review_cycle_not_found");
+  if (cycle.status !== "draft" && cycle.status !== "active") throw new ActionError("review_cycle_not_collecting");
+  if (due.selfDueOn && due.managerDueOn && due.managerDueOn < due.selfDueOn) throw new ActionError("review_timeline_backwards");
   const [created] = await executor
     .insert(schema.reviewParticipant)
-    .values({ cycleId, personId, entityId: row.entityId ?? null, departmentId: row.departmentId ?? null, managerPersonId: row.managerId ?? null })
+    .values({ cycleId, personId, entityId: row.entityId ?? null, departmentId: row.departmentId ?? null, managerPersonId: row.managerId ?? null, selfDueOn: due.selfDueOn, managerDueOn: due.managerDueOn })
     .onConflictDoNothing()
     .returning();
   if (!created) throw new ActionError("review_participant_exists");
-  return created;
+  return { participant: created, cycle };
 }
 
 /** Taking somebody out of a cycle: only while nothing has been written about them. */
@@ -274,6 +341,8 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
     const { cycle } = found;
     const [participant] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, input.participantId)).limit(1).for("update");
     if (cycle.status !== "active") throw new ActionError("review_cycle_not_collecting");
+    // A rolling cycle stays open after one person's review has been handed over; theirs is done.
+    if (participant.releasedAt) throw new ActionError("review_already_released");
     const shape = cycle.formSnapshot;
     if (!shape) throw new ActionError("review_cycle_not_launched");
 
@@ -287,7 +356,8 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
       if (input.kind === "manager") {
         const self = await formOf(input.participantId, "self", participant.personId, tx);
         const selfIn = self?.status === "submitted";
-        const selfOverdue = cycle.selfDueOn !== null && cycle.selfDueOn < today;
+        const { selfDueOn } = dueDatesOf(participant, cycle);
+        const selfOverdue = selfDueOn !== null && selfDueOn < today;
         if (!selfIn && !selfOverdue) throw new ActionError("review_self_not_submitted");
       }
       trace = scoreReviewForm(shape, input.kind, input.answers);
@@ -319,15 +389,60 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
 }
 
 /**
- * Calibration: HR or the reviewing manager may level a rating before release, with a note saying
- * why. The manager's own form is left exactly as written — what moves is the figure the final
- * yearly result reads (FR-PRF-09), and the note is the record of the difference.
+ * HR sends a submitted form back to its author: it is a draft again, scored nothing, and the reason
+ * is kept on it for the author to read. Only while the review is being written — once it has been
+ * calibrated or released the figure is settled. The stage follows what is still submitted.
+ */
+export async function returnReviewForm(formId: string, reason: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewFormRow; after: ReviewFormRow; participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
+  return executor.transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.reviewForm).where(eq(schema.reviewForm.id, formId)).limit(1).for("update");
+    if (!before) throw new ActionError("review_form_not_found");
+    if (before.status !== "submitted") throw new ActionError("review_form_not_submitted");
+    const [participant] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, before.participantId)).limit(1).for("update");
+    const cycle = await findReviewCycle(before.cycleId, tx);
+    if (!participant || !cycle) throw new ActionError("review_participant_not_found");
+    if (participant.personId === actorPersonId) throw new ActionError("review_own");
+    if (cycle.status !== "active") throw new ActionError("review_cycle_not_collecting");
+    if (participant.calibratedAt || participant.releasedAt) throw new ActionError("review_form_settled");
+    const [after] = await tx
+      .update(schema.reviewForm)
+      .set({ status: "draft" satisfies ReviewFormStatus, overallRatingBp: null, scoreTrace: null, submittedAt: null, returnedAt: new Date(), returnedByPersonId: actorPersonId, returnReason: reason, updatedAt: new Date() })
+      .where(eq(schema.reviewForm.id, formId))
+      .returning();
+    const [counts] = await tx
+      .select({
+        self: sql<number>`(count(*) filter (where ${schema.reviewForm.kind} = 'self'))::int`,
+        manager: sql<number>`(count(*) filter (where ${schema.reviewForm.kind} = 'manager'))::int`,
+      })
+      .from(schema.reviewForm)
+      .where(and(eq(schema.reviewForm.participantId, participant.id), eq(schema.reviewForm.status, "submitted")));
+    const stage: ReviewStage = counts.manager > 0 ? "manager_done" : counts.self > 0 ? "self_done" : "pending";
+    const [updated] = stage === participant.stage ? [participant] : await tx.update(schema.reviewParticipant).set({ stage, updatedAt: new Date() }).where(eq(schema.reviewParticipant.id, participant.id)).returning();
+    return { before, after, participant: updated, cycle };
+  });
+}
+
+// Calibration and release happen from the cycle's calibration stage on (in a rolling probation
+// cycle, while it is open), and a review is never levelled or handed over by the person it is
+// about (owner's decision, 2026-10-05; PRF-02). Both hold here as well as in the policy, because
+// the bulk release reaches these rows by another road.
+async function assertReleasable(tx: Tx, participant: ReviewParticipantRow, actorPersonId: string): Promise<void> {
+  if (participant.personId === actorPersonId) throw new ActionError("review_own");
+  const cycle = await findReviewCycle(participant.cycleId, tx);
+  if (!cycle || !releasable({ status: cycle.status as ReviewCycleStatus, rolling: cycle.isRolling })) throw new ActionError("review_cycle_not_calibrating");
+}
+
+/**
+ * Calibration: HR may level a rating before release, with a note saying why. The manager's own
+ * form is left exactly as written — the rating on it is their proposal — and what moves is the
+ * figure the final yearly result reads (FR-PRF-09); the note is the record of the difference.
  */
 export async function calibrateParticipant(participantId: string, input: { reviewScoreBp: number | null; note: string }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
     if (before.releasedAt) throw new ActionError("review_already_released");
+    await assertReleasable(tx, before, actorPersonId);
     const [after] = await tx
       .update(schema.reviewParticipant)
       .set({ reviewScoreBp: input.reviewScoreBp, calibrationNote: input.note, calibratedAt: new Date(), calibratedByPersonId: actorPersonId, stage: laterStage(before.stage as ReviewStage, "calibrated"), updatedAt: new Date() })
@@ -339,13 +454,15 @@ export async function calibrateParticipant(participantId: string, input: { revie
 
 /**
  * Release: the review becomes the person's to read, and the figure FR-PRF-09 reads is frozen —
- * the calibrated one if there is one, else the manager's. Refused before the manager has written.
+ * the calibrated one if there is one, else the rating the manager proposed. Refused before the
+ * manager has written, and before the cycle has reached its calibration stage.
  */
 export async function releaseParticipant(participantId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
     if (before.releasedAt) throw new ActionError("review_already_released");
+    await assertReleasable(tx, before, actorPersonId);
     const [manager] = await tx
       .select()
       .from(schema.reviewForm)
@@ -361,13 +478,37 @@ export async function releaseParticipant(participantId: string, actorPersonId: s
   });
 }
 
-/** The person signs that they have seen it (FR-PRF-03's last step). */
+/**
+ * The sign-off conversation (FR-PRF-03): after release, the manager sits down with the person and
+ * records that it happened — the day, and a note of what was agreed. Recorded once.
+ */
+export async function recordSignOff(participantId: string, input: { heldOn: IsoDate; note: string | null }, actorPersonId: string, today: IsoDate = todayInVietnam(), executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
+  return executor.transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
+    if (!before) throw new ActionError("review_participant_not_found");
+    if (!before.releasedAt) throw new ActionError("review_not_released");
+    if (before.signOffRecordedAt) throw new ActionError("review_sign_off_recorded");
+    if (before.personId === actorPersonId) throw new ActionError("review_own");
+    // A conversation about a review cannot have been held before the review was handed over, or tomorrow.
+    if (input.heldOn > today || input.heldOn < todayInVietnam(before.releasedAt)) throw new ActionError("review_sign_off_date");
+    const [after] = await tx
+      .update(schema.reviewParticipant)
+      .set({ signOffOn: input.heldOn, signOffNote: input.note, signOffByPersonId: actorPersonId, signOffRecordedAt: new Date(), stage: laterStage(before.stage as ReviewStage, "signed_off"), updatedAt: new Date() })
+      .where(eq(schema.reviewParticipant.id, participantId))
+      .returning();
+    return { before, after };
+  });
+}
+
+/** The person signs that they have seen it (FR-PRF-03's last step) — after the sign-off conversation, where the cycle asks for one. */
 export async function acknowledgeParticipant(participantId: string, note: string | null, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
     if (!before.releasedAt) throw new ActionError("review_not_released");
     if (before.acknowledgedAt) throw new ActionError("review_already_acknowledged");
+    const cycle = await findReviewCycle(before.cycleId, tx);
+    if (cycle?.signOffRequired && !before.signOffRecordedAt) throw new ActionError("review_sign_off_missing");
     const [after] = await tx
       .update(schema.reviewParticipant)
       .set({ acknowledgedAt: new Date(), acknowledgementNote: note, stage: laterStage(before.stage as ReviewStage, "acknowledged"), updatedAt: new Date() })
@@ -527,19 +668,58 @@ export type BulkReleaseResult = { released: string[]; skipped: { participantId: 
 /**
  * Release everybody in a cycle who is ready. The ones whose manager has not written are left
  * alone and listed back — a bulk action that silently skips people is worse than one that says so.
+ * So is the actor's own review: somebody else releases that one. Refused as a whole before the
+ * cycle has reached its calibration stage.
+ *
+ * One transaction for the whole cycle — the same checks `releaseParticipant` makes, asked of
+ * everybody at once: the unreleased participants locked in one read, their submitted manager
+ * forms in another, and one update per distinct (frozen score, stage) pair rather than per person.
  */
 export async function releaseCycle(cycleId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BulkReleaseResult> {
-  const participants = await executor.select().from(schema.reviewParticipant).where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)));
-  const result: BulkReleaseResult = { released: [], skipped: [] };
-  for (const participant of participants) {
-    try {
-      await releaseParticipant(participant.id, actorPersonId, executor);
+  const cycle = await findReviewCycle(cycleId, executor);
+  if (!cycle) throw new ActionError("review_cycle_not_found");
+  if (!releasable({ status: cycle.status as ReviewCycleStatus, rolling: cycle.isRolling })) throw new ActionError("review_cycle_not_calibrating");
+  return executor.transaction(async (tx) => {
+    const participants = await tx
+      .select()
+      .from(schema.reviewParticipant)
+      .where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)))
+      .orderBy(asc(schema.reviewParticipant.id))
+      .for("update");
+    const result: BulkReleaseResult = { released: [], skipped: [] };
+    if (participants.length === 0) return result;
+    // The cycle as the locked rows see it: moved back out of calibration meanwhile, nobody is released.
+    const current = await findReviewCycle(cycleId, tx);
+    const stillReleasable = !!current && releasable({ status: current.status as ReviewCycleStatus, rolling: current.isRolling });
+    const forms = await tx
+      .select({ participantId: schema.reviewForm.participantId, overallRatingBp: schema.reviewForm.overallRatingBp })
+      .from(schema.reviewForm)
+      .where(and(inArray(schema.reviewForm.participantId, participants.map((participant) => participant.id)), eq(schema.reviewForm.kind, "manager"), eq(schema.reviewForm.status, "submitted")));
+    const managerRating = new Map<string, number | null>();
+    for (const form of forms) if (!managerRating.has(form.participantId)) managerRating.set(form.participantId, form.overallRatingBp);
+
+    // Grouped by what each row is set to: a cycle's frozen scores are a handful of rating points.
+    const updates = new Map<string, { reviewScoreBp: number | null; stage: ReviewStage; ids: string[] }>();
+    for (const participant of participants) {
+      const reason = participant.personId === actorPersonId ? "review_own" : !stillReleasable ? "review_cycle_not_calibrating" : !managerRating.has(participant.id) ? "review_manager_not_submitted" : null;
+      if (reason) {
+        result.skipped.push({ participantId: participant.id, reason });
+        continue;
+      }
+      const reviewScoreBp = participant.reviewScoreBp ?? managerRating.get(participant.id) ?? null;
+      const stage = laterStage(participant.stage as ReviewStage, "released");
+      const key = `${reviewScoreBp}|${stage}`;
+      const group = updates.get(key) ?? { reviewScoreBp, stage, ids: [] };
+      group.ids.push(participant.id);
+      updates.set(key, group);
       result.released.push(participant.id);
-    } catch (error) {
-      result.skipped.push({ participantId: participant.id, reason: error instanceof ActionError ? error.message : "failed" });
     }
-  }
-  return result;
+    const now = new Date();
+    for (const { reviewScoreBp, stage, ids } of updates.values()) {
+      await tx.update(schema.reviewParticipant).set({ reviewScoreBp, releasedAt: now, releasedByPersonId: actorPersonId, stage, updatedAt: now }).where(inArray(schema.reviewParticipant.id, ids));
+    }
+    return result;
+  });
 }
 
 // ── Reads for the screens ───────────────────────────────────────────────────────────────────
@@ -561,6 +741,7 @@ export type ParticipantLine = {
   managerStatus: ReviewFormStatus | null;
   peersSubmitted: number;
   reviewScoreBp: number | null;
+  /** This person's deadlines: their own where they have them, else the cycle's. */
   selfDueOn: IsoDate | null;
   managerDueOn: IsoDate | null;
 };
@@ -590,8 +771,7 @@ async function toLines(rows: { participant: ReviewParticipantRow; cycle: ReviewC
       managerStatus: (mine.find((form) => form.kind === "manager")?.status as ReviewFormStatus) ?? null,
       peersSubmitted: mine.filter((form) => form.kind === "peer" && form.status === "submitted").length,
       reviewScoreBp: participant.reviewScoreBp,
-      selfDueOn: cycle.selfDueOn,
-      managerDueOn: cycle.managerDueOn,
+      ...dueDatesOf(participant, cycle),
     };
   });
 }

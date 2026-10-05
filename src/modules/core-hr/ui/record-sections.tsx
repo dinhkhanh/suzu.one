@@ -15,6 +15,7 @@ import { canManageRecords } from "../policy";
 import { getSensitiveSummary, listContracts, listDependents, listDocuments, listEmergencyContacts } from "../records";
 import { deleteContractAction, deleteDependentAction, deleteDocumentAction, deleteAttachmentAction, removeEmergencyContactAction } from "../records-actions";
 import { getPersonTarget } from "../service";
+import { EditContactButton, EditContractButton, EditDependentButton, EditDocumentButton } from "./correction-forms";
 import { AttachmentUpload, ContractForm, ContractTerms, DependentForm, DocumentUploadForm, EmergencyContactForm, EndDeductionForm, RecordFileLink, RowAction, SensitivePanel, TerminateContractForm } from "./records-forms";
 
 export async function RecordSections({ principal, personId }: { principal: Principal; personId: string }) {
@@ -75,6 +76,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                   {manages.personal ? (
                     <div className="flex flex-wrap items-center gap-3 border-t pt-2">
                       {contract.terminatedOn || state === "ended" ? null : <TerminateContractForm contractId={contract.id} today={today} />}
+                      <EditContractButton contract={contract} parents={contracts.filter((row) => row.type !== "appendix").map(({ id, number }) => ({ id, number }))} canWritePay={manages.compensation} />
                       <RowAction action={deleteContractAction} input={{ contractId: contract.id }} label={t("delete")} confirm={t("confirmDelete")} />
                     </div>
                   ) : null}
@@ -109,6 +111,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                   <TableCell className="text-muted-foreground">{contact.note || "—"}</TableCell>
                   {manages.personal ? (
                     <TableCell kind="actions">
+                      <EditContactButton contact={contact} />
                       <RowAction action={removeEmergencyContactAction} input={{ contactId: contact.id }} label={t("delete")} confirm={t("confirmDelete")} />
                     </TableCell>
                   ) : null}
@@ -152,7 +155,14 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                       </Badge>
                     ) : null}
                   </TableCell>
-                  <TableCell kind="actions">{manages[document.tier as keyof typeof manages] ? <RowAction action={deleteDocumentAction} input={{ documentId: document.id }} label={t("delete")} confirm={t("confirmDelete")} /> : null}</TableCell>
+                  <TableCell kind="actions">
+                    {manages[document.tier as keyof typeof manages] ? (
+                      <>
+                        <EditDocumentButton document={document} />
+                        <RowAction action={deleteDocumentAction} input={{ documentId: document.id }} label={t("delete")} confirm={t("confirmDelete")} />
+                      </>
+                    ) : null}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -187,6 +197,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                 {manages.restricted ? (
                   <div className="flex flex-wrap items-center gap-3 border-t pt-2">
                     <EndDeductionForm dependentId={dependent.id} current={dependent.deductionTo} />
+                    <EditDependentButton dependent={dependent} />
                     <RowAction action={deleteDependentAction} input={{ dependentId: dependent.id }} label={t("delete")} confirm={t("confirmDelete")} />
                   </div>
                 ) : null}

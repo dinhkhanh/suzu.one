@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEAM_RULES, type DayFacts, isDayOff, isLate, isoWeekday, mergeRules, NO_TEAM_RULES, planRequirement, reportRequirement, type TeamRules, weekStartOf } from "./rules";
+import { DEFAULT_TEAM_RULES, type DayFacts, exemptRules, isDayOff, isLate, isoWeekday, mergeRules, NO_TEAM_RULES, planRequirement, reportRequirement, type TeamRules, weekStartOf } from "./rules";
 
 const team = (rules: Partial<TeamRules>): TeamRules => ({ ...DEFAULT_TEAM_RULES, ...rules });
 // 2026-09-21 is a Monday.
@@ -35,6 +35,19 @@ describe("merging several teams' rules", () => {
     const merged = mergeRules([team({ reportMode: "optional", reportDays: [1, 3] }), team({ reportMode: "off", reportDays: [5] })]);
     expect(merged.reportMode).toBe("optional");
     expect(merged.reportDays).toEqual([1, 3]);
+  });
+});
+
+// Decision of 2026-10-05: the loop asks nothing of a collaborator or of a holder of the owner role.
+describe("someone the loop asks nothing of", () => {
+  it("has nothing required and no week to send in; what a team switched off stays off", () => {
+    const exempt = exemptRules(mergeRules([DEFAULT_TEAM_RULES]));
+    expect(exempt).toMatchObject({ planMode: "optional", reportMode: "optional", timeMode: "optional", timesheetApproval: false, reportDeadline: "23:00" });
+    expect(reportRequirement(exempt, day("2026-09-21"))).toEqual({ required: false, reason: "optional" });
+    expect(planRequirement(exempt, day("2026-09-21"))).toEqual({ required: false, reason: "optional" });
+    // A working day is still a working day for them: Today offers the plan and the report, it does not say "day off".
+    expect(isDayOff(exempt, day("2026-09-21"))).toBe(false);
+    expect(exemptRules(mergeRules([team({ reportMode: "off", timeMode: "off" })]))).toMatchObject({ reportMode: "off", timeMode: "off" });
   });
 });
 

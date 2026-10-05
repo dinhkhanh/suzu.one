@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { acknowledgePage, countMyPendingAcks, getAckReport, getAckStatus, listMyAcknowledgements, listMyPendingAcks, remindPendingNow, sendAckReminders, sendReviewDueNotices, setAckRequirement } from "./acknowledgements";
+import { acknowledgePage, countMyPendingAcks, getAckReport, getAckSettings, getAckStatus, listMyAcknowledgements, listMyPendingAcks, remindPendingNow, sendAckReminders, sendReviewDueNotices, setAckRequirement } from "./acknowledgements";
 import { doc, heading, paragraph } from "@/modules/platform/rich-text/engine/build";
 import { createPage, loadPage, publishPage, saveDraft, setPageAccess, setPageMeta } from "./pages";
 import { type KbViewer, viewerKeys } from "./policy";
@@ -214,6 +214,10 @@ describe("policy acknowledgement", () => {
     expect(overdue).toHaveLength(5);
     const [last] = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_reminder"))).slice(-1);
     expect(last.params).toMatchObject({ overdue: "yes" });
+    // Sent together, still one notice per claimed reminder — each to its own person.
+    const claims = (await db().select().from(schema.kbAckReminder).where(eq(schema.kbAckReminder.pageId, policy))).filter((row) => row.kind !== "requested");
+    const sentNotices = await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_reminder"));
+    expect(sentNotices.map((row) => row.recipientPersonId).sort()).toEqual(claims.map((row) => row.personId).sort());
 
     // Someone who joins later owes it from their first day, and is told by the job.
     const [newbie] = await db().insert(schema.person).values({ fullName: "Người mới", searchName: "nguoi moi", workEmail: "moi@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: ids.vid }).returning();
@@ -252,6 +256,23 @@ describe("policy acknowledgement", () => {
     await setPageMeta(policy, { ownerPersonId: ids.hrSzm, reviewBy: "2020-01-01" });
     expect(await sendReviewDueNotices(today)).toEqual({ notified: 1 });
     expect(await notices("kb.review_due", ids.hrSzm)).toBe(2);
+  });
+
+  // The job runs every must-read page in one pass: each page still gets its own claim and notice.
+  it("asks a newcomer for every must-read page in one run, one notice per page", async () => {
+    const { addDays, todayInVietnam } = await import("@/lib/dates");
+    const today = todayInVietnam();
+    const second = await createPage({ spaceId: spaces.handbook, parentId: null, title: "An toàn lao động", content: body("An toàn lao động", "Đội mũ bảo hộ.") }, { personId: ids.hrGroup });
+    await publishPage(second.id, { personId: ids.hrGroup });
+    await setAckRequirement(second.id, { required: true, dueDays: 7, audience: ["all"] });
+    const [newcomer] = await db().insert(schema.person).values({ fullName: "Người mới hai", searchName: "nguoi moi hai", workEmail: "moi2@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: ids.vid }).returning();
+    const run = await sendAckReminders(addDays(today, 21));
+    expect(run.pages).toBeGreaterThanOrEqual(2);
+    expect(run.requested).toBe(2);
+    const asked = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_requested"))).filter((row) => row.recipientPersonId === newcomer.id);
+    expect(asked.map((row) => row.link).sort()).toEqual([`/kb/pages/${policy}`, `/kb/pages/${second.id}`].sort());
+    expect(await sendAckReminders(addDays(today, 21))).toMatchObject({ requested: 0, reminded: 0 });
+    await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, newcomer.id));
   });
 });
 
@@ -508,5 +529,116 @@ describe("files of a page", () => {
       ["draft.pdf", "Quy trình (sửa, chưa duyệt)"],
       ["published.pdf", "Quy trình (sửa, chưa duyệt)"],
     ]);
+  });
+});
+
+// FR-KB-14: a "must read" page aimed at an org unit. `unit:<id>` is the unit and everything below
+// it, as the tree is today; `unit_only:<id>` is that unit alone. Last in the file: it adds people.
+describe("acknowledgement audiences on the org tree", () => {
+  const units = {} as Record<"marketing" | "social" | "video" | "brand", string>;
+  const staff = {} as Record<"an" | "binh" | "chi" | "dung" | "ctv", string>;
+  let page = "";
+  const current = async () => (await loadPage(page))!.page;
+  const listed = async () => (await getAckReport(await current())).rows.map((row) => row.fullName).sort();
+  /** Sets the audience and returns who HR's list now holds. */
+  const audience = async (...keys: string[]) => {
+    await setAckRequirement(page, { required: true, dueDays: 14, audience: keys });
+    return listed();
+  };
+  const viewerOf = async (personId: string): Promise<KbViewer> => {
+    const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId));
+    const principal: Principal = { personId, workforceType: row.workforceType, grants: [] };
+    return { principal, personId, keys: viewerKeys(principal, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }) };
+  };
+  const pendingPages = async (personId: string) => (await listMyPendingAcks(await viewerOf(personId))).map((row) => row.pageId);
+  const asked = async (personId: string) => (await db().select().from(schema.kbAckReminder).where(eq(schema.kbAckReminder.pageId, page))).filter((row) => row.personId === personId).map((row) => row.kind);
+
+  beforeAll(async () => {
+    // Marketing › Social › Video Editing, with Brand beside Social.
+    const unit = async (name: string, parentId: string | null) => (await db().insert(schema.orgUnit).values({ name, parentId, kind: parentId ? "team" : "department" }).returning())[0].id;
+    units.marketing = await unit("Marketing", null);
+    units.social = await unit("Social", units.marketing);
+    units.video = await unit("Video Editing", units.social);
+    units.brand = await unit("Brand", units.marketing);
+    const placed: [keyof typeof staff, string, "employee" | "collaborator"][] = [
+      ["an", units.marketing, "employee"],
+      ["binh", units.social, "employee"],
+      ["chi", units.video, "employee"],
+      ["dung", units.brand, "employee"],
+      ["ctv", units.video, "collaborator"],
+    ];
+    for (const [key, orgUnitId, workforceType] of placed) {
+      const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: ids.szm, orgUnitId }).returning();
+      staff[key] = row.id;
+    }
+    const created = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Quy định đăng bài", content: body("Quy định đăng bài", "Duyệt trước khi đăng.") }, { personId: ids.hrGroup });
+    page = created.id;
+    await publishPage(page, { personId: ids.hrGroup });
+  });
+
+  it("takes the keys the form offers and still refuses what is not an audience", async () => {
+    const unknown = ["role:hr_staff", `project:${units.marketing}`, `department:${units.marketing}`, `team:${units.social}`, "unit:not-an-id", "everyone"];
+    for (const key of unknown) expect(await fails(setAckRequirement(page, { required: true, dueDays: 14, audience: [key] }))).toBe("kb_subject_unknown");
+
+    // A unit reaches the units below it; a collaborator sitting there is still nobody's "staff".
+    expect(await audience(`unit:${units.social}`)).toEqual(["binh", "chi"]);
+    expect(await audience(`unit:${units.marketing}`)).toEqual(["an", "binh", "chi", "dung"]);
+    // The narrowing: that unit alone.
+    expect(await audience(`unit_only:${units.social}`)).toEqual(["binh"]);
+    expect(await audience(`unit_only:${units.marketing}`, `person:${staff.ctv}`)).toEqual(["an", "ctv"]);
+    expect((await getAckSettings(page)).sort()).toEqual([`person:${staff.ctv}`, `unit_only:${units.marketing}`].sort());
+  });
+
+  it("asks, lists and takes the confirmation of someone two units below the one named", async () => {
+    await audience(`unit:${units.marketing}`);
+    expect(await getAckStatus(await current(), staff.chi)).toMatchObject({ required: true, inAudience: true, acknowledgedAt: null });
+    expect(await pendingPages(staff.chi)).toContain(page);
+    expect(await asked(staff.chi)).toEqual(["requested"]);
+    expect((await acknowledgePage(page, staff.chi)).already).toBe(false);
+    expect(await pendingPages(staff.chi)).not.toContain(page);
+    expect(await getAckReport(await current())).toMatchObject({ total: 4, done: 1 });
+
+    // Narrowed to the unit alone, the people below it owe nothing and cannot confirm.
+    await audience(`unit_only:${units.marketing}`);
+    expect(await getAckStatus(await current(), staff.binh)).toMatchObject({ required: true, inAudience: false });
+    expect(await pendingPages(staff.binh)).not.toContain(page);
+    expect(await fails(acknowledgePage(page, staff.binh))).toBe("kb_ack_not_in_audience");
+    expect(await pendingPages(staff.an)).toContain(page);
+  });
+
+  it("follows the tree: a move out of the subtree drops out, a new joiner and a move in are asked", async () => {
+    const today = (await import("@/lib/dates")).todayInVietnam();
+    expect(await audience(`unit:${units.social}`)).toEqual(["binh", "chi"]);
+    expect(await remindPendingNow(page, today)).toMatchObject({ pending: 1 });
+
+    // Binh moves to Brand — still in Marketing, no longer in Social.
+    await db().update(schema.person).set({ orgUnitId: units.brand }).where(eq(schema.person.id, staff.binh));
+    expect(await listed()).toEqual(["chi"]);
+    expect(await getAckStatus(await current(), staff.binh)).toMatchObject({ inAudience: false });
+    expect(await pendingPages(staff.binh)).not.toContain(page);
+    expect(await remindPendingNow(page, today)).toMatchObject({ pending: 0 });
+    expect(await fails(acknowledgePage(page, staff.binh))).toBe("kb_ack_not_in_audience");
+
+    // Someone hired into Video Editing owes it from their first day, and the job tells them.
+    const [joiner] = await db().insert(schema.person).values({ fullName: "em", searchName: "em", workEmail: "em@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: units.video }).returning();
+    expect(await asked(joiner.id)).toEqual([]);
+    await sendAckReminders(today);
+    expect(await asked(joiner.id)).toEqual(["requested"]);
+    expect(await listed()).toEqual(["chi", "em"]);
+
+    // The whole unit moves under Design: its people leave Social's audience and join Design's.
+    await db().update(schema.orgUnit).set({ parentId: ids.des }).where(eq(schema.orgUnit.id, units.video));
+    expect(await listed()).toEqual([]);
+    expect(await audience(`unit:${ids.des}`)).toEqual(expect.arrayContaining(["chi", "em", "khoi"]));
+    expect(await listed()).not.toContain("ctv");
+  });
+
+  it("names exactly the people an access row with the same key would", async () => {
+    const people = await db().select().from(schema.person).where(eq(schema.person.status, "active"));
+    const keys = ["all", `entity:${ids.szm}`, `entity:${ids.szc}`, `unit:${units.marketing}`, `unit:${units.social}`, `unit:${units.video}`, `unit:${ids.des}`, `unit_only:${units.marketing}`, `unit_only:${units.brand}`, `unit_only:${ids.des}`, `person:${staff.ctv}`, `person:${staff.an}`];
+    for (const key of keys) {
+      const expected = people.filter((row) => viewerKeys({ personId: row.id, workforceType: row.workforceType, grants: [] }, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }).includes(key)).map((row) => row.fullName);
+      expect(await audience(key), key).toEqual(expected.sort());
+    }
   });
 });

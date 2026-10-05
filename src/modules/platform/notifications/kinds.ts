@@ -70,6 +70,8 @@ export const KINDS = {
   // The same for a Telegram chat (docs/TELEGRAM.md).
   "security.telegram_linked": "security",
   "system.job_failed": "system",
+  // A run the platform killed (it outlived its function): it never reached its own catch block.
+  "system.job_timed_out": "system",
   "system.rule_proposed": "system",
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",
@@ -79,6 +81,10 @@ export const KINDS = {
   "approvals.decided": "approvals",
   "approvals.commented": "approvals",
   "approvals.delegated_to_you": "approvals",
+  // PLT-02: an administrator acted on an approver's behalf while they were away — set a delegation
+  // for them, or moved one of their turns to somebody else. The approver is told who and to whom.
+  "approvals.delegation_set_for_you": "approvals",
+  "approvals.turn_reassigned": "approvals",
   // FR-PLT-23: a request has been waiting for your answer; and, when it still is, the nudge that
   // goes over your head. Neither carries anything but the type, the one-line summary and the wait.
   "approvals.sla_reminder": "approvals",
@@ -88,6 +94,11 @@ export const KINDS = {
   "approvals.oversight_digest": "approvals",
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
+  // REQ-01: finance paid an approved request (a payment, a purchase, an advance, a trip's
+  // settlement), or recorded the unspent rest of an advance as paid back. The amount and the
+  // transfer reference only.
+  "approvals.request_paid": "approvals",
+  "approvals.request_repayment_recorded": "approvals",
   // The asset register (FR-AST-02, 08). Equipment handed to you waits for your confirmation; for a
   // page or a channel, somebody asks to be let in, the owner answers, access is given or taken
   // away, or the asset itself is now yours to answer for. The asset's name — never where its
@@ -117,6 +128,13 @@ export const KINDS = {
   "attendance.month_reopened": "attendance",
   "attendance.adjusted": "attendance",
   "attendance.nudge": "attendance",
+  // ATT-01: flagged check-ins wait for the reviewer (yesterday's, or a month whose lock they
+  // block); a check-in of yours was rejected, with the reason; your month is locked. A count, a
+  // month and a time — never where anybody was.
+  "attendance.punches_to_review": "attendance",
+  "attendance.punches_block_lock": "attendance",
+  "attendance.punch_rejected": "attendance",
+  "attendance.month_locked": "attendance",
   "ops.assigned": "ops",
   "ops.reminder": "ops",
   "ops.overdue": "ops",
@@ -129,15 +147,22 @@ export const KINDS = {
   // Rule governance (FR-PLT-39) for pay components and pay policies, and a move between pay profiles: to the owners.
   "payroll.rule_proposed": "payroll",
   "payroll.profile_proposed": "payroll",
+  // A spreadsheet of pay profiles brought proposals with it (PAY-14): one notice for the import.
+  "payroll.profile_import_proposed": "payroll",
   // A month's payslip is out, a question about one was asked or answered, cash is waiting to be
   // confirmed (FR-PAY-32, 39). The month and a link — never a figure.
   "payroll.payslip_published": "payroll",
+  // The run was sent back after the payslip went out: it is taken back and will be released again.
+  "payroll.payslip_withdrawn": "payroll",
   "payroll.payslip_query_raised": "payroll",
   "payroll.payslip_query_answered": "payroll",
   "payroll.cash_receipt_due": "payroll",
   // Recruitment (FR-REC-01): a hiring request cleared its flow, so there is a head to advertise.
   // The title and the count — never the budget.
   "recruit.hiring_approved": "recruit",
+  // Somebody applied through the careers page — to the opening's recruiters. The job, never the
+  // applicant: a candidate's name in a notification outlives their erasure (FR-REC-13).
+  "recruit.application_received": "recruit",
   // Interviews (FR-REC-06): you are in the room on Thursday, or you are no longer.
   "recruit.interview_scheduled": "recruit",
   "recruit.interview_cancelled": "recruit",
@@ -154,6 +179,15 @@ export const KINDS = {
   "performance.peer_requested": "performance",
   "performance.review_released": "performance",
   "performance.result_published": "performance",
+  // A cycle opened (or a probation review was opened) for you; reviews of your people to write;
+  // the morning reminders; a form HR sent back for changes (FR-PRF-03). Counts and deadlines only.
+  "performance.review_open": "performance",
+  "performance.reviews_owed": "performance",
+  "performance.review_due": "performance",
+  "performance.review_overdue": "performance",
+  "performance.review_returned": "performance",
+  "performance.sign_off_waiting": "performance",
+  "performance.ack_waiting": "performance",
   // The owner has a weighting version to decide (FR-PRF-09 is configuration, not code).
   "performance.rule_proposed": "performance",
   // Phase 10 — tasks: blocked on you, a hand-off to accept or that came back, triage, cover, exit
@@ -166,6 +200,12 @@ export const KINDS = {
   "tasks.triage_new": "tasks",
   "tasks.cover_requested": "tasks",
   "tasks.cover_handed_back": "tasks",
+  // Leave cover (FR-PJM-44): a leave long enough to need cover was asked for — name who covers;
+  // and, on the first working day back, the person (`_due`) and each cover (`_ask`) are reminded
+  // that the work is still to be handed back.
+  "tasks.cover_drafted": "tasks",
+  "tasks.cover_return_due": "tasks",
+  "tasks.cover_return_ask": "tasks",
   "tasks.exit_handover": "tasks",
   "tasks.client_decision": "tasks",
   // The client answered on the review link the account manager sent (FR-PJM-51a), rather than
@@ -185,6 +225,8 @@ export const KINDS = {
   "projects.milestone_missed": "projects",
   "projects.budget_alert": "projects",
   "projects.quota_alert": "projects",
+  // A retainer month's hours allowance at 80% or 100% (FR-PJM-06): the project, the month, the percent.
+  "projects.retainer_hours_alert": "projects",
   "projects.change_decided": "projects",
   "projects.acceptance_signed": "projects",
   "projects.billing_ready": "projects",
@@ -198,8 +240,17 @@ export const KINDS = {
   "daily.plan_reminder": "daily",
   "daily.report_reminder": "daily",
   "daily.report_nudge": "daily",
+  // A report for a day already past: the lead's nudge for it, and the next morning's notice that
+  // yesterday's is missing. Both name the day, and their links carry it.
+  "daily.report_nudge_past": "daily",
+  "daily.report_missed": "daily",
   "daily.report_commented": "daily",
+  // A report came in with blockers (FR-PJM-22): to the person's leads, or their line manager where
+  // no lead stands over them. Who and which day — the blockers themselves are read on the report.
+  "daily.report_blockers": "daily",
   "daily.weekly_report": "daily",
+  // Several weeks are ready for the same reader (FR-PJM-23): one notice that counts them.
+  "daily.weekly_reports": "daily",
   "daily.timesheet_reminder": "daily",
   "daily.timesheet_submitted": "daily",
   "daily.timesheet_decided": "daily",
@@ -219,6 +270,10 @@ export const KINDS = {
   "crm.invoice_overdue": "crm",
   // A commission statement to read: generic wording, like every notification about pay.
   "crm.commission_ready": "payroll",
+  // To the C&B who confirmed a month's statements, when a payment of the month changed after it:
+  // back to draft to confirm again, or — paid in a closed run — to adjust in payroll by hand.
+  "crm.commission_reopened": "payroll",
+  "crm.commission_after_payroll": "payroll",
   // Feedback about SuZu One: a new item to triage (the category and the area, never the text),
   // and the answer to the person who sent it.
   "feedback.received": "feedback",

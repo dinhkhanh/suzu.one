@@ -15,10 +15,11 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Condition } from "@/modules/platform/approvals/engine/flow";
 import { FOLLOW_UP_OPENS, type FollowUpOpens, type FollowUpRule, followUpProblems, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "../engine/follow-ups";
 import { allowsMultiple, FIELD_TYPES, type FieldType, type FormDefinition, type FormField, formProblems } from "../engine/form";
-import { REQUEST_CATEGORIES } from "../enums";
+import { REQUEST_CATEGORIES, REQUEST_PAYOUTS, type RequestPayout } from "../enums";
 import { saveRequestTypeAction, setRequestTypeActiveAction } from "../actions";
 
 type Editable = FormField & { options: NonNullable<FormField["options"]> };
@@ -45,6 +46,7 @@ export type TypeDraft = {
   form: FormDefinition;
   followUps: FollowUpRule[];
   standalone: boolean;
+  payout: RequestPayout;
 };
 
 /** Every other type, for the follow-up picker and for the check that no type ends up under itself. */
@@ -156,6 +158,17 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
             <Label htmlFor="sortOrder">{t("sortOrder")}</Label>
             <Input id="sortOrder" type="number" min={0} max={999} value={type.sortOrder} onChange={(event) => set("sortOrder", Number(event.target.value))} />
           </label>
+          <label className="flex flex-col gap-1.5 sm:col-span-2">
+            <Label htmlFor="payout">{t("payout")}</Label>
+            <Select id="payout" value={type.payout} onChange={(event) => set("payout", event.target.value as RequestPayout)}>
+              {REQUEST_PAYOUTS.map((payout) => (
+                <option key={payout} value={payout}>
+                  {t(`payouts.${payout}`)}
+                </option>
+              ))}
+            </Select>
+            <span className="text-xs text-muted-foreground">{t("payoutHint")}</span>
+          </label>
         </div>
       </section>
 
@@ -242,12 +255,12 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
 
               <div className="flex flex-wrap items-end gap-3">
                 <Label className="flex items-center gap-1.5 text-sm font-normal">
-                  <input type="checkbox" className="size-4" checked={!!field.required} onChange={(event) => patch(index, { required: event.target.checked })} />
+                  <Checkbox checked={!!field.required} onCheckedChange={(checked) => patch(index, { required: checked })} />
                   {t("required")}
                 </Label>
                 {allowsMultiple(field.type) ? (
                   <Label className="flex items-center gap-1.5 text-sm font-normal">
-                    <input type="checkbox" className="size-4" checked={!!field.multiple} onChange={(event) => patch(index, { multiple: event.target.checked, ...(event.target.checked ? {} : { min: null, max: null }) })} />
+                    <Checkbox checked={!!field.multiple} onCheckedChange={(checked) => patch(index, { multiple: checked, ...(checked ? {} : { min: null, max: null }) })} />
                     {t("multiple")}
                   </Label>
                 ) : null}
@@ -440,7 +453,7 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
           ))}
         </ul>
         <Label className="flex items-start gap-2 text-sm font-normal">
-          <input type="checkbox" className="mt-0.5 size-4" checked={type.standalone} onChange={(event) => set("standalone", event.target.checked)} />
+          <Checkbox className="mt-0.5" checked={type.standalone} onCheckedChange={(checked) => set("standalone", checked)} />
           <span className="flex flex-col">
             {t("followUps.standalone")}
             <span className="text-xs text-muted-foreground">{t("followUps.standaloneHint")}</span>

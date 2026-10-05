@@ -83,6 +83,7 @@ Decisions added 2026-09-23 (owner's answers to Q17–Q25):
 | D29 | **Every team is a pilot team** (Q24): the rollout is the whole company at once rather than two teams first, so the feature flag is not used to stage PJM. |
 | D30 | **The owner and `pjm:portfolio` holders may open a private project** (Q25) — read it, its plan, its tasks and its documents. They remain outsiders: they do not contribute, are not assignable, do not decide reviews, and cannot be handed its work. A read of a private project by someone who is not one of its people is recorded in the audit log. |
 | D31 | **The owner oversees every feature, read-only** (owner, 2026-09-28): one `<feature>:oversee` permission per feature — `approval`, `work`, `pjm`, `kb`, `daily`, `performance`, `recruit` — listed in no role, so only the owner's `*` holds them today; one can later be given to a role without the rest. Each opens what the feature otherwise keeps to its members, authors or reporting line: every request (the *All requests* list at `/approvals/all` and a morning digest of the day before), private team backlogs and hours on private projects, every project's brief and change requests, every KB space and published page, everybody's daily plans, reports, timesheets and utilisation, managers' private 1:1 notes and draft review forms, and draft interview scorecards. Oversight never acts (no deciding, commenting as a lead, editing or scoring), never opens one's own 1:1 notes or review, and an owner who interviews stays blind until their own card is in. Left closed on purpose: the assistant answers only about the asker, other people's assistant conversations stay theirs, and step-up still guards pay pages. |
+| D32 | **A job title is two levels; a position is a post** (owner, 2026-10-02): every employee carries a *seniority level* (intern, junior, mid-level, senior) and a *position level* (executive, leader, manager, director, C-level) — two effective-dated fields of the assignment, read together as the job title ("chức danh": "Senior Manager"). The position ("chức vụ") is something else: the post HR types on the assignment, and beside it the posts the person holds in running projects (lead, account manager), which show by themselves, to viewers who may open the project. The free-text job level is retired; recruitment's hiring request, opening and offer carry the same two levels into the hire. |
 
 ### 1.4 Assumptions (please correct any that are wrong)
 
@@ -272,7 +273,7 @@ Two platform engines are deliberately shared:
 |---|---|---|
 | FR-CHR-01 | **Person record**: identity (full name, DOB, gender, nationality, citizen ID/CCCD with issue date/place, passport), contact, permanent and current address, emergency contacts, marital status, education, certificates, bank account(s), tax code, social insurance number, health insurance registered hospital, photo. | M |
 | FR-CHR-02 | **Workforce types**: official employee, probation, intern, part-time, freelancer/CTV, advisor. Type drives which modules apply (e.g. CTV: no leave accrual, no insurance, PIT withholding on payments). | M |
-| FR-CHR-03 | **Employment record**: employee code (per-entity numbering scheme), entity, branch, department, team, position, job level/grade, manager, start date, seniority date, work location, work schedule. All effective-dated. | M |
+| FR-CHR-03 | **Employment record**: employee code (per-entity numbering scheme), entity, branch, department, team, position, seniority level and position level (the job title, D32), manager, start date, seniority date, work location, work schedule. All effective-dated. | M |
 | FR-CHR-04 | **Contracts**: probation agreement, fixed-term labour contract (≤ 36 months), indefinite-term contract, service/collaborator contract, internship agreement, NDA, contract appendices. Fields: number, type, sign date, start/end, salary terms, signed copy. | M |
 | FR-CHR-05 | Contract rules and alerts: expiry alerts at 45/30/15 days; probation-end alerts; enforce "fixed-term can be renewed once, then must become indefinite"; max probation length by job type. | M |
 | FR-CHR-06 | **Document generation** from templates (DOCX/PDF merge): labour contracts, appendices, decisions (appointment, salary adjustment, termination), confirmation letters. Templates per entity with letterhead. | S |
@@ -775,6 +776,21 @@ Design rules for the whole of the CRM:
 - **Quotes** follow the deal; **margin** needs `pjm:cost`. **Contracts** follow the account team for their existence and dates, the deal-value rule for their value.
 - **Invoices, payments and receivables**: recorded by `pjm:commercial` (finance); read by finance, the account's manager, and `crm:manage` holders over the entity.
 - **New permissions:** `crm:sell` (hold a pipeline: own and convert leads, own deals, create accounts and quotes — *new role* `sales`, and c_level, entity_director), `crm:manage` (stages, rate card, thresholds, every account and deal in scope, reassigning — c_level, entity_director). `pjm:commercial` and `pjm:cost` keep their meaning. New role cases go into `policy.test.ts`.
+
+---
+
+### 4.16 Brand kits (BRD)
+
+Each of the group's own brands, as a guideline partners, suppliers and the press read and download from on the public domain — modelled on the brand-resource pages of large brands (what the brand is, how to show it and how not to, colours, typefaces, files). Added 2026-10-04 at the owner's request.
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-BRD-01 | **Kits** kept under Admin → Brand kits by holders of `brand:manage` (*new role* `marketing`; the owner) over the kit's entity, or the group for a brand of the whole group. A kit has a name, a readable **slug** (its address, `suzu.vn/brands/<slug>`; a renamed slug keeps redirecting), tagline, description (Vietnamese and optional English), website and a contact address. | M |
+| FR-BRD-02 | **Files** of a kit: logos as vectors (SVG, AI, EPS) and pictures, brochures, guidelines, packed sets (ZIP), layered files (PSD), brand films (MP4/MOV), up to 500 MB each, several at once. Checked like every upload (allow-list by owner, magic bytes); taken for this owner only. Each file has a title, a kind, the section that offers it, and a public switch. | M |
+| FR-BRD-03 | **Guideline**: ordered sections (text, colour palette, typography, downloads), each with rich text and **do's and don'ts**, each rule optionally illustrated by an example picture of the kit (shown beside the rule, never offered for download). A new kit starts with Overview, Logo, Colour, Typography and Downloads. The palette lists name, HEX (copyable), RGB and a note; typefaces list name, use and where to get them. | M |
+| FR-BRD-04 | **Public pages** on the public domain: `/brands` lists the *listed* kits; `/brands/<slug>` shows one kit's guideline and files. Visibility per kit: hidden (nobody), unlisted (anyone with the link, not indexed), listed (on the list, indexable). Files are handed out through short-lived signed links on the storage domain; a hidden kit, a private file or another kit's file are the same 404. The page receives only its own words. | M |
+| FR-BRD-05 | **Downloads counted** per file and day (no visitor data), shown to the kit's keepers as totals and the last 30 days. | S |
+| FR-BRD-06 | Content in the visitor's language where the keeper wrote an English version; Vietnamese otherwise. | S |
 
 ---
 

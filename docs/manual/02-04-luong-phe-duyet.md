@@ -61,6 +61,8 @@ Khi bạn gửi yêu cầu, hệ thống biến các quy tắc thành tên ngư�
 | **Báo giá** | Lãnh đạo kinh doanh của pháp nhân |
 | Nhu cầu tuyển dụng | Quản lý trực tiếp → bộ phận tuyển dụng |
 | Thư mời nhận việc | Trưởng bộ phận → người duyệt lương |
+| **Điều chuyển**, **Thăng chức / bổ nhiệm**, **Chấm dứt hợp đồng** | Không có luồng mặc định: Nhân sự ghi nhận trực tiếp. Chỉ khi quản trị viên lưu một luồng cho loại này, việc ghi nhận mới thành yêu cầu chờ duyệt — và được thực hiện khi người duyệt cuối đồng ý. |
+| **Thay đổi quy định nghỉ phép**, **Thay đổi quy định chấm công** | **Chủ sở hữu** — luồng cố định, không đổi được |
 
 > [!TIP]
 > Muốn biết chính xác ai sẽ duyệt đơn nghỉ phép hoặc đơn chấm công của bạn? Hỏi **Hỏi SuZu** — trợ lý tra theo luồng đang áp dụng cho bạn và trả lời bằng tên người.

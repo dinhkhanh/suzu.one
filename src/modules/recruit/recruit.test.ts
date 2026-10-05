@@ -31,6 +31,7 @@ import {
   createCandidate,
   createOpening,
   findLikelyCandidateDuplicates,
+  findOpening,
   findOpeningBySlug,
   getApplicationView,
   getCandidateView,
@@ -38,19 +39,25 @@ import {
   headcountPlan,
   isOpeningMember,
   listApplications,
+  listCandidatePage,
   listCandidates,
+  listHiringRequests,
   listOpenings,
   moveApplicationStage,
   newPublicSlug,
   nextOpeningCode,
   reachableCandidateIds,
   rejectApplication,
+  saveOpeningKit,
+  saveOpeningQuestions,
   savePipeline,
   setOpeningStatus,
   setOpeningTeam,
   stagesOf,
   updateOpening,
 } from "./service";
+import { buildCandidatesExport } from "./exports";
+import { tableToCsv } from "../platform/export/csv";
 
 const fails = (promise: Promise<unknown>) =>
   promise.then(
@@ -109,7 +116,7 @@ const baseOpening = () => ({
   departmentId: ids.vid,
   teamId: null,
   positionName: "Video Editor",
-  jobLevel: "Middle",
+  seniorityLevel: "mid" as const, positionLevel: "executive" as const,
   employmentType: "employee" as const,
   workMode: "onsite" as const,
   workLocation: "Hà Nội",
@@ -151,6 +158,28 @@ describe("openings", () => {
     const other = await createOpening({ ...baseOpening(), entityId: ids.szc, departmentId: ids.des, title: "Account Executive" }, null, ids.recruiterPerson);
     expect(other.code).toMatch(/^SZC-\d{4}-001$/);
     expect(await nextOpeningCode(db(), "SZM", Number(opening.code.slice(4, 8)))).toMatch(/-003$/);
+  });
+
+  it("saves the application form's own questions, keeping a renamed question's key, and refuses a bad one", async () => {
+    const opening = await createOpening({ ...baseOpening(), title: "Motion designer" }, null, ids.recruiterPerson);
+    const first = await saveOpeningQuestions(opening.id, [{ key: null, label: "Link showreel", labelEn: "Showreel link", kind: "text", required: true, choices: [] }]);
+    expect(first.after).toEqual([{ key: "link_showreel", label: "Link showreel", labelEn: "Showreel link", kind: "text", required: true, choices: [] }]);
+    // Renamed and joined by a choice question: the first keeps its key, so its answers still match.
+    const { after } = await saveOpeningQuestions(opening.id, [
+      { key: "link_showreel", label: "Đường dẫn showreel", labelEn: null, kind: "text", required: true, choices: [] },
+      { key: null, label: "Bắt đầu khi nào?", labelEn: null, kind: "choice", required: false, choices: ["Ngay", "Sau 1 tháng"] },
+    ]);
+    expect(after.map((row) => row.key)).toEqual(["link_showreel", "bat_dau_khi_nao"]);
+    expect((await findOpening(opening.id))?.questions).toEqual(after);
+    expect(await fails(saveOpeningQuestions(opening.id, [{ key: null, label: "Chọn", labelEn: null, kind: "choice", required: false, choices: ["Một"] }]))).toBe("opening_question_choices_required");
+  });
+
+  it("saves the interview kit on the opening, and an empty one falls back to the default", async () => {
+    const opening = await createOpening({ ...baseOpening(), title: "Colorist" }, null, ids.recruiterPerson);
+    const { after } = await saveOpeningKit(opening.id, [{ key: null, label: "Mắt màu", labelEn: "Colour eye", hint: null }]);
+    expect(after).toEqual([{ key: "mat_mau", label: "Mắt màu", labelEn: "Colour eye", hint: null }]);
+    expect((await findOpening(opening.id))?.interviewKit).toEqual(after);
+    expect((await saveOpeningKit(opening.id, [])).after).toEqual([]);
   });
 
   it("mints a readable public slug from the title, with a random tail, that is not the id", async () => {
@@ -222,6 +251,31 @@ describe("who sees which openings", () => {
     expect(rows.map((row) => row.id)).toEqual([szmOpening]);
     expect(await isOpeningMember(szmOpening, ids.headPerson)).toBe(true);
     expect(await isOpeningMember(szcOpening, ids.headPerson)).toBe(false);
+  });
+
+  // The list reaches what the actions allow: `canRunRecruitment` admits a unit grant over the
+  // opening's department, so the lists — openings, their candidates, the hiring asks — must too.
+  it("a recruiter scoped to a department sees that department's openings and candidates, and no other", async () => {
+    const videoRecruiter = principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: ids.vid } }]);
+    const rows = (await listOpenings(videoRecruiter)).map((row) => row.id);
+    expect(rows).toContain(szmOpening);
+    expect(rows).not.toContain(szcOpening);
+    expect(await getOpeningView({ principal: videoRecruiter, personId: ids.employeePerson }, szmOpening)).not.toBeNull();
+
+    const candidate = await createCandidate({ fullName: "Ứng Viên Phòng Video", email: "unit.scope@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.recruiterPerson);
+    await createApplication({ candidateId: candidate.id, openingId: szmOpening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.recruiterPerson);
+    expect((await listCandidates(videoRecruiter)).map((row) => row.id)).toContain(candidate.id);
+    expect(await canReachCandidate(videoRecruiter, candidate.id)).toBe(true);
+    // A grant on Design reaches neither.
+    const designRecruiter = principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: ids.des } }]);
+    const designRows = (await listOpenings(designRecruiter)).map((row) => row.id);
+    expect(designRows).toContain(szcOpening);
+    expect(designRows).not.toContain(szmOpening);
+    expect((await listCandidates(designRecruiter)).map((row) => row.id)).not.toContain(candidate.id);
+
+    const [ask] = await db().insert(schema.hiringRequest).values({ entityId: ids.szm, departmentId: ids.vid, positionTitle: "Editor theo phòng", headcount: 1, reason: "Thử phạm vi", requestedByPersonId: ids.headPerson, status: "pending" }).returning();
+    expect((await listHiringRequests(videoRecruiter)).map((row) => row.id)).toContain(ask.id);
+    expect((await listHiringRequests(designRecruiter)).map((row) => row.id)).not.toContain(ask.id);
   });
 
   it("a department head who is on no hiring team sees nothing at all", async () => {
@@ -349,6 +403,18 @@ describe("applications", () => {
     expect(view?.events[0]).toMatchObject({ type: "stage_moved", toStageName: screening.name, note: "Hồ sơ tốt" });
   });
 
+  // Every application points at a stage of the opening's pipeline; a new pipeline would strand them.
+  it("keeps the opening's pipeline once somebody has applied, and lets it change before", async () => {
+    const current = (await findOpening(openingId))!;
+    const input = { ...baseOpening(), title: current.title, pipelineId: ids.shortPipeline };
+    expect(await fails(updateOpening(openingId, input, null))).toBe("recruit_opening_pipeline_in_use");
+    expect((await findOpening(openingId))?.pipelineId).toBe(ids.pipeline);
+    // Edits that leave the pipeline alone still go through.
+    expect((await updateOpening(openingId, { ...input, pipelineId: ids.pipeline }, null)).after.pipelineId).toBe(ids.pipeline);
+    const empty = await createOpening({ ...baseOpening(), title: "Chưa có hồ sơ" }, null, ids.recruiterPerson);
+    expect((await updateOpening(empty.id, { ...baseOpening(), title: "Chưa có hồ sơ", pipelineId: ids.shortPipeline }, null)).after.pipelineId).toBe(ids.shortPipeline);
+  });
+
   it("refuses a stage belonging to another pipeline", async () => {
     const otherStages = await stagesOf(ids.shortPipeline);
     expect(await fails(moveApplicationStage(applicationId, otherStages[1].id, ids.recruiterPerson, null))).toBe("recruit_stage_not_found");
@@ -399,6 +465,16 @@ describe("the candidate database", () => {
     expect(await listCandidates(head)).toEqual([]);
     expect(await listCandidates(employee)).toEqual([]);
     expect(await listCandidates(otherHead)).toEqual([]);
+  });
+
+  it("is paged, newest first, each page counting everybody the filters name (PERF-03)", async () => {
+    const all = await listCandidates(hrAdmin);
+    expect(all.length).toBeGreaterThan(2);
+    const size = Math.ceil(all.length / 2);
+    const [first, second] = await Promise.all([listCandidatePage(hrAdmin, {}, 1, size), listCandidatePage(hrAdmin, {}, 2, size)]);
+    expect([first.total, second.total]).toEqual([all.length, all.length]);
+    expect([...first.rows, ...second.rows]).toEqual(all);
+    expect(await listCandidatePage(head, {}, 1, size)).toEqual({ rows: [], total: 0 });
   });
 
   it("shows an entity's recruiter only the candidates who applied within their reach", async () => {
@@ -470,6 +546,10 @@ describe("headcount planning (FR-CHR-17)", () => {
     expect(video).toMatchObject({ approvedHeads: 3, openHeads: 2, hired: 1 });
     // Somebody with no recruitment reach gets no plan at all.
     expect(await headcountPlan(employee)).toEqual([]);
+    // A department-scoped recruiter plans their department's heads, and nobody else's.
+    const unitRecruiter = (unitId: string) => principal(ids.employeePerson, [{ role: "recruiter", scope: { type: "unit", id: unitId } }]);
+    expect((await headcountPlan(unitRecruiter(ids.vid))).find((row) => row.departmentName === "Video")).toMatchObject({ approvedHeads: 3, openHeads: 2, hired: 1 });
+    expect(await headcountPlan(unitRecruiter(ids.des))).toEqual([]);
   });
 });
 
@@ -512,5 +592,28 @@ describe("recruitment reports (FR-REC-11)", () => {
     expect(report.sources.length).toBeGreaterThanOrEqual(2);
     // Nobody in reach, nothing counted.
     expect((await getRecruitReport(employee)).applications).toBe(0);
+  });
+});
+
+describe("the candidates export", () => {
+  it("holds the rows the list shows for the viewer, and nothing for somebody without recruit:manage", async () => {
+    const listed = await listCandidates(hrAdmin);
+    const { file, total } = await buildCandidatesExport(hrAdmin, {}, "en");
+    expect(listed.length).toBeGreaterThan(0);
+    expect(total).toBe(listed.length);
+    expect(file.rowCount).toBe(listed.length);
+    expect(file.table.header[0]).toBe("Candidate");
+    const csv = tableToCsv(file.table);
+    for (const row of listed) expect(csv).toContain(row.fullName);
+
+    // The list's own filters carry over: the talent pool is a subset.
+    const pool = await buildCandidatesExport(hrAdmin, { talentPool: true }, "en");
+    expect(pool.total).toBe((await listCandidates(hrAdmin, { talentPool: true })).length);
+    expect(pool.total).toBeLessThanOrEqual(total);
+
+    for (const viewer of [head, employee, otherHead]) {
+      const none = await buildCandidatesExport(viewer, {}, "en");
+      expect([none.total, none.file.rowCount]).toEqual([0, 0]);
+    }
   });
 });

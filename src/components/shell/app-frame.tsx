@@ -3,7 +3,8 @@ import { Logo } from "@/components/brand/logo";
 import { Bell, ChevronDown, ChevronRight, LayoutGrid, PanelLeft, Pin, PinOff, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useState, useSyncExternalStore, useTransition } from "react";
+import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { LinkPending } from "@/components/shell/link-pending";
 import { NavIcon } from "@/components/shell/nav-icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   writeCollapsed,
   writeFolded,
 } from "@/components/shell/sidebar-store";
+import { useSwipeToClose } from "@/components/shell/use-swipe-to-close";
 import { setNavPinsAction } from "@/modules/platform/auth/preference-actions";
 import { MAX_NAV_PINS } from "@/modules/platform/auth/preferences";
 import { initialsOf } from "@/lib/text";
@@ -102,6 +104,8 @@ function Row({ row, collapsed, active, soonLabel, pin }: { row: NavRow; collapse
       {collapsed ? null : <span className="min-w-0 flex-1 truncate">{row.label}</span>}
       {row.count ? (
         <span
+          // Keyed by the number, so a count that changes pops again (globals.css).
+          key={row.count}
           className={cn(
             collapsed ? "nav-count-rail" : "nav-count",
             // A mouse sees the pin where the count was; a finger sees both, side by side.
@@ -130,6 +134,7 @@ function Row({ row, collapsed, active, soonLabel, pin }: { row: NavRow; collapse
   const link = (
     <Link href={row.href} aria-current={active ? "page" : undefined} className={className} title={collapsed ? row.label : undefined}>
       {body}
+      <LinkPending />
     </Link>
   );
   if (!pin) return link;
@@ -184,6 +189,8 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
   const [openAt, setOpenAt] = useState<string | null>(null);
   const open = openAt === pathname;
   const setOpen = (next: boolean) => setOpenAt(next ? pathname : null);
+  const drawer = useRef<HTMLElement>(null);
+  useSwipeToClose(drawer, open, useCallback(() => setOpenAt(null), []));
   const toggleCollapsed = () => writeCollapsed(!collapsed);
 
   // The pins as this sidebar shows them: changed here at once, then saved to the account. The
@@ -234,7 +241,7 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
     return (
       <Collapsible key={entry.key} open={!shut} onOpenChange={(next) => writeFolded(entry.key, !next)} className="flex flex-col">
         <SectionHeading label={entry.label} open={!shut} count={entry.items.reduce((sum, row) => sum + (row.count ?? 0), 0)} current={entry.items.some((row) => row.key === activeKey)} />
-        <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-200 ease-(--ease-settle) data-ending-style:h-0 data-starting-style:h-0">
+        <CollapsibleContent>
           <div className="flex flex-col gap-px">
             {entry.items.map(rowOf)}
             {entry.controls?.map((row) => (
@@ -251,18 +258,25 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
   };
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pl-[env(safe-area-inset-left,0px)]">
       <div className="shell">
-        {/* The phone drawer's scrim. */}
-        {open ? <button type="button" aria-label={labels.close} className="fixed inset-0 z-40 animate-fade bg-ink/30 md:hidden" onClick={() => setOpen(false)} /> : null}
+        {/* The phone drawer's scrim: always there, so it fades out with the drawer rather than vanishing before it. */}
+        <button
+          type="button"
+          aria-label={labels.close}
+          inert={!open}
+          className={cn("fixed inset-0 z-40 bg-ink/30 transition-opacity duration-300 ease-(--ease-drawer) md:hidden", open ? "opacity-100" : "pointer-events-none opacity-0")}
+          onClick={() => setOpen(false)}
+        />
 
         <aside
+          ref={drawer}
           data-collapsed={collapsed ? "" : undefined}
           // On a phone the sidebar is a drawer over the page: any tap inside it (a link, most of
           // the time) has done its job, so it closes again.
           onClick={() => setOpen(false)}
           className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-[min(20rem,85vw)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-(--ease-settle) md:static md:z-auto md:w-60 md:translate-x-0 md:transition-[width]",
+            "fixed inset-y-0 left-0 z-50 flex w-[min(20rem,85vw)] shrink-0 touch-pan-y flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-(--ease-drawer) pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] md:static md:touch-auto md:pt-0 md:pl-0 md:ease-(--ease-settle) md:z-auto md:w-60 md:translate-x-0 md:transition-[width]",
             collapsed && "md:w-14",
             open ? "translate-x-0 shadow-(--float-shadow)" : "-translate-x-full",
           )}
@@ -307,7 +321,7 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
             </button>
           </div>
 
-          <nav className={cn("relative flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2.5 pt-1 pb-3", collapsed && "md:px-2")}>
+          <nav className={cn("relative flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-contain px-2.5 pt-1 pb-3", collapsed && "md:px-2")}>
             {pinnedRows.length > 0 ? (
               <div className="flex flex-col gap-px">
                 {collapsed ? null : <p className="nav-section mt-1">{labels.pinned}</p>}
@@ -381,9 +395,14 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
       <nav className="tab-bar" aria-label={labels.menu}>
         {tabs.map((tab) => (
           <Link key={tab.key} href={tab.href} aria-current={activeTab === tab.key ? "page" : undefined} className="tab-stop press">
-            {tab.count ? <span className="tab-count">{countOf(tab.count)}</span> : null}
+            {tab.count ? (
+              <span key={tab.count} className="tab-count">
+                {countOf(tab.count)}
+              </span>
+            ) : null}
             <NavIcon name={TAB_ICON[tab.key]} />
             {tab.label}
+            <LinkPending />
           </Link>
         ))}
         <button type="button" onClick={() => setOpen(true)} aria-expanded={open} className={cn("tab-stop press", open && "text-primary")}>

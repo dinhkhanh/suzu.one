@@ -84,12 +84,13 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
   const admin: NavItem[] = [
     ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
     ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
-    ...(can(principal, "person:manage") ? [{ key: "documentTemplates", href: "/admin/document-templates" }] : []),
+    ...(can(principal, "person:manage") ? [{ key: "documentTemplates", href: "/admin/document-templates" }, { key: "issuedDocuments", href: "/documents" }, { key: "privacy", href: "/admin/privacy" }] : []),
     ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }, { key: "requestTypes", href: "/admin/request-types" }] : []),
     ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
     ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),
     ...(can(principal, "audit:read", {}) ? [{ key: "jobs", href: "/admin/jobs" }] : []),
+    ...(can(principal, "brand:manage") ? [{ key: "brands", href: "/admin/brands" }] : []),
     // The feedback inbox: whoever triages it or reads it, over any scope.
     ...(can(principal, "feedback:manage") || can(principal, "feedback:read") ? [{ key: "feedbackInbox", href: "/feedback/inbox" }] : []),
   ];
@@ -111,6 +112,7 @@ export function linkableKinds(principal: Principal, open: { people: boolean }): 
     // A unit's name opens the people list filtered to it, which is behind the People flag.
     ...(directory && open.people ? [] : (["unit"] as const)),
     ...(can(principal, "org:read") ? [] : (["entity"] as const)),
+    ...(can(principal, "brand:manage") ? [] : (["brandKit"] as const)),
   ]);
   return RECORD_KINDS.filter((kind) => !closed.has(kind));
 }
@@ -135,7 +137,7 @@ export const NAV_GROUPS: readonly { key: NavGroupKey; keys: readonly string[] }[
   { key: "company", keys: ["home", "announcements", "kudos", "people", "kb", "assistant", "referrals", "feedback"] },
   // How the app behaves for this person; the language and the theme switches sit under these rows.
   { key: "preferences", keys: ["notificationSettings"] },
-  { key: "admin", keys: ["entities", "org", "flags", "documentTemplates", "approvalFlows", "requestTypes", "roles", "rules", "audit", "jobs", "feedbackInbox"] },
+  { key: "admin", keys: ["entities", "org", "brands", "flags", "documentTemplates", "issuedDocuments", "privacy", "approvalFlows", "requestTypes", "roles", "rules", "audit", "jobs", "feedbackInbox"] },
 ];
 
 /** Where an entry no section names is drawn, rather than not at all. */

@@ -18,7 +18,7 @@
 // (`RETRO_RECOVERY`); both are lines of their own so a payslip never hides one inside a total.
 import type { AdjustmentDeltas } from "@/modules/attendance/service";
 import { findComponent, taxablePart } from "./components";
-import type { PayLine, PersonPayInput, PersonPayResult, RetroItem, TraceStep } from "./types";
+import type { PayLine, PayWarning, PersonPayInput, PersonPayResult, RetroItem, TraceStep } from "./types";
 
 export const RETRO_PAY_CODE = "RETRO_PAY";
 export const RETRO_RECOVERY_CODE = "RETRO_RECOVERY";
@@ -27,9 +27,10 @@ export const RETRO_RECOVERY_CODE = "RETRO_RECOVERY";
  * One line per source month and direction, so a payslip shows "July: +1,200,000" rather than a
  * single figure nobody can check. Items of the same month and direction are added together.
  */
-export function calculateRetroLines(input: PersonPayInput): { lines: PayLine[]; trace: TraceStep[] } {
+export function calculateRetroLines(input: PersonPayInput): { lines: PayLine[]; trace: TraceStep[]; warnings: PayWarning[] } {
   const lines: PayLine[] = [];
   const trace: TraceStep[] = [];
+  const warnings: PayWarning[] = [];
   const groups = new Map<string, { sourceMonth: string; amount: number; kinds: Set<string>; insuranceBaseChanged: boolean }>();
 
   for (const item of input.retro) {
@@ -46,7 +47,13 @@ export function calculateRetroLines(input: PersonPayInput): { lines: PayLine[]; 
     if (group.amount === 0) continue;
     const owed = group.amount > 0;
     const component = findComponent(input.components, owed ? RETRO_PAY_CODE : RETRO_RECOVERY_CODE);
-    if (!component) continue;
+    if (!component) {
+      // No retro component in the catalogue: the difference cannot be paid, and the result says so
+      // rather than letting the item be carried by a run that never paid it.
+      if (!warnings.includes("retro_component_missing")) warnings.push("retro_component_missing");
+      trace.push({ stage: "retro", rule: "retro_component_missing", detail: { sourceMonth: group.sourceMonth, code: owed ? RETRO_PAY_CODE : RETRO_RECOVERY_CODE } });
+      continue;
+    }
     const amount = Math.abs(group.amount);
     lines.push({
       code: component.code,
@@ -63,7 +70,7 @@ export function calculateRetroLines(input: PersonPayInput): { lines: PayLine[]; 
     trace.push({ stage: "retro", rule: owed ? "retro_pay" : "retro_recovery", detail: { sourceMonth: group.sourceMonth, amount: group.amount, kinds: [...group.kinds].sort().join(","), insuranceBaseChanged: group.insuranceBaseChanged } });
   }
 
-  return { lines, trace };
+  return { lines, trace, warnings };
 }
 
 /** Does this run carry a difference whose insurance base the BHXH declaration must catch up on? */

@@ -17,7 +17,7 @@ export type Placeholder = {
   /** The tier of the fact this reveals. A template naming it must be at least this sensitive. */
   tier: Tier;
   /** Message key for the designer's field list: `documents.placeholders.<key>`. */
-  group: "company" | "person" | "employment" | "salary" | "document" | "offer" | "project" | "sales";
+  group: "company" | "person" | "employment" | "contract" | "event" | "salary" | "document" | "offer" | "project" | "sales";
 };
 
 const RANK: Record<Tier, number> = { public_internal: 0, personal: 1, restricted: 2, compensation: 3 };
@@ -50,10 +50,40 @@ export const PLACEHOLDERS: readonly Placeholder[] = [
   { key: "employment.endDate", tier: "personal", group: "employment" },
   { key: "employment.type", tier: "personal", group: "employment" },
   { key: "employment.status", tier: "personal", group: "employment" },
+  // Where they sit and to whom they answer, as the record stands on the day of issue.
+  { key: "person.jobTitle", tier: "personal", group: "person" },
+  { key: "person.team", tier: "personal", group: "person" },
+  { key: "person.manager", tier: "personal", group: "person" },
+  { key: "person.branch", tier: "personal", group: "person" },
+  { key: "employment.workLocation", tier: "personal", group: "employment" },
+  // The contact facts of the profile — personal tier, as on the person page.
+  { key: "person.phone", tier: "personal", group: "person" },
+  { key: "person.nationality", tier: "personal", group: "person" },
+  { key: "person.permanentAddress", tier: "personal", group: "person" },
+  { key: "person.currentAddress", tier: "personal", group: "person" },
+  // The labour contract in force on the day of issue (else the latest): type, number and dates are
+  // personal tier, as on the person page; its pay terms are not offered at all.
+  { key: "contract.number", tier: "personal", group: "contract" },
+  { key: "contract.type", tier: "personal", group: "contract" },
+  { key: "contract.signDate", tier: "personal", group: "contract" },
+  { key: "contract.startDate", tier: "personal", group: "contract" },
+  { key: "contract.endDate", tier: "personal", group: "contract" },
+  // The event a decision is issued for (a probation pass, a renewal, a transfer): what, from when,
+  // why, and the placement before and after. Empty on a paper issued from the documents panel.
+  { key: "event.type", tier: "personal", group: "event" },
+  { key: "event.effectiveDate", tier: "personal", group: "event" },
+  { key: "event.reason", tier: "personal", group: "event" },
+  { key: "event.from", tier: "personal", group: "event" },
+  { key: "event.to", tier: "personal", group: "event" },
 
   // Identity documents and dates of birth: the restricted tier, as everywhere else in the system.
   { key: "person.dateOfBirth", tier: "restricted", group: "person" },
   { key: "person.gender", tier: "restricted", group: "person" },
+  { key: "person.idNumber", tier: "restricted", group: "person" },
+  { key: "person.idIssuedOn", tier: "restricted", group: "person" },
+  { key: "person.idIssuedAt", tier: "restricted", group: "person" },
+  { key: "person.taxCode", tier: "restricted", group: "person" },
+  { key: "person.socialInsuranceNumber", tier: "restricted", group: "person" },
 
   // Money. A template that says any of these is a compensation-tier document, full stop.
   { key: "salary.base", tier: "compensation", group: "salary" },

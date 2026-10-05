@@ -32,7 +32,8 @@ import { saveKpi, createAssignment } from "../performance/kpis";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { createProject } from "../work/projects";
 import { createTeam, listStates, setTeamMember } from "../work/teams";
-import { buildReportFor, reportToCsv } from "./catalogue";
+import { tableToCsv } from "../platform/export/csv";
+import { buildReportFor, reportToFile } from "./catalogue";
 import { getDeliveryDashboard } from "./delivery";
 import { runKpiFromWork } from "./kpi-from-work";
 import { buildProfitability, getProfitability } from "./profitability";
@@ -91,7 +92,8 @@ beforeAll(async () => {
   ids.tvc = await project("TVC Tết", "team");
   ids.secret = await project("Dự án riêng", "private");
   await db().update(schema.workProject).set({ entityId: szm.id }).where(eq(schema.workProject.teamId, video.id));
-  await db().insert(schema.projectPlan).values({ projectId: ids.tvc, kind: "client", feeVnd: 50_000_000, jobNumber: "SZM-26-900" }).onConflictDoNothing();
+  // The project came with its plan row (PJM-01); the report is about this fee and this job number.
+  await db().update(schema.projectPlan).set({ kind: "client", feeVnd: 50_000_000, jobNumber: "SZM-26-900" }).where(eq(schema.projectPlan.projectId, ids.tvc));
 
   // September on TVC: three dated tasks done (two on time), one returned hand-off, a client revision, a blocker.
   const doneOnTime = await workTask({ title: "Kịch bản", projectId: ids.tvc, assignee: ids.huy, status: "done", dueDate: "2026-09-10", completedAt: at("2026-09-09T10:00:00") });
@@ -215,7 +217,7 @@ describe("profitability (FR-PJM-63)", () => {
 
   it("exports the same rows to a pjm:cost holder, still without a person in them", async () => {
     const table = (await buildReportFor(people.finance, "profitability", {}, PERIOD, "vi"))!;
-    const csv = reportToCsv(table, "p.csv").csv;
+    const csv = tableToCsv(reportToFile(table, "p").table);
     expect(csv).toContain("TVC Tết");
     expect(csv).not.toContain(people.huy.person.fullName);
     expect(csv).not.toContain("125000");

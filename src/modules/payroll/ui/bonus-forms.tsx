@@ -1,11 +1,14 @@
 "use client";
 // The year-end bonus screens' forms (FR-PAY-21). Every one of these posts a compensation action,
 // so every one can come back with `step_up_required` — `FormError` renders that like any other.
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
@@ -19,7 +22,7 @@ import { formatVnd } from "./money";
 type EntityOption = { id: string; code: string; shortName: string };
 
 const ERRORS = "payroll.bonus.errors";
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs";
+const textarea = "font-mono text-xs";
 
 /** The scheme as the form holds it: JSON text, parsed for the action, `null` while it is broken. */
 function useJsonValue(initial: unknown) {
@@ -32,6 +35,36 @@ function useJsonValue(initial: unknown) {
     broken = true;
   }
   return { text, setText, parsed, broken };
+}
+
+/**
+ * Everything the server found wrong with a scheme, each beside the field it is about
+ * ("serviceBands.2.factorBp"). The editor is raw JSON, so "not valid" alone would leave the reader
+ * to find the field. Two layers answer: the action's own shape check (`fieldErrors`, keyed
+ * "value.<path>") and the scheme's rules (`details.issues` of `bonus_scheme_invalid`).
+ */
+function SchemeProblems({ fieldErrors, details }: { fieldErrors: Record<string, string[]>; details: unknown }) {
+  const t = useTranslations("payroll.bonus.schemeProblems");
+  const tField = useTranslations("forms.fieldErrors");
+  const fromShape = Object.entries(fieldErrors)
+    .filter(([name]) => name === "value" || name.startsWith("value."))
+    .map(([name, codes]) => ({ path: name.slice("value.".length), code: codes[0] ?? "invalid" }));
+  const fromRules = (details as { issues?: { path: string; code: string }[] } | null)?.issues ?? [];
+  const problems = [...fromShape, ...fromRules];
+  if (problems.length === 0) return null;
+  const say = (code: string) => (t.has(code as "title") ? t(code as "title") : tField.has(code as "invalid") ? tField(code as "invalid") : tField("invalid"));
+  return (
+    <Alert variant="destructive">
+      <ul className="flex w-full flex-col gap-0.5">
+        <li className="font-medium">{t("title")}</li>
+        {problems.map((problem) => (
+          <li key={`${problem.path}:${problem.code}`}>
+            <code className="font-mono text-xs">{problem.path || t("whole")}</code> — {say(problem.code)}
+          </li>
+        ))}
+      </ul>
+    </Alert>
+  );
 }
 
 export function NewBonusRunForm({ entities, year, payrollMonth }: { entities: EntityOption[]; year: number; payrollMonth: string }) {
@@ -61,10 +94,9 @@ export function NewBonusRunForm({ entities, year, payrollMonth }: { entities: En
           <div className="flex flex-wrap gap-3">
             {entities.map((entity) => (
               <label key={entity.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={chosen.includes(entity.id)}
-                  onChange={(event) => setChosen((current) => (event.target.checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))}
+                  onCheckedChange={(checked) => setChosen((current) => (checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))}
                 />
                 {entity.code} — {entity.shortName}
               </label>
@@ -126,16 +158,22 @@ export function BonusStepForm({ runId, step, label, destructive }: { runId: stri
   );
 }
 
-export function PayBonusRunButton({ runId }: { runId: string }) {
+/**
+ * Hands the run to payroll. With `entityId` it is the repeat for one entity whose off-cycle run
+ * payroll cancelled. Pressing it twice is harmless either way: the action finds what is already
+ * there and creates nothing.
+ */
+export function PayBonusRunButton({ runId, entityId }: { runId: string; entityId?: string }) {
   const t = useTranslations("payroll.bonus");
   const router = useRouter();
-  const { onSubmit, pending, errorKey } = useActionForm(payBonusRunAction, { extra: { runId }, onSuccess: () => router.refresh() });
+  const { onSubmit, pending, errorKey } = useActionForm(payBonusRunAction, { extra: entityId ? { runId, entityId } : { runId }, onSuccess: () => router.refresh() });
+  const label = entityId ? t("handoff.again") : t("steps.pay");
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
-      <Button type="submit" disabled={pending}>
-        {pending ? `${t("steps.pay")}…` : t("steps.pay")}
+      <Button type="submit" size={entityId ? "sm" : undefined} variant={entityId ? "outline" : "default"} disabled={pending}>
+        {pending ? `${label}…` : label}
       </Button>
-      <p className="text-xs text-muted-foreground">{t("steps.payHint")}</p>
+      {entityId ? null : <p className="text-xs text-muted-foreground">{t("steps.payHint")}</p>}
       <FormError namespace={ERRORS} errorKey={errorKey} />
     </form>
   );
@@ -185,7 +223,7 @@ export function ProposeSchemeForm({ entities, current }: { entities: EntityOptio
   const t = useTranslations("payroll.bonus");
   const router = useRouter();
   const { text, setText, parsed, broken } = useJsonValue(current);
-  const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(proposeBonusSchemeAction, { extra: { value: parsed }, onSuccess: () => router.refresh() });
+  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(proposeBonusSchemeAction, { extra: { value: parsed }, onSuccess: () => router.refresh() });
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -210,11 +248,12 @@ export function ProposeSchemeForm({ entities, current }: { entities: EntityOptio
           </Field>
         </div>
         <Field name="value" label={t("scheme.value")}>
-          <textarea id="value" value={text} onChange={(event) => setText(event.target.value)} rows={18} spellCheck={false} className={textarea} />
+          <Textarea id="value" value={text} onChange={(event) => setText(event.target.value)} rows={18} spellCheck={false} className={textarea} />
         </Field>
       </FieldErrors>
       {broken ? <p className="text-sm text-destructive">{t("errors.scheme_not_json")}</p> : null}
       <FormError namespace={ERRORS} errorKey={errorKey} />
+      <SchemeProblems fieldErrors={fieldErrors} details={details} />
       <div>
         <Button type="submit" disabled={pending || broken}>
           {pending ? `${t("scheme.submit")}…` : t("scheme.submit")}
@@ -253,14 +292,16 @@ export function WhatIfForm({ runId, current }: { runId: string; current: unknown
   const t = useTranslations("payroll.bonus");
   const { text, setText, parsed, broken } = useJsonValue(current);
   const [result, setResult] = useState<{ totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] } | null>(null);
-  const { onSubmit, pending, errorKey } = useActionForm(bonusWhatIfAction, { extra: { runId, value: parsed }, onSuccess: (data) => setResult(data as { totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] }) });
+  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(bonusWhatIfAction, { extra: { runId, value: parsed }, onSuccess: (data) => setResult(data as { totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] }) });
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
       <h2 className="text-sm font-medium">{t("whatIf.title")}</h2>
       <p className="text-sm text-muted-foreground">{t("whatIf.hint")}</p>
-      <textarea value={text} onChange={(event) => setText(event.target.value)} rows={12} spellCheck={false} className={textarea} aria-label={t("whatIf.title")} />
+      <Textarea value={text} onChange={(event) => setText(event.target.value)} rows={12} spellCheck={false} className={textarea} aria-label={t("whatIf.title")} />
+      {broken ? <p className="text-sm text-destructive">{t("errors.scheme_not_json")}</p> : null}
       <FormError namespace={ERRORS} errorKey={errorKey} />
+      <SchemeProblems fieldErrors={fieldErrors} details={details} />
       <div>
         <Button type="submit" variant="outline" disabled={pending || broken}>
           {pending ? `${t("whatIf.submit")}…` : t("whatIf.submit")}

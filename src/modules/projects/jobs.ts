@@ -2,7 +2,7 @@
 // milestone reminders are marked on the milestone, budget alerts on the plan, quota alerts on the
 // retainer month, and a status reminder is not sent twice for the same overdue update.
 import "server-only";
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "../platform/jobs/service";
@@ -22,6 +22,34 @@ async function leadsOf(projectIds: readonly string[], roles: readonly string[] =
   const rows = await db().select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(inArray(schema.workProjectMember.projectId, [...projectIds]), inArray(schema.workProjectMember.role, [...roles])));
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.projectId, [...(result.get(row.projectId) ?? []), row.personId]);
+  return result;
+}
+
+/**
+ * Who answers for each project when something is owed on it: its members with the lead role; where
+ * there is none, the lead named on the project itself; where there is none of either, the leads of
+ * the team that owns it. Never nobody while the team has a lead. Three queries for the whole run.
+ */
+async function answerableFor(projectIds: readonly string[]): Promise<Map<string, string[]>> {
+  const result = await leadsOf(projectIds);
+  const without = projectIds.filter((id) => !result.get(id)?.length);
+  if (without.length === 0) return result;
+  const projects = await db()
+    .select({ id: schema.workProject.id, teamId: schema.workProject.teamId, leadPersonId: schema.workProject.leadPersonId, leadStatus: schema.person.status })
+    .from(schema.workProject)
+    .leftJoin(schema.person, eq(schema.person.id, schema.workProject.leadPersonId))
+    .where(inArray(schema.workProject.id, without));
+  // A named lead who has left is no one to remind.
+  const orphans = projects.filter((project) => !project.leadPersonId || project.leadStatus === "offboarded");
+  for (const project of projects) if (!orphans.includes(project)) result.set(project.id, [project.leadPersonId!]);
+  if (orphans.length === 0) return result;
+  const teamLeads = await db()
+    .select({ teamId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId })
+    .from(schema.workTeamMember)
+    .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
+    .where(and(inArray(schema.workTeamMember.teamId, [...new Set(orphans.map((project) => project.teamId))]), eq(schema.workTeamMember.role, "lead"), ne(schema.person.status, "offboarded")));
+  const leadsOfTeam = Map.groupBy(teamLeads, (row) => row.teamId);
+  for (const project of orphans) result.set(project.id, (leadsOfTeam.get(project.teamId) ?? []).map((row) => row.personId));
   return result;
 }
 
@@ -80,7 +108,9 @@ export async function sendBudgetAlerts(): Promise<{ alerts: number }> {
 
 /**
  * A status update is due (FR-PJM-27): the project's leads hear it once per overdue update — the
- * reminder is not repeated until a new update has been posted and fallen due again.
+ * reminder is not repeated until a new update has been posted and fallen due again. A project with
+ * no member in the lead role is not left unreminded: the lead named on the project is told, else
+ * the owning team's leads (`answerableFor`).
  */
 export async function sendStatusReminders(today: IsoDate): Promise<{ reminded: number }> {
   const rows = await db()
@@ -98,7 +128,7 @@ export async function sendStatusReminders(today: IsoDate): Promise<{ reminded: n
   // earliest threshold of the run, then each project is weighed against its own below.
   const since = new Date(`${addDays(due.reduce((earliest, row) => (row.dueOn < earliest ? row.dueOn : earliest), due[0].dueOn), -1)}T00:00:00Z`);
   const [leads, sent] = await Promise.all([
-    leadsOf(due.map((row) => row.plan.projectId)),
+    answerableFor(due.map((row) => row.plan.projectId)),
     db()
       .select({ link: schema.notification.link, at: sql<Date>`max(${schema.notification.createdAt})` })
       .from(schema.notification)

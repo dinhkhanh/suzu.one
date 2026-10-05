@@ -3,10 +3,11 @@
 // `person` (platform) holds public_internal fields, `person_profile` holds personal ones;
 // restricted fields get their own encrypted table.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, check, date, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, check, date, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { storedFile } from "../platform/files/schema";
 import { branch, entity, orgUnit } from "../platform/org/schema";
 import { person, workforceType } from "../platform/people/schema";
+import type { PositionLevel, SeniorityLevel } from "../../lib/job-levels";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -21,6 +22,39 @@ export const position = pgTable("position", {
   searchName: text("search_name").notNull().unique(),
   ...timestamps,
 }).enableRLS();
+
+// What a person is good at (FR-CHR-14), in two lists a profile shows side by side: their
+// professional fields ("Social Media", "Video Production") and their skills ("Problem Solving").
+// One catalogue for the group, like positions: a name typed once is offered to everybody after,
+// and "Social media" and "social  média" are the same entry (the accent-stripped key).
+export const competency = pgTable(
+  "competency",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").$type<"profession" | "skill">().notNull(),
+    name: text("name").notNull(),
+    searchName: text("search_name").notNull(),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("competency_kind_search_name_key").on(t.kind, t.searchName), check("competency_kind_check", sql`${t.kind} IN ('profession', 'skill')`)],
+).enableRLS();
+
+// Who holds which. Directory tier: colleagues read it, the person and HR write it.
+export const personCompetency = pgTable(
+  "person_competency",
+  {
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    competencyId: uuid("competency_id")
+      .notNull()
+      .references(() => competency.id, { onDelete: "cascade" }),
+    addedByPersonId: uuid("added_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.competencyId] }), index("person_competency_competency_idx").on(t.competencyId)],
+).enableRLS();
 
 // One row per period a person is employed by an entity. A rehire is a new row for the same person.
 // A migration adds an exclusion constraint: a person's employment periods never overlap (FR-PLT-12).
@@ -71,7 +105,13 @@ export const assignment = pgTable(
     orgUnitId: uuid("org_unit_id").references(() => orgUnit.id),
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
+    // The position ("chức vụ"): the post the person is appointed to, typed by HR.
     positionId: uuid("position_id").references(() => position.id),
+    // The job title ("chức danh") is read from these two ladders (src/lib/job-levels.ts).
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
+    // The free-text level the two ladders replaced. No longer read or written; the column stays
+    // until the code that wrote it is out of production.
     jobLevel: text("job_level"),
     managerId: uuid("manager_id").references(() => person.id),
     dottedManagerId: uuid("dotted_manager_id").references(() => person.id),
@@ -87,6 +127,8 @@ export const assignment = pgTable(
     index("assignment_department_idx").on(t.departmentId),
     index("assignment_manager_idx").on(t.managerId),
     check("assignment_dates_check", sql`${t.validTo} IS NULL OR ${t.validTo} >= ${t.validFrom}`),
+    check("assignment_seniority_level_check", sql`${t.seniorityLevel} IS NULL OR ${t.seniorityLevel} IN ('intern', 'junior', 'mid', 'senior')`),
+    check("assignment_position_level_check", sql`${t.positionLevel} IS NULL OR ${t.positionLevel} IN ('executive', 'leader', 'manager', 'director', 'c_level')`),
   ],
 ).enableRLS();
 

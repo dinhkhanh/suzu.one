@@ -47,7 +47,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-08",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
       },
       actor.id,
       { onboarding: false },

@@ -21,7 +21,8 @@ export type FactsInput = {
   milestones: readonly MilestoneFacts[];
   minutesLogged: number;
   budgetMinutes: number | null;
-  register: { accepted: number; promised: number };
+  /** `awaitingClient`: units finished on our side that the client has not answered yet. */
+  register: { accepted: number; promised: number; awaitingClient?: number };
   /** The project's RAID log (FR-PJM-29): open high risks and open issues are facts of the update. */
   raid: readonly RaidFacts[];
 };
@@ -50,6 +51,7 @@ export function statusFacts(input: FactsInput): StatusFacts {
     budgetMinutes: input.budgetMinutes,
     deliverablesAccepted: input.register.accepted,
     deliverablesPromised: input.register.promised,
+    deliverablesAwaitingClient: input.register.awaitingClient ?? 0,
     ...raidCounts(input.raid),
   };
 }

@@ -255,7 +255,7 @@ describe("the team daily board", () => {
     const board = await getTeamBoard(reader, D);
     expect(board.map((group) => group.kind)).toEqual(["company"]);
     // Reading is all: no reminder goes out on his say-so, and without the principal he is Bao again.
-    expect(await remindMissing(reader, listed, D, names.bao)).toEqual([]);
+    expect(await remindMissing(reader, listed, D, names.bao, D)).toEqual([]);
     expect((await listOverseen(await loadReportReader(ids.bao))).flatMap((group) => group.personIds)).toEqual([]);
   });
 
@@ -282,9 +282,9 @@ describe("the team daily board", () => {
 
   it("reminds the missing once per day, and only people the reader oversees", async () => {
     const khoi = await loadReportReader(ids.khoi);
-    expect(await remindMissing(khoi, [ids.sang, ids.lan], D, names.khoi)).toEqual([ids.sang]);
-    expect(await remindMissing(khoi, [ids.sang], D, names.khoi)).toEqual([]);
-    expect(await remindMissing(await loadReportReader(ids.long), [ids.sang], D, names.long)).toEqual([]);
+    expect(await remindMissing(khoi, [ids.sang, ids.lan], D, names.khoi, D)).toEqual([ids.sang]);
+    expect(await remindMissing(khoi, [ids.sang], D, names.khoi, D)).toEqual([]);
+    expect(await remindMissing(await loadReportReader(ids.long), [ids.sang], D, names.long, D)).toEqual([]);
     const notices = await noticesOf(ids.sang, "daily.report_nudge");
     expect(notices).toHaveLength(1);
     expect(notices[0].params).toEqual({ actor: names.khoi });
@@ -353,10 +353,13 @@ describe("weekly reports", () => {
   it("generates each person's and team's week, tells the lead and the department head once", async () => {
     const first = await generateWeek(D, { notify: true });
     expect(first.teams).toBe(3);
-    expect(first.notified).toBe(3);
+    // The three teams' weeks, and the weeks of the two people in no team who have a line manager
+    // (Tam's to Chi, Chi's to Vu — readers.test.ts covers whose week goes where).
+    expect(first.notified).toBe(5);
     expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);
-    // Chi heads Marketing, where Video sits.
-    expect((await noticesOf(ids.chi, "daily.weekly_report")).map((row) => row.params)).toEqual([{ subject: "Video", week: "21/09/2026" }]);
+    // Chi heads Marketing, where Video sits, and is Tam's line manager: one notice for the two weeks.
+    expect((await noticesOf(ids.chi, "daily.weekly_reports")).map((row) => row.params)).toEqual([{ count: 2, week: "21/09/2026" }]);
+    expect((await noticesOf(ids.vu, "daily.weekly_report")).map((row) => row.params)).toEqual([{ subject: "Chi Vo", week: "21/09/2026" }]);
     const again = await generateWeek(D, { notify: true });
     expect(again.notified).toBe(0);
     expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);
@@ -404,7 +407,7 @@ describe("private work in someone else's report", () => {
     // The week was approved by the quick-log test above; the approver reopens it.
     await db().update(schema.timesheetWeek).set({ status: "open" }).where(eq(schema.timesheetWeek.personId, ids.huy));
     ids.hr = (await db().insert(schema.workProject).values({ teamId: ids.design, entityId: ids.szm, name: "Tuyển Art Director", visibility: "private", leadPersonId: ids.mai }).returning())[0].id;
-    await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal" });
+    await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal", jobNumber: "SZM-26-099" });
     // Its people: a private project's work goes to nobody outside it.
     await db().insert(schema.workProjectMember).values([{ projectId: ids.hr, personId: ids.mai, role: "lead" as const }, { projectId: ids.hr, personId: ids.huy, role: "member" as const }]);
     const doing = (await listStates([ids.design])).find((state) => state.category === "in_progress")!;
@@ -450,10 +453,12 @@ describe("private work in someone else's report", () => {
 
   it("the week of time shows the hours under 'private work'", async () => {
     const own = (await getTimesheetView(await loadTimeReader(ids.huy), ids.huy, D, D))!;
-    expect(own.labels[`task:${ids.t6}`]).toMatchObject({ title: "Sơ tuyển ứng viên" });
+    expect(own.labels[`task:${ids.t6}`]).toMatchObject({ title: "Sơ tuyển ứng viên", jobNumber: "SZM-26-099" });
     const long = (await getTimesheetView(await loadTimeReader(ids.long), ids.huy, D, D))!;
     expect(long.grid.total).toBe(own.grid.total);
-    expect(long.labels[`task:${ids.t6}`]).toMatchObject({ hidden: true, title: null, taskKey: null, projectName: null });
+    // The job number goes where the project's name goes: hidden with it.
+    expect(long.labels[`task:${ids.t6}`]).toMatchObject({ hidden: true, title: null, taskKey: null, projectName: null, jobNumber: null });
+    expect(JSON.stringify(long)).not.toContain("SZM-26-099");
     expect(JSON.stringify(long)).not.toContain("Sơ tuyển ứng viên");
     expect(JSON.stringify(long)).not.toContain("Tuyển Art Director");
   });

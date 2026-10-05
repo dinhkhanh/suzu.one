@@ -7,11 +7,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { decideComponent, proposeComponent } from "./components";
+import { decideComponent, proposeComponent, voidComponent } from "./components";
 import { COMPONENT_CATEGORIES, COMPONENT_KINDS, COMPONENT_SOURCES, INSURANCE_EXEMPTIONS, PAY_PROFILES, payrollPolicySchema, PIT_METHODS, PRORATIONS, SIMPLE_BASES, TAX_RESIDENCIES, TAX_TREATMENTS } from "./enums";
-import { decidePolicy, proposePolicy } from "./policies";
-import { canDecidePayRules, canManageCompensation, canProposePayRules } from "./policy";
-import { decideProfile, submitProfile } from "./profiles";
+import { decidePolicy, proposePolicy, voidPolicy } from "./policies";
+import { canDecidePayRules, canManageCompensation, canProposePayRules, canVoidPayRule, canVoidProfile } from "./policy";
+import { decideProfile, getProfile, submitProfile, voidProfile } from "./profiles";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(inner: Schema) => z.preprocess(blankToNull, inner.nullable().default(null));
@@ -19,6 +19,8 @@ const text = (max: number) => optional(z.string().trim().max(max));
 const flag = z.preprocess((value) => value === true || value === "true" || value === "on", z.boolean());
 const wholeNumber = z.preprocess((value) => (typeof value === "string" && value.trim() !== "" ? Number(value.replace(/[.,\s_]/g, "")) : value), z.number().int());
 const decision = z.enum(["approve", "reject"]);
+// Why a wrong approved version is taken back (PAY-13): required, and kept on the version for good.
+const voiding = z.object({ id: z.uuid(), reason: z.string().trim().min(3).max(500) });
 
 const proposeComponentPipeline = createAction({
   name: "pay_component.propose",
@@ -161,4 +163,57 @@ const decideProfilePipeline = createAction({
 });
 export async function decideProfileAction(input: unknown) {
   return decideProfilePipeline(input);
+}
+
+// ── Taking back a wrong approved version (PAY-13) ───────────────────────────────────────────
+
+const voidComponentPipeline = createAction({
+  name: "pay_component.void",
+  stepUp: true,
+  input: voiding,
+  authorize: (user) => canVoidPayRule(user.principal),
+  run: async ({ user, input }) => {
+    const { before, after } = await voidComponent(input.id, input.reason, user.person.id);
+    revalidatePath("/payroll/components");
+    return { data: { id: after.id }, audit: { resource: { type: "pay_component", id: after.id, entityId: after.entityId }, summary: `void ${after.code} from ${after.validFrom}: ${input.reason}`, before, after } };
+  },
+});
+export async function voidComponentAction(input: unknown) {
+  return voidComponentPipeline(input);
+}
+
+const voidPolicyPipeline = createAction({
+  name: "payroll_policy.void",
+  stepUp: true,
+  input: voiding,
+  authorize: (user) => canVoidPayRule(user.principal),
+  run: async ({ user, input }) => {
+    const { before, after } = await voidPolicy(input.id, input.reason, user.person.id);
+    revalidatePath("/payroll/policy");
+    return { data: { id: after.id }, audit: { resource: { type: "payroll_policy", id: after.id, entityId: after.entityId }, summary: `void pay policy from ${after.validFrom}: ${input.reason}`, before, after } };
+  },
+});
+export async function voidPolicyAction(input: unknown) {
+  return voidPolicyPipeline(input);
+}
+
+const voidProfilePipeline = createAction({
+  name: "pay_profile.void",
+  stepUp: true,
+  input: voiding,
+  // The profile is read first and judged by its own entity and by whether the owner approved it;
+  // an id that does not exist is refused like one that is not yours.
+  authorize: async (user, input) => {
+    const profile = await getProfile(input.id);
+    return !!profile && canVoidProfile(user.principal, profile);
+  },
+  run: async ({ user, input }) => {
+    const { before, after } = await voidProfile(input.id, input.reason, user.person.id);
+    revalidatePath("/payroll/profiles");
+    revalidatePath(`/payroll/salaries/${after.personId}`);
+    return { data: { id: after.id }, audit: { resource: { type: "pay_profile", id: after.id, entityId: after.entityId }, summary: `void ${after.profile} from ${after.validFrom}: ${input.reason}`, before, after } };
+  },
+});
+export async function voidProfileAction(input: unknown) {
+  return voidProfilePipeline(input);
 }

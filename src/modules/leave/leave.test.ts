@@ -22,9 +22,12 @@ import { db, schema } from "@/lib/db";
 import { withdrawRequest } from "@/modules/platform/approvals/service";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
+import { tableToCsv } from "@/modules/platform/export/csv";
+import { listBalancesForAdmin } from "./admin";
 import { getTeamCalendar } from "./calendar";
+import { buildLeaveBalancesExport } from "./exports";
 import { commitOpeningRows, resolveOpeningRows } from "./import";
-import { adjustBalance, getBalances, getLedger, listPayouts, postCompensatoryLeave, runLeaveAccruals } from "./ledger";
+import { adjustBalance, getBalances, getLedger, listPayouts, listPayoutTotals, postCompensatoryLeave, postCompensatoryLeaves, runLeaveAccruals } from "./ledger";
 import { amendLeave, cancelLeave, decideLeave, getLeaveOnDays, getLeaveRequestView, getLeaveUsage, type LeaveInput, listLeaveRequestsOf, previewLeave, submitLeave } from "./requests";
 import { leaveSeedRows } from "./seed-types";
 import { saveLeavePolicy, saveStaffingRule } from "./types";
@@ -108,12 +111,40 @@ describe("the ledger job", () => {
     expect((await balance(ids.huy)).balanceCenti).toBe(900);
   });
 
+  it("reads everybody's ledger once and opens no transaction where nothing is due", async () => {
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await runLeaveAccruals("2026-09-19")).toMatchObject({ accruals: 0, yearsClosed: 0, lapsed: 0, payouts: 0 });
+      expect(transaction).not.toHaveBeenCalled();
+      // Somebody new has months due: only their types with something to post open one, and posting
+      // gives what a joiner of 3 August got above — August and September.
+      const joiner = await addPerson("Counted", { code: "SZM-0012", start: "2026-08-03", managerId: ids.head });
+      // Out of the Video department, whose headcount the team calendar's tests count.
+      const [elsewhere] = await db().insert(schema.orgUnit).values({ code: "ELSE", name: "Elsewhere" }).returning();
+      await db().update(schema.person).set({ orgUnitId: elsewhere.id }).where(eq(schema.person.id, joiner));
+      const due = await runLeaveAccruals("2026-09-19", { personIds: [joiner] });
+      expect(due.accruals).toBeGreaterThan(0);
+      expect(transaction.mock.calls.length).toBeGreaterThan(0);
+      expect(transaction.mock.calls.length).toBeLessThanOrEqual(due.accruals);
+      expect((await balance(joiner)).balanceCenti).toBe(200);
+      transaction.mockClear();
+      await runLeaveAccruals("2026-09-19", { personIds: [joiner] });
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      transaction.mockRestore();
+    }
+  });
+
   it("pays out a leaver's unused days once, for payroll to pick up", async () => {
     // Eight months count → 12 × 8 / 12 = 8 days, all unused.
     const ledger = await getLedger(ids.leaver, { year: 2026, leaveTypeId: types.ANNUAL });
     expect(ledger.find((row) => row.kind === "payout")).toMatchObject({ amountCenti: -800, effectiveDate: "2026-08-31" });
     expect((await balance(ids.leaver)).balanceCenti).toBe(0);
     expect(await listPayouts(ids.media, "2026-08-01", "2026-08-31")).toEqual([expect.objectContaining({ personId: ids.leaver, typeCode: "ANNUAL", daysCenti: 800 })]);
+    // What the run of the month pays, one total per person — and nothing "posted since" a later moment.
+    expect(await listPayoutTotals(ids.media, "2026-08-01", "2026-08-31")).toEqual([{ personId: ids.leaver, daysCenti: 800, postedAt: expect.any(Date) }]);
+    expect(await listPayoutTotals(ids.media, "2026-08-01", "2026-08-31", undefined, { postedAfter: new Date(Date.now() + 60_000) })).toEqual([]);
+    expect(await listPayoutTotals(ids.media, "2026-09-01", "2026-09-30")).toEqual([]);
   });
 
   it("leaves out the months an imported opening balance already contains", async () => {
@@ -166,6 +197,23 @@ describe("the ledger job", () => {
     await db().transaction((tx) => postCompensatoryLeave(tx, { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead }));
     await db().transaction((tx) => postCompensatoryLeave(tx, { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead }));
     expect((await balance(ids.nam, "COMP")).balanceCenti).toBe(50);
+
+    // Several at once (a month lock): each as the one-at-a-time call would post it, in input order.
+    const [mai, again, zero, huy] = await db().transaction((tx) =>
+      postCompensatoryLeaves(tx, [
+        { personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-2", reason: "OT 2h", actorPersonId: ids.hr },
+        { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead },
+        { personId: ids.huy, amountCenti: 0, effectiveDate: "2026-09-30", sourceKey: "ot-3", reason: "nothing", actorPersonId: ids.hr },
+        { personId: ids.huy, amountCenti: 75, effectiveDate: "2026-09-30", sourceKey: "ot-4", reason: "OT 6h", actorPersonId: ids.hr },
+      ]),
+    );
+    expect(mai).toMatchObject({ personId: ids.mai, kind: "grant", amountCenti: 25, sourceKey: "toil:ot-2", leaveTypeId: types.COMP, createdByPersonId: ids.hr });
+    expect([again, zero]).toEqual([null, null]);
+    expect(huy).toMatchObject({ personId: ids.huy, amountCenti: 75, sourceKey: "toil:ot-4" });
+    expect([(await balance(ids.nam, "COMP")).balanceCenti, (await balance(ids.mai, "COMP")).balanceCenti, (await balance(ids.huy, "COMP")).balanceCenti]).toEqual([50, 25, 75]);
+    // One unknown person refuses the lot, inside the caller's transaction.
+    await expect(db().transaction((tx) => postCompensatoryLeaves(tx, [{ personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-5", reason: "OT", actorPersonId: null }, { personId: "00000000-0000-4000-8000-000000000000", amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-6", reason: "OT", actorPersonId: null }]))).rejects.toThrow("person_not_found");
+    expect((await balance(ids.mai, "COMP")).balanceCenti).toBe(25);
   });
 });
 
@@ -335,5 +383,69 @@ describe("the team calendar", () => {
       { date: "2026-10-20", present: 8, minPresent: 9 },
       { date: "2026-10-21", present: 8, minPresent: 9 },
     ]);
+  });
+});
+
+describe("booking ahead of the ledger (LVE-01)", () => {
+  let booker = "";
+
+  it("counts the months still to come this year by the last day asked for", async () => {
+    // Somebody at Creative, so the staffing figures of Media's department above stay as they are.
+    booker = await addPerson("Booker", { code: "SZC-0002", entityId: ids.creative, managerId: ids.head });
+    await runLeaveAccruals("2026-09-19", { personIds: [booker] });
+    expect((await balance(booker)).balanceCenti).toBe(900);
+    // Tuesday 1 – Wednesday 16 December: twelve working days against nine given and three still to come.
+    const preview = await previewLeave(booker, request({ startDate: "2026-12-01", endDate: "2026-12-16" }));
+    expect(preview.counted.totalCenti).toBe(1200);
+    expect(preview.problems).toEqual([]);
+    expect(preview.availableByYear[2026]).toBe(1200);
+  });
+
+  it("books Tết against next year's months and this year's carry-over, and holds at approval", async () => {
+    // 8–10 February 2027: two months of 2027 + the five days this year will carry (the cap).
+    const preview = await previewLeave(booker, request({ startDate: "2027-02-08", endDate: "2027-02-10" }));
+    expect(preview.problems).toEqual([]);
+    expect(preview.availableByYear[2027]).toBe(700);
+    const filed = await submitLeave(booker, request({ startDate: "2027-02-08", endDate: "2027-02-10" }), self(booker));
+    const { outcome } = await decideLeave(ids.head, filed.approvalRequestId, { action: "approve", comment: null });
+    expect(outcome).toBe("approved");
+    const uses = (await getLedger(booker, { year: 2027, leaveTypeId: types.ANNUAL })).filter((row) => row.kind === "use");
+    expect(uses.map((row) => [row.amountCenti, row.effectiveDate])).toEqual([[-300, "2027-02-08"]]);
+  });
+
+  it("no longer lets this year spend what Tết already leans on", async () => {
+    // February's two months of 2027 cover two of the three Tết days; the third comes out of this year's carry.
+    const preview = await previewLeave(booker, request({ startDate: "2026-12-01", endDate: "2026-12-16" }));
+    expect(preview.availableByYear[2026]).toBe(1100);
+    expect(preview.problems).toEqual(["leave_balance_insufficient"]);
+  });
+
+  it("projects nothing two years ahead", async () => {
+    const preview = await previewLeave(booker, request({ startDate: "2028-02-07", endDate: "2028-02-07" }));
+    expect(preview.availableByYear[2028]).toBe(0);
+    expect(preview.problems).toEqual(["leave_balance_insufficient"]);
+  });
+});
+
+describe("the balances export", () => {
+  it("holds the people and balances HR's screen lists, and only the viewer's own reach", async () => {
+    const hr = principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]);
+    const listed = await listBalancesForAdmin(hr, 2026);
+    expect(listed.length).toBeGreaterThan(0);
+    const { file, total } = await buildLeaveBalancesExport(hr, 2026, "en");
+    expect([total, file.rowCount]).toEqual([listed.length, listed.length]);
+    expect(file.table.header.slice(0, 3)).toEqual(["Person", "Entity", "Department"]);
+    const annual = file.table.header.indexOf("ANNUAL");
+    expect(annual).toBeGreaterThan(2);
+    const nam = (await listBalancesForAdmin(hr, 2026)).find((row) => row.personId === ids.nam)!;
+    expect(file.table.rows.find((cells) => cells[0] === "Nam")![annual]).toBe(nam.balances.find((balance) => balance.code === "ANNUAL")!.balanceCenti / 100);
+    expect(tableToCsv(file.table)).toContain("Nam");
+
+    // HR of another entity gets that entity's people, as the screen would list them; a colleague has no leave:manage and gets nothing.
+    const elsewhere = principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.creative } }]);
+    const narrower = await buildLeaveBalancesExport(elsewhere, 2026, "en");
+    expect(narrower.total).toBe((await listBalancesForAdmin(elsewhere, 2026)).length);
+    expect(narrower.total).toBeLessThan(total);
+    expect((await buildLeaveBalancesExport(principal(ids.mai), 2026, "en")).total).toBe(0);
   });
 });

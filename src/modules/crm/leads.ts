@@ -130,6 +130,22 @@ export async function setLeadStatus(leadId: string, status: "contacted" | "quali
 }
 
 /**
+ * Erasure for somebody who is only a lead's contact (PDPL): an enquiry that never became an account
+ * has no contact record to erase, so its own fields are blanked here — the name, the title, the
+ * email and the phone. The company, the need and the lead's history stay; an open or a closed lead
+ * alike, since a request to be forgotten does not wait for the pipeline. Cannot be undone.
+ */
+export async function eraseLeadContact(leadId: string): Promise<{ before: LeadRow; after: LeadRow }> {
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.crmLead).where(eq(schema.crmLead.id, leadId)).limit(1).for("update");
+    if (!before) throw new ActionError("lead_not_found");
+    if (!before.contactName && !before.contactTitle && !before.email && !before.phone) throw new ActionError("lead_contact_erased");
+    const [after] = await tx.update(schema.crmLead).set({ contactName: null, contactTitle: null, email: null, phone: null, updatedAt: new Date() }).where(eq(schema.crmLead.id, leadId)).returning();
+    return { before, after };
+  });
+}
+
+/**
  * The lead is now a deal (inside the conversion's transaction): converted, pointing at its deal and
  * account; the referrer — somebody outside sales who passed it on — hears that it became a deal.
  */

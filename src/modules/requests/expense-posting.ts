@@ -7,9 +7,9 @@
 // Kept apart from `service.ts` so nothing here imports it: `service.ts` calls this on approval and
 // `expense.ts` calls both. One direction, no cycle.
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
-import { findOpenRegularRun, getRunHandle, removeRunInput, setRunInput } from "@/modules/payroll/service";
+import { findOpenRegularRun, findOpenRegularRuns, getRunHandle, removeRunInput, setRunInput, setRunInputs } from "@/modules/payroll/service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -127,29 +127,80 @@ export type SweepResult = { posted: number; released: number; stillWaiting: numb
  * claims exist — the dependency goes one way, and one way only.
  */
 export async function sweepApprovedClaims(actorPersonId: string | null): Promise<SweepResult> {
+  // Only the claims with somewhere to go: not posted, or posted to a run since cancelled. A claim
+  // sitting in a live run would be left exactly where it is, so it is not read at all.
   const approved = await db()
     .select({
       submissionId: schema.requestSubmission.id,
       personId: schema.approvalRequest.requesterPersonId,
       entityId: schema.approvalRequest.entityId,
       amount: schema.requestSubmission.amount,
+      postedRunId: schema.expenseClaimPosting.runId,
     })
     .from(schema.requestSubmission)
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
-    .where(and(eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE), eq(schema.approvalRequest.status, "approved")));
+    .leftJoin(schema.expenseClaimPosting, eq(schema.expenseClaimPosting.submissionId, schema.requestSubmission.id))
+    .leftJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.expenseClaimPosting.runId))
+    .where(and(eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE), eq(schema.approvalRequest.status, "approved"), or(isNull(schema.expenseClaimPosting.id), eq(schema.payrollRun.status, "cancelled"))));
 
   const result: SweepResult = { posted: 0, released: 0, stillWaiting: 0 };
-  for (const claim of approved) {
-    const [before] = await db().select({ runId: schema.expenseClaimPosting.runId }).from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, claim.submissionId)).limit(1);
-    const payment = await db().transaction((tx) => postApprovedClaim(tx, { ...claim, amount: claim.amount ?? 0 }, actorPersonId ?? claim.personId));
-    // Counted by where the claim *moved*, not by whether a row exists: a claim freed from a
-    // cancelled run and put into the next one has been both released and posted.
-    if (before && payment.state !== "posted") result.released += 1;
-    else if (before && payment.state === "posted" && payment.runId !== before.runId) {
-      result.released += 1;
-      result.posted += 1;
-    } else if (!before && payment.state === "posted") result.posted += 1;
-    if (payment.state !== "posted") result.stillWaiting += 1;
+  // Between runs the common case is a few claims with nowhere to go: counted as waiting without a
+  // transaction. The open runs are read again inside it, where the writes are.
+  const payableOutside = approved.filter((claim) => (claim.amount ?? 0) > 0);
+  const openOutside = await findOpenRegularRuns(payableOutside.flatMap((claim) => (claim.entityId ? [claim.entityId] : [])));
+  if (!payableOutside.some((claim) => claim.postedRunId !== null || (claim.entityId && openOutside.has(claim.entityId)))) {
+    result.released = approved.filter((claim) => claim.postedRunId !== null).length;
+    result.stillWaiting = approved.length;
+    return result;
   }
+
+  // All of it in one transaction and a fixed number of statements, however many claims there are
+  // — the rules are `postApprovedClaim`'s, applied to the lot:
+  //   · a claim of no positive amount is not payable and is left exactly where it is;
+  //   · one held by a cancelled run is freed (a cancelled run is never open for editing, so there is
+  //     no line of it to rewrite), then offered like the rest;
+  //   · one whose entity has an open regular run goes into it, the earliest; any other waits.
+  // Counted by where each claim *moved*: one freed from a cancelled run and put into the next has
+  // been both released and posted.
+  await db().transaction(async (tx) => {
+    const payable = approved.filter((claim) => (claim.amount ?? 0) > 0);
+    const freed = payable.filter((claim) => claim.postedRunId !== null);
+    if (freed.length > 0) {
+      await tx.delete(schema.expenseClaimPosting).where(and(inArray(schema.expenseClaimPosting.submissionId, freed.map((claim) => claim.submissionId)), inArray(schema.expenseClaimPosting.runId, [...new Set(freed.map((claim) => claim.postedRunId!))])));
+    }
+    const openRuns = await findOpenRegularRuns(payable.flatMap((claim) => (claim.entityId ? [claim.entityId] : [])), tx);
+    const runOf = (claim: (typeof approved)[number]) => (claim.entityId ? openRuns.get(claim.entityId) : undefined);
+    const going = payable.filter((claim) => !!runOf(claim));
+    // The unique submission id still guards against paying one twice: a claim an approval posted
+    // in the meantime keeps its row, and its run's line is rewritten from the table below anyway.
+    if (going.length > 0) {
+      await tx
+        .insert(schema.expenseClaimPosting)
+        .values(going.map((claim) => ({ submissionId: claim.submissionId, runId: runOf(claim)!.id, personId: claim.personId, amount: claim.amount!, postedByPersonId: actorPersonId ?? claim.personId })))
+        .onConflictDoNothing({ target: schema.expenseClaimPosting.submissionId });
+      // Each person's reimbursement line is the sum of every claim posted to the run (see
+      // `rewriteRunInput`): summed for all of them in one query, written one run at a time.
+      const runIds = [...new Set(going.map((claim) => runOf(claim)!.id))];
+      const totals = await tx
+        .select({ runId: schema.expenseClaimPosting.runId, personId: schema.expenseClaimPosting.personId, total: sql<string>`sum(${schema.expenseClaimPosting.amount})`, count: sql<string>`count(*)` })
+        .from(schema.expenseClaimPosting)
+        .where(and(inArray(schema.expenseClaimPosting.runId, runIds), inArray(schema.expenseClaimPosting.personId, [...new Set(going.map((claim) => claim.personId))])))
+        .groupBy(schema.expenseClaimPosting.runId, schema.expenseClaimPosting.personId);
+      const touched = new Set(going.map((claim) => `${runOf(claim)!.id}:${claim.personId}`));
+      for (const runId of runIds) {
+        const lines = totals
+          .filter((row) => row.runId === runId && touched.has(`${row.runId}:${row.personId}`) && Number(row.total) > 0)
+          .map((row) => ({ personId: row.personId, code: REIMBURSEMENT_COMPONENT, amount: Number(row.total), note: `${Number(row.count)} đề nghị hoàn ứng đã duyệt` }));
+        await setRunInputs(runId, lines, actorPersonId, tx);
+      }
+    }
+    for (const claim of approved) {
+      const before = claim.postedRunId;
+      const posted = (claim.amount ?? 0) > 0 && !!runOf(claim);
+      if (before && (!posted || runOf(claim)!.id !== before)) result.released += 1;
+      if (posted && runOf(claim)!.id !== before) result.posted += 1;
+      if (!posted) result.stillWaiting += 1;
+    }
+  });
   return result;
 }

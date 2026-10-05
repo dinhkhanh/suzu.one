@@ -1,15 +1,16 @@
 import "server-only";
-import { and, arrayOverlaps, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, arrayOverlaps, asc, eq, gte, inArray, isNull, lte, or, type SQL, sql } from "drizzle-orm";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
-import { cached, invalidate } from "@/lib/cache";
+import { cached } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 
 // Reads that also run inside someone else's transaction (approver resolution) take the executor.
 type Executor = Tx | ReturnType<typeof db>;
 import { notify } from "../notifications/service";
-import { listOrgUnits } from "../org/service";
+import { listEntities, listOrgUnits } from "../org/service";
+import { ALL_GRANTS_KEY, GRANTS_TTL, grantsKey, invalidateGrants } from "./grants-cache";
 import { can, type Grant, type Scope, scopeCovers, type Target } from "./policy";
 import { type Permission, ROLE_DEFINITIONS, ROLES, type Role } from "./roles";
 
@@ -37,13 +38,10 @@ function toScope(scopeType: ScopeType, scopeId: string | null, covers: ReadonlyM
 }
 
 // Every request loads the signed-in person's grants, so today's rows sit in the shared cache.
-// Every write to `role_assignment` below drops the holder's entry (`invalidateGrants`), and the
-// short TTL bounds anything written behind the app's back (a seed, a manual fix).
-const GRANTS_TTL = 10 * 60;
-const grantsKey = (personId: string) => `rbac:grants:${personId}`;
-
-/** Drops cached grants; call after the change to `role_assignment` is committed. */
-export const invalidateGrants = (...personIds: string[]) => invalidate(...personIds.map(grantsKey));
+// Every write to `role_assignment` below drops the holder's entry (`invalidateGrants`, which lives
+// with the keys in grants-cache.ts), and the short TTL bounds anything written behind the app's
+// back (a seed, a manual fix).
+export { invalidateGrants };
 
 type RoleAssignmentRowCached = typeof schema.roleAssignment.$inferSelect;
 
@@ -225,56 +223,148 @@ async function describeGrant(grant: RoleAssignmentRow, actorPersonId: string) {
   const [actor] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1);
   let scopeName = "";
   if (grant.scopeType !== "group" && grant.scopeId) {
+    // Both are reference data, in the org module's cache.
     const named = {
-      entity: () => db().select({ name: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, grant.scopeId!)),
-      unit: () => db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, grant.scopeId!)),
+      entity: async () => (await listEntities()).find((row) => row.id === grant.scopeId)?.shortName,
+      unit: async () => (await listOrgUnits()).find((row) => row.id === grant.scopeId)?.name,
     };
-    scopeName = (await named[grant.scopeType]())[0]?.name ?? "";
+    scopeName = (await named[grant.scopeType]()) ?? "";
   }
   return { actor: actor?.fullName ?? "", role: grant.role, scopeType: grant.scopeType, scopeName };
 }
 
+// ── Who holds what ──────────────────────────────────────────────────────────────────────────
+//
+// The questions below are asked of the whole table, not of one person: every grant not yet ended
+// sits in the shared cache under one key, in a fixed order, and each caller filters it. Inside a
+// transaction — or for another day than today — the rows are read where the caller reads.
+
+type GrantRow = Pick<RoleAssignmentRow, "personId" | "role" | "scopeType" | "scopeId" | "validFrom" | "validTo">;
+/** The columns the lookups need, in a fixed order: the stored array is the same whoever stored it. */
+function readGrantRows(from: Executor, condition: ReturnType<typeof and>): Promise<GrantRow[]> {
+  const { id, personId, role, scopeType, scopeId, validFrom, validTo } = schema.roleAssignment;
+  return from.select({ personId, role, scopeType, scopeId, validFrom, validTo }).from(schema.roleAssignment).where(condition).orderBy(asc(personId), asc(id));
+}
+
+/** A transaction reads its own rows; the pool itself, or no executor at all, may be answered from the cache. */
+const inTransaction = (executor: Executor | undefined): executor is Executor => !!executor && executor !== db();
+
+async function grantRowsInForce(today: IsoDate, executor: Executor | undefined): Promise<GrantRow[]> {
+  if (inTransaction(executor) || today !== todayInVietnam()) return readGrantRows(executor ?? db(), and(lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  // Cached: every grant not yet ended, so one that starts later today is still in the entry.
+  const rows = await cached(ALL_GRANTS_KEY, GRANTS_TTL, () => readGrantRows(db(), notEnded(today)));
+  return rows.filter((row) => row.validFrom <= today && (row.validTo === null || row.validTo >= today));
+}
+
+/**
+ * The target with the whole chain above every unit it names (`org_unit.path`). A caller may name
+ * one unit alone — a team's department, a hiring request's team — and the grant that answers for
+ * it may sit on any unit above: the heads above a unit inherit the same rights over it
+ * (FR-PLT-16). `loadGrants` gives a signed-in person's grants their subtree; the rows read here
+ * are bare, so the tree is put on the target's side instead — the same question, asked once per
+ * call rather than once per grant. A target that already carries its chain (a person) is unchanged.
+ */
+function withUnitChain(target: Target, pathOf: ReadonlyMap<string, readonly string[]>): Target {
+  const named = [...new Set(target.unitPath ?? [])];
+  if (named.length === 0) return target;
+  return { ...target, unitPath: [...new Set([...named.flatMap((id) => pathOf.get(id) ?? []), ...named])] };
+}
+
+const hasUnitGrant = (rows: readonly GrantRow[]) => rows.some((row) => row.scopeType === "unit");
+
+type HoldingOptions = { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor };
+
+/** The questions `roleHolders` answers, all from one read of the grants. */
+export type RoleHolders = {
+  /** `listOwnerPersonIds`. */
+  owners(): string[];
+  /** `listPeopleHolding`. */
+  holding(permission: Exclude<Permission, "*">, target: Target, options?: { includeWildcard?: boolean }): string[];
+  /** `listPeopleWithRole`. */
+  withRole(role: Role, target: Target): string[];
+};
+
+/**
+ * Who holds what, for a caller that asks many times — a job going over every obligation, a flow
+ * with several steps, a checklist with a step per department: the grants in force (and, when a
+ * unit grant exists, the unit tree) are read **once**, and every question after that is answered
+ * in memory, by the same rules as the single lookups below, which are built on it.
+ */
+export async function roleHolders(options: { today?: IsoDate; executor?: Executor } = {}): Promise<RoleHolders> {
+  const { today = todayInVietnam(), executor } = options;
+  const rows = await grantRowsInForce(today, executor);
+  // The tree only matters when some grant names a unit; read whole (a small table), once.
+  const units = !hasUnitGrant(rows) ? [] : inTransaction(executor) ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit) : await listOrgUnits();
+  const pathOf = new Map(units.map((unit) => [unit.id, unit.path]));
+  const where = (target: Target) => (units.length ? withUnitChain(target, pathOf) : target);
+  const grantsByPerson = (includeWildcard: boolean) => {
+    const byPerson = new Map<string, Grant[]>();
+    for (const row of rows) {
+      const scope = toScope(row.scopeType, row.scopeId);
+      if (!scope || !(ROLES as readonly string[]).includes(row.role)) continue;
+      if (!includeWildcard && ROLE_DEFINITIONS[row.role as Role].permissions.includes("*")) continue;
+      byPerson.set(row.personId, [...(byPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
+    }
+    return byPerson;
+  };
+  const byWildcard = new Map<boolean, Map<string, Grant[]>>();
+  return {
+    owners: () => rows.filter((row) => row.role === "owner" && row.scopeType === "group").map((row) => row.personId),
+    holding(permission, target, { includeWildcard = true } = {}) {
+      const grants = byWildcard.get(includeWildcard) ?? byWildcard.set(includeWildcard, grantsByPerson(includeWildcard)).get(includeWildcard)!;
+      const at = where(target);
+      return [...grants].filter(([personId, held]) => can({ personId, workforceType: null, grants: held }, permission, at)).map(([personId]) => personId);
+    },
+    withRole(role, target) {
+      const at = where(target);
+      return [...new Set(rows.filter((row) => {
+        if (row.role !== role) return false;
+        const scope = toScope(row.scopeType, row.scopeId);
+        return !!scope && scopeCovers(scope, at);
+      }).map((row) => row.personId))];
+    },
+  };
+}
+
 /** Who to tell when the system itself needs attention. */
-export async function listOwnerPersonIds(executor: Executor = db()): Promise<string[]> {
-  const today = todayInVietnam();
-  const rows = await executor
-    .select({ personId: schema.roleAssignment.personId })
-    .from(schema.roleAssignment)
-    .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
-  return rows.map((row) => row.personId);
+export async function listOwnerPersonIds(executor?: Executor): Promise<string[]> {
+  return (await roleHolders({ executor })).owners();
 }
 
 /**
  * Who holds `permission` over `target` today — e.g. the HR people to warn about someone's contract.
  * Reads every grant in force: fine for a company-sized table, and it keeps `can()` the one rule.
+ * A unit the target names is answered for by a grant on that unit or on any unit above it.
  */
-export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor } = {}): Promise<string[]> {
-  const { today = todayInVietnam(), includeWildcard = true, executor = db() } = options;
-  const rows = await executor
-    .select()
-    .from(schema.roleAssignment)
-    .where(and(lte(schema.roleAssignment.validFrom, today), notEnded(today)));
-  const grantsByPerson = new Map<string, Grant[]>();
-  for (const row of rows) {
-    const scope = toScope(row.scopeType, row.scopeId);
-    if (!scope || !(ROLES as readonly string[]).includes(row.role)) continue;
-    if (!includeWildcard && ROLE_DEFINITIONS[row.role as Role].permissions.includes("*")) continue;
-    grantsByPerson.set(row.personId, [...(grantsByPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
-  }
-  return [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, target)).map(([personId]) => personId);
+export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: HoldingOptions = {}): Promise<string[]> {
+  return (await listPeopleHoldingEach(permission, [target], options))[0];
 }
 
-/** Who holds `role` with a scope that covers `target` today — for approval steps that name a role (FR-PLT-20). */
-export async function listPeopleWithRole(role: Role, target: Target, executor: Executor = db()): Promise<string[]> {
-  const today = todayInVietnam();
-  const rows = await executor
-    .select()
-    .from(schema.roleAssignment)
-    .where(and(eq(schema.roleAssignment.role, role), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
-  return [...new Set(rows.filter((row) => {
-    const scope = toScope(row.scopeType, row.scopeId);
-    return !!scope && scopeCovers(scope, target);
-  }).map((row) => row.personId))];
+/**
+ * `listPeopleHolding` for several targets at once: one read of the grants however many targets
+ * there are, and the holders of each target in the targets' order.
+ */
+export async function listPeopleHoldingEach(permission: Exclude<Permission, "*">, targets: readonly Target[], options: HoldingOptions = {}): Promise<string[][]> {
+  if (targets.length === 0) return [];
+  const { today, includeWildcard = true, executor } = options;
+  const holders = await roleHolders({ today, executor });
+  return targets.map((target) => holders.holding(permission, target, { includeWildcard }));
+}
+
+/**
+ * A condition for another module's query over people: does the person in `personId` hold `role`
+ * today, at any scope? The check stays in Postgres — the caller's list is filtered where it is read.
+ */
+export const holdsRoleToday = (personId: AnyPgColumn, role: Role, today: IsoDate = todayInVietnam()): SQL =>
+  sql`exists (select 1 from ${schema.roleAssignment} where ${schema.roleAssignment.personId} = ${personId} and ${schema.roleAssignment.role} = ${role} and ${schema.roleAssignment.validFrom} <= ${today} and (${schema.roleAssignment.validTo} is null or ${schema.roleAssignment.validTo} >= ${today}))`;
+
+/**
+ * Who holds `role` with a scope that covers `target` today — for approval steps that name a role
+ * (FR-PLT-20). "The department head of this team" is whoever holds the role on the team's unit or
+ * on any unit above it.
+ */
+export async function listPeopleWithRole(role: Role, target: Target, executor?: Executor): Promise<string[]> {
+  return (await roleHolders({ executor })).withRole(role, target);
 }
 
 /**
@@ -294,6 +384,21 @@ export async function endRoleGrantsOf(tx: Executor, personId: string, lastDay: I
     await tx.update(schema.roleAssignment).set({ validTo: grant.validFrom > lastDay ? addDays(grant.validFrom, -1) : lastDay }).where(eq(schema.roleAssignment.id, grant.id));
   }
   return { ended: grants.map((grant) => ({ id: grant.id, validTo: grant.validTo })) };
+}
+
+/**
+ * Refuses to lock out the last owner who can still sign in (a suspension, FR-PLT-05): the grants
+ * stay, but an owner who cannot sign in grants nothing, and the system must never be left with
+ * nobody able to grant roles.
+ */
+export async function assertNotLastActiveOwner(tx: Executor, personId: string): Promise<void> {
+  const today = todayInVietnam();
+  const owners = await tx
+    .selectDistinct({ personId: schema.roleAssignment.personId })
+    .from(schema.roleAssignment)
+    .innerJoin(schema.person, eq(schema.person.id, schema.roleAssignment.personId))
+    .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), lte(schema.roleAssignment.validFrom, today), notEnded(today), eq(schema.person.status, "active")));
+  if (owners.some((owner) => owner.personId === personId) && owners.every((owner) => owner.personId === personId)) throw new ActionError("last_owner");
 }
 
 /** Undoes `endRoleGrantsOf` for a termination that was called off. */

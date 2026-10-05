@@ -339,7 +339,8 @@ function TableCardHeader({
       )}
       {...props}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      {/* The title keeps 14rem before the actions may sit beside it; past that they wrap below. */}
+      <div className="flex min-w-0 flex-[1_1_14rem] items-center gap-2.5">
         {icon ? (
           <span className="flex shrink-0 text-muted-foreground [&_svg]:size-[1.125rem]">
             {icon}
@@ -368,7 +369,7 @@ function TableCardHeader({
 }
 
 const ADD_ROW =
-  "flex h-11 w-full cursor-pointer items-center gap-2 border-t px-3 text-[0.8125rem] font-medium text-link transition-colors select-none hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-3.5"
+  "flex h-11 w-full cursor-pointer items-center gap-2 border-t px-3 text-[0.8125rem] font-medium text-link transition-colors select-none hover:bg-canvas active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-3.5"
 
 /**
  * The "+ Add …" row that closes a sheet. Given `href`, it is a link to the create page; given

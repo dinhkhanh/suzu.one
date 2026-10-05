@@ -11,7 +11,11 @@
 // These tests hold the two halves of the answer: that the surface is read off the **path**, for
 // every path a page can be served at, and that the messages a public request is handed are that
 // page's own and nothing else.
-import { describe, expect, it, vi } from "vitest";
+//
+// And one thing only the proxy can do for the review link (R14): a `HEAD` and a browser's
+// fetch-ahead are not a client opening it, and a page cannot tell — it never learns the method.
+import { NextRequest } from "next/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 /** What the proxy wrote on the request, swapped per test. */
 const surfaceHeader = { current: null as string | null };
@@ -32,7 +36,15 @@ vi.mock("@/modules/platform/auth/session", () => ({
   getCurrentUser: async () => (signedIn.current ? { userId: "u1", preferences: { locale: signedIn.locale, theme: null } } : null),
 }));
 
-import { config } from "@/proxy";
+/** The public domain, when a test gives the product one (`src/lib/site.ts` reads it from the environment). */
+const publicDomain = { current: null as { origin: string; host: string } | null };
+vi.mock("@/lib/site", () => ({ publicSite: () => publicDomain.current }));
+
+// The proxy also writes the page's Content-Security-Policy (`tests/proxy-csp.test.ts` covers it),
+// which reads the configuration; this file is about surfaces, so the policy is off.
+vi.mock("@/lib/env", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/env")>()), env: () => ({ CSP_MODE: "off" }) }));
+
+import { config, proxy } from "@/proxy";
 import requestConfig from "@/i18n/request";
 import { namespacesForSurface, pickMessages, SURFACE_HEADER, surfaceForPath } from "@/i18n/surfaces";
 import catalogue from "../messages/vi.json";
@@ -85,6 +97,9 @@ describe("which surface a path is", () => {
     // The one that leaked: `[token]` matches anything, and a token ending in an image extension
     // used to slip past the proxy's matcher and be served the whole catalogue.
     expect(surfaceForPath("/preview/anything.png")).toBe("preview");
+    // The file behind a review link is a route of the same surface, checked by the same token.
+    expect(surfaceForPath("/preview/AbC-123_xyz/file")).toBe("preview");
+    expect(surfaceForPath("/preview/AbC-123_xyz/decide")).toBe("preview");
     expect(surfaceForPath("/careers")).toBe("careers");
     expect(surfaceForPath("/careers/video-editor/apply")).toBe("careers");
     expect(surfaceForPath("/careers/assignment/AbC")).toBe("careers");
@@ -97,11 +112,14 @@ describe("which surface a path is", () => {
     expect(surfaceForPath("/portfolio")).toBe("portfolio");
     // The check-in kiosk on a wall tablet: whoever opened it was signed out in the same step.
     expect(surfaceForPath("/kiosk")).toBe("kiosk");
+    // The brand guidelines and their downloads (FR-BRD-04); the editor under /admin stays the app.
+    expect(surfaceForPath("/brands")).toBe("brands");
+    expect(surfaceForPath("/brands/suzu-coffee/files/0a1b")).toBe("brands");
   });
 
   it("calls everything else the app, and nothing else public", () => {
     // The home page is public only as itself: `/` is not a prefix of every path.
-    for (const path of ["/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy", "/kiosks", "/attendance/kiosk", "/privacy-settings", "/termsheet", "//"]) {
+    for (const path of ["/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy", "/kiosks", "/attendance/kiosk", "/privacy-settings", "/termsheet", "//", "/brandsx", "/admin/brands"]) {
       expect(surfaceForPath(path), path).toBe("app");
     }
   });
@@ -109,7 +127,7 @@ describe("which surface a path is", () => {
   it("is looked for on every path a page can be served at", () => {
     // Next's matcher is a plain pattern over the pathname here, with no parameters in it.
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/api/cronies"]) {
+    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/preview/abc/file", "/preview/anything.png/file", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b", "/api/cronies"]) {
       expect(matcher.test(path), path).toBe(true);
     }
     // The installable app's files and the two routes that authenticate for themselves come through
@@ -121,6 +139,63 @@ describe("which surface a path is", () => {
     for (const path of ["/_next/static/chunk.js", "/_next/image", "/icons/icon-192.png", "/favicon.ico", "/robots.txt", "/next.svg"]) {
       expect(matcher.test(path), path).toBe(false);
     }
+  });
+});
+
+describe("a review link asked for by something that is not a person (R14)", () => {
+  afterEach(() => {
+    publicDomain.current = null;
+  });
+
+  const BROWSER = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  const ask = (url: string, init: { method?: string; headers?: Record<string, string> } = {}) => proxy(new NextRequest(url, { method: init.method ?? "GET", headers: { "user-agent": BROWSER, ...init.headers } }));
+  /** Whether the proxy handed the request on to a page or a route, rather than answering it. */
+  const passedOn = (response: Response) => response.headers.get("x-middleware-next") === "1";
+  const guarded = (response: Response) => ({ cache: response.headers.get("cache-control"), robots: response.headers.get("x-robots-tag"), referrer: response.headers.get("referrer-policy") });
+  const GUARDED = { cache: "private, no-store, max-age=0", robots: "noindex, nofollow, noarchive, nosnippet", referrer: "no-referrer" };
+
+  it("answers a HEAD itself: no page is rendered, so nothing is counted as a view", async () => {
+    for (const path of ["/preview/AbC-123_xyz", "/preview/AbC-123_xyz/file", "/preview/anything.png"]) {
+      const response = ask(`https://suzu.one${path}`, { method: "HEAD" });
+      expect([response.status, passedOn(response), response.headers.get("location")], path).toEqual([200, false, null]);
+      expect(guarded(response), path).toEqual(GUARDED);
+      expect(await response.text()).toBe("");
+    }
+  });
+
+  it("declines a browser fetching ahead of its person, so what it shows them later is the page and not a stale answer", async () => {
+    const aheadOfTheirPerson: Record<string, string>[] = [{ "sec-purpose": "prefetch" }, { "sec-purpose": "prefetch;prerender" }, { purpose: "prefetch" }, { "x-moz": "prefetch" }];
+    for (const headers of aheadOfTheirPerson) {
+      const response = ask("https://suzu.one/preview/AbC-123_xyz", { headers });
+      expect([response.status, passedOn(response)], JSON.stringify(headers)).toEqual([503, false]);
+      expect(guarded(response)).toEqual(GUARDED);
+      expect(await response.text()).toBe("");
+    }
+  });
+
+  it("hands everything else on: a person's GET, a chat app's (the page decides what it is shown), and the client's answer", () => {
+    for (const init of [{}, { headers: { "user-agent": "facebookexternalhit/1.1" } }, { method: "POST" }]) {
+      const response = ask("https://suzu.one/preview/AbC-123_xyz", init);
+      expect(passedOn(response), JSON.stringify(init)).toBe(true);
+      expect(response.headers.get("x-middleware-request-x-surface")).toBe("preview");
+    }
+  });
+
+  it("is the review link's rule and nobody else's", () => {
+    // The careers page is an advertisement: a crawler's HEAD and a prefetch are welcome to it.
+    expect(passedOn(ask("https://suzu.one/careers", { method: "HEAD" }))).toBe(true);
+    expect(passedOn(ask("https://suzu.one/careers", { headers: { "sec-purpose": "prefetch" } }))).toBe(true);
+    // Inside the app a HEAD without a session is sent to sign in, like anything else.
+    const inside = ask("https://suzu.one/today", { method: "HEAD" });
+    expect(inside.headers.get("location")).toBe("https://suzu.one/sign-in");
+  });
+
+  it("holds on the public domain, and the app's domain still sends the link over first", () => {
+    publicDomain.current = { origin: "https://suzu.vn", host: "suzu.vn" };
+    expect(ask("https://suzu.vn/preview/AbC-123_xyz", { method: "HEAD" }).status).toBe(200);
+    expect(ask("https://suzu.vn/preview/AbC-123_xyz", { headers: { "sec-purpose": "prefetch" } }).status).toBe(503);
+    const moved = ask("https://suzu.one/preview/AbC-123_xyz", { method: "HEAD" });
+    expect([moved.status, moved.headers.get("location")]).toEqual([308, "https://suzu.vn/preview/AbC-123_xyz"]);
   });
 });
 
@@ -139,6 +214,13 @@ describe("which words a request is handed", () => {
     const messages = await messagesFor("careers");
     expect(Object.keys(messages)).toEqual(["recruit", THEME, CONTROLS]);
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
+  });
+
+  it("gives a partner on the brand guidelines their words, without the editor's", async () => {
+    const messages = await messagesFor("brands", false);
+    expect(Object.keys(messages).sort()).toEqual(["brands", CONTROLS, THEME]);
+    expect(Object.keys(messages.brands as object)).toEqual(["public"]);
+    for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
   });
 
   it("gives a visitor to the public site its own words and the policies, nothing internal", async () => {
@@ -176,7 +258,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -187,7 +269,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 

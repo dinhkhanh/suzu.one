@@ -26,12 +26,15 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { listAnomalies } from "./anomalies";
 import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
+import { buildLockedMonthExport } from "./exports";
 import { eachDate, isoWeekday } from "./engine/calendar";
-import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, lockPeriod, markAdjustmentsTaken, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
+import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
+import { reviewPunch } from "./punches";
 import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
 import { saveSchedule } from "./schedules";
 import { getTimesheetDays, recomputeDays } from "./timesheets";
+import { tableToCsv } from "../platform/export/csv";
 
 const OFFICE_DAY = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
 const WEEK: SchedulePattern = { days: { 1: OFFICE_DAY, 2: OFFICE_DAY, 3: OFFICE_DAY, 4: OFFICE_DAY, 5: OFFICE_DAY, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } };
@@ -209,6 +212,20 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     expect(await isPeriodLocked(ids.media, MONTH)).toBe(false);
   });
 
+  it("a check-in still waiting for review blocks the lock, and its reviewer hears it from the reminder and from the refusal (ATT-01)", async () => {
+    const [waiting] = await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-18", "12:10"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" }).returning();
+    const blockLock = async () => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lead), eq(schema.notification.kind, "attendance.punches_block_lock")))).map((row) => row.params);
+    // HR's reminder: Long (still open) is asked to confirm, and as Huy's manager to review the check-in.
+    expect(await remindToConfirm(ids.media, MONTH)).toEqual({ told: 1, reviewers: 1 });
+    expect(await blockLock()).toEqual([{ count: 1, month: MONTH }]);
+    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toMatchObject({ message: "timesheet_lock_blocked", details: { issues: [{ personId: ids.lead, code: "not_approved" }, { personId: ids.huy, code: "punch_to_review" }] } });
+    expect(await blockLock()).toEqual([{ count: 1, month: MONTH }, { count: 1, month: MONTH }]);
+    // A refusal for other reasons alone tells no reviewer.
+    await reviewPunch(waiting.id, ids.lead, { decision: "accept", note: null });
+    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_lock_blocked");
+    expect(await blockLock()).toHaveLength(2);
+  });
+
   it("locks with an override that is written down; days freeze, totals are snapshotted, time off in lieu reaches the leave ledger", async () => {
     const result = await lockPeriod(ids.media, MONTH, ids.hr, { overrideReason: "Trưởng nhóm đi công tác, đã xác nhận qua điện thoại" });
     expect(result).toMatchObject({ people: 3, toilPosted: [{ personId: ids.huy, minutes: 120, amountCenti: 25 }], exceptions: [{ personId: ids.lead, code: "not_approved" }] });
@@ -218,7 +235,17 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_period_locked");
     const grants = await db().select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, ids.huy), eq(schema.leaveLedgerEntry.leaveTypeId, ids.comp)));
     expect(grants.map((row) => [row.kind, row.amountCenti, row.effectiveDate])).toEqual([["grant", 25, "2026-08-31"]]);
+    expect(await db().select({ personId: schema.attendanceToilPosting.personId, minutes: schema.attendanceToilPosting.minutes, amountCenti: schema.attendanceToilPosting.amountCenti }).from(schema.attendanceToilPosting).where(eq(schema.attendanceToilPosting.month, MONTH))).toEqual([{ personId: ids.huy, minutes: 120, amountCenti: 25 }]);
+    // All three months frozen in one statement, each with its own person's totals.
+    const months = await db().select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.entityId, ids.media), eq(schema.timesheetMonth.month, MONTH)));
+    expect(months.map((row) => [row.personId, row.status, row.lockedByPersonId]).sort()).toEqual([ids.lead, ids.huy, ids.nhu].sort().map((personId) => [personId, "locked", ids.hr]));
+    expect(months.find((row) => row.personId === ids.huy)?.summary).toMatchObject({ otTimeOffMinutes: 120 });
+    expect(months.find((row) => row.personId === ids.nhu)?.summary).toMatchObject({ otTimeOffMinutes: 0 });
     expect((await getTimesheetDays([ids.huy, ids.nhu, ids.lead], "2026-08-01", "2026-08-31")).every((day) => day.lockedAt !== null)).toBe(true);
+    // Everyone whose month it was is told it is final; Creative's people are not (ATT-01).
+    const locked = await db().select().from(schema.notification).where(eq(schema.notification.kind, "attendance.month_locked"));
+    expect(locked.map((row) => row.recipientPersonId).sort()).toEqual([ids.lead, ids.huy, ids.nhu].sort());
+    expect(locked[0]).toMatchObject({ params: { month: MONTH }, link: "/attendance?month=2026-08" });
   });
 
   it("a locked month stays exactly as it was, whatever arrives afterwards", async () => {
@@ -261,6 +288,19 @@ describe("what payroll reads", () => {
     expect(await getLeaveUsage({ entityId: ids.media }, "2026-08-01", "2026-08-31")).toEqual([]);
   });
 
+  it("exports the locked month as a file in the lock's own figures, and nothing before the lock (ATT-02)", async () => {
+    const file = await buildLockedMonthExport(ids.media, MONTH, "en");
+    expect(file).toMatchObject({ fileName: "timesheet-SZM-2026-08", rowCount: 3, truncated: false });
+    const [header, ...lines] = tableToCsv(file.table).replace(/^﻿/, "").trim().split("\r\n");
+    expect(header.split(",").slice(0, 6)).toEqual(["Employee code", "Full name", "Standard days", "Paid days", "Unpaid days", "Hours worked"]);
+    const huy = lines.find((line) => line.startsWith("SZM-0003,Huy,"))!.split(",");
+    // Huy's August, as payroll reads it: 26 days asked and paid, 160 h in the office, 48 h credited;
+    // 2 h weekday overtime taken as time off, 4 h on a Sunday to be paid.
+    expect(huy.slice(2, 7)).toEqual(["26", "26", "0", "160", "48"]);
+    expect(huy.slice(-8)).toEqual(["2", "0", "4", "0", "0", "0", "2", "4"]);
+    await expect(buildLockedMonthExport(ids.media, "2026-07", "vi")).rejects.toThrow("timesheet_not_locked");
+  });
+
   it("an adjustment to a locked month never edits it and reaches the next payroll as a retro item — once", async () => {
     await expect(createAdjustment({ personId: ids.lan, month: MONTH, date: null, deltas: { workedMinutes: 60 }, reason: "Chưa khoá" }, ids.hr)).rejects.toThrow("adjustment_month_not_locked");
     await expect(createAdjustment({ personId: ids.huy, month: MONTH, date: "2026-09-01", deltas: { workedMinutes: 60 }, reason: "Sai ngày" }, ids.hr)).rejects.toThrow("adjustment_date_outside_month");
@@ -281,6 +321,16 @@ describe("what payroll reads", () => {
     await expect(voidAdjustment(row.id, ids.hr, "Muộn rồi")).rejects.toThrow("adjustment_in_payroll");
     // September's payroll still sees what it took; October's does not see it again.
     expect((await listAdjustmentsForPayroll(ids.media, "2026-09")).map((item) => item.id)).toEqual([row.id]);
+    expect(await listAdjustmentsForPayroll(ids.media, "2026-10")).toEqual([]);
+
+    // Payroll tells which of the corrections it priced were voided since, so their items go too.
+    expect(await listVoidedAdjustmentIds([row.id, voided.id])).toEqual([voided.id]);
+    // A cancelled run hands its receipt back — only its own: another month's release changes nothing.
+    expect(await db().transaction((tx) => releaseAdjustments(tx, [row.id], "2026-10"))).toBe(0);
+    expect(await db().transaction((tx) => releaseAdjustments(tx, [row.id], "2026-09"))).toBe(1);
+    // …and the correction waits for the next payroll again, and may be voided again until then.
+    expect((await listAdjustmentsForPayroll(ids.media, "2026-10")).map((item) => item.id)).toEqual([row.id]);
+    await voidAdjustment(row.id, ids.hr, "Hoá ra không làm thêm");
     expect(await listAdjustmentsForPayroll(ids.media, "2026-10")).toEqual([]);
   });
 });

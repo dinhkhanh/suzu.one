@@ -1,21 +1,23 @@
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { listEntityOptions } from "@/modules/payroll/options";
-import { listParallelMonths, reconcile } from "@/modules/payroll/parallel";
+import { listParallelMonths, listParallelSignoffs, reconcile } from "@/modules/payroll/parallel";
 import { commitParallelImportAction, stageParallelImportAction } from "@/modules/payroll/parallel-actions";
 import { parallelTemplate } from "@/modules/payroll/parallel-import";
 import { canManageCompensation, compensationReach } from "@/modules/payroll/policy";
-import { ClassifyForm, DifferenceCell, ParallelFilters, ReferenceForm } from "@/modules/payroll/ui/parallel-forms";
+import { formatVnd } from "@/modules/payroll/ui/money";
+import { ClassifyForm, DifferenceCell, ExportParallelButton, ParallelFilters, ReferenceForm, SignOffForm } from "@/modules/payroll/ui/parallel-forms";
 import { pageTitle } from "@/i18n/page-title";
-import { Page, PageHeader } from "@/components/ui/page";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("parallelRun");
@@ -43,8 +45,12 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
   const wanted = asString(params.month);
   const month = wanted && /^\d{4}-(0[1-9]|1[0-2])$/.test(wanted) ? wanted : (known[0] ?? `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`);
 
-  const report = await reconcile(entityId, month);
+  const [report, format] = await Promise.all([reconcile(entityId, month), getFormatter()]);
   const summary = report.summary;
+  const signoffs = report.hasReference ? await listParallelSignoffs(entityId, month, summary) : [];
+  const signedOff = signoffs.some((signoff) => signoff.current);
+  const money = (value: number | null | undefined) => (value === null || value === undefined ? "—" : formatVnd(value));
+  const gap = (left: number | null | undefined, right: number | null | undefined) => (typeof left === "number" && typeof right === "number" ? left - right : null);
 
   return (
     <Page width="wide">
@@ -56,6 +62,7 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
         }
         title={t("title")}
         description={t("description")}
+        actions={report.rows.length > 0 ? <ExportParallelButton entityId={entityId} month={month} /> : undefined}
       />
 
       <ParallelFilters entities={entities} entityId={entityId} month={month} months={known} />
@@ -69,6 +76,16 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
         <Alert variant="neutral">{t("verdict.noReference")}</Alert>
       )}
 
+      {/* ── The month on each side: paid in hand, and what it cost the company ── */}
+      {report.hasReference ? (
+        <TileGrid>
+          <Tile label={t("totals.netSystem")} value={<>{formatVnd(report.totals.system.net)}</>} />
+          <Tile label={t("totals.netReference")} value={<>{formatVnd(report.totals.reference.net)}</>} hint={`${t("totals.difference")} ${formatVnd(report.totals.system.net - report.totals.reference.net)}`} tone={report.totals.system.net === report.totals.reference.net ? "success" : "warning"} />
+          <Tile label={t("totals.costSystem")} value={<>{formatVnd(report.totals.system.employerCost)}</>} />
+          <Tile label={t("totals.costReference")} value={<>{report.totals.reference.withEmployerCost > 0 ? formatVnd(report.totals.reference.employerCost) : "—"}</>} hint={t("totals.costCoverage", { count: report.totals.reference.withEmployerCost, people: summary.people })} />
+        </TileGrid>
+      ) : null}
+
       {report.rows.length > 0 ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
@@ -78,10 +95,16 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
             {summary.missingFromSystem > 0 ? <Badge variant="outline">{t("summary.missingFromSystem", { count: summary.missingFromSystem })}</Badge> : null}
             {summary.missingFromReference > 0 ? <Badge variant="outline">{t("summary.missingFromReference", { count: summary.missingFromReference })}</Badge> : null}
           </div>
+          <TableCard>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead kind="person">{t("person")}</TableHead>
+                <TableHead kind="money">{t("columns.netSystem")}</TableHead>
+                <TableHead kind="money">{t("columns.netReference")}</TableHead>
+                <TableHead kind="money">{t("columns.netDifference")}</TableHead>
+                <TableHead kind="money">{t("columns.costSystem")}</TableHead>
+                <TableHead kind="money">{t("columns.costReference")}</TableHead>
                 <TableHead kind="text">{t("differences")}</TableHead>
                 <TableHead kind="actions" className="w-40 text-left">{t("action")}</TableHead>
               </TableRow>
@@ -94,6 +117,11 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                     {row.presence !== "both" ? <p className="text-xs text-warning">{t(`presence.${row.presence}`)}</p> : null}
                   </TableCell>
+                  <TableCell kind="money" className="align-top">{money(row.system?.net)}</TableCell>
+                  <TableCell kind="money" className="align-top text-muted-foreground">{money(row.reference?.net)}</TableCell>
+                  <TableCell kind="money" className={`align-top ${gap(row.system?.net, row.reference?.net) ? "text-warning" : "text-muted-foreground"}`}>{money(gap(row.system?.net, row.reference?.net))}</TableCell>
+                  <TableCell kind="money" className="align-top">{money(row.system?.employerCost)}</TableCell>
+                  <TableCell kind="money" className="align-top text-muted-foreground">{money(row.reference?.employerCost)}</TableCell>
                   <TableCell className="align-top">
                     {row.matches ? (
                       <span className="text-sm text-muted-foreground">{t("identical")}</span>
@@ -116,7 +144,34 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
               ))}
             </TableBody>
           </Table>
+          </TableCard>
         </section>
+      ) : null}
+
+      {/* ── The sign-off record: who accepted the month, on what counts, and whether it still holds ── */}
+      {report.hasReference ? (
+        <Section title={t("signoff.title")} count={signoffs.length || undefined} description={summary.zeroUnexplained ? (signedOff ? t("signoff.current") : t("signoff.ready")) : t("signoff.notReady")}>
+          <List>
+            {signoffs.length === 0 ? <ListEmpty>{t("signoff.none")}</ListEmpty> : null}
+            {signoffs.map((signoff) => (
+              <ListItem key={signoff.id} className="flex-col items-stretch gap-1 py-3">
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge dot variant={signoff.current ? "success" : "outline"}>{t(signoff.current ? "signoff.holds" : "signoff.outdated")}</Badge>
+                  <RecordLink kind="person" id={signoff.signedByPersonId} className="font-medium">
+                    {signoff.signedByName ?? "—"}
+                  </RecordLink>
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">{format.dateTime(signoff.signedAt, { dateStyle: "medium", timeStyle: "short" })}</span>
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {t("signoff.counts", { people: signoff.people, matching: signoff.matching, explained: signoff.explainedLines })}
+                  {signoff.checkedWith ? ` · ${t("signoff.with", { name: signoff.checkedWith })}` : ""}
+                </span>
+                {signoff.note ? <span className="text-sm text-muted-foreground">“{signoff.note}”</span> : null}
+              </ListItem>
+            ))}
+          </List>
+          {summary.zeroUnexplained && !signedOff ? <SignOffForm entityId={entityId} month={month} /> : null}
+        </Section>
       ) : null}
 
       {/* ── Getting the other method's figures in: a file, or one person at a time ── */}

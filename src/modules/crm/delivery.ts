@@ -4,15 +4,14 @@
 //
 // The CRM decides what was sold (engine/delivery.ts); it never writes a project table itself.
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { applySalePlanIn, applyTemplatePlanIn, markPitchIn } from "@/modules/projects/service";
-import { createProjectFromTemplate, createProjectIn, invalidateMemberships, invalidateWorkDirectory, type ProjectInput, type ProjectRow, type Visibility } from "@/modules/work/service";
-import type { HandoffNote } from "../work/schema";
+import { createProjectFromTemplate, createProjectIn, type HandoffNote, invalidateMemberships, invalidateWorkDirectory, type ProjectInput, type ProjectRow, type Visibility } from "@/modules/work/service";
 import { findAccount } from "./accounts";
 import { salePlanFrom, type SaleContact, type SaleLine } from "./engine/delivery";
 import { type DealRow, findDeal } from "./deals";
@@ -75,20 +74,28 @@ async function soldLines(executor: Tx, dealId: string): Promise<SaleLine[]> {
   return lines.map((line) => ({ title: line.title, quantity: line.quantity, unitPriceVnd: line.unitPriceVnd, discountBp: line.discountBp, months: line.months, format: line.format, channel: line.channel, roleMinutes: line.roleMinutes }));
 }
 
+/**
+ * The deal's contacts as a project may know them: a name and a role (their part in the deal, else
+ * their title). Email, phone and Zalo are never selected here — a brief and a hand-off note are read
+ * by everyone on the project, and a contact's details only by the people who work with the account
+ * (SRS §4.15, design rule 4), who find them on the account's contact list.
+ */
 async function soldContacts(executor: Tx, dealId: string): Promise<SaleContact[]> {
   const rows = await executor
-    .select({ name: schema.crmContact.fullName, title: schema.crmContact.title, role: schema.crmDealContact.role, email: schema.crmContact.email, phone: schema.crmContact.phone })
+    .select({ name: schema.crmContact.fullName, title: schema.crmContact.title, role: schema.crmDealContact.role })
     .from(schema.crmDealContact)
     .innerJoin(schema.crmContact, eq(schema.crmContact.id, schema.crmDealContact.contactId))
     .where(eq(schema.crmDealContact.dealId, dealId))
     .orderBy(asc(schema.crmContact.searchName));
-  return rows.map((row) => ({ name: row.name, role: row.role ?? row.title, contact: [row.email, row.phone].filter(Boolean).join(" · ") || null }));
+  return rows.map((row) => ({ name: row.name, role: row.role ?? row.title }));
 }
 
 /**
  * Makes one delivery project of a won deal, prefilled from what was sold, and hands it to its lead.
- * A deal may become several projects (a campaign and its retainer); running the set-up again for
- * the same project name after a failure makes nothing twice, because everything is one transaction.
+ * A deal may become several projects (a campaign and its retainer) — but not the same one twice
+ * (CRM-04): a set-up naming a project the deal already has, archived ones aside, is refused, under
+ * the deal's lock, so a double submit or two people at once make one project. A set-up that failed
+ * made nothing, because everything is one transaction, and can simply be run again.
  */
 export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorPersonId: string): Promise<{ project: ProjectRow; link: DealProjectRow }> {
   const deal = await findDeal(dealId);
@@ -105,6 +112,14 @@ export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorP
 
   const fill = async (tx: Tx, project: ProjectRow) => {
     await lockDeal(tx, dealId);
+    // Read after the lock: a set-up that held it first has committed its project by now.
+    const [twin] = await tx
+      .select({ projectId: schema.crmDealProject.projectId })
+      .from(schema.crmDealProject)
+      .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
+      .where(and(eq(schema.crmDealProject.dealId, dealId), ne(schema.workProject.id, project.id), ne(schema.workProject.status, "archived"), sql`lower(btrim(${schema.workProject.name})) = lower(btrim(${setup.name}))`))
+      .limit(1);
+    if (twin) throw new ActionError("delivery_exists", { projectId: twin.projectId });
     const plan = salePlanFrom(deal, await soldLines(tx, dealId), await soldContacts(tx, dealId), setup.startDate.slice(0, 7));
     await applySalePlanIn(tx, project.id, {
       ...plan,
@@ -113,7 +128,7 @@ export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorP
       viewerPersonIds: [deal.ownerPersonId],
     });
     if (setup.contractId) await tx.insert(schema.crmContractProject).values({ projectId: project.id, contractId: setup.contractId }).onConflictDoNothing();
-    const note: HandoffNote = { ...setup.note, done: setup.note.done || plan.brief.scopeIn, contacts: setup.note.contacts || plan.brief.clientContacts.map((contact) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n") };
+    const note: HandoffNote = { ...setup.note, done: setup.note.done || plan.brief.scopeIn, contacts: setup.note.contacts || plan.brief.clientContacts.map((contact) => [contact.name, contact.role].filter(Boolean).join(" — ")).join("\n") };
     const accepted = setup.leadPersonId === actorPersonId;
     [link] = await tx
       .insert(schema.crmDealProject)

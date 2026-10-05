@@ -4,6 +4,7 @@ import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "../enums";
 
 export type PlacementOptions = {
@@ -88,7 +89,8 @@ type PlacementDefaults = {
   branchId?: string | null;
   orgUnitId?: string | null;
   positionName?: string | null;
-  jobLevel?: string | null;
+  seniorityLevel?: string | null;
+  positionLevel?: string | null;
   managerId?: string | null;
   dottedManagerId?: string | null;
   workLocation?: string | null;
@@ -139,8 +141,25 @@ export function PlacementFields({ options, defaults = {}, exceptPersonId }: { op
           ))}
         </datalist>
       </Field>
-      <Field name="placement.jobLevel" label={t("fields.jobLevel")}>
-        <Input id="placement.jobLevel" name="placement.jobLevel" maxLength={60} defaultValue={defaults.jobLevel ?? ""} />
+      <Field name="placement.seniorityLevel" label={t("fields.seniorityLevel")}>
+        <Select id="placement.seniorityLevel" name="placement.seniorityLevel" defaultValue={defaults.seniorityLevel ?? ""}>
+          <option value="">—</option>
+          {SENIORITY_LEVELS.map((value) => (
+            <option key={value} value={value}>
+              {t(`seniorityLevel.${value}`)}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field name="placement.positionLevel" label={t("fields.positionLevel")}>
+        <Select id="placement.positionLevel" name="placement.positionLevel" defaultValue={defaults.positionLevel ?? ""}>
+          <option value="">—</option>
+          {POSITION_LEVELS.map((value) => (
+            <option key={value} value={value}>
+              {t(`positionLevel.${value}`)}
+            </option>
+          ))}
+        </Select>
       </Field>
       {personPicker("managerId")}
       {personPicker("dottedManagerId")}

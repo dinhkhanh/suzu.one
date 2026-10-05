@@ -7,18 +7,26 @@
 //     caller may not read it — so a recruiter posting the edit form by hand cannot set a band, and
 //     an existing band is left exactly as it was rather than being wiped by a form that never
 //     showed it.
-//   · **Audit entries name the opening and the candidate, never a figure.** The audit log is read
-//     far more widely than a salary band.
+//   · **Audit entries name the opening, never a figure and never a candidate.** The audit log is
+//     read far more widely than a salary band, and it is append-only: a candidate's name written
+//     there would still be there after the retention job, or an erasure request, had removed it
+//     everywhere else. A candidate is the resource's id, an application is its id.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { createAction } from "@/lib/action";
 import { STAGE_CATEGORIES } from "./enums";
-import { CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, RECRUIT_EMAIL_KINDS, REJECTION_REASONS, WORK_MODES } from "./enums";
+import { CANDIDATE_LOCALES, CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, RECRUIT_EMAIL_KINDS, REJECTION_REASONS, WORK_MODES } from "./enums";
 import { saveEmailTemplate, sendCandidateEmail } from "./emails";
+import { OPENING_CONFIG_LIMITS, QUESTION_KINDS } from "./engine/opening-config";
 import { decideHiringRequest, submitHiringRequest } from "./hiring";
+import { eraseCandidate } from "./jobs";
+import { rejectApplicationAndTell } from "./letters";
+import { setTalentPool } from "./privacy";
 import {
   canActOnApplication,
   canEditOpening,
+  canEraseCandidate,
   canFileHiringRequest,
   canManageCandidates,
   canManagePipelines,
@@ -27,6 +35,7 @@ import {
   canSetRecruitMoney,
 } from "./policy";
 import {
+  candidateOpeningTargets,
   canReachCandidate,
   createApplication,
   createCandidate,
@@ -36,7 +45,8 @@ import {
   findOpening,
   isOpeningMember,
   moveApplicationStage,
-  rejectApplication,
+  saveOpeningKit,
+  saveOpeningQuestions,
   savePipeline,
   setOpeningStatus,
   setOpeningTeam,
@@ -65,7 +75,8 @@ const hiringRequestFields = {
   departmentId: optional(z.uuid()),
   teamId: optional(z.uuid()),
   positionTitle: z.string().trim().min(2).max(200),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   headcount: integer.min(1).max(100),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workLocation: optional(z.string().trim().max(200)),
@@ -124,7 +135,8 @@ const openingFields = {
   departmentId: optional(z.uuid()),
   teamId: optional(z.uuid()),
   positionName: optional(z.string().trim().max(200)),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workMode: z.enum(WORK_MODES),
   workLocation: optional(z.string().trim().max(200)),
@@ -225,6 +237,80 @@ const setOpeningTeamPipeline = createAction({
   },
 });
 
+// The editors post their rows as JSON in one field: a list of rows with nested lists (a choice
+// question's options) is not something a flat form encodes without inventing a format for it.
+const jsonRows = <Schema extends z.ZodType>(row: Schema, max: number) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }, z.array(row).max(max));
+
+const saveOpeningQuestionsPipeline = createAction({
+  name: "recruit.opening.questions",
+  input: z.object({
+    openingId: z.uuid(),
+    questions: jsonRows(
+      z.object({
+        key: z.string().max(40).nullable().default(null),
+        label: z.string().max(OPENING_CONFIG_LIMITS.label),
+        labelEn: z.string().max(OPENING_CONFIG_LIMITS.label).nullable().default(null),
+        kind: z.enum(QUESTION_KINDS),
+        required: z.boolean().default(false),
+        choices: z.array(z.string().max(OPENING_CONFIG_LIMITS.choice)).max(OPENING_CONFIG_LIMITS.choices).default([]),
+      }),
+      OPENING_CONFIG_LIMITS.questions,
+    ),
+  }),
+  authorize: async (user, input) => {
+    const opening = await findOpening(input.openingId);
+    return !!opening && canEditOpening(user.principal, openingTargetOf(opening));
+  },
+  run: async ({ input }) => {
+    const opening = await findOpening(input.openingId);
+    const { before, after } = await saveOpeningQuestions(input.openingId, input.questions);
+    revalidatePath(`/recruit/${input.openingId}`);
+    revalidatePath(`/recruit/${input.openingId}/edit`);
+    return {
+      data: { count: after.length },
+      audit: { resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null }, summary: `${opening?.code ?? ""} — application questions`, before: { questions: before.length }, after: { questions: after.length, keys: after.map((row) => row.key) } },
+    };
+  },
+});
+
+const saveOpeningKitPipeline = createAction({
+  name: "recruit.opening.kit",
+  input: z.object({
+    openingId: z.uuid(),
+    kit: jsonRows(
+      z.object({
+        key: z.string().max(40).nullable().default(null),
+        label: z.string().max(OPENING_CONFIG_LIMITS.label),
+        labelEn: z.string().max(OPENING_CONFIG_LIMITS.label).nullable().default(null),
+        hint: z.string().max(OPENING_CONFIG_LIMITS.hint).nullable().default(null),
+      }),
+      OPENING_CONFIG_LIMITS.criteria,
+    ),
+  }),
+  authorize: async (user, input) => {
+    const opening = await findOpening(input.openingId);
+    return !!opening && canEditOpening(user.principal, openingTargetOf(opening));
+  },
+  run: async ({ input }) => {
+    const opening = await findOpening(input.openingId);
+    const { before, after } = await saveOpeningKit(input.openingId, input.kit);
+    revalidatePath(`/recruit/${input.openingId}`);
+    revalidatePath(`/recruit/${input.openingId}/edit`);
+    return {
+      data: { count: after.length },
+      audit: { resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null }, summary: `${opening?.code ?? ""} — interview kit`, before: { criteria: before.length }, after: { criteria: after.length, keys: after.map((row) => row.key) } },
+    };
+  },
+});
+
 // ── Pipelines ───────────────────────────────────────────────────────────────────────────────
 
 const savePipelinePipeline = createAction({
@@ -276,6 +362,8 @@ const candidateFields = {
   referredByPersonId: optional(z.uuid()),
   tags: lines.default([]),
   notes: optional(z.string().trim().max(5000)),
+  // The language their letters are written in.
+  locale: z.enum(CANDIDATE_LOCALES).default("vi"),
 };
 
 const createCandidatePipeline = createAction({
@@ -288,7 +376,9 @@ const createCandidatePipeline = createAction({
     revalidatePath("/recruit/candidates");
     return {
       data: { id: candidate.id },
-      audit: { resource: { type: "candidate", id: candidate.id, entityId: null }, summary: candidate.fullName, after: { source: candidate.source, confirmedNotDuplicate } },
+      // The record's id (the resource), never its name: the audit log cannot be edited, so a name
+      // written here would outlive the candidate's anonymisation.
+      audit: { resource: { type: "candidate", id: candidate.id, entityId: null }, summary: "candidate added", after: { source: candidate.source, confirmedNotDuplicate } },
     };
   },
 });
@@ -303,9 +393,46 @@ const updateCandidatePipeline = createAction({
     const { candidateId, ...rest } = input;
     const { before, after } = await updateCandidate(candidateId, rest);
     revalidatePath(`/recruit/candidates/${candidateId}`);
+    // Which fields changed, not what they said: neither the old name nor the new one is written.
+    const changed = (Object.keys(rest) as (keyof typeof rest)[]).filter((field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]));
     return {
       data: { id: after.id },
-      audit: { resource: { type: "candidate", id: after.id, entityId: null }, summary: after.fullName, before: { fullName: before.fullName }, after: { fullName: after.fullName } },
+      audit: { resource: { type: "candidate", id: after.id, entityId: null }, summary: "candidate updated", after: { changed } },
+    };
+  },
+});
+
+const setTalentPoolPipeline = createAction({
+  name: "recruit.candidate.talent_pool",
+  input: z.object({ candidateId: z.uuid(), inPool: z.preprocess((value) => value === true || value === "true", z.boolean()) }),
+  // Whoever may edit the record records the candidate's answer — the same reach as editing it.
+  authorize: async (user, input) => canManageCandidates(user.principal) && (await canReachCandidate(user.principal, input.candidateId)),
+  run: async ({ input }) => {
+    const { before, after } = await setTalentPool(input.candidateId, input.inPool);
+    revalidatePath(`/recruit/candidates/${input.candidateId}`);
+    revalidatePath("/recruit/candidates");
+    return {
+      data: { inPool: after },
+      // Who recorded it and when is this row; what the candidate said is the before and after.
+      audit: { resource: { type: "candidate", id: input.candidateId, entityId: null }, summary: after ? "talent pool: joined" : "talent pool: left", before: { talentPool: before }, after: { talentPool: after } },
+    };
+  },
+});
+
+const eraseCandidatePipeline = createAction({
+  name: "recruit.candidate.erase",
+  input: z.object({ candidateId: z.uuid() }),
+  // `recruit:manage` over every opening the candidate applied to (`canEraseCandidate`): erasing
+  // empties the record everywhere, so authority over one of its openings is not authority over it.
+  authorize: async (user, input) => canEraseCandidate(user.principal, await candidateOpeningTargets(input.candidateId)),
+  run: async ({ user, input }) => {
+    const erased = await eraseCandidate(input.candidateId, user.person.id);
+    revalidatePath(`/recruit/candidates/${input.candidateId}`);
+    revalidatePath("/recruit/candidates");
+    return {
+      data: erased,
+      // What was done and to how much — and nothing that says to whom.
+      audit: { resource: { type: "candidate", id: input.candidateId, entityId: null }, summary: "candidate erased on request", after: erased },
     };
   },
 });
@@ -365,7 +492,14 @@ const moveApplicationPipeline = createAction({
 
 const rejectApplicationPipeline = createAction({
   name: "recruit.application.reject",
-  input: z.object({ applicationId: z.uuid(), reason: z.enum(REJECTION_REASONS), note: optional(z.string().trim().max(2000)) }),
+  input: z.object({
+    applicationId: z.uuid(),
+    reason: z.enum(REJECTION_REASONS),
+    note: optional(z.string().trim().max(2000)),
+    // "Tell the candidate": the rejection letter (REJECT_AFTER_REVIEW). A ticked box posts "on";
+    // the board posts true or false; nothing at all is no — a letter is never sent by omission.
+    tellCandidate: checkbox.default(false),
+  }),
   authorize: async (user, input) => {
     const application = await findApplication(input.applicationId);
     if (!application) return false;
@@ -373,12 +507,17 @@ const rejectApplicationPipeline = createAction({
     return !!opening && canActOnApplication(user.principal, openingTargetOf(opening), await isOpeningMember(opening.id, user.person.id));
   },
   run: async ({ user, input }) => {
-    const { before, after } = await rejectApplication(input.applicationId, { reason: input.reason, note: input.note }, user.person.id);
+    const { before, after, letter } = await rejectApplicationAndTell(input.applicationId, { reason: input.reason, note: input.note }, { personId: user.person.id, fullName: user.person.fullName }, input.tellCandidate);
     revalidatePath(`/recruit/applications/${input.applicationId}`);
     revalidatePath(`/recruit/${after.openingId}`);
     return {
-      data: { status: after.status },
-      audit: { resource: { type: "job_application", id: after.id, entityId: null }, summary: `rejected: ${input.reason}`, before: { status: before.status }, after: { status: after.status, reason: input.reason } },
+      data: { status: after.status, letter: letter ? (letter.queued ? "queued" : letter.reason) : null },
+      audit: {
+        resource: { type: "job_application", id: after.id, entityId: null },
+        summary: `rejected: ${input.reason}`,
+        before: { status: before.status },
+        after: { status: after.status, reason: input.reason, candidateTold: letter?.queued ?? false },
+      },
     };
   },
 });
@@ -421,8 +560,9 @@ const sendCandidateEmailPipeline = createAction({
     revalidatePath(`/recruit/applications/${input.applicationId}`);
     return {
       data: { to: sent.to },
-      // The subject, not the letter, and never the address: the audit log is read across the company.
-      audit: { resource: { type: "job_application", id: input.applicationId, entityId: sent.entityId }, summary: sent.templateCode, after: { subject: sent.subject } },
+      // Which wording, not the letter, its subject or the address: the audit log is read across the
+      // company, and a subject may greet the candidate by name.
+      audit: { resource: { type: "job_application", id: input.applicationId, entityId: sent.entityId }, summary: sent.templateCode },
     };
   },
 });
@@ -484,12 +624,28 @@ export async function saveRecruitPipelineAction(input: unknown) {
   return savePipelinePipeline(input);
 }
 
+export async function saveOpeningQuestionsAction(input: unknown) {
+  return saveOpeningQuestionsPipeline(input);
+}
+
+export async function saveOpeningKitAction(input: unknown) {
+  return saveOpeningKitPipeline(input);
+}
+
+export async function setTalentPoolAction(input: unknown) {
+  return setTalentPoolPipeline(input);
+}
+
 export async function createCandidateAction(input: unknown) {
   return createCandidatePipeline(input);
 }
 
 export async function updateCandidateAction(input: unknown) {
   return updateCandidatePipeline(input);
+}
+
+export async function eraseCandidateAction(input: unknown) {
+  return eraseCandidatePipeline(input);
 }
 
 export async function createApplicationAction(input: unknown) {

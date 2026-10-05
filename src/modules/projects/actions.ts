@@ -8,15 +8,13 @@ import { ActionError, createAction } from "@/lib/action";
 import type { CurrentUser } from "../platform/auth/session";
 import { getRequest } from "../platform/approvals/service";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
-import { updateTaskAction } from "../work/actions";
-import { CHANNELS, CONTENT_FORMATS, VISIBILITIES } from "../work/enums";
-import type { WorkViewer } from "../work/policy";
-import { canCreateProject, canEditTask, canGiveProjectRole, canManageTemplate, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, projectRoleOf, teamFacts } from "../work/service";
+import { canCreateProject, canEditTask, canGiveProjectRole, canManageTemplate, CHANNELS, CONTENT_FORMATS, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, projectRoleOf, teamFacts, updateTaskAction, VISIBILITIES, type WorkViewer } from "../work/service";
 import { PROJECT_KINDS } from "./engine/brief";
 import { HEALTHS } from "./engine/status";
 import { decideBrief, projectBriefRequest, submitBrief } from "./kickoff";
-import { isProjectClosed, setAccountManager, setFee, updateBrief, updatePlanSettings } from "./plans";
-import { canEditClientSide, canEditFees, canEditPlan, canManageBookings, canPostStatus, canRebaseline, type PlanFacts } from "./policy";
+import { reopenProject } from "./close";
+import { isProjectClosed, setAccountManager, setFee, updateBrief, updateBriefContacts, updatePlanSettings } from "./plans";
+import { canEditBriefContacts, canEditClientSide, canEditFees, canEditPlan, canManageBookings, canPostStatus, canRebaseline, canReopenProject, type PlanFacts } from "./policy";
 import { buildPortfolioExport } from "./portfolio";
 import { postStatusUpdate } from "./status-updates";
 import { cancelDeliverable, createTasksForLine, deleteMilestone, deletePhase, findDeliverable, findMilestone, findPhase, linkTask, projectOfTask, saveDeliverable, saveMilestone, savePhase, setMilestoneDone, unlinkTask } from "./structure";
@@ -133,6 +131,15 @@ export async function setAccountManagerAction(input: unknown) {
 
 const lines = (max: number) => z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.string().max(max)).max(30));
 
+/** One contact per line: "Name — role — phone or email". */
+const contactLines = lines(300);
+const linkLines = z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.url().max(500)).max(20));
+const contactsOf = (clientContacts: readonly string[]) =>
+  clientContacts.map((line) => {
+    const [name, role, contact] = line.split(/\s+[—–-]\s+/).map((part) => part.trim());
+    return { name, ...(role ? { role } : {}), ...(contact ? { contact } : {}) };
+  });
+
 const briefPipeline = createAction({
   name: "projects.brief.update",
   input: z.object({
@@ -144,17 +151,13 @@ const briefPipeline = createAction({
     assumptions: text(4000),
     audience: text(2000),
     keyMessages: text(2000),
-    /** One contact per line: "Name — role — phone or email". */
-    clientContacts: lines(300),
-    links: z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.url().max(500)).max(20)),
+    clientContacts: contactLines,
+    links: linkLines,
   }),
   authorize: (user, input) => may(user, input.projectId, canEditClientSide),
   run: async ({ input }) => {
     const { projectId, clientContacts, links, ...fields } = input;
-    const contacts = clientContacts.map((line) => {
-      const [name, role, contact] = line.split(/\s+[—–-]\s+/).map((part) => part.trim());
-      return { name, ...(role ? { role } : {}), ...(contact ? { contact } : {}) };
-    });
+    const contacts = contactsOf(clientContacts);
     const brief = Object.fromEntries(Object.entries({ ...fields, clientContacts: contacts.length ? contacts : undefined, links: links.length ? links : undefined }).filter(([, value]) => value !== null && value !== undefined));
     await updateBrief(projectId, brief);
     refresh(projectId);
@@ -164,6 +167,26 @@ const briefPipeline = createAction({
 });
 export async function updateBriefAction(input: unknown) {
   return briefPipeline(input);
+}
+
+/**
+ * An approved brief is locked — what was agreed changes through a change request or a new approval
+ * — except for who to call and where the files are, which change while the work runs.
+ */
+const briefContactsPipeline = createAction({
+  name: "projects.brief.contacts",
+  input: z.object({ projectId: z.uuid(), clientContacts: contactLines, links: linkLines }),
+  authorize: (user, input) => may(user, input.projectId, canEditBriefContacts),
+  run: async ({ input }) => {
+    const { before, after } = await updateBriefContacts(input.projectId, { clientContacts: contactsOf(input.clientContacts), links: input.links });
+    refresh(input.projectId);
+    // Like the brief itself: the log says what changed and how many, not the names and numbers.
+    const shape = (brief: typeof after) => ({ clientContacts: brief.clientContacts?.length ?? 0, links: brief.links?.length ?? 0 });
+    return { data: { ok: true }, audit: { resource: auditProject(input.projectId), summary: "approved brief: contacts and links updated", before: shape(before), after: shape(after) } };
+  },
+});
+export async function updateBriefContactsAction(input: unknown) {
+  return briefContactsPipeline(input);
 }
 
 const submitBriefPipeline = createAction({
@@ -544,6 +567,27 @@ const rebaselinePipeline = createAction({
 });
 export async function rebaselineAction(input: unknown) {
   return rebaselinePipeline(input);
+}
+
+// ── Re-opening a closed project (FR-PJM-59) ─────────────────────────────────────────────────
+
+const reopenPipeline = createAction({
+  name: "projects.reopen",
+  input: z.object({ projectId: z.uuid(), reason: z.string().trim().min(1).max(2000) }),
+  authorize: (user, input) => may(user, input.projectId, canReopenProject),
+  run: async ({ user, input }) => {
+    const found = await projectFor(user, input.projectId);
+    const { entry, projectStatusBefore } = await reopenProject(input.projectId, { reason: input.reason }, user.person.id);
+    // The project is active again: the work directory holds its status.
+    await invalidateWorkDirectory();
+    refresh(input.projectId);
+    revalidatePath("/work");
+    // The reason is the point of this record; the close-out it undid stays on the plan as history.
+    return { data: { reopenedAt: entry.reopenedAt }, audit: { resource: auditProject(input.projectId, found?.project.entityId ?? null), summary: `re-opened: ${input.reason}`.slice(0, 300), before: { status: projectStatusBefore, closedAt: entry.closedAt, closedByPersonId: entry.closedByPersonId }, after: { status: "active", reason: input.reason } } };
+  },
+});
+export async function reopenProjectAction(input: unknown) {
+  return reopenPipeline(input);
 }
 
 // ── Bookings (FR-PJM-13) ────────────────────────────────────────────────────────────────────

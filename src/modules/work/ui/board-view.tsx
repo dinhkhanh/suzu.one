@@ -1,32 +1,35 @@
 "use client";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { ArrowRightLeftIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "cn";
 import { updateTaskAction } from "../actions";
 import { boardColumns, isSamePlace, planDrop } from "../engine/board";
-import { filterTasks, type TaskFilters } from "../engine/filter";
+import { BOARD_RECENT_DAYS, filterTasks, type TaskFilters } from "../engine/filter";
 import { CustomValueText } from "./custom-fields";
 import { FilterBar, useUrlFilters } from "./filter-bar";
 import { useHandoffGate } from "./handoff";
+import { QuickCreate, type TaskScope } from "./quick-create";
 import { type ListOptions, type ListTask, PriorityMark } from "./task-list-view";
-import { DueText, PersonAvatar, StateDot, TaskKey } from "./task-row";
+import { StateBadge, stateColumnClass } from "./status-badge";
+import { DueText, PersonAvatar, TaskKey } from "./task-row";
 import { LabelChip } from "./team-forms";
 
 export type BoardTask = ListTask & { boardRank: number; updatedAt: string };
 
-const RECENT_DAYS = 14;
-
 /**
- * Kanban board (FR-WRK-05): one column per workflow state of the team. A drop shows at once
- * (`useOptimistic`); if the server refuses, the card goes back by itself and the reason is shown.
+ * Kanban board (FR-WRK-05): one column per workflow state of the team, washed in its state's tint.
+ * A drop shows at once (`useOptimistic`); if the server refuses, the card goes back by itself and
+ * the reason is shown. Without a mouse — on a phone — a card moves through its own menu: tap the
+ * state on the card, tap the state it goes to (FR-PJM-37: two taps), and the arrows reorder it
+ * within its column. With `scope`, each column ends with a quick-create that files into that state.
  */
-export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean }) {
+export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute, scope }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean; /** Where a column's quick-create files a new task; without it the board only shows. */ scope?: TaskScope }) {
   const t = useTranslations("work.board");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -43,7 +46,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
   const cardFields = fields.filter((field) => field.showOnCard);
   const states = useMemo(() => options.states.filter((state) => state.isActive || shown.some((task) => task.stateId === state.id)), [options.states, shown]);
   const columns = useMemo(() => {
-    const since = new Date(Date.parse(`${today}T00:00:00Z`) - RECENT_DAYS * 86_400_000).toISOString();
+    const since = new Date(Date.parse(`${today}T00:00:00Z`) - BOARD_RECENT_DAYS * 86_400_000).toISOString();
     // The board always has its "done" columns; without "show closed" they hold the last two weeks only.
     const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today, fields }).filter((task) => filters.closed === "1" || task.status === "todo" || task.status === "in_progress" || task.updatedAt >= since);
     return boardColumns(visible, states.map((state) => state.id));
@@ -93,7 +96,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
             <section
               key={state.id}
               aria-label={state.name}
-              className={cn("flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border bg-canvas p-2 transition-shadow duration-100 md:w-72", dragging && target?.stateId === state.id && "ring-2 ring-ring/40")}
+              className={cn("flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border p-2 transition-shadow duration-100 md:w-72", stateColumnClass(state.category), dragging && target?.stateId === state.id && "ring-2 ring-ring/40")}
               onDragOver={(event) => {
                 if (!dragging) return;
                 event.preventDefault();
@@ -102,8 +105,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
               onDrop={(event) => onDrop(event, state.id)}
             >
               <h3 className="flex h-8 items-center gap-2 px-1.5 text-[0.8125rem] font-medium">
-                <StateDot category={state.category} />
-                <span className="truncate">{state.name}</span>
+                <StateBadge category={state.category} name={state.name} className="min-w-0" />
                 <span className="ml-auto font-mono text-[0.6875rem] font-normal text-faint tabular-nums">{cards.length}</span>
               </h3>
               <ul className="flex min-h-10 flex-col gap-2">
@@ -141,6 +143,23 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         <span className="ml-auto">
                           <DueText dueDate={task.dueDate} today={today} open={open} />
                         </span>
+                        {editable(task) ? (
+                          // The card's own menu: where dragging is not to be had, the state is two taps away.
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={t("changeState", { title: task.title })} />}>
+                              <ArrowRightLeftIcon />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+                              <DropdownMenuRadioGroup value={task.stateId} onValueChange={(next) => move(task, String(next), (columns.get(String(next)) ?? []).filter((card) => card.id !== task.id).length)}>
+                                {states.filter((row) => row.isActive || row.id === task.stateId).map((row) => (
+                                  <DropdownMenuRadioItem key={row.id} value={row.id}>
+                                    {row.name}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                              </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </div>
                       <RecordLink kind="task" id={task.id} draggable={false} className={cn("line-clamp-2 leading-snug", open ? "font-medium" : "text-muted-foreground line-through")}>
                         {task.title}
@@ -176,7 +195,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         <PersonAvatar name={task.assigneeName} />
                         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{task.assigneeName ?? tWork("list.unassigned")}</span>
                         {editable(task) ? (
-                          // Without a mouse (phone, keyboard): pick the column, nudge up or down.
+                          // Without a mouse (phone, keyboard): nudge up or down.
                           <span className="flex items-center gap-0.5">
                             <Button variant="ghost" size="icon-xs" aria-label={t("moveUp")} disabled={position === 0} onClick={() => move(task, state.id, position - 1)}>
                               <ChevronUpIcon />
@@ -184,13 +203,6 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                             <Button variant="ghost" size="icon-xs" aria-label={t("moveDown")} disabled={position === cards.length - 1} onClick={() => move(task, state.id, position + 1)}>
                               <ChevronDownIcon />
                             </Button>
-                            <Select aria-label={t("moveTo")} value={state.id} searchable={false} onChange={(event) => move(task, event.target.value, columns.get(event.target.value)?.length ?? 0)} className="h-7 w-28 text-xs md:h-6 md:text-xs">
-                              {states.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                </option>
-                              ))}
-                            </Select>
                           </span>
                         ) : null}
                       </div>
@@ -199,6 +211,10 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                 })}
                 {cards.length === 0 ? <li className="rounded-[10px] border border-dashed border-border p-3 text-center text-xs text-faint">{t("emptyColumn")}</li> : null}
               </ul>
+              {/* A new task starts in the column it was typed under, inside the filters in force — so it does not vanish on arrival. */}
+              {scope && canContribute && state.isActive && state.category !== "done" && state.category !== "cancelled" ? (
+                <QuickCreate compact scope={scope} defaults={{ stateId: state.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+              ) : null}
             </section>
           );
         })}

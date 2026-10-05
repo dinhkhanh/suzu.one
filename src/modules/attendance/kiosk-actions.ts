@@ -9,13 +9,13 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { recordConsentEvent } from "@/modules/privacy/service";
 import { invalidateSession } from "@/modules/platform/auth/session-cache";
 import { eq } from "drizzle-orm";
-import { commitKioskPunch, getDevice, recentKioskPunches } from "./devices";
+import { commitKioskPunch, getDevice } from "./devices";
 import { EMBEDDING_SIZE } from "./engine/face";
 import { deleteFaces, enrolFaces } from "./faces";
 import { closeKioskSession, getKioskSession, KIOSK_COOKIE, KIOSK_COOKIE_MAX_AGE, kioskOfQrToken, kioskOfToken, openKioskSession } from "./kiosk";
-import { KIOSK_COOLDOWN_MS } from "./kiosk-api";
 import { canEnrolFaceOf, canOpenKiosk } from "./policy";
 
 const refresh = () => revalidatePath("/attendance/kiosk", "layout");
@@ -115,6 +115,29 @@ export async function deleteFacesAction(input: unknown) {
   return deletePipeline(input);
 }
 
+/**
+ * The person withdraws their own consent (Law 91/2025, NFR-PRV-01): as easy as giving it, and the
+ * face data goes at once with the consent record — nothing is kept "disabled". Theirs alone: not
+ * while seeing the app as somebody else. HR may enrol them again only with a newly signed form.
+ */
+const withdrawPipeline = createAction({
+  name: "attendance.face.consent_withdrawn",
+  input: z.object({}),
+  authorize: (user) => !user.impersonator,
+  run: async ({ user }) => {
+    const deleted = await deleteFaces(user.person.id);
+    // Kept as a fact, since the consent record went with the faces: the NAS kiosk's roster leaves
+    // the person out from now on (`deviceRoster`), so the NAS deletes its own copy too.
+    await recordConsentEvent({ personId: user.person.id, purpose: "face_check_in", decision: "withdrawn" });
+    refresh();
+    revalidatePath("/me");
+    return { data: { deleted }, audit: { resource: { type: "face_enrolment", id: user.person.id, entityId: user.person.primaryEntityId }, summary: `consent withdrawn by the person; face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } } };
+  },
+});
+export async function withdrawFaceConsentAction(input: unknown) {
+  return withdrawPipeline(input);
+}
+
 // ── Checking in with the kiosk's QR code ────────────────────────────────────────────────────
 
 /**
@@ -131,9 +154,9 @@ const qrPunchPipeline = createAction({
     if (!kiosk) throw new ActionError("kiosk_code_expired");
     const person = user.person;
     if (person.status !== "active" || !person.primaryEntityId || !kiosk.entityIds.includes(person.primaryEntityId)) throw new ActionError("kiosk_not_yours");
-    const recent = (await recentKioskPunches(kiosk.device.id, [person.id], new Date(Date.now() - KIOSK_COOLDOWN_MS))).get(person.id);
-    if (recent) return { data: { at: recent.at.toISOString(), repeat: true, direction: recent.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
-    const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr");
+    // Within the minute the earlier punch is the answer and nothing is written (`commitKioskPunch`).
+    const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr", new Date(), kiosk.session.id);
+    if (made.repeat) return { data: { at: made.at.toISOString(), repeat: true, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
     return { data: { at: made.at.toISOString(), repeat: false, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: checked ${made.direction} with the kiosk's QR code`, after: { punchId: made.punchId, direction: made.direction, kioskSessionId: kiosk.session.id } } };
   },
 });

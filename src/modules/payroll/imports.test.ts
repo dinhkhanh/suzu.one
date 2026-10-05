@@ -4,12 +4,15 @@
 // pages would fail if the flag were dropped.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/db", () => ({ db: () => ({}), schema: {} }));
+// The real table definitions (modules build aliases of them as they load), and no database at all.
+vi.mock("@/lib/db", async () => ({ db: () => ({}), schema: await import("@/lib/db/schema") }));
 vi.mock("@/lib/env", () => ({ env: () => ({ allowedWorkspaceDomains: [], bootstrapOwnerEmails: [] }) }));
-vi.mock("@/modules/core-hr/service", () => ({ listPayrollFacts: async () => [] }));
+vi.mock("@/modules/core-hr/service", () => ({ listPayrollFacts: async () => [], listEmploymentFacts: async () => [], listPayrollNames: async () => [], recordPayEvent: async () => undefined }));
 
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { parallelColumns, parallelImport } from "./parallel-import";
+import { profileImport } from "./profile-import";
+import { salaryColumns, salaryImport } from "./salary-import";
 import { ytdColumns, ytdImport } from "./ytd-import";
 
 const principal = (grants: Principal["grants"]): Principal => ({ personId: "p1", workforceType: "employee", grants });
@@ -20,7 +23,7 @@ const SZM = "entity-a";
 
 describe("payroll imports", () => {
   it("asks for a recent re-authentication on both steps", () => {
-    for (const definition of [parallelImport, ytdImport]) {
+    for (const definition of [parallelImport, ytdImport, salaryImport, profileImport]) {
       expect(definition.definition.stepUp, definition.definition.kind).toBe(true);
     }
   });
@@ -41,6 +44,9 @@ describe("payroll imports", () => {
     for (const row of cases) {
       expect(await parallelImport.definition.authorize(user(row.grants), { entityId: SZM, month: "2026-08" }), `${row.who} / parallel`).toBe(row.allowed);
       expect(await ytdImport.definition.authorize(user(row.grants), { entityId: SZM, year: 2026 }), `${row.who} / ytd`).toBe(row.allowed);
+      // Salaries and pay profiles (PAY-14): the same desk proposes them; the owner approves them afterwards.
+      expect(await salaryImport.definition.authorize(user(row.grants), { entityId: SZM }), `${row.who} / salary`).toBe(row.allowed);
+      expect(await profileImport.definition.authorize(user(row.grants), { entityId: SZM }), `${row.who} / profile`).toBe(row.allowed);
     }
   });
 
@@ -60,6 +66,8 @@ describe("payroll imports", () => {
     for (const column of money) expect(parallelColumns[column].sensitive, column).toBe(true);
     const ytdMoney = ["taxableIncome", "insuranceDeduction", "personalDeduction", "dependentDeduction", "otherDeductions", "assessableIncome", "taxWithheld"] as const;
     for (const column of ytdMoney) expect(ytdColumns[column].sensitive, column).toBe(true);
+    for (const column of ["baseSalary", "insuranceSalary", "allowances"] as const) expect(salaryColumns[column].sensitive, column).toBe(true);
+    expect(parallelColumns.employerCost.sensitive).toBe(true);
     // The employee code and the note are not secrets and stay readable in the preview.
     expect(parallelColumns.employeeCode.sensitive).toBeUndefined();
   });

@@ -14,13 +14,13 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listAssignments } from "@/modules/recruit/assignments";
 import { listOffersOfApplication } from "@/modules/recruit/offers";
 import { canMakeOffer } from "@/modules/recruit/policy";
-import { APPLICATION_CLOSED, getApplicationView } from "@/modules/recruit/service";
+import { APPLICATION_CLOSED, type ApplicationEventView, getApplicationView } from "@/modules/recruit/service";
 import { CancelAssignment, RateAssignment, SendAssignment } from "@/modules/recruit/ui/assignment-forms";
 import { AssignmentLink } from "@/modules/recruit/ui/assignment-link";
 import { interviewerOptions, listInterviewsOfApplication } from "@/modules/recruit/interviews";
 import { ApplicationActions } from "@/modules/recruit/ui/application-actions";
 import { CvLink } from "@/modules/recruit/ui/cv-link";
-import { listEmailTemplates } from "@/modules/recruit/emails";
+import { listHandSentTemplates } from "@/modules/recruit/emails";
 import { ScheduleInterview } from "@/modules/recruit/ui/interview-form";
 import { SendCandidateEmail } from "@/modules/recruit/ui/send-email";
 import { pageTitle } from "@/i18n/page-title";
@@ -28,6 +28,30 @@ import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("application");
+
+/** The outcome of one letter, as a tint and a line: the recruiter's only window onto the outbox. */
+async function LetterDelivery({ event }: { event: ApplicationEventView }) {
+  const t = await getTranslations("recruit");
+  const skipped = typeof event.detail?.skipped === "string" ? event.detail.skipped : null;
+  if (skipped) {
+    return (
+      <span className="mt-1 flex">
+        <Badge variant="warning">{t(`letterStatus.${skipped}` as "letterStatus.no_address")}</Badge>
+      </span>
+    );
+  }
+  if (!event.delivery) return null;
+  const { status, error } = event.delivery;
+  // Pending with an error is a send that failed and will be tried again; pending without one has not been tried yet.
+  const state = status === "pending" ? (error ? "retrying" : "pending") : status;
+  const tone = state === "sent" ? "success" : state === "failed" ? "destructive" : state === "retrying" || state === "skipped" ? "warning" : "secondary";
+  return (
+    <span className="mt-1 flex flex-col items-start gap-0.5">
+      <Badge dot variant={tone}>{t(`delivery.${state}`)}</Badge>
+      {error && state !== "sent" ? <span className="text-xs break-all text-destructive">{error}</span> : null}
+    </span>
+  );
+}
 
 // One application: who it is, where they are in the pipeline, and everything that has happened.
 // The salary expectation is cut by tier in the service, so a recruiter's page simply lacks the row.
@@ -51,7 +75,8 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
     listInterviewsOfApplication(applicationId),
     listAssignments(applicationId),
     view.canAct ? interviewerOptions(view.opening.id) : [],
-    view.canAct ? listEmailTemplates() : [],
+    // Not the interview's own letters: those go out from the interview, with its time filled in.
+    view.canAct ? listHandSentTemplates() : [],
   ]);
   // The take-home link is absolute so a recruiter can paste it straight into an email, and names
   // the public domain when there is one (PUBLIC_SITE_URL), whichever domain the recruiter is on.
@@ -271,6 +296,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           applicationId={applicationId}
           templates={emailTemplates.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))}
           hasEmail={!!view.candidate.email}
+          defaultLocale={view.candidate.locale ?? "vi"}
         />
       ) : null}
 
@@ -281,11 +307,15 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               <span className="w-28 shrink-0 pt-0.5 font-mono text-xs text-faint tabular-nums">{format.dateTime(event.at, { dateStyle: "short", timeStyle: "short" })}</span>
               <span className="min-w-0 flex-1">
                 <span className="font-medium">
-                  {t(`event.${event.type}`)}
+                  {/* Emptied because the window lapsed, or because the candidate asked: two different facts. */}
+                  {event.type === "anonymised" && event.detail?.reason === "erasure" ? t("event.erased") : t(`event.${event.type}`)}
                   {event.toStageName ? ` → ${event.toStageName}` : ""}
                 </span>
                 <span className="block text-xs text-faint">{event.actorName ? <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink> : t("source.careers_page")}</span>
                 {event.note ? <span className="block text-xs text-muted-foreground">{noteToPlainText(event.note)}</span> : null}
+                {/* A letter to the candidate: whether it went, is being retried, or failed — and a
+                    letter that could not be sent at all says why. */}
+                {event.type === "emailed" ? <LetterDelivery event={event} /> : null}
               </span>
             </ListItem>
           ))}

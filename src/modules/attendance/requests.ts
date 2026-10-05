@@ -320,6 +320,50 @@ export async function cancelAttendanceRequest(attendanceRequestId: string, actor
 }
 
 /**
+ * A business trip is filed once, as a request with its money (the requests module's "business
+ * trip", REQ-02); its approval lands here as an approved remote-work request of kind
+ * "business_trip", so the timesheet credits the days without punches exactly as before. Nothing is
+ * recorded for days in a month already closed, nor when the person already has a trip on file for
+ * those days (one filed here by hand before). Runs in the approving transaction.
+ */
+export async function recordApprovedTrip(tx: Tx, input: { personId: string; filedByPersonId: string; startDate: IsoDate; endDate: IsoDate; destination: string | null; tripRequestId: string }): Promise<AttendanceRequestRow | null> {
+  if (input.endDate < input.startDate) return null;
+  const target = await getPersonTarget(input.personId, tx);
+  if (!target?.entityId) return null;
+  // Months close in order, so the trip is recorded from the first day of its first open month.
+  let startDate: IsoDate | null = null;
+  for (const month of new Set(eachDate(input.startDate, input.endDate).map(monthOf))) {
+    if (await isMonthClosedFor(tx, input.personId, target.entityId, month)) continue;
+    startDate = monthStart(month) > input.startDate ? monthStart(month) : input.startDate;
+    break;
+  }
+  if (!startDate) return null;
+  const [clash] = await tx
+    .select({ id: schema.attendanceRequest.id })
+    .from(schema.attendanceRequest)
+    .where(and(eq(schema.attendanceRequest.personId, input.personId), eq(schema.attendanceRequest.type, "remote_work"), inArray(schema.attendanceRequest.status, ["pending", "approved"]), sql`${schema.attendanceRequest.details}->>'kind' = 'business_trip'`, lte(schema.attendanceRequest.startDate, input.endDate), gte(schema.attendanceRequest.endDate, startDate)))
+    .limit(1);
+  if (clash) return null;
+  const [row] = await tx
+    .insert(schema.attendanceRequest)
+    .values({
+      type: "remote_work",
+      personId: input.personId,
+      entityId: target.entityId,
+      filedByPersonId: input.filedByPersonId,
+      status: "approved",
+      startDate,
+      endDate: input.endDate,
+      details: { type: "remote_work", kind: "business_trip", portion: "full", locationName: input.destination, latitude: null, longitude: null, radiusM: null },
+      // Read on the attendance screens; the trip itself (and its approval) is the request.
+      reason: `Theo đề nghị đi công tác /approvals/request/${input.tripRequestId}`,
+    })
+    .returning();
+  await requestTimesheetRecompute([input.personId], startDate, input.endDate, tx);
+  return row;
+}
+
+/**
  * The line manager (or HR) confirms the hours of approved overtime or holiday work that punches
  * cannot show — an untracked Saturday, a shoot off-site (FR-ATT-18). Only once the day has come.
  */

@@ -2,6 +2,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
 import {
@@ -10,13 +11,18 @@ import {
   canNominatePeer,
   canReadAnonymisedPeers,
   canReadReviewForm,
+  canRecordSignOff,
   canReleaseReview,
+  canReturnReviewForm,
   canSeeNominations,
   canSeeParticipant,
   canWriteManagerReview,
   canWritePeerReview,
   canWriteSelfReview,
+  dueDatesOf,
   getPublishedResult,
+  isReviewCalibrator,
+  isReviewingManager,
   loadParticipant,
   loadReviewEvidence,
   peerCandidates,
@@ -26,7 +32,7 @@ import { EvidencePanel } from "@/modules/performance/ui/evidence";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { BandBadge, ResultTraceTable } from "@/modules/performance/ui/result";
 import { FilledForm, ratingText, StageBadge, Timeline } from "@/modules/performance/ui/review";
-import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
+import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReturnFormForm, ReviewFormEditor, SignOffForm } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
@@ -54,7 +60,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const myManager = forms.find((form) => form.kind === "manager" && form.authorPersonId === user.person.id);
   const myPeer = forms.find((form) => form.kind === "peer" && form.authorPersonId === user.person.id);
   const selfSubmitted = forms.some((form) => form.kind === "self" && form.status === "submitted");
-  const selfOverdue = cycle.selfDueOn !== null && cycle.selfDueOn < today;
+  // This person's own deadlines (a probation review) win over the cycle's.
+  const due = dueDatesOf(participant, cycle);
+  const selfOverdue = due.selfDueOn !== null && due.selfDueOn < today;
   const managerBlocked = !selfSubmitted && !selfOverdue;
   // Anonymous peer feedback the subject may read: the content without its author.
   const anonymousPeers = canReadAnonymisedPeers(user.principal, parties) ? forms.filter((form) => form.kind === "peer" && form.status === "submitted") : [];
@@ -62,16 +70,21 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   // The evidence panel (FR-PRF-07) is for whoever writes or reads this review — it is the same
   // personal-tier data as the review itself, and a nominated peer is not shown it.
   const writesReview = canWriteManagerReview(user.principal, parties) || canWriteSelfReview(user.principal, parties);
-  const showsEvidence = writesReview || canReleaseReview(user.principal, parties);
+  // HR over the person calibrates and releases; the manager writes and proposes (PRF-02).
+  const calibrator = isReviewCalibrator(user.principal, parties);
+  const showsEvidence = writesReview || calibrator;
   const seesNominations = canSeeNominations(user.principal, parties);
   const mayNominate = canNominatePeer(user.principal, parties);
   const mayDecide = canDecideNomination(user.principal, parties);
   const approvedPeers = nominations.filter((row) => row.status === "approved").length;
   const isSubject = participant.personId === user.person.id;
+  // …and only once the cycle has reached its calibration stage.
   const mayRelease = canReleaseReview(user.principal, parties);
-  // The calibrated score: whoever calibrates and releases it, and the subject once it is released
-  // to them. Not a nominated peer, not the subject before release.
-  const seesScore = mayRelease || (isSubject && parties.released);
+  const reviewingManager = !isSubject && isReviewingManager(user.principal, parties);
+  const managerSubmitted = forms.some((form) => form.kind === "manager" && form.status === "submitted");
+  // The calibrated score: whoever calibrates and releases it, and — once it is released — the
+  // subject and the manager who proposed it. Not a nominated peer, nobody else before release.
+  const seesScore = calibrator || ((isSubject || reviewingManager) && parties.released);
   // On an anonymous cycle the subject is told how many peers have written, never which ones: a
   // per-name "written" beside a per-name list is the author of every form, one by one.
   const peersByCountOnly = isSubject && cycle.peerAnonymous && !mayDecide;
@@ -87,31 +100,34 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   ]);
   const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
   const peerWrote = new Set(forms.filter((form) => form.kind === "peer").map((form) => form.authorPersonId));
+  // HR over the person sends a submitted form back while the review is still being written.
+  const mayReturn = canReturnReviewForm(user.principal, parties) && !participant.calibratedAt;
+  const returnReasonOf = (form: (typeof forms)[number] | undefined) => (form && form.status === "draft" && form.returnedAt ? form.returnReason : null);
   const writtenCount = nominations.filter((row) => peerWrote.has(row.peerPersonId)).length;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <Link href="/performance/reviews" className="text-sm text-link underline-offset-4 hover:underline">
-          {t("back")}
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1>
-            <RecordLink kind="person" id={participant.personId}>{nameOf(participant.personId)}</RecordLink>
-          </h1>
-          <StageBadge stage={parties.stage} label={t(`stage.${parties.stage}`)} />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {cycle.name} · {t(`cycle.kinds.${cycle.kind}`)} · {t(`cycleStatus.${cycle.status}`)}
-          {participant.managerPersonId ? " · " : null}
-          {participant.managerPersonId ? t.rich("manager", { name: nameOf(participant.managerPersonId), person: (chunks) => <RecordLink kind="person" id={participant.managerPersonId}>{chunks}</RecordLink> }) : null}
-        </p>
-      </header>
+    <Page className="max-w-3xl">
+      <PageHeader
+        eyebrow={
+          <Link href="/performance/reviews" className="text-link underline-offset-4 hover:underline">
+            {t("back")}
+          </Link>
+        }
+        title={<RecordLink kind="person" id={participant.personId}>{nameOf(participant.personId)}</RecordLink>}
+        description={
+          <>
+            {cycle.name} · {t(`cycle.kinds.${cycle.kind}`)} · {t(`cycleStatus.${cycle.status}`)}
+            {participant.managerPersonId ? " · " : null}
+            {participant.managerPersonId ? t.rich("manager", { name: nameOf(participant.managerPersonId), person: (chunks) => <RecordLink kind="person" id={participant.managerPersonId}>{chunks}</RecordLink> }) : null}
+          </>
+        }
+        aside={<StageBadge stage={parties.stage} label={t(`stage.${parties.stage}`)} />}
+      />
       <PerformanceNav active="reviews" />
       <Timeline
         dates={[
-          { key: "selfDueOn", on: cycle.selfDueOn },
-          { key: "managerDueOn", on: cycle.managerDueOn },
+          { key: "selfDueOn", on: due.selfDueOn },
+          { key: "managerDueOn", on: due.managerDueOn },
           { key: "peerDueOn", on: cycle.peerDueOn },
           { key: "calibrationOn", on: cycle.calibrationOn },
           { key: "releaseOn", on: cycle.releaseOn },
@@ -124,25 +140,22 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       {evidence ? <EvidencePanel evidence={evidence} labels={{ t, format }} /> : null}
 
       {shape && canWriteSelfReview(user.principal, parties) && mySelf?.status !== "submitted" ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("form.kind.self")}</h2>
-          <ReviewFormEditor value={{ participantId, kind: "self", shape, answers: mySelf?.answers ?? {}, comment: mySelf?.comment ?? null, submitted: false }} />
-        </section>
+        <Section title={t("form.kind.self")}>
+          <ReviewFormEditor value={{ participantId, kind: "self", shape, answers: mySelf?.answers ?? {}, comment: mySelf?.comment ?? null, submitted: false, returnReason: returnReasonOf(mySelf) }} />
+        </Section>
       ) : null}
 
       {shape && canWriteManagerReview(user.principal, parties) && myManager?.status !== "submitted" ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("form.kind.manager")}</h2>
-          {managerBlocked ? <p className="text-sm text-warning">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
-          <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false }} />
-        </section>
+        <Section title={t("form.kind.manager")}>
+          {managerBlocked ? <p className="text-sm text-warning">{t("form.waitingForSelf", { date: due.selfDueOn ? formatDate(due.selfDueOn) : "—" })}</p> : null}
+          <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false, returnReason: returnReasonOf(myManager) }} />
+        </Section>
       ) : null}
 
       {shape && canWritePeerReview(user.principal, parties, nominated) && myPeer?.status !== "submitted" ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("form.kind.peer")}</h2>
-          <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false }} />
-        </section>
+        <Section title={t("form.kind.peer")}>
+          <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false, returnReason: returnReasonOf(myPeer) }} />
+        </Section>
       ) : null}
 
       {/* Who was asked for 360 feedback. Anonymity hides *who wrote what* (the forms below),
@@ -208,23 +221,24 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
         </TableCard>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("submitted.title")}</h2>
+      <Section title={t("submitted.title")}>
         {readable.length === 0 && anonymousPeers.length === 0 ? <p className="text-sm text-muted-foreground">{t("submitted.empty")}</p> : null}
         {shape
           ? readable.map((form) => (
-              <FilledForm
-                key={form.id}
-                shape={shape}
-                kind={form.kind as ReviewFormKind}
-                answers={form.answers}
-                overallRatingBp={form.overallRatingBp}
-                comment={form.comment}
-                // One's own draft is not signed; somebody else's draft is read only by oversight, which is told whose it is.
-                author={form.status === "draft" && form.authorPersonId === user.person.id ? null : nameOf(form.authorPersonId)}
-                draft={form.status === "draft"}
-                labels={{ t, format }}
-              />
+              <div key={form.id} className="flex flex-col gap-2">
+                <FilledForm
+                  shape={shape}
+                  kind={form.kind as ReviewFormKind}
+                  answers={form.answers}
+                  overallRatingBp={form.overallRatingBp}
+                  comment={form.comment}
+                  // One's own draft is not signed; somebody else's draft is read only by oversight, which is told whose it is.
+                  author={form.status === "draft" && form.authorPersonId === user.person.id ? null : nameOf(form.authorPersonId)}
+                  draft={form.status === "draft"}
+                  labels={{ t, format }}
+                />
+                {mayReturn && form.status === "submitted" && form.authorPersonId !== user.person.id ? <ReturnFormForm formId={form.id} /> : null}
+              </div>
             ))
           : null}
         {/* The subject's copy of anonymous peer feedback: what was said, never who said it. */}
@@ -233,27 +247,57 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
               .filter((form) => !readable.some((seen) => seen.id === form.id))
               .map((form) => <FilledForm key={form.id} shape={shape} kind="peer" answers={form.answers} overallRatingBp={form.overallRatingBp} comment={form.comment} author={null} labels={{ t, format }} />)
           : null}
-      </section>
+      </Section>
 
-      {seesScore && (participant.reviewScoreBp !== null || (mayRelease && participant.calibrationNote)) ? (
-        <section className="flex flex-col gap-1 rounded-xl border p-3">
-          <h2 className="text-sm font-medium">{t("calibrate.title")}</h2>
+      {seesScore && (participant.reviewScoreBp !== null || (calibrator && participant.calibrationNote)) ? (
+        <Section title={t("calibrate.title")}>
           <p className="text-sm tabular-nums">{t("calibrate.current", { value: ratingText(format, participant.reviewScoreBp) })}</p>
-          {participant.calibrationNote && mayRelease ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
-        </section>
+          {participant.calibrationNote && calibrator ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
+        </Section>
       ) : null}
 
-      {mayRelease && !parties.released ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-3">
-          <h2 className="text-sm font-medium">{t("release.title")}</h2>
-          <CalibrateForm participantId={participantId} currentPercent={participant.reviewScoreBp === null ? "" : String(participant.reviewScoreBp / 100)} />
-          <ReleaseForm participantId={participantId} />
-        </section>
+      {calibrator && !parties.released ? (
+        <Section title={t("release.title")}>
+          {mayRelease ? (
+            <>
+              <CalibrateForm participantId={participantId} currentPercent={participant.reviewScoreBp === null ? "" : String(participant.reviewScoreBp / 100)} />
+              <ReleaseForm participantId={participantId} />
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("release.notYet")}</p>
+          )}
+        </Section>
+      ) : null}
+
+      {/* The manager has written and proposed a rating; levelling it and handing it over is HR's. */}
+      {reviewingManager && !calibrator && managerSubmitted && !parties.released ? (
+        <Section title={t("release.title")}>
+          <p className="text-sm text-muted-foreground">{t("release.waitingForHr")}</p>
+        </Section>
+      ) : null}
+
+      {/* The sign-off conversation after release (FR-PRF-03): recorded by the manager or HR; read by
+          the person, their line and HR — not a nominated peer. */}
+      {parties.released && (cycle.signOffRequired || participant.signOffRecordedAt || canRecordSignOff(user.principal, parties)) && (seesNominations || canRecordSignOff(user.principal, parties)) ? (
+        <Section title={t("signOff.title")}>
+          {participant.signOffOn ? (
+            <>
+              <p className="text-sm text-muted-foreground">{t("signOff.done", { date: formatDate(participant.signOffOn), name: participant.signOffByPersonId ? nameOf(participant.signOffByPersonId) : "—" })}</p>
+              <RichText text={participant.signOffNote} />
+            </>
+          ) : canRecordSignOff(user.principal, parties) ? (
+            <>
+              <p className="text-xs text-muted-foreground">{cycle.signOffRequired ? t("signOff.requiredHint") : t("signOff.optionalHint")}</p>
+              <SignOffForm participantId={participantId} today={today} />
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("signOff.waiting")}</p>
+          )}
+        </Section>
       ) : null}
 
       {parties.released ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-3">
-          <h2 className="text-sm font-medium">{t("acknowledge.title")}</h2>
+        <Section title={t("acknowledge.title")}>
           {participant.acknowledgedAt ? (
             <>
               <p className="text-sm text-muted-foreground">{t("acknowledge.done", { date: format.dateTime(participant.acknowledgedAt, { dateStyle: "medium" }) })}</p>
@@ -262,23 +306,21 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
             </>
           ) : canAcknowledgeReview(user.principal, parties) ? (
             <AcknowledgeForm participantId={participantId} />
+          ) : isSubject && parties.signOffRequired && !parties.signedOff ? (
+            <p className="text-sm text-muted-foreground">{t("acknowledge.afterSignOff")}</p>
           ) : (
             <p className="text-sm text-muted-foreground">{t("acknowledge.waiting")}</p>
           )}
-        </section>
+        </Section>
       ) : null}
 
       {/* The settled yearly result, once it has been published (FR-PRF-09). Score, band and
           multiplier — a number, never money: the bonus it drives lives in payroll. */}
       {published ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-sm font-medium">{tr("title")}</h2>
-            <BandBadge band={published.finalBand} label={published.trace.finalBand ? (locale.startsWith("en") && published.trace.finalBand.labelEn ? published.trace.finalBand.labelEn : published.trace.finalBand.label) : "—"} />
-          </div>
+        <Section title={tr("title")} action={<BandBadge band={published.finalBand} label={published.trace.finalBand ? (locale.startsWith("en") && published.trace.finalBand.labelEn ? published.trace.finalBand.labelEn : published.trace.finalBand.label) : "—"} />}>
           <ResultTraceTable trace={published.trace} labels={{ t: tr, format }} locale={locale} provenance={{ months: published.kpiScoreIds.length, goals: published.goalIds.length, weightingFrom: null }} />
-        </section>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

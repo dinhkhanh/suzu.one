@@ -6,7 +6,7 @@
 //
 //   goals & KPI scores   performance itself (`getPerformanceResults`)
 //   task statistics      work            (`getPersonTaskStats` — counts, no titles)
-//   kudos                comms           (`listKudos`)
+//   kudos                comms           (`kudosReceived`)
 //   attendance           attendance      (`summarisePersonYear`)
 //
 // The panel is **personal tier**, exactly like the review it sits in: the page shows it only to
@@ -14,9 +14,10 @@
 // compensation — no salary, no bonus, no amount of any kind. Training completion (the fifth
 // source FR-PRF-07 names) has no module yet and is left out.
 import "server-only";
+import { vietnamYearInstants } from "@/lib/dates";
 import { db, type Tx } from "@/lib/db";
 import { summarisePersonYear } from "@/modules/attendance/service";
-import { type KudosCard, listKudos } from "@/modules/comms/service";
+import { type KudosCard, kudosReceived } from "@/modules/comms/service";
 import { getPersonTaskStats, type PersonTaskStats } from "@/modules/work/service";
 import type { MonthSummary } from "@/modules/attendance/service";
 import { getPerformanceResults, type PerformanceResults } from "./results";
@@ -46,8 +47,9 @@ export async function loadReviewEvidence(input: { personId: string; year: number
     getPerformanceResults(input, executor),
     getPersonTaskStats({ personId: input.personId, from, to }, executor),
     summarisePersonYear(input.personId, input.year, executor),
-    listKudos({ toPersonId: input.personId, limit: 50 }),
+    // Counted by Postgres over the whole year, not over the newest fifty cards — the year as it
+    // runs in Vietnam: a card sent at 06:30 on 1 January is this year's, not last year's.
+    kudosReceived(input.personId, { ...vietnamYearInstants(input.year), recent: KUDOS_SHOWN }),
   ]);
-  const inYear = kudos.filter((card) => card.createdAt >= new Date(`${from}T00:00:00Z`) && card.createdAt <= new Date(`${to}T23:59:59Z`));
-  return { ...input, performance, tasks, attendance, kudos: { count: inYear.length, recent: inYear.slice(0, KUDOS_SHOWN) } };
+  return { ...input, performance, tasks, attendance, kudos };
 }

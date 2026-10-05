@@ -26,7 +26,7 @@ Các bước:
 
 1. Điền thông tin chung:
    - **Tên vị trí** (bắt buộc) và **Tên vị trí (tiếng Anh)** — tên tiếng Anh hiện trên trang công khai khi người xem chọn tiếng Anh.
-   - **Pháp nhân**, **Phòng ban**, **Chức danh**, **Cấp bậc**.
+   - **Pháp nhân**, **Phòng ban**, **Chức vụ**, **Cấp bậc**, **Cấp vị trí**.
    - **Hình thức làm việc** và **Hình thức địa điểm** (**Tại văn phòng**, **Kết hợp**, **Từ xa**), **Địa điểm làm việc**.
    - **Số lượng cần tuyển** (1–100) và **Ngày mong muốn bắt đầu**.
    - **Quy trình tuyển dụng** — chọn một trong các quy trình có sẵn (xem bên dưới).
@@ -47,6 +47,15 @@ Mỗi tin chạy theo một quy trình — chuỗi các vòng mà hồ sơ đi q
 | **Quy trình rút gọn** | Hồ sơ mới → Sàng lọc hồ sơ → Phỏng vấn → Đề nghị nhận việc → Đã nhận việc | Thời vụ, thực tập, cộng tác viên. |
 
 Mỗi vòng thuộc một loại (**Hồ sơ mới**, **Sàng lọc**, **Phỏng vấn**, **Bài test**, **Đề nghị**, **Nhận việc**) để báo cáo phễu đếm được. Quy trình dùng chung toàn tập đoàn.
+
+Người làm tuyển dụng có phạm vi toàn tập đoàn sửa và thêm quy trình ở [Quy trình tuyển dụng](/recruit/pipelines): bấm **Quy trình mới**, đặt tên, tích **Mặc định cho tin tuyển dụng mới** nếu cần, rồi **Thêm vòng** — mỗi vòng chọn **Bậc trong phễu**; dùng **Chuyển lên** / **Chuyển xuống** để sắp xếp và **Lưu**. Quy trình phải có một vòng "Hồ sơ mới"; vòng đang có ứng viên không xoá được.
+
+### Câu hỏi khi ứng tuyển và bộ tiêu chí phỏng vấn
+
+Trên trang **Sửa tin tuyển dụng** có thêm hai phần riêng của vị trí:
+
+- **Câu hỏi khi ứng tuyển** — câu hỏi riêng trên form ứng tuyển: **Câu hỏi**, **Câu hỏi (tiếng Anh)**, **Kiểu trả lời** (**Một dòng**, **Đoạn văn**, **Chọn một** kèm **Các phương án**, mỗi dòng một phương án), **Bắt buộc**. Bấm **Thêm câu hỏi**, rồi **Lưu**. Đổi tên câu hỏi không làm mất câu trả lời đã có.
+- **Bộ tiêu chí phỏng vấn** — các tiêu chí người phỏng vấn chấm trên thang 1–4, mỗi tiêu chí có **Gợi ý cho người chấm**. Không có tiêu chí nào thì vị trí dùng bộ mặc định. Buổi phỏng vấn đã đặt giữ nguyên bộ tiêu chí lúc đặt lịch.
 
 ## Trạng thái của tin và các nút chuyển
 
@@ -106,13 +115,13 @@ Hai nút này chỉ hiện khi tin đang ở trạng thái **Đang tuyển**.
 - **Thư giới thiệu** và **Mức lương mong muốn (đồng/tháng)**.
 - **Thông báo xử lý dữ liệu cá nhân**: ứng viên phải tick ô đồng ý xử lý hồ sơ cho vị trí ứng tuyển; ô thứ hai (không bắt buộc) là đồng ý để công ty **giữ hồ sơ cho các vị trí phù hợp khác trong tương lai**.
 
-Sau khi gửi, ứng viên thấy trang cảm ơn "Đã nhận hồ sơ của bạn". Hồ sơ vào vòng đầu tiên (**Hồ sơ mới**) của tin, nguồn là **Trang tuyển dụng**.
+Sau khi gửi, ứng viên thấy trang cảm ơn "Đã nhận hồ sơ của bạn" và nhận email **Xác nhận đã nhận hồ sơ** tới địa chỉ vừa nhập. Hồ sơ vào vòng đầu tiên (**Hồ sơ mới**) của tin, nguồn là **Trang tuyển dụng**; những người tuyển của vị trí nhận thông báo có hồ sơ mới.
 
 ### Chống thư rác và bảo vệ ứng viên
 
 - Biểu mẫu có bẫy chống máy gửi tự động và giới hạn số lần gửi trong thời gian ngắn. Ứng viên gửi quá nhiều lần sẽ được mời thử lại sau.
 - Biểu mẫu có thời hạn: để trang mở quá lâu, ứng viên sẽ được mời tải lại trang.
-- Ứng viên nộp lại lần hai, hoặc dùng email đã có trong hệ thống, vẫn chỉ thấy lời cảm ơn như bình thường — trang không bao giờ tiết lộ ai đã nộp hồ sơ. Ở phía bạn, hồ sơ mới được gắn vào **cùng một ứng viên** nếu trùng email hoặc số điện thoại.
+- Ứng viên nộp lại lần hai, hoặc dùng email đã có trong hệ thống, vẫn chỉ thấy lời cảm ơn như bình thường — trang không bao giờ tiết lộ ai đã nộp hồ sơ. Ở phía bạn, hồ sơ mới được gắn vào **cùng một ứng viên** nếu trùng email hoặc số điện thoại. Việc gửi form không ghi đè gì lên hồ sơ ứng viên đã có, kể cả sự đồng ý giữ hồ sơ: điều form đồng ý được lưu trong lịch sử của hồ sơ ứng tuyển đó.
 - Tệp CV được kiểm tra định dạng, nhưng **chưa được quét virus**; chỉ người tuyển cho vị trí đó mới tải được.
 
 ## Mẹo

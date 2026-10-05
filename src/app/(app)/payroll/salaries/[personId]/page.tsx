@@ -11,8 +11,12 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
+import { canVoidProfile, canVoidSalaryStructure } from "@/modules/payroll/policy";
+import { voidProfileAction } from "@/modules/payroll/rule-actions";
+import { voidSalaryStructureAction } from "@/modules/payroll/salary-actions";
 import { BASE_SALARY_CODE, getSalaryFile } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { VoidVersionButton } from "@/modules/platform/statutory/ui/void-version";
 import { ProfileForm, SalaryChangeForm } from "@/modules/payroll/ui/salary-forms";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -36,6 +40,11 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
   const current = file.structures.find((structure) => structure.validFrom <= today && (structure.validTo === null || structure.validTo >= today)) ?? file.structures[0] ?? null;
   const openRequest = file.requests.find((request) => request.status === "pending" || request.status === "returned");
   const hasApprovedProfile = file.profiles.some((profile) => profile.status === "approved");
+  // Taking a wrong version back (PAY-13): a structure is the owner's; a profile the owner's, or C&B's
+  // for a first Statutory one nobody had to approve. The actions ask again.
+  const voidsStructures = canVoidSalaryStructure(user.principal, { entityId: file.person.entityId });
+  const voidsProfile = (profile: (typeof file.profiles)[number]) => profile.status === "approved" && canVoidProfile(user.principal, profile);
+  const anyProfileVoidable = file.profiles.some(voidsProfile);
 
   return (
     <Page>
@@ -58,6 +67,7 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                 <TableHead kind="select">{t("profiles.basis")}</TableHead>
                 <TableHead kind="date">{t("salaries.period")}</TableHead>
                 <TableHead kind="status">{t("runs.status")}</TableHead>
+                {anyProfileVoidable ? <TableHead kind="actions" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -71,9 +81,15 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                   <TableCell className="text-muted-foreground">
                     {day(profile.validFrom)} → {profile.validTo ? day(profile.validTo) : t("salaries.open")}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-64 whitespace-normal">
                     <Badge dot variant={statusTone(profile.status)}>{t(`rules.status.${profile.status}`)}</Badge>
+                    {profile.status === "voided" ? <span className="mt-0.5 block text-xs text-muted-foreground">{t("rules.voided.because", { reason: profile.voidReason ?? "—" })}</span> : null}
                   </TableCell>
+                  {anyProfileVoidable ? (
+                    <TableCell kind="actions">
+                      {voidsProfile(profile) ? <VoidVersionButton action={voidProfileAction} id={profile.id} title={`${t(`profiles.kinds.${profile.profile}`)} — ${day(profile.validFrom)}`} errorNamespace="payroll.errors" /> : null}
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>
@@ -101,6 +117,11 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                     {t("salaries.decision", { number: structure.decisionNumber })}
                   </Link>
                 ) : null}
+                {voidsStructures ? (
+                  <span className="ml-auto">
+                    <VoidVersionButton action={voidSalaryStructureAction} id={structure.id} title={`${t("salaries.history")} — ${day(structure.validFrom)}`} errorNamespace="payroll.errors" />
+                  </span>
+                ) : null}
               </div>
               <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-0.5 text-sm sm:max-w-md">
                 <dt className="text-muted-foreground">{t("salaries.baseSalary")}</dt>
@@ -113,11 +134,38 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                     <dd className="text-right font-mono text-[0.8125rem] tabular-nums">{formatVnd(line.amount)}</dd>
                   </div>
                 ))}
+                {structure.terms.probationPercent ? (
+                  <>
+                    <dt className="text-muted-foreground">{t("salaries.probationPercent")}</dt>
+                    <dd className="text-right font-mono text-[0.8125rem] tabular-nums">{structure.terms.probationPercent}%</dd>
+                  </>
+                ) : null}
               </dl>
             </ListItem>
           ))}
         </List>
       </Section>
+
+      {/* Structures voided as wrong (PAY-13): no longer in force, kept with who took them back and why. */}
+      {file.voided.length > 0 ? (
+        <Section title={t("rules.voided.title")} count={file.voided.length}>
+          <List>
+            {file.voided.map((structure) => (
+              <ListItem key={structure.id} className="flex-col items-stretch gap-1 py-3">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-muted-foreground line-through">
+                    {day(structure.validFrom)} → {structure.validTo ? day(structure.validTo) : t("salaries.open")}
+                  </span>
+                  <Badge variant="outline">{t(`salaries.reasons.${structure.reason}`)}</Badge>
+                  <Badge dot variant={statusTone("voided")}>{t("rules.status.voided")}</Badge>
+                  <span className="font-mono text-[0.8125rem] tabular-nums text-muted-foreground">{formatVnd(structure.terms.baseSalary)}</span>
+                </span>
+                <span className="text-sm text-muted-foreground">{t("rules.voided.because", { reason: structure.voidReason ?? "—" })}</span>
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : null}
 
       {file.canManage ? (
         <Section title={t("salaries.requests")} count={file.requests.length || undefined}>

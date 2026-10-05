@@ -8,6 +8,7 @@ import { inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { POSITION_SPELLINGS, type PositionLevel, SENIORITY_SPELLINGS, type SeniorityLevel } from "@/lib/job-levels";
 import { toSearchKey } from "@/lib/text";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { code, type Column, day, oneOf, type ParsedRow, type Problem, templateCsv, text } from "@/modules/platform/import/engine/table";
@@ -25,8 +26,9 @@ export const historyColumns = {
   validTo: column<string>({ headers: ["Đến ngày", "To"], required: true, parse: day, example: "31/12/2020" }),
   departmentCode: column<string>({ headers: ["Phòng ban (mã)", "Department code", "Phòng ban"], parse: code(12), example: "VID" }),
   teamName: optionalText(["Nhóm", "Team"], 120),
-  positionName: optionalText(["Chức danh", "Position", "Vị trí"], 120, "Dựng phim"),
-  jobLevel: optionalText(["Cấp bậc", "Job level"], 60),
+  positionName: optionalText(["Chức vụ", "Position", "Vị trí", "Chức danh"], 120, "Dựng phim"),
+  seniorityLevel: column<SeniorityLevel>({ headers: ["Cấp bậc", "Seniority level", "Job level"], parse: oneOf<SeniorityLevel>(SENIORITY_SPELLINGS), example: "Senior" }),
+  positionLevel: column<PositionLevel>({ headers: ["Cấp vị trí", "Position level"], parse: oneOf<PositionLevel>(POSITION_SPELLINGS), example: "Executive" }),
   workforceType: column<WorkforceType>({
     headers: ["Loại lao động", "Workforce type"],
     parse: oneOf<WorkforceType>({ employee: ["Chính thức", "Nhân viên chính thức"], probation: ["Thử việc"], intern: ["Thực tập", "Thực tập sinh"], part_time: ["Bán thời gian", "Part-time"], collaborator: ["Cộng tác viên", "CTV", "Freelancer"], advisor: ["Cố vấn"] }),
@@ -130,7 +132,7 @@ async function applyRows(rows: Row[], tx: Tx, user: CurrentUser): Promise<{ prob
             validFrom: values.validFrom!,
             validTo: values.validTo!,
             changeReason: values.changeReason,
-            placement: { workforceType: values.workforceType ?? "employee", branchId: null, orgUnitId: unit?.id ?? null, positionName: values.positionName, jobLevel: values.jobLevel, managerId, dottedManagerId: null, workLocation: null },
+            placement: { workforceType: values.workforceType ?? "employee", branchId: null, orgUnitId: unit?.id ?? null, positionName: values.positionName, seniorityLevel: values.seniorityLevel, positionLevel: values.positionLevel, managerId, dottedManagerId: null, workLocation: null },
           },
           user.person.id,
         ),

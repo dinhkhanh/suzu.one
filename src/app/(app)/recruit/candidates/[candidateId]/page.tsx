@@ -10,6 +10,8 @@ import { statusTone } from "@/components/ui/tone";
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
+import { EraseCandidateButton } from "@/modules/recruit/ui/erase-candidate";
+import { TalentPoolControl } from "@/modules/recruit/ui/talent-pool";
 import { pageTitle } from "@/i18n/page-title";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
@@ -35,6 +37,18 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
     { key: "source", label: t("columns.source"), value: t(`source.${candidate.source}`) },
     { key: "referredBy", label: t("form.referredBy"), value: view.referredByName ? <RecordLink kind="person" id={candidate.referredByPersonId}>{view.referredByName}</RecordLink> : "—" },
     { key: "tags", label: t("columns.tags"), value: candidate.tags.length > 0 ? candidate.tags.join(", ") : "—" },
+    // The language their letters are written in, and whether they asked to be kept (FR-REC-13).
+    { key: "locale", label: t("email.language"), value: candidate.locale === "en" ? "English" : "Tiếng Việt" },
+    {
+      key: "pool",
+      label: t("pool.title"),
+      value: (
+        <span className="flex flex-col items-start gap-2">
+          <span>{candidate.anonymisedAt ? "—" : candidate.talentPoolConsent ? t("pool.in") : t("pool.out")}</span>
+          {view.canManage && !candidate.anonymisedAt ? <TalentPoolControl candidateId={candidateId} inPool={candidate.talentPoolConsent} /> : null}
+        </span>
+      ),
+    },
     ...candidate.links.map((link, index) => ({
       key: `link-${index}`,
       label: t("candidate.links"),
@@ -55,9 +69,13 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
         title={candidate.fullName}
         actions={
           view.canManage ? (
-            <Link href={`/recruit/candidates/${candidateId}/edit`} className={buttonVariants({ variant: "outline" })}>
-              {t("actions.editCandidate")}
-            </Link>
+            <>
+              {/* An erasure request (PDPL): for whoever runs recruitment over every opening they applied to. */}
+              {view.canErase ? <EraseCandidateButton candidateId={candidateId} /> : null}
+              <Link href={`/recruit/candidates/${candidateId}/edit`} className={buttonVariants({ variant: "outline" })}>
+                {t("actions.editCandidate")}
+              </Link>
+            </>
           ) : null
         }
       >

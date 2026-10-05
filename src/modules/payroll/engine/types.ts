@@ -1,7 +1,7 @@
 // Plain shapes shared by the payroll engine and the services that feed it. No I/O.
 import type { IsoDate } from "@/lib/dates";
 import type { ParameterValue } from "@/modules/platform/statutory/catalogue";
-import type { PayrollPolicyValue } from "../enums";
+import type { PayrollPolicyValue, SalaryTerms } from "../enums";
 import type { ComponentDefinition } from "./components";
 import type { PayPeriod, PaySegment, ProfileFacts, TimesheetTotals } from "./period";
 import type { RoundingRule } from "./rounding";
@@ -24,7 +24,11 @@ export type StatutoryParams = {
   pitFlatRates: ParameterValue<"pit.flat_rates">;
   pitOvertimeExemption: ParameterValue<"pit.overtime_exemption">;
   overtimeMultipliers: ParameterValue<"overtime.multipliers">;
+  /** Whether the holiday multiplier includes the holiday's own salary (SRS Q13). */
+  overtimeHolidayPay: ParameterValue<"overtime.holiday_pay">;
   probationLimits: ParameterValue<"probation.limits">;
+  /** What a day of unused leave paid out on leaving is priced on (FR-LVE-03, FR-PAY-18). */
+  leavePayoutBasis: ParameterValue<"leave.payout_basis">;
 };
 
 export const STATUTORY_KEYS = {
@@ -41,7 +45,9 @@ export const STATUTORY_KEYS = {
   pitFlatRates: "pit.flat_rates",
   pitOvertimeExemption: "pit.overtime_exemption",
   overtimeMultipliers: "overtime.multipliers",
+  overtimeHolidayPay: "overtime.holiday_pay",
   probationLimits: "probation.limits",
+  leavePayoutBasis: "leave.payout_basis",
 } as const satisfies Record<keyof StatutoryParams, string>;
 
 // ── What one person brings to a payroll period ──────────────────────────────────────────────
@@ -82,6 +88,29 @@ export type PriorInMonth = {
   otherDeductions: number;
   /** Tax already withheld by the earlier run(s) of this month. */
   tax: number;
+  /**
+   * Unused-leave days (hundredths) the other runs of this month already pay out to this leaver.
+   * Not read by the engine: the calculation hands it only the days still owed (`LeavePayout`).
+   */
+  leavePayoutDaysCenti?: number;
+};
+
+/**
+ * Unused leave owed on leaving (FR-LVE-03, FR-PAY-18). How many days is the leave module's to say —
+ * its policy carries, lapses or pays them, and it posts the days paid to the ledger dated the last
+ * day of employment; the run of that month pays them. What a day is worth is the law's: the
+ * salary under the labour contract of the **month before the month of leaving**, divided by that
+ * month's normal working days (Labour Code 2019 art. 113.3; Decree 145/2020 art. 67.3).
+ */
+export type LeavePayout = {
+  /** Days owed, in hundredths of a day (the ledger's unit), across every leave type that pays out. */
+  daysCenti: number;
+  /** The month the day rate is taken from — the month before leaving, or the month itself for someone who joined in it. */
+  basisMonth: string;
+  /** The salary terms in force at the end of that month. `leave.payout_basis` says which parts count. */
+  terms: SalaryTerms;
+  /** The normal working days of that month on the person's schedule: the divisor. */
+  workingDays: number;
 };
 
 /**
@@ -119,6 +148,8 @@ export type PersonPayInput = {
   inputs: PayInput[];
   /** Differences from months already paid, carried into this run (FR-PAY-17). */
   retro: RetroItem[];
+  /** Unused leave paid out because the person leaves in this period; absent or null when nothing is owed. */
+  leavePayout?: LeavePayout | null;
   /** Charity, voluntary pension and the like, deducted before the brackets (FR-PAY-13). */
   otherPitDeductions: number;
   /** Set on an off-cycle run: what the month's earlier run already taxed (FR-PAY-19). */
@@ -212,6 +243,30 @@ export type PitResult = {
   tax: number;
 };
 
+/**
+ * What the engine tells a human to look at. `leaves_in_period` asks for the rest of the final
+ * settlement (FR-PAY-18) — severance, asset compensation, advances to recover — which are typed
+ * in. The last five mean **a figure owed or entered was not paid** — a typed-in amount under a
+ * code that is not an input component, a negative typed-in amount, a retro item with no retro
+ * component in the catalogue, unused leave with no payout component or nothing to price it on —
+ * and a run carrying one must not be proposed until it is put right (`run-readiness.ts`).
+ */
+export type PayWarning =
+  | "negative_net"
+  | "no_salary_structure"
+  | "zero_paid_days"
+  | "insurance_base_below_minimum"
+  | "insurance_base_above_declared"
+  | "leaves_in_period"
+  | "input_code_unknown"
+  | "input_negative"
+  | "retro_component_missing"
+  | "leave_payout_component_missing"
+  | "leave_payout_unpriced";
+
+/** The warnings that say a figure owed or entered was left out of the result. */
+export const UNPAID_FIGURE_WARNINGS: readonly PayWarning[] = ["input_code_unknown", "input_negative", "retro_component_missing", "leave_payout_component_missing", "leave_payout_unpriced"];
+
 export type PersonPayResult = {
   personId: string;
   entityId: string;
@@ -223,6 +278,6 @@ export type PersonPayResult = {
   insurance: InsuranceResult;
   pit: PitResult;
   /** Anything a human should look at before the run is proposed (FR-PAY-31 adds more). */
-  warnings: ("negative_net" | "no_salary_structure" | "zero_paid_days" | "insurance_base_below_minimum" | "insurance_base_above_declared")[];
+  warnings: PayWarning[];
   trace: TraceStep[];
 };

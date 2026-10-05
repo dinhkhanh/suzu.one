@@ -29,7 +29,7 @@ import { isProjectPerson } from "../projects/membership";
 import { removeReviewChain, saveReviewChain } from "./chains";
 import { changeAccountManager, handOffStage } from "./handoffs";
 import { moveTaskToTeam } from "./move";
-import { createProject, listAssignable, setProjectMember } from "./projects";
+import { createProject, listAssignable, projectAppointmentsOf, setProjectMember } from "./projects";
 import { submitDeliverable } from "./reviews";
 import { createWorkTask, getTaskDetail, loadTask, updateWorkTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
@@ -322,5 +322,40 @@ describe("the ways into a private project that are not the assignee (security re
     expect(await isProjectPerson(db(), ids.secret, ids.long)).toBe(true);
     expect(await isProjectPerson(db(), ids.secret, ids.huy)).toBe(true);
     expect(await isProjectPerson(db(), ids.open, ids.bao)).toBe(true);
+  });
+});
+
+describe("the posts a person holds in projects, on their page", () => {
+  it("names the lead and the account manager of running projects, and only projects the viewer may open", async () => {
+    const project = (name: string, overrides: { visibility?: "team" | "private"; status?: string; leadPersonId?: string } = {}) =>
+      createProject({ teamId: ids.social, name, description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.khoi, startDate: null, dueDate: null, ...overrides }, ids.khoi);
+    const campaign = (await project("Chiến dịch hè")).id;
+    const tender = (await project("Hồ sơ thầu", { visibility: "private" })).id;
+    const finished = (await project("Việc đã xong", { status: "done", leadPersonId: ids.bao })).id;
+    for (const id of [campaign, tender]) await setProjectMember(id, ids.bao, "account_manager");
+    const mine = [campaign, tender, finished];
+    const posts = async (viewerKey: Key, person: Key) => (await projectAppointmentsOf(await viewer(viewerKey), ids[person])).filter((post) => mine.includes(post.projectId)).map((post) => [post.projectName, post.role]);
+
+    // Bảo sees his own posts, the private project included; a finished project is no longer a post.
+    expect(await posts("bao", "bao")).toEqual([
+      ["Chiến dịch hè", "account_manager"],
+      ["Hồ sơ thầu", "account_manager"],
+    ]);
+    // The lead is named once, though the project names them and they hold the role as well.
+    expect(await posts("khoi", "khoi")).toEqual([
+      ["Chiến dịch hè", "lead"],
+      ["Hồ sơ thầu", "lead"],
+    ]);
+    // Huy is in neither project nor in their team: Bảo's page names none of them to him.
+    expect(await posts("huy", "bao")).toEqual([]);
+
+    // The director reads the private project by authority, not as one of its people: the read is recorded.
+    const privateReads = () => db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.resourceId, tender)));
+    const before = (await privateReads()).length;
+    expect(await posts("boss", "bao")).toEqual([
+      ["Chiến dịch hè", "account_manager"],
+      ["Hồ sơ thầu", "account_manager"],
+    ]);
+    expect((await privateReads()).length).toBe(before + 1);
   });
 });

@@ -6,6 +6,8 @@ import { PREVIEW_DECISIONS, openPreviewLink } from "@/modules/work/service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 /**
@@ -21,11 +23,28 @@ import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
  * title of the work, its version, the file or link, the note the account manager wrote, and the
  * sender's name. No other task, no internal comment, no fee, no colleague, no navigation anywhere.
  *
+ * The file is not a storage URL printed into the page — one signed here would run out while the
+ * client was still reading the note. It is this link's own `file` route, which checks the token
+ * again on every request and signs at that moment, so the file opens for as long as the link does.
+ * A picture is shown in place through the same route and a video is **played** in place through it
+ * — in the browser's own player, a plain `<video controls>`, because this page ships no script of
+ * ours — with the file's name beside it as the download; anything else is a link to it.
+ *
+ * **A machine is not shown the work.** A chat app fetches the address the moment the link is
+ * pasted, to draw its card. That is not the client opening it, so it is not counted or audited
+ * (`openPreviewLink` answers `not_a_view` before it reads anything) and it gets a page that says
+ * only that there is something to open — the same page for every token, real or not.
+ *
+ * **No answer is chosen for the client.** The three choices arrive unchecked: an approval freezes
+ * the version and is the record of what was agreed, so it has to be something the client did, not
+ * something the page did for them. The browser refuses the form without a choice (`required`) and
+ * so does the action (`decideOnPreviewLink` validates it).
+ *
  * Never indexed, never stored by a browser or a proxy: the URL *is* the credential (`next.config.ts`
  * adds `X-Robots-Tag` and `Cache-Control: no-store` for `/preview/*`, beside the tags below).
  */
 export const dynamic = "force-dynamic";
-/** Reading one row, signing one URL. Anything slower than this is broken, not busy. */
+/** Reading one link and what it points at. Anything slower than this is broken, not busy. */
 export const maxDuration = 15;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -56,6 +75,16 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
   const outcome = await openPreviewLink(token, visitorOf({ headers: new Headers(await headers()) }));
 
+  if (!outcome.ok && outcome.reason === "not_a_view") {
+    // What a chat app's card is drawn from: no client, no project, no title, no file.
+    return (
+      <div className="flex flex-col gap-3">
+        <h1 className="text-xl font-semibold">{t("unfurl.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("unfurl.body")}</p>
+      </div>
+    );
+  }
+
   if (!outcome.ok) {
     // One page, one sentence, never why.
     return (
@@ -69,6 +98,8 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
   const page = outcome.page;
   const error = typeof query.error === "string" ? query.error : null;
   const subtitle = [page.clientName, page.projectName].filter(Boolean).join(" · ");
+  // The token is the only thing in the address, encoded as the form's action below encodes it.
+  const fileHref = `/preview/${encodeURIComponent(token)}/file`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -83,14 +114,34 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
       <section className="flex flex-col gap-2 rounded-xl border p-4">
         <h2 className="text-sm font-medium">{t("work")}</h2>
-        {page.url ? (
+        {page.kind === "file" ? (
+          page.fileName ? (
+            <>
+              {page.fileIsImage ? (
+                <a href={fileHref} target="_blank" rel="noopener noreferrer nofollow">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a private file behind this link's own route: the image optimiser cannot fetch it */}
+                  <img src={fileHref} alt={page.fileName} className="mx-auto h-auto max-h-[80dvh] max-w-full rounded-lg border" />
+                </a>
+              ) : null}
+              {/* The browser's own player, fed by the same route: it follows the redirect to storage
+                  and asks storage for each stretch of the film. Only the first frames are fetched
+                  until the client presses play. */}
+              {page.fileIsVideo ? <video src={fileHref} controls preload="metadata" playsInline className="mx-auto max-h-[80dvh] w-full rounded-lg border bg-black" /> : null}
+              <a href={fileHref} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-sm font-medium underline">
+                {page.fileName}
+              </a>
+              <p className="text-xs text-muted-foreground">{page.fileIsVideo ? t("videoHint") : t("fileHint")}</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("unavailable")}</p>
+          )
+        ) : page.url ? (
           <a href={page.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-sm font-medium underline">
-            {page.kind === "file" ? (page.fileName ?? t("openFile")) : page.url}
+            {page.url}
           </a>
         ) : (
-          <p className="text-sm text-muted-foreground">{page.fileName ?? t("unavailable")}</p>
+          <p className="text-sm text-muted-foreground">{t("unavailable")}</p>
         )}
-        {page.kind === "file" ? <p className="text-xs text-muted-foreground">{t("fileHint")}</p> : null}
       </section>
 
       {page.message ? (
@@ -122,15 +173,18 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-sm font-medium">{t("decide.choice")}</legend>
-              {PREVIEW_DECISIONS.map((decision, index) => (
+              {/* None is checked: the client picks, and `required` holds the form until they have. */}
+              <RadioGroup name="decision" required>
+              {PREVIEW_DECISIONS.map((decision) => (
                 <label key={decision} className="flex items-start gap-2 rounded-lg border p-3 text-sm">
-                  <input type="radio" name="decision" value={decision} defaultChecked={index === 0} required className="mt-0.5 size-4" />
+                  <RadioGroupItem value={decision} className="mt-0.5" />
                   <span>
                     <span className="font-medium">{t(`decide.decisions.${decision}`)}</span>
                     <span className="block text-xs text-muted-foreground">{t(`decide.hints.${decision}`)}</span>
                   </span>
                 </label>
               ))}
+              </RadioGroup>
             </fieldset>
 
             <div className="flex flex-col gap-1.5">
@@ -140,7 +194,7 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="comment">{t("decide.comment")}</Label>
-              <textarea id="comment" name="comment" rows={4} maxLength={4000} className="w-full rounded-lg border bg-transparent px-3 py-2 text-base md:text-sm" />
+              <Textarea id="comment" name="comment" rows={4} maxLength={4000} />
               <p className="text-xs text-muted-foreground">{t("decide.commentHint")}</p>
             </div>
 

@@ -6,7 +6,9 @@ import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { cancelFollowUpAction, completeFollowUpAction, recordActivityAction, rescheduleFollowUpAction } from "../account-actions";
 import { ACTIVITY_KINDS } from "../enums";
@@ -21,23 +23,20 @@ export function LogActivityForm({ target, contacts, people, meId, today }: { tar
   const [plan, setPlan] = useState(false);
   return (
     <CrmForm action={recordActivityAction} extra={{ clientId: target.clientId ?? "", dealId: target.dealId ?? "", leadId: target.leadId ?? "", logged: logged ? "on" : "" }} submit={t("save")}>
-      <div className="flex flex-wrap gap-3 text-sm">
-        <label className="flex items-center gap-1.5">
-          <input type="radio" name="mode" checked={logged} onChange={() => setLogged(true)} /> {t("happened")}
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            type="radio"
-            name="mode"
-            checked={!logged}
-            onChange={() => {
-              setLogged(false);
-              setPlan(true);
-            }}
-          />{" "}
-          {t("planOnly")}
-        </label>
-      </div>
+      <Segmented
+        size="sm"
+        className="self-start"
+        aria-label={t("mode")}
+        value={logged ? "happened" : "plan"}
+        options={[
+          { value: "happened", label: t("happened") },
+          { value: "plan", label: t("planOnly") },
+        ]}
+        onChange={(value) => {
+          setLogged(value === "happened");
+          if (value === "plan") setPlan(true);
+        }}
+      />
       <div className="grid gap-3 sm:grid-cols-3">
         <Field name="kind" label={t("kind")}>
           <Select id="activity-kind" name="kind" defaultValue="call">
@@ -75,7 +74,7 @@ export function LogActivityForm({ target, contacts, people, meId, today }: { tar
             <Input id="activity-outcome" name="outcome" maxLength={1000} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={plan} onChange={(event) => setPlan(event.target.checked)} /> {t("alsoPlan")}
+            <Checkbox checked={plan} onCheckedChange={(checked) => setPlan(checked)} /> {t("alsoPlan")}
           </label>
         </>
       ) : null}
@@ -129,7 +128,7 @@ export function CompleteFollowUpForm({ activityId, people, meId, today }: { acti
         </Field>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={next} onChange={(event) => setNext(event.target.checked)} /> {t("alsoPlan")}
+        <Checkbox checked={next} onCheckedChange={(checked) => setNext(checked)} /> {t("alsoPlan")}
       </label>
       {next ? (
         <div className="grid gap-3 sm:grid-cols-3">

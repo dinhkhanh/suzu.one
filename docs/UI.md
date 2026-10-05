@@ -36,10 +36,31 @@ are `.section-label` (11px uppercase tracked faint).
 Radii: 10px controls (`rounded-[0.625rem]`), 14px cards and sheets (`rounded-[14px]`), 22px the
 phone's bottom sheet, full for pills.
 
-Motion: one easing `--ease-settle` (`cubic-bezier(.2,.8,.2,1)`); 100ms hover/press, 200ms state,
-300ms layers. `.press` on anything tappable (scales to 97%). `.rise` + `style={{ "--i": index }}`
-on rows that should arrive one after another. Sheets slide up (`animate-rise-up`), counts pop
-(`animate-pop`), scrims fade. `prefers-reduced-motion` turns it all off.
+Motion: one easing `--ease-settle` (`cubic-bezier(.2,.8,.2,1)`), and `--ease-drawer`
+(`cubic-bezier(.32,.72,0,1)`, iOS's sheet curve) for what a finger can hold — the phone's sheets and
+menu drawer. 100ms hover/press, 200ms state, 300ms layers; what leaves goes faster than it came.
+Every motion answers "why does this move?" — feedback, where a thing came from, or a change that
+would otherwise jump — and how often it is seen decides how much it may move:
+
+- `.press` on anything tappable (scales to 97%); a linked `ListItem` washes under the finger and
+  stays washed until its page arrives, and a tapped tab stop or sidebar row takes the highlight at
+  once (`LinkPending`, `components/shell/link-pending.tsx`) — the tap is answered before the server is.
+- `.rise` + `style={{ "--i": index }}` on rows that should arrive one after another; the cascade
+  stops at the tenth row.
+- `Dialog` is Base UI's Drawer: on a phone a sheet that rises, follows the finger and is put away
+  by a swipe or a flick; on a desk a card that settles in from 95% and ignores swipes. The phone's
+  menu drawer swipes shut the same way (`use-swipe-to-close.ts`).
+- Popovers, menus and selects grow from their trigger (`origin-(--transform-origin)`); dialogs grow
+  from their own centre. `Collapsible` panels and every `<details>` open rather than appear.
+- Counts pop when they arrive and when they change (`animate-pop`); scrims fade.
+- Nothing a keyboard opens animates (the ⌘K palette on a desk), and nothing a reader is reading
+  moves for style: figures, charts and timers change in place.
+- `prefers-reduced-motion`: nothing travels, grows or springs and state changes are instant, but
+  what arrives still fades in.
+
+The app paints under the phone's notch and home indicator (`viewportFit: "cover"` in the app
+layout) and pads its bars with `env(safe-area-inset-*)`. Inputs are 16px on a phone (`text-base
+md:text-sm`) so iOS does not zoom into them.
 
 ## The shell (`components/shell/app-frame.tsx`)
 

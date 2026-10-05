@@ -1,7 +1,7 @@
 "use client";
-// The table view (FR-PJM-36): one row per task, every column editable in place — the change shows
-// at once and snaps back if the server refuses it — rows picked for one bulk change, and column
-// totals of estimates and logged time.
+// The table view (FR-PJM-36): one row per task, every column but the state editable in place — the
+// change shows at once and snaps back if the server refuses it — rows picked for one bulk change,
+// and column totals of estimates and logged time. A single task's state is changed on its page.
 import { useTranslations } from "next-intl";
 import { RecordLink } from "@/components/ui/record-link";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { type ColumnKind, Table, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type ColumnKind, Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
 import { type CustomFieldType, type CustomValue, customKey } from "../engine/custom-fields";
 import { filterTasks, type ListSort, readSort, sortTasks, type TaskFilters } from "../engine/filter";
@@ -22,7 +22,9 @@ import { handoffOf, useHandoffGate } from "./handoff";
 import { CustomValueInput, type FieldView } from "./custom-fields";
 import { ArrowUpDownIcon } from "lucide-react";
 import { FilterBar, MenuPicker, useUrlFilters, writeFiltersToUrl } from "./filter-bar";
+import { QuickCreate, type TaskScope } from "./quick-create";
 import { type ListOptions, type ListTask, sortChoices } from "./task-list-view";
+import { StateBadge } from "./status-badge";
 import { LabelChip } from "./team-forms";
 
 type Patch = Partial<Pick<ListTask, "stateId" | "assigneePersonId" | "startDate" | "dueDate" | "priority" | "estimateMinutes" | "labelIds" | "cycleId">> & { customValues?: Record<string, CustomValue> };
@@ -47,9 +49,12 @@ export function TaskTableView({
   today,
   canContribute,
   logged,
+  scope,
 }: {
   tasks: ListTask[];
   options: ListOptions;
+  /** Where the table's "new task" row files a task; without it the table has none (a list across several places). */
+  scope?: TaskScope;
   initialFilters: TaskFilters;
   initialSort?: ListSort;
   selfId: string;
@@ -73,10 +78,11 @@ export function TaskTableView({
 
   const fields = useMemo(() => (options.fields ?? []).filter((field) => field.isActive), [options.fields]);
   const names = useMemo(() => new Map(options.people.map((person) => [person.id, person.fullName])), [options.people]);
+  const stateById = useMemo(() => new Map(options.states.map((state) => [state.id, state])), [options.states]);
   const visible = useMemo(() => sortTasks(filterTasks(shown, filters, { selfId, today, fields }), sort, fields, names), [shown, filters, selfId, today, fields, sort, names]);
   const editable = (task: ListTask) => (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
   const failed = (result: { ok: boolean; error?: string; message?: string }) => setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
-  // Inline and bulk state changes meet the hand-off gate (FR-PJM-40): the sheet opens for the task.
+  // Bulk state changes meet the hand-off gate (FR-PJM-40): the sheet opens for the task.
   const gate = useHandoffGate();
 
   // A field of a project applies only to that project's tasks; the team's fields to all.
@@ -199,6 +205,7 @@ export function TaskTableView({
             const open = task.status === "todo" || task.status === "in_progress";
             const overdue = open && task.dueDate !== null && task.dueDate < today;
             const own = fieldsOf(task);
+            const state = stateById.get(task.stateId);
             return (
               <TableRow key={task.id} data-state={selected.has(task.id) ? "selected" : undefined}>
                 <TableCell>
@@ -217,17 +224,7 @@ export function TaskTableView({
                     ) : null}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Select aria-label={t("state")} value={task.stateId} disabled={!can} searchable={false} onChange={(event) => edit(task, { stateId: event.target.value }, { stateId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
-                    {options.states
-                      .filter((state) => state.isActive || state.id === task.stateId)
-                      .map((state) => (
-                        <option key={state.id} value={state.id}>
-                          {state.name}
-                        </option>
-                      ))}
-                  </Select>
-                </TableCell>
+                <TableCell className="max-w-44">{state ? <StateBadge category={state.category} name={state.name} /> : null}</TableCell>
                 <TableCell>
                   <Select aria-label={t("assignee")} value={task.assigneePersonId ?? ""} disabled={!can} onChange={(event) => edit(task, { assigneePersonId: event.target.value || null }, { assigneePersonId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
                     <option value="">{tList("unassigned")}</option>
@@ -301,6 +298,12 @@ export function TaskTableView({
           </TableRow>
         </TableFooter>
       </Table>
+        {scope && canContribute ? (
+          // Created inside the filters in force, as on the list, so the new row does not vanish on arrival.
+          <TableAddRow label={tList("newTask")} bodyClassName="border-t bg-background px-3 py-2 md:pl-[calc(var(--table-gutter)+0.75rem)]">
+            <QuickCreate scope={scope} defaults={{ stateId: options.states.find((row) => row.id === filters.state && row.isActive)?.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+          </TableAddRow>
+        ) : null}
       </TableCard>
     </div>
   );

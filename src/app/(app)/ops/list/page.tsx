@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
+import { Pager, readPage } from "@/components/ui/pager";
 import { Segmented } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { isMonthKey } from "@/lib/month-grid";
-import { canManageLibrary, canManageOps, canReadOps, type InstanceListItem, listInstances, opsReach, STATUS_COLOURS, type StatusColour } from "@/modules/ops/service";
+import { canManageLibrary, canManageOps, canReadOps, type InstanceListItem, listInstancePage, listInstances, opsReach, STATUS_COLOURS, type StatusColour } from "@/modules/ops/service";
 import { SyncButton } from "@/modules/ops/ui/library";
 import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
@@ -20,6 +21,8 @@ import { RecordLink } from "@/components/ui/record-link";
 export const generateMetadata = pageTitle("compliance");
 
 type Band = "overdue" | "soon" | "later";
+/** Rows per page of the open and the closed register (PERF-03); a month or a colour is one page of up to 2,000. */
+const PAGE_SIZE = { open: 500, closed: 100 } as const;
 const BANDS: Band[] = ["overdue", "soon", "later"];
 
 // Obligations by due date (FR-OPS-02): open or closed, or — coming from a dashboard cell — one entity, month and status colour.
@@ -36,8 +39,12 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
   // A month or a colour cuts across open and closed: the tabs step aside.
   const narrowed = !!(month || colour);
   const monthEnd = month ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : undefined;
-  const [all, entities] = await Promise.all([
-    listInstances({ principal: user.principal, personId: user.person.id }, { open: narrowed ? undefined : show === "open", entityId, ...query, dueFrom: month ? `${month}-01` : undefined, dueTo: monthEnd, limit: narrowed ? 2000 : 500 }, today),
+  const page = narrowed ? 1 : readPage(params.page);
+  const viewer = { principal: user.principal, personId: user.person.id };
+  const [{ items: all, total }, entities] = await Promise.all([
+    narrowed
+      ? listInstances(viewer, { entityId, ...query, dueFrom: month ? `${month}-01` : undefined, dueTo: monthEnd, limit: 2000 }, today).then((items) => ({ items, total: items.length }))
+      : listInstancePage(viewer, { open: show === "open", entityId, ...query }, page, PAGE_SIZE[show], today),
     listEntities(),
   ]);
   const items = colour ? all.filter((item) => item.colour === colour) : all;
@@ -122,13 +129,13 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
       ) : null}
       {banded ? (
         <TileGrid>
-          <Tile label={t("tabs.open")} value={items.length} />
+          <Tile label={t("tabs.open")} value={total} />
           <Tile label={t("dashboard.tiles.overdue")} value={counts.overdue} tone={counts.overdue > 0 ? "destructive" : undefined} />
           <Tile label={t("dashboard.tiles.dueSoon")} value={counts.dueSoon} tone={counts.dueSoon > 0 ? "warning" : undefined} />
         </TileGrid>
       ) : null}
 
-      <Table>
+      <Table numberFrom={(page - 1) * PAGE_SIZE[show] + 1}>
         <TableHeader>
           <TableRow>
             <TableHead kind="text">{t("history.columns.obligation")}</TableHead>
@@ -147,6 +154,7 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
           ))}
         </TableBody>
       </Table>
+      {narrowed ? null : <Pager page={page} pageSize={PAGE_SIZE[show]} total={total} href={(to) => `/ops/list${overviewParams(query, { show: show === "closed" ? "closed" : null, entity: entityId, page: to > 1 ? String(to) : null })}`} />}
       {canManageLibrary(user.principal) && items.some((item) => item.unreviewed) ? <p className="text-xs text-muted-foreground">{t("unreviewedHint")}</p> : null}
     </Page>
   );

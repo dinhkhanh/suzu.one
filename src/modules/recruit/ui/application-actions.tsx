@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { moveApplicationAction, rejectApplicationAction, withdrawApplicationAction } from "../actions";
@@ -71,6 +72,12 @@ export function ApplicationActions({ applicationId, stages, currentStageId, clos
             <Input id="reject-note" name="note" maxLength={2000} />
           </Field>
         </FieldErrors>
+        {/* The rejection letter, in the candidate's language. Ticked by default: a candidate who
+            hears nothing is still waiting. The reason and the note above never go in it. */}
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox name="tellCandidate" value="on" defaultChecked className="mt-0.5" />
+          <span>{t("tellCandidateRejected")}</span>
+        </label>
         <FormError namespace="recruit.errors" errorKey={reject.errorKey} />
         <div className="flex gap-2">
           <Button type="submit" size="sm" variant="destructive" disabled={reject.pending}>

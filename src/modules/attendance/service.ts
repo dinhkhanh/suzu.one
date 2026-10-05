@@ -11,6 +11,8 @@ export type { MonthSummary } from "./engine/timesheet";
 export { getMonthSummaryFor, getTimesheetDays, recomputeDays, summariseMonth, summarisePersonYear, type TimesheetDayRow } from "./timesheets";
 /** The assistant's approver lookup (FR-AI-02); `ATTENDANCE_REQUEST_TYPES` names the four flows. */
 export { type AttendanceRequestType, ATTENDANCE_REQUEST_TYPES, whoApprovesAttendance } from "./requests";
+/** A business trip approved in the requests module becomes the attendance record of those days (REQ-02). */
+export { recordApprovedTrip } from "./requests";
 // Payroll's input (Phase 5): the locked month per entity, retro adjustments, and the receipt payroll leaves on them.
-export { getLockedTimesheets, isPeriodLocked, listAdjustmentsForPayroll, type LockedPeriod, type LockedTimesheet, markAdjustmentsTaken, type TimesheetAdjustmentRow } from "./months";
+export { getLockedTimesheets, isPeriodLocked, listAdjustmentsForPayroll, listVoidedAdjustmentIds, type LockedPeriod, type LockedTimesheet, markAdjustmentsTaken, releaseAdjustments, type TimesheetAdjustmentRow } from "./months";
 export type { AdjustmentDeltas } from "./schema";

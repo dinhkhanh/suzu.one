@@ -1,4 +1,5 @@
 import "server-only";
+import type { PositionLevel, SeniorityLevel } from "@/lib/job-levels";
 // Offers, and the moment a candidate becomes an employee (FR-REC-08, FR-REC-09).
 //
 // Four things in this file carry the weight.
@@ -29,13 +30,17 @@ import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { hireInTransaction, invalidatePositions, listPositionNames } from "@/modules/core-hr/service";
-import { atLeast, type LetterheadFields, renderTemplate, vietnameseWords } from "@/modules/documents/service";
+import { createTranslator } from "next-intl";
+import vi from "../../../messages/vi.json";
+import { atLeast, findTemplate, type LetterheadFields, renderDocumentPdf, listTemplates, renderTemplate, vietnameseWords } from "@/modules/documents/service";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
+import type { EmailAttachment } from "@/modules/platform/notifications/schema";
 import { notify } from "@/modules/platform/notifications/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { type Principal, unitsCovered } from "@/modules/platform/rbac/policy";
 import { ROLE_DEFINITIONS, type Tier } from "@/modules/platform/rbac/roles";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
+import { getParameter } from "@/modules/platform/statutory/service";
 import { submitSalaryChange } from "@/modules/payroll/service";
 import {
   DEFAULT_OFFER_VALID_DAYS,
@@ -45,8 +50,9 @@ import {
   type OfferDeclineReason,
   type OfferStatus,
 } from "./enums";
-import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
+import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, type OfferLegalLimits, type OfferProblem, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
 import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
+import { type LetterOutcome, sendLetter } from "./letters";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -121,7 +127,8 @@ async function nextOfferNumber(executor: Executor, entityCode: string, year: num
 export type OfferInput = {
   applicationId: string;
   positionName: string;
-  jobLevel: string | null;
+  seniorityLevel: SeniorityLevel | null;
+  positionLevel: PositionLevel | null;
   employmentType: EmploymentType;
   workLocation: string | null;
   managerPersonId: string | null;
@@ -135,10 +142,23 @@ export type OfferInput = {
   note: string | null;
 };
 
-function checkDraft(input: OfferInput, today: IsoDate): IsoDate {
+/**
+ * The legal figures an offer is held to, as in force on the day the job starts — the same
+ * `probation.limits` payroll checks the probation salary against when the offer becomes pay.
+ */
+async function offerLimitsOn(startDate: IsoDate, executor?: Executor): Promise<OfferLegalLimits> {
+  const { minimumPayPercent } = await getParameter("probation.limits", startDate, executor);
+  return { minimumProbationPayPercent: minimumPayPercent };
+}
+
+function refuse(problems: readonly OfferProblem[], limits: OfferLegalLimits) {
+  if (problems.length) throw new ActionError(problems[0], problems[0] === "offer_probation_percent_invalid" ? { minimum: limits.minimumProbationPayPercent } : undefined);
+}
+
+async function checkDraft(input: OfferInput, today: IsoDate): Promise<IsoDate> {
   const expiresOn = input.expiresOn ?? defaultExpiry(input.startDate, today, DEFAULT_OFFER_VALID_DAYS);
-  const problems = offerProblems({ ...input, expiresOn }, today);
-  if (problems.length) throw new ActionError(problems[0]);
+  const limits = await offerLimitsOn(input.startDate);
+  refuse(offerProblems({ ...input, expiresOn }, today, limits), limits);
   if (input.note && input.note.length > OFFER_LIMITS.note) throw new ActionError("offer_note_too_long");
   return expiresOn;
 }
@@ -149,7 +169,7 @@ function checkDraft(input: OfferInput, today: IsoDate): IsoDate {
  * saying what was actually promised.
  */
 export async function makeOffer(input: OfferInput, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<OfferRow> {
-  const expiresOn = checkDraft(input, today);
+  const expiresOn = await checkDraft(input, today);
 
   return db().transaction(async (tx) => {
     const application = await findApplication(input.applicationId, tx);
@@ -170,7 +190,8 @@ export async function makeOffer(input: OfferInput, actorPersonId: string, today:
         entityId: opening.entityId,
         number,
         positionName: input.positionName,
-        jobLevel: input.jobLevel,
+        seniorityLevel: input.seniorityLevel,
+        positionLevel: input.positionLevel,
         departmentId: opening.departmentId,
         teamId: opening.teamId,
         managerPersonId: input.managerPersonId,
@@ -205,7 +226,7 @@ export async function makeOffer(input: OfferInput, actorPersonId: string, today:
 
 /** Changing a draft. Only a draft: once it is under approval the figure is in front of an approver. */
 export async function updateOffer(offerId: string, input: OfferInput, today: IsoDate = todayInVietnam()): Promise<{ before: OfferRow; after: OfferRow }> {
-  const expiresOn = checkDraft(input, today);
+  const expiresOn = await checkDraft(input, today);
 
   return db().transaction(async (tx) => {
     const before = await findOffer(offerId, tx);
@@ -216,7 +237,8 @@ export async function updateOffer(offerId: string, input: OfferInput, today: Iso
       .update(schema.jobOffer)
       .set({
         positionName: input.positionName,
-        jobLevel: input.jobLevel,
+        seniorityLevel: input.seniorityLevel,
+        positionLevel: input.positionLevel,
         employmentType: input.employmentType,
         workLocation: input.workLocation,
         managerPersonId: input.managerPersonId,
@@ -245,8 +267,8 @@ export async function submitOfferForApproval(offerId: string, actorPersonId: str
     if (!offer) throw new ActionError("offer_not_found");
     const status = nextStatus(offer.status, "submit");
     if (!status) throw new ActionError("offer_not_submittable");
-    const problems = offerProblems({ ...offer, expiresOn: offer.expiresOn as IsoDate, startDate: offer.startDate as IsoDate }, today);
-    if (problems.length) throw new ActionError(problems[0]);
+    const limits = await offerLimitsOn(offer.startDate as IsoDate, tx);
+    refuse(offerProblems({ ...offer, expiresOn: offer.expiresOn as IsoDate, startDate: offer.startDate as IsoDate }, today, limits), limits);
 
     const candidate = await findCandidate(offer.candidateId, tx);
     const payload: OfferPayload = {
@@ -316,8 +338,17 @@ export async function decideOfferRequest(actorPersonId: string, requestId: strin
   });
 }
 
-/** The offer goes out. What actually leaves the building is a letter and an email, not this row. */
-export async function sendOffer(offerId: string, actorPersonId: string): Promise<OfferRow> {
+/**
+ * The offer goes out: the candidate is emailed the offer note (`OFFER_NOTE`) with the letter
+ * attached as the PDF the offer page downloads, in the same transaction that marks it sent. The
+ * sender holds the money authority (`canMakeOffer`), and the one person the figure leaves the
+ * building for is the candidate it is addressed to. The attachment is kept in the outbox only until
+ * the email has gone (`deliverPendingEmails`).
+ *
+ * A candidate with no address on file is still sent the offer — by hand, as before — and the
+ * history says the letter did not go and why.
+ */
+export async function sendOffer(offerId: string, actor: { personId: string; fullName: string }): Promise<{ offer: OfferRow; letter: LetterOutcome }> {
   return db().transaction(async (tx) => {
     const offer = await findOffer(offerId, tx);
     if (!offer) throw new ActionError("offer_not_found");
@@ -326,8 +357,15 @@ export async function sendOffer(offerId: string, actorPersonId: string): Promise
     if (offer.expiresOn < todayInVietnam()) throw new ActionError("offer_expired");
 
     const [after] = await tx.update(schema.jobOffer).set({ status, sentAt: now(), updatedAt: now() }).where(eq(schema.jobOffer.id, offerId)).returning();
-    await recordApplicationEvent(tx, { applicationId: offer.applicationId, type: "emailed", actorPersonId, detail: { offer: offer.number, sent: true } });
-    return after;
+    const pdf = await offerLetterPdf(after, tx);
+    const letter = await sendLetter(tx, {
+      letter: "offer",
+      applicationId: offer.applicationId,
+      actorPersonId: actor.personId,
+      senderName: actor.fullName,
+      attachments: () => pdf,
+    });
+    return { offer: after, letter };
   });
 }
 
@@ -386,15 +424,15 @@ export async function recordOfferResponse(
 
     if (response.answer === "accept") {
       // Whoever may put somebody on the books in that entity: there is now a person to create
-      // before they turn up. The card carries a name and a date, as every card in this module does.
-      const target = { entityId: before.entityId, departmentId: before.departmentId, teamId: before.teamId };
+      // before they turn up. The card names the offer, the job and the date — not the candidate,
+      // whose name in a mailbox would outlive any later erasure; it is one tap away.
+      const target = { entityId: before.entityId, unitPath: [before.departmentId, before.teamId].filter((id): id is string => !!id) };
       const hrPeople = await listPeopleHolding("person:manage", target, { includeWildcard: false, executor: tx });
-      const candidate = await findCandidate(before.candidateId, tx);
       await notify(
         {
           recipients: hrPeople.filter((id) => id !== actorPersonId),
           kind: "recruit.offer_accepted",
-          params: { name: candidate?.fullName ?? before.number, date: before.startDate as string },
+          params: { number: before.number, title: before.positionName, date: before.startDate as string },
           link: `/recruit/offers/${before.id}`,
         },
         tx,
@@ -685,15 +723,30 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
   const target = targetOf(opening);
   const party = offer.approvalRequestId && viewer.personId ? !!(await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId)) : false;
   if (!canViewOffer(viewer.principal, target, member, party)) return null;
-
-  const [template] = await db().select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1);
-  if (!template) return null;
   // An offer letter prints a salary, so its template is compensation tier and the reader must hold
   // the money authority. Checked here, again, against who is asking *now*.
-  if (atLeast(template.tier, "compensation") && !canReadOfferMoney(viewer.principal, target)) return null;
+  return renderOfferLetter(offer, today, (tier) => !atLeast(tier, "compensation") || canReadOfferMoney(viewer.principal, target));
+}
 
-  const candidate = await findCandidate(offer.candidateId);
-  const [department] = offer.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
+/**
+ * The letter itself, for a caller that has already decided who it is for: the reader above, or
+ * `sendOffer`, whose sender holds the money authority (`canMakeOffer`) and whose recipient is the
+ * candidate the letter is addressed to. `mayRead` is asked about the template's tier. Without a
+ * transaction the template and the department come from their modules' cached reference tables.
+ */
+async function renderOfferLetter(offer: OfferRow, today: IsoDate, mayRead: (tier: Tier) => boolean, executor?: Executor): Promise<RenderedOffer | null> {
+  if (!offer.letterTemplateId) return null;
+  const template = executor
+    ? (await executor.select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1))[0]
+    : await findTemplate(offer.letterTemplateId).then((row) => (row?.isActive ? row : undefined));
+  if (!template || !mayRead(template.tier)) return null;
+
+  const candidate = await findCandidate(offer.candidateId, executor);
+  const department = !offer.departmentId
+    ? undefined
+    : executor
+      ? (await executor.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1))[0]
+      : (await listOrgUnits()).find((unit) => unit.id === offer.departmentId);
 
   const context = offerLetterContext({
     offer,
@@ -708,8 +761,21 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
   return { offer, number: offer.number, title: template.name, text, missing, letterhead: template.letterhead ?? {}, candidateName: candidate?.fullName ?? "" };
 }
 
+const documentWord = createTranslator({ locale: "vi", messages: vi, namespace: "documents" });
+
+/** The letter as the PDF the candidate is sent — the same file the offer page downloads. */
+async function offerLetterPdf(offer: OfferRow, executor: Executor): Promise<EmailAttachment[]> {
+  const today = todayInVietnam();
+  const rendered = await renderOfferLetter(offer, today, () => true, executor);
+  if (!rendered) return [];
+  const bytes = renderDocumentPdf({ title: rendered.title, number: rendered.number, text: rendered.text, letterhead: rendered.letterhead, footer: documentWord("pdfFooter", { number: rendered.number }), today });
+  return [{ fileName: `${rendered.number.replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`, contentType: "application/pdf", contentBase64: Buffer.from(bytes).toString("base64") }];
+}
+
 /** The wordings a recruiter may pick from when drafting an offer. Names and ids only. */
-export async function listOfferTemplates(executor: Executor = db()): Promise<{ id: string; name: string; entityId: string | null }[]> {
+export async function listOfferTemplates(executor?: Executor): Promise<{ id: string; name: string; entityId: string | null }[]> {
+  // Without a transaction, from the documents module's cached library (ordered by kind, then name).
+  if (!executor) return (await listTemplates()).filter((row) => row.kind === "offer" && row.isActive).map(({ id, name, entityId }) => ({ id, name, entityId }));
   return executor
     .select({ id: schema.documentTemplate.id, name: schema.documentTemplate.name, entityId: schema.documentTemplate.entityId })
     .from(schema.documentTemplate)
@@ -782,7 +848,8 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
           // The offer names a department and, if the job sits deeper, a team: the team is where the person lands.
           orgUnitId: offer.teamId ?? offer.departmentId,
           positionName: offer.positionName,
-          jobLevel: offer.jobLevel,
+          seniorityLevel: offer.seniorityLevel,
+          positionLevel: offer.positionLevel,
           managerId: offer.managerPersonId,
           dottedManagerId: null,
           workLocation: offer.workLocation,
@@ -819,7 +886,9 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
       // The base salary is the agreed base. The offer's allowance total is **not** split into pay
       // components here: this module does not know the entity's catalogue, and inventing a code
       // would put a figure under a heading nobody chose. It is named in the note for C&B to itemise.
-      terms: { baseSalary: conversion.offer.baseSalaryVnd, insuranceSalary: conversion.offer.baseSalaryVnd, allowances: [] },
+      // The offer's probation share goes with it (FR-PAY-05): payroll pays it on the days a
+      // probation contract covers, and the full figure after.
+      terms: { baseSalary: conversion.offer.baseSalaryVnd, insuranceSalary: conversion.offer.baseSalaryVnd, allowances: [], probationPercent: conversion.offer.probationSalaryPercent < 100 ? conversion.offer.probationSalaryPercent : null },
       note: conversion.offer.allowancesVnd > 0 ? `${conversion.offer.number} — phụ cấp theo thư mời: ${formatVnd(conversion.offer.allowancesVnd)} đ/tháng` : conversion.offer.number,
     });
     salaryRequestId = request.id;

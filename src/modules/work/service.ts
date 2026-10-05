@@ -3,12 +3,14 @@ import "server-only";
 
 export * from "./enums";
 export { invalidateMemberships, loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
-export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
+export { canActForClient, canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type ProjectFacts, type TeamFacts, type WorkViewer } from "./policy";
 export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
 export { addableMembers, type ClientInput, type ClientRow, entryState, findClient, invalidateWorkClients, saveClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
-export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
+export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, type ProjectAppointment, projectAppointmentsOf, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
+export { type DeletedTask, listDeletedTasks, RESTORE_WINDOW_DAYS } from "./tasks";
+export { listTaskSlice, TASK_LIST_LIMIT, type TaskSlice } from "./tasks";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
 export { type CommentView, listComments, listMentionable } from "./comments";
 export { type FollowState, followersOf, followStateOf } from "./followers";
@@ -16,7 +18,7 @@ export { listTaskFiles, TASK_FILE_OWNER, type TaskFileView } from "./attachments
 export { clientOfTask, countReviewsWaitingFor, type DecisionView, type DeliverableView, listDeliverables, listReviewsWaitingFor, pendingDeliverable, type ReviewWaiting } from "./reviews";
 export { listWorkTemplates, WORK_TEMPLATE_PURPOSES, type WorkTemplateView } from "./templates";
 export { listRecurrences, type RecurrenceView } from "./recurrences";
-export { getLeaderView, type LeaderTask, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
+export { getLeaderView, type LeaderTask, leaderTotals, type LeaderTotals, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
 export { loadMyWork, type MyWork } from "./my-work";
 export { getWorkload, WORKLOAD_WEEKS, type WorkloadPerson, type WorkloadView } from "./workload";
 export { findIntakeForm, type IntakeFormRow, type IntakeFormView, listMyIntakeRequests, listOpenIntakeForms, listTeamIntakeForms } from "./intake";
@@ -66,7 +68,7 @@ export { listMoveTargets } from "./move";
 export { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
 export { type HandoffPackageRow, type HandoffRequirement, listPackages } from "./handoff-gate";
 export { type AccountHandoffView, handoffReturnsByTask, handoffStatsByStage, type HandoffView, listAccountHandoffs, listPendingHandoffsFor, listTaskHandoffs, type StageHandoffStats } from "./handoffs";
-export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getCoverPlanForLeaveAs, listCoverPlansFor } from "./cover";
+export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getLeaveCoverAs, type LeaveCover, listCoverPlansFor } from "./cover";
 export { exitHandoverFacts, type ExitHandoverView, getExitHandover, listExitHandoversFor } from "./exit";
 export { type CyclePage, type CycleRow, getCyclePage, listOpenCycles, listTeamCycles } from "./cycles";
 export { HANDOFF_KINDS, NOTE_PARTS } from "./engine/handoff";
@@ -86,14 +88,14 @@ export { type CalendarPublish, type ContentCalendar, contentCalendar, listCalend
 export { type DeliveryFacts, deliveryFactsByTask, type LastClientDecision, type RevisionRounds, revisionRoundsByTask } from "./delivery-facts";
 export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/delivery";
 /**
- * Phase 10, the client's expiring review link (D24, FR-PJM-51a). `openPreviewLink` and
- * `decideOnPreviewLink` are the **public** surface: they take a token and a visitor, never a user,
- * and they check everything themselves — the routes under `(preview)` hand them the request and
- * print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
+ * Phase 10, the client's expiring review link (D24, FR-PJM-51a). `openPreviewLink`,
+ * `openPreviewFile` and `decideOnPreviewLink` are the **public** surface: they take a token and a
+ * visitor, never a user, and they check everything themselves — the routes under `(preview)` hand
+ * them the request and print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
  * decides who may see it, and the task page asks before it calls.
  */
-export { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
-export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, openPreviewLink, type PreviewDecisionInput, type PreviewLinkView, type PreviewOutcome, type PreviewPage, purgePreviewHits } from "./preview";
+export { canManagePreviewLinks, canRevokePreviewLink, canSeeProjectPreviewLinks } from "./preview-policy";
+export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, listProjectPreviewLinks, openPreviewFile, openPreviewLink, type PreviewDecisionInput, type PreviewFileOutcome, type PreviewLinkView, type PreviewOutcome, type PreviewPage, type ProjectPreviewLinkView, purgePreviewHits, sweepPreviewLinks } from "./preview";
 export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_DAYS, type PreviewState } from "./engine/preview";
 /**
  * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run
@@ -120,3 +122,16 @@ export { listProjectStatusSets, listProjectStatuses, listStateSets, projectStatu
  */
 export { channelOfPlatform, digitalAssetsByProject, digitalAssetsByTask, type LinkedDigitalAsset, listLinkableDigitalAssets, MAX_LINKED_DIGITAL_ASSETS } from "./digital-links";
 export { type DigitalAssetWork, listWorkOfDigitalAsset } from "./digital-work";
+
+/** The one note format of a hand-off (the CRM writes its account hand-overs in it). */
+export type { HandoffNote } from "./schema";
+
+/**
+ * The task update itself, checks, activity entry and audit line included: the project timeline
+ * writes each moved date through it rather than around it. Loaded on first use, so importing this
+ * file builds none of the module's actions.
+ */
+export async function updateTaskAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.updateTaskAction(input);
+}

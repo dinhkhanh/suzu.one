@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -8,11 +9,12 @@ import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction } from "../planning-actions";
+import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction, updateRecurrenceAction, updateWorkTemplateItemAction } from "../planning-actions";
 
 type Result = { ok: boolean; error?: string; message?: string; data?: unknown };
 type Person = { id: string; fullName: string };
@@ -90,6 +92,7 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
         ))}
       <span className="w-16 text-right font-mono text-xs text-muted-foreground">{t("offset", { days: item.dueOffsetDays })}</span>
       {item.estimateMinutes ? <span className="text-xs text-muted-foreground">{t("hours", { hours: Math.round((item.estimateMinutes / 60) * 100) / 100 })}</span> : null}
+      {template.canManage ? <TemplateItemEditButton item={item} template={template} roots={roots} checklists={checklists} /> : null}
       {template.canManage ? (
         <button type="button" className="text-xs text-muted-foreground hover:text-destructive" aria-label={t("removeItem", { title: item.title })} disabled={pending} onClick={() => run(removeWorkTemplateItemAction, { itemId: item.id })}>
           ×
@@ -156,6 +159,85 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
       ) : null}
       <FormError namespace="work.templates.errors" errorKey={errorKey} />
     </article>
+  );
+}
+
+/**
+ * "Edit" on a step: its title, where it sits, its role, its day, its estimate and its checklist. The
+ * template's next use reads it; tasks already made from it keep what they were made with.
+ */
+function TemplateItemEditButton({ item, template, roots, checklists }: { item: TemplateItemView; template: TemplateView; roots: TemplateItemView[]; checklists: { id: string; name: string }[] }) {
+  const t = useTranslations("work.templates");
+  const { run, pending, errorKey } = useRun();
+  const [open, setOpen] = useState(false);
+  const checklist = item.checklistIds?.[0] ?? "";
+  // A step with sub-steps stays a step: two levels stay two levels.
+  const hasChildren = template.items.some((other) => other.parentItemId === item.id);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" size="xs" variant="ghost" className="text-muted-foreground" aria-label={t("editItem", { title: item.title })} />}>{t("edit")}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{t("editItem", { title: item.title })}</DialogTitle>
+          <DialogDescription>{t("editItemHint")}</DialogDescription>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            const chosen = data.get("checklistId");
+            // The checklist is sent only when it was changed: a step's further checklists are kept otherwise
+            // — and so is one retired from the library, which the picker cannot show.
+            const shown = checklists.some((list) => list.id === checklist) ? checklist : "";
+            const checklistChange = chosen !== null && chosen !== shown ? { checklistId: chosen } : {};
+            run(updateWorkTemplateItemAction, { itemId: item.id, title: data.get("title"), parentItemId: data.get("parentItemId") ?? "", roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), ...checklistChange }, () => setOpen(false));
+          }}
+        >
+          <Input name="title" required maxLength={200} defaultValue={item.title} placeholder={t("itemTitle")} aria-label={t("itemTitle")} />
+          <div className="flex flex-wrap items-center gap-2">
+            {hasChildren ? null : (
+              <Select name="parentItemId" aria-label={t("parent")} className="w-52" defaultValue={item.parentItemId ?? ""}>
+                <option value="">{t("topLevel")}</option>
+                {roots
+                  .filter((root) => root.id !== item.id)
+                  .map((root) => (
+                    <option key={root.id} value={root.id}>
+                      {root.title}
+                    </option>
+                  ))}
+              </Select>
+            )}
+            <Input name="roleKey" maxLength={31} pattern="[a-zA-Z][a-zA-Z0-9_]+" defaultValue={item.roleKey ?? ""} placeholder={t("role")} aria-label={t("role")} list={`roles-edit-${item.id}`} className="w-40" />
+            <datalist id={`roles-edit-${item.id}`}>
+              {template.roleKeys.map((key) => (
+                <option key={key} value={key} />
+              ))}
+            </datalist>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input name="dueOffsetDays" type="number" required defaultValue={item.dueOffsetDays} min={-365} max={365} aria-label={t("offsetField")} title={t("offsetField")} className="w-24" />
+            <Input name="estimateHours" type="number" step="0.25" min={0.25} defaultValue={item.estimateMinutes ? item.estimateMinutes / 60 : ""} placeholder={t("estimate")} aria-label={t("estimate")} className="w-24" />
+            {checklists.length ? (
+              <Select name="checklistId" aria-label={t("checklist")} className="w-52" defaultValue={checklist}>
+                <option value="">{t("noChecklist")}</option>
+                {checklists.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.name}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
+          <FormError namespace="work.templates.errors" errorKey={errorKey} />
+          <DialogFooter>
+            <Button type="submit" size="sm" disabled={pending}>
+              {t("saveItem")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -268,13 +350,138 @@ export function TemplateUseForm({
 
 // ── Recurring tasks ─────────────────────────────────────────────────────────────────────────
 
-export type RecurrenceItem = { id: string; title: string; rule: { freq: "daily" | "weekly" | "monthly"; interval: number; weekdays?: number[]; monthDay?: number | "last" }; startDate: string; endDate: string | null; isActive: boolean; assigneePersonId?: string | null; assigneeName: string | null; nextDate: string | null; made: number };
+type RecurrenceRuleView = { freq: "daily" | "weekly" | "monthly"; interval: number; weekdays?: number[]; monthDay?: number | "last" };
+type DayOffMode = "shift" | "skip" | "keep";
+export type RecurrenceItem = { id: string; title: string; rule: RecurrenceRuleView; startDate: string; endDate: string | null; leadDays: number; onDayOff: string; isActive: boolean; assigneePersonId?: string | null; assigneeName: string | null; estimateMinutes?: number | null; nextDate: string | null; made: number };
 
-export function RecurrenceManager({ projectId, recurrences, people, canManage, today }: { projectId: string; recurrences: RecurrenceItem[]; people: Person[]; canManage: boolean; today: string }) {
+/**
+ * The fields of a rule, for adding one and for changing one: its title and who its tasks go to,
+ * when it comes round, from when to when, how far ahead tasks appear and what happens on a day off.
+ * A rule's start is not changed afterwards (`startDate` shown only when adding).
+ */
+function RecurrenceFields({ initial, people, today, idPrefix }: { initial?: RecurrenceItem; people: Person[]; today: string; idPrefix: string }) {
+  const t = useTranslations("work.recurrence");
+  const [freq, setFreq] = useState<RecurrenceRuleView["freq"]>(initial?.rule.freq ?? "weekly");
+  const weekdays = initial?.rule.weekdays ?? [1];
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input name="title" required maxLength={200} defaultValue={initial?.title} placeholder={t("title")} aria-label={t("title")} className="min-w-48 flex-1" />
+        <Select name="assigneePersonId" aria-label={t("assignee")} className="w-48" defaultValue={initial?.assigneePersonId ?? ""}>
+          <option value="">{t("unassigned")}</option>
+          {people.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.fullName}
+            </option>
+          ))}
+        </Select>
+        <Input name="estimateHours" type="number" step="0.25" min={0.25} max={1000} defaultValue={initial?.estimateMinutes ? initial.estimateMinutes / 60 : ""} placeholder={t("estimate")} aria-label={t("estimate")} className="w-24" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span>{t("every")}</span>
+        <Input name="interval" type="number" required min={1} max={366} defaultValue={initial?.rule.interval ?? 1} aria-label={t("interval")} className="w-16" />
+        <Select name="freq" aria-label={t("frequency")} className="w-28" value={freq} onChange={(event) => setFreq(event.target.value as typeof freq)}>
+          <option value="daily">{t("freq.daily")}</option>
+          <option value="weekly">{t("freq.weekly")}</option>
+          <option value="monthly">{t("freq.monthly")}</option>
+        </Select>
+        {freq === "weekly" ? (
+          <span className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
+              <label key={weekday} htmlFor={`${idPrefix}-weekday-${weekday}`} className="flex items-center gap-1">
+                <Checkbox id={`${idPrefix}-weekday-${weekday}`} name="weekdays" value={String(weekday)} defaultChecked={weekdays.includes(weekday)} />
+                {t(`weekdays.${weekday}`)}
+              </label>
+            ))}
+          </span>
+        ) : null}
+        {freq === "monthly" ? (
+          <Select name="monthDay" aria-label={t("monthDay")} className="w-32" defaultValue={String(initial?.rule.monthDay ?? 1)}>
+            {Array.from({ length: 31 }, (_, index) => index + 1).map((value) => (
+              <option key={value} value={value}>
+                {t("onDay", { day: value })}
+              </option>
+            ))}
+            <option value="last">{t("lastDay")}</option>
+          </Select>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {initial ? null : (
+          <label className="flex items-center gap-2">
+            {t("from")}
+            <DatePicker name="startDate" required defaultValue={today} className="w-40" />
+          </label>
+        )}
+        <label className="flex items-center gap-2">
+          {t("until")}
+          <DatePicker name="endDate" defaultValue={initial?.endDate ?? ""} className="w-40" />
+        </label>
+        <label className="flex items-center gap-2">
+          {t("lead")}
+          <Input name="leadDays" type="number" min={0} max={60} defaultValue={initial?.leadDays ?? 7} className="w-16" />
+        </label>
+        <label className="flex items-center gap-2">
+          {t("onDayOff")}
+          <Select name="onDayOff" aria-label={t("onDayOff")} className="w-52" defaultValue={initial?.onDayOff ?? "shift"} searchable={false}>
+            {(["shift", "skip", "keep"] as const satisfies readonly DayOffMode[]).map((mode) => (
+              <option key={mode} value={mode}>
+                {t(`dayOff.${mode}`)}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </div>
+    </>
+  );
+}
+
+/** What the fields of `RecurrenceFields` send. */
+function recurrenceInput(data: FormData) {
+  const freq = String(data.get("freq"));
+  const interval = data.get("interval");
+  const rule = freq === "daily" ? { freq, interval } : freq === "weekly" ? { freq, interval, weekdays: data.getAll("weekdays") } : { freq, interval, monthDay: data.get("monthDay") };
+  return { title: data.get("title"), rule, endDate: data.get("endDate"), leadDays: data.get("leadDays"), onDayOff: data.get("onDayOff"), assigneePersonId: data.get("assigneePersonId"), estimateHours: data.get("estimateHours") };
+}
+
+/** "Edit" on a rule: the same fields in a sheet. What the rule already made stays as it is. */
+function RecurrenceEditButton({ item, people, today }: { item: RecurrenceItem; people: Person[]; today: string }) {
+  const t = useTranslations("work.recurrence");
+  const { run, pending, errorKey } = useRun();
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm" variant="ghost" aria-label={t("editTitle", { title: item.title })} />}>{t("edit")}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t("editTitle", { title: item.title })}</DialogTitle>
+          <DialogDescription>{t("editHint")}</DialogDescription>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            run(updateRecurrenceAction, { recurrenceId: item.id, ...recurrenceInput(new FormData(event.currentTarget)) }, () => setOpen(false));
+          }}
+        >
+          <RecurrenceFields initial={item} people={people} today={today} idPrefix={`edit-${item.id}`} />
+          <FormError namespace="work.recurrence.errors" errorKey={errorKey} />
+          <DialogFooter>
+            <Button type="submit" size="sm" disabled={pending}>
+              {t("save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The rules of a project, or (`target.teamId`) of a team's own backlog. */
+export function RecurrenceManager({ target, recurrences, people, canManage, today }: { target: { projectId: string } | { teamId: string }; recurrences: RecurrenceItem[]; people: Person[]; canManage: boolean; today: string }) {
   const t = useTranslations("work.recurrence");
   const format = useFormatter();
   const { run, pending, errorKey } = useRun();
-  const [freq, setFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const describe = (rule: RecurrenceItem["rule"]) =>
     rule.freq === "daily"
@@ -301,13 +508,16 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recurrences.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {recurrences.length === 0 ? <TableEmpty>{"teamId" in target ? t("emptyTeam") : t("empty")}</TableEmpty> : null}
             {recurrences.map((item) => {
               const ended = !!item.endDate && item.endDate <= today;
               return (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.title}</TableCell>
-                  <TableCell>{describe(item.rule)}</TableCell>
+                  <TableCell>
+                    {describe(item.rule)}
+                    {item.onDayOff !== "shift" ? <span className="block text-xs text-muted-foreground">{t(`dayOff.${item.onDayOff as DayOffMode}`)}</span> : null}
+                  </TableCell>
                   <TableCell>{item.assigneeName ? <RecordLink kind="person" id={item.assigneePersonId}>{item.assigneeName}</RecordLink> : "—"}</TableCell>
                   <TableCell kind="number">{item.made}</TableCell>
                   <TableCell>{item.nextDate ? day(item.nextDate) : "—"}</TableCell>
@@ -318,6 +528,7 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
                     <TableCell kind="actions">
                       {!ended ? (
                         <span className="flex justify-end gap-1">
+                          <RecurrenceEditButton item={item} people={people} today={today} />
                           <Button size="sm" variant="outline" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: item.isActive ? "pause" : "resume" })}>
                             {t(item.isActive ? "pause" : "resume")}
                           </Button>
@@ -341,64 +552,11 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
                 event.preventDefault();
                 const form = event.currentTarget;
                 const data = new FormData(form);
-                const interval = data.get("interval");
-                const rule = freq === "daily" ? { freq, interval } : freq === "weekly" ? { freq, interval, weekdays: data.getAll("weekdays") } : { freq, interval, monthDay: data.get("monthDay") };
-                run(createRecurrenceAction, { projectId, title: data.get("title"), rule, startDate: data.get("startDate"), endDate: data.get("endDate"), leadDays: data.get("leadDays"), assigneePersonId: data.get("assigneePersonId"), priority: "", description: "" }, () => form.reset());
+                run(createRecurrenceAction, { ...target, ...recurrenceInput(data), startDate: data.get("startDate"), priority: "", description: "" }, () => form.reset());
               }}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <Input name="title" required maxLength={200} placeholder={t("title")} aria-label={t("title")} className="min-w-48 flex-1" />
-                <Select name="assigneePersonId" aria-label={t("assignee")} className="w-48" defaultValue="">
-                  <option value="">{t("unassigned")}</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.fullName}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span>{t("every")}</span>
-                <Input name="interval" type="number" required min={1} max={366} defaultValue={1} aria-label={t("interval")} className="w-16" />
-                <Select aria-label={t("frequency")} className="w-28" value={freq} onChange={(event) => setFreq(event.target.value as typeof freq)}>
-                  <option value="daily">{t("freq.daily")}</option>
-                  <option value="weekly">{t("freq.weekly")}</option>
-                  <option value="monthly">{t("freq.monthly")}</option>
-                </Select>
-                {freq === "weekly" ? (
-                  <span className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
-                      <label key={weekday} className="flex items-center gap-1">
-                        <input type="checkbox" name="weekdays" value={weekday} defaultChecked={weekday === 1} />
-                        {t(`weekdays.${weekday}`)}
-                      </label>
-                    ))}
-                  </span>
-                ) : null}
-                {freq === "monthly" ? (
-                  <Select name="monthDay" aria-label={t("monthDay")} className="w-32" defaultValue="1">
-                    {Array.from({ length: 31 }, (_, index) => index + 1).map((value) => (
-                      <option key={value} value={value}>
-                        {t("onDay", { day: value })}
-                      </option>
-                    ))}
-                    <option value="last">{t("lastDay")}</option>
-                  </Select>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <label className="flex items-center gap-2">
-                  {t("from")}
-                  <DatePicker name="startDate" required defaultValue={today} className="w-40" />
-                </label>
-                <label className="flex items-center gap-2">
-                  {t("until")}
-                  <DatePicker name="endDate" className="w-40" />
-                </label>
-                <label className="flex items-center gap-2">
-                  {t("lead")}
-                  <Input name="leadDays" type="number" min={0} max={60} defaultValue={7} className="w-16" />
-                </label>
+              <RecurrenceFields people={people} today={today} idPrefix="new-recurrence" />
+              <div>
                 <Button type="submit" size="sm" disabled={pending}>
                   {t("create")}
                 </Button>

@@ -30,6 +30,7 @@ import { createTeam, listStates, saveClient, saveState, setTeamArchived, setTeam
 import { projectShelf, teamStatusOf } from "./enums";
 import { getWorkAnalytics } from "./analytics";
 import { analyse, type AnalyticsTask } from "./engine/analytics";
+import { listCalendarTasks } from "./calendar";
 import { getPersonTaskStats } from "./stats";
 import { loadViewerWith } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
@@ -334,5 +335,26 @@ describe("analytics and person stats in SQL", () => {
     const cancelled = await countOf(sql`${schema.task.status} = 'cancelled' and ${schema.task.updatedAt}::date between '2026-09-01' and '2026-09-30'`);
     expect(stats).toEqual({ from: "2026-09-01", to: "2026-09-30", completed, onTime, late: completed - onTime, open, overdue, cancelled });
     expect(stats.completed).toBeGreaterThan(0);
+  });
+});
+
+describe("the content calendar (FR-WRK-05)", () => {
+  // A month past the limit is cut — open work first, then the earliest due — and the count of
+  // everything that matched comes back with it, so the page can say so instead of going quiet.
+  it("cuts a full month to its limit and says how many tasks there were", async () => {
+    const make = async (title: string, due: string) => (await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title, dueDate: due }, ids.long)).task.id;
+    const closed = await make("Lịch: đã xong", "2031-03-02");
+    await db().update(schema.task).set({ status: "done", completedAt: new Date("2031-03-02T03:00:00Z") }).where(eq(schema.task.id, closed));
+    const late = await make("Lịch: hạn muộn", "2031-03-20");
+    const early = await make("Lịch: hạn sớm", "2031-03-05");
+    const viewer = await viewerOf(ids.long, ids.szm);
+    const month = { from: "2031-03-01", to: "2031-03-31" };
+
+    const whole = await listCalendarTasks(viewer, month);
+    expect(whole.items.map((item) => item.id).sort()).toEqual([closed, late, early].sort());
+    expect(whole.total).toBe(3);
+    const cut = await listCalendarTasks(viewer, month, 2);
+    expect(cut.items.map((item) => item.id).sort()).toEqual([early, late].sort());
+    expect(cut.total).toBe(3);
   });
 });

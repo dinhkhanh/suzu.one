@@ -102,7 +102,7 @@ Thẻ **Địa điểm làm việc** khai báo nơi nhân viên được chấm 
 
 1. Mở khung **Thêm địa điểm làm việc**.
 2. Nhập **Tên**, chọn **Pháp nhân**, **Địa chỉ**.
-3. Khai báo vòng tròn: **Vĩ độ**, **Kinh độ**, **Bán kính (m)**. Có thể đặt **Bỏ qua vị trí kém chính xác hơn (m)**.
+3. Khai báo vòng tròn: chọn vị trí bằng **Dùng vị trí của tôi** (khi đang đứng tại văn phòng) hoặc dán liên kết bản đồ / toạ độ vào **Liên kết bản đồ hoặc toạ độ**, rồi nhập **Bán kính (m)**. Có thể đặt **Bỏ qua vị trí kém chính xác hơn (m)**.
 4. Và / hoặc khai báo **Mạng văn phòng**: mỗi dòng một địa chỉ IP công cộng, dải CIDR (ví dụ `203.0.113.0/24`) hoặc tên miền.
 5. Chọn **Lần chấm hợp lệ khi**: **Trong vòng tròn hoặc dùng mạng văn phòng**, **Trong vòng tròn**, **Dùng mạng văn phòng**, hoặc **Trong vòng tròn và dùng mạng văn phòng**.
 6. Chọn **Nếu không**: **Chấp nhận và chuyển xem xét** hoặc **Từ chối lần chấm**.
@@ -134,6 +134,8 @@ Các trường:
 | **Giờ nghỉ không lương bắt đầu** | Vị trí giờ nghỉ giữa giờ trong ngày |
 | **Lượt ra trước giờ này tính cho ngày hôm trước** | Mốc cắt ngày cho ca qua đêm |
 | **Làm thêm chỉ tính khi có đơn được duyệt** | Bật: giờ ngoài lịch không có đơn là "ngoài giờ chưa duyệt" |
+
+**Cần Chủ sở hữu duyệt:** **Quy định** là quy định của công ty nên do **Chủ sở hữu** quyết định. Khi nhân sự lưu, màn hình báo "Đã gửi chủ sở hữu duyệt — thay đổi chỉ có hiệu lực khi được duyệt." và một yêu cầu **Thay đổi quy định chấm công** được gửi tới Chủ sở hữu; phiên bản mới chỉ được ghi khi yêu cầu được duyệt. Thay đổi do chính Chủ sở hữu lưu có hiệu lực ngay. Các thẻ khác (lịch, ca, địa điểm, máy chấm công) vẫn do nhân sự lưu trực tiếp.
 
 **Phiên bản:** mỗi lần lưu là một phiên bản mới (**Lưu thành phiên bản mới**). Lưu với ngày bắt đầu muộn hơn sẽ đóng phiên bản hiện tại vào ngày liền trước; các ngày trước đó giữ phiên bản cũ. Không chọn được ngày sớm hơn ngày bắt đầu của phiên bản hiện tại. Phiên bản đang áp dụng có nhãn **Đang hiệu lực**; dòng tóm tắt dạng "châm chước …′/…′ · làm tròn …′ · làm thêm từ …′".
 

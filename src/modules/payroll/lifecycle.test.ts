@@ -132,7 +132,7 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
@@ -402,6 +402,21 @@ describe("the calculation as background work (ADR-09)", () => {
     await db().update(schema.payrollRun).set({ calcState: "running", calcClaim: crypto.randomUUID(), calcHeartbeatAt: new Date() }).where(eq(schema.payrollRun.id, run.id));
     expect(await workOneRun(run.id)).toMatchObject({ outcome: "busy" });
     await expect(queueRunCalculation(run.id)).rejects.toThrow("run_calculating");
+  });
+
+  it("lets the person at the screen take over a calculation that died, without waiting for the job", async () => {
+    const run = await runOfMonth("2026-09");
+    // Still `running`, but the claim stopped beating twenty minutes ago: nobody is working on it.
+    await db()
+      .update(schema.payrollRun)
+      .set({ calcState: "running", calcClaim: crypto.randomUUID(), calcHeartbeatAt: sql`now() - interval '20 minutes'` })
+      .where(eq(schema.payrollRun.id, run.id));
+    await queueRunCalculation(run.id);
+    expect(progressOf(await getRun(run.id))).toMatchObject({ state: "queued", done: 0, error: null });
+    expect((await getRun(run.id)).calcClaim).toBeNull();
+    // A request that queued the run and never got to work it leaves nothing to wait for either.
+    await queueRunCalculation(run.id);
+    expect(await workOneRun(run.id)).toMatchObject({ outcome: "calculated", headcount: 3 });
   });
 
   it("takes over a calculation whose server died, and the job needs nobody to ask", async () => {

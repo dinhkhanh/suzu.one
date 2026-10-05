@@ -13,20 +13,23 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
-import { type ClientContactChoice, ContactSuggestions } from "../../work/ui/client-decision";
+import { CHANNELS, type ClientContactChoice, CONTENT_FORMATS, ContactSuggestions } from "../../work/client";
 import {
   beginChangeEvidenceAction,
   beginSignedScanAction,
   closeProjectAction,
   completeChangeEvidenceAction,
   completeSignedScanAction,
+  correctBillingAmountAction,
+  correctSignedAcceptanceAction,
   createAcceptanceAction,
   createManualBillingAction,
   decideBillingAction,
+  makeRetainerMonthAction,
   openChangeEvidenceAction,
   openSignedScanAction,
   publishLessonsAction,
@@ -41,6 +44,7 @@ import {
   voidAcceptanceAction,
   withdrawChangeAction,
 } from "../commercial-actions";
+import { setTaskLineAction } from "../line-actions";
 import { ActionButton, ActionForm } from "./plan-forms";
 
 type Line = { title: string; quantity: number; format: string | null; channel: string | null };
@@ -166,7 +170,7 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
           </Field>
         ) : null}
         <label className="flex items-center gap-2 self-end pb-2 text-sm">
-          <input type="checkbox" name="isActive" disabled={!editFee} defaultChecked={values?.isActive ?? true} />
+          <Checkbox name="isActive" disabled={!editFee} defaultChecked={values?.isActive ?? true} />
           {/* A disabled checkbox posts nothing: the value it shows is sent beside it, unchanged. */}
           {editFee ? null : values?.isActive ? <input type="hidden" name="isActive" value="on" /> : null}
           {t("active")}
@@ -176,11 +180,80 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
   );
 }
 
+/** A month the job never made (the terms were saved after it began): the lead makes it, with its register from the terms. */
+export function MissedMonthForm({ projectId, months }: { projectId: string; months: string[] }) {
+  const t = useTranslations("projects.retainer.missed");
+  return (
+    <ActionForm action={makeRetainerMonthAction} extra={{ projectId }} submit={t("submit")} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <Field name="month" label={t("month")}>
+        <Select id="missed-month" name="month" required defaultValue={months.at(-1) ?? ""} className="sm:w-40">
+          {months.map((month) => (
+            <option key={month} value={month}>
+              {month}
+            </option>
+          ))}
+        </Select>
+      </Field>
+    </ActionForm>
+  );
+}
+
+/**
+ * Puts a task of the project on a line of a retainer month — a finished task as readily as an
+ * open one: work is often done before anyone records which promise it filled. One form for the
+ * whole page, the lines named with their month.
+ */
+export function LinkToLineForm({ tasks, lines }: { tasks: { id: string; key: string; title: string }[]; lines: { id: string; label: string }[] }) {
+  const t = useTranslations("projects.retainer");
+  if (tasks.length === 0 || lines.length === 0) return <p className="text-sm text-muted-foreground">{t("nothingToLink")}</p>;
+  return (
+    <ActionForm action={setTaskLineAction} submit={t("linkSubmit")}>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Field name="taskId" label={t("linkTaskField")}>
+          <Select id="line-link-task" name="taskId" required defaultValue="">
+            <option value="" disabled>
+              {t("pickTask")}
+            </option>
+            {tasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.key} · {task.title}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field name="deliverableId" label={t("linkLineField")}>
+          <Select id="line-link-line" name="deliverableId" required defaultValue="">
+            <option value="" disabled>
+              {t("pickLine")}
+            </option>
+            {lines.map((line) => (
+              <option key={line.id} value={line.id}>
+                {line.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+    </ActionForm>
+  );
+}
+
+/** Takes a task off its line. Its milestone and phase stay as they are. */
+export function LineUnlinkButton({ taskId }: { taskId: string }) {
+  const t = useTranslations("projects.plan");
+  return <ActionButton action={setTaskLineAction} input={{ taskId, deliverableId: null }} label={t("unlink")} variant="ghost" />;
+}
+
 // ── Change requests (FR-PJM-11) ─────────────────────────────────────────────────────────────
 
 export type ChangeValues = { id: string; title: string; description: string | null; requestedBy: string; lines: Line[]; cancelIds: string[]; minutesDelta: number | null; feeDeltaVnd?: number | null; dueDateTo: string | null; evidenceUrl: string | null; evidence: Stored | null };
 
-export function ChangeForm({ projectId, change, register, requesters, editFee }: { projectId: string; change?: ChangeValues; register: { id: string; title: string; quantity: number }[]; requesters: readonly string[]; editFee: boolean }) {
+/**
+ * `retainer`: the monthly scope of a retainer project as the form should show it — the terms as
+ * they stand, with whatever this draft already changes laid over them. The whole scope is posted
+ * and the server keeps only what differs, so leaving the rows alone changes nothing.
+ */
+export function ChangeForm({ projectId, change, register, requesters, editFee, retainer = null }: { projectId: string; change?: ChangeValues; register: { id: string; title: string; quantity: number }[]; requesters: readonly string[]; editFee: boolean; retainer?: { lines: readonly Line[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null } | null }) {
   const t = useTranslations("projects.changes");
   const id = change?.id ?? "new";
   return (
@@ -211,7 +284,7 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
           <legend className="mb-1 text-sm font-medium">{t("fields.cancelLines")}</legend>
           {register.map((line) => (
             <label key={line.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="cancelIds[]" value={line.id} defaultChecked={change?.cancelIds.includes(line.id)} />
+              <Checkbox name="cancelIds[]" value={line.id} defaultChecked={change?.cancelIds.includes(line.id)} />
               {line.quantity} × {line.title}
             </label>
           ))}
@@ -230,6 +303,24 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
           <DatePicker id={`cr-due-${id}`} name="dueDateTo" defaultValue={change?.dueDateTo ?? ""} />
         </Field>
       </div>
+      {retainer ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{t("fields.retainerLines")}</legend>
+          <p className="text-xs text-muted-foreground">{t("retainerHint")}</p>
+          <input type="hidden" name="retainerScope" value="on" />
+          <LineRows name="retainerLines" lines={retainer.lines} idPrefix={`cr-monthly-${id}`} />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field name="retainerHours" label={t("fields.retainerHours")}>
+              <Input id={`cr-monthly-hours-${id}`} name="retainerHours" type="number" min={0} step="0.5" defaultValue={hoursOf(retainer.minutesPerMonth)} />
+            </Field>
+            {editFee ? (
+              <Field name="retainerFeeVnd" label={t("fields.retainerFee")}>
+                <MoneyInput id={`cr-monthly-fee-${id}`} name="retainerFeeVnd" defaultValue={retainer.feePerMonthVnd ?? ""} />
+              </Field>
+            ) : null}
+          </div>
+        </fieldset>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <UploadField label={t("fields.evidenceFile")} name="evidenceFileId" initial={change?.evidence} begin={(meta) => beginChangeEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeChangeEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>} />
         <Field name="evidenceUrl" label={t("fields.evidenceUrl")}>
@@ -298,6 +389,10 @@ export function NewAcceptanceForm({ projectId, milestones, periods }: { projectI
           </Field>
         ) : null}
       </div>
+      <Field name="description" label={t("description")}>
+        <Textarea id="acceptance-description" name="description" rows={2} maxLength={2000} />
+      </Field>
+      <p className="text-xs text-muted-foreground">{t("descriptionHint")}</p>
       <p className="text-xs text-muted-foreground">{t("snapshotHint")}</p>
     </ActionForm>
   );
@@ -308,6 +403,8 @@ export function AcceptanceButtons({ acceptanceId, status }: { acceptanceId: stri
   return (
     <span className="flex flex-wrap gap-2">
       {status === "draft" ? <ActionButton action={refreshAcceptanceAction} input={{ acceptanceId }} label={t("refresh")} /> : null}
+      {/* A sent paper is issued again: rendered anew and stored, the earlier file retired. */}
+      {status === "sent" ? <ActionButton action={refreshAcceptanceAction} input={{ acceptanceId }} label={t("refreshSent")} /> : null}
       {status === "draft" ? <ActionButton action={sendAcceptanceAction} input={{ acceptanceId }} label={t("send")} /> : null}
       {status === "draft" || status === "sent" ? <ActionButton action={voidAcceptanceAction} input={{ acceptanceId }} label={t("void")} confirm={t("voidConfirm")} variant="ghost" /> : null}
     </span>
@@ -333,8 +430,35 @@ export function SignAcceptanceForm({ acceptanceId, today, contacts = [] }: { acc
   );
 }
 
-export function SignedScanLink({ acceptanceId, label }: { acceptanceId: string; label: string }) {
-  return <FileLink fileId={acceptanceId} fileName={label} download={() => openSignedScanAction({ acceptanceId }) as Promise<ActionResult<{ url: string }>>} />;
+/** `fileId`: an earlier scan, one a correction replaced; without it, the scan on record. */
+export function SignedScanLink({ acceptanceId, label, fileId }: { acceptanceId: string; label: string; fileId?: string }) {
+  return <FileLink fileId={fileId ?? acceptanceId} fileName={label} download={() => openSignedScanAction({ acceptanceId, fileId: fileId ?? null }) as Promise<ActionResult<{ url: string }>>} />;
+}
+
+/**
+ * Corrects what was recorded about a signature: another scan when the wrong one was attached, the
+ * signer's name, the day — with a reason. What it said before stays in the record's history.
+ */
+export function CorrectSignedForm({ acceptanceId, today, signedOn, signedByClient, contacts = [] }: { acceptanceId: string; today: string; signedOn: string | null; signedByClient: string | null; contacts?: ClientContactChoice[] }) {
+  const t = useTranslations("projects.acceptance");
+  return (
+    <ActionForm action={correctSignedAcceptanceAction} extra={{ acceptanceId }} submit={t("correctSubmit")}>
+      <p className="text-xs text-muted-foreground">{t("correctHint")}</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <UploadField label={t("replaceScan")} name="signedFileId" begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>} />
+        <Field name="signedOn" label={t("signedOn")}>
+          <DatePicker id={`fix-signedOn-${acceptanceId}`} name="signedOn" required max={today} defaultValue={signedOn ?? today} />
+        </Field>
+        <Field name="signedByClient" label={t("signedBy")}>
+          <Input id={`fix-signedBy-${acceptanceId}`} name="signedByClient" required maxLength={200} defaultValue={signedByClient ?? ""} list={contacts.length ? `fix-signers-${acceptanceId}` : undefined} autoComplete="off" />
+          <ContactSuggestions id={`fix-signers-${acceptanceId}`} contacts={contacts} />
+        </Field>
+      </div>
+      <Field name="reason" label={t("correctReason")}>
+        <Input id={`fix-reason-${acceptanceId}`} name="reason" required maxLength={1000} />
+      </Field>
+    </ActionForm>
+  );
 }
 
 // ── Billing (FR-PJM-56) ─────────────────────────────────────────────────────────────────────
@@ -382,6 +506,29 @@ export function BillingDecisionForm({ itemId, needsAmount, today, invoiceIn }: {
         </ActionForm>
       )}
     </div>
+  );
+}
+
+/** Corrects the amount of an item that is not yet invoiced, with a reason. Blank = no amount agreed yet. */
+export function BillingAmountForm({ itemId, amountVnd }: { itemId: string; amountVnd: number | null }) {
+  const t = useTranslations("projects.billing");
+  return (
+    <details>
+      <summary className="cursor-pointer text-sm text-muted-foreground">{t("correctAmount")}</summary>
+      <div className="flex flex-col gap-2 pt-2">
+        <p className="text-xs text-muted-foreground">{t("correctHint")}</p>
+        <ActionForm action={correctBillingAmountAction} extra={{ itemId }} submit={t("correctSubmit")}>
+          <div className="grid gap-2 sm:grid-cols-[12rem_1fr]">
+            <Field name="amountVnd" label={t("newAmount")}>
+              <MoneyInput id={`fix-amount-${itemId}`} name="amountVnd" defaultValue={amountVnd ?? ""} />
+            </Field>
+            <Field name="reason" label={t("correctReason")}>
+              <Input id={`fix-amount-reason-${itemId}`} name="reason" required maxLength={1000} />
+            </Field>
+          </div>
+        </ActionForm>
+      </div>
+    </details>
   );
 }
 
@@ -438,7 +585,7 @@ export function ClientReportForm({ projectId, report, defaults }: { projectId: s
         <NoteEditor id={`rep-next-${id}`} name="nextPlan" rows={4} maxLength={8000} defaultValue={report?.nextPlan ?? ""} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="showHours" defaultChecked={report?.showHours ?? false} />
+        <Checkbox name="showHours" defaultChecked={report?.showHours ?? false} />
         {t("fields.showHours")}
       </label>
     </ActionForm>

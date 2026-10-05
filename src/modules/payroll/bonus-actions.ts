@@ -178,13 +178,17 @@ export async function stepBonusRunAction(input: unknown) {
 const payPipeline = createAction({
   name: "bonus_run.pay",
   stepUp: true,
-  input: z.object({ runId: z.uuid() }),
+  // `entityId`: hand over that entity alone — what is left to do after payroll cancelled its
+  // off-cycle run. Without it, every entity that has no standing run is handed over.
+  input: z.object({ runId: z.uuid(), entityId: optional(z.uuid()) }),
   authorize: async (user, input) => canPayBonusRun(user.principal, (await overRun(input.runId)).entityIds),
   run: async ({ user, input }) => {
-    const result = await payBonusRun(input.runId, user.person.id);
+    // One transaction, the bonus run locked first: a second click finds the runs and creates none.
+    const result = await payBonusRun(input.runId, user.person.id, input.entityId ? { entityIds: [input.entityId] } : {});
     refresh(input.runId);
     revalidatePath("/payroll/runs");
-    return { data: result, audit: { resource: { type: "bonus_run", id: input.runId, entityId: null }, summary: `chi qua ${result.payrollRuns.length} kỳ lương ngoài kỳ`, after: { payrollRuns: result.payrollRuns.map((run) => ({ entityId: run.entityId, payrollRunId: run.payrollRunId, headcount: run.headcount })) } } };
+    const created = result.payrollRuns.filter((run) => run.created);
+    return { data: result, audit: { resource: { type: "bonus_run", id: input.runId, entityId: null }, summary: `chi qua ${created.length} kỳ lương ngoài kỳ`, after: { payrollRuns: result.payrollRuns.map((run) => ({ entityId: run.entityId, payrollRunId: run.payrollRunId, headcount: run.headcount, created: run.created })) } } };
   },
 });
 export async function payBonusRunAction(input: unknown) {

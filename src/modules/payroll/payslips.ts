@@ -10,7 +10,7 @@
 // list, and never opens a payslip. `getPayslipView` answers null to everyone else, exactly as it
 // does for an id that does not exist, so an id is not a way to find out who is paid where.
 import "server-only";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { listPayrollNames } from "@/modules/core-hr/service";
@@ -37,6 +37,11 @@ export type PayslipQueryMessageRow = typeof schema.payslipQueryMessage.$inferSel
  * Releases every person's payslip in an approved run. Idempotent: running it again adds the
  * payslips of anyone who was missing one (a recalculated run) and tells nobody twice.
  *
+ * A run that was sent back after its payslips went out had them **withdrawn** (`stepRun`): the
+ * rows stayed, hidden. Releasing again after the new signature brings each one back under the
+ * same id — unread, dated now — and tells its owner, since the figures may no longer be the ones
+ * they read. Somebody who is no longer in the run keeps a withdrawn row that nobody can open.
+ *
  * No authorization inside — the action checks `payroll:propose` over the run's entity first.
  */
 export async function publishPayslips(runId: string, actorPersonId: string | null): Promise<{ published: number; alreadyPublished: number }> {
@@ -49,10 +54,16 @@ export async function publishPayslips(runId: string, actorPersonId: string | nul
     const people = await tx.select({ personId: schema.payrollRunPerson.personId }).from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, runId));
     if (people.length === 0) throw new ActionError("run_is_empty");
 
+    const now = new Date();
     const created = await tx
       .insert(schema.payslip)
       .values(people.map(({ personId }) => ({ runId, personId, entityId: run.entityId, month: run.month, publishedByPersonId: actorPersonId })))
-      .onConflictDoNothing()
+      // A payslip that is out is left alone; one that was withdrawn is released again.
+      .onConflictDoUpdate({
+        target: [schema.payslip.runId, schema.payslip.personId],
+        set: { withdrawnAt: null, publishedAt: now, publishedByPersonId: actorPersonId, firstViewedAt: null, lastViewedAt: null, viewCount: 0 },
+        setWhere: isNotNull(schema.payslip.withdrawnAt),
+      })
       .returning();
 
     // The first release dates the run; a later top-up leaves that date alone.
@@ -73,6 +84,23 @@ export async function publishPayslips(runId: string, actorPersonId: string | nul
 
 export type MyPayslipRow = { id: string; month: string; entityId: string; entityCode: string; net: number; publishedAt: Date; firstViewedAt: Date | null; kind: PayrollRunRow["kind"]; runName: string | null; openQueries: number };
 
+/**
+ * The person's own released payslips with every figure, newest month first — for their "export my
+ * data" (NFR-PRV-03), which a fresh step-up guards like the payslip pages. One query; the figures
+ * are decrypted here and never stored anywhere else.
+ */
+export async function payslipResultsOf(personId: string): Promise<{ month: string; entityCode: string; kind: PayrollRunRow["kind"]; runName: string | null; publishedAt: Date; result: PersonPayResult }[]> {
+  const rows = await db()
+    .select({ payslip: schema.payslip, runKind: schema.payrollRun.kind, runName: schema.payrollRun.name, entityCode: schema.entity.code, person: schema.payrollRunPerson })
+    .from(schema.payslip)
+    .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payslip.runId))
+    .innerJoin(schema.entity, eq(schema.entity.id, schema.payslip.entityId))
+    .innerJoin(schema.payrollRunPerson, and(eq(schema.payrollRunPerson.runId, schema.payslip.runId), eq(schema.payrollRunPerson.personId, schema.payslip.personId)))
+    .where(and(eq(schema.payslip.personId, personId), isNull(schema.payslip.withdrawnAt)))
+    .orderBy(desc(schema.payslip.month), desc(schema.payslip.publishedAt));
+  return rows.map((row) => ({ month: row.payslip.month, entityCode: row.entityCode, kind: row.runKind, runName: row.runName, publishedAt: row.payslip.publishedAt, result: openResult(row.person) }));
+}
+
 /** The person's own payslips, newest month first. Their own pay needs no permission. */
 export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> {
   // The count of questions still open rides along as a correlated subquery: one round trip.
@@ -89,7 +117,8 @@ export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> 
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payslip.runId))
     .innerJoin(schema.entity, eq(schema.entity.id, schema.payslip.entityId))
     .innerJoin(schema.payrollRunPerson, and(eq(schema.payrollRunPerson.runId, schema.payslip.runId), eq(schema.payrollRunPerson.personId, schema.payslip.personId)))
-    .where(eq(schema.payslip.personId, personId))
+    // A withdrawn payslip is not theirs to read until it is released again.
+    .where(and(eq(schema.payslip.personId, personId), isNull(schema.payslip.withdrawnAt)))
     .orderBy(desc(schema.payslip.month), desc(schema.payslip.publishedAt));
 
   return rows.map((row) => ({
@@ -139,7 +168,9 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payslip.runId))
     .innerJoin(schema.entity, eq(schema.entity.id, schema.payslip.entityId))
     .innerJoin(schema.payrollRunPerson, and(eq(schema.payrollRunPerson.runId, schema.payslip.runId), eq(schema.payrollRunPerson.personId, schema.payslip.personId)))
-    .where(eq(schema.payslip.id, payslipId))
+    // Withdrawn with its run's signature: until it is released again it answers like no payslip
+    // at all, to its owner and to C&B alike (C&B read the figures on the run itself).
+    .where(and(eq(schema.payslip.id, payslipId), isNull(schema.payslip.withdrawnAt)))
     .limit(1);
   if (!found) return null;
 
@@ -147,8 +178,28 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
   // Self, C&B over the entity, or the owner. Nobody else — not the manager, not the CEO.
   if (!canViewCompensationOf(principal, { personId: payslip.personId, entityId: payslip.entityId })) return null;
 
-  // Who they are, the component names and the questions, side by side. The position they held is
-  // the one of their latest employment's primary assignment; the department is the person's own.
+  // Who they are, the component names and the questions, side by side.
+  const [person, componentNames, queries] = await Promise.all([payslipPersonOf(payslip.personId), componentNamesOf(run.context as CalculationContext | null, payslip.entityId, run.month), listQueryThreads(payslipId)]);
+
+  return {
+    payslip,
+    run,
+    entity,
+    person,
+    result: openResult(runPerson),
+    componentNames,
+    queries,
+    isOwner: principal.personId === payslip.personId,
+    manages: canManageCompensation(principal, { entityId: payslip.entityId }),
+  };
+}
+
+/**
+ * The heading of a payslip: who the person is. The position they held is the one of their latest
+ * employment's primary assignment; the department is the person's own. One query — shared by the
+ * published payslip and by C&B's reading of a person's lines on the run (`run-views.ts`).
+ */
+export async function payslipPersonOf(personId: string): Promise<PayslipView["person"]> {
   const latest = db().select({ id: schema.employment.id, employeeCode: schema.employment.employeeCode }).from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("latest");
   const held = db()
     .select({ positionName: schema.position.name })
@@ -157,36 +208,15 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
     .where(and(eq(schema.assignment.employmentId, latest.id), eq(schema.assignment.kind, "primary"), isNull(schema.assignment.validTo)))
     .limit(1)
     .as("held");
-  const [[person], componentNames, queries] = await Promise.all([
-    db()
-      .select({ fullName: schema.person.fullName, employeeCode: latest.employeeCode, positionName: held.positionName, departmentName: schema.orgUnit.name })
-      .from(schema.person)
-      .leftJoinLateral(latest, sql`true`)
-      .leftJoinLateral(held, sql`true`)
-      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
-      .where(eq(schema.person.id, payslip.personId))
-      .limit(1),
-    componentNamesOf(run.context as CalculationContext | null, payslip.entityId, run.month),
-    listQueryThreads(payslipId),
-  ]);
-
-  return {
-    payslip,
-    run,
-    entity,
-    person: {
-      id: payslip.personId,
-      fullName: person?.fullName ?? "—",
-      employeeCode: person?.employeeCode ?? null,
-      positionName: person?.positionName ?? null,
-      departmentName: person?.departmentName ?? null,
-    },
-    result: openResult(runPerson),
-    componentNames,
-    queries,
-    isOwner: principal.personId === payslip.personId,
-    manages: canManageCompensation(principal, { entityId: payslip.entityId }),
-  };
+  const [person] = await db()
+    .select({ fullName: schema.person.fullName, employeeCode: latest.employeeCode, positionName: held.positionName, departmentName: schema.orgUnit.name })
+    .from(schema.person)
+    .leftJoinLateral(latest, sql`true`)
+    .leftJoinLateral(held, sql`true`)
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
+    .where(eq(schema.person.id, personId))
+    .limit(1);
+  return { id: personId, fullName: person?.fullName ?? "—", employeeCode: person?.employeeCode ?? null, positionName: person?.positionName ?? null, departmentName: person?.departmentName ?? null };
 }
 
 /** Counts a reading by the payslip's owner. Never fails the page: this is a courtesy, not a control. */
@@ -207,7 +237,8 @@ export type RunPayslipRow = { payslipId: string | null; personId: string; fullNa
 export async function listPayslipsOfRun(runId: string, names?: ReadonlyMap<string, { fullName: string; employeeCode: string | null }>): Promise<RunPayslipRow[]> {
   const [people, payslips, queries] = await Promise.all([
     loadRunPeople(runId),
-    db().select().from(schema.payslip).where(eq(schema.payslip.runId, runId)),
+    // Only the payslips that are out: a withdrawn one has nothing to open and nobody reading it.
+    db().select().from(schema.payslip).where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt))),
     db()
       .select({ payslipId: schema.payslipQuery.payslipId, count: sql<number>`count(*)::int` })
       .from(schema.payslipQuery)
@@ -242,7 +273,7 @@ export async function listPayslipsOfRun(runId: string, names?: ReadonlyMap<strin
  * read in March, even if a component has been renamed since (FR-PAY-20) — so the stored version
  * ids win, and today's catalogue is only the fallback for a run made before they were recorded.
  */
-async function componentNamesOf(context: CalculationContext | null, entityId: string, month: string): Promise<ReadonlyMap<string, string>> {
+export async function componentNamesOf(context: CalculationContext | null, entityId: string, month: string): Promise<ReadonlyMap<string, string>> {
   const versions = context?.componentVersionIds?.length ? await resolveCatalogueVersions(context.componentVersionIds).catch(() => []) : [];
   const rows = versions.length > 0 ? versions : await resolveCatalogue(entityId, `${month}-01` as `${number}-${number}-${number}`);
   return new Map(rows.map((row) => [row.code, row.name]));

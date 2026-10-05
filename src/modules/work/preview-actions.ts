@@ -70,6 +70,8 @@ const revokePipeline = createAction({
     const { loaded } = (await findPreviewLink(input.linkId))!;
     const link = await revokePreviewLink(input.linkId, user.person.id);
     revalidatePath(`/work/tasks/${loaded.task.id}`);
+    // The project's own list of live links (R14) shows it too.
+    if (loaded.work.projectId) revalidatePath(`/projects/${loaded.work.projectId}`);
     return {
       data: { id: link.id },
       audit: {

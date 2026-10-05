@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => import("../../../../tests/helpers/db"));
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
-import { findActionToken, issueActionToken, purgeExpiredActionTokens, spendActionToken, voidActionTokens } from "./action-tokens";
+import { findActionToken, issueActionToken, issueActionTokens, purgeExpiredActionTokens, spendActionToken, voidActionTokens } from "./action-tokens";
 
 const ids: { person: string; other: string; request: string } = { person: "", other: "", request: "" };
 
@@ -44,6 +44,18 @@ describe("approve-from-notification tokens (FR-PLT-24)", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].tokenHash).not.toBe(token);
     expect(rows[0].tokenHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("issues everybody's key in one go, each naming its own person, exactly as one at a time", async () => {
+    const issued = await issueActionTokens(db(), ids.request, [ids.person, ids.other, ids.person], new Date("2026-01-01T00:00:00Z"));
+    expect([...issued.keys()]).toEqual([ids.person, ids.other]);
+    expect(new Set([...issued.values()].map(({ token }) => token)).size).toBe(2);
+    for (const [personId, { token, path }] of issued) {
+      expect(path).toBe(`/approvals/act/${token}`);
+      const found = await findActionToken(token, new Date("2026-01-02T00:00:00Z"));
+      expect(found.ok && [found.row.personId, found.row.requestId, found.row.action, found.row.expiresAt.toISOString()]).toEqual([personId, ids.request, "approve", "2026-01-04T00:00:00.000Z"]);
+    }
+    expect(await issueActionTokens(db(), ids.request, [])).toEqual(new Map());
   });
 
   it("says nothing at all about a token that was never issued", async () => {

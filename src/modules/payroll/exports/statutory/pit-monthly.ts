@@ -26,7 +26,10 @@
 //  * the period is a month ("2026-08") or a quarter ("2026-Q3"); a quarterly declaration is the
 //    sum of its three months' runs;
 //  * off-cycle runs of a month are part of that month's declaration — a bonus paid on the 20th is
-//    declared with the salary paid on the 5th;
+//    declared with the salary paid on the 5th. The month is still one month: its income and the
+//    tax withheld are the sum of its runs, its deductions and "thu nhập tính thuế" are counted
+//    once (`month.ts`);
+//  * only runs the CEO has signed are declared — a calculated or proposed run is not in the file;
 //  * "thu nhập chịu thuế" is taxable income **after** the exempt portions the engine computed
 //    (exempt allowances up to their caps, the overtime/night exemption), not gross pay;
 //  * a person appears once per period even when several runs paid them.

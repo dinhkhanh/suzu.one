@@ -134,4 +134,6 @@ Một số loại **Đề nghị** được quản trị viên đặt thời h�
 - Bạn nhận lời nhắc "Đề nghị đang chờ bạn duyệt — … đã chờ n ngày." (một lần cho mỗi lượt).
 - Nếu vẫn chưa ai trả lời sau mốc leo thang, người được chỉ định (ví dụ quản lý của bạn) nhận thông báo "Đề nghị quá hạn duyệt — … đã chờ {bạn} duyệt n ngày."
 
+Lời nhắc chỉ gửi tới người duyệt đang làm việc; lượt của người đã nghỉ việc hoặc bị tạm khoá vẫn được leo thang, và Nhân sự có thể **Đổi người duyệt** (xem trang **Ủy quyền phê duyệt**).
+
 Việc nhắc chạy tự động mỗi ngày. Cách tốt nhất để tránh bị leo thang là xử lý hộp duyệt đều đặn, hoặc đặt **Ủy quyền phê duyệt** trước khi vắng mặt.

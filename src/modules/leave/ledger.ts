@@ -11,7 +11,7 @@ import { getParameter } from "@/modules/platform/statutory/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { accrualPostings, carryOverExpiryDate, carryOverLapse, terminationPayout, yearEndCarryOver } from "./engine/entitlement";
 import { canSeeBalancesOf } from "./policy";
-import { allLeaveTypes, type LeavePolicyRow, type LeaveTypeRow, leaveTypesFor, leaveTypesOf, listPolicies, policyOn, policyRules } from "./types";
+import { allLeaveTypes, type LeavePolicyRow, type LeaveTypeRow, leaveTypesOf, listPolicies, policyOn, policyRules } from "./types";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type LedgerEntryRow = typeof schema.leaveLedgerEntry.$inferSelect;
@@ -140,6 +140,25 @@ export async function listPayouts(entityId: string, from: IsoDate, to: IsoDate, 
   return rows.map(({ entry, typeCode }) => ({ personId: entry.personId, leaveTypeId: entry.leaveTypeId, typeCode, daysCenti: -entry.amountCenti, effectiveDate: entry.effectiveDate }));
 }
 
+export type PayoutTotal = { personId: string; daysCenti: number; /** When the last of the person's payout rows was posted. */ postedAt: Date };
+
+/**
+ * Unused days paid out on termination in a period, one total per person across leave types —
+ * what the run of the month pays (FR-LVE-03, FR-PAY-18). With `postedAfter`, only people with a
+ * payout posted after that moment: how a run calculated before the daily job posted knows it is stale.
+ */
+export async function listPayoutTotals(entityId: string, from: IsoDate, to: IsoDate, executor: Executor = db(), options: { postedAfter?: Date } = {}): Promise<PayoutTotal[]> {
+  const table = schema.leaveLedgerEntry;
+  const rows = await executor
+    .select({ personId: table.personId, daysCenti: sql<number>`(-sum(${table.amountCenti}))::int`, postedAt: sql<Date>`max(${table.createdAt})`.mapWith(table.createdAt) })
+    .from(table)
+    .where(and(eq(table.entityId, entityId), eq(table.kind, "payout"), gte(table.effectiveDate, from), lte(table.effectiveDate, to)))
+    .groupBy(table.personId)
+    .having(options.postedAfter ? sql`max(${table.createdAt}) > ${options.postedAfter.toISOString()}::timestamptz` : undefined)
+    .orderBy(table.personId);
+  return rows;
+}
+
 // ── HR's postings ───────────────────────────────────────────────────────────────────────────
 
 /** A manual correction with a reason (FR-LVE-07). Positive adds days, negative takes them. */
@@ -159,12 +178,36 @@ export async function adjustBalance(input: { personId: string; leaveTypeId: stri
  * Time off in lieu earned by overtime or holiday work (FR-ATT-12, 18): the attendance module posts
  * it here, inside its own transaction. `sourceKey` makes the posting idempotent.
  */
-export async function postCompensatoryLeave(tx: Executor, input: { personId: string; amountCenti: number; effectiveDate: IsoDate; sourceKey: string; reason: string; actorPersonId: string | null }): Promise<LedgerEntryRow | null> {
-  const [person] = await tx.select({ entityId: schema.person.primaryEntityId }).from(schema.person).where(eq(schema.person.id, input.personId)).limit(1);
-  if (!person) throw new ActionError("person_not_found");
-  const type = (await leaveTypesFor(person.entityId, tx)).find((row) => row.category === "compensatory" && row.tracksBalance);
-  if (!type) throw new ActionError("leave_no_compensatory_type");
-  return postEntry(tx, { personId: input.personId, entityId: person.entityId, leaveTypeId: type.id, leaveYear: Number(input.effectiveDate.slice(0, 4)), kind: "grant", amountCenti: input.amountCenti, effectiveDate: input.effectiveDate, sourceKey: `toil:${input.sourceKey}`, reason: input.reason, createdByPersonId: input.actorPersonId });
+export async function postCompensatoryLeave(tx: Executor, input: CompensatoryLeaveInput): Promise<LedgerEntryRow | null> {
+  return (await postCompensatoryLeaves(tx, [input]))[0];
+}
+
+type CompensatoryLeaveInput = { personId: string; amountCenti: number; effectiveDate: IsoDate; sourceKey: string; reason: string; actorPersonId: string | null };
+
+/**
+ * `postCompensatoryLeave` for many people at once — a month lock posts everybody's together: one
+ * read of the people, one of the leave types, one insert. Refused as a whole (inside the caller's
+ * transaction) if any of them is unknown or their entity has no compensatory type. Each result is
+ * the posted row, or null where the posting was zero or already on the ledger, in input order.
+ */
+export async function postCompensatoryLeaves(tx: Executor, inputs: readonly CompensatoryLeaveInput[]): Promise<(LedgerEntryRow | null)[]> {
+  if (inputs.length === 0) return [];
+  const [people, types] = await Promise.all([
+    tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(inArray(schema.person.id, [...new Set(inputs.map((input) => input.personId))])),
+    allLeaveTypes(tx),
+  ]);
+  const entityOf = new Map(people.map((person) => [person.id, person.entityId]));
+  const entries = inputs.map((input): NewEntry => {
+    if (!entityOf.has(input.personId)) throw new ActionError("person_not_found");
+    const entityId = entityOf.get(input.personId)!;
+    const type = leaveTypesOf(types, entityId).find((row) => row.category === "compensatory" && row.tracksBalance);
+    if (!type) throw new ActionError("leave_no_compensatory_type");
+    return { personId: input.personId, entityId, leaveTypeId: type.id, leaveYear: Number(input.effectiveDate.slice(0, 4)), kind: "grant", amountCenti: input.amountCenti, effectiveDate: input.effectiveDate, sourceKey: `toil:${input.sourceKey}`, reason: input.reason, createdByPersonId: input.actorPersonId };
+  });
+  const posting = entries.filter((entry) => entry.amountCenti !== 0);
+  const posted = posting.length ? await tx.insert(schema.leaveLedgerEntry).values(posting).onConflictDoNothing({ target: schema.leaveLedgerEntry.sourceKey }).returning() : [];
+  const byKey = new Map(posted.map((row) => [row.sourceKey, row]));
+  return entries.map((entry) => (entry.amountCenti === 0 ? null : (byKey.get(entry.sourceKey ?? null) ?? null)));
 }
 
 export async function balanceOf(executor: Executor, personId: string, leaveTypeId: string, year: number): Promise<number> {
@@ -206,58 +249,95 @@ export async function runLeaveAccruals(today: IsoDate = todayInVietnam(), option
   const statutory: Record<number, typeof current | null> = { [year - 1]: previous, [year]: current };
   const typesByEntity = new Map<string | null, LeaveTypeRow[]>();
 
+  // Everybody's ledger since last year in one read. Most days nothing is due for most people, so
+  // each person and type is first worked out against these rows without writing (`dryRun`): only
+  // where that finds something to post does a transaction open, which reads its rows again and
+  // posts for real. A posting the dry run skips (zero, or its source key already on the ledger)
+  // the real run skips too, so nothing that would have been posted is missed.
+  const ledger = await db()
+    .select()
+    .from(schema.leaveLedgerEntry)
+    .where(and(inArray(schema.leaveLedgerEntry.personId, people.map((facts) => facts.personId)), gte(schema.leaveLedgerEntry.leaveYear, year - 1)))
+    .orderBy(asc(schema.leaveLedgerEntry.createdAt), asc(schema.leaveLedgerEntry.id));
+  const ledgerOf = new Map<string, LedgerEntryRow[]>();
+  for (const row of ledger) ledgerOf.set(`${row.personId}:${row.leaveTypeId}`, [...(ledgerOf.get(`${row.personId}:${row.leaveTypeId}`) ?? []), row]);
+
   for (const facts of people) {
     if (!typesByEntity.has(facts.entityId)) typesByEntity.set(facts.entityId, leaveTypesOf(allTypes, facts.entityId, { includeInactive: true }).filter((type) => type.tracksBalance));
     for (const type of typesByEntity.get(facts.entityId)!) {
+      const settle = { facts, type, policies, statutory, current, year, today };
+      const entries = [...(ledgerOf.get(`${facts.personId}:${type.id}`) ?? [])];
+      const known = new Set(entries.map((row) => row.sourceKey).filter((key) => key !== null));
+      let wouldPost = false;
+      await settleLeaveYear(settle, entries, async (entry) => {
+        if (entry.amountCenti === 0 || (entry.sourceKey && known.has(entry.sourceKey))) return null;
+        wouldPost = true;
+        return null;
+      }, { ...counts });
+      if (!wouldPost) continue;
+
       await db().transaction(async (tx) => {
         const entries = await tx.select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, facts.personId), eq(schema.leaveLedgerEntry.leaveTypeId, type.id), gte(schema.leaveLedgerEntry.leaveYear, year - 1)));
-        const post = async (entry: Pick<NewEntry, "leaveYear" | "kind" | "amountCenti" | "effectiveDate" | "sourceKey" | "reason">) => {
-          const row = await postEntry(tx, { personId: facts.personId, entityId: facts.entityId, leaveTypeId: type.id, createdByPersonId: null, ...entry });
-          if (row) entries.push(row);
-          return row;
-        };
-        const key = (what: string, ...parts: (string | number)[]) => [what, facts.personId, type.id, ...parts].join(":");
-
-        // 1. Last year, once: finish its accrual, then carry over and lapse.
-        const lastYear = entries.filter((row) => row.leaveYear === year - 1);
-        const closingPolicy = policyOn(policies, type.id, facts.entityId, `${year - 1}-12-31`);
-        if (lastYear.length > 0 && closingPolicy && statutory[year - 1] && !lastYear.some((row) => row.sourceKey === key("carry-out", year - 1))) {
-          counts.accruals += await accrue(facts, type, policies, statutory[year - 1]!, year - 1, `${year - 1}-12-31`, entries, post, key);
-          const closing = sum(entries, (row) => row.leaveYear === year - 1);
-          const { carryCenti, expireCenti } = yearEndCarryOver(closing, policyRules(closingPolicy));
-          // An ended employment carries nothing into a year it does not reach.
-          const reachesThisYear = !facts.endDate || facts.endDate >= `${year}-01-01`;
-          if (reachesThisYear && closing !== 0) {
-            if (expireCenti) await post({ leaveYear: year - 1, kind: "expiry", amountCenti: -expireCenti, effectiveDate: `${year - 1}-12-31`, sourceKey: key("year-end-expiry", year - 1), reason: "Hết hạn cuối năm (vượt mức chuyển năm)" });
-            await post({ leaveYear: year - 1, kind: "carry_over", amountCenti: -carryCenti, effectiveDate: `${year - 1}-12-31`, sourceKey: key("carry-out", year - 1), reason: `Chuyển sang năm ${year}` });
-            await post({ leaveYear: year, kind: "carry_over", amountCenti: carryCenti, effectiveDate: `${year}-01-01`, sourceKey: key("carry-in", year), reason: `Chuyển từ năm ${year - 1}` });
-            counts.yearsClosed++;
-          }
-        }
-
-        // 2. This year's accruals up to today.
-        counts.accruals += await accrue(facts, type, policies, current, year, today, entries, post, key);
-
-        // 3. Carried days that were not used by their expiry date lapse.
-        const policy = policyOn(policies, type.id, facts.entityId, today);
-        const carried = sum(entries, (row) => row.leaveYear === year && row.kind === "carry_over");
-        const expiresOn = policy ? carryOverExpiryDate(year, policy.carryOverExpiry) : null;
-        if (expiresOn && today > expiresOn && carried > 0) {
-          const usedByExpiry = -sum(entries, (row) => row.leaveYear === year && (row.kind === "use" || row.kind === "refund") && row.effectiveDate <= expiresOn);
-          const lapse = carryOverLapse({ carriedCenti: carried, usedByExpiryCenti: usedByExpiry, balanceCenti: sum(entries, (row) => row.leaveYear === year) });
-          if (lapse > 0 && (await post({ leaveYear: year, kind: "expiry", amountCenti: -lapse, effectiveDate: expiresOn, sourceKey: key("carry-lapse", year), reason: "Ngày phép chuyển năm hết hạn" }))) counts.lapsed++;
-        }
-
-        // 4. Employment over: pay out what is left, once per employment.
-        if (policy && facts.endDate && facts.endDate < today && facts.employmentId) {
-          const endYear = Number(facts.endDate.slice(0, 4));
-          const payout = terminationPayout(sum(entries, (row) => row.leaveYear === endYear), policyRules(policy));
-          if (payout > 0 && (await post({ leaveYear: endYear, kind: "payout", amountCenti: -payout, effectiveDate: facts.endDate, sourceKey: key("payout", facts.employmentId), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" }))) counts.payouts++;
-        }
+        await settleLeaveYear(settle, entries, (entry) => postEntry(tx, { personId: facts.personId, entityId: facts.entityId, leaveTypeId: type.id, createdByPersonId: null, ...entry }), counts);
       });
     }
   }
   return counts;
+}
+
+type Counts = { accruals: number; yearsClosed: number; lapsed: number; payouts: number };
+type Statutory = { baseDays: number; yearsOfServicePerExtraDay: number };
+type Settle = { facts: EmploymentFacts; type: LeaveTypeRow; policies: readonly LeavePolicyRow[]; statutory: Record<number, Statutory | null>; current: Statutory; year: number; today: IsoDate };
+
+/**
+ * One person's balance of one type brought up to `today`: last year closed, this year accrued,
+ * carried days lapsed, a payout on leaving. `write` posts a row (or, in a dry run, only says
+ * whether it would); a posted row joins `entries`, so each step sees what the one before posted.
+ */
+async function settleLeaveYear({ facts, type, policies, statutory, current, year, today }: Settle, entries: LedgerEntryRow[], write: Post, counts: Counts): Promise<void> {
+  const post: Post = async (entry) => {
+    const row = await write(entry);
+    if (row) entries.push(row);
+    return row;
+  };
+  const key = (what: string, ...parts: (string | number)[]) => [what, facts.personId, type.id, ...parts].join(":");
+
+  // 1. Last year, once: finish its accrual, then carry over and lapse.
+  const lastYear = entries.filter((row) => row.leaveYear === year - 1);
+  const closingPolicy = policyOn(policies, type.id, facts.entityId, `${year - 1}-12-31`);
+  if (lastYear.length > 0 && closingPolicy && statutory[year - 1] && !lastYear.some((row) => row.sourceKey === key("carry-out", year - 1))) {
+    counts.accruals += await accrue(facts, type, policies, statutory[year - 1]!, year - 1, `${year - 1}-12-31`, entries, post, key);
+    const closing = sum(entries, (row) => row.leaveYear === year - 1);
+    const { carryCenti, expireCenti } = yearEndCarryOver(closing, policyRules(closingPolicy));
+    // An ended employment carries nothing into a year it does not reach.
+    const reachesThisYear = !facts.endDate || facts.endDate >= `${year}-01-01`;
+    if (reachesThisYear && closing !== 0) {
+      if (expireCenti) await post({ leaveYear: year - 1, kind: "expiry", amountCenti: -expireCenti, effectiveDate: `${year - 1}-12-31`, sourceKey: key("year-end-expiry", year - 1), reason: "Hết hạn cuối năm (vượt mức chuyển năm)" });
+      await post({ leaveYear: year - 1, kind: "carry_over", amountCenti: -carryCenti, effectiveDate: `${year - 1}-12-31`, sourceKey: key("carry-out", year - 1), reason: `Chuyển sang năm ${year}` });
+      await post({ leaveYear: year, kind: "carry_over", amountCenti: carryCenti, effectiveDate: `${year}-01-01`, sourceKey: key("carry-in", year), reason: `Chuyển từ năm ${year - 1}` });
+      counts.yearsClosed++;
+    }
+  }
+
+  // 2. This year's accruals up to today.
+  counts.accruals += await accrue(facts, type, policies, current, year, today, entries, post, key);
+
+  // 3. Carried days that were not used by their expiry date lapse.
+  const policy = policyOn(policies, type.id, facts.entityId, today);
+  const carried = sum(entries, (row) => row.leaveYear === year && row.kind === "carry_over");
+  const expiresOn = policy ? carryOverExpiryDate(year, policy.carryOverExpiry) : null;
+  if (expiresOn && today > expiresOn && carried > 0) {
+    const usedByExpiry = -sum(entries, (row) => row.leaveYear === year && (row.kind === "use" || row.kind === "refund") && row.effectiveDate <= expiresOn);
+    const lapse = carryOverLapse({ carriedCenti: carried, usedByExpiryCenti: usedByExpiry, balanceCenti: sum(entries, (row) => row.leaveYear === year) });
+    if (lapse > 0 && (await post({ leaveYear: year, kind: "expiry", amountCenti: -lapse, effectiveDate: expiresOn, sourceKey: key("carry-lapse", year), reason: "Ngày phép chuyển năm hết hạn" }))) counts.lapsed++;
+  }
+
+  // 4. Employment over: pay out what is left, once per employment.
+  if (policy && facts.endDate && facts.endDate < today && facts.employmentId) {
+    const endYear = Number(facts.endDate.slice(0, 4));
+    const payout = terminationPayout(sum(entries, (row) => row.leaveYear === endYear), policyRules(policy));
+    if (payout > 0 && (await post({ leaveYear: endYear, kind: "payout", amountCenti: -payout, effectiveDate: facts.endDate, sourceKey: key("payout", facts.employmentId), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" }))) counts.payouts++;
+  }
 }
 
 type Post = (entry: Pick<NewEntry, "leaveYear" | "kind" | "amountCenti" | "effectiveDate" | "sourceKey" | "reason">) => Promise<LedgerEntryRow | null>;

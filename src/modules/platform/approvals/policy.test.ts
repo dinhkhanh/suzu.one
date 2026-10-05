@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canOverseeRequests, canWithdraw, withdrawnHere } from "./policy";
+import { canDelegateFor, canOverseeRequests, canReassignTurns, canWithdraw, withdrawnHere } from "./policy";
 
 describe("canWithdraw", () => {
   it("lets the requester take back a type with no row of its own, until it is decided", () => {
@@ -14,6 +14,40 @@ describe("canWithdraw", () => {
       expect(withdrawnHere(type)).toBe(false);
       expect(canWithdraw({ type, requesterPersonId: "huy", status: "pending" }, "huy")).toBe(false);
     }
+  });
+});
+
+describe("moving a turn and delegating for someone else (PLT-02)", () => {
+  const owner = { personId: "khanh", workforceType: null, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] };
+  const hr = { personId: "mai", workforceType: null, grants: [{ role: "hr_staff" as const, scope: { type: "entity" as const, id: "entity-a" } }] };
+  const head = { personId: "long", workforceType: null, grants: [{ role: "department_head" as const, scope: { type: "unit" as const, id: "unit-video" } }] };
+  const huy = { personId: "huy", entityId: "entity-a", unitPath: ["unit-video"], managerId: "long" };
+  const request = { requesterPersonId: "huy", subjectPersonId: "huy" };
+
+  it("lets whoever holds person:manage over the request's subject reassign, and the owner everywhere", () => {
+    expect(canReassignTurns(hr, request, huy)).toBe(true);
+    expect(canReassignTurns(owner, request, huy)).toBe(true);
+    expect(canReassignTurns(hr, request, { ...huy, entityId: "entity-b" })).toBe(false);
+    // The line manager and the department head approve; they do not choose who else does.
+    expect(canReassignTurns(head, request, huy)).toBe(false);
+    expect(canReassignTurns({ personId: "tam", workforceType: null, grants: [] }, request, huy)).toBe(false);
+    // Deny by default: a request whose subject cannot be placed is nobody's to move.
+    expect(canReassignTurns(owner, request, null)).toBe(false);
+  });
+
+  it("never lets someone choose the approver of a request they filed or are the subject of", () => {
+    expect(canReassignTurns(owner, { requesterPersonId: "khanh", subjectPersonId: null }, huy)).toBe(false);
+    expect(canReassignTurns(hr, { requesterPersonId: "huy", subjectPersonId: "mai" }, huy)).toBe(false);
+    expect(canReassignTurns({ ...hr, personId: null }, request, huy)).toBe(false);
+  });
+
+  it("lets HR over a person set a delegation in their name, never in one's own", () => {
+    expect(canDelegateFor(hr, huy)).toBe(true);
+    expect(canDelegateFor(owner, huy)).toBe(true);
+    expect(canDelegateFor(head, huy)).toBe(false);
+    expect(canDelegateFor(hr, { ...huy, entityId: "entity-b" })).toBe(false);
+    expect(canDelegateFor(hr, { ...huy, personId: "mai" })).toBe(false);
+    expect(canDelegateFor(owner, null)).toBe(false);
   });
 });
 

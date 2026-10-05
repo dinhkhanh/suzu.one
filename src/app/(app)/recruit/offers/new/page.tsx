@@ -43,7 +43,8 @@ export default async function NewOfferPage({ searchParams }: PageProps<"/recruit
         canSetMoney
         values={{
           positionName: view.opening.positionName ?? view.opening.title,
-          jobLevel: view.opening.jobLevel,
+          seniorityLevel: view.opening.seniorityLevel,
+          positionLevel: view.opening.positionLevel,
           employmentType: view.opening.employmentType,
           workLocation: view.opening.workLocation,
           managerPersonId: null,

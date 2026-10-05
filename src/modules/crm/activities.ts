@@ -111,6 +111,12 @@ export type ActivityInput = {
   followUp: { ownerPersonId: string; dueOn: IsoDate; subject?: string | null } | null;
 };
 
+/**
+ * The records an activity names belong together, or it is refused: a contact and a deal are the
+ * account's own, and a lead named beside an account is that account's enquiry — the one it came
+ * from, or the one it was converted into. Without this a right over one record (a lead) would
+ * write onto another (somebody else's account).
+ */
 async function checkTargets(executor: Executor, input: Pick<ActivityInput, "clientId" | "contactId" | "dealId" | "leadId">): Promise<void> {
   if (!input.clientId && !input.leadId) throw new ActionError("activity_target_required");
   if (input.contactId) {
@@ -122,8 +128,14 @@ async function checkTargets(executor: Executor, input: Pick<ActivityInput, "clie
     if (!deal || deal.clientId !== input.clientId) throw new ActionError("deal_not_found");
   }
   if (input.leadId) {
-    const [lead] = await executor.select({ id: schema.crmLead.id }).from(schema.crmLead).where(eq(schema.crmLead.id, input.leadId)).limit(1);
-    if (!lead) throw new ActionError("lead_not_found");
+    // The lead's account, a brand resolved to its client as everywhere else in the CRM.
+    const [lead] = await executor
+      .select({ accountId: sql<string | null>`coalesce(${schema.workClient.parentId}, ${schema.workClient.id})`, convertedDealId: schema.crmLead.convertedDealId })
+      .from(schema.crmLead)
+      .leftJoin(schema.workClient, eq(schema.workClient.id, schema.crmLead.clientId))
+      .where(eq(schema.crmLead.id, input.leadId))
+      .limit(1);
+    if (!lead || (input.clientId && lead.accountId !== input.clientId) || (input.dealId && lead.convertedDealId !== input.dealId)) throw new ActionError("lead_not_found");
   }
 }
 

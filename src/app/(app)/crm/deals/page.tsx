@@ -9,13 +9,16 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
+import { Pager, readPage } from "@/components/ui/pager";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listTeams } from "@/modules/work/service";
-import { crmSettings, forecast, isStaleDeal, listDeals, listStages, pipelineTotals, SERVICE_LINES, type ServiceLine, stageName } from "@/modules/crm/service";
+import { crmSettings, forecast, isStaleDeal, listDealBoard, listDealPage, listStages, SERVICE_LINES, type ServiceLine, stageName } from "@/modules/crm/service";
+import { exportDealsAction } from "@/modules/crm/export-actions";
 import { crmShell } from "@/modules/crm/pages";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { type BoardColumn, DealBoard } from "@/modules/crm/ui/board";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
@@ -23,6 +26,10 @@ import { formatters } from "@/modules/crm/ui/views";
 export const generateMetadata = pageTitle("crmDeals");
 
 const VIEWS = ["board", "list", "forecast"] as const;
+/** Deals per page of the list (PERF-03). */
+const PAGE_SIZE = 50;
+/** The most cards the board holds; past it, it says so (its stage figures still count every deal). */
+const BOARD_LIMIT = 500;
 
 export default async function DealsPage({ searchParams }: PageProps<"/crm/deals">) {
   const user = await requireUser();
@@ -36,16 +43,32 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
   const serviceLine = (SERVICE_LINES as readonly string[]).includes(one(params.service) ?? "") ? (one(params.service) as ServiceLine) : null;
   const status = (["open", "won", "lost", "all"] as const).find((value) => value === one(params.status)) ?? (view === "list" ? "open" : "all");
   const q = one(params.q) ?? null;
+  const page = readPage(params.page);
   const today = todayInVietnam();
-  const [t, f, locale, stages, teams, deals, settings] = await Promise.all([getTranslations("crm"), formatters(), getLocale(), listStages(), listTeams(), listDeals(shell.viewer, { mine, teamId, serviceLine, status, q }), crmSettings(today)]);
-  const recent = addDays(today, -30);
+  const filters = { mine, teamId, serviceLine, status, q };
+  // Each view reads only what it shows: the board its open and lately closed deals with each
+  // stage's figures summed in SQL, the list one page and the count, the forecast its own sums.
+  const [t, f, te, locale, stages, teams, board, list, settings] = await Promise.all([
+    getTranslations("crm"),
+    formatters(),
+    getTranslations("exports"),
+    getLocale(),
+    listStages(),
+    listTeams(),
+    view === "board" ? listDealBoard(shell.viewer, { ...filters, closedSince: addDays(today, -30) }, BOARD_LIMIT) : null,
+    view === "list" ? listDealPage(shell.viewer, filters, page, PAGE_SIZE) : null,
+    crmSettings(today),
+  ]);
   const params_ = (patch: Record<string, string>) => {
     const next = new URLSearchParams(Object.entries({ view, ...(mine ? { mine: "1" } : {}), ...(teamId ? { team: teamId } : {}), ...(serviceLine ? { service: serviceLine } : {}), ...patch }).filter(([, value]) => value) as [string, string][]);
     return `/crm/deals?${next.toString()}`;
   };
+  // The list's pages carry its status and search along.
+  const pageHref = (to: number) => params_({ ...(status !== "open" ? { status } : {}), ...(q ? { q } : {}), ...(to > 1 ? { page: String(to) } : {}) });
 
-  const boardDeals = deals.filter((deal) => deal.status === "open" || (deal.wonAt ?? deal.lostAt ?? new Date(0)).toISOString().slice(0, 10) >= recent);
-  const totals = pipelineTotals(boardDeals);
+  const boardDeals = board?.deals ?? [];
+  const totals = board?.totals ?? new Map();
+  const deals = list?.rows ?? [];
   const columns: BoardColumn[] = stages
     .filter((stage) => stage.isActive)
     .map((stage) => {
@@ -64,7 +87,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
 
   return (
     <Page width="wide">
-      <PageHeader title={t("deals.title")} description={t("deals.intro")} />
+      <PageHeader title={t("deals.title")} description={t("deals.intro")} actions={view === "list" ? <ExportButton action={exportDealsAction} input={{ ...filters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} /> : null} />
       <CrmTabs current="deals" show={shell.show} />
       <form method="get" className="toolbar">
         <input type="hidden" name="view" value={view} />
@@ -105,10 +128,12 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
         </Button>
       </form>
 
+      {view === "board" && board && board.total > boardDeals.length ? <p className="text-sm text-muted-foreground">{t("deals.boardTruncated", { shown: boardDeals.length, total: board.total })}</p> : null}
       {view === "board" ? <DealBoard columns={columns} /> : null}
 
       {view === "list" ? (
-        <Table>
+        <>
+        <Table numberFrom={(page - 1) * PAGE_SIZE + 1}>
           <TableHeader>
             <TableRow>
               <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
@@ -148,6 +173,8 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
             ))}
           </TableBody>
         </Table>
+        <Pager page={page} pageSize={PAGE_SIZE} total={list?.total ?? 0} href={pageHref} />
+        </>
       ) : null}
 
       {view === "forecast" ? (

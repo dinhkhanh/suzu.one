@@ -12,14 +12,17 @@ concurrency:
 permissions:
   contents: read
 
+# Third-party actions are pinned to a full commit SHA, with the release it is in a comment: a tag
+# can be moved to other code, a commit cannot. Dependabot (.github/dependabot.yml) proposes the
+# next SHA and keeps the comment in step.
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
@@ -37,3 +40,98 @@ jobs:
           BETTER_AUTH_URL: http://localhost:3000
           GOOGLE_CLIENT_ID: ci
           GOOGLE_CLIENT_SECRET: ci
+
+  # The smoke suite (e2e/, NFR-MNT-04): the seven critical journeys in a real browser, against the
+  # built app and a real Postgres reached through a transaction-mode pooler (PgBouncer standing in
+  # for Supabase's Supavisor) — the path the PGlite tests never take. Both databases are service
+  # containers that live and die with this job: nothing here reaches staging or production.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        # Postgres 17 (Supabase's major version) with pgvector, which the migrations create.
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+          # The pooler logs in on the job's private network only; clients still give a password to it.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      pooler:
+        image: edoburu/pgbouncer:v1.25.2-p0
+        env:
+          DB_HOST: postgres
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: postgres
+          POOL_MODE: transaction
+          MAX_CLIENT_CONN: "200"
+          DEFAULT_POOL_SIZE: "20"
+        ports: ["6432:5432"]
+    env:
+      # The app goes through the pooler; migrations, the seed and the suite's own session rows go direct.
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:6432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      E2E_THROWAWAY_DATABASE: "1"
+      BETTER_AUTH_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: ci
+      GOOGLE_CLIENT_SECRET: ci
+      ALLOWED_WORKSPACE_DOMAINS: suzu.vn,suzu.group
+      CSP_MODE: report-only
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Throwaway keys, made for this run and gone with it: nothing to leak, nothing for the secret scan to find.
+      - name: Generate this run's secrets
+        run: |
+          echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "CRON_SECRET=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "DATA_ENCRYPTION_KEYS=e2e:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "DATA_BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Wait for the pooler
+        run: for i in $(seq 1 30); do pg_isready -h 127.0.0.1 -p 6432 && exit 0; sleep 2; done; exit 1
+      - run: pnpm db:migrate
+      # The demo company: people on both domains, managers, an entity with a month to lock, obligations.
+      - run: pnpm db:seed && pnpm db:seed:demo
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # Secrets in what was just committed (NFR-SEC-07): every commit of the push or the pull request
+  # is scanned, so a key that was added and removed again in a later commit is still found. What
+  # the scanner may ignore is listed, with the reason, in .gitleaks.toml.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The scan reads commits, not the checked-out tree: it needs the history.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          # Read-only here (see `permissions` above): used to list a pull request's commits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # The scanner itself, pinned like the action that downloads it.
+          GITLEAKS_VERSION: 8.30.1
+          # Commenting on the pull request would need write access; the failed check says enough.
+          GITLEAKS_ENABLE_COMMENTS: "false"

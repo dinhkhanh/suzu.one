@@ -1,21 +1,27 @@
 // The plan of a project (FR-PJM-01, 02, 09, 14): one `project_plan` row per `work_project`.
 //
-// Work never imports projects, so a project is created without its plan. The plan is made
-// idempotently by the first change anything makes to it (`ensurePlan`, inside that change's
-// transaction), and the daily job backfills every project still missing one (`backfillPlans`).
-// Making it hands out the job number. Reading never writes: a page opened before either has
-// happened reads the plan's defaults (`readPlan`), with no job number yet.
+// Work never imports projects, so the plan is made through the platform's project-creation hooks
+// (`planOnCreate`, registered beside the tables): work runs them inside the transaction that makes
+// the project, so a new project is committed with its plan and its job number. Projects older than
+// that — and any row written past the application — get theirs idempotently from the first change
+// anything makes to the plan (`ensurePlan`, inside that change's transaction), and the daily job
+// backfills whatever is still missing (`backfillPlans`). Making it hands out the job number.
+// Reading never writes: a page that opens such a project first reads the plan's defaults
+// (`readPlan`), with no job number yet.
 import "server-only";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import type { ProjectCreationHook } from "@/modules/platform/project-creation/registry";
 import { invalidateMemberships } from "@/modules/work/service";
 import type { ProjectKind } from "./engine/brief";
-import { briefEditable, type BriefStatus } from "./engine/brief";
+import { briefContactsEditable, briefEditable, type BriefStatus, withOpenFields } from "./engine/brief";
 import { totalOfRoles } from "./engine/budget";
+import { scopeLocked } from "./engine/gates";
 import { formatJobNumber, jobPrefix, jobYear } from "./engine/job-number";
-import type { ProjectBrief, RoleBudget } from "./schema";
+import { scopeLockedError } from "./guards";
+import type { ClientContact, ProjectBrief, RoleBudget } from "./schema";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PlanRow = typeof schema.projectPlan.$inferSelect;
@@ -67,6 +73,11 @@ export async function ensurePlan(projectId: string, executor?: Tx): Promise<Plan
   });
 }
 
+/** The plan of a project the work module has just made, in the transaction that made it (see `schema.ts`). */
+export const planOnCreate: ProjectCreationHook = async (tx, project) => {
+  await ensurePlan(project.id, tx as Tx);
+};
+
 /**
  * The plan a project has before anything made it: what the table's defaults and `ensurePlan` would
  * write, minus the job number, which is handed out only when the row is made. Never stored.
@@ -96,6 +107,7 @@ export function defaultPlan(project: { id: string; clientId: string | null; crea
     closedAt: null,
     closedByPersonId: null,
     closeReport: null,
+    closeHistory: [],
     createdAt: since,
     updatedAt: since,
   };
@@ -233,12 +245,17 @@ export type PlanSettingsInput = { kind: ProjectKind; budgetMinutes: number | nul
  * The hours budget is the budget by role when one is given: two numbers that must agree are one
  * number too many. Approved change requests (FR-PJM-11) move the total without touching the roles,
  * so a total made from roles keeps what the changes added.
+ *
+ * After the kick-off the total is the baseline the client agreed to: it moves only through a change
+ * request, and a save that would move it is refused (`scope_locked`). How the same total is split
+ * between roles, and the settings that are not scope, stay direct.
  */
 export async function updatePlanSettings(projectId: string, input: PlanSettingsInput): Promise<{ before: PlanRow; after: PlanRow }> {
   return db().transaction(async (tx) => {
     const before = await ensurePlan(projectId, tx);
     const roles = input.budgetByRole.filter((role) => role.role.trim() && role.minutes > 0);
     const budgetMinutes = roles.length ? Math.max(0, totalOfRoles(roles) + (await changedMinutes(tx, projectId))) : input.budgetMinutes;
+    if (scopeLocked(before) && (budgetMinutes ?? 0) !== (before.budgetMinutes ?? 0)) throw scopeLockedError("budget");
     // A budget raised back under a threshold can warn again when it is crossed again.
     const budgetAlerted = budgetMinutes === before.budgetMinutes ? before.budgetAlerted : [];
     const [after] = await tx.update(schema.projectPlan).set({ kind: input.kind, budgetMinutes, budgetByRole: roles, budgetAlerted, updateCadenceDays: input.updateCadenceDays, driveUrl: input.driveUrl, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId)).returning();
@@ -258,10 +275,30 @@ export async function updateBrief(projectId: string, brief: ProjectBrief): Promi
   });
 }
 
-/** The fee in VND (`pjm:commercial`; the action checks). */
+/**
+ * The contacts and links of an approved brief: who to call on the client's side and where the
+ * files are change while the work runs, and neither is part of what was agreed at the kick-off.
+ * Everything else of the brief stays exactly as it was approved. Before approval the whole brief
+ * is edited with `updateBrief`.
+ */
+export async function updateBriefContacts(projectId: string, open: { clientContacts: ClientContact[]; links: string[] }): Promise<{ before: ProjectBrief; after: ProjectBrief }> {
+  return db().transaction(async (tx) => {
+    const [plan] = await tx.select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).limit(1).for("update");
+    if (!plan || !briefContactsEditable(plan.briefStatus as BriefStatus)) throw new ActionError("brief_not_approved");
+    const after = withOpenFields(plan.brief, open);
+    await tx.update(schema.projectPlan).set({ brief: after, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
+    return { before: plan.brief, after };
+  });
+}
+
+/**
+ * The fee in VND (`pjm:commercial`; the action checks). After the kick-off it is the fee the client
+ * agreed to and moves only through a change request, whose fee step asks `pjm:commercial` again.
+ */
 export async function setFee(projectId: string, feeVnd: number | null): Promise<{ before: number | null; after: number | null }> {
   return db().transaction(async (tx) => {
     const plan = await ensurePlan(projectId, tx);
+    if (scopeLocked(plan) && (feeVnd ?? null) !== (plan.feeVnd ?? null)) throw scopeLockedError("fee");
     await tx.update(schema.projectPlan).set({ feeVnd, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
     return { before: plan.feeVnd, after: feeVnd };
   });

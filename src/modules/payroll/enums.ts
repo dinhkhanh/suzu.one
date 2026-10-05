@@ -29,6 +29,10 @@ export const salaryTermsSchema = z
     // The contribution base for compulsory insurance; may differ from the base salary (FR-PAY-01).
     insuranceSalary: vnd,
     allowances: z.array(z.object({ code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: vnd })).max(30),
+    // FR-PAY-05: the share of the base salary and allowances paid on days a probation contract
+    // covers — at least the statutory minimum (`probation.limits.minimumPayPercent`), checked when
+    // the structure is proposed. The figures above are the position's own; absent = paid in full.
+    probationPercent: z.number().int().min(1).max(100).nullable().optional(),
   })
   .refine((terms) => new Set(terms.allowances.map((line) => line.code)).size === terms.allowances.length, "duplicate_allowance");
 export type SalaryTerms = z.output<typeof salaryTermsSchema>;
@@ -126,11 +130,12 @@ export const bonusSchemeSchema = z
       requireResult: z.boolean(),
     }),
   })
-  .refine((value) => value.serviceBands.some((band) => band.minMonths === 0), "no_bottom_service_band")
-  .refine((value) => new Set(value.serviceBands.map((band) => band.minMonths)).size === value.serviceBands.length, "duplicate_service_band")
-  .refine((value) => value.performanceMultiplier.bands.some((band) => band.minScoreBp === 0), "no_bottom_performance_band")
-  .refine((value) => new Set(value.performanceMultiplier.bands.map((band) => band.key)).size === value.performanceMultiplier.bands.length, "duplicate_performance_band")
-  .refine((value) => value.unitOkr.bands.some((band) => band.minProgressBp === 0), "no_bottom_okr_band");
+  // Each rule about a whole table names the table it is about (`path`), so the editor can point at it.
+  .refine((value) => value.serviceBands.some((band) => band.minMonths === 0), { error: "no_bottom_service_band", path: ["serviceBands"] })
+  .refine((value) => new Set(value.serviceBands.map((band) => band.minMonths)).size === value.serviceBands.length, { error: "duplicate_service_band", path: ["serviceBands"] })
+  .refine((value) => value.performanceMultiplier.bands.some((band) => band.minScoreBp === 0), { error: "no_bottom_performance_band", path: ["performanceMultiplier", "bands"] })
+  .refine((value) => new Set(value.performanceMultiplier.bands.map((band) => band.key)).size === value.performanceMultiplier.bands.length, { error: "duplicate_performance_band", path: ["performanceMultiplier", "bands"] })
+  .refine((value) => value.unitOkr.bands.some((band) => band.minProgressBp === 0), { error: "no_bottom_okr_band", path: ["unitOkr", "bands"] });
 export type BonusSchemeValue = z.output<typeof bonusSchemeSchema>;
 
 /**

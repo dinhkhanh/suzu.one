@@ -2,12 +2,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { normalizeEmail } from "@/modules/platform/auth/sign-in-policy";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { findPersonById } from "@/modules/platform/people/service";
 import { holdsRoleGrants } from "@/modules/platform/rbac/service";
 import { ASSIGNMENT_CHANGE_KINDS, GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "./enums";
 import { findLikelyDuplicates } from "./lifecycle";
+import { changeNeedsApproval, proposeAssignmentChange } from "./lifecycle-approvals";
 import { canBrowsePeople, canEditPerson, canHireInto, canReassign } from "./policy";
 import { changeAssignment, deleteSavedView, getPersonTarget, hirePerson, recordPastAssignment, saveView, updatePersonBasics } from "./service";
 
@@ -38,7 +40,8 @@ const placementInput = z.object({
   branchId: id,
   orgUnitId: id,
   positionName: text(120),
-  jobLevel: text(60),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   managerId: id,
   dottedManagerId: id,
   workLocation: text(200),
@@ -115,11 +118,22 @@ const assignmentPipeline = createAction({
   },
   run: async ({ user, input }) => {
     const { personId, ...change } = input;
+    // Where an administrator asked for it, a transfer or a promotion waits for its approval (FR-CHR-09).
+    const target = await getPersonTarget(personId);
+    if (change.kind !== "correction" && (await changeNeedsApproval(change.kind, target?.entityId ?? null))) {
+      const { request, outcome } = await proposeAssignmentChange(personId, { kind: change.kind, validFrom: change.validFrom, changeReason: change.changeReason, placement: change.placement }, user.person.id);
+      revalidatePath(`/people/${personId}`);
+      revalidatePath("/approvals");
+      return {
+        data: { id: request.id, pendingApproval: outcome !== "approved" },
+        audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `proposed: ${request.summary}`, after: { personId, ...change, outcome } },
+      };
+    }
     const { employment, before, after } = await changeAssignment(personId, change, user.person.id);
     revalidatePath("/people");
     revalidatePath(`/people/${personId}`);
     return {
-      data: { id: after.id },
+      data: { id: after.id, pendingApproval: false },
       audit: { resource: { type: "assignment", id: after.id, entityId: employment.entityId }, summary: `${employment.employeeCode} ${input.kind} from ${after.validFrom}`, before, after },
     };
   },

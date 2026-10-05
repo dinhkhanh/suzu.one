@@ -17,6 +17,17 @@ vi.mock("@/lib/action", () => ({
   },
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
+// The delivering team's average loaded hour as payroll would answer it. `undefined`: payroll itself
+// is asked (there is no signed month in this database, so it has none to give).
+const cost = vi.hoisted(() => ({ rate: undefined as number | null | undefined, asked: 0 }));
+vi.mock("@/modules/payroll/service", async (original) => {
+  const actual = await original<typeof import("@/modules/payroll/service")>();
+  const blendedCostRate: typeof actual.blendedCostRate = (...args) => {
+    cost.asked += 1;
+    return cost.rate === undefined ? actual.blendedCostRate(...args) : Promise.resolve(cost.rate);
+  };
+  return { ...actual, blendedCostRate };
+});
 
 import { and, eq } from "drizzle-orm";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -31,12 +42,13 @@ import { listFollowUpsOf, recordActivity, sendFollowUpReminders } from "./activi
 import { eraseContact, listContacts, saveContact } from "./contacts";
 import { openRenewals, saveContract, signContract } from "./contracts";
 import { convertLead } from "./conversion";
-import { createDeal, getDeal, listDeals, moveDeal, setDealContacts } from "./deals";
+import { buildAccountsExport, buildDealsExport } from "./exports";
+import { createDeal, getDeal, listDealBoard, listDealPage, listDeals, moveDeal, pipelineTotals, setDealContacts } from "./deals";
 import { listSalesHandoffsFor, respondToHandoff, setUpDelivery } from "./delivery";
 import { agingSummary, listInvoices, recordInvoice, recordPayment, sendReceivableReminders } from "./invoices";
 import { createLead, findLead } from "./leads";
 import type { AccountTie, CrmViewer } from "./policy";
-import { answerQuote, createQuote, decideQuote, findQuote, reviseQuote, saveQuote, sendQuote, submitQuote } from "./quotes";
+import { answerQuote, createQuote, decideQuote, findQuote, getQuote, quoteReaderView, reviseQuote, saveQuote, sendQuote, submitQuote } from "./quotes";
 import { firstStageOf, listStages } from "./stages";
 import { seedStages } from "./seed";
 import { accountTimeline } from "./timeline";
@@ -54,6 +66,9 @@ const viewerOf = (personId: string, ties: [string, AccountTie[]][] = []): CrmVie
 
 beforeAll(async () => {
   await migrateTestDb();
+  // Payroll takes a figure only under a code its catalogue holds as a typed-in component — what
+  // `pnpm db:seed` gives every real database. Without it the posting is refused, not skipped.
+  await db().insert(schema.payComponent).values({ code: "COMMISSION", name: "Hoa hồng", kind: "earning", category: "commission", source: "input", validFrom: "2026-01-01", status: "approved" });
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["seller", "am", "lead", "director", "finance", "colleague", "member"] as const) {
@@ -167,13 +182,12 @@ describe("leads and the pipeline", () => {
         { serviceId: null, title: "Page management", description: null, quantity: 1, unit: "month", unitPriceVnd: 25_000_000, discountBp: 0, months: 3, format: null, channel: "facebook", roleMinutes: [{ role: "Account", minutes: 1800 }] },
       ],
     });
-    expect(await fails(sendQuote(quote.id))).toBe("quote_needs_approval");
     const submitted = await submitQuote(quote.id, ids.seller);
     expect(submitted.reasons).toEqual(["discount"]);
     expect(submitted.quote.status).toBe("in_approval");
     const decided = await decideQuote(ids.director, submitted.requestId!, { action: "approve", comment: "ok for Tết" });
     expect(decided.after.status).toBe("approved");
-    await sendQuote(quote.id);
+    await sendQuote(quote.id, ids.seller);
     await answerQuote(quote.id, true, "Signed off by Lan");
     const deal = await getDeal(viewerOf(ids.seller, [[ids.account, ["deal_owner"]]]), dealId);
     expect(deal?.deal.value).toMatchObject({ oneOffVnd: 102_000_000, monthlyVnd: 25_000_000, months: 3, totalVnd: 177_000_000 });
@@ -210,7 +224,11 @@ describe("leads and the pipeline", () => {
     const plan = await readPlan(project.id);
     expect(plan).toMatchObject({ kind: "retainer", feeVnd: 102_000_000, accountManagerPersonId: ids.am, budgetByRole: [{ role: "Video editing", minutes: 1920 }], budgetMinutes: 1920 });
     expect(plan?.brief.objective).toBe("Tết 2027 campaign — Kick-off in January");
-    expect(plan?.brief.clientContacts).toEqual([{ name: "Nguyễn Thị Lan", role: "decides", contact: "lan@vinamilk.vn · 0901234567" }]);
+    // A name and a role, and nothing to reach her by: the brief is read by everyone on the project (CRM-02).
+    expect(plan?.brief.clientContacts).toEqual([{ name: "Nguyễn Thị Lan", role: "decides" }]);
+    const [handoff] = await db().select().from(schema.crmDealProject).where(eq(schema.crmDealProject.projectId, project.id));
+    expect(handoff.handoffNote.contacts).toBe("Nguyễn Thị Lan — decides");
+    for (const detail of ["vinamilk.vn", "0901234567"]) expect(JSON.stringify([plan?.brief, handoff.handoffNote])).not.toContain(detail);
     const register = await db().select().from(schema.projectDeliverable).where(eq(schema.projectDeliverable.projectId, project.id));
     expect(register.map((line) => [line.title, line.quantity, line.format])).toEqual([["TVC 30s", 1, "tvc"]]);
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, project.id));
@@ -441,5 +459,186 @@ describe("sales commission (FR-CRM-45)", () => {
     const [input] = await db().select().from(schema.payrollRunInput).where(eq(schema.payrollRunInput.runId, run.id));
     expect(input).toMatchObject({ personId: ids.seller, code: "COMMISSION" });
     expect(await postConfirmedCommissions(null)).toEqual({ posted: 0, released: 0 });
+  });
+});
+
+describe("a quote's approval signal (CRM-03)", () => {
+  let dealId = "";
+  // One line of 10m with no discount unless given; the hours decide the margin.
+  const draftOf = async (hours: number, discountBp = 0) => {
+    const quote = await createQuote(dealId, ids.seller);
+    await saveQuote(quote.id, { title: "Clip", validUntil: null, vatRateBp: 1000, intro: null, terms: null, lines: [{ serviceId: null, title: "Clip", description: null, quantity: 1, unit: "video", unitPriceVnd: 10_000_000, discountBp, months: null, format: null, channel: null, roleMinutes: [{ role: "Video editing", minutes: hours * 60 }] }] });
+    return (await getQuote(quote.id))!;
+  };
+  const seller = { seesMargin: false, drafts: true };
+
+  it("tells a drafter without pjm:cost nothing the margin decides, and does not work the margin out for them", async () => {
+    const deal = await createDeal({ clientId: ids.account, title: "Clip series", brandId: null, serviceLines: ["video"], oneOffVnd: null, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: ids.team, entityId: ids.szm, source: null, competitors: null, nextStep: null, ownerPersonId: ids.seller, stageId: null, leadId: null, contacts: [] }, ids.seller);
+    dealId = deal.id;
+    cost.rate = 300_000;
+    const healthy = await draftOf(10); // 3m of cost on 10m: 70%
+    const thin = await draftOf(30); // 9m of cost on 10m: 10%, under the 30% floor
+    cost.asked = 0;
+    // Either side of the floor the page is given the same thing, and payroll is never asked.
+    expect(await quoteReaderView(healthy.quote, healthy.lines, seller, today)).toEqual({ margin: null, approval: { reasons: [], next: "send" } });
+    expect(await quoteReaderView(thin.quote, thin.lines, seller, today)).toEqual({ margin: null, approval: { reasons: [], next: "send" } });
+    expect(cost.asked).toBe(0);
+    // The discount is their own figure, and says so while drafting.
+    const discounted = await draftOf(30, 1500);
+    expect(await quoteReaderView(discounted.quote, discounted.lines, seller, today)).toEqual({ margin: null, approval: { reasons: ["discount"], next: "submit" } });
+    // A reader of margins keeps the live indicator.
+    expect(await quoteReaderView(thin.quote, thin.lines, { seesMargin: true, drafts: true }, today)).toMatchObject({ margin: { costVnd: 9_000_000, marginBp: 1000 }, approval: { reasons: ["margin"], next: "submit" } });
+    expect(await quoteReaderView(thin.quote, thin.lines, { seesMargin: true, drafts: false }, today)).toMatchObject({ margin: { marginBp: 1000 }, approval: null });
+
+    // The margin is judged when the quote is sent: under the floor it goes to the sales director instead of out.
+    const routed = await sendQuote(thin.quote.id, ids.seller, today);
+    expect(routed.after.status).toBe("in_approval");
+    expect(routed.check).toEqual({ reasons: ["margin"], marginChecked: true });
+    const [request] = await db().select().from(schema.approvalRequest).where(eq(schema.approvalRequest.id, routed.after.approvalRequestId!));
+    expect(request.payload).toMatchObject({ reasons: ["margin"], marginChecked: true });
+    expect(await sendQuote(healthy.quote.id, ids.seller, today)).toMatchObject({ after: { status: "sent" }, check: { reasons: [], marginChecked: true } });
+  });
+
+  it("lets a quote out on its discount alone when the margin cannot be estimated — and says it was not checked", async () => {
+    cost.rate = null;
+    const unchecked = await draftOf(30);
+    expect(await sendQuote(unchecked.quote.id, ids.seller, today)).toMatchObject({ after: { status: "sent" }, check: { reasons: [], marginChecked: false } });
+    const discounted = await draftOf(30, 1500);
+    const submitted = await submitQuote(discounted.quote.id, ids.seller, today);
+    expect(submitted).toMatchObject({ reasons: ["discount"], marginChecked: false, quote: { status: "in_approval" } });
+    const [request] = await db().select().from(schema.approvalRequest).where(eq(schema.approvalRequest.id, submitted.requestId!));
+    expect(request.payload).toMatchObject({ reasons: ["discount"], marginChecked: false });
+    cost.rate = undefined;
+  });
+});
+
+describe("what an activity is recorded against (CRM-01)", () => {
+  const activity = (targets: { clientId: string | null; leadId: string | null; dealId?: string | null }) =>
+    recordActivity({ kind: "call", subject: "Called", body: null, contactId: null, dealId: null, occurredAt: new Date(), outcome: null, followUp: { ownerPersonId: ids.member, dueOn: today }, ...targets }, ids.colleague);
+
+  it("refuses a lead beside an account that is not its own, and takes it alone or with the account it came from", async () => {
+    const stranger = await createLead({ entityId: ids.szm, clientId: null, companyName: "Masan", contactName: "Hùng", contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" }, { personId: ids.colleague, sells: true }, null);
+    // The lead's owner names somebody else's account in the same request: nothing is written on it.
+    expect(await fails(activity({ leadId: stranger.id, clientId: ids.account }))).toBe("lead_not_found");
+    expect(await db().select().from(schema.crmActivity).where(eq(schema.crmActivity.leadId, stranger.id))).toEqual([]);
+    expect((await activity({ leadId: stranger.id, clientId: null })).logged).toMatchObject({ leadId: stranger.id, clientId: null });
+
+    const [brand] = await db().select().from(schema.workClient).where(eq(schema.workClient.parentId, ids.account));
+    const own = await createLead({ entityId: ids.szm, clientId: brand.id, companyName: "Vinamilk — Probi", contactName: null, contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" }, { personId: ids.colleague, sells: true }, null);
+    // An enquiry from a brand is its client's account's.
+    expect((await activity({ leadId: own.id, clientId: ids.account })).followUp).toMatchObject({ leadId: own.id, clientId: ids.account, ownerPersonId: ids.member });
+    // A deal the lead did not become is not the lead's either.
+    const [deal] = await db().select().from(schema.crmDeal).where(eq(schema.crmDeal.clientId, ids.account)).limit(1);
+    expect(await fails(activity({ leadId: own.id, clientId: ids.account, dealId: deal.id }))).toBe("lead_not_found");
+  });
+});
+
+describe("erasure on request reaches every copy (CRM-02)", () => {
+  const lead = (over: Partial<Parameters<typeof createLead>[0]>) =>
+    createLead({ entityId: ids.szm, clientId: null, companyName: "Vinamilk", contactName: "Chị Lan", contactTitle: "Brand manager", email: null, phone: null, need: "Tết", budgetText: null, source: "referral", ...over }, { personId: ids.colleague, sells: true }, null);
+
+  it("blanks the leads that hold the contact, and the email and phone older briefs and hand-off notes copied", async () => {
+    const byEmail = await lead({ email: "Lan@Vinamilk.vn" });
+    const byPhone = await lead({ companyName: "Sữa Việt", phone: "090 123 4567" });
+    const byName = await lead({ clientId: ids.account, contactName: "nguyễn thị lan" });
+    const somebodyElse = await lead({ clientId: ids.account, contactName: "Lan Anh", email: "lananh@vinamilk.vn", phone: "0907654321" });
+    // What delivery set-up wrote before it stopped copying details.
+    const [link] = await db().select({ projectId: schema.crmDealProject.projectId }).from(schema.crmDealProject).innerJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId)).where(eq(schema.crmDeal.clientId, ids.account));
+    const plan = (await readPlan(link.projectId))!;
+    await db().update(schema.projectPlan).set({ brief: { ...plan.brief, clientContacts: [{ name: "Nguyễn Thị Lan", role: "decides", contact: "lan@vinamilk.vn · 0901234567" }, { name: "Lan Anh", contact: "lananh@vinamilk.vn" }] } }).where(eq(schema.projectPlan.projectId, link.projectId));
+    await db().update(schema.crmDealProject).set({ handoffNote: { context: "Won against two agencies", contacts: "Nguyễn Thị Lan — decides — lan@vinamilk.vn · 0901234567\nLan Anh — lananh@vinamilk.vn" } }).where(eq(schema.crmDealProject.projectId, link.projectId));
+
+    const { after, copies } = await eraseContact(ids.contact);
+    expect(after).toMatchObject({ fullName: "Nguyễn Thị Lan", email: null, phone: null });
+    expect(copies).toEqual({ leads: 3, briefs: 1, handoffNotes: 1 });
+    for (const row of [byEmail, byPhone, byName]) expect(await findLead(row.id)).toMatchObject({ contactName: null, contactTitle: null, email: null, phone: null, need: "Tết" });
+    expect(await findLead(somebodyElse.id)).toMatchObject({ contactName: "Lan Anh", email: "lananh@vinamilk.vn", phone: "0907654321" });
+    // The name and the role stay where they were; somebody else's line is not touched.
+    expect((await readPlan(link.projectId))?.brief.clientContacts).toEqual([{ name: "Nguyễn Thị Lan", role: "decides" }, { name: "Lan Anh", contact: "lananh@vinamilk.vn" }]);
+    const [note] = await db().select({ note: schema.crmDealProject.handoffNote }).from(schema.crmDealProject).where(eq(schema.crmDealProject.projectId, link.projectId));
+    expect(note.note).toEqual({ context: "Won against two agencies", contacts: "Nguyễn Thị Lan — decides\nLan Anh — lananh@vinamilk.vn" });
+  });
+
+  it("erases somebody who is only a lead's contact, once", async () => {
+    const { eraseLeadContact } = await import("./leads");
+    const only = await lead({ companyName: "Kido", contactName: "Anh Tuấn", email: "tuan@kido.vn", phone: "0912345678" });
+    expect((await eraseLeadContact(only.id)).after).toMatchObject({ companyName: "Kido", contactName: null, contactTitle: null, email: null, phone: null, need: "Tết" });
+    expect(await fails(eraseLeadContact(only.id))).toBe("lead_contact_erased");
+  });
+});
+
+describe("the pipeline's pages and board figures (PERF-03)", () => {
+  it("pages the list with a count of all, and sums each stage over every deal, not the cards that fit", async () => {
+    const { client } = await createAccount({ code: "PGN", name: "Paged Co", entityId: ids.szm, note: null, profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null }, salesOwnerPersonId: ids.seller, accountManagerPersonId: null, confirmDuplicate: false });
+    const stages = await listStages();
+    const [open, won, lost] = (["open", "won", "lost"] as const).map((category) => firstStageOf(stages, category)!);
+    const deal = (index: number, extra: Partial<typeof schema.crmDeal.$inferInsert> = {}) => ({ code: `DL-PG-${index}`, entityId: ids.szm, clientId: client.id, title: `Paged ${index}`, stageId: open.id, ownerPersonId: ids.seller, oneOffVnd: 10_000_000 * index, monthlyVnd: index % 2 ? 1_000_000 : null, months: index % 2 ? 3 : null, probability: index === 2 ? 35 : null, ...extra });
+    await db().insert(schema.crmDeal).values([
+      ...[1, 2, 3, 4, 5].map((index) => deal(index)),
+      deal(6, { stageId: won.id, status: "won", wonAt: new Date(Date.now() - 5 * 86_400_000) }),
+      deal(7, { stageId: lost.id, status: "lost", lostAt: new Date(Date.now() - 60 * 86_400_000) }),
+    ]);
+    const seller = viewerOf(ids.seller);
+    const every = await listDeals(seller, { clientId: client.id, status: "all" });
+    expect(every).toHaveLength(7);
+
+    const pages = await Promise.all([1, 2, 3].map((page) => listDealPage(seller, { clientId: client.id, status: "all" }, page, 3)));
+    expect(pages.map((page) => page.rows.length)).toEqual([3, 3, 1]);
+    expect(pages.every((page) => page.total === 7)).toBe(true);
+    expect(pages.flatMap((page) => page.rows.map((row) => row.id))).toEqual(every.map((row) => row.id));
+    expect(await listDealPage(viewerOf(ids.colleague), { clientId: client.id, status: "all" }, 1, 3)).toEqual({ rows: [], total: 0 });
+
+    // The board: open deals and those closed in the last 30 days, at most 2 cards — and the figures
+    // the page used to sum over the cards it had, summed by Postgres over all six.
+    const recent = addDays(today, -30);
+    const board = await listDealBoard(seller, { clientId: client.id, status: "all", closedSince: recent }, 2);
+    const onBoard = every.filter((row) => row.status === "open" || (row.wonAt ?? row.lostAt ?? new Date(0)).toISOString().slice(0, 10) >= recent);
+    expect(onBoard).toHaveLength(6);
+    expect(board.deals).toHaveLength(2);
+    expect(board.total).toBe(6);
+    expect(board.totals).toEqual(pipelineTotals(onBoard));
+    // A reader who sees the deals but may not value them: counted, never valued.
+    const member: CrmViewer = { principal: principalOf(ids.colleague), ties: new Map([[client.id, ["member"]]]) };
+    const valueless = await listDealBoard(member, { clientId: client.id, status: "all", closedSince: recent });
+    expect([...valueless.totals.values()].every((row) => row.valued === 0 && row.totalVnd === 0)).toBe(true);
+    expect([...valueless.totals.values()].reduce((sum, row) => sum + row.count, 0)).toBe(6);
+  });
+});
+
+describe("the lists as files (FR-PLT-37)", () => {
+  it("exports the accounts the list shows, blanking the money of a reader who may not see it", async () => {
+    const seller = viewerOf(ids.seller);
+    const listed = await listAccounts(seller, {});
+    const { file, total } = await buildAccountsExport(seller, {}, "en");
+    expect(total).toBe(listed.length);
+    expect(file.table.rows.map((row) => row[0])).toEqual(listed.map((row) => row.client.name));
+    expect(file.table.header).toContain("Pipeline");
+    // A reader with no ties to any account and no sales role sees no CRM rows at all.
+    expect((await buildAccountsExport(viewerOf(ids.colleague), {}, "en")).file.rowCount).toBe(
+      (await listAccounts(viewerOf(ids.colleague), {})).length,
+    );
+  });
+
+  it("exports the deals of the list under its filters, valued only for who may value them", async () => {
+    const seller = viewerOf(ids.seller);
+    const filters = { status: "all" as const };
+    const listed = await listDealPage(seller, filters, 1, 5000);
+    const { file, total } = await buildDealsExport(seller, filters, "en");
+    expect(total).toBe(listed.total);
+    expect(file.rowCount).toBe(listed.rows.length);
+    expect(listed.rows.length).toBeGreaterThan(0);
+    const valueAt = file.table.header.indexOf("Value");
+    expect(file.table.rows.map((row) => row[valueAt])).toEqual(listed.rows.map((row) => row.value?.totalVnd ?? null));
+    expect(file.table.rows.some((row) => typeof row[valueAt] === "number")).toBe(true);
+    // The delivery lead sees the deal but not its value: a blank, not a number.
+    const [clients, directory] = await Promise.all([db().select().from(schema.workClient), db().select().from(schema.workProject)]);
+    const members = await db().select().from(schema.workProjectMember).where(eq(schema.workProjectMember.personId, ids.lead));
+    const ties = tiesFrom({ personId: ids.lead, clients, own: { salesOwner: [], member: [], dealOwner: [] }, projectIds: members.map((row) => row.projectId), projects: directory });
+    const lead = await buildDealsExport({ principal: principalOf(ids.lead), ties }, filters, "en");
+    expect(lead.file.rowCount).toBeGreaterThan(0);
+    expect(lead.file.table.rows.every((row) => row[valueAt] === null)).toBe(true);
+    // A narrower filter and a viewer outside the pipeline.
+    expect((await buildDealsExport(seller, { status: "lost" }, "vi")).file.rowCount).toBe((await listDealPage(seller, { status: "lost" }, 1, 5000)).total);
+    expect((await buildDealsExport(viewerOf(ids.colleague), filters, "en")).file.rowCount).toBe(0);
   });
 });

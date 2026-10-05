@@ -10,7 +10,7 @@ vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one",
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { findEmailTemplate, listEmailTemplates, previewCandidateEmail, saveEmailTemplate, sendCandidateEmail } from "./emails";
+import { findEmailTemplate, listEmailTemplates, listHandSentTemplates, previewCandidateEmail, saveEmailTemplate, sendCandidateEmail } from "./emails";
 import { EMAIL_TEMPLATE_SEED } from "./seed-email-templates";
 import { PIPELINE_SEED } from "./seed-pipelines";
 import { createApplication, createCandidate, createOpening, savePipeline, setOpeningStatus } from "./service";
@@ -39,7 +39,7 @@ beforeAll(async () => {
       departmentId: null,
       teamId: null,
       positionName: null,
-      jobLevel: null,
+      seniorityLevel: null, positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: null,
@@ -139,6 +139,14 @@ describe("sending", () => {
     const preview = await previewCandidateEmail(ids.applicationId, reject.id, sender, "vi");
     expect(preview?.body).toContain("https://suzu.one/careers");
     expect(preview?.body).not.toMatch(/\/recruit\//);
+  });
+
+  it("does not offer, or send by hand, a wording that needs an interview's time — it would arrive with braces in it", async () => {
+    const handSent = (await listHandSentTemplates()).map((row) => row.code);
+    expect(handSent).toContain("REJECT_AFTER_REVIEW");
+    expect(handSent).not.toContain("INTERVIEW_SCHEDULED");
+    const timed = (await listEmailTemplates()).find((row) => row.code === "INTERVIEW_SCHEDULED")!;
+    expect(await fails(sendCandidateEmail(ids.applicationId, timed.id, sender, "vi"))).toBe("recruit_email_needs_interview");
   });
 
   it("refuses a candidate with no address rather than sending into the void", async () => {

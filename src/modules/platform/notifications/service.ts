@@ -13,6 +13,7 @@ import { sendEmail } from "./email";
 import { deliverPendingMessengers, mayReceive } from "./messenger-outbox";
 import { deliverPendingTelegrams } from "./telegram-outbox";
 import { pushDriver } from "./push";
+import type { EmailAttachment } from "./schema";
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, effectiveChoice, type Kind, KINDS, messageKey, resolveParams } from "./kinds";
 
 export type NotificationRow = typeof schema.notification.$inferSelect;
@@ -45,8 +46,16 @@ export type NotifyInput = {
    * "approve" link (FR-PLT-24). The space is shared, so `chat` is passed only for events that may
    * be read over a shoulder: who is waiting for what, never an amount or anything personal.
    */
-  chat?: { actionPath?: string | null; actionLabel?: string | null } | false;
+  chat?: { actionPath?: string | null; /** Per recipient, over `actionPath`: each approver's own one-shot link, in one call. */ actionPathFor?: Readonly<Record<string, string>>; actionLabel?: string | null } | false;
 };
+
+/**
+ * Whether a person is told anything at all. Not a leaver, and not somebody suspended: they cannot
+ * sign in to read an in-app notice, and what goes to their mailbox or phone about the company's
+ * work is exactly what suspension withholds. No notice kind is meant to reach a suspended person
+ * today; one that ever must is to be sent to them explicitly, not by loosening this.
+ */
+const stillHere = (status: string): boolean => status !== "offboarded" && status !== "suspended";
 
 /**
  * Tells people that something happened, through the channels each of them chose.
@@ -80,7 +89,7 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   const messages: (typeof schema.messengerDelivery.$inferInsert)[] = [];
   const telegrams: (typeof schema.telegramDelivery.$inferInsert)[] = [];
   for (const person of people) {
-    if (person.status === "offboarded") continue;
+    if (!stillHere(person.status)) continue;
     const choice = effectiveChoice(category, preferences.find((row) => row.personId === person.id));
     const wantsDigest = choice.email === "digest" && !!person.workEmail;
     if (choice.inApp || wantsDigest) {
@@ -110,21 +119,22 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   if (telegrams.length) await executor.insert(schema.telegramDelivery).values(telegrams);
   // What this tells them about is on their screens too (src/lib/cache/live.ts). Inside a
   // transaction the marker holds their entries off the cache until the commit lands.
-  await invalidateLive(...people.filter((person) => person.status !== "offboarded").map((person) => person.id));
+  await invalidateLive(...people.filter((person) => stillHere(person.status)).map((person) => person.id));
   // One card per recipient: the deep link belongs to one person, and a space with several
   // approvers in it must not let the wrong one press the button.
   if (input.chat) {
     const cards: (typeof schema.chatDelivery.$inferInsert)[] = [];
     for (const person of people) {
-      if (person.status === "offboarded") continue;
+      if (!stillHere(person.status)) continue;
       const { title, body } = wording(input.kind, params);
+      const actionPath = input.chat.actionPathFor?.[person.id] ?? input.chat.actionPath;
       cards.push({
         personId: person.id,
         kind: input.kind,
         title,
         body,
         link: absolute(input.link ?? null),
-        actionLink: input.chat.actionPath ? absolute(input.chat.actionPath) : null,
+        actionLink: actionPath ? absolute(actionPath) : null,
         actionLabel: input.chat.actionLabel ?? null,
       });
     }
@@ -155,10 +165,22 @@ function composeEmail(to: string, kind: string, params: Params, link: string | n
  *
  * It still goes through the same outbox — same delivery, same retries, same "simulated" when no
  * `RESEND_API_KEY` is set — because a second mail path is a second thing to get wrong.
+ *
+ * Returns the outbox row's id, so the caller can show what became of it (sent, retrying, failed).
  */
-export async function queueRawEmail(to: string, subject: string, bodyText: string, executor: Tx | ReturnType<typeof db> = db()): Promise<void> {
-  await executor.insert(schema.emailOutbox).values({ toEmail: to, subject, bodyText });
+export async function queueRawEmail(
+  to: string,
+  subject: string,
+  bodyText: string,
+  executor: Tx | ReturnType<typeof db> = db(),
+  attachments: readonly EmailAttachment[] | null = null,
+): Promise<{ id: string }> {
+  const [row] = await executor
+    .insert(schema.emailOutbox)
+    .values({ toEmail: to, subject, bodyText, attachments: attachments?.length ? [...attachments] : null })
+    .returning({ id: schema.emailOutbox.id });
   deliverSoon();
+  return row;
 }
 
 /** An email to an address rather than a person — e.g. the address someone just lost. */
@@ -191,13 +213,18 @@ export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; 
       .returning({ id: outbox.id });
     if (!claimed) continue;
 
-    const result = await sendEmail({ to: email.toEmail, subject: email.subject, text: email.bodyText });
+    const result = await sendEmail({ to: email.toEmail, subject: email.subject, text: email.bodyText, attachments: email.attachments });
+    // An attachment is kept only while the email may still go: once it is sent, skipped or given
+    // up on, the bytes go (an offer letter prints a salary; the outbox is not where one is kept).
     if (result.status === "failed") {
       const givenUp = email.attempts + 1 >= MAX_ATTEMPTS;
-      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, email.id));
+      await db()
+        .update(outbox)
+        .set({ status: givenUp ? "failed" : "pending", lastError: result.error, ...(givenUp ? { attachments: null } : {}) })
+        .where(eq(outbox.id, email.id));
       tally.failed++;
     } else {
-      await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null }).where(eq(outbox.id, email.id));
+      await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null, attachments: null }).where(eq(outbox.id, email.id));
       tally[result.status]++;
     }
   }
@@ -376,6 +403,66 @@ export async function markRead(personId: string, notificationId: string | null):
     .where(and(eq(schema.notification.recipientPersonId, personId), isNull(schema.notification.readAt), notificationId ? eq(schema.notification.id, notificationId) : sql`true`))
     .returning({ id: schema.notification.id });
   return rows.length;
+}
+
+/**
+ * Takes a notice back from the people who have not read it yet: what it asked of them is no longer
+ * wanted (a submitted week the person recalled before anyone decided it). Their unread rows of
+ * that kind and link are marked read and kept out of the digest, so their badge stops counting
+ * them. In-app only: an email or a push already sent stays sent. Pass the transaction when the
+ * withdrawal is part of one.
+ */
+export async function withdrawNotices(input: { recipients: readonly string[]; kind: Kind; link: string }, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+  const recipientIds = [...new Set(input.recipients)];
+  if (recipientIds.length === 0) return 0;
+  const rows = await executor
+    .update(schema.notification)
+    .set({ readAt: new Date(), digestedAt: sql`coalesce(${schema.notification.digestedAt}, now())` })
+    .where(and(inArray(schema.notification.recipientPersonId, recipientIds), isNull(schema.notification.readAt), eq(schema.notification.kind, input.kind), eq(schema.notification.link, input.link)))
+    .returning({ recipientPersonId: schema.notification.recipientPersonId });
+  if (rows.length > 0) await invalidateLive(...rows.map((row) => row.recipientPersonId));
+  return rows.length;
+}
+
+/**
+ * Empties the words of what was queued or sent to people's phones and chat about a record that is
+ * being erased (a candidate's anonymisation, NFR-PRV-04): the push, Google Chat, Messenger and
+ * Telegram rows of kinds starting `kindPrefix` whose link is one of `links` keep their row — what
+ * went to whom, and when — and lose the title and body, which were rendered from the notice's
+ * parameters and may name the person. One still waiting is never sent: push and chat have no
+ * "dropped", so it is closed as failed with the reason; Messenger and Telegram mark it dropped.
+ * Pass the transaction the erasure runs in. Returns how many rows were emptied.
+ */
+export async function scrubDeliveries(input: { kindPrefix: string; links: readonly string[]; title: string }, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+  const links = [...new Set(input.links)];
+  if (links.length === 0) return 0;
+  const reason = "erased: the person it named was anonymised";
+  const kindLike = `${input.kindPrefix.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+  // Google Chat stores the absolute link (whatever the app's address was then); the others the path.
+  const chatPath = sql`regexp_replace(${schema.chatDelivery.link}, '^[a-z]+://[^/]+', '')`;
+  const [pushes, chats, messages, telegrams] = await Promise.all([
+    executor
+      .update(schema.pushDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.pushDelivery.status} = 'pending' then 'failed'::push_status else ${schema.pushDelivery.status} end`, lastError: sql`case when ${schema.pushDelivery.status} = 'pending' then ${reason} else ${schema.pushDelivery.lastError} end` })
+      .where(and(sql`${schema.pushDelivery.kind} like ${kindLike}`, inArray(schema.pushDelivery.link, links)))
+      .returning({ id: schema.pushDelivery.id }),
+    executor
+      .update(schema.chatDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.chatDelivery.status} = 'pending' then 'failed'::chat_status else ${schema.chatDelivery.status} end`, lastError: sql`case when ${schema.chatDelivery.status} = 'pending' then ${reason} else ${schema.chatDelivery.lastError} end` })
+      .where(and(sql`${schema.chatDelivery.kind} like ${kindLike}`, inArray(chatPath, links)))
+      .returning({ id: schema.chatDelivery.id }),
+    executor
+      .update(schema.messengerDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.messengerDelivery.status} = 'pending' then 'dropped'::messenger_status else ${schema.messengerDelivery.status} end` })
+      .where(and(sql`${schema.messengerDelivery.kind} like ${kindLike}`, inArray(schema.messengerDelivery.link, links)))
+      .returning({ id: schema.messengerDelivery.id }),
+    executor
+      .update(schema.telegramDelivery)
+      .set({ title: input.title, body: "", status: sql`case when ${schema.telegramDelivery.status} = 'pending' then 'dropped'::telegram_status else ${schema.telegramDelivery.status} end` })
+      .where(and(sql`${schema.telegramDelivery.kind} like ${kindLike}`, inArray(schema.telegramDelivery.link, links)))
+      .returning({ id: schema.telegramDelivery.id }),
+  ]);
+  return pushes.length + chats.length + messages.length + telegrams.length;
 }
 
 // Everyone's explicit choices in one entry (a few rows per person who ever changed one), read for

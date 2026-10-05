@@ -104,6 +104,46 @@ export async function addWorkTemplateItem(templateId: string, input: WorkTemplat
   return row;
 }
 
+export type WorkTemplateItemPatch = { title: string; parentItemId: string | null; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; /** Left as they are when not given. */ checklistIds?: string[] };
+
+/**
+ * Changes a step: its title, where it sits (a step, or a sub-step of another), who plays it, its
+ * day and its estimate, the checklists its task starts with. The template's next use reads it;
+ * tasks already made from it keep what they were made with. Two levels stay two levels: a step
+ * that has sub-steps cannot itself go under another.
+ */
+export async function updateWorkTemplateItem(itemId: string, patch: WorkTemplateItemPatch): Promise<{ before: WorkTemplateItemRow; after: WorkTemplateItemRow }> {
+  if (patch.roleKey && !ROLE_KEY.test(patch.roleKey)) throw new ActionError("template_role_invalid");
+  const [before] = await db().select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.id, itemId)).limit(1);
+  if (!before) throw new ActionError("template_not_found");
+  if (patch.parentItemId && patch.parentItemId !== before.parentItemId) {
+    if (patch.parentItemId === itemId) throw new ActionError("template_parent_invalid");
+    const [[parent], [child]] = await Promise.all([
+      db().select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.id, patch.parentItemId)).limit(1),
+      db().select({ id: schema.taskTemplateItem.id }).from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.parentItemId, itemId)).limit(1),
+    ]);
+    if (!parent || parent.templateId !== before.templateId) throw new ActionError("template_parent_invalid");
+    if (parent.parentItemId || child) throw new ActionError("template_too_deep");
+  }
+  const checklistIds = patch.checklistIds ? await assertUsable(patch.checklistIds) : before.checklistIds;
+  const [after] = await db()
+    .update(schema.taskTemplateItem)
+    .set({
+      title: patch.title,
+      parentItemId: patch.parentItemId,
+      roleKey: patch.roleKey,
+      // A step given to a named person (a seed's) keeps its rule unless the role itself changes.
+      assigneeRule: patch.roleKey === before.roleKey ? before.assigneeRule : patch.roleKey ? `role:${patch.roleKey}` : "none",
+      dueOffsetDays: patch.dueOffsetDays,
+      estimateMinutes: patch.estimateMinutes,
+      checklistIds,
+    })
+    .where(eq(schema.taskTemplateItem.id, itemId))
+    .returning();
+  await invalidateWorkTemplates();
+  return { before, after };
+}
+
 /** Sub-steps go with their step (ON DELETE CASCADE); tasks already made keep their text. */
 export async function removeWorkTemplateItem(itemId: string): Promise<WorkTemplateItemRow> {
   const [row] = await db().delete(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.id, itemId)).returning();

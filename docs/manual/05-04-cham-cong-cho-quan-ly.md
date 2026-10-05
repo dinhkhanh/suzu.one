@@ -34,19 +34,19 @@ Ký hiệu trong ô: ✓ đủ công · ½ một phần · ✗ vắng · P phép
 
 ## Xem xét lần chấm bị gắn cờ
 
-Lần chấm công ngoài phạm vi địa điểm, không có vị trí, vị trí kém chính xác hoặc không dùng mạng văn phòng được ghi lại nhưng chờ bạn xem xét.
+Lần chấm công ngoài phạm vi địa điểm, không có vị trí, vị trí kém chính xác hoặc không dùng mạng văn phòng được ghi lại nhưng chờ bạn xem xét. Người xem xét là quản lý trực tiếp; người không có quản lý trực tiếp đang làm việc thì là Nhân sự phụ trách chấm công. Mỗi sáng, nếu hôm qua có lần chấm bị gắn cờ còn chờ, bạn nhận một thông báo "… lần chấm công hôm qua chờ bạn xem xét" (sáng ngày 1: cả tháng trước).
 
 1. Mở **Chấm công** → **Chấm công cần xem xét** ([mở](/attendance/review)). Trên trang **Chấm công**, nút này hiện kèm số lần đang chờ.
 2. Mỗi mục cho biết: tên, thời điểm, **Vào** / **Ra**, lý do gắn cờ, khoảng cách tới địa điểm gần nhất, độ chính xác vị trí, toạ độ, địa chỉ IP và ghi chú của nhân viên (nếu có).
 3. Bấm **Chấp nhận** nếu bạn xác nhận được nhân viên làm việc thật, hoặc **Từ chối** nếu không. Khi từ chối, bạn phải ghi lý do vào ô **Ghi chú (bắt buộc khi từ chối)**.
 
-Lần chấm bị từ chối không được tính công; ngày công được tính lại ngay. Các mục đã xử lý trong tháng qua hiện ở phần **Đã xem xét trong tháng qua**, kèm người xem xét và ghi chú.
+Lần chấm bị từ chối không được tính công; ngày công được tính lại ngay và nhân viên nhận thông báo kèm lý do. Các mục đã xử lý trong tháng qua hiện ở phần **Đã xem xét trong tháng qua**, kèm người xem xét và ghi chú.
 
 > [!IMPORTANT]
-> Lần chấm còn chờ xem xét sẽ chặn nhân sự khoá công tháng. Hãy xử lý trước cuối tháng.
+> Lần chấm còn chờ xem xét sẽ chặn nhân sự khoá công tháng. Hãy xử lý trước cuối tháng. Lần chấm chờ vẫn nằm trong danh sách cho tới khi tháng của nó được khoá. Khi Nhân sự nhắc hoặc khoá công bị chặn vì các lần chấm này, bạn nhận thông báo "… lần chấm công tháng … chờ bạn xem xét".
 
 > [!TIP]
-> Nếu một nhân viên thường xuyên làm việc ở ngoài (quay phim, gặp khách), hãy khuyên họ tạo đơn **Làm việc từ xa / ngoài văn phòng** có toạ độ: lần chấm ở nơi đã đăng ký sẽ không còn bị gắn cờ.
+> Nếu một nhân viên thường xuyên làm việc ở ngoài (quay phim, gặp khách), hãy khuyên họ tạo đơn **Làm việc từ xa / ngoài văn phòng** có khai báo vị trí: lần chấm ở nơi đã đăng ký sẽ không còn bị gắn cờ.
 
 ## Duyệt đơn chấm công
 

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -32,6 +33,11 @@ export default async function NewPayrollRunPage() {
         }
         title={t("runs.new.title")}
         description={t("runs.new.hint")}
+        actions={
+          <Link href="/payroll/runs/new/off-cycle" className={buttonVariants({ variant: "outline" })}>
+            {t("runs.offCycle.link")}
+          </Link>
+        }
       />
       <NewRunForm entities={entities} months={months.map(({ entityId, month, hasRun }) => ({ entityId, month, hasRun }))} />
     </Page>

@@ -20,25 +20,30 @@ Account hoặc người điều hành dự án bấm **Thiết lập retainer** 
 5. Trạng thái **Đang chạy** / **Tạm dừng**, rồi **Lưu điều khoản**.
 
 > [!NOTE]
-> Đổi tháng bắt đầu, tháng kết thúc hay trạng thái chạy của retainer cần quyền thương mại ở pháp nhân của dự án.
+> Đổi tháng bắt đầu, tháng kết thúc hay trạng thái chạy của retainer cần quyền thương mại ở pháp nhân của dự án. Sau khi duyệt khởi động, hạng mục hằng tháng, số giờ và phí mỗi tháng chỉ thay đổi qua tab **Thay đổi** (áp dụng từ tháng được tạo tiếp theo); tháng, cộng dồn và trạng thái chạy vẫn sửa trực tiếp.
 
 ### Theo dõi từng tháng
 
 Phần **Tháng …** (tháng hiện tại) có bảng theo hạng mục: **Hạn mức**, **Cộng dồn**, **Đã dùng**, **Còn lại**, **Mức sử dụng**; dòng **Cả tháng**; **Giờ làm** (đã ghi / hạn mức giờ); và với người được xem phí: **Phí tháng** và trạng thái **Xuất hoá đơn** (**Chuyển kế toán khi hết tháng**, **Chờ xuất hoá đơn**, **Đã xuất hoá đơn**, **Không thu**).
 
+Mỗi hạng mục của tháng hiện số **Đã giao**, **Đã duyệt** và các việc đã gắn. Người sửa được kế hoạch mở hạng mục để tạo việc cho phần còn thiếu, gỡ một việc, sửa hoặc rút hạng mục. Phần **Gắn việc vào sản phẩm cam kết** gắn một việc của dự án — kể cả việc đã xong — vào hạng mục của một tháng (tên hạng mục có kèm tháng, tháng này đứng đầu). Trên trang công việc, ô **Việc này thực hiện sản phẩm cam kết** làm cùng việc đó.
+
 Phần **Báo cáo retainer các tháng** giữ lại các tháng đã qua (**Đang mở** / **Đã khoá**).
+
+Nếu điều khoản được nhập sau khi hợp đồng đã chạy, các tháng trước đó chưa có kỳ: dùng **Tạo tháng còn thiếu** → chọn **Tháng** → **Tạo kỳ cho tháng này** để gắn việc, nghiệm thu và tính phí cho tháng ấy.
 
 Tự động:
 
 - Mỗi đêm hệ thống mở tháng mới cho các retainer đang chạy và khóa tháng vừa kết thúc.
 - Khi tháng kết thúc, phí tháng được chuyển sang **Chờ xuất hoá đơn** — với dự án có khách hàng, chỉ sau khi khách đã ký biên bản nghiệm thu của tháng đó (trang ghi *Chưa chuyển kế toán: đang chờ biên bản nghiệm thu đã ký*).
 - Khi một hạng mục dùng tới 80% hoặc 100% hạn mức trong tháng, trưởng dự án và account nhận cảnh báo *Hạn mức retainer* (mỗi mức một lần). Trưởng nhóm có thể thêm quy tắc tự động **Hạn mức retainer chạm mốc** (xem chương **Công việc**).
+- Khi giờ đã ghi trong tháng chạm 80% và 100% **Số giờ mỗi tháng**, trưởng dự án và account nhận thông báo *Giờ retainer* (mỗi mức một lần mỗi tháng).
 
 ## Yêu cầu thay đổi
 
 Sau khi brief đã duyệt, mọi thay đổi về sản phẩm, giờ, phí hay hạn đi qua tab **Thay đổi**, để luôn trả lời được câu hỏi "ban đầu hứa gì, đã đổi gì, giờ là gì".
 
-Bảng **Ban đầu + thay đổi = hiện tại** cho thấy **Ngân sách giờ**, **Phí** (người được xem phí) và **Hạn dự án** ở mức **Ban đầu**, từng thay đổi đã duyệt, và **Hiện tại**.
+Bảng **Ban đầu + thay đổi = hiện tại** cho thấy **Ngân sách giờ**, **Phí** (người được xem phí) và **Hạn dự án** ở mức **Ban đầu**, từng thay đổi đã duyệt, và **Hiện tại**. Nếu có số liệu bị sửa thẳng thay vì qua yêu cầu thay đổi, phần chênh lệch hiện thành một dòng riêng **Sửa trực tiếp, không qua yêu cầu thay đổi**. Với retainer, yêu cầu thay đổi còn có **Định mức hằng tháng của retainer**, **Giờ mỗi tháng** và **Phí mỗi tháng (VND)**.
 
 ### Tạo và gửi duyệt
 
@@ -74,16 +79,18 @@ Account hoặc người điều hành dự án:
    - **Theo mốc** — chọn một **Mốc (với khách hàng)** (mốc đã tích **Nghiệm thu với khách**);
    - **Theo tháng retainer** — chọn **Tháng**;
    - **Toàn dự án** — mỗi dự án chỉ có một biên bản toàn dự án chưa hủy.
-2. Bấm **Tạo biên bản**.
+2. Nếu phạm vi chưa có sản phẩm cam kết nào, ghi **Nội dung nghiệm thu** — khách nghiệm thu những gì (khi đã có sản phẩm, đây là ghi chú thêm in trên biên bản).
+3. Bấm **Tạo biên bản**.
 
 Biên bản chụp lại danh sách sản phẩm tại thời điểm tạo: mỗi **Hạng mục** với số **Cam kết**, **Đã giao**, **Đã duyệt**, kèm đường dẫn bàn giao và bài đăng. Khi còn là **Nháp**, bấm **Cập nhật số liệu** để chụp lại.
 
 ### Gửi, ký, hủy
 
 1. **Tải biên bản (PDF)** — biên bản được dựng từ mẫu văn bản của công ty, có tiêu đề pháp nhân.
-2. Gửi cho khách, rồi bấm **Đánh dấu đã gửi** (**Đã gửi khách**).
+2. Gửi cho khách, rồi bấm **Đánh dấu đã gửi** (**Đã gửi khách**). Lúc này bản PDF được phát hành và lưu lại: từ đó **Tải biên bản đã phát hành (PDF)** luôn mở đúng bản đã gửi, kể cả khi mẫu văn bản đổi sau đó. Muốn gửi lại bản mới, bấm **Cập nhật và phát hành lại**.
 3. Khi khách ký: mở **Ghi nhận khách đã ký**, tải **Bản scan đã ký**, điền **Ngày ký** (không sau hôm nay) và **Người ký phía khách hàng**, bấm **Xác nhận đã ký**.
 4. Biên bản sai trước khi ký: **Huỷ biên bản** (biên bản đã hủy không dùng lại được).
+5. Đính nhầm bản scan, ghi sai người ký hay ngày ký sau khi đã ký: mở **Sửa thông tin đã ký**, chọn **Bản scan thay thế (nếu đính nhầm)** nếu cần, ghi **Lý do chỉnh sửa**, bấm **Lưu chỉnh sửa**. Thông tin và bản scan cũ còn trong **Lịch sử chỉnh sửa**. Không sửa được sau khi kế toán đã xuất hoá đơn.
 
 Khi biên bản **Đã ký**, hệ thống chuyển ngay khoản tương ứng sang **Chờ xuất hoá đơn**: khoản của mốc thanh toán, phí của tháng retainer, hoặc — với biên bản toàn dự án — phần phí chưa được xuất theo mốc và tháng. Trưởng dự án, account và kế toán của pháp nhân nhận thông báo *Biên bản nghiệm thu đã ký*.
 

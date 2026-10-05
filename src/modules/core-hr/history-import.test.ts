@@ -37,7 +37,7 @@ let hrAdmin: CurrentUser;
 let hrOfCreative: CurrentUser;
 const HEAD = "Mã nhân viên,Từ ngày,Đến ngày,Phòng ban (mã),Chức danh,Quản lý trực tiếp,Ghi chú";
 const sheet = (csv: string) => parseTable(parseCsv(`${HEAD}\n${csv}\n`), historyColumns);
-const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null };
+const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: null, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null };
 
 async function periodsOf(personId: string) {
   return db()

@@ -34,6 +34,13 @@ export const canViewCompensationOf = (principal: Principal, person: PersonInEnti
 export const canSetRunInputFor = (principal: Principal, run: InEntity, person: PersonInEntity): boolean =>
   canManageCompensation(principal, run) && canManageCompensation(principal, person) && principal.personId !== person.personId;
 
+/**
+ * A retro item for one person (FR-PAY-17) is a figure entered by hand like any typed into a run,
+ * so the same rule holds: C&B over the entity that will pay it and over the person's own — and
+ * nobody enters, or cancels, a difference in their own pay.
+ */
+export const canEnterRetroItemFor = canSetRunInputFor;
+
 /** The run register, totals and reports of an entity. */
 export const canReadPayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:read", where);
 export const canApprovePayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:approve", where);
@@ -50,6 +57,23 @@ export const canProposePayRules = (principal: Principal): boolean => can(princip
 export const canDecidePayRules = (principal: Principal): boolean => can(principal, "payroll:rules", {});
 /** Reading the rules is harmless next to reading pay; anyone with a payroll role somewhere may. */
 export const canReadPayRules = (principal: Principal): boolean => canProposePayRules(principal) || canDecidePayRules(principal) || can(principal, "payroll:read") || can(principal, "payroll:propose");
+
+// ── Voiding a wrong approved version (PAY-13) ───────────────────────────────────────────────
+// Taking a version back needs the same hand that let it in: what the owner approved, only the
+// owner voids. The services refuse a version a run past C&B was worked out from, whoever asks.
+
+/** A component, a pay policy, a statutory value: the owner, who approves them. */
+export const canVoidPayRule = (principal: Principal): boolean => canDecidePayRules(principal);
+
+/** A salary structure: every one came out of the owner's approval, so the owner over the entity. */
+export const canVoidSalaryStructure = (principal: Principal, where: InEntity): boolean => can(principal, "payroll:rules", over(where));
+
+/**
+ * A pay profile: the owner when the owner approved it; C&B over the entity too for a first
+ * Statutory profile, which took effect without anyone's approval (`decidedByPersonId` empty).
+ */
+export const canVoidProfile = (principal: Principal, profile: InEntity & { decidedByPersonId: string | null }): boolean =>
+  canDecidePayRules(principal) || (profile.decidedByPersonId === null && canManageCompensation(principal, profile));
 
 /** FR-PAY-08 / risk R11: who is on the Simple profile and why — the owner's eyes only. */
 export const canSeeSimpleProfileReport = (principal: Principal): boolean => canDecidePayRules(principal);

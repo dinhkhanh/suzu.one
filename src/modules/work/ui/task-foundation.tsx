@@ -8,6 +8,7 @@ import { Fragment, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RecordLink } from "@/components/ui/record-link";
@@ -152,26 +153,28 @@ export function MovePanel({ taskId, taskKey, teams }: { taskId: string; taskKey:
   const [teamId, setTeamId] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const team = teams.find((row) => row.id === teamId);
+  const { onSubmit, dialog } = useConfirmedSubmit(
+    (event) => {
+      event.preventDefault();
+      if (!team) return;
+      const projectId = new FormData(event.currentTarget).get("projectId");
+      run(
+        () => moveTaskAction({ taskId, teamId, projectId }),
+        (result) => {
+          const key = (result as Result & { data?: { key: string } }).data?.key ?? "";
+          setDone(key);
+          router.refresh();
+        },
+      );
+    },
+    // Nothing is asked until a team is picked; the submit button stays off until then anyway.
+    { question: team ? t("confirm", { key: taskKey, team: team.name }) : null, confirmLabel: t("submit") },
+  );
   if (teams.length === 0) return null;
   return (
     <details className="rounded-xl border p-3 text-sm">
       <summary className="cursor-pointer font-medium">{t("title")}</summary>
-      <form
-        className="flex flex-col gap-2 pt-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!team || !window.confirm(t("confirm", { key: taskKey, team: team.name }))) return;
-          const projectId = new FormData(event.currentTarget).get("projectId");
-          run(
-            () => moveTaskAction({ taskId, teamId, projectId }),
-            (result) => {
-              const key = (result as Result & { data?: { key: string } }).data?.key ?? "";
-              setDone(key);
-              router.refresh();
-            },
-          );
-        }}
-      >
+      <form className="flex flex-col gap-2 pt-3" onSubmit={onSubmit}>
         <p className="text-xs text-muted-foreground">{t("description")}</p>
         <Label htmlFor="move-team">{t("team")}</Label>
         <Select id="move-team" value={teamId} onChange={(event) => setTeamId(event.target.value)} required>
@@ -200,6 +203,7 @@ export function MovePanel({ taskId, taskKey, teams }: { taskId: string; taskKey:
         <Button type="submit" size="sm" variant="outline" className="self-start" disabled={pending || !team}>
           {t("submit")}
         </Button>
+        {dialog}
         {done ? <p className="text-sm text-muted-foreground">{t("done", { key: done })}</p> : null}
         <ErrorLine errorKey={errorKey} />
       </form>

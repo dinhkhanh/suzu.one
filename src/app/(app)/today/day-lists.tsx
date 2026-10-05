@@ -26,6 +26,7 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { canEditActivity, listFollowUpsOf, listSalesHandoffsFor, loadCrm } from "@/modules/crm/service";
 import { HandoffAnswerForm } from "@/modules/crm/ui/deal-forms";
 import { FollowUpList } from "@/modules/crm/ui/views";
+import { jobNumbersOf } from "@/modules/projects/service";
 
 /** The round icon that heads a row of things waiting, one hue per kind. */
 export function IconTile({ icon, tone }: { icon: ReactNode; tone: "violet" | "teal" | "orange" | "destructive" | "muted" }) {
@@ -54,7 +55,10 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
   const [t, format, viewer] = await Promise.all([getTranslations("daily"), getFormatter(), loadViewer(user)]);
   const tasksOnScreen = [...view.planned, ...view.due];
   // The CRM's share of the day (FR-CRM-06, 16, 43): client follow-ups due, won deals handed over.
-  const [targets, states, followUps, salesHandoffs, crm] = await Promise.all([listCreateTargets(viewer), listStates([...new Set(tasksOnScreen.map((task) => task.teamId))]), listFollowUpsOf(user.person.id, date), listSalesHandoffsFor(user.person.id), loadCrm(user)]);
+  // The job number beside each project's name (FR-PJM-02): the tasks come from the work module,
+  // which knows none, so the page reads them once for every project on it.
+  const [targets, states, followUps, salesHandoffs, crm, jobNumbers] = await Promise.all([listCreateTargets(viewer), listStates([...new Set(tasksOnScreen.map((task) => task.teamId))]), listFollowUpsOf(user.person.id, date), listSalesHandoffsFor(user.person.id), loadCrm(user), jobNumbersOf(tasksOnScreen.map((task) => task.projectId))]);
+  const projectLabel = (task: DayTask) => (task.projectName ? [task.projectId ? jobNumbers.get(task.projectId) : null, task.projectName].filter(Boolean).join(" ") : null);
   const people = followUps.length ? await listPersonNames() : [];
   const statesOf = (teamId: string) => states.filter((state) => state.teamId === teamId && state.isActive).map(({ id, name, category }) => ({ id, name, category }));
   const doneStateOf = (teamId: string) => statesOf(teamId).find((state) => state.category === "done")?.id ?? null;
@@ -79,7 +83,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
               <span className="font-mono text-xs font-normal text-muted-foreground">{task.key}</span>{" "}
               <span className={task.status === "done" ? "text-muted-foreground line-through" : undefined}>{task.title}</span>
             </span>
-            <span className="block truncate text-xs text-muted-foreground">{[task.projectName, task.plannedMinutes ? t("hours", { value: hoursOf(task.plannedMinutes) }) : null, task.dueDate ? t("today.due", { date: shortDate(task.dueDate) }) : null].filter(Boolean).join(" · ")}</span>
+            <span className="block truncate text-xs text-muted-foreground">{[projectLabel(task), task.plannedMinutes ? t("hours", { value: hoursOf(task.plannedMinutes) }) : null, task.dueDate ? t("today.due", { date: shortDate(task.dueDate) }) : null].filter(Boolean).join(" · ")}</span>
           </Link>
           {running ? (
             <Badge dot variant="info">
@@ -239,7 +243,7 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
           </Link>
         }
       >
-        <TimeList entries={view.time.map(({ id, taskId, key, title, category, minutes, billable }) => ({ id, taskId, key, title, category, minutes, billable }))} />
+        <TimeList entries={view.time.map(({ id, taskId, key, title, projectName, jobNumber, category, minutes, billable }) => ({ id, taskId, key, title, projectName, jobNumber, category, minutes, billable }))} />
         <div className="flex flex-wrap items-center gap-2">
           <QuickLog date={date} tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))].filter((task) => task.status !== "cancelled").map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: !!task.projectId && billable.has(task.projectId) }))} />
         </div>

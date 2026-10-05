@@ -1,6 +1,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { cn } from "cn"
+import { LinkPending } from "@/components/shell/link-pending"
 import { InsideLink } from "./record-link"
 
 // The grid's look for what is not a table: a feed, a thread, rows that each hold a small form,
@@ -33,7 +34,9 @@ const ROW = "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 px-4 py-2.5 
 
 /**
  * One row. Given `href`, the whole row is the link (with the hover wash) and the names inside
- * it stay text (`InsideLink`); otherwise it holds whatever it is given, laid out in a row.
+ * it stay text (`InsideLink`); otherwise it holds whatever it is given, laid out in a row. A
+ * linked row washes under the finger the moment it is pressed and stays washed until its page
+ * has arrived, the way a native list holds the row it is opening.
  * `className` styles the row's content box.
  */
 function ListItem({
@@ -52,11 +55,12 @@ function ListItem({
           href={href}
           className={cn(
             ROW,
-            "transition-colors duration-100 hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none",
+            "transition-colors duration-100 hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none active:bg-muted has-[[data-link-pending]]:bg-muted",
             className
           )}
         >
           <InsideLink>{children}</InsideLink>
+          <LinkPending />
         </Link>
       ) : (
         <div className={cn(ROW, className)}>{children}</div>

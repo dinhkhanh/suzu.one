@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { acknowledgePageAction, exportAckReportAction, remindAckAction, setAckRequirementAction } from "../actions";
-import { type SubjectType, subjectKey } from "../enums";
+import { ACK_AUDIENCE_TYPES, subjectKey } from "../enums";
 
 const keyOf = (result: ActionResult<unknown>) => (result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
 
@@ -49,8 +50,7 @@ export function AcknowledgeButton({ pageId }: { pageId: string }) {
 }
 
 type Option = { id: string; name: string };
-const AUDIENCE_TYPES = ["all", "entity", "unit", "unit_only", "person"] as const satisfies readonly SubjectType[];
-type AudienceType = (typeof AUDIENCE_TYPES)[number];
+type AudienceType = (typeof ACK_AUDIENCE_TYPES)[number];
 
 /** "Must read": on or off, days to confirm, who must confirm. Saves the whole setting at once. */
 export function AckSettingsForm({ pageId, required, dueDays, audience, choices }: { pageId: string; required: boolean; dueDays: number; audience: { subjectKey: string; label: string }[]; choices: { entities: Option[]; units: Option[]; people: Option[] } }) {
@@ -79,7 +79,7 @@ export function AckSettingsForm({ pageId, required, dueDays, audience, choices }
       <h2 className="text-sm font-medium">{t("ack.settingsTitle")}</h2>
       <p className="text-xs text-muted-foreground">{t("ack.settingsHelp")}</p>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={on} onChange={(event) => setOn(event.target.checked)} />
+        <Checkbox checked={on} onCheckedChange={(checked) => setOn(checked)} />
         {t("ack.required")}
       </label>
       <label className="flex items-center gap-2 text-sm">
@@ -105,7 +105,7 @@ export function AckSettingsForm({ pageId, required, dueDays, audience, choices }
             setId("");
           }}
         >
-          {AUDIENCE_TYPES.map((value) => (
+          {ACK_AUDIENCE_TYPES.map((value) => (
             <option key={value} value={value}>
               {t(`access.subject.${value}`)}
             </option>

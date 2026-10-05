@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useTransition, useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -10,6 +12,7 @@ import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { bulkMapAction, commitDeviceLogAction, issuePushTokenAction, mapDeviceUserAction, recomputeTimesheetsAction, revokePushTokenAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
+import { ConfirmDialog, useConfirmedSubmit } from "@/components/ui/confirm";
 
 type Option = { id: string; name: string };
 const ERRORS = "attendance.devices.errors";
@@ -71,7 +74,7 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
           <EntitySelect entities={entities} canGroup={canGroup} label={t("appliesTo")} groupLabel={t("everyEntity")} defaultValue={profile?.entityId} disabled={!!profile} />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="hasHeader" defaultChecked={mapping?.hasHeader ?? true} /> {t("profile.hasHeader")}
+          <Checkbox name="hasHeader" defaultChecked={mapping?.hasHeader ?? true} /> {t("profile.hasHeader")}
         </label>
         <p className="text-xs text-muted-foreground">{t("profile.columnsHint")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -90,10 +93,10 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="inferDirection" defaultChecked={mapping?.inferDirection ?? true} /> {t("profile.inferDirection")}
+            <Checkbox name="inferDirection" defaultChecked={mapping?.inferDirection ?? true} /> {t("profile.inferDirection")}
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="isActive" defaultChecked={profile?.isActive ?? true} /> {t("active")}
+            <Checkbox name="isActive" defaultChecked={profile?.isActive ?? true} /> {t("active")}
           </label>
         </div>
       </FieldErrors>
@@ -173,7 +176,7 @@ export function DeviceForm({ device, entities, profiles, locations }: { device?:
           </div>
         ) : null}
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={device?.isActive ?? true} /> {t("active")}
+          <Checkbox name="isActive" defaultChecked={device?.isActive ?? true} /> {t("active")}
         </label>
       </FieldErrors>
       <FormError namespace={ERRORS} errorKey={errorKey} />
@@ -224,7 +227,7 @@ export function BulkMapForm({ deviceId }: { deviceId: string }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">{t("map.bulkHint")}</p>
-      <textarea name="lines" required rows={5} className="rounded-md border bg-background p-2 font-mono text-sm" placeholder={"17, SZM-0004\n21, SZM-0007"} />
+      <Textarea name="lines" required rows={5} className="font-mono text-sm" placeholder={"17, SZM-0004\n21, SZM-0007"} />
       <FormError namespace={ERRORS} errorKey={errorKey} />
       {problems.length > 0 ? (
         <ul className="text-sm text-destructive">
@@ -246,17 +249,14 @@ export function BulkMapForm({ deviceId }: { deviceId: string }) {
 }
 
 export function UnmapButton({ id, label, confirm }: { id: string; label: string; confirm: string }) {
-  const { onSubmit, pending } = useActionForm(unmapDeviceUserAction, { extra: { id } });
+  const form = useActionForm(unmapDeviceUserAction, { extra: { id } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: true });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-    >
-      <Button type="submit" size="sm" variant="ghost" disabled={pending}>
+    <form onSubmit={onSubmit}>
+      <Button type="submit" size="sm" variant="ghost" disabled={form.pending}>
         {label}
       </Button>
+      {dialog}
     </form>
   );
 }
@@ -268,6 +268,7 @@ export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: st
   const [token, setToken] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [asking, setAsking] = useState<"replace" | "revoke" | null>(null);
   const run = (issue: boolean) =>
     startTransition(async () => {
       setFailed(false);
@@ -310,25 +311,29 @@ export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: st
           size="sm"
           variant="outline"
           disabled={pending}
-          onClick={() => {
-            if (!hasToken || window.confirm(t("replaceConfirm"))) run(true);
-          }}
+          onClick={() => (hasToken ? setAsking("replace") : run(true))}
         >
           {hasToken ? t("replace") : t("issue")}
         </Button>
         {hasToken ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("revokeConfirm"))) run(false);
-            }}
-          >
+          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setAsking("revoke")}>
             {t("revoke")}
           </Button>
         ) : null}
+        <ConfirmDialog
+          open={asking !== null}
+          onOpenChange={(open) => {
+            if (!open) setAsking(null);
+          }}
+          question={asking === "revoke" ? t("revokeConfirm") : t("replaceConfirm")}
+          confirmLabel={asking === "revoke" ? t("revoke") : t("replace")}
+          destructive
+          pending={pending}
+          onConfirm={() => {
+            run(asking !== "revoke");
+            setAsking(null);
+          }}
+        />
         {failed ? <span className="text-sm text-destructive">{t("failed")}</span> : null}
       </div>
     </div>
@@ -359,7 +364,9 @@ export type PolicyFormValue = { entityId: string | null; validFrom: string; merg
 
 export function PolicyForm({ policy, entities, canGroup, today }: { policy?: PolicyFormValue; entities: Option[]; canGroup: boolean; today: string }) {
   const t = useTranslations("attendance.policy");
-  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(savePolicyAction, { extra: policy ? { entityId: policy.entityId ?? "" } : {} });
+  // FR-PLT-39: HR's change waits for the owner; the owner's is saved at once.
+  const [proposed, setProposed] = useState(false);
+  const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(savePolicyAction, { extra: policy ? { entityId: policy.entityId ?? "" } : {}, onSuccess: (data) => setProposed(!!(data as { proposed?: boolean }).proposed) });
   const number = (name: keyof PolicyFormValue, max: number, fallback: number | "") => (
     <Field name={name} label={t(`fields.${name}`)}>
       <Input id={name} name={name} type="number" min={0} max={max} defaultValue={(policy?.[name] as number | null | undefined) ?? fallback} />
@@ -396,7 +403,7 @@ export function PolicyForm({ policy, entities, canGroup, today }: { policy?: Pol
           </Field>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="otRequiresApproval" defaultChecked={policy?.otRequiresApproval ?? true} /> {t("fields.otRequiresApproval")}
+          <Checkbox name="otRequiresApproval" defaultChecked={policy?.otRequiresApproval ?? true} /> {t("fields.otRequiresApproval")}
         </label>
       </FieldErrors>
       <p className="text-xs text-muted-foreground">{t("versionHint")}</p>
@@ -405,7 +412,7 @@ export function PolicyForm({ policy, entities, canGroup, today }: { policy?: Pol
         <Button type="submit" disabled={pending}>
           {t("save")}
         </Button>
-        <Saved show={saved} label={t("saved")} />
+        <Saved show={saved} label={proposed ? t("proposed") : t("saved")} />
       </div>
     </form>
   );

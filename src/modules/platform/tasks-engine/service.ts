@@ -5,12 +5,13 @@ import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate, TTL } from "@/lib/cache";
 import { type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
-import type { Principal } from "../rbac/policy";
+import type { Principal, Target } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
-import { listPeopleHolding } from "../rbac/service";
+import { roleHolders } from "../rbac/service";
 import { checkCompletion } from "./completion-guards";
 import { type AssigneeRule, isChecklistPurpose, parseAssigneeRule, pickTemplate, planChecklist } from "./engine/checklist";
 import { canManageTask, canMoveTask, movesThroughEngine } from "./policy";
@@ -91,13 +92,16 @@ export async function instantiateTemplate(tx: Executor, input: InstantiateInput)
   const items = await tx.select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, template.id));
 
   const [subject] = input.subjectPersonId ? await tx.select().from(schema.person).where(eq(schema.person.id, input.subjectPersonId)).limit(1) : [];
-  const target = { entityId: input.entityId, departmentId: input.departmentId, personId: input.subjectPersonId, managerId: subject?.managerId ?? null };
+  // The placement's unit alone: the lookup knows the units above it.
+  const target: Target = { entityId: input.entityId, unitPath: input.departmentId ? [input.departmentId] : [], personId: input.subjectPersonId, managerId: subject?.managerId ?? null };
   const holders = new Map<string, string | null>();
+  // One read of the grants for every step that names a permission.
+  const lookup = items.some((item) => parseAssigneeRule(item.assigneeRule, item.assigneePersonId)?.rule === "permission") ? await roleHolders({ executor: tx }) : null;
   for (const item of items) {
     const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);
-    if (rule?.rule !== "permission" || holders.has(rule.permission)) continue;
+    if (rule?.rule !== "permission" || holders.has(rule.permission) || !lookup) continue;
     // The people whose job it is, not the owners' "*"; never the subject (nobody offboards themselves).
-    const people = (await listPeopleHolding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false, executor: tx })).filter((id) => id !== input.subjectPersonId).sort();
+    const people = lookup.holding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false }).filter((id) => id !== input.subjectPersonId).sort();
     // Several people may hold it (entity HR and group HR): the one who works in the entity is the
     // likelier owner of the step. One name, not a committee — a manager of the kind can reassign.
     const local = people.length > 1 && input.entityId ? await tx.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, people), eq(schema.person.primaryEntityId, input.entityId))).orderBy(asc(schema.person.id)) : [];
@@ -210,19 +214,34 @@ export type TemplateView = TaskTemplateRow & { items: TaskTemplateItemRow[] };
 export type TemplateInput = { purpose: string; name: string; entityId: string | null; departmentId: string | null; positionId: string | null; isActive: boolean };
 export type TemplateItemInput = { title: string; description: string | null; linkUrl?: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
 
+// The checklist templates and their steps are small reference data: the whole library sits under
+// one key in the shared cache, in a fixed order, and every writer below drops it once committed
+// (a seed is followed by `pnpm cache:flush`). Work management keeps its own templates and its own
+// entry (work/templates.ts); their purposes start with "work_" and stay out of this one.
+const CHECKLIST_TEMPLATES_KEY = "checklists:templates";
+/** After a write to a checklist's `task_template` or its items outside this file has committed. */
+export const invalidateChecklistTemplates = () => invalidate(CHECKLIST_TEMPLATES_KEY);
+
 /** Checklist templates; work management lists its own. */
 export async function listTemplates(): Promise<TemplateView[]> {
-  const [templates, items] = await Promise.all([
-    db().select().from(schema.taskTemplate).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name)),
-    db().select().from(schema.taskTemplateItem).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays)),
-  ]);
-  const itemsOf = new Map<string, TaskTemplateItemRow[]>();
-  for (const item of items) {
-    const list = itemsOf.get(item.templateId);
-    if (list) list.push(item);
-    else itemsOf.set(item.templateId, [item]);
-  }
-  return templates.filter((template) => isChecklistPurpose(template.purpose)).map((template) => ({ ...template, items: itemsOf.get(template.id) ?? [] }));
+  return cached(CHECKLIST_TEMPLATES_KEY, TTL.reference, async () => {
+    const [templates, items] = await Promise.all([
+      db().select().from(schema.taskTemplate).where(sql`${schema.taskTemplate.purpose} not like 'work\_%'`).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name), asc(schema.taskTemplate.id)),
+      db()
+        .select({ item: schema.taskTemplateItem })
+        .from(schema.taskTemplateItem)
+        .innerJoin(schema.taskTemplate, eq(schema.taskTemplate.id, schema.taskTemplateItem.templateId))
+        .where(sql`${schema.taskTemplate.purpose} not like 'work\_%'`)
+        .orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays), asc(schema.taskTemplateItem.id)),
+    ]);
+    const itemsOf = new Map<string, TaskTemplateItemRow[]>();
+    for (const { item } of items) {
+      const list = itemsOf.get(item.templateId);
+      if (list) list.push(item);
+      else itemsOf.set(item.templateId, [item]);
+    }
+    return templates.filter((template) => isChecklistPurpose(template.purpose)).map((template) => ({ ...template, items: itemsOf.get(template.id) ?? [] }));
+  });
 }
 
 export async function findTemplate(templateId: string): Promise<TaskTemplateRow | undefined> {
@@ -238,11 +257,13 @@ export async function findTemplateItem(itemId: string): Promise<{ item: TaskTemp
 export async function saveTemplate(templateId: string | null, input: TemplateInput): Promise<{ before: TaskTemplateRow | null; after: TaskTemplateRow }> {
   if (!templateId) {
     const [after] = await db().insert(schema.taskTemplate).values(input).returning();
+    await invalidateChecklistTemplates();
     return { before: null, after };
   }
   const before = await findTemplate(templateId);
   if (!before) throw new ActionError("template_not_found");
   const [after] = await db().update(schema.taskTemplate).set({ ...input, updatedAt: new Date() }).where(eq(schema.taskTemplate.id, templateId)).returning();
+  await invalidateChecklistTemplates();
   return { before, after };
 }
 
@@ -255,6 +276,7 @@ function checkItem(input: TemplateItemInput): void {
 export async function addTemplateItem(templateId: string, input: TemplateItemInput): Promise<TaskTemplateItemRow> {
   checkItem(input);
   const [row] = await db().insert(schema.taskTemplateItem).values({ templateId, ...input, assigneePersonId: input.assigneeRule === "person" ? input.assigneePersonId : null }).returning();
+  await invalidateChecklistTemplates();
   return row;
 }
 
@@ -262,6 +284,7 @@ export async function addTemplateItem(templateId: string, input: TemplateItemInp
 export async function removeTemplateItem(itemId: string): Promise<TaskTemplateItemRow> {
   const [row] = await db().delete(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.id, itemId)).returning();
   if (!row) throw new ActionError("template_not_found");
+  await invalidateChecklistTemplates();
   return row;
 }
 

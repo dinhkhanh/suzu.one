@@ -6,11 +6,18 @@
 // a filing and the payslips behind it can never disagree (FR-PAY-20). The only figures that do
 // not come from a run are the year-to-date rows imported for months the system did not run.
 //
+// Two rules hold for every filing here (`exports/statutory/month.ts` explains both):
+//   * figures come only from runs the CEO has **signed** — approved, payment prepared, paid or
+//     locked. A calculated or proposed run is nobody's filing yet;
+//   * a month counts **once** per person, however many runs paid it: income and tax withheld are
+//     added across the month's runs, the deductions and assessable income are read from the run
+//     that carries the month's totals.
+//
 // Scoping: each function takes the viewer's principal and answers `null` to anyone without
 // `payroll:propose` over the entity. These exports name people and carry their tax codes and
 // national IDs, so they are C&B and the owner only — the same rule as the payroll register.
 import "server-only";
-import { and, desc, eq, inArray, lte, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import { cache } from "react";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
@@ -20,6 +27,7 @@ import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonPayResult } from "./engine/types";
 import { progressiveTax } from "./engine/pit";
 import type { D02ltReason, D02ltRow } from "./exports/statutory/d02lt";
+import { FILED_RUN_STATUSES, type MonthPit, pitOfPeriod } from "./exports/statutory/month";
 import type { FinalizationRow } from "./exports/statutory/pit-finalization";
 import type { PitPersonRow } from "./exports/statutory/pit-monthly";
 import { canManageCompensation } from "./policy";
@@ -43,9 +51,10 @@ export function monthsOfPeriod(period: string): string[] {
 export const lastMonthOf = (period: string): string => monthsOfPeriod(period).at(-1) ?? period;
 
 /**
- * Every calculated person of an entity's runs in the given months. Draft and cancelled runs are
- * nobody's filing. Remembered for the request (React `cache`): the statutory screen builds the
- * insurance list, the PIT declaration and the finalization side by side over the same months.
+ * Every person of an entity's **signed** runs in the given months. A run the CEO has not approved
+ * — a draft, a calculation, a proposal, a cancelled run — is nobody's filing. Remembered for the
+ * request (React `cache`): the statutory screen builds the insurance list, the PIT declaration and
+ * the finalization side by side over the same months.
  */
 function loadPeople(entityId: string, months: readonly string[]): Promise<LoadedPerson[]> {
   return months.length === 0 ? Promise.resolve([]) : loadPeopleOnce(entityId, months.join(","));
@@ -56,7 +65,7 @@ const loadPeopleOnce = cache(async (entityId: string, monthList: string): Promis
   const runs = await db()
     .select()
     .from(schema.payrollRun)
-    .where(and(eq(schema.payrollRun.entityId, entityId), inArray(schema.payrollRun.month, [...months]), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")));
+    .where(and(eq(schema.payrollRun.entityId, entityId), inArray(schema.payrollRun.month, [...months]), inArray(schema.payrollRun.status, [...FILED_RUN_STATUSES])));
   if (runs.length === 0) return [];
   const rows = await db().select().from(schema.payrollRunPerson).where(inArray(schema.payrollRunPerson.runId, runs.map((run) => run.id)));
   const runOf = new Map(runs.map((run) => [run.id, run]));
@@ -65,6 +74,13 @@ const loadPeopleOnce = cache(async (entityId: string, monthList: string): Promis
     return run ? [{ personId: row.personId, profile: row.profile, result: openResult(row), run }] : [];
   });
 });
+
+/** Each person's PIT over the loaded months, every month counted once (`exports/statutory/month.ts`). */
+function pitByPerson(people: readonly LoadedPerson[]): Map<string, MonthPit> {
+  const runsOf = new Map<string, LoadedPerson[]>();
+  for (const person of people) runsOf.set(person.personId, [...(runsOf.get(person.personId) ?? []), person]);
+  return new Map([...runsOf].map(([personId, mine]) => [personId, pitOfPeriod(mine.map((person) => ({ pit: person.result.pit, kind: person.run.kind, calculatedAt: person.run.calculatedAt, createdAt: person.run.createdAt, month: person.run.month })))]));
+}
 
 /** The entity, from the shared cache of entities. */
 const entityOf = async (entityId: string) => (await listEntities()).find((row) => row.id === entityId) ?? null;
@@ -81,7 +97,9 @@ export async function insuranceChanges(principal: Principal, entityId: string, m
   const previousMonth = shiftMonth(month, -1);
   const [entity, current, previous] = await Promise.all([entityOf(entityId), loadPeople(entityId, [month]), loadPeople(entityId, [previousMonth])]);
   if (!entity) return null;
-  if (current.length === 0 && previous.length === 0) return null;
+  // No signed regular run for the month means there is nothing to declare yet — not that everybody
+  // left. (Held against last month's people, an unsigned month would read as one long list of leavers.)
+  if (!current.some((person) => person.run.kind === "regular")) return null;
 
   // Each person's regular-run line of the month, by id (the first one, as a scan would find it).
   const regular = (people: LoadedPerson[]) => {
@@ -167,7 +185,11 @@ export function shiftMonth(month: string, by: number): string {
 
 // ── PIT declaration (05/KK-TNCN) ────────────────────────────────────────────────────────────
 
-/** One row per person for the period, with every run of every month in it added together. */
+/**
+ * One row per person for the period, from every signed run of every month in it. Income and tax
+ * withheld are added across the runs; the deductions and assessable income are taken once per
+ * month, so the month a bonus was paid in reads the same as any other.
+ */
 export async function pitPeriodRows(principal: Principal, entityId: string, period: string): Promise<{ entityCode: string; period: string; rows: PitPersonRow[] } | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
   const [entity, people] = await Promise.all([entityOf(entityId), loadPeople(entityId, monthsOfPeriod(period))]);
@@ -176,28 +198,23 @@ export async function pitPeriodRows(principal: Principal, entityId: string, peri
   const facts = await payrollFactsOf(people.map((person) => person.personId), lastMonthOf(period));
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
-  const byPerson = new Map<string, PitPersonRow>();
-  for (const person of people) {
-    const pit = person.result.pit;
-    const fact = factOf.get(person.personId);
-    const existing = byPerson.get(person.personId);
-    const deductions = pit.personalDeduction + pit.dependentDeduction + pit.insuranceDeduction + pit.otherDeductions;
-    byPerson.set(person.personId, {
-      personId: person.personId,
+  const rows = [...pitByPerson(people)].map(([personId, pit]): PitPersonRow => {
+    const fact = factOf.get(personId);
+    return {
+      personId,
       fullName: fact?.fullName ?? "—",
       employeeCode: fact?.employeeCode ?? null,
       taxCode: fact?.taxCode ?? null,
-      // The method of the latest run in the period is the one the person is declared under.
-      method: existing && person.run.kind !== "regular" ? existing.method : pit.method,
-      taxableIncome: (existing?.taxableIncome ?? 0) + pit.taxableIncome,
-      deductions: (existing?.deductions ?? 0) + deductions,
-      assessableIncome: (existing?.assessableIncome ?? 0) + pit.assessableIncome,
-      dependents: Math.max(existing?.dependents ?? 0, pit.dependents),
-      tax: (existing?.tax ?? 0) + pit.tax,
-    });
-  }
+      method: pit.method,
+      taxableIncome: pit.taxableIncome,
+      deductions: pit.personalDeduction + pit.dependentDeduction + pit.insuranceDeduction + pit.otherDeductions,
+      assessableIncome: pit.assessableIncome,
+      dependents: pit.dependents,
+      tax: pit.tax,
+    };
+  });
 
-  return { entityCode: entity.code, period, rows: [...byPerson.values()].sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "")) };
+  return { entityCode: entity.code, period, rows: rows.sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "")) };
 }
 
 // ── Annual finalization (05/QTT-TNCN) ───────────────────────────────────────────────────────
@@ -233,23 +250,22 @@ async function buildFinalizationRows(entityId: string, year: number): Promise<{ 
   // The imported year-to-date figures of everyone in it (wherever they were imported), read once.
   const [facts, statutory, ytd] = await Promise.all([payrollFactsOf(personIds, `${year}-12`), loadStatutoryParams(`${year}-12-31` as IsoDate), listYtdForPeople(personIds, year)]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const peopleOf = new Map<string, LoadedPerson[]>();
-  for (const person of people) peopleOf.set(person.personId, [...(peopleOf.get(person.personId) ?? []), person]);
+  // The year from the runs: twelve months, each counted once per person.
+  const fromRuns = pitByPerson(people);
 
   const rows = personIds.map((personId): FinalizationRow => {
-    const mine = peopleOf.get(personId) ?? [];
+    const mine = fromRuns.get(personId) ?? null;
     const fact = factOf.get(personId);
     const extra: YtdFigures | null = ytd.get(personId)?.figures ?? null;
-    const add = (pick: (result: PersonPayResult) => number) => mine.reduce((total, person) => total + pick(person.result), 0);
-    const method = mine.at(-1)?.result.pit.method ?? "progressive";
+    const method = mine?.method ?? "progressive";
 
-    const taxableIncome = add((result) => result.pit.taxableIncome) + (extra?.taxableIncome ?? 0);
-    const insuranceDeduction = add((result) => result.pit.insuranceDeduction) + (extra?.insuranceDeduction ?? 0);
-    const personalDeduction = add((result) => result.pit.personalDeduction) + (extra?.personalDeduction ?? 0);
-    const dependentDeduction = add((result) => result.pit.dependentDeduction) + (extra?.dependentDeduction ?? 0);
-    const otherDeductions = add((result) => result.pit.otherDeductions) + (extra?.otherDeductions ?? 0);
-    const assessableIncome = add((result) => result.pit.assessableIncome) + (extra?.assessableIncome ?? 0);
-    const taxWithheld = add((result) => result.pit.tax) + (extra?.taxWithheld ?? 0);
+    const taxableIncome = (mine?.taxableIncome ?? 0) + (extra?.taxableIncome ?? 0);
+    const insuranceDeduction = (mine?.insuranceDeduction ?? 0) + (extra?.insuranceDeduction ?? 0);
+    const personalDeduction = (mine?.personalDeduction ?? 0) + (extra?.personalDeduction ?? 0);
+    const dependentDeduction = (mine?.dependentDeduction ?? 0) + (extra?.dependentDeduction ?? 0);
+    const otherDeductions = (mine?.otherDeductions ?? 0) + (extra?.otherDeductions ?? 0);
+    const assessableIncome = (mine?.assessableIncome ?? 0) + (extra?.assessableIncome ?? 0);
+    const taxWithheld = (mine?.tax ?? 0) + (extra?.taxWithheld ?? 0);
 
     return {
       personId,
@@ -264,7 +280,7 @@ async function buildFinalizationRows(entityId: string, year: number): Promise<{ 
       personalDeduction,
       dependentDeduction,
       otherDeductions,
-      dependents: mine.at(-1)?.result.pit.dependents ?? 0,
+      dependents: mine?.dependents ?? 0,
       assessableIncome,
       taxWithheld,
       // The year's brackets are the monthly ones times twelve; a flat-rate person owes what was withheld.
@@ -305,7 +321,8 @@ export async function withholdingCertificate(principal: Principal, input: { pers
     .selectDistinct({ month: schema.payrollRun.month })
     .from(schema.payrollRunPerson)
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
-    .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft"))),
+    // The months the certificate names are the months its figures come from: signed runs only.
+    .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), inArray(schema.payrollRun.status, [...FILED_RUN_STATUSES]))),
   ]);
   if (!entity) return null;
   const person = all?.rows.find((row) => row.personId === input.personId);

@@ -6,9 +6,10 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportFile, toTable } from "@/modules/platform/export/table";
 import { can } from "@/modules/platform/rbac/policy";
 import { savePolicy } from "./attendance-policies";
+import { decideAttendanceRuleChange, decidesAttendanceRules, getAttendanceRuleChange, proposeAttendancePolicy } from "./rule-changes";
 import { alsoServedEntityIds, bulkMapByEmployeeCode, deviceLogImport, getDevice, getProfile, getUserMapRow, issuePushToken, listUnmappedLines, mapDeviceUser, revokePushToken, saveDevice, saveProfile, unmapDeviceUser } from "./devices";
 import { canManageAttendanceConfig, canManageDevices } from "./policy";
 import { recomputeOpenMonths, requestScopeRecompute } from "./recompute";
@@ -162,8 +163,8 @@ const unmappedExportPipeline = createAction({
     const lines = await listUnmappedLines(input.deviceId, EXPORT_ROW_LIMIT + 1);
     const rows = lines.slice(0, EXPORT_ROW_LIMIT);
     const local = (at: Date) => new Date(at.getTime() + 7 * 3_600_000).toISOString().slice(0, 19).replace("T", " ");
-    const csv = toCsv([{ header: "Thiết bị", value: () => device.name }, { header: "Mã trên máy", value: (row: (typeof rows)[number]) => row.deviceUserId }, { header: "Thời điểm", value: (row) => local(row.at) }, { header: "Chiều", value: (row) => row.direction ?? "" }], rows);
-    const file: CsvFile = { fileName: `unmapped-${device.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-${todayInVietnam()}.csv`, csv, rowCount: rows.length, truncated: lines.length > rows.length };
+    const table = toTable([{ header: "Thiết bị", value: () => device.name }, { header: "Mã trên máy", value: (row: (typeof rows)[number]) => row.deviceUserId }, { header: "Thời điểm", value: (row) => local(row.at) }, { header: "Chiều", value: (row) => row.direction ?? "" }], rows);
+    const file: ExportFile = { fileName: `unmapped-${device.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-${todayInVietnam()}`, table, rowCount: rows.length, truncated: lines.length > rows.length };
     return { data: file, audit: { resource: { type: "export:device_unmapped", id: device.id, entityId: device.entityId }, summary: `${file.rowCount} rows`, after: { rowCount: file.rowCount } } };
   },
 });
@@ -220,15 +221,39 @@ const savePolicyPipeline = createAction({
   }),
   authorize: (user, input) => canManageAttendanceConfig(user.principal, input.entityId),
   run: async ({ user, input }) => {
+    // FR-PLT-39: HR proposes, the owner decides. Nothing changes until the owner approves.
+    if (!decidesAttendanceRules(user.principal)) {
+      const { requestId } = await proposeAttendancePolicy(input, user.person.id);
+      refresh();
+      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:attendance_rule", id: requestId, entityId: input.entityId ?? null }, summary: `proposed attendance policy from ${input.validFrom}`, after: input } };
+    }
     const { before, after, affectedFrom } = await savePolicy(input, user.person.id);
     await requestScopeRecompute({ entityId: after.entityId }, affectedFrom);
     refresh();
     const facts = (row: typeof after) => ({ validFrom: row.validFrom, validTo: row.validTo, mergeRule: row.mergeRule, graceLateMinutes: row.graceLateMinutes, graceEarlyMinutes: row.graceEarlyMinutes, roundingMinutes: row.roundingMinutes, otMinMinutes: row.otMinMinutes, otRequiresApproval: row.otRequiresApproval, duplicateWindowMinutes: row.duplicateWindowMinutes, breakStart: row.breakStart, dayBoundary: row.dayBoundary, monthlyCorrectionCap: row.monthlyCorrectionCap });
-    return { data: { id: after.id }, audit: { resource: { type: "attendance_policy", id: after.id, entityId: after.entityId }, summary: `from ${after.validFrom}: ${after.mergeRule}, grace ${after.graceLateMinutes}/${after.graceEarlyMinutes}`, before: before ? facts(before) : null, after: facts(after) } };
+    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "attendance_policy", id: after.id, entityId: after.entityId }, summary: `from ${after.validFrom}: ${after.mergeRule}, grace ${after.graceLateMinutes}/${after.graceEarlyMinutes}`, before: before ? facts(before) : null, after: facts(after) } };
   },
 });
 export async function savePolicyAction(input: unknown) {
   return savePolicyPipeline(input);
+}
+
+// The owner's answer to a proposed attendance policy (FR-PLT-39). Deciding rules is the owner's
+// (`payroll:rules`): a delegate who is not cannot decide one.
+const decideRulePipeline = createAction({
+  name: "attendance.rule.decide",
+  input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject"]), comment: z.preprocess(blankToNull, z.string().trim().max(1000).nullable().default(null)) }),
+  authorize: async (user, input) => decidesAttendanceRules(user.principal) && !!(await getAttendanceRuleChange({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
+  run: async ({ user, input }) => {
+    const { request, before, outcome, saved } = await decideAttendanceRuleChange(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    if (saved) await requestScopeRecompute({ entityId: saved.after.entityId }, saved.affectedFrom);
+    refresh();
+    revalidatePath(`/approvals/rule/${request.id}`);
+    return { data: { outcome }, audit: { resource: { type: "approval:attendance_rule", id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, policyId: saved?.after.id ?? null } } };
+  },
+});
+export async function decideAttendanceRuleAction(input: unknown) {
+  return decideRulePipeline(input);
 }
 
 // ── Recompute on demand ─────────────────────────────────────────────────────────────────────

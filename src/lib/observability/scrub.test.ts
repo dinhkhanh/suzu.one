@@ -1,6 +1,6 @@
 import type { Event } from "@sentry/nextjs";
 import { expect, it } from "vitest";
-import { sharedOptions, tracesSampleRate } from "./options";
+import { isLocalHost, onVercelDeployment, reportingEnvironment, sharedOptions, tracesSampleRate } from "./options";
 import { redactUrl, scrubBreadcrumb, scrubEvent } from "./scrub";
 
 it("keeps a route and drops the query string", () => {
@@ -89,4 +89,43 @@ it("turns tracing on only for a rate between 0 and 1", () => {
   expect(tracesSampleRate("0")).toBe(0);
   expect(tracesSampleRate("2")).toBeUndefined();
   expect(tracesSampleRate("lots")).toBeUndefined();
+});
+
+// ENG-07: a Mac running `next start` at http://localhost:3000 filed its errors as `production`.
+it("files only a Vercel deployment under production or preview, and every other run under development", () => {
+  // What the server of a run has set, turned into the environment the way report.ts does it.
+  const server = (vars: { VERCEL_ENV?: string; VERCEL_URL?: string; VERCEL_DEPLOYMENT_ID?: string; VERCEL_REGION?: string; SENTRY_ENVIRONMENT?: string }) =>
+    reportingEnvironment({ explicit: vars.SENTRY_ENVIRONMENT, vercelEnv: vars.VERCEL_ENV, deployed: onVercelDeployment({ url: vars.VERCEL_URL, deploymentId: vars.VERCEL_DEPLOYMENT_ID, region: vars.VERCEL_REGION }) });
+
+  // On Vercel.
+  expect(server({ VERCEL_ENV: "production", VERCEL_URL: "suzu-abc123-suzu-group.vercel.app", VERCEL_REGION: "sin1" })).toBe("production");
+  expect(server({ VERCEL_ENV: "preview", VERCEL_URL: "suzu-git-fix-suzu-group.vercel.app" })).toBe("preview");
+  expect(server({ VERCEL_ENV: "production", VERCEL_DEPLOYMENT_ID: "dpl_123" })).toBe("production");
+  expect(server({ VERCEL_ENV: "production", VERCEL_REGION: "sin1" })).toBe("production");
+
+  // `next dev` and a local `next start`: nothing of Vercel's is set, whatever NODE_ENV says.
+  expect(server({})).toBe("development");
+  // An env file pulled from Vercel: VERCEL_ENV is there, the deployment's own address is empty.
+  expect(server({ VERCEL_ENV: "production", VERCEL_URL: "" })).toBe("development");
+  expect(server({ VERCEL_ENV: "production" })).toBe("development");
+  // `vercel dev`.
+  expect(server({ VERCEL_ENV: "development", VERCEL_URL: "localhost:3000", VERCEL_REGION: "dev1" })).toBe("development");
+  expect(server({ VERCEL_ENV: "production", VERCEL_URL: "localhost:3000", VERCEL_REGION: "dev1" })).toBe("development");
+
+  // Said outright, it wins — on either side.
+  expect(server({ SENTRY_ENVIRONMENT: "khanh-mac" })).toBe("khanh-mac");
+  expect(server({ SENTRY_ENVIRONMENT: "staging", VERCEL_ENV: "production", VERCEL_URL: "suzu.one" })).toBe("staging");
+  expect(server({ SENTRY_ENVIRONMENT: "  ", VERCEL_ENV: "production", VERCEL_URL: "suzu.one" })).toBe("production");
+});
+
+it("files a page opened from this machine or the office network under development, whatever was built into it", () => {
+  // What instrumentation-client.ts does: the build's NEXT_PUBLIC_VERCEL_ENV and the address in the bar.
+  const browser = (vercelEnv: string | undefined, hostname: string) => reportingEnvironment({ vercelEnv, deployed: !isLocalHost(hostname) });
+  expect(browser("production", "suzu.one")).toBe("production");
+  expect(browser("preview", "suzu-git-fix-suzu-group.vercel.app")).toBe("preview");
+  for (const hostname of ["localhost", "127.0.0.1", "[::1]", "app.localhost", "192.168.1.20", "10.0.0.5", "172.20.10.2", "khanhs-mac-mini.local"]) expect(browser("production", hostname), hostname).toBe("development");
+  // A local build opened through a tunnel: no VERCEL_ENV was built in.
+  expect(browser(undefined, "demo.example.com")).toBe("development");
+  // Public addresses that only look private.
+  for (const hostname of ["172.32.0.1", "192.169.1.1", "11.0.0.1", "localhost.example.com"]) expect(isLocalHost(hostname), hostname).toBe(false);
 });

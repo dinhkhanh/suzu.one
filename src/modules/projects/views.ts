@@ -5,8 +5,7 @@
 import "server-only";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
-import type { ProjectFacts, WorkViewer } from "../work/policy";
-import { findProject, loadViewer, notePrivateProjectRead, projectFacts, type ProjectRow, type TeamRow } from "../work/service";
+import { findProject, loadViewer, notePrivateProjectRead, projectFacts, type ProjectFacts, type ProjectRow, projectsWithTeams, type TeamRow, type WorkViewer, workDirectory } from "../work/service";
 import { getBriefRequest } from "./kickoff";
 import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";
@@ -66,6 +65,23 @@ export async function openProject(user: ProjectReader, projectId: string): Promi
     plan: shapePlan(plan, seeFees),
     can: { editPlan: canEditPlan(viewer, facts), editClientSide: canEditClientSide(viewer, facts), seeFees, editFees: canEditFees(viewer, facts), postStatus: canPostStatus(viewer, facts) },
   };
+}
+
+/**
+ * Which of these projects the reader may open — for a **list** that only decides whether a name is
+ * a link (finance's billing queue). One viewer and the cached work directory answer for every row:
+ * no query per project. And nothing is written to the audit log: naming a project in a list the
+ * reader is entitled to is not opening it — `openProject` records the read when they follow the link.
+ */
+export async function openableProjectIds(user: ProjectReader, projectIds: readonly string[]): Promise<Set<string>> {
+  const wanted = new Set(projectIds);
+  if (wanted.size === 0) return new Set();
+  const [viewer, directory] = await Promise.all([loadViewer(user), workDirectory()]);
+  return new Set(
+    projectsWithTeams(directory)
+      .filter(({ project, team }) => wanted.has(project.id) && canViewPlan(viewer, projectFacts(project, team)))
+      .map(({ project }) => project.id),
+  );
 }
 
 /**

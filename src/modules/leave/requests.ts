@@ -14,6 +14,7 @@ import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { isOnProbation } from "./engine/entitlement";
 import { checkLeaveRequest, type CountResult, countLeaveDays, type Portion, staffingShortfalls } from "./engine/request";
 import { balanceOf, getBalances, postEntry } from "./ledger";
+import { bookingAheadFor } from "./projection";
 import { allLeaveTypes, getLeaveType, type LeaveTypeRow, leaveTypesOf, listPolicies, policyOn, staffingRuleFor, staffingRuleRows } from "./types";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -134,6 +135,13 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
     }
   }
   const policy = type.tracksBalance ? policyOn(policies!, type.id, person.entityId, input.startDate) : null;
+  // The ledger holds what was given so far; the policy may already promise more by the leave date —
+  // this year's months still to come, next year's grant and what this year will carry into it (LVE-01).
+  const [ahead, conflicts] = await Promise.all([
+    bookingAheadFor(executor, person, type, { ignoreRequestId: options.ignoreRequestId, configFrom }),
+    teamConflicts(executor, person, counted.days.map((day) => day.date), { namePending: !!options.filedByHr, configFrom }),
+  ]);
+  for (const [year, asOf] of lastDayByYear(counted.days)) if (year in availableByYear) availableByYear[year] += ahead(year, asOf);
 
   const problems = checkLeaveRequest({
     type: { ...type, gender: type.gender },
@@ -155,8 +163,17 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
     availableByYear,
     existingDays: existing.map((row) => ({ date: row.date, portion: row.portion })),
   });
-  const conflicts = await teamConflicts(executor, person, counted.days.map((day) => day.date), { namePending: !!options.filedByHr, configFrom });
   return { type, counted, problems, availableByYear, conflicts };
+}
+
+/** The last day asked for in each leave year of a request: what booking ahead is measured to. */
+function lastDayByYear(days: readonly { date: IsoDate }[]): Map<number, IsoDate> {
+  const last = new Map<number, IsoDate>();
+  for (const day of days) {
+    const year = Number(day.date.slice(0, 4));
+    if ((last.get(year) ?? "") < day.date) last.set(year, day.date);
+  }
+  return last;
 }
 
 // ── Filing ──────────────────────────────────────────────────────────────────────────────────
@@ -196,8 +213,9 @@ async function submitInTransaction(tx: Tx, personId: string, input: LeaveInput, 
     subjectPersonId: personId,
     subjectType: "leave_request",
     subjectId: leaveRequest.id,
-    // Read in the inbox and the notification, in Vietnamese like the other summaries.
-    summary: `${type.name}: ${range} (${formatDays(counted.totalCenti)} ngày)`,
+    // Read in the inbox and the notification beside the type's own name, in whichever language the
+    // reader has: so it holds facts only — the leave type, the dates and the number of days (UI-01).
+    summary: `${type.name}: ${range} (${formatDays(counted.totalCenti)})`,
     payload,
     conditionData: { days: counted.totalCenti / 100, typeCode: type.code, category: type.category },
     link: (requestId) => `/approvals/leave/${requestId}`,
@@ -234,9 +252,12 @@ async function applyApproval(tx: Tx, request: LeaveRequestRow, actorPersonId: st
     const byYear = new Map<number, number>();
     for (const day of days) byYear.set(Number(day.date.slice(0, 4)), (byYear.get(Number(day.date.slice(0, 4))) ?? 0) + day.amountCenti);
     const policy = policyOn(await listPolicies([type.id], tx), type.id, request.entityId, request.startDate);
+    // Booked ahead the same way it was asked for: what the policy will have given by the leave date.
+    const ahead = await bookingAheadFor(tx, await facts(tx, request.personId), type, { ignoreRequestId: request.id, configFrom: tx });
+    const lastDays = lastDayByYear(days);
     for (const [year, amount] of byYear) {
       // The balance may have moved since the request was filed.
-      if ((await balanceOf(tx, request.personId, type.id, year)) + (policy?.allowNegativeCenti ?? 0) < amount) throw new ActionError("leave_balance_insufficient");
+      if ((await balanceOf(tx, request.personId, type.id, year)) + ahead(year, lastDays.get(year)!) + (policy?.allowNegativeCenti ?? 0) < amount) throw new ActionError("leave_balance_insufficient");
       await postEntry(tx, { personId: request.personId, entityId: request.entityId, leaveTypeId: type.id, leaveYear: year, kind: "use", amountCenti: -amount, effectiveDate: days.filter((day) => day.date.startsWith(String(year)))[0].date, sourceKey: `use:${request.id}:${year}`, requestId: request.id, reason: `${formatDay(request.startDate)} – ${formatDay(request.endDate)}`, createdByPersonId: actorPersonId });
     }
   }

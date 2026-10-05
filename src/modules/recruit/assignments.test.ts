@@ -55,7 +55,7 @@ beforeAll(async () => {
       departmentId: null,
       teamId: null,
       positionName: null,
-      jobLevel: null,
+      seniorityLevel: null, positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: null,

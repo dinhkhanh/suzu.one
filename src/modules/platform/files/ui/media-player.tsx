@@ -1,12 +1,12 @@
 "use client";
-// Video and audio in the preview dialog: Video.js with its minimal skin (the successor of Plyr's
+// Video and audio in the preview dialog: Video.js with its neutral skin (the successor of Plyr's
 // look — a clean bar of play, time, volume, speed and fullscreen), tinted with the app's accent.
 // Loaded on demand, so no page pays for a player until someone opens a clip.
-import "@videojs/react/video/minimal-skin.css";
-import "@videojs/react/audio/minimal-skin.css";
-import { Audio, AudioPlayer, MinimalAudioSkin } from "@videojs/react/audio";
+import "@videojs/react/video/neutral-skin.css";
+import "@videojs/react/audio/neutral-skin.css";
+import { Audio, AudioPlayer, NeutralAudioSkin } from "@videojs/react/audio";
 import { I18nProvider } from "@videojs/react/i18n";
-import { MinimalVideoSkin, Video, VideoPlayer } from "@videojs/react/video";
+import { NeutralVideoSkin, Video, VideoPlayer } from "@videojs/react/video";
 import { useLocale } from "next-intl";
 import { type CSSProperties, type SyntheticEvent, useRef } from "react";
 
@@ -53,15 +53,15 @@ export default function MediaPlayer({ kind, url, onExpired }: { kind: "video" | 
     <I18nProvider locale={locale}>
       {kind === "video" ? (
         <VideoPlayer>
-          <MinimalVideoSkin style={{ ...THEME, "--media-object-fit": "contain", width: "100%", maxHeight: "75vh", aspectRatio: "16 / 9", background: "black" } as CSSProperties}>
+          <NeutralVideoSkin style={{ ...THEME, "--media-object-fit": "contain", width: "100%", maxHeight: "75vh", aspectRatio: "16 / 9", background: "black" } as CSSProperties}>
             <Video src={url} playsInline preload="metadata" autoPlay {...handlers} />
-          </MinimalVideoSkin>
+          </NeutralVideoSkin>
         </VideoPlayer>
       ) : (
         <AudioPlayer>
-          <MinimalAudioSkin style={{ ...THEME, width: "100%" }}>
+          <NeutralAudioSkin style={{ ...THEME, width: "100%" }}>
             <Audio src={url} preload="metadata" autoPlay {...handlers} />
-          </MinimalAudioSkin>
+          </NeutralAudioSkin>
         </AudioPlayer>
       )}
     </I18nProvider>

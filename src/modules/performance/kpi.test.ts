@@ -24,7 +24,7 @@ import type { ParsedRow } from "../platform/import/engine/table";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import type { Viewer } from "./goals";
 import { commitKpiActualRows, type kpiActualColumns, resolveKpiActualRows } from "./kpi-import";
-import { closeBlockers, closeMonth, getKpiResults, getScorecard, hashInputs, isKpiMonthClosed, loadMonthLines, peopleOfEntries, reopenMonth, saveActuals } from "./kpi-scores";
+import { closeBlockers, closeMonth, getKpiResults, getKpiResultsOfPeople, getScorecard, hashInputs, isKpiMonthClosed, loadMonthLines, peopleOfEntries, reopenMonth, saveActuals } from "./kpi-scores";
 import { getEntryGrid, getOverview, getTeamDashboard, spreadOf } from "./kpi-views";
 import { applyTemplates, createAssignment, endAssignment, listAssignments, saveKpi, savePositionKpi, updateAssignment } from "./kpis";
 import { loadDirectory } from "./people";
@@ -277,6 +277,12 @@ describe("the year, for Phase 8", () => {
     expect(both.kpi.scoreBp).toBe(9250);
     expect(both.okr.individual).toEqual({ progressBp: null, goals: [] });
     expect((await getKpiResults({ personId: ids.tam, year: 2027 }))).toMatchObject({ scoreBp: null, closedMonths: [], openMonths: [], final: false });
+
+    // Read for several people at once (the year's results): each gets their own figure, nobody else's.
+    const many = await getKpiResultsOfPeople({ personIds: [ids.huy, ids.tam, ids.huy], year: 2027 });
+    expect([...many.keys()]).toEqual([ids.huy, ids.tam]);
+    expect(many.get(ids.huy)).toEqual(year);
+    expect(many.get(ids.tam)).toMatchObject({ scoreBp: null, closedMonths: [], openMonths: [], final: false });
   });
 });
 

@@ -122,6 +122,12 @@ export function canWorkLead(viewer: CrmViewer, lead: LeadFacts): boolean {
   return coversEntity(viewer, "crm:sell", lead.entityId) || coversEntity(viewer, "crm:manage", lead.entityId);
 }
 
+/**
+ * Erasing a lead's contact on request (PDPL): whoever runs sales over its entity. A lead has no
+ * account manager to ask, and its owner works it without holding the say over personal data.
+ */
+export const canEraseLeadContact = (viewer: CrmViewer, lead: LeadFacts): boolean => coversEntity(viewer, "crm:manage", lead.entityId);
+
 /** The leads page lists what the reader may see; opening it at all is `canLogLead`. */
 export const canOpenLeads = canLogLead;
 
@@ -176,6 +182,26 @@ export function canSetUpDelivery(viewer: CrmViewer, deal: DealFacts): boolean {
 
 /** Reopening a won or lost deal (a mistake, a client who came back): `crm:manage` only — it rewrites the history the reports count. */
 export const canReopenDeal = (viewer: CrmViewer, deal: DealFacts): boolean => deal.status !== "open" && coversEntity(viewer, "crm:manage", deal.entityId);
+
+// ── Recording an activity ───────────────────────────────────────────────────────────────────
+
+/** The records one activity or follow-up names. A contact is not here: it is its account's, and the account's rule covers it. */
+export type ActivityTargets = { lead: LeadFacts | null; account: AccountFacts | null; deal: DealFacts | null };
+
+/**
+ * Logging an activity or planning a follow-up (FR-CRM-06): **every** record the request names must
+ * pass its own rule — the lead's (`canWorkLead`), the account's (`canLogActivity`), the deal's
+ * (`canViewDeal`, and it is named with its own account) — never one of them on behalf of the rest.
+ * A right over a lead says nothing about an account that happens to be in the same request.
+ */
+export function canRecordActivity(viewer: CrmViewer, targets: ActivityTargets): boolean {
+  const { lead, account, deal } = targets;
+  if (!lead && !account) return false;
+  if (lead && !canWorkLead(viewer, lead)) return false;
+  if (account && !canLogActivity(viewer, account)) return false;
+  if (deal && (!account || deal.account.clientId !== account.clientId || !canViewDeal(viewer, deal))) return false;
+  return true;
+}
 
 // ── Quotes ──────────────────────────────────────────────────────────────────────────────────
 

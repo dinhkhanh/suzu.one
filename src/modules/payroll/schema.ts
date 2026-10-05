@@ -10,17 +10,31 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { employment } from "../core-hr/schema";
-import { entity } from "../platform/org/schema";
+import { entity, entityBankAccount } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import { registerParameterVoidGuard } from "../platform/statutory/void-guards";
 import type { BonusSchemeValue, PayrollPolicyValue } from "./enums";
+
+// A statutory value a payroll run was paid with is never voided (PAY-13): the store is the
+// platform's, so payroll registers its guard beside its tables, which every database access loads;
+// the guard's code loads the first time a value is voided.
+registerParameterVoidGuard("payroll.runs", () => import("./version-use").then((module) => module.parameterVoidGuard));
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
-// Propose → the owner decides (FR-PLT-39, SRS D17), like `statutory_parameter`.
-export const payRuleStatus = pgEnum("pay_rule_status", ["proposed", "approved", "rejected"]);
+// Propose → the owner decides (FR-PLT-39, SRS D17), like `statutory_parameter`. An approved version
+// found to be wrong is `voided` (PAY-13): kept, with who voided it and why, but no longer in force.
+export const payRuleStatus = pgEnum("pay_rule_status", ["proposed", "approved", "rejected", "voided"]);
+
+/** Who took a wrong approved version back, when, and why. Never cleared: a void is not undone. */
+const voiding = {
+  voidedAt: timestamp("voided_at", { withTimezone: true }),
+  voidedByPersonId: uuid("voided_by_person_id").references(() => person.id),
+  voidReason: text("void_reason"),
+};
 
 const governance = {
   status: payRuleStatus("status").notNull().default("proposed"),
@@ -28,6 +42,7 @@ const governance = {
   proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
   decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
+  ...voiding,
 };
 
 // ── Pay profiles (SRS D18, FR-PAY-07, FR-PAY-08) ────────────────────────────────────────────
@@ -68,6 +83,8 @@ export const payProfile = pgTable(
     validFrom: date("valid_from").notNull(),
     // Last day, inclusive. null = open-ended.
     validTo: date("valid_to"),
+    /** Set when the profile came in with a spreadsheet (PAY-14): what "approve the import" approves. */
+    importBatchId: uuid("import_batch_id"),
     ...governance,
     ...timestamps,
   },
@@ -166,8 +183,8 @@ export const payrollPolicy = pgTable(
 
 export const salaryChangeReason = pgEnum("salary_change_reason", ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal", "decrease"]);
 
-// Effective-dated; one employment's structures never overlap. Every row comes out of an approved
-// `salary_change` request. `terms_enc` = { baseSalary, insuranceSalary, allowances: [{ code, amount }] }
+// Effective-dated; one employment's structures in force never overlap. Every row comes out of an
+// approved `salary_change` request; a wrong one is voided (`voided_at`, PAY-13) and stops counting. `terms_enc` = { baseSalary, insuranceSalary, allowances: [{ code, amount }] }
 // encrypted with context "salary_structure.terms:<id>".
 export const salaryStructure = pgTable(
   "salary_structure",
@@ -192,6 +209,7 @@ export const salaryStructure = pgTable(
     decisionNumber: text("decision_number"),
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...voiding,
     ...timestamps,
   },
   (t) => [
@@ -383,6 +401,11 @@ export const payslip = pgTable(
     firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
     lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
     viewCount: integer("view_count").notNull().default(0),
+    /**
+     * Set when the run was sent back after its payslips were out: the person no longer sees this
+     * one, and re-approval releases it again under the same id (its questions stay attached).
+     */
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -467,6 +490,14 @@ export const payrollPaymentFile = pgTable(
     rowCount: integer("row_count").notNull(),
     /** People left out because their pay account is missing or malformed — never silently dropped. */
     skippedCount: integer("skipped_count").notNull().default(0),
+    /**
+     * Who the batch actually carried. Ids, never a figure or an account: what lets "is everybody
+     * inside a batch?" be answered person by person from the **latest** file of each bank, so a
+     * regenerated file supersedes the one before it instead of adding to it.
+     */
+    coveredPersonIds: uuid("covered_person_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** The entity's paying account the batch debits (FR-PLT-11); null when it was typed by hand. */
+    payingAccountId: uuid("paying_account_id").references(() => entityBankAccount.id),
     /** The batch total, encrypted: context "payroll_payment_file.total:<id>". */
     totalEnc: text("total_enc").notNull(),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -500,11 +531,46 @@ export const payrollCashPayment = pgTable(
     disbursedOn: date("disbursed_on"),
     disbursedByPersonId: uuid("disbursed_by_person_id").references(() => person.id),
     disbursementNote: text("disbursement_note"),
+    /**
+     * What was actually handed over: context "payroll_cash_payment.disbursed:<id>". null on a row
+     * disbursed before this column existed, which reads as "in full". A figure other than the net
+     * needs `disbursement_note` to say why.
+     */
+    disbursedAmountEnc: text("disbursed_amount_enc"),
     /** The person's own confirmation in the app. Nobody may confirm on their behalf. */
     receiptConfirmedAt: timestamp("receipt_confirmed_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [uniqueIndex("payroll_cash_payment_key").on(t.runId, t.personId), index("payroll_cash_payment_person_idx").on(t.personId)],
+).enableRLS();
+
+/**
+ * Somebody on the bank channel whom the run paid **outside every batch** — a single transfer from
+ * the banking app, a cheque, an account no bulk file can carry. The chief accountant records the
+ * day, the bank's reference and why; the row settles that person, so a run is never left unable to
+ * reach "paid" over one account. Words and a date only: the amount is the person's net in the run.
+ */
+export const payrollOtherPayment = pgTable(
+  "payroll_other_payment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    paidOn: date("paid_on").notNull(),
+    /** The bank's transaction reference or a voucher number — what the accountant looks it up by. */
+    reference: text("reference").notNull(),
+    reason: text("reason").notNull(),
+    recordedByPersonId: uuid("recorded_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_other_payment_key").on(t.runId, t.personId), index("payroll_other_payment_person_idx").on(t.personId)],
 ).enableRLS();
 
 // ── Retroactive items (FR-PAY-17) ───────────────────────────────────────────────────────────
@@ -548,8 +614,9 @@ export const payrollRetroItem = pgTable(
   (t) => [
     index("payroll_retro_item_entity_idx").on(t.entityId, t.status),
     index("payroll_retro_item_person_idx").on(t.personId, t.sourceMonth),
-    // One item per source of a difference: re-deriving a correction never doubles it.
-    uniqueIndex("payroll_retro_item_source_key").on(t.personId, t.kind, t.sourceRef).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
+    // One item per source of a difference and month it belongs to: re-deriving a correction never
+    // doubles it, and a raise back-dated over three paid months leaves three items, not one.
+    uniqueIndex("payroll_retro_item_source_month_key").on(t.personId, t.kind, t.sourceRef, t.sourceMonth).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
   ],
 ).enableRLS();
 
@@ -637,6 +704,32 @@ export const payrollParallelFinding = pgTable(
   (t) => [uniqueIndex("payroll_parallel_finding_key").on(t.entityId, t.month, t.personId, t.field), index("payroll_parallel_finding_month_idx").on(t.entityId, t.month)],
 ).enableRLS();
 
+// The record that a month's reconciliation was looked at and accepted (FR-PAY-38): who, when, what
+// they said, and the counts it was accepted on. Counts and words only — never a figure. Appended,
+// never edited: a second sign-off after a recalculation is a new row beside the first.
+export const payrollParallelSignoff = pgTable(
+  "payroll_parallel_signoff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    /** People compared, people matching, and the differences explained — what was accepted. */
+    people: integer("people").notNull(),
+    matching: integer("matching").notNull(),
+    explainedLines: integer("explained_lines").notNull(),
+    /** Who on the existing method's side the figures were checked with (the chief accountant). */
+    checkedWith: text("checked_with"),
+    note: text("note"),
+    signedByPersonId: uuid("signed_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payroll_parallel_signoff_month_idx").on(t.entityId, t.month, t.signedAt), check("payroll_parallel_signoff_month_check", sql`${t.month} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`)],
+).enableRLS();
+
 // ── The performance-driven year-end bonus (FR-PAY-21, SRS D13 — Phase 8 week 3) ─────────────
 //
 // The bonus lives here, in payroll, and not in the performance module: the amount is compensation
@@ -699,8 +792,9 @@ export const bonusRun = pgTable(
   },
   (t) => [
     index("bonus_run_year_idx").on(t.year, t.status),
-    // One live run per year: a year is paid once, and a run that went wrong is cancelled.
-    uniqueIndex("bonus_run_year_key").on(t.year).where(sql`${t.status} <> 'cancelled'`),
+    // A year may pay more than one bonus (a Tết bonus beside the year-end one, PAY-11); two live
+    // runs of one year are told apart by their names. A run that went wrong is cancelled.
+    uniqueIndex("bonus_run_year_name_key").on(t.year, t.name).where(sql`${t.status} <> 'cancelled'`),
     check("bonus_run_month_check", sql`${t.payrollMonth} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
   ],
 ).enableRLS();
@@ -747,6 +841,31 @@ export const bonusRunLine = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("bonus_run_line_key").on(t.runId, t.personId), index("bonus_run_line_entity_idx").on(t.runId, t.entityId), index("bonus_run_line_person_idx").on(t.personId)],
+).enableRLS();
+
+// Which off-cycle payroll run each entity of a bonus run was handed to (FR-PAY-19). One row per
+// hand-over: paying a bonus run finds these first and creates nothing that is already there, so a
+// second click — or a retry after a failure — never doubles an entity's run. A hand-over whose
+// payroll run was later cancelled no longer counts, and that entity can be handed over again.
+export const bonusRunHandoff = pgTable(
+  "bonus_run_handoff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bonusRunId: uuid("bonus_run_id")
+      .notNull()
+      .references(() => bonusRun.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    payrollRunId: uuid("payroll_run_id")
+      .notNull()
+      .references(() => payrollRun.id),
+    /** How many lines went into the payroll run. A count, not money. */
+    headcount: integer("headcount").notNull(),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("bonus_run_handoff_run_idx").on(t.bonusRunId, t.entityId), uniqueIndex("bonus_run_handoff_payroll_run_key").on(t.payrollRunId)],
 ).enableRLS();
 
 // Every step the run was carried through, with who took it and what they said (FR-PAY-21's

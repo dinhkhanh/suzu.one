@@ -2,13 +2,14 @@
 // the deliverables register — and which task works towards which of them (`project_task_link`,
 // one task = one unit of a register line). The actions check who may change them.
 import "server-only";
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
-import { CHANNELS, CONTENT_FORMATS } from "../work/enums";
-import { createWorkTaskIn, loadTasks } from "../work/service";
+import { CHANNELS, CONTENT_FORMATS, createWorkTaskIn, loadTasks } from "../work/service";
 import { billMilestone } from "./billing";
+import { lineScopeChanged, scopeLocked } from "./engine/gates";
+import { scopeLockedError } from "./guards";
 import { checkProjectPerson } from "./membership";
 import { ensurePlan } from "./plans";
 
@@ -117,25 +118,49 @@ export async function setMilestoneDone(milestoneId: string, done: boolean, actor
   });
 }
 
+/**
+ * A milestone goes only while nothing the client or finance holds hangs off it: an acceptance
+ * record that is not void, or a billing item that is not waived, would be left pointing at
+ * nothing (their link is ON DELETE SET NULL) — a signed paper for a milestone nobody can name, an
+ * item in finance's queue with no source. Void the record or have finance waive the item first.
+ * Checked under the milestone's lock, which `setMilestoneDone` takes before it bills.
+ */
 export async function deleteMilestone(milestoneId: string): Promise<MilestoneRow> {
-  const [row] = await db().delete(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId)).returning();
-  if (!row) throw new ActionError("milestone_not_found");
-  return row;
+  return db().transaction(async (tx) => {
+    const [row] = await tx.select().from(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId)).limit(1).for("update");
+    if (!row) throw new ActionError("milestone_not_found");
+    const [acceptance] = await tx.select({ id: schema.projectAcceptance.id }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.milestoneId, milestoneId), ne(schema.projectAcceptance.status, "void"))).limit(1);
+    if (acceptance) throw new ActionError("milestone_has_acceptance");
+    const [item] = await tx.select({ id: schema.projectBillingItem.id }).from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestoneId), ne(schema.projectBillingItem.status, "waived"))).limit(1);
+    if (item) throw new ActionError("milestone_has_billing");
+    await tx.delete(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId));
+    return row;
+  });
 }
 
 // ── The deliverables register ───────────────────────────────────────────────────────────────
 
 export type DeliverableInput = { title: string; quantity: number; format: string | null; channel: string | null; dueDate: string | null; milestoneId: string | null; sortOrder: number };
 
+/**
+ * A line of the project's register. After the kick-off the register is the scope the client agreed
+ * to (FR-PJM-11): a new line, and a line's quantity, format or channel, change only through a
+ * change request and are refused here (`scope_locked`). What is not the promise itself — the
+ * line's wording, its due date, its milestone, its place in the list — stays direct, and so does
+ * linking tasks to it. A retainer month's lines are that month's own (FR-PJM-06) and are not held
+ * by this lock: the retainer's monthly scope has its own (`assertRetainerQuotaOpen`).
+ */
 export async function saveDeliverable(projectId: string, deliverableId: string | null, input: DeliverableInput): Promise<{ before: DeliverableRow | null; after: DeliverableRow }> {
   return db().transaction(async (tx) => {
-    await ensurePlan(projectId, tx);
+    const locked = scopeLocked(await ensurePlan(projectId, tx));
     await milestoneOf(tx, projectId, input.milestoneId);
     if (!deliverableId) {
+      if (locked) throw scopeLockedError("register");
       const [after] = await tx.insert(schema.projectDeliverable).values({ projectId, ...input }).returning();
       return { before: null, after };
     }
     const before = await deliverableOf(tx, projectId, deliverableId);
+    if (locked && !before!.retainerPeriodId && lineScopeChanged(before!, input)) throw scopeLockedError("register");
     const [after] = await tx.update(schema.projectDeliverable).set({ ...input, updatedAt: new Date() }).where(eq(schema.projectDeliverable.id, deliverableId)).returning();
     return { before, after };
   });
@@ -143,13 +168,18 @@ export async function saveDeliverable(projectId: string, deliverableId: string |
 
 /**
  * A promise withdrawn stays on the register, struck through: what was promised and dropped is part
- * of the story an acceptance and a close-out report tell. Undo by passing false.
+ * of the story an acceptance and a close-out report tell. Undo by passing false. After the kick-off
+ * withdrawing a promise — or taking one back up — is a change of scope: a change request cancels
+ * the line, and doing it here is refused (a retainer month's lines excepted, as in `saveDeliverable`).
  */
 export async function cancelDeliverable(deliverableId: string, cancelled: boolean): Promise<{ before: DeliverableRow; after: DeliverableRow }> {
-  const before = await findDeliverable(deliverableId);
-  if (!before) throw new ActionError("deliverable_not_found");
-  const [after] = await db().update(schema.projectDeliverable).set({ cancelledAt: cancelled ? new Date() : null, updatedAt: new Date() }).where(eq(schema.projectDeliverable.id, deliverableId)).returning();
-  return { before, after };
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.projectDeliverable).where(eq(schema.projectDeliverable.id, deliverableId)).limit(1).for("update");
+    if (!before) throw new ActionError("deliverable_not_found");
+    if (!before.retainerPeriodId && !!before.cancelledAt !== cancelled && scopeLocked(await ensurePlan(before.projectId, tx))) throw scopeLockedError("register");
+    const [after] = await tx.update(schema.projectDeliverable).set({ cancelledAt: cancelled ? new Date() : null, updatedAt: new Date() }).where(eq(schema.projectDeliverable.id, deliverableId)).returning();
+    return { before, after };
+  });
 }
 
 // ── Linking tasks ───────────────────────────────────────────────────────────────────────────

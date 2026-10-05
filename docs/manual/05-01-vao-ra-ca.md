@@ -29,7 +29,9 @@ Mọi nhân sự **đang làm việc** và thuộc một pháp nhân đều ch�
 
 ## Vị trí và mạng văn phòng
 
-Khi bạn bấm nút, điện thoại sẽ hỏi quyền truy cập vị trí. Hãy cho phép để lần chấm được kiểm tra đúng.
+Lần đầu bấm nút, SuZu One hiện thông báo **Vị trí của bạn khi chấm công**: thu thập gì (vị trí và độ chính xác, đọc một lần đúng lúc bấm nút), để làm gì, ai được xem (bạn, quản lý trực tiếp, Nhân sự) và lưu bao lâu (vị trí chính xác bị xoá sau 90 ngày; giờ chấm công vẫn giữ trong bảng công). Chọn **Tôi đồng ý** để nút đọc vị trí, hoặc **Chấm công không kèm vị trí**. Lựa chọn của bạn được ghi lại; đổi ý bất cứ lúc nào ở mục **Dữ liệu và quyền riêng tư** trên [Hồ sơ của tôi](/me).
+
+Khi bạn đã đồng ý, điện thoại sẽ hỏi quyền truy cập vị trí. Hãy cho phép để lần chấm được kiểm tra đúng. Nếu bạn chấm không kèm vị trí, lần chấm vẫn được tính khi bạn dùng mạng văn phòng; nếu không, quản lý trực tiếp sẽ xem xét.
 
 Nhân sự khai báo các **địa điểm làm việc** của công ty: một vòng tròn trên bản đồ (toạ độ và bán kính), mạng Wi-Fi văn phòng, hoặc cả hai. Trình duyệt không đọc được tên Wi-Fi, nên "mạng văn phòng" được nhận biết qua địa chỉ IP công cộng mà mạng đó đi ra Internet.
 
@@ -47,14 +49,14 @@ Các lý do gắn cờ bạn có thể gặp:
 | Không có vị trí — quyền truy cập vị trí bị tắt hoặc không khả dụng | Bạn chưa cho phép vị trí, hoặc điện thoại không định vị được trong khoảng 10 giây |
 | Không dùng mạng văn phòng | Địa điểm yêu cầu mạng văn phòng nhưng bạn đang dùng 4G / mạng khác |
 
-Một lần chấm bị gắn cờ có nhãn **Chờ xem xét**. Quản lý trực tiếp hoặc nhân sự sẽ **Chấp nhận** hoặc **Từ chối**; nhãn đổi thành **Đã chấp nhận** / **Đã từ chối**. Lần chấm bị từ chối không được tính công.
+Một lần chấm bị gắn cờ có nhãn **Chờ xem xét**. Quản lý trực tiếp hoặc nhân sự sẽ **Chấp nhận** hoặc **Từ chối**; nhãn đổi thành **Đã chấp nhận** / **Đã từ chối**. Lần chấm bị từ chối không được tính công; bạn nhận thông báo "Lần chấm công lúc … không được chấp nhận" kèm lý do — nếu bạn thực sự có mặt, hãy gửi đơn **Bổ sung công** trước khi bảng công khoá.
 
 > [!NOTE]
 > Nếu công ty chưa khai báo địa điểm nào, màn hình ghi "Công ty chưa thiết lập địa điểm làm việc nên việc chấm công chưa được kiểm tra vị trí." — mọi lần chấm đều được chấp nhận.
 
 ### Làm việc ngoài văn phòng mà không bị gắn cờ
 
-Nếu bạn biết trước mình sẽ làm việc ở nơi khác (quay ngoại cảnh, gặp khách, sự kiện), hãy tạo đơn **Làm việc từ xa / ngoài văn phòng** và điền toạ độ nơi đó. Khi đơn được duyệt, chấm công tại vị trí đã đăng ký được chấp nhận, ghi chú "Tại địa điểm làm việc bên ngoài đã đăng ký", không cần ai xem xét. Xem trang **Đơn chấm công**.
+Nếu bạn biết trước mình sẽ làm việc ở nơi khác (quay ngoại cảnh, gặp khách, sự kiện), hãy tạo đơn **Làm việc từ xa / ngoài văn phòng** và khai báo vị trí nơi đó (bấm **Dùng vị trí của tôi** khi đang ở đó, hoặc dán liên kết bản đồ). Khi đơn được duyệt, chấm công tại vị trí đã đăng ký được chấp nhận, ghi chú "Tại địa điểm làm việc bên ngoài đã đăng ký", không cần ai xem xét. Xem trang **Đơn chấm công**.
 
 ## Cài SuZu One lên điện thoại
 

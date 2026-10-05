@@ -6,6 +6,10 @@
 // response and nowhere else — not in the row, not in the audit log, not in a second request — so
 // the panel says so plainly and keeps it on screen until the person navigates away. Losing it costs
 // a new link, which is the safe direction and the reason it is built that way.
+//
+// `ProjectPreviewLinks` below is the other half (R14): every link of a project that is still out
+// there, across its tasks, in one list on the project's page — so what clients are holding can be
+// seen, and taken back, without opening each task in turn.
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
@@ -16,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Section } from "@/components/ui/page";
+import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,6 +49,45 @@ export type PreviewLinkItem = {
 };
 
 export type PreviewVersion = { id: string; version: number; frozen: boolean };
+
+const isLive = (state: PreviewState) => state === "active" || state === "viewed";
+
+/**
+ * Taking a link back, asked twice: the button opens a small sheet that says what will happen, and
+ * the link is revoked from there. A revoked link cannot be brought back — the client needs a new
+ * one — so one stray tap in a table must not be enough.
+ */
+function RevokeButton({ disabled, onConfirm }: { disabled: boolean; onConfirm: () => void }) {
+  const t = useTranslations("work.preview");
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button type="button" size="xs" variant="ghost" disabled={disabled} />}>{t("revoke")}</PopoverTrigger>
+      <PopoverContent align="end">
+        <PopoverHeader>
+          <PopoverTitle>{t("revokeTitle")}</PopoverTitle>
+          <PopoverDescription>{t("revokeConfirm")}</PopoverDescription>
+        </PopoverHeader>
+        <div className="flex justify-end gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setOpen(false);
+              onConfirm();
+            }}
+          >
+            {t("revoke")}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskId: string; links: PreviewLinkItem[]; versions: PreviewVersion[]; canManage: boolean }) {
   const t = useTranslations("work.preview");
@@ -78,13 +123,13 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
     });
 
   if (!canManage && links.length === 0) return null;
-  const revocable = links.some((link) => link.canRevoke && (link.state === "active" || link.state === "viewed"));
+  const revocable = links.some((link) => link.canRevoke && isLive(link.state));
 
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         {t("title")}
-        {links.some((link) => link.state === "active" || link.state === "viewed") ? <Badge variant="secondary">{t("live")}</Badge> : null}
+        {links.some((link) => isLive(link.state)) ? <Badge variant="secondary">{t("live")}</Badge> : null}
       </h2>
       <p className="text-xs text-muted-foreground">{t("explainer")}</p>
 
@@ -142,11 +187,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
                   <TableCell className="text-muted-foreground">{link.viewCount ? (link.lastViewedAt ? when(link.lastViewedAt) : "—") : t("noViews")}</TableCell>
                   {revocable ? (
                     <TableCell kind="actions">
-                      {(link.state === "active" || link.state === "viewed") && link.canRevoke ? (
-                        <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => window.confirm(t("revokeConfirm")) && run(() => revokePreviewLinkAction({ linkId: link.id }))}>
-                          {t("revoke")}
-                        </Button>
-                      ) : null}
+                      {isLive(link.state) && link.canRevoke ? <RevokeButton disabled={pending} onConfirm={() => run(() => revokePreviewLinkAction({ linkId: link.id }))} /> : null}
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -230,5 +271,97 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
 
       <DeliveryError errorKey={errorKey} />
     </section>
+  );
+}
+
+export type ProjectPreviewLinkItem = {
+  id: string;
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+  label: string | null;
+  allowDecision: boolean;
+  version: number | null;
+  state: PreviewState;
+  expiresAt: string;
+  viewCount: number;
+  createdByPersonId: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  /** What the client answered on it, when they have. */
+  decision: string | null;
+};
+
+/**
+ * A project's links that are still out there, across all its tasks (R14): which work, which
+ * version, who it went to, who made it, when it runs out, whether the client has looked or
+ * answered — and revoke, for the ones a client can still open. Shown to the people who may make a
+ * link on this project (`canSeeProjectPreviewLinks`), each of whom may revoke every row. Links are
+ * made on the task, where the version is; this list only watches them and takes them back.
+ */
+export function ProjectPreviewLinks({ links }: { links: ProjectPreviewLinkItem[] }) {
+  const t = useTranslations("work.preview");
+  const format = useFormatter();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  const day = (iso: string) => format.dateTime(new Date(iso), { dateStyle: "medium" });
+  const revoke = (linkId: string) =>
+    startTransition(async () => {
+      const result: Result = await revokePreviewLinkAction({ linkId });
+      setErrorKey(errorKeyOf(result));
+      if (result.ok) router.refresh();
+    });
+  const revocable = links.some((link) => isLive(link.state));
+
+  return (
+    <Section title={t("project.title")} count={links.length || undefined} description={t("project.explainer")}>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("project.task")}</TableHead>
+              <TableHead kind="id">{t("project.version")}</TableHead>
+              <TableHead kind="text">{t("label")}</TableHead>
+              <TableHead kind="status">{t("columns.state")}</TableHead>
+              <TableHead kind="person">{t("columns.createdBy")}</TableHead>
+              <TableHead kind="date">{t("columns.created")}</TableHead>
+              <TableHead kind="date">{t("columns.expires")}</TableHead>
+              <TableHead kind="number">{t("columns.views")}</TableHead>
+              {revocable ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {links.length === 0 ? <TableEmpty>{t("project.none")}</TableEmpty> : null}
+            {links.map((link) => (
+              <TableRow key={link.id}>
+                <TableCell>
+                  <RecordLink kind="task" id={link.taskId} className="font-medium">
+                    <span className="font-mono text-xs text-muted-foreground">{link.taskKey}</span> {link.taskTitle}
+                  </RecordLink>
+                </TableCell>
+                <TableCell kind="id">{link.version ? `v${link.version}` : "—"}</TableCell>
+                <TableCell>
+                  {link.label ?? <span className="text-muted-foreground">{t("noLabel")}</span>}
+                  {!link.allowDecision ? <span className="ml-2 text-xs text-muted-foreground">{t("viewOnly")}</span> : null}
+                </TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(link.state)}>
+                    {link.decision && t.has(`decisions.${link.decision}`) ? t(`decisions.${link.decision}` as "decisions.approved") : t(`states.${link.state}`)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{link.createdByName ? <RecordLink kind="person" id={link.createdByPersonId}>{link.createdByName}</RecordLink> : "—"}</TableCell>
+                <TableCell>{day(link.createdAt)}</TableCell>
+                <TableCell>{day(link.expiresAt)}</TableCell>
+                <TableCell kind="number">{link.viewCount}</TableCell>
+                {revocable ? <TableCell kind="actions">{isLive(link.state) ? <RevokeButton disabled={pending} onConfirm={() => revoke(link.id)} /> : null}</TableCell> : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
+      <DeliveryError errorKey={errorKey} />
+    </Section>
   );
 }

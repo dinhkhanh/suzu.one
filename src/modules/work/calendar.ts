@@ -2,11 +2,11 @@
 // with the project's name and whether this viewer may drag it to another day.
 import "server-only";
 import { and, between } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { schema } from "@/lib/db";
 import { projectsWithTeams, workDirectory } from "./directory";
 import { canContributeToProject, canContributeToTeam, type WorkViewer } from "./policy";
 import { projectFacts } from "./projects";
-import { listItems, type TaskListItem, visibleTaskCondition } from "./tasks";
+import { listCalendarItems, type TaskListItem, visibleTaskCondition } from "./tasks";
 import { teamFacts } from "./teams";
 
 export type CalendarItem = TaskListItem & { projectName: string | null; editable: boolean };
@@ -27,7 +27,11 @@ export async function withEditable(viewer: WorkViewer, items: TaskListItem[]): P
   }));
 }
 
-export async function listCalendarTasks(viewer: WorkViewer, range: { from: string; to: string }): Promise<CalendarItem[]> {
-  const items = await listItems(and(between(schema.task.dueDate, range.from, range.to), await visibleTaskCondition(viewer)), db(), 3000);
-  return withEditable(viewer, items);
+/** The most one month of the calendar loads. Past it the page says how many it left out. */
+export const CALENDAR_TASK_LIMIT = 3000;
+
+/** A month's dated tasks, and how many matched — more than `items` when the limit cut them. */
+export async function listCalendarTasks(viewer: WorkViewer, range: { from: string; to: string }, limit = CALENDAR_TASK_LIMIT): Promise<{ items: CalendarItem[]; total: number }> {
+  const { items, total } = await listCalendarItems(and(between(schema.task.dueDate, range.from, range.to), await visibleTaskCondition(viewer)), limit);
+  return { items: await withEditable(viewer, items), total };
 }

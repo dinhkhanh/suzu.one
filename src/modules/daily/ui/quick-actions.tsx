@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -42,12 +43,17 @@ export function PlanTodayButton({ taskId }: { taskId: string }) {
  * Whether the time is billed to the client (FR-PJM-24, Q17) is part of every log: the box starts
  * from the project's own kind — which is what the server would use anyway — and following the
  * target when it changes, and the person may tick it either way before saving.
+ *
+ * On the task's own page (`range`) the day can be another one inside the range — it starts on
+ * `date` — and a note goes with the log; a tap on a length still logs at once.
  */
-export function QuickLog({ date, taskId, billable = false, tasks }: { date: string; taskId?: string; /** The task's project is billed by default (the single-task form). */ billable?: boolean; tasks?: { id: string; label: string; billable: boolean }[] }) {
+export function QuickLog({ date, taskId, billable = false, tasks, range }: { date: string; taskId?: string; /** The task's project is billed by default (the single-task form). */ billable?: boolean; tasks?: { id: string; label: string; billable: boolean }[]; /** The days the log may be for; with it the form shows the day and a note. */ range?: { min: string; max: string } }) {
   const t = useTranslations("daily");
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(taskId ? `task:${taskId}` : tasks?.[0] ? `task:${tasks[0].id}` : `category:${TIME_CATEGORIES[0]}`);
   const [typed, setTyped] = useState("");
+  const [day, setDay] = useState(date);
+  const [note, setNote] = useState("");
   const [done, setDone] = useState<number | null>(null);
   // null = whatever the target itself says; a tick or an untick is the person's own word.
   const [chosen, setChosen] = useState<boolean | null>(null);
@@ -58,9 +64,11 @@ export function QuickLog({ date, taskId, billable = false, tasks }: { date: stri
   const log = (minutes: number | null) => {
     if (!minutes) return;
     const [kind, id] = target.split(":");
-    run(logTimeAction, { date, minutes, billable: billed ? "yes" : "no", ...(kind === "task" ? { taskId: id } : { category: id }) }, () => {
+    run(logTimeAction, { date: range ? day : date, minutes, note: range ? note : null, billable: billed ? "yes" : "no", ...(kind === "task" ? { taskId: id } : { category: id }) }, () => {
       setDone(minutes);
       setTyped("");
+      setNote("");
+      setDay(date);
       setOpen(false);
     });
   };
@@ -95,6 +103,13 @@ export function QuickLog({ date, taskId, billable = false, tasks }: { date: stri
           </optgroup>
         </Select>
       )}
+      {range ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Clearing the day puts it back on the one the form opened with: a log is always for a day. */}
+          <DatePicker aria-label={t("time.date")} value={day} min={range.min} max={range.max} required onChange={(event) => setDay(event.target.value || date)} className="w-44" />
+          <Input aria-label={t("time.note")} placeholder={t("time.notePlaceholder")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="min-w-40 flex-1" />
+        </div>
+      ) : null}
       <label className="flex items-center gap-2 text-xs">
         <Checkbox checked={billed} onCheckedChange={(checked) => setChosen(checked)} /> {t("time.billableLabel")}
       </label>

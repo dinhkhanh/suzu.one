@@ -16,14 +16,15 @@ import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
-import { todayInVietnam } from "@/lib/dates";
+import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { recordApprovedTrip } from "@/modules/attendance/service";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { carryOver, type FollowUpGate, type FollowUpRule, followUpGate, followUpProblems, LIVE_STATUSES } from "./engine/follow-ups";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
-import { ATTACHMENT_OWNER_TYPE, type RequestCategory } from "./enums";
+import { ATTACHMENT_OWNER_TYPE, type RequestCategory, type RequestPayout } from "./enums";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim } from "./expense-posting";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -44,7 +45,7 @@ export { REQUEST_CATEGORIES, type RequestCategory } from "./enums";
  * may be ticked unopened, what a flow may condition on — is derived from the stored row, so a type
  * an administrator invents on Tuesday behaves like one that shipped with the product.
  */
-export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "nameVi">): RequestTypeDefinition {
+export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "nameVi" | "payout">): RequestTypeDefinition {
   return defineRequestType({
     type: approvalTypeOf(row.code),
     // Notifications and emails are written in Vietnamese, the company's working language.
@@ -56,9 +57,10 @@ export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "
     // A form was filled in to be read. Nothing generic is ticked off an inbox unopened.
     bulkApprovable: () => false,
     // Whoever may administer request types follows them; approvers and the requester are let in
-    // by the engine itself. One exception: an expense claim is a payment, so whoever pays the
-    // company's people may read it — finance cannot settle what it may not see (FR-REQ-03).
-    canView: (viewer, subject) => can(viewer, "org:manage", {}) || (row.code === EXPENSE_CLAIM_CODE && can(viewer, "payroll:pay", subject ?? {})),
+    // by the engine itself. One exception: a request that ends in a payment — an expense claim
+    // (FR-REQ-03), or a type finance pays (REQ-01) — may be read by whoever pays the company's
+    // money: finance cannot settle what it may not see.
+    canView: (viewer, subject) => can(viewer, "org:manage", {}) || ((row.code === EXPENSE_CLAIM_CODE || row.payout !== "none") && can(viewer, "payroll:pay", subject ?? {})),
   });
 }
 
@@ -67,8 +69,9 @@ export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "
 // The catalogue is reference data read by every inbox and picker, so the whole (small) table lives
 // in the shared cache (src/lib/cache). `saveRequestType` and `setRequestTypeActive` drop it once
 // their change is committed; the TTL bounds writers outside the app (the seed script). The key
-// carries the row's shape: an entry an older deployment stored has no follow-up rules in it.
-const TYPES_CACHE = "requests:types:v2";
+// carries the row's shape: an entry an older deployment stored has no follow-up rules (v2) or
+// payout (v3) in it.
+const TYPES_CACHE = "requests:types:v3";
 const TYPES_TTL = 60 * 60;
 
 const readTypes = (executor: Executor) => executor.select().from(schema.requestType).orderBy(schema.requestType.sortOrder, schema.requestType.code);
@@ -120,6 +123,8 @@ export type SaveTypeInput = {
   slaEscalateTo: Record<string, unknown> | null;
   followUps: FollowUpRule[];
   standalone: boolean;
+  /** REQ-01: what finance does once one is approved. */
+  payout: RequestPayout;
 };
 
 export async function saveRequestType(id: string | null, input: SaveTypeInput, actorPersonId: string): Promise<{ before: RequestTypeRow | null; after: RequestTypeRow }> {
@@ -260,6 +265,8 @@ export async function fileRequest(
       .values({ approvalRequestId: request.id, requestTypeId: type.id, typeCode: type.code, values, attachmentFileIds: fileIds.length ? fileIds : null, amount, parentSubmissionId })
       .returning({ id: schema.requestSubmission.id });
     await extras.afterInsert?.(tx, submission.id);
+    // A flow whose every step was skipped approves at once, and the approval's effect comes with it.
+    if (outcome === "approved") await applyApprovedEffect(tx, type.code, { id: submission.id, values, amount }, request, requester.personId);
     return { requestId: request.id, submissionId: submission.id, outcome };
   });
 }
@@ -334,13 +341,33 @@ export async function decideGenericRequest(requestId: string, actorPersonId: str
     const loaded = await loadSubmission(requestId, tx);
     if (!loaded) throw new ActionError("approval_not_found");
     const decided = await decideRequest(tx, genericRequestType(loaded.type), requestId, actorPersonId, decision);
-    // One type does have an effect: an approved expense claim becomes money in a payroll run. It
-    // happens in this transaction, so a claim is never approved without being offered to payroll.
-    if (decided.outcome === "approved" && loaded.type.code === EXPENSE_CLAIM_CODE) {
-      await postApprovedClaim(tx, { submissionId: loaded.submission.id, personId: decided.request.requesterPersonId, entityId: decided.request.entityId, amount: loaded.submission.amount ?? 0 }, actorPersonId);
-    }
+    if (decided.outcome === "approved") await applyApprovedEffect(tx, loaded.type.code, loaded.submission, decided.request, actorPersonId);
     return decided;
   });
+}
+
+/** The request type of a business trip (FR-REQ-05's parent of advances and their settlement). */
+export const BUSINESS_TRIP_CODE = "business_trip";
+
+const isoDate = (value: unknown): IsoDate | null => (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+
+/**
+ * What an approval *does*, for the two seeded types where it does something. Both happen in the
+ * approving transaction, so neither is approved without its effect:
+ *  - an expense claim becomes money in the entity's open payroll run (FR-REQ-03);
+ *  - a business trip becomes the attendance record of its days (REQ-02): the trip is filed once,
+ *    here with its money, and attendance reads it — nobody files it a second time there.
+ */
+async function applyApprovedEffect(tx: Tx, code: string, submission: { id: string; values: Record<string, unknown>; amount: number | null }, request: { id: string; requesterPersonId: string; entityId: string | null }, actorPersonId: string): Promise<void> {
+  if (code === EXPENSE_CLAIM_CODE) {
+    await postApprovedClaim(tx, { submissionId: submission.id, personId: request.requesterPersonId, entityId: request.entityId, amount: submission.amount ?? 0 }, actorPersonId);
+  }
+  if (code === BUSINESS_TRIP_CODE) {
+    const startDate = isoDate(submission.values.start_date);
+    const endDate = isoDate(submission.values.end_date);
+    const destination = typeof submission.values.destination === "string" ? submission.values.destination : null;
+    if (startDate && endDate) await recordApprovedTrip(tx, { personId: request.requesterPersonId, filedByPersonId: request.requesterPersonId, startDate, endDate, destination, tripRequestId: request.id });
+  }
 }
 
 async function loadSubmission(requestId: string, executor: Executor): Promise<{ type: RequestTypeRow; submission: RequestSubmissionRow } | null> {

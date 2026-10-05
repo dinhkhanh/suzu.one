@@ -8,6 +8,7 @@ const today = "2026-09-20" as IsoDate;
 const facts = (overrides: Partial<RetentionFacts> = {}): RetentionFacts => ({
   retainUntil: "2026-09-19" as IsoDate,
   createdOn: "2025-09-19" as IsoDate,
+  lastClosedOn: null,
   talentPoolConsent: false,
   anonymised: false,
   hasOpenApplication: false,
@@ -33,6 +34,16 @@ describe("effectiveRetainUntil", () => {
 
   it("runs the window from the creation day when the column is empty", () => {
     expect(effectiveRetainUntil({ retainUntil: null, createdOn: "2024-03-10" as IsoDate })).toBe(retainUntilFrom("2024-03-10" as IsoDate));
+  });
+
+  it("runs the window from the latest application's close when that is later than the date on the record", () => {
+    // First applied in 2024; applied again and was turned down in August 2026.
+    expect(effectiveRetainUntil({ retainUntil: "2025-03-10" as IsoDate, createdOn: "2024-03-10" as IsoDate, lastClosedOn: "2026-08-01" as IsoDate })).toBe("2027-08-01");
+  });
+
+  it("never shortens the date on the record because an application closed early", () => {
+    expect(effectiveRetainUntil({ retainUntil: "2027-06-01" as IsoDate, createdOn: "2026-06-01" as IsoDate, lastClosedOn: "2026-06-02" as IsoDate })).toBe("2027-06-02");
+    expect(effectiveRetainUntil({ retainUntil: "2028-01-01" as IsoDate, createdOn: "2026-06-01" as IsoDate, lastClosedOn: "2026-06-02" as IsoDate })).toBe("2028-01-01");
   });
 });
 
@@ -67,6 +78,15 @@ describe("retentionOutcome", () => {
   it("checks every reason to keep before it looks at the clock", () => {
     // All of them at once, with a window long past: still kept, and for the first reason given.
     expect(retentionOutcome(facts({ retainUntil: "2020-01-01" as IsoDate, hasHire: true, talentPoolConsent: true, hasOpenApplication: true }), today)).toBe("hired");
+  });
+
+  it("does not anonymise a returning candidate the night their new application closes", () => {
+    // The date on the record lapsed long ago; they applied again and were turned down yesterday.
+    const returning = facts({ retainUntil: "2025-01-01" as IsoDate, createdOn: "2024-01-01" as IsoDate, lastClosedOn: "2026-09-19" as IsoDate });
+    expect(retentionOutcome(returning, today)).toBe("not_due");
+    // A year after that close, and a day, they are due.
+    expect(retentionOutcome(returning, "2027-09-19" as IsoDate)).toBe("not_due");
+    expect(retentionOutcome(returning, "2027-09-20" as IsoDate)).toBe("anonymise");
   });
 
   it("does not keep a record for ever because its window was never written", () => {

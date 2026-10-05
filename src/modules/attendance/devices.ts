@@ -22,7 +22,9 @@ import { db, schema, type Tx } from "@/lib/db";
 import { type EmploymentFacts, listEmploymentFacts } from "@/modules/core-hr/service";
 import { type Column, oneOf, type ParsedRow, type Problem, text } from "@/modules/platform/import/engine/table";
 import { defineImport, readSpreadsheet } from "@/modules/platform/import/service";
+import { listEntities } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
+import { faceWithdrawnAmong } from "@/modules/privacy/service";
 import { CANONICAL_HEADERS, type DeviceMapping, inferredDirection, mappingProblems, parseDat, parseTimestamp, toCanonicalTable } from "./engine/device-log";
 import type { PushedRow } from "./engine/device-push";
 import { vietnamDateAndMinute } from "./engine/merge";
@@ -122,8 +124,8 @@ export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRo
   const servedBefore = before ? await alsoServedEntityIds(before.id) : [];
   const servedAfter = input.alsoServes ? [...new Set(input.alsoServes)].filter((id) => id !== entityId).sort() : servedBefore;
   if (servedAfter.length > 0) {
-    const [found] = await db().select({ value: count() }).from(schema.entity).where(inArray(schema.entity.id, servedAfter));
-    if (found.value !== servedAfter.length) throw new ActionError("entity_not_found");
+    const known = new Set((await listEntities()).map((entity) => entity.id));
+    if (!servedAfter.every((id) => known.has(id))) throw new ActionError("entity_not_found");
   }
   const profile = await getProfile(input.profileId);
   if (!profile || (profile.entityId !== null && profile.entityId !== entityId)) throw new ActionError("profile_not_found");
@@ -173,7 +175,7 @@ export async function listUnmapped(deviceId: string): Promise<UnmappedView[]> {
   return rows.map((row) => ({ deviceUserId: row.deviceUserId, lines: row.lines, firstAt: row.firstAt!, lastAt: row.lastAt! })).sort((a, b) => a.deviceUserId.localeCompare(b.deviceUserId, undefined, { numeric: true }));
 }
 
-type NewPunch = { personId: string; entityId: string | null; at: Date; direction: "in" | "out" | null; deviceUserId: string };
+type NewPunch = { personId: string; entityId: string | null; at: Date; direction: "in" | "out" | null; deviceUserId: string; kioskSessionId?: string | null };
 
 /** Inserts device punches that are not there yet; direction-less ones take their place in the person-day's order. Returns what was new. */
 async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | null, candidates: NewPunch[]): Promise<{ inserted: number; people: string[]; from: IsoDate | null; to: IsoDate | null; ids: string[] }> {
@@ -197,7 +199,7 @@ async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | n
       const key = dayKey(item.personId, item.at);
       const index = position.get(key) ?? 0;
       position.set(key, index + 1);
-      return { personId: item.personId, entityId: item.entityId, at: item.at, direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index), source: "device" as const, deviceId, deviceUserId: item.deviceUserId, importBatchId: batchId };
+      return { personId: item.personId, entityId: item.entityId, at: item.at, direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index), source: "device" as const, deviceId, deviceUserId: item.deviceUserId, importBatchId: batchId, kioskSessionId: item.kioskSessionId ?? null };
     });
 
   let inserted = 0;
@@ -463,7 +465,16 @@ export async function commitPushedRows(deviceId: string, rows: PushedRow[]): Pro
 
 /** Who the clock should know: its mapped IDs with names, for the kiosk's enrolment list. */
 export async function deviceRoster(deviceId: string): Promise<{ userId: string; fullName: string; employeeCode: string | null }[]> {
-  return (await listUserMap(deviceId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
+  // A clock that keeps its own faces (the NAS kiosk) learns who to forget from this list: somebody
+  // who has left, or who withdrew their consent to face check-in, is no longer on it — the NAS stops
+  // recognising them at its next sync and deletes their faces by its own purge (docs/privacy).
+  const [rows, gone] = await Promise.all([
+    listUserMap(deviceId),
+    db().select({ id: schema.person.id }).from(schema.person).innerJoin(schema.deviceUserMap, eq(schema.deviceUserMap.personId, schema.person.id)).where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.person.status, "offboarded"))),
+  ]);
+  const withdrawn = await faceWithdrawnAmong([...new Set(rows.map((row) => row.personId))]);
+  const left = new Set(gone.map((row) => row.id));
+  return rows.filter((row) => !left.has(row.personId) && !withdrawn.has(row.personId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
 }
 
 // ── The in-app kiosk ────────────────────────────────────────────────────────────────────────
@@ -492,18 +503,35 @@ export async function nextKioskDirection(personId: string, at: Date = new Date()
  * how they were known (`face:<person>`, `qr:<person>`). Its direction follows the person's own
  * punches (`nextKioskDirection`), so arriving by app and leaving by kiosk reads right. The rest is
  * a device punch like any other: the days recomputed, the person's Today page told.
+ *
+ * **One punch per person per `KIOSK_COOLDOWN_MS` on a clock**, decided here and nowhere else. The
+ * server cannot tell a living face from its 128 numbers sent again, so what a tablet's cookie can
+ * do to one person's day is bounded instead: inside the interval the earlier punch is the answer
+ * (`repeat`), and nothing is written. The check and the insert share a transaction under the lock
+ * the app's own check-in takes, so calls sent together cannot all pass it. `kioskSessionId` is
+ * the tablet session the punch came through, kept on the punch for HR.
  */
-export async function commitKioskPunch(deviceId: string, person: { personId: string; entityId: string | null }, how: "face" | "qr", at: Date = new Date()): Promise<{ punchId: string; at: Date; direction: "in" | "out" }> {
-  const { inserted, direction } = await db().transaction(async (tx) => {
+export async function commitKioskPunch(deviceId: string, person: { personId: string; entityId: string | null }, how: "face" | "qr", at: Date = new Date(), kioskSessionId: string | null = null): Promise<KioskPunch> {
+  const made = await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`punch:${person.personId}`}))`);
+    const recent = (await recentKioskPunches(deviceId, [person.personId], new Date(at.getTime() - KIOSK_COOLDOWN_MS), tx as Tx)).get(person.personId);
+    if (recent) return { earlier: recent, inserted: null };
     const direction = await nextKioskDirection(person.personId, at, tx as Tx);
-    const inserted = await insertDevicePunches(tx as Tx, deviceId, null, [{ personId: person.personId, entityId: person.entityId, at, direction, deviceUserId: `${how}:${person.personId}` }]);
+    const inserted = await insertDevicePunches(tx as Tx, deviceId, null, [{ personId: person.personId, entityId: person.entityId, at, direction, deviceUserId: `${how}:${person.personId}`, kioskSessionId }]);
     await recomputeAfterImport(tx as Tx, inserted);
-    return { inserted, direction };
+    return { earlier: null, inserted, direction };
   });
-  if (!inserted.ids[0]) throw new ActionError("punch_exists");
+  if (made.earlier) return { punchId: null, at: made.earlier.at, direction: made.earlier.direction, repeat: true };
+  if (!made.inserted.ids[0]) throw new ActionError("punch_exists");
   await invalidateLive(person.personId);
-  return { punchId: inserted.ids[0], at, direction };
+  return { punchId: made.inserted.ids[0], at, direction: made.direction, repeat: false };
 }
+
+/** Within this long of a kiosk punch, the same person sees that punch again instead of making another. */
+export const KIOSK_COOLDOWN_MS = 60_000;
+
+/** What a kiosk punch came to: a new punch, or — inside the interval — the earlier one again (`repeat`, no `punchId`). */
+export type KioskPunch = { punchId: string | null; at: Date; direction: "in" | "out"; repeat: boolean };
 
 /** How long after a kiosk punch "Not me" may still take it back. */
 export const KIOSK_UNDO_MS = 60_000;
@@ -528,9 +556,9 @@ export async function withdrawKioskPunch(deviceId: string, punchId: string, now:
 }
 
 /** The latest kiosk punch of each of these people on this clock since `since`, and which way it went: who checked in or out a moment ago. */
-export async function recentKioskPunches(deviceId: string, personIds: readonly string[], since: Date): Promise<Map<string, { at: Date; direction: "in" | "out" }>> {
+export async function recentKioskPunches(deviceId: string, personIds: readonly string[], since: Date, executor: Executor = db()): Promise<Map<string, { at: Date; direction: "in" | "out" }>> {
   if (personIds.length === 0) return new Map();
-  const rows = await db()
+  const rows = await executor
     .selectDistinctOn([schema.punch.personId], { personId: schema.punch.personId, at: schema.punch.at, direction: schema.punch.direction })
     .from(schema.punch)
     .where(and(eq(schema.punch.deviceId, deviceId), inArray(schema.punch.personId, [...personIds]), sql`${schema.punch.at} > ${since.toISOString()}::timestamptz`))

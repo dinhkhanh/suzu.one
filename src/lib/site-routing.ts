@@ -1,16 +1,17 @@
 // Which domain answers which path, when the product runs on two of them.
 //
 // The internal app lives on its own domain (suzu.one). The links the company hands to outsiders —
-// a client's review link (/preview, D24) and the careers pages (/careers, FR-REC-03) — live on a
-// public one (PUBLIC_SITE_URL, e.g. suzu.vn), so a client or a candidate never learns the app's
-// address. The public domain answers those two prefixes and a company home page of its own at `/`,
-// and **nothing else**: not the sign-in page, not the app's home, not its API. The app's domain
-// sends those two prefixes over, so an old link keeps working and lands on the public address.
+// a client's review link (/preview, D24), the careers pages (/careers, FR-REC-03) and the brand
+// guidelines (/brands, FR-BRD-04) — live on a public one (PUBLIC_SITE_URL, e.g. suzu.vn), so a
+// client, a candidate or a partner never learns the app's address. The public domain answers those
+// prefixes and a company home page of its own at `/`, and **nothing else**: not the sign-in page,
+// not the app's home, not its API. The app's domain sends those prefixes over, so an old link keeps
+// working and lands on the public address.
 //
 // Pure, so the whole table is tested (site-routing.test.ts); `src/proxy.ts` acts on the answer.
 
 /** The only paths the public domain serves, besides its own home page. */
-export const PUBLIC_SITE_PREFIXES = ["/preview", "/careers"] as const;
+export const PUBLIC_SITE_PREFIXES = ["/preview", "/careers", "/brands"] as const;
 
 /**
  * Where the public domain's home page actually lives. The public domain rewrites `/` here; with no
@@ -20,11 +21,11 @@ export const PORTFOLIO_PATH = "/portfolio";
 
 /**
  * Files and endpoints the proxy lets through on the app's domain untouched: they authenticate for
- * themselves (`/api/auth/`, `/api/cron/`, Meta's signed `/api/messenger/`, Telegram's
+ * themselves (`/api/auth/`, `/api/cron/`, the uptime check's `/api/health`, which answers anyone ok or not, Meta's signed `/api/messenger/`, Telegram's
  * `/api/telegram/`, a time clock's token on `/api/attendance/device/`, a kiosk tablet's cookie on
  * `/api/kiosk/`) or are the installable app's own files. On the public domain they do not exist.
  */
-const APP_PASS_THROUGH = ["/api/auth/", "/api/cron/", "/api/messenger/", "/api/telegram/", "/api/attendance/device/", "/api/kiosk/", "/sw.js", "/offline.html", "/manifest.webmanifest"];
+const APP_PASS_THROUGH = ["/api/auth/", "/api/cron/", "/api/health", "/api/messenger/", "/api/telegram/", "/api/attendance/device/", "/api/kiosk/", "/sw.js", "/offline.html", "/manifest.webmanifest"];
 
 /** Vercel's own endpoints (analytics, speed insights), which every domain needs. */
 const PLATFORM_PREFIX = "/_vercel/";

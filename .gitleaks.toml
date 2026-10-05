@@ -1,0 +1,29 @@
+# Secret scanning in CI (NFR-SEC-07; the `secrets` job in .github/workflows/ci.yml).
+#
+# Gitleaks' own rules, all of them, plus the few strings below that those rules take for secrets
+# and that are not. Each entry names one file and one exact value — never a whole folder, never a
+# whole rule — so a real key pasted beside one of them is still found. Before adding to this list,
+# read the value: if it ever worked anywhere, it is a secret, and it is rotated, not listed.
+
+title = "SuZu One"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "RFC 8291, Appendix A: the published example (auth secret and key pair) the web-push encryption test checks itself against"
+condition = "AND"
+paths = ['''(^|/)src/modules/platform/notifications/web-push\.test\.ts$''']
+regexes = ['''^(BTBZMqHH6r4Tts7J_aSIgg|yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw|q1dXpw3UpT5VOmu_cf_v6ih07Aems3njxI-JWgLcM94)$''']
+
+[[allowlists]]
+description = "A forged form token the careers test expects to be refused"
+condition = "AND"
+paths = ['''(^|/)src/modules/recruit/public\.test\.ts$''']
+regexes = ['''^123456789\.abc$''']
+
+[[allowlists]]
+description = "Not a fixture and not a secret: Crockford's base32 alphabet, which the Messenger link token is drawn from"
+condition = "AND"
+paths = ['''(^|/)src/modules/platform/notifications/messenger-links\.ts$''']
+regexes = ['''^0123456789ABCDEFGHJKMNPQRSTVWXYZ$''']

@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
-import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -18,6 +17,8 @@ import { ProgressBar } from "@/modules/projects/ui/progress";
 import { healthVariant, ProjectMark } from "@/modules/projects/ui/project-header";
 import { listClients, listCreateTargets, loadViewer } from "@/modules/work/service";
 import { CreateProjectButton } from "@/modules/work/ui/edit-dialogs";
+import { ColorSquare } from "@/modules/work/ui/task-row";
+import { ProjectStatusBadge } from "@/modules/work/ui/status-badge";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("projects");
@@ -83,19 +84,23 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
     const meta = [row.teamName, row.clientName ?? t("portfolio.noClient"), row.leadName].filter(Boolean).join(" · ");
     const burnTone = row.burn.level === "over" ? "text-destructive" : row.burn.level === "warning" ? "text-warning" : "text-muted-foreground";
     return (
-      <Link key={row.id} href={`/projects/${row.id}`} className="press group/project block min-w-0 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+      // `data-accent` turns the card's one blue (the mark) into the project's colour, as on the work page.
+      <Link key={row.id} href={`/projects/${row.id}`} data-accent={row.accent ?? undefined} className="press group/project block min-w-0 rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
         <Card className="h-full transition-colors duration-100 group-hover/project:bg-canvas">
           <CardContent className="flex h-full flex-col gap-3">
             <div className="flex items-start gap-3">
-              <ProjectMark project={{ id: row.id, name: row.name }} />
+              <ProjectMark project={row} accent={!!row.accent} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.01em]">{row.name}</p>
+                <p className="flex min-w-0 items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.01em]">
+                  <ColorSquare color={row.accent ?? undefined} />
+                  <span className="truncate">{row.name}</span>
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{meta}</p>
               </div>
               {row.jobNumber ? <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{row.jobNumber}</span> : null}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Badge dot variant={statusTone(row.status)}>{row.statusName ?? tWork(`projects.status.${row.status as "active"}`)}</Badge>
+              <ProjectStatusBadge status={row.status} name={row.statusName ?? tWork(`projects.status.${row.status as "active"}`)} />
               <Badge variant="outline">{t(`kinds.${row.kind}`)}</Badge>
               {row.briefStatus !== "approved" ? <Badge variant="secondary">{t(`brief.status.${row.briefStatus as "draft"}`)}</Badge> : null}
               {row.health ? <Badge variant={healthVariant(row.health)}>{t(`health.${row.health}`)}</Badge> : null}
@@ -104,7 +109,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
               {row.raid.openIssues > 0 ? <Badge variant="warning">{t("raid.portfolio.openIssuesBadge", { count: row.raid.openIssues })}</Badge> : null}
             </div>
             <div className="mt-auto flex flex-col gap-1.5">
-              <ProgressBar percent={row.register.promised ? (row.register.percent ?? 0) : null} tone="success" />
+              <ProgressBar percent={row.register.promised ? (row.register.percent ?? 0) : null} pending={row.register.promised ? Math.floor((row.register.awaitingClient / row.register.promised) * 100) : null} tone="success" />
               <div className="flex items-baseline justify-between gap-3 font-mono text-xs tabular-nums">
                 <span>{row.register.promised ? t("portfolio.cardProgress", { accepted: row.register.accepted, promised: row.register.promised, percent: row.register.percent ?? 0 }) : <span className="text-faint">{t("portfolio.noRegister")}</span>}</span>
                 <span className={burnTone}>{row.burn.budgetMinutes ? t("portfolio.cardHours", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes) }) : t("portfolio.cardHoursNoBudget", { used: hours(row.burn.loggedMinutes) })}</span>

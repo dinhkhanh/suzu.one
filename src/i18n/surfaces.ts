@@ -34,7 +34,11 @@ export const SURFACE_HEADER = "x-surface";
  */
 export const PUBLIC_SITE_HEADER = "x-public-site";
 
-/** The surface every page inside the company runs on: the whole catalogue, to a signed-in browser. */
+/**
+ * The surface every page inside the company runs on: the whole catalogue on the server, for a
+ * signed-in request. The browser is handed only the namespaces its client components use — the
+ * shell's in the root layout, each section's in its own layout (`segment-messages.tsx`, PERF-01).
+ */
 export const APP_SURFACE = "app";
 
 type Surface = { prefix: string; name: string; namespaces: readonly string[]; exact?: boolean };
@@ -54,6 +58,8 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
   { prefix: "/preview", name: "preview", namespaces: ["preview", "theme", "controls"] },
   /** The careers page and the take-home brief (FR-REC-03). */
   { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme", "controls"] },
+  /** The brand guidelines and their downloads (FR-BRD-04): only their own words, not the editor's. */
+  { prefix: "/brands", name: "brands", namespaces: ["brands.public", "theme", "controls"] },
   /** The public domain's own home page: the company, not the app (`src/lib/site-routing.ts`). */
   { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme", "controls"] },
   /**
@@ -112,3 +118,18 @@ export function pickMessages(all: Record<string, unknown>, namespaces: readonly 
   }
   return picked;
 }
+
+/**
+ * `extra` laid over `base`, namespace by namespace: what a section of the app adds to the words its
+ * shell already has (`src/i18n/messages-scope.tsx`). Objects merge, anything else is replaced.
+ */
+export function mergeMessages(base: Record<string, unknown>, extra: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(extra)) {
+    const under = merged[key];
+    merged[key] = isRecord(under) && isRecord(value) ? mergeMessages(under, value) : value;
+  }
+  return merged;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);

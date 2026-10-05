@@ -4,14 +4,17 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
+import { reportError } from "@/lib/observability/report";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/modules/platform/files/service";
+import { runLeaveChangeHooks } from "@/modules/platform/leave-changes/registry";
 import { can } from "@/modules/platform/rbac/policy";
 import { ACCRUAL_METHODS, BASE_SOURCES, LEAVE_CATEGORIES, PAYROLL_TREATMENTS, PORTIONS, PROBATION_RULES, ROUNDINGS, WORKFORCE_TYPES } from "./enums";
 import { openingBalanceImport } from "./import";
 import { adjustBalance, runLeaveAccruals } from "./ledger";
 import { canFileLeaveFor, canManageLeaveConfig, canManageLeaveOf } from "./policy";
 import { amendLeave, cancelLeave, decideLeave, findLeaveRequest, getLeaveRequestView, isPendingLeaveAttachment, submitLeave } from "./requests";
+import { decideLeaveRuleChange, decidesLeaveRules, getLeaveRuleChange, proposeLeaveRuleChange } from "./rule-changes";
 import { deleteStaffingRule, getLeaveType, getStaffingRule, saveLeavePolicy, saveLeaveType, saveStaffingRule } from "./types";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -33,6 +36,21 @@ const daysCenti = (min: number, max: number) =>
 const refresh = () => {
   revalidatePath("/leave", "layout");
   revalidatePath("/approvals");
+};
+
+/**
+ * What follows a change of someone's leave in the modules built on top of leave — today, work
+ * management's leave cover (FR-PJM-44), whose draft plan must exist when the approver opens the
+ * request, not after the night's job. Leave knows none of them: they register with the platform's
+ * leave-change hooks. Called once the leave's own change has committed; a failure is reported and
+ * the leave stands — the hooks' own jobs bring things in line overnight.
+ */
+const leaveChanged = async (personId: string) => {
+  try {
+    await runLeaveChangeHooks({ personId });
+  } catch (error) {
+    await reportError(error, { event: "leave.change_hooks.failed", source: "action" });
+  }
 };
 
 // ── Requests ────────────────────────────────────────────────────────────────────────────────
@@ -66,6 +84,7 @@ const submitPipeline = createAction({
     const { personId, ...leave } = input;
     const subjectId = personId ?? user.person.id;
     const filed = await submitLeave(subjectId, leave, { personId: user.person.id, isHr: await isHrFor(user, subjectId) });
+    await leaveChanged(subjectId);
     refresh();
     return { data: { id: filed.leaveRequest.id, approvalRequestId: filed.approvalRequestId, outcome: filed.outcome, conflicts: filed.conflicts }, audit: { resource: { type: "leave_request", id: filed.leaveRequest.id, entityId: filed.leaveRequest.entityId }, summary: `${leave.startDate} – ${leave.endDate}, ${filed.leaveRequest.totalCenti / 100} day(s)`, after: { personId: subjectId, leaveTypeId: leave.leaveTypeId, startDate: leave.startDate, endDate: leave.endDate, totalCenti: filed.leaveRequest.totalCenti, approvalRequestId: filed.approvalRequestId } } };
   },
@@ -90,6 +109,7 @@ const amendPipeline = createAction({
     const { leaveRequestId, ...leave } = input;
     const current = await findLeaveRequest(leaveRequestId);
     const result = await amendLeave(leaveRequestId, leave, { personId: user.person.id, isHr: await isHrFor(user, current!.personId) });
+    await leaveChanged(result.leaveRequest.personId);
     refresh();
     return { data: { id: result.leaveRequest.id, approvalRequestId: result.approvalRequestId, conflicts: result.conflicts }, audit: { resource: { type: "leave_request", id: result.leaveRequest.id, entityId: result.leaveRequest.entityId }, summary: `amends ${leaveRequestId}: ${leave.startDate} – ${leave.endDate}`, before: { id: result.before.id, startDate: result.before.startDate, endDate: result.before.endDate, status: result.before.status }, after: { startDate: leave.startDate, endDate: leave.endDate, totalCenti: result.leaveRequest.totalCenti } } };
   },
@@ -105,6 +125,7 @@ const cancelPipeline = createAction({
   run: async ({ user, input }) => {
     const current = await findLeaveRequest(input.leaveRequestId);
     const { before, after } = await cancelLeave(input.leaveRequestId, { personId: user.person.id, isHr: await isHrFor(user, current!.personId) }, input.reason);
+    await leaveChanged(after.personId);
     refresh();
     if (after.approvalRequestId) revalidatePath(`/approvals/leave/${after.approvalRequestId}`);
     return { data: { status: after.status }, audit: { resource: { type: "leave_request", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}: ${after.startDate} – ${after.endDate}`, before: { status: before.status }, after: { status: after.status, reason: input.reason } } };
@@ -121,6 +142,7 @@ const decidePipeline = createAction({
   authorize: async (user, input) => !!(await getLeaveRequestView({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
   run: async ({ user, input }) => {
     const { request, before, outcome, leaveRequest } = await decideLeave(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    await leaveChanged(leaveRequest.personId);
     refresh();
     revalidatePath(`/approvals/leave/${request.id}`);
     return { data: { outcome }, audit: { resource: { type: "leave_request", id: leaveRequest.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, leaveStatus: leaveRequest.status, requestId: request.id } } };
@@ -246,11 +268,18 @@ const typePipeline = createAction({
     if (input.id && !existing) return false;
     return canManageLeaveConfig(user.principal, existing ? existing.entityId : input.entityId);
   },
-  run: async ({ input }) => {
+  run: async ({ user, input }) => {
     const { maxDays, eligibleWorkforceTypes, ...rest } = input;
-    const { before, after } = await saveLeaveType({ ...rest, isPaid: input.payrollTreatment !== "unpaid", maxDaysPerRequestCenti: maxDays, eligibleWorkforceTypes: eligibleWorkforceTypes.length ? eligibleWorkforceTypes : null });
+    const values = { ...rest, isPaid: input.payrollTreatment !== "unpaid", maxDaysPerRequestCenti: maxDays, eligibleWorkforceTypes: eligibleWorkforceTypes.length ? eligibleWorkforceTypes : null };
+    // FR-PLT-39: HR proposes, the owner decides. Nothing changes until the owner approves.
+    if (!decidesLeaveRules(user.principal)) {
+      const { requestId } = await proposeLeaveRuleChange({ kind: "leave_type", input: values }, user.person.id);
+      refresh();
+      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave type ${values.code}: ${values.name}`, after: values } };
+    }
+    const { before, after } = await saveLeaveType(values);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after } };
+    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after } };
   },
 });
 export async function saveLeaveTypeAction(input: unknown) {
@@ -281,13 +310,37 @@ const policyPipeline = createAction({
   authorize: async (user, input) => !!(await getLeaveType(input.leaveTypeId)) && canManageLeaveConfig(user.principal, input.entityId),
   run: async ({ user, input }) => {
     const { fixedDays, extraDays, carryOverCap, allowNegative, ...rest } = input;
-    const { before, after } = await saveLeavePolicy({ ...rest, fixedDaysCenti: fixedDays, extraDaysCenti: extraDays, carryOverCapCenti: carryOverCap, allowNegativeCenti: allowNegative }, user.person.id);
+    const values = { ...rest, fixedDaysCenti: fixedDays, extraDaysCenti: extraDays, carryOverCapCenti: carryOverCap, allowNegativeCenti: allowNegative };
+    // FR-PLT-39: HR proposes, the owner decides. Nothing changes until the owner approves.
+    if (!decidesLeaveRules(user.principal)) {
+      const { requestId } = await proposeLeaveRuleChange({ kind: "leave_policy", input: values }, user.person.id);
+      refresh();
+      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave policy from ${values.validFrom}`, after: values } };
+    }
+    const { before, after } = await saveLeavePolicy(values, user.person.id);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after } };
+    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after } };
   },
 });
 export async function saveLeavePolicyAction(input: unknown) {
   return policyPipeline(input);
+}
+
+// The owner's answer to a proposed leave rule (FR-PLT-39). Being asked is not enough: deciding
+// rules is the owner's (`payroll:rules`), so a delegate who is not cannot decide one.
+const decideRulePipeline = createAction({
+  name: "leave.rule.decide",
+  input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject"]), comment: text(1000) }),
+  authorize: async (user, input) => decidesLeaveRules(user.principal) && !!(await getLeaveRuleChange({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
+  run: async ({ user, input }) => {
+    const { request, before, outcome } = await decideLeaveRuleChange(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    refresh();
+    revalidatePath(`/approvals/rule/${request.id}`);
+    return { data: { outcome }, audit: { resource: { type: "approval:leave_rule", id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, change: request.payload } } };
+  },
+});
+export async function decideLeaveRuleAction(input: unknown) {
+  return decideRulePipeline(input);
 }
 
 const staffingPipeline = createAction({

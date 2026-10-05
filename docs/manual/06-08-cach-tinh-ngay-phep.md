@@ -63,6 +63,16 @@ Nếu HR nhập số dư đầu kỳ với **Tính đến ngày**, các tháng b
 
 Thời gian thử việc lấy từ hợp đồng thử việc trong hồ sơ. Người có hình thức làm việc **Thử việc** nhưng chưa có hợp đồng thử việc được coi là đang thử việc từ ngày đầu tiên cho đến khi HR đổi hình thức làm việc.
 
+## Đặt trước ngày phép
+
+Một đơn nghỉ không chỉ được xét trên số dư hôm nay. Theo chính sách của loại phép, đơn được tính cả:
+
+- **Năm nay**: số ngày sẽ được cộng đến ngày nghỉ cuối cùng của đơn, trừ phần đã cộng rồi. Ví dụ phép cộng mỗi tháng: tháng 11 xin nghỉ một ngày tháng 12 thì phần của tháng 12 cũng được tính.
+- **Năm sau**: số ngày năm sau sẽ được cộng hoặc cấp đến ngày nghỉ, cộng phần số dư năm nay dự kiến được chuyển năm (trong mức **Chuyển năm tối đa**) — miễn là ngày chuyển năm chưa hết hạn vào ngày nghỉ.
+- Phần chuyển năm mà các đơn năm sau đã dựa vào thì không dùng lại được cho năm nay.
+
+Không tính trước cho một năm đã chốt hoặc xa hơn năm sau. Người duyệt thấy cùng con số khi duyệt.
+
 ## Nghỉ vượt số dư (ứng trước)
 
 Nếu chính sách có **Cho ứng trước (ngày)** lớn hơn 0, bạn được xin nghỉ khi số dùng được cộng mức ứng trước vẫn đủ cho đơn. Số dư khi đó có thể âm; phần âm được mang sang năm sau như một khoản nợ ngày phép.

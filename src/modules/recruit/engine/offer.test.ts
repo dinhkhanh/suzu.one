@@ -3,6 +3,8 @@ import { OFFER_STATUSES, type OfferStatus } from "../enums";
 import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, offerExpiredOn, type OfferDraft, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./offer";
 
 const TODAY = "2026-09-20";
+// `probation.limits.minimumPayPercent` as seeded (Bộ luật Lao động 2019, Điều 26).
+const LIMITS = { minimumProbationPayPercent: 85 };
 
 const draft = (over: Partial<OfferDraft> = {}): OfferDraft => ({
   positionName: "Video Editor",
@@ -86,45 +88,48 @@ describe("expiry is read from the clock, not from a job", () => {
 
 describe("what an offer may say", () => {
   it("accepts an ordinary offer", () => {
-    expect(offerProblems(draft(), TODAY)).toEqual([]);
+    expect(offerProblems(draft(), TODAY, LIMITS)).toEqual([]);
   });
 
   it("refuses a figure that is not whole positive đồng", () => {
-    expect(offerProblems(draft({ baseSalaryVnd: 0 }), TODAY)).toContain("offer_amount_invalid");
-    expect(offerProblems(draft({ baseSalaryVnd: -1 }), TODAY)).toContain("offer_amount_invalid");
-    expect(offerProblems(draft({ baseSalaryVnd: 22_000_000.5 }), TODAY)).toContain("offer_amount_invalid");
-    expect(offerProblems(draft({ baseSalaryVnd: Number.NaN }), TODAY)).toContain("offer_amount_invalid");
-    expect(offerProblems(draft({ baseSalaryVnd: 9_000_000_000 }), TODAY)).toContain("offer_amount_too_large");
-    expect(offerProblems(draft({ allowancesVnd: -5 }), TODAY)).toContain("offer_allowances_invalid");
+    expect(offerProblems(draft({ baseSalaryVnd: 0 }), TODAY, LIMITS)).toContain("offer_amount_invalid");
+    expect(offerProblems(draft({ baseSalaryVnd: -1 }), TODAY, LIMITS)).toContain("offer_amount_invalid");
+    expect(offerProblems(draft({ baseSalaryVnd: 22_000_000.5 }), TODAY, LIMITS)).toContain("offer_amount_invalid");
+    expect(offerProblems(draft({ baseSalaryVnd: Number.NaN }), TODAY, LIMITS)).toContain("offer_amount_invalid");
+    expect(offerProblems(draft({ baseSalaryVnd: 9_000_000_000 }), TODAY, LIMITS)).toContain("offer_amount_too_large");
+    expect(offerProblems(draft({ allowancesVnd: -5 }), TODAY, LIMITS)).toContain("offer_allowances_invalid");
     // Nothing on top of the base is perfectly ordinary.
-    expect(offerProblems(draft({ allowancesVnd: 0 }), TODAY)).toEqual([]);
+    expect(offerProblems(draft({ allowancesVnd: 0 }), TODAY, LIMITS)).toEqual([]);
   });
 
   it("refuses a start date that has already been and gone", () => {
-    expect(offerProblems(draft({ startDate: "2026-09-19", expiresOn: "2026-09-19" }), TODAY)).toContain("offer_start_date_past");
+    expect(offerProblems(draft({ startDate: "2026-09-19", expiresOn: "2026-09-19" }), TODAY, LIMITS)).toContain("offer_start_date_past");
     // Starting today is late notice, not an error.
-    expect(offerProblems(draft({ startDate: TODAY, expiresOn: TODAY }), TODAY)).toEqual([]);
+    expect(offerProblems(draft({ startDate: TODAY, expiresOn: TODAY }), TODAY, LIMITS)).toEqual([]);
   });
 
   it("refuses an offer that outlives the day the person is due at their desk", () => {
-    expect(offerProblems(draft({ startDate: "2026-10-05", expiresOn: "2026-10-06" }), TODAY)).toContain("offer_expiry_after_start");
-    expect(offerProblems(draft({ expiresOn: "2026-09-01" }), TODAY)).toContain("offer_expiry_past");
+    expect(offerProblems(draft({ startDate: "2026-10-05", expiresOn: "2026-10-06" }), TODAY, LIMITS)).toContain("offer_expiry_after_start");
+    expect(offerProblems(draft({ expiresOn: "2026-09-01" }), TODAY, LIMITS)).toContain("offer_expiry_past");
     // Expiring on the start date itself is the tightest honest offer.
-    expect(offerProblems(draft({ startDate: "2026-10-05", expiresOn: "2026-10-05" }), TODAY)).toEqual([]);
+    expect(offerProblems(draft({ startDate: "2026-10-05", expiresOn: "2026-10-05" }), TODAY, LIMITS)).toEqual([]);
   });
 
   it("holds probation to the Labour Code's shape", () => {
-    expect(offerProblems(draft({ probationMonths: 7 }), TODAY)).toContain("offer_probation_invalid");
-    expect(offerProblems(draft({ probationMonths: -1 }), TODAY)).toContain("offer_probation_invalid");
+    expect(offerProblems(draft({ probationMonths: 7 }), TODAY, LIMITS)).toContain("offer_probation_invalid");
+    expect(offerProblems(draft({ probationMonths: -1 }), TODAY, LIMITS)).toContain("offer_probation_invalid");
     // No probation at all is a decision, not a mistake.
-    expect(offerProblems(draft({ probationMonths: 0 }), TODAY)).toEqual([]);
-    expect(offerProblems(draft({ probationSalaryPercent: 80 }), TODAY)).toContain("offer_probation_percent_invalid");
-    expect(offerProblems(draft({ probationSalaryPercent: 101 }), TODAY)).toContain("offer_probation_percent_invalid");
-    expect(offerProblems(draft({ probationSalaryPercent: 100 }), TODAY)).toEqual([]);
+    expect(offerProblems(draft({ probationMonths: 0 }), TODAY, LIMITS)).toEqual([]);
+    expect(offerProblems(draft({ probationSalaryPercent: 80 }), TODAY, LIMITS)).toContain("offer_probation_percent_invalid");
+    expect(offerProblems(draft({ probationSalaryPercent: 101 }), TODAY, LIMITS)).toContain("offer_probation_percent_invalid");
+    expect(offerProblems(draft({ probationSalaryPercent: 100 }), TODAY, LIMITS)).toEqual([]);
+    // The floor is the parameter handed in, not a figure of the engine's own: were the law to lower it, 80 would pass.
+    expect(offerProblems(draft({ probationSalaryPercent: 80 }), TODAY, { minimumProbationPayPercent: 80 })).toEqual([]);
+    expect(offerProblems(draft({ probationSalaryPercent: 85 }), TODAY, { minimumProbationPayPercent: 90 })).toContain("offer_probation_percent_invalid");
   });
 
   it("refuses an offer with no job title", () => {
-    expect(offerProblems(draft({ positionName: "   " }), TODAY)).toContain("offer_position_empty");
+    expect(offerProblems(draft({ positionName: "   " }), TODAY, LIMITS)).toContain("offer_position_empty");
   });
 });
 

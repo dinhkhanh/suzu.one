@@ -10,10 +10,10 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { listTeams } from "@/modules/work/service";
-import { accountChoices, canEditActivity, canViewLead, canWorkLead, getLead, leadFacts, type LeadStatus, listActivities, listOpenFollowUps, listStages, stageName } from "@/modules/crm/service";
+import { accountChoices, canEditActivity, canEraseLeadContact, canViewLead, canWorkLead, getLead, leadFacts, type LeadStatus, listActivities, listOpenFollowUps, listStages, stageName } from "@/modules/crm/service";
 import { crmShell, sells } from "@/modules/crm/pages";
 import { LogActivityForm } from "@/modules/crm/ui/activity-forms";
-import { AssignLeadForm, ConvertLeadForm, DisqualifyForm, EditLeadForm, LeadStatusButtons } from "@/modules/crm/ui/deal-forms";
+import { AssignLeadForm, ConvertLeadForm, DisqualifyForm, EditLeadForm, EraseLeadContactForm, LeadStatusButtons } from "@/modules/crm/ui/deal-forms";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { ActivityList, FollowUpList, formatters } from "@/modules/crm/ui/views";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -27,6 +27,8 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
   const lead = await getLead(leadId);
   if (!lead || !canViewLead(shell.viewer, leadFacts(lead))) notFound();
   const works = canWorkLead(shell.viewer, leadFacts(lead));
+  // Erasure on request (PDPL): while the lead still names somebody, open or closed.
+  const erases = canEraseLeadContact(shell.viewer, leadFacts(lead)) && !!(lead.contactName || lead.contactTitle || lead.email || lead.phone);
   const today = todayInVietnam();
   const [t, f, locale, people, entities, accounts, teams, stages, activities, followUps] = await Promise.all([
     getTranslations("crm"),
@@ -101,6 +103,11 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
               {lead.clientName}
             </RecordLink>
           </p>
+        ) : null}
+        {erases ? (
+          <div className="sm:col-span-2">
+            <EraseLeadContactForm leadId={lead.id} />
+          </div>
         ) : null}
       </section>
 

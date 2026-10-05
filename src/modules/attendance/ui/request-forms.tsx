@@ -19,6 +19,8 @@ import type { ActionResult } from "@/lib/action";
 import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { approveMonthsAction, beginEvidenceAction, cancelAttendanceRequestAction, completeEvidenceAction, confirmMonthAction, confirmWorkedMinutesAction, createAdjustmentAction, evidenceLinkAction, lockPeriodAction, nudgeAction, remindToConfirmAction, reopenMonthAction, resubmitAttendanceRequestAction, submitAttendanceRequestAction, voidAdjustmentAction } from "../request-actions";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
+import { PositionPicker } from "./position-picker";
 
 const ERRORS = "attendance.requests.errors";
 type RequestType = "attendance_correction" | "remote_work" | "overtime" | "holiday_work";
@@ -79,7 +81,7 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
                 </Field>
               </div>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
+                <Checkbox name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
               </label>
               <Field name="cause" label={t("fields.cause")}>
                 <Select id="cause" name="cause" defaultValue={defaults.cause ?? "forgot"}>
@@ -101,7 +103,8 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field name="kind" label={t("fields.kind")}>
                   <Select id="kind" name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
-                    {(["wfh", "off_site", "business_trip"] as const).map((value) => (
+                    {/* A business trip is filed as a request with its money (REQ-02); its approval writes the days here. Only an old one being corrected still offers it. */}
+                    {(defaults.kind === "business_trip" ? (["wfh", "off_site", "business_trip"] as const) : (["wfh", "off_site"] as const)).map((value) => (
                       <option key={value} value={value}>
                         {t(`kinds.${value}`)}
                       </option>
@@ -118,19 +121,15 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
                   </Select>
                 </Field>
               </div>
+              <p className="text-xs text-muted-foreground">{t("tripHint")}</p>
               {kind === "wfh" ? null : (
                 <>
                   <Field name="locationName" label={t("fields.locationName")}>
                     <Input id="locationName" name="locationName" maxLength={200} defaultValue={defaults.locationName} />
                   </Field>
+                  <PositionPicker label={t("fields.position")} defaultValue={{ latitude: defaults.latitude, longitude: defaults.longitude }} />
                   <p className="text-xs text-muted-foreground">{t("fields.positionHint")}</p>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <Field name="latitude" label={t("fields.latitude")}>
-                      <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={defaults.latitude} />
-                    </Field>
-                    <Field name="longitude" label={t("fields.longitude")}>
-                      <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={defaults.longitude} />
-                    </Field>
                     <Field name="radiusM" label={t("fields.radius")}>
                       <Input id="radiusM" name="radiusM" inputMode="numeric" placeholder="300" defaultValue={defaults.radiusM} />
                     </Field>
@@ -176,20 +175,16 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
 
 function ConfirmingForm({ action, extra, label, confirm, askReason, reasonName = "reason", variant = "outline" }: { action: (input: unknown) => Promise<ActionResult<unknown>>; extra: Record<string, unknown>; label: string; confirm?: string; askReason?: string; reasonName?: string; variant?: "outline" | "default" | "destructive" }) {
   const router = useRouter();
-  const { onSubmit, pending, errorKey } = useActionForm(action, { extra, onSuccess: () => router.refresh() });
+  const form = useActionForm(action, { extra, onSuccess: () => router.refresh() });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: variant === "destructive" });
   return (
-    <form
-      onSubmit={(event) => {
-        if (!confirm || window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex flex-wrap items-center gap-2"
-    >
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
       {askReason ? <Input name={reasonName} required minLength={5} maxLength={500} placeholder={askReason} className="h-8 w-64" /> : null}
-      <Button type="submit" size="sm" variant={variant} disabled={pending}>
+      <Button type="submit" size="sm" variant={variant} disabled={form.pending}>
         {label}
       </Button>
-      <FormError namespace={ERRORS} errorKey={errorKey} />
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
+      {dialog}
     </form>
   );
 }
@@ -320,24 +315,21 @@ export function ApproveMonthsForm({ month, rows }: { month: string; rows: { pers
 export function LockPeriodForm({ entityId, month, blocked }: { entityId: string; month: string; blocked: boolean }) {
   const t = useTranslations("attendance.months");
   const router = useRouter();
-  const { onSubmit, pending, errorKey } = useActionForm(lockPeriodAction, { extra: { entityId, month }, onSuccess: () => router.refresh() });
+  const form = useActionForm(lockPeriodAction, { extra: { entityId, month }, onSuccess: () => router.refresh() });
+  const label = blocked ? t("lock.override") : t("lock.button");
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: t("lock.confirm"), confirmLabel: label, destructive: blocked });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(t("lock.confirm"))) onSubmit(event);
-        else event.preventDefault();
-      }}
-      className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4"
-    >
+    <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4">
       <h3>{t("lock.title")}</h3>
       <p className="text-xs text-muted-foreground">{blocked ? t("lock.blockedHint") : t("lock.readyHint")}</p>
       {blocked ? <Input name="overrideReason" required minLength={10} maxLength={500} placeholder={t("lock.overrideReason")} /> : null}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="sm" variant={blocked ? "destructive" : "default"} disabled={pending}>
-          {blocked ? t("lock.override") : t("lock.button")}
+        <Button type="submit" size="sm" variant={blocked ? "destructive" : "default"} disabled={form.pending}>
+          {label}
         </Button>
-        <FormError namespace={ERRORS} errorKey={errorKey} />
+        <FormError namespace={ERRORS} errorKey={form.errorKey} />
       </div>
+      {dialog}
     </form>
   );
 }

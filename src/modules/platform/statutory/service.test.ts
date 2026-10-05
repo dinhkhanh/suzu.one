@@ -4,9 +4,10 @@ vi.mock("@/lib/db", () => import("../../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 
+import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../../tests/helpers/db";
-import { decideParameter, getParameter, proposeParameter } from "./service";
+import { decideParameter, getParameter, proposeParameter, voidParameter } from "./service";
 
 let hr: string;
 let owner: string;
@@ -50,6 +51,36 @@ it("refuses wrong shapes, unknown keys, rewrites of history and second decisions
   const { after } = await decideParameter(early.id, "reject", owner);
   expect(after.status).toBe("rejected");
   await expect(decideParameter(early.id, "approve", owner)).rejects.toThrow("proposal_not_found");
+});
+
+it("voids a wrong version: the one before runs on, and the correction is approved over its days (PAY-13)", async () => {
+  const wrong = await propose(25_300_000, "2027-07-01");
+  await decideParameter(wrong.id, "approve", owner);
+  expect(await getParameter("insurance.reference_level", "2027-08-01")).toEqual({ amount: 25_300_000 });
+
+  const { after } = await voidParameter(wrong.id, "Gõ thừa một số 0", owner);
+  expect(after).toMatchObject({ status: "voided", voidReason: "Gõ thừa một số 0", voidedByPersonId: owner });
+  // As if it had never been approved: July 2026's value applies again, with no end.
+  expect(await getParameter("insurance.reference_level", "2027-08-01")).toEqual({ amount: 2_530_000 });
+  await expect(voidParameter(wrong.id, "lần nữa", owner)).rejects.toThrow("version_not_voidable");
+
+  const fixed = await propose(2_530_000 + 1, "2027-07-01");
+  await decideParameter(fixed.id, "approve", owner);
+  expect(await getParameter("insurance.reference_level", "2027-08-01")).toEqual({ amount: 2_530_001 });
+});
+
+it("refuses to void a value a payroll run past C&B was calculated with", async () => {
+  const [entity] = await db().insert(schema.entity).values({ code: "SZV", legalName: "SuZu V", shortName: "V" }).returning();
+  const used = await propose(2_600_000, "2028-01-01");
+  await decideParameter(used.id, "approve", owner);
+  const context = { parameterVersions: { "insurance.reference_level": used.id }, componentVersionIds: [], policyVersionId: null };
+  const [run] = await db().insert(schema.payrollRun).values({ entityId: entity.id, month: "2028-01", status: "paid", context }).returning();
+  await expect(voidParameter(used.id, "sai", owner)).rejects.toThrow("void_used_by_paid_run");
+  await db().update(schema.payrollRun).set({ status: "approved" }).where(eq(schema.payrollRun.id, run.id));
+  await expect(voidParameter(used.id, "sai", owner)).rejects.toThrow("void_run_in_review");
+  // A run still with C&B is calculated again; it does not stand in the way.
+  await db().update(schema.payrollRun).set({ status: "calculated" }).where(eq(schema.payrollRun.id, run.id));
+  await expect(voidParameter(used.id, "sai", owner)).resolves.toMatchObject({ after: { status: "voided" } });
 });
 
 it("cannot hold two approved versions for the same day, even if written directly", async () => {

@@ -1,0 +1,3 @@
+DROP INDEX "payroll_retro_item_source_key";--> statement-breakpoint
+ALTER TABLE "payslip" ADD COLUMN "withdrawn_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "payroll_retro_item_source_month_key" ON "payroll_retro_item" USING btree ("person_id","kind","source_ref","source_month") WHERE "payroll_retro_item"."source_ref" IS NOT NULL AND "payroll_retro_item"."status" <> 'cancelled';

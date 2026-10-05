@@ -1,3 +1,4 @@
+import { storedText } from "@/lib/stored-text";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,7 @@ import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page"
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
-import { getBalances } from "@/modules/leave/ledger";
+import { getBalances, getLedger } from "@/modules/leave/ledger";
 import { canOpenLeaveAdmin } from "@/modules/leave/policy";
 import { listLeaveRequestsOf } from "@/modules/leave/requests";
 import { CancelLeaveButton } from "@/modules/leave/ui/request-forms";
@@ -21,13 +22,18 @@ export const generateMetadata = pageTitle("leave");
 export default async function LeavePage() {
   const user = await requireUser();
   const t = await getTranslations("leave");
+  const tStored = await getTranslations("stored");
   const format = await getFormatter();
   const locale = await getLocale();
   const today = todayInVietnam();
   const year = Number(today.slice(0, 4));
-  const [balances, requests] = await Promise.all([getBalances([user.person.id], year), listLeaveRequestsOf(user.person.id)]);
+  const tAdmin = await getTranslations("leave.admin");
+  // The person's own ledger (FR-LVE-07): this year and the next, where leave booked ahead lands.
+  const [balances, requests, ledgerNext, ledgerThis] = await Promise.all([getBalances([user.person.id], year), listLeaveRequestsOf(user.person.id), getLedger(user.person.id, { year: year + 1 }), getLedger(user.person.id, { year })]);
+  const ledger = [...ledgerNext, ...ledgerThis];
   const mine = balances.get(user.person.id) ?? [];
   const days = (centi: number) => format.number(centi / 100, { maximumFractionDigits: 2 });
+  const signed = (centi: number) => format.number(centi / 100, { maximumFractionDigits: 2, signDisplay: "exceptZero" });
   const date = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { day: "numeric", month: "numeric", year: "numeric" });
   const dates = (from: string, to: string) => (from === to ? date(from) : `${date(from)} – ${date(to)}`);
   const statusOf = (request: (typeof requests)[number]) => (request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status);
@@ -147,6 +153,55 @@ export default async function LeavePage() {
             </TableBody>
           </Table>
           <TableAddRow label={t("request.new")} href="/leave/new" />
+        </TableCard>
+      </Section>
+
+      <Section title={t("balances.ledger")} count={ledger.length || null} description={t("balances.ledgerHint")}>
+        <TableCard className="md:hidden">
+          <List>
+            {ledger.length === 0 ? <ListEmpty>{t("balances.noLedger")}</ListEmpty> : null}
+            {ledger.map((entry) => (
+              <ListItem key={entry.id} className="flex-col items-stretch gap-0.5">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="truncate text-sm font-medium">
+                    {tAdmin(`ledgerKinds.${entry.kind}`)} · {entry.typeName}
+                  </span>
+                  <span className="font-mono text-sm tabular-nums">{signed(entry.amountCenti)}</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {date(entry.effectiveDate)}
+                  {entry.reason ? ` · ${storedText(entry.reason, tStored)}` : ""}
+                </span>
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
+        <TableCard className="hidden md:flex">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="date">{tAdmin("balances.date")}</TableHead>
+                <TableHead kind="text">{tAdmin("balances.type")}</TableHead>
+                <TableHead kind="select">{tAdmin("balances.movement")}</TableHead>
+                <TableHead kind="number">{tAdmin("balances.days")}</TableHead>
+                <TableHead kind="text">{tAdmin("balances.reason")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ledger.length === 0 ? <TableEmpty>{t("balances.noLedger")}</TableEmpty> : null}
+              {ledger.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell>{date(entry.effectiveDate)}</TableCell>
+                  <TableCell>{entry.typeName}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{tAdmin(`ledgerKinds.${entry.kind}`)}</Badge>
+                  </TableCell>
+                  <TableCell kind="number">{signed(entry.amountCenti)}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground">{storedText(entry.reason, tStored) ?? ""}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </TableCard>
       </Section>
     </Page>

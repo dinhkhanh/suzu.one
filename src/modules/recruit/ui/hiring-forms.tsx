@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { decideHiringRequestAction, submitHiringRequestAction } from "../actions";
 import { EMPLOYMENT_TYPES } from "../enums";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -35,6 +36,7 @@ export function HiringRequestForm({
   const t = useTranslations("recruit.form");
   const tRoot = useTranslations("recruit");
   const types = useTranslations("recruit.employmentType");
+  const tp = useTranslations("people");
   const router = useRouter();
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(submitHiringRequestAction, {
     onSuccess: (data) => router.push(`/recruit/hiring/${(data as { id: string }).id}`),
@@ -69,8 +71,25 @@ export function HiringRequestForm({
               ))}
             </Select>
           </Field>
-          <Field name="jobLevel" label={t("jobLevel")}>
-            <Input id="jobLevel" name="jobLevel" maxLength={80} />
+          <Field name="seniorityLevel" label={tp("fields.seniorityLevel")}>
+            <Select id="seniorityLevel" name="seniorityLevel" defaultValue="">
+              <option value="">—</option>
+              {SENIORITY_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`seniorityLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field name="positionLevel" label={tp("fields.positionLevel")}>
+            <Select id="positionLevel" name="positionLevel" defaultValue="">
+              <option value="">—</option>
+              {POSITION_LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {tp(`positionLevel.${value}`)}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field name="employmentType" label={t("employmentType")}>
             <Select id="employmentType" name="employmentType" defaultValue="employee">

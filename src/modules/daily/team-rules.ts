@@ -2,10 +2,11 @@
 // The rows are reference data read on every Today page: the whole table sits in the shared cache,
 // and saving a team's rules drops it.
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, not, or } from "drizzle-orm";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
-import { DEFAULT_TEAM_RULES, mergeRules, type PersonRules, type TeamRules } from "./engine/rules";
+import { holdsRoleToday } from "@/modules/platform/rbac/service";
+import { DEFAULT_TEAM_RULES, exemptRules, mergeRules, type PersonRules, type TeamRules } from "./engine/rules";
 import type { RuleMode } from "./enums";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -40,41 +41,54 @@ export async function saveTeamRules(teamId: string, rules: TeamRules): Promise<{
 /** Writers outside this file (seeds, tests): the rules changed. */
 export const invalidateTeamRules = () => invalidate(RULES_CACHE);
 
-export type PersonTeams = { rules: PersonRules; teamIds: string[]; ledTeamIds: string[] };
+/**
+ * Whom the daily loop asks nothing of (owner's decision of 2026-10-05, amending D23): people whose
+ * workforce type is collaborator, and people who hold the owner role today. One condition, in
+ * Postgres, for every reader below — so the reminders, the board's "missing", the compliance
+ * figures and the weekly reports cannot disagree about who is asked.
+ */
+const exemptFromDaily = () => or(eq(schema.person.workforceType, "collaborator"), holdsRoleToday(schema.person.id, "owner"))!;
+
+export type PersonTeams = { rules: PersonRules; teamIds: string[]; ledTeamIds: string[]; /** The loop asks nothing of them (`exemptFromDaily`): their rules are already relaxed. */ exempt: boolean };
 
 /**
  * What each person follows: the strictest rules of the active work teams they belong to (a person
- * in no team gets `NO_TEAM_RULES`). One membership query and the cached rules table.
+ * in no team gets `NO_TEAM_RULES`), relaxed to "optional" for someone the loop asks nothing of.
+ * One membership query, one for the exempt among them, and the cached rules table.
  */
 export async function rulesOfPeople(personIds: readonly string[], executor?: Executor): Promise<Map<string, PersonTeams>> {
   const ids = [...new Set(personIds)];
   const result = new Map<string, PersonTeams>();
   if (ids.length === 0) return result;
   const reader = executor ?? db();
-  const [memberships, rows] = await Promise.all([
+  const [memberships, exemptRows, rows] = await Promise.all([
     reader
       .select({ personId: schema.workTeamMember.personId, teamId: schema.workTeamMember.teamId, role: schema.workTeamMember.role })
       .from(schema.workTeamMember)
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTeamMember.teamId))
       .where(and(inArray(schema.workTeamMember.personId, ids), eq(schema.workTeam.isActive, true))),
+    reader.select({ personId: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, ids), exemptFromDaily())),
     listAllRows(executor),
   ]);
   const byTeam = new Map(rows.map((row) => [row.teamId, row]));
   const of = Map.groupBy(memberships, (row) => row.personId);
+  const exempt = new Set(exemptRows.map((row) => row.personId));
   for (const personId of ids) {
     const own = of.get(personId) ?? [];
-    result.set(personId, { rules: mergeRules(own.map((row) => rulesOfRow(byTeam.get(row.teamId)))), teamIds: own.map((row) => row.teamId), ledTeamIds: own.filter((row) => row.role === "lead").map((row) => row.teamId) });
+    const merged = mergeRules(own.map((row) => rulesOfRow(byTeam.get(row.teamId))));
+    result.set(personId, { rules: exempt.has(personId) ? exemptRules(merged) : merged, teamIds: own.map((row) => row.teamId), ledTeamIds: own.filter((row) => row.role === "lead").map((row) => row.teamId), exempt: exempt.has(personId) });
   }
   return result;
 }
 
 /**
- * Everyone the daily loop may ask something of: every active person. Since Q18 (2026-09-23) the
- * plan and the report are asked of the person, not of their team, so someone in no work team is
- * reminded like everyone else; their rules are `NO_TEAM_RULES` and their approver is their line
- * manager. Who is actually due on a day is still `dayOf`'s answer, person by person.
+ * Everyone the daily loop may ask something of: every active person but the ones it asks nothing
+ * of (`exemptFromDaily`). Since Q18 (2026-09-23) the plan and the report are asked of the person,
+ * not of their team, so someone in no work team is reminded like everyone else; their rules are
+ * `NO_TEAM_RULES` and their approver is their line manager. Who is actually due on a day is still
+ * `dayOf`'s answer, person by person.
  */
 export async function listDailyPeople(executor: Executor = db()): Promise<string[]> {
-  const rows = await executor.select({ personId: schema.person.id }).from(schema.person).where(eq(schema.person.status, "active"));
+  const rows = await executor.select({ personId: schema.person.id }).from(schema.person).where(and(eq(schema.person.status, "active"), not(exemptFromDaily())));
   return rows.map((row) => row.personId);
 }

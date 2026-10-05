@@ -21,7 +21,12 @@
 //    this can produce offline, and Excel opens it and saves it as .xls in one step);
 //  * the debit account, value date and batch name are typed into the portal, not carried in the
 //    file — they are written into the file name and reported on screen so they can be typed;
-//  * amounts are whole đồng, which is all payroll ever produces.
+//  * amounts are whole đồng, which is all payroll ever produces;
+//  * **in-house only** (`interbank: false`): the layout has no beneficiary-bank column, so a row
+//    can only name a Vietcombank account. Vietcombank does offer interbank bulk payment, but as a
+//    different template this module does not reconstruct — people who bank elsewhere go through
+//    the ACB file instead (see `acb.ts`). If the accountant confirms a VCB interbank layout, it is
+//    a second format module beside this one.
 import { type BankFormat, normalizedAccountNumber, partition, toAsciiUpper, toCsvFile, type TransferFile, type TransferInput } from "./format";
 
 export const VCB_COLUMNS = ["STT", "SO TAI KHOAN", "TEN NGUOI HUONG", "SO TIEN", "NOI DUNG", "MA NHAN VIEN"] as const;
@@ -30,6 +35,8 @@ export const vcbFormat: BankFormat = {
   key: "vcb",
   name: "Vietcombank",
   version: "vcb-salary-csv-1",
+  aliases: ["vcb", "vietcombank", "ngoại thương", "ngoai thuong"],
+  interbank: false,
 
   build(input: TransferInput): TransferFile {
     const { payable, skipped } = partition(input.rows);

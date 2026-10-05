@@ -29,6 +29,7 @@ import {
 } from "../records-actions";
 import type { SensitiveFields, SensitiveSummary } from "../records";
 import { TableAddRow } from "@/components/ui/table";
+import { ConfirmButton } from "@/components/ui/confirm";
 
 const ERRORS = "records.errors";
 const BANK_ROWS = [0, 1];
@@ -65,25 +66,23 @@ function SubmitRow({ pending, errorKey }: { pending: boolean; errorKey: string |
 /** A one-click action with a confirm step for destructive ones. Reports failure inline. */
 export function RowAction({ action, input, label, confirm, variant = "ghost" }: { action: (input: unknown) => Promise<ActionResult<unknown>>; input: Record<string, unknown>; label: string; confirm?: string; variant?: "ghost" | "outline" }) {
   const t = useTranslations(ERRORS);
+  const tr = useTranslations("records");
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const run = () =>
+    startTransition(async () => {
+      const result = await action(input);
+      setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
+    });
   return (
     <span className="inline-flex items-center gap-2">
-      <Button
-        type="button"
-        size="xs"
-        variant={variant}
-        disabled={pending}
-        onClick={() => {
-          if (confirm && !window.confirm(confirm)) return;
-          startTransition(async () => {
-            const result = await action(input);
-            setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
-          });
-        }}
-      >
-        {label}
-      </Button>
+      {confirm ? (
+        <ConfirmButton size="xs" variant={variant} disabled={pending} label={label} question={confirm} confirmLabel={tr("delete")} destructive onConfirm={run} />
+      ) : (
+        <Button type="button" size="xs" variant={variant} disabled={pending} onClick={run}>
+          {label}
+        </Button>
+      )}
       {errorKey ? <span role="alert" className="text-xs text-destructive">{t.has(errorKey) ? t(errorKey) : t("generic")}</span> : null}
     </span>
   );

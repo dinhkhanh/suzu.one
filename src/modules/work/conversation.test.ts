@@ -162,22 +162,23 @@ describe("followers", () => {
 
 describe("reminders", () => {
   it("go to the assignee once per day: due tomorrow and overdue, bundled per person", async () => {
+    // Tuesday the 22nd and Wednesday the 23rd: working days for everyone here (paths.test.ts covers days off).
     await setProjectMember(ids.teamProject, ids.huy, "member");
-    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Colour grade", assigneePersonId: ids.huy, dueDate: "2026-09-21" }, ids.long);
-    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Sound mix", assigneePersonId: ids.huy, dueDate: "2026-09-21" }, ids.long);
-    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Subtitles", assigneePersonId: ids.tam, dueDate: "2026-09-19" }, ids.long);
-    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Not yet", assigneePersonId: ids.tam, dueDate: "2026-09-25" }, ids.long);
-    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Two days late: no reminder today", assigneePersonId: ids.tam, dueDate: "2026-09-18" }, ids.long);
+    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Colour grade", assigneePersonId: ids.huy, dueDate: "2026-09-23" }, ids.long);
+    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Sound mix", assigneePersonId: ids.huy, dueDate: "2026-09-23" }, ids.long);
+    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Subtitles", assigneePersonId: ids.tam, dueDate: "2026-09-21" }, ids.long);
+    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Not yet", assigneePersonId: ids.tam, dueDate: "2026-09-27" }, ids.long);
+    await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title: "Two days late: no reminder today", assigneePersonId: ids.tam, dueDate: "2026-09-20" }, ids.long);
 
-    expect(await sendWorkReminders("2026-09-20")).toEqual({ dueSoon: 2, overdue: 1, people: 2 });
+    expect(await sendWorkReminders("2026-09-22")).toEqual({ dueSoon: 2, overdue: 1, people: 2 });
     expect((await noticesOf(ids.huy, "tasks.due_soon")).map((row) => row.params)).toEqual([expect.objectContaining({ count: 2, title: "Colour grade" })]);
-    expect((await noticesOf(ids.tam, "tasks.overdue")).map((row) => [row.params, row.link])).toEqual([[expect.objectContaining({ count: 1, title: "Subtitles", dueDate: "19/09/2026" }), expect.stringMatching(/^\/work\/tasks\//)]]);
+    expect((await noticesOf(ids.tam, "tasks.overdue")).map((row) => [row.params, row.link])).toEqual([[expect.objectContaining({ count: 1, title: "Subtitles", dueDate: "21/09/2026" }), expect.stringMatching(/^\/work\/tasks\//)]]);
     // A retry, or the second cron trigger of the day.
-    expect(await sendWorkReminders("2026-09-20")).toEqual({ dueSoon: 0, overdue: 0, people: 0 });
+    expect(await sendWorkReminders("2026-09-22")).toEqual({ dueSoon: 0, overdue: 0, people: 0 });
     // Next day: the task two days late turns three days late and is due a reminder; finished work is left alone.
     const [subtitles] = await db().select().from(schema.task).where(and(eq(schema.task.title, "Subtitles")));
     const done = (await listStates([ids.video])).find((state) => state.category === "done")!;
     await updateWorkTask(subtitles.id, { stateId: done.id }, ids.tam);
-    expect(await sendWorkReminders("2026-09-21")).toEqual({ dueSoon: 0, overdue: 1, people: 1 });
+    expect(await sendWorkReminders("2026-09-23")).toEqual({ dueSoon: 0, overdue: 1, people: 1 });
   });
 });

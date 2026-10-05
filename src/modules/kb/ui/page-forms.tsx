@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -247,9 +248,7 @@ export function PageLifecycleButtons({ pageId, spaceKey, status, published, canP
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         {canPublish && published && status !== "archived" ? (
-          <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => window.confirm(t("page.unpublishConfirm")) && run(() => unpublishPageAction({ pageId }))}>
-            {t("page.unpublish")}
-          </Button>
+          <ConfirmButton variant="outline" size="sm" disabled={pending} label={t("page.unpublish")} question={t("page.unpublishConfirm")} onConfirm={() => run(() => unpublishPageAction({ pageId }))} />
         ) : null}
         {canPublish || !published ? (
           <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => run(() => archivePageAction({ pageId, archived: status !== "archived" }))}>
@@ -257,9 +256,7 @@ export function PageLifecycleButtons({ pageId, spaceKey, status, published, canP
           </Button>
         ) : null}
         {canDelete ? (
-          <Button type="button" variant="destructive" size="sm" disabled={pending} onClick={() => window.confirm(t("page.deleteConfirm")) && run(() => deletePageAction({ pageId }), () => router.push(`/kb/spaces/${spaceKey}`))}>
-            {t("page.delete")}
-          </Button>
+          <ConfirmButton variant="destructive" size="sm" disabled={pending} destructive label={t("page.delete")} question={t("page.deleteConfirm")} onConfirm={() => run(() => deletePageAction({ pageId }), () => router.push(`/kb/spaces/${spaceKey}`))} />
         ) : null}
       </div>
       <RunError errorKey={errorKey} />
@@ -273,9 +270,7 @@ export function RestoreVersionButton({ pageId, versionNo }: { pageId: string; ve
   const { run, pending, errorKey } = useRun();
   return (
     <span className="inline-flex items-center gap-2">
-      <Button type="button" variant="outline" size="xs" disabled={pending} onClick={() => window.confirm(t("history.restoreConfirm", { n: versionNo })) && run(() => restoreVersionAction({ pageId, versionNo }), () => router.push(`/kb/pages/${pageId}?draft=1`))}>
-        {t("history.restore")}
-      </Button>
+      <ConfirmButton variant="outline" size="xs" disabled={pending} label={t("history.restore")} question={t("history.restoreConfirm", { n: versionNo })} onConfirm={() => run(() => restoreVersionAction({ pageId, versionNo }), () => router.push(`/kb/pages/${pageId}?draft=1`))} />
       <RunError errorKey={errorKey} />
     </span>
   );

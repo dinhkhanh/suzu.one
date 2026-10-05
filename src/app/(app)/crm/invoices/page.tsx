@@ -12,7 +12,7 @@ import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
 import { can } from "@/modules/platform/rbac/policy";
 import { listBillingQueue } from "@/modules/projects/service";
-import { accountsById, AGING_BUCKETS, agingSummary, canRecordInvoices, contractNumbersOfProjects, listInvoices, vatRates } from "@/modules/crm/service";
+import { accountsById, AGING_BUCKETS, agingSummary, canRecordInvoices, contractNumbersOfProjects, heldBillingItemIds, listInvoices, vatRates } from "@/modules/crm/service";
 import { crmShell } from "@/modules/crm/pages";
 import { RecordInvoiceForm } from "@/modules/crm/ui/money-forms";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
@@ -20,7 +20,7 @@ import { formatters } from "@/modules/crm/ui/views";
 
 export const generateMetadata = pageTitle("crmInvoices");
 
-const STATUSES = ["open", "overdue", "paid", "written_off", "all"] as const;
+const STATUSES = ["open", "overdue", "paid", "written_off", "draft", "void", "all"] as const;
 
 export default async function InvoicesPage({ searchParams }: PageProps<"/crm/invoices">) {
   const user = await requireUser();
@@ -31,12 +31,13 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
   const today = todayInVietnam();
   const records = can(user.principal, "pjm:commercial");
   const [t, f, aging, invoices, ready, accounts, vat] = await Promise.all([getTranslations("crm"), formatters(), agingSummary(shell.viewer, {}, today), listInvoices(shell.viewer, { status }, today), records ? listBillingQueue(user.principal, { status: "ready" }) : Promise.resolve([]), accountsById(), vatRates(today)]);
-  const references = await contractNumbersOfProjects([...new Set(ready.map((item) => item.projectId))]);
-  // One invoice goes to one client from one entity: ready items grouped that way, those this reader may invoice.
+  const [references, held] = await Promise.all([contractNumbersOfProjects([...new Set(ready.map((item) => item.projectId))]), heldBillingItemIds(ready.map((item) => item.id))]);
+  // One invoice goes to one client from one entity: ready items grouped that way, those this reader
+  // may invoice — and not those a draft already holds (they are on that draft's page).
   const groups = new Map<string, { accountName: string; entityName: string | null; items: typeof ready }>();
   for (const item of ready) {
     const account = item.clientId ? accounts.get(item.clientId) : undefined;
-    if (!account || !canRecordInvoices(shell.viewer, item.entityId)) continue;
+    if (!account || held.has(item.id) || !canRecordInvoices(shell.viewer, item.entityId)) continue;
     const key = `${account.client.id}:${item.entityId ?? "group"}`;
     const group = groups.get(key) ?? { accountName: account.client.name, entityName: item.entityName, items: [] };
     group.items.push(item);
@@ -81,7 +82,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
             <TableRow key={invoice.id}>
               <TableCell kind="id">
                 <RecordLink kind="invoice" id={invoice.id} className="font-medium text-foreground">
-                  {invoice.number}
+                  {invoice.number ?? t("invoice.draftHeading")}
                 </RecordLink>
                 <p className="font-sans text-xs text-faint">
                   <RecordLink kind="entity" id={invoice.entityId}>{invoice.entityName}</RecordLink>

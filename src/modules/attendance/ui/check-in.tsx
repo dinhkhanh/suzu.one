@@ -3,7 +3,7 @@
 // that asks the phone where it is and sends the punch, the answer in words), the install hint, and
 // the reviewer's accept / reject form.
 import { MapPinIcon } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { cn } from "cn";
@@ -15,23 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { punchAction, reviewPunchAction } from "../checkin-actions";
 import { hoursText } from "./day-plan";
+import { readPosition } from "./geolocation";
+import { type AnswerGpsNotice, type GpsNotice, GpsNoticeDialog } from "./gps-notice";
 
 type PunchOutcome = { at: string; direction: "in" | "out"; outcome: "accepted" | "flagged"; flags: string[]; locationName: string | null; distanceM: number | null; duplicate: boolean };
-type PositionReading = { latitude: number; longitude: number; accuracyM: number };
 
 const ZONE = "Asia/Ho_Chi_Minh";
-
-// Ten seconds is as long as anyone waits at the door; without a fix the punch still goes through, flagged.
-function readPosition(): Promise<{ position: PositionReading | null; problem: string | null }> {
-  return new Promise((resolve) => {
-    if (!("geolocation" in navigator)) return resolve({ position: null, problem: "unsupported" });
-    navigator.geolocation.getCurrentPosition(
-      (reading) => resolve({ position: { latitude: reading.coords.latitude, longitude: reading.coords.longitude, accuracyM: reading.coords.accuracy }, problem: null }),
-      (error) => resolve({ position: null, problem: error.code === error.PERMISSION_DENIED ? "denied" : error.code === error.TIMEOUT ? "timeout" : "unavailable" }),
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 },
-    );
-  });
-}
 
 const deviceInfo = (positionProblem: string | null) => ({
   platform: navigator.platform ?? "",
@@ -62,6 +51,8 @@ export function CheckInPanel({
   lastLocationName,
   hasLocations,
   punchedToday,
+  gps,
+  answerGps,
 }: {
   nextDirection: "in" | "out";
   /** false on untracked days, rest days and holidays: the button is there, but smaller words explain it is not needed. */
@@ -72,6 +63,9 @@ export function CheckInPanel({
   lastLocationName: string | null;
   hasLocations: boolean;
   punchedToday: boolean;
+  /** Where the person stands on the GPS notice: the key asks first when they never answered this version. */
+  gps: GpsNotice;
+  answerGps: AnswerGpsNotice;
 }) {
   const t = useTranslations("attendance.checkIn");
   const format = useFormatter();
@@ -82,24 +76,42 @@ export function CheckInPanel({
   const [result, setResult] = useState<PunchOutcome | null>(null);
   const [failure, setFailure] = useState<{ key: string; flags: string[] } | null>(null);
   const [note, setNote] = useState("");
+  const locale = useLocale();
+  const [gpsState, setGpsState] = useState(gps.state);
+  const [noticeOpen, setNoticeOpen] = useState(false);
 
-  function punch() {
+  // The phone is asked where it is only with the notice agreed to; otherwise the punch goes without
+  // a position (an office network still counts) and may wait for review.
+  async function send(withPosition: boolean) {
     setFailure(null);
     setResult(null);
+    setStage("locating");
+    const { position, problem } = withPosition ? await readPosition() : { position: null, problem: "not_agreed" };
+    setStage("sending");
+    const answer = await punchAction({ direction: nextDirection, position, deviceInfo: deviceInfo(problem), note });
+    setStage("idle");
+    if (answer.ok) {
+      setResult(answer.data);
+      setNote("");
+      router.refresh();
+      return;
+    }
+    const details = answer.details as { flags?: string[] } | undefined;
+    setFailure({ key: (answer.error === "failed" ? answer.message : answer.error) ?? "generic", flags: details?.flags ?? [] });
+  }
+
+  function punch() {
+    if (gpsState === "unanswered") return setNoticeOpen(true);
+    startTransition(() => send(gpsState === "given"));
+  }
+
+  // The first answer is given on the way to the punch: recorded, then the punch goes on either way.
+  function answerNotice(decision: "given" | "declined") {
     startTransition(async () => {
-      setStage("locating");
-      const { position, problem } = await readPosition();
-      setStage("sending");
-      const answer = await punchAction({ direction: nextDirection, position, deviceInfo: deviceInfo(problem), note });
-      setStage("idle");
-      if (answer.ok) {
-        setResult(answer.data);
-        setNote("");
-        router.refresh();
-        return;
-      }
-      const details = answer.details as { flags?: string[] } | undefined;
-      setFailure({ key: (answer.error === "failed" ? answer.message : answer.error) ?? "generic", flags: details?.flags ?? [] });
+      const recorded = await answerGps({ decision, version: gps.version, locale });
+      setNoticeOpen(false);
+      if (recorded.ok) setGpsState(decision);
+      await send(recorded.ok && decision === "given");
     });
   }
 
@@ -139,6 +151,7 @@ export function CheckInPanel({
       </p>
 
       <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder={t("notePlaceholder")} aria-label={t("note")} className="w-full" />
+      <GpsNoticeDialog open={noticeOpen} onOpenChange={setNoticeOpen} days={gps.days} pending={pending} onAnswer={answerNotice} declineLabel={t("withoutPosition")} />
 
       <div aria-live="polite" className="flex w-full flex-col gap-2 text-left empty:hidden">
         {result ? (

@@ -1,11 +1,15 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAction } from "@/lib/action";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { can, canReadTier } from "@/modules/platform/rbac/policy";
-import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
-import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment, transferToEntity } from "./lifecycle";
+import { ActionError, createAction } from "@/lib/action";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
+import { canGenerate, findTemplate, generateDocument } from "@/modules/documents/service";
+import { CONTRACT_EVENT_TYPES, CONTRACT_TYPES, HAND_RECORDED_EVENT_TYPES, JOB_CATEGORIES, RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
+import { cancelRecordedEvent, cancelTermination, liftSuspension, recordContractEvent, recordEvent, rehirePerson, suspendPerson, terminateEmployment, transferToEntity } from "./lifecycle";
+import { changeNeedsApproval, decideLifecycleChange, getLifecycleChange, proposeTermination } from "./lifecycle-approvals";
 import { findLifecycleEvent } from "./lifecycle-events";
 import { canHireInto, canReassign } from "./policy";
 import { decideResignation, getResignation, submitResignation } from "./resignation";
@@ -16,7 +20,7 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const text = (max: number) => optional(z.string().trim().max(max));
 const id = optional(z.uuid());
 const day = z.iso.date();
-const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) });
+const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), seniorityLevel: optional(z.enum(SENIORITY_LEVELS)), positionLevel: optional(z.enum(POSITION_LEVELS)), managerId: id, dottedManagerId: id, workLocation: text(200) });
 
 // Every lifecycle change is HR's: authority over the person where they sit today.
 const managesPerson = async (user: { principal: Parameters<typeof can>[0] }, personId: string) => {
@@ -33,7 +37,7 @@ function refresh(personId: string) {
 
 const recordPipeline = createAction({
   name: "lifecycle.record",
-  input: z.object({ personId: z.uuid(), type: z.enum(RECORD_ONLY_EVENT_TYPES), effectiveDate: day, reason: text(300), note: text(2000) }),
+  input: z.object({ personId: z.uuid(), type: z.enum(HAND_RECORDED_EVENT_TYPES), effectiveDate: day, reason: text(300), note: text(2000) }),
   // A salary change's reason and note are compensation tier: only someone who may read that tier of
   // this person writes one.
   authorize: async (user, input) => {
@@ -55,16 +59,89 @@ export async function recordLifecycleEventAction(input: unknown) {
   return recordPipeline(input);
 }
 
+// A probation passed or a contract renewed (FR-CHR-09): the contract, the workforce type and the
+// event in one transaction, then — when a template is chosen — the decision paper, numbered and
+// kept as issued, tied to the event. Everything the paper needs is checked before anything is
+// written, so a refused paper never leaves an event behind without it.
+const contractEventPipeline = createAction({
+  name: "lifecycle.contract_event",
+  input: z.object({
+    personId: z.uuid(),
+    type: z.enum(CONTRACT_EVENT_TYPES),
+    effectiveDate: day,
+    reason: text(300),
+    note: text(2000),
+    workforceType: optional(z.enum(WORKFORCE_TYPES)),
+    contractType: z.enum(CONTRACT_TYPES),
+    contractNumber: z.string().trim().min(1).max(60),
+    jobCategory: optional(z.enum(JOB_CATEGORIES)),
+    signDate: optional(day),
+    endDate: optional(day),
+    salaryTerms: text(2000),
+    templateId: id,
+  }),
+  authorize: async (user, input) => {
+    const target = await getPersonTarget(input.personId);
+    if (!target || !can(user.principal, "person:manage", target)) return false;
+    // Pay is written only by those who may read it back; a paper only by those who may issue it.
+    if (input.salaryTerms && !canReadTier(user.principal, target, "compensation")) return false;
+    if (!input.templateId) return true;
+    const template = await findTemplate(input.templateId);
+    return !!template && template.isActive && canGenerate(user.principal, target, template.tier);
+  },
+  run: async ({ user, input }) => {
+    const template = input.templateId ? await findTemplate(input.templateId) : null;
+    if (template?.tier === "compensation" && !isStepUpFresh(user.reauthAt)) throw new ActionError("step_up_required");
+    const { event, contract, ended, moved } = await recordContractEvent(
+      input.personId,
+      {
+        type: input.type,
+        effectiveDate: input.effectiveDate,
+        reason: input.reason,
+        note: input.note,
+        workforceType: input.type === "probation_pass" ? (input.workforceType ?? "employee") : input.workforceType,
+        contract: { number: input.contractNumber, type: input.contractType, jobCategory: input.jobCategory, signDate: input.signDate, startDate: input.effectiveDate, endDate: input.endDate, salaryTerms: input.salaryTerms, note: null },
+      },
+      user.person.id,
+    );
+    const paper = template ? (await generateDocument({ principal: user.principal, personId: user.person.id }, template.id, input.personId, { eventId: event.id })).document : null;
+    refresh(input.personId);
+    return {
+      data: { id: event.id, contractId: contract.id, document: paper ? { id: paper.id, number: paper.number } : null },
+      audit: {
+        resource: { type: "person", id: input.personId, entityId: event.entityId },
+        summary: `${event.type} ${event.effectiveDate}: contract ${contract.number}${paper ? `, ${paper.number}` : ""}`,
+        after: { eventId: event.id, contractId: contract.id, contractsEnded: ended.length, workforceType: moved ? { from: moved.before.workforceType, to: moved.after.workforceType } : null, documentId: paper?.id ?? null },
+      },
+    };
+  },
+});
+
+export async function recordContractEventAction(input: unknown) {
+  return contractEventPipeline(input);
+}
+
 const terminatePipeline = createAction({
   name: "person.terminate",
   input: z.object({ personId: z.uuid(), lastDay: day, reason: z.enum(TERMINATION_REASONS), note: text(2000), resignationEventId: id }),
   authorize: (user, input) => managesPerson(user, input.personId),
   run: async ({ user, input }) => {
     const { personId, ...termination } = input;
+    // Where an administrator asked for it, a termination waits for its approval (FR-CHR-09).
+    const target = await getPersonTarget(personId);
+    if (await changeNeedsApproval("termination", target?.entityId ?? null)) {
+      const { request, outcome } = await proposeTermination(personId, termination, user.person.id);
+      refresh(personId);
+      revalidatePath("/approvals");
+      return {
+        data: { id: request.id, offboardedNow: false, pendingApproval: outcome !== "approved" },
+        audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `proposed: ${request.summary}`, after: { personId, ...termination, outcome } },
+      };
+    }
     const { employment, before, event, tasks, closed, offboardedNow } = await terminateEmployment(personId, termination, user.person.id);
     refresh(personId);
     return {
-      data: { id: event.id, offboardedNow },
+      data: { id: event.id, offboardedNow, pendingApproval: false },
       audit: {
         resource: { type: "person", id: personId, entityId: employment.entityId },
         summary: `${employment.employeeCode} last day ${input.lastDay} (${input.reason})`,
@@ -77,6 +154,38 @@ const terminatePipeline = createAction({
 
 export async function terminateEmploymentAction(input: unknown) {
   return terminatePipeline(input);
+}
+
+// Suspension (FR-PLT-05): the same authority as a termination — HR over the person — and never over
+// oneself. The reason is kept in the audit log, which is the record of who locked whom out and why.
+const suspendPipeline = createAction({
+  name: "person.suspend",
+  input: z.object({ personId: z.uuid(), reason: z.string().trim().min(1).max(1000) }),
+  authorize: (user, input) => input.personId !== user.person.id && managesPerson(user, input.personId),
+  run: async ({ user, input }) => {
+    const { person, sessionsRevoked } = await suspendPerson(input.personId, user.person.id);
+    refresh(input.personId);
+    return { data: { id: person.id, sessionsRevoked }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: `suspended: ${input.reason}`, before: { status: "active" }, after: { status: person.status, reason: input.reason, sessionsRevoked } } };
+  },
+});
+
+export async function suspendPersonAction(input: unknown) {
+  return suspendPipeline(input);
+}
+
+const liftSuspensionPipeline = createAction({
+  name: "person.unsuspend",
+  input: z.object({ personId: z.uuid(), reason: text(1000) }),
+  authorize: (user, input) => input.personId !== user.person.id && managesPerson(user, input.personId),
+  run: async ({ input }) => {
+    const { person } = await liftSuspension(input.personId);
+    refresh(input.personId);
+    return { data: { id: person.id }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: input.reason ? `suspension lifted: ${input.reason}` : "suspension lifted", before: { status: "suspended" }, after: { status: person.status, reason: input.reason } } };
+  },
+});
+
+export async function liftSuspensionAction(input: unknown) {
+  return liftSuspensionPipeline(input);
 }
 
 const cancelPipeline = createAction({
@@ -149,6 +258,25 @@ const transferPipeline = createAction({
 
 export async function transferToEntityAction(input: unknown) {
   return transferPipeline(input);
+}
+
+// ── Approved transfers, promotions and terminations (FR-CHR-09) ─────────────────────────────
+
+const decideLifecycleChangePipeline = createAction({
+  name: "lifecycle.change.decide",
+  input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject", "return"]), comment: text(1000) }),
+  authorize: async (user, input) => !!(await getLifecycleChange({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
+  run: async ({ user, input }) => {
+    const { request, before, outcome } = await decideLifecycleChange(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    if (request.subjectPersonId) refresh(request.subjectPersonId);
+    revalidatePath("/approvals");
+    revalidatePath(`/approvals/lifecycle/${request.id}`);
+    return { data: { outcome }, audit: { resource: { type: "person", id: request.subjectPersonId ?? request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, requestId: request.id, type: request.type } } };
+  },
+});
+
+export async function decideLifecycleChangeAction(input: unknown) {
+  return decideLifecycleChangePipeline(input);
 }
 
 // ── Resignation requests ────────────────────────────────────────────────────────────────────

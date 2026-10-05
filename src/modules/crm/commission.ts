@@ -21,7 +21,7 @@ import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { can, entityReach, type Principal } from "../platform/rbac/policy";
-import { canManageCompensation, canViewCompensationOf, findOpenRegularRun, getRunHandle, removeRunInput, setRunInput } from "@/modules/payroll/service";
+import { canManageCompensation, canViewCompensationOf, findOpenRegularRun, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "@/modules/payroll/service";
 import { type Collection, type CommissionTrace, commissionStatements, ruleProblem } from "./engine/commission";
 import { monthEnd } from "./engine/contract";
 import type { CommissionRule } from "./schema";
@@ -113,7 +113,7 @@ export async function decideCommissionScheme(schemeId: string, decision: "approv
 
 /**
  * The month's cash, one row per billing item of each payment: what the engine shares out. Read as
- * rows because every one of them is a line of somebody's trace.
+ * rows because every one of them is a line of somebody's trace. A reversed payment is no cash.
  */
 async function collectionsOf(month: string, executor: Executor): Promise<(Collection & { entityId: string | null })[]> {
   const from = `${month}-01`;
@@ -131,8 +131,9 @@ async function collectionsOf(month: string, executor: Executor): Promise<(Collec
       paidVnd: schema.crmPayment.amountVnd,
       invoiceSubtotalVnd: schema.crmInvoice.subtotalVnd,
       invoiceTotalVnd: schema.crmInvoice.totalVnd,
-      itemVnd: sql<number>`coalesce(${schema.projectBillingItem.amountVnd}, 0)`,
-      itemsVnd: sql<number>`sum(coalesce(${schema.projectBillingItem.amountVnd}, 0)) over (partition by ${schema.crmPayment.id})`,
+      // What the item was invoiced at (kept on the invoice since CRM-05), else its amount as it stands.
+      itemVnd: sql<number>`coalesce(${schema.crmInvoiceItem.amountVnd}, ${schema.projectBillingItem.amountVnd}, 0)`,
+      itemsVnd: sql<number>`sum(coalesce(${schema.crmInvoiceItem.amountVnd}, ${schema.projectBillingItem.amountVnd}, 0)) over (partition by ${schema.crmPayment.id})`,
       dealOwnerId: sql<string | null>`coalesce(${schema.crmDeal.ownerPersonId}, ${schema.crmAccount.salesOwnerPersonId})`,
       accountManagerId: acct.accountManagerPersonId,
     })
@@ -145,9 +146,9 @@ async function collectionsOf(month: string, executor: Executor): Promise<(Collec
     .leftJoin(schema.crmAccount, sql`${schema.crmAccount.clientId} = ${account}`)
     .leftJoin(schema.crmDealProject, eq(schema.crmDealProject.projectId, schema.projectBillingItem.projectId))
     .leftJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId))
-    .where(sql`${schema.crmPayment.receivedOn} between ${from}::date and ${to}::date`)
+    .where(and(sql`${schema.crmPayment.receivedOn} between ${from}::date and ${to}::date`, isNull(schema.crmPayment.reversedAt)))
     .orderBy(asc(schema.crmPayment.receivedOn), asc(schema.crmPayment.id), asc(schema.crmInvoiceItem.billingItemId));
-  return rows.map((row) => ({ ...row, paidVnd: Number(row.paidVnd), invoiceSubtotalVnd: Number(row.invoiceSubtotalVnd), invoiceTotalVnd: Number(row.invoiceTotalVnd), itemVnd: Number(row.itemVnd), itemsVnd: Number(row.itemsVnd) }));
+  return rows.map((row) => ({ ...row, invoiceNumber: row.invoiceNumber ?? "", paidVnd: Number(row.paidVnd), invoiceSubtotalVnd: Number(row.invoiceSubtotalVnd), invoiceTotalVnd: Number(row.invoiceTotalVnd), itemVnd: Number(row.itemVnd), itemsVnd: Number(row.itemsVnd) }));
 }
 
 const seal = (id: string, trace: CommissionTrace) => ({ amountEnc: fieldCipher().encrypt(String(trace.amountVnd), amountContext(id)), traceEnc: fieldCipher().encrypt(JSON.stringify(trace), traceContext(id)) });
@@ -164,43 +165,93 @@ export type ComputeResult = { schemes: number; written: number; kept: number; re
 export async function computeCommission(month: string): Promise<ComputeResult> {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new ActionError("commission_month");
   const schemes = await listCommissionSchemes();
+  return db().transaction((tx) => computeCommissionIn(tx, month, schemes));
+}
+
+async function computeCommissionIn(tx: Tx, month: string, schemes: readonly CommissionSchemeRow[]): Promise<ComputeResult> {
   const on = monthEnd(`${month}-01`);
   const result: ComputeResult = { schemes: 0, written: 0, kept: 0, removed: 0 };
-  await db().transaction(async (tx) => {
-    const collections = await collectionsOf(month, tx);
-    const byScheme = new Map<string, { scheme: CommissionSchemeRow; entityId: string | null; rows: Collection[] }>();
-    for (const row of collections) {
-      const scheme = schemeFor(schemes, row.entityId, on);
-      if (!scheme) continue;
-      const key = `${scheme.id}|${row.entityId ?? ""}`;
-      const group = byScheme.get(key) ?? { scheme, entityId: row.entityId, rows: [] };
-      group.rows.push(row);
-      byScheme.set(key, group);
-    }
-    result.schemes = new Set([...byScheme.values()].map((group) => group.scheme.id)).size;
-    const existing = await tx.select().from(schema.crmCommissionStatement).where(eq(schema.crmCommissionStatement.month, month));
-    const seen = new Set<string>();
-    for (const group of byScheme.values()) {
-      const statements = commissionStatements({ id: group.scheme.id, name: group.scheme.name, rule: group.scheme.rule }, month, group.rows);
-      for (const [personId, trace] of statements) {
-        const key = `${personId}|${group.entityId ?? ""}`;
-        seen.add(key);
-        const current = existing.find((row) => row.personId === personId && (row.entityId ?? "") === (group.entityId ?? ""));
-        if (current && current.status !== "draft") {
-          result.kept += 1;
-          continue;
-        }
-        const id = current?.id ?? crypto.randomUUID();
-        const sealed = seal(id, trace);
-        if (current) await tx.update(schema.crmCommissionStatement).set({ ...sealed, schemeId: group.scheme.id, updatedAt: new Date() }).where(eq(schema.crmCommissionStatement.id, id));
-        else await tx.insert(schema.crmCommissionStatement).values({ id, personId, entityId: group.entityId, month, schemeId: group.scheme.id, ...sealed });
-        result.written += 1;
+  const collections = await collectionsOf(month, tx);
+  const byScheme = new Map<string, { scheme: CommissionSchemeRow; entityId: string | null; rows: Collection[] }>();
+  for (const row of collections) {
+    const scheme = schemeFor(schemes, row.entityId, on);
+    if (!scheme) continue;
+    const key = `${scheme.id}|${row.entityId ?? ""}`;
+    const group = byScheme.get(key) ?? { scheme, entityId: row.entityId, rows: [] };
+    group.rows.push(row);
+    byScheme.set(key, group);
+  }
+  result.schemes = new Set([...byScheme.values()].map((group) => group.scheme.id)).size;
+  const existing = await tx.select().from(schema.crmCommissionStatement).where(eq(schema.crmCommissionStatement.month, month));
+  const seen = new Set<string>();
+  for (const group of byScheme.values()) {
+    const statements = commissionStatements({ id: group.scheme.id, name: group.scheme.name, rule: group.scheme.rule }, month, group.rows);
+    for (const [personId, trace] of statements) {
+      const key = `${personId}|${group.entityId ?? ""}`;
+      seen.add(key);
+      const current = existing.find((row) => row.personId === personId && (row.entityId ?? "") === (group.entityId ?? ""));
+      if (current && current.status !== "draft") {
+        result.kept += 1;
+        continue;
       }
+      const id = current?.id ?? crypto.randomUUID();
+      const sealed = seal(id, trace);
+      if (current) await tx.update(schema.crmCommissionStatement).set({ ...sealed, schemeId: group.scheme.id, updatedAt: new Date() }).where(eq(schema.crmCommissionStatement.id, id));
+      else await tx.insert(schema.crmCommissionStatement).values({ id, personId, entityId: group.entityId, month, schemeId: group.scheme.id, ...sealed });
+      result.written += 1;
     }
-    const stale = existing.filter((row) => row.status === "draft" && !seen.has(`${row.personId}|${row.entityId ?? ""}`)).map((row) => row.id);
-    if (stale.length) await tx.delete(schema.crmCommissionStatement).where(inArray(schema.crmCommissionStatement.id, stale));
-    result.removed = stale.length;
-  });
+  }
+  const stale = existing.filter((row) => row.status === "draft" && !seen.has(`${row.personId}|${row.entityId ?? ""}`)).map((row) => row.id);
+  if (stale.length) await tx.delete(schema.crmCommissionStatement).where(inArray(schema.crmCommissionStatement.id, stale));
+  result.removed = stale.length;
+  return result;
+}
+
+export type PaymentChangeResult = { reopened: number; settled: number };
+
+/**
+ * A payment of an entity's invoice was recorded or reversed after its month was stated: the month's
+ * statements over that entity follow it, inside the payment's transaction. A statement still in C&B's
+ * hands — confirmed, or in a payroll run open for editing (taken back out of it) — goes back to draft
+ * and the month is worked out again, so C&B confirm what the cash now says. One whose run is no longer
+ * open was paid as confirmed: it is left as it was, and its confirmer is told the month changed after
+ * payroll, to adjust it there (a retro item). The month's drafts are worked out again with the rest;
+ * nothing happens to a month nobody has stated yet.
+ */
+export async function followPaymentChange(tx: Tx, change: { receivedOn: IsoDate; entityId: string | null }, actorPersonId: string): Promise<PaymentChangeResult> {
+  const month = change.receivedOn.slice(0, 7);
+  const rows = await tx.select().from(schema.crmCommissionStatement).where(eq(schema.crmCommissionStatement.month, month)).for("update");
+  if (rows.length === 0) return { reopened: 0, settled: 0 };
+  const result: PaymentChangeResult = { reopened: 0, settled: 0 };
+  const reopenedBy = new Set<string>();
+  const settledBy = new Set<string>();
+  const touched = rows.filter((row) => row.status !== "draft" && (row.entityId ?? null) === change.entityId);
+  // The runs they sit in — the month's run of each employer, usually one in all — asked of payroll
+  // once each, whose rule "open for editing" is.
+  const runs = new Map<string, RunHandle | null>();
+  for (const runId of new Set(touched.flatMap((row) => (row.status === "in_payroll" && row.payrollRunId ? [row.payrollRunId] : [])))) runs.set(runId, await getRunHandle(runId, tx));
+  const reopen: CommissionStatementRow[] = [];
+  for (const row of touched) {
+    const run = row.status === "in_payroll" && row.payrollRunId ? (runs.get(row.payrollRunId) ?? null) : null;
+    if (row.status === "in_payroll" && run && !run.openForEditing && run.status !== "cancelled") {
+      result.settled += 1;
+      if (row.confirmedByPersonId) settledBy.add(row.confirmedByPersonId);
+      continue;
+    }
+    reopen.push(row);
+    if (row.confirmedByPersonId) reopenedBy.add(row.confirmedByPersonId);
+  }
+  if (reopen.length) {
+    await tx.update(schema.crmCommissionStatement).set({ status: "draft", payrollRunId: null, confirmedByPersonId: null, confirmedAt: null, updatedAt: new Date() }).where(inArray(schema.crmCommissionStatement.id, reopen.map((row) => row.id)));
+    // Each person's line in an open run is written again without the statement (payroll's own path, per person).
+    for (const row of reopen) if (row.payrollRunId && runs.get(row.payrollRunId)) await rewriteRunInput(tx, row.payrollRunId, row.personId, actorPersonId);
+    result.reopened = reopen.length;
+  }
+  await computeCommissionIn(tx, month, await listCommissionSchemes(tx));
+  // Generic wording, like every notice about pay: the month, never a person or an amount.
+  const link = `/crm/commission?month=${month}`;
+  if (reopenedBy.size) await notify({ recipients: [...reopenedBy], kind: "crm.commission_reopened", params: { month }, link }, tx);
+  if (settledBy.size) await notify({ recipients: [...settledBy], kind: "crm.commission_after_payroll", params: { month }, link }, tx);
   return result;
 }
 

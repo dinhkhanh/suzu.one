@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
+// Sending or signing an acceptance stores the paper that was issued: the bucket is in memory here.
+vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 
 // Each action's pipeline is kept as it was built, so its audit payload can be read here.
@@ -77,6 +79,9 @@ beforeAll(async () => {
   ids.open = (await project("Dự án chung", "team", ids.lead)).id;
   ids.retainer = (await project("Retainer kín", "team", ids.lead)).id;
   ids.fresh = (await project("Chưa có kế hoạch", "team", ids.lead)).id;
+  // A project from before plans were made at creation (PJM-01): the row it would have today is
+  // taken away, so the reads below meet a project that has none.
+  await db().delete(schema.projectPlan).where(eq(schema.projectPlan.projectId, ids.fresh));
   await setAccountManager(ids.private, ids.am);
   // A private project of a team with no lead at all: nobody in the team answers for it.
   const lonely = await createTeam({ key: "SOL", name: "Solo", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);

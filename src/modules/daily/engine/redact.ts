@@ -57,11 +57,11 @@ export function showTeamWeek(week: TeamWeek, seen: Seen, mayRead: (personId: str
   return { ...week, people: week.people.filter((person) => mayRead(person.personId)), blockers: week.blockers.filter((blocker) => mayRead(blocker.personId)), hoursByProject: week.hoursByProject.map((group) => showHours(group, seen)) };
 }
 
-/** A time entry's labels: the task's key and title, the project's name. */
-export function showTimeLabels<Entry extends { taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null }>(entry: Entry, seen: Seen): Entry & { hidden?: true } {
+/** A time entry's labels: the task's key and title, the project's name and — going where the name goes — its job number. */
+export function showTimeLabels<Entry extends { taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; jobNumber?: string | null }>(entry: Entry, seen: Seen): Entry & { hidden?: true } {
   const task = entry.taskId ? seen.tasks.get(entry.taskId) : undefined;
-  const projectName = entry.projectId && !seen.projects.has(entry.projectId) ? null : entry.projectName;
-  if (!entry.taskId) return { ...entry, projectName };
-  if (task) return { ...entry, key: task.key, title: task.title, projectName };
-  return { ...entry, key: null, title: null, projectName, hidden: true };
+  const project = entry.projectId && !seen.projects.has(entry.projectId) ? { projectName: null, ...(entry.jobNumber === undefined ? {} : { jobNumber: null }) } : {};
+  if (!entry.taskId) return { ...entry, ...project };
+  if (task) return { ...entry, key: task.key, title: task.title, ...project };
+  return { ...entry, key: null, title: null, ...project, hidden: true };
 }

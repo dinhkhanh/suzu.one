@@ -15,6 +15,7 @@
 //     register. A recruiter runs the pipeline; HR puts somebody on the books.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { ActionError, createAction } from "@/lib/action";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "./enums";
 import { convertToEmployee, decideOfferRequest, findOffer, makeOffer, recordOfferResponse, sendOffer, submitOfferForApproval, updateOffer, withdrawOffer } from "./offers";
@@ -32,14 +33,16 @@ const vnd = z.preprocess(
 
 const offerFields = {
   positionName: z.string().trim().min(1).max(200),
-  jobLevel: optional(z.string().trim().max(80)),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
   employmentType: z.enum(EMPLOYMENT_TYPES),
   workLocation: optional(z.string().trim().max(200)),
   managerPersonId: optional(z.uuid()),
   startDate: z.iso.date(),
   expiresOn: optional(z.iso.date()),
   probationMonths: z.coerce.number().int().min(0).max(OFFER_LIMITS.probationMonths),
-  probationSalaryPercent: z.coerce.number().int().min(OFFER_LIMITS.probationPercentMin).max(100),
+  // The legal floor is the statutory parameter in force on the start date, checked by the service.
+  probationSalaryPercent: z.coerce.number().int().min(0).max(100),
   baseSalaryVnd: vnd,
   allowancesVnd: vnd,
   letterTemplateId: optional(z.uuid()),
@@ -138,9 +141,13 @@ const sendOfferPipeline = createAction({
     return !!opening && canMakeOffer(user.principal, openingTargetOf(opening));
   },
   run: async ({ user, input }) => {
-    const offer = await sendOffer(input.offerId, user.person.id);
+    const { offer, letter } = await sendOffer(input.offerId, { personId: user.person.id, fullName: user.person.fullName });
     refresh(offer.id, offer.applicationId);
-    return { data: { id: offer.id }, audit: { resource: { type: "job_offer", id: offer.id, entityId: offer.entityId }, summary: offer.number, after: { status: offer.status } } };
+    return {
+      // Whether the email went, or why not — the screen says so rather than leaving the sender to guess.
+      data: { id: offer.id, letter: letter.queued ? "queued" : letter.reason },
+      audit: { resource: { type: "job_offer", id: offer.id, entityId: offer.entityId }, summary: offer.number, after: { status: offer.status, candidateTold: letter.queued } },
+    };
   },
 });
 
@@ -189,7 +196,8 @@ const decideOfferPipeline = createAction({
     refresh(offerId, offer?.applicationId ?? null);
     return {
       data: { outcome },
-      audit: { resource: { type: "job_offer", id: offerId, entityId: request.entityId }, summary: request.summary, after: { decision: input.decision, outcome } },
+      // The offer's number, not the request's summary: that one opens with the candidate's name.
+      audit: { resource: { type: "job_offer", id: offerId, entityId: request.entityId }, summary: offer?.number ?? "offer", after: { decision: input.decision, outcome } },
     };
   },
 });

@@ -5,6 +5,7 @@ import {
   canBrowseCandidates,
   canConvertToEmployee,
   canEditOpening,
+  canEraseCandidate,
   canFileHiringRequest,
   canManageCandidates,
   canMakeOffer,
@@ -107,6 +108,36 @@ describe("the hiring team", () => {
   // Membership without a person record is not membership at all.
   it("is nothing without a person", () => {
     expect(canViewOpening({ personId: null, workforceType: null, grants: [] }, opening, true)).toBe(false);
+  });
+});
+
+// Erasing on request empties the record everywhere it was used (NFR-PRV-04), so the authority is
+// asked about every opening the candidate applied to — not about one of them.
+describe("erasing a candidate on request", () => {
+  it("is recruit:manage over the opening they applied to", () => {
+    for (const who of [owner, hrAdmin, hrStaff, recruiter, entityRecruiter]) expect(canEraseCandidate(who, [opening])).toBe(true);
+    expect(canEraseCandidate(otherRecruiter, [opening])).toBe(false);
+  });
+
+  it("takes authority over every opening they applied to: one company's recruiter does not empty another's pipeline", () => {
+    expect(canEraseCandidate(entityRecruiter, [opening, otherOpening])).toBe(false);
+    expect(canEraseCandidate(otherRecruiter, [opening, otherOpening])).toBe(false);
+    for (const who of [owner, hrAdmin, recruiter]) expect(canEraseCandidate(who, [opening, otherOpening])).toBe(true);
+  });
+
+  it("takes a group-wide grant for a lead who has applied nowhere — there is no entity to scope a narrower one against", () => {
+    for (const who of [owner, hrAdmin, recruiter]) expect(canEraseCandidate(who, [])).toBe(true);
+    expect(canEraseCandidate(entityRecruiter, [])).toBe(false);
+    expect(canEraseCandidate(hrStaff, [])).toBe(false);
+  });
+
+  it("is never the hiring team's, and nobody else's in the catalogue", () => {
+    // A hiring manager reads the candidates for their job; what the company keeps is not theirs to decide.
+    expect(canEraseCandidate(head, [opening])).toBe(false);
+    for (const who of outsiders) {
+      expect(canEraseCandidate(who, [opening])).toBe(false);
+      expect(canEraseCandidate(who, [])).toBe(false);
+    }
   });
 });
 

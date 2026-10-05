@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canSetRunInputFor, canViewBonusOf, canViewCompensationOf, compensationReach, hasPayrollDesk } from "./policy";
+import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canEnterRetroItemFor, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canSetRunInputFor, canViewBonusOf, canViewCompensationOf, canVoidPayRule, canVoidProfile, canVoidSalaryStructure, compensationReach, hasPayrollDesk } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -36,6 +36,21 @@ describe("payroll policy: figures typed into a run", () => {
     expect(canSetRunInputFor(owner, { entityId: SZM }, { personId: "p-owner", entityId: SZM })).toBe(false);
     expect(canSetRunInputFor(cnbSzm, { entityId: SZM }, { personId: "p-x", entityId: SZC })).toBe(false);
     expect(canSetRunInputFor(hrStaff, { entityId: SZM }, employee)).toBe(false);
+  });
+});
+
+describe("payroll policy: retro items (FR-PAY-17)", () => {
+  it("lets C&B over the entity and the owner enter and cancel one for somebody else", () => {
+    for (const viewer of [cnbSzm, hrLead, owner]) expect(canEnterRetroItemFor(viewer, { entityId: SZM }, employee)).toBe(true);
+  });
+
+  it("refuses a difference in one's own pay, another entity's person, and everyone outside C&B", () => {
+    expect(canEnterRetroItemFor(cnbSzm, { entityId: SZM }, { personId: "p-cnb", entityId: SZM })).toBe(false);
+    expect(canEnterRetroItemFor(owner, { entityId: SZM }, { personId: "p-owner", entityId: SZM })).toBe(false);
+    expect(canEnterRetroItemFor(cnbSzm, { entityId: SZM }, { personId: "p-x", entityId: SZC })).toBe(false);
+    expect(canEnterRetroItemFor(cnbSzc, { entityId: SZM }, employee)).toBe(false);
+    // The CEO signs, the accountant pays, the auditor reads, the manager manages: none of them enters pay.
+    for (const viewer of [ceo, accountant, auditor, lineManager, departmentHead, entityDirector, hrStaff, colleague, self]) expect(canEnterRetroItemFor(viewer, { entityId: SZM }, employee)).toBe(false);
   });
 });
 
@@ -192,5 +207,28 @@ describe("the year-end bonus is compensation like everything else here", () => {
     expect(canReadBonusRun(auditor, runEntities)).toBe(true);
     expect(canReadBonusRun(ceo, runEntities)).toBe(true);
     expect(canViewBonusOf(auditor, employee)).toBe(false);
+  });
+});
+
+describe("voiding a wrong approved version takes the hand that let it in (PAY-13)", () => {
+  const nobodyElse = [ceo, hrLead, cnbSzm, cnbSzc, accountant, auditor, lineManager, departmentHead, entityDirector, hrStaff, colleague, self];
+
+  it("leaves rules and salary structures to the owner alone", () => {
+    expect(canVoidPayRule(owner)).toBe(true);
+    expect(canVoidSalaryStructure(owner, { entityId: SZM })).toBe(true);
+    // C&B proposed them, the CEO signs runs: neither approved a salary or a rule, so neither voids one.
+    for (const viewer of nobodyElse) {
+      expect(canVoidPayRule(viewer)).toBe(false);
+      expect(canVoidSalaryStructure(viewer, { entityId: SZM })).toBe(false);
+    }
+  });
+
+  it("lets C&B of the entity void a first Statutory profile nobody had to approve, and only the owner any other", () => {
+    const unapproved = { entityId: SZM, decidedByPersonId: null };
+    const ownerApproved = { entityId: SZM, decidedByPersonId: "p-owner" };
+    for (const viewer of [owner, cnbSzm, hrLead]) expect(canVoidProfile(viewer, unapproved)).toBe(true);
+    for (const viewer of [cnbSzc, ceo, accountant, lineManager, departmentHead, entityDirector, hrStaff, self]) expect(canVoidProfile(viewer, unapproved)).toBe(false);
+    expect(canVoidProfile(owner, ownerApproved)).toBe(true);
+    for (const viewer of nobodyElse) expect(canVoidProfile(viewer, ownerApproved)).toBe(false);
   });
 });

@@ -18,13 +18,13 @@ vi.mock("@/lib/action", () => ({
 import { and, eq } from "drizzle-orm";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import { countInbox } from "@/modules/platform/approvals/service";
+import { countInbox, defineRequestType, submitRequest } from "@/modules/platform/approvals/service";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { loadGrants } from "@/modules/platform/rbac/service";
 import { listMyTasks } from "@/modules/platform/tasks-engine/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { cancelTermination, findLikelyDuplicates, listLifecycleEvents, recordEvent, rehirePerson, terminateEmployment, transferToEntity } from "./lifecycle";
-import { decideResignation, getResignation, submitResignation } from "./resignation";
+import { cancelTermination, findLikelyDuplicates, liftSuspension, listLifecycleEvents, recordEvent, rehirePerson, suspendPerson, terminateEmployment, transferToEntity } from "./lifecycle";
+import { decideResignation, getResignation, resignationBlocker, submitResignation } from "./resignation";
 import { changeAssignment, getPersonView, hirePerson, type HireInput, listEmploymentFacts, rollOverPlacements } from "./service";
 
 const today = todayInVietnam();
@@ -42,7 +42,7 @@ async function hire(name: string, overrides: Partial<HireInput> = {}, managerId:
       employeeCode: null,
       startDate: "2024-01-01",
       seniorityDate: null,
-      placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: "Editor", jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
       ...overrides,
     },
     ids.actor,
@@ -107,7 +107,7 @@ describe("hire", () => {
 
   it("starts no checklist when told not to (bulk import of long-standing staff)", async () => {
     const { person, event } = await hirePerson(
-      { fullName: "Old Hand", workEmail: null, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2020-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: "Old Hand", workEmail: null, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2020-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       ids.actor,
       { onboarding: false },
     );
@@ -119,12 +119,12 @@ describe("hire", () => {
 describe("transfer and promotion", () => {
   it("records an event with a from → to snapshot; a correction records none", async () => {
     const { person } = await hire("Moving Person");
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Senior Editor", jobLevel: "L3", managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Senior Editor", seniorityLevel: "senior" as const, positionLevel: "executive" as const, managerId: ids.manager, dottedManagerId: null, workLocation: null };
     const { event } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: "Good year", placement, kind: "promotion" }, ids.actor);
     expect(event).toMatchObject({ type: "promotion", effectiveDate: "2025-01-01", reason: "Good year" });
-    expect(event!.details).toMatchObject({ from: { position: "Editor" }, to: { position: "Senior Editor", jobLevel: "L3" } });
+    expect(event!.details).toMatchObject({ from: { position: "Editor" }, to: { position: "Senior Editor", seniorityLevel: "senior", positionLevel: "executive" } });
 
-    const { event: none } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: null, placement: { ...placement, jobLevel: "L4" } }, ids.actor);
+    const { event: none } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: null, placement: { ...placement, positionLevel: "leader" as const } }, ids.actor);
     expect(none).toBeNull();
     const timeline = await listLifecycleEvents(principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]), person.id);
     expect(timeline!.map((row) => row.type)).toEqual(["promotion", "hire"]);
@@ -137,7 +137,7 @@ describe("move to another entity", () => {
     const [mediaOnly] = await db().insert(schema.orgUnit).values({ code: "MED-ADS", name: "Media Ads", entityId: ids.media }).returning();
     const [studioUnit] = await db().insert(schema.orgUnit).values({ code: "STU-POST", name: "Post-production", entityId: studio.id }).returning();
     const { person, employment: first } = await hire("Crossing Over", { seniorityDate: "2023-06-01" });
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: studioUnit.id, positionName: "Colourist", jobLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: studioUnit.id, positionName: "Colourist", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
     const startDate = addDays(today, -5);
 
     await expect(transferToEntity(person.id, { entityId: ids.media, employeeCode: null, startDate, reason: null, placement: { ...placement, orgUnitId: ids.video } }, ids.actor)).rejects.toThrow("transfer_same_entity");
@@ -228,6 +228,37 @@ describe("termination", () => {
     await expect(cancelTermination(event.id)).rejects.toThrow("event_not_found");
   });
 
+  it("moves the approvals that wait for the leaver on with the offboarding: at once for a past date, at the roll-over for a future one", async () => {
+    const dayOff = defineRequestType({ type: "test_day_off", flow: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+    const file = (personId: string) => db().transaction((tx) => submitRequest(tx, dayOff, { entityId: ids.media, requesterPersonId: personId, subjectPersonId: personId, summary: "a day off" }));
+    const waitingFor = async (requestId: string) => (await db().select().from(schema.approvalAssignee).where(eq(schema.approvalAssignee.requestId, requestId))).map((row) => row.approverPersonId);
+    const moves = async (requestId: string) => (await db().select().from(schema.approvalEvent).where(and(eq(schema.approvalEvent.requestId, requestId), eq(schema.approvalEvent.type, "reassigned")))).map((event) => [event.actorPersonId, event.meta?.reason]);
+
+    // A future last day: the manager keeps working, and keeps the turn, until the day has passed.
+    const staying = (await hire("Boss Leaving Later")).person;
+    const theirReport = (await hire("Report One", {}, staying.id)).person;
+    const later = await file(theirReport.id);
+    const lastDay = addDays(today, 3);
+    await terminateEmployment(staying.id, { lastDay, reason: "resignation", note: null }, ids.actor);
+    expect(await waitingFor(later.request.id)).toEqual([staying.id]);
+    expect(await countInbox(staying.id)).toBe(1);
+    await rollOverPlacements(addDays(lastDay, 1));
+    // The line manager is gone and the rule names nobody else: the owner answers.
+    expect(await waitingFor(later.request.id)).toEqual([ids.owner]);
+    expect(await moves(later.request.id)).toEqual([[null, "offboarded"]]);
+    expect(await countInbox(staying.id)).toBe(0);
+
+    // A past last day: in the termination's own transaction, in the name of whoever recorded it.
+    const gone = (await hire("Boss Already Left")).person;
+    const otherReport = (await hire("Report Two", {}, gone.id)).person;
+    const now = await file(otherReport.id);
+    await terminateEmployment(gone.id, { lastDay: addDays(today, -1), reason: "contract_end", note: null }, ids.actor);
+    expect(await waitingFor(now.request.id)).toEqual([ids.owner]);
+    expect(await moves(now.request.id)).toEqual([[ids.actor, "offboarded"]]);
+    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.kind, "approvals.requested"), eq(schema.notification.recipientPersonId, ids.owner)));
+    expect(notices.length).toBe(2);
+  });
+
   it("refuses to end the last owner's access", async () => {
     await expect(terminateEmployment(ids.owner, { lastDay: today, reason: "other", note: null }, ids.actor)).rejects.toThrow("last_owner");
     expect((await db().select().from(schema.employment).where(eq(schema.employment.personId, ids.owner)))[0].endDate).toBeNull();
@@ -238,7 +269,7 @@ describe("rehire and duplicates", () => {
   it("keeps one person with two employment periods", async () => {
     const { person, employment: first } = await hire("Coming Back", { profile: { ...NO_PROFILE, dateOfBirth: "1995-05-05", phone: "0912 345 678" } });
     await terminateEmployment(person.id, { lastDay: addDays(today, -30), reason: "resignation", note: null }, ids.actor);
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", jobLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
 
     await expect(rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: addDays(today, -40), seniorityDate: null, placement }, ids.actor)).rejects.toThrow("employment_overlap");
     const again = await rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: today, seniorityDate: null, placement }, ids.actor);
@@ -284,6 +315,35 @@ describe("resignation request", () => {
     await terminateEmployment(person.id, { lastDay: lastWorkingDay, reason: "resignation", note: null, resignationEventId: event.id }, ids.hr);
     expect((await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, event.id)))[0].status).toBe("applied");
   });
+
+  // CHR-03: an approved resignation once hid the form for good.
+  it("can be filed again after the termination was called off, and after a rehire", async () => {
+    const { person } = await hire("Second Thoughts");
+    const resignAndApprove = async (lastWorkingDay: string) => {
+      const { request } = await submitResignation(person.id, { lastWorkingDay, reason: null });
+      const { eventId } = await decideResignation(ids.manager, request.id, { action: "approve", comment: null });
+      return eventId!;
+    };
+    expect(await resignationBlocker(person.id)).toBeNull();
+    const first = await resignAndApprove(addDays(today, 30));
+    // Approved and not yet carried out: nothing more to file.
+    expect(await resignationBlocker(person.id)).toBe("resignation_approved");
+    await expect(submitResignation(person.id, { lastWorkingDay: addDays(today, 40), reason: null })).rejects.toThrow("resignation_approved");
+
+    const { event: termination } = await terminateEmployment(person.id, { lastDay: addDays(today, 30), reason: "resignation", note: null, resignationEventId: first }, ids.hr);
+    expect(await resignationBlocker(person.id)).toBe("already_terminated");
+    // HR calls it off: the person stays, the resignation is struck with it, and the form is back.
+    await cancelTermination(termination.id);
+    expect((await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, first)))[0].status).toBe("cancelled");
+    expect(await resignationBlocker(person.id)).toBeNull();
+
+    // Leaves for real, comes back: the old approval belongs to the old employment.
+    const second = await resignAndApprove(addDays(today, 1));
+    await terminateEmployment(person.id, { lastDay: addDays(today, -1), reason: "resignation", note: null, resignationEventId: second }, ids.hr);
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Editor", seniorityLevel: null, positionLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    await rehirePerson(person.id, { entityId: ids.media, employeeCode: null, startDate: today, seniorityDate: null, placement }, ids.hr);
+    expect(await resignationBlocker(person.id)).toBeNull();
+  });
 });
 
 describe("timeline tiers", () => {
@@ -309,5 +369,62 @@ describe("timeline tiers", () => {
     // HR staff (restricted) and the line manager (personal) see that it happened, not why.
     expect(await words(principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]))).toEqual([null, null]);
     expect(await words(principal(ids.manager))).toEqual([null, null]);
+  });
+});
+
+describe("suspension (FR-PLT-05)", () => {
+  it("signs the person out everywhere at once and touches nothing else; lifting it gives everything back", async () => {
+    const { person, employment } = await hire("Under Review");
+    await db().insert(schema.roleAssignment).values({ personId: person.id, role: "recruiter", scopeType: "group" });
+    const sessions = await signIn("under.review@suzu.group");
+    await signIn("under.review@suzu.group");
+    // Something is waiting for their approval.
+    const report = (await hire("Waiting Report", {}, person.id)).person;
+    const dayOff = defineRequestType({ type: "test_day_off", flow: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+    await db().transaction((tx) => submitRequest(tx, dayOff, { entityId: ids.media, requesterPersonId: report.id, subjectPersonId: report.id, summary: "a day off" }));
+    expect(await sessions()).toHaveLength(2);
+
+    const result = await suspendPerson(person.id, ids.hr);
+    expect(result.sessionsRevoked).toBe(2);
+    expect(result.person.status).toBe("suspended");
+    expect((await personRow(person.id)).status).toBe("suspended");
+    expect(await sessions()).toHaveLength(0);
+    // Employment, placement and role grants are as they were…
+    expect((await db().select().from(schema.employment).where(eq(schema.employment.id, employment.id)))[0].endDate).toBeNull();
+    expect(await loadGrants(person.id)).toHaveLength(1);
+    expect(await tasksAbout(person.id)).toHaveLength(3);
+    // …and so is the approval: nothing moves by itself, an administrator reassigns it.
+    expect(await countInbox(person.id)).toBe(1);
+    await expect(suspendPerson(person.id, ids.hr)).rejects.toThrow("suspend_not_active");
+    // The nightly roll-over neither activates nor offboards them.
+    await rollOverPlacements(today);
+    expect((await personRow(person.id)).status).toBe("suspended");
+
+    const lifted = await liftSuspension(person.id);
+    expect(lifted.person.status).toBe("active");
+    expect(await loadGrants(person.id)).toHaveLength(1);
+    await expect(liftSuspension(person.id)).rejects.toThrow("suspend_not_suspended");
+  });
+
+  it("refuses oneself, someone who is not active, and the last owner who can still sign in", async () => {
+    await expect(suspendPerson(ids.hr, ids.hr)).rejects.toThrow("suspend_self");
+    // The seed actor has left; a newcomer has not started.
+    await expect(suspendPerson(ids.actor, ids.hr)).rejects.toThrow("suspend_not_active");
+    const newcomer = (await hire("Starts Next Month", { startDate: addDays(today, 30) })).person;
+    await expect(suspendPerson(newcomer.id, ids.hr)).rejects.toThrow("suspend_not_active");
+    await expect(suspendPerson("00000000-0000-4000-8000-000000000000", ids.hr)).rejects.toThrow("person_not_found");
+
+    await expect(suspendPerson(ids.owner, ids.hr)).rejects.toThrow("last_owner");
+    expect((await personRow(ids.owner)).status).toBe("active");
+    // With a second owner either of the two may be suspended — and then the other is the last one again.
+    const second = (await hire("Second Owner")).person;
+    const [grant] = await db().insert(schema.roleAssignment).values({ personId: second.id, role: "owner", scopeType: "group" }).returning();
+    await suspendPerson(second.id, ids.hr);
+    await expect(suspendPerson(ids.owner, ids.hr)).rejects.toThrow("last_owner");
+    await liftSuspension(second.id);
+    await suspendPerson(ids.owner, ids.hr);
+    await expect(suspendPerson(second.id, ids.hr)).rejects.toThrow("last_owner");
+    await liftSuspension(ids.owner);
+    await db().delete(schema.roleAssignment).where(eq(schema.roleAssignment.id, grant.id));
   });
 });

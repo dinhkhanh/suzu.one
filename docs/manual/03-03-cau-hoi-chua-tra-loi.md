@@ -51,3 +51,7 @@ Mọi bản sao của cùng câu hỏi trong phạm vi của bạn được đá
 - Nếu cùng câu hỏi được hỏi lại sau khi đã đánh dấu xong mà SuZu vẫn không trả lời được, câu hỏi sẽ xuất hiện lại trong **Chưa xử lý**.
 - Bạn chỉ xử lý được câu hỏi của người trong phạm vi của mình; bản sao do người ngoài phạm vi hỏi vẫn mở cho người quản lý của họ.
 - Nếu ai đó đã xử lý trước, hệ thống báo *Câu hỏi này đã được xử lý rồi.*
+
+## Mức dùng trợ lý (Chủ sở hữu)
+
+**Chủ sở hữu** thấy thêm thẻ **Mức dùng** ([mở trực tiếp](/assistant/unanswered?show=usage)): số lượt trả lời, số lượt do mô hình viết, **Token gửi đi** và **Token nhận về** trong 30 ngày qua, **Theo người** và **Theo ngày**. Dòng đầu nhắc giới hạn mỗi người: 100 câu hỏi và 40 bản nháp một ngày. Token chỉ phát sinh khi câu trả lời do mô hình viết.

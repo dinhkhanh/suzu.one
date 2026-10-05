@@ -3,7 +3,7 @@
 // the deals whose value this reader may see — the rule of `canSeeDealValue`, as a WHERE clause — so
 // nothing is loaded row by row to be added up, and nothing the reader may not value is counted.
 import "server-only";
-import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { entityReach } from "../platform/rbac/policy";
@@ -182,7 +182,7 @@ export async function salesTile(viewer: CrmViewer, today: IsoDate = todayInVietn
           .select({ amount: sql<number>`coalesce(sum(${schema.crmPayment.amountVnd}), 0)` })
           .from(schema.crmPayment)
           .innerJoin(schema.crmInvoice, eq(schema.crmInvoice.id, schema.crmPayment.invoiceId))
-          .where(and(invoices, sql`${schema.crmPayment.receivedOn} >= ${monthStart}::date`)),
+          .where(and(invoices, isNull(schema.crmPayment.reversedAt), sql`${schema.crmPayment.receivedOn} >= ${monthStart}::date`)),
   ]);
   if (!deals && !aging) return null;
   if (deals && Number(deals.openDeals) === 0 && Number(deals.wonCount) === 0 && (!aging || aging.total === 0)) return null;

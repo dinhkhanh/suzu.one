@@ -7,11 +7,11 @@ import { and, asc, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
+import { EXPORT_ROW_LIMIT, type ExportColumn, type ExportFile, toTable } from "@/modules/platform/export/table";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { listEntities } from "../platform/org/service";
-import { projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
+import { type AccentColor, accentOf, projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
 import type { ProjectKind } from "./engine/brief";
@@ -24,6 +24,10 @@ import { canSeeFees } from "./policy";
 export type PortfolioRow = {
   id: string;
   name: string;
+  /** The project's poster, shown as its mark; null = its initials. */
+  posterFileId: string | null;
+  /** The project's colour, else its team's (as on the work page); null = ink. */
+  accent: AccentColor | null;
   status: string;
   /** The project's status as its team's set names it; null = shown by its category. */
   statusName: string | null;
@@ -46,7 +50,8 @@ export type PortfolioRow = {
   startDate: string | null;
   dueDate: string | null;
   dueSlipDays: number | null;
-  register: { promised: number; accepted: number; percent: number | null };
+  /** `accepted` is the client's acceptance; `awaitingClient` is finished on our side and not yet answered. */
+  register: { promised: number; accepted: number; awaitingClient: number; percent: number | null };
   burn: Pick<Burn, "loggedMinutes" | "burnMinutes" | "budgetMinutes" | "percent" | "level">;
   /** Open high risks and open issues of the RAID log (FR-PJM-29). */
   raid: RaidCounts;
@@ -109,6 +114,8 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
     const row: PortfolioRow = {
       id: project.id,
       name: project.name,
+      posterFileId: project.posterFileId,
+      accent: accentOf(project.color, project.teamColor) ?? null,
       status: project.status,
       statusName: (project.statusId && statusNames.get(project.statusId)) || null,
       jobNumber: plan.jobNumber,
@@ -130,7 +137,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
       startDate: project.startDate,
       dueDate: project.dueDate,
       dueSlipDays: slipDays(plan.baseline?.dueDate, project.dueDate),
-      register: { promised: register.promised, accepted: register.accepted, percent: register.percent },
+      register: { promised: register.promised, accepted: register.accepted, awaitingClient: register.awaitingClient, percent: register.percent },
       burn: { loggedMinutes: burn.loggedMinutes, burnMinutes: burn.burnMinutes, budgetMinutes: burn.budgetMinutes, percent: burn.percent, level: burn.level },
       raid: raid.get(project.id) ?? { highRisks: 0, openIssues: 0 },
     };
@@ -156,7 +163,7 @@ const hours = (minutes: number | null) => (minutes === null ? null : Math.round(
  * The portfolio as CSV (FR-PLT-37): the same rows as the screen, the same filters, and the fee
  * column only when the viewer sees money — and then filled only on the rows they may read.
  */
-export async function buildPortfolioExport(viewer: WorkViewer, filters: PortfolioFilters, locale: Locale): Promise<{ file: CsvFile; withFees: boolean }> {
+export async function buildPortfolioExport(viewer: WorkViewer, filters: PortfolioFilters, locale: Locale): Promise<{ file: ExportFile; withFees: boolean }> {
   const rows = await listPortfolio(viewer, { today: todayInVietnam(), filters });
   const limited = rows.slice(0, EXPORT_ROW_LIMIT);
   const t = translator(locale);
@@ -179,6 +186,7 @@ export async function buildPortfolioExport(viewer: WorkViewer, filters: Portfoli
     { header: t("projects.fields.dueDate"), value: (row) => row.dueDate },
     { header: t("projects.fields.dueSlip"), value: (row) => row.dueSlipDays },
     { header: t("projects.fields.accepted"), value: (row) => row.register.accepted },
+    { header: t("projects.fields.awaitingClient"), value: (row) => row.register.awaitingClient },
     { header: t("projects.fields.promised"), value: (row) => row.register.promised },
     { header: t("projects.fields.hoursUsed"), value: (row) => hours(row.burn.loggedMinutes) },
     { header: t("projects.fields.hoursBurn"), value: (row) => hours(row.burn.burnMinutes) },
@@ -187,5 +195,5 @@ export async function buildPortfolioExport(viewer: WorkViewer, filters: Portfoli
     { header: t("projects.raid.portfolio.openIssues"), value: (row) => row.raid.openIssues },
     ...(withFees ? [{ header: t("projects.fields.feeVnd"), value: (row: PortfolioRow) => row.feeVnd ?? null }] : []),
   ];
-  return { file: { fileName: `portfolio-${todayInVietnam()}.csv`, csv: toCsv(columns, limited), rowCount: limited.length, truncated: rows.length > limited.length }, withFees };
+  return { file: { fileName: `portfolio-${todayInVietnam()}`, table: toTable(columns, limited), rowCount: limited.length, truncated: rows.length > limited.length }, withFees };
 }

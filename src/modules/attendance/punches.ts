@@ -1,13 +1,16 @@
 // Check-in and check-out from the app (FR-ATT-03, 04), the review of flagged check-ins, and
 // "who's in today" (FR-ATT-15). The time of a punch is the server's clock, always.
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, ne, or, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getLeaveOnDays } from "@/modules/leave/service";
+import type { JobDefinition } from "@/modules/platform/jobs/service";
+import { notify } from "@/modules/platform/notifications/service";
 import { matchesReach, permissionReach, type Principal, tierReach } from "@/modules/platform/rbac/policy";
+import { listPeopleHoldingEach } from "@/modules/platform/rbac/service";
 import type { DayPlan } from "./engine/calendar";
 import { allowlistHostnames, evaluatePunch, expandAllowlist, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
 import { listAllLocations } from "./locations";
@@ -179,6 +182,18 @@ export type FlaggedPunch = {
 
 const personTarget = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
+/**
+ * How far back a check-in still waiting for review is shown and counted: the start of last month
+ * or 31 days, whichever is earlier — a pending flag blocks last month's lock however early in the
+ * month it was made, so it must stay in front of its reviewer until then.
+ */
+const pendingSince = (now?: Date): Date => {
+  const today = todayInVietnam(now);
+  const lastMonthStart = `${addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7)}-01`;
+  const thirtyOneDays = addDays(today, -31);
+  return startOfVietnamDay(lastMonthStart < thirtyOneDays ? lastMonthStart : thirtyOneDays);
+};
+
 /** Flagged punches of the people the viewer reviews (reports; HR's scope) — never the viewer's own. Waiting ones first. */
 export async function listFlaggedPunches(viewer: { personId: string; principal: Principal }, options: { sinceDays?: number; now?: Date } = {}): Promise<FlaggedPunch[]> {
   const since = startOfVietnamDay(addDays(todayInVietnam(options.now), -(options.sinceDays ?? 31)));
@@ -187,7 +202,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
     .select({ punch: schema.punch, person: schema.person })
     .from(schema.punch)
     .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
-    .where(and(ne(schema.punch.reviewStatus, "none"), gte(schema.punch.at, since), ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId))))
+    .where(and(ne(schema.punch.reviewStatus, "none"), or(gte(schema.punch.at, since), and(eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, pendingSince(options.now)))), ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId))))
     .orderBy(sql`${schema.punch.reviewStatus} = 'pending' desc`, desc(schema.punch.at))
     .limit(300);
   const mine = rows.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, personTarget(person))));
@@ -225,7 +240,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
 
 /** How many flagged punches wait for the viewer — the same people as `listFlaggedPunches`, counted in the database. */
 export async function countPunchesToReview(viewer: { personId: string; principal: Principal }, options: { now?: Date } = {}): Promise<number> {
-  const since = startOfVietnamDay(addDays(todayInVietnam(options.now), -31));
+  const since = pendingSince(options.now);
   const reach = permissionReach(viewer.principal, "attendance:manage");
   const [{ value }] = await db()
     .select({ value: sql<number>`count(*)::int` })
@@ -256,9 +271,98 @@ export async function reviewPunch(punchId: string, reviewerPersonId: string, inp
     // Rejecting takes the punch out of the day; accepting changes nothing the timesheet counts, but costs nothing to re-run.
     const day = todayInVietnam(after.at);
     await requestTimesheetRecompute([after.personId], addDays(day, -1), day, tx);
+    // The person hears why a punch of theirs stopped counting — with time to file a correction before the lock.
+    if (after.reviewStatus === "rejected") await notify({ recipients: [after.personId], kind: "attendance.punch_rejected", params: { time: punchTime(after.at), reason: after.reviewNote ?? "" }, link: `/attendance?month=${day.slice(0, 7)}` }, tx);
     return { before, after };
   });
 }
+
+// ── Telling the reviewers (ATT-01) ──────────────────────────────────────────────────────────
+
+const punchTime = (at: Date): string => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at).map((part) => [part.type, part.value]));
+  return `${parts.hour}:${parts.minute} ${parts.day}/${parts.month}/${parts.year}`;
+};
+
+/**
+ * Who answers the check-ins waiting for review that `where` picks out, and how many each: the
+ * person's line manager, or — without an active one — the HR who keep the person's attendance
+ * (owners left out: their "*" would put every flag of the group in their inbox). Counted per
+ * person in SQL; the grants are asked once for all the people without a manager.
+ */
+async function reviewersOfPendingPunches(where: SQL): Promise<Map<string, number>> {
+  const manager = alias(schema.person, "manager");
+  const rows = await db()
+    .select({ personId: schema.punch.personId, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, managerId: sql<string | null>`case when ${manager.status} = 'active' then ${manager.id} end`, count: sql<number>`count(*)::int` })
+    .from(schema.punch)
+    .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
+    .leftJoin(manager, eq(manager.id, schema.person.managerId))
+    .where(and(eq(schema.punch.reviewStatus, "pending"), where))
+    .groupBy(schema.punch.personId, schema.person.primaryEntityId, schema.person.orgUnitPath, manager.id, manager.status);
+  const unmanaged = rows.filter((row) => !row.managerId);
+  const holders = await listPeopleHoldingEach("attendance:manage", unmanaged.map((row) => ({ entityId: row.entityId, unitPath: row.unitPath })), { includeWildcard: false });
+  const hrOf = new Map(unmanaged.map((row, index) => [row.personId, holders[index]]));
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    for (const reviewer of row.managerId ? [row.managerId] : (hrOf.get(row.personId) ?? [])) {
+      if (reviewer !== row.personId) counts.set(reviewer, (counts.get(reviewer) ?? 0) + row.count);
+    }
+  }
+  return counts;
+}
+
+type ReviewKind = "attendance.punches_to_review" | "attendance.punches_block_lock";
+
+/**
+ * One notice per reviewer, however many punches: reviewers with the same count share one
+ * `notify`. With `onceSince`, a reviewer who already had this kind of notice since then is
+ * skipped — the morning job may be triggered twice.
+ */
+async function tellReviewers(counts: ReadonlyMap<string, number>, kind: ReviewKind, params: Record<string, string>, onceSince?: Date): Promise<number> {
+  let reviewers = [...counts.keys()];
+  if (onceSince && reviewers.length) {
+    const told = await db().selectDistinct({ personId: schema.notification.recipientPersonId }).from(schema.notification).where(and(inArray(schema.notification.recipientPersonId, reviewers), eq(schema.notification.kind, kind), gte(schema.notification.createdAt, onceSince)));
+    const skip = new Set(told.map((row) => row.personId));
+    reviewers = reviewers.filter((reviewer) => !skip.has(reviewer));
+  }
+  const byCount = new Map<number, string[]>();
+  for (const reviewer of reviewers) byCount.set(counts.get(reviewer)!, [...(byCount.get(counts.get(reviewer)!) ?? []), reviewer]);
+  for (const [count, recipients] of byCount) await notify({ recipients, kind, params: { ...params, count }, link: "/attendance/review" });
+  return reviewers.length;
+}
+
+/**
+ * Before an entity's month is locked — when HR asks people to confirm, and when the lock is refused
+ * — whoever still has check-ins of that month to review hears it: a pending flag blocks the lock,
+ * and nobody should find that out only from HR's screen. The month's people are the lock's own:
+ * everyone with days in the entity's month. Returns how many reviewers were told.
+ */
+export async function remindPunchReviewsBeforeLock(entityId: string, month: string): Promise<number> {
+  const from = `${month}-01`;
+  const next = `${addDays(from, 31).slice(0, 7)}-01`;
+  const people = db().selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lt(schema.timesheetDay.date, next)));
+  const counts = await reviewersOfPendingPunches(and(inArray(schema.punch.personId, people), gte(schema.punch.at, startOfVietnamDay(from)), lt(schema.punch.at, startOfVietnamDay(next)))!);
+  return tellReviewers(counts, "attendance.punches_block_lock", { month });
+}
+
+/**
+ * The morning job: yesterday's flagged check-ins that still wait, one notice per reviewer. On the
+ * 1st the whole of last month instead — its lock is coming, and every pending flag blocks it.
+ */
+export async function remindPunchReviews(today: IsoDate): Promise<{ reviewers: number }> {
+  if (today.slice(8) === "01") {
+    const lastMonth = addDays(today, -1).slice(0, 7);
+    const counts = await reviewersOfPendingPunches(and(gte(schema.punch.at, startOfVietnamDay(`${lastMonth}-01`)), lt(schema.punch.at, startOfVietnamDay(today)))!);
+    return { reviewers: await tellReviewers(counts, "attendance.punches_block_lock", { month: lastMonth }, startOfVietnamDay(today)) };
+  }
+  const counts = await reviewersOfPendingPunches(and(gte(schema.punch.at, startOfVietnamDay(addDays(today, -1))), lt(schema.punch.at, startOfVietnamDay(today)))!);
+  return { reviewers: await tellReviewers(counts, "attendance.punches_to_review", {}, startOfVietnamDay(today)) };
+}
+
+export const punchReviewRemindersJob: JobDefinition = {
+  name: "punch-review-reminders",
+  run: ({ today }) => remindPunchReviews(today),
+};
 
 // ── Who's in today (FR-ATT-15) ──────────────────────────────────────────────────────────────
 

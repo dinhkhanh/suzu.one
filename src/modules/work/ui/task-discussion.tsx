@@ -2,16 +2,18 @@
 import { HistoryIcon, PaperclipIcon, SmilePlusIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Segmented } from "@/components/ui/segmented";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { addCommentAction, beginTaskUploadAction, completeTaskUploadAction, deleteCommentAction, editCommentAction, followTaskAction, openTaskFileAction, reactToCommentAction, removeTaskFileAction } from "../actions";
-import { mentionQueryAt, mentionToken, parseBody } from "../engine/mentions";
+import { type DraftMention, fromDraft, mentionName, mentionQueryAt, parseBody, splitDraft, toDraft } from "../engine/mentions";
 import { REACTIONS } from "../enums";
 import type { DetailActivity } from "./task-detail";
 import { PersonAvatar } from "./task-row";
@@ -63,18 +65,40 @@ function Body({ body }: { body: string }) {
 /** A text box with an @-picker over the people who may see the task. */
 function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCancel, placeholder }: { people: Person[]; initial?: string; submitLabel: string; pending: boolean; onSubmit: (body: string, reset: () => void) => void; onCancel?: () => void; placeholder: string }) {
   const t = useTranslations("work.discussion");
-  const [body, setBody] = useState(initial);
+  // The box holds the draft as it reads ("@Lê Trần Ý Nhiên"); the people picked are kept beside
+  // it, and the stored tokens are put back only when the comment is sent.
+  const [draft] = useState(() => toDraft(initial));
+  const [body, setBody] = useState(draft.text);
+  const [mentions, setMentions] = useState<DraftMention[]>(draft.mentions);
   const [query, setQuery] = useState<{ start: number; query: string } | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
+  const listId = useId();
   const matches = useMemo(() => (query ? people.filter((person) => searchKey(person.fullName).includes(searchKey(query.query))).slice(0, 6) : []), [people, query]);
+  // The highlighted row, moved by the arrow keys. A new search starts again at the top.
+  const [active, setActive] = useState(0);
+  const [searched, setSearched] = useState(query?.query);
+  if (searched !== query?.query) {
+    setSearched(query?.query);
+    setActive(0);
+  }
+  const picking = query !== null && matches.length > 0;
+  const current = picking ? Math.min(active, matches.length - 1) : -1;
+  const segments = splitDraft(body, mentions);
+  const stored = fromDraft(body, mentions);
 
   function pick(person: Person) {
-    if (!query) return;
-    const caret = box.current?.selectionStart ?? body.length;
-    const next = `${body.slice(0, query.start)}${mentionToken(person.fullName, person.id)} ${body.slice(caret)}`;
-    setBody(next);
+    const field = box.current;
+    if (!query || !field) return;
+    const name = mentionName(person.fullName);
+    const caret = field.selectionStart;
+    setMentions((known) => (known.some((mention) => mention.name === name && mention.personId === person.id) ? known : [...known, { name, personId: person.id }]));
     setQuery(null);
-    box.current?.focus();
+    field.focus();
+    field.setSelectionRange(query.start, caret);
+    // Typed in as if by the keyboard, so the browser's undo (Ctrl/⌘+Z) takes it back. The change
+    // event that follows updates the draft; only where the browser refuses is the value set by hand.
+    if (!document.execCommand("insertText", false, `@${name} `)) setBody(`${body.slice(0, query.start)}@${name} ${body.slice(caret)}`);
   }
 
   return (
@@ -82,41 +106,87 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
       className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
-        if (body.trim()) onSubmit(body.trim(), () => setBody(""));
+        if (body.trim()) onSubmit(stored.trim(), () => setBody(""));
       }}
     >
       <div className="relative">
+        {/* The same text drawn behind the box, so a picked name can be blue: the box's own text is
+            transparent, its caret and placeholder are not. Every metric matches the Textarea's. */}
+        <div
+          ref={backdrop}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-[0.625rem] border border-transparent bg-background px-3 py-2.5 text-base leading-relaxed break-words whitespace-pre-wrap md:text-sm dark:bg-input/20"
+        >
+          {segments.map((segment, index) =>
+            segment.type === "mention" ? (
+              <span key={index} className="rounded-sm bg-primary/10 text-primary">
+                @{segment.name}
+              </span>
+            ) : (
+              <span key={index}>{segment.text}</span>
+            ),
+          )}
+          {/* A trailing line break needs something after it to take up its line. */}
+          {"\u200b"}
+        </div>
         <Textarea
           ref={box}
           value={body}
           rows={3}
-          maxLength={5000}
+          // The limit is on what is stored, and every picked name is stored with its id.
+          maxLength={5000 - (stored.length - body.length)}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="min-h-16 md:min-h-14"
+          className="relative min-h-16 bg-transparent text-transparent caret-foreground selection:bg-primary/20 md:min-h-14 dark:bg-transparent"
+          role="combobox"
+          aria-expanded={picking}
+          aria-controls={picking ? listId : undefined}
+          aria-activedescendant={picking ? `${listId}-${current}` : undefined}
+          aria-autocomplete="list"
+          onScroll={(event) => {
+            if (backdrop.current) backdrop.current.scrollTop = event.currentTarget.scrollTop;
+          }}
           onChange={(event) => {
             setBody(event.target.value);
             setQuery(mentionQueryAt(event.target.value, event.target.selectionStart));
           }}
           onKeyDown={(event) => {
-            if (query && matches.length && (event.key === "Enter" || event.key === "Tab")) {
+            if (picking && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
               event.preventDefault();
-              pick(matches[0]);
+              const step = event.key === "ArrowDown" ? 1 : -1;
+              setActive((current + step + matches.length) % matches.length);
+            } else if (picking && (event.key === "Enter" || event.key === "Tab")) {
+              event.preventDefault();
+              pick(matches[current]);
             } else if (event.key === "Escape") setQuery(null);
             else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
           }}
         />
-        {query && matches.length ? (
-          <ul role="listbox" aria-label={t("mentionPicker")} className="absolute z-10 mt-1 w-64 rounded-xl bg-popover p-1 text-sm shadow-(--float-shadow)">
-            {matches.map((person, index) => (
-              <li key={person.id}>
-                <button type="button" role="option" aria-selected={index === 0} className={`w-full rounded px-2 py-1 text-left hover:bg-muted ${index === 0 ? "bg-muted/60" : ""}`} onClick={() => pick(person)}>
-                  {person.fullName}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {/* In a portal over everything, so a card or a sheet that clips its content cannot cut it off. Focus stays in the text box. */}
+        <Popover open={picking} onOpenChange={(open) => (open ? null : setQuery(null))}>
+          <PopoverContent anchor={box} align="start" initialFocus={false} finalFocus={false} className="w-64 gap-0 p-1">
+            <ul id={listId} role="listbox" aria-label={t("mentionPicker")}>
+              {matches.map((person, index) => (
+                <li key={person.id}>
+                  <button
+                    id={`${listId}-${index}`}
+                    type="button"
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={index === current}
+                    className={cn("w-full rounded-md px-2 py-1.5 text-left", index === current ? "bg-muted" : "hover:bg-muted/60")}
+                    // Keep the caret in the text box; the click still picks.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActive(index)}
+                    onClick={() => pick(person)}
+                  >
+                    {person.fullName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
       </div>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={pending || !body.trim()}>

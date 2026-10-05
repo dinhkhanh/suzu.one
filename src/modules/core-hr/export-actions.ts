@@ -17,6 +17,7 @@ const peoplePipeline = createAction({
     q: optional(z.string().max(200)),
     entityId: optional(z.uuid()),
     departmentId: optional(z.uuid()),
+    competencyId: optional(z.uuid()),
     workforceType: optional(z.enum(WORKFORCE_TYPES)),
     status: optional(z.enum([...PERSON_STATUSES, "all"])),
     locale: z.enum(["vi", "en"]).default("vi"),

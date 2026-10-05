@@ -17,6 +17,7 @@ import { documentTemplate } from "../documents/schema";
 import { approvalRequest } from "../platform/approvals/schema";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import type { PositionLevel, SeniorityLevel } from "../../lib/job-levels";
 import type {
   ApplicationEventType,
   ApplicationStatus,
@@ -99,6 +100,9 @@ export const hiringRequest = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
     positionTitle: text("position_title").notNull(),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     headcount: integer("headcount").notNull().default(1),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
@@ -143,6 +147,9 @@ export const jobOpening = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
     positionName: text("position_name"),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
     workMode: text("work_mode").$type<WorkMode>().notNull().default("onsite"),
@@ -235,13 +242,31 @@ export const candidate = pgTable(
     /**
      * PDPL (FR-REC-03, 13). `consentAt` is when the candidate agreed to the notice they were shown
      * and `consentVersion` is which notice that was; `talentPoolConsent` is the separate, opt-in
-     * agreement to be kept on file after this application ends, which is the only thing that
-     * extends `retainUntil`. `anonymisedAt` is set by the retention job, never by a person.
+     * agreement to be kept on file after this application ends — the one thing that stops the
+     * retention clock. All three are written when the record is made by the person it is about
+     * and **never by a later application**: anybody can type somebody else's address into the
+     * public form (`public.ts`). `retainUntil` is the window from the day the record was made; the
+     * job also counts it from the day their latest application closed (`engine/retention.ts`).
+     * `anonymisedAt` is set by the retention job, or by HR erasing the candidate at their request.
      */
     consentAt: timestamp("consent_at", { withTimezone: true }),
     consentVersion: text("consent_version"),
     talentPoolConsent: boolean("talent_pool_consent").notNull().default(false),
     retainUntil: date("retain_until"),
+    /**
+     * The language the candidate reads ("vi" | "en"): the careers page they applied on, or what a
+     * recruiter chose. Their letters are written in it — it is a property of them, not of whoever
+     * presses send. Null reads as Vietnamese.
+     */
+    locale: text("locale"),
+    /**
+     * SHA-256 of the link to the candidate's own privacy page (`/careers/privacy/<token>`), where
+     * they see whether they are in the talent pool and can leave it. The token is derived from the
+     * record and its address under the application secret (`engine/privacy-token.ts`), so every
+     * letter carries the same link and a changed address retires the old one; only its hash is
+     * kept, so a database read is not a way in. Emptied by anonymisation.
+     */
+    privacyTokenHash: text("privacy_token_hash"),
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
     // Null when the candidate applied through the public page: nobody inside the company made them.
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
@@ -252,6 +277,7 @@ export const candidate = pgTable(
     index("candidate_phone_key_idx").on(t.phoneKey),
     index("candidate_search_name_idx").on(t.searchName),
     index("candidate_retention_idx").on(t.retainUntil, t.anonymisedAt),
+    index("candidate_privacy_token_idx").on(t.privacyTokenHash),
   ],
 ).enableRLS();
 
@@ -583,6 +609,9 @@ export const jobOffer = pgTable(
 
     // ── The job, as offered ───────────────────────────────────────────────────────────────
     positionName: text("position_name").notNull(),
+    // The job title as two ladders (src/lib/job-levels.ts); `job_level` is the free text they replaced, no longer read or written.
+    seniorityLevel: text("seniority_level").$type<SeniorityLevel>(),
+    positionLevel: text("position_level").$type<PositionLevel>(),
     jobLevel: text("job_level"),
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),

@@ -115,6 +115,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
+                    {row.jobNumber ? <span className="mr-1.5 font-mono text-xs text-faint">{row.jobNumber}</span> : null}
                     <RecordLink kind="project" id={row.projectId}>{row.projectName}</RecordLink>
                   </TableCell>
                   <TableCell kind="time" className="text-muted-foreground">{row.billable > 0 ? hours(row.billable) : ""}</TableCell>

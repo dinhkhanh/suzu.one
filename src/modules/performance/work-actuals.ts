@@ -18,7 +18,7 @@ import "server-only";
 import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
-import { listPeopleHolding } from "@/modules/platform/rbac/service";
+import { listPeopleHoldingEach } from "@/modules/platform/rbac/service";
 import { isWorkMetric, type KpiFrequency, type KpiUnit, periodDueIn, scoringMonthOf, WORK_METRIC_UNITS, type WorkMetric } from "./enums";
 import { loadDirectory } from "./people";
 
@@ -71,11 +71,14 @@ export async function proposeWorkActuals(proposals: readonly WorkProposal[]): Pr
   });
 
   const directory = await loadDirectory();
+  // Nobody above them: whoever runs performance for them scores it — one read of the grants for all of them.
+  const unmanaged = [...new Set(written.map(({ line }) => line.personId))].filter((personId) => directory.has(personId) && !directory.get(personId)!.chainAbove[0]);
+  const managers = new Map((await listPeopleHoldingEach("performance:manage", unmanaged.map((personId) => directory.get(personId)!), { includeWildcard: false })).map((holders, index) => [unmanaged[index], holders]));
   const scorers = new Map<string, Set<string>>();
   for (const { line } of written) {
     const person = directory.get(line.personId);
     const manager = person?.chainAbove[0];
-    const recipients = manager ? [manager] : person ? await listPeopleHolding("performance:manage", person, { includeWildcard: false }) : [];
+    const recipients = manager ? [manager] : (managers.get(line.personId) ?? []);
     const key = `${line.kpiName}\u0000${line.periodKey}`;
     for (const recipient of recipients) if (recipient !== line.personId) scorers.set(key, (scorers.get(key) ?? new Set()).add(recipient));
   }

@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { createPage, createSpace, type KbViewer, listSpaceFiles, listTree, type LoadedSpace, loadSpace, projectStarters, spaceLevel, type KbLevel, type SpaceFileView, type TreeNode } from "../kb/service";
+import { ensurePlan } from "./plans";
 
 /** The space key of a project: fixed by the project's id, so it can never be made twice. */
 export const projectSpaceKey = (projectId: string): string => `prj-${projectId.replace(/-/g, "").toLowerCase()}`;
@@ -27,6 +28,10 @@ export const projectAudience = (projectId: string) => ({ subjectKey: `project:${
 export async function ensureProjectSpace(projectId: string, actorPersonId: string): Promise<{ spaceId: string; created: boolean; pages: number }> {
   const starters = await projectStarters();
   return db().transaction(async (tx) => {
+    // A project made before plans were written at creation may still have none: it is made here,
+    // with its job number, rather than refused (`ensurePlan` throws `project_not_found` itself
+    // when there is no such project).
+    await ensurePlan(projectId, tx);
     const [plan] = await tx.select({ kbSpaceId: schema.projectPlan.kbSpaceId, jobNumber: schema.projectPlan.jobNumber }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).limit(1).for("update");
     if (!plan) throw new ActionError("project_not_found");
     if (plan.kbSpaceId) return { spaceId: plan.kbSpaceId, created: false, pages: 0 };

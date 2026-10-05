@@ -1,13 +1,15 @@
 import { Check, Clock, Coffee } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { SectionSkeleton } from "@/components/ui/page-skeleton";
 import { todayInVietnam } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getCheckInState } from "@/modules/attendance/punches";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
-import { getToday } from "@/modules/daily/service";
+import { getToday, reportLink } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { RunningTimer } from "@/modules/daily/ui/timer";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -76,13 +78,14 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
     </Link>
   );
 
+  // The links name the day this page was rendered for: opened after midnight they still lead to it.
   const reportCard = reportDue ? (
-    <Link href="/daily/report" className="press flex min-h-24 flex-col justify-between gap-2 rounded-[14px] bg-primary p-4 text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)]">
+    <Link href={reportLink(date)} className="press flex min-h-24 flex-col justify-between gap-2 rounded-[14px] bg-primary p-4 text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)]">
       <span className="text-xs text-primary-foreground/80">{t("today.reportShort")}</span>
       <span className="text-[0.9375rem] leading-snug font-semibold tracking-[-0.01em]">{t("today.writeReportBy", { time: day!.rules.reportDeadline })}</span>
     </Link>
   ) : (
-    <Link href={reportSent ? `/daily/reports/${view.report!.id}` : "/daily/report"} className="press flex min-h-24 flex-col justify-between gap-2 rounded-[14px] border border-border bg-background p-4 hover:bg-canvas">
+    <Link href={reportSent ? `/daily/reports/${view.report!.id}` : reportLink(date)} className="press flex min-h-24 flex-col justify-between gap-2 rounded-[14px] border border-border bg-background p-4 hover:bg-canvas">
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {reportSent ? <Check aria-hidden className={cn("size-3.5", view.report!.late ? "text-warning" : "text-success")} strokeWidth={2.5} /> : null}
         {t("today.reportShort")}
@@ -142,7 +145,10 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         ))}
       </nav>
 
-      {tab === "today" ? <DayLists user={user} date={date} view={view} /> : <Inbox view={tab} user={user} today={date} mine={mine} followUps={followUps.list} />}
+      {/* The lists read more of their own (targets, states, deals, job numbers): the day's strip and the tabs come first. */}
+      <Suspense key={tab} fallback={<SectionSkeleton rows={4} />}>
+        {tab === "today" ? <DayLists user={user} date={date} view={view} /> : <Inbox view={tab} user={user} today={date} mine={mine} followUps={followUps.list} />}
+      </Suspense>
     </Page>
   );
 }

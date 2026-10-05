@@ -7,6 +7,14 @@ export const REQUEST_CATEGORIES = ["purchase", "finance", "hr", "it", "admin", "
 export type RequestCategory = (typeof REQUEST_CATEGORIES)[number];
 
 /**
+ * What finance does once a request of the type is approved (REQ-01): nothing, pay it (a payment or
+ * a purchase), or pay it as an advance that a later payment under the same parent is netted
+ * against. An expense claim is none of these: it is paid through the payroll run.
+ */
+export const REQUEST_PAYOUTS = ["none", "payment", "advance"] as const;
+export type RequestPayout = (typeof REQUEST_PAYOUTS)[number];
+
+/**
  * Who owns an attachment while a request is being filled in: the person who uploaded it. The
  * request does not exist yet, so it cannot own anything.
  *

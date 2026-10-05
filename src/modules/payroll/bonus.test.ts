@@ -28,11 +28,11 @@ import { hirePerson } from "@/modules/core-hr/service";
 import { DEFAULT_PERFORMANCE_WEIGHTING, finalResult, isMonthConsumed, isYearConsumed, reopenMonth } from "@/modules/performance/service";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { createBonusRun, getBonusCost, getBonusLine, listBonusLines, listBonusRunEvents, overrideBonusLine, payBonusRun, simulateBonusRun, simulateWhatIf, stepBonusRun } from "./bonus";
-import { decideBonusScheme, getBonusScheme, proposeBonusScheme } from "./bonus-schemes";
+import { bonusHandoffState, createBonusRun, getBonusCost, getBonusLine, listBonusHandoffs, listBonusLines, listBonusRunEvents, overrideBonusLine, payBonusRun, simulateBonusRun, simulateWhatIf, stepBonusRun } from "./bonus";
+import { bonusSchemeIssues, checkBonusSchemeValue, decideBonusScheme, getBonusScheme, proposeBonusScheme } from "./bonus-schemes";
 import { DEFAULT_BONUS_SCHEME, DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
-import { listRunInputs } from "./runs";
+import { cancelRun, listRunInputs } from "./runs";
 import { payComponentSeedRows } from "./seed-components";
 
 const ids = {} as Record<"entity" | "actor" | "owner" | "star" | "steady" | "newcomer" | "partner", string>;
@@ -116,7 +116,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate,
         seniorityDate: null,
-        placement: { workforceType, branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+        placement: { workforceType, branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
       },
       actor.id,
       { onboarding: false },
@@ -176,6 +176,29 @@ describe("the bonus scheme is configuration with a history", () => {
     const scheme = await getBonusScheme(ids.entity, `${YEAR}-12-31`);
     expect(scheme.value.payComponentCode).toBe("THIRTEENTH_MONTH");
     expect(scheme.validFrom).toBe("2026-01-01");
+  });
+
+  it("says which field of a scheme is wrong, not only that something is", () => {
+    // The editor is raw JSON: each problem carries the path to the field and a message key.
+    expect(bonusSchemeIssues(DEFAULT_BONUS_SCHEME)).toEqual([]);
+
+    const noBottomBand = { ...DEFAULT_BONUS_SCHEME, serviceBands: DEFAULT_BONUS_SCHEME.serviceBands.filter((band) => band.minMonths !== 0) };
+    expect(bonusSchemeIssues(noBottomBand)).toEqual([{ path: "serviceBands", code: "no_bottom_service_band" }]);
+
+    const twoAlike = { ...DEFAULT_BONUS_SCHEME, performanceMultiplier: { ...DEFAULT_BONUS_SCHEME.performanceMultiplier, bands: [...DEFAULT_BONUS_SCHEME.performanceMultiplier.bands, { key: "meets", label: "Đạt (lần hai)", minScoreBp: 9_000, multiplierBp: 11_000 }] } };
+    expect(bonusSchemeIssues(twoAlike)).toEqual([{ path: "performanceMultiplier.bands", code: "duplicate_performance_band" }]);
+
+    const badFigure = { ...DEFAULT_BONUS_SCHEME, serviceBands: DEFAULT_BONUS_SCHEME.serviceBands.map((band, index) => (index === 2 ? { ...band, factorBp: -1 } : band)), referenceDay: "31/12" };
+    expect(bonusSchemeIssues(badFigure).map((issue) => issue.path).sort()).toEqual(["referenceDay", "serviceBands.2.factorBp"]);
+    expect(() => checkBonusSchemeValue(badFigure)).toThrow("bonus_scheme_invalid");
+    const thrown = (() => {
+      try {
+        checkBonusSchemeValue(noBottomBand);
+      } catch (error) {
+        return error as { details?: { issues: { path: string; code: string }[] } };
+      }
+    })();
+    expect(thrown?.details?.issues).toEqual([{ path: "serviceBands", code: "no_bottom_service_band" }]);
   });
 
   it("refuses a second approved version starting on the same day", async () => {
@@ -365,6 +388,18 @@ describe("paying it", () => {
     }
   });
 
+  it("is safe to repeat: a second call finds the entity's payroll run and creates nothing (PAY-09)", async () => {
+    const [run] = await db().select().from(schema.bonusRun);
+    const before = await db().select().from(schema.payrollRun);
+    const [handoff] = await listBonusHandoffs(run.id);
+    expect(handoff.entityId).toBe(ids.entity);
+
+    const again = await payBonusRun(run.id, ids.actor);
+    expect(again.payrollRuns).toEqual([{ entityId: ids.entity, payrollRunId: handoff.payrollRunId, headcount: handoff.headcount, created: false }]);
+    expect(await db().select().from(schema.payrollRun)).toHaveLength(before.length);
+    expect(await listBonusHandoffs(run.id)).toHaveLength(1);
+  });
+
   it("is evidence once paid: the database itself refuses a change", async () => {
     const [run] = await db().select().from(schema.bonusRun);
     expect(run.status).toBe("paid");
@@ -376,5 +411,121 @@ describe("paying it", () => {
     const [event] = await db().select().from(schema.bonusRunEvent);
     await refused(db().update(schema.bonusRunEvent).set({ comment: "sửa trộm" }).where(eq(schema.bonusRunEvent.id, event.id)), /append-only/);
     await refused(db().delete(schema.bonusRunEvent).where(eq(schema.bonusRunEvent.id, event.id)), /append-only/);
+  });
+});
+
+// Inspection PAY-09: the hand-over looped over the entities with no transaction and no lock, and
+// an off-cycle payroll run has no uniqueness — so a failure on the second entity, or a double
+// click, left the first entity with two runs. A run over two entities shows all of it.
+describe("handing a run over two entities to payroll is all-or-nothing and safe to repeat (PAY-09)", () => {
+  const NEXT_YEAR = 2027;
+  let second = "";
+  let outsider = "";
+
+  /** An approved run for 2027 over both entities, one person in each granted an amount by the owner. */
+  async function approvedRun(payrollMonth: string) {
+    const run = await createBonusRun({ year: NEXT_YEAR, name: `Thưởng Tết ${payrollMonth}`, entityIds: [ids.entity, second], payrollMonth }, ids.actor);
+    await simulateBonusRun(run.id, ids.actor);
+    // Nobody has a settled 2027 result, so the formula pays nothing; the owner grants two amounts.
+    await overrideBonusLine({ runId: run.id, personId: ids.star, amountVnd: 10_000_000, reason: "Thưởng Tết theo quyết định của chủ sở hữu" }, ids.owner);
+    await overrideBonusLine({ runId: run.id, personId: outsider, amountVnd: 8_000_000, reason: "Thưởng Tết theo quyết định của chủ sở hữu" }, ids.owner);
+    await stepBonusRun(run.id, "propose", ids.actor);
+    await stepBonusRun(run.id, "approve", ids.actor, { comment: "duyệt" });
+    return run.id;
+  }
+  const offCycleRuns = async (month: string) => (await db().select().from(schema.payrollRun)).filter((run) => run.kind === "off_cycle" && run.month === month);
+  const stateOf = async (runId: string) => {
+    const [run] = await db().select().from(schema.bonusRun).where(eq(schema.bonusRun.id, runId));
+    const lines = await listBonusLines(runId);
+    return bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), await listBonusHandoffs(runId));
+  };
+
+  beforeAll(async () => {
+    const [entity] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative", wageRegion: 1 }).returning();
+    second = entity.id;
+    const [person] = await db().insert(schema.person).values({ fullName: "Vu Thi Creative", searchName: "vu thi creative", status: "active", primaryEntityId: entity.id }).returning();
+    await db().insert(schema.employment).values({ personId: person.id, entityId: entity.id, employeeCode: "SZC-1", startDate: "2024-01-01", seniorityDate: "2024-01-01" });
+    outsider = person.id;
+  });
+
+  it("leaves nothing behind when the second entity fails", async () => {
+    // Creative's January 2028 is already closed: its off-cycle run is refused — after Media's was made.
+    await db().insert(schema.payrollRun).values({ entityId: second, month: "2028-01", kind: "regular", status: "locked" });
+    const runId = await approvedRun("2028-01");
+
+    await expect(payBonusRun(runId, ids.actor)).rejects.toThrow("payroll_period_locked");
+    // Media's run went with it: no off-cycle run, no hand-over, and the bonus run is still approved.
+    expect(await offCycleRuns("2028-01")).toEqual([]);
+    expect(await listBonusHandoffs(runId)).toEqual([]);
+    const [run] = await db().select().from(schema.bonusRun).where(eq(schema.bonusRun.id, runId));
+    expect(run.status).toBe("approved");
+    expect((await getBonusLine(runId, ids.star))!.row.payrollRunId).toBeNull();
+
+    await stepBonusRun(runId, "cancel", ids.actor);
+  });
+
+  it("gives each entity exactly one payroll run, however many times it is asked", async () => {
+    const runId = await approvedRun("2028-02");
+    // A double click: two calls at once. The second waits for the run's row, then finds the work done.
+    const [first, repeat] = await Promise.all([payBonusRun(runId, ids.actor), payBonusRun(runId, ids.actor)]);
+    expect(first.payrollRuns.map((run) => [run.entityId, run.created])).toEqual([
+      [ids.entity, true],
+      [second, true],
+    ]);
+    expect(repeat.payrollRuns.map((run) => [run.entityId, run.payrollRunId, run.created])).toEqual(first.payrollRuns.map((run) => [run.entityId, run.payrollRunId, false]));
+    expect(await offCycleRuns("2028-02")).toHaveLength(2);
+    expect(await listBonusHandoffs(runId)).toHaveLength(2);
+    // Paid once, signed once.
+    expect((await listBonusRunEvents(runId)).filter((event) => event.toStatus === "paid")).toHaveLength(1);
+    await expect(payBonusRun(runId, ids.actor, { entityIds: [crypto.randomUUID()] })).rejects.toThrow("bonus_entity_not_in_run");
+  });
+
+  it("shows an entity as not handed over once payroll cancels its run, and hands over that entity alone", async () => {
+    const [run] = (await db().select().from(schema.bonusRun)).filter((row) => row.payrollMonth === "2028-02");
+    const before = await stateOf(run.id);
+    const creative = before.find((entity) => entity.entityId === second)!;
+    const media = before.find((entity) => entity.entityId === ids.entity)!;
+    expect(creative.payrollRunId).not.toBeNull();
+
+    // Payroll cancels Creative's off-cycle run (it is still open for editing).
+    await cancelRun(creative.payrollRunId!);
+    const cancelled = await stateOf(run.id);
+    expect(cancelled.find((entity) => entity.entityId === second)).toMatchObject({ payrollRunId: null, cancelledPayrollRunId: creative.payrollRunId, payable: 1 });
+    expect(cancelled.find((entity) => entity.entityId === ids.entity)!.payrollRunId).toBe(media.payrollRunId);
+
+    // The bonus run is paid and frozen; the hand-over is repeated for that entity alone.
+    const again = await payBonusRun(run.id, ids.actor, { entityIds: [second] });
+    expect(again.payrollRuns).toHaveLength(1);
+    expect(again.payrollRuns[0]).toMatchObject({ entityId: second, created: true });
+    expect(again.payrollRuns[0].payrollRunId).not.toBe(creative.payrollRunId);
+
+    const after = await stateOf(run.id);
+    expect(after.find((entity) => entity.entityId === second)!.payrollRunId).toBe(again.payrollRuns[0].payrollRunId);
+    expect(after.find((entity) => entity.entityId === ids.entity)!.payrollRunId).toBe(media.payrollRunId);
+    // The line follows its entity's new run — the one thing a paid run's line may still change…
+    expect((await getBonusLine(run.id, outsider))!.row.payrollRunId).toBe(again.payrollRuns[0].payrollRunId);
+    expect((await getBonusLine(run.id, ids.star))!.row.payrollRunId).toBe(media.payrollRunId);
+    // …and the amounts that reach the new payroll run are the ones that were approved.
+    expect((await listRunInputs(again.payrollRuns[0].payrollRunId)).get(outsider)).toEqual([{ code: "THIRTEENTH_MONTH", amount: 8_000_000, note: String(NEXT_YEAR) }]);
+    await refused(db().update(schema.bonusRunLine).set({ overrideReason: "sửa trộm", payrollRunId: media.payrollRunId }).where(eq(schema.bonusRunLine.runId, run.id)), /is paid/);
+
+    // Asked once more for everything: both entities have a standing run, nothing is created.
+    const settled = await payBonusRun(run.id, ids.actor);
+    expect(settled.payrollRuns.map((entity) => entity.created)).toEqual([false, false]);
+    expect((await offCycleRuns("2028-02")).filter((row) => row.status !== "cancelled")).toHaveLength(2);
+  });
+});
+
+describe("more than one bonus a year (PAY-11)", () => {
+  it("lets a Tết bonus stand beside the year-end bonus, and refuses the same run twice", async () => {
+    const year = 2031;
+    const yearEnd = await createBonusRun({ year, name: "Thưởng cuối năm 2031", entityIds: [ids.entity], payrollMonth: "2032-01" }, ids.actor);
+    const tet = await createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor);
+    expect(tet.id).not.toBe(yearEnd.id);
+    // The same name twice in one year is one run created twice.
+    await expect(createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor)).rejects.toThrow("bonus_run_exists");
+    // A cancelled run frees its name.
+    await db().update(schema.bonusRun).set({ status: "cancelled" }).where(eq(schema.bonusRun.id, tet.id));
+    await expect(createBonusRun({ year, name: "Thưởng Tết 2032", entityIds: [ids.entity], payrollMonth: "2032-02" }, ids.actor)).resolves.toMatchObject({ year });
   });
 });

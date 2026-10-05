@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEmailTemplates } from "@/modules/recruit/emails";
-import { canManagePipelines } from "@/modules/recruit/service";
+import { AUTOMATIC_LETTERS, type AutomaticLetter, canManagePipelines } from "@/modules/recruit/service";
 import { EmailTemplateForm } from "@/modules/recruit/ui/email-template-form";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -28,6 +28,7 @@ export default async function RecruitEmailsPage() {
       {templates.map((template) => (
         <EmailTemplateForm
           key={template.id}
+          automatic={(Object.entries(AUTOMATIC_LETTERS) as [AutomaticLetter, string][]).find(([, code]) => code === template.code)?.[0] ?? null}
           template={{
             id: template.id,
             code: template.code,

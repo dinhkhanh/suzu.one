@@ -3,7 +3,24 @@ import { describe, expect, it } from "vitest";
 import { readableTier } from "../platform/rbac/policy";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { chainAbove, type PersonContext } from "./policy";
-import { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
+import {
+  canAcknowledgeReview,
+  canManageCycle,
+  canManageReviewTemplates,
+  canNominatePeer,
+  canReadAnonymisedPeers,
+  canReadReviewForm,
+  canRecordSignOff,
+  canReleaseReview,
+  canReturnReviewForm,
+  canSeeParticipant,
+  canWriteManagerReview,
+  canWritePeerReview,
+  canWriteSelfReview,
+  isReviewCalibrator,
+  isReviewingManager,
+  type ReviewParties,
+} from "./review-policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -19,7 +36,7 @@ const person = (personId: string, entityId: string, unitId: string): PersonConte
 const huy = person("huy", SZM, VID);
 const khoi = person("khoi", SZC, DES);
 
-const parties = (subject: PersonContext, over: Partial<ReviewParties> = {}): ReviewParties => ({ subject, managerPersonId: managerOf.get(subject.personId) ?? null, stage: "manager_done", released: false, cycleStatus: "active", peerAnonymous: true, ...over });
+const parties = (subject: PersonContext, over: Partial<ReviewParties> = {}): ReviewParties => ({ subject, managerPersonId: managerOf.get(subject.personId) ?? null, stage: "manager_done", released: false, cycleStatus: "active", peerAnonymous: true, rolling: false, signOffRequired: false, signedOff: false, ...over });
 
 const owner = principal("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrSzm = principal("bao", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
@@ -157,18 +174,106 @@ describe("writing a review (FR-PRF-03)", () => {
     expect(canWritePeerReview(colleague, parties(huy, { cycleStatus: "calibration" }), true)).toBe(false);
   });
 
-  it("keeps calibration and release with the manager or HR, and the acknowledgement with the person", () => {
-    expect(canReleaseReview(lineManager, parties(huy))).toBe(true);
-    expect(canReleaseReview(headVid, parties(huy))).toBe(true);
-    expect(canReleaseReview(hrSzm, parties(huy))).toBe(true);
-    expect(canReleaseReview(principal("huy"), parties(huy))).toBe(false);
-    expect(canReleaseReview(colleague, parties(huy))).toBe(false);
-    expect(canReleaseReview(auditor, parties(huy))).toBe(false);
+  it("keeps calibration and release with HR, from the calibration stage on, and the acknowledgement with the person", () => {
+    // Owner's decision, 2026-10-05 (PRF-02): the manager writes the review and proposes a rating;
+    // only performance managers (HR) calibrate and release.
+    const calibrating = parties(huy, { cycleStatus: "calibration" });
+    expect(canReleaseReview(hrSzm, calibrating)).toBe(true);
+    expect(canReleaseReview(hrAdmin, calibrating)).toBe(true);
+    expect(canReleaseReview(lineManager, calibrating)).toBe(false); // the manager named at launch
+    expect(canReleaseReview(headVid, calibrating)).toBe(false); // above the subject, reads but does not hold `performance:manage`
+    expect(canReleaseReview(principal("huy"), calibrating)).toBe(false);
+    expect(canReleaseReview(colleague, calibrating)).toBe(false);
+    expect(canReleaseReview(auditor, calibrating)).toBe(false); // `performance:read` reads
+    // HR of another entity has no say over this person.
+    expect(canReleaseReview(principal("x", [{ role: "hr_staff", scope: { type: "entity", id: SZC } }]), calibrating)).toBe(false);
+
+    // …and only once the cycle allows it: not while it collects, still after it has closed.
+    expect(isReviewCalibrator(hrSzm, parties(huy))).toBe(true);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "active" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "draft" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "released" }))).toBe(true);
+    expect(canReleaseReview(hrSzm, parties(huy, { cycleStatus: "closed" }))).toBe(true);
+
+    // Never one's own review, whatever one holds: HR who is the subject, and the owner about themself.
+    const baoSelf = person("bao", SZM, VID);
+    expect(isReviewCalibrator(hrSzm, parties(baoSelf, { cycleStatus: "calibration" }))).toBe(false);
+    expect(canReleaseReview(hrSzm, parties(baoSelf, { cycleStatus: "calibration" }))).toBe(false);
+    expect(canReleaseReview(owner, parties(person("owner", SZM, VID), { cycleStatus: "calibration" }))).toBe(false);
+    // The owner holds every permission, `performance:manage` among them; oversight alone (D31) only reads.
+    expect(canReleaseReview(owner, calibrating)).toBe(true);
+
+    // An HR manager who is also the reviewing manager releases as HR, not as the manager.
+    const tamAsHr = principal("tam", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
+    expect(canReleaseReview(tamAsHr, calibrating)).toBe(true);
+    expect(canReleaseReview(tamAsHr, parties(huy))).toBe(false);
 
     expect(canAcknowledgeReview(principal("huy"), parties(huy, { released: true }))).toBe(true);
     expect(canAcknowledgeReview(principal("huy"), parties(huy, { released: false }))).toBe(false);
     expect(canAcknowledgeReview(lineManager, parties(huy, { released: true }))).toBe(false);
     expect(canAcknowledgeReview(hrSzm, parties(huy, { released: true }))).toBe(false);
+  });
+});
+
+describe("a rolling probation cycle (PRF-01)", () => {
+  it("lets HR release one person's review while the cycle stays open — still HR alone", () => {
+    const rolling = parties(huy, { rolling: true, cycleStatus: "active" });
+    expect(canReleaseReview(hrSzm, rolling)).toBe(true);
+    expect(canReleaseReview(lineManager, rolling)).toBe(false);
+    expect(canReleaseReview(headVid, rolling)).toBe(false);
+    expect(canReleaseReview(principal("huy", [{ role: "hr_admin", scope: { type: "group" } }]), rolling)).toBe(false); // never one's own
+    // A cohort cycle that is still collecting waits for its calibration stage, as before (PRF-02).
+    expect(canReleaseReview(hrSzm, parties(huy, { rolling: false, cycleStatus: "active" }))).toBe(false);
+    // A rolling cycle still in draft releases nothing.
+    expect(canReleaseReview(hrSzm, parties(huy, { rolling: true, cycleStatus: "draft" }))).toBe(false);
+  });
+
+  it("stops the writing of a review once it has been handed over, though the cycle is open", () => {
+    const released = parties(huy, { rolling: true, cycleStatus: "active", released: true });
+    expect(canWriteSelfReview(principal("huy"), released)).toBe(false);
+    expect(canWriteManagerReview(lineManager, released)).toBe(false);
+    expect(canWritePeerReview(colleague, released, true)).toBe(false);
+    expect(canNominatePeer(principal("huy"), released)).toBe(false);
+    // Somebody else's review in the same cycle is still being written.
+    expect(canWriteSelfReview(principal("huy"), parties(huy, { rolling: true, cycleStatus: "active" }))).toBe(true);
+  });
+});
+
+describe("sending a form back (PRF-01)", () => {
+  it("is HR's over the person, while the review is being written", () => {
+    expect(canReturnReviewForm(hrSzm, parties(huy))).toBe(true);
+    expect(canReturnReviewForm(hrAdmin, parties(huy))).toBe(true);
+    expect(canReturnReviewForm(lineManager, parties(huy))).toBe(false); // writes, does not send back
+    expect(canReturnReviewForm(headVid, parties(huy))).toBe(false);
+    expect(canReturnReviewForm(auditor, parties(huy))).toBe(false);
+    expect(canReturnReviewForm(principal("huy"), parties(huy))).toBe(false);
+    expect(canReturnReviewForm(hrSzm, parties(khoi))).toBe(false); // another entity's person
+    expect(canReturnReviewForm(hrSzm, parties(person("bao", SZM, VID)))).toBe(false); // their own review
+    // Not once writing has stopped, nor once the review has been handed over.
+    expect(canReturnReviewForm(hrSzm, parties(huy, { cycleStatus: "calibration" }))).toBe(false);
+    expect(canReturnReviewForm(hrSzm, parties(huy, { rolling: true, released: true }))).toBe(false);
+  });
+});
+
+describe("the sign-off conversation (FR-PRF-03)", () => {
+  it("is recorded by the manager or HR after release, once, never by the person", () => {
+    const released = parties(huy, { released: true, cycleStatus: "calibration" });
+    expect(canRecordSignOff(lineManager, released)).toBe(true);
+    expect(canRecordSignOff(headVid, released)).toBe(true); // above the person, when the manager has gone
+    expect(canRecordSignOff(hrSzm, released)).toBe(true);
+    expect(canRecordSignOff(principal("huy"), released)).toBe(false);
+    expect(canRecordSignOff(colleague, released)).toBe(false);
+    expect(canRecordSignOff(auditor, released)).toBe(false);
+    expect(canRecordSignOff(lineManager, parties(huy, { released: false }))).toBe(false);
+    expect(canRecordSignOff(lineManager, { ...released, signedOff: true })).toBe(false);
+  });
+
+  it("comes before the acknowledgement where the cycle asks for it", () => {
+    const asked = parties(huy, { released: true, signOffRequired: true });
+    expect(canAcknowledgeReview(principal("huy"), asked)).toBe(false);
+    expect(canAcknowledgeReview(principal("huy"), { ...asked, signedOff: true })).toBe(true);
+    // A cycle that does not ask for one is acknowledged straight after release.
+    expect(canAcknowledgeReview(principal("huy"), parties(huy, { released: true, signOffRequired: false }))).toBe(true);
   });
 });
 

@@ -73,24 +73,41 @@ export async function listDelegations(personId: string): Promise<{ given: Delega
 
 export type DelegationInput = { toPersonId: string; validFrom: IsoDate; validTo: IsoDate; requestTypes: string[] | null; reason: string | null };
 
-export async function createDelegation(fromPersonId: string, input: DelegationInput): Promise<DelegationRow> {
+/**
+ * `setByPersonId`: an administrator sets it for someone who is away and cannot (FR-ACL-06, PLT-02).
+ * The delegation is the absent person's all the same — they see it on their own screen and may end
+ * it — and they are told who set it.
+ */
+export async function createDelegation(fromPersonId: string, input: DelegationInput, setByPersonId?: string): Promise<DelegationRow> {
   if (input.toPersonId === fromPersonId) throw new ActionError("delegation_self");
   if (input.validTo < input.validFrom) throw new ActionError("delegation_dates");
   if (input.validTo < todayInVietnam()) throw new ActionError("delegation_past");
   return db().transaction(async (tx) => {
     const [to] = await tx.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.id, input.toPersonId), eq(schema.person.status, "active"), ne(schema.person.workforceType, "collaborator"))).limit(1);
     if (!to) throw new ActionError("delegation_person_unknown");
-    const [from] = await tx.select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, fromPersonId)).limit(1);
+    const [from] = await tx.select({ fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.id, fromPersonId), ne(schema.person.status, "offboarded"))).limit(1);
+    // Someone who has left has no approvals to hand over: their turns moved when they did.
+    if (setByPersonId && !from) throw new ActionError("delegation_person_unknown");
     const [row] = await tx
       .insert(schema.approvalDelegation)
       .values({ fromPersonId, toPersonId: input.toPersonId, validFrom: input.validFrom, validTo: input.validTo, requestTypes: input.requestTypes?.length ? input.requestTypes : null, reason: input.reason })
       .returning();
     await notify({ recipients: [input.toPersonId], kind: "approvals.delegated_to_you", params: { delegator: from?.fullName ?? "", from: input.validFrom, to: input.validTo }, link: "/approvals/delegation" }, tx);
+    if (setByPersonId) {
+      const [setBy] = await tx.select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, setByPersonId)).limit(1);
+      await notify({ recipients: [fromPersonId], kind: "approvals.delegation_set_for_you", params: { actor: setBy?.fullName ?? "", delegate: to.fullName, from: input.validFrom, to: input.validTo }, link: "/approvals/delegation" }, tx);
+    }
     return row;
   });
 }
 
-/** Ends a delegation now. Only the person who gave it. */
+/** One delegation, whoever gave it — for the administrator's action, which asks whose it is before it ends it. */
+export async function findDelegation(id: string): Promise<DelegationRow | null> {
+  const [row] = await db().select().from(schema.approvalDelegation).where(eq(schema.approvalDelegation.id, id)).limit(1);
+  return row ?? null;
+}
+
+/** Ends a delegation now. Only the person who gave it — or, in their name, an administrator who has asked `canDelegateFor`. */
 export async function revokeDelegation(fromPersonId: string, id: string): Promise<DelegationRow> {
   const [row] = await db()
     .update(schema.approvalDelegation)
