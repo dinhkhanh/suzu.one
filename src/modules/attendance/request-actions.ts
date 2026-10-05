@@ -302,8 +302,8 @@ const remindPipeline = createAction({
   input: z.object({ entityId: z.uuid(), month }),
   authorize: (user, input) => canLockPeriod(user.principal, input.entityId),
   run: async ({ input }) => {
-    const told = await remindToConfirm(input.entityId, input.month);
-    return { data: { told }, audit: { resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId }, summary: `reminded ${told} people to confirm ${input.month}` } };
+    const { told, reviewers } = await remindToConfirm(input.entityId, input.month);
+    return { data: { told, reviewers }, audit: { resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId }, summary: `reminded ${told} people to confirm ${input.month}${reviewers ? ` and ${reviewers} reviewer(s) of flagged check-ins` : ""}` } };
   },
 });
 export async function remindToConfirmAction(input: unknown) {

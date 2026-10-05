@@ -121,6 +121,13 @@ export const KINDS = {
   "attendance.month_reopened": "attendance",
   "attendance.adjusted": "attendance",
   "attendance.nudge": "attendance",
+  // ATT-01: flagged check-ins wait for the reviewer (yesterday's, or a month whose lock they
+  // block); a check-in of yours was rejected, with the reason; your month is locked. A count, a
+  // month and a time — never where anybody was.
+  "attendance.punches_to_review": "attendance",
+  "attendance.punches_block_lock": "attendance",
+  "attendance.punch_rejected": "attendance",
+  "attendance.month_locked": "attendance",
   "ops.assigned": "ops",
   "ops.reminder": "ops",
   "ops.overdue": "ops",

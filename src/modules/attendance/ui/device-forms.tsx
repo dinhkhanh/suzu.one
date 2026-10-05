@@ -10,6 +10,7 @@ import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { bulkMapAction, commitDeviceLogAction, issuePushTokenAction, mapDeviceUserAction, recomputeTimesheetsAction, revokePushTokenAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
+import { ConfirmDialog, useConfirmedSubmit } from "./confirm";
 
 type Option = { id: string; name: string };
 const ERRORS = "attendance.devices.errors";
@@ -246,17 +247,14 @@ export function BulkMapForm({ deviceId }: { deviceId: string }) {
 }
 
 export function UnmapButton({ id, label, confirm }: { id: string; label: string; confirm: string }) {
-  const { onSubmit, pending } = useActionForm(unmapDeviceUserAction, { extra: { id } });
+  const form = useActionForm(unmapDeviceUserAction, { extra: { id } });
+  const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: true });
   return (
-    <form
-      onSubmit={(event) => {
-        if (window.confirm(confirm)) onSubmit(event);
-        else event.preventDefault();
-      }}
-    >
-      <Button type="submit" size="sm" variant="ghost" disabled={pending}>
+    <form onSubmit={onSubmit}>
+      <Button type="submit" size="sm" variant="ghost" disabled={form.pending}>
         {label}
       </Button>
+      {dialog}
     </form>
   );
 }
@@ -268,6 +266,7 @@ export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: st
   const [token, setToken] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [asking, setAsking] = useState<"replace" | "revoke" | null>(null);
   const run = (issue: boolean) =>
     startTransition(async () => {
       setFailed(false);
@@ -310,25 +309,29 @@ export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: st
           size="sm"
           variant="outline"
           disabled={pending}
-          onClick={() => {
-            if (!hasToken || window.confirm(t("replaceConfirm"))) run(true);
-          }}
+          onClick={() => (hasToken ? setAsking("replace") : run(true))}
         >
           {hasToken ? t("replace") : t("issue")}
         </Button>
         {hasToken ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(t("revokeConfirm"))) run(false);
-            }}
-          >
+          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setAsking("revoke")}>
             {t("revoke")}
           </Button>
         ) : null}
+        <ConfirmDialog
+          open={asking !== null}
+          onOpenChange={(open) => {
+            if (!open) setAsking(null);
+          }}
+          question={asking === "revoke" ? t("revokeConfirm") : t("replaceConfirm")}
+          confirmLabel={asking === "revoke" ? t("revoke") : t("replace")}
+          destructive
+          pending={pending}
+          onConfirm={() => {
+            run(asking !== "revoke");
+            setAsking(null);
+          }}
+        />
         {failed ? <span className="text-sm text-destructive">{t("failed")}</span> : null}
       </div>
     </div>

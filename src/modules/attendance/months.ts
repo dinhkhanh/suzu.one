@@ -14,6 +14,7 @@ import { canLock, type LockIssue, lockIssues, type LockPersonInput, type MonthSt
 import type { MonthSummary } from "./engine/timesheet";
 import { anyReachSql, latestEmployeeCode } from "./people-sql";
 import { canApproveMonthOf } from "./policy";
+import { remindPunchReviewsBeforeLock } from "./punches";
 import type { AdjustmentDeltas } from "./schema";
 import { cellColumns, daysByPerson, getTimesheetDayCells, getTimesheetDays, monthEnd, monthStart, recomputeDays, summariseRows, type TimesheetDayRow } from "./timesheets";
 
@@ -168,6 +169,17 @@ export type LockResult = { period: TimesheetPeriodRow; people: number; days: num
  * overtime people asked to take as time off to the leave ledger.
  */
 export async function lockPeriod(entityId: string, month: string, actorPersonId: string, options: { overrideReason?: string | null } = {}): Promise<LockResult> {
+  let reviewsBlock = false;
+  try {
+    return await lockInTransaction(entityId, month, actorPersonId, options, (blocked) => (reviewsBlock = blocked));
+  } catch (error) {
+    // Refused for check-ins nobody has reviewed yet: their reviewers hear it now, so the lock does not wait in silence.
+    if (reviewsBlock) await remindPunchReviewsBeforeLock(entityId, month);
+    throw error;
+  }
+}
+
+function lockInTransaction(entityId: string, month: string, actorPersonId: string, options: { overrideReason?: string | null }, onRefused: (reviewsBlock: boolean) => void): Promise<LockResult> {
   return db().transaction(async (tx) => {
     if (!monthIsOver(month)) throw new ActionError("timesheet_month_not_over");
     await tx.insert(schema.timesheetPeriod).values({ entityId, month }).onConflictDoNothing();
@@ -183,7 +195,10 @@ export async function lockPeriod(entityId: string, month: string, actorPersonId:
     const overview = await getPeriodOverview(entityId, month, tx);
     if (overview.people.length === 0) throw new ActionError("timesheet_empty");
     const override = !!options.overrideReason?.trim();
-    if (!canLock(overview.issues, override)) throw new ActionError("timesheet_lock_blocked", { issues: overview.issues.filter((issue) => issue.blocking) });
+    if (!canLock(overview.issues, override)) {
+      onRefused(overview.issues.some((issue) => issue.blocking && issue.code === "punch_to_review"));
+      throw new ActionError("timesheet_lock_blocked", { issues: overview.issues.filter((issue) => issue.blocking) });
+    }
     const exceptions = overview.issues.filter((issue) => issue.blocking);
 
     const now = new Date();
@@ -211,6 +226,8 @@ export async function lockPeriod(entityId: string, month: string, actorPersonId:
       .set({ status: "locked", lockedAt: now, lockedByPersonId: actorPersonId, overrideReason: override ? options.overrideReason!.trim() : null, exceptions: exceptions.map(({ personId, code, count }) => ({ personId, code, count })), updatedAt: now })
       .where(eq(schema.timesheetPeriod.id, period.id))
       .returning();
+    // Everyone whose month this was hears that it is final: from now on a change is HR's adjustment, not a request.
+    await notify({ recipients: overview.people.map((person) => person.personId), kind: "attendance.month_locked", params: { month }, link: `/attendance?month=${month}` }, tx);
     return { period: after, people: overview.people.length, days: locked.length, toilPosted, exceptions };
   });
 }
@@ -392,15 +409,20 @@ export async function listMonthsToApprove(viewer: { personId: string; principal:
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
 
-/** Tells everyone in the entity whose month is still open that it is ready to confirm. Returns how many were told. */
-export async function remindToConfirm(entityId: string, month: string): Promise<number> {
+/**
+ * Tells everyone in the entity whose month is still open that it is ready to confirm, and whoever
+ * still has check-ins of the month to review that the lock waits for them. Returns how many of
+ * each were told.
+ */
+export async function remindToConfirm(entityId: string, month: string): Promise<{ told: number; reviewers: number }> {
   if (!monthIsOver(month)) throw new ActionError("timesheet_month_not_over");
   const overview = await getPeriodOverview(entityId, month);
   if (overview.period?.status === "locked") throw new ActionError("timesheet_period_locked");
   const open = overview.people.filter((person) => person.status === "open").map((person) => person.personId);
   const active = open.length ? await db().select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, open), eq(schema.person.status, "active"))) : [];
   if (active.length) await notify({ recipients: active.map((row) => row.id), kind: "attendance.month_ready", params: { month }, link: `/attendance?month=${month}` });
-  return active.length;
+  const reviewers = overview.issues.some((issue) => issue.code === "punch_to_review") ? await remindPunchReviewsBeforeLock(entityId, month) : 0;
+  return { told: active.length, reviewers };
 }
 
 /**

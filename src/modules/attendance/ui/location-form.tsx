@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { saveLocationAction } from "../checkin-actions";
+import { PositionPicker } from "./position-picker";
 
 type Option = { id: string; name: string };
 export type LocationFormValue = { id: string; entityId: string; name: string; address: string | null; latitude: number | null; longitude: number | null; radiusM: number | null; accuracyLimitM: number; ipAllowlist: string[]; rule: string; mode: string; isActive: boolean };
@@ -34,12 +35,9 @@ export function LocationForm({ location, entities }: { location?: LocationFormVa
           <Field name="address" label={t("locations.address")}>
             <Input id="address" name="address" maxLength={300} defaultValue={location?.address ?? ""} />
           </Field>
-          <Field name="latitude" label={t("locations.latitude")}>
-            <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={location?.latitude ?? ""} placeholder="10.7716" />
-          </Field>
-          <Field name="longitude" label={t("locations.longitude")}>
-            <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={location?.longitude ?? ""} placeholder="106.7048" />
-          </Field>
+          <div className="sm:col-span-3">
+            <PositionPicker label={t("locations.position")} defaultValue={{ latitude: location?.latitude, longitude: location?.longitude }} />
+          </div>
           <Field name="radiusM" label={t("locations.radius")}>
             <Input id="radiusM" name="radiusM" type="number" min={10} max={50000} defaultValue={location?.radiusM ?? ""} placeholder="150" />
           </Field>

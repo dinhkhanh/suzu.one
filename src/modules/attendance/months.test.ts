@@ -28,7 +28,8 @@ import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
 import { buildLockedMonthExport } from "./exports";
 import { eachDate, isoWeekday } from "./engine/calendar";
-import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
+import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
+import { reviewPunch } from "./punches";
 import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
 import { saveSchedule } from "./schedules";
@@ -210,6 +211,20 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     expect(await isPeriodLocked(ids.media, MONTH)).toBe(false);
   });
 
+  it("a check-in still waiting for review blocks the lock, and its reviewer hears it from the reminder and from the refusal (ATT-01)", async () => {
+    const [waiting] = await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-18", "12:10"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" }).returning();
+    const blockLock = async () => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lead), eq(schema.notification.kind, "attendance.punches_block_lock")))).map((row) => row.params);
+    // HR's reminder: Long (still open) is asked to confirm, and as Huy's manager to review the check-in.
+    expect(await remindToConfirm(ids.media, MONTH)).toEqual({ told: 1, reviewers: 1 });
+    expect(await blockLock()).toEqual([{ count: 1, month: MONTH }]);
+    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toMatchObject({ message: "timesheet_lock_blocked", details: { issues: [{ personId: ids.lead, code: "not_approved" }, { personId: ids.huy, code: "punch_to_review" }] } });
+    expect(await blockLock()).toEqual([{ count: 1, month: MONTH }, { count: 1, month: MONTH }]);
+    // A refusal for other reasons alone tells no reviewer.
+    await reviewPunch(waiting.id, ids.lead, { decision: "accept", note: null });
+    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_lock_blocked");
+    expect(await blockLock()).toHaveLength(2);
+  });
+
   it("locks with an override that is written down; days freeze, totals are snapshotted, time off in lieu reaches the leave ledger", async () => {
     const result = await lockPeriod(ids.media, MONTH, ids.hr, { overrideReason: "Trưởng nhóm đi công tác, đã xác nhận qua điện thoại" });
     expect(result).toMatchObject({ people: 3, toilPosted: [{ personId: ids.huy, minutes: 120, amountCenti: 25 }], exceptions: [{ personId: ids.lead, code: "not_approved" }] });
@@ -220,6 +235,10 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     const grants = await db().select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, ids.huy), eq(schema.leaveLedgerEntry.leaveTypeId, ids.comp)));
     expect(grants.map((row) => [row.kind, row.amountCenti, row.effectiveDate])).toEqual([["grant", 25, "2026-08-31"]]);
     expect((await getTimesheetDays([ids.huy, ids.nhu, ids.lead], "2026-08-01", "2026-08-31")).every((day) => day.lockedAt !== null)).toBe(true);
+    // Everyone whose month it was is told it is final; Creative's people are not (ATT-01).
+    const locked = await db().select().from(schema.notification).where(eq(schema.notification.kind, "attendance.month_locked"));
+    expect(locked.map((row) => row.recipientPersonId).sort()).toEqual([ids.lead, ids.huy, ids.nhu].sort());
+    expect(locked[0]).toMatchObject({ params: { month: MONTH }, link: "/attendance?month=2026-08" });
   });
 
   it("a locked month stays exactly as it was, whatever arrives afterwards", async () => {
