@@ -5,11 +5,14 @@ import { DEFAULT_LOCALE, isLocale, type Locale, LOCALE_COOKIE, TIME_ZONE } from 
 import { namespacesForSurface, PUBLIC_FALLBACK, pickMessages, SURFACE_HEADER } from "./surfaces";
 
 /**
- * The messages a request gets. The root layout hands whatever this returns to
+ * The messages a request gets. On a public page the root layout hands whatever this returns to
  * `NextIntlClientProvider`, which **serialises all of it into the page**, so this is the one place
- * that decides what an unauthenticated visitor receives — and the whole catalogue is handed over
- * only for a request the proxy read as the app's own (`src/i18n/surfaces.ts`). A client opening a
- * review link (D24) or a candidate reading a job advertisement gets the words on that page.
+ * that decides what an unauthenticated visitor receives — and the whole catalogue is returned only
+ * for a request the proxy read as the app's own (`src/i18n/surfaces.ts`). A client opening a
+ * review link (D24) or a candidate reading a job advertisement gets the words on that page. On an
+ * app page the server components read the whole catalogue from here, but the browser is handed
+ * only what is picked out of it: the shell's namespaces in the root layout and each section's in
+ * its own layout (`segment-messages.tsx`, PERF-01) — always a subset of what this returned.
  *
  * The path is not the whole question, though. The proxy's session check is an optimistic cookie
  * check by design, so **any** value in `better-auth.session_token` walks past it onto an internal
