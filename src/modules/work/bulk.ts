@@ -3,7 +3,7 @@
 // the viewer may not touch, or one the change does not fit (a state of another team's workflow),
 // is reported back by name while the rest go through.
 import "server-only";
-import { eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { canEditTask, canViewTask, type WorkViewer } from "./policy";
@@ -32,6 +32,13 @@ export async function bulkEditTasks(viewer: WorkViewer, taskIds: readonly string
   const loaded = await loadTasks(ids);
   const outcome: BulkOutcome = { updated: [], refused: [] };
   const { addLabelIds, removeLabelIds, ...plain } = patch;
+  // Every selected task's labels in one read, for the add/remove arithmetic. The write itself
+  // compares against the labels as its own transaction reads them (`updateWorkTaskIn`).
+  const labelsOf = new Map<string, string[]>();
+  if ((addLabelIds?.length || removeLabelIds?.length) && ids.length) {
+    const rows = await db().select({ taskId: schema.workTaskLabel.taskId, labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(inArray(schema.workTaskLabel.taskId, ids));
+    for (const row of rows) labelsOf.set(row.taskId, [...(labelsOf.get(row.taskId) ?? []), row.labelId]);
+  }
   for (const id of ids) {
     const found = loaded.get(id);
     if (!found) {
@@ -53,7 +60,7 @@ export async function bulkEditTasks(viewer: WorkViewer, taskIds: readonly string
       const changes = await db().transaction(async (tx) => {
         const taskPatch: WorkTaskPatch = { ...plain };
         if (addLabelIds?.length || removeLabelIds?.length) {
-          const current = (await tx.select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, id))).map((row) => row.labelId);
+          const current = labelsOf.get(id) ?? [];
           taskPatch.labelIds = [...new Set([...current, ...(addLabelIds ?? [])])].filter((labelId) => !(removeLabelIds ?? []).includes(labelId));
         }
         return (await updateWorkTaskIn(tx, id, taskPatch, actorPersonId)).changes;

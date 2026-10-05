@@ -15,8 +15,8 @@ import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
 import { canReadTier, type entityReach, type Principal, type Target } from "../rbac/policy";
 import { type Permission, type Role, ROLES } from "../rbac/roles";
-import { listOwnerPersonIds, listPeopleHolding, listPeopleWithRole, loadGrants } from "../rbac/service";
-import { issueActionToken, voidActionTokens } from "./action-tokens";
+import { listOwnerPersonIds, loadGrants, type RoleHolders, roleHolders } from "../rbac/service";
+import { issueActionTokens, voidActionTokens } from "./action-tokens";
 import { standIns } from "./delegations";
 import { effectiveFlow } from "./flows";
 import { canOpenRequest, canOverseeRequests, canReassignTurns } from "./policy";
@@ -78,7 +78,13 @@ async function managerAt(executor: Executor, personId: string, level: number): P
   return cursor === personId ? null : cursor;
 }
 
-async function peopleFor(executor: Executor, rule: ApproverRule, subject: SubjectTarget | null, where: Target = subject ?? {}): Promise<string[]> {
+/** Who holds what, read once for all the rules of a flow (or of a preview), and only when a rule asks. */
+function holdersOnce(executor: Executor): () => Promise<RoleHolders> {
+  let lookup: Promise<RoleHolders> | undefined;
+  return () => (lookup ??= roleHolders({ executor }));
+}
+
+async function peopleFor(executor: Executor, rule: ApproverRule, subject: SubjectTarget | null, where: Target = subject ?? {}, holders = holdersOnce(executor)): Promise<string[]> {
   switch (rule.rule) {
     case "person":
       return [rule.personId];
@@ -89,14 +95,14 @@ async function peopleFor(executor: Executor, rule: ApproverRule, subject: Subjec
       return manager ? [manager] : [];
     }
     case "department_head":
-      return subject ? listPeopleWithRole("department_head", subject, executor) : [];
+      return subject ? (await holders()).withRole("department_head", subject) : [];
     case "role":
       if (!(ROLES as readonly string[]).includes(rule.role)) throw new Error(`unknown role in approval flow: ${rule.role}`);
-      return listPeopleWithRole(rule.role as Role, where, executor);
+      return (await holders()).withRole(rule.role as Role, where);
     case "permission":
       // Owners hold everything; routine requests go to the people whose job it is, and reach the
       // owners only when there is nobody else (below).
-      return listPeopleHolding(rule.permission as Exclude<Permission, "*">, where, { includeWildcard: false, executor });
+      return (await holders()).holding(rule.permission as Exclude<Permission, "*">, where, { includeWildcard: false });
   }
 }
 
@@ -104,9 +110,9 @@ async function peopleFor(executor: Executor, rule: ApproverRule, subject: Subjec
  * One approver rule turned into people, resolved against a subject person — for callers outside a
  * flow, such as the SLA job asking who a silent approver escalates to (FR-PLT-23).
  */
-export async function resolveApprovers(executor: Executor, rule: ApproverRule, subjectPersonId: string, where: Target = {}): Promise<string[]> {
+export async function resolveApprovers(executor: Executor, rule: ApproverRule, subjectPersonId: string, where: Target = {}, holders = holdersOnce(executor)): Promise<string[]> {
   const subject = await subjectTarget(executor, subjectPersonId);
-  const named = await peopleFor(executor, rule, subject, subject ?? where);
+  const named = await peopleFor(executor, rule, subject, subject ?? where, holders);
   if (named.length === 0) return [];
   const rows = await executor.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, [...new Set(named)]), eq(schema.person.status, "active")));
   return rows.map((row) => row.id);
@@ -129,9 +135,10 @@ export async function previewApprovers(definition: RequestTypeDefinition, subjec
   const subject = await subjectTarget(executor, subjectPersonId);
   const { flow } = definition.fixedFlow ? { flow: definition.flow } : await effectiveFlow(executor, definition.type, subject?.entityId ?? null, definition.flow);
   const steps: ApproverStep[] = [];
+  const holders = holdersOnce(executor);
   for (const step of flow.steps) {
     if (!conditionHolds(step.condition, data)) continue;
-    const resolved = (await Promise.all(step.approvers.map((rule) => resolveApprovers(executor, rule, subjectPersonId, subject ?? {})))).flat();
+    const resolved = (await Promise.all(step.approvers.map((rule) => resolveApprovers(executor, rule, subjectPersonId, subject ?? {}, holders)))).flat();
     // Nobody asks themselves; `resolveApprovers` has already dropped anyone who has left.
     const unique = [...new Set(resolved)].filter((id) => id !== subjectPersonId);
     if (unique.length === 0) continue;
@@ -146,8 +153,8 @@ export async function previewApprovers(definition: RequestTypeDefinition, subjec
 type StepContext = { requestType: string; requesterId: string; subject: SubjectTarget | null; /** Where the request sits when it is about no person (a page of an entity's space). */ target?: Target };
 
 /** The people a step's rules name, before anyone is ruled out. */
-const namedBy = async (executor: Executor, rules: readonly ApproverRule[], context: StepContext): Promise<string[]> =>
-  (await Promise.all(rules.map((rule) => peopleFor(executor, rule, context.subject, context.subject ?? context.target ?? {})))).flat();
+const namedBy = async (executor: Executor, rules: readonly ApproverRule[], context: StepContext, holders = holdersOnce(executor)): Promise<string[]> =>
+  (await Promise.all(rules.map((rule) => peopleFor(executor, rule, context.subject, context.subject ?? context.target ?? {}, holders)))).flat();
 
 /** Of these people, the ones who can answer the request. `without` rules out someone who is on their way out. */
 async function usableApprovers(executor: Executor, ids: readonly string[], context: StepContext, without: readonly string[] = []): Promise<string[]> {
@@ -178,13 +185,14 @@ async function withStandIns(executor: Executor, approverIds: readonly string[], 
 
 async function resolveFlow(executor: Executor, flow: FlowDefinition, context: StepContext & { data: Record<string, unknown> }): Promise<ResolvedStep[]> {
   const resolved: ResolvedStep[] = [];
+  const holders = holdersOnce(executor);
   for (const step of flow.steps) {
     if (!conditionHolds(step.condition, context.data)) {
       resolved.push({ key: step.key, mode: step.mode, applies: false, approverIds: [], ...(step.parallel ? { parallel: true } : {}) });
       continue;
     }
-    let approverIds = await usableApprovers(executor, await namedBy(executor, step.approvers, context), context);
-    if (approverIds.length === 0) approverIds = await usableApprovers(executor, await listOwnerPersonIds(executor), context);
+    let approverIds = await usableApprovers(executor, await namedBy(executor, step.approvers, context, holders), context);
+    if (approverIds.length === 0) approverIds = await usableApprovers(executor, (await holders()).owners(), context);
     if (approverIds.length === 0) throw new ActionError("approval_no_approver");
     const { asked, delegatedFrom } = await withStandIns(executor, approverIds, context);
     // The line manager who is also the department head is asked once: a later step whose only
@@ -279,10 +287,11 @@ async function askApprovers(tx: Executor, request: ApprovalRequestRow, approverI
   const params = { requester, requestType: typeLabel(request) };
   // No definition (a hand-over, which is the same for every type): no button either.
   const oneClick = !!definition?.bulkApprovable?.(request);
-  for (const approverId of approverIds) {
-    const path = oneClick ? (await issueActionToken(tx, request.id, approverId)).path : null;
-    await notify({ recipients: [approverId], kind: "approvals.requested", params, link: request.link, chat: path ? { actionPath: path, actionLabel: "Duyệt" } : {} }, tx);
-  }
+  // Everybody at once: their keys in one insert, and one notice whose chat card carries each
+  // approver's own link.
+  const tokens = oneClick ? await issueActionTokens(tx, request.id, approverIds) : null;
+  const actionPathFor = tokens ? Object.fromEntries([...tokens].map(([personId, { path }]) => [personId, path])) : null;
+  await notify({ recipients: approverIds, kind: "approvals.requested", params, link: request.link, chat: actionPathFor ? { actionPathFor, actionLabel: "Duyệt" } : {} }, tx);
 }
 
 // ── Use-cases ───────────────────────────────────────────────────────────────────────────────

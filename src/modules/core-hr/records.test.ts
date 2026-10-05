@@ -206,4 +206,14 @@ describe("daily alerts", () => {
     expect(await sendHrAlerts(addDays(today, 1))).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 0 });
     expect(await sendHrAlerts(addDays(today, 15))).toMatchObject({ contractAlerts: 1 });
   });
+
+  it("works out several people's alerts together, each to their own HR and their own person", async () => {
+    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: "test/colleague-id.pdf", fileName: "colleague-id.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: "colleague-id", entityId: ids.media, tier: "restricted", status: "ready" }).returning();
+    await db().insert(schema.personDocument).values({ personId: ids.colleague, entityId: ids.media, category: "id_scan", title: "Colleague ID", tier: "restricted", fileId: file.id, expiresOn: addDays(today, 12) });
+    // Huy's alerts are still due today but already claimed; only the colleague's is new.
+    expect(await sendHrAlerts(today)).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 1 });
+    const sent = (await db().select().from(schema.notification)).filter((row) => row.kind === "hr.document_expiring" && (row.params as { label?: string }).label === "Colleague ID");
+    expect(sent.map((row) => row.recipientPersonId).sort()).toEqual([ids.hrStaff, ids.hrAdmin, ids.colleague].sort());
+    expect(sent[0].link).toBe(`/people/${ids.colleague}`);
+  });
 });

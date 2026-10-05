@@ -24,7 +24,7 @@ import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { getTeamCalendar } from "./calendar";
 import { commitOpeningRows, resolveOpeningRows } from "./import";
-import { adjustBalance, getBalances, getLedger, listPayouts, listPayoutTotals, postCompensatoryLeave, runLeaveAccruals } from "./ledger";
+import { adjustBalance, getBalances, getLedger, listPayouts, listPayoutTotals, postCompensatoryLeave, postCompensatoryLeaves, runLeaveAccruals } from "./ledger";
 import { amendLeave, cancelLeave, decideLeave, getLeaveOnDays, getLeaveRequestView, getLeaveUsage, type LeaveInput, listLeaveRequestsOf, previewLeave, submitLeave } from "./requests";
 import { leaveSeedRows } from "./seed-types";
 import { saveLeavePolicy, saveStaffingRule } from "./types";
@@ -108,6 +108,30 @@ describe("the ledger job", () => {
     expect((await balance(ids.huy)).balanceCenti).toBe(900);
   });
 
+  it("reads everybody's ledger once and opens no transaction where nothing is due", async () => {
+    const transaction = vi.spyOn(db(), "transaction");
+    try {
+      expect(await runLeaveAccruals("2026-09-19")).toMatchObject({ accruals: 0, yearsClosed: 0, lapsed: 0, payouts: 0 });
+      expect(transaction).not.toHaveBeenCalled();
+      // Somebody new has months due: only their types with something to post open one, and posting
+      // gives what a joiner of 3 August got above — August and September.
+      const joiner = await addPerson("Counted", { code: "SZM-0012", start: "2026-08-03", managerId: ids.head });
+      // Out of the Video department, whose headcount the team calendar's tests count.
+      const [elsewhere] = await db().insert(schema.orgUnit).values({ code: "ELSE", name: "Elsewhere" }).returning();
+      await db().update(schema.person).set({ orgUnitId: elsewhere.id }).where(eq(schema.person.id, joiner));
+      const due = await runLeaveAccruals("2026-09-19", { personIds: [joiner] });
+      expect(due.accruals).toBeGreaterThan(0);
+      expect(transaction.mock.calls.length).toBeGreaterThan(0);
+      expect(transaction.mock.calls.length).toBeLessThanOrEqual(due.accruals);
+      expect((await balance(joiner)).balanceCenti).toBe(200);
+      transaction.mockClear();
+      await runLeaveAccruals("2026-09-19", { personIds: [joiner] });
+      expect(transaction).not.toHaveBeenCalled();
+    } finally {
+      transaction.mockRestore();
+    }
+  });
+
   it("pays out a leaver's unused days once, for payroll to pick up", async () => {
     // Eight months count → 12 × 8 / 12 = 8 days, all unused.
     const ledger = await getLedger(ids.leaver, { year: 2026, leaveTypeId: types.ANNUAL });
@@ -170,6 +194,23 @@ describe("the ledger job", () => {
     await db().transaction((tx) => postCompensatoryLeave(tx, { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead }));
     await db().transaction((tx) => postCompensatoryLeave(tx, { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead }));
     expect((await balance(ids.nam, "COMP")).balanceCenti).toBe(50);
+
+    // Several at once (a month lock): each as the one-at-a-time call would post it, in input order.
+    const [mai, again, zero, huy] = await db().transaction((tx) =>
+      postCompensatoryLeaves(tx, [
+        { personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-2", reason: "OT 2h", actorPersonId: ids.hr },
+        { personId: ids.nam, amountCenti: 50, effectiveDate: "2026-09-12", sourceKey: "ot-1", reason: "OT 4h", actorPersonId: ids.lead },
+        { personId: ids.huy, amountCenti: 0, effectiveDate: "2026-09-30", sourceKey: "ot-3", reason: "nothing", actorPersonId: ids.hr },
+        { personId: ids.huy, amountCenti: 75, effectiveDate: "2026-09-30", sourceKey: "ot-4", reason: "OT 6h", actorPersonId: ids.hr },
+      ]),
+    );
+    expect(mai).toMatchObject({ personId: ids.mai, kind: "grant", amountCenti: 25, sourceKey: "toil:ot-2", leaveTypeId: types.COMP, createdByPersonId: ids.hr });
+    expect([again, zero]).toEqual([null, null]);
+    expect(huy).toMatchObject({ personId: ids.huy, amountCenti: 75, sourceKey: "toil:ot-4" });
+    expect([(await balance(ids.nam, "COMP")).balanceCenti, (await balance(ids.mai, "COMP")).balanceCenti, (await balance(ids.huy, "COMP")).balanceCenti]).toEqual([50, 25, 75]);
+    // One unknown person refuses the lot, inside the caller's transaction.
+    await expect(db().transaction((tx) => postCompensatoryLeaves(tx, [{ personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-5", reason: "OT", actorPersonId: null }, { personId: "00000000-0000-4000-8000-000000000000", amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-6", reason: "OT", actorPersonId: null }]))).rejects.toThrow("person_not_found");
+    expect((await balance(ids.mai, "COMP")).balanceCenti).toBe(25);
   });
 });
 

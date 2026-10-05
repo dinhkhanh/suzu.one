@@ -29,6 +29,7 @@
     "messenger:setup": "tsx scripts/messenger-setup.ts",
     "telegram:setup": "tsx scripts/telegram-setup.ts",
     "brand:icons": "tsx scripts/brand-icons.ts",
+    "i18n:routes": "tsx scripts/i18n-route-namespaces.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",
     "vercel-build": "node scripts/kiosk-assets.mjs && if [ \"$VERCEL_ENV\" = \"production\" ]; then drizzle-kit migrate; fi && next build",

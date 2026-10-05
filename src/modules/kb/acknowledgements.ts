@@ -8,12 +8,12 @@
 // requirement took effect (`ack_since`), or after the person came onto the books if that is later.
 // Collaborators are in an audience only when named in person.
 import "server-only";
-import { and, asc, desc, eq, isNull, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
-import { loadGrants } from "../platform/rbac/service";
+import { loadGrantsOfPeople } from "../platform/rbac/service";
 import { pagePublishedVisibleSql } from "./access-sql";
 import { ACK_AUDIENCE_TYPES, parseSubjectKey } from "./enums";
 import { loadPage, type PageRow } from "./pages";
@@ -100,37 +100,52 @@ async function pendingPeople(executor: Executor, pageId: string): Promise<Owing[
     .where(and(eq(person.status, "active"), collectingSql(), inAudienceSql(), sql`not ${confirmedSql()}`));
 }
 
-/** A viewer for someone who is not signed in (the reminder job): can they open the page at all? */
-async function viewerFor(executor: Executor, personId: string): Promise<KbViewer | null> {
-  const [row] = await executor.select().from(person).where(eq(person.id, personId)).limit(1);
-  if (!row) return null;
-  const principal = { personId: row.id, workforceType: row.workforceType, grants: await loadGrants(row.id, todayInVietnam(), executor) };
-  return { principal, personId: row.id, keys: viewerKeys(principal, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }) };
+/**
+ * Viewers for people who are not signed in (the reminder job): can they open the page at all?
+ * One read of the people and one of their grants, however many there are; an unknown id is absent.
+ */
+async function viewersFor(executor: Executor, personIds: readonly string[]): Promise<Map<string, KbViewer>> {
+  if (personIds.length === 0) return new Map();
+  const [rows, grants] = await Promise.all([executor.select().from(person).where(inArray(person.id, [...personIds])), loadGrantsOfPeople(personIds, todayInVietnam(), executor)]);
+  return new Map(
+    rows.map((row) => {
+      const principal = { personId: row.id, workforceType: row.workforceType, grants: grants.get(row.id) ?? [] };
+      return [row.id, { principal, personId: row.id, keys: viewerKeys(principal, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }) }];
+    }),
+  );
 }
 
 const dueText = (date: IsoDate) => date.split("-").reverse().join("/");
 
-/** Sends at most one notice per person, version and day; returns how many went out. Nobody is asked to confirm a page they cannot open. */
+/**
+ * Sends at most one notice per person, version and day; returns how many went out. Nobody is
+ * asked to confirm a page they cannot open. Everybody's viewer, claim and notice together: the
+ * claims in one insert, and one notice per distinct due date (its wording is the same for all).
+ */
 async function sendNotices(tx: Tx, page: PageRow, people: readonly Owing[], today: IsoDate, kind: "requested" | "reminder"): Promise<number> {
   if (!page.ackVersionId || people.length === 0) return 0;
   const loaded = await loadPage(page.id, tx);
   if (!loaded) return 0;
-  let sent = 0;
-  for (const owing of people) {
-    const viewer = await viewerFor(tx, owing.personId);
-    if (!viewer || !canViewPage(viewer, loaded.facts, loaded.pageFacts)) continue;
+  const viewers = await viewersFor(tx, people.map((owing) => owing.personId));
+  const asked = people.flatMap((owing) => {
+    const viewer = viewers.get(owing.personId);
+    if (!viewer || !canViewPage(viewer, loaded.facts, loaded.pageFacts)) return [];
     const dueOn = ackDueOn(page, owing.createdAt);
-    const overdue = dueOn < today;
-    const [fresh] = await tx
-      .insert(kbAckReminder)
-      .values({ pageId: page.id, versionId: page.ackVersionId, personId: owing.personId, sentOn: today, kind: kind === "requested" ? "requested" : overdue ? "overdue" : "reminder" })
-      .onConflictDoNothing()
-      .returning({ id: kbAckReminder.id });
-    if (!fresh) continue;
-    await notify({ recipients: [owing.personId], kind: kind === "requested" ? "kb.ack_requested" : "kb.ack_reminder", params: { title: page.publishedTitle ?? page.title, dueDate: dueText(dueOn), overdue: overdue ? "yes" : "no" }, link: `/kb/pages/${page.id}` }, tx);
-    sent++;
+    return [{ personId: owing.personId, dueOn, overdue: dueOn < today }];
+  });
+  if (asked.length === 0) return 0;
+  const fresh = await tx
+    .insert(kbAckReminder)
+    .values(asked.map(({ personId, overdue }) => ({ pageId: page.id, versionId: page.ackVersionId!, personId, sentOn: today, kind: kind === "requested" ? ("requested" as const) : overdue ? ("overdue" as const) : ("reminder" as const) })))
+    .onConflictDoNothing()
+    .returning({ personId: kbAckReminder.personId });
+  const claimed = new Set(fresh.map((row) => row.personId));
+  const byDue = new Map<IsoDate, string[]>();
+  for (const { personId, dueOn } of asked) if (claimed.has(personId)) byDue.set(dueOn, [...(byDue.get(dueOn) ?? []), personId]);
+  for (const [dueOn, recipients] of byDue) {
+    await notify({ recipients, kind: kind === "requested" ? "kb.ack_requested" : "kb.ack_reminder", params: { title: page.publishedTitle ?? page.title, dueDate: dueText(dueOn), overdue: dueOn < today ? "yes" : "no" }, link: `/kb/pages/${page.id}` }, tx);
   }
-  return sent;
+  return asked.filter(({ personId }) => claimed.has(personId)).length;
 }
 
 /** The first notice, to everyone pending who has had none for this version (new requirement, new major version, new joiner, wider audience). */

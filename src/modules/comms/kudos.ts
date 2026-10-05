@@ -1,7 +1,7 @@
 // Kudos (FR-COM-03, v1): a thank-you from one colleague to another, tied to a company value.
 // The values are rows (`company_value`), not constants. No points, no leaderboard yet.
 import "server-only";
-import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, lte, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { cached } from "@/lib/cache";
@@ -62,8 +62,8 @@ export async function removeKudos(id: string, actorPersonId: string): Promise<Ku
 
 export type KudosCard = { id: string; fromPersonId: string; fromName: string; toPersonId: string; toName: string; toEntityId: string | null; toUnitPath: readonly string[]; valueKey: string; valueNameVi: string | null; valueNameEn: string | null; message: string; createdAt: Date };
 
-/** The wall, newest first. Staff-wide (`public_internal`); the caller keeps collaborators out. */
-export async function listKudos(options: { toPersonId?: string; fromPersonId?: string; limit?: number } = {}): Promise<KudosCard[]> {
+/** The cards, joined to both people and the value, newest first; the caller adds the WHERE and the limit. */
+function kudosCards() {
   const giver = alias(person, "giver");
   const receiver = alias(person, "receiver");
   return db()
@@ -72,7 +72,27 @@ export async function listKudos(options: { toPersonId?: string; fromPersonId?: s
     .innerJoin(giver, eq(giver.id, kudos.fromPersonId))
     .innerJoin(receiver, eq(receiver.id, kudos.toPersonId))
     .leftJoin(companyValue, eq(companyValue.key, kudos.valueKey))
+    .$dynamic();
+}
+
+/** The wall, newest first. Staff-wide (`public_internal`); the caller keeps collaborators out. */
+export async function listKudos(options: { toPersonId?: string; fromPersonId?: string; limit?: number } = {}): Promise<KudosCard[]> {
+  return kudosCards()
     .where(and(isNull(kudos.deletedAt), options.toPersonId ? eq(kudos.toPersonId, options.toPersonId) : undefined, options.fromPersonId ? eq(kudos.fromPersonId, options.fromPersonId) : undefined))
     .orderBy(desc(kudos.createdAt))
     .limit(Math.max(1, Math.min(options.limit ?? 50, 200)));
+}
+
+/**
+ * The thanks one person received — between two instants when given, both inclusive — as how many
+ * there are, counted by Postgres over all of them, and the `recent` newest cards. Not a page of
+ * cards counted in JS: that count stops at the page.
+ */
+export async function kudosReceived(toPersonId: string, options: { from?: Date; to?: Date; recent: number }): Promise<{ count: number; recent: KudosCard[] }> {
+  const where = and(isNull(kudos.deletedAt), eq(kudos.toPersonId, toPersonId), options.from ? gte(kudos.createdAt, options.from) : undefined, options.to ? lte(kudos.createdAt, options.to) : undefined);
+  const [[total], recent] = await Promise.all([
+    db().select({ count: count() }).from(kudos).where(where),
+    options.recent > 0 ? kudosCards().where(where).orderBy(desc(kudos.createdAt)).limit(options.recent) : Promise.resolve([]),
+  ]);
+  return { count: total?.count ?? 0, recent };
 }

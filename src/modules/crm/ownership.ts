@@ -9,7 +9,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPeopleHolding } from "../platform/rbac/service";
+import { roleHolders } from "../platform/rbac/service";
 import type { OwnershipProvider, ProvidedGate, ProvidedItem } from "../platform/ownership/registry";
 import { providedKey } from "../platform/ownership/registry";
 import { accountsById, invalidateAccountProfiles } from "./accounts";
@@ -53,13 +53,8 @@ async function gate(executor: unknown, runner: { principal: CrmViewer["principal
   ]);
   // Who could hold a deal or a lead of an entity: its sellers and sales directors (named grants, and the owner's "*").
   const entityIds = [...new Set([...deals.map((row) => row.entityId), ...leads.map((row) => row.entityId)])];
-  const holders = new Map<string | null, Set<string>>();
-  await Promise.all(
-    entityIds.map(async (entityId) => {
-      const [sell, manage] = await Promise.all([listPeopleHolding("crm:sell", { entityId }, { executor: from }), listPeopleHolding("crm:manage", { entityId }, { executor: from })]);
-      holders.set(entityId, new Set([...sell, ...manage]));
-    }),
-  );
+  const lookup = await roleHolders({ executor: from });
+  const holders = new Map<string | null, Set<string>>(entityIds.map((entityId) => [entityId, new Set([...lookup.holding("crm:sell", { entityId }), ...lookup.holding("crm:manage", { entityId })])]));
   const gates = new Map<string, ProvidedGate>();
   const manages = (entityIds: readonly (string | null)[]) => coversAccount(viewer, "crm:manage", { entityIds });
   for (const item of items) {

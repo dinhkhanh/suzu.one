@@ -1,8 +1,10 @@
 import { Check, Clock, Coffee } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
+import { SectionSkeleton } from "@/components/ui/page-skeleton";
 import { todayInVietnam } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getCheckInState } from "@/modules/attendance/punches";
@@ -143,7 +145,10 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         ))}
       </nav>
 
-      {tab === "today" ? <DayLists user={user} date={date} view={view} /> : <Inbox view={tab} user={user} today={date} mine={mine} followUps={followUps.list} />}
+      {/* The lists read more of their own (targets, states, deals, job numbers): the day's strip and the tabs come first. */}
+      <Suspense key={tab} fallback={<SectionSkeleton rows={4} />}>
+        {tab === "today" ? <DayLists user={user} date={date} view={view} /> : <Inbox view={tab} user={user} today={date} mine={mine} followUps={followUps.list} />}
+      </Suspense>
     </Page>
   );
 }

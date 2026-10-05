@@ -1,15 +1,17 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Page, PageHeader } from "@/components/ui/page";
+import { SectionSkeleton } from "@/components/ui/page-skeleton";
 import { RecordLink } from "@/components/ui/record-link";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { todayInVietnam } from "@/lib/dates";
+import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { exportReportAction } from "@/modules/reports/actions";
-import { defaultAnalyticsPeriod, getWorkAnalytics, loadViewer, type NamedGroup } from "@/modules/work/service";
+import { defaultAnalyticsPeriod, getWorkAnalytics, loadViewer, type NamedGroup, type WorkViewer } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("workReports");
@@ -34,10 +36,7 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   if (period.from > period.to) period.from = period.to;
   const teamId = pick("team", UUID) ?? null;
 
-  const analytics = await getWorkAnalytics(viewer, { ...period, teamId }, today);
-  const [t, tWork, tExports, format, locale] = await Promise.all([getTranslations("reports.analytics"), getTranslations("work"), getTranslations("exports"), getFormatter(), getLocale()]);
-  const percent = (rate: number | null) => (rate === null ? "—" : format.number(rate, { style: "percent", maximumFractionDigits: 0 }));
-  const revisions = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
+  const [t, tWork, tExports, locale] = await Promise.all([getTranslations("reports.analytics"), getTranslations("work"), getTranslations("exports"), getLocale()]);
   const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const link = (next: Record<string, string | null>) => {
     const query = new URLSearchParams({ from: period.from, to: period.to, ...(teamId ? { team: teamId } : {}) });
@@ -45,12 +44,6 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
       else query.set(key, value);
     return `/work/analytics?${query.toString()}`;
   };
-
-  const empty = analytics.total.completed === 0 && analytics.total.open === 0;
-  const rows: { label: string; kind: "team" | "account"; groups: NamedGroup[] }[] = [
-    { label: t("byTeam"), kind: "team", groups: analytics.byTeam },
-    { label: t("byClient"), kind: "account", groups: analytics.byClient },
-  ];
 
   return (
     <Page width="wide">
@@ -80,6 +73,26 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
         </Button>
       </form>
 
+      {/* The figures are counted over every visible task of the period: the header and the filter come first. */}
+      <Suspense key={link({})} fallback={<SectionSkeleton rows={5} />}>
+        <AnalyticsTable viewer={viewer} period={period} teamId={teamId} today={today} link={link} tab={tab} />
+      </Suspense>
+    </Page>
+  );
+}
+
+async function AnalyticsTable({ viewer, period, teamId, today, link, tab }: { viewer: WorkViewer; period: { from: IsoDate; to: IsoDate }; teamId: string | null; today: IsoDate; link: (next: Record<string, string | null>) => string; tab: (active: boolean) => string }) {
+  const [analytics, t, format] = await Promise.all([getWorkAnalytics(viewer, { ...period, teamId }, today), getTranslations("reports.analytics"), getFormatter()]);
+  const percent = (rate: number | null) => (rate === null ? "—" : format.number(rate, { style: "percent", maximumFractionDigits: 0 }));
+  const revisions = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
+  const empty = analytics.total.completed === 0 && analytics.total.open === 0;
+  const rows: { label: string; kind: "team" | "account"; groups: NamedGroup[] }[] = [
+    { label: t("byTeam"), kind: "team", groups: analytics.byTeam },
+    { label: t("byClient"), kind: "account", groups: analytics.byClient },
+  ];
+
+  return (
+    <>
       {analytics.teams.length > 1 ? (
         <nav className="flex flex-wrap items-center gap-1">
           <Link href={link({ team: null })} className={tab(!teamId)}>
@@ -155,6 +168,6 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
           </>
         )}
       </div>
-    </Page>
+    </>
   );
 }

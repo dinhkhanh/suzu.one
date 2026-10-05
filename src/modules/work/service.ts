@@ -10,6 +10,7 @@ export { createProjectIn, type ProjectInput, type CreateTargets, findProject, li
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
 export { type DeletedTask, listDeletedTasks, RESTORE_WINDOW_DAYS } from "./tasks";
+export { listTaskSlice, TASK_LIST_LIMIT, type TaskSlice } from "./tasks";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
 export { type CommentView, listComments, listMentionable } from "./comments";
 export { type FollowState, followersOf, followStateOf } from "./followers";
@@ -17,7 +18,7 @@ export { listTaskFiles, TASK_FILE_OWNER, type TaskFileView } from "./attachments
 export { clientOfTask, countReviewsWaitingFor, type DecisionView, type DeliverableView, listDeliverables, listReviewsWaitingFor, pendingDeliverable, type ReviewWaiting } from "./reviews";
 export { listWorkTemplates, WORK_TEMPLATE_PURPOSES, type WorkTemplateView } from "./templates";
 export { listRecurrences, type RecurrenceView } from "./recurrences";
-export { getLeaderView, type LeaderTask, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
+export { getLeaderView, type LeaderTask, leaderTotals, type LeaderTotals, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
 export { loadMyWork, type MyWork } from "./my-work";
 export { getWorkload, WORKLOAD_WEEKS, type WorkloadPerson, type WorkloadView } from "./workload";
 export { findIntakeForm, type IntakeFormRow, type IntakeFormView, listMyIntakeRequests, listOpenIntakeForms, listTeamIntakeForms } from "./intake";

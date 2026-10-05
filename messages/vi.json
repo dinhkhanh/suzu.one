@@ -13,7 +13,14 @@
   },
   "controls": {
     "search": "Tìm kiếm",
+    "pager": {
+      "label": "Các trang",
+      "previous": "Trước",
+      "next": "Sau",
+      "page": "Trang {page}/{pageCount} · tổng {total}"
+    },
     "noResults": "Không có kết quả phù hợp",
+    "loading": "Đang tải…",
     "pickDate": "Chọn ngày",
     "pickMonth": "Chọn tháng",
     "today": "Hôm nay",
@@ -4703,6 +4710,7 @@
         "client": "Nhóm theo khách hàng"
       },
       "showClosed": "Hiện việc đã đóng",
+      "truncated": "Đang hiện {shown} trên {total} việc: việc đang mở trước, rồi đến việc mới đóng gần nhất.",
       "clear": "Xóa bộ lọc",
       "count": "{shown} / {total}",
       "quickCreate": "Công việc mới — gõ tiêu đề rồi nhấn Enter",
@@ -5362,6 +5370,7 @@
       "open": "{count} việc đang mở",
       "overdue": "{count} quá hạn",
       "atRisk": "{count} có rủi ro",
+      "truncated": "Đang hiện {shown} việc đến hạn sớm nhất trên {total} việc đang mở; các con số phía trên tính đủ tất cả.",
       "unassigned": "Chưa giao",
       "counts": "{todo} chưa làm · {in_progress} đang làm · {in_review} chờ duyệt",
       "due": "hạn {date}",
@@ -14816,6 +14825,7 @@
       "valuedOf": "{valued}/{count} có giá trị",
       "gatesNeeded": "Giai đoạn này cần: {gates}",
       "noForecast": "Không có cơ hội đang mở nào bạn được xem giá trị.",
+      "boardTruncated": "Bảng chỉ hiện {shown} trên {total} cơ hội; số liệu mỗi giai đoạn vẫn tính đủ. Lọc theo nhóm hoặc dịch vụ để xem phần còn lại.",
       "undatedOrLate": "Chưa có ngày, hoặc đã quá ngày",
       "columns": {
         "deal": "Cơ hội",

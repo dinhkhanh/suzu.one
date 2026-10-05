@@ -9,7 +9,7 @@ import { db, schema, type Tx } from "@/lib/db";
 // Reads that also run inside someone else's transaction (approver resolution) take the executor.
 type Executor = Tx | ReturnType<typeof db>;
 import { notify } from "../notifications/service";
-import { listOrgUnits } from "../org/service";
+import { listEntities, listOrgUnits } from "../org/service";
 import { ALL_GRANTS_KEY, GRANTS_TTL, grantsKey, invalidateGrants } from "./grants-cache";
 import { can, type Grant, type Scope, scopeCovers, type Target } from "./policy";
 import { type Permission, ROLE_DEFINITIONS, ROLES, type Role } from "./roles";
@@ -223,11 +223,12 @@ async function describeGrant(grant: RoleAssignmentRow, actorPersonId: string) {
   const [actor] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1);
   let scopeName = "";
   if (grant.scopeType !== "group" && grant.scopeId) {
+    // Both are reference data, in the org module's cache.
     const named = {
-      entity: () => db().select({ name: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, grant.scopeId!)),
-      unit: () => db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, grant.scopeId!)),
+      entity: async () => (await listEntities()).find((row) => row.id === grant.scopeId)?.shortName,
+      unit: async () => (await listOrgUnits()).find((row) => row.id === grant.scopeId)?.name,
     };
-    scopeName = (await named[grant.scopeType]())[0]?.name ?? "";
+    scopeName = (await named[grant.scopeType]()) ?? "";
   }
   return { actor: actor?.fullName ?? "", role: grant.role, scopeType: grant.scopeType, scopeName };
 }
@@ -263,24 +264,72 @@ async function grantRowsInForce(today: IsoDate, executor: Executor | undefined):
  * are bare, so the tree is put on the target's side instead — the same question, asked once per
  * call rather than once per grant. A target that already carries its chain (a person) is unchanged.
  */
-async function withUnitChain(target: Target, executor: Executor | undefined): Promise<Target> {
+function withUnitChain(target: Target, pathOf: ReadonlyMap<string, readonly string[]>): Target {
   const named = [...new Set(target.unitPath ?? [])];
   if (named.length === 0) return target;
-  const units = inTransaction(executor)
-    ? await executor.select({ path: schema.orgUnit.path }).from(schema.orgUnit).where(inArray(schema.orgUnit.id, named))
-    : (await listOrgUnits()).filter((unit) => named.includes(unit.id));
-  return { ...target, unitPath: [...new Set([...units.flatMap((unit) => unit.path), ...named])] };
+  return { ...target, unitPath: [...new Set([...named.flatMap((id) => pathOf.get(id) ?? []), ...named])] };
 }
 
 const hasUnitGrant = (rows: readonly GrantRow[]) => rows.some((row) => row.scopeType === "unit");
 
-/** Who to tell when the system itself needs attention. */
-export async function listOwnerPersonIds(executor?: Executor): Promise<string[]> {
-  const rows = await grantRowsInForce(todayInVietnam(), executor);
-  return rows.filter((row) => row.role === "owner" && row.scopeType === "group").map((row) => row.personId);
+type HoldingOptions = { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor };
+
+/** The questions `roleHolders` answers, all from one read of the grants. */
+export type RoleHolders = {
+  /** `listOwnerPersonIds`. */
+  owners(): string[];
+  /** `listPeopleHolding`. */
+  holding(permission: Exclude<Permission, "*">, target: Target, options?: { includeWildcard?: boolean }): string[];
+  /** `listPeopleWithRole`. */
+  withRole(role: Role, target: Target): string[];
+};
+
+/**
+ * Who holds what, for a caller that asks many times — a job going over every obligation, a flow
+ * with several steps, a checklist with a step per department: the grants in force (and, when a
+ * unit grant exists, the unit tree) are read **once**, and every question after that is answered
+ * in memory, by the same rules as the single lookups below, which are built on it.
+ */
+export async function roleHolders(options: { today?: IsoDate; executor?: Executor } = {}): Promise<RoleHolders> {
+  const { today = todayInVietnam(), executor } = options;
+  const rows = await grantRowsInForce(today, executor);
+  // The tree only matters when some grant names a unit; read whole (a small table), once.
+  const units = !hasUnitGrant(rows) ? [] : inTransaction(executor) ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit) : await listOrgUnits();
+  const pathOf = new Map(units.map((unit) => [unit.id, unit.path]));
+  const where = (target: Target) => (units.length ? withUnitChain(target, pathOf) : target);
+  const grantsByPerson = (includeWildcard: boolean) => {
+    const byPerson = new Map<string, Grant[]>();
+    for (const row of rows) {
+      const scope = toScope(row.scopeType, row.scopeId);
+      if (!scope || !(ROLES as readonly string[]).includes(row.role)) continue;
+      if (!includeWildcard && ROLE_DEFINITIONS[row.role as Role].permissions.includes("*")) continue;
+      byPerson.set(row.personId, [...(byPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
+    }
+    return byPerson;
+  };
+  const byWildcard = new Map<boolean, Map<string, Grant[]>>();
+  return {
+    owners: () => rows.filter((row) => row.role === "owner" && row.scopeType === "group").map((row) => row.personId),
+    holding(permission, target, { includeWildcard = true } = {}) {
+      const grants = byWildcard.get(includeWildcard) ?? byWildcard.set(includeWildcard, grantsByPerson(includeWildcard)).get(includeWildcard)!;
+      const at = where(target);
+      return [...grants].filter(([personId, held]) => can({ personId, workforceType: null, grants: held }, permission, at)).map(([personId]) => personId);
+    },
+    withRole(role, target) {
+      const at = where(target);
+      return [...new Set(rows.filter((row) => {
+        if (row.role !== role) return false;
+        const scope = toScope(row.scopeType, row.scopeId);
+        return !!scope && scopeCovers(scope, at);
+      }).map((row) => row.personId))];
+    },
+  };
 }
 
-type HoldingOptions = { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor };
+/** Who to tell when the system itself needs attention. */
+export async function listOwnerPersonIds(executor?: Executor): Promise<string[]> {
+  return (await roleHolders({ executor })).owners();
+}
 
 /**
  * Who holds `permission` over `target` today — e.g. the HR people to warn about someone's contract.
@@ -297,17 +346,9 @@ export async function listPeopleHolding(permission: Exclude<Permission, "*">, ta
  */
 export async function listPeopleHoldingEach(permission: Exclude<Permission, "*">, targets: readonly Target[], options: HoldingOptions = {}): Promise<string[][]> {
   if (targets.length === 0) return [];
-  const { today = todayInVietnam(), includeWildcard = true, executor } = options;
-  const rows = await grantRowsInForce(today, executor);
-  const wheres = hasUnitGrant(rows) ? await Promise.all(targets.map((target) => withUnitChain(target, executor))) : targets;
-  const grantsByPerson = new Map<string, Grant[]>();
-  for (const row of rows) {
-    const scope = toScope(row.scopeType, row.scopeId);
-    if (!scope || !(ROLES as readonly string[]).includes(row.role)) continue;
-    if (!includeWildcard && ROLE_DEFINITIONS[row.role as Role].permissions.includes("*")) continue;
-    grantsByPerson.set(row.personId, [...(grantsByPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
-  }
-  return wheres.map((where) => [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, where)).map(([personId]) => personId));
+  const { today, includeWildcard = true, executor } = options;
+  const holders = await roleHolders({ today, executor });
+  return targets.map((target) => holders.holding(permission, target, { includeWildcard }));
 }
 
 /**
@@ -323,12 +364,7 @@ export const holdsRoleToday = (personId: AnyPgColumn, role: Role, today: IsoDate
  * on any unit above it.
  */
 export async function listPeopleWithRole(role: Role, target: Target, executor?: Executor): Promise<string[]> {
-  const rows = (await grantRowsInForce(todayInVietnam(), executor)).filter((row) => row.role === role);
-  const where = hasUnitGrant(rows) ? await withUnitChain(target, executor) : target;
-  return [...new Set(rows.filter((row) => {
-    const scope = toScope(row.scopeType, row.scopeId);
-    return !!scope && scopeCovers(scope, where);
-  }).map((row) => row.personId))];
+  return (await roleHolders({ executor })).withRole(role, target);
 }
 
 /**

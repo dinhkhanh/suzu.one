@@ -67,6 +67,28 @@ export function readSort(value: unknown): ListSort {
   return (SORTS as readonly string[]).includes(key) || fieldIdOf(key) ? value : "rank";
 }
 
+/** Closed tasks stay hidden unless "show closed" is on or a state is picked (`filterTasks`): only then does a list load them. */
+export const wantsClosed = (filters: TaskFilters): boolean => filters.closed === "1" || !!filters.state;
+
+/** Without "show closed", the board's "done" columns hold the tasks closed in these last days. */
+export const BOARD_RECENT_DAYS = 14;
+
+/**
+ * Which of a project's or a backlog's tasks a screen loads (PERF-03). Open work always; closed work
+ * (done, cancelled) piles up for years, so it comes only as far as the screen shows it:
+ *   · `none`  — the list and the table, which hide closed tasks unless asked (`wantsClosed`);
+ *   · `all`   — the same once asked;
+ *   · `since` — the board, whose "done" columns hold the last two weeks unless "show closed" is on;
+ *   · `due`   — the calendar: the month's dated tasks whatever their state, and nothing else.
+ */
+export type TaskSliceOf = { closed: "none" | "all" } | { closed: "since"; updatedSince: Date } | { closed: "due"; dueFrom: string; dueTo: string };
+
+export function taskSliceFor(view: "list" | "board" | "calendar" | "table", filters: TaskFilters, today: string, month: { from: string; to: string }): TaskSliceOf {
+  if (view === "calendar") return { closed: "due", dueFrom: month.from, dueTo: month.to };
+  if (view === "board") return filters.closed === "1" ? { closed: "all" } : { closed: "since", updatedSince: new Date(Date.parse(`${today}T00:00:00Z`) - BOARD_RECENT_DAYS * 86_400_000) };
+  return { closed: wantsClosed(filters) ? "all" : "none" };
+}
+
 const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 const inTriage = (task: FilterableTask) => task.triageStatus === "pending" || task.triageStatus === "snoozed";
 

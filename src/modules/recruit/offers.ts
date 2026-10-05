@@ -32,7 +32,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { hireInTransaction, invalidatePositions, listPositionNames } from "@/modules/core-hr/service";
 import { createTranslator } from "next-intl";
 import vi from "../../../messages/vi.json";
-import { atLeast, type LetterheadFields, renderDocumentPdf, renderTemplate, vietnameseWords } from "@/modules/documents/service";
+import { atLeast, findTemplate, type LetterheadFields, renderDocumentPdf, listTemplates, renderTemplate, vietnameseWords } from "@/modules/documents/service";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
 import type { EmailAttachment } from "@/modules/platform/notifications/schema";
 import { notify } from "@/modules/platform/notifications/service";
@@ -717,15 +717,22 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
 /**
  * The letter itself, for a caller that has already decided who it is for: the reader above, or
  * `sendOffer`, whose sender holds the money authority (`canMakeOffer`) and whose recipient is the
- * candidate the letter is addressed to. `mayRead` is asked about the template's tier.
+ * candidate the letter is addressed to. `mayRead` is asked about the template's tier. Without a
+ * transaction the template and the department come from their modules' cached reference tables.
  */
-async function renderOfferLetter(offer: OfferRow, today: IsoDate, mayRead: (tier: Tier) => boolean, executor: Executor = db()): Promise<RenderedOffer | null> {
+async function renderOfferLetter(offer: OfferRow, today: IsoDate, mayRead: (tier: Tier) => boolean, executor?: Executor): Promise<RenderedOffer | null> {
   if (!offer.letterTemplateId) return null;
-  const [template] = await executor.select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1);
+  const template = executor
+    ? (await executor.select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1))[0]
+    : await findTemplate(offer.letterTemplateId).then((row) => (row?.isActive ? row : undefined));
   if (!template || !mayRead(template.tier)) return null;
 
   const candidate = await findCandidate(offer.candidateId, executor);
-  const [department] = offer.departmentId ? await executor.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
+  const department = !offer.departmentId
+    ? undefined
+    : executor
+      ? (await executor.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1))[0]
+      : (await listOrgUnits()).find((unit) => unit.id === offer.departmentId);
 
   const context = offerLetterContext({
     offer,
@@ -752,7 +759,9 @@ async function offerLetterPdf(offer: OfferRow, executor: Executor): Promise<Emai
 }
 
 /** The wordings a recruiter may pick from when drafting an offer. Names and ids only. */
-export async function listOfferTemplates(executor: Executor = db()): Promise<{ id: string; name: string; entityId: string | null }[]> {
+export async function listOfferTemplates(executor?: Executor): Promise<{ id: string; name: string; entityId: string | null }[]> {
+  // Without a transaction, from the documents module's cached library (ordered by kind, then name).
+  if (!executor) return (await listTemplates()).filter((row) => row.kind === "offer" && row.isActive).map(({ id, name, entityId }) => ({ id, name, entityId }));
   return executor
     .select({ id: schema.documentTemplate.id, name: schema.documentTemplate.name, entityId: schema.documentTemplate.entityId })
     .from(schema.documentTemplate)

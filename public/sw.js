@@ -1,46 +1,32 @@
 // SuZu One service worker. Deliberately small:
-//  - caches only what is public and immutable: the build's hashed static files and the icons;
+//  - caches only what is public and immutable: the build's hashed static files and the icons —
+//    and only the most recent of them: every deploy brings new hashed files and the old ones are
+//    never asked for again, so the cache keeps the last STATIC_LIMIT stored and drops the oldest;
 //  - never caches a page, an RSC payload, a server action or an API response — all of those are
 //    per person and permission-checked on the server, and a stale copy would be a leak or a lie;
 //  - when a page cannot be reached it shows /offline.html;
 //  - shows web-push notifications and opens their link.
-const VERSION = "v2";
+// v3: the static cache is bounded; moving to it drops what v2 gathered over every deploy since.
+const VERSION = "v3";
+/** The offline page and the icon, stored at install and never pruned. */
+const SHELL_CACHE = `suzu-shell-${VERSION}`;
+/** Hashed build files as they are fetched, oldest dropped first. */
 const STATIC_CACHE = `suzu-static-${VERSION}`;
 const SHELL = ["/offline.html", "/icons/icon-192.png"];
+/** Hashed files kept at most — a few deploys' worth of the screens a person opens. */
+const STATIC_LIMIT = 400;
 // The dev server's files are not content-hashed; caching them would serve stale code.
 const DEV = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
-// Every deploy brings new hashed files and the old ones are never asked for again, so without a
-// limit the cache only grows (FR-PLT-37 / PERF-05). It keeps the newest files up to a count and
-// drops what the server sent more than a month ago; the offline page and the icon always stay.
-const MAX_ENTRIES = 400;
-const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
-/** Drops the stale and the surplus static files, oldest first (a cache lists in the order it was filled). */
-async function prune(cache, now = Date.now()) {
-  const keys = await cache.keys();
-  const kept = [];
-  for (const request of keys) {
-    if (SHELL.includes(new URL(request.url).pathname)) continue;
-    const response = await cache.match(request);
-    const sent = response ? Date.parse(response.headers.get("date") || "") : NaN;
-    if (!response || (!Number.isNaN(sent) && now - sent > MAX_AGE_MS)) await cache.delete(request);
-    else kept.push(request);
-  }
-  const surplus = kept.length - MAX_ENTRIES;
-  for (let index = 0; index < surplus; index++) await cache.delete(kept[index]);
-}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("suzu-") && key !== STATIC_CACHE).map((key) => caches.delete(key))))
-      .then(() => caches.open(STATIC_CACHE))
-      .then((cache) => prune(cache))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("suzu-") && key !== SHELL_CACHE && key !== STATIC_CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -64,13 +50,17 @@ self.addEventListener("fetch", (event) => {
       const hit = await cache.match(request);
       if (hit) return hit;
       const response = await fetch(request);
-      // A long session across deploys fills the cache too: past the limit and some slack, prune
-      // once back to the limit (not on every file, which would read the whole cache each time).
-      if (response.ok && response.type === "basic") event.waitUntil(cache.put(request, response.clone()).then(() => cache.keys()).then((keys) => (keys.length > MAX_ENTRIES + 50 ? prune(cache) : undefined)));
+      if (response.ok && response.type === "basic") event.waitUntil(cache.put(request, response.clone()).then(() => prune(cache)));
       return response;
     }),
   );
 });
+
+/** Drops the oldest entries beyond STATIC_LIMIT (`keys()` lists them in the order they were stored). */
+async function prune(cache) {
+  const keys = await cache.keys();
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - STATIC_LIMIT)).map((key) => cache.delete(key)));
+}
 
 self.addEventListener("push", (event) => {
   let payload = {};

@@ -1,7 +1,7 @@
 // Work tasks: a row of the engine's `task` table (kind "work") plus its `work_task` half. Every
 // change is written to `work_activity`, field by field (FR-WRK-09).
 import "server-only";
-import { and, asc, desc, eq, exists, gte, ilike, inArray, isNotNull, isNull, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, ilike, inArray, isNotNull, isNull, lte, ne, or, type SQL, sql } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
@@ -18,6 +18,7 @@ import { appendChecklists, gatedStages, resolveLinked, MAX_TASK_CHECKLIST, merge
 import { changedFields } from "./engine/automation";
 import { requirementFor } from "./handoff-gate";
 import { assertPublishable } from "./publish-gate";
+import type { TaskSliceOf } from "./engine/filter";
 import { rankBetween, wouldCreateDependencyCycle } from "./engine/graph";
 import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enums";
 import { notifyFollowers } from "./followers";
@@ -808,16 +809,35 @@ export type TaskListItem = {
 };
 
 export async function listItems(where: SQL | undefined, executor: Executor, limit = 2000): Promise<TaskListItem[]> {
+  return (await listItemsCounted(where, executor, limit)).items;
+}
+
+/** The most a list, board or calendar loads at once (NFR-PRF-06: a table of 2,000 rows filters instantly). */
+export const TASK_LIST_LIMIT = 2000;
+
+/** What one read of a list gave: the rows, and how many matched — more than the rows when the limit cut them. */
+export type TaskSlice = { items: TaskListItem[]; total: number };
+
+/**
+ * `listItems` with the count of everything that matched, in the same statement. With `order`, the
+ * limit keeps the first rows in that order, and the rows still come back in board order.
+ */
+async function listItemsCounted(where: SQL | undefined, executor: Executor, limit: number, order?: SQL[]): Promise<TaskSlice> {
   const assignee = alias(schema.person, "assignee");
-  const rows = await executor
-    .select({ task: schema.task, work: schema.workTask, teamKey: schema.workTeam.key, assigneeName: assignee.fullName })
+  const found = await executor
+    .select({ task: schema.task, work: schema.workTask, teamKey: schema.workTeam.key, assigneeName: assignee.fullName, total: sql<number>`count(*) over ()`.mapWith(Number) })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId))
     .where(and(eq(schema.task.kind, WORK_KIND), live, where))
-    .orderBy(asc(schema.workTask.boardRank), asc(schema.workTask.number))
+    .orderBy(...(order ?? []), asc(schema.workTask.boardRank), asc(schema.workTask.number))
     .limit(limit);
+  const rows = order ? found.toSorted((a, b) => a.work.boardRank - b.work.boardRank || a.work.number - b.work.number) : found;
+  return { items: await shapeItems(rows, executor), total: found[0]?.total ?? 0 };
+}
+
+async function shapeItems(rows: { task: TaskRow; work: WorkTaskRow; teamKey: string; assigneeName: string | null }[], executor: Executor): Promise<TaskListItem[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.task.id);
   const blocker = alias(schema.task, "blocker");
@@ -936,6 +956,33 @@ export const listProjectTasks = (projectId: string, executor: Executor = db()) =
 
 /** The team's own backlog: tasks outside any project. The caller has checked `canViewTeamBacklog`. */
 export const listTeamBacklog = (teamId: string, executor: Executor = db()) => listItems(and(eq(schema.workTask.teamId, teamId), isNull(schema.workTask.projectId)), executor);
+
+const openStatus = inArray(schema.task.status, ["todo", "in_progress"]);
+
+function sliceCondition(slice: TaskSliceOf): SQL | undefined {
+  switch (slice.closed) {
+    case "all":
+      return undefined;
+    case "none":
+      return openStatus;
+    case "since":
+      return or(openStatus, gte(schema.task.updatedAt, slice.updatedSince));
+    case "due":
+      return and(gte(schema.task.dueDate, slice.dueFrom), lte(schema.task.dueDate, slice.dueTo));
+  }
+}
+
+/**
+ * A screen's slice of a project's or a backlog's tasks, and how many matched. Past the limit the
+ * open ones are kept first, then the most recently changed closed ones; the screen says it cut.
+ */
+export function listTaskSlice(of: { projectId: string } | { backlogOf: string }, slice: TaskSliceOf, executor: Executor = db(), limit = TASK_LIST_LIMIT): Promise<TaskSlice> {
+  const place = "projectId" in of ? eq(schema.workTask.projectId, of.projectId) : and(eq(schema.workTask.teamId, of.backlogOf), isNull(schema.workTask.projectId));
+  return listItemsCounted(and(place, sliceCondition(slice)), executor, limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, desc(schema.task.updatedAt)]);
+}
+
+/** The leader's view (FR-WRK-07): past the limit, the most urgent first — the earliest due, undated last. */
+export const listLeaderItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> => listItemsCounted(where, db(), limit, [sql`${schema.task.dueDate} asc nulls last`]);
 
 /**
  * The list form of `canViewTask`: which work tasks may this viewer see? Projects and teams are

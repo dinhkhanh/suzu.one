@@ -46,7 +46,7 @@ export type NotifyInput = {
    * "approve" link (FR-PLT-24). The space is shared, so `chat` is passed only for events that may
    * be read over a shoulder: who is waiting for what, never an amount or anything personal.
    */
-  chat?: { actionPath?: string | null; actionLabel?: string | null } | false;
+  chat?: { actionPath?: string | null; /** Per recipient, over `actionPath`: each approver's own one-shot link, in one call. */ actionPathFor?: Readonly<Record<string, string>>; actionLabel?: string | null } | false;
 };
 
 /**
@@ -119,13 +119,14 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
     for (const person of people) {
       if (person.status === "offboarded") continue;
       const { title, body } = wording(input.kind, params);
+      const actionPath = input.chat.actionPathFor?.[person.id] ?? input.chat.actionPath;
       cards.push({
         personId: person.id,
         kind: input.kind,
         title,
         body,
         link: absolute(input.link ?? null),
-        actionLink: input.chat.actionPath ? absolute(input.chat.actionPath) : null,
+        actionLink: actionPath ? absolute(actionPath) : null,
         actionLabel: input.chat.actionLabel ?? null,
       });
     }

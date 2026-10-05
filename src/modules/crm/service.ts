@@ -7,7 +7,7 @@ export { type AccountAbilities, accountAbilities, type AccountPage, accountsMana
 export { activityLink, type ActivityView, countOpenFollowUps, listActivities, listAllFollowUpsOf, listDoneBy, listFollowUpsOf, listOpenFollowUps } from "./activities";
 export { contactChoicesFor, type ContactName, type ContactView, findContact, listContacts } from "./contacts";
 export { contractChoices, contractNumbersOfProjects, type ContractView, expiringContracts, findContract, listContracts } from "./contracts";
-export { type DealFilters, type DealView, dealContext, gateFacts, getDeal, listDealContacts, listDeals, listStageChanges, openDealsOf, ownsAnyDeal, pipelineTotals } from "./deals";
+export { type DealFilters, type DealView, dealContext, gateFacts, getDeal, listDealBoard, listDealContacts, listDealPage, listDeals, listStageChanges, openDealsOf, ownsAnyDeal, pipelineTotals } from "./deals";
 export { dealOfProject, type DealProjectView, listDealProjects, listSalesHandoffsFor, type SalesHandoffWaiting } from "./delivery";
 export { agingSummary, collectedByAccount, getInvoice, heldBillingItemIds, type InvoiceDetail, type InvoiceView, listInvoices } from "./invoices";
 export { crmMorningJob, crmNightlyJob } from "./jobs";

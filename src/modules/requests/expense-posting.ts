@@ -9,7 +9,7 @@
 import "server-only";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
-import { findOpenRegularRun, getRunHandle, removeRunInput, setRunInput } from "@/modules/payroll/service";
+import { findOpenRegularRun, findOpenRegularRuns, getRunHandle, removeRunInput, setRunInput } from "@/modules/payroll/service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -135,6 +135,7 @@ export async function sweepApprovedClaims(actorPersonId: string | null): Promise
       personId: schema.approvalRequest.requesterPersonId,
       entityId: schema.approvalRequest.entityId,
       amount: schema.requestSubmission.amount,
+      postedRunId: schema.expenseClaimPosting.runId,
     })
     .from(schema.requestSubmission)
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
@@ -142,10 +143,20 @@ export async function sweepApprovedClaims(actorPersonId: string | null): Promise
     .leftJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.expenseClaimPosting.runId))
     .where(and(eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE), eq(schema.approvalRequest.status, "approved"), or(isNull(schema.expenseClaimPosting.id), eq(schema.payrollRun.status, "cancelled"))));
 
+  // Each entity's open run, once: a claim that was never posted and whose entity has none (the
+  // common case between runs) waits without a transaction of its own — `postApprovedClaim` would
+  // only find the same nothing. Everything else goes through it exactly as before.
+  const openRuns = await findOpenRegularRuns(approved.flatMap((claim) => (claim.postedRunId === null && claim.entityId ? [claim.entityId] : [])));
+  const waitsAnyway = (claim: (typeof approved)[number]) => claim.postedRunId === null && (!((claim.amount ?? 0) > 0) || !claim.entityId || !openRuns.has(claim.entityId));
+
   const result: SweepResult = { posted: 0, released: 0, stillWaiting: 0 };
   for (const claim of approved) {
-    const [before] = await db().select({ runId: schema.expenseClaimPosting.runId }).from(schema.expenseClaimPosting).where(eq(schema.expenseClaimPosting.submissionId, claim.submissionId)).limit(1);
-    const payment = await db().transaction((tx) => postApprovedClaim(tx, { ...claim, amount: claim.amount ?? 0 }, actorPersonId ?? claim.personId));
+    if (waitsAnyway(claim)) {
+      result.stillWaiting += 1;
+      continue;
+    }
+    const before = claim.postedRunId === null ? undefined : { runId: claim.postedRunId };
+    const payment = await db().transaction((tx) => postApprovedClaim(tx, { submissionId: claim.submissionId, personId: claim.personId, entityId: claim.entityId, amount: claim.amount ?? 0 }, actorPersonId ?? claim.personId));
     // Counted by where the claim *moved*, not by whether a row exists: a claim freed from a
     // cancelled run and put into the next one has been both released and posted.
     if (before && payment.state !== "posted") result.released += 1;

@@ -57,6 +57,7 @@ export default async function LeaderPage() {
           <Badge variant={view.totals.overdue ? "destructive" : "outline"}>{t("overdue", { count: view.totals.overdue })}</Badge>
           <Badge variant={view.totals.atRisk ? "warning" : "outline"}>{t("atRisk", { count: view.totals.atRisk })}</Badge>
         </p>
+        {view.shown !== null ? <p className="text-sm text-muted-foreground">{t("truncated", { shown: view.shown, total: view.totals.open })}</p> : null}
       </PageHeader>
       {view.people.length === 0 ? (
         <Table>

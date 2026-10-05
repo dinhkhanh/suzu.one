@@ -186,7 +186,8 @@ export type SubjectOptions = { entities: { id: string; name: string }[]; units: 
  */
 export async function subjectOptions(): Promise<SubjectOptions> {
   const [entities, units, people] = await Promise.all([
-    db().select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.shortName)),
+    // The entities are reference data, in the org module's cache.
+    listEntities().then((rows) => rows.map((row) => ({ id: row.id, name: row.shortName })).sort((a, b) => a.name.localeCompare(b.name, "vi") || a.id.localeCompare(b.id))),
     unitChoices(),
     db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.searchName)),
   ]);
