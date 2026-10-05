@@ -10,6 +10,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { checkProjectWork } from "@/modules/platform/project-guards/registry";
 import { taskKey } from "@/modules/work/service";
 import { weekStartOf } from "./engine/rules";
 import { stopTimer, vietnamDateOf } from "./engine/timer";
@@ -100,10 +101,17 @@ async function projectOfTask(taskId: string, executor: Executor): Promise<string
 
 type Target = { taskId: string | null; category: TimeCategory | null };
 
-/** Where an entry goes: its project and whether it is billable, from the task or the category. */
+/**
+ * Where a new entry goes: its project and whether it is billable, from the task or the category.
+ * A closed project takes no more time (FR-PJM-59): the project layer says so through the
+ * platform's project guards, which this module asks because it cannot import that one. Entries
+ * already logged are still corrected and deleted — they do not come through here.
+ */
 async function placeOf(target: Target, billable: boolean | null, executor: Executor): Promise<{ taskId: string | null; category: TimeCategory | null; projectId: string | null; billable: boolean }> {
   if (!target.taskId === !target.category) throw new ActionError("time_task_or_category");
   const projectId = target.taskId ? await projectOfTask(target.taskId, executor) : null;
+  const refusal = projectId ? await checkProjectWork(executor, { projectId, action: "time_entry" }) : null;
+  if (refusal) throw new ActionError(refusal.reason, refusal.details);
   return { taskId: target.taskId, category: target.taskId ? null : target.category, projectId, billable: billable ?? (await billableByDefault(projectId, executor)) };
 }
 

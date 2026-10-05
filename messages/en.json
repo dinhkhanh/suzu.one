@@ -4571,6 +4571,10 @@
       "project_not_found": "Project not found.",
       "project_other_team": "That project belongs to another team; a task keeps its team's workflow.",
       "project_archived": "That project is archived.",
+      "project_closed": "This project is closed: no new tasks, state changes or time until it is re-opened.",
+      "project_needs_kickoff": "A client project becomes Active only when its brief is approved at kick-off (the project's Overview page).",
+      "project_needs_closeout": "A client project becomes Done only through its close-out (the Close tab).",
+      "project_closed_reopen": "This project is closed. Re-open it on the Close tab before changing its status.",
       "project_dates_invalid": "The due date is before the start date.",
       "project_last_member": "A project keeps at least one member.",
       "task_not_found": "Task not found.",
@@ -4930,6 +4934,7 @@
         "person_not_found": "A chosen person was not found or has left.",
         "team_not_found": "Team not found.",
         "project_not_found": "Project not found.",
+        "project_closed": "This project is closed: no new tasks until it is re-opened.",
         "project_archived": "This project is archived.",
         "state_not_found": "The team has no state for new tasks."
       },
@@ -4988,6 +4993,7 @@
         "recurrence_dates_invalid": "The end date is before the start date.",
         "recurrence_not_found": "Not found.",
         "project_not_found": "Project not found.",
+        "project_closed": "This project is closed: no new tasks until it is re-opened.",
         "project_archived": "This project is archived."
       },
       "columns": {
@@ -5196,6 +5202,7 @@
         "custom_field_not_found": "it does not have that field",
         "task_not_found": "it no longer exists",
         "other": "the value does not fit",
+        "project_closed": "its project is closed",
         "handoff_required": "needs a hand-off package",
         "cycle_not_found": "cycle of another team",
         "cycle_closed": "cycle is closed",
@@ -11263,6 +11270,7 @@
       "report_date_invalid": "Reports can be sent for today or the past seven days only.",
       "report_not_found": "Report not found.",
       "comment_empty": "Write a comment or pick a reaction.",
+      "project_closed": "This task's project is closed: no more time can be logged until it is re-opened.",
       "time_week_locked": "This week's timesheet is submitted or approved and can no longer change.",
       "time_task_or_category": "Pick a task or a kind of other time — not both.",
       "time_entry_not_found": "Time entry not found.",
@@ -11423,6 +11431,9 @@
         }
       },
       "contactsHint": "One person per line: Name — role — phone or email",
+      "editContacts": "Edit contacts and links",
+      "approvedLocked": "The brief is approved: its objective, scope and success criteria change only through a change request or a new approval. Client contacts and links can still be updated.",
+      "saveContacts": "Save contacts and links",
       "save": "Save brief",
       "submit": "Submit for kick-off",
       "resubmit": "Submit again",
@@ -11496,6 +11507,7 @@
       "endDate": "End",
       "dueSlip": "Slip against baseline (days)",
       "accepted": "Deliverables accepted",
+      "awaitingClient": "Deliverables finished, waiting on the client",
       "promised": "Deliverables promised",
       "hoursUsed": "Hours logged",
       "hoursBurn": "Hours forecast (logged + remaining)",
@@ -11597,6 +11609,17 @@
       "remove": "Remove",
       "removeConfirm": "Remove this? Linked tasks stay as they are."
     },
+    "scope": {
+      "budgetLocked": "After kick-off the total hours budget changes only through a change request. You can still re-split that total between roles.",
+      "lineLocked": "After kick-off the quantity, format and channel are the scope agreed with the client: they change only through a change request. The wording, milestone and due date can still be edited here.",
+      "registerLocked": "After kick-off, adding or dropping a deliverable takes a change request.",
+      "feeLocked": "After kick-off the fee changes only through a change request.",
+      "raiseChange": "Raise a change request"
+    },
+    "gates": {
+      "clientHint": "A client project becomes Active when its <brief>brief is approved at kick-off</brief>, and Done when it is <close>closed out</close>.",
+      "closedHint": "This project is closed. To change its status, <close>re-open it</close>."
+    },
     "register": {
       "title": "Deliverables register",
       "progress": "Accepted {accepted}/{promised} ({percent}%)",
@@ -11604,12 +11627,14 @@
       "status": {
         "promised": "Promised",
         "in_production": "In production",
+        "ready_for_client": "Ready for client",
         "client_review": "Client review",
         "accepted": "Accepted",
         "delivered": "Delivered",
         "published": "Published",
         "cancelled": "Cancelled"
       },
+      "awaitingClient": "{count} finished, waiting on the client",
       "lineProgress": "accepted {accepted}/{promised} · {linked} tasks linked",
       "columns": {
         "progress": "Accepted",
@@ -11688,7 +11713,7 @@
       "state_not_found": "The team has no state for new tasks.",
       "task_not_found": "The task is not in this project.",
       "account_manager_is_lead": "The project lead cannot also be its account manager.",
-      "brief_locked": "The brief is awaiting approval or already approved and cannot be edited.",
+      "brief_locked": "The brief is awaiting approval or already approved and cannot be edited. An approved brief keeps only its contacts and links editable; the rest changes through a change request.",
       "brief_not_submittable": "The brief is awaiting approval or already approved.",
       "brief_incomplete": "The brief is missing required information.",
       "plan_dates_invalid": "The end date must be after the start date.",
@@ -11730,7 +11755,11 @@
       "billing_decided": "This item has already been handled.",
       "billing_conflict": "This item already exists.",
       "report_not_found": "Report not found.",
-      "project_closed": "The project is closed.",
+      "project_closed": "The project is closed and its plan is read-only. Its lead can re-open it on the Close tab.",
+      "scope_locked": "After kick-off, scope, hours budget and fee change only through a change request. Raise one on the Changes tab.",
+      "brief_not_approved": "Only an approved brief has its contacts and links edited on their own.",
+      "project_not_closed": "This project is not closed.",
+      "reopen_reason_required": "Give the reason for re-opening the project.",
       "close_unmet": "Some items are not met: give a reason to close anyway.",
       "retro_in_future": "The meeting date cannot be after today.",
       "retro_missing": "Save the retrospective first.",
@@ -11950,6 +11979,9 @@
       "dueDate": "Due date",
       "original": "Original",
       "current": "Current",
+      "unexplained": "Edited directly, not through a change request",
+      "unexplainedNote": "Some figures were edited directly, so original + change requests does not equal current. The difference is shown as its own row above.",
+      "retainerHint": "The retainer's monthly scope, applied from the next month made. Leave it as it is if nothing changes.",
       "list": "Change requests",
       "empty": "No change requests yet.",
       "new": "New change request",
@@ -11979,6 +12011,9 @@
         "withdrawn": "Withdrawn"
       },
       "impact": {
+        "retainerLines": "New monthly quota:",
+        "retainerHours": "Hours per month: {hours}",
+        "retainerFee": "Fee per month: {fee}",
         "hours": "Hours: {hours}",
         "fee": "Fee: {fee}",
         "dueDate": "New due date: {date}"
@@ -11992,6 +12027,9 @@
         "hoursDelta": "Hours change (+/−)",
         "feeDelta": "Fee change (VND, +/−)",
         "dueDateTo": "New project due date",
+        "retainerLines": "The retainer's monthly quota",
+        "retainerHours": "Hours per month",
+        "retainerFee": "Fee per month (VND)",
         "evidenceFile": "Evidence file",
         "evidenceUrl": "Or a link to the evidence"
       }
@@ -12129,6 +12167,16 @@
     },
     "close": {
       "closedBadge": "Closed",
+      "reopen": {
+        "title": "Re-open the project",
+        "submit": "Re-open project",
+        "reason": "Why it is re-opened",
+        "reasonHint": "For example: the client asked for one more revision round after acceptance…",
+        "warning": "Re-opening unlocks the plan and makes the project Active again. The earlier close-out is kept as history. A retainer stopped by the close does not restart by itself.",
+        "history": "Close-outs that were re-opened",
+        "closedLine": "Closed on {date}",
+        "reopenedLine": "Re-opened on {date}"
+      },
       "checklist": "Close-out checklist",
       "met": "Met",
       "unmet": "Not met",

@@ -7,6 +7,7 @@ import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
+import { checkProjectWork, type ProjectWorkAction } from "../platform/project-guards/registry";
 import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { runTaskAutomations } from "./automations";
 import { type ChecklistRow, resolveChecklists, type StageChecklist, stageChecklists } from "./checklist-library";
@@ -145,7 +146,20 @@ async function projectOfTeam(tx: Executor, projectId: string | null, teamId: str
   // A task uses its team's workflow; moving it to another team's project would strand its state.
   if (row.teamId !== teamId) throw new ActionError("project_other_team");
   if (row.status === "archived") throw new ActionError("project_archived");
+  await assertProjectTakesWork(tx, row, "task_create");
   return row;
+}
+
+/**
+ * A closed project is read-only for work too (FR-PJM-59): the project layer refuses new tasks and
+ * state changes on it until it is re-opened. Work cannot import that module, so it asks the
+ * platform's project guards — and only for a project in the Done category, the one a close-out
+ * leaves it in, so a running project costs no question.
+ */
+async function assertProjectTakesWork(tx: Executor, project: Pick<ProjectRow, "id" | "status">, action: ProjectWorkAction): Promise<void> {
+  if (project.status !== "done") return;
+  const refusal = await checkProjectWork(tx, { projectId: project.id, action });
+  if (refusal) throw new ActionError(refusal.reason, refusal.details);
 }
 
 async function stateOfTeam(tx: Executor, stateId: string, teamId: string): Promise<StateRow> {
@@ -452,6 +466,9 @@ export async function updateWorkTaskIn(
 
     const targetStateId = patch.stateId ?? work.stateId;
     if (changed(patch.stateId, work.stateId)) {
+      // A move somebody chose (or a rule made) on a closed project is refused; one that only follows
+      // from another record — a review decision, the client's answer on a link — still lands.
+      if (before.project && options.handoff !== "system") await assertProjectTakesWork(tx, before.project, "task_state");
       const [from] = await tx.select().from(schema.workState).where(eq(schema.workState.id, work.stateId)).limit(1);
       const to = await stateOfTeam(tx, patch.stateId, team.id);
       // The publish gate first (FR-PJM-54): a hand-off sheet filled for a post that is not out yet would be lost.

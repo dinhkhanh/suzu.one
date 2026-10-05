@@ -180,7 +180,12 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
 
 export type ChangeValues = { id: string; title: string; description: string | null; requestedBy: string; lines: Line[]; cancelIds: string[]; minutesDelta: number | null; feeDeltaVnd?: number | null; dueDateTo: string | null; evidenceUrl: string | null; evidence: Stored | null };
 
-export function ChangeForm({ projectId, change, register, requesters, editFee }: { projectId: string; change?: ChangeValues; register: { id: string; title: string; quantity: number }[]; requesters: readonly string[]; editFee: boolean }) {
+/**
+ * `retainer`: the monthly scope of a retainer project as the form should show it — the terms as
+ * they stand, with whatever this draft already changes laid over them. The whole scope is posted
+ * and the server keeps only what differs, so leaving the rows alone changes nothing.
+ */
+export function ChangeForm({ projectId, change, register, requesters, editFee, retainer = null }: { projectId: string; change?: ChangeValues; register: { id: string; title: string; quantity: number }[]; requesters: readonly string[]; editFee: boolean; retainer?: { lines: readonly Line[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null } | null }) {
   const t = useTranslations("projects.changes");
   const id = change?.id ?? "new";
   return (
@@ -230,6 +235,24 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
           <DatePicker id={`cr-due-${id}`} name="dueDateTo" defaultValue={change?.dueDateTo ?? ""} />
         </Field>
       </div>
+      {retainer ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{t("fields.retainerLines")}</legend>
+          <p className="text-xs text-muted-foreground">{t("retainerHint")}</p>
+          <input type="hidden" name="retainerScope" value="on" />
+          <LineRows name="retainerLines" lines={retainer.lines} idPrefix={`cr-monthly-${id}`} />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field name="retainerHours" label={t("fields.retainerHours")}>
+              <Input id={`cr-monthly-hours-${id}`} name="retainerHours" type="number" min={0} step="0.5" defaultValue={hoursOf(retainer.minutesPerMonth)} />
+            </Field>
+            {editFee ? (
+              <Field name="retainerFeeVnd" label={t("fields.retainerFee")}>
+                <MoneyInput id={`cr-monthly-fee-${id}`} name="retainerFeeVnd" defaultValue={retainer.feePerMonthVnd ?? ""} />
+              </Field>
+            ) : null}
+          </div>
+        </fieldset>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <UploadField label={t("fields.evidenceFile")} name="evidenceFileId" initial={change?.evidence} begin={(meta) => beginChangeEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeChangeEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>} />
         <Field name="evidenceUrl" label={t("fields.evidenceUrl")}>

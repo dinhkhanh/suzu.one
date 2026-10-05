@@ -6,8 +6,11 @@ import { Page } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { kbViewerOf, listSpaces } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canCloseProject, canHoldRetro, type CloseReport, getCloseChecklist, getRetro, openProject, previewCloseReport, type StoredCloseReport } from "@/modules/projects/service";
+import { List, ListItem } from "@/components/ui/list";
+import { RecordLink } from "@/components/ui/record-link";
+import { canCloseProject, canHoldRetro, canReopenProject, type CloseReport, getCloseChecklist, getRetro, listCloseHistory, openProject, previewCloseReport, type StoredCloseReport } from "@/modules/projects/service";
 import { CloseProjectForm, PublishLessonsForm, RetroForm } from "@/modules/projects/ui/commercial-forms";
+import { ReopenProjectForm } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -17,7 +20,8 @@ export const generateMetadata = pageTitle("closeProject");
 /**
  * Close-out (FR-PJM-59): the checklist computed live, the retrospective and its lessons, and the
  * close itself — the lead's, with a reason when something is unmet. After the close, the final
- * report as it was kept, and the plan is read-only.
+ * report as it was kept, and the plan is read-only — until whoever may close it re-opens it, with a
+ * reason; every close-out that was re-opened stays below as history.
  */
 export default async function ProjectClosePage({ params }: PageProps<"/projects/[projectId]/close">) {
   const user = await requireUser();
@@ -27,13 +31,14 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
   const { project, plan, viewer, facts } = context;
   const closed = !!plan.closedAt;
   const holdsRetro = canHoldRetro(viewer, facts);
-  const [t, format, checklist, retro, preview, spaces] = await Promise.all([
+  const [t, format, checklist, retro, preview, spaces, history] = await Promise.all([
     getTranslations("projects.close"),
     getFormatter(),
     closed ? Promise.resolve([]) : getCloseChecklist(project.id),
     getRetro(project.id),
     closed ? Promise.resolve(null) : previewCloseReport(project.id),
     holdsRetro ? listSpaces(kbViewerOf(user)) : Promise.resolve([]),
+    listCloseHistory(plan),
   ]);
   const stored = closed ? ((plan.closeReport as StoredCloseReport | null) ?? null) : null;
   const unmet = checklist.some((item) => !item.met);
@@ -150,6 +155,50 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
             <CloseProjectForm projectId={project.id} unmet={unmet} />
           </CardContent>
         </Card>
+      ) : null}
+
+      {closed && canReopenProject(viewer, facts) ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col gap-2">
+            <h2>{t("reopen.title")}</h2>
+            <ReopenProjectForm projectId={project.id} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {history.length ? (
+        <section className="flex flex-col gap-3">
+          <h2>{t("reopen.history")}</h2>
+          <List>
+            {history.map((entry) => (
+              <ListItem key={entry.reopenedAt} className="flex-col items-stretch gap-1 py-3 text-sm">
+                <p>
+                  {t("reopen.closedLine", { date: format.dateTime(new Date(entry.closedAt), { dateStyle: "medium" }) })}
+                  {entry.closedByName ? (
+                    <>
+                      {" · "}
+                      <RecordLink kind="person" id={entry.closedByPersonId}>
+                        {entry.closedByName}
+                      </RecordLink>
+                    </>
+                  ) : null}
+                </p>
+                <p>
+                  {t("reopen.reopenedLine", { date: format.dateTime(new Date(entry.reopenedAt), { dateStyle: "medium" }) })}
+                  {entry.reopenedByName ? (
+                    <>
+                      {" · "}
+                      <RecordLink kind="person" id={entry.reopenedByPersonId}>
+                        {entry.reopenedByName}
+                      </RecordLink>
+                    </>
+                  ) : null}
+                </p>
+                <p className="text-muted-foreground">{entry.reason}</p>
+              </ListItem>
+            ))}
+          </List>
+        </section>
       ) : null}
     </Page>
   );

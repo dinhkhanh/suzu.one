@@ -18,10 +18,10 @@ import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { decideBriefAction } from "@/modules/projects/actions";
-import { awaitingAcceptance, briefEditable, briefProblems, briefSubmittable, type BriefStatus, getBriefRequest, listProjectBookings, listStatusUpdates, listStructure, loadStatusFacts, mondayOf, openBriefForApprover, openProject, PROJECT_KINDS, type ProjectKind } from "@/modules/projects/service";
+import { awaitingAcceptance, briefContactsEditable, briefEditable, briefProblems, briefSubmittable, type BriefStatus, canEditBriefContacts, getBriefRequest, scopeLocked, listProjectBookings, listStatusUpdates, listStructure, loadStatusFacts, mondayOf, openBriefForApprover, openProject, PROJECT_KINDS, type ProjectKind } from "@/modules/projects/service";
 import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { BriefView } from "@/modules/projects/ui/brief-view";
-import { AccountManagerForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
+import { AccountManagerForm, BriefContactsForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
 import { burnTone, Meter } from "@/modules/projects/ui/progress";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
 import { canSeeProjectPreviewLinks, listProjectMembers, listProjectPreviewLinks } from "@/modules/work/service";
@@ -264,7 +264,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
             <CardContent className="flex flex-col gap-4">
               <Meter label={t("facts.tasks")} figure={`${facts.tasksDone}/${tasksTotal}`} percent={percentOf(facts.tasksDone, tasksTotal)} hint={facts.overdue || facts.blocked ? t("overview.tasksHint", { overdue: facts.overdue, blocked: facts.blocked }) : undefined} />
               <Meter label={t("facts.hours")} figure={facts.budgetMinutes ? t("facts.hoursOfBudget", { used: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes) }) : hours(facts.minutesLogged)} percent={percentOf(facts.minutesLogged, facts.budgetMinutes)} tone={burnTone(percentOf(facts.minutesLogged, facts.budgetMinutes))} hint={facts.budgetMinutes ? undefined : t("budget.noBudget")} />
-              <Meter label={t("facts.deliverables")} figure={`${facts.deliverablesAccepted}/${facts.deliverablesPromised}`} percent={percentOf(facts.deliverablesAccepted, facts.deliverablesPromised)} tone="success" hint={facts.deliverablesPromised ? undefined : t("register.empty")} />
+              <Meter label={t("facts.deliverables")} figure={`${facts.deliverablesAccepted}/${facts.deliverablesPromised}`} percent={percentOf(facts.deliverablesAccepted, facts.deliverablesPromised)} pending={percentOf(facts.deliverablesAwaitingClient ?? 0, facts.deliverablesPromised)} tone="success" hint={facts.deliverablesPromised ? (facts.deliverablesAwaitingClient ? t("register.awaitingClient", { count: facts.deliverablesAwaitingClient }) : undefined) : t("register.empty")} />
             </CardContent>
           </Card>
 
@@ -334,6 +334,16 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
 
             {editable ? <BriefForm projectId={project.id} brief={plan.brief} kind={plan.kind} accountContacts={accountContacts} /> : <BriefView brief={plan.brief} />}
 
+            {briefContactsEditable(status) && canEditBriefContacts(context.viewer, context.facts) ? (
+              <details className="border-t pt-3 text-sm">
+                <summary className="cursor-pointer text-muted-foreground">{t("brief.editContacts")}</summary>
+                <div className="flex flex-col gap-2 pt-3">
+                  <p className="text-xs text-muted-foreground">{t("brief.approvedLocked")}</p>
+                  <BriefContactsForm projectId={project.id} brief={{ clientContacts: plan.brief.clientContacts, links: plan.brief.links }} />
+                </div>
+              </details>
+            ) : null}
+
             {editable && briefSubmittable(status) ? (
               <div className="flex flex-col gap-2 border-t pt-3">
                 {problems.length ? <p className="text-sm text-muted-foreground">{t("kickoff.missing", { fields: problems.map((field) => t(`brief.fields.${field}`)).join(", ") })}</p> : <p className="text-sm text-muted-foreground">{t("kickoff.ready")}</p>}
@@ -385,7 +395,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           <Card>
             <CardContent className="flex flex-col gap-4">
               <AccountManagerForm projectId={project.id} current={accountManager?.personId ?? null} people={people} />
-              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} />
+              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} scopeLocked={scopeLocked(plan)} />
             </CardContent>
           </Card>
         </Section>

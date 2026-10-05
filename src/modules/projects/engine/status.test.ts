@@ -32,7 +32,7 @@ describe("status updates (FR-PJM-27)", () => {
         { kind: "assumption", severity: null, status: "open" },
       ],
     });
-    expect(facts).toEqual({ tasksDone: 1, tasksOpen: 3, overdue: 1, blocked: 1, milestoneSlipDays: 3, nextMilestone: { name: "Quay", dueDate: "2026-10-28" }, minutesLogged: 1200, budgetMinutes: 6000, deliverablesAccepted: 3, deliverablesPromised: 12, highRisks: 1, openIssues: 2 });
+    expect(facts).toEqual({ tasksDone: 1, tasksOpen: 3, overdue: 1, blocked: 1, milestoneSlipDays: 3, nextMilestone: { name: "Quay", dueDate: "2026-10-28" }, minutesLogged: 1200, budgetMinutes: 6000, deliverablesAccepted: 3, deliverablesPromised: 12, deliverablesAwaitingClient: 0, highRisks: 1, openIssues: 2 });
   });
   it("counts no risks and issues when the log is empty or all closed", () => {
     const base = { today: "2026-10-20", tasks: [], blocked: 0, milestones: [], minutesLogged: 0, budgetMinutes: null, register: { accepted: 0, promised: 0 } };

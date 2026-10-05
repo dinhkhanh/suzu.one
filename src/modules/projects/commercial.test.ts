@@ -22,18 +22,21 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
-import { createProject } from "../work/projects";
+import { logTime } from "../daily/time";
+import { createProject, setProjectArchived, updateProject } from "../work/projects";
 import { createTeam, listStates, setTeamMember } from "../work/teams";
-import { updateWorkTask } from "../work/tasks";
+import { createWorkTask, updateWorkTask } from "../work/tasks";
 import { acceptanceDocument, awaitingAcceptance, createAcceptance, findAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
 import { billingItemForAcceptance, decideBillingItem, listBillingQueue, listProjectBilling } from "./billing";
 import { decideChange, getChangeLedger, listChanges, openChangesForApprover, saveChange, submitChange } from "./change-requests";
 import { clientReportFigures, saveClientReport } from "./client-reports";
-import { closeProject, getCloseChecklist, saveRetro } from "./close";
+import { closeProject, getCloseChecklist, listCloseHistory, reopenProject, saveRetro } from "./close";
+import { assertRetainerQuotaOpen } from "./guards";
+import { loadRegisters } from "./metrics";
 import { ensurePlan, isProjectClosed, setAccountManager, setFee, updatePlanSettings } from "./plans";
 import { canEditPlan } from "./policy";
 import { seedAcceptanceTemplate } from "./seed";
-import { listPeriods, retainerConsumption, runRetainers, saveRetainer, sendQuotaAlerts, shapeRetainer } from "./retainers";
+import { getRetainer, listPeriods, retainerConsumption, runRetainers, saveRetainer, sendQuotaAlerts, shapeRetainer } from "./retainers";
 import { createTasksForLine, saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { summariseRetainers } from "../reports/engine/delivery";
 import { loadRetainerFacts } from "../reports/retainer-source";
@@ -47,6 +50,14 @@ let done = "";
 
 async function finishTasks(taskIds: readonly string[]) {
   for (const taskId of taskIds) await updateWorkTask(taskId, { stateId: done }, ids.huy);
+}
+
+/** The client's approval on record for each task: a version handed in, approved and frozen (FR-PJM-51). */
+async function clientApproves(taskIds: readonly string[]) {
+  for (const taskId of taskIds) {
+    const [deliverable] = await db().insert(schema.workDeliverable).values({ taskId, version: 1, kind: "link", url: "https://drive.google.com/final", submittedByPersonId: ids.huy, decision: "approved", decidedByPersonId: ids.tam, decidedAt: new Date(), frozenAt: new Date() }).returning();
+    await db().insert(schema.workDeliverableDecision).values({ deliverableId: deliverable.id, decision: "approved", decidedByPersonId: ids.lan, isClient: true, client: { channel: "email", decidedByName: "Chị Mai", decidedOn: "2026-09-20" } });
+  }
 }
 
 async function scanFor(ownerId: string): Promise<string> {
@@ -222,6 +233,9 @@ describe("change requests (FR-PJM-11)", () => {
     expect(outcome).toBe("approved");
     expect(applied.status).toBe("approved");
     expect(applied.impact.applied).toEqual({ budgetMinutesBefore: 6000, feeVndBefore: null, dueDateBefore: "2026-12-31" });
+    // The change keeps both ends of what it did: the ledger is rebuilt from them.
+    expect(applied.figuresBefore).toEqual({ budgetMinutes: 6000, feeVnd: null, dueDate: "2026-12-31" });
+    expect(applied.figuresAfter).toEqual({ budgetMinutes: 7200, feeVnd: null, dueDate: "2027-01-15" });
 
     expect((await ensurePlan(ids.tvc)).budgetMinutes).toBe(7200);
     const [project] = await db().select().from(schema.workProject).where(eq(schema.workProject.id, ids.tvc));
@@ -234,6 +248,8 @@ describe("change requests (FR-PJM-11)", () => {
     const ledger = await getChangeLedger(ids.tvc, false);
     expect(ledger.original).toEqual({ budgetMinutes: 6000, feeVnd: null, dueDate: "2026-12-31" });
     expect(ledger.current).toEqual({ budgetMinutes: 7200, feeVnd: null, dueDate: "2027-01-15" });
+    expect(ledger.steps.map((step) => step.kind)).toEqual(["change"]);
+    expect(ledger.balanced).toBe(true);
   });
 
   it("asks a pjm:commercial holder over the entity as well when the fee moves, and never shows the fee without it", async () => {
@@ -264,6 +280,83 @@ describe("change requests (FR-PJM-11)", () => {
     expect((await getChangeLedger(ids.tvc, true)).current.feeVnd).toBe(120_000_000);
   });
 
+  it("shows what was edited outside a change request as a difference nobody explained, and still adds up", async () => {
+    // This project never passed its kick-off, so the fee could still be typed directly between the
+    // two changes above (`setFee`): the ledger does not absorb that into either of them.
+    const ledger = await getChangeLedger(ids.tvc, true);
+    expect(ledger.original).toEqual({ budgetMinutes: 6000, feeVnd: null, dueDate: "2026-12-31" });
+    expect(ledger.steps.map((step) => [step.kind, step.after.budgetMinutes, step.after.feeVnd])).toEqual([
+      ["change", 7200, null],
+      ["unexplained", 7200, 100_000_000],
+      ["change", 7200, 120_000_000],
+    ]);
+    expect(ledger.steps[1]).toMatchObject({ kind: "unexplained", delta: { minutes: 0, feeVnd: 100_000_000, dueDate: false } });
+    expect(ledger.balanced).toBe(false);
+    expect(ledger.steps.at(-1)?.after).toEqual(ledger.current);
+    // A reader without the fee sees no trace of a row that was only about the fee.
+    const hidden = await getChangeLedger(ids.tvc, false);
+    expect(hidden.steps.map((step) => step.kind)).toEqual(["change", "change"]);
+    expect(hidden.balanced).toBe(true);
+    for (const row of await listChanges(ids.tvc, false)) expect([row.figuresBefore?.feeVnd ?? null, row.figuresAfter?.feeVnd ?? null]).toEqual([null, null]);
+
+    // An hours budget typed directly after the last change shows the same way, at the end.
+    await updatePlanSettings(ids.tvc, { kind: "client", budgetMinutes: 7500, budgetByRole: [], updateCadenceDays: 7, driveUrl: null });
+    const after = await getChangeLedger(ids.tvc, false);
+    expect(after.steps.at(-1)).toMatchObject({ kind: "unexplained", delta: { minutes: 300, dueDate: false }, after: { budgetMinutes: 7500 } });
+    expect(after.balanced).toBe(false);
+    await updatePlanSettings(ids.tvc, { kind: "client", budgetMinutes: 7200, budgetByRole: [], updateCadenceDays: 7, driveUrl: null });
+    expect((await getChangeLedger(ids.tvc, false)).balanced).toBe(true);
+  });
+
+  it("changes a retainer's monthly scope through a change request, keeping what it replaced", async () => {
+    const before = (await getRetainer(ids.retainer))!;
+    const sameLines = before.lines.map((line) => ({ ...line }));
+    // The form posts the whole scope: a change that repeats the terms as they stand changes nothing.
+    const { after: nothing } = await saveChange(ids.retainer, null, { title: "Không đổi gì", description: null, requestedBy: "internal", impact: { retainer: { lines: sameLines, minutesPerMonth: before.minutesPerMonth, feePerMonthVnd: before.feePerMonthVnd } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: true });
+    expect(nothing.impact.retainer).toBeUndefined();
+    expect(await fails(submitChange(nothing.id, ids.lan))).toBe("change_empty");
+
+    const more = sameLines.map((line, index) => (index === 0 ? { ...line, quantity: line.quantity + 4 } : line));
+    // Without `pjm:commercial` the monthly fee in the input is not taken.
+    const { after: change } = await saveChange(ids.retainer, null, { title: "Thêm 4 bài mỗi tháng", description: null, requestedBy: "client", impact: { retainer: { lines: more, minutesPerMonth: 1500, feePerMonthVnd: 1 } }, evidenceFileId: null, evidenceUrl: "https://mail.example/thread/2" }, ids.lan, { withFee: false });
+    expect(change.impact.retainer).toEqual({ lines: more, minutesPerMonth: 1500 });
+    expect(await fails(saveChange(ids.retainer, null, { title: "Trùng tên", description: null, requestedBy: "internal", impact: { retainer: { lines: [more[0], more[0]] } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false }))).toBe("retainer_lines_duplicate");
+    expect(await fails(saveChange(ids.tvc, null, { title: "Không phải retainer", description: null, requestedBy: "internal", impact: { retainer: { lines: more } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false }))).toBe("retainer_not_retainer_project");
+
+    const { requestId } = await submitChange(change.id, ids.lan);
+    // Until it is approved the retainer is as it was.
+    expect((await getRetainer(ids.retainer))!.lines).toEqual(before.lines);
+    const { outcome, change: applied } = await decideChange(ids.tam, requestId, { action: "approve", comment: null });
+    expect(outcome).toBe("approved");
+    expect(await getRetainer(ids.retainer)).toMatchObject({ lines: more, minutesPerMonth: 1500, feePerMonthVnd: before.feePerMonthVnd });
+    expect(applied.impact.applied?.retainer).toEqual({ lines: before.lines, minutesPerMonth: before.minutesPerMonth, feePerMonthVnd: before.feePerMonthVnd });
+    // The fee the change replaced is money like any other: not there for a reader without `pjm:commercial`.
+    const [shown] = await listChanges(ids.retainer, false);
+    expect(shown.impact.applied?.retainer?.feePerMonthVnd).toBeNull();
+  });
+
+  it("holds a retainer's monthly scope after the kick-off for whoever saves its terms directly", () => {
+    const terms = { lines: [{ title: "Bài đăng Facebook", quantity: 4, format: "post", channel: "facebook" }], minutesPerMonth: 1200, feePerMonthVnd: 30_000_000 };
+    const check = (briefStatus: string, before: typeof terms | null, after: Partial<typeof terms>) => {
+      try {
+        assertRetainerQuotaOpen({ briefStatus }, before, { ...terms, ...after });
+        return "allowed";
+      } catch (error) {
+        return (error as Error).message;
+      }
+    };
+    // Before the kick-off, and when the terms are first set, anything goes.
+    expect(check("draft", terms, { minutesPerMonth: 600 })).toBe("allowed");
+    expect(check("approved", null, { minutesPerMonth: 600 })).toBe("allowed");
+    // After it: the same scope saved again is fine (months, rollover, the active switch are not scope)…
+    expect(check("approved", terms, {})).toBe("allowed");
+    expect(check("approved", terms, { feePerMonthVnd: undefined })).toBe("allowed");
+    // …and the quota lines, the hours allowance and the fee each need a change request.
+    expect(check("approved", terms, { lines: [{ ...terms.lines[0], quantity: 8 }] })).toBe("scope_locked");
+    expect(check("approved", terms, { minutesPerMonth: null as never })).toBe("scope_locked");
+    expect(check("approved", terms, { feePerMonthVnd: 35_000_000 })).toBe("scope_locked");
+  });
+
   it("keeps a budget by role and the approved changes in step", async () => {
     const { after } = await updatePlanSettings(ids.tvc, { kind: "client", budgetMinutes: null, budgetByRole: [{ role: "Dựng phim", minutes: 6000 }], updateCadenceDays: 7, driveUrl: null });
     expect(after.budgetMinutes).toBe(7200);
@@ -274,7 +367,11 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
   it("snapshots a milestone's lines, signs once, and hands finance one item with the acceptance attached", async () => {
     const milestone = (await saveMilestone(ids.tvc, null, { name: "Bàn giao master", dueDate: "2026-12-20", phaseId: null, ownerPersonId: ids.tam, isClientFacing: true, isBilling: true, billingAmountVnd: 50_000_000, sortOrder: 0 })).after;
     const line = (await saveDeliverable(ids.tvc, null, { title: "TVC 30s", quantity: 1, format: null, channel: null, dueDate: null, milestoneId: milestone.id, sortOrder: 0 })).after;
-    await finishTasks((await createTasksForLine(line.id, { count: 1, assigneePersonId: null, dueDate: null }, ids.tam)).taskIds);
+    const { taskIds } = await createTasksForLine(line.id, { count: 1, assigneePersonId: null, dueDate: null }, ids.tam);
+    await finishTasks(taskIds);
+    // Done on our side is not the client's acceptance: until their decision is on record the paper would say 0 accepted.
+    expect((await loadRegisters([ids.tvc])).get(ids.tvc)!.lines.find((row) => row.id === line.id)).toMatchObject({ status: "ready_for_client", accepted: 0, awaitingClient: 1 });
+    await clientApproves(taskIds);
 
     const internal = (await saveMilestone(ids.tvc, null, { name: "Duyệt nội bộ", dueDate: null, phaseId: null, ownerPersonId: null, isClientFacing: false, isBilling: false, sortOrder: 1 })).after;
     expect(await fails(createAcceptance(ids.tvc, { scope: "milestone", milestoneId: internal.id, retainerPeriodId: null }, ids.lan))).toBe("acceptance_milestone_internal");
@@ -403,5 +500,58 @@ describe("close-out (FR-PJM-59)", () => {
     const lead = { principal: principalOf(ids.tam, []), entityId: ids.szm, teamRoles: new Map(), projectRoles: new Map([[ids.tvc, "lead" as const]]) };
     expect(canEditPlan(lead, facts)).toBe(false);
     expect(await fails(closeProject(ids.tvc, { overrideReason: "again" }, ids.tam))).toBe("project_closed");
+  });
+
+  const details = { name: "TVC Tết", description: null, clientId: null, visibility: "team" as const, leadPersonId: ids.tam, startDate: null, dueDate: null };
+  const statusOf = async (projectId: string) => (await db().select({ status: schema.workProject.status }).from(schema.workProject).where(eq(schema.workProject.id, projectId)))[0].status;
+  const lineTask = async () => (await db().select({ taskId: schema.workTask.taskId }).from(schema.workTask).where(eq(schema.workTask.projectId, ids.tvc)).limit(1))[0].taskId;
+
+  it("takes no new task, no state change and no time while it is closed", async () => {
+    expect(await fails(createWorkTask({ teamId: ids.team, projectId: ids.tvc, title: "Việc phát sinh sau khi đóng" }, ids.tam))).toBe("project_closed");
+    const taskId = await lineTask();
+    const open = (await listStates([ids.team])).find((state) => state.category === "in_progress")!.id;
+    expect(await fails(updateWorkTask(taskId, { stateId: open }, ids.huy))).toBe("project_closed");
+    expect(await fails(logTime({ personId: ids.huy, date: "2026-09-21", taskId, category: null, minutes: 30, note: null, billable: null }))).toBe("project_closed");
+    // A task in the team's backlog, outside the project, is none of the close's business — until it is moved in.
+    const { task } = await createWorkTask({ teamId: ids.team, projectId: null, title: "Việc của nhóm" }, ids.tam);
+    expect(await fails(updateWorkTask(task.id, { projectId: ids.tvc }, ids.tam))).toBe("project_closed");
+    // What is not work on the project still goes: its wording, for one.
+    await updateWorkTask(taskId, { title: "TVC 30s — bản cuối" }, ids.huy);
+  });
+
+  it("cannot be walked out of Done by the header, and comes back from the archive still closed", async () => {
+    for (const status of ["active", "planned", "paused"]) expect(await fails(updateProject(ids.tvc, { ...details, leadPersonId: ids.tam, status }))).toBe("project_closed_reopen");
+    expect(await statusOf(ids.tvc)).toBe("done");
+    await setProjectArchived(ids.tvc, true);
+    expect((await setProjectArchived(ids.tvc, false)).after.status).toBe("done");
+    expect(await isProjectClosed(ids.tvc)).toBe(true);
+  });
+
+  it("is re-opened on purpose, with a reason: the plan unlocks, the project is active, the close-out stays as history", async () => {
+    expect(await fails(reopenProject(ids.tvc, { reason: "  " }, ids.tam))).toBe("reopen_reason_required");
+    expect(await fails(reopenProject(ids.retainer, { reason: "Chưa đóng" }, ids.tam))).toBe("project_not_closed");
+    const closed = await ensurePlan(ids.tvc);
+
+    const { plan, entry, projectStatusBefore } = await reopenProject(ids.tvc, { reason: "Khách yêu cầu thêm một vòng chỉnh sửa" }, ids.long);
+    expect(projectStatusBefore).toBe("done");
+    expect(plan).toMatchObject({ closedAt: null, closedByPersonId: null, closeReport: null });
+    expect(entry).toMatchObject({ closedByPersonId: ids.tam, reopenedByPersonId: ids.long, reason: "Khách yêu cầu thêm một vòng chỉnh sửa", closedAt: closed.closedAt!.toISOString() });
+    // The report kept at the close is in the history, word for word.
+    expect(entry.report).toEqual(closed.closeReport);
+    expect(await listCloseHistory(plan)).toMatchObject([{ closedByName: "Tam Bui", reopenedByName: "Long Dang" }]);
+    expect(await statusOf(ids.tvc)).toBe("active");
+    expect(await isProjectClosed(ids.tvc)).toBe(false);
+    expect(await fails(reopenProject(ids.tvc, { reason: "Lần nữa" }, ids.tam))).toBe("project_not_closed");
+
+    // Work goes on.
+    const { task } = await createWorkTask({ teamId: ids.team, projectId: ids.tvc, title: "Vòng chỉnh sửa thêm" }, ids.tam);
+    await logTime({ personId: ids.huy, date: "2026-09-21", taskId: task.id, category: null, minutes: 30, note: null, billable: null });
+    await finishTasks([task.id]);
+
+    // Closing again is a new close-out; the first one is still there behind it.
+    const again = await closeProject(ids.tvc, { overrideReason: "Đóng lại sau vòng chỉnh sửa" }, ids.tam);
+    expect(again.plan.closedAt).not.toBeNull();
+    expect(again.plan.closeHistory).toHaveLength(1);
+    expect(await statusOf(ids.tvc)).toBe("done");
   });
 });

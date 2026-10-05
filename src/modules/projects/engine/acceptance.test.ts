@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { acceptanceItems, acceptanceItemsText, acceptanceNext, acceptanceNumber, acceptanceTotals, billingDecidable, linesInScope, projectFeeLeft, type ScopedLine } from "./acceptance";
 
-const counts = (values: Partial<ScopedLine["counts"]>): ScopedLine["counts"] => ({ promised: 0, in_production: 0, client_review: 0, accepted: 0, delivered: 0, published: 0, ...values });
+const counts = (values: Partial<ScopedLine["counts"]>): ScopedLine["counts"] => ({ promised: 0, in_production: 0, ready_for_client: 0, client_review: 0, accepted: 0, delivered: 0, published: 0, ...values });
 const lines: ScopedLine[] = [
   { id: "a", title: "TVC 30s", milestoneId: "m1", retainerPeriodId: null, cancelled: false, promised: 1, counts: counts({ delivered: 1 }), accepted: 1 },
   { id: "b", title: "Bản cắt 15s", milestoneId: "m1", retainerPeriodId: null, cancelled: false, promised: 3, counts: counts({ accepted: 1, published: 1, client_review: 1 }), accepted: 2 },
