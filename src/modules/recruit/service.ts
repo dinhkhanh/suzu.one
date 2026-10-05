@@ -472,11 +472,23 @@ export async function updateOpening(openingId: string, input: OpeningInput, mone
   // Until its first publication nobody outside holds the link, so the slug follows the title;
   // after that it stays put, or every shared link would break.
   const publicSlug = !before.publishedAt && input.title !== before.title ? newPublicSlug(input.title) : before.publicSlug;
+  // An application sits on a stage of the opening's pipeline — closed ones too, which is what the
+  // funnel counts. Swapping the pipeline under them would leave every one on a stage the opening no
+  // longer has, so the pipeline changes only while nobody has applied. Checked in the same
+  // statement as the write, so an application that lands in between is not stranded either.
+  const pipelineChanges = input.pipelineId !== before.pipelineId;
+  if (pipelineChanges && !(await findPipeline(input.pipelineId))) throw new ActionError("recruit_pipeline_not_found");
   const [after] = await db()
     .update(schema.jobOpening)
     .set({ ...input, ...(money ?? {}), publicSlug, updatedAt: now() })
-    .where(eq(schema.jobOpening.id, openingId))
+    .where(
+      and(
+        eq(schema.jobOpening.id, openingId),
+        pipelineChanges ? notExists(db().select({ one: sql`1` }).from(schema.jobApplication).where(eq(schema.jobApplication.openingId, schema.jobOpening.id))) : undefined,
+      ),
+    )
     .returning();
+  if (!after) throw new ActionError("recruit_opening_pipeline_in_use");
   await invalidatePublishedOpenings();
   return { before, after };
 }

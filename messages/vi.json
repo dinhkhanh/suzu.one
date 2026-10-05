@@ -11024,6 +11024,7 @@
       "recruit_pipeline_empty": "Quy trình phải có ít nhất một vòng.",
       "recruit_pipeline_no_entry": "Quy trình phải có một vòng nhận hồ sơ mới.",
       "recruit_pipeline_not_found": "Không tìm thấy quy trình.",
+      "recruit_opening_pipeline_in_use": "Tin tuyển dụng đã có hồ sơ trên quy trình hiện tại nên không thể đổi quy trình.",
       "recruit_stage_key_duplicate": "Mã vòng bị trùng.",
       "recruit_stage_in_use": "Không thể xoá vòng đang có hồ sơ.",
       "recruit_stage_not_found": "Vòng này không thuộc quy trình của tin tuyển dụng.",

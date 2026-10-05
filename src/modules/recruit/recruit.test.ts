@@ -401,6 +401,18 @@ describe("applications", () => {
     expect(view?.events[0]).toMatchObject({ type: "stage_moved", toStageName: screening.name, note: "Hồ sơ tốt" });
   });
 
+  // Every application points at a stage of the opening's pipeline; a new pipeline would strand them.
+  it("keeps the opening's pipeline once somebody has applied, and lets it change before", async () => {
+    const current = (await findOpening(openingId))!;
+    const input = { ...baseOpening(), title: current.title, pipelineId: ids.shortPipeline };
+    expect(await fails(updateOpening(openingId, input, null))).toBe("recruit_opening_pipeline_in_use");
+    expect((await findOpening(openingId))?.pipelineId).toBe(ids.pipeline);
+    // Edits that leave the pipeline alone still go through.
+    expect((await updateOpening(openingId, { ...input, pipelineId: ids.pipeline }, null)).after.pipelineId).toBe(ids.pipeline);
+    const empty = await createOpening({ ...baseOpening(), title: "Chưa có hồ sơ" }, null, ids.recruiterPerson);
+    expect((await updateOpening(empty.id, { ...baseOpening(), title: "Chưa có hồ sơ", pipelineId: ids.shortPipeline }, null)).after.pipelineId).toBe(ids.shortPipeline);
+  });
+
   it("refuses a stage belonging to another pipeline", async () => {
     const otherStages = await stagesOf(ids.shortPipeline);
     expect(await fails(moveApplicationStage(applicationId, otherStages[1].id, ids.recruiterPerson, null))).toBe("recruit_stage_not_found");

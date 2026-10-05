@@ -11024,6 +11024,7 @@
       "recruit_pipeline_empty": "A pipeline needs at least one stage.",
       "recruit_pipeline_no_entry": "A pipeline needs a stage for new applications.",
       "recruit_pipeline_not_found": "Pipeline not found.",
+      "recruit_opening_pipeline_in_use": "This opening already has applications on its current pipeline, so the pipeline cannot be changed.",
       "recruit_stage_key_duplicate": "Two stages share a key.",
       "recruit_stage_in_use": "A stage with applications on it cannot be removed.",
       "recruit_stage_not_found": "That stage does not belong to this opening's pipeline.",
