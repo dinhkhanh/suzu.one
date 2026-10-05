@@ -68,6 +68,7 @@ Bấm **Trở lại tài khoản của tôi** trên dải cảnh báo. Phiên xe
 
 - **Mọi thao tác** bạn làm trong lúc xem thay được ghi vào **Nhật ký hệ thống** dưới **tài khoản thật của bạn**.
 - **Dữ liệu lương**: màn hình lương cần xác thực lại, và bạn **không xác thực lại được** khi đang xem thay ("Việc xác thực lại chỉ dành cho tài khoản của chính bạn — hãy trở lại tài khoản của mình trước"). Người hỗ trợ vì thế không thấy phiếu lương của người khác. Chỉ người mà quyền riêng của họ vốn đã xem được lương của người kia (như Chủ sở hữu) mới mang theo được lần xác thực của mình.
+- **Quyền riêng tư của người kia**: khi đang xem thay, bạn không **Tải dữ liệu của tôi**, không trả lời hay rút lại thông báo vị trí khi chấm công, và không rút lại đồng ý chấm công bằng khuôn mặt thay người đó — những lựa chọn này chỉ chính chủ tài khoản làm được.
 - Hãy coi xem thay như **vào nhà người khác**: chỉ xem những gì cần để hỗ trợ, tránh thao tác thay người đó trừ khi họ đề nghị.
 
 > [!CAUTION]

@@ -22,6 +22,11 @@ Mở **Quản trị** → [Luồng phê duyệt](/admin/approval-flows). Trang c
 
 Khi một yêu cầu được gửi, hệ thống chọn luồng theo thứ tự: luồng **của pháp nhân** đó → luồng **cả tập đoàn** → luồng **mặc định**. Yêu cầu đã gửi giữ nguyên luồng lúc gửi; sửa luồng chỉ ảnh hưởng tới yêu cầu mới.
 
+Hai trường hợp đặc biệt:
+
+- **Điều chuyển**, **Thăng chức / bổ nhiệm**, **Chấm dứt hợp đồng**: chỉ đi qua phê duyệt **khi bạn đã lưu một luồng** cho loại đó (cả tập đoàn hoặc một pháp nhân). Chưa có luồng thì thay đổi của Nhân sự có hiệu lực ngay như trước. Có luồng thì việc lưu của Nhân sự thành đề xuất, và người duyệt cuối đồng ý là thay đổi được thực hiện.
+- **Thay đổi quy định nghỉ phép**, **Thay đổi quy định chấm công**: luồng **cố định** — luôn tới **Chủ sở hữu**; một luồng cấu hình cho hai loại này bị bỏ qua. Chủ sở hữu mở đề xuất trong hộp duyệt (trang **Đề xuất thay đổi quy định**), xem từng trường so với quy định đang áp dụng rồi duyệt hoặc từ chối; không có "trả lại".
+
 ## Soạn một luồng
 
 1. Chọn **Loại yêu cầu**.

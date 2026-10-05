@@ -28,7 +28,7 @@ Trang này dành cho **người gửi yêu cầu** — tức là hầu hết m�
 Cuối trang chi tiết có phần **Lịch sử** gồm hai khối:
 
 - **Các bước duyệt**, mỗi dòng dạng "Bước 1 (một người duyệt là đủ): Nguyễn Văn A (đang chờ)". Chữ trong ngoặc cho biết từng người **đang chờ**, **đã duyệt**, **từ chối** hay **trả lại**. Nếu một bước ghi "tất cả phải duyệt", yêu cầu chỉ qua bước khi mọi người trong bước đều đồng ý. Nếu ghi "· cùng lúc với bước trước", hai bước được hỏi song song. Nếu có "thay {tên}", người đó đang duyệt thay cho người được ủy quyền.
-- **Dòng sự kiện** theo thời gian: **Đã gửi**, **Ý kiến**, **Ủy quyền**, **Đã duyệt**, **Trả lại để chỉnh sửa**, **Gửi lại**, **Từ chối**, **Đã rút**, **Đã hủy** — mỗi dòng có người thực hiện, thời điểm và lời nhắn (nếu có).
+- **Dòng sự kiện** theo thời gian: **Đã gửi**, **Ý kiến**, **Ủy quyền**, **Đã duyệt**, **Trả lại để chỉnh sửa**, **Gửi lại**, **Từ chối**, **Đã rút**, **Đã hủy**, **Đổi người duyệt** — mỗi dòng có người thực hiện, thời điểm và lời nhắn (nếu có).
 
 ## Trao đổi với người duyệt
 
@@ -52,7 +52,7 @@ Người duyệt bắt buộc phải ghi lý do khi trả lại. Bạn nhận th
 | **Nghỉ phép** | Bấm **Sửa** để mở lại đơn; đơn mới thay cho đơn cũ. |
 | **Duyệt xuất bản trang tri thức** | Sửa trang rồi **Gửi duyệt** lại. |
 
-Sau khi gửi lại, yêu cầu **đi lại từ bước đầu tiên**: mọi người duyệt được hỏi lại, kể cả những người đã duyệt trước đó. Sự kiện **Gửi lại** được ghi vào lịch sử.
+Sau khi gửi lại, yêu cầu **đi lại từ bước đầu tiên**: mọi người duyệt được hỏi lại, kể cả những người đã duyệt trước đó. Sự kiện **Gửi lại** được ghi vào lịch sử. Nếu chỉ cần trả lời lời nhắn của người duyệt mà không phải sửa gì, bạn có thể gửi lại nguyên nội dung cũ.
 
 > [!TIP]
 > Nếu không còn cần nữa, bạn cũng có thể rút yêu cầu đang ở trạng thái **Trả lại để chỉnh sửa** thay vì sửa.

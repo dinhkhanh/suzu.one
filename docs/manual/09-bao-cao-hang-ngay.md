@@ -6,7 +6,7 @@ Chương này dành cho **mọi nhân viên** (lập kế hoạch, báo cáo, gh
 
 ## Quy định chung của công ty
 
-Mặc định, áp dụng cho mọi người:
+Mặc định, áp dụng cho mọi người đang làm việc — trừ **cộng tác viên** và người giữ vai trò **Chủ sở hữu**. Hai nhóm này vẫn lên kế hoạch, báo cáo và ghi giờ được nếu muốn, nhưng không bị nhắc, không bị tính là chưa nộp và không phải nộp bảng giờ tuần:
 
 - **Kế hoạch buổi sáng**: bắt buộc mỗi ngày làm việc, trước **09:30**.
 - **Báo cáo cuối ngày**: bắt buộc mỗi ngày làm việc, trước **23:00**.
@@ -57,10 +57,12 @@ Khi báo cáo nhắc tới một công việc mà người đọc không đượ
 | --- | --- | --- |
 | 07:00 mỗi ngày | Người phải lên kế hoạch mà chưa làm | *Lên kế hoạch hôm nay* |
 | 18:00 mỗi ngày | Người phải nộp báo cáo mà chưa nộp | *Nộp báo cáo cuối ngày* — kèm giờ chốt |
-| Sáng thứ Hai | Trưởng nhóm và trưởng bộ phận phía trên | *Báo cáo tuần* của tuần trước đã sẵn sàng |
+| Sáng mỗi ngày | Người phải nộp báo cáo hôm qua mà chưa nộp | *Thiếu báo cáo hôm qua* — vẫn nộp bù được, ghi là nộp muộn |
+| Khi bạn gửi báo cáo có vướng mắc | Trưởng nhóm của bạn (không có trưởng nhóm thì quản lý trực tiếp) | *Báo cáo có vướng mắc* — mỗi báo cáo một lần |
+| Sáng thứ Hai | Trưởng nhóm và trưởng bộ phận phía trên; với người không thuộc nhóm nào, quản lý trực tiếp | *Báo cáo tuần* của tuần trước đã sẵn sàng |
 | Sáng thứ Hai | Người chưa nộp bảng giờ tuần trước | *Nộp bảng giờ tuần* |
 
-Mỗi người chỉ được nhắc một lần cho mỗi loại trong ngày. Ngày nghỉ không ai bị nhắc. Tuần nghỉ phép / nghỉ lễ trọn tuần không phải nộp bảng giờ.
+Mỗi người chỉ được nhắc một lần cho mỗi loại trong ngày. Ngày nghỉ, ngày nghỉ phép và ngày lễ không ai bị nhắc. Tuần nghỉ phép / nghỉ lễ trọn tuần không phải nộp bảng giờ.
 
 ## Các trang trong chương này
 

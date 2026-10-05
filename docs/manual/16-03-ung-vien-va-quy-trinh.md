@@ -25,8 +25,9 @@ Mở [Ứng viên](/recruit/candidates) (hoặc nút **Ứng viên** trên trang
 - Ô tìm kiếm phía trên tìm theo tên ứng viên.
 - Mỗi dòng có vị trí hiện tại, nguồn, nhãn, ngày tạo và số hồ sơ ứng tuyển của người đó.
 - Ứng viên đã bị ẩn danh theo chính sách lưu trữ có nhãn **Ẩn danh theo chính sách lưu trữ**.
+- Ô lọc **Ứng viên tiềm năng** (đường dẫn [/recruit/candidates?pool=1](/recruit/candidates?pool=1)) chỉ liệt kê những người đồng ý để công ty giữ hồ sơ sau khi đơn ứng tuyển khép lại; họ có nhãn **Tiềm năng**.
 
-Bấm vào tên để mở trang ứng viên: thông tin liên hệ, nguồn, người giới thiệu, nhãn, và danh sách các vị trí người đó đã ứng tuyển kèm trạng thái.
+Bấm vào tên để mở trang ứng viên: thông tin liên hệ, nguồn, người giới thiệu, nhãn, và danh sách các vị trí người đó đã ứng tuyển kèm trạng thái. Trang ứng viên cũng cho biết người đó có trong danh sách ứng viên tiềm năng không; khi ứng viên trả lời trực tiếp (qua điện thoại, gặp mặt), bấm **Ghi nhận ứng viên đồng ý ở lại** hoặc **Ghi nhận ứng viên rút khỏi danh sách**.
 
 ### Thêm một ứng viên bằng tay
 
@@ -83,7 +84,7 @@ Bấm tên ứng viên trên trang vị trí hoặc trên bảng để mở hồ
 2. Ghi chú thêm nếu cần.
 3. Bấm **Từ chối**.
 
-Lý do được thống kê trong báo cáo tuyển dụng, nên hãy chọn đúng lý do thay vì luôn chọn "Lý do khác". Việc từ chối **không tự gửi email** cho ứng viên — hãy gửi thư từ chối bằng mẫu thư (xem bên dưới).
+Lý do được thống kê trong báo cáo tuyển dụng, nên hãy chọn đúng lý do thay vì luôn chọn "Lý do khác". Nếu tích **Gửi thư báo kết quả cho ứng viên**, hệ thống gửi thư từ chối (mẫu **Từ chối sau khi xem hồ sơ**) bằng ngôn ngữ của ứng viên ngay khi từ chối; lý do và ghi chú không nằm trong thư.
 
 ### Ghi nhận rút hồ sơ
 
@@ -98,7 +99,7 @@ Trên trang vị trí, bấm **Bảng tuyển dụng**. Mỗi cột là một v�
 - **Kéo thẻ** sang cột khác để chuyển vòng.
 - **Chọn nhiều thẻ** rồi dùng thanh thao tác phía trên:
   - **Chuyển sang…** — chuyển tất cả thẻ đã chọn sang một vòng.
-  - **Từ chối vì…** — từ chối tất cả thẻ đã chọn với cùng một lý do.
+  - **Từ chối vì…** — từ chối tất cả thẻ đã chọn với cùng một lý do; tích **Gửi thư báo kết quả** để gửi thư từ chối cho từng người.
   - **Bỏ chọn**.
 - Bấm **Chi tiết vị trí** để quay về trang vị trí.
 
@@ -113,7 +114,23 @@ Trên trang hồ sơ ứng tuyển, khung **Gửi email cho ứng viên**:
 2. Chọn **Ngôn ngữ ứng viên đọc** (tiếng Việt hoặc tiếng Anh).
 3. Bấm **Gửi**. Hệ thống báo "Đã đưa vào hàng chờ gửi tới …" và ghi **Gửi email** vào lịch sử.
 
-Thư được điền sẵn tên ứng viên, tên vị trí, tên công ty, tên vòng hiện tại và tên của bạn. Thư **không bao giờ chứa con số lương** — mức lương chỉ nằm trong thư mời nhận việc. Nếu ứng viên chưa có email, hệ thống báo không gửi được.
+Thư được điền sẵn tên ứng viên, tên vị trí, tên công ty, tên vòng hiện tại và tên của bạn. Thư **không bao giờ chứa con số lương** — mức lương chỉ nằm trong thư mời nhận việc. Nếu ứng viên chưa có email, hệ thống báo không gửi được. Mẫu thư cần thời gian phỏng vấn (lịch phỏng vấn, huỷ lịch) không gửi tay được ở đây — chúng đi cùng buổi phỏng vấn.
+
+### Thư hệ thống tự gửi
+
+Ngoài thư gửi tay, ứng viên nhận thư tự động vào đúng lúc:
+
+| Khi | Thư |
+| --- | --- |
+| Ứng viên nộp hồ sơ qua trang tuyển dụng | **Xác nhận đã nhận hồ sơ** |
+| Đặt hoặc dời lịch phỏng vấn (khi tích ô báo cho ứng viên) | **Lịch phỏng vấn (kèm thời gian)**, kèm file lịch `.ics` |
+| Huỷ buổi phỏng vấn (khi tích ô báo cho ứng viên) | **Huỷ lịch phỏng vấn** — không kèm lý do |
+| Từ chối có tích **Gửi thư báo kết quả cho ứng viên** | **Từ chối sau khi xem hồ sơ** |
+| Gửi thư mời nhận việc | **Thư báo đề nghị tuyển dụng**, kèm thư mời PDF |
+
+Mỗi thư ghi một dòng vào **Lịch sử** của hồ sơ ứng tuyển, kèm tình trạng gửi: **Đang chờ gửi**, **Gửi lỗi, đang thử lại**, **Đã gửi**, **Không gửi được** (kèm lỗi của nhà cung cấp) hoặc **Chưa gửi: hệ thống chưa cấu hình dịch vụ email**. Thư không gửi được cũng ghi rõ lý do (ứng viên chưa có email, dữ liệu đã ẩn danh, mẫu thư đang tắt). Trang [Tuyển dụng](/recruit) có mục **Thư chưa đến được ứng viên** liệt kê thư lỗi hoặc đang thử lại.
+
+Khi có hồ sơ mới qua trang tuyển dụng, những người tuyển của vị trí (hoặc người quản lý tuyển dụng phụ trách nơi đó) nhận thông báo. Thông báo nội bộ về tuyển dụng không ghi tên ứng viên — chỉ ghi vị trí, vòng hoặc số thư mời.
 
 Nội dung các mẫu thư do người làm tuyển dụng toàn tập đoàn quản lý; xem trang **Mẫu thư & báo cáo tuyển dụng**.
 
@@ -121,12 +138,17 @@ Nội dung các mẫu thư do người làm tuyển dụng toàn tập đoàn qu
 
 Theo quy định bảo vệ dữ liệu cá nhân, hồ sơ ứng viên không được giữ mãi:
 
-- Mỗi ứng viên có thời hạn lưu trữ, mặc định **12 tháng** kể từ khi ứng tuyển (như thông báo trên trang tuyển dụng).
+- Mỗi ứng viên có thời hạn lưu trữ, mặc định **12 tháng** kể từ khi ứng tuyển (như thông báo trên trang tuyển dụng). Người ứng tuyển lại được tính thêm: hồ sơ không bị ẩn danh trước 12 tháng sau khi đơn ứng tuyển gần nhất khép lại.
 - Mỗi đêm, một tác vụ tự động **ẩn danh** những ứng viên đã quá hạn, không được tuyển, không còn hồ sơ đang tiến hành và **không đồng ý** cho giữ hồ sơ.
 - Ẩn danh nghĩa là xoá họ tên, email, điện thoại, nơi làm việc, liên kết, nhãn, ghi chú, thư ứng tuyển, mức lương mong muốn, nhận xét chữ trong phiếu đánh giá, nội dung bài làm, và mọi tệp CV / bài làm. Điểm số và kết luận phỏng vấn được giữ (không còn gắn với ai) để báo cáo vẫn đúng.
-- Ứng viên đã tick đồng ý giữ hồ sơ cho vị trí khác trong tương lai không bị ẩn danh tự động.
+- Ẩn danh cũng xoá ghi chú trong lịch sử hồ sơ, ghi chú từ chối, ghi chú giới thiệu, ghi chú thư mời, và các thư trong hàng chờ gửi tới ứng viên. Tệp bị xoá khỏi kho lưu trữ ngay.
+- Ứng viên đã tick đồng ý giữ hồ sơ cho vị trí khác trong tương lai không bị ẩn danh tự động. Thư gửi ứng viên có thể kèm đường dẫn riêng (trường `{{privacy_url}}` trong mẫu thư) tới trang **Dữ liệu ứng tuyển của bạn**, nơi ứng viên tự **Rút khỏi danh sách ứng viên tiềm năng** mà không cần đăng nhập.
 
 Sau khi ẩn danh, không thể tạo hồ sơ nhân viên từ ứng viên đó nữa.
 
+### Xoá dữ liệu theo yêu cầu của ứng viên
+
+Khi ứng viên yêu cầu xoá dữ liệu, người quản lý tuyển dụng phụ trách mọi vị trí người đó đã ứng tuyển bấm **Xoá dữ liệu** trên trang ứng viên, rồi **Xoá ngay**. Họ tên, thông tin liên hệ, CV và các tệp khác, câu trả lời và mọi ghi chú bị xoá ngay khỏi tất cả hồ sơ ứng tuyển; hồ sơ vẫn được đếm trong báo cáo dưới dạng ẩn danh. Không thể hoàn tác, và không làm được với người đã được tuyển hoặc còn hồ sơ đang tiến hành.
+
 > [!IMPORTANT]
-> Dữ liệu ứng viên chỉ được dùng cho mục đích tuyển dụng. Không chuyển CV ra ngoài hệ thống (chat, email cá nhân) và không lưu bản sao trên máy. Khi ứng viên yêu cầu xem, sửa hoặc xoá dữ liệu, hãy báo bộ phận nhân sự.
+> Dữ liệu ứng viên chỉ được dùng cho mục đích tuyển dụng. Không chuyển CV ra ngoài hệ thống (chat, email cá nhân) và không lưu bản sao trên máy. Khi ứng viên yêu cầu xem hoặc sửa dữ liệu, hãy báo bộ phận nhân sự.

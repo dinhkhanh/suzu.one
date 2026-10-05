@@ -14,7 +14,9 @@ Trang này hướng dẫn mọi nhân viên: xem số ngày phép còn lại, g�
 > [!NOTE]
 > Chỉ loại phép có **theo dõi số dư** mới hiện thẻ. Các loại như nghỉ ốm, nghỉ không lương, nghỉ kết hôn… không trừ vào số dư nên không có thẻ, nhưng bạn vẫn xin được. Nếu không thấy thẻ nào, HR chưa thiết lập số dư cho bạn: dòng **Bạn chưa có số dư phép. Số dư sẽ hiện khi nhân sự thiết lập xong.** sẽ hiện ra.
 
-Số dư phép năm thường được **cộng dần mỗi tháng** vào ngày đầu tháng, nên đầu năm bạn có thể thấy con số nhỏ. Cách tính cụ thể nằm ở trang **Cách tính ngày phép**.
+Số dư phép năm thường được **cộng dần mỗi tháng** vào ngày đầu tháng, nên đầu năm bạn có thể thấy con số nhỏ. Bạn vẫn **đặt trước được** ngày nghỉ của những tháng sau, kể cả sang năm sau (ví dụ nghỉ Tết xin từ tháng 12): khi kiểm tra đơn, hệ thống tính cả số ngày sẽ được cộng đến ngày nghỉ. Cách tính cụ thể nằm ở trang **Cách tính ngày phép**.
+
+Dưới các thẻ, mục **Biến động số dư phép** liệt kê mọi lần cộng, trừ, chuyển năm và điều chỉnh số dư của bạn, mới nhất trước — gồm cả ngày đã đặt trước cho năm sau (trên điện thoại hiện dạng danh sách).
 
 ## Gửi một đơn nghỉ
 
@@ -34,7 +36,7 @@ Số dư phép năm thường được **cộng dần mỗi tháng** vào ngày 
 Hệ thống tính đơn trên lịch làm việc của chính bạn và hiện:
 
 - Tên loại phép và **tổng số ngày** bị tính, kèm danh sách từng ngày được tính (ngày nghỉ nửa buổi có ghi chú **Buổi sáng** / **Buổi chiều**). Ngày lễ, ngày nghỉ hằng tuần, ngày công ty cho nghỉ **không** bị tính.
-- **Còn lại năm …: … ngày** — số dư dùng được của loại phép đó (nếu đơn vắt qua hai năm, bạn thấy số dư của cả hai năm). Với loại phép không trừ số dư, dòng **Loại phép này không trừ vào số dư.** hiện thay.
+- **Có thể dùng cho năm … tính đến ngày nghỉ: … ngày** — số ngày dùng được của loại phép đó, gồm cả phần sẽ được cộng đến ngày nghỉ (nếu đơn vắt qua hai năm, bạn thấy số của cả hai năm). Với loại phép không trừ số dư, dòng **Loại phép này không trừ vào số dư.** hiện thay.
 - Nếu có gì chặn đơn (không đủ ngày, báo trước chưa đủ, trùng đơn cũ…), lý do hiện bằng chữ đỏ. Sửa lại lựa chọn ở trên rồi bấm **Kiểm tra** lần nữa.
 - **Cũng nghỉ trong những ngày này** — đồng nghiệp cùng nhóm (hoặc cùng phòng ban, nếu bạn không thuộc nhóm nào) có lịch nghỉ đã duyệt trùng ngày với bạn.
 - Cảnh báo quân số: "Vào …, nhóm của bạn sẽ có dưới … người đi làm." Đây chỉ là **cảnh báo**: bạn vẫn gửi được đơn, và người duyệt cũng thấy cảnh báo này (xem **Quân số tối thiểu**).

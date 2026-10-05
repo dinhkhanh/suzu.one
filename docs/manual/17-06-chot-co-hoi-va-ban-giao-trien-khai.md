@@ -59,13 +59,13 @@ Dự án được tạo **với dữ liệu điền sẵn từ cơ hội**:
 - Loại dự án (dự án thường cho giá trị một lần, retainer cho giá trị hằng tháng) và phí.
 - Các dòng của **báo giá đã được khách đồng ý** trở thành **danh mục sản phẩm** (số lượng × định dạng × kênh).
 - Giờ công ước tính theo vai trò trở thành **ngân sách giờ công**; các dòng hằng tháng trở thành retainer.
-- Đầu mối của cơ hội vào **brief** của dự án.
+- Đầu mối của cơ hội vào **brief** của dự án — chỉ tên và vai trò. Email và số điện thoại ở lại trong phân hệ **Khách hàng & kinh doanh**.
 - Dự án luôn giữ liên kết tới cơ hội và hợp đồng mà nó sinh ra.
 
 > [!NOTE]
 > Trưởng dự án không thể đồng thời là người phụ trách khách hàng của dự án đó. Hãy chọn người khác, hoặc đổi người phụ trách khách hàng trước.
 
-Một cơ hội có thể tạo nhiều dự án triển khai (ví dụ một chiến dịch và một retainer). Mục **Triển khai** liệt kê từng dự án, trưởng dự án, ngày bàn giao và trạng thái bàn giao.
+Một cơ hội có thể tạo nhiều dự án triển khai (ví dụ một chiến dịch và một retainer), mỗi dự án một tên. Gửi lại cùng một thiết lập (bấm hai lần, hay hai người cùng gửi) chỉ tạo một dự án: hệ thống báo *Cơ hội đã có một dự án triển khai mang tên này — có thể bạn đã gửi hai lần. Đặt tên khác nếu đây là một dự án mới.* Mục **Triển khai** liệt kê từng dự án, trưởng dự án, ngày bàn giao và trạng thái bàn giao.
 
 ## Bàn giao cho trưởng dự án
 

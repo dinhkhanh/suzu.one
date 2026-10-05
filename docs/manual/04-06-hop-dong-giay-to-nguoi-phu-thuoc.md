@@ -49,6 +49,7 @@ Hợp đồng thử việc, xác định thời hạn và không xác định th
 
 - Mỗi hợp đồng có nhãn **Đang hiệu lực**, **Chưa bắt đầu** hoặc **Đã hết hạn**.
 - Muốn kết thúc hợp đồng trước hạn: chọn **Ngày hiệu lực cuối** rồi bấm **Chấm dứt sớm**. Hợp đồng có thêm nhãn **Chấm dứt sớm ngày …**.
+- Bấm **Sửa** để chữa một hợp đồng nhập sai (loại, số, ngày, nhóm công việc, ghi chú). Hợp đồng sửa được kiểm tra theo luật như hợp đồng mới; nếu ngày bắt đầu thuộc một kỳ làm việc trước (người được tuyển lại), hợp đồng tự chuyển về kỳ đó. Điều khoản lương chỉ thay đổi khi bạn nhập lại. Mọi lần sửa đều được ghi nhật ký.
 - Bấm **Xóa** để bỏ hợp đồng nhập nhầm (có hỏi xác nhận).
 - **Đính kèm bản đã ký**: tải lên bản scan hợp đồng (chỉ người được xem thông tin lương). Bản đính kèm và điều khoản lương được xem qua **Xem điều khoản lương** / tên tệp, và có thể yêu cầu **Xác thực lại** trước khi mở.
 
@@ -69,7 +70,7 @@ Thông báo được gửi theo các mốc số ngày do quản trị viên cấ
 
 ## Liên hệ khẩn cấp
 
-Mở khung **Thêm liên hệ khẩn cấp**, nhập **Họ và tên**, **Quan hệ**, **Số điện thoại**, **Ghi chú**, rồi **Lưu**. Bấm **Xóa** bên cạnh một liên hệ để bỏ. Quản lý trực tiếp xem được mục này để liên hệ khi có sự cố.
+Mở khung **Thêm liên hệ khẩn cấp**, nhập **Họ và tên**, **Quan hệ**, **Số điện thoại**, **Ghi chú**, rồi **Lưu**. Bấm **Sửa** bên cạnh một liên hệ để chữa thông tin, **Xóa** để bỏ. Quản lý trực tiếp xem được mục này để liên hệ khi có sự cố.
 
 ## Hồ sơ, giấy tờ
 
@@ -87,6 +88,8 @@ Tệp tối đa 50 MB, dạng PDF, JPG, PNG, WEBP, DOCX, XLSX hoặc CSV.
 | Bằng cấp, Chứng chỉ, Khác | Quản lý trực tiếp, trưởng bộ phận và Nhân sự |
 | Bản chụp CCCD / hộ chiếu, Giấy khám sức khỏe | Nhân sự (quản lý trực tiếp không bao giờ thấy) |
 | Hợp đồng đã ký, Quyết định | Chỉ Quản trị nhân sự và bộ phận tính lương |
+
+Bấm **Sửa** để đổi **Tên giấy tờ** hoặc **Ngày hết hạn**. Không đổi được loại giấy tờ (loại quyết định ai được mở tệp): hãy tải lên lại với loại đúng.
 
 Giấy tờ quá ngày hết hạn có nhãn **Đã hết hạn**. Khi sắp hết hạn, **HR và chính nhân viên** nhận thông báo nhắc (quản lý trực tiếp thì không).
 
@@ -106,6 +109,7 @@ Sau khi lưu, mỗi người phụ thuộc hiện dạng "giảm trừ … → �
 
 - **Đính kèm hồ sơ chứng minh** (giấy khai sinh, giấy xác nhận…).
 - Chọn tháng rồi bấm **Đặt tháng cuối** khi việc giảm trừ dừng lại.
+- Bấm **Sửa** để chữa thông tin. Số giấy tờ và mã số thuế không hiển thị trong khung sửa: để trống để giữ nguyên.
 - **Xóa** người phụ thuộc nhập nhầm.
 
 Số giấy tờ và mã số thuế của người phụ thuộc chỉ hiện khi bấm **Hiện** ở mục **Thông tin hạn chế**.
@@ -134,7 +138,7 @@ Mặc định các ô hiện `••••••` (có dữ liệu) hoặc `—`
 
 Dưới cùng hồ sơ còn có:
 
-- **Văn bản đã cấp**: các văn bản sinh từ mẫu (giấy xác nhận, quyết định…) đã cấp cho người này.
+- **Văn bản đã cấp**: các văn bản sinh từ mẫu (giấy xác nhận, quyết định…) đã cấp cho người này. Mỗi văn bản mở ra đúng bản PDF đã cấp; chính nhân viên cũng xem được các văn bản về mình ở mục **Văn bản của tôi** trên [Hồ sơ của tôi](/me).
 - **Thiết bị đang giữ**: tài sản công ty đang giao cho người này.
 - **Lịch sử cơ cấu lương**: chỉ chính người đó và bộ phận lương thấy, cần xác thực lại để xem số liệu.
 

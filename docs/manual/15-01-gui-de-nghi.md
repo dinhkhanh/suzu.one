@@ -14,8 +14,11 @@ Danh sách loại đề nghị do quản trị viên thiết kế nên có thể
 | Tài chính | **Đề nghị tạm ứng** | Cần tiền trước cho công tác, mua hàng, chi phí sản xuất; quyết toán sau |
 | Nhân sự | **Đề nghị cấp giấy xác nhận** | Xin giấy xác nhận công tác, xác nhận thu nhập hoặc thư giới thiệu |
 | Hành chính | **Đề nghị đi công tác** | Đăng ký chuyến công tác: nơi đến, thời gian, phương tiện, chi phí dự kiến |
+| Hành chính | **Đề nghị cấp thiết bị** | Xin cấp, đổi hoặc sửa thiết bị làm việc: máy tính, màn hình, điện thoại, thiết bị quay dựng |
+| Hành chính | **Đề nghị đóng dấu** | Xin đóng dấu công ty lên hợp đồng, công văn, hồ sơ hoặc chứng từ (đính kèm tài liệu) |
+| IT | **Yêu cầu hỗ trợ IT** | Báo sự cố máy tính, tài khoản, phần mềm, mạng hoặc email |
 
-Nghỉ phép và bổ sung công không nằm trong danh sách này — chúng có màn hình riêng. Từ trang [Đề nghị](/requests), bấm **Xin nghỉ phép** hoặc **Đề nghị chấm công** để sang đó.
+Nghỉ phép và bổ sung công không nằm trong danh sách này — chúng có màn hình riêng. Riêng chuyến công tác chỉ đăng ký một lần, bằng **Đề nghị đi công tác**: khi được duyệt, các ngày đi công tác tự được ghi vào chấm công, bạn không phải gửi thêm đơn ở phần chấm công. Từ trang [Đề nghị](/requests), bấm **Xin nghỉ phép** hoặc **Đề nghị chấm công** để sang đó.
 
 ## Gửi một đề nghị
 
@@ -104,5 +107,6 @@ Khi đề nghị còn **Đang chờ duyệt** hoặc **Trả lại để chỉnh
 
 - Bạn không thể tự duyệt đề nghị của chính mình, kể cả khi bạn là người duyệt của bước đó.
 - Một đề nghị đã gửi giữ nguyên luồng duyệt lúc gửi. Nếu quản trị viên đổi luồng sau đó, chỉ các đề nghị mới bị ảnh hưởng.
-- Với **Đề nghị cấp giấy xác nhận**, sau khi được duyệt, phòng Nhân sự sẽ cấp giấy từ mẫu văn bản và giao cho bạn — xem trang **Mẫu văn bản & cấp văn bản**.
+- Với **Đề nghị cấp giấy xác nhận** (xác nhận công tác, xác nhận thu nhập), giấy được tạo tự động từ mẫu văn bản khi đề nghị được duyệt; trang đề nghị ghi *Giấy xác nhận đã được tạo* kèm **Mở bản PDF**, và giấy cũng nằm ở mục **Văn bản của tôi** trên [Hồ sơ của tôi](/me). Thư giới thiệu (chưa có mẫu), hoặc khi hệ thống không tạo được giấy, phòng Nhân sự cấp bằng tay — xem trang **Mẫu văn bản & cấp văn bản**.
+- Với đề nghị cần chi tiền (thanh toán, mua sắm, tạm ứng), sau khi duyệt trang đề nghị ghi *Đã duyệt — chờ kế toán chi …*; khi kế toán chi, bạn nhận thông báo *Đề nghị đã được chi* kèm ngày và số chứng từ.
 - Muốn biết đề nghị đang chờ ai? Mở đề nghị và xem bước đang mở trong **Lịch sử**.

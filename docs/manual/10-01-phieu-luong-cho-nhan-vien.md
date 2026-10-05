@@ -26,6 +26,8 @@ Phiếu lương của một tháng chỉ xuất hiện sau khi:
 
 Khi phiếu lương được phát hành, bạn nhận thông báo **Phiếu lương tháng … đã có**. Thông báo không ghi số tiền — bạn mở ứng dụng để xem.
 
+Nếu CEO trả lại bảng lương sau khi phiếu đã phát hành, phiếu được **thu hồi** để rà soát: bạn nhận thông báo **Phiếu lương tháng … đã được thu hồi** và tạm thời không thấy phiếu đó. Khi bảng lương được ký lại, phiếu được phát hành lại và bạn nhận thông báo như lần đầu. Thắc mắc bạn đã gửi về phiếu đó vẫn được giữ.
+
 ## Xem danh sách phiếu lương
 
 1. Trên thanh bên, mở **Phiếu lương** (nhóm **Của tôi**), hoặc vào [Phiếu lương](/payslips).

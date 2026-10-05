@@ -53,6 +53,7 @@ Mở khách tiềm năng để xem nguồn, pháp nhân, người phụ trách, 
 - **Sửa khách tiềm năng** — chỉnh thông tin.
 - **Không theo đuổi** — nhập **Lý do** (bắt buộc). Trang sẽ ghi "Không theo đuổi: …".
 - **Chuyển thành cơ hội** — xem bên dưới.
+- **Xoá đầu mối theo yêu cầu** (quản lý kinh doanh của pháp nhân) — khi người liên hệ của khách tiềm năng yêu cầu xoá dữ liệu: tên, chức danh, email và số điện thoại của đầu mối bị xoá; tên công ty và nhu cầu được giữ lại. Ghi chú tự gõ trong các hoạt động không được dò tìm — hãy tự kiểm tra.
 
 Phần **Việc cần theo dõi** và **Hoạt động** ở cuối trang dùng như ở trang khách hàng (xem trang **Hoạt động & việc cần theo dõi**).
 

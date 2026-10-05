@@ -56,7 +56,11 @@ Nhãn trên đầu trang cho biết: **Bắt buộc, trước …** (giờ chố
 > [!WARNING]
 > Nếu nhóm bắt buộc ghi giờ mà hôm nay bạn chưa ghi giờ nào, báo cáo hiện cảnh báo *Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào*. Gửi sau giờ chốt (mặc định 23:00) thì báo cáo được đánh dấu **Nộp muộn**.
 
-Sau khi gửi, bạn vẫn sửa được: mở lại và bấm **Cập nhật báo cáo**. Báo cáo chỉ nộp hoặc sửa được cho hôm nay và bảy ngày gần đây — với một ngày đã qua, mở báo cáo đó trong **Báo cáo của tôi** rồi bấm **Sửa báo cáo**.
+Sau khi gửi, bạn vẫn sửa được: mở lại và bấm **Cập nhật báo cáo**. Báo cáo chỉ nộp hoặc sửa được cho hôm nay và bảy ngày gần đây — với một ngày đã qua, mở báo cáo đó trong **Báo cáo của tôi** rồi bấm **Sửa báo cáo**. Báo cáo đã sửa sau khi nộp mang nhãn **Đã sửa sau khi nộp**, và người đọc xem được nội dung trước đó.
+
+### Nộp bù báo cáo của ngày đã qua
+
+Đầu [Báo cáo của tôi](/daily), mục **Báo cáo chưa nộp** liệt kê những ngày trong bảy ngày gần đây mà bạn phải nộp nhưng chưa nộp. Bấm **Viết báo cáo** ở một ngày để mở đúng form của ngày đó; trên form, chuyển qua lại giữa các ngày trong khoảng ấy. Phần việc đã làm được điền sẵn từ hoạt động của ngày đó, và form ghi *Chưa nộp — nộp bây giờ sẽ ghi là nộp muộn*. Mọi đường dẫn tới form (thẻ trên **Hôm nay**, lời nhắc 18:00) đều mang theo ngày, nên mở sau nửa đêm vẫn đúng ngày cần nộp.
 
 ## Xem lại báo cáo và trao đổi
 
@@ -64,4 +68,4 @@ Sau khi gửi, bạn vẫn sửa được: mở lại và bấm **Cập nhật b
 
 Cuối mỗi báo cáo là phần **Trao đổi (…)**: trưởng nhóm và quản lý của bạn có thể thả biểu tượng (👍 👀 🎉 💪) hoặc **Nhận xét**; bạn trả lời ngay tại đó. Khi có nhận xét mới, bạn nhận thông báo *Nhận xét về báo cáo của bạn*.
 
-Nếu trưởng nhóm bấm **Nhắc** trên bảng báo cáo nhóm, bạn nhận thông báo *Nhắc nộp báo cáo ngày*.
+Nếu trưởng nhóm bấm **Nhắc** trên bảng báo cáo nhóm, bạn nhận thông báo *Nhắc nộp báo cáo ngày* (kèm ngày, nếu là một ngày đã qua). Sáng hôm sau một ngày bạn phải nộp mà chưa nộp, bạn nhận *Thiếu báo cáo hôm qua*. Khi báo cáo của bạn có vướng mắc, trưởng nhóm (không có trưởng nhóm thì quản lý trực tiếp) nhận thông báo *Báo cáo có vướng mắc*.
