@@ -9,12 +9,14 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { saveRecruitEmailTemplateAction } from "../actions";
 import { RECRUIT_EMAIL_KINDS, RECRUIT_EMAIL_PLACEHOLDERS } from "../enums";
 
 export type EmailTemplateDraft = { id: string; code: string; name: string; kind: string; subject: string; body: string; subjectEn: string | null; bodyEn: string | null; isActive: boolean } | null;
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs";
+const textarea = "font-mono text-xs";
 
 export function EmailTemplateForm({ template }: { template: EmailTemplateDraft }) {
   const t = useTranslations("recruit");
@@ -50,17 +52,17 @@ export function EmailTemplateForm({ template }: { template: EmailTemplateDraft }
           <Input id="subject" name="subject" defaultValue={template?.subject ?? ""} required />
         </Field>
         <Field name="body" label={`${t("email.body")} (vi)`}>
-          <textarea id="body" name="body" rows={10} defaultValue={template?.body ?? ""} required className={textarea} />
+          <Textarea id="body" name="body" rows={10} defaultValue={template?.body ?? ""} required className={textarea} />
         </Field>
         <Field name="subjectEn" label={`${t("email.subject")} (en)`}>
           <Input id="subjectEn" name="subjectEn" defaultValue={template?.subjectEn ?? ""} />
         </Field>
         <Field name="bodyEn" label={`${t("email.body")} (en)`}>
-          <textarea id="bodyEn" name="bodyEn" rows={10} defaultValue={template?.bodyEn ?? ""} className={textarea} />
+          <Textarea id="bodyEn" name="bodyEn" rows={10} defaultValue={template?.bodyEn ?? ""} className={textarea} />
         </Field>
 
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={template?.isActive ?? true} />
+          <Checkbox name="isActive" defaultChecked={template?.isActive ?? true} />
           {t("form.isActive")}
         </label>
       </FieldErrors>

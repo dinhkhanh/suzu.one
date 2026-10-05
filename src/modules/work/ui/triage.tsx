@@ -1,6 +1,8 @@
 "use client";
 // The triage queue (FR-PJM-32): one card per incoming task with the lead's four answers — accept,
 // decline, merge, snooze — and the team's triage rules below.
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
@@ -204,7 +206,7 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
             }}
           >
             <Label htmlFor={`reason-${item.id}`}>{t("declineReason")}</Label>
-            <textarea id={`reason-${item.id}`} name="reason" required maxLength={1000} rows={3} className="rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm" />
+            <Textarea id={`reason-${item.id}`} name="reason" required maxLength={1000} rows={3} />
             <Button type="submit" size="sm" variant="destructive" className="self-start" disabled={pending}>
               {t("decline")}
             </Button>
@@ -399,7 +401,7 @@ function RuleForm({ teamId, rule, choices, onDone }: { teamId: string; rule?: Tr
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               {choices.labels.map((label) => (
                 <label key={label.id} className="flex items-center gap-1.5 text-sm">
-                  <input type="checkbox" name="labelIds" value={label.id} defaultChecked={rule?.set.labelIds?.includes(label.id)} />
+                  <Checkbox name="labelIds" value={String(label.id)} defaultChecked={rule?.set.labelIds?.includes(label.id)} />
                   <LabelChip name={label.name} color={label.color} />
                 </label>
               ))}
@@ -413,7 +415,7 @@ function RuleForm({ teamId, rule, choices, onDone }: { teamId: string; rule?: Tr
           <Input id={`rule-order-${id}`} name="sortOrder" type="number" min={0} max={10000} defaultValue={rule?.sortOrder ?? 0} className="w-24" />
         </div>
         <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={rule?.isActive ?? true} /> {t("isActive")}
+          <Checkbox name="isActive" defaultChecked={rule?.isActive ?? true} /> {t("isActive")}
         </label>
         <Button type="submit" size="sm" disabled={pending}>
           {t("save")}

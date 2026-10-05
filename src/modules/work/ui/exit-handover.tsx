@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { List, ListItem } from "@/components/ui/list";
@@ -103,26 +104,28 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
           </TableCard>
         ))}
         {canRun && open && reassignable.length ? (
-          <div className="flex flex-col gap-3 rounded-xl border p-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="exit-to">{t("reassignTo", { count: chosen.size })}</Label>
-              <Select id="exit-to" name="toPersonId" required defaultValue="">
-                <option value="" disabled>
-                  {t("pickPerson")}
-                </option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.fullName}
+          <Card size="sm">
+            <CardContent className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="exit-to">{t("reassignTo", { count: chosen.size })}</Label>
+                <Select id="exit-to" name="toPersonId" required defaultValue="">
+                  <option value="" disabled>
+                    {t("pickPerson")}
                   </option>
-                ))}
-              </Select>
-            </div>
-            <HandoffNoteFields required />
-            <ErrorLine errorKey={errorKey} />
-            <Button type="submit" disabled={pending || chosen.size === 0} className="self-start">
-              {t("reassign", { count: chosen.size })}
-            </Button>
-          </div>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <HandoffNoteFields required />
+              <ErrorLine errorKey={errorKey} />
+              <Button type="submit" disabled={pending || chosen.size === 0} className="self-start">
+                {t("reassign", { count: chosen.size })}
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <ErrorLine errorKey={errorKey} />
         )}
@@ -143,47 +146,51 @@ export function AccountHandoverForm({ clientId, currentName, people }: { clientI
   const [skipped, setSkipped] = useState<string[] | null>(null);
   const [withheld, setWithheld] = useState(0);
   return (
-    <form
-      className="flex flex-col gap-3 rounded-xl border p-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const data = new FormData(form);
-        const input = { clientId, toPersonId: data.get("toPersonId"), note: readNote(data) };
-        run(
-          () => changeAccountManagerAction(input),
-          (result) => {
-            const data = result.data as { skipped: string[]; withheld: number };
-            setSkipped(data.skipped);
-            setWithheld(data.withheld);
-            form.reset();
-          },
-        );
-      }}
-    >
-      <h3 className="text-sm font-medium">{t("title")}</h3>
-      <p className="text-xs text-muted-foreground">{currentName ? t("current", { name: currentName }) : t("none")}</p>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`am-${clientId}`}>{t("to")}</Label>
-        <Select id={`am-${clientId}`} name="toPersonId" required defaultValue="">
-          <option value="" disabled>
-            {t("pick")}
-          </option>
-          {people.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.fullName}
-            </option>
-          ))}
-        </Select>
-        <p className="text-xs text-muted-foreground">{t("hint")}</p>
-      </div>
-      <HandoffNoteFields required />
-      <ErrorLine errorKey={errorKey} />
-      {skipped?.length ? <p className="text-sm text-muted-foreground">{t("skipped", { projects: skipped.join(", ") })}</p> : null}
-      {withheld ? <p className="text-sm text-muted-foreground">{t("withheld", { count: withheld })}</p> : null}
-      <Button type="submit" size="sm" disabled={pending} className="self-start">
-        {t("submit")}
-      </Button>
-    </form>
+    <Card size="sm">
+      <CardContent>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            const input = { clientId, toPersonId: data.get("toPersonId"), note: readNote(data) };
+            run(
+              () => changeAccountManagerAction(input),
+              (result) => {
+                const data = result.data as { skipped: string[]; withheld: number };
+                setSkipped(data.skipped);
+                setWithheld(data.withheld);
+                form.reset();
+              },
+            );
+          }}
+        >
+          <h3 className="text-sm font-medium">{t("title")}</h3>
+          <p className="text-xs text-muted-foreground">{currentName ? t("current", { name: currentName }) : t("none")}</p>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`am-${clientId}`}>{t("to")}</Label>
+            <Select id={`am-${clientId}`} name="toPersonId" required defaultValue="">
+              <option value="" disabled>
+                {t("pick")}
+              </option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.fullName}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("hint")}</p>
+          </div>
+          <HandoffNoteFields required />
+          <ErrorLine errorKey={errorKey} />
+          {skipped?.length ? <p className="text-sm text-muted-foreground">{t("skipped", { projects: skipped.join(", ") })}</p> : null}
+          {withheld ? <p className="text-sm text-muted-foreground">{t("withheld", { count: withheld })}</p> : null}
+          <Button type="submit" size="sm" disabled={pending} className="self-start">
+            {t("submit")}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

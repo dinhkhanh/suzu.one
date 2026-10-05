@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useTransition, useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -72,7 +74,7 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
           <EntitySelect entities={entities} canGroup={canGroup} label={t("appliesTo")} groupLabel={t("everyEntity")} defaultValue={profile?.entityId} disabled={!!profile} />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="hasHeader" defaultChecked={mapping?.hasHeader ?? true} /> {t("profile.hasHeader")}
+          <Checkbox name="hasHeader" defaultChecked={mapping?.hasHeader ?? true} /> {t("profile.hasHeader")}
         </label>
         <p className="text-xs text-muted-foreground">{t("profile.columnsHint")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -91,10 +93,10 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="inferDirection" defaultChecked={mapping?.inferDirection ?? true} /> {t("profile.inferDirection")}
+            <Checkbox name="inferDirection" defaultChecked={mapping?.inferDirection ?? true} /> {t("profile.inferDirection")}
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="isActive" defaultChecked={profile?.isActive ?? true} /> {t("active")}
+            <Checkbox name="isActive" defaultChecked={profile?.isActive ?? true} /> {t("active")}
           </label>
         </div>
       </FieldErrors>
@@ -174,7 +176,7 @@ export function DeviceForm({ device, entities, profiles, locations }: { device?:
           </div>
         ) : null}
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={device?.isActive ?? true} /> {t("active")}
+          <Checkbox name="isActive" defaultChecked={device?.isActive ?? true} /> {t("active")}
         </label>
       </FieldErrors>
       <FormError namespace={ERRORS} errorKey={errorKey} />
@@ -225,7 +227,7 @@ export function BulkMapForm({ deviceId }: { deviceId: string }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">{t("map.bulkHint")}</p>
-      <textarea name="lines" required rows={5} className="rounded-md border bg-background p-2 font-mono text-sm" placeholder={"17, SZM-0004\n21, SZM-0007"} />
+      <Textarea name="lines" required rows={5} className="font-mono text-sm" placeholder={"17, SZM-0004\n21, SZM-0007"} />
       <FormError namespace={ERRORS} errorKey={errorKey} />
       {problems.length > 0 ? (
         <ul className="text-sm text-destructive">
@@ -401,7 +403,7 @@ export function PolicyForm({ policy, entities, canGroup, today }: { policy?: Pol
           </Field>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="otRequiresApproval" defaultChecked={policy?.otRequiresApproval ?? true} /> {t("fields.otRequiresApproval")}
+          <Checkbox name="otRequiresApproval" defaultChecked={policy?.otRequiresApproval ?? true} /> {t("fields.otRequiresApproval")}
         </label>
       </FieldErrors>
       <p className="text-xs text-muted-foreground">{t("versionHint")}</p>

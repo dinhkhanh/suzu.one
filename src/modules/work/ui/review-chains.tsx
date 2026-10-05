@@ -1,6 +1,7 @@
 "use client";
 // Review chains (FR-PJM-50): the ordered stages a version passes — who reviews each (a rule, or one
 // person) and how long it may wait. A team's leads keep the team's chains; a project's lead its own.
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -191,7 +192,7 @@ function ChainForm({ teamId, projectId, people, chain }: { teamId: string; proje
       </fieldset>
 
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isActive" defaultChecked={chain?.isActive ?? true} className="size-4" /> {t("active")}
+        <Checkbox name="isActive" defaultChecked={chain?.isActive ?? true} /> {t("active")}
       </label>
       <DeliveryError errorKey={errorKey} />
       <div className="flex flex-wrap gap-2">

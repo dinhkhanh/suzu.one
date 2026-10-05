@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -38,7 +40,6 @@ export type TemplateFormValue = {
 
 export type LibraryOptions = { entities: { id: string; code: string }[]; people: { id: string; fullName: string }[]; roles: string[]; permissions: string[] };
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 const splitRule = (rule: string): [string, string] => (rule.startsWith("permission:") ? ["permission", rule.slice(11)] : rule.startsWith("role:") ? ["role", rule.slice(5)] : [rule, ""]);
 
 export function TemplateForm({ value, options }: { value: TemplateFormValue; options: LibraryOptions }) {
@@ -201,7 +202,7 @@ export function TemplateForm({ value, options }: { value: TemplateFormValue; opt
           <legend className="mb-1 text-sm font-medium">{t("entities")}</legend>
           {options.entities.map((entity) => (
             <label key={entity.id} className="flex items-center gap-1.5">
-              <input type="checkbox" name="entityIds[]" value={entity.id} defaultChecked={value.entityIds?.includes(entity.id) ?? false} />
+              <Checkbox name="entityIds[]" value={String(entity.id)} defaultChecked={value.entityIds?.includes(entity.id) ?? false} />
               {entity.code}
             </label>
           ))}
@@ -213,13 +214,13 @@ export function TemplateForm({ value, options }: { value: TemplateFormValue; opt
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="checklist" label={t("checklist")}>
-            <textarea id="checklist" name="checklist" rows={4} defaultValue={value.checklist.join("\n")} className={textarea} />
+            <Textarea id="checklist" name="checklist" rows={4} defaultValue={value.checklist.join("\n")} />
           </Field>
           <Field name="guidance" label={t("guidance")}>
             <NoteEditor id="guidance" name="guidance" rows={4} maxLength={4000} defaultValue={value.guidance ?? ""} />
           </Field>
           <Field name="links" label={t("links")}>
-            <textarea id="links" name="links" rows={2} defaultValue={value.links.map((link) => `${link.title} | ${link.url}`).join("\n")} placeholder="Quy trình | https://…" className={textarea} />
+            <Textarea id="links" name="links" rows={2} defaultValue={value.links.map((link) => `${link.title} | ${link.url}`).join("\n")} placeholder="Quy trình | https://…" />
           </Field>
           <Field name="penaltyNote" label={t("penaltyNote")}>
             <NoteEditor id="penaltyNote" name="penaltyNote" rows={2} maxLength={1000} defaultValue={value.penaltyNote ?? ""} />
@@ -242,7 +243,7 @@ export function TemplateForm({ value, options }: { value: TemplateFormValue; opt
           <legend className="mb-1 text-sm font-medium">{t("evidenceRequired")}</legend>
           {EVIDENCE_KEYS.map((key) => (
             <label key={key} className="flex items-center gap-1.5">
-              <input type="checkbox" name={`evidence.${key}`} defaultChecked={value.evidence[key]} />
+              <Checkbox name={`evidence.${key}`} defaultChecked={value.evidence[key]} />
               {tEnum(`evidence.${key}`)}
             </label>
           ))}
@@ -250,11 +251,11 @@ export function TemplateForm({ value, options }: { value: TemplateFormValue; opt
 
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-1.5">
-            <input type="checkbox" name="isActive" defaultChecked={value.isActive} />
+            <Checkbox name="isActive" defaultChecked={value.isActive} />
             {t("isActive")}
           </label>
           <label className="flex items-center gap-1.5">
-            <input type="checkbox" name="markReviewed" />
+            <Checkbox name="markReviewed" />
             {t("markReviewed")}
           </label>
           <Button type="submit" disabled={form.pending}>

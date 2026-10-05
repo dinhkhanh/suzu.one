@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -18,7 +19,7 @@ const daysText = (centi: number | null | undefined) => (centi === null || centi 
 function Check({ name, label, defaultChecked }: { name: string; label: string; defaultChecked?: boolean }) {
   return (
     <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-4" />
+      <Checkbox name={name} defaultChecked={defaultChecked} />
       {label}
     </label>
   );
@@ -126,7 +127,7 @@ export function LeaveTypeForm({ type, entities, canGroup }: { type: LeaveTypeVal
           <legend className="mb-1 text-xs text-muted-foreground">{t("types.workforce")}</legend>
           {WORKFORCE_TYPES.map((value) => (
             <label key={value} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="eligibleWorkforceTypes[]" value={value} defaultChecked={type?.eligibleWorkforceTypes?.includes(value) ?? false} className="size-4" />
+              <Checkbox name="eligibleWorkforceTypes[]" value={value} defaultChecked={type?.eligibleWorkforceTypes?.includes(value) ?? false} />
               {t(`workforce.${value}`)}
             </label>
           ))}

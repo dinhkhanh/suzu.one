@@ -878,7 +878,7 @@ describe("the public page", () => {
 
   it("chooses no answer for the client: no decision is preselected, and the form will not go without one (PJM-05)", () => {
     const source = pageSource();
-    const radio = source.match(/<input type="radio"[^>]*>/g) ?? [];
+    const radio = source.match(/<RadioGroup [^>]*>/g) ?? [];
     expect(radio).toHaveLength(1);
     expect(radio[0]).toContain('name="decision"');
     expect(radio[0]).toContain("required");

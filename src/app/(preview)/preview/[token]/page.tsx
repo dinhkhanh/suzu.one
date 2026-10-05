@@ -6,6 +6,8 @@ import { PREVIEW_DECISIONS, openPreviewLink } from "@/modules/work/service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 /**
@@ -172,15 +174,17 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-sm font-medium">{t("decide.choice")}</legend>
               {/* None is checked: the client picks, and `required` holds the form until they have. */}
+              <RadioGroup name="decision" required>
               {PREVIEW_DECISIONS.map((decision) => (
                 <label key={decision} className="flex items-start gap-2 rounded-lg border p-3 text-sm">
-                  <input type="radio" name="decision" value={decision} required className="mt-0.5 size-4" />
+                  <RadioGroupItem value={decision} className="mt-0.5" />
                   <span>
                     <span className="font-medium">{t(`decide.decisions.${decision}`)}</span>
                     <span className="block text-xs text-muted-foreground">{t(`decide.hints.${decision}`)}</span>
                   </span>
                 </label>
               ))}
+              </RadioGroup>
             </fieldset>
 
             <div className="flex flex-col gap-1.5">
@@ -190,7 +194,7 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="comment">{t("decide.comment")}</Label>
-              <textarea id="comment" name="comment" rows={4} maxLength={4000} className="w-full rounded-lg border bg-transparent px-3 py-2 text-base md:text-sm" />
+              <Textarea id="comment" name="comment" rows={4} maxLength={4000} />
               <p className="text-xs text-muted-foreground">{t("decide.commentHint")}</p>
             </div>
 

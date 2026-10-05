@@ -1,6 +1,8 @@
 "use client";
 // Custom fields in the browser (FR-PJM-35): one input per type, a read-only rendering, the
 // list's filter controls, the task page's panel and the team's (or project's) field manager.
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -97,7 +99,7 @@ export function CustomValueInput({ field, value, people, disabled, onCommit, com
           <div className="absolute z-20 mt-1 flex min-w-40 flex-col gap-1 rounded-md border bg-background p-2 shadow-md">
             {field.options.map((option) => (
               <label key={option.id} className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={chosen.includes(option.id)} disabled={disabled} onChange={(event) => onCommit(event.target.checked ? [...chosen, option.id] : chosen.filter((id) => id !== option.id))} />
+                <Checkbox checked={chosen.includes(option.id)} disabled={disabled} onCheckedChange={(checked) => onCommit(checked ? [...chosen, option.id] : chosen.filter((id) => id !== option.id))} />
                 {option.label}
               </label>
             ))}
@@ -117,7 +119,7 @@ export function CustomValueInput({ field, value, people, disabled, onCommit, com
         </Select>
       );
     case "checkbox":
-      return <input type="checkbox" aria-label={field.name} checked={current === true} disabled={disabled} onChange={(event) => onCommit(event.target.checked)} />;
+      return <Checkbox aria-label={field.name} checked={current === true} disabled={disabled} onCheckedChange={(checked) => onCommit(checked)} />;
     case "date":
       return <DatePicker aria-label={field.name} defaultValue={(current as string | null) ?? ""} key={String(current)} disabled={disabled} onChange={(event) => onCommit(event.target.value || null)} className={size} />;
     case "duration": {
@@ -322,7 +324,7 @@ function CustomFieldForm({ teamId, projectId, field, onDone }: { teamId: string;
       {type === "select" || type === "multi_select" ? (
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor={`cf-options-${field?.id ?? "new"}`}>{t("options")}</Label>
-          <textarea id={`cf-options-${field?.id ?? "new"}`} name="options" rows={4} defaultValue={field?.options.map((option) => option.label).join("\n")} className="rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm" />
+          <Textarea id={`cf-options-${field?.id ?? "new"}`} name="options" rows={4} defaultValue={field?.options.map((option) => option.label).join("\n")} />
           <p className="text-xs text-muted-foreground">{t("optionsHint")}</p>
         </div>
       ) : null}
@@ -332,10 +334,10 @@ function CustomFieldForm({ teamId, projectId, field, onDone }: { teamId: string;
       </div>
       <div className="flex flex-col justify-end gap-1.5 text-sm">
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="showOnCard" defaultChecked={field?.showOnCard ?? false} /> {t("showOnCard")}
+          <Checkbox name="showOnCard" defaultChecked={field?.showOnCard ?? false} /> {t("showOnCard")}
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" name="isActive" defaultChecked={field?.isActive ?? true} /> {t("isActive")}
+          <Checkbox name="isActive" defaultChecked={field?.isActive ?? true} /> {t("isActive")}
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">

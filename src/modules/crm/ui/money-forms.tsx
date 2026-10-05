@@ -102,7 +102,7 @@ export function ContractForm({ clientId, contract, entities, parents, deals, see
           </Field>
         ) : null}
         <label className="flex items-center gap-2 pt-6 text-sm">
-          <input type="checkbox" name="autoRenew" defaultChecked={contract?.autoRenew} /> {t("fields.autoRenew")}
+          <Checkbox name="autoRenew" defaultChecked={contract?.autoRenew} /> {t("fields.autoRenew")}
         </label>
       </div>
       <Field name="note" label={t("fields.note")}>

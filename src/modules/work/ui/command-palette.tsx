@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, CornerDownLeft, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -221,7 +222,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
               </Select>
               <DatePicker name="dueDate" aria-label={t("dueDate")} className="w-40" />
               <label className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" name="mine" defaultChecked className="size-4 accent-primary" /> {t("assignMe")}
+                <Checkbox name="mine" defaultChecked /> {t("assignMe")}
               </label>
             </div>
             {targets && !place ? <p className="text-sm text-muted-foreground">{t("nowhere")}</p> : null}

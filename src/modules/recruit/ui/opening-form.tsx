@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { POSITION_LEVELS, SENIORITY_LEVELS } from "@/lib/job-levels";
 import { createOpeningAction, updateOpeningAction } from "../actions";
 import { EMPLOYMENT_TYPES, type EmploymentType, WORK_MODES, type WorkMode } from "../enums";
@@ -176,7 +177,7 @@ export function OpeningForm({
               <MoneyInput id="salaryMaxVnd" name="salaryMaxVnd" defaultValue={value?.salaryMaxVnd ?? ""} />
             </Field>
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
-              <input type="checkbox" name="salaryPublic" defaultChecked={value?.salaryPublic ?? false} className="size-4" />
+              <Checkbox name="salaryPublic" defaultChecked={value?.salaryPublic ?? false} />
               {t("salaryPublic")}
             </label>
           </fieldset>

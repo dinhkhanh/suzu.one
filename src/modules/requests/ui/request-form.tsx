@@ -12,6 +12,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { MultiSelect, Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
@@ -161,7 +162,7 @@ function FieldInput({
     case "date":
       return <DatePicker id={field.key} name={field.key} value={text} min={field.minDate ?? undefined} max={field.maxDate ?? undefined} onChange={(event) => set(event.target.value)} />;
     case "checkbox":
-      return <input id={field.key} name={field.key} type="checkbox" className="size-4" checked={value === true} onChange={(event) => set(event.target.checked)} />;
+      return <Checkbox id={field.key} name={field.key} checked={value === true} onCheckedChange={(checked) => set(checked)} />;
     case "select":
       return (
         <Select id={field.key} name={field.key} value={text} onChange={(event) => set(event.target.value)}>
@@ -179,7 +180,7 @@ function FieldInput({
         <div className="flex flex-wrap gap-3">
           {(field.options ?? []).map((option) => (
             <Label key={option.value} className="flex items-center gap-1.5 text-sm font-normal">
-              <input type="checkbox" className="size-4" checked={chosen.includes(option.value)} onChange={(event) => set(event.target.checked ? [...chosen, option.value] : chosen.filter((entry) => entry !== option.value))} />
+              <Checkbox checked={chosen.includes(option.value)} onCheckedChange={(checked) => set(checked ? [...chosen, option.value] : chosen.filter((entry) => entry !== option.value))} />
               {optionLabel(option)}
             </Label>
           ))}

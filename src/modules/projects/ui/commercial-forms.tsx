@@ -13,6 +13,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -169,7 +170,7 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
           </Field>
         ) : null}
         <label className="flex items-center gap-2 self-end pb-2 text-sm">
-          <input type="checkbox" name="isActive" disabled={!editFee} defaultChecked={values?.isActive ?? true} />
+          <Checkbox name="isActive" disabled={!editFee} defaultChecked={values?.isActive ?? true} />
           {/* A disabled checkbox posts nothing: the value it shows is sent beside it, unchanged. */}
           {editFee ? null : values?.isActive ? <input type="hidden" name="isActive" value="on" /> : null}
           {t("active")}
@@ -283,7 +284,7 @@ export function ChangeForm({ projectId, change, register, requesters, editFee, r
           <legend className="mb-1 text-sm font-medium">{t("fields.cancelLines")}</legend>
           {register.map((line) => (
             <label key={line.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="cancelIds[]" value={line.id} defaultChecked={change?.cancelIds.includes(line.id)} />
+              <Checkbox name="cancelIds[]" value={line.id} defaultChecked={change?.cancelIds.includes(line.id)} />
               {line.quantity} × {line.title}
             </label>
           ))}
@@ -584,7 +585,7 @@ export function ClientReportForm({ projectId, report, defaults }: { projectId: s
         <NoteEditor id={`rep-next-${id}`} name="nextPlan" rows={4} maxLength={8000} defaultValue={report?.nextPlan ?? ""} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="showHours" defaultChecked={report?.showHours ?? false} />
+        <Checkbox name="showHours" defaultChecked={report?.showHours ?? false} />
         {t("fields.showHours")}
       </label>
     </ActionForm>

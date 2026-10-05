@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { INTERVIEW_KINDS, INTERVIEW_MODES } from "../enums";
 import { rescheduleInterviewAction, scheduleInterviewAction } from "../interview-actions";
 
@@ -65,7 +66,7 @@ function Interviewers({ options, selected, onToggle }: { options: InterviewerOpt
       <div className="grid max-h-48 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">
         {options.map((option) => (
           <label key={option.personId} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="interviewerPersonIds[]" value={option.personId} checked={selected.includes(option.personId)} onChange={() => onToggle(option.personId)} />
+            <Checkbox name="interviewerPersonIds[]" value={option.personId} checked={selected.includes(option.personId)} onCheckedChange={() => onToggle(option.personId)} />
             <span>{option.fullName}</span>
           </label>
         ))}

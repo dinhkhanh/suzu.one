@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -13,7 +15,6 @@ import { createCheckInAction, createGoalAction, moveGoalAction, removeKeyResultA
 import { MetricValueInput } from "./metric-input";
 import { CONFIDENCES, type GoalLevel, isAnnual, levelRank, METRIC_TYPES, type MetricType, metricValueText, type Milestone, periodsOfYear } from "../enums";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 type Option = { id: string; name: string };
 export type ParentOption = { id: string; title: string; level: GoalLevel; periodKey: string; unitName: string | null };
 export type GoalFormChoices = { levels: GoalLevel[]; entities: Option[]; departments: Option[]; teams: Option[]; people: Option[]; owners: Option[] };
@@ -101,7 +102,7 @@ export function NewGoalForm({ year, choices, parents, defaults }: { year: number
         </div>
         <p className="text-xs text-muted-foreground">{t("form.weightHint")}</p>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="activate" defaultChecked /> {t("form.activate")}
+          <Checkbox name="activate" defaultChecked /> {t("form.activate")}
         </label>
       </FieldErrors>
       <FormError namespace="performance.errors" errorKey={form.errorKey} />
@@ -263,7 +264,7 @@ export function KeyResultForm({ goalId, value }: { goalId: string; value: KeyRes
         </div>
         {metricType === "milestone" ? (
           <Field name="milestones" label={t("kr.milestones")}>
-            <textarea id="milestones" name="milestones" rows={4} maxLength={2000} defaultValue={(value.milestones ?? []).map((milestone) => milestone.title).join("\n")} className={textarea} required />
+            <Textarea id="milestones" name="milestones" rows={4} maxLength={2000} defaultValue={(value.milestones ?? []).map((milestone) => milestone.title).join("\n")} required />
           </Field>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -328,7 +329,7 @@ export function CheckInForm({ keyResult }: { keyResult: CheckInTarget }) {
           <fieldset className="flex flex-col gap-1 text-sm">
             {(keyResult.milestones ?? []).map((milestone, index) => (
               <label key={index} className="flex items-center gap-2">
-                <input type="checkbox" name="doneMilestones[]" value={index} defaultChecked={milestone.done} /> {milestone.title}
+                <Checkbox name="doneMilestones[]" value={String(index)} defaultChecked={milestone.done} /> {milestone.title}
               </label>
             ))}
           </fieldset>

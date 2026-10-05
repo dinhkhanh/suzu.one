@@ -3,6 +3,7 @@
 // sentence ("When a task enters Client review, set its due date 2 working days out"), the starter
 // rules a lead adds in one tap, the rule builder with the same sentence as a live preview, and the
 // latest runs. Only whoever runs the team changes anything; the team's people read.
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -400,7 +401,7 @@ function RuleForm({ teamId, projectId, options, rule }: { teamId: string; projec
         {describe({ trigger, conditions: quota ? [] : conditions, actions })}
       </p>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={isActive} onChange={(event) => setActive(event.target.checked)} /> {t("active")}
+        <Checkbox checked={isActive} onCheckedChange={(checked) => setActive(checked)} /> {t("active")}
       </label>
       <DeliveryError errorKey={errorKey} />
       <Button type="button" size="sm" disabled={pending || !name.trim()} onClick={save} className="self-start">

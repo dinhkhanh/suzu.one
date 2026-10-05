@@ -81,7 +81,7 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
                 </Field>
               </div>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
+                <Checkbox name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
               </label>
               <Field name="cause" label={t("fields.cause")}>
                 <Select id="cause" name="cause" defaultValue={defaults.cause ?? "forgot"}>

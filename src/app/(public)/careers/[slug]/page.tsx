@@ -3,10 +3,12 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { visitorOf } from "@/lib/public-action";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { CONSENT_VERSION, DEFAULT_RETENTION_MONTHS, PUBLIC_LIMITS } from "@/modules/recruit/enums";
@@ -139,13 +141,13 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="links">{t("fields.links")}</Label>
-            <textarea id="links" name="links" rows={3} maxLength={PUBLIC_LIMITS.link * PUBLIC_LIMITS.links} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" placeholder={t("fields.linksPlaceholder")} />
+            <Textarea id="links" name="links" rows={3} maxLength={PUBLIC_LIMITS.link * PUBLIC_LIMITS.links} placeholder={t("fields.linksPlaceholder")} />
             <p className="text-xs text-muted-foreground">{t("fields.linksHint")}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="coverLetter">{t("fields.coverLetter")}</Label>
-            <textarea id="coverLetter" name="coverLetter" rows={6} maxLength={PUBLIC_LIMITS.coverLetter} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+            <Textarea id="coverLetter" name="coverLetter" rows={6} maxLength={PUBLIC_LIMITS.coverLetter} />
           </div>
 
           {opening.questions.map((question) => (
@@ -164,7 +166,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
                   ))}
                 </Select>
               ) : question.kind === "long_text" ? (
-                <textarea id={`answers.${question.key}`} name={`answers.${question.key}`} rows={4} required={question.required} maxLength={PUBLIC_LIMITS.answer} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+                <Textarea id={`answers.${question.key}`} name={`answers.${question.key}`} rows={4} required={question.required} maxLength={PUBLIC_LIMITS.answer} />
               ) : (
                 <Input id={`answers.${question.key}`} name={`answers.${question.key}`} required={question.required} maxLength={PUBLIC_LIMITS.answer} />
               )}
@@ -185,11 +187,11 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
             <p className="whitespace-pre-line text-muted-foreground">{t("consent.body", { months: DEFAULT_RETENTION_MONTHS, email: t("consent.contactEmail") })}</p>
             <input type="hidden" name="consentVersion" value={CONSENT_VERSION} />
             <label className="flex items-start gap-2">
-              <input type="checkbox" name="consent" value="true" required className="mt-0.5" />
+              <Checkbox name="consent" value="true" required className="mt-0.5" />
               <span>{t("consent.agree")} *</span>
             </label>
             <label className="flex items-start gap-2">
-              <input type="checkbox" name="talentPool" value="true" className="mt-0.5" />
+              <Checkbox name="talentPool" value="true" className="mt-0.5" />
               <span>{t("consent.talentPool")}</span>
             </label>
           </div>

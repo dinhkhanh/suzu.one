@@ -157,7 +157,7 @@ export function KpiForm({ value }: { value: KpiFormValue }) {
             <Input name="floorPercent" defaultValue={String(value.floorBp / 100)} inputMode="decimal" />
           </Field>
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
-            <input type="checkbox" name="isActive" defaultChecked={value.isActive} />
+            <Checkbox name="isActive" defaultChecked={value.isActive} />
             {t("library.active")}
           </label>
           <div className="sm:col-span-3">
