@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { INTERVIEW_KINDS, INTERVIEW_MODES } from "../enums";
 import { rescheduleInterviewAction, scheduleInterviewAction } from "../interview-actions";
 

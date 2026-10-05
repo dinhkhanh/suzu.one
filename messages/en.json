@@ -24,7 +24,9 @@
     "nextYear": "Next year",
     "add": "Add “{name}”",
     "typeToAdd": "Type a name to add it",
-    "confirmNo": "Go back"
+    "confirmNo": "Go back",
+    "exportXlsx": "Excel (.xlsx)",
+    "exportCsv": "CSV (.csv)"
   },
   "signIn": {
     "title": "Sign in",

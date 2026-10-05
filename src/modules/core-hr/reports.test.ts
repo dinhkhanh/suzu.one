@@ -14,6 +14,7 @@ import { buildHeadcountExport, buildPeopleExport } from "./exports";
 import { terminateEmployment } from "./lifecycle";
 import { getHeadcountReport } from "./reports";
 import { hirePerson } from "./service";
+import { tableToCsv } from "../platform/export/csv";
 
 const today = todayInVietnam();
 const ids = {} as Record<"media" | "creative" | "video" | "design" | "actor" | "head" | "huy" | "khoi", string>;
@@ -88,9 +89,9 @@ describe("headcount report", () => {
   it("exports the same scoped figures", async () => {
     const { file, scoped } = await buildHeadcountExport(principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]), period, "en");
     expect(scoped).toBe(true);
-    expect(file.csv).toContain("Total headcount");
-    expect(file.csv).toContain("By department,Video,3");
-    expect(file.csv).not.toContain("Design");
+    expect(tableToCsv(file.table)).toContain("Total headcount");
+    expect(tableToCsv(file.table)).toContain("By department,Video,3");
+    expect(tableToCsv(file.table)).not.toContain("Design");
   });
 });
 
@@ -99,7 +100,7 @@ describe("people export", () => {
     const { file, total } = await buildPeopleExport(principal(ids.head), {}, "en");
     expect(total).toBe(6);
     expect(file.rowCount).toBe(6);
-    const lines = file.csv.trim().split("\r\n");
+    const lines = tableToCsv(file.table).trim().split("\r\n");
     const header = lines[0].replace("﻿", "").split(",");
     const cells = (name: string) => lines.find((line) => line.includes(name))!.split(",");
     const [type, status] = [header.indexOf("Workforce type"), header.indexOf("Status")];
@@ -110,11 +111,11 @@ describe("people export", () => {
     expect([cells("Ly Minh Khoi")[type], cells("Ly Minh Khoi")[status]]).toEqual(["", ""]);
     expect(cells("Ly Minh Khoi")[header.indexOf("Department")]).toBe("Design");
     // A former colleague is not part of the directory at all.
-    expect(file.csv).not.toContain("Video Leaver");
+    expect(tableToCsv(file.table)).not.toContain("Video Leaver");
   });
 
   it("defuses a name that a spreadsheet would run", async () => {
     const { file } = await buildPeopleExport(principal(ids.head), {}, "en");
-    expect(file.csv).toContain("'=cmd Injection");
+    expect(tableToCsv(file.table)).toContain("'=cmd Injection");
   });
 });

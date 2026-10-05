@@ -41,6 +41,7 @@ import { postStatusUpdate } from "./status-updates";
 import { cancelDeliverable, createTasksForLine, linkTask, saveDeliverable, saveMilestone } from "./structure";
 import { applyTemplatePlanIn, saveTemplatePlan } from "./template-plans";
 import { workflow } from "../../../tests/helpers/workflows";
+import { tableToCsv } from "../platform/export/csv";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "lan" | "huy" | "ke" | "video" | "tvc" | "social" | "group" | "tvcLine", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -355,8 +356,8 @@ describe("fees (pjm:commercial)", () => {
     expect("feeVnd" in shapePlan(await ensurePlan(ids.tvc), false)).toBe(false);
     const { file, withFees } = await buildPortfolioExport(worker(), {}, "vi");
     expect(withFees).toBe(false);
-    expect(file.csv).not.toContain("120000000");
-    expect(file.csv).not.toContain("VND");
+    expect(tableToCsv(file.table)).not.toContain("120000000");
+    expect(tableToCsv(file.table)).not.toContain("VND");
     // Running the team is not running its money either.
     for (const row of await listPortfolio(teamLead(), { today: todayInVietnam() })) expect("feeVnd" in row).toBe(false);
   });
@@ -370,8 +371,8 @@ describe("fees (pjm:commercial)", () => {
     expect("feeVnd" in rows.find((row) => row.id === ids.social)!).toBe(false);
     const { file, withFees } = await buildPortfolioExport(own, {}, "vi");
     expect(withFees).toBe(true);
-    expect(file.csv).toContain("120000000");
-    expect(file.csv).not.toContain("45000000");
+    expect(tableToCsv(file.table)).toContain("120000000");
+    expect(tableToCsv(file.table)).not.toContain("45000000");
 
     const manager = viewer(ids.lan, { teams: { [ids.video]: "member" }, projects: { [ids.social]: "account_manager" } });
     const managerRows = await listPortfolio(manager, { today: todayInVietnam() });
@@ -389,7 +390,7 @@ describe("fees (pjm:commercial)", () => {
     expect(shapePlan(await ensurePlan(ids.tvc), true).feeVnd).toBe(120_000_000);
     const { file, withFees } = await buildPortfolioExport(director(), {}, "vi");
     expect(withFees).toBe(true);
-    expect(file.csv).toContain("120000000");
+    expect(tableToCsv(file.table)).toContain("120000000");
   });
 
   it("shows hours, register and health on the portfolio", async () => {

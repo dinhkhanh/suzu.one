@@ -11,7 +11,7 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { todayInVietnam } from "@/lib/dates";
-import { buildReportFor, findReport, isSchedulable, needsStepUp, REPORT_KEYS, reportToCsv } from "./catalogue";
+import { buildReportFor, findReport, isSchedulable, needsStepUp, REPORT_KEYS, reportToFile } from "./catalogue";
 import { canEditSchedule, canManageSchedules } from "./policy";
 import { createSchedule, deleteSchedule, findSchedule, setScheduleActive, updateSchedule } from "./schedules";
 
@@ -127,8 +127,8 @@ const exportPipeline = createAction({
   run: async ({ user, input }) => {
     const period = { from: input.from, to: input.to };
     const table = await buildReportFor(user, input.reportKey, input.parameters, period, input.locale);
-    if (!table) return { data: { fileName: "", csv: "", rowCount: 0, truncated: false }, audit: { resource: { type: `export:report:${input.reportKey}` }, summary: "refused" } };
-    const file = reportToCsv(table, `${input.reportKey}-${input.from}_${input.to}.csv`);
+    if (!table) return { data: { fileName: "", table: { header: [], rows: [] }, rowCount: 0, truncated: false }, audit: { resource: { type: `export:report:${input.reportKey}` }, summary: "refused" } };
+    const file = reportToFile(table, `${input.reportKey}-${input.from}_${input.to}`);
     return { data: file, audit: { resource: { type: `export:report:${input.reportKey}` }, summary: `${file.rowCount} rows`, after: { parameters: input.parameters, period, rowCount: file.rowCount } } };
   },
 });

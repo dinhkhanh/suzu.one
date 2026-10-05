@@ -24,7 +24,9 @@
     "nextYear": "Năm sau",
     "add": "Thêm “{name}”",
     "typeToAdd": "Gõ tên để thêm mới",
-    "confirmNo": "Quay lại"
+    "confirmNo": "Quay lại",
+    "exportXlsx": "Excel (.xlsx)",
+    "exportCsv": "CSV (.csv)"
   },
   "signIn": {
     "title": "Đăng nhập",

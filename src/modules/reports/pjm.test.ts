@@ -32,7 +32,8 @@ import { saveKpi, createAssignment } from "../performance/kpis";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { createProject } from "../work/projects";
 import { createTeam, listStates, setTeamMember } from "../work/teams";
-import { buildReportFor, reportToCsv } from "./catalogue";
+import { tableToCsv } from "../platform/export/csv";
+import { buildReportFor, reportToFile } from "./catalogue";
 import { getDeliveryDashboard } from "./delivery";
 import { runKpiFromWork } from "./kpi-from-work";
 import { buildProfitability, getProfitability } from "./profitability";
@@ -216,7 +217,7 @@ describe("profitability (FR-PJM-63)", () => {
 
   it("exports the same rows to a pjm:cost holder, still without a person in them", async () => {
     const table = (await buildReportFor(people.finance, "profitability", {}, PERIOD, "vi"))!;
-    const csv = reportToCsv(table, "p.csv").csv;
+    const csv = tableToCsv(reportToFile(table, "p").table);
     expect(csv).toContain("TVC Tết");
     expect(csv).not.toContain(people.huy.person.fullName);
     expect(csv).not.toContain("125000");
