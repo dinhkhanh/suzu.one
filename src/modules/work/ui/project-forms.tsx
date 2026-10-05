@@ -1,6 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,35 @@ import { CLIENT_KINDS, PROJECT_STATUSES, VISIBILITIES } from "../enums";
 type Option = { id: string; name: string };
 type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; statusId: string | null; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null; color: string | null };
 
-export function ProjectForm({ project, teams, clients, people, statuses = [], onSaved }: { project?: Project; /** Teams the viewer may start a project in, with their default visibility. */ teams: (Option & { defaultVisibility: string })[]; clients: Option[]; people: { id: string; fullName: string }[]; /** The statuses of the team's set (`projectStatusChoices`); none = the categories. */ statuses?: (Option & { category: string })[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
+export function ProjectForm({
+  project,
+  teams,
+  clients,
+  people,
+  statuses = [],
+  statusCategories,
+  statusHint,
+  onSaved,
+}: {
+  project?: Project;
+  /** Teams the viewer may start a project in, with their default visibility. */
+  teams: (Option & { defaultVisibility: string })[];
+  clients: Option[];
+  people: { id: string; fullName: string }[];
+  /** The statuses of the team's set (`projectStatusChoices`); none = the categories. */
+  statuses?: (Option & { category: string })[];
+  /**
+   * The status categories this project may be moved to by hand; absent = all. A page that knows the
+   * project's gates (its kick-off, its close-out) passes them so the control does not offer what the
+   * server would refuse; the server refuses either way.
+   */
+  statusCategories?: readonly string[];
+  /** Said under the status control: where the statuses not offered are reached. */
+  statusHint?: ReactNode;
+  /** After an edit is saved — the dialog closes. */
+  onSaved?: () => void;
+}) {
+  const offered = (category: string) => !statusCategories || statusCategories.includes(category);
   const t = useTranslations("work.projects");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -79,7 +108,7 @@ export function ProjectForm({ project, teams, clients, people, statuses = [], on
                 <Select id="status" name="status" defaultValue={project.statusId ?? statuses.find((status) => status.category === project.status)?.id ?? project.status}>
                   {statuses.some((status) => status.category === project.status) ? null : <option value={project.status}>{t(`status.${project.status as "active"}`)}</option>}
                   {statuses.map((status) => (
-                    <option key={status.id} value={status.id}>
+                    <option key={status.id} value={status.id} disabled={!offered(status.category) && status.id !== project.statusId}>
                       {status.name}
                     </option>
                   ))}
@@ -87,12 +116,13 @@ export function ProjectForm({ project, teams, clients, people, statuses = [], on
               ) : (
                 <Select id="status" name="status" defaultValue={project.status}>
                   {PROJECT_STATUSES.map((status) => (
-                    <option key={status} value={status}>
+                    <option key={status} value={status} disabled={!offered(status) && status !== project.status}>
                       {t(`status.${status}`)}
                     </option>
                   ))}
                 </Select>
               )}
+              {statusHint ? <p className="text-xs text-muted-foreground">{statusHint}</p> : null}
             </Field>
           ) : null}
           <Field name="color" label={t("fields.color")}>

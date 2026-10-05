@@ -109,7 +109,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
               {row.raid.openIssues > 0 ? <Badge variant="warning">{t("raid.portfolio.openIssuesBadge", { count: row.raid.openIssues })}</Badge> : null}
             </div>
             <div className="mt-auto flex flex-col gap-1.5">
-              <ProgressBar percent={row.register.promised ? (row.register.percent ?? 0) : null} tone="success" />
+              <ProgressBar percent={row.register.promised ? (row.register.percent ?? 0) : null} pending={row.register.promised ? Math.floor((row.register.awaitingClient / row.register.promised) * 100) : null} tone="success" />
               <div className="flex items-baseline justify-between gap-3 font-mono text-xs tabular-nums">
                 <span>{row.register.promised ? t("portfolio.cardProgress", { accepted: row.register.accepted, promised: row.register.promised, percent: row.register.percent ?? 0 }) : <span className="text-faint">{t("portfolio.noRegister")}</span>}</span>
                 <span className={burnTone}>{row.burn.budgetMinutes ? t("portfolio.cardHours", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes) }) : t("portfolio.cardHoursNoBudget", { used: hours(row.burn.loggedMinutes) })}</span>

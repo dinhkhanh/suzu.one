@@ -8,8 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { createBranchAction, createEntityAction, updateBranchAction, updateEntityAction } from "../actions";
-import type { BranchRow, EntityRow } from "../service";
+import { createBranchAction, createEntityAction, createEntityBankAccountAction, updateBranchAction, updateEntityAction, updateEntityBankAccountAction } from "../actions";
+import { PAYING_BANKS, payingBankName } from "../enums";
+import type { BranchRow, EntityBankAccountRow, EntityRow } from "../service";
 
 const WAGE_REGIONS = [1, 2, 3, 4] as const;
 
@@ -27,12 +28,12 @@ function WageRegionSelect({ defaultValue }: { defaultValue?: number | null }) {
   );
 }
 
-/** The "still active" tick of an edit form; posts `isActive=on` when ticked, like a native checkbox. */
-export function ActiveCheckbox({ defaultChecked, label }: { defaultChecked: boolean; label: string }) {
+/** The "still active" tick of an edit form; posts `isActive=on` when ticked, like a native checkbox. `name` for another yes/no of the same kind. */
+export function ActiveCheckbox({ defaultChecked, label, name = "isActive" }: { defaultChecked: boolean; label: string; name?: string }) {
   const id = useId();
   return (
     <Label htmlFor={id} className="h-10 cursor-pointer gap-2.5 font-normal md:h-9">
-      <Checkbox id={id} name="isActive" defaultChecked={defaultChecked} />
+      <Checkbox id={id} name={name} defaultChecked={defaultChecked} />
       {label}
     </Label>
   );
@@ -136,6 +137,58 @@ export function BranchForm({ entityId, branch }: { entityId: string; branch?: Br
         {branch ? <ActiveCheckbox defaultChecked={branch.isActive} label={t("active")} /> : null}
         <Button type="submit" variant={branch ? "outline" : "default"} disabled={pending}>
           {branch ? t("save") : t("addBranch")}
+        </Button>
+      </div>
+      <FormError namespace="entities.errors" errorKey={errorKey} />
+    </form>
+  );
+}
+
+/**
+ * One of the entity's paying bank accounts (FR-PLT-11), or the form that adds one. Which bank an
+ * account is with is chosen once: a different bank is a different account.
+ */
+export function BankAccountForm({ entityId, account }: { entityId: string; account?: EntityBankAccountRow }) {
+  const t = useTranslations("entities");
+  const form = useRef<HTMLFormElement>(null);
+  const { onSubmit, pending, errorKey, saved } = useActionForm(account ? updateEntityBankAccountAction : createEntityBankAccountAction, {
+    extra: account ? { id: account.id } : { entityId },
+    onSuccess: () => (account ? undefined : form.current?.reset()),
+  });
+  const suffix = account?.id ?? "new";
+
+  return (
+    <form ref={form} onSubmit={onSubmit} className="flex w-full flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[10rem_12rem_1fr_1fr]">
+        <Field name={`bank-${suffix}`} label={t("bankAccount.bank")}>
+          {account ? (
+            <p className="flex h-10 items-center text-sm font-medium md:h-9">{payingBankName(account.bank)}</p>
+          ) : (
+            <Select id={`bank-${suffix}`} name="bank" required defaultValue={PAYING_BANKS[0].key}>
+              {PAYING_BANKS.map((bank) => (
+                <option key={bank.key} value={bank.key}>
+                  {bank.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field name={`account-number-${suffix}`} label={t("bankAccount.accountNumber")}>
+          <Input id={`account-number-${suffix}`} name="accountNumber" required inputMode="numeric" maxLength={40} defaultValue={account?.accountNumber} className="font-mono" />
+        </Field>
+        <Field name={`account-name-${suffix}`} label={t("bankAccount.accountName")}>
+          <Input id={`account-name-${suffix}`} name="accountName" required maxLength={160} defaultValue={account?.accountName} />
+        </Field>
+        <Field name={`account-branch-${suffix}`} label={t("bankAccount.branch")}>
+          <Input id={`account-branch-${suffix}`} name="branch" maxLength={160} defaultValue={account?.branch ?? ""} />
+        </Field>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <ActiveCheckbox name="isDefault" defaultChecked={account?.isDefault ?? false} label={t("bankAccount.default")} />
+        {account ? <ActiveCheckbox defaultChecked={account.isActive} label={t("active")} /> : null}
+        {saved && account ? <span className="text-xs text-success">{t("saved")}</span> : null}
+        <Button type="submit" variant={account ? "outline" : "default"} disabled={pending} className="ml-auto">
+          {account ? t("save") : t("bankAccount.add")}
         </Button>
       </div>
       <FormError namespace="entities.errors" errorKey={errorKey} />

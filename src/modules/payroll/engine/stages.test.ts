@@ -308,10 +308,49 @@ describe("the whole calculation", () => {
     expect(plain.totals.net - withAdvance.totals.net).toBe(5_000_000);
   });
 
-  it("ignores a typed-in figure for a component the catalogue does not have as an input", () => {
+  it("does not pay a typed-in figure for a component the catalogue does not have as an input — and says so", () => {
     // BASE comes from the structure; a run may not overwrite it by typing a number in.
     const result = calculatePerson(personInput({ inputs: [{ code: "BASE", amount: 999_000_000 }, { code: "NOT_A_CODE", amount: 1_000 }] }));
     expect(result.totals.grossEarnings).toBe(30_000_000);
+    // Left out is never the same as nothing: the result carries a warning, once, and the trace names each code.
+    expect(result.warnings).toEqual(["input_code_unknown"]);
+    expect(result.trace.filter((step) => step.rule === "input_code_unknown").map((step) => step.detail.code)).toEqual(["BASE", "NOT_A_CODE"]);
+  });
+
+  it("never turns a negative typed-in figure into a payment: a clawback is not a bonus", () => {
+    // −500,000 of commission used to be paid as +500,000. It is refused where it is typed
+    // (`setRunInput`); if one reaches the engine all the same, it is not paid and the result says so.
+    const plain = calculatePerson(personInput());
+    const clawback = calculatePerson(personInput({ inputs: [{ code: "COMMISSION", amount: -500_000 }] }));
+    expect(clawback.lines.some((line) => line.code === "COMMISSION")).toBe(false);
+    expect(clawback.totals.grossEarnings).toBe(plain.totals.grossEarnings);
+    expect(clawback.totals.net).toBe(plain.totals.net);
+    expect(clawback.warnings).toContain("input_negative");
+    expect(clawback.trace.find((step) => step.rule === "input_negative")?.detail).toEqual({ code: "COMMISSION" });
+
+    // A deduction typed with a minus sign is not turned into a deduction either — nor into an earning.
+    const minusAdvance = calculatePerson(personInput({ inputs: [{ code: "ADVANCE", amount: -2_000_000 }] }));
+    expect(minusAdvance.lines.some((line) => line.code === "ADVANCE")).toBe(false);
+    expect(minusAdvance.totals.net).toBe(plain.totals.net);
+    expect(minusAdvance.warnings).toContain("input_negative");
+  });
+
+  it("subtracts a deduction entered as a positive amount, and warns about nothing", () => {
+    const plain = calculatePerson(personInput());
+    const result = calculatePerson(personInput({ inputs: [{ code: "PENALTY", amount: 300_000 }, { code: "BONUS", amount: 0 }] }));
+    expect(result.lines.find((line) => line.code === "PENALTY")).toMatchObject({ kind: "deduction", amount: 300_000 });
+    expect(plain.totals.net - result.totals.net).toBe(300_000);
+    // A zero is nothing entered: no line, and nothing lost to warn about.
+    expect(result.lines.some((line) => line.code === "BONUS")).toBe(false);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("warns when a retro item cannot be paid because the catalogue has no retro component", () => {
+    const withoutRetro = COMPONENTS.filter((component) => component.code !== "RETRO_PAY");
+    const result = calculatePerson(personInput({ components: withoutRetro, retro: [{ sourceMonth: "2026-07", amount: 1_200_000, kind: "manual" }] }));
+    expect(result.lines.some((line) => line.rule === "retro_pay")).toBe(false);
+    expect(result.totals.grossEarnings).toBe(30_000_000);
+    expect(result.warnings).toEqual(["retro_component_missing"]);
   });
 
   it("puts earnings, deductions and employer costs in that order, each by the catalogue's order", () => {

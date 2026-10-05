@@ -3,7 +3,10 @@
 // lessons may be published to a knowledge-base space the author can write in.
 //
 // A closed project's status is "done" and its plan is read-only from then on: the policy's
-// `closed` fact (`PlanFacts`) turns every plan edit off, whoever asks.
+// `closed` fact (`PlanFacts`) turns every plan edit off, whoever asks, and the project takes no new
+// task, state change or time (`guards.ts`). Closing is the only way a client project becomes Done,
+// and the only way back is the re-open below — deliberate, with a reason, audited — which unlocks
+// the plan, makes the project active again and keeps the close-out it undid as history.
 import "server-only";
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
@@ -22,7 +25,7 @@ import { monthOf } from "./engine/retainer";
 import { meetingPeople } from "./meetings";
 import { withLineStatus } from "./metrics";
 import { ensurePlan, type PlanRow, readPlan } from "./plans";
-import type { MeetingRetro } from "./schema";
+import type { CloseHistoryEntry, MeetingRetro } from "./schema";
 
 export type MeetingRow = typeof schema.projectMeeting.$inferSelect;
 
@@ -148,6 +151,39 @@ export async function closeProject(projectId: string, input: { overrideReason: s
     }
     return { plan: after, report, projectStatusBefore: project?.status ?? "" };
   });
+}
+
+/**
+ * Re-opens a closed project (FR-PJM-59): the plan is unlocked, the project is active again and
+ * takes work, and the close-out that was undone — when, by whom, its report — moves into the
+ * plan's history with who re-opened it and why. The retainer a close ended is not restarted: its
+ * months and its fee are terms the account side sets again on purpose. Closing later is a new
+ * close-out with its own checklist and report.
+ */
+export async function reopenProject(projectId: string, input: { reason: string }, actorPersonId: string): Promise<{ plan: PlanRow; entry: CloseHistoryEntry; projectStatusBefore: string }> {
+  const reason = input.reason.trim();
+  if (!reason) throw new ActionError("reopen_reason_required");
+  return db().transaction(async (tx) => {
+    const [locked] = await tx.select().from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).limit(1).for("update");
+    if (!locked?.closedAt) throw new ActionError("project_not_closed");
+    const [project] = await tx.select({ status: schema.workProject.status }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1).for("update");
+    const now = new Date();
+    const entry: CloseHistoryEntry = { closedAt: locked.closedAt.toISOString(), closedByPersonId: locked.closedByPersonId, report: locked.closeReport, reopenedAt: now.toISOString(), reopenedByPersonId: actorPersonId, reason };
+    const [after] = await tx
+      .update(schema.projectPlan)
+      .set({ closedAt: null, closedByPersonId: null, closeReport: null, closeHistory: [...locked.closeHistory, entry], updatedAt: now })
+      .where(eq(schema.projectPlan.projectId, projectId))
+      .returning();
+    await tx.update(schema.workProject).set({ status: "active", updatedAt: now }).where(eq(schema.workProject.id, projectId));
+    return { plan: after, entry, projectStatusBefore: project?.status ?? "" };
+  });
+}
+
+/** The close-outs of a project that were re-opened, oldest first, with the names of who closed and who re-opened. */
+export async function listCloseHistory(plan: Pick<PlanRow, "closeHistory">): Promise<(CloseHistoryEntry & { closedByName: string | null; reopenedByName: string | null })[]> {
+  const ids = [...new Set(plan.closeHistory.flatMap((entry) => [entry.closedByPersonId, entry.reopenedByPersonId]).filter((id): id is string => !!id))];
+  const names = ids.length ? new Map((await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids))).map((row) => [row.id, row.fullName])) : new Map<string, string>();
+  return plan.closeHistory.map((entry) => ({ ...entry, closedByName: entry.closedByPersonId ? (names.get(entry.closedByPersonId) ?? null) : null, reopenedByName: names.get(entry.reopenedByPersonId) ?? null }));
 }
 
 // ── The retrospective ───────────────────────────────────────────────────────────────────────

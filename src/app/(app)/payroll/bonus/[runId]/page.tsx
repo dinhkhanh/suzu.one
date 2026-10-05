@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { statusTone } from "@/components/ui/tone";
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, Ta
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
-import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
+import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, bonusHandoffState, getBonusRun, getBonusScheme, listBonusHandoffs, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
 import { BonusStepForm, PayBonusRunButton, SimulateButton, WhatIfForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { pageTitle } from "@/i18n/page-title";
@@ -32,11 +33,13 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
   requireStepUp(user, `/payroll/bonus/${runId}`);
 
   const manages = canManageBonusRun(user.principal, run.entityIds);
-  const [t, format, lines, events, scheme] = await Promise.all([
+  const [t, tRuns, format, lines, events, handoffs, scheme] = await Promise.all([
     getTranslations("payroll.bonus"),
+    getTranslations("payroll.runs.statuses"),
     getFormatter(),
     listBonusLines(runId),
     listBonusRunEvents(runId),
+    listBonusHandoffs(runId),
     // The scheme in force for the first entity — what the what-if form starts from.
     manages ? getBonusScheme(run.entityIds[0] ?? null, schemeDateOf(run.year)).catch(() => null) : null,
   ]);
@@ -44,6 +47,11 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
   const cost = await bonusCostOf(lines);
   const steps = availableBonusSteps(run);
   const hasSteps = manages && steps.length > 0;
+  // Where each entity stands with payroll once the run has been handed over: an entity whose
+  // off-cycle run was cancelled there is "not handed over" again, and can be handed over alone.
+  const entityNameOf = new Map(cost.byEntity.map((entity) => [entity.entityId, entity.entityName]));
+  const handoff = run.status === "paid" ? bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), handoffs).filter((entity) => entity.payable > 0) : [];
+  const notHandedOver = handoff.filter((entity) => !entity.payrollRunId);
 
   return (
     <Page width="wide">
@@ -101,6 +109,52 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
           </CardFooter>
         ) : null}
       </Card>
+
+      {handoff.length > 0 ? (
+        <Section title={t("handoff.title")} description={t("handoff.hint")}>
+          {notHandedOver.length > 0 ? <Alert variant="warning">{t("handoff.attention", { count: notHandedOver.length })}</Alert> : null}
+          <TableCard>
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="org">{t("handoff.entity")}</TableHead>
+                  <TableHead kind="number">{t("handoff.people")}</TableHead>
+                  <TableHead kind="status">{t("handoff.state")}</TableHead>
+                  <TableHead kind="link">{t("handoff.payrollRun")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {handoff.map((entity) => (
+                  <TableRow key={entity.entityId}>
+                    <TableCell>
+                      <RecordLink kind="entity" id={entity.entityId}>{entityNameOf.get(entity.entityId) ?? "—"}</RecordLink>
+                    </TableCell>
+                    <TableCell kind="number">{entity.payable}</TableCell>
+                    <TableCell>
+                      <Badge dot variant={entity.payrollRunId ? "success" : "warning"}>{t(entity.payrollRunId ? "handoff.handedOver" : "handoff.notHandedOver")}</Badge>
+                      {entity.cancelledPayrollRunId ? <span className="ml-2 text-xs text-muted-foreground">{t("handoff.cancelled")}</span> : null}
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
+                      {entity.payrollRunId ? (
+                        <span className="flex flex-wrap items-center gap-2">
+                          <RecordLink kind="payrollRun" id={entity.payrollRunId} className="underline">
+                            {t("trace.offCycleRun")}
+                          </RecordLink>
+                          {entity.payrollRunStatus ? <Badge variant={statusTone(entity.payrollRunStatus)}>{tRuns(entity.payrollRunStatus)}</Badge> : null}
+                        </span>
+                      ) : manages ? (
+                        <PayBonusRunButton runId={runId} entityId={entity.entityId} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
+        </Section>
+      ) : null}
 
       <Section title={t("lines.title")} count={lines.length || undefined}>
         <TableCard>

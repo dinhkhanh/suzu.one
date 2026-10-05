@@ -95,6 +95,7 @@ const TONES: Record<string, BadgeVariant> = {
   in_repair: "warning",
   suspended: "warning",
   ready: "warning",
+  ready_for_client: "warning",
   // Wrong.
   rejected: "destructive",
   failed: "destructive",

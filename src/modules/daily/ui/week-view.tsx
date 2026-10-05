@@ -13,22 +13,22 @@ import { hoursOf } from "./format";
 import { type EntryView, WeekEntries } from "./week-entries";
 import { type GridDayView, type GridRowView, type RowOption, WeekGrid } from "./week-grid";
 
-type OpenTask = { taskId: string; key: string; title: string; projectId?: string | null; projectName: string | null };
+type OpenTask = { taskId: string; key: string; title: string; projectId?: string | null; projectName: string | null; /** The project's job number, composed in by the route (FR-PJM-02). */ jobNumber?: string | null };
 
 export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; openTasks?: OpenTask[] }) {
   const [t, format] = await Promise.all([getTranslations("daily.time"), getFormatter()]);
   const categoryName = (category: string | null) => t(`categories.${(TIME_CATEGORIES as readonly string[]).includes(category ?? "") ? (category as "admin") : "internal"}`);
   // With the ids of the task and the project the labels name, so the grid and the entries link them.
-  const labelOf = (key: string): { label: string; sub: string | null; taskId?: string | null; projectId?: string | null } => {
+  const labelOf = (key: string): { label: string; sub: string | null; job?: string | null; taskId?: string | null; projectId?: string | null } => {
     const label = view.labels[key];
     if (!label) {
       const task = openTasks.find((row) => `task:${row.taskId}` === key);
-      if (task) return { label: `${task.key} ${task.title}`, sub: task.projectName, taskId: task.taskId, projectId: task.projectId };
+      if (task) return { label: `${task.key} ${task.title}`, sub: task.projectName, job: task.jobNumber, taskId: task.taskId, projectId: task.projectId };
       return key.startsWith("category:") ? { label: categoryName(key.slice("category:".length)), sub: null } : { label: "—", sub: null };
     }
     // A task this reader may not open: its hours belong on their screen, its name does not.
     if (label.hidden) return { label: t("privateWork"), sub: null };
-    return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName, taskId: label.taskId, projectId: label.projectName ? label.projectId : null } : { label: categoryName(label.category), sub: null };
+    return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName, job: label.projectName ? label.jobNumber : null, taskId: label.taskId, projectId: label.projectName ? label.projectId : null } : { label: categoryName(label.category), sub: null };
   };
   const dayLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "numeric" });
 
@@ -41,16 +41,16 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
     off: day.dayOff,
   }));
   const options: RowOption[] = view.editable
-    ? [...openTasks.map((task) => ({ key: `task:${task.taskId}`, label: `${task.key} ${task.title}`, sub: task.projectName })), ...TIME_CATEGORIES.map((category) => ({ key: `category:${category}`, label: categoryName(category), sub: t("otherTime") }))]
+    ? [...openTasks.map((task) => ({ key: `task:${task.taskId}`, label: `${task.key} ${task.title}`, sub: [task.jobNumber, task.projectName].filter(Boolean).join(" ") || null })), ...TIME_CATEGORIES.map((category) => ({ key: `category:${category}`, label: categoryName(category), sub: t("otherTime") }))]
     : [];
   const copyRows: RowOption[] = view.lastWeekRows.map((key) => {
-    const { label, sub } = labelOf(key);
-    return { key, label, sub };
+    const { label, sub, job } = labelOf(key);
+    return { key, label, sub: [job, sub].filter(Boolean).join(" ") || null };
   });
   const entries: EntryView[] = view.entries.map((entry) => ({
     id: entry.id,
     day: format.dateTime(new Date(`${entry.date}T12:00:00Z`), { weekday: "short", day: "numeric" }),
-    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName, taskId: entry.taskId, projectId: entry.projectName ? entry.projectId : null } : { label: categoryName(entry.category), sub: null }),
+    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName, job: entry.projectName ? entry.jobNumber : null, taskId: entry.taskId, projectId: entry.projectName ? entry.projectId : null } : { label: categoryName(entry.category), sub: null }),
     minutes: entry.minutes,
     billable: entry.billable,
     note: entry.note,

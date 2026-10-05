@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole } from "../work/enums";
 import { canGiveProjectRole, type ProjectFacts, type TeamFacts, type WorkViewer } from "../work/policy";
-import { billingReach, canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewMeetings, canViewRaid, type CapacityReader, type CapacitySubject, canCloseProject, canDecideBilling, canEditClientSide, canEditFees, canEditPlan, canEditRetainer, canHoldRetro, canManageAcceptance, canManageBookings, canManageChanges, canOpenBillingQueue, canOpenCapacity, canPostStatus, canRebaseline, canSeeCapacityOf, canSeeFees, canViewBookings, canViewPlan, canWriteClientReport } from "./policy";
+import { billingReach, canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewMeetings, canViewRaid, type CapacityReader, type CapacitySubject, canCloseProject, canDecideBilling, canEditBriefContacts, canEditClientSide, canEditFees, canEditPlan, canEditRetainer, canHoldRetro, canManageAcceptance, canManageBookings, canManageChanges, canOpenBillingQueue, canOpenCapacity, canPostStatus, canRebaseline, canReopenProject, canSeeCapacityOf, canSeeFees, canViewBookings, canViewPlan, canWriteClientReport } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -253,6 +253,20 @@ describe("closing a project (FR-PJM-59)", () => {
     // Reading stays as it was.
     expect(canViewPlan(lead, closed)).toBe(true);
     expect(canSeeFees(financeAm, closed)).toBe(true);
+  });
+  it("is re-opened by whoever may close it, and only once it is closed", () => {
+    for (const who of [lead, teamLead]) expect(canReopenProject(who, closed)).toBe(true);
+    // Not the account manager, not a workspace manager, not finance — and not `pjm:portfolio`, which reads and changes nothing.
+    for (const who of [accountManager, director, portfolio, member, finance, financeAm, outsider]) expect(canReopenProject(who, closed)).toBe(false);
+    for (const who of [lead, teamLead]) expect(canReopenProject(who, tvc)).toBe(false);
+    // A private project's lead re-opens it; a leader who only reads it (D30) does not.
+    expect(canReopenProject(viewer("tam", { projects: { "project-secret": "lead" } }), { ...secret, closed: true })).toBe(true);
+    expect(canReopenProject(portfolio, { ...secret, closed: true })).toBe(false);
+  });
+  it("lets the lead, the account manager and the team lead keep an approved brief's contacts and links current", () => {
+    for (const who of [lead, accountManager, teamLead]) expect(canEditBriefContacts(who, tvc)).toBe(true);
+    for (const who of [member, onlyViewer, teamMember, director, portfolio, finance, outsider]) expect(canEditBriefContacts(who, tvc)).toBe(false);
+    for (const who of [lead, accountManager, teamLead]) expect(canEditBriefContacts(who, closed)).toBe(false);
   });
   it("lets the lead, the account manager and the team lead hold the retrospective", () => {
     for (const who of [lead, accountManager, teamLead]) expect(canHoldRetro(who, closed)).toBe(true);

@@ -24,6 +24,11 @@ export { createOffCycleRun } from "./runs";
  * claim). The caller finds the entity's open run, types its figure in under a pay component, and
  * takes it out again if what it was for goes away. It never reads a figure back: `RunHandle`
  * carries ids, a month and a status and nothing else, so no amount leaves payroll this way.
+ *
+ * `setRunInput` **throws** when payroll cannot take the figure — the code is not an input
+ * component of the entity's catalogue, or the amount is negative — so the caller's transaction
+ * fails and says so, rather than reporting "posted" for a line that would pay nothing. A figure
+ * posted to (or taken out of) a run that was already calculated sends that run back to draft.
  */
 export { findOpenRegularRun, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "./runs";
 /**
@@ -44,7 +49,7 @@ export { type SalaryChangeInput, submitSalaryChange } from "./salaries";
  * Nothing here is authorized inside; the pages and `bonus-actions.ts` check first.
  */
 export { canAdjustBonusLine, canApproveBonusRun, canDecideBonusScheme, canManageBonusRun, canPayBonusRun, canProposeBonusRun, canProposeBonusScheme, canReadBonusRun, canViewBonusOf } from "./policy";
-export { availableBonusSteps, bonusCostOf, type BonusCost, type BonusLineView, type BonusRunEventRow, type BonusRunLineRow, type BonusRunRow, type BonusStep, getBonusCost, getBonusLine, getBonusRun, isOpenForEditing as isBonusRunOpen, isSettled as isBonusRunSettled, listBonusLines, listBonusRunEvents, listBonusRuns, listMyBonusLines, openTotals as openBonusTotals } from "./bonus";
+export { availableBonusSteps, bonusCostOf, type BonusCost, type BonusEntityHandoff, bonusHandoffState, type BonusLineView, listBonusHandoffs, type BonusRunEventRow, type BonusRunLineRow, type BonusRunRow, type BonusStep, getBonusCost, getBonusLine, getBonusRun, isOpenForEditing as isBonusRunOpen, isSettled as isBonusRunSettled, listBonusLines, listBonusRunEvents, listBonusRuns, listMyBonusLines, openTotals as openBonusTotals } from "./bonus";
 export { type BonusSchemeRow, getBonusScheme, getBonusSchemeVersion, hasBonusScheme, listBonusSchemeVersions, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 export { type BonusExclusion, type BonusSchemeValue, bonusSchemeSchema, DEFAULT_BONUS_SCHEME } from "./enums";
 export type { BonusTotals, BonusTrace, BonusTraceStep } from "./engine/bonus";

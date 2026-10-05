@@ -18,6 +18,7 @@ import { payrollFactsOf } from "@/modules/core-hr/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonPayResult } from "./engine/types";
+import { isFiledRunStatus, type MonthRun, pitOfMonth } from "./exports/statutory/month";
 import { canManageCompensation, compensationReach, payrollReadReach } from "./policy";
 import { withinReach } from "./reach";
 import { openResult, openTotals, type PayrollRunRow, type RunTotals } from "./run-storage";
@@ -72,6 +73,15 @@ const loadRunsOnce = cache(async (principal: Principal, entityId: string | null,
 
   return wanted.map((row) => ({ ...row, people: peopleOf.get(row.run.id) ?? [] }));
 });
+
+/**
+ * The runs a **filing** may be built from: signed by the CEO, or further on. The register, the cost
+ * report and the trend are C&B's working papers and read a calculated run too; the insurance
+ * summary, the PIT summary and the union report are held against what is declared and paid over,
+ * so they follow the statutory exports' rule (`exports/statutory/month.ts`) — a run nobody has
+ * signed is in none of them. Filtered from the same remembered load the other reports use.
+ */
+const signedOnly = (runs: readonly LoadedRun[]): LoadedRun[] => runs.filter((loaded) => isFiledRunStatus(loaded.run.status));
 
 /** Everyone paid in the runs, and the facts about them — one read shared by the reports of a month. */
 const factsOfRuns = (runs: readonly LoadedRun[], month: string) => payrollFactsOf(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)), month);
@@ -224,8 +234,9 @@ export type InsuranceSummary = { month: string; entityCode: string; lines: Insur
  */
 export async function insuranceSummary(principal: Principal, entityId: string, month: string): Promise<InsuranceSummary | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
-  // Only the regular run contributes: an off-cycle bonus never re-opens the month's insurance.
-  const all = await loadRuns(principal, { entityId, month }, { withPeople: true });
+  // Only the regular run contributes: an off-cycle bonus never re-opens the month's insurance —
+  // so a month is counted once here by construction. And only once the CEO has signed it.
+  const all = signedOnly(await loadRuns(principal, { entityId, month }, { withPeople: true }));
   const runs = all.filter((loaded) => loaded.run.kind === "regular");
   if (runs.length === 0) return null;
 
@@ -273,35 +284,26 @@ export type PitSummary = { month: string; entityCode: string; lines: PitLine[]; 
 /** What was withheld from whom — the working paper behind the monthly 05/KK-TNCN declaration. */
 export async function pitSummary(principal: Principal, entityId: string, month: string): Promise<PitSummary | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
-  const runs = await loadRuns(principal, { entityId, month }, { withPeople: true });
+  const runs = signedOnly(await loadRuns(principal, { entityId, month }, { withPeople: true }));
   if (runs.length === 0) return null;
 
   const facts = await factsOfRuns(runs, month);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
-  // A month's off-cycle runs are part of the same withholding: they add up per person.
-  const byPerson = new Map<string, PitLine>();
+  // A month's off-cycle runs are part of the same withholding. Income and tax add up per person;
+  // the assessable income is the month's, read once — an off-cycle result already stores the
+  // month's aggregate, and adding it to the regular run's would nearly double it.
+  const runsOf = new Map<string, MonthRun[]>();
   for (const loaded of runs) {
-    for (const person of loaded.people) {
-      const pit = person.result.pit;
-      const fact = factOf.get(person.personId);
-      const existing = byPerson.get(person.personId);
-      byPerson.set(person.personId, {
-        personId: person.personId,
-        fullName: fact?.fullName ?? "—",
-        employeeCode: fact?.employeeCode ?? null,
-        taxCode: fact?.taxCode ?? null,
-        hasTaxCode: !!fact?.hasTaxCode,
-        method: pit.method,
-        taxableIncome: (existing?.taxableIncome ?? 0) + pit.taxableIncome,
-        assessableIncome: (existing?.assessableIncome ?? 0) + pit.assessableIncome,
-        dependents: pit.dependents,
-        tax: (existing?.tax ?? 0) + pit.tax,
-      });
-    }
+    for (const person of loaded.people) runsOf.set(person.personId, [...(runsOf.get(person.personId) ?? []), { pit: person.result.pit, kind: loaded.run.kind, calculatedAt: loaded.run.calculatedAt, createdAt: loaded.run.createdAt }]);
   }
-
-  const lines = [...byPerson.values()].sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? ""));
+  const lines = [...runsOf]
+    .map(([personId, mine]): PitLine => {
+      const pit = pitOfMonth(mine);
+      const fact = factOf.get(personId);
+      return { personId, fullName: fact?.fullName ?? "—", employeeCode: fact?.employeeCode ?? null, taxCode: fact?.taxCode ?? null, hasTaxCode: !!fact?.hasTaxCode, method: pit.method, taxableIncome: pit.taxableIncome, assessableIncome: pit.assessableIncome, dependents: pit.dependents, tax: pit.tax };
+    })
+    .sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? ""));
   const methods = new Map<string, { method: string; people: number; tax: number }>();
   for (const line of lines) {
     const row = methods.get(line.method) ?? { method: line.method, people: 0, tax: 0 };
@@ -323,9 +325,13 @@ export async function pitSummary(principal: Principal, entityId: string, month: 
 
 export type UnionReport = { month: string; rows: { entityCode: string; members: number; dues: number; fund: number; total: number }[]; total: { members: number; dues: number; fund: number; total: number } };
 
-/** What the union costs, per entity: the members' dues and the employer's fund. */
+/**
+ * What the union costs, per entity: the members' dues and the employer's fund — what is paid over
+ * to the union, so from signed runs only. Each run stores its own dues and fund (an off-cycle run
+ * carries none), so adding the month's runs counts nothing twice.
+ */
 export async function unionReport(principal: Principal, filter: ReportFilter): Promise<UnionReport> {
-  const runs = await loadRuns(principal, filter, { withPeople: true });
+  const runs = signedOnly(await loadRuns(principal, filter, { withPeople: true }));
   const rows = new Map<string, { entityCode: string; members: number; dues: number; fund: number; total: number }>();
 
   for (const loaded of runs) {

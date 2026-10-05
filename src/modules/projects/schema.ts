@@ -11,6 +11,7 @@ import { entity } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { registerProjectCreationHook } from "../platform/project-creation/registry";
+import { registerProjectStatusGuard, registerProjectWorkGuard } from "../platform/project-guards/registry";
 import { task, taskTemplate } from "../platform/tasks-engine/schema";
 import { workClient, workProject } from "../work/schema";
 
@@ -19,6 +20,13 @@ import { workClient, workProject } from "../work/schema";
 // added through the platform's registry. Registered beside the tables, which every database access
 // loads; the hook itself loads when a project is first created.
 registerProjectCreationHook("projects.plan", () => import("./plans").then((module) => module.planOnCreate));
+
+// The kick-off gate and the close-out hold whoever changes the project (FR-PJM-03, 59): work sets a
+// project's status and takes its tasks and time, and asks these guards first — a client project
+// becomes Active only through its approved brief and Done only through its close-out, and a closed
+// project takes no new work until it is re-opened. Registered here for the same reason as the hook.
+registerProjectStatusGuard("projects.gates", () => import("./guards").then((module) => module.projectStatusGuard));
+registerProjectWorkGuard("projects.closed", () => import("./guards").then((module) => module.projectWorkGuard));
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -40,6 +48,12 @@ export type ProjectBrief = {
 /** Hours budget per role or service, e.g. "Video editing 40 h" (FR-PJM-09). */
 export type RoleBudget = { role: string; minutes: number };
 export type ProjectBaseline = { startDate: string | null; dueDate: string | null; budgetMinutes: number | null; milestones: { id: string; dueDate: string | null }[]; takenAt: string };
+/**
+ * One close-out that was later undone (FR-PJM-59): when and by whom the project was closed, the
+ * report kept at that close, and when, by whom and why it was re-opened. The record of a close is
+ * never lost by re-opening — it moves here.
+ */
+export type CloseHistoryEntry = { closedAt: string; closedByPersonId: string | null; report: Record<string, unknown> | null; reopenedAt: string; reopenedByPersonId: string; reason: string };
 
 // The plan of a project (FR-PJM-01..04, 09, 12, 27, 59): 1:1 with work_project.
 export const projectPlan = pgTable(
@@ -76,6 +90,8 @@ export const projectPlan = pgTable(
     closedAt: timestamp("closed_at", { withTimezone: true }),
     closedByPersonId: uuid("closed_by_person_id").references(() => person.id),
     closeReport: jsonb("close_report").$type<Record<string, unknown>>(),
+    // Every close-out that was re-opened, oldest first.
+    closeHistory: jsonb("close_history").$type<CloseHistoryEntry[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [index("project_plan_am_idx").on(t.accountManagerPersonId)],
@@ -190,7 +206,7 @@ export const projectRetainerPeriod = pgTable(
     minutesAllowance: integer("minutes_allowance"),
     // Quantities carried in from last month by line title (rollover rule).
     carried: jsonb("carried").$type<Record<string, number>>().notNull().default({}),
-    // Quota alerts already sent, per line id and threshold ("<lineId>:80").
+    // Quota alerts already sent, per line id and threshold ("<lineId>:80"); the hours allowance's as "hours:80".
     alerted: jsonb("alerted").$type<string[]>().notNull().default([]),
     // open | closed
     status: text("status").notNull().default("open"),
@@ -249,9 +265,16 @@ export type ChangeImpact = {
   minutesDelta?: number;
   feeDeltaVnd?: number;
   dueDateTo?: string | null;
+  /**
+   * A retainer's monthly scope from the next month made (FR-PJM-06): each key present replaces that
+   * term — the whole list of quota lines, the hours allowance, the monthly fee (`pjm:commercial`).
+   */
+  retainer?: { lines?: RetainerLineTemplate[]; minutesPerMonth?: number | null; feePerMonthVnd?: number | null };
   /** What the plan said just before the change was applied — the history reads "original + changes = current" from it. */
-  applied?: { budgetMinutesBefore: number | null; feeVndBefore: number | null; dueDateBefore: string | null };
+  applied?: { budgetMinutesBefore: number | null; feeVndBefore: number | null; dueDateBefore: string | null; /** The retainer's terms the change replaced. */ retainer?: { lines: RetainerLineTemplate[]; minutesPerMonth: number | null; feePerMonthVnd: number | null } };
 };
+/** The project's figures a change request moves: hours budget, fee, due date. */
+export type ChangeFigures = { budgetMinutes: number | null; feeVnd: number | null; dueDate: string | null };
 export const projectChangeRequest = pgTable(
   "project_change_request",
   {
@@ -271,6 +294,12 @@ export const projectChangeRequest = pgTable(
     status: text("status").notNull().default("draft"),
     approvalRequestId: uuid("approval_request_id"),
     appliedAt: timestamp("applied_at", { withTimezone: true }),
+    // The figures the change found and the figures it left, written when it is applied: the ledger
+    // is each change's own before and after, so a figure edited between two changes shows as a
+    // difference nobody explained instead of being absorbed. Changes applied before these columns
+    // existed have neither; their "before" is in `impact.applied` and their "after" is computed.
+    figuresBefore: jsonb("figures_before").$type<ChangeFigures>(),
+    figuresAfter: jsonb("figures_after").$type<ChangeFigures>(),
     createdByPersonId: uuid("created_by_person_id")
       .notNull()
       .references(() => person.id),
@@ -281,7 +310,10 @@ export const projectChangeRequest = pgTable(
 
 // Status updates (FR-PJM-27).
 // `highRisks` and `openIssues` come from the RAID log (FR-PJM-29); updates posted before it existed lack them.
-export type StatusFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number; highRisks?: number; openIssues?: number };
+// `deliverablesAccepted` is what the client accepted; `deliverablesAwaitingClient` what is finished
+// on our side and not yet answered. Updates posted before the two were told apart lack the second,
+// and their "accepted" counted every finished task.
+export type StatusFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number; deliverablesAwaitingClient?: number; highRisks?: number; openIssues?: number };
 export const projectStatusUpdate = pgTable(
   "project_status_update",
   {
@@ -406,6 +438,8 @@ export const projectBooking = pgTable(
 
 // Acceptance — biên bản nghiệm thu (FR-PJM-55).
 export type AcceptanceItem = { deliverableId: string; title: string; promised: number; delivered: number; accepted: number; links: string[] };
+/** What a signed record said before it was corrected: the earlier scan stays in the files, named here. */
+export type AcceptanceCorrection = { at: string; byPersonId: string; reason: string; before: { signedFileId: string | null; signedOn: string | null; signedByClient: string | null } };
 export const projectAcceptance = pgTable(
   "project_acceptance",
   {
@@ -419,13 +453,18 @@ export const projectAcceptance = pgTable(
     milestoneId: uuid("milestone_id").references(() => projectMilestone.id, { onDelete: "set null" }),
     retainerPeriodId: uuid("retainer_period_id").references(() => projectRetainerPeriod.id, { onDelete: "set null" }),
     items: jsonb("items").$type<AcceptanceItem[]>().notNull().default([]),
+    // What is accepted, in the lead's words — required when the scope has no register lines.
+    description: text("description"),
     // draft | sent | signed | void
     status: text("status").notNull().default("draft"),
+    // The paper as it was issued (sent, or signed without being sent): rendered once and kept.
     generatedFileId: uuid("generated_file_id").references(() => storedFile.id),
     signedFileId: uuid("signed_file_id").references(() => storedFile.id),
     signedByClient: text("signed_by_client"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     signedOn: date("signed_on"),
+    // Corrections of the signed record, oldest first: who, why, and what it said before.
+    corrections: jsonb("corrections").$type<AcceptanceCorrection[]>().notNull().default([]),
     createdByPersonId: uuid("created_by_person_id")
       .notNull()
       .references(() => person.id),
@@ -435,6 +474,8 @@ export const projectAcceptance = pgTable(
 ).enableRLS();
 
 // "Ready to invoice" for finance (FR-PJM-56).
+/** An amount corrected before invoicing. Money: read with the item, by `pjm:commercial` — never copied to the audit log. */
+export type BillingCorrection = { at: string; byPersonId: string; reason: string; beforeVnd: number | null; afterVnd: number | null };
 export const projectBillingItem = pgTable(
   "project_billing_item",
   {
@@ -458,6 +499,8 @@ export const projectBillingItem = pgTable(
     invoiceNumber: text("invoice_number"),
     invoiceDate: date("invoice_date"),
     waivedReason: text("waived_reason"),
+    // Amount corrections made while the item was still ready, oldest first.
+    corrections: jsonb("corrections").$type<BillingCorrection[]>().notNull().default([]),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),

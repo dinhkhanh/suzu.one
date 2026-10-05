@@ -7,8 +7,10 @@ import { List, ListItem } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
-import { findEntity, listBranches } from "@/modules/platform/org/service";
-import { BranchForm, EditEntityForm } from "@/modules/platform/org/ui/entity-forms";
+import { payingBankName } from "@/modules/platform/org/enums";
+import { canKeepEntityBankAccounts, canSeeEntityBankAccounts } from "@/modules/platform/org/policy";
+import { findEntity, listBranches, listEntityBankAccounts } from "@/modules/platform/org/service";
+import { BankAccountForm, BranchForm, EditEntityForm } from "@/modules/platform/org/ui/entity-forms";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -23,6 +25,12 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
 
   const canManage = can(user.principal, "org:manage", { entityId: entity.id });
   const branches = allBranches.filter((branch) => branch.entityId === entity.id);
+  // The paying bank accounts (FR-PLT-11) are shown to the people who pay from them or read
+  // payroll — not to everybody who may open the entity — and kept by its administrator or its
+  // chief accountant (`org/policy.ts`). The read is skipped for anyone who would not see it.
+  const seesAccounts = canSeeEntityBankAccounts(user.principal, entity.id);
+  const keepsAccounts = canKeepEntityBankAccounts(user.principal, entity.id);
+  const accounts = seesAccounts ? await listEntityBankAccounts(entity.id) : [];
   const facts: [string, string | null, boolean?][] = [
     [t("legalName"), entity.legalName],
     [t("legalRepresentative"), entity.legalRepresentative],
@@ -114,6 +122,58 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
           ) : null}
         </TableCard>
       </Section>
+
+      {seesAccounts ? (
+        <Section title={t("bankAccounts")} count={accounts.length} description={t("bankAccountsHint")}>
+          <TableCard>
+            {keepsAccounts ? (
+              <List>
+                {accounts.map((account) => (
+                  // Re-keyed when the row changes: saving one account can move the default off another.
+                  <ListItem key={`${account.id}:${account.updatedAt.getTime()}`} className="py-3">
+                    <BankAccountForm entityId={entity.id} account={account} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="org">{t("bankAccount.bank")}</TableHead>
+                    <TableHead kind="id">{t("bankAccount.accountNumber")}</TableHead>
+                    <TableHead kind="text">{t("bankAccount.accountName")}</TableHead>
+                    <TableHead kind="place">{t("bankAccount.branch")}</TableHead>
+                    <TableHead kind="status">{t("status")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accounts.length === 0 ? <TableEmpty>{t("bankAccount.none")}</TableEmpty> : null}
+                  {accounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">{payingBankName(account.bank)}</TableCell>
+                      <TableCell kind="id">{account.accountNumber}</TableCell>
+                      <TableCell className="whitespace-normal">{account.accountName}</TableCell>
+                      <TableCell className="whitespace-normal text-muted-foreground">{account.branch ?? "—"}</TableCell>
+                      <TableCell>
+                        <span className="flex flex-wrap gap-1.5">
+                          <Badge dot variant={account.isActive ? "success" : "outline"}>{account.isActive ? t("active") : t("inactive")}</Badge>
+                          {account.isDefault ? <Badge variant="outline">{t("bankAccount.default")}</Badge> : null}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            {keepsAccounts && accounts.length === 0 ? <p className="px-4 py-5 text-center text-sm text-muted-foreground">{t("bankAccount.none")}</p> : null}
+            {keepsAccounts ? (
+              <TableAddRow label={t("bankAccount.add")} open={accounts.length === 0}>
+                <BankAccountForm entityId={entity.id} />
+              </TableAddRow>
+            ) : null}
+          </TableCard>
+        </Section>
+      ) : null}
     </Page>
   );
 }

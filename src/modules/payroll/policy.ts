@@ -34,6 +34,13 @@ export const canViewCompensationOf = (principal: Principal, person: PersonInEnti
 export const canSetRunInputFor = (principal: Principal, run: InEntity, person: PersonInEntity): boolean =>
   canManageCompensation(principal, run) && canManageCompensation(principal, person) && principal.personId !== person.personId;
 
+/**
+ * A retro item for one person (FR-PAY-17) is a figure entered by hand like any typed into a run,
+ * so the same rule holds: C&B over the entity that will pay it and over the person's own — and
+ * nobody enters, or cancels, a difference in their own pay.
+ */
+export const canEnterRetroItemFor = canSetRunInputFor;
+
 /** The run register, totals and reports of an entity. */
 export const canReadPayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:read", where);
 export const canApprovePayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:approve", where);

@@ -209,7 +209,21 @@
       "invalid": "Vui lòng kiểm tra lại thông tin.",
       "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
       "entity_in_use": "Vẫn còn nhân sự thuộc pháp nhân này nên chưa thể ngừng hoạt động.",
-      "not_found": "Không tìm thấy dữ liệu."
+      "not_found": "Không tìm thấy dữ liệu.",
+      "bank_unknown": "Ngân hàng này chưa nằm trong danh sách ngân hàng chi lương.",
+      "bank_account_exists": "Pháp nhân đã có tài khoản này tại ngân hàng đó.",
+      "bank_account_number_invalid": "Số tài khoản chỉ gồm chữ số, từ 6 đến 32 số."
+    },
+    "bankAccounts": "Tài khoản chi lương",
+    "bankAccountsHint": "Tài khoản của công ty dùng để chi lương. Màn hình lập tệp chuyển khoản chọn từ danh sách này thay vì nhập tay.",
+    "bankAccount": {
+      "bank": "Ngân hàng",
+      "accountNumber": "Số tài khoản",
+      "accountName": "Tên tài khoản",
+      "branch": "Chi nhánh",
+      "default": "Mặc định",
+      "add": "Thêm tài khoản",
+      "none": "Chưa khai báo tài khoản chi lương nào."
     },
     "insuranceUnitCode": "Mã đơn vị BHXH",
     "legalRepresentative": "Người đại diện pháp luật",
@@ -1051,6 +1065,10 @@
         "title": "Phiếu lương tháng {month} đã có",
         "body": "Phiếu lương tháng {month} của bạn đã được phát hành. Mở ứng dụng để xem."
       },
+      "payroll_payslip_withdrawn": {
+        "title": "Phiếu lương tháng {month} đã được thu hồi",
+        "body": "Phiếu lương tháng {month} của bạn đã được thu hồi để rà soát lại và sẽ được phát hành lại. Bạn sẽ nhận thông báo khi có phiếu mới."
+      },
       "payroll_payslip_query_raised": {
         "title": "Có thắc mắc về phiếu lương",
         "body": "Một nhân viên gửi thắc mắc về phiếu lương tháng {month}."
@@ -1190,6 +1208,10 @@
       "projects_quota_alert": {
         "title": "Hạn mức retainer",
         "body": "{project}: “{line}” đã đạt {percent}% hạn mức tháng."
+      },
+      "projects_retainer_hours_alert": {
+        "title": "Giờ retainer",
+        "body": "{project}: tháng {month} đã dùng {percent}% số giờ cho phép."
       },
       "projects_change_decided": {
         "title": "Yêu cầu thay đổi đã có quyết định",
@@ -4557,6 +4579,10 @@
       "project_not_found": "Không tìm thấy dự án.",
       "project_other_team": "Dự án đó thuộc nhóm khác; công việc giữ quy trình của nhóm mình.",
       "project_archived": "Dự án đó đã lưu trữ.",
+      "project_closed": "Dự án này đã đóng: không thêm việc, đổi trạng thái việc hay ghi giờ được cho đến khi dự án được mở lại.",
+      "project_needs_kickoff": "Dự án làm cho khách chỉ chuyển sang Đang chạy khi brief được duyệt khởi động (trang Tổng quan của dự án).",
+      "project_needs_closeout": "Dự án làm cho khách chỉ chuyển sang Đã xong qua bước đóng dự án (tab Đóng dự án).",
+      "project_closed_reopen": "Dự án đã đóng. Hãy mở lại dự án ở tab Đóng dự án trước khi đổi trạng thái.",
       "project_dates_invalid": "Hạn trước ngày bắt đầu.",
       "project_last_member": "Dự án phải còn ít nhất một thành viên.",
       "task_not_found": "Không tìm thấy công việc.",
@@ -4700,6 +4726,7 @@
       "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
       "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa.",
       "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được.",
+      "preview_project_closed": "Dự án đã kết thúc hoặc đã lưu trữ nên không tạo được đường dẫn duyệt mới.",
       "checklist_name_required": "Hãy đặt tên cho checklist.",
       "checklist_empty": "Thêm ít nhất một mục.",
       "checklist_too_many": "Một checklist có tối đa 40 mục.",
@@ -4915,6 +4942,7 @@
         "person_not_found": "Không tìm thấy một người đã chọn hoặc họ đã nghỉ việc.",
         "team_not_found": "Không tìm thấy nhóm.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ.",
         "state_not_found": "Nhóm chưa có trạng thái cho việc mới."
       },
@@ -4973,6 +5001,7 @@
         "recurrence_dates_invalid": "Ngày kết thúc trước ngày bắt đầu.",
         "recurrence_not_found": "Không tìm thấy.",
         "project_not_found": "Không tìm thấy dự án.",
+        "project_closed": "Dự án này đã đóng: không thêm việc được cho đến khi dự án được mở lại.",
         "project_archived": "Dự án này đã lưu trữ."
       },
       "columns": {
@@ -5181,6 +5210,7 @@
         "custom_field_not_found": "việc này không có trường đó",
         "task_not_found": "không còn tồn tại",
         "other": "không hợp lệ",
+        "project_closed": "dự án đã đóng",
         "handoff_required": "cần gói bàn giao",
         "cycle_not_found": "chu kỳ không thuộc nhóm",
         "cycle_closed": "chu kỳ đã đóng",
@@ -5936,6 +5966,14 @@
       "viewOnly": "chỉ xem",
       "revoke": "Thu hồi",
       "revokeConfirm": "Thu hồi đường dẫn này? Khách sẽ không mở được nữa.",
+      "revokeTitle": "Thu hồi đường dẫn",
+      "project": {
+        "title": "Đường dẫn duyệt đang ở chỗ khách",
+        "explainer": "Các đường dẫn duyệt của dự án chưa hết hạn và chưa bị thu hồi. Đường dẫn mới được tạo ở trang công việc.",
+        "task": "Công việc",
+        "version": "Phiên bản",
+        "none": "Không có đường dẫn nào đang mở."
+      },
       "meta": "{name} tạo ngày {created} · hết hạn {expires}",
       "views": "{count} lượt xem, gần nhất {last}",
       "noViews": "khách chưa mở",
@@ -8133,6 +8171,74 @@
       "employerCost": "Chi phí công ty",
       "unverified": "{count} tham số pháp lý chưa được kế toán trưởng xác nhận."
     },
+    "retro": {
+      "title": "Truy lĩnh, truy thu",
+      "pageTitle": "Truy lĩnh, truy thu đang chờ",
+      "pageDescription": "Chênh lệch của những tháng đã trả lương — quyết định lương duyệt muộn, điều chỉnh bảng công sau khi khóa, khoản C&B nhập tay — đang chờ kỳ lương kế tiếp.",
+      "hint": "Các khoản chưa được kỳ lương nào tính vào. Kỳ lương định kỳ kế tiếp sẽ đưa từng khoản vào thành một dòng riêng.",
+      "hintRun": "Chênh lệch của các tháng trước mà kỳ lương này đã tính, hoặc sẽ tính ở lần tính kế tiếp.",
+      "empty": "Không có khoản nào đang chờ.",
+      "emptyRun": "Kỳ lương này không có khoản truy lĩnh, truy thu nào.",
+      "all": "Tất cả khoản đang chờ",
+      "person": "Nhân viên",
+      "sourceMonth": "Tháng phát sinh",
+      "source": "Nguồn",
+      "reason": "Lý do",
+      "amount": "Số tiền (+ truy lĩnh, − truy thu)",
+      "status": "Trạng thái",
+      "openDecision": "Xem quyết định",
+      "insuranceBaseChanged": "Cần khai điều chỉnh BHXH",
+      "bySystem": "Hệ thống tự tính",
+      "kinds": {
+        "salary_change": "Quyết định lương duyệt muộn",
+        "timesheet_adjustment": "Điều chỉnh bảng công",
+        "manual": "Nhập tay"
+      },
+      "statuses": {
+        "open": "Chờ tính",
+        "taken": "Đã vào kỳ lương",
+        "takenHere": "Đã tính trong kỳ này",
+        "outsideRun": "Người này không có trong kỳ lương"
+      },
+      "add": {
+        "label": "Nhập khoản truy lĩnh, truy thu",
+        "hint": "Số dương là khoản công ty trả thêm cho nhân viên, số âm là khoản thu hồi. Lý do sẽ hiện bên cạnh dòng tương ứng trên phiếu lương.",
+        "save": "Lưu"
+      },
+      "cancel": {
+        "label": "Hủy",
+        "title": "Hủy khoản của {name}",
+        "hint": "Khoản đã hủy không bị xóa: lý do được lưu lại cùng khoản đó. Nếu một kỳ lương đã tính khoản này, kỳ lương đó quay về bản nháp để tính lại.",
+        "reason": "Lý do hủy",
+        "confirm": "Hủy khoản này"
+      },
+      "derive": {
+        "label": "Rà soát chênh lệch",
+        "done": "Đã rà soát."
+      },
+      "unpriced": {
+        "hint": "Hệ thống không tự quy các điều chỉnh bảng công dưới đây ra tiền được. Hãy tính và nhập số tiền; khoản đó sẽ vào kỳ lương kế tiếp.",
+        "enter": "Nhập khoản này"
+      },
+      "skips": {
+        "month_not_run": "Tháng này chưa từng tính lương trên hệ thống",
+        "engine_changed": "Quy tắc tính đã thay đổi từ khi trả lương tháng này",
+        "recalculation_failed": "Không tính lại được"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với khoản này.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "invalid": "Thông tin nhập chưa hợp lệ.",
+        "retro_amount_invalid": "Số tiền phải khác 0.",
+        "retro_reason_required": "Cần nêu lý do.",
+        "retro_item_exists": "Khoản chênh lệch này đã được ghi nhận.",
+        "retro_item_not_found": "Không tìm thấy khoản này.",
+        "retro_item_not_open": "Khoản này đã nằm trong một kỳ lương đã trình, không hủy được nữa.",
+        "retro_month_in_future": "Tháng phát sinh không được sau tháng hiện tại.",
+        "retro_adjustment_not_waiting": "Điều chỉnh bảng công này không còn chờ nhập tay."
+      }
+    },
     "runs": {
       "title": "Kỳ lương",
       "description": "Bảng lương từng tháng: tính, trình, ký duyệt, chi và khóa sổ.",
@@ -8158,6 +8264,39 @@
       "progress": "Đang tính: {done}/{total} người.",
       "calcError": "Không tính được: {error}",
       "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "bySystem": "Hệ thống",
+      "reopened": "Số liệu đầu vào thay đổi, cần tính lại",
+      "stale": {
+        "title": "Số liệu đã cũ — hãy tính lại trước khi trình.",
+        "reasons": {
+          "inputs_changed": "Các khoản nhập tay hoặc truy lĩnh, truy thu đã thay đổi sau lần tính gần nhất.",
+          "retro_waiting": "Có khoản truy lĩnh, truy thu chưa được tính vào.",
+          "timesheet_changed": "Bảng công của tháng đã thay đổi sau lần tính gần nhất.",
+          "salary_changed": "Có quyết định lương mới áp dụng cho tháng này."
+        }
+      },
+      "readiness": {
+        "title": "Vướng mắc và cảnh báo",
+        "blocked": "Kỳ lương chưa thể trình khi còn vướng mắc.",
+        "clean": "Không có gì cần xử lý.",
+        "blocker": "Vướng mắc",
+        "warning": "Cảnh báo",
+        "kinds": {
+          "no_pay_profile": "Chưa có hồ sơ trả lương — kỳ lương không tính được",
+          "not_in_run": "Có trong bảng công đã khóa nhưng không có trong kỳ lương",
+          "input_outside_run": "Có khoản nhập tay nhưng người này không có trong kỳ lương",
+          "figure_not_paid": "Có khoản đã nhập nhưng không được tính vào kết quả",
+          "no_salary_structure": "Chưa có cơ cấu lương",
+          "negative_net": "Thực nhận âm",
+          "missing_bank_account": "Thiếu tài khoản ngân hàng — cần bổ sung trước khi chi",
+          "missing_tax_code": "Thiếu mã số thuế — cần bổ sung trước khi kê khai"
+        }
+      },
+      "lines": {
+        "open": "Chi tiết",
+        "title": "Bảng tính lương tháng {month}",
+        "provisional": "Số liệu đang tính, chưa được ký duyệt: có thể còn thay đổi."
+      },
       "kinds": {
         "regular": "Định kỳ",
         "off_cycle": "Ngoài kỳ"
@@ -8217,7 +8356,10 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Lương đóng BH dưới mức tối thiểu",
-        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai"
+        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai",
+        "input_code_unknown": "Có khoản nhập tay không thuộc danh mục khoản nhập — chưa được tính",
+        "input_negative": "Có khoản nhập tay mang số âm — chưa được tính",
+        "retro_component_missing": "Thiếu khoản mục truy lĩnh, truy thu trong danh mục — chưa được tính"
       },
       "new": {
         "link": "Kỳ lương mới",
@@ -8255,7 +8397,12 @@
         "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
         "amount_invalid": "Số tiền không hợp lệ.",
         "run_has_no_lines": "Chưa có khoản nào để chi.",
-        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất."
+        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
+        "run_stale": "Số liệu đã thay đổi sau lần tính gần nhất. Hãy tính lại rồi trình.",
+        "run_has_blockers": "Còn vướng mắc chưa xử lý, chưa thể trình kỳ lương.",
+        "run_input_code_unknown": "Khoản mục này không phải là khoản nhập tay trong danh mục của pháp nhân.",
+        "run_input_negative_earning": "Khoản thu nhập không nhập số âm. Để thu hồi, hãy nhập một khoản truy thu hoặc dùng khoản mục khấu trừ.",
+        "run_input_negative_deduction": "Khoản khấu trừ nhập bằng số dương — hệ thống tự trừ vào thực nhận."
       },
       "payments": "Chi lương",
       "stages": {
@@ -8318,7 +8465,10 @@
         "no_salary_structure": "Chưa có cơ cấu lương",
         "zero_paid_days": "Không có ngày công hưởng lương",
         "insurance_base_below_minimum": "Mức đóng dưới lương tối thiểu vùng",
-        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo"
+        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo",
+        "input_code_unknown": "Có khoản nhập tay chưa được tính",
+        "input_negative": "Có khoản nhập tay chưa được tính",
+        "retro_component_missing": "Có khoản truy lĩnh, truy thu chưa được tính"
       },
       "insurance": {
         "title": "Bảo hiểm bắt buộc",
@@ -8414,10 +8564,47 @@
       "settledNo": "Chưa chi xong",
       "people": "{count} người",
       "unroutableTitle": "Những người chưa thể chuyển khoản",
+      "unroutableHint": "Sửa tài khoản rồi lập lại tệp, hoặc chi riêng cho người đó và ghi nhận “chi cách khác” ở bảng bên dưới.",
+      "owedNothing": "{count} người không phải chi (thực nhận bằng 0 hoặc âm)",
+      "routing": {
+        "title": "Ai được chi qua đâu",
+        "rule": "Hồ sơ giản lược nhận tiền mặt. Hồ sơ đầy đủ được xếp theo ngân hàng của chính tài khoản nhận lương: tài khoản tại {ownBanks} vào tệp của ngân hàng đó; tài khoản ở ngân hàng khác đi qua tệp {interbank} dưới dạng chuyển liên ngân hàng, vì mẫu tệp này có cột ngân hàng thụ hưởng (giả định chưa đối chiếu với ngân hàng). Ai không tệp nào chở được thì chi riêng rồi ghi nhận “chi cách khác”. Người có thực nhận bằng 0 hoặc âm không nằm trong tệp nào và không chặn việc ghi nhận “đã chi”.",
+        "person": "Nhân viên",
+        "net": "Thực nhận",
+        "route": "Chi qua",
+        "state": "Tình trạng",
+        "action": "Thao tác",
+        "empty": "Bảng lương chưa có ai.",
+        "cash": "Tiền mặt (bảng chi)",
+        "ownBank": "Tệp {bank} — cùng ngân hàng",
+        "interbank": "Tệp {bank} — liên ngân hàng tới {other}",
+        "noInterbank": "không có",
+        "states": {
+          "in_file": "Đã vào tệp",
+          "awaiting_file": "Chưa vào tệp",
+          "cannot_transfer": "Chưa tệp nào chở được",
+          "paid_other": "Đã chi cách khác",
+          "cash_disbursed": "Đã chi tiền mặt",
+          "cash_pending": "Chưa chi tiền mặt",
+          "nothing_owed": "Thực nhận bằng 0 — không phải chi",
+          "negative_net": "Thực nhận âm — không chi; thu hồi vào tháng sau"
+        }
+      },
+      "other": {
+        "mark": "Chi cách khác",
+        "title": "Ghi nhận đã chi cách khác — {name}",
+        "hint": "Dùng khi đã trả lương cho người này ngoài tệp chuyển khoản lô (chuyển khoản lẻ, ủy nhiệm chi…). Người này được tính là đã chi và sẽ không nằm trong các tệp lập sau đó.",
+        "paidOn": "Ngày chi",
+        "reference": "Số tham chiếu / chứng từ",
+        "reason": "Lý do",
+        "save": "Ghi nhận",
+        "remove": "Bỏ ghi nhận"
+      },
       "blockers": {
-        "bank_file_missing": "Chưa lập tệp chuyển khoản nào.",
-        "bank_people_uncovered": "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp đã lập.",
-        "cash_not_disbursed": "Còn người trong bảng tiền mặt chưa ghi nhận đã chi."
+        "bank_file_missing": "Còn ngân hàng chưa lập tệp chuyển khoản.",
+        "bank_people_uncovered": "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp mới nhất của ngân hàng đó và chưa được ghi nhận chi cách khác.",
+        "cash_not_disbursed": "Còn người trong bảng tiền mặt chưa ghi nhận đã chi.",
+        "cash_difference_unexplained": "Còn dòng tiền mặt chi khác số thực nhận mà chưa có ghi chú lý do."
       },
       "bank": {
         "title": "Tệp chuyển khoản",
@@ -8427,6 +8614,15 @@
         "valueDate": "Ngày chi",
         "accountNumber": "Tài khoản công ty",
         "accountName": "Tên tài khoản công ty",
+        "payingAccount": "Tài khoản chi",
+        "noPayingAccount": "Pháp nhân chưa khai báo tài khoản chi lương tại {bank}, nên lần này phải nhập tay.",
+        "configurePayingAccount": "Khai báo tại trang pháp nhân",
+        "typedAccount": "nhập tay",
+        "interbankNote": "{count} người trong tệp {bank} có tài khoản ở ngân hàng khác: các dòng này là chuyển liên ngân hàng.",
+        "fileState": "Hiệu lực",
+        "current": "Đang tính",
+        "superseded": "Đã thay thế",
+        "supersededHint": "Mỗi ngân hàng chỉ tính tệp lập sau cùng. Tệp cũ hơn đã bị thay thế: giữ lại để đối chiếu, không còn được tính.",
         "generate": "Lập tệp",
         "saveAgain": "Tải lại",
         "generated": "Đã lập {file} ({rows} dòng).",
@@ -8438,6 +8634,7 @@
           "no_holder": "chưa có tên chủ tài khoản",
           "zero_amount": "thực nhận bằng 0",
           "negative_amount": "thực nhận âm",
+          "no_bank_name": "tài khoản chưa ghi tên ngân hàng",
           "no_format_for_bank": "hệ thống chưa hỗ trợ mẫu tệp của ngân hàng này"
         },
         "generatedFiles": "Các tệp đã lập",
@@ -8464,6 +8661,20 @@
         "confirmed": "Đã xác nhận",
         "awaitingReceipt": "Chờ xác nhận",
         "receiptNote": "Xác nhận của nhân viên là bằng chứng bổ sung; bảng lương vẫn có thể chuyển sang “đã chi” khi kế toán đã ghi nhận chi đủ.",
+        "disbursedAmount": "Thực chi",
+        "note": "Ghi chú",
+        "notePlaceholder": "Ghi chú nếu chi khác số thực nhận",
+        "correct": "Sửa",
+        "difference": "chênh {amount}",
+        "reconciliation": "Đối chiếu",
+        "reconciled": "Đã chi đủ theo số thực nhận.",
+        "notYetHandedOver": "Còn {amount} chưa chi so với số thực nhận.",
+        "scanTitle": "Bảng chi đã ký (bản quét)",
+        "scanHint": "Đính kèm bản quét bảng chi tiền mặt có chữ ký người nhận. Tệp được lưu ở mức bảo mật lương; mỗi lần mở đều được ghi nhật ký.",
+        "scanEmpty": "Chưa đính kèm bản quét nào.",
+        "scanAttach": "Đính kèm bản quét (PDF hoặc ảnh)",
+        "scanUploading": "Đang tải lên…",
+        "scanRemove": "Gỡ",
         "sheetTitle": "BẢNG THANH TOÁN LƯƠNG BẰNG TIỀN MẶT",
         "sheetMonth": "Kỳ lương",
         "taxCode": "Mã số thuế",
@@ -8489,7 +8700,29 @@
         "cash_payment_not_found": "Không tìm thấy dòng chi tiền mặt.",
         "run_not_settled": "Chưa chi xong: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
-        "failed": "Không thực hiện được. Vui lòng thử lại."
+        "failed": "Không thực hiện được. Vui lòng thử lại.",
+        "generic": "Không thực hiện được. Vui lòng thử lại.",
+        "invalid": "Vui lòng kiểm tra lại thông tin.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "paying_account_required": "Chưa có tài khoản chi của công ty. Hãy chọn hoặc nhập tài khoản chi.",
+        "paying_account_not_found": "Tài khoản chi đã chọn không còn dùng được. Vui lòng chọn lại.",
+        "reference_required": "Cần nhập số tham chiếu.",
+        "reason_required": "Cần nêu lý do.",
+        "run_already_paid": "Bảng lương đã ghi nhận “đã chi”, không sửa cách chi được nữa.",
+        "run_locked": "Bảng lương đã khóa sổ.",
+        "other_payment_not_applicable": "Chỉ ghi nhận “chi cách khác” cho người hưởng lương qua ngân hàng và có thực nhận lớn hơn 0.",
+        "other_payment_not_found": "Không tìm thấy ghi nhận chi cách khác.",
+        "cash_difference_needs_note": "Số thực chi khác số thực nhận — cần ghi chú lý do.",
+        "amount_invalid": "Số tiền không hợp lệ.",
+        "file_not_found": "Không tìm thấy tệp.",
+        "file_empty": "Hãy chọn một tệp.",
+        "file_name_invalid": "Tên tệp không hợp lệ.",
+        "file_too_large": "Tệp lớn hơn 50 MB.",
+        "file_type_not_allowed": "Loại tệp này không được phép. Hãy dùng PDF, JPG, PNG hoặc WEBP.",
+        "file_not_uploaded": "Tệp chưa được tải lên. Hãy thử lại.",
+        "file_content_mismatch": "Nội dung tệp không khớp với loại tệp; tệp đã bị xóa.",
+        "file_storage_limit": "Kho lưu trữ từ chối tệp vì quá lớn.",
+        "file_upload_failed": "Tải lên thất bại. Kiểm tra kết nối và thử lại."
       }
     },
     "reports": {
@@ -8502,6 +8735,7 @@
       "total": "Tổng cộng",
       "export": "Xuất CSV",
       "noRuns": "Chưa có bảng lương nào trong phạm vi của bạn.",
+      "signedOnly": "Bảng tổng hợp bảo hiểm, thuế TNCN và công đoàn chỉ lấy số từ bảng lương đã được CEO ký duyệt. Kỳ này chưa có bảng lương nào được ký, nên ba bảng đó chưa có số.",
       "register": {
         "title": "Bảng lương chi tiết",
         "department": "Phòng ban",
@@ -8542,7 +8776,7 @@
     },
     "statutory": {
       "title": "Dữ liệu khai báo",
-      "description": "Số liệu để lập tờ khai bảo hiểm và thuế TNCN: tăng/giảm lao động (D02-LT), tờ khai tháng/quý (05/KK-TNCN), quyết toán năm (05/QTT-TNCN) và danh sách người phụ thuộc. Lấy từ các bảng lương đã tính, không tính lại.",
+      "description": "Số liệu để lập tờ khai bảo hiểm và thuế TNCN: tăng/giảm lao động (D02-LT), tờ khai tháng/quý (05/KK-TNCN), quyết toán năm (05/QTT-TNCN) và danh sách người phụ thuộc. Lấy từ các bảng lương đã được CEO ký duyệt, không tính lại; tháng có cả kỳ lương chính và kỳ ngoài kỳ chỉ tính một lần.",
       "back": "Lương",
       "entity": "Pháp nhân",
       "month": "Tháng",
@@ -8720,6 +8954,30 @@
         "comment": "Ghi chú",
         "reason": "Lý do trả lại"
       },
+      "handoff": {
+        "title": "Chuyển sang bảng lương",
+        "hint": "Mỗi pháp nhân một kỳ lương ngoài kỳ. Bấm lại không tạo thêm kỳ nào: pháp nhân đã có kỳ lương thì giữ nguyên.",
+        "attention": "{count} pháp nhân chưa được chuyển sang bảng lương: kỳ lương ngoài kỳ của pháp nhân đó đã bị hủy, nên khoản thưởng chưa được chi. Hãy chuyển lại cho pháp nhân đó.",
+        "entity": "Pháp nhân",
+        "people": "Số người",
+        "state": "Tình trạng",
+        "payrollRun": "Kỳ lương ngoài kỳ",
+        "handedOver": "Đã chuyển",
+        "notHandedOver": "Chưa chuyển",
+        "cancelled": "kỳ lương trước đã bị hủy",
+        "again": "Chuyển lại",
+        "lineCancelled": "Kỳ lương ngoài kỳ chi khoản này đã bị hủy; khoản thưởng chưa được chuyển lại sang bảng lương."
+      },
+      "schemeProblems": {
+        "title": "Các trường cần sửa:",
+        "whole": "(toàn bộ cấu hình)",
+        "no_bottom_service_band": "Cần một bậc thâm niên bắt đầu từ 0 tháng (minMonths = 0).",
+        "duplicate_service_band": "Hai bậc thâm niên trùng số tháng tối thiểu (minMonths).",
+        "no_bottom_performance_band": "Cần một bậc hệ số cá nhân bắt đầu từ 0 điểm (minScoreBp = 0).",
+        "duplicate_performance_band": "Hai bậc hệ số cá nhân trùng khóa (key).",
+        "no_bottom_okr_band": "Cần một bậc hệ số tập thể bắt đầu từ 0 (minProgressBp = 0).",
+        "unrecognized_keys": "Có trường không thuộc cấu hình."
+      },
       "lines": {
         "title": "Từng người",
         "person": "Nhân sự",
@@ -8847,6 +9105,8 @@
         "bonus_run_empty": "Đợt thưởng chưa có ai. Bấm “Tính lại” trước.",
         "bonus_run_not_approved": "Đợt thưởng chưa được CEO duyệt.",
         "bonus_run_nothing_to_pay": "Không có khoản nào để chi.",
+        "bonus_entity_not_in_run": "Pháp nhân này không thuộc đợt thưởng.",
+        "invalid": "Thông tin chưa đúng. Vui lòng kiểm tra lại.",
         "bonus_step_not_allowed": "Không thực hiện được bước này ở trạng thái hiện tại.",
         "bonus_line_not_found": "Không tìm thấy dòng thưởng.",
         "bonus_scheme_missing": "Chưa có quy chế thưởng cho pháp nhân và năm này.",
@@ -11130,6 +11390,7 @@
       "report_date_invalid": "Chỉ nộp được báo cáo của hôm nay hoặc bảy ngày gần đây.",
       "report_not_found": "Không tìm thấy báo cáo.",
       "comment_empty": "Hãy viết nhận xét hoặc chọn một biểu tượng.",
+      "project_closed": "Dự án của việc này đã đóng: không ghi thêm giờ được cho đến khi dự án được mở lại.",
       "time_week_locked": "Tuần này đã nộp hoặc đã duyệt bảng giờ, không sửa được nữa.",
       "time_task_or_category": "Chọn một việc hoặc một loại thời gian khác — không chọn cả hai.",
       "time_entry_not_found": "Không tìm thấy dòng giờ này.",
@@ -11290,6 +11551,9 @@
         }
       },
       "contactsHint": "Mỗi dòng một người: Tên — vai trò — số điện thoại hoặc email",
+      "editContacts": "Sửa liên hệ và đường dẫn",
+      "approvedLocked": "Brief đã duyệt: mục tiêu, phạm vi và tiêu chí thành công chỉ thay đổi qua yêu cầu thay đổi hoặc một lần duyệt mới. Liên hệ phía khách và đường dẫn vẫn cập nhật được.",
+      "saveContacts": "Lưu liên hệ và đường dẫn",
       "save": "Lưu brief",
       "submit": "Gửi duyệt khởi động",
       "resubmit": "Gửi duyệt lại",
@@ -11363,6 +11627,7 @@
       "endDate": "Kết thúc",
       "dueSlip": "Trễ so với baseline (ngày)",
       "accepted": "Sản phẩm đã nghiệm thu",
+      "awaitingClient": "Sản phẩm xong nội bộ, chờ khách duyệt",
       "promised": "Sản phẩm đã cam kết",
       "hoursUsed": "Giờ đã ghi",
       "hoursBurn": "Giờ dự kiến (đã ghi + còn lại)",
@@ -11455,7 +11720,7 @@
       "edit": "Sửa mốc",
       "linkTasks": "Gắn công việc vào kế hoạch",
       "linkHint": "{count, plural, =0 {Mọi công việc đều đã được gắn.} other {# công việc chưa gắn vào mốc, sản phẩm hay giai đoạn nào.}}",
-      "nothingToLink": "Dự án chưa có công việc đang mở.",
+      "nothingToLink": "Dự án chưa có công việc nào để gắn.",
       "pickTask": "Chọn công việc",
       "link": "Gắn",
       "unlink": "Gỡ",
@@ -11464,6 +11729,17 @@
       "remove": "Xóa",
       "removeConfirm": "Xóa mục này? Công việc đã gắn vẫn giữ nguyên."
     },
+    "scope": {
+      "budgetLocked": "Sau khi duyệt khởi động, tổng ngân sách giờ chỉ thay đổi qua yêu cầu thay đổi. Bạn vẫn có thể chia lại tổng đó giữa các vai trò.",
+      "lineLocked": "Sau khi duyệt khởi động, số lượng, định dạng và kênh là phạm vi đã thống nhất với khách: chỉ thay đổi qua yêu cầu thay đổi. Tên dòng, mốc và hạn vẫn sửa được ở đây.",
+      "registerLocked": "Sau khi duyệt khởi động, thêm hoặc bỏ sản phẩm cần một yêu cầu thay đổi.",
+      "feeLocked": "Sau khi duyệt khởi động, phí chỉ thay đổi qua yêu cầu thay đổi.",
+      "raiseChange": "Tạo yêu cầu thay đổi"
+    },
+    "gates": {
+      "clientHint": "Dự án làm cho khách chuyển sang Đang chạy khi <brief>brief được duyệt khởi động</brief>, và sang Đã xong khi <close>đóng dự án</close>.",
+      "closedHint": "Dự án đã đóng. Muốn đổi trạng thái, hãy <close>mở lại dự án</close>."
+    },
     "register": {
       "title": "Danh mục sản phẩm bàn giao",
       "progress": "Đã nghiệm thu {accepted}/{promised} ({percent}%)",
@@ -11471,12 +11747,14 @@
       "status": {
         "promised": "Đã cam kết",
         "in_production": "Đang sản xuất",
+        "ready_for_client": "Xong nội bộ",
         "client_review": "Chờ khách duyệt",
         "accepted": "Đã nghiệm thu",
         "delivered": "Đã bàn giao",
         "published": "Đã đăng",
         "cancelled": "Đã hủy"
       },
+      "awaitingClient": "{count} đã xong nội bộ, chờ khách duyệt",
       "lineProgress": "nghiệm thu {accepted}/{promised} · {linked} việc đã gắn",
       "columns": {
         "progress": "Nghiệm thu",
@@ -11555,7 +11833,7 @@
       "state_not_found": "Nhóm chưa có trạng thái cho việc mới.",
       "task_not_found": "Công việc không thuộc dự án này.",
       "account_manager_is_lead": "Người phụ trách dự án không thể đồng thời là account phụ trách.",
-      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được.",
+      "brief_locked": "Brief đang chờ duyệt hoặc đã được duyệt nên không sửa được. Brief đã duyệt chỉ sửa được liên hệ và đường dẫn; phần còn lại thay đổi qua yêu cầu thay đổi.",
       "brief_not_submittable": "Brief đang chờ duyệt hoặc đã được duyệt.",
       "brief_incomplete": "Brief còn thiếu thông tin bắt buộc.",
       "plan_dates_invalid": "Ngày kết thúc phải sau ngày bắt đầu.",
@@ -11588,16 +11866,30 @@
       "change_evidence_required": "Thay đổi do khách hàng yêu cầu cần có bằng chứng (tệp hoặc đường dẫn).",
       "change_empty": "Yêu cầu chưa thay đổi gì: thêm/bỏ sản phẩm, giờ, phí hoặc hạn.",
       "acceptance_not_found": "Không tìm thấy biên bản nghiệm thu.",
-      "acceptance_locked": "Chỉ cập nhật số liệu được khi biên bản còn là nháp.",
+      "acceptance_locked": "Biên bản đã ký hoặc đã huỷ thì không cập nhật số liệu được nữa.",
       "acceptance_wrong_status": "Biên bản không ở trạng thái cho phép thao tác này.",
       "acceptance_milestone_internal": "Chỉ nghiệm thu các mốc làm việc với khách hàng.",
-      "acceptance_empty": "Phạm vi này chưa có sản phẩm nào để nghiệm thu.",
+      "acceptance_empty": "Phạm vi này chưa có sản phẩm cam kết nào. Hãy ghi nội dung nghiệm thu bằng lời để tạo biên bản.",
+      "acceptance_changed": "Biên bản vừa được người khác thay đổi. Tải lại trang rồi thử lại.",
+      "acceptance_invoiced": "Kế toán đã xuất hoá đơn theo biên bản này nên không sửa được nữa.",
+      "acceptance_correction_empty": "Chưa có gì thay đổi so với thông tin đã ghi.",
+      "billing_amount_unchanged": "Số tiền mới giống số tiền hiện tại.",
+      "milestone_has_acceptance": "Mốc này đang có biên bản nghiệm thu. Huỷ biên bản trước khi xoá mốc; biên bản đã ký thì mốc phải được giữ lại.",
+      "milestone_has_billing": "Mốc này đã có khoản chuyển kế toán. Chỉ xoá được mốc sau khi kế toán xác nhận không thu khoản đó.",
+      "retainer_not_found": "Dự án chưa có điều khoản retainer.",
+      "retainer_paused": "Retainer đang tạm dừng hoặc dự án đã đóng nên không tạo thêm tháng.",
+      "retainer_month_exists": "Tháng này đã có kỳ retainer.",
+      "retainer_month_not_missed": "Chỉ tạo bổ sung được các tháng đã qua nằm trong thời hạn của retainer.",
       "acceptance_signed_in_future": "Ngày ký không được sau hôm nay.",
       "billing_not_found": "Không tìm thấy khoản cần xuất hoá đơn.",
       "billing_decided": "Khoản này đã được xử lý.",
       "billing_conflict": "Khoản này đã tồn tại.",
       "report_not_found": "Không tìm thấy báo cáo.",
-      "project_closed": "Dự án đã đóng.",
+      "project_closed": "Dự án đã đóng: kế hoạch chỉ xem được. Người phụ trách có thể mở lại dự án ở tab Đóng dự án.",
+      "scope_locked": "Sau khi duyệt khởi động, phạm vi, ngân sách giờ và phí chỉ thay đổi qua yêu cầu thay đổi. Hãy tạo yêu cầu thay đổi ở tab Thay đổi.",
+      "brief_not_approved": "Chỉ brief đã duyệt mới sửa riêng phần liên hệ và đường dẫn.",
+      "project_not_closed": "Dự án này chưa đóng.",
+      "reopen_reason_required": "Hãy ghi lý do mở lại dự án.",
       "close_unmet": "Còn mục chưa đạt: hãy ghi lý do nếu vẫn muốn đóng.",
       "retro_in_future": "Ngày họp không được sau hôm nay.",
       "retro_missing": "Hãy lưu buổi rút kinh nghiệm trước.",
@@ -11757,6 +12049,13 @@
     },
     "uploading": "Đang tải lên…",
     "uploaded": "Đã tải lên: {name}",
+    "taskLine": {
+      "title": "Sản phẩm cam kết",
+      "label": "Việc này thực hiện sản phẩm cam kết",
+      "none": "Không gắn với sản phẩm nào",
+      "save": "Lưu",
+      "empty": "Dự án chưa có sản phẩm cam kết nào đang mở."
+    },
     "retainer": {
       "terms": "Điều khoản retainer",
       "termsLine": "Từ {start} đến {end} · {rollover}",
@@ -11807,6 +12106,22 @@
         "open": "Đang mở",
         "closed": "Đã khoá"
       },
+      "delivered": "Đã giao",
+      "accepted": "Đã duyệt",
+      "linkTask": "Gắn việc vào sản phẩm cam kết",
+      "linkHint": "Chọn một việc của dự án (kể cả việc đã xong) và sản phẩm cam kết của tháng mà việc đó thực hiện. Mỗi việc là một đơn vị của sản phẩm.",
+      "linkTaskField": "Công việc",
+      "linkLineField": "Sản phẩm cam kết",
+      "pickTask": "Chọn công việc",
+      "pickLine": "Chọn sản phẩm cam kết",
+      "linkSubmit": "Gắn việc",
+      "nothingToLink": "Không còn việc nào của dự án chưa gắn vào sản phẩm cam kết.",
+      "missed": {
+        "title": "Tạo tháng còn thiếu",
+        "hint": "Điều khoản retainer được nhập sau khi hợp đồng đã chạy nên các tháng trước đó chưa có kỳ. Tạo kỳ để gắn việc, nghiệm thu và tính phí cho tháng ấy. Phí của tháng chỉ chuyển kế toán sau khi khách ký biên bản nghiệm thu.",
+        "month": "Tháng",
+        "submit": "Tạo kỳ cho tháng này"
+      },
       "billingDescription": "Phí retainer tháng {month}",
       "monthsLocked": "Chỉ người có quyền xem phí (pjm:commercial) mới đổi được tháng bắt đầu, tháng kết thúc và trạng thái chạy của retainer."
     },
@@ -11817,6 +12132,9 @@
       "dueDate": "Hạn dự án",
       "original": "Ban đầu",
       "current": "Hiện tại",
+      "unexplained": "Sửa trực tiếp, không qua yêu cầu thay đổi",
+      "unexplainedNote": "Có số liệu đã bị sửa trực tiếp nên ban đầu + yêu cầu thay đổi không bằng hiện tại. Phần chênh lệch được ghi thành dòng riêng ở trên.",
+      "retainerHint": "Phạm vi hằng tháng của retainer, áp dụng từ tháng được tạo tiếp theo. Để nguyên nếu không thay đổi.",
       "list": "Yêu cầu thay đổi",
       "empty": "Chưa có yêu cầu thay đổi nào.",
       "new": "Yêu cầu thay đổi mới",
@@ -11846,6 +12164,9 @@
         "withdrawn": "Đã rút"
       },
       "impact": {
+        "retainerLines": "Định mức hằng tháng mới:",
+        "retainerHours": "Giờ mỗi tháng: {hours}",
+        "retainerFee": "Phí mỗi tháng: {fee}",
         "hours": "Giờ: {hours}",
         "fee": "Phí: {fee}",
         "dueDate": "Hạn mới: {date}"
@@ -11859,6 +12180,9 @@
         "hoursDelta": "Thay đổi giờ (+/−)",
         "feeDelta": "Thay đổi phí (VND, +/−)",
         "dueDateTo": "Hạn mới của dự án",
+        "retainerLines": "Định mức hằng tháng của retainer",
+        "retainerHours": "Giờ mỗi tháng",
+        "retainerFee": "Phí mỗi tháng (VND)",
         "evidenceFile": "Tệp bằng chứng",
         "evidenceUrl": "Hoặc đường dẫn bằng chứng"
       }
@@ -11908,6 +12232,20 @@
       "waitingMilestone": "Mốc: {name}",
       "waitingMonth": "Tháng retainer: {name}",
       "waitingLink": "Mở trang nghiệm thu",
+      "described": "Nghiệm thu theo nội dung mô tả nêu trên.",
+      "description": "Nội dung nghiệm thu",
+      "descriptionHint": "Bắt buộc khi phạm vi chưa có sản phẩm cam kết nào: ghi rõ khách hàng nghiệm thu những gì. Khi đã có sản phẩm cam kết, đây là ghi chú thêm in trên biên bản.",
+      "pdfIssued": "Tải biên bản đã phát hành (PDF)",
+      "refreshSent": "Cập nhật và phát hành lại",
+      "correct": "Sửa thông tin đã ký",
+      "correctHint": "Dùng khi đính nhầm bản scan, ghi sai tên người ký hoặc ngày ký. Thông tin và bản scan cũ được giữ lại trong lịch sử. Không sửa được sau khi kế toán đã xuất hoá đơn.",
+      "replaceScan": "Bản scan thay thế (nếu đính nhầm)",
+      "correctReason": "Lý do chỉnh sửa",
+      "correctSubmit": "Lưu chỉnh sửa",
+      "history": "Lịch sử chỉnh sửa",
+      "historyBefore": "Trước đó: {name} ký ngày {date}.",
+      "earlierScan": "Bản scan trước",
+      "invoicedLocked": "Kế toán đã xuất hoá đơn theo biên bản này nên thông tin đã ký không sửa được nữa.",
       "monthNotBilled": "Chưa chuyển kế toán: đang chờ biên bản nghiệm thu đã ký."
     },
     "billing": {
@@ -11937,6 +12275,21 @@
         "milestone": "Mốc thanh toán",
         "retainer": "Phí retainer tháng",
         "manual": "Nhập tay"
+      },
+      "correctAmount": "Sửa số tiền",
+      "correctHint": "Chỉ sửa được khi khoản này chưa xuất hoá đơn. Để trống nếu chưa thoả thuận số tiền. Số tiền trước và sau cùng lý do được lưu lại.",
+      "newAmount": "Số tiền đúng (VND)",
+      "correctReason": "Lý do sửa",
+      "correctSubmit": "Lưu số tiền",
+      "corrected": "{date} · {name} sửa số tiền: {before} → {after}. Lý do: {reason}",
+      "milestone": {
+        "ready": "Đã chuyển kế toán, chờ xuất hoá đơn",
+        "invoiced": "Đã xuất hoá đơn",
+        "waived": "Kế toán xác nhận không thu",
+        "awaiting_acceptance": "Chưa chuyển kế toán: chờ khách ký biên bản nghiệm thu",
+        "covered_by_project": "Không tạo khoản riêng: biên bản nghiệm thu toàn dự án đã tính phần phí này",
+        "awaiting_done": "Chưa chuyển kế toán: mốc chưa được đánh dấu hoàn thành",
+        "noAmount": "Chưa có số tiền thoả thuận cho mốc này."
       },
       "invoice": "Xuất hoá đơn",
       "waive": "Không thu",
@@ -11996,6 +12349,16 @@
     },
     "close": {
       "closedBadge": "Đã đóng",
+      "reopen": {
+        "title": "Mở lại dự án",
+        "submit": "Mở lại dự án",
+        "reason": "Lý do mở lại",
+        "reasonHint": "Ví dụ: khách yêu cầu thêm một vòng chỉnh sửa sau nghiệm thu…",
+        "warning": "Mở lại sẽ mở khóa kế hoạch và đưa dự án về Đang chạy. Lần đóng trước được giữ lại làm lịch sử. Retainer đã dừng khi đóng không tự chạy lại.",
+        "history": "Những lần đóng đã được mở lại",
+        "closedLine": "Đóng ngày {date}",
+        "reopenedLine": "Mở lại ngày {date}"
+      },
       "checklist": "Danh sách kiểm tra trước khi đóng",
       "met": "Đạt",
       "unmet": "Chưa đạt",
@@ -12238,11 +12601,16 @@
     "forWhom": "gửi {name}",
     "work": "Nội dung cần duyệt",
     "fileHint": "Chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "videoHint": "Bấm phát để xem ngay trên trang. Nếu video không phát được, chạm vào tên tệp để tải về. Tệp mở được cho đến khi đường dẫn này hết hiệu lực.",
+    "unfurl": {
+      "title": "Nội dung gửi anh/chị duyệt",
+      "body": "Mở đường dẫn này trong trình duyệt để xem nội dung."
+    },
     "unavailable": "Chưa mở được tệp. Vui lòng tải lại trang sau giây lát.",
     "messageFrom": "Lời nhắn từ {name}",
     "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
     "expiresOn": "Đường dẫn có hiệu lực đến hết ngày {date}.",
-    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
+    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở, và ghi lượt mở vào nhật ký truy cập. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động và phân biệt các lượt mở trong nhật ký, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
     "decide": {
       "title": "Phản hồi của anh/chị",
       "choice": "Anh/chị chọn",
@@ -12705,6 +13073,8 @@
     "payrollPayment": "Chi trả lương",
     "payrollReports": "Báo cáo lương",
     "payrollRun": "Kỳ lương",
+    "payrollRunPerson": "Bảng tính lương",
+    "payrollRetro": "Truy lĩnh, truy thu",
     "payrollRuns": "Kỳ lương",
     "payslip": "Phiếu lương",
     "payslipQueries": "Thắc mắc phiếu lương",

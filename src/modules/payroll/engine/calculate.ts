@@ -17,7 +17,7 @@ import type { PayLine, PersonPayInput, PersonPayResult, TraceStep } from "./type
  * The engine's version. It changes whenever a rule in this folder changes shape, and is stored
  * with every result: a run calculated under an older engine is never silently compared with a new one.
  */
-export const PAYROLL_ENGINE_VERSION = "1.0.0";
+export const PAYROLL_ENGINE_VERSION = "1.1.0";
 
 export function calculatePerson(input: PersonPayInput): PersonPayResult {
   const trace: TraceStep[] = [];
@@ -47,11 +47,16 @@ export function calculatePerson(input: PersonPayInput): PersonPayResult {
   // Differences from months already paid, each as its own line (FR-PAY-17).
   const retro = calculateRetroLines(input);
   trace.push(...retro.trace);
+  warnings.push(...retro.warnings);
 
   // Formula and typed-in lines see the structure, overtime and retro lines before them.
   const beforeFormulas = [...earnings.lines, ...overtime.lines, ...retro.lines.filter((line) => line.kind === "earning")];
   const formulaLines = calculateFormulaLines(input, beforeFormulas);
-  const inputLines = calculateInputLines(input);
+  // A typed-in figure the engine will not pay is a warning on the result, never nothing.
+  const typed = calculateInputLines(input);
+  const inputLines = typed.lines;
+  trace.push(...typed.trace);
+  warnings.push(...typed.warnings);
   const retroDeductions = retro.lines.filter((line) => line.kind === "deduction");
   const earningLines = [...beforeFormulas, ...formulaLines, ...inputLines].filter((line) => line.kind === "earning");
   const inputDeductions = [...retroDeductions, ...formulaLines, ...inputLines].filter((line) => line.kind === "deduction");

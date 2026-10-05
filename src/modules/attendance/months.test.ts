@@ -27,7 +27,7 @@ import { listAnomalies } from "./anomalies";
 import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
 import { eachDate, isoWeekday } from "./engine/calendar";
-import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, lockPeriod, markAdjustmentsTaken, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
+import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
 import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
 import { saveSchedule } from "./schedules";
@@ -281,6 +281,16 @@ describe("what payroll reads", () => {
     await expect(voidAdjustment(row.id, ids.hr, "Muộn rồi")).rejects.toThrow("adjustment_in_payroll");
     // September's payroll still sees what it took; October's does not see it again.
     expect((await listAdjustmentsForPayroll(ids.media, "2026-09")).map((item) => item.id)).toEqual([row.id]);
+    expect(await listAdjustmentsForPayroll(ids.media, "2026-10")).toEqual([]);
+
+    // Payroll tells which of the corrections it priced were voided since, so their items go too.
+    expect(await listVoidedAdjustmentIds([row.id, voided.id])).toEqual([voided.id]);
+    // A cancelled run hands its receipt back — only its own: another month's release changes nothing.
+    expect(await db().transaction((tx) => releaseAdjustments(tx, [row.id], "2026-10"))).toBe(0);
+    expect(await db().transaction((tx) => releaseAdjustments(tx, [row.id], "2026-09"))).toBe(1);
+    // …and the correction waits for the next payroll again, and may be voided again until then.
+    expect((await listAdjustmentsForPayroll(ids.media, "2026-10")).map((item) => item.id)).toEqual([row.id]);
+    await voidAdjustment(row.id, ids.hr, "Hoá ra không làm thêm");
     expect(await listAdjustmentsForPayroll(ids.media, "2026-10")).toEqual([]);
   });
 });

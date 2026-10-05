@@ -65,6 +65,9 @@ const viewerOf = (personId: string, ties: [string, AccountTie[]][] = []): CrmVie
 
 beforeAll(async () => {
   await migrateTestDb();
+  // Payroll takes a figure only under a code its catalogue holds as a typed-in component — what
+  // `pnpm db:seed` gives every real database. Without it the posting is refused, not skipped.
+  await db().insert(schema.payComponent).values({ code: "COMMISSION", name: "Hoa hồng", kind: "earning", category: "commission", source: "input", validFrom: "2026-01-01", status: "approved" });
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["seller", "am", "lead", "director", "finance", "colleague", "member"] as const) {

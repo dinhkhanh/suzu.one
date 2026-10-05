@@ -136,6 +136,8 @@ export const KINDS = {
   // A month's payslip is out, a question about one was asked or answered, cash is waiting to be
   // confirmed (FR-PAY-32, 39). The month and a link — never a figure.
   "payroll.payslip_published": "payroll",
+  // The run was sent back after the payslip went out: it is taken back and will be released again.
+  "payroll.payslip_withdrawn": "payroll",
   "payroll.payslip_query_raised": "payroll",
   "payroll.payslip_query_answered": "payroll",
   "payroll.cash_receipt_due": "payroll",
@@ -189,6 +191,8 @@ export const KINDS = {
   "projects.milestone_missed": "projects",
   "projects.budget_alert": "projects",
   "projects.quota_alert": "projects",
+  // A retainer month's hours allowance at 80% or 100% (FR-PJM-06): the project, the month, the percent.
+  "projects.retainer_hours_alert": "projects",
   "projects.change_decided": "projects",
   "projects.acceptance_signed": "projects",
   "projects.billing_ready": "projects",

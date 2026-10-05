@@ -28,6 +28,7 @@ import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
+import { stepRun } from "./lifecycle";
 import { costReport, costTrend, insuranceSummary, payrollRegister, pitSummary, reportOptions, seesNamedReports, unionReport } from "./reports";
 import { calculateRun, createRegularRun } from "./runs";
 import { payComponentSeedRows } from "./seed-components";
@@ -96,17 +97,19 @@ beforeAll(async () => {
     await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employmentOf(personId), entityId, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)) });
   }
 
-  // Two months for Media (so the trend has a shape), one for Creative.
-  const lock = async (entityId: string, month: string, people: string[]) => {
+  // Two months for Media (so the trend has a shape), one for Creative. August is signed by the
+  // CEO; Media's July is calculated and no further — a month C&B is still working on.
+  const lock = async (entityId: string, month: string, people: string[], signed: boolean) => {
     const lockedAt = new Date(`${month}-28T03:00:00Z`);
     await db().insert(schema.timesheetPeriod).values({ entityId, month, status: "locked", lockedAt, lockedByPersonId: actor.id });
     await db().insert(schema.timesheetMonth).values(people.map((personId) => ({ personId, entityId, month, status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
     const run = await createRegularRun({ entityId, month }, actor.id);
     await calculateRun(run.id);
+    if (signed) for (const step of ["propose", "approve"] as const) await stepRun(run.id, step, { personId: actor.id });
   };
-  await lock(media.id, "2026-07", [ids.mediaPerson, ids.mediaSimple]);
-  await lock(media.id, "2026-08", [ids.mediaPerson, ids.mediaSimple]);
-  await lock(creative.id, "2026-08", [ids.creativePerson]);
+  await lock(media.id, "2026-07", [ids.mediaPerson, ids.mediaSimple], false);
+  await lock(media.id, "2026-08", [ids.mediaPerson, ids.mediaSimple], true);
+  await lock(creative.id, "2026-08", [ids.creativePerson], true);
 });
 
 describe("the register (FR-PAY-34)", () => {
@@ -214,6 +217,16 @@ describe("the statutory summaries", () => {
       expect(await insuranceSummary(principal, ids.media, "2026-08")).toBeNull();
       expect(await pitSummary(principal, ids.media, "2026-08")).toBeNull();
     }
+  });
+
+  it("leaves a run nobody has signed out of all three, though the register still shows it (PAY-06)", async () => {
+    // July is calculated, not approved: C&B's working papers read it, a filing does not.
+    expect(await payrollRegister(owner(), ids.media, "2026-07")).not.toBeNull();
+    expect(await insuranceSummary(owner(), ids.media, "2026-07")).toBeNull();
+    expect(await pitSummary(owner(), ids.media, "2026-07")).toBeNull();
+    const union = await unionReport(owner(), { entityId: ids.media, month: "2026-07" });
+    expect(union.rows).toEqual([]);
+    expect(union.total.total).toBe(0);
   });
 
   it("reports the union only where the entity has one", async () => {

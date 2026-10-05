@@ -186,6 +186,11 @@ describe("retro items (FR-PAY-17)", () => {
     await db().update(schema.salaryStructure).set({ validTo: "2026-06-30" }).where(and(eq(schema.salaryStructure.personId, ids.huy), eq(schema.salaryStructure.validFrom, "2024-03-01")));
     await addStructure(ids.huy, "2026-07-01", 33_000_000, new Date("2026-08-20T02:00:00Z"));
 
+    // While July can still be sent back and calculated again it is not "paid": a recalculation
+    // would pick the raise up by itself, and a retro item on top would pay it twice.
+    expect((await deriveRetroItems(ids.entity, "2026-08", ids.actor)).created).toHaveLength(0);
+    await db().update(schema.payrollRun).set({ status: "paid" }).where(eq(schema.payrollRun.month, "2026-07"));
+
     const derived = await deriveRetroItems(ids.entity, "2026-08", ids.actor);
     const item = derived.created.find((entry) => entry.personId === ids.huy && entry.sourceMonth === "2026-07");
     expect(item).toBeTruthy();
@@ -219,6 +224,12 @@ describe("retro items (FR-PAY-17)", () => {
     expect(open.get(ids.huy) ?? []).toHaveLength(0);
     const taken = await listRetroItems({ entityIds: [ids.entity], status: "taken" });
     expect(taken[0]).toMatchObject({ payrollMonth: "2026-08", runId: august.id });
+
+    // A recalculation reads what the run itself took: the line is in the second result too.
+    const again = await calculateRun(august.id);
+    expect(again.retroTaken).toBe(1);
+    expect(again.people.find((person) => person.result.personId === ids.huy)!.result.lines.find((line) => line.code === "RETRO_PAY")?.amount).toBe(3_000_000);
+    expect(again.people.find((person) => person.result.personId === ids.huy)!.result.totals.grossEarnings).toBe(36_000_000);
   });
 
   it("gives a cancelled run's items back to the next one", async () => {

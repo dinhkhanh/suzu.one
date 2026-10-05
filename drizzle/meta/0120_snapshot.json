@@ -1,5 +1,5 @@
 {
-  "id": "a85714c4-fb6d-4d64-b4dc-e505ebe6d09e",
+  "id": "90554325-6ec2-40a1-ace7-f98993b6f8c7",
   "prevId": "68f2ce2e-f780-4b84-b2f0-e9268c07cd23",
   "version": "7",
   "dialect": "postgresql",
@@ -585,6 +585,148 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.entity_bank_account": {
+      "name": "entity_bank_account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bank": {
+          "name": "bank",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_number": {
+          "name": "account_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_name": {
+          "name": "account_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch": {
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "entity_bank_account_key": {
+          "name": "entity_bank_account_key",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bank",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "entity_bank_account_default_key": {
+          "name": "entity_bank_account_default_key",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bank",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"entity_bank_account\".\"is_default\" AND \"entity_bank_account\".\"is_active\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "entity_bank_account_entity_id_entity_id_fk": {
+          "name": "entity_bank_account_entity_id_entity_id_fk",
+          "tableFrom": "entity_bank_account",
+          "tableTo": "entity",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
@@ -23822,66 +23964,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.performance_reminder_sent": {
-      "name": "performance_reminder_sent",
-      "schema": "",
-      "columns": {
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject": {
-          "name": "subject",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sent_on": {
-          "name": "sent_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "performance_reminder_sent_person_id_person_id_fk": {
-          "name": "performance_reminder_sent_person_id_person_id_fk",
-          "tableFrom": "performance_reminder_sent",
-          "tableTo": "person",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "performance_reminder_sent_person_id_kind_subject_pk": {
-          "name": "performance_reminder_sent_person_id_kind_subject_pk",
-          "columns": [
-            "person_id",
-            "kind",
-            "subject"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.performance_result": {
       "name": "performance_result",
       "schema": "",
@@ -24616,20 +24698,6 @@
           "notNull": true,
           "default": true
         },
-        "sign_off_required": {
-          "name": "sign_off_required",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "is_rolling": {
-          "name": "is_rolling",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "launched_at": {
           "name": "launched_at",
           "type": "timestamp with time zone",
@@ -24846,24 +24914,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "returned_at": {
-          "name": "returned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "returned_by_person_id": {
-          "name": "returned_by_person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "return_reason": {
-          "name": "return_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -24963,19 +25013,6 @@
           "tableTo": "person",
           "columnsFrom": [
             "author_person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "review_form_returned_by_person_id_person_id_fk": {
-          "name": "review_form_returned_by_person_id_person_id_fk",
-          "tableFrom": "review_form",
-          "tableTo": "person",
-          "columnsFrom": [
-            "returned_by_person_id"
           ],
           "columnsTo": [
             "id"
@@ -25331,60 +25368,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "self_due_on": {
-          "name": "self_due_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "manager_due_on": {
-          "name": "manager_due_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sign_off_on": {
-          "name": "sign_off_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sign_off_note": {
-          "name": "sign_off_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sign_off_by_person_id": {
-          "name": "sign_off_by_person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sign_off_recorded_at": {
-          "name": "sign_off_recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removed_at": {
-          "name": "removed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removed_by_person_id": {
-          "name": "removed_by_person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removal_reason": {
-          "name": "removal_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -25517,32 +25500,6 @@
           "tableTo": "person",
           "columnsFrom": [
             "released_by_person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "review_participant_sign_off_by_person_id_person_id_fk": {
-          "name": "review_participant_sign_off_by_person_id_person_id_fk",
-          "tableFrom": "review_participant",
-          "tableTo": "person",
-          "columnsFrom": [
-            "sign_off_by_person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "review_participant_removed_by_person_id_person_id_fk": {
-          "name": "review_participant_removed_by_person_id_person_id_fk",
-          "tableFrom": "review_participant",
-          "tableTo": "person",
-          "columnsFrom": [
-            "removed_by_person_id"
           ],
           "columnsTo": [
             "id"
@@ -25787,19 +25744,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "kinds": {
-          "name": "kinds",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "seed_key": {
-          "name": "seed_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "is_active": {
           "name": "is_active",
           "type": "boolean",
@@ -25845,15 +25789,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "review_template_seed_key_unique": {
-          "name": "review_template_seed_key_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "seed_key"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
@@ -28365,6 +28301,153 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "public.bonus_run_handoff": {
+      "name": "bonus_run_handoff",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bonus_run_id": {
+          "name": "bonus_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payroll_run_id": {
+          "name": "payroll_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headcount": {
+          "name": "headcount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_person_id": {
+          "name": "created_by_person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bonus_run_handoff_run_idx": {
+          "name": "bonus_run_handoff_run_idx",
+          "columns": [
+            {
+              "expression": "bonus_run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bonus_run_handoff_payroll_run_key": {
+          "name": "bonus_run_handoff_payroll_run_key",
+          "columns": [
+            {
+              "expression": "payroll_run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bonus_run_handoff_bonus_run_id_bonus_run_id_fk": {
+          "name": "bonus_run_handoff_bonus_run_id_bonus_run_id_fk",
+          "tableFrom": "bonus_run_handoff",
+          "tableTo": "bonus_run",
+          "columnsFrom": [
+            "bonus_run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "bonus_run_handoff_entity_id_entity_id_fk": {
+          "name": "bonus_run_handoff_entity_id_entity_id_fk",
+          "tableFrom": "bonus_run_handoff",
+          "tableTo": "entity",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bonus_run_handoff_payroll_run_id_payroll_run_id_fk": {
+          "name": "bonus_run_handoff_payroll_run_id_payroll_run_id_fk",
+          "tableFrom": "bonus_run_handoff",
+          "tableTo": "payroll_run",
+          "columnsFrom": [
+            "payroll_run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bonus_run_handoff_created_by_person_id_person_id_fk": {
+          "name": "bonus_run_handoff_created_by_person_id_person_id_fk",
+          "tableFrom": "bonus_run_handoff",
+          "tableTo": "person",
+          "columnsFrom": [
+            "created_by_person_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.bonus_run_line": {
       "name": "bonus_run_line",
       "schema": "",
@@ -29378,6 +29461,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "disbursed_amount_enc": {
+          "name": "disbursed_amount_enc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "receipt_confirmed_at": {
           "name": "receipt_confirmed_at",
           "type": "timestamp with time zone",
@@ -29483,6 +29572,172 @@
           "tableTo": "person",
           "columnsFrom": [
             "disbursed_by_person_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.payroll_other_payment": {
+      "name": "payroll_other_payment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_on": {
+          "name": "paid_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference": {
+          "name": "reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_by_person_id": {
+          "name": "recorded_by_person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payroll_other_payment_key": {
+          "name": "payroll_other_payment_key",
+          "columns": [
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_other_payment_person_idx": {
+          "name": "payroll_other_payment_person_idx",
+          "columns": [
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_other_payment_run_id_payroll_run_id_fk": {
+          "name": "payroll_other_payment_run_id_payroll_run_id_fk",
+          "tableFrom": "payroll_other_payment",
+          "tableTo": "payroll_run",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payroll_other_payment_person_id_person_id_fk": {
+          "name": "payroll_other_payment_person_id_person_id_fk",
+          "tableFrom": "payroll_other_payment",
+          "tableTo": "person",
+          "columnsFrom": [
+            "person_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_other_payment_entity_id_entity_id_fk": {
+          "name": "payroll_other_payment_entity_id_entity_id_fk",
+          "tableFrom": "payroll_other_payment",
+          "tableTo": "entity",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_other_payment_recorded_by_person_id_person_id_fk": {
+          "name": "payroll_other_payment_recorded_by_person_id_person_id_fk",
+          "tableFrom": "payroll_other_payment",
+          "tableTo": "person",
+          "columnsFrom": [
+            "recorded_by_person_id"
           ],
           "columnsTo": [
             "id"
@@ -29901,6 +30156,19 @@
           "notNull": true,
           "default": 0
         },
+        "covered_person_ids": {
+          "name": "covered_person_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
+        },
+        "paying_account_id": {
+          "name": "paying_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "total_enc": {
           "name": "total_enc",
           "type": "text",
@@ -29964,6 +30232,19 @@
           "tableTo": "entity",
           "columnsFrom": [
             "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_payment_file_paying_account_id_entity_bank_account_id_fk": {
+          "name": "payroll_payment_file_paying_account_id_entity_bank_account_id_fk",
+          "tableFrom": "payroll_payment_file",
+          "tableTo": "entity_bank_account",
+          "columnsFrom": [
+            "paying_account_id"
           ],
           "columnsTo": [
             "id"

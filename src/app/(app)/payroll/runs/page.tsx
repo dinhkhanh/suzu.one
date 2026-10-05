@@ -42,9 +42,15 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
         description={t("runs.description")}
         actions={
           canCreate ? (
-            <Link href="/payroll/runs/new" className={buttonVariants()}>
-              {t("runs.new.link")}
-            </Link>
+            <>
+              {/* What earlier months left behind, waiting for the next run (FR-PAY-17). */}
+              <Link href={entityId ? `/payroll/retro?entity=${entityId}` : "/payroll/retro"} className={buttonVariants({ variant: "outline" })}>
+                {t("retro.title")}
+              </Link>
+              <Link href="/payroll/runs/new" className={buttonVariants()}>
+                {t("runs.new.link")}
+              </Link>
+            </>
           ) : undefined
         }
       />

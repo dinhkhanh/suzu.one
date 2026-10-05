@@ -128,6 +128,27 @@ export function canCloseProject(viewer: WorkViewer, project: PlanFacts): boolean
   return viewer.projectRoles.get(project.id) === "lead" || viewer.teamRoles.get(project.team.id) === "lead";
 }
 
+/**
+ * Re-opening a closed project (FR-PJM-59) is the call of whoever may close one: its lead, or a
+ * lead of the owning team. Deliberately not the account manager and not a workspace manager — and
+ * not `pjm:portfolio`, which reads projects and changes none (D30).
+ */
+export function canReopenProject(viewer: WorkViewer, project: PlanFacts): boolean {
+  if (!project.closed) return false;
+  return viewer.projectRoles.get(project.id) === "lead" || viewer.teamRoles.get(project.team.id) === "lead";
+}
+
+/**
+ * The contacts and links of an approved brief: the project's lead, its account manager, or a lead
+ * of the owning team — the people who run the project and its client side. Narrower than
+ * `canEditClientSide` on purpose: this is the one edit an approved brief still takes.
+ */
+export function canEditBriefContacts(viewer: WorkViewer, project: PlanFacts): boolean {
+  if (project.closed) return false;
+  const role = viewer.projectRoles.get(project.id);
+  return role === "lead" || role === "account_manager" || viewer.teamRoles.get(project.team.id) === "lead";
+}
+
 /** The retrospective: the people who post status updates, before or after the close. */
 export function canHoldRetro(viewer: WorkViewer, project: ProjectFacts): boolean {
   const role = viewer.projectRoles.get(project.id);

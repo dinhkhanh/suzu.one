@@ -5,6 +5,10 @@ import { contentSecurityPolicy, CSP_HEADER, CSP_REPORT_ONLY_HEADER, newNonce, or
 import { env, isDevelopmentEnvironment } from "@/lib/env";
 import { publicSite } from "@/lib/site";
 import { routeRequest } from "@/lib/site-routing";
+import { previewRequestKind } from "@/modules/work/engine/preview";
+
+/** What every answer on a client's review link carries: never indexed, never stored, never a referrer (`next.config.ts`). */
+const REVIEW_LINK_HEADERS = { "cache-control": "private, no-store, max-age=0", "x-robots-tag": "noindex, nofollow, noarchive, nosnippet", "referrer-policy": "no-referrer" };
 
 /**
  * The page's Content-Security-Policy (`src/lib/csp.ts`), with a nonce of this request's own; null
@@ -42,6 +46,14 @@ function pagePolicy(surface: string) {
  * it is never copied from what the caller sent. The paths let past untouched below (the API routes
  * that authenticate for themselves, the service worker, which has a policy of its own in
  * `next.config.ts`) answer no page and get none.
+ *
+ * And one thing a page cannot do for itself. A client's review link counts and audits each time it
+ * is opened (R14), and two kinds of request are not anybody opening it: a `HEAD` — a page never
+ * learns the method it was asked with — and a browser fetching ahead of a person who has not asked
+ * yet. Both are answered here with no body, before a page is rendered or a row is read, and the
+ * same for every token. A `HEAD` gets the 200 a `GET` would; a fetch-ahead gets a 503, which is
+ * how a server declines one: a browser shown a 2xx may keep it and show *that* to the client in
+ * place of the page, and after a 503 it simply asks properly when the person does.
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -54,6 +66,12 @@ export function proxy(request: NextRequest) {
 
   const served = route.kind === "public" && route.rewrite ? route.rewrite : pathname;
   const surface = surfaceForPath(served);
+  if (surface === "preview") {
+    const purpose = request.headers.get("sec-purpose") ?? request.headers.get("purpose") ?? request.headers.get("x-moz");
+    const kind = previewRequestKind({ method: request.method, userAgent: request.headers.get("user-agent"), purpose });
+    if (kind === "probe") return new NextResponse(null, { status: 200, headers: REVIEW_LINK_HEADERS });
+    if (kind === "prefetch") return new NextResponse(null, { status: 503, headers: REVIEW_LINK_HEADERS });
+  }
   const headers = new Headers(request.headers);
   headers.set(SURFACE_HEADER, surface);
   headers.set(PUBLIC_SITE_HEADER, route.kind === "public" ? "1" : "0");

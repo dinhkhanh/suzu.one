@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { getFinalResult, getKpiResults } from "@/modules/performance/service";
-import { canAdjustBonusLine, getBonusLine, getBonusRun, isBonusRunOpen } from "@/modules/payroll/service";
+import { canAdjustBonusLine, getBonusLine, getBonusRun, isBonusRunOpen, listBonusHandoffs } from "@/modules/payroll/service";
 import { canViewBonusOf } from "@/modules/payroll/policy";
 import { OverrideLineForm } from "@/modules/payroll/ui/bonus-forms";
 import { BonusTraceView } from "@/modules/payroll/ui/bonus-trace";
@@ -31,7 +31,10 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
   if (!canViewBonusOf(user.principal, { personId, entityId: line.row.entityId })) notFound();
   requireStepUp(user, `/payroll/bonus/${runId}/${personId}`);
 
-  const [t, result, kpi] = await Promise.all([getTranslations("payroll.bonus"), line.row.resultId ? getFinalResult(personId, run.year) : null, getKpiResults({ personId, year: run.year })]);
+  const [t, result, kpi, handoffs] = await Promise.all([getTranslations("payroll.bonus"), line.row.resultId ? getFinalResult(personId, run.year) : null, getKpiResults({ personId, year: run.year }), line.row.payrollRunId ? listBonusHandoffs(runId) : []]);
+  // The payroll run this line was handed to may have been cancelled since: then nothing is paying it.
+  const handedTo = handoffs.find((handoff) => handoff.payrollRunId === line.row.payrollRunId);
+  const runCancelled = handedTo?.payrollRunStatus === "cancelled";
   // Only the months this line was actually computed from — the ones approval froze.
   const usedMonths = kpi.months.filter((month) => line.row.kpiScoreIds.includes(month.scoreId));
   const mayAdjust = canAdjustBonusLine(user.principal) && isBonusRunOpen(run);
@@ -53,7 +56,9 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
 
       {mayAdjust ? <OverrideLineForm runId={runId} personId={personId} currentAmount={line.trace.override?.amountVnd ?? null} currentReason={line.row.overrideReason} /> : null}
 
-      {line.row.payrollRunId ? (
+      {line.row.payrollRunId && runCancelled ? (
+        <p className="text-sm text-warning">{t("handoff.lineCancelled")}</p>
+      ) : line.row.payrollRunId ? (
         <p className="text-sm text-muted-foreground">
           {t("trace.paidThrough")}{" "}
           <RecordLink kind="payrollRun" id={line.row.payrollRunId} className="underline">

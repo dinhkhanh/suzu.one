@@ -3,9 +3,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { can } from "../rbac/policy";
-import { ORG_UNIT_KINDS } from "./enums";
+import type { CurrentUser } from "../auth/session";
+import { ORG_UNIT_KINDS, PAYING_BANK_KEYS } from "./enums";
 import { departmentImport } from "./import";
-import { createBranch, createEntity, createOrgUnit, findBranch, findOrgUnit, updateBranch, updateEntity, updateOrgUnit } from "./service";
+import { canKeepEntityBankAccounts } from "./policy";
+import { createBranch, createEntity, createOrgUnit, findBranch, findEntityBankAccount, findOrgUnit, saveEntityBankAccount, updateBranch, updateEntity, updateOrgUnit } from "./service";
 
 // Forms post every field; a blank one means "no value". A checkbox posts "on" or nothing at all.
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -99,6 +101,58 @@ const updateBranchPipeline = createAction({
 
 export async function updateBranchAction(input: unknown) {
   return updateBranchPipeline(input);
+}
+
+// The entity's paying bank accounts (FR-PLT-11). Whoever keeps the entity's details may keep
+// these too, and so may the chief accountant, whose accounts they are (`policy.ts`). They are the
+// company's own accounts, not a person's, so the audit row keeps them in full.
+const mayKeepBankAccounts = (user: CurrentUser, entityId: string) => canKeepEntityBankAccounts(user.principal, entityId);
+const bankAccountFields = {
+  accountNumber: z.string().trim().regex(/^[\d\s-]{6,40}$/),
+  accountName: z.string().trim().min(1).max(160),
+  branch: text(160),
+  isDefault: checkbox,
+};
+const refreshBankAccounts = (entityId: string) => {
+  revalidatePath(`/admin/entities/${entityId}`);
+  revalidatePath("/payroll/runs", "layout");
+};
+
+const createBankAccountPipeline = createAction({
+  name: "entity_bank_account.create",
+  input: z.object({ entityId: z.uuid(), bank: z.enum(PAYING_BANK_KEYS), ...bankAccountFields }),
+  authorize: (user, input) => mayKeepBankAccounts(user, input.entityId),
+  run: async ({ input }) => {
+    const { entityId, ...details } = input;
+    const { after } = await saveEntityBankAccount(entityId, null, { ...details, isActive: true });
+    refreshBankAccounts(entityId);
+    return { data: { id: after.id }, audit: { resource: { type: "entity_bank_account", id: after.id, entityId }, summary: `${after.bank} ${after.accountNumber}`, after } };
+  },
+});
+
+export async function createEntityBankAccountAction(input: unknown) {
+  return createBankAccountPipeline(input);
+}
+
+const updateBankAccountPipeline = createAction({
+  name: "entity_bank_account.update",
+  input: z.object({ id: z.uuid(), ...bankAccountFields, isActive: checkbox }),
+  authorize: async (user, input) => {
+    const account = await findEntityBankAccount(input.id);
+    return !!account && mayKeepBankAccounts(user, account.entityId);
+  },
+  run: async ({ input }) => {
+    const { id, ...details } = input;
+    // Which bank an account is with never changes: a different bank is a different account.
+    const account = (await findEntityBankAccount(id))!;
+    const { before, after } = await saveEntityBankAccount(account.entityId, id, { ...details, bank: account.bank });
+    refreshBankAccounts(after.entityId);
+    return { data: { id }, audit: { resource: { type: "entity_bank_account", id, entityId: after.entityId }, summary: `${after.bank} ${after.accountNumber}`, before, after } };
+  },
+});
+
+export async function updateEntityBankAccountAction(input: unknown) {
+  return updateBankAccountPipeline(input);
 }
 
 // A shared unit (no entity) belongs to the whole group, so only a group-wide grant may touch it;

@@ -7,8 +7,11 @@
 // configured flow for the type replaces both, as for every other request type.
 //
 // Applied: register lines added (marked with the change) or cancelled, the hours budget, the fee
-// and the project's due date moved — and the figures found just before are kept on the change, so
-// the history reads original + changes = current.
+// and the project's due date moved, a retainer's monthly scope replaced — and the figures the
+// change found and the figures it left are kept on the change itself, so the history reads
+// original + changes = current from each change's own record. After the kick-off this is the only
+// way scope, hours and fee change (`engine/gates.ts`); what was edited directly before that rule
+// shows in the ledger as a difference no change explains.
 import "server-only";
 import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
@@ -16,7 +19,8 @@ import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "../platform/approvals/service";
 import { notify } from "../platform/notifications/service";
 import { can, type Principal } from "../platform/rbac/policy";
-import { applyChange, type ChangeLedger, changeLedger, changeProblems, type ChangeRequester, type ChangeStatus, changeEditable, hasFeeChange, withoutFee } from "./engine/change-request";
+import { applyChange, type ChangeLedger, changeLedger, changeProblems, type ChangeRequester, type ChangeStatus, changeEditable, hasFeeChange, hasRetainerChange, ledgerWithoutFee, type PlanFigures, withoutFee } from "./engine/change-request";
+import { monthlyQuotaChanged } from "./engine/gates";
 import { ensurePlan, readPlan } from "./plans";
 import type { ChangeImpact } from "./schema";
 
@@ -100,9 +104,10 @@ export async function saveChange(projectId: string, changeId: string | null, inp
     }
     const before = changeId ? await lockOwnChange(tx, changeId) : null;
     if (before && (before.projectId !== projectId || !changeEditable(before.status as ChangeStatus))) throw new ActionError("change_locked");
-    const { feeDeltaVnd, ...rest } = input.impact;
+    const { feeDeltaVnd, retainer: askedTerms, ...rest } = input.impact;
     const fee = options.withFee ? feeDeltaVnd : before?.impact.feeDeltaVnd;
-    const impact: ChangeImpact = { ...rest, cancelDeliverableIds: cancelIds.length ? cancelIds : undefined, ...(fee ? { feeDeltaVnd: fee } : {}) };
+    const retainer = await retainerTermsOf(tx, projectId, askedTerms, before?.impact.retainer, options.withFee);
+    const impact: ChangeImpact = { ...rest, cancelDeliverableIds: cancelIds.length ? cancelIds : undefined, ...(fee ? { feeDeltaVnd: fee } : {}), ...(retainer ? { retainer } : {}) };
     const values = { title: input.title, description: input.description, requestedBy: input.requestedBy, impact: JSON.parse(JSON.stringify(impact)) as ChangeImpact, evidenceFileId: input.evidenceFileId, evidenceUrl: input.evidenceUrl, updatedAt: new Date() };
     if (before) {
       const [after] = await tx.update(schema.projectChangeRequest).set(values).where(eq(schema.projectChangeRequest.id, before.id)).returning();
@@ -115,6 +120,30 @@ export async function saveChange(projectId: string, changeId: string | null, inp
       .returning();
     return { before: null, after };
   });
+}
+
+/**
+ * The retainer part of a change, cut down to what it really changes: the form posts the whole
+ * monthly scope, and only the terms that differ from the retainer as it stands are kept — a change
+ * that repeats the current quota changes nothing. The monthly fee is money: taken from the input
+ * only for an author who may write fees, kept as the draft had it otherwise.
+ */
+async function retainerTermsOf(tx: Tx, projectId: string, asked: ChangeImpact["retainer"], drafted: ChangeImpact["retainer"], withFee: boolean): Promise<ChangeImpact["retainer"]> {
+  if (!asked) return undefined;
+  const [current] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, projectId)).limit(1);
+  if (!current) throw new ActionError("retainer_not_retainer_project");
+  const terms: NonNullable<ChangeImpact["retainer"]> = {};
+  if (asked.lines !== undefined && monthlyQuotaChanged({ lines: current.lines, minutesPerMonth: null }, { lines: asked.lines, minutesPerMonth: null })) {
+    const titles = asked.lines.map((line) => line.title.trim().toLowerCase());
+    if (asked.lines.length === 0) throw new ActionError("retainer_lines_required");
+    // Lines are matched month to month by title: two lines of one title would share a carry.
+    if (new Set(titles).size !== titles.length) throw new ActionError("retainer_lines_duplicate");
+    terms.lines = asked.lines;
+  }
+  if (asked.minutesPerMonth !== undefined && (asked.minutesPerMonth ?? null) !== (current.minutesPerMonth ?? null)) terms.minutesPerMonth = asked.minutesPerMonth ?? null;
+  const feePerMonth = withFee ? asked.feePerMonthVnd : drafted?.feePerMonthVnd;
+  if (feePerMonth !== undefined && (!withFee || (feePerMonth ?? null) !== (current.feePerMonthVnd ?? null))) terms.feePerMonthVnd = feePerMonth ?? null;
+  return Object.keys(terms).length ? terms : undefined;
 }
 
 // ── Approval ────────────────────────────────────────────────────────────────────────────────
@@ -198,8 +227,23 @@ async function applyApproved(tx: Tx, change: ChangeRow, now: Date): Promise<Chan
     .where(eq(schema.projectPlan.projectId, change.projectId));
   if (next.dueDate !== found.dueDate) await tx.update(schema.workProject).set({ dueDate: next.dueDate, updatedAt: now }).where(eq(schema.workProject.id, change.projectId));
 
-  const impact: ChangeImpact = { ...change.impact, applied: { budgetMinutesBefore: found.budgetMinutes, feeVndBefore: found.feeVnd, dueDateBefore: found.dueDate } };
-  const [after] = await tx.update(schema.projectChangeRequest).set({ status: "approved", impact, appliedAt: now, updatedAt: now }).where(eq(schema.projectChangeRequest.id, change.id)).returning();
+  // A retainer's monthly scope: the terms named replace the retainer's own, from the next month
+  // made — a month already made keeps the lines it promised. What they replaced stays on the change.
+  let replaced: NonNullable<ChangeImpact["applied"]>["retainer"];
+  const terms = change.impact.retainer;
+  if (terms && hasRetainerChange(change.impact)) {
+    const [retainer] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, change.projectId)).limit(1).for("update");
+    if (!retainer) throw new ActionError("retainer_not_retainer_project");
+    replaced = { lines: retainer.lines, minutesPerMonth: retainer.minutesPerMonth, feePerMonthVnd: retainer.feePerMonthVnd };
+    await tx
+      .update(schema.projectRetainer)
+      .set({ ...(terms.lines !== undefined ? { lines: terms.lines } : {}), ...(terms.minutesPerMonth !== undefined ? { minutesPerMonth: terms.minutesPerMonth } : {}), ...(terms.feePerMonthVnd !== undefined ? { feePerMonthVnd: terms.feePerMonthVnd } : {}), updatedAt: now })
+      .where(eq(schema.projectRetainer.id, retainer.id));
+  }
+
+  // Both ends are kept: the ledger is rebuilt from each change's own before and after.
+  const impact: ChangeImpact = { ...change.impact, applied: { budgetMinutesBefore: found.budgetMinutes, feeVndBefore: found.feeVnd, dueDateBefore: found.dueDate, ...(replaced ? { retainer: replaced } : {}) } };
+  const [after] = await tx.update(schema.projectChangeRequest).set({ status: "approved", impact, figuresBefore: found, figuresAfter: next, appliedAt: now, updatedAt: now }).where(eq(schema.projectChangeRequest.id, change.id)).returning();
   return after;
 }
 
@@ -286,7 +330,7 @@ export async function reconcileChanges(): Promise<{ changes: number }> {
 
 export type ChangeView = ChangeRow & { authorName: string | null; cancelTitles: string[] };
 
-/** A project's changes, newest first. The fee delta and the fee found are taken out for a reader without `pjm:commercial`. */
+/** A project's changes, newest first. The fee — the delta, the fee found and the fee left — is taken out for a reader without `pjm:commercial`. */
 export async function listChanges(projectId: string, seesFees: boolean): Promise<ChangeView[]> {
   const rows = await db()
     .select({ change: schema.projectChangeRequest, authorName: schema.person.fullName })
@@ -297,23 +341,34 @@ export async function listChanges(projectId: string, seesFees: boolean): Promise
   const synced = await asTheyStand(rows.map((row) => row.change));
   const cancelIds = [...new Set(synced.flatMap((row) => row.impact.cancelDeliverableIds ?? []))];
   const titles = cancelIds.length ? new Map((await db().select({ id: schema.projectDeliverable.id, title: schema.projectDeliverable.title }).from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.id, cancelIds))).map((row) => [row.id, row.title])) : new Map<string, string>();
+  const noFee = (figures: PlanFigures | null) => (figures && !seesFees ? { ...figures, feeVnd: null } : figures);
   return synced.map((change, index) => ({
     ...change,
     impact: seesFees ? change.impact : withoutFee(change.impact),
+    figuresBefore: noFee(change.figuresBefore),
+    figuresAfter: noFee(change.figuresAfter),
     authorName: rows[index].authorName,
     cancelTitles: (change.impact.cancelDeliverableIds ?? []).map((id) => titles.get(id) ?? "—"),
   }));
 }
 
-/** Original + changes = current, for the project's figures. The fee is left out entirely without `pjm:commercial`. */
+/**
+ * Original + changes = current, for the project's figures, with a row for every difference no
+ * change explains. The original is the kick-off's baseline when it was taken before the first
+ * change (the baseline keeps no fee, so the fee starts from what the first change found); a
+ * project re-baselined since, or never kicked off, starts from what its first change found. The
+ * fee is left out entirely without `pjm:commercial`.
+ */
 export async function getChangeLedger(projectId: string, seesFees: boolean): Promise<ChangeLedger> {
-  const plan = (await readPlan(projectId)) ?? { budgetMinutes: null, feeVnd: null };
+  const plan = (await readPlan(projectId)) ?? { budgetMinutes: null, feeVnd: null, baseline: null };
   const [project] = await db().select({ dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
-  const applied = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.status, "approved"))).orderBy(asc(schema.projectChangeRequest.appliedAt));
-  const ledger = changeLedger({ budgetMinutes: plan.budgetMinutes, feeVnd: plan.feeVnd, dueDate: project?.dueDate ?? null }, applied);
-  if (seesFees) return ledger;
-  const strip = <Figures extends { feeVnd: number | null }>(figures: Figures) => ({ ...figures, feeVnd: null });
-  return { original: strip(ledger.original), current: strip(ledger.current), steps: ledger.steps.map((step) => ({ ...step, impact: withoutFee(step.impact), after: strip(step.after) })) };
+  const applied = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.status, "approved"))).orderBy(asc(schema.projectChangeRequest.appliedAt), asc(schema.projectChangeRequest.number));
+  const current: PlanFigures = { budgetMinutes: plan.budgetMinutes, feeVnd: plan.feeVnd, dueDate: project?.dueDate ?? null };
+  const [first] = applied;
+  const firstFee = first ? (first.figuresBefore ?? (first.impact.applied ? { feeVnd: first.impact.applied.feeVndBefore } : null)) : null;
+  const atKickoff = plan.baseline && (!first?.appliedAt || new Date(plan.baseline.takenAt) <= first.appliedAt) ? { budgetMinutes: plan.baseline.budgetMinutes, dueDate: plan.baseline.dueDate, feeVnd: firstFee ? firstFee.feeVnd : plan.feeVnd } : null;
+  const ledger = changeLedger(current, applied.map((change) => ({ number: change.number, title: change.title, impact: change.impact, before: change.figuresBefore, after: change.figuresAfter })), atKickoff);
+  return seesFees ? ledger : ledgerWithoutFee(ledger);
 }
 
 /** The change request as the viewer may see it; null = none, or none of their business. */

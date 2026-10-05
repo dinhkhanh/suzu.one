@@ -349,6 +349,23 @@ export async function markAdjustmentsTaken(tx: Tx, adjustmentIds: readonly strin
   return rows.length;
 }
 
+/**
+ * Payroll hands the receipt back: the run of `payrollMonth` that took these was cancelled, or was
+ * calculated again without them. They wait for the next run, and can be voided again until then.
+ */
+export async function releaseAdjustments(tx: Tx, adjustmentIds: readonly string[], payrollMonth: string): Promise<number> {
+  if (adjustmentIds.length === 0) return 0;
+  const rows = await tx.update(schema.timesheetAdjustment).set({ payrollMonth: null }).where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.payrollMonth, payrollMonth))).returning({ id: schema.timesheetAdjustment.id });
+  return rows.length;
+}
+
+/** Which of these adjustments were taken back after payroll priced them — their retro items must go too. */
+export async function listVoidedAdjustmentIds(adjustmentIds: readonly string[], executor: Executor = db()): Promise<string[]> {
+  if (adjustmentIds.length === 0) return [];
+  const rows = await executor.select({ id: schema.timesheetAdjustment.id }).from(schema.timesheetAdjustment).where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.status, "voided")));
+  return rows.map((row) => row.id);
+}
+
 // ── Screens: what waits for a manager, and HR's entities ────────────────────────────────────
 
 export type TeamMonthStatus = { personId: string; fullName: string; status: MonthStatus; summary: MonthSummary; confirmedAt: Date | null; canApprove: boolean };
