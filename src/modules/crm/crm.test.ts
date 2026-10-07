@@ -411,6 +411,9 @@ describe("sales figures for KPI actuals (FR-CRM-44)", () => {
     const period = { from: addDays(today, -6), to: today };
     const pipeline = await buildReportFor(await userOf(ids.seller), "crm_pipeline", {}, period, "en");
     expect(pipeline?.rows.some((row) => row[0] === "Won" && row[3] === 177_000_000)).toBe(true);
+    // The win rate is a whole percentage already: one won and nothing lost is "100%", not "10000%".
+    expect(pipeline?.summary).toContain("100%");
+    expect(pipeline?.summary).not.toContain("10000%");
     expect(await buildReportFor(await userOf(ids.seller), "crm_receivables", {}, period, "en")).toBeNull();
     const receivables = await buildReportFor(await userOf(ids.finance), "crm_receivables", {}, period, "en");
     expect(receivables?.rows).toHaveLength(5);

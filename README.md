@@ -22,6 +22,8 @@ pnpm db:seed:demo                 # optional, local database only: a small fake 
 pnpm dev
 ```
 
+**The whole demo company in one command.** `pnpm db:demo:rebuild` (re)creates a separate database, `suzu_local`, in the same container and seeds everything in order — the company, projects and daily work, CRM (accounts, deals, contracts, invoices in every ageing bucket), timesheets, obligations, August's payroll with payslips and the bonus run — about four minutes. It never touches the database `.env.local` names: `scripts/container-env.sh` points the shell at `suzu_local` with the demo's own, deliberately public key ring and a local file store (s3rver in `~/.suzu-demo/s3`, started for you). To work on it: `source scripts/container-env.sh && pnpm next dev --port 3124`.
+
 Local ports are moved to the 5532x range in `supabase/config.toml` so this project can run next to other local Supabase projects: database `55322`, Studio <http://127.0.0.1:55323>, API `55321`. `pnpm db:down` stops the stack (data is kept).
 
 ### Environment
