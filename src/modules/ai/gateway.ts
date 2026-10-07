@@ -65,7 +65,8 @@ export async function callModel(call: ModelCall): Promise<ModelResult> {
   const model = modelFor(call.tier);
   const outputConfig: Anthropic.OutputConfig = { ...(call.effort && takesEffort(model) ? { effort: call.effort } : {}), ...(call.format ? { format: call.format } : {}) };
   // One retry for a dropped connection or an overloaded API, and a timeout the turn can afford.
-  const client = new Anthropic({ apiKey: settings.ANTHROPIC_API_KEY, maxRetries: 1, timeout: call.timeoutMs });
+  // A key made outside any workspace must name one on every request (the API answers 400 otherwise).
+  const client = new Anthropic({ apiKey: settings.ANTHROPIC_API_KEY, maxRetries: 1, timeout: call.timeoutMs, ...(settings.ANTHROPIC_WORKSPACE_ID ? { defaultHeaders: { "anthropic-workspace-id": settings.ANTHROPIC_WORKSPACE_ID } } : {}) });
   let message: Anthropic.Message;
   try {
     message = await client.messages.create({ ...call.request, model, ...(Object.keys(outputConfig).length ? { output_config: outputConfig } : {}) });

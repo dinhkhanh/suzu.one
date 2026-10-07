@@ -10,7 +10,8 @@
 // The budget's door (`spend.ts`) is stubbed: its own sums are tested against Postgres in `spend.test.ts`.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/env", () => ({ env: () => ({ ANTHROPIC_API_KEY: "not-a-key-the-network-is-stubbed", ANTHROPIC_MODEL_SIMPLE: "claude-haiku-4-5", ANTHROPIC_MODEL: "claude-sonnet-5-5", ANTHROPIC_MODEL_COMPLEX: "claude-opus-5-5" }) }));
+const settings = vi.hoisted(() => ({ values: { ANTHROPIC_API_KEY: "not-a-key-the-network-is-stubbed", ANTHROPIC_MODEL_SIMPLE: "claude-haiku-4-5", ANTHROPIC_MODEL: "claude-sonnet-5-5", ANTHROPIC_MODEL_COMPLEX: "claude-opus-5-5", ANTHROPIC_WORKSPACE_ID: undefined as string | undefined } }));
+vi.mock("@/lib/env", () => ({ env: () => settings.values }));
 vi.mock("@/lib/observability/report", () => ({ logError: vi.fn() }));
 const door = vi.hoisted(() => ({ admission: { ok: true } as { ok: true } | { ok: false; notice: string }, recorded: [] as unknown[] }));
 vi.mock("./spend", () => ({
@@ -26,7 +27,7 @@ import { chatDriver, draftDriver } from "./model";
 
 const asker = { person: { id: "00000000-0000-4000-8000-000000000001", primaryEntityId: null }, principal: { personId: "00000000-0000-4000-8000-000000000001", workforceType: "employee" as const, grants: [] } };
 
-type Sent = { url: string; body: { model: string; system: string; messages: { role: string; content: string }[]; output_config?: { effort?: string; format?: { schema?: { properties?: Record<string, unknown>; required?: string[] } } } } };
+type Sent = { url: string; headers: Headers; body: { model: string; system: string; messages: { role: string; content: string }[]; output_config?: { effort?: string; format?: { schema?: { properties?: Record<string, unknown>; required?: string[] } } } } };
 const sent: Sent[] = [];
 let reply: { status?: number; body: unknown } = { body: {} };
 
@@ -34,11 +35,12 @@ beforeEach(() => {
   sent.length = 0;
   door.admission = { ok: true };
   door.recorded.length = 0;
+  settings.values.ANTHROPIC_WORKSPACE_ID = undefined;
   reply = { body: { id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-4-5", stop_reason: "end_turn", content: [{ type: "text", text: "Gọi phòng Nhân sự theo số trên trang [1]." }], usage: { input_tokens: 4321, output_tokens: 87 } } };
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string | URL | Request, init: { body: string }) => {
-      sent.push({ url: String(url instanceof Request ? url.url : url), body: JSON.parse(init.body) as Sent["body"] });
+    vi.fn(async (url: string | URL | Request, init: { body: string; headers?: HeadersInit }) => {
+      sent.push({ url: String(url instanceof Request ? url.url : url), headers: new Headers(init.headers), body: JSON.parse(init.body) as Sent["body"] });
       return new Response(JSON.stringify(reply.body), { status: reply.status ?? 200, headers: { "content-type": "application/json" } });
     }),
   );
@@ -72,6 +74,14 @@ describe("the chat driver's request", () => {
     await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
     expect(sent[0].body.model).toBe("claude-haiku-4-5");
     expect(sent[0].body.output_config?.effort).toBeUndefined();
+  });
+
+  it("names the workspace when the key is not scoped to one, and only then", async () => {
+    await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
+    expect(sent[0].headers.get("anthropic-workspace-id")).toBeNull();
+    settings.values.ANTHROPIC_WORKSPACE_ID = "wrkspc_test";
+    await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
+    expect(sent[1].headers.get("anthropic-workspace-id")).toBe("wrkspc_test");
   });
 
   it("is written down with every kind of token the provider reported", async () => {
