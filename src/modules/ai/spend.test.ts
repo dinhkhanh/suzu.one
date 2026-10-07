@@ -25,7 +25,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { notify } from "../platform/notifications/service";
 import type { Grant } from "../platform/rbac/policy";
-import { admitModelCall, recordModelCall, spendSummary, spentSoFar } from "./spend";
+import { admitModelCall, monthToDateQuery, recordModelCall, spendSummary, spentSoFar, spentSoFarQuery } from "./spend";
 
 const people = {} as Record<"huy" | "lan" | "owner", { person: { id: string; primaryEntityId: string | null }; principal: { personId: string; workforceType: "employee"; grants: Grant[] } }>;
 
@@ -101,5 +101,17 @@ describe("the owners' warning", () => {
     expect(vi.mocked(notify).mock.calls[0][0]).toMatchObject({ recipients: [people.owner.person.id], kind: "system.ai_budget_warning", params: { spent: "0.81", budget: "1.00" } });
     await spend(people.lan.person.id, 0.1);
     expect(notify).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("what reaches Postgres", () => {
+  // PGlite reads a JavaScript Date passed as a raw parameter; Postgres gets it as
+  // "Wed Oct 07 2026 00:00:00 GMT+0700" and refuses it. The tests run on PGlite, so they say it here:
+  // every parameter these statements send is something Postgres reads.
+  it("sends no raw Date — every instant goes through the column's encoder", () => {
+    for (const query of [spentSoFarQuery(people.huy.person.id, NOW), monthToDateQuery(NOW)]) {
+      const { params } = query.toSQL();
+      expect(params.some((param) => param instanceof Date), JSON.stringify(params)).toBe(false);
+    }
   });
 });

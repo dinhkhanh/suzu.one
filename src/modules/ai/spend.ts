@@ -5,7 +5,7 @@
 // counted. The sums are read live from `ai_model_call` in one aggregate query — never cached: a
 // stale budget is an overrun.
 import "server-only";
-import { and, desc, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { notify } from "@/modules/platform/notifications/service";
@@ -28,17 +28,32 @@ export function aiBudget(): AiBudget {
 
 /** The month so far for everybody, and today so far for one person — one statement, summed in SQL. */
 export async function spentSoFar(personId: string, at: Date = new Date()): Promise<{ monthMicroUsd: number; dayMicroUsd: number }> {
+  const [row] = await spentSoFarQuery(personId, at);
+  return { monthMicroUsd: Number(row?.monthMicroUsd ?? 0), dayMicroUsd: Number(row?.dayMicroUsd ?? 0) };
+}
+
+/** The statement behind `spentSoFar`, unrun — so a test can read the parameters it would send. */
+export function spentSoFarQuery(personId: string, at: Date) {
   const month = vietnamMonthStart(at);
   const day = vietnamDayStart(at);
-  const [row] = await db()
+  return db()
     .select({
       monthMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}), 0)::float8`,
-      dayMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}) filter (where ${aiModelCall.personId} = ${personId} and ${aiModelCall.createdAt} >= ${day}), 0)::float8`,
+      // The filter is built with the column's own operators: a raw `${day}` would go to Postgres as
+      // a JavaScript Date written as text, which PGlite reads and Postgres refuses.
+      dayMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}) filter (where ${and(eq(aiModelCall.personId, personId), gte(aiModelCall.createdAt, day))}), 0)::float8`,
     })
     .from(aiModelCall)
     // A day can begin before the month does only on the 1st, at the same instant: the month is the lower bound.
     .where(gte(aiModelCall.createdAt, month < day ? month : day));
-  return { monthMicroUsd: Number(row?.monthMicroUsd ?? 0), dayMicroUsd: Number(row?.dayMicroUsd ?? 0) };
+}
+
+/** The month's spend up to `at` — the statement the 80 % warning reads, unrun. */
+export function monthToDateQuery(at: Date) {
+  return db()
+    .select({ month: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}), 0)::float8` })
+    .from(aiModelCall)
+    .where(and(gte(aiModelCall.createdAt, vietnamMonthStart(at)), lte(aiModelCall.createdAt, at)));
 }
 
 /** The band a person's daily allowance is taken from (D35). */
@@ -78,10 +93,7 @@ export async function recordModelCall(record: ModelCallRecord, at: Date = new Da
     .values({ personId: record.personId, turnId: record.turnId ?? null, purpose: record.purpose, tier: record.tier, model: record.model, ...record.usage, costMicroUsd: cost, stopReason: record.stopReason, createdAt: at });
   const budget = aiBudget().monthMicroUsd;
   if (cost > 0 && budget > 0) {
-    const [row] = await db()
-      .select({ month: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}), 0)::float8` })
-      .from(aiModelCall)
-      .where(and(gte(aiModelCall.createdAt, vietnamMonthStart(at)), sql`${aiModelCall.createdAt} <= ${at}`));
+    const [row] = await monthToDateQuery(at);
     const after = Number(row?.month ?? 0);
     if (crossedMonthWarning(after - cost, after, budget)) {
       const owners = await listOwnerPersonIds();

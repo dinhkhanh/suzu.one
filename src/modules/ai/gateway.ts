@@ -52,7 +52,14 @@ export type ModelResult = { ok: true; message: Anthropic.Message; model: string;
 const totalOf = (usage: ReturnType<typeof modelUsageOf>): TokenUsage => ({ inputTokens: usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens, outputTokens: usage.outputTokens });
 
 export async function callModel(call: ModelCall): Promise<ModelResult> {
-  const admission = await admitModelCall(call.asker);
+  // Fail closed: when the budget cannot be read, nothing is sent — the free path answers.
+  let admission: Awaited<ReturnType<typeof admitModelCall>>;
+  try {
+    admission = await admitModelCall(call.asker);
+  } catch (error) {
+    logError(error, { event: "ai.model.admission_failed", source: "ai", tags: { purpose: call.purpose, tier: call.tier } });
+    return { ok: false, notice: "provider_error", usage: NO_USAGE };
+  }
   if (!admission.ok) return { ok: false, notice: admission.notice, usage: NO_USAGE };
   const settings = env();
   const model = modelFor(call.tier);
