@@ -177,7 +177,8 @@ const salesPipeline = defineTool({
         currency: "VND",
         openDeals: dashboard.openCount,
         staleDeals: dashboard.staleCount,
-        winRatePercent: dashboard.winRate === null ? null : Math.round(dashboard.winRate * 1000) / 10,
+        // Already a whole percentage (crm `winRate`).
+        winRatePercent: dashboard.winRate,
         averageWonVnd: dashboard.averageWon,
         averageCycleDays: dashboard.averageCycleDays,
         byStage: dashboard.byStage.map((stage) => ({ stage: locale === "en" ? (stage.nameEn ?? stage.name) : stage.name, deals: stage.count, valueVnd: stage.value, weightedVnd: stage.weighted })),

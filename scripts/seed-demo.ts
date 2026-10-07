@@ -239,8 +239,9 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     return 0;
   }
   const cipher = createFieldCipher(parseKeyRing(keys));
-  const find = async (email: string) => {
-    const [row] = await db.select({ person, job: employment }).from(person).innerJoin(employment, eq(employment.personId, person.id)).where(eq(person.workEmail, email)).limit(1);
+  // By work email, or by name for someone without one yet (the collaborator gets hers in the PJM seed).
+  const find = async (who: string) => {
+    const [row] = await db.select({ person, job: employment }).from(person).innerJoin(employment, eq(employment.personId, person.id)).where(who.includes("@") ? eq(person.workEmail, who) : eq(person.fullName, who)).limit(1);
     return row;
   };
 
@@ -251,6 +252,22 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     { email: "huy.ho@suzu.group", number: "SZM-HDLD-2025-008", type: "fixed_term" as const, start: day(today, -334), end: day(today, 30), terms: "Lương gộp 22.000.000 đ/tháng" },
     // Probation ends in 10 days.
     { email: "linh.do@suzu.group", number: "SZM-HDTV-2026-009", type: "probation" as const, start: day(today, -47), end: day(today, 10), terms: "85% của 18.000.000 đ/tháng", jobCategory: "professional" as const },
+    // Everyone else on the books has a contract too, so headcount, the expiry list and the agent's
+    // HR answers have a whole company to read: the leadership and HR on indefinite contracts, two
+    // fixed-term ones running out within the 90-day window, an intern, a part-timer, a service contract.
+    { email: "owner@suzu.vn", number: "SZG-HDLD-2019-001", type: "indefinite" as const, start: "2019-03-01", end: null, terms: "Lương gộp 80.000.000 đ/tháng" },
+    { email: "ha.nguyen@suzu.vn", number: "SZG-HDLD-2019-002", type: "indefinite" as const, start: "2019-06-01", end: null, terms: "Lương gộp 70.000.000 đ/tháng" },
+    { email: "mai.le@suzu.group", number: "SZG-HDLD-2020-003", type: "indefinite" as const, start: "2020-02-10", end: null, terms: "Lương gộp 40.000.000 đ/tháng" },
+    { email: "tuan.vo@suzu.group", number: "SZG-HDLD-2020-004", type: "indefinite" as const, start: "2020-05-04", end: null, terms: "Lương gộp 42.000.000 đ/tháng" },
+    { email: "bao.pham@suzu.group", number: "SZM-HDLD-2022-010", type: "indefinite" as const, start: "2022-08-01", end: null, terms: "Lương gộp 20.000.000 đ/tháng" },
+    { email: "chi.duong@suzu.group", number: "SZC-HDLD-2021-001", type: "indefinite" as const, start: "2021-01-11", end: null, terms: "Lương gộp 38.000.000 đ/tháng" },
+    // Ends in 60 days: the second contract on the expiry list.
+    { email: "khoi.ly@suzu.group", number: "SZC-HDLD-2024-002", type: "fixed_term" as const, start: day(today, -670), end: day(today, 60), terms: "Lương gộp 21.000.000 đ/tháng" },
+    { email: "duc.phan@suzu.group", number: "SZC-HDLD-2023-003", type: "indefinite" as const, start: "2023-02-06", end: null, terms: "Lương gộp 24.000.000 đ/tháng" },
+    { email: "ngan.vu@suzu.group", number: "SZC-HDLD-2024-004", type: "fixed_term" as const, start: "2024-03-04", end: "2027-03-03", terms: "Lương gộp 22.000.000 đ/tháng" },
+    { email: "duyen.huynh@suzu.group", number: "SZC-HDLD-2024-005", type: "fixed_term" as const, start: "2024-10-01", end: day(today, 85), terms: "Bán thời gian, 9.000.000 đ/tháng" },
+    { email: "anh.trinh@suzu.group", number: "SZC-HDTT-2026-006", type: "internship" as const, start: "2026-06-15", end: "2026-12-14", terms: "Hỗ trợ thực tập 5.000.000 đ/tháng" },
+    { email: "Ngô Bảo Anh", number: "SZM-HDDV-2025-011", type: "service" as const, start: "2025-11-01", end: day(today, 45), terms: "Theo buổi quay, 2.500.000 đ/buổi" },
   ];
   let written = 0;
   for (const demo of CONTRACTS) {

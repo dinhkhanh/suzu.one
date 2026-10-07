@@ -23,6 +23,8 @@
     "db:seed:demo:payroll": "tsx scripts/seed-demo-payroll-runs.ts && tsx scripts/cache-flush.ts",
     "db:seed:demo:pjm": "tsx --require ./scripts/server-only-shim.cjs scripts/seed-demo-pjm.ts && tsx scripts/cache-flush.ts",
     "db:seed:demo:bonus": "tsx scripts/seed-demo-bonus-run.ts && tsx scripts/cache-flush.ts",
+    "db:seed:demo:crm": "tsx --require ./scripts/server-only-shim.cjs scripts/seed-demo-crm.ts && tsx scripts/cache-flush.ts",
+    "db:demo:rebuild": "bash scripts/seed-demo-all.sh",
     "kb:manual": "tsx --require ./scripts/server-only-shim.cjs scripts/kb-manual.ts",
     "ai:eval": "tsx scripts/ai-eval.ts",
     "push:keys": "tsx scripts/push-keys.ts",

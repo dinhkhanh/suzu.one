@@ -324,7 +324,8 @@ const crmPipeline: ReportDefinition<{ entityId?: string }> = {
       title: t("reports.catalogue.crm_pipeline.name"),
       columns: (["section", "name", "deals", "value", "weighted"] as const).map((key) => t(`reports.catalogue.crm_pipeline.${key}`)),
       rows,
-      summary: dashboard ? t("reports.catalogue.crm_pipeline.summary", { open: dashboard.openCount, weighted, stale: dashboard.staleCount, winRate: percent(dashboard.winRate) }) : t("reports.catalogue.empty"),
+      // `winRate` is already a whole percentage, not a share.
+      summary: dashboard ? t("reports.catalogue.crm_pipeline.summary", { open: dashboard.openCount, weighted, stale: dashboard.staleCount, winRate: dashboard.winRate === null ? "—" : `${dashboard.winRate}%` }) : t("reports.catalogue.empty"),
     };
   },
 };
