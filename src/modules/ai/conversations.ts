@@ -23,11 +23,12 @@ import type { Citation } from "./engine/answer";
 import { HISTORY_TURNS, type HistoryMessage, historyFor } from "./engine/history";
 import { allowedAppLinks, appLinksFor } from "./engine/app-links";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
-import { routeQuestion } from "./engine/routing";
+import { asksToAct, routeQuestion } from "./engine/routing";
 import type { AgentShown, AiNotice, AnswerOutcome, ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
 import { chatDriver, localChatDriver } from "./model";
 import { agentAudienceAdmits } from "./policy";
+import { linkProposals, proposalStatesIn } from "./proposals";
 import { retrievePassages } from "./retrieval";
 import { runTool, type ToolAudit } from "./tools";
 
@@ -90,7 +91,8 @@ export async function resolveAnswer(user: AgentUser, question: string, locale: s
   const route = routeQuestion(question, today);
   // D33: a question about somebody else is the agent's, whose tools ask each module what the asker
   // may see; Phase 9's router only ever refused it. A question about the asker stays free.
-  if (route && !(route.subject === "other" && options.agent)) {
+  // R4: a request to do something is the agent's too — it proposes; the router only reads.
+  if (route && !(options.agent && (route.subject === "other" || asksToAct(question)))) {
     const { outcome, audit } = await runTool(user, route);
     // A tool that answered, or refused, has settled the question; the knowledge base is not asked
     // afterwards, so a refusal can never be padded out with a policy page about somebody's salary.
@@ -98,7 +100,7 @@ export async function resolveAnswer(user: AgentUser, question: string, locale: s
     return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
   }
   if (options.agent) {
-    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent });
+    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent, acting: asksToAct(question) });
     if (turn.kind === "answered") return { kind: "agent", turn, outcome: "answered" };
     if (turn.kind === "off_topic") return { kind: "agent", turn, outcome: "off_topic" };
     // The free path: a quoted passage, with the reason the chat gives for it.
@@ -154,16 +156,26 @@ const agentOf = (row: AiMessageRow): AgentShown | null => {
 };
 const toTurn = (row: AiMessageRow): ConversationTurn => ({ id: row.id, role: row.role, body: row.body, outcome: row.outcome, citations: citationsOf(row), tool: toolOf(row), agent: agentOf(row), createdAt: row.createdAt });
 
+/**
+ * An answer as a follow-up reads it: its text, and the proposals it put on cards (R4) — a card has no
+ * text of its own, and "đổi hạn sang thứ Sáu" needs to know which change was proposed.
+ */
+function pastBody(row: { body: string; toolCalls: unknown }): string {
+  const cards = (row.toolCalls as AgentShown | null)?.cards ?? [];
+  const proposed = cards.flatMap((card) => (card.proposal ? [`[Proposed, awaiting the asker's confirmation: ${card.proposal.summary}]`] : []));
+  return [row.body, ...proposed].filter(Boolean).join("\n");
+}
+
 /** What a follow-up is asked with (FR-AGT-04): the conversation's last turns as text, the asker's own or nothing. */
 async function historyOf(personId: string, conversationId: string): Promise<HistoryMessage[]> {
   const rows = await db()
-    .select({ role: aiMessage.role, body: aiMessage.body })
+    .select({ role: aiMessage.role, body: aiMessage.body, toolCalls: aiMessage.toolCalls })
     .from(aiMessage)
     .innerJoin(aiConversation, eq(aiConversation.id, aiMessage.conversationId))
     .where(and(eq(aiMessage.conversationId, conversationId), eq(aiConversation.personId, personId)))
     .orderBy(desc(aiMessage.createdAt))
     .limit(HISTORY_TURNS * 2);
-  return historyFor(rows.reverse());
+  return historyFor(rows.reverse().map((row) => ({ role: row.role, body: pastBody(row) })));
 }
 
 /** What the message row keeps of an agent turn: the calls without their results, and what was shown. */
@@ -228,6 +240,10 @@ export async function ask(user: AgentUser & { email?: string | null }, input: As
       .values({ conversationId, personId, role: "assistant", body: unstored ? "" : body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, toolCalls: turn && shown ? storedAgent(turn, shown) : null, driver, model, score: best, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
       .returning();
 
+    // The cards of this turn's proposals belong to this message (and to this conversation, which the
+    // card's state is read with).
+    if (turn && shown?.cards.some((card) => card.proposal)) await linkProposals(tx, { personId, turnId: turn.turnId, conversationId, messageId: stored.id });
+
     // The backlog of pages still to write. Only the question, never the passages that failed.
     if (logAsUnanswered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
 
@@ -243,13 +259,17 @@ export async function listConversations(personId: string, limit = 20): Promise<{
 
 /** The turns of one conversation — the asker's own, or nothing. */
 export async function getConversation(personId: string, conversationId: string): Promise<{ id: string; title: string; turns: ConversationTurn[] } | null> {
-  // Both at once; the messages are only returned when the conversation is the asker's.
-  const [[row], messages] = await Promise.all([
+  // All at once; the messages and the proposals are only returned when the conversation is the asker's.
+  const [[row], messages, proposals] = await Promise.all([
     db().select().from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1),
     db().select().from(aiMessage).where(eq(aiMessage.conversationId, conversationId)).orderBy(asc(aiMessage.createdAt)),
+    proposalStatesIn(personId, conversationId),
   ]);
   if (!row) return null;
-  return { id: row.id, title: row.title, turns: messages.map(toTurn) };
+  // A card shows its proposal as it stands now, not as it was proposed: confirmed a minute ago, the buttons are gone.
+  const live = (turn: ConversationTurn): ConversationTurn =>
+    turn.agent && turn.agent.cards.some((card) => card.proposal) ? { ...turn, agent: { ...turn.agent, cards: turn.agent.cards.map((card) => (card.proposal ? { ...card, proposal: { ...card.proposal, ...(proposals.get(card.proposal.id) ?? { state: "expired" as const }) } } : card)) } } : turn;
+  return { id: row.id, title: row.title, turns: messages.map(toTurn).map(live) };
 }
 
 export async function deleteConversation(personId: string, conversationId: string): Promise<boolean> {

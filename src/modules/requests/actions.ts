@@ -8,7 +8,8 @@ import { reportError } from "@/lib/observability/report";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { approverRuleSchema, conditionSchema } from "@/modules/platform/approvals/flows";
 import { FOLLOW_UP_OPENS, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "./engine/follow-ups";
-import { FIELD_TYPES, MAX_FIELDS, MAX_OPTIONS, MAX_TEXT } from "./engine/form";
+import { FIELD_TYPES, MAX_FIELDS, MAX_OPTIONS } from "./engine/form";
+import { fileRequestInput, requestAnswers } from "./inputs";
 import { canFileRequests, canManageRequestTypes, canPayRequests } from "./policy";
 import { REQUEST_CATEGORIES, REQUEST_PAYOUTS } from "./enums";
 import { CONFIRMATION_LETTER_CODE, type IssuedLetter, issueConfirmationLetter } from "./letters";
@@ -130,13 +131,9 @@ export async function setRequestTypeActiveAction(input: unknown) {
 // the request's summary into the *approver's* language, which is not where it is written.
 const formatDong = (amount: number) => `${new Intl.NumberFormat("vi-VN").format(amount)} ₫`;
 
-// The answers arrive as a flat record; the engine coerces and checks each one against its field.
-const answers = z.record(z.string().max(40), z.union([z.string().max(MAX_TEXT), z.number(), z.boolean(), z.array(z.string().max(200)).max(50)]).nullable()).default({});
-
 const filePipeline = createAction({
   name: "request.file",
-  // `parentRequestId`: the request this one is filed under (FR-REQ-05); the service checks it may be.
-  input: z.object({ code: z.string().trim().min(1).max(40), values: answers, parentRequestId: z.preprocess(blankToNull, z.uuid().nullable().default(null)) }),
+  input: fileRequestInput,
   authorize: (user) => canFileRequests(user.principal),
   run: async ({ user, input }) => {
     const target = await getPersonTarget(user.person.id);
@@ -157,7 +154,7 @@ export async function fileRequestAction(input: unknown) {
 
 const refilePipeline = createAction({
   name: "request.refile",
-  input: z.object({ requestId: z.uuid(), values: answers }),
+  input: z.object({ requestId: z.uuid(), values: requestAnswers }),
   authorize: async (user, input) => {
     const view = await getGenericRequest({ personId: user.person.id, principal: user.principal }, input.requestId);
     return !!view && view.isRequester && view.request.status === "returned";

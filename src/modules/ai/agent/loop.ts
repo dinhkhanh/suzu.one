@@ -6,9 +6,12 @@
 //    to any other name — invented, or offered to somebody else — is answered "unknown tool" and
 //    nothing is read.
 //  - TOOL RESULTS ARE DATA. They go back as `tool_result` blocks holding the model view alone, and
-//    the system prompt says what they are. In this release no tool changes anything, so a sentence
-//    in a task title that talks the model into a call can only make it read what the asker could
-//    read anyway.
+//    the system prompt says what they are. No tool changes anything: a `propose_*` tool only writes
+//    down a proposal, so a sentence in a task title that talks the model into a call can at worst
+//    put a card in front of the asker — which does nothing until the asker confirms it (FR-AGT-32).
+//  - A PROPOSAL ENDS THE TURN (R4). Once a reply's tools have proposed something, the turn ends and
+//    the chat shows the card under the app's own line; whatever the model wrote beside the call is
+//    dropped, and no further call can stack changes on top. At most three proposals in a turn.
 //  - THE CEILINGS (FR-AGT-42): six model calls, 2,000 output tokens each, 40 seconds, thirty rows
 //    per tool. A turn that reaches one ends on the free path, recorded as `limited` — never as an
 //    error and never as a bigger model with no limit.
@@ -22,10 +25,11 @@ import { AGENT_SYSTEM, CLARIFY_TOOL, DECLINE_TOOL, isClarifyingQuestion, isUngro
 import type { Citation } from "../engine/answer";
 import type { HistoryMessage } from "../engine/history";
 import { NO_USAGE, type TokenUsage } from "../engine/limits";
-import { type CalledTool, FIRST_STEP, type ModelTier, type NextStep, nextStep, TURN_CEILINGS } from "../engine/tiers";
+import { type CalledTool, firstStep, type ModelTier, type NextStep, nextStep, TURN_CEILINGS } from "../engine/tiers";
 import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice } from "../enums";
 import type { AgentDriver, AgentReply } from "./driver";
 import { askerFactsOf } from "./facts";
+import { PROPOSALS_PER_TURN } from "../proposals";
 import { type AgentUser, type AnyAgentTool, type AskerFacts, heldPay, inputSchemaOf, runAgentTool, type ToolContext, type ToolSubject, toolsFor } from "./registry";
 import { AGENT_TOOLS } from "./tools";
 
@@ -53,19 +57,21 @@ export type AgentTurnInput = {
   clock?: () => number;
   /** What the asker leads and manages; read from the app when not given. */
   facts?: AskerFacts;
+  /** The question asks for something to be done (`asksToAct`): the turn starts on the second tier. */
+  acting?: boolean;
 };
 
 const DECLINE: Anthropic.Tool = {
   name: DECLINE_TOOL,
-  description: "Declines a question that is not about the company, its people, policies, work or this app. Call it alone, with the kind of question.",
+  description: "Declines a question that is not about the company, its people, policies, work or this app. Call it alone, with the kind of question. Never for a request to do something in the app (create, change, log, request, submit…): that is a propose_* tool.",
   input_schema: { type: "object", properties: { kind: { type: "string", enum: [...OFF_TOPIC_KINDS] } }, required: ["kind"], additionalProperties: false },
   strict: true,
 };
 
 const CLARIFY: Anthropic.Tool = {
   name: CLARIFY_TOOL,
-  description: "Asks the asker one short question back, when you cannot tell what they need (which project, which month). Call it alone.",
-  input_schema: { type: "object", properties: { question: { type: "string", description: "One short question, in the asker's language." } }, required: ["question"], additionalProperties: false },
+  description: "Asks the asker one short question back, when you cannot tell what they need (which project, which month) or a request still lacks details a form requires. Call it alone.",
+  input_schema: { type: "object", properties: { question: { type: "string", description: "One short question in the asker's language, ending with a question mark; it may list briefly the details a form still needs." } }, required: ["question"], additionalProperties: false },
   strict: true,
 };
 
@@ -119,7 +125,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
     { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee" }) },
   ];
   const messages: Anthropic.MessageParam[] = [...input.history.map((message) => ({ role: message.role, content: message.content })), { role: "user", content: input.question }];
-  const context: ToolContext = { user: input.user, today: input.today, locale: input.locale };
+  const context: ToolContext = { user: input.user, today: input.today, locale: input.locale, turnId };
 
   const spent: Spent = { calls: [], usage: NO_USAGE, model: null, tiers: [], turnId };
   const called: CalledTool[] = [];
@@ -127,7 +133,8 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const citations: Citation[] = [];
   const toolNames = new Map<string, string>();
   let compensation = false;
-  let step: NextStep = FIRST_STEP;
+  let proposals = 0;
+  let step: NextStep = firstStep(input.acting ?? false);
   let calls = 0;
   let callsOnTier = 0;
   let tier: ModelTier = "simple";
@@ -183,6 +190,11 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
           spent.calls.push({ tool: use.name, input: null, outcome: "failed", subject: null, error: "unknown_tool" });
           return { type: "tool_result", tool_use_id: use.id, content: toolResultText(use.name, "failed", { error: "unknown_tool" }), is_error: true };
         }
+        // The cap is counted as calls are made, before any of them runs: a reply asking for ten cards gets three.
+        if (tool.kind === "propose" && ++proposals > PROPOSALS_PER_TURN) {
+          spent.calls.push({ tool: tool.name, input: use.input, outcome: "refused", subject: null, error: "too_many_proposals" });
+          return { type: "tool_result", tool_use_id: use.id, content: toolResultText(tool.name, "refused", { proposed: false, reason: "too_many_proposals" }) };
+        }
         const result = await runAgentTool(tool, context, use.input);
         spent.calls.push({ tool: tool.name, input: use.input, outcome: result.outcome, subject: result.subject, error: result.error });
         called.push({ name: tool.name, module: tool.module, tags: tool.tags });
@@ -193,6 +205,8 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
       }),
     );
     messages.push({ role: "user", content: results });
+    // A card is waiting for the asker: the turn ends here, under the app's line (the chat writes it).
+    if (cards.some((card) => card.proposal)) return { ...spent, kind: "answered", body: "", steps: spent.calls.map(({ tool, outcome }) => ({ tool, outcome })), cards, citations, compensation };
     step = nextStep({ tier, calls, callsOnTier, tools: called });
   }
   return { ...spent, kind: "fallback", reason: "limited" };

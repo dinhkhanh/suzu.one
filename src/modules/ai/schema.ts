@@ -157,3 +157,47 @@ export const aiModelCall = pgTable(
   },
   (t) => [index("ai_model_call_time_idx").on(t.createdAt), index("ai_model_call_person_idx").on(t.personId, t.createdAt)],
 ).enableRLS();
+
+// What became of a proposal (D37, FR-AGT-20). `confirming` is the claim taken before the module's
+// action runs, so two clicks cannot run it twice; a proposal that leaves `pending` never returns to
+// it. An expired proposal is a pending one past `expires_at` — read, never written by a job.
+export const aiProposalStatus = pgEnum("ai_proposal_status", ["pending", "confirming", "confirmed", "discarded", "failed"]);
+
+/**
+ * A change the agent proposed and the asker has not yet confirmed (D37, FR-AGT-20…23). It holds the
+ * module action's name and its input, validated against that action's own schema when proposed and
+ * parsed again by the action when confirmed; the fields as the person reads them on the card; and
+ * who the action will notify. Only its own person can confirm or discard it, at most once, within
+ * thirty minutes. Nothing here executes anything: confirming calls the module's own server action as
+ * the person, which authorises, notifies and audits itself as it always does.
+ */
+export const aiProposal = pgTable(
+  "ai_proposal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    /** The agent turn that proposed it; the message is linked once the turn is stored. */
+    turnId: uuid("turn_id").notNull(),
+    conversationId: uuid("conversation_id").references(() => aiConversation.id, { onDelete: "cascade" }),
+    messageId: uuid("message_id").references(() => aiMessage.id, { onDelete: "set null" }),
+    /** The module action's audit name, e.g. "work.task.create" (`agent/proposable.ts`). */
+    action: text("action").notNull(),
+    /** The action's input, exactly as it will be sent. */
+    input: jsonb("input").notNull(),
+    /** The card: `ProposalField[]` (enums.ts) — names and dates as the person reads them. */
+    fields: jsonb("fields").notNull().default([]),
+    /** Who the action will notify, by name, as the card says. */
+    notify: jsonb("notify").notNull().default([]),
+    /** The module's normal form, filled in from this proposal (FR-AGT-22). */
+    editHref: text("edit_href"),
+    status: aiProposalStatus("status").notNull().default("pending"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** After a confirm: the record it made or changed (`{ href }`), or why the action refused. */
+    result: jsonb("result"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_proposal_person_idx").on(t.personId, t.createdAt), index("ai_proposal_turn_idx").on(t.turnId), index("ai_proposal_conversation_idx").on(t.conversationId)],
+).enableRLS();

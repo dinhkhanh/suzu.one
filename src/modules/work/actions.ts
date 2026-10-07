@@ -5,23 +5,21 @@ import { createAction } from "@/lib/action";
 import { findOrgUnit } from "../platform/org/service";
 import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
-import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { MAX_LINKED_DIGITAL_ASSETS, setProjectDigitalAssets } from "./digital-links";
 import { setFollowing } from "./followers";
-import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
+import { ACCENT_COLORS, CLIENT_KINDS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
 import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask, canViewTeamBacklog } from "./policy";
 import { createProject, findProject, projectFacts, projectRoleOf, setProjectArchived, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, loadTasks, removeDependency, restoreWorkTask, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamArchived, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { findStateSet, startingStates } from "./status-sets";
+import { addCommentInput, commentBody, createTaskInput, updateTaskInput } from "./inputs";
 import { loadViewer } from "./viewer";
 import { createSavedView, deleteSavedView, findSavedView, updateSavedView } from "./views";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
-/** For patches: absent = leave alone, blank = clear. */
-const patchable = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable()).optional();
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
 const isoDate = z.iso.date();
 
@@ -349,25 +347,7 @@ function refreshTask(task: { id: string; parentTaskId?: string | null }, project
 
 const createTaskPipeline = createAction({
   name: "work.task.create",
-  input: z.object({
-    teamId: z.uuid(),
-    projectId: patchable(z.uuid()),
-    title: z.string().trim().min(1).max(200),
-    description: optional(z.string().trim().max(10000)),
-    stateId: optional(z.uuid()),
-    assigneePersonId: optional(z.uuid()),
-    priority: optional(z.coerce.number().int().min(1).max(4)),
-    startDate: optional(isoDate),
-    dueDate: optional(isoDate),
-    estimateMinutes: optional(z.coerce.number().int().min(1).max(60000)),
-    clientId: patchable(z.uuid()),
-    channel: optional(z.enum(CHANNELS)),
-    contentFormat: optional(z.enum(CONTENT_FORMATS)),
-    parentTaskId: optional(z.uuid()),
-    labelIds: z.array(z.uuid()).max(20).default([]),
-    digitalAssetIds: z.array(z.uuid()).max(MAX_LINKED_DIGITAL_ASSETS).default([]),
-    collaboratorIds: z.array(z.uuid()).max(20).default([]),
-  }),
+  input: createTaskInput,
   authorize: async (user, input) => {
     const viewer = await loadViewer(user);
     // A sub-task goes where its parent is: whoever may work on the parent may add to it.
@@ -393,41 +373,9 @@ export async function createTaskAction(input: unknown) {
   return createTaskPipeline(input);
 }
 
-/** FR-PJM-35: values are checked against the field's type by the service (engine/custom-fields.ts). */
-const customValuesInput = z.record(z.uuid(), z.union([z.string().max(1000), z.number(), z.boolean(), z.array(z.string().max(40)).max(50), z.null()])).refine((values) => Object.keys(values).length <= 30);
-
-const checklistItem = z.object({ id: z.string().min(1).max(40), text: z.string().trim().min(1).max(200), done: z.boolean() });
-const linkItem = z.object({ id: z.string().min(1).max(40), url: z.url({ protocol: /^https$/ }).max(1000), title: optional(z.string().trim().max(120)) });
-
 const updateTaskPipeline = createAction({
   name: "work.task.update",
-  input: z.object({
-    taskId: z.uuid(),
-    title: z.string().trim().min(1).max(200).optional(),
-    description: patchable(z.string().trim().max(10000)),
-    stateId: z.uuid().optional(),
-    assigneePersonId: patchable(z.uuid()),
-    requesterPersonId: patchable(z.uuid()),
-    reviewerPersonId: patchable(z.uuid()),
-    priority: patchable(z.coerce.number().int().min(1).max(4)),
-    startDate: patchable(isoDate),
-    dueDate: patchable(isoDate),
-    estimateMinutes: patchable(z.coerce.number().int().min(1).max(60000)),
-    projectId: patchable(z.uuid()),
-    clientId: patchable(z.uuid()),
-    channel: patchable(z.enum(CHANNELS)),
-    contentFormat: patchable(z.enum(CONTENT_FORMATS)),
-    parentTaskId: patchable(z.uuid()),
-    labelIds: z.array(z.uuid()).max(20).optional(),
-    digitalAssetIds: z.array(z.uuid()).max(MAX_LINKED_DIGITAL_ASSETS).optional(),
-    collaboratorIds: z.array(z.uuid()).max(20).optional(),
-    checklist: z.array(checklistItem).max(MAX_TASK_CHECKLIST).optional(),
-    addChecklistIds: z.array(z.uuid()).min(1).max(MAX_LINKED_CHECKLISTS).optional(),
-    links: z.array(linkItem).max(30).optional(),
-    position: z.object({ beforeTaskId: optional(z.uuid()), afterTaskId: optional(z.uuid()) }).optional(),
-    customValues: customValuesInput.optional(),
-    cycleId: patchable(z.uuid()),
-  }),
+  input: updateTaskInput,
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);
     if (!task) return false;
@@ -626,12 +574,11 @@ export async function deleteViewAction(input: unknown) {
 
 // ── Conversation: comments, reactions, followers ────────────────────────────────────────────
 
-const commentBody = z.string().trim().min(1).max(5000);
 const actorOf = (user: { person: { id: string; fullName: string }; email: string }) => ({ personId: user.person.id, email: user.email, fullName: user.person.fullName });
 
 const addCommentPipeline = createAction({
   name: "work.comment.add",
-  input: z.object({ taskId: z.uuid(), body: commentBody, parentId: optional(z.uuid()) }),
+  input: addCommentInput,
   // Whoever may see the task may join the conversation — the requester too, who cannot edit it.
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);

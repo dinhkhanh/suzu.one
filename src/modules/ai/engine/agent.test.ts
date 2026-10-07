@@ -2,11 +2,12 @@
 // a conversation goes with a follow-up, what of a tool's rows a model may read, and who gets the
 // agent while it is piloted.
 import { describe, expect, it } from "vitest";
+import { asksToAct } from "./routing";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { agentAudienceAdmits } from "../policy";
 import { isClarifyingQuestion, isUngrounded, toolResultText } from "./agent-prompt";
 import { historyFor } from "./history";
-import { type CalledTool, FIRST_STEP, nextStep, TURN_CEILINGS } from "./tiers";
+import { type CalledTool, FIRST_STEP, firstStep, nextStep, TURN_CEILINGS } from "./tiers";
 import { modelRows, modelText } from "./views";
 
 const leave: CalledTool = { name: "my_leave", module: "leave", tags: [] };
@@ -152,8 +153,31 @@ describe("what the app lets a model say in its own words (FR-AGT-03)", () => {
     expect(isClarifyingQuestion("Bạn muốn xem dự án nào?")).toBe(true);
     expect(isClarifyingQuestion("Which month? ")).toBe(true);
     expect(isClarifyingQuestion("Here is a poem about summer.")).toBe(false);
-    expect(isClarifyingQuestion(`${"x".repeat(220)}?`)).toBe(false);
+    // Room to list what a form still needs (R4), and no more.
+    expect(isClarifyingQuestion(`Đề nghị mua cần thêm: số tiền dự kiến, nhóm chi phí và ngày cần có — bạn cho mình biết nhé?`)).toBe(true);
+    expect(isClarifyingQuestion(`${"x".repeat(520)}?`)).toBe(false);
     expect(isClarifyingQuestion("")).toBe(false);
     expect(isClarifyingQuestion(42)).toBe(false);
+  });
+});
+
+describe("a request to act goes to the agent, not the free router (R4)", () => {
+  it("knows a request to do something", () => {
+    for (const question of ["Xin nghỉ phép năm thứ Sáu tuần sau", "Hôm qua tôi quên chấm công ra, về lúc 18:15", "Tạo việc thiết kế banner Tết cho Lan", "Ghi 2 tiếng hôm nay cho việc Dựng bản 3 phút", "Đăng ký làm từ xa ngày mai", "Nộp báo cáo cuối ngày giúp tôi", "Log 90 minutes of training today", "Please create a task to back up the archive", "Can you submit my end-of-day report?", "Request annual leave next Monday", "Put the opening graphics task on my plan for today", "Comment on the subtitles task that the script is missing", "Giao việc Mua bản quyền nhạc nền cho Huy", "Tạo đề nghị mua 2 ổ cứng 4TB"]) {
+      expect(asksToAct(question), question).toBe(true);
+    }
+  });
+
+  it("leaves a question about a figure to the router", () => {
+    for (const question of ["Tôi còn bao nhiêu ngày phép?", "Tháng này tôi đi muộn mấy lần?", "Ai duyệt đơn nghỉ phép của tôi?", "Giải thích phiếu lương tháng 9 của tôi", "How many leave days do I have left?", "What's my attendance this month?"]) {
+      expect(asksToAct(question), question).toBe(false);
+    }
+  });
+});
+
+describe("a turn that asks to act starts on the second tier (R4)", () => {
+  it("starts on Sonnet with tools, and every other turn on Haiku", () => {
+    expect(firstStep(true)).toEqual({ kind: "call", tier: "standard", withTools: true });
+    expect(firstStep(false)).toEqual(FIRST_STEP);
   });
 });

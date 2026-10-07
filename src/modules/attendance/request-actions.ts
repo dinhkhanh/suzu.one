@@ -12,18 +12,16 @@ import { notify } from "@/modules/platform/notifications/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { ANOMALY_KINDS, listAnomalies } from "./anomalies";
 import { buildLockedMonthExport } from "./exports";
+import { attendanceRequestFields, submitAttendanceRequestInput } from "./inputs";
 import { ADJUSTMENT_FIELDS, approveMonth, confirmMonth, createAdjustment, findAdjustment, isMonth, lockPeriod, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
 import { canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
-import { ATTENDANCE_REQUEST_TYPES, type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, findAttendanceRequest, findByApproval, getAttendanceRequestView, isPendingEvidence, resubmitAttendanceRequest, submitAttendanceRequest } from "./requests";
+import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, findAttendanceRequest, findByApproval, getAttendanceRequestView, isPendingEvidence, resubmitAttendanceRequest, submitAttendanceRequest } from "./requests";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
-const checkbox = z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean());
 const text = (max: number) => optional(z.string().trim().max(max));
 const day = z.iso.date();
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const month = z.string().refine(isMonth, "invalid_month");
-const decimal = (min: number, max: number) => z.preprocess((value) => (typeof value === "string" && value.trim() !== "" ? Number(value.replace(",", ".")) : value), z.number().min(min).max(max));
 const wholeNumber = (min: number, max: number) => z.preprocess((value) => (typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Number(value) : value), z.number().int().min(min).max(max));
 
 const refresh = () => {
@@ -39,28 +37,7 @@ const isHrFor = async (user: ActingUser, personId: string) => {
 
 // ── Requests ────────────────────────────────────────────────────────────────────────────────
 
-// One flat form for the four types; which fields matter depends on `type`.
-const requestFields = {
-  type: z.enum(ATTENDANCE_REQUEST_TYPES),
-  startDate: day,
-  endDate: optional(day),
-  reason: z.string().trim().min(3).max(1000),
-  evidenceFileId: optional(z.uuid()),
-  cause: z.enum(["forgot", "device_error", "other"]).default("forgot"),
-  inTime: optional(time),
-  outTime: optional(time),
-  outNextDay: checkbox.default(false),
-  kind: z.enum(["wfh", "off_site", "business_trip"]).default("wfh"),
-  portion: z.enum(["full", "am", "pm"]).default("full"),
-  locationName: text(200),
-  latitude: optional(decimal(-90, 90)),
-  longitude: optional(decimal(-180, 180)),
-  radiusM: optional(wholeNumber(50, 5000)),
-  from: optional(time),
-  to: optional(time),
-  compensation: optional(z.enum(["pay", "time_off"])),
-};
-type RequestFields = z.output<z.ZodObject<typeof requestFields>>;
+type RequestFields = z.output<z.ZodObject<typeof attendanceRequestFields>>;
 
 function toInput(fields: RequestFields): AttendanceRequestInput {
   const base = { type: fields.type, startDate: fields.startDate, endDate: fields.type === "remote_work" ? (fields.endDate ?? fields.startDate) : fields.startDate, reason: fields.reason, evidenceFileId: fields.type === "attendance_correction" ? fields.evidenceFileId : null, compensation: fields.compensation };
@@ -73,7 +50,7 @@ function toInput(fields: RequestFields): AttendanceRequestInput {
 const submitPipeline = createAction({
   name: "attendance.request.submit",
   // Without `personId` the request is the signed-in person's own; HR may file for the people they keep attendance for.
-  input: z.object({ personId: optional(z.uuid()), ...requestFields }),
+  input: submitAttendanceRequestInput,
   authorize: async (user, input) => {
     const target = await getPersonTarget(input.personId ?? user.person.id);
     return !!target && canFileAttendanceRequestFor(user.principal, target);
@@ -93,7 +70,7 @@ export async function submitAttendanceRequestAction(input: unknown) {
 
 const resubmitPipeline = createAction({
   name: "attendance.request.resubmit",
-  input: z.object({ requestId: z.uuid(), ...requestFields }),
+  input: z.object({ requestId: z.uuid(), ...attendanceRequestFields }),
   // The requester's own returned request; the engine checks the rest.
   authorize: async (user, input) => !!(await getAttendanceRequestView({ personId: user.person.id, principal: user.principal }, input.requestId))?.isRequester,
   run: async ({ user, input }) => {

@@ -9,8 +9,9 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/modules/platform/files/service";
 import { runLeaveChangeHooks } from "@/modules/platform/leave-changes/registry";
 import { can } from "@/modules/platform/rbac/policy";
-import { ACCRUAL_METHODS, BASE_SOURCES, LEAVE_CATEGORIES, PAYROLL_TREATMENTS, PORTIONS, PROBATION_RULES, ROUNDINGS, WORKFORCE_TYPES } from "./enums";
+import { ACCRUAL_METHODS, BASE_SOURCES, LEAVE_CATEGORIES, PAYROLL_TREATMENTS, PROBATION_RULES, ROUNDINGS, WORKFORCE_TYPES } from "./enums";
 import { openingBalanceImport } from "./import";
+import { leaveFields, submitLeaveInput } from "./inputs";
 import { adjustBalance, runLeaveAccruals } from "./ledger";
 import { canFileLeaveFor, canManageLeaveConfig, canManageLeaveOf } from "./policy";
 import { amendLeave, cancelLeave, decideLeave, findLeaveRequest, getLeaveRequestView, isPendingLeaveAttachment, submitLeave } from "./requests";
@@ -55,18 +56,6 @@ const leaveChanged = async (personId: string) => {
 
 // ── Requests ────────────────────────────────────────────────────────────────────────────────
 
-const portion = z.enum(PORTIONS);
-const leaveFields = {
-  leaveTypeId: z.uuid(),
-  startDate: day,
-  endDate: day,
-  startPortion: portion.default("full"),
-  endPortion: portion.default("full"),
-  minutes: optional(wholeNumber(15, 1440)),
-  reason: text(1000),
-  attachmentFileId: optional(z.uuid()),
-};
-
 const isHrFor = async (user: { principal: Parameters<typeof can>[0] }, personId: string) => {
   const target = await getPersonTarget(personId);
   return !!target && canManageLeaveOf(user.principal, target);
@@ -75,7 +64,7 @@ const isHrFor = async (user: { principal: Parameters<typeof can>[0] }, personId:
 const submitPipeline = createAction({
   name: "leave.request.submit",
   // Without `personId` the request is the signed-in person's own; HR may file for the people they look after.
-  input: z.object({ personId: optional(z.uuid()), ...leaveFields }),
+  input: submitLeaveInput,
   authorize: async (user, input) => {
     const target = await getPersonTarget(input.personId ?? user.person.id);
     return !!target && canFileLeaveFor(user.principal, target);

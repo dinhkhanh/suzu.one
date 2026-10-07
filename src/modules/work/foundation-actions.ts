@@ -15,6 +15,7 @@ import { findProject, listAssignable, projectFacts } from "./projects";
 import { loadTask, loadTasks } from "./tasks";
 import { findTeam, teamFacts } from "./teams";
 import { acceptTriage, declineTriage, deleteTriageRule, findTriageRule, mergeTriage, saveTriageRule, snoozeTriage, triageLink } from "./triage";
+import { raiseBlockerInput, resolveBlockerInput } from "./inputs";
 import { loadViewer } from "./viewer";
 
 type User = Parameters<typeof loadViewer>[0];
@@ -281,7 +282,7 @@ export async function deleteTriageRuleAction(input: unknown) {
 
 const raisePipeline = createAction({
   name: "work.blocker.raise",
-  input: z.object({ taskId: z.uuid(), reason: z.string().trim().min(1).max(500), neededPersonId: optional(z.uuid()) }),
+  input: raiseBlockerInput,
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);
     if (!task || !canRaiseBlocker(await loadViewer(user), task.facts)) return false;
@@ -301,7 +302,7 @@ export async function raiseBlockerAction(input: unknown) {
 
 const resolvePipeline = createAction({
   name: "work.blocker.resolve",
-  input: z.object({ taskId: z.uuid(), resolution: optional(z.string().trim().max(500)) }),
+  input: resolveBlockerInput,
   authorize: async (user, input) => {
     const [task, blocker] = await Promise.all([loadTask(input.taskId), findOpenBlocker(input.taskId)]);
     return !!task && !!blocker && canResolveBlocker(await loadViewer(user), task.facts, blocker);

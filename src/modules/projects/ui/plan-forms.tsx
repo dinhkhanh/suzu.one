@@ -457,12 +457,14 @@ export function LineTasksForm({ deliverableId, missing, people }: { deliverableI
 /**
  * `draft` is the assistant's drafting button (FR-PJM-64), mounted by the page: it fills the summary
  * (`#summary`) and puts the health the facts suggest into the hidden select `#status-health-draft`,
- * which ticks the matching choice here. Nothing is posted until the lead posts it.
+ * which ticks the matching choice here. Nothing is posted until the lead posts it. `initial`: the
+ * assistant's proposal the page started from; after a post the form starts empty again.
  */
-export function StatusUpdateForm({ projectId, healths, draft }: { projectId: string; healths: readonly string[]; draft?: ReactNode }) {
+export function StatusUpdateForm({ projectId, healths, draft, initial }: { projectId: string; healths: readonly string[]; draft?: ReactNode; initial?: { health?: string; summary?: string; highlights?: string; nextSteps?: string } }) {
   const t = useTranslations("projects");
   const [key, setKey] = useState(0);
-  const [health, setHealth] = useState<string | null>(null);
+  const [health, setHealth] = useState<string | null>(initial?.health ?? null);
+  const start = key === 0 ? initial : undefined;
   return (
     <ActionForm
       key={key}
@@ -496,14 +498,14 @@ export function StatusUpdateForm({ projectId, healths, draft }: { projectId: str
         </RadioGroup>
       </fieldset>
       <Field name="summary" label={t("fields.summary")}>
-        <NoteEditor id="summary" name="summary" required rows={3} maxLength={4000} />
+        <NoteEditor id="summary" name="summary" required rows={3} maxLength={4000} defaultValue={start?.summary} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="highlights" label={t("fields.highlights")}>
-          <NoteEditor id="highlights" name="highlights" rows={3} maxLength={4000} />
+          <NoteEditor id="highlights" name="highlights" rows={3} maxLength={4000} defaultValue={start?.highlights} />
         </Field>
         <Field name="nextSteps" label={t("fields.nextSteps")}>
-          <NoteEditor id="nextSteps" name="nextSteps" rows={3} maxLength={4000} />
+          <NoteEditor id="nextSteps" name="nextSteps" rows={3} maxLength={4000} defaultValue={start?.nextSteps} />
         </Field>
       </div>
     </ActionForm>

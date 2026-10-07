@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getReportForm, reportLink, withinReportWindow } from "@/modules/daily/service";
+import { proposalDraft } from "@/modules/ai/service";
 import { EodNotesDraftButton } from "@/modules/ai/ui/draft-button";
 import { ReportForm } from "@/modules/daily/ui/report-form";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -16,12 +17,18 @@ export const generateMetadata = pageTitle("dailyReport");
 // FR-PJM-22: the day's report, already written from the record — the person adds judgement and
 // sends. Today's by default; `?date=` opens a day of the back-fill window, and the header steps
 // from day to day inside it, so a report missed yesterday can still be written (it is marked late).
+// `?proposal=` is the assistant's Sửa (FR-AGT-22): the form opens with the card's words, unsent.
 export default async function ReportPage({ searchParams }: PageProps<"/daily/report">) {
   const user = await requireUser();
   const today = todayInVietnam();
-  const { date: asked } = await searchParams;
+  const { date: asked, proposal } = await searchParams;
   const date = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && withinReportWindow(asked, today) ? asked : today;
-  const [t, format, form] = await Promise.all([getTranslations("daily"), getFormatter(), getReportForm(user.person.id, date)]);
+  const [t, format, form, proposed] = await Promise.all([getTranslations("daily"), getFormatter(), getReportForm(user.person.id, date), proposalDraft(user.person.id, typeof proposal === "string" ? proposal : null, ["daily.report.submit"])]);
+  // Only a proposal for this day, and only the tasks the form can show.
+  const prefill = proposed && proposed.date === date ? proposed : null;
+  const text = (value: unknown) => (typeof value === "string" ? value : null);
+  const initial = prefill ? { blockers: text(prefill.blockers), notes: text(prefill.notes) } : { blockers: form.report?.blockers ?? null, notes: form.report?.notes ?? null };
+  const tomorrow = prefill && Array.isArray(prefill.tomorrow) ? prefill.tomorrow.filter((id): id is string => typeof id === "string" && form.candidates.some((task) => task.taskId === id)) : form.tomorrow;
   const day = form.day;
   const submitted = form.report?.status === "submitted";
   const isToday = date === today;
@@ -67,13 +74,13 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
       </PageHeader>
       <ReportForm
         // Keyed by its day: stepping to another day starts a new form, not the last one's words.
-        key={date}
+        key={prefill ? `${date}:${String(proposal)}` : date}
         date={date}
         past={!isToday}
         draft={form.draft}
         candidates={form.candidates.map(({ taskId, key, title, dueDate, projectName, projectId }) => ({ taskId, key, title, dueDate, projectName, billable: !!projectId && form.billableProjects.includes(projectId) }))}
-        tomorrow={form.tomorrow}
-        initial={{ blockers: form.report?.blockers ?? null, notes: form.report?.notes ?? null }}
+        tomorrow={tomorrow}
+        initial={initial}
         submitted={submitted}
         timeRequired={day?.rules.timeMode === "required" && !day.dayOff}
         // Keyed: the form renders it beside its label, and an element made on the server without a

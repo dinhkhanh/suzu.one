@@ -16,3 +16,8 @@ export { AI_HIT_RETENTION_DAYS, AI_LIMITS } from "./engine/limits";
 export { type AssistantUsage, assistantUsage, purgeAiUsageHits, USAGE_DAYS } from "./limits";
 export { canAskAssistant, canReadAssistantUsage, canReadUnansweredLog } from "./policy";
 export { CANDIDATES, retrievePassages } from "./retrieval";
+/**
+ * Phase 13 R4 (FR-AGT-22): Sửa on a proposal card opens the module's own form with `?proposal=<id>`;
+ * the page reads the asker's own proposal of its action through this, and fills the form from it.
+ */
+export { proposalDraft } from "./proposals";

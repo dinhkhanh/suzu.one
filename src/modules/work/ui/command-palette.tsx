@@ -4,7 +4,7 @@ import { ArrowRight, CornerDownLeft, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { PALETTE_CREATE_EVENT, PALETTE_EVENT } from "@/components/shell/palette-bus";
+import { PALETTE_CREATE_EVENT, PALETTE_EVENT, type QuickCreatePrefill } from "@/components/shell/palette-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -34,6 +34,8 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
   const [targets, setTargets] = useState<Targets | null>(null);
   const [place, setPlace] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  // What the create form opens filled in with (the assistant's Sửa); null = an empty form.
+  const [prefill, setPrefill] = useState<QuickCreatePrefill | null>(null);
   const [pending, startTransition] = useTransition();
   const input = useRef<HTMLInputElement>(null);
 
@@ -43,33 +45,49 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
     setHits([]);
     setCursor(0);
     setErrorKey(null);
+    setPrefill(null);
   }, []);
 
-  const openCreate = useCallback(() => {
-    setMode("create");
-    if (!targets) {
+  const openCreate = useCallback(
+    (given: QuickCreatePrefill | null = null) => {
+      setPrefill(given);
+      setMode("create");
+      // The place a prefill names, when the person may file there.
+      const chosen = (data: Targets) => {
+        const [kind, id] = given?.place?.split(":") ?? [];
+        if (kind === "project" && data.projects.some((row) => row.id === id)) return `project:${id}`;
+        if (kind === "team" && data.teams.some((team) => team.id === id && team.canFileInBacklog)) return `team:${id}`;
+        return null;
+      };
+      if (targets) {
+        const named = chosen(targets);
+        if (named) setPlace(named);
+        return;
+      }
       fetch("/api/work/targets")
         .then((response) => (response.ok ? response.json() : { teams: [], projects: [] }))
         .then((data: Targets) => {
           setTargets(data);
-          // The project on screen first, else the first place the person can file in.
+          // The place the prefill names, else the project on screen, else the first place the person can file in.
           const onScreen = /\/work\/projects\/([0-9a-f-]{36})/.exec(window.location.pathname)?.[1];
           const project = data.projects.find((row) => row.id === onScreen) ?? data.projects[0];
-          setPlace(project ? `project:${project.id}` : data.teams.find((team) => team.canFileInBacklog) ? `team:${data.teams.find((team) => team.canFileInBacklog)!.id}` : "");
+          setPlace(chosen(data) ?? (project ? `project:${project.id}` : data.teams.find((team) => team.canFileInBacklog) ? `team:${data.teams.find((team) => team.canFileInBacklog)!.id}` : ""));
         })
         .catch(() => setTargets({ teams: [], projects: [] }));
-    }
-  }, [targets]);
+    },
+    [targets],
+  );
 
   // The sidebar's quick-actions button opens the same palette; the phone's quick-add sheet opens
   // it straight on the create form.
   useEffect(() => {
     const onOpen = () => setMode((current) => (current === "closed" ? "search" : current));
+    const onCreate = (event: Event) => openCreate((event as CustomEvent<QuickCreatePrefill | null>).detail ?? null);
     window.addEventListener(PALETTE_EVENT, onOpen);
-    window.addEventListener(PALETTE_CREATE_EVENT, openCreate);
+    window.addEventListener(PALETTE_CREATE_EVENT, onCreate);
     return () => {
       window.removeEventListener(PALETTE_EVENT, onOpen);
-      window.removeEventListener(PALETTE_CREATE_EVENT, openCreate);
+      window.removeEventListener(PALETTE_CREATE_EVENT, onCreate);
     };
   }, [openCreate]);
 
@@ -125,7 +143,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
     const matching = pages.filter((page) => words.every((word) => toSearchKey(page.label).includes(word)));
     return [
       ...(searching ? hits : []).map<Entry>((hit) => ({ id: hit.id, group: "tasks", label: `${hit.key} ${hit.title}`, hint: hit.projectName ?? undefined, run: () => go(`/work/tasks/${hit.id}`) })),
-      { id: "create", group: "actions", label: t("create"), kbd: "C", run: openCreate },
+      { id: "create", group: "actions", label: t("create"), kbd: "C", run: () => openCreate() },
       ...matching.map<Entry>((page) => ({ id: page.href, group: "pages", label: page.label, hint: t("goTo"), run: () => go(page.href) })),
     ];
   }, [pages, hits, searching, query, t, go, openCreate]);
@@ -203,7 +221,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
         ) : (
           <form onSubmit={submitCreate} className="flex flex-col gap-3 p-4 sm:p-5">
             <h2>{t("create")}</h2>
-            <Input ref={input} name="title" required maxLength={200} placeholder={t("taskTitle")} aria-label={t("taskTitle")} />
+            <Input ref={input} name="title" required maxLength={200} placeholder={t("taskTitle")} aria-label={t("taskTitle")} defaultValue={prefill?.title} />
             <div className="flex flex-wrap items-center gap-2">
               <Select aria-label={t("where")} value={place} onChange={(event) => setPlace(event.target.value)} required className="min-w-0 flex-1">
                 {targets === null ? <option value="">{t("loading")}</option> : null}
@@ -220,9 +238,9 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
                     </option>
                   ))}
               </Select>
-              <DatePicker name="dueDate" aria-label={t("dueDate")} className="w-40" />
+              <DatePicker name="dueDate" aria-label={t("dueDate")} className="w-40" defaultValue={prefill?.dueDate} />
               <label className="flex items-center gap-1.5 text-sm">
-                <Checkbox name="mine" defaultChecked /> {t("assignMe")}
+                <Checkbox name="mine" defaultChecked={prefill?.mine ?? true} /> {t("assignMe")}
               </label>
             </div>
             {targets && !place ? <p className="text-sm text-muted-foreground">{t("nowhere")}</p> : null}

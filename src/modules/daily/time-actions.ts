@@ -13,6 +13,7 @@ import { weekStartOf } from "./engine/rules";
 import { parseRowKey } from "./engine/timesheet";
 import type { Utilisation } from "./engine/utilisation";
 import { TIME_CATEGORIES, type TimeCategory } from "./enums";
+import { logTimeInput } from "./inputs";
 import { loadReportReader, loadTimesheetSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { deleteTimeEntry, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
@@ -38,18 +39,7 @@ async function mayLogOn(user: Parameters<typeof loadViewer>[0], taskId: string |
 
 const logTimePipeline = createAction({
   name: "daily.time.log",
-  input: z
-    .object({
-      date: isoDate,
-      taskId: optional(z.uuid()),
-      category: optional(z.enum(TIME_CATEGORIES)),
-      // "1h30", "90", "1.5h" are parsed by the form; the server takes minutes.
-      minutes: z.coerce.number().int().min(1).max(24 * 60),
-      note: optional(z.string().trim().max(500)),
-      // "default" = the project's kind decides.
-      billable: z.enum(["default", "yes", "no"]).default("default"),
-    })
-    .refine((input) => !!input.taskId !== !!input.category, { path: ["taskId"] }),
+  input: logTimeInput,
   // One's own time, on a recent day (or in a returned week), on a task one may open.
   authorize: async (user, input) => (await withinTimeWindow(user.person.id, input.date, todayInVietnam())) && (await mayLogOn(user, input.taskId)),
   run: async ({ user, input }) => {

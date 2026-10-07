@@ -11,6 +11,7 @@ import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
 import { canCreateProject, canEditTask, canGiveProjectRole, canManageTemplate, CHANNELS, CONTENT_FORMATS, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, projectRoleOf, teamFacts, updateTaskAction, VISIBILITIES, type WorkViewer } from "../work/service";
 import { PROJECT_KINDS } from "./engine/brief";
 import { HEALTHS } from "./engine/status";
+import { postStatusUpdateInput } from "./inputs";
 import { decideBrief, projectBriefRequest, submitBrief } from "./kickoff";
 import { reopenProject } from "./close";
 import { isProjectClosed, setAccountManager, setFee, updateBrief, updateBriefContacts, updatePlanSettings } from "./plans";
@@ -405,7 +406,7 @@ export async function createLineTasksAction(input: unknown) {
 
 const statusPipeline = createAction({
   name: "projects.status.post",
-  input: z.object({ projectId: z.uuid(), health: z.enum(HEALTHS), summary: z.string().trim().min(1).max(4000), highlights: text(4000), nextSteps: text(4000) }),
+  input: postStatusUpdateInput,
   authorize: (user, input) => may(user, input.projectId, canPostStatus),
   run: async ({ user, input }) => {
     const { projectId, ...values } = input;

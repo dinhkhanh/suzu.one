@@ -8,6 +8,7 @@ import { RecordLink } from "@/components/ui/record-link";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { StatusDraftButton } from "@/modules/ai/ui/draft-button";
+import { proposalDraft } from "@/modules/ai/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { HEALTHS, isStale, listStatusUpdates, loadStatusFacts, openProject, slipWords, type StatusFacts, updateDueOn } from "@/modules/projects/service";
 import { StatusUpdateForm } from "@/modules/projects/ui/plan-forms";
@@ -20,16 +21,26 @@ export const generateMetadata = pageTitle("projectUpdates");
 /**
  * Status updates (FR-PJM-27): the facts are prefilled from the record — the lead adds health,
  * summary, highlights and next steps. The history is kept; an update older than the cadence is
- * stale and says so here and in the portfolio.
+ * stale and says so here and in the portfolio. `?proposal=<id>` starts the form from the assistant's
+ * proposal of the asker's own.
  */
-export default async function ProjectUpdatesPage({ params }: PageProps<"/projects/[projectId]/updates">) {
+export default async function ProjectUpdatesPage({ params, searchParams }: PageProps<"/projects/[projectId]/updates">) {
   const user = await requireUser();
   const { projectId } = await params;
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, plan, can } = context;
   const today = todayInVietnam();
-  const [t, format, updates, facts] = await Promise.all([getTranslations("projects"), getFormatter(), listStatusUpdates(project.id), loadStatusFacts(project.id, plan, today)]);
+  const { proposal } = await searchParams;
+  const [t, format, updates, facts, proposed] = await Promise.all([
+    getTranslations("projects"),
+    getFormatter(),
+    listStatusUpdates(project.id),
+    loadStatusFacts(project.id, plan, today),
+    can.postStatus && typeof proposal === "string" ? proposalDraft(user.person.id, proposal, ["projects.status.post"]) : null,
+  ]);
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+  const initial = proposed?.projectId === project.id ? { health: text(proposed.health), summary: text(proposed.summary), highlights: text(proposed.highlights), nextSteps: text(proposed.nextSteps) } : undefined;
   const cadence = { projectStatus: project.status, lastUpdateOn: plan.healthUpdatedAt ? todayInVietnam(plan.healthUpdatedAt) : null, since: todayInVietnam(plan.briefApprovedAt ?? plan.createdAt), cadenceDays: plan.updateCadenceDays };
   const dueOn = updateDueOn(cadence);
   const stale = isStale(cadence, today);
@@ -45,7 +56,7 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
             {dueOn ? <Badge variant={stale ? "warning" : "secondary"}>{stale ? t("updates.stale") : t("updates.nextDue", { date: format.dateTime(new Date(`${dueOn}T00:00:00`), { dateStyle: "medium" }) })}</Badge> : null}
           </div>
           <Facts facts={facts} />
-          {can.postStatus ? <StatusUpdateForm projectId={project.id} healths={HEALTHS} draft={<StatusDraftButton projectId={project.id} targetId="summary" healthTargetId="status-health-draft" />} /> : null}
+          {can.postStatus ? <StatusUpdateForm projectId={project.id} healths={HEALTHS} initial={initial} draft={<StatusDraftButton projectId={project.id} targetId="summary" healthTargetId="status-health-draft" />} /> : null}
         </CardContent>
       </Card>
 

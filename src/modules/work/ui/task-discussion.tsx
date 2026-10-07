@@ -304,7 +304,7 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
 type Named = { id: string; name: string };
 
 /** Comments and the field-by-field history in one timeline (FR-WRK-09), oldest first; replies sit under their comment. */
-export function TaskDiscussion({ taskId, comments, activity, people, selfId, canModerate }: { taskId: string; comments: DiscussionComment[]; activity: DetailActivity[]; people: Person[]; selfId: string; canModerate: boolean }) {
+export function TaskDiscussion({ taskId, comments, activity, people, selfId, canModerate, draft }: { taskId: string; comments: DiscussionComment[]; activity: DetailActivity[]; people: Person[]; selfId: string; canModerate: boolean; /** A comment the composer opens with: the assistant's proposal, being edited (Sửa). */ draft?: string }) {
   const t = useTranslations("work.discussion");
   const tTask = useTranslations("work.task");
   const tWork = useTranslations("work");
@@ -429,7 +429,7 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
           )}
         </List>
         <div className="border-t bg-canvas p-3">
-          <Composer people={people} submitLabel={t("send")} pending={pending} placeholder={t("placeholder")} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body }), reset)} />
+          <Composer people={people} initial={draft} submitLabel={t("send")} pending={pending} placeholder={t("placeholder")} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body }), reset)} />
         </div>
       </TableCard>
       {errorKey ? (

@@ -10,6 +10,12 @@ export function openCommandPalette() {
   window.dispatchEvent(new CustomEvent(PALETTE_EVENT));
 }
 
-export function openQuickCreate() {
-  window.dispatchEvent(new CustomEvent(PALETTE_CREATE_EVENT));
+/**
+ * What the create form opens filled in with — the assistant's Sửa on a proposed task (Phase 13 R4).
+ * `place` is "project:<id>" or "team:<id>"; `mine` ticks "assign to me".
+ */
+export type QuickCreatePrefill = { title?: string; dueDate?: string; place?: string; mine?: boolean };
+
+export function openQuickCreate(prefill?: QuickCreatePrefill) {
+  window.dispatchEvent(new CustomEvent(PALETTE_CREATE_EVENT, { detail: prefill ?? null }));
 }

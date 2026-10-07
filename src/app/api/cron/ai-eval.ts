@@ -31,3 +31,13 @@ export const aiAgentEvalJob: JobDefinition = {
     return { ...report } as unknown as Record<string, unknown>;
   },
 };
+
+/** R4 alone: the acting set and the red team (`pnpm ai:eval --agent --acting --yes`) — about a third of the cost. */
+export const aiActingEvalJob: JobDefinition = {
+  name: "ai-eval-agent-acting",
+  run: async () => {
+    if (!isDevelopmentEnvironment()) throw new Error("ai-eval-agent-acting runs on a development server only");
+    const report = await runAgentEval({ kinds: ["acting", "red_team"] });
+    return { ...report } as unknown as Record<string, unknown>;
+  },
+};

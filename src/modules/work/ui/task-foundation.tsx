@@ -50,11 +50,11 @@ export type BlockerItem = { id: string; reason: string; neededPersonId?: string 
 const dotted = (parts: React.ReactNode[]) => parts.filter(Boolean).map((part, index) => <Fragment key={index}>{index ? " · " : null}{part}</Fragment>);
 
 /** "Mark blocked" with a reason and who can unblock it; "Resolve" with a note; the history below. */
-export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, closed }: { taskId: string; blockers: BlockerItem[]; people: { id: string; fullName: string }[]; canRaise: boolean; canResolve: boolean; closed: boolean }) {
+export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, closed, draft }: { taskId: string; blockers: BlockerItem[]; people: { id: string; fullName: string }[]; canRaise: boolean; canResolve: boolean; closed: boolean; /** What the forms open with: the assistant's proposal, being edited (Sửa). */ draft?: { reason?: string; neededPersonId?: string | null; resolution?: string | null } }) {
   const t = useTranslations("work.blockers");
   const format = useFormatter();
   const { run, pending, errorKey } = useRun();
-  const [raising, setRaising] = useState(false);
+  const [raising, setRaising] = useState(!!draft?.reason);
   const open = blockers.find((blocker) => !blocker.resolvedAt);
   const past = blockers.filter((blocker) => blocker.resolvedAt);
   const total = blockers.reduce((sum, blocker) => sum + blocker.minutes, 0);
@@ -80,7 +80,7 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
                 run(() => resolveBlockerAction({ taskId, resolution: data.get("resolution") }));
               }}
             >
-              <Input name="resolution" maxLength={500} placeholder={t("resolution")} aria-label={t("resolution")} className="min-w-0 flex-1" />
+              <Input name="resolution" maxLength={500} placeholder={t("resolution")} aria-label={t("resolution")} className="min-w-0 flex-1" defaultValue={draft?.resolution ?? undefined} />
               <Button type="submit" size="sm" disabled={pending}>
                 {t("resolve")}
               </Button>
@@ -98,9 +98,9 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
             }}
           >
             <Label htmlFor="blocker-reason">{t("reason")}</Label>
-            <Input id="blocker-reason" name="reason" required maxLength={500} placeholder={t("reasonPlaceholder")} autoFocus />
+            <Input id="blocker-reason" name="reason" required maxLength={500} placeholder={t("reasonPlaceholder")} autoFocus defaultValue={draft?.reason} />
             <Label htmlFor="blocker-needed">{t("needed")}</Label>
-            <Select id="blocker-needed" name="neededPersonId" defaultValue="">
+            <Select id="blocker-needed" name="neededPersonId" defaultValue={draft?.neededPersonId ?? ""}>
               <option value="">{t("nobody")}</option>
               {people.map((person) => (
                 <option key={person.id} value={person.id}>

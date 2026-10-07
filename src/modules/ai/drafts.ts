@@ -19,19 +19,20 @@
 import "server-only";
 import { createTranslator } from "next-intl";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
-import type { CurrentUser } from "@/modules/platform/auth/session";
 import { getReportForm, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
-import { loadStatusFacts, openProject } from "@/modules/projects/service";
+import { loadStatusFacts, openProject, type ProjectReader } from "@/modules/projects/service";
 import { canViewTask, findState, listComments, loadTask, loadViewer, notePrivateProjectRead } from "@/modules/work/service";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { type DraftLine, eodDraftLines, handoffDraft, type HandoffNoteDraft, redactCompensation, statusDraftLines, suggestedHealth, threadText } from "./engine/drafts";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
+import type { AgentUser } from "./agent/registry";
 import { factsForModel } from "./engine/redact";
 import { draftDriver } from "./model";
 
 type Locale = "vi" | "en";
-type DraftUser = Pick<CurrentUser, "person" | "principal">;
+/** The caller: a signed-in person, or the agent's asker (a proposed end-of-day report or status update, R4). */
+type DraftUser = AgentUser;
 export type DraftResult<Draft> = { draft: Draft; driver: string; model: string; /** True when the local extractive draft is what came back. */ extractive: boolean; /** What the model call cost — zero on the local driver. Kept in the audit entry; a draft is not stored. */ usage: TokenUsage };
 
 const translator = (locale: Locale) => createTranslator({ locale, messages: locale === "vi" ? vi : en, namespace: "assistant.drafts.lines" });
@@ -72,7 +73,8 @@ export type StatusDraft = { summary: string; health: "on_track" | "at_risk" | "o
 
 /** A summary (and a suggested health) for the project's next status update — for whoever may post it. */
 export async function draftStatusSummary(user: DraftUser, projectId: string, locale: Locale, today: IsoDate = todayInVietnam()): Promise<DraftResult<StatusDraft> | null> {
-  const context = await openProject(user, projectId);
+  // The agent's asker is the signed-in person the ask action holds; the project module reads its own fields of it.
+  const context = await openProject(user as unknown as ProjectReader, projectId);
   if (!context || !context.can.postStatus) return null;
   // Hours and counts only: `loadStatusFacts` carries no fee, whoever asks.
   const facts = await loadStatusFacts(projectId, { budgetMinutes: context.plan.budgetMinutes, baseline: context.plan.baseline }, today);

@@ -32,3 +32,26 @@ export { claimReminders } from "./reminders";
 /** Time on one task, for the task's page: the totals the reader may see, their timer, the billable default. */
 export { getTaskTime, type TaskTime } from "./task-time";
 export { RECORD_DAYS, type WorkRecord, workRecordOf } from "./record";
+/**
+ * For the assistant's proposals (Phase 13 R4): the actions' own input schemas, the checks their
+ * `authorize` and services make — so no card is shown that its Xác nhận would refuse — and the
+ * actions themselves, loaded on first use as work's `updateTaskAction` is.
+ */
+export { addToPlanInput, logTimeInput, submitReportInput } from "./inputs";
+export { withinTimeWindow } from "./time";
+export { firstReadersOf } from "./people";
+
+export async function logTimeAction(input: unknown) {
+  const actions = await import("./time-actions");
+  return actions.logTimeAction(input);
+}
+
+export async function addToPlanAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.addToPlanAction(input);
+}
+
+export async function submitReportAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.submitReportAction(input);
+}

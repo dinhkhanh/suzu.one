@@ -57,6 +57,20 @@ const askPipeline = createAction({
         after: { outcome: call.outcome, input: call.input, error: call.error, agent: true },
       })),
     );
+    // R4: a proposal written for the asker to confirm is audited as itself too (FR-AGT-50); its
+    // confirm and discard are audited by their own actions, and the change by the module's.
+    await recordAudits(
+      agentCalls
+        .filter((call) => call.outcome === "proposed" && call.subject)
+        .map((call) => ({
+          action: "ai.proposal.create",
+          actor: { userId: user.userId, personId: user.person.id, email: user.email },
+          request: user.request,
+          resource: call.subject!,
+          summary: input.question.slice(0, 300),
+          after: { tool: call.tool, input: call.input },
+        })),
+    );
     return {
       data: result,
       audit: {

@@ -14,6 +14,7 @@ import { askAssistantAction } from "../actions";
 import { citationHref } from "../engine/answer";
 import { type AgentCard, type AgentShown, type ChatTurn as Turn, QUESTION_MAX, type ToolOutcome } from "../enums";
 import { AnswerMarkdown } from "./answer-markdown";
+import { ProposalCard } from "./proposal-card";
 
 /** The assistant's mark beside every answer: a spark in a tinted tile. */
 function Spark() {
@@ -123,12 +124,15 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
   // Numbers by `Intl`; a day ("2026-10-08") as the reader writes one.
   const shape = (params: Record<string, string | number>) =>
     Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : /^\d{4}-\d{2}-\d{2}$/u.test(value) ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : value]));
-  // A card with no rows is shown only when it is the way forward: the step-up link.
-  const shown = cards.filter((card) => card.items.length > 0 || (card.tool === "step_up" && card.href));
+  // A card with no rows is shown only when it is the way forward: the step-up link, or a proposal.
+  const shown = cards.filter((card) => card.items.length > 0 || card.proposal || (card.tool === "step_up" && card.href));
   if (shown.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      {shown.map((card, index) => (
+      {shown.map((card, index) =>
+        card.proposal ? (
+          <ProposalCard key={card.proposal.id} proposal={card.proposal} />
+        ) : (
         <section key={`${card.tool}-${index}`} className="flex flex-col gap-1.5">
           <h3 className="text-xs font-medium text-muted-foreground">
             {card.href ? (
@@ -151,7 +155,8 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
           ) : null}
           {card.more > 0 ? <p className="text-xs text-faint">{t("more", { count: card.more })}</p> : null}
         </section>
-      ))}
+        ),
+      )}
     </div>
   );
 }
@@ -192,6 +197,8 @@ function Bubble({ turn }: { turn: Turn }) {
         <>
           {/* Markdown turned into elements, never into HTML: see `answer-markdown.tsx`. */}
           <AnswerMarkdown body={turn.body} citations={turn.citations} />
+          {/* A turn that ended on a proposal has no words of the model's: the app's line introduces the card (R4). */}
+          {!turn.body && turn.agent?.cards.some((card) => card.proposal) ? <p>{t("agent.proposal.lead")}</p> : null}
           {turn.agent ? <AgentCards cards={turn.agent.cards} /> : null}
           <Sources turn={turn} />
           {turn.agent ? <Steps agent={turn.agent} /> : null}
@@ -199,7 +206,8 @@ function Bubble({ turn }: { turn: Turn }) {
           {turn.outcome === "limited" ? <p className="text-xs text-muted-foreground">{t("agent.limited")}</p> : null}
           {/* Why this is a quoted passage and not a written answer: a ceiling, the switch, the provider. */}
           {turn.notice && turn.notice !== "no_key" ? <p className="text-xs text-muted-foreground">{t(`notices.${turn.notice}`)}</p> : null}
-          <p className="text-xs text-faint">{t("mayBeWrong")}</p>
+          {/* A turn that only proposed wrote nothing that could be wrong: its cards say every field. */}
+          {turn.body ? <p className="text-xs text-faint">{t("mayBeWrong")}</p> : null}
         </>
       )}
     </AnswerRow>
