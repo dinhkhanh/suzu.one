@@ -25,7 +25,8 @@ import { NO_USAGE, type TokenUsage } from "../engine/limits";
 import { type CalledTool, FIRST_STEP, type ModelTier, type NextStep, nextStep, TURN_CEILINGS } from "../engine/tiers";
 import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice } from "../enums";
 import type { AgentDriver, AgentReply } from "./driver";
-import { type AgentUser, type AnyAgentTool, inputSchemaOf, runAgentTool, type ToolContext, type ToolSubject, toolsFor } from "./registry";
+import { askerFactsOf } from "./facts";
+import { type AgentUser, type AnyAgentTool, type AskerFacts, inputSchemaOf, runAgentTool, type ToolContext, type ToolSubject, toolsFor } from "./registry";
 import { AGENT_TOOLS } from "./tools";
 
 /** What a tool call leaves behind for the audit log and the message row: never a figure. */
@@ -50,6 +51,8 @@ export type AgentTurnInput = {
   registry?: readonly AnyAgentTool[];
   /** The clock, for the wall-clock ceiling. */
   clock?: () => number;
+  /** What the asker leads and manages; read from the app when not given. */
+  facts?: AskerFacts;
 };
 
 const DECLINE: Anthropic.Tool = {
@@ -104,10 +107,13 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const clock = input.clock ?? Date.now;
   const started = clock();
   const turnId = randomUUID();
-  const offered = toolsFor(input.registry ?? AGENT_TOOLS, input.user.principal);
+  const offered = toolsFor(input.registry ?? AGENT_TOOLS, input.user.principal, input.facts ?? (await askerFactsOf(input.user)));
   const byName = new Map(offered.map((tool) => [tool.name, tool]));
   // The frozen prefix: rules, then the tools in a fixed order, cached together (FR-AGT-44).
-  const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool), strict: true })), CLARIFY, { ...DECLINE, cache_control: { type: "ephemeral" } }];
+  // `strict` only on the two tools that end a turn: the API takes at most 20 strict tools and a lead
+  // is offered more than that. A data tool's arguments are parsed with its zod schema before it
+  // runs, and a bad argument goes back to the model as an error.
+  const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool) })), CLARIFY, { ...DECLINE, cache_control: { type: "ephemeral" } }];
   const system: Anthropic.TextBlockParam[] = [
     { type: "text", text: AGENT_SYSTEM, cache_control: { type: "ephemeral" } },
     { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee" }) },

@@ -11664,7 +11664,18 @@
         "who_approves_my_request": "người duyệt",
         "my_payslip": "phiếu lương",
         "my_unacknowledged_announcements": "thông báo cần xác nhận",
-        "my_obligations": "nghĩa vụ được giao"
+        "my_obligations": "nghĩa vụ được giao",
+        "find_person": "danh bạ",
+        "find_project": "dự án",
+        "find_task": "tìm việc",
+        "task_detail": "chi tiết việc",
+        "project_status": "tình hình dự án",
+        "portfolio_health": "sức khoẻ các dự án",
+        "team_board": "bảng việc của nhóm",
+        "team_workload": "khối lượng việc của nhóm",
+        "who_is_in": "ai đang có mặt",
+        "timesheets_to_approve": "bảng giờ chờ duyệt",
+        "person_overview": "tổng quan nhân sự"
       },
       "cards": {
         "step_up": "Xác nhận danh tính để xem",
@@ -11677,7 +11688,18 @@
         "who_approves_my_request": "Người duyệt",
         "my_payslip": "Phiếu lương",
         "my_unacknowledged_announcements": "Thông báo cần xác nhận",
-        "my_obligations": "Nghĩa vụ được giao"
+        "my_obligations": "Nghĩa vụ được giao",
+        "find_person": "Danh bạ",
+        "find_project": "Dự án",
+        "find_task": "Việc",
+        "task_detail": "Việc",
+        "project_status": "Dự án",
+        "portfolio_health": "Sức khoẻ dự án",
+        "team_board": "Bảng việc của nhóm",
+        "team_workload": "Giờ còn trống tuần này",
+        "who_is_in": "Ai đang có mặt hôm nay",
+        "timesheets_to_approve": "Bảng giờ chờ bạn duyệt",
+        "person_overview": "Tổng quan"
       },
       "meta": {
         "overdue": "quá hạn {date}",
@@ -11695,7 +11717,13 @@
         "status_rejected": "bị từ chối",
         "status_returned": "bị trả lại",
         "status_withdrawn": "đã rút",
-        "status_cancelled": "đã huỷ"
+        "status_cancelled": "đã huỷ",
+        "text": "{text}",
+        "health_on_track": "đúng tiến độ",
+        "health_at_risk": "có rủi ro",
+        "health_off_track": "chậm tiến độ",
+        "board": "{overdue} trễ · {blocked} bị chặn",
+        "week": "tuần {date} · {hours} giờ"
       }
     },
     "suggestions": {

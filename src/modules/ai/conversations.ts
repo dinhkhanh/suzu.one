@@ -88,7 +88,9 @@ export async function answerQuestion(user: ViewerSource, question: string, local
 export async function resolveAnswer(user: AgentUser, question: string, locale: string, options: { agent?: AgentDriver | null; history?: readonly HistoryMessage[] } = {}): Promise<Resolved> {
   const today = todayInVietnam();
   const route = routeQuestion(question, today);
-  if (route) {
+  // D33: a question about somebody else is the agent's, whose tools ask each module what the asker
+  // may see; Phase 9's router only ever refused it. A question about the asker stays free.
+  if (route && !(route.subject === "other" && options.agent)) {
     const { outcome, audit } = await runTool(user, route);
     // A tool that answered, or refused, has settled the question; the knowledge base is not asked
     // afterwards, so a refusal can never be padded out with a policy page about somebody's salary.

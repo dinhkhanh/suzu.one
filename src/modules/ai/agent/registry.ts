@@ -4,8 +4,10 @@
 // What a tool declares, and why each field exists:
 //  - `input`: a strict zod schema. The model's arguments are parsed with it before `run` sees them;
 //    what fails is told to the model as an error, never run.
-//  - `offeredTo`: a pure function of the principal. A tool the asker could never use is not in the
-//    request at all, so the model cannot even ask for it.
+//  - `offeredTo`: a pure function of the principal and two facts about the asker (do they lead a
+//    team or project, does anybody report to them). A tool the asker could never use is not in the
+//    request at all, so the model cannot even ask for it. The tool matrix (docs/agent-tool-matrix.md)
+//    is generated from it.
 //  - `tier`: the highest sensitivity its model view can hold; `stepUp`: whether the page behind it
 //    asks for a fresh step-up — checked here, before `run`, so a stale session reads nothing.
 //  - `kind`: read or propose (R4). `rowCap`: rows the model reads at most.
@@ -31,6 +33,11 @@ import type { ToolUser } from "../tools";
 /** Everything a tool may know of the asker. `CurrentUser` satisfies it. */
 export type AgentUser = KbViewerSource & ModelAsker & ToolUser & { person: { fullName?: string } };
 
+/** What decides a tool's offer beyond the roles: a lead's tools for people who lead, a manager's for people with reports. */
+export type AskerFacts = { leadsWork: boolean; managesPeople: boolean };
+
+export const NO_FACTS: AskerFacts = { leadsWork: false, managesPeople: false };
+
 export type ToolContext = { user: AgentUser; today: IsoDate; locale: "vi" | "en" };
 
 /** A subject for the audit log (FR-AGT-50): what the call was about — never a figure. */
@@ -53,7 +60,7 @@ export type AgentTool<Input = unknown> = {
   module: string;
   description: string;
   input: z.ZodType<Input>;
-  offeredTo: (principal: Principal) => boolean;
+  offeredTo: (principal: Principal, facts: AskerFacts) => boolean;
   tier: Tier;
   stepUp: boolean;
   kind: "read" | "propose";
@@ -68,7 +75,7 @@ export type AnyAgentTool = AgentTool<any>;
 export const defineTool = <Input>(tool: AgentTool<Input>): AgentTool<Input> => tool;
 
 /** The tools offered to this asker, in the registry's fixed order — the order is part of the cached prefix. */
-export const toolsFor = (registry: readonly AnyAgentTool[], principal: Principal): AnyAgentTool[] => registry.filter((tool) => tool.offeredTo(principal));
+export const toolsFor = (registry: readonly AnyAgentTool[], principal: Principal, facts: AskerFacts = NO_FACTS): AnyAgentTool[] => registry.filter((tool) => tool.offeredTo(principal, facts));
 
 // Keywords strict tool use does not take; the zod schema still enforces them when the input is parsed.
 const UNSUPPORTED = new Set(["$schema", "minLength", "maxLength", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "pattern", "format", "minItems", "maxItems", "default"]);

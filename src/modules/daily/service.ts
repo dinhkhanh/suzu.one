@@ -31,3 +31,4 @@ export { type BookingView, getToday, type TodayView } from "./today";
 export { claimReminders } from "./reminders";
 /** Time on one task, for the task's page: the totals the reader may see, their timer, the billable default. */
 export { getTaskTime, type TaskTime } from "./task-time";
+export { RECORD_DAYS, type WorkRecord, workRecordOf } from "./record";

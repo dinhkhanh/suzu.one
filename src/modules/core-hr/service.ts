@@ -1072,3 +1072,6 @@ export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccas
  */
 export { getHeadcountReport, getHeadcountTotals, type HeadcountFilters, type HeadcountReport, type HeadcountTotals } from "./reports";
 export { type CatalogueEntry, competenciesOf, type Competency, competencyChoices, type CompetencyKind, type CompetencyLists, invalidateCompetencies, listCompetencies, listCompetencyCatalogue } from "./competencies";
+
+/** Who may browse the directory at all (the page and its exports ask the same) — for other modules that list people. */
+export { canBrowsePeople } from "./policy";
