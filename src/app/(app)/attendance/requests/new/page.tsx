@@ -9,6 +9,7 @@ import { canFileAttendanceRequestFor } from "@/modules/attendance/policy";
 import { ATTENDANCE_REQUEST_TYPES, type AttendanceRequestType, correctionsUsed, getAttendanceRequestView, overtimeWarningsFor } from "@/modules/attendance/requests";
 import { AttendanceRequestForm, type RequestDefaults } from "@/modules/attendance/ui/request-forms";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { proposalDraft } from "@/modules/ai/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
@@ -21,7 +22,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Files one of the four attendance requests — for oneself, or (HR) for someone in scope:
-// `?type=&date=&person=`. `?resubmit=<approval request>` reopens a returned request with its values.
+// `?type=&date=&person=`. `?resubmit=<approval request>` reopens a returned request with its values;
+// `?proposal=<id>` starts from the assistant's proposal of the asker's own.
 export default async function NewAttendanceRequestPage({ searchParams }: PageProps<"/attendance/requests/new">) {
   const user = await requireUser();
   const query = await searchParams;
@@ -49,6 +51,8 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   ]);
   const used = policy?.monthlyCorrectionCap ? correctionsSoFar : null;
 
+  const proposalId = !returned && !onBehalf && typeof query.proposal === "string" ? query.proposal : null;
+  const proposed = proposalId ? await proposalDraft(user.person.id, proposalId, ["attendance.request.submit"]) : null;
   const details = row?.details;
   const defaults: RequestDefaults = row && details
     ? {
@@ -60,7 +64,9 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
         ...(details.type === "remote_work" ? { kind: details.kind, portion: details.portion, locationName: details.locationName ?? undefined, latitude: details.latitude?.toString(), longitude: details.longitude?.toString(), radiusM: details.radiusM?.toString() } : {}),
         ...(details.type === "overtime" || details.type === "holiday_work" ? { from: details.from ?? undefined, to: details.to ?? undefined } : {}),
       }
-    : { startDate: date };
+    : proposed && proposed.type === type
+      ? proposedDefaults(proposed, date)
+      : { startDate: date };
 
   const href = (value: string) => `/attendance/requests/new?type=${value}&date=${date}${onBehalf ? `&person=${personId}` : ""}`;
 
@@ -86,4 +92,13 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
       <AttendanceRequestForm key={type} type={type} personId={onBehalf ? personId : null} defaults={defaults} resubmit={resubmitId} />
     </Page>
   );
+}
+
+/** The form's values from a proposal's stored input: the strings it holds, the day from the address. */
+function proposedDefaults(input: Record<string, unknown>, date: string): RequestDefaults {
+  const keys = ["endDate", "reason", "cause", "inTime", "outTime", "kind", "portion", "locationName", "from", "to", "compensation"] as const;
+  const defaults: RequestDefaults = { startDate: date };
+  for (const key of keys) if (typeof input[key] === "string" && input[key]) defaults[key] = input[key];
+  if (input.outNextDay === true) defaults.outNextDay = true;
+  return defaults;
 }

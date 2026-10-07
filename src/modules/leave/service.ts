@@ -50,3 +50,17 @@ export async function listLeaveForCover(filter: { endOnOrAfter?: IsoDate; person
     .where(and(...conditions));
   return rows.map(({ workingCenti, ...row }) => ({ ...row, workingDays: Number(workingCenti) / 100 }));
 }
+
+// ── For the assistant's proposals (Phase 13 R4) ───────────────────────────────────────────
+// A proposed request is checked against the very schema the action parses it with, costed the way
+// the request screen costs it, and — once the person confirms — filed through the action itself,
+// loaded on first use so that nothing here runs at load time.
+
+export { submitLeaveInput } from "./inputs";
+export { type LeavePreview, previewLeave } from "./requests";
+export { leaveTypesFor, type LeaveTypeRow } from "./types";
+
+export async function submitLeaveAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.submitLeaveAction(input);
+}

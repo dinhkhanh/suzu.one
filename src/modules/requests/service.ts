@@ -19,7 +19,7 @@ import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { recordApprovedTrip } from "@/modules/attendance/service";
-import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
+import { type ApproverStep, decideRequest, defineRequestType, getRequest, previewApprovers, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { carryOver, type FollowUpGate, type FollowUpRule, followUpGate, followUpProblems, LIVE_STATUSES } from "./engine/follow-ups";
@@ -603,4 +603,24 @@ export async function requestTypeNames(approvalTypes: readonly string[]): Promis
   const wanted = new Set(codes);
   const rows = (await cachedTypes()).filter((row) => wanted.has(row.code));
   return new Map(rows.map((row) => [approvalTypeOf(row.code), { vi: row.nameVi, en: row.nameEn }]));
+}
+
+// ── For the assistant's proposals (Phase 13 R4) ───────────────────────────────────────────
+// A proposed request is checked the way filing checks it — the action's schema, then the form's own
+// rules (`validateSubmission`) — and, once the person confirms, filed through the action itself,
+// loaded on first use. The expense claim is not filed here: it has its own action and lines.
+
+export { fileRequestInput } from "./inputs";
+export { canFileRequests } from "./policy";
+export { EXPENSE_CLAIM_CODE } from "./expense-posting";
+export { type FormDefinition, type FormField, type FormValues, validateSubmission, visibleFields } from "./engine/form";
+
+/** Who would be asked to approve this request of the person's, step by step, given its answers (a flow may test the amount). Names only. */
+export async function whoApprovesRequest(type: RequestTypeRow, personId: string, values: FormValues): Promise<ApproverStep[]> {
+  return previewApprovers(genericRequestType(type), personId, flowConditionData(type.form, validateSubmission(type.form, values).values));
+}
+
+export async function fileRequestAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.fileRequestAction(input);
 }

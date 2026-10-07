@@ -20,8 +20,9 @@ export type LeaveDraft = { personId: string | null; leaveTypeId: string; startDa
 /**
  * The second half of filing: the dates were checked on the server (the page shows what they cost);
  * this adds the reason and the attachment and sends the request — or replaces `amends`.
+ * `defaultReason`: the reason of the assistant's proposal the page started from.
  */
-export function SubmitLeaveForm({ draft, amends, needsAttachment, disabled }: { draft: LeaveDraft; amends: string | null; needsAttachment: boolean; disabled: boolean }) {
+export function SubmitLeaveForm({ draft, amends, needsAttachment, disabled, defaultReason }: { draft: LeaveDraft; amends: string | null; needsAttachment: boolean; disabled: boolean; defaultReason?: string }) {
   const t = useTranslations("leave");
   const router = useRouter();
   const [attachment, setAttachment] = useState<{ fileId: string; fileName: string } | null>(null);
@@ -52,7 +53,7 @@ export function SubmitLeaveForm({ draft, amends, needsAttachment, disabled }: { 
       <form onSubmit={onSubmit} className="flex flex-col gap-4 px-(--card-spacing)">
         <FieldErrors value={fieldErrors}>
           <Field name="reason" label={t("request.reason")}>
-            <Input id="reason" name="reason" maxLength={1000} placeholder={t("request.reasonHint")} />
+            <Input id="reason" name="reason" maxLength={1000} placeholder={t("request.reasonHint")} defaultValue={defaultReason} />
           </Field>
           <Field name="attachment" label={needsAttachment ? t("request.attachmentRequired") : t("request.attachment")}>
             {attachment ? <p className="text-sm">{attachment.fileName}</p> : <Input id="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}

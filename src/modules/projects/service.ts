@@ -65,3 +65,13 @@ export { loadRaidCounts } from "./metrics";
 
 /** What the project forms post, parsed once: the CRM's forms read a VND amount, a date or a checkbox the same way. */
 export { blankToNull, checkbox, idList, isoDate, month, optional, rows, text, vnd } from "./form-inputs";
+
+// ── For the assistant's proposals (Phase 13 R4) ───────────────────────────────────────────
+// A proposed status update is checked against the very schema the action parses it with, and —
+// once the person confirms — posted through the action itself, loaded on first use.
+export { postStatusUpdateInput } from "./inputs";
+
+export async function postStatusUpdateAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.postStatusUpdateAction(input);
+}

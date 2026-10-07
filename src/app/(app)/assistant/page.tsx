@@ -70,7 +70,8 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
             // conversation (or "New chat") without a remount would keep showing the old one.
             key={conversation?.id ?? "new"}
             conversationId={conversation?.id ?? null}
-            turns={(conversation?.turns ?? []).map((turn) => ({ id: turn.id, role: turn.role, body: turn.body, outcome: turn.outcome, citations: turn.citations, tool: turn.tool }))}
+            // The agent's steps and cards too (Phase 13): a reopened conversation shows what it showed, and a proposal card its state now.
+            turns={(conversation?.turns ?? []).map((turn) => ({ id: turn.id, role: turn.role, body: turn.body, outcome: turn.outcome, citations: turn.citations, tool: turn.tool, agent: turn.agent }))}
             suggestions={[t("suggestions.leave"), t("suggestions.payday"), t("suggestions.balance"), t("suggestions.approver")]}
           />
         </div>

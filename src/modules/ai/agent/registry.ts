@@ -42,7 +42,7 @@ export type AskerFacts = { leadsWork: boolean; managesPeople: boolean; worksAcco
 
 export const NO_FACTS: AskerFacts = { leadsWork: false, managesPeople: false, worksAccounts: false };
 
-export type ToolContext = { user: AgentUser; today: IsoDate; locale: "vi" | "en" };
+export type ToolContext = { user: AgentUser; today: IsoDate; locale: "vi" | "en"; /** The turn, which a proposal is filed under (R4). */ turnId?: string };
 
 /** A subject for the audit log (FR-AGT-50): what the call was about — never a figure. */
 export type ToolSubject = { type: string; id: string };

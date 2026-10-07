@@ -62,8 +62,11 @@ export type AnswerOutcome = (typeof ANSWER_OUTCOMES)[number];
 
 // ── The agent (Phase 13) ────────────────────────────────────────────────────────────────────
 
-/** How one tool call ended. `failed`: bad arguments or an error — the model is told, the turn goes on. */
-export type AgentToolOutcome = "answered" | "empty" | "refused" | "step_up" | "failed";
+/**
+ * How one tool call ended. `failed`: bad arguments or an error — the model is told, the turn goes on.
+ * `proposed`: a `propose_*` tool stored a proposal for the asker to confirm (R4) — nothing changed.
+ */
+export type AgentToolOutcome = "answered" | "empty" | "refused" | "step_up" | "failed" | "proposed";
 
 /** A line of a card: a record's name (data, as the asker may see it), its link, and a fact about it as a message key. */
 export type AgentCardItem = {
@@ -79,7 +82,56 @@ export type AgentCardItem = {
  * to its screen. Titled by the tool (`assistant.agent.cards.<tool>`). Built beside the model's view,
  * never from it.
  */
-export type AgentCard = { tool: string; href: string | null; items: AgentCardItem[]; more: number };
+export type AgentCard = { tool: string; href: string | null; items: AgentCardItem[]; more: number; /** Set on a `propose_*` tool's card: the change to confirm (FR-AGT-20). */ proposal?: ProposalShown };
+
+// ── Proposals (Phase 13 R4, D37) ────────────────────────────────────────────────────────────
+
+/**
+ * One line of a proposal card: what will be set, as the person reads it. `key` names the field
+ * (`assistant.agent.proposal.fields.<key>`); the value is either words somebody wrote or a record's
+ * name (`text`, with its link when it has a page) or one of the app's own values (`valueKey`, under
+ * `assistant.agent.proposal.values.<valueKey>`). A day ("2026-10-08") is written as the reader writes one.
+ */
+export type ProposalField = {
+  key: string;
+  /** A label somebody wrote (a request form's own field, set up by an admin), shown as it is instead of `key`'s. */
+  label?: string;
+  text?: string;
+  valueKey?: string;
+  params?: Record<string, string | number>;
+  href?: string | null;
+};
+
+/**
+ * An edit link that is not a page: the work module's create form lives in the command palette, so a
+ * proposed task's Sửa opens the palette on it (`openQuickCreate`) with these search parameters.
+ */
+export const PALETTE_CREATE = "palette:create?";
+
+/** What became of a proposal, as the card shows it. `expired`: pending past its thirty minutes. */
+export const PROPOSAL_STATES = ["pending", "confirming", "confirmed", "discarded", "failed", "expired"] as const;
+export type ProposalState = (typeof PROPOSAL_STATES)[number];
+
+/** A proposal card (FR-AGT-20): every field of the change, who it notifies, and its buttons. */
+export type ProposalShown = {
+  id: string;
+  /** The module action's audit name — the card's title is `assistant.agent.proposal.actions.<action>`. */
+  action: string;
+  fields: ProposalField[];
+  /** The people the action will notify, by name. */
+  notify: string[];
+  /** Sửa: the module's normal form, filled in (FR-AGT-22). */
+  editHref: string | null;
+  expiresAt: string;
+  state: ProposalState;
+  /** The change in one plain line (the model-safe fields), so a follow-up turn knows what was proposed. */
+  summary: string;
+  /** After a confirm: the record it made or changed. After a failure: the module's reason, as a message key… */
+  resultHref?: string | null;
+  error?: string | null;
+  /** …and in words, in the language of the click: the module's own message, which the chat's page does not carry. */
+  reason?: string | null;
+};
 
 /** One step of a turn, as the chat names it (FR-AGT-07). */
 export type AgentStep = { tool: string; outcome: AgentToolOutcome };

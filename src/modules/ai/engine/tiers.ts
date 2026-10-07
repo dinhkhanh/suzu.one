@@ -52,6 +52,14 @@ export type NextStep = { kind: "call"; tier: ModelTier; withTools: boolean } | {
 export const FIRST_STEP: NextStep = { kind: "call", tier: "simple", withTools: true };
 
 /**
+ * The first call of a turn that asks for something to be done (R4, `asksToAct`): Sonnet. Measured
+ * 2026-10-07 on the acting set, Haiku declined one request in seven as out of scope and stopped after a
+ * look-up one in six instead of proposing; a card that names the wrong task costs the person more than
+ * the second tier does. Decided by the app from the question, never by a model.
+ */
+export const firstStep = (acting: boolean): NextStep => (acting ? { kind: "call", tier: "standard", withTools: true } : FIRST_STEP);
+
+/**
  * The next call, after one that asked for tools and whose tools have run. "stop" means the turn has
  * spent its calls without an answer: the free path answers, and the turn is recorded as `limited`.
  */

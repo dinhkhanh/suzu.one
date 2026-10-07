@@ -317,6 +317,18 @@ describe("the outbound-request capture: what reaches a model, for every persona 
     company_health: {},
     salary_estimate: { mode: "person", person: NAMES.huy },
     run_report: { report: "payroll_cost" },
+    // R4: a proposal's card and its model view go through the same capture.
+    propose_task: { title: "Gọi lại cho khách", assignee: NAMES.huy },
+    propose_task_change: { task: "VID-1", priority: 1 },
+    propose_comment: { task: "VID-1", body: "Đã nhận" },
+    propose_blocker: { task: "VID-1", action: "raise", reason: "Chờ khách" },
+    propose_time_log: { task: "VID-1", minutes: 60 },
+    propose_plan_today: { task: "VID-1" },
+    propose_eod_report: { notes: "Xong bản dựng" },
+    propose_leave: { leaveType: "Annual", startDate: "2026-12-07" },
+    propose_attendance_request: { type: "remote_work", date: "2026-12-07", reason: "Ở nhà" },
+    propose_request: { type: "purchase" },
+    propose_status_update: { project: "TVC" },
   };
 
   /** The pay figures each persona may be sent, on a fresh step-up. Stale: none. */

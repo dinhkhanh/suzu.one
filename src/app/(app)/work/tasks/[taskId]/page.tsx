@@ -29,12 +29,14 @@ import { accentOf } from "@/modules/work/enums";
 import { getTaskTime, loadTimeReader } from "@/modules/daily/service";
 import { TaskTime } from "@/modules/daily/ui/task-time";
 import { pageTitle } from "@/i18n/page-title";
+import { proposalDraft } from "@/modules/ai/service";
 
 export const generateMetadata = pageTitle("task");
 
-export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskId]">) {
+export default async function TaskPage({ params, searchParams }: PageProps<"/work/tasks/[taskId]">) {
   const user = await requireUser();
   const { taskId } = await params;
+  const { proposal } = await searchParams;
   // "VID-123" in a link or a chat opens the task — also a number it had before it moved team (FR-PJM-34).
   if (/^[a-z][a-z0-9]{1,7}-\d{1,7}$/i.test(taskId)) {
     const resolved = await resolveTaskKey(taskId);
@@ -51,6 +53,10 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   await auditPrivateTaskRead(viewer, detail);
   const t = await getTranslations("work");
   const canEdit = canEditTask(viewer, detail.facts);
+  // Sửa on the assistant's proposal of a comment or a blocker on this task: the form opens filled in.
+  const draft = await proposalDraft(user.person.id, typeof proposal === "string" ? proposal : null, ["work.comment.add", "work.blocker.raise", "work.blocker.resolve"]);
+  const drafted = draft && draft.taskId === task.id ? draft : null;
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
 
   const moderate = canModerateTask(viewer, detail.facts);
   const [handoffs, allTeams, openCycles, teamCycles] = await Promise.all([listTaskHandoffs(task.id, viewer), canEdit ? listTeams() : [], listOpenCycles([team.id]), work.cycleId ? listTeamCycles(team.id) : []]);
@@ -214,6 +220,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           canRaise={canRaiseBlocker(viewer, detail.facts)}
           canResolve={!!openBlocker && canResolveBlocker(viewer, detail.facts, openBlocker)}
           closed={task.status === "done" || task.status === "cancelled"}
+          draft={drafted && (text(drafted.reason) || text(drafted.resolution)) ? { reason: text(drafted.reason), neededPersonId: text(drafted.neededPersonId) ?? null, resolution: text(drafted.resolution) ?? null } : undefined}
         />
         <TaskFiles
           taskId={task.id}
@@ -303,6 +310,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           people={mentionable}
           selfId={user.person.id}
           canModerate={moderate}
+          draft={text(drafted?.body)}
         />
         <MovePanel taskId={task.id} taskKey={detail.key} teams={moveTargets} />
       </TaskDetailView>

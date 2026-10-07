@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Page, PageHeader } from "@/components/ui/page";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { proposalDraft } from "@/modules/ai/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -11,7 +12,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { fileRequestAction } from "@/modules/requests/actions";
 import { EXPENSE_CLAIM_CODE } from "@/modules/requests/expense";
 import { fileExpenseClaimAction } from "@/modules/requests/expense-actions";
-import { findRequestTypeByCode, followUpContext } from "@/modules/requests/service";
+import { findRequestTypeByCode, type FormValues, followUpContext } from "@/modules/requests/service";
 import { FollowUpGateNote } from "@/modules/requests/ui/follow-ups";
 import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
@@ -23,10 +24,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // The form the administrator designed, filled in by whoever needs the thing. With `?parent=<id>`
 // it is a follow-up (FR-REQ-05) — an advance under its business trip — and starts from the answers
-// the two forms share.
+// the two forms share. With `?proposal=<id>` it starts from the assistant's proposal of the asker's own.
 export default async function FileRequestPage(props: PageProps<"/requests/new/[code]">) {
   const user = await requireUser();
-  const [{ code }, { parent: parentParam }] = await Promise.all([props.params, props.searchParams]);
+  const [{ code }, { parent: parentParam, proposal: proposalParam }] = await Promise.all([props.params, props.searchParams]);
   const parentRequestId = typeof parentParam === "string" && UUID.test(parentParam) ? parentParam : null;
   const [type, target, t, locale] = await Promise.all([findRequestTypeByCode(code), getPersonTarget(user.person.id), getTranslations("requests"), getLocale()]);
   if (!type || !type.active) notFound();
@@ -35,6 +36,8 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
   const followUp = parentRequestId ? await followUpContext({ personId: user.person.id, principal: user.principal, entityId: target?.entityId ?? null }, parentRequestId, type) : null;
   if (parentRequestId && !followUp) notFound();
   if (!type.standalone && !followUp) notFound();
+  const proposed = !parentRequestId && typeof proposalParam === "string" ? await proposalDraft(user.person.id, proposalParam, ["request.file"]) : null;
+  const proposedValues = proposed?.code === type.code && proposed.values && typeof proposed.values === "object" ? (proposed.values as FormValues) : undefined;
   const parentName = followUp ? (locale === "en" ? followUp.parent.type.nameEn : followUp.parent.type.nameVi) : null;
 
   const needsPeople = type.form.fields.some((field) => field.type === "person");
@@ -85,7 +88,7 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
           form={type.form}
           submit={fileRequestAction}
           extra={{ code: type.code, parentRequestId: parentRequestId ?? "" }}
-          initialValues={followUp?.values}
+          initialValues={followUp?.values ?? proposedValues}
           people={people}
           entities={entities.map((entity) => ({ id: entity.id, name: entity.shortName }))}
           submitLabel={t("form.submit")}

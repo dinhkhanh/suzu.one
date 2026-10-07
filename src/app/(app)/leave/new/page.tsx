@@ -17,6 +17,7 @@ import { canFileLeaveFor, canManageLeaveOf } from "@/modules/leave/policy";
 import { findLeaveRequest, type LeaveInput, type LeavePreview, previewLeave } from "@/modules/leave/requests";
 import { leaveTypesFor } from "@/modules/leave/types";
 import { SubmitLeaveForm } from "@/modules/leave/ui/request-forms";
+import { proposalDraft } from "@/modules/ai/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
 import { RecordLink } from "@/components/ui/record-link";
@@ -31,7 +32,8 @@ const CHIP_LIMIT = 4;
 
 // Filing in two steps without any client state: the dates go into the address ("Check"), the
 // server shows what they cost on the person's own calendar, and only then can the request be sent.
-// `?person=` lets HR file for someone; `?amends=` replaces an open request.
+// `?person=` lets HR file for someone; `?amends=` replaces an open request; `?proposal=` starts
+// from the assistant's proposal of the asker's own (its dates are in the address, its reason here).
 export default async function NewLeavePage(props: PageProps<"/leave/new">) {
   const user = await requireUser();
   const query = await props.searchParams;
@@ -55,6 +57,9 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
   const startPortion = portion(one(query.startPortion), amended?.startPortion ?? "full");
   const endPortion = portion(one(query.endPortion), amended?.endPortion ?? "full");
   const minutes = /^\d+$/.test(one(query.minutes)) ? Number(one(query.minutes)) : (amended?.minutes ?? null);
+  const proposalId = !amended && !onBehalf && UUID.test(one(query.proposal)) ? one(query.proposal) : null;
+  const proposed = proposalId ? await proposalDraft(user.person.id, proposalId, ["leave.request.submit"]) : null;
+  const proposedReason = typeof proposed?.reason === "string" ? proposed.reason : undefined;
 
   let preview: LeavePreview | null = null;
   let previewError: string | null = null;
@@ -83,6 +88,7 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
     params.set("startPortion", startPortion);
     params.set("endPortion", endPortion);
     if (minutes !== null) params.set("minutes", String(minutes));
+    if (proposalId) params.set("proposal", proposalId);
     return `/leave/new?${params.toString()}`;
   };
 
@@ -94,6 +100,7 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
         <form method="get" className="flex flex-col gap-4 px-(--card-spacing)">
           {onBehalf && !amended ? <input type="hidden" name="person" value={personId} /> : null}
           {amended ? <input type="hidden" name="amends" value={amended.id} /> : null}
+          {proposalId ? <input type="hidden" name="proposal" value={proposalId} /> : null}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={chips ? undefined : "type"}>{t("request.type")}</Label>
             {chips ? (
@@ -207,6 +214,7 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
           key={`${typeId}:${from}:${to}:${startPortion}:${endPortion}:${minutes}`}
           draft={{ personId: onBehalf ? personId : null, leaveTypeId: typeId, startDate: from, endDate: to, startPortion, endPortion, minutes }}
           amends={amended?.id ?? null}
+          defaultReason={proposedReason}
           needsAttachment={preview.type.requiresAttachment}
           disabled={blocking.length > 0}
         />

@@ -6,6 +6,7 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { canAdminTeam, findTeam, loadViewer, teamFacts } from "@/modules/work/service";
 import { isoWeekday } from "./engine/rules";
 import { REPORT_REACTIONS, RULE_MODES } from "./enums";
+import { addToPlanInput, submitReportInput } from "./inputs";
 import { loadReportReader, loadSubjects } from "./people";
 import { addToPlan, savePlan } from "./plans";
 import { canCommentOnReport, canOverseeReport } from "./policy";
@@ -50,7 +51,7 @@ export async function savePlanAction(input: unknown) {
 
 const addToPlanPipeline = createAction({
   name: "daily.plan.add",
-  input: z.object({ taskId: z.uuid() }),
+  input: addToPlanInput,
   authorize: () => true,
   run: async ({ user, input }) => {
     const plan = await addToPlan(user.person.id, todayInVietnam(), input.taskId);
@@ -66,13 +67,7 @@ export async function addToPlanAction(input: unknown) {
 
 const submitReportPipeline = createAction({
   name: "daily.report.submit",
-  input: z.object({
-    date: isoDate,
-    blockers: optional(z.string().trim().max(2000)),
-    notes: optional(z.string().trim().max(2000)),
-    tomorrow: z.array(z.uuid()).max(40).default([]),
-    secondsToSubmit: optional(z.coerce.number().int().min(0).max(86400)),
-  }),
+  input: submitReportInput,
   // One's own report, for today or the days of the past week.
   authorize: (_user, input) => withinReportWindow(input.date, todayInVietnam()),
   run: async ({ user, input }) => {

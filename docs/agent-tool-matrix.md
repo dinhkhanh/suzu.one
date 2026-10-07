@@ -6,62 +6,73 @@ A tool that is not offered is not in the request: the model cannot ask for it. A
 
 ## The tools
 
-| Tool | Module | Highest tier it reads | Step-up | Tags |
-|---|---|---|---|---|
-| `search_handbook` | kb | public_internal | · | · |
-| `my_tasks` | work | personal | · | · |
-| `my_day` | daily | personal | · | · |
-| `my_time` | daily | personal | · | · |
-| `my_leave` | leave | personal | · | · |
-| `my_attendance` | attendance | personal | · | · |
-| `my_requests` | approvals | personal | · | · |
-| `who_approves_my_request` | approvals | public_internal | · | · |
-| `my_payslip` | payroll | compensation | yes | · |
-| `my_unacknowledged_announcements` | comms | public_internal | · | · |
-| `my_obligations` | ops | personal | · | · |
-| `find_person` | core-hr | public_internal | · | · |
-| `find_project` | projects | public_internal | · | · |
-| `find_task` | work | public_internal | · | · |
-| `task_detail` | work | public_internal | · | · |
-| `project_status` | projects | public_internal | · | · |
-| `portfolio_health` | projects | public_internal | · | · |
-| `team_board` | work | public_internal | · | · |
-| `team_workload` | work | public_internal | · | · |
-| `who_is_in` | attendance | public_internal | · | · |
-| `timesheets_to_approve` | daily | personal | · | · |
-| `person_overview` | people | restricted | · | analysis |
-| `headcount` | core-hr | personal | · | · |
-| `contracts_ending` | core-hr | personal | · | · |
-| `recruitment` | recruit | personal | · | · |
-| `leave_by_unit` | leave | personal | · | · |
-| `payroll_cost` | payroll | compensation | yes | · |
-| `profitability` | reports | compensation | yes | complex |
-| `receivables` | crm | restricted | · | · |
-| `sales_pipeline` | crm | restricted | · | · |
-| `company_health` | reports | compensation | · | complex |
-| `salary_estimate` | payroll | compensation | yes | · |
-| `run_report` | reports | compensation | for pay | · |
+| Tool | Kind | Module | Highest tier it reads | Step-up | Tags |
+|---|---|---|---|---|---|
+| `search_handbook` | read | kb | public_internal | · | · |
+| `my_tasks` | read | work | personal | · | · |
+| `my_day` | read | daily | personal | · | · |
+| `my_time` | read | daily | personal | · | · |
+| `my_leave` | read | leave | personal | · | · |
+| `my_attendance` | read | attendance | personal | · | · |
+| `my_requests` | read | approvals | personal | · | · |
+| `who_approves_my_request` | read | approvals | public_internal | · | · |
+| `my_payslip` | read | payroll | compensation | yes | · |
+| `my_unacknowledged_announcements` | read | comms | public_internal | · | · |
+| `my_obligations` | read | ops | personal | · | · |
+| `find_person` | read | core-hr | public_internal | · | · |
+| `find_project` | read | projects | public_internal | · | · |
+| `find_task` | read | work | public_internal | · | · |
+| `task_detail` | read | work | public_internal | · | · |
+| `project_status` | read | projects | public_internal | · | · |
+| `portfolio_health` | read | projects | public_internal | · | · |
+| `team_board` | read | work | public_internal | · | · |
+| `team_workload` | read | work | public_internal | · | · |
+| `who_is_in` | read | attendance | public_internal | · | · |
+| `timesheets_to_approve` | read | daily | personal | · | · |
+| `person_overview` | read | people | restricted | · | analysis |
+| `headcount` | read | core-hr | personal | · | · |
+| `contracts_ending` | read | core-hr | personal | · | · |
+| `recruitment` | read | recruit | personal | · | · |
+| `leave_by_unit` | read | leave | personal | · | · |
+| `payroll_cost` | read | payroll | compensation | yes | · |
+| `profitability` | read | reports | compensation | yes | complex |
+| `receivables` | read | crm | restricted | · | · |
+| `sales_pipeline` | read | crm | restricted | · | · |
+| `company_health` | read | reports | compensation | · | complex |
+| `salary_estimate` | read | payroll | compensation | yes | · |
+| `run_report` | read | reports | compensation | for pay | · |
+| `propose_task` | propose | work | personal | · | · |
+| `propose_task_change` | propose | work | personal | · | · |
+| `propose_comment` | propose | work | personal | · | · |
+| `propose_blocker` | propose | work | personal | · | · |
+| `propose_time_log` | propose | daily | personal | · | · |
+| `propose_plan_today` | propose | daily | personal | · | · |
+| `propose_eod_report` | propose | daily | personal | · | · |
+| `propose_leave` | propose | leave | personal | · | · |
+| `propose_attendance_request` | propose | attendance | personal | · | · |
+| `propose_request` | propose | requests | personal | · | · |
+| `propose_status_update` | propose | projects | personal | · | · |
 
 ## Offered to
 
-| Asker | `search_handbook` | `my_tasks` | `my_day` | `my_time` | `my_leave` | `my_attendance` | `my_requests` | `who_approves_my_request` | `my_payslip` | `my_unacknowledged_announcements` | `my_obligations` | `find_person` | `find_project` | `find_task` | `task_detail` | `project_status` | `portfolio_health` | `team_board` | `team_workload` | `who_is_in` | `timesheets_to_approve` | `person_overview` | `headcount` | `contracts_ending` | `recruitment` | `leave_by_unit` | `payroll_cost` | `profitability` | `receivables` | `sales_pipeline` | `company_health` | `salary_estimate` | `run_report` |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| employee, no role | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · |
-| employee who leads a team or project | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ |
-| employee with people reporting to them | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ |
-| employee who owns a deal or manages a client account | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | · | ✓ |
-| collaborator | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · |
-| `owner` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `c_level` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ |
-| `entity_director` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | · | ✓ |
-| `hr_admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | ✓ | ✓ |
-| `hr_staff` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ |
-| `payroll` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | ✓ | ✓ |
-| `finance` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ |
-| `department_head` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ |
-| `recruiter` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ |
-| `asset_admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ |
-| `auditor` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · | ✓ |
-| `support` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ |
-| `sales` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | ✓ | ✓ | · | ✓ |
-| `marketing` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ |
+| Asker | `search_handbook` | `my_tasks` | `my_day` | `my_time` | `my_leave` | `my_attendance` | `my_requests` | `who_approves_my_request` | `my_payslip` | `my_unacknowledged_announcements` | `my_obligations` | `find_person` | `find_project` | `find_task` | `task_detail` | `project_status` | `portfolio_health` | `team_board` | `team_workload` | `who_is_in` | `timesheets_to_approve` | `person_overview` | `headcount` | `contracts_ending` | `recruitment` | `leave_by_unit` | `payroll_cost` | `profitability` | `receivables` | `sales_pipeline` | `company_health` | `salary_estimate` | `run_report` | `propose_task` | `propose_task_change` | `propose_comment` | `propose_blocker` | `propose_time_log` | `propose_plan_today` | `propose_eod_report` | `propose_leave` | `propose_attendance_request` | `propose_request` | `propose_status_update` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| employee, no role | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| employee who leads a team or project | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| employee with people reporting to them | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| employee who owns a deal or manages a client account | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| collaborator | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `owner` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `c_level` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `entity_director` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `hr_admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `hr_staff` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `payroll` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `finance` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `department_head` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `recruiter` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | ✓ | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `asset_admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `auditor` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `support` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `sales` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | ✓ | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| `marketing` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | ✓ | · | ✓ | · | · | · | ✓ | · | · | · | · | ✓ | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |

@@ -135,3 +135,30 @@ export async function updateTaskAction(input: unknown) {
   const actions = await import("./actions");
   return actions.updateTaskAction(input);
 }
+
+/**
+ * The input schemas of the actions the assistant may propose (Phase 13 R4): a proposal is checked
+ * against the very schema its action parses with when it is confirmed.
+ */
+export { addCommentInput, createTaskInput, raiseBlockerInput, resolveBlockerInput, updateTaskInput } from "./inputs";
+
+/** The actions a confirmed assistant proposal runs (Phase 13 R4), loaded on first use like `updateTaskAction`. */
+export async function createTaskAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.createTaskAction(input);
+}
+
+export async function addCommentAction(input: unknown) {
+  const actions = await import("./actions");
+  return actions.addCommentAction(input);
+}
+
+export async function raiseBlockerAction(input: unknown) {
+  const actions = await import("./foundation-actions");
+  return actions.raiseBlockerAction(input);
+}
+
+export async function resolveBlockerAction(input: unknown) {
+  const actions = await import("./foundation-actions");
+  return actions.resolveBlockerAction(input);
+}

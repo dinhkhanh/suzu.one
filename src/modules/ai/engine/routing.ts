@@ -237,3 +237,29 @@ export function routeQuestion(question: string, today: IsoDate): ToolRoute | nul
 
   return null;
 }
+
+// ── Asking to act (Phase 13 R4) ─────────────────────────────────────────────────────────────
+
+/** "Xin nghỉ…", "tạo việc…", "ghi 2 tiếng…", "quên chấm công…" — accent-free phrases that ask for a change. */
+const ACT_PHRASES = [
+  "xin nghi", "xin phep", "xin di muon", "xin ve som", "xin lam", "dang ky", "tao viec", "tao task", "tao cong viec", "tao mot viec", "ghi gio", "ghi nhan", "ghi giup", "log gio",
+  "nop bao cao", "gui bao cao", "nop giup", "them viec", "them vao", "doi han", "doi trang thai", "doi uu tien", "doi nguoi", "chuyen viec", "chuyen sang", "giao viec", "giao cho",
+  "binh luan", "danh dau", "bao chan", "dang bi chan", "go chan", "cap nhat tinh hinh", "dang cap nhat", "quen cham cong", "bo sung cong", "sua cong", "gui de nghi", "tao de nghi",
+  "lam de nghi", "de nghi mua", "de nghi tam ung", "gui yeu cau", "tao yeu cau",
+];
+/** Verbs that start a request, alone or after "please", "can you", "giúp tôi", "hãy"… — accent-free. */
+const ACT_VERBS = new Set(["ghi", "tao", "nop", "xin", "them", "chuyen", "giao", "gui", "danh", "go", "create", "put", "send", "schedule", "make", "add", "log", "submit", "request", "file", "move", "assign", "reassign", "comment", "mark", "post", "book", "apply", "reschedule", "raise", "clear", "unblock", "plan"]);
+
+/**
+ * Does the question ask for something to be done — a proposal (R4) — rather than for a figure? Then
+ * the agent takes it even when Phase 9's router would have answered a word in it ("Hôm qua tôi quên
+ * chấm công ra" is a correction to file, not this month's attendance). Pure, and only a hint: what
+ * may be proposed is decided by the tools, and nothing happens without the asker's click.
+ */
+export function asksToAct(question: string): boolean {
+  const tokens = words(question);
+  const text = tokens.join(" ");
+  if (hasPhrase(text, ...ACT_PHRASES)) return true;
+  const start = text.replace(/^(?:please |pls |can you |could you |would you |help me |i want to |i d like to |i would like to |i need to |hay |giup toi |giup minh |nho |ban |toi muon |minh muon |em muon )+/u, "");
+  return ACT_VERBS.has(start.split(" ")[0] ?? "");
+}

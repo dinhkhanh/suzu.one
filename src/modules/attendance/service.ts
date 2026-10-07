@@ -16,3 +16,15 @@ export { recordApprovedTrip } from "./requests";
 // Payroll's input (Phase 5): the locked month per entity, retro adjustments, and the receipt payroll leaves on them.
 export { getLockedTimesheets, isPeriodLocked, listAdjustmentsForPayroll, listVoidedAdjustmentIds, type LockedPeriod, type LockedTimesheet, markAdjustmentsTaken, releaseAdjustments, type TimesheetAdjustmentRow } from "./months";
 export type { AdjustmentDeltas } from "./schema";
+
+// ── For the assistant's proposals (Phase 13 R4) ───────────────────────────────────────────
+// A proposed request is checked against the very schema the action parses it with, and — once the
+// person confirms — filed through the action itself, loaded on first use.
+export { submitAttendanceRequestInput } from "./inputs";
+export { type OvertimeCapWarning, windowOf } from "./engine/requests";
+export { overtimeWarningsFor } from "./requests";
+
+export async function submitAttendanceRequestAction(input: unknown) {
+  const actions = await import("./request-actions");
+  return actions.submitAttendanceRequestAction(input);
+}
