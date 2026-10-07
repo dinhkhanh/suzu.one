@@ -37,6 +37,7 @@
     "storage:to-r2": "tsx scripts/storage-to-r2.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@base-ui/react": "^1.8.0",
     "@better-auth/drizzle-adapter": "^1.7.7",
     "@floating-ui/dom": "1.8.0",

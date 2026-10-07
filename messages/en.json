@@ -949,6 +949,10 @@
         "title": "Scheduled job failed: {job}",
         "body": "The job {job} just failed: {error}"
       },
+      "system_ai_budget_warning": {
+        "title": "The AI assistant has used 80% of its monthly budget",
+        "body": "The assistant has spent USD {spent} of this month's USD {budget}. When the budget is spent, it answers with handbook quotes only until the 1st of next month."
+      },
       "system_job_timed_out": {
         "title": "Scheduled job stopped before it finished: {job}",
         "body": "The job {job} was still running after {minutes} minutes and the server stopped it. Its work may be half done: open Admin → Jobs and run it again."
@@ -11632,6 +11636,13 @@
     "history": "Asked recently",
     "noHistory": "No conversations yet.",
     "emptyHint": "Ask about the work rules, policies and procedures. Accents are optional.",
+    "notices": {
+      "off": "The AI assistant is switched off for now, so this is a quote from the source page.",
+      "no_key": "",
+      "month": "The AI assistant has spent this month's budget, so this is a quote from the source page. Full answers return on the 1st of next month.",
+      "day": "You have used today's AI assistant allowance, so this is a quote from the source page. It resets at midnight.",
+      "provider_error": "The AI service could not be reached, so this is a quote from the source page. Try again in a few minutes."
+    },
     "mayBeWrong": "The answer is quoted from a knowledge-base page and may be incomplete — open the source to read it in full.",
     "noAnswer": "I could not find an answer in the pages you may read.",
     "noAnswerLogged": "The question has been logged so HR can write the missing page. You can also ask HR directly.",
@@ -11667,7 +11678,23 @@
         "modelAnswers": "Written by a model",
         "inputTokens": "Tokens sent",
         "outputTokens": "Tokens received",
-        "empty": "Nobody has asked anything in this period."
+        "empty": "Nobody has asked anything in this period.",
+        "cost": "Cost",
+        "month": {
+          "title": "This month's cost",
+          "intro": "The assistant falls back to quoting the handbook when the month's budget is spent, or when a person has spent their daily allowance: {everyone} for everyone, {lead} for people who lead a team or a project, {office} for HR, payroll, finance and leadership. These are set as environment variables on Vercel.",
+          "spent": "Spent",
+          "budget": "Monthly budget",
+          "share": "Used",
+          "model": "Model",
+          "calls": "Calls",
+          "empty": "No model has been called this month.",
+          "tiers": {
+            "simple": "simple",
+            "standard": "complex",
+            "complex": "hardest"
+          }
+        }
       }
     },
     "errors": {

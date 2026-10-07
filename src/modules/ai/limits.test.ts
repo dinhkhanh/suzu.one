@@ -8,7 +8,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
-vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one", ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "@cf/baai/bge-m3" }) }));
+vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one", ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "@cf/baai/bge-m3", AI_MONTHLY_BUDGET_USD: 150, AI_DAILY_BUDGET_USD_EVERYONE: 0.3, AI_DAILY_BUDGET_USD_LEADS: 0.75, AI_DAILY_BUDGET_USD_OFFICE: 1.5 }) }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }));
 vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => session.user, requireUser: async () => session.user }));
 // Everything past the door, replaced by a counter: a call that gets this far has reached the
@@ -176,18 +176,23 @@ describe("what the assistant cost", () => {
     await turn("lan", "2026-10-05T02:00:00Z", [0, 0], "local-extractive");
     await turn("lan", "2026-10-05T03:00:00Z", null, "local-extractive"); // stored before usage was kept
     await turn("lan", "2026-08-01T03:00:00Z", [9_000_000, 9_000_000]); // older than the window
+    // What the calls cost, as the gateway writes them down: two answers and one draft of Huy's.
+    const call = (at: string, costMicroUsd: number, purpose = "ask") => ({ personId: users.huy.person.id, purpose, tier: "simple", model: "claude-haiku-4-5", outputTokens: costMicroUsd / 5, costMicroUsd, createdAt: new Date(at) });
+    await db().insert(schema.aiModelCall).values([call("2026-10-04T16:30:00Z", 6000), call("2026-10-04T17:30:00Z", 8500), call("2026-10-05T04:00:00Z", 1500, "draft.eod")]);
 
     const usage = await assistantUsage(30, now);
-    expect(usage.total).toEqual({ answers: 4, modelAnswers: 2, inputTokens: 12_000, outputTokens: 500 });
+    expect(usage.total).toEqual({ answers: 4, modelAnswers: 2, inputTokens: 12_000, outputTokens: 500, costMicroUsd: 16_000 });
     expect(usage.byDay).toEqual([
-      { day: "2026-10-05", answers: 3, modelAnswers: 1, inputTokens: 7000, outputTokens: 300 },
-      { day: "2026-10-04", answers: 1, modelAnswers: 1, inputTokens: 5000, outputTokens: 200 },
+      { day: "2026-10-05", answers: 3, modelAnswers: 1, inputTokens: 7000, outputTokens: 300, costMicroUsd: 10_000 },
+      { day: "2026-10-04", answers: 1, modelAnswers: 1, inputTokens: 5000, outputTokens: 200, costMicroUsd: 6000 },
     ]);
     // The dearest first.
     expect(usage.byPerson).toEqual([
-      { personId: users.huy.person.id, fullName: "Ho Gia Huy", answers: 2, modelAnswers: 2, inputTokens: 12_000, outputTokens: 500 },
-      { personId: users.lan.person.id, fullName: "Tran Thi Lan", answers: 2, modelAnswers: 0, inputTokens: 0, outputTokens: 0 },
+      { personId: users.huy.person.id, fullName: "Ho Gia Huy", answers: 2, modelAnswers: 2, inputTokens: 12_000, outputTokens: 500, costMicroUsd: 16_000 },
+      { personId: users.lan.person.id, fullName: "Tran Thi Lan", answers: 2, modelAnswers: 0, inputTokens: 0, outputTokens: 0, costMicroUsd: 0 },
     ]);
+    // The month (October, in Vietnam) against the budget, by model.
+    expect(usage.month).toMatchObject({ monthMicroUsd: 16_000, budget: { monthMicroUsd: 150_000_000 }, byModel: [{ model: "claude-haiku-4-5", tier: "simple", calls: 3, costMicroUsd: 16_000 }] });
   });
 
   it("is the owner's to read, and nobody else's", () => {

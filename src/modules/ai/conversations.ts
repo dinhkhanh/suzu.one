@@ -19,7 +19,7 @@ import type { Citation } from "./engine/answer";
 import { allowedAppLinks, appLinksFor } from "./engine/app-links";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { routeQuestion } from "./engine/routing";
-import type { ChatTurn, ToolOutcome } from "./enums";
+import type { AiNotice, ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
 import { chatDriver } from "./model";
 import { retrievePassages } from "./retrieval";
@@ -31,7 +31,18 @@ const TITLE_MAX = 120;
 
 export type AskInput = { question: string; conversationId?: string | null; locale?: string };
 
-export type Answer = { body: string; citations: Citation[]; score: number; answered: boolean; driver: string; model: string; /** What the driver reported it cost; zero on the local driver. */ usage: TokenUsage };
+export type Answer = {
+  body: string;
+  citations: Citation[];
+  score: number;
+  answered: boolean;
+  driver: string;
+  model: string;
+  /** What the driver reported it cost; zero on the local driver. */
+  usage: TokenUsage;
+  /** Why a model did not write this answer although there is a key: switched off, budget spent, provider down. */
+  notice: AiNotice | null;
+};
 
 /**
  * Retrieve → rank → answer. THE WHOLE DECISION, with nothing written down: `ask` adds the
@@ -41,7 +52,8 @@ export type Answer = { body: string; citations: Citation[]; score: number; answe
  * An answer exists only when the driver produced text AND retrieval produced a citation behind it.
  * There is no path in this module that shows a sentence with no source.
  */
-export async function answerQuestion(viewer: KbViewer, question: string, locale: string): Promise<Answer> {
+export async function answerQuestion(user: ViewerSource, question: string, locale: string): Promise<Answer> {
+  const viewer: KbViewer = kbViewerOf(user);
   const ranked = await retrievePassages(viewer, question);
   const driver = chatDriver();
   // The screens this asker's sidebar shows. Recruitment and the directory are left out: they
@@ -49,14 +61,14 @@ export async function answerQuestion(viewer: KbViewer, question: string, locale:
   const nav = new Set(navFor(viewer.principal, { people: false, recruit: false, interviews: false }).main.map((item) => item.key));
   const t = createTranslator({ locale: locale === "en" ? "en" : "vi", messages: locale === "en" ? en : vi, namespace: "assistant.appLinks" });
   const links = allowedAppLinks(nav).map((link) => ({ label: t(link.key as "leaveNew"), href: link.href }));
-  const answer = await driver.complete({ question, passages: ranked, locale, links });
+  const answer = await driver.complete({ asker: user, question, passages: ranked, locale, links });
   const citations = answer.extracted.passages.map((passage) => passage.citation);
   const answered = answer.body.length > 0 && citations.length > 0;
   // "Where to do it": the screens the question or the quoted passages name, unless the answer
   // already links to them.
   const related = answered ? appLinksFor(question, answer.extracted.passages.map((passage) => passage.excerpt), nav).filter((link) => !answer.body.includes(`](${link.href})`)) : [];
   const body = related.length ? `${answer.body}\n\n---\n\n**${t("title")}** ${related.map((link) => `[${t(link.key as "leaveNew")}](${link.href})`).join(" · ")}` : answer.body;
-  return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: driver.name, model: driver.model, usage: answer.usage };
+  return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: answer.driver, model: answer.model, usage: answer.usage, notice: answer.notice };
 }
 
 /**
@@ -74,7 +86,7 @@ export async function resolveAnswer(user: ViewerSource & ToolUser, question: str
     // afterwards, so a refusal can never be padded out with a policy page about somebody's salary.
     return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
   }
-  const answer = await answerQuestion(kbViewerOf(user), question, locale);
+  const answer = await answerQuestion(user, question, locale);
   return { kind: "kb", answer, outcome: answer.answered ? "answered" : "unanswered" };
 }
 
@@ -96,6 +108,8 @@ export type AskResult = {
   model: string;
   /** Tokens in and out of the model call behind the answer; zero for the local driver and a tool. */
   usage: TokenUsage;
+  /** Why the answer is a quoted passage although there is a key — the chat says so. Not stored. */
+  notice: AiNotice | null;
 };
 
 export type AiMessageRow = typeof aiMessage.$inferSelect;
@@ -157,7 +171,8 @@ export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promi
     // The backlog of pages still to write. Only the question, never the passages that failed.
     if (logAsUnanswered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
 
-    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, usage, audit: resolved.kind === "tool" ? resolved.audit : null };
+    const notice = resolved.kind === "kb" ? resolved.answer.notice : null;
+    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, usage, notice, audit: resolved.kind === "tool" ? resolved.audit : null };
   });
 }
 

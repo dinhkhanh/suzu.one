@@ -949,6 +949,10 @@
         "title": "Tác vụ tự động thất bại: {job}",
         "body": "Tác vụ {job} vừa chạy lỗi: {error}"
       },
+      "system_ai_budget_warning": {
+        "title": "Trợ lý AI đã dùng 80% ngân sách tháng",
+        "body": "Trợ lý đã dùng {spent} USD trên {budget} USD của tháng này. Khi hết ngân sách, trợ lý chỉ trả lời bằng trích dẫn sổ tay cho tới đầu tháng sau."
+      },
       "system_job_timed_out": {
         "title": "Tác vụ tự động bị dừng giữa chừng: {job}",
         "body": "Tác vụ {job} vẫn chạy sau {minutes} phút và đã bị máy chủ dừng lại. Có thể việc mới làm được một nửa: hãy mở Quản trị → Tác vụ tự động và chạy lại."
@@ -11632,6 +11636,13 @@
     "history": "Đã hỏi gần đây",
     "noHistory": "Chưa có cuộc trò chuyện nào.",
     "emptyHint": "Hỏi về nội quy, chính sách và quy trình. Gõ không dấu cũng được.",
+    "notices": {
+      "off": "Trợ lý AI đang tạm tắt, nên đây là đoạn trích từ trang nguồn.",
+      "no_key": "",
+      "month": "Trợ lý AI đã dùng hết ngân sách tháng này, nên đây là đoạn trích từ trang nguồn. Câu trả lời đầy đủ sẽ có lại vào ngày 1 tháng sau.",
+      "day": "Bạn đã dùng hết lượt trợ lý AI hôm nay, nên đây là đoạn trích từ trang nguồn. Lượt mới có lại từ 0 giờ.",
+      "provider_error": "Không kết nối được dịch vụ AI, nên đây là đoạn trích từ trang nguồn. Hãy thử lại sau ít phút."
+    },
     "mayBeWrong": "Câu trả lời được trích từ trang Tri thức và có thể chưa đầy đủ — hãy mở trang nguồn để đọc đủ.",
     "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
     "noAnswerLogged": "Câu hỏi đã được ghi lại để phòng Nhân sự bổ sung trang còn thiếu. Bạn có thể hỏi trực tiếp phòng Nhân sự.",
@@ -11667,7 +11678,23 @@
         "modelAnswers": "Do mô hình viết",
         "inputTokens": "Token gửi đi",
         "outputTokens": "Token nhận về",
-        "empty": "Chưa có lượt hỏi nào trong khoảng này."
+        "empty": "Chưa có lượt hỏi nào trong khoảng này.",
+        "cost": "Chi phí",
+        "month": {
+          "title": "Chi phí tháng này",
+          "intro": "Trợ lý tự chuyển sang trả lời bằng đoạn trích sổ tay khi hết ngân sách tháng, hoặc khi một người dùng hết hạn mức ngày: {everyone} cho mọi người, {lead} cho người dẫn dắt nhóm hoặc dự án, {office} cho nhân sự, lương, tài chính và lãnh đạo. Các mức này được đặt trong biến môi trường trên Vercel.",
+          "spent": "Đã chi",
+          "budget": "Ngân sách tháng",
+          "share": "Đã dùng",
+          "model": "Mô hình",
+          "calls": "Lượt gọi",
+          "empty": "Tháng này chưa có lượt gọi mô hình nào.",
+          "tiers": {
+            "simple": "đơn giản",
+            "standard": "phức tạp",
+            "complex": "rất phức tạp"
+          }
+        }
       }
     },
     "errors": {

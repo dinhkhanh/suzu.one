@@ -46,4 +46,14 @@ export type ChatTurn = {
   citations: Citation[];
   /** Set when a personal tool answered instead of the knowledge base. */
   tool: ToolOutcome | null;
+  /** Why a fresh answer is a quoted passage although there is a key. Shown once, never stored. */
+  notice?: AiNotice | null;
 };
+
+/**
+ * Why a model did not write an answer although there is a key (SRS D35, FR-AGT-52, NFR-AGT-03): the
+ * kill switch is off, there is no key, the company's month or this person's day is spent, or the
+ * provider failed. The answer is then the free one — a quoted passage — and the chat says why.
+ */
+export const AI_NOTICES = ["off", "no_key", "month", "day", "provider_error"] as const;
+export type AiNotice = (typeof AI_NOTICES)[number];

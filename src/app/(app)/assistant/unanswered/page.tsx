@@ -34,6 +34,8 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
     view === "usage" ? Promise.resolve([]) : listUnanswered(user.principal, { resolved: view === "all" }),
     view === "usage" ? assistantUsage() : Promise.resolve(null),
   ]);
+  // Dollars, to the cent — and to a hundredth of a cent while the sums are still that small.
+  const usd = (microUsd: number) => format.number(microUsd / 1_000_000, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: microUsd > 0 && microUsd < 10_000 ? 4 : 2 });
 
   return (
     <Page>
@@ -60,12 +62,44 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
 
       {usage ? (
         <>
+          <Section title={t("usage.month.title")} description={t("usage.month.intro", { everyone: usd(usage.month.budget.dayMicroUsd.everyone), lead: usd(usage.month.budget.dayMicroUsd.lead), office: usd(usage.month.budget.dayMicroUsd.office) })}>
+            <TileGrid>
+              <Tile label={t("usage.month.spent")} value={usd(usage.month.monthMicroUsd)} />
+              <Tile label={t("usage.month.budget")} value={usd(usage.month.budget.monthMicroUsd)} />
+              <Tile label={t("usage.month.share")} value={format.number(usage.month.budget.monthMicroUsd > 0 ? usage.month.monthMicroUsd / usage.month.budget.monthMicroUsd : 0, { style: "percent", maximumFractionDigits: 1 })} />
+            </TileGrid>
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="text" className="min-w-40">
+                    {t("usage.month.model")}
+                  </TableHead>
+                  <TableHead kind="number">{t("usage.month.calls")}</TableHead>
+                  <TableHead kind="money">{t("usage.cost")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usage.month.byModel.length === 0 ? <TableEmpty>{t("usage.month.empty")}</TableEmpty> : null}
+                {usage.month.byModel.map((row) => (
+                  <TableRow key={`${row.model}:${row.tier}`}>
+                    <TableCell className="font-medium">
+                      {row.model} <span className="text-xs text-muted-foreground">· {t(`usage.month.tiers.${row.tier as "simple"}`)}</span>
+                    </TableCell>
+                    <TableCell kind="number">{format.number(row.calls)}</TableCell>
+                    <TableCell kind="money">{usd(row.costMicroUsd)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Section>
+
           <Section title={t("usage.title", { days: USAGE_DAYS })} description={t("usage.intro", { askDay: AI_LIMITS.ask_day.max, askBurst: AI_LIMITS.ask_burst.max, draftDay: AI_LIMITS.draft_day.max, draftBurst: AI_LIMITS.draft_burst.max })}>
             <TileGrid>
               <Tile label={t("usage.answers")} value={format.number(usage.total.answers)} />
               <Tile label={t("usage.modelAnswers")} value={format.number(usage.total.modelAnswers)} />
               <Tile label={t("usage.inputTokens")} value={format.number(usage.total.inputTokens)} />
               <Tile label={t("usage.outputTokens")} value={format.number(usage.total.outputTokens)} />
+              <Tile label={t("usage.cost")} value={usd(usage.total.costMicroUsd)} />
             </TileGrid>
           </Section>
 
@@ -78,8 +112,7 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
                   </TableHead>
                   <TableHead kind="number">{t("usage.answers")}</TableHead>
                   <TableHead kind="number">{t("usage.modelAnswers")}</TableHead>
-                  <TableHead kind="number">{t("usage.inputTokens")}</TableHead>
-                  <TableHead kind="number">{t("usage.outputTokens")}</TableHead>
+                  <TableHead kind="money">{t("usage.cost")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -93,8 +126,7 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
                     </TableCell>
                     <TableCell kind="number">{format.number(row.answers)}</TableCell>
                     <TableCell kind="number">{format.number(row.modelAnswers)}</TableCell>
-                    <TableCell kind="number">{format.number(row.inputTokens)}</TableCell>
-                    <TableCell kind="number">{format.number(row.outputTokens)}</TableCell>
+                    <TableCell kind="money">{usd(row.costMicroUsd)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -110,8 +142,7 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
                   </TableHead>
                   <TableHead kind="number">{t("usage.answers")}</TableHead>
                   <TableHead kind="number">{t("usage.modelAnswers")}</TableHead>
-                  <TableHead kind="number">{t("usage.inputTokens")}</TableHead>
-                  <TableHead kind="number">{t("usage.outputTokens")}</TableHead>
+                  <TableHead kind="money">{t("usage.cost")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,8 +152,7 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
                     <TableCell className="font-medium">{format.dateTime(new Date(`${row.day}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
                     <TableCell kind="number">{format.number(row.answers)}</TableCell>
                     <TableCell kind="number">{format.number(row.modelAnswers)}</TableCell>
-                    <TableCell kind="number">{format.number(row.inputTokens)}</TableCell>
-                    <TableCell kind="number">{format.number(row.outputTokens)}</TableCell>
+                    <TableCell kind="money">{usd(row.costMicroUsd)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

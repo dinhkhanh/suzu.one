@@ -6,7 +6,8 @@
 //  - the questions the knowledge base could not answer, for whoever keeps it (FR-KB-08's
 //    "what is missing" in the small): the log is the backlog of pages still to write,
 //  - what each answer cost — tokens in and out, beside the driver and model already kept,
-//  - the counted windows of the per-person limit (`ai_usage_hit`, `engine/limits.ts`).
+//  - the counted windows of the per-person limit (`ai_usage_hit`, `engine/limits.ts`),
+//  - every call to a model, with its tokens and its price (`ai_model_call`, `engine/budget.ts`).
 // Citations are stored as JSON on the message rather than in a join table: they are a record of
 // what was shown at the time, not a live index. Every link is re-checked by the KB page itself.
 import { index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
@@ -115,4 +116,34 @@ export const aiUsageHit = pgTable(
     lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("ai_usage_hit_key").on(t.bucket, t.personId, t.windowStart), index("ai_usage_hit_window_idx").on(t.windowStart)],
+).enableRLS();
+
+/**
+ * Every call to a model (SRS D35, FR-AGT-43): who it was for, why, which model, the tokens of each
+ * kind and what they cost in micro-dollars at the price of the day (`engine/pricing.ts`). The
+ * month's and the person's day's ceilings are sums over this table, in SQL, before each call.
+ * Nothing of the question or the answer is here — only that a call happened and what it cost — so
+ * the rows outlive the conversations they served, and a person who leaves leaves their cost behind
+ * (`set null`): the month's bill does not shrink when somebody is erased.
+ */
+export const aiModelCall = pgTable(
+  "ai_model_call",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id").references(() => person.id, { onDelete: "set null" }),
+    /** What the call was for: "ask", "draft.eod", "draft.status", "draft.handoff", "eval". */
+    purpose: text("purpose").notNull(),
+    /** The tier the call ran on (D38): "simple", "standard" or "complex". */
+    tier: text("tier").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    costMicroUsd: integer("cost_micro_usd").notNull().default(0),
+    /** As the provider said it ended: "end_turn", "max_tokens", "refusal", "tool_use"… */
+    stopReason: text("stop_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_model_call_time_idx").on(t.createdAt), index("ai_model_call_person_idx").on(t.personId, t.createdAt)],
 ).enableRLS();

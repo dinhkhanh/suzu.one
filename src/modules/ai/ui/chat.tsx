@@ -129,6 +129,8 @@ function Bubble({ turn }: { turn: Turn }) {
           {/* Markdown turned into elements, never into HTML: see `answer-markdown.tsx`. */}
           <AnswerMarkdown body={turn.body} citations={turn.citations} />
           <Sources turn={turn} />
+          {/* Why this is a quoted passage and not a written answer: a ceiling, the switch, the provider. */}
+          {turn.notice && turn.notice !== "no_key" ? <p className="text-xs text-muted-foreground">{t(`notices.${turn.notice}`)}</p> : null}
           <p className="text-xs text-faint">{t("mayBeWrong")}</p>
         </>
       )}
@@ -153,7 +155,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
       setShown((before) => [
         ...before,
         { id: `${result.messageId}-q`, role: "user", body: asked.current, outcome: null, citations: [], tool: null },
-        { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool },
+        { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool, notice: result.notice },
       ]);
       formRef.current?.reset();
       router.refresh();

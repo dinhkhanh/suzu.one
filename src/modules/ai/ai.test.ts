@@ -107,7 +107,7 @@ beforeAll(async () => {
 });
 
 const titles = async (who: Who, question: string) => (await retrievePassages(viewers[who], question)).map((passage) => passage.pageTitle);
-const answerFor = (who: Who, question: string) => answerQuestion(viewers[who], question, "vi");
+const answerFor = (who: Who, question: string) => answerQuestion(users[who], question, "vi");
 
 describe("retrieval is the permission filter", () => {
   it("answers an ordinary handbook question for an ordinary employee", async () => {
