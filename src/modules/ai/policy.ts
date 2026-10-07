@@ -25,3 +25,15 @@ export const canReadUnansweredLog = (principal: Principal): boolean => can(princ
 
 /** The assistant's usage and its tokens: the owner alone. */
 export const canReadAssistantUsage = (principal: Principal): boolean => principal.grants.some((grant) => grant.scope.type === "group" && ROLE_DEFINITIONS[grant.role].permissions.includes("*"));
+
+/**
+ * Who gets the agent rather than Phase 9's assistant (Phase 13 R1's pilot). Everybody, or — while
+ * it is piloted — the owners and the work emails the owner listed. Not a permission: the agent has
+ * no rights of its own, so this decides which assistant answers, not what anybody may see.
+ */
+export function agentAudienceAdmits(principal: Principal, email: string | null | undefined, settings: { audience: "pilot" | "everyone"; pilotEmails: string }): boolean {
+  if (principal.personId === null) return false;
+  if (settings.audience === "everyone" || canReadAssistantUsage(principal)) return true;
+  const wanted = (email ?? "").trim().toLowerCase();
+  return wanted.length > 0 && settings.pilotEmails.split(/[\s,;]+/u).some((listed) => listed.trim().toLowerCase() === wanted);
+}

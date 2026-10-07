@@ -64,7 +64,7 @@ export async function admitModelCall(asker: ModelAsker, at: Date = new Date()): 
   return verdict.ok ? { ok: true } : { ok: false, notice: verdict.reason };
 }
 
-export type ModelCallRecord = { personId: string; purpose: string; tier: string; model: string; usage: ModelUsage; stopReason: string | null };
+export type ModelCallRecord = { personId: string; turnId?: string | null; purpose: string; tier: string; model: string; usage: ModelUsage; stopReason: string | null };
 
 /**
  * Writes down one call and its price. When this call carries the month across 80 % of the budget,
@@ -75,7 +75,7 @@ export async function recordModelCall(record: ModelCallRecord, at: Date = new Da
   const cost = costMicroUsd(record.model, record.usage);
   await db()
     .insert(aiModelCall)
-    .values({ personId: record.personId, purpose: record.purpose, tier: record.tier, model: record.model, ...record.usage, costMicroUsd: cost, stopReason: record.stopReason, createdAt: at });
+    .values({ personId: record.personId, turnId: record.turnId ?? null, purpose: record.purpose, tier: record.tier, model: record.model, ...record.usage, costMicroUsd: cost, stopReason: record.stopReason, createdAt: at });
   const budget = aiBudget().monthMicroUsd;
   if (cost > 0 && budget > 0) {
     const [row] = await db()

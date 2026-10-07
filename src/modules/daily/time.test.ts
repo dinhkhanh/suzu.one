@@ -30,7 +30,8 @@ import { canApproveTimesheet } from "./policy";
 import { saveTeamRules } from "./team-rules";
 import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
 import { approveWeeks, decideWeek, findTimesheetWeek, getMyTimeWeek, getTimesheetView, listApprovals, listProjectTime, submitWeek } from "./timesheets";
-import { loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
+import { addDays } from "@/lib/dates";
+import { loggedMinutesByPersonWeek, loggedMinutesOfPerson, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 import { getUtilisation } from "./utilisation";
 
 // 2026-09-21 is a Monday; the week runs to Sunday 27. Today, in these tests, is Sunday the 27th.
@@ -390,6 +391,19 @@ describe("totals for other modules", () => {
     expect(weeks.get(ids.huy)!.get(W)).toEqual({ minutes: 595, billable: 250 });
     expect(weeks.get(ids.lan)!.get(W)).toEqual({ minutes: 960, billable: 0 });
     expect(weeks.get(ids.huy)!.has("2026-09-14")).toBe(false);
+  });
+
+  it("sums one person's time by week, project or task, most first, with the whole in every row", async () => {
+    const range = { from: W, to: addDays(W, 6) };
+    expect(await loggedMinutesOfPerson(ids.huy, range, "week")).toEqual([{ id: null, label: W, key: null, minutes: 595, billable: 250, totalMinutes: 595 }]);
+    for (const by of ["project", "task"] as const) {
+      const groups = await loggedMinutesOfPerson(ids.huy, range, by);
+      expect(groups.reduce((sum, group) => sum + group.minutes, 0), by).toBe(595);
+      expect(groups.every((group) => group.totalMinutes === 595), by).toBe(true);
+      expect(groups.map((group) => group.minutes), by).toEqual([...groups.map((group) => group.minutes)].sort((a, b) => b - a));
+    }
+    // Another person's time is not in it, and an empty range is empty.
+    expect(await loggedMinutesOfPerson(ids.huy, { from: "2020-01-01", to: "2020-01-31" }, "project")).toEqual([]);
   });
 });
 

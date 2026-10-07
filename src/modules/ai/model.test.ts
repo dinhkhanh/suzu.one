@@ -77,7 +77,7 @@ describe("the chat driver's request", () => {
   it("is written down with every kind of token the provider reported", async () => {
     reply = { body: { ...(reply.body as object), usage: { input_tokens: 1000, output_tokens: 50, cache_read_input_tokens: 300, cache_creation_input_tokens: 200 } } };
     const answer = await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
-    expect(door.recorded).toEqual([{ personId: asker.person.id, purpose: "ask", tier: "simple", model: "claude-haiku-4-5", usage: { inputTokens: 1000, outputTokens: 50, cacheReadTokens: 300, cacheWriteTokens: 200 }, stopReason: "end_turn" }]);
+    expect(door.recorded).toEqual([{ personId: asker.person.id, turnId: null, purpose: "ask", tier: "simple", model: "claude-haiku-4-5", usage: { inputTokens: 1000, outputTokens: 50, cacheReadTokens: 300, cacheWriteTokens: 200 }, stopReason: "end_turn" }]);
     expect(answer.usage).toEqual({ inputTokens: 1500, outputTokens: 50 });
   });
 

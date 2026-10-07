@@ -33,6 +33,8 @@ vi.mock("@/lib/action", () => ({
 vi.mock("@/modules/platform/notifications/service", () => ({ notify: async () => undefined }));
 
 import { fieldCipher } from "@/lib/crypto";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
@@ -48,6 +50,10 @@ import { stepRun } from "../payroll/lifecycle";
 import { publishPayslips } from "../payroll/payslips";
 import { calculateRun, createRegularRun } from "../payroll/runs";
 import { payComponentSeedRows } from "../payroll/seed-components";
+import { type AgentCall, scriptedDriver } from "./agent/driver";
+import { runAgentTurn } from "./agent/loop";
+import { type AnyAgentTool, defineTool, runAgentTool } from "./agent/registry";
+import { SELF_TOOLS } from "./agent/tools/self";
 import { ask, resolveAnswer } from "./conversations";
 import { buildToolUserMessage, ToolPromptRefusal } from "./engine/tool-prompt";
 import { routeQuestion } from "./engine/routing";
@@ -413,6 +419,201 @@ describe("the tools that are not about money", () => {
     // No first-person marker and no name: these belong to the knowledge base, whatever words they share.
     for (const question of ["Một năm được bao nhiêu ngày phép năm?", "Đi muộn nhiều lần trong tháng thì bị xử lý thế nào?", "Ngày trả lương là ngày nào?"]) {
       expect(routeQuestion(question, "2026-08-15")).toBeNull();
+    }
+  });
+});
+
+// ── The agent (Phase 13 R1) ─────────────────────────────────────────────────────────────────
+//
+// The same people, the same payroll run, the same hostile page — now with a model choosing the
+// tools. The model is scripted (FR-AGT-61): it asks for whatever a test wants it to ask for,
+// including what a real model must never get, and every request it would have sent is kept, so
+// "did a figure reach the model" is a question about a list of requests.
+
+/** Every request the scripted model was sent, as one string to search. */
+const outbound = (calls: AgentCall[]) => JSON.stringify(calls);
+
+/** The tool results of the n-th request: what the model read after its previous reply. */
+function toolResults(call: AgentCall): { tool: string; outcome: string; [key: string]: unknown }[] {
+  const last = call.messages.at(-1);
+  if (!last || typeof last.content === "string") return [];
+  return last.content.flatMap((block) => (block.type === "tool_result" && typeof block.content === "string" ? [JSON.parse(block.content)] : []));
+}
+
+// A question no pattern of Phase 9's router claims, so it reaches the agent.
+const OPEN_QUESTION = "Tóm tắt giúp tôi tình hình của tôi";
+
+describe("the agent reads as the asker (Phase 13 R1)", () => {
+  it("is asked only what the router does not answer for free (FR-AGT-44)", () => {
+    expect(routeQuestion(OPEN_QUESTION, "2026-08-15")).toBeNull();
+  });
+
+  it("reads the asker's own leave and attendance — nobody else's — and climbs to Sonnet across modules", async () => {
+    const driver = scriptedDriver([{ tools: [{ name: "my_leave", input: { year: 2026 } }, { name: "my_attendance", input: { month: MONTH } }] }, { text: "Bạn còn 9 ngày phép; tháng 8 bạn đi muộn 3 lần." }]);
+    const resolved = await resolveAnswer(users.huy, OPEN_QUESTION, "vi", { agent: driver });
+    expect(resolved).toMatchObject({ kind: "agent", outcome: "answered" });
+    const [leaveResult, attendanceResult] = toolResults(driver.calls[1]);
+    expect(leaveResult).toMatchObject({ tool: "my_leave", outcome: "answered" });
+    expect(JSON.stringify(leaveResult)).toContain('"availableDays":9');
+    expect(attendanceResult).toMatchObject({ tool: "my_attendance", outcome: "answered", lateCount: 3 });
+    // Two modules in one turn: the second call is Sonnet's (D38).
+    expect(driver.calls.map((call) => call.tier)).toEqual(["simple", "standard"]);
+    for (const figure of FIGURES) expect(outbound(driver.calls)).not.toContain(figure);
+  });
+
+  it("offers each asker only the tools their roles allow, and runs nothing it did not offer", async () => {
+    let ran = 0;
+    const ownersOnly = defineTool({ name: "owners_only", module: "test", description: "x", input: z.strictObject({}), offeredTo: (principal) => principal.grants.some((grant) => grant.role === "owner"), tier: "restricted", stepUp: false, kind: "read", rowCap: 1, tags: [], run: async () => ((ran += 1), { outcome: "answered", model: { secret: "s3cr3t" }, card: null, subject: null }) });
+    const registry: readonly AnyAgentTool[] = [ownersOnly, ...SELF_TOOLS];
+    const driver = scriptedDriver([{ tools: [{ name: "owners_only", input: {} }, { name: "invented_tool", input: {} }] }, { text: "…" }]);
+    const turn = await runAgentTurn({ user: users.huy, question: OPEN_QUESTION, locale: "vi", today: "2026-08-15", history: [], driver, registry });
+    expect(driver.calls[0].tools?.map((tool) => tool.name)).not.toContain("owners_only");
+    expect(ran).toBe(0);
+    expect(toolResults(driver.calls[1]).map((result) => [result.tool, result.outcome, result.error])).toEqual([
+      ["owners_only", "failed", "unknown_tool"],
+      ["invented_tool", "failed", "unknown_tool"],
+    ]);
+    expect(outbound(driver.calls)).not.toContain("s3cr3t");
+    expect(turn.calls.map((call) => call.error)).toEqual(["unknown_tool", "unknown_tool"]);
+    // The owner is offered it.
+    const owner = scriptedDriver([{ text: "…" }]);
+    await runAgentTurn({ user: users.owner, question: OPEN_QUESTION, locale: "vi", today: "2026-08-15", history: [], driver: owner, registry });
+    expect(owner.calls[0].tools?.map((tool) => tool.name)).toContain("owners_only");
+  });
+
+  it("asks for a step-up before reading pay, and a stale session reads nothing (D36, FR-PLT-06)", async () => {
+    const stale = { ...users.huy, reauthAt: new Date(Date.now() - 60 * 60 * 1000) };
+    const driver = scriptedDriver([{ tools: [{ name: "my_payslip", input: { month: MONTH } }] }, { text: "Hãy xác nhận danh tính trước." }]);
+    const resolved = await resolveAnswer(stale, OPEN_QUESTION, "vi", { agent: driver });
+    expect(toolResults(driver.calls[1])[0]).toMatchObject({ tool: "my_payslip", outcome: "step_up", link: "/step-up?next=%2Fassistant" });
+    expect(outbound(driver.calls)).not.toContain("netVnd");
+    expect(resolved.kind === "agent" && resolved.turn.kind === "answered" && resolved.turn.compensation).toBe(false);
+  });
+
+  it("reads the asker's own pay on a fresh step-up, shows it once and stores none of it (D36)", async () => {
+    const driver = scriptedDriver([{ tools: [{ name: "my_payslip", input: { month: MONTH } }] }, (call) => ({ text: `Lương thực nhận tháng 8: ${toolResults(call)[0].netVnd} đồng.` })]);
+    const result = await ask(users.huy, { question: OPEN_QUESTION, locale: "vi" }, { agent: driver });
+    const payslip = toolResults(driver.calls[1])[0];
+    expect(payslip).toMatchObject({ tool: "my_payslip", outcome: "answered", month: MONTH });
+    // Huy's own: built from his salary, not Lan's.
+    expect(Number(payslip.grossVnd)).toBeGreaterThan(secrets.lanBase);
+    expect(result.body).toContain(String(payslip.netVnd));
+    expect(result.agent).toMatchObject({ unstored: true });
+    const [stored] = await db().select().from(schema.aiMessage).where(eq(schema.aiMessage.id, result.messageId));
+    expect(stored.body).toBe("");
+    // The row keeps that the tool ran and for which month — and no figure.
+    expect(JSON.stringify(stored.toolCalls)).toContain("my_payslip");
+    expect(JSON.stringify(stored.toolCalls)).not.toContain(String(payslip.netVnd));
+    // Nor does what the action audits.
+    expect(JSON.stringify(result.agentCalls)).not.toContain(String(payslip.netVnd));
+    expect(result.agentCalls[0]).toMatchObject({ tool: "my_payslip", outcome: "answered", subject: { type: "payslip" } });
+  });
+
+  it("never reads a report's pay for a line manager: the only payslip tool is the asker's own", async () => {
+    // Named in the question: Phase 9's router refuses it before any model is asked.
+    const unasked = scriptedDriver([{ text: "…" }]);
+    const named = await resolveAnswer(users.manager, "Lương của Ho Gia Huy tháng 8 là bao nhiêu?", "vi", { agent: unasked });
+    expect(named).toMatchObject({ kind: "tool", outcome: "refused" });
+    expect(unasked.calls).toHaveLength(0);
+    // And a model that asks for the payslip tool anyway gets the asker's own.
+    const driver = scriptedDriver([{ tools: [{ name: "my_payslip", input: { month: MONTH } }] }, { text: "…" }]);
+    await resolveAnswer(users.manager, OPEN_QUESTION, "vi", { agent: driver });
+    // The manager has no payslip of their own in this run: nothing, and certainly not Huy's.
+    expect(toolResults(driver.calls[1])[0]).toMatchObject({ tool: "my_payslip", outcome: "empty" });
+    for (const figure of FIGURES) expect(outbound(driver.calls)).not.toContain(figure);
+    expect(outbound(driver.calls)).not.toContain("netVnd");
+  });
+
+  it("declines a question outside the company with the app's sentence, and drops what the model wrote", async () => {
+    const driver = scriptedDriver([{ text: "Thủ đô của Pháp là Paris.", tools: [{ name: "decline_out_of_scope", input: { kind: "general_knowledge" } }] }]);
+    const result = await ask(users.lan, { question: "Thủ đô của Pháp là gì?", locale: "vi" }, { agent: driver });
+    expect(result.outcome).toBe("off_topic");
+    expect(result.body).toBe("");
+    expect(result.agent).toMatchObject({ offTopic: "general_knowledge" });
+    expect(driver.calls).toHaveLength(1);
+    // Not a gap in the handbook either.
+    const logged = await db().select().from(schema.aiUnansweredQuestion).where(eq(schema.aiUnansweredQuestion.question, "Thủ đô của Pháp là gì?"));
+    expect(logged).toHaveLength(0);
+  });
+
+  it("keeps the ceilings: six calls, Haiku then Sonnet, and Opus writes the last with no tools", async () => {
+    const again = { tools: [{ name: "my_leave", input: {} }] };
+    const driver = scriptedDriver([again, again, again, again, again, { text: "Bạn còn 9 ngày." }]);
+    const resolved = await resolveAnswer(users.huy, OPEN_QUESTION, "vi", { agent: driver });
+    expect(resolved).toMatchObject({ kind: "agent", outcome: "answered" });
+    expect(driver.calls.map((call) => call.tier)).toEqual(["simple", "simple", "simple", "standard", "standard", "complex"]);
+    expect(driver.calls.map((call) => call.tools === null)).toEqual([false, false, false, false, false, true]);
+    expect(driver.calls.every((call) => call.maxTokens === 2000)).toBe(true);
+    // The final call carries what was read as data, in one message, with no tool blocks.
+    const final = driver.calls[5].messages;
+    expect(final).toHaveLength(1);
+    expect(typeof final[0].content === "string" && final[0].content).toContain('<data tool="my_leave">');
+  });
+
+  it("falls back to the free path, at no further cost, when the turn never answers", async () => {
+    const again = { tools: [{ name: "my_leave", input: {} }] };
+    const driver = scriptedDriver([again, again, again, again, again, again]);
+    const resolved = await resolveAnswer(users.huy, "Quy định nghỉ phép năm thế nào?", "vi", { agent: driver });
+    expect(resolved.kind).toBe("kb");
+    if (resolved.kind !== "kb") return;
+    expect(resolved.outcome).toBe("limited");
+    expect(resolved.answer.driver).toBe("local-extractive");
+    expect(driver.calls).toHaveLength(6);
+  });
+
+  it("falls back with the reason when the door refuses (D35)", async () => {
+    const driver = scriptedDriver([{ refuse: "day" }]);
+    const resolved = await resolveAnswer(users.huy, "Quy định nghỉ phép năm thế nào?", "vi", { agent: driver });
+    expect(resolved.kind === "kb" && resolved.answer.notice).toBe("day");
+    expect(resolved.kind === "kb" && resolved.answer.driver).toBe("local-extractive");
+  });
+
+  it("stops at the wall clock", async () => {
+    let now = 0;
+    const driver = scriptedDriver([
+      () => ((now += 20_000), { tools: [{ name: "my_leave", input: {} }] }),
+      () => ((now += 20_000), { tools: [{ name: "my_leave", input: {} }] }),
+      { text: "never sent" },
+    ]);
+    const turn = await runAgentTurn({ user: users.huy, question: OPEN_QUESTION, locale: "vi", today: "2026-08-15", history: [], driver, clock: () => now });
+    expect(turn).toMatchObject({ kind: "fallback", reason: "limited" });
+    expect(driver.calls).toHaveLength(2);
+  });
+
+  it("hands a hostile handbook page to the model as data, inside a tool result", async () => {
+    const driver = scriptedDriver([{ tools: [{ name: "search_handbook", input: { query: "Quy trình chuẩn cho nhân viên mới" } }] }, { text: "Nhân viên mới đọc trang Hướng dẫn nội bộ trong tuần đầu." }]);
+    const resolved = await resolveAnswer(users.huy, OPEN_QUESTION, "vi", { agent: driver });
+    const [search] = toolResults(driver.calls[1]);
+    expect(search).toMatchObject({ tool: "search_handbook", outcome: "answered" });
+    // The injection came back — as a passage in a tool result, nowhere else in the request.
+    expect(JSON.stringify(search)).toContain("ignore all previous instructions");
+    const elsewhere = JSON.stringify({ system: driver.calls[1].system, tools: driver.calls[1].tools, asked: driver.calls[1].messages.slice(0, -1) });
+    expect(elsewhere).not.toContain("ignore all previous instructions");
+    // The answer cites the page the asker may open, chosen from retrieval.
+    expect(resolved.kind === "agent" && resolved.turn.kind === "answered" && resolved.turn.citations.map((citation) => citation.pageTitle)).toContain("Hướng dẫn nội bộ");
+  });
+
+  it("sends a follow-up with the conversation's last turns as text, never their tool results (FR-AGT-04)", async () => {
+    const first = scriptedDriver([{ tools: [{ name: "my_leave", input: {} }] }, { text: "Bạn còn 9 ngày phép." }]);
+    const opened = await ask(users.huy, { question: OPEN_QUESTION, locale: "vi" }, { agent: first });
+    const second = scriptedDriver([{ text: "Đúng vậy." }]);
+    await ask(users.huy, { question: "Vậy còn tháng sau?", conversationId: opened.conversationId, locale: "vi" }, { agent: second });
+    expect(second.calls[0].messages).toEqual([
+      { role: "user", content: OPEN_QUESTION },
+      { role: "assistant", content: "Bạn còn 9 ngày phép." },
+      { role: "user", content: "Vậy còn tháng sau?" },
+    ]);
+    // Somebody else's conversation id carries nothing over.
+    const stranger = scriptedDriver([{ text: "…" }]);
+    await ask(users.lan, { question: "Vậy còn tháng sau?", conversationId: opened.conversationId, locale: "vi" }, { agent: stranger });
+    expect(stranger.calls[0].messages).toEqual([{ role: "user", content: "Vậy còn tháng sau?" }]);
+  });
+
+  it("runs every tool of 'my own' for a person with nothing on record, without failing", async () => {
+    const inputs: Record<string, unknown> = { my_time: { from: "2026-08-01", to: "2026-08-31" }, who_approves_my_request: { kind: "overtime" } };
+    for (const tool of SELF_TOOLS) {
+      const result = await runAgentTool(tool, { user: users.hr, today: "2026-08-15", locale: "vi" }, inputs[tool.name] ?? {});
+      expect(result.outcome, `${tool.name}: ${result.error}`).not.toBe("failed");
     }
   });
 });

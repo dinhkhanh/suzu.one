@@ -16,7 +16,9 @@ import { person } from "../platform/people/schema";
 export const aiMessageRole = pgEnum("ai_message_role", ["user", "assistant"]);
 // How an assistant turn ended: with an answer, with nothing found (logged as unanswered), or
 // refused before retrieval (a question the assistant does not take).
-export const aiAnswerOutcome = pgEnum("ai_answer_outcome", ["answered", "unanswered", "refused"]);
+// The agent (Phase 13) adds two: a question outside the company declined (`off_topic`, FR-AGT-03),
+// and a turn that spent its calls or time and fell back to the free path (`limited`).
+export const aiAnswerOutcome = pgEnum("ai_answer_outcome", ["answered", "unanswered", "refused", "off_topic", "limited"]);
 
 export const aiConversation = pgTable(
   "ai_conversation",
@@ -60,7 +62,13 @@ export const aiMessage = pgTable(
      * a payslip explanation that cannot be read back is not an explanation.
      */
     toolResult: jsonb("tool_result"),
-    /** The adapter that answered: "local-extractive" or "claude". */
+    /**
+     * When the agent answered (Phase 13): the tools it called — name, input, subject, outcome — and
+     * what the chat showed beside the answer (`AgentShown` in `enums.ts`). Never a figure of pay: a
+     * pay tool's input is a month, its card a link, and an answer that held pay is not stored (D36).
+     */
+    toolCalls: jsonb("tool_calls"),
+    /** The adapter that answered: "local-extractive", "claude" or "agent". */
     driver: text("driver"),
     model: text("model"),
     /** Best retrieval score behind the answer, 0..1 — why it answered, or why it did not. */
@@ -131,7 +139,9 @@ export const aiModelCall = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     personId: uuid("person_id").references(() => person.id, { onDelete: "set null" }),
-    /** What the call was for: "ask", "draft.eod", "draft.status", "draft.handoff", "eval". */
+    /** The agent turn the call belongs to, when it was one: cost per turn is the sum over it. */
+    turnId: uuid("turn_id"),
+    /** What the call was for: "ask", "agent", "draft.eod", "draft.status", "draft.handoff", "eval". */
     purpose: text("purpose").notNull(),
     /** The tier the call ran on (D38): "simple", "standard" or "complex". */
     tier: text("tier").notNull(),

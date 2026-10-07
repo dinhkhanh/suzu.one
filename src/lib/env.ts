@@ -66,6 +66,12 @@ const schema = z.object({
   // The kill switch (FR-AGT-52): "off" sends no question and no draft to any model, whatever the
   // key — the assistant answers the free way, as it did before it had a key.
   AI_AGENT_ENABLED: z.enum(["on", "off"]).default("on"),
+  // Who gets the agent — the model choosing among the app's tools (Phase 13) — rather than Phase 9's
+  // assistant: "pilot" is the owners and the work emails listed in AI_AGENT_PILOT_EMAILS (comma-
+  // separated), "everyone" is everybody. Everybody else keeps the handbook answers and the four
+  // personal tools.
+  AI_AGENT_AUDIENCE: z.enum(["pilot", "everyone"]).default("pilot"),
+  AI_AGENT_PILOT_EMAILS: z.string().default(""),
   // What the assistant may cost (D35), in US dollars: the whole company per calendar month
   // (Vietnamese time), and one person per day by band — everybody, people who lead work, and the
   // office (HR, payroll, finance, directors, C-level, owner). Spent = the free way until it resets.

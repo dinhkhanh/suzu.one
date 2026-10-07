@@ -112,6 +112,9 @@ function claudeDriver(): ChatDriver {
   };
 }
 
+/** The free path's driver, whatever the key: what answers after the agent fell back (Phase 13). */
+export const localChatDriver = (): ChatDriver => localDriver;
+
 /** The Claude driver when there is a key — it still answers the free way when the gateway refuses. */
 export function chatDriver(): ChatDriver {
   return env().ANTHROPIC_API_KEY ? claudeDriver() : localDriver;

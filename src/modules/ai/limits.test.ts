@@ -14,7 +14,7 @@ vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => 
 // Everything past the door, replaced by a counter: a call that gets this far has reached the
 // assistant — retrieval, a tool, a driver. A refused call must leave these untouched.
 vi.mock("./conversations", () => ({
-  ask: vi.fn(async () => ({ conversationId: "c", messageId: "m", outcome: "answered", body: "…", citations: [], tool: null, score: 1, driver: "local-extractive", model: "local-extractive", usage: { inputTokens: 0, outputTokens: 0 }, audit: null })),
+  ask: vi.fn(async () => ({ conversationId: "c", messageId: "m", outcome: "answered", body: "…", citations: [], tool: null, score: 1, driver: "local-extractive", model: "local-extractive", usage: { inputTokens: 0, outputTokens: 0 }, notice: null, agent: null, audit: null, agentCalls: [] })),
   deleteConversation: vi.fn(),
   resolveUnanswered: vi.fn(),
 }));

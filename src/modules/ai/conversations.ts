@@ -10,20 +10,26 @@ import { createTranslator } from "next-intl";
 import { navFor } from "@/components/shell/nav";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { env } from "@/lib/env";
 import { type KbViewer, kbViewerOf, type ViewerSource } from "@/modules/kb/service";
 import { permissionReach, type Principal, reachesNothing } from "@/modules/platform/rbac/policy";
 import { personInReachSql } from "@/modules/platform/rbac/reach-sql";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
+import { type AgentDriver, agentDriver } from "./agent/driver";
+import { type AgentTurn, runAgentTurn, type ToolCallRecord } from "./agent/loop";
+import type { AgentUser } from "./agent/registry";
 import type { Citation } from "./engine/answer";
+import { HISTORY_TURNS, type HistoryMessage, historyFor } from "./engine/history";
 import { allowedAppLinks, appLinksFor } from "./engine/app-links";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { routeQuestion } from "./engine/routing";
-import type { AiNotice, ChatTurn, ToolOutcome } from "./enums";
+import type { AgentShown, AiNotice, AnswerOutcome, ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
-import { chatDriver } from "./model";
+import { chatDriver, localChatDriver } from "./model";
+import { agentAudienceAdmits } from "./policy";
 import { retrievePassages } from "./retrieval";
-import { runTool, type ToolAudit, type ToolUser } from "./tools";
+import { runTool, type ToolAudit } from "./tools";
 
 const { aiConversation, aiMessage, aiUnansweredQuestion } = schema;
 
@@ -52,10 +58,11 @@ export type Answer = {
  * An answer exists only when the driver produced text AND retrieval produced a citation behind it.
  * There is no path in this module that shows a sentence with no source.
  */
-export async function answerQuestion(user: ViewerSource, question: string, locale: string): Promise<Answer> {
+export async function answerQuestion(user: ViewerSource, question: string, locale: string, options: { local?: boolean } = {}): Promise<Answer> {
   const viewer: KbViewer = kbViewerOf(user);
   const ranked = await retrievePassages(viewer, question);
-  const driver = chatDriver();
+  // After the agent fell back, the free path is free: a quoted passage, no second model call.
+  const driver = options.local ? localChatDriver() : chatDriver();
   // The screens this asker's sidebar shows. Recruitment and the directory are left out: they
   // depend on rows, not roles, and nothing in the link catalogue points at them.
   const nav = new Set(navFor(viewer.principal, { people: false, recruit: false, interviews: false }).main.map((item) => item.key));
@@ -78,13 +85,24 @@ export async function answerQuestion(user: ViewerSource, question: string, local
  *
  * Still writes nothing, so the evaluation set can measure exactly what a person gets.
  */
-export async function resolveAnswer(user: ViewerSource & ToolUser, question: string, locale: string): Promise<Resolved> {
-  const route = routeQuestion(question, todayInVietnam());
+export async function resolveAnswer(user: AgentUser, question: string, locale: string, options: { agent?: AgentDriver | null; history?: readonly HistoryMessage[] } = {}): Promise<Resolved> {
+  const today = todayInVietnam();
+  const route = routeQuestion(question, today);
   if (route) {
     const { outcome, audit } = await runTool(user, route);
     // A tool that answered, or refused, has settled the question; the knowledge base is not asked
     // afterwards, so a refusal can never be padded out with a policy page about somebody's salary.
+    // It costs nothing, so it is asked first even when the agent is on (FR-AGT-44).
     return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
+  }
+  if (options.agent) {
+    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent });
+    if (turn.kind === "answered") return { kind: "agent", turn, outcome: "answered" };
+    if (turn.kind === "off_topic") return { kind: "agent", turn, outcome: "off_topic" };
+    // The free path: a quoted passage, with the reason the chat gives for it.
+    const answer = await answerQuestion(user, question, locale, { local: true });
+    const notice = turn.reason === "limited" ? null : turn.reason;
+    return { kind: "kb", answer: { ...answer, notice }, outcome: turn.reason === "limited" ? "limited" : answer.answered ? "answered" : "unanswered", agentTurn: turn };
   }
   const answer = await answerQuestion(user, question, locale);
   return { kind: "kb", answer, outcome: answer.answered ? "answered" : "unanswered" };
@@ -92,12 +110,21 @@ export async function resolveAnswer(user: ViewerSource & ToolUser, question: str
 
 export type Resolved =
   | { kind: "tool"; tool: ToolOutcome; audit: ToolAudit; outcome: "answered" | "refused" }
-  | { kind: "kb"; answer: Answer; outcome: "answered" | "unanswered" };
+  | { kind: "agent"; turn: Extract<AgentTurn, { kind: "answered" | "off_topic" }>; outcome: "answered" | "off_topic" }
+  /** `agentTurn`: the agent's turn that fell back to this answer, if it did. */
+  | { kind: "kb"; answer: Answer; outcome: "answered" | "unanswered" | "limited"; agentTurn?: AgentTurn };
+
+/** The agent for this asker, or none: the pilot's audience (Phase 13 R1), a key, the switch on. */
+export function agentFor(user: { email?: string | null; principal: Principal }): AgentDriver | null {
+  const settings = env();
+  if (!agentAudienceAdmits(user.principal, user.email, { audience: settings.AI_AGENT_AUDIENCE, pilotEmails: settings.AI_AGENT_PILOT_EMAILS })) return null;
+  return agentDriver();
+}
 
 export type AskResult = {
   conversationId: string;
   messageId: string;
-  outcome: "answered" | "unanswered" | "refused";
+  outcome: AnswerOutcome;
   body: string;
   citations: Citation[];
   /** Set when a personal tool answered; the chat renders it in the reader's language. */
@@ -110,6 +137,8 @@ export type AskResult = {
   usage: TokenUsage;
   /** Why the answer is a quoted passage although there is a key — the chat says so. Not stored. */
   notice: AiNotice | null;
+  /** When the agent answered or declined: its steps and cards, as the chat shows them. */
+  agent: AgentShown | null;
 };
 
 export type AiMessageRow = typeof aiMessage.$inferSelect;
@@ -117,7 +146,28 @@ export type ConversationTurn = ChatTurn & { createdAt: Date };
 
 const citationsOf = (row: AiMessageRow): Citation[] => (Array.isArray(row.citations) ? (row.citations as Citation[]) : []);
 const toolOf = (row: AiMessageRow): ToolOutcome | null => (row.toolResult ? (row.toolResult as ToolOutcome) : null);
-const toTurn = (row: AiMessageRow): ConversationTurn => ({ id: row.id, role: row.role, body: row.body, outcome: row.outcome, citations: citationsOf(row), tool: toolOf(row), createdAt: row.createdAt });
+const agentOf = (row: AiMessageRow): AgentShown | null => {
+  const stored = row.toolCalls as (AgentShown & { calls?: unknown }) | null;
+  return stored ? { steps: stored.steps ?? [], cards: stored.cards ?? [], offTopic: stored.offTopic ?? null, unstored: stored.unstored ?? false } : null;
+};
+const toTurn = (row: AiMessageRow): ConversationTurn => ({ id: row.id, role: row.role, body: row.body, outcome: row.outcome, citations: citationsOf(row), tool: toolOf(row), agent: agentOf(row), createdAt: row.createdAt });
+
+/** What a follow-up is asked with (FR-AGT-04): the conversation's last turns as text, the asker's own or nothing. */
+async function historyOf(personId: string, conversationId: string): Promise<HistoryMessage[]> {
+  const rows = await db()
+    .select({ role: aiMessage.role, body: aiMessage.body })
+    .from(aiMessage)
+    .innerJoin(aiConversation, eq(aiConversation.id, aiMessage.conversationId))
+    .where(and(eq(aiMessage.conversationId, conversationId), eq(aiConversation.personId, personId)))
+    .orderBy(desc(aiMessage.createdAt))
+    .limit(HISTORY_TURNS * 2);
+  return historyFor(rows.reverse());
+}
+
+/** What the message row keeps of an agent turn: the calls without their results, and what was shown. */
+function storedAgent(turn: AgentTurn, shown: AgentShown): Record<string, unknown> {
+  return { ...shown, calls: turn.calls.map(({ tool, input, subject, outcome }) => ({ tool, input, subject, outcome })), tiers: turn.tiers, turnId: turn.turnId };
+}
 
 /**
  * The asker's own conversation, or null. A conversation belongs to one person and is never shared.
@@ -133,24 +183,32 @@ async function ownConversation(tx: Tx, personId: string, conversationId: string)
  * THE ASSISTANT. `user` supplies the viewer; the viewer supplies the permission filter; nothing
  * here can reach past it.
  */
-export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promise<AskResult & { audit: ToolAudit | null }> {
+export async function ask(user: AgentUser & { email?: string | null }, input: AskInput, options: { agent?: AgentDriver | null } = {}): Promise<AskResult & { audit: ToolAudit | null; agentCalls: ToolCallRecord[] }> {
   const personId = user.person.id;
   const question = input.question.trim().slice(0, QUESTION_MAX);
   const locale = input.locale === "en" ? "en" : "vi";
 
-  const resolved = await resolveAnswer(user, question, locale);
+  const agent = options.agent === undefined ? agentFor(user) : options.agent;
+  const history = agent && input.conversationId ? await historyOf(personId, input.conversationId) : [];
+  const resolved = await resolveAnswer(user, question, locale, { agent, history });
+  const turn = resolved.kind === "agent" ? resolved.turn : resolved.kind === "kb" ? (resolved.agentTurn ?? null) : null;
   const tool = resolved.kind === "tool" ? resolved.tool : null;
-  const citations = resolved.kind === "kb" ? resolved.answer.citations : [];
+  const citations = resolved.kind === "kb" ? resolved.answer.citations : resolved.kind === "agent" && resolved.turn.kind === "answered" ? resolved.turn.citations : [];
   const best = resolved.kind === "kb" ? resolved.answer.score : 0;
-  const body = resolved.kind === "kb" ? resolved.answer.body : "";
-  const driver = resolved.kind === "kb" ? resolved.answer.driver : "tool";
-  const model = resolved.kind === "kb" ? resolved.answer.model : resolved.tool.tool;
-  // A tool's answer is rendered from its own data and sent to no model: it cost nothing.
-  const usage = resolved.kind === "kb" ? resolved.answer.usage : NO_USAGE;
+  const answered = resolved.kind === "agent" && resolved.turn.kind === "answered" ? resolved.turn : null;
+  // D36: an answer that read pay is shown now and never written down; reopening says so.
+  const unstored = answered?.compensation ?? false;
+  const body = resolved.kind === "kb" ? resolved.answer.body : answered ? answered.body : "";
+  const driver = resolved.kind === "kb" ? resolved.answer.driver : resolved.kind === "agent" ? "agent" : "tool";
+  const model = resolved.kind === "kb" ? resolved.answer.model : resolved.kind === "agent" ? (resolved.turn.model ?? "agent") : resolved.tool.tool;
+  // A tool's answer is rendered from its own data and sent to no model: it cost nothing. An agent
+  // turn that fell back cost what its calls cost.
+  const usage = resolved.kind === "kb" ? (turn ? turn.usage : resolved.answer.usage) : resolved.kind === "agent" ? resolved.turn.usage : NO_USAGE;
   const outcome = resolved.outcome;
+  const shown: AgentShown | null = turn ? { steps: turn.calls.map(({ tool: name, outcome: ended }) => ({ tool: name, outcome: ended })), cards: answered?.cards ?? [], offTopic: turn.kind === "off_topic" ? turn.offTopic : null, unstored } : null;
   // Only a knowledge-base miss is a missing page. A tool refusal is not a gap in the handbook and
   // must never land in a log that HR reads: "who approves Lê Thị Mai's overtime" belongs nowhere.
-  const logAsUnanswered = resolved.kind === "kb" && !resolved.answer.answered;
+  const logAsUnanswered = resolved.kind === "kb" && resolved.outcome === "unanswered";
 
   return db().transaction(async (tx) => {
     const existing = input.conversationId ? await ownConversation(tx, personId, input.conversationId) : null;
@@ -165,14 +223,14 @@ export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promi
     await tx.insert(aiMessage).values({ conversationId, personId, role: "user", body: question });
     const [stored] = await tx
       .insert(aiMessage)
-      .values({ conversationId, personId, role: "assistant", body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, driver, model, score: best, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
+      .values({ conversationId, personId, role: "assistant", body: unstored ? "" : body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, toolCalls: turn && shown ? storedAgent(turn, shown) : null, driver, model, score: best, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
       .returning();
 
     // The backlog of pages still to write. Only the question, never the passages that failed.
     if (logAsUnanswered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
 
     const notice = resolved.kind === "kb" ? resolved.answer.notice : null;
-    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, usage, notice, audit: resolved.kind === "tool" ? resolved.audit : null };
+    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, usage, notice, agent: shown, audit: resolved.kind === "tool" ? resolved.audit : null, agentCalls: turn?.calls ?? [] };
   });
 }
 

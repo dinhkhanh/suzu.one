@@ -5,6 +5,7 @@
 // the page fails at runtime — `tsc` and eslint both pass, so only opening the page finds it. The
 // same trap as the one `core-hr/enums.ts` exists for, from the other direction.
 import type { Citation } from "./engine/answer";
+import type { OffTopicKind } from "./engine/agent-prompt";
 import type { ToolName } from "./engine/routing";
 
 export const QUESTION_MAX = 500;
@@ -42,13 +43,42 @@ export type ChatTurn = {
   id: string;
   role: "user" | "assistant";
   body: string;
-  outcome: "answered" | "unanswered" | "refused" | null;
+  outcome: AnswerOutcome | null;
   citations: Citation[];
   /** Set when a personal tool answered instead of the knowledge base. */
   tool: ToolOutcome | null;
+  /** Set when the agent answered (Phase 13): the steps it took and what it showed. */
+  agent?: AgentShown | null;
   /** Why a fresh answer is a quoted passage although there is a key. Shown once, never stored. */
   notice?: AiNotice | null;
 };
+
+/**
+ * How a turn ended. `off_topic`: the agent declined a question outside the company (FR-AGT-03);
+ * `limited`: the agent spent its calls or its time without an answer and the free path answered.
+ */
+export const ANSWER_OUTCOMES = ["answered", "unanswered", "refused", "off_topic", "limited"] as const;
+export type AnswerOutcome = (typeof ANSWER_OUTCOMES)[number];
+
+// ── The agent (Phase 13) ────────────────────────────────────────────────────────────────────
+
+/** How one tool call ended. `failed`: bad arguments or an error — the model is told, the turn goes on. */
+export type AgentToolOutcome = "answered" | "empty" | "refused" | "step_up" | "failed";
+
+/** A line of a card: a record's name (data, as the asker may see it), its link, and a fact about it as a message key. */
+export type AgentCardItem = { label: string; href: string | null; meta: { key: string; params: Record<string, string | number> } | null };
+
+/**
+ * What a tool shows the asker under the answer (FR-AGT-05, 30): the records it read, each linked
+ * to its screen. Titled by the tool (`assistant.agent.cards.<tool>`). Built beside the model's view,
+ * never from it.
+ */
+export type AgentCard = { tool: string; href: string | null; items: AgentCardItem[]; more: number };
+
+/** One step of a turn, as the chat names it (FR-AGT-07). */
+export type AgentStep = { tool: string; outcome: AgentToolOutcome };
+
+export type AgentShown = { steps: AgentStep[]; cards: AgentCard[]; offTopic: OffTopicKind | null; /** The answer held pay and was not stored (D36): reopening says so. */ unstored?: boolean };
 
 /**
  * Why a model did not write an answer although there is a key (SRS D35, FR-AGT-52, NFR-AGT-03): the

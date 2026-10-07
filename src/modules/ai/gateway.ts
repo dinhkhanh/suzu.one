@@ -16,10 +16,10 @@ import { env } from "@/lib/env";
 import { logError } from "@/lib/observability/report";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { modelUsageOf } from "./engine/pricing";
+import type { ModelTier } from "./engine/tiers";
 import { type AiNotice, admitModelCall, type ModelAsker, recordModelCall } from "./spend";
 
-/** D38's three tiers: Haiku for simple work, Sonnet for complex turns, Opus for the hardest answers. */
-export type ModelTier = "simple" | "standard" | "complex";
+export type { ModelTier };
 
 export function modelFor(tier: ModelTier): string {
   const settings = env();
@@ -30,7 +30,7 @@ export function modelFor(tier: ModelTier): string {
 export const takesEffort = (model: string): boolean => !/haiku/iu.test(model);
 
 /** What the purpose of a call is, as it is written down: "ask", "draft.eod", … */
-export type ModelPurpose = "ask" | "draft.eod" | "draft.status" | "draft.handoff" | "eval";
+export type ModelPurpose = "ask" | "agent" | "draft.eod" | "draft.status" | "draft.handoff" | "eval";
 
 export type ModelCall = {
   asker: ModelAsker;
@@ -43,6 +43,8 @@ export type ModelCall = {
   /** Structured output, when the answer must be JSON of a shape. */
   format?: Anthropic.JSONOutputFormat;
   timeoutMs: number;
+  /** The agent turn this call belongs to: cost per turn is summed by it. */
+  turnId?: string | null;
 };
 
 export type ModelResult = { ok: true; message: Anthropic.Message; model: string; usage: TokenUsage } | { ok: false; notice: AiNotice; usage: TokenUsage };
@@ -65,7 +67,7 @@ export async function callModel(call: ModelCall): Promise<ModelResult> {
     return { ok: false, notice: "provider_error", usage: NO_USAGE };
   }
   const usage = modelUsageOf(message.usage);
-  await recordModelCall({ personId: call.asker.person.id, purpose: call.purpose, tier: call.tier, model: message.model || model, usage, stopReason: message.stop_reason ?? null });
+  await recordModelCall({ personId: call.asker.person.id, turnId: call.turnId ?? null, purpose: call.purpose, tier: call.tier, model: message.model || model, usage, stopReason: message.stop_reason ?? null });
   return { ok: true, message, model: message.model || model, usage: totalOf(usage) };
 }
 
