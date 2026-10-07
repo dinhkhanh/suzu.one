@@ -26,7 +26,7 @@ import { type CalledTool, FIRST_STEP, type ModelTier, type NextStep, nextStep, T
 import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice } from "../enums";
 import type { AgentDriver, AgentReply } from "./driver";
 import { askerFactsOf } from "./facts";
-import { type AgentUser, type AnyAgentTool, type AskerFacts, inputSchemaOf, runAgentTool, type ToolContext, type ToolSubject, toolsFor } from "./registry";
+import { type AgentUser, type AnyAgentTool, type AskerFacts, heldPay, inputSchemaOf, runAgentTool, type ToolContext, type ToolSubject, toolsFor } from "./registry";
 import { AGENT_TOOLS } from "./tools";
 
 /** What a tool call leaves behind for the audit log and the message row: never a figure. */
@@ -188,7 +188,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
         called.push({ name: tool.name, module: tool.module, tags: tool.tags });
         if (result.card) cards.push(result.card);
         for (const citation of result.citations ?? []) if (!citations.some((seen) => seen.chunkId === citation.chunkId)) citations.push(citation);
-        if (tool.tier === "compensation" && result.outcome === "answered") compensation = true;
+        if (heldPay(tool, result)) compensation = true;
         return { type: "tool_result", tool_use_id: use.id, content: toolResultText(tool.name, result.outcome, result.model), ...(result.outcome === "failed" ? { is_error: true } : {}) };
       }),
     );

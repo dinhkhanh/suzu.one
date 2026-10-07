@@ -2,10 +2,13 @@
 // new tool goes at the end of its group and the groups do not move.
 import "server-only";
 import type { AnyAgentTool } from "../registry";
+import { HR_TOOLS } from "./hr";
 import { KB_TOOLS } from "./kb";
 import { LOOKUP_TOOLS } from "./lookup";
+import { MONEY_TOOLS } from "./money";
 import { PEOPLE_TOOLS } from "./people";
+import { REPORT_TOOLS } from "./reports";
 import { SELF_TOOLS } from "./self";
 import { WORK_TOOLS } from "./work";
 
-export const AGENT_TOOLS: readonly AnyAgentTool[] = [...KB_TOOLS, ...SELF_TOOLS, ...LOOKUP_TOOLS, ...WORK_TOOLS, ...PEOPLE_TOOLS];
+export const AGENT_TOOLS: readonly AnyAgentTool[] = [...KB_TOOLS, ...SELF_TOOLS, ...LOOKUP_TOOLS, ...WORK_TOOLS, ...PEOPLE_TOOLS, ...HR_TOOLS, ...MONEY_TOOLS, ...REPORT_TOOLS];

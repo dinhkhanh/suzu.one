@@ -2,7 +2,7 @@
 // department within the entity); managers their reports; HR and department heads their scope.
 // Why someone is away is personal-tier — see `seesLeaveTypeOf`.
 import "server-only";
-import { and, eq, gte, inArray, isNull, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, sql } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { getDayPlans } from "@/modules/attendance/service";
@@ -20,10 +20,13 @@ type PersonRow = typeof schema.person.$inferSelect;
 // A reach as a clause: "all" admits everyone, null admits no one.
 const reachClause = (reach: TierReach): SQL | "all" | null => (reach.all ? "all" : reachesNothing(reach) ? null : (personInReachSql(reach) ?? null));
 
-export async function getTeamCalendar(viewer: { personId: string; principal: Principal }, range: { from: IsoDate; to: IsoDate; departmentId?: string | null }): Promise<TeamCalendar> {
+/**
+ * Who the viewer may see on the calendar, as a WHERE clause over `person` (undefined = everyone),
+ * and the same rule as a predicate, kept as a guard over the rows the clause returned.
+ */
+async function calendarScope(viewer: { personId: string; principal: Principal }) {
   const active = eq(schema.person.status, "active");
-  // The viewer's own calendar does not depend on who is shown, so it is read alongside.
-  const [[meRow], plansByPerson] = await Promise.all([db().select().from(schema.person).where(and(eq(schema.person.id, viewer.personId), active)).limit(1), getDayPlans([viewer.personId], range.from, range.to)]);
+  const [meRow] = await db().select().from(schema.person).where(and(eq(schema.person.id, viewer.personId), active)).limit(1);
   const me = meRow as PersonRow | undefined;
   const hrReach = permissionReach(viewer.principal, "leave:manage");
   const personalReach = tierReach(viewer.principal, "personal");
@@ -33,14 +36,22 @@ export async function getTeamCalendar(viewer: { personId: string; principal: Pri
   const sameGroup = (person: PersonRow) => inGroup && (me!.teamId ? person.teamId === me!.teamId : !!me!.departmentId && person.departmentId === me!.departmentId && person.primaryEntityId === me!.primaryEntityId);
   const sameGroupSql = !inGroup ? undefined : me!.teamId ? eq(schema.person.teamId, me!.teamId) : me!.departmentId ? and(eq(schema.person.departmentId, me!.departmentId), me!.primaryEntityId ? eq(schema.person.primaryEntityId, me!.primaryEntityId) : isNull(schema.person.primaryEntityId)) : undefined;
   const reaches = [reachClause(hrReach), reachClause(personalReach)];
-  // Only the people the viewer may see are loaded; the policy check below stays as a guard.
+  // Only the people the viewer may see are loaded; the predicate stays as a guard.
   const visibleSql = reaches.includes("all") ? undefined : or(eq(schema.person.id, viewer.personId), eq(schema.person.managerId, viewer.personId), sameGroupSql, ...reaches.filter((clause): clause is SQL => !!clause && clause !== "all"));
+  const visible = (person: PersonRow) => person.id === viewer.personId || sameGroup(person) || person.managerId === viewer.personId || matchesReach(hrReach, target(person)) || matchesReach(personalReach, target(person));
+  return { where: and(active, visibleSql), visible, target };
+}
+
+export async function getTeamCalendar(viewer: { personId: string; principal: Principal }, range: { from: IsoDate; to: IsoDate; departmentId?: string | null }): Promise<TeamCalendar> {
+  // The viewer's own calendar does not depend on who is shown, so it is read alongside.
+  const [scope, plansByPerson] = await Promise.all([calendarScope(viewer), getDayPlans([viewer.personId], range.from, range.to)]);
+  const { target } = scope;
   const rows = await db()
     .select({ person: schema.person, departmentName: schema.orgUnit.name })
     .from(schema.person)
     .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
-    .where(and(active, visibleSql));
-  const visible = rows.filter(({ person }) => person.id === viewer.personId || sameGroup(person) || person.managerId === viewer.personId || matchesReach(hrReach, target(person)) || matchesReach(personalReach, target(person)));
+    .where(scope.where);
+  const visible = rows.filter(({ person }) => scope.visible(person));
   const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
   const shown = visible.filter((row) => !range.departmentId || row.person.departmentId === range.departmentId);
 
@@ -73,4 +84,31 @@ export async function getTeamCalendar(viewer: { personId: string; principal: Pri
     })
     .sort((a, b) => Number(b.isSelf) - Number(a.isSelf) || a.fullName.localeCompare(b.fullName, "vi"));
   return { dates: plans.map((plan) => ({ date: plan.date, kind: plan.kind })), people, departments };
+}
+
+export type LeaveTakenByUnit = { departmentId: string | null; departmentName: string | null; people: number; daysCenti: number };
+
+/**
+ * Approved leave taken between two days by the people the viewer's calendar shows, per department —
+ * counted by Postgres: how many people were away and how many days, never who or why (the type of
+ * leave is personal tier). The same people as `getTeamCalendar`, by the same clause.
+ */
+export async function getLeaveTakenByUnit(viewer: { personId: string; principal: Principal }, range: { from: IsoDate; to: IsoDate }): Promise<LeaveTakenByUnit[]> {
+  const scope = await calendarScope(viewer);
+  const day = schema.leaveRequestDay;
+  const rows = await db()
+    .select({
+      departmentId: schema.person.departmentId,
+      departmentName: schema.orgUnit.name,
+      people: sql<number>`count(distinct ${day.personId})::int`,
+      daysCenti: sql<number>`coalesce(sum(${day.amountCenti}), 0)::int`,
+    })
+    .from(day)
+    .innerJoin(schema.leaveRequest, eq(schema.leaveRequest.id, day.requestId))
+    .innerJoin(schema.person, eq(schema.person.id, day.personId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
+    .where(and(scope.where, eq(schema.leaveRequest.status, "approved"), gte(day.date, range.from), lte(day.date, range.to)))
+    .groupBy(schema.person.departmentId, schema.orgUnit.name)
+    .orderBy(desc(sql`sum(${day.amountCenti})`), asc(schema.orgUnit.name));
+  return rows.map((row) => ({ ...row, people: Number(row.people), daysCenti: Number(row.daysCenti) }));
 }

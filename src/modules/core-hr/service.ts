@@ -1070,7 +1070,7 @@ export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccas
  * reader's principal and scopes itself — a viewer with no `report:read` reach gets null, exactly
  * as on `/reports/headcount`.
  */
-export { getHeadcountReport, getHeadcountTotals, type HeadcountFilters, type HeadcountReport, type HeadcountTotals } from "./reports";
+export { getHeadcountReport, getHeadcountTotals, type HeadcountFilters, type HeadcountReport, type HeadcountTotals, listContractsDue } from "./reports";
 export { type CatalogueEntry, competenciesOf, type Competency, competencyChoices, type CompetencyKind, type CompetencyLists, invalidateCompetencies, listCompetencies, listCompetencyCatalogue } from "./competencies";
 
 /** Who may browse the directory at all (the page and its exports ask the same) — for other modules that list people. */

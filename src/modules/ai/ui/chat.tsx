@@ -143,7 +143,7 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
             <List>
               {card.items.map((item, row) => (
                 <ListItem key={`${item.label}-${row}`} href={item.href ?? undefined} className="flex min-w-0 items-baseline justify-between gap-3 py-2">
-                  <span className="min-w-0 truncate">{item.label}</span>
+                  <span className="min-w-0 truncate">{item.title ? t(`meta.${item.title.key}`, shape(item.title.params)) : item.label}</span>
                   {item.meta ? <span className="shrink-0 text-xs text-muted-foreground">{t(`meta.${item.meta.key}`, shape(item.meta.params))}</span> : null}
                 </ListItem>
               ))}

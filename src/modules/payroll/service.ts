@@ -11,7 +11,7 @@ export { BASE_SALARY_CODE, getSalaryFile, listSalaryOverview, type SalaryFile, t
  * pay is refused here, by the same rule that refuses them the payslip page.
  */
 export { getPayslipView, listMyPayslips, type MyPayslipRow, payslipResultsOf, type PayslipView } from "./payslips";
-export { canApprovePayroll, canManageCompensation, canPayPayroll, canReadPayroll, canViewCompensationOf, hasPayrollDesk, payrollReadReach } from "./policy";
+export { canApprovePayroll, canManageCompensation, canPayPayroll, canReadPayroll, canViewCompensationOf, compensationReach, hasPayrollDesk, payrollReadReach } from "./policy";
 /**
  * For the ops tracker (FR-OPS-10): how far each entity's month has got, so the payroll calendar
  * closes itself. Statuses and dates only — no module outside payroll is ever handed a figure.
@@ -59,7 +59,7 @@ export type { BonusTotals, BonusTrace, BonusTraceStep } from "./engine/bonus";
  * and it filters **in SQL** by the reader's `payroll:read` reach before anything is decrypted. A
  * reader with no reach gets an empty list, not a refusal. Nothing here names a person.
  */
-export { costTrend, type ReportFilter, reportOptions, type TrendPoint } from "./reports";
+export { type CostReport, costReport, costTrend, type ReportFilter, reportOptions, type TrendPoint } from "./reports";
 /**
  * Phase 10 (FR-PJM-63): a loaded cost rate per person and month — gross + employer contributions
  * from the signed regular run ÷ the month's standard working time — for project profitability.
@@ -68,3 +68,7 @@ export { costTrend, type ReportFilter, reportOptions, type TrendPoint } from "./
  * cost, per person to anybody.
  */
 export { blendedCostRate, type LoadedCostRate, loadedCostRates } from "./cost-rates";
+
+// The salary estimate (FR-AGT-17): both directions of the offer calculator, and a person's own file.
+export { estimateFromSalaryFile, estimateNet, type NetEstimateRequest, type OfferQuote, quoteOffer, type SalaryFileEstimate } from "./offers";
+export { type EntityOption, listEntityOptions } from "./options";
