@@ -11675,7 +11675,18 @@
         "team_workload": "khối lượng việc của nhóm",
         "who_is_in": "ai đang có mặt",
         "timesheets_to_approve": "bảng giờ chờ duyệt",
-        "person_overview": "tổng quan nhân sự"
+        "person_overview": "tổng quan nhân sự",
+        "headcount": "nhân sự",
+        "contracts_ending": "hợp đồng sắp hết hạn",
+        "recruitment": "tuyển dụng",
+        "leave_by_unit": "nghỉ phép theo đơn vị",
+        "payroll_cost": "chi phí lương",
+        "profitability": "lợi nhuận dự án",
+        "receivables": "công nợ phải thu",
+        "sales_pipeline": "pipeline bán hàng",
+        "company_health": "bảng điều khiển của bạn",
+        "salary_estimate": "ước tính lương",
+        "run_report": "một báo cáo"
       },
       "cards": {
         "step_up": "Xác nhận danh tính để xem",
@@ -11699,7 +11710,18 @@
         "team_workload": "Giờ còn trống tuần này",
         "who_is_in": "Ai đang có mặt hôm nay",
         "timesheets_to_approve": "Bảng giờ chờ bạn duyệt",
-        "person_overview": "Tổng quan"
+        "person_overview": "Tổng quan",
+        "headcount": "Nhân sự",
+        "contracts_ending": "Hợp đồng sắp hết hạn",
+        "recruitment": "Tuyển dụng",
+        "leave_by_unit": "Nghỉ phép đã dùng",
+        "payroll_cost": "Chi phí lương",
+        "profitability": "Lợi nhuận",
+        "receivables": "Công nợ phải thu",
+        "sales_pipeline": "Pipeline bán hàng",
+        "company_health": "Bảng điều khiển",
+        "salary_estimate": "Ước tính lương",
+        "run_report": "Báo cáo"
       },
       "meta": {
         "overdue": "quá hạn {date}",
@@ -11723,7 +11745,23 @@
         "health_at_risk": "có rủi ro",
         "health_off_track": "chậm tiến độ",
         "board": "{overdue} trễ · {blocked} bị chặn",
-        "week": "tuần {date} · {hours} giờ"
+        "week": "tuần {date} · {hours} giờ",
+        "headcountOn": "{total} người ngày {date}",
+        "movement": "{joiners} vào · {leavers} nghỉ",
+        "contractEnds": "hết hạn hợp đồng {date}",
+        "probationEnds": "hết thử việc {date}",
+        "applications": "{count} hồ sơ đang xử lý",
+        "applicationsIn": "{count} hồ sơ",
+        "leaveTaken": "{people} người · {days} ngày",
+        "payrollReports": "Báo cáo lương",
+        "profitabilityReport": "Báo cáo lợi nhuận",
+        "daysLate": "trễ {days} ngày",
+        "openDeals": "{count} cơ hội đang mở",
+        "stale": "{count} lâu không cập nhật",
+        "dashboard": "Mở bảng điều khiển",
+        "estimateFor": "ước tính tháng {month}",
+        "netToGross": "Công cụ tính lương net – gross",
+        "period": "{from} – {to}"
       }
     },
     "suggestions": {

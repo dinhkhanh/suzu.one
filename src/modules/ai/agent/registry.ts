@@ -9,7 +9,8 @@
 //    request at all, so the model cannot even ask for it. The tool matrix (docs/agent-tool-matrix.md)
 //    is generated from it.
 //  - `tier`: the highest sensitivity its model view can hold; `stepUp`: whether the page behind it
-//    asks for a fresh step-up — checked here, before `run`, so a stale session reads nothing.
+//    asks for a fresh step-up — checked here, before `run`, so a stale session reads nothing. A
+//    function of the input when only some inputs open pay (one report of the catalogue, not all).
 //  - `kind`: read or propose (R4). `rowCap`: rows the model reads at most.
 //  - `module` and `tags`: what D38's tier rules weigh (`engine/tiers.ts`).
 //  - `step`: the progress line the chat shows ("Đang xem việc của bạn…", FR-AGT-07).
@@ -33,10 +34,13 @@ import type { ToolUser } from "../tools";
 /** Everything a tool may know of the asker. `CurrentUser` satisfies it. */
 export type AgentUser = KbViewerSource & ModelAsker & ToolUser & { person: { fullName?: string } };
 
-/** What decides a tool's offer beyond the roles: a lead's tools for people who lead, a manager's for people with reports. */
-export type AskerFacts = { leadsWork: boolean; managesPeople: boolean };
+/**
+ * What decides a tool's offer beyond the roles: a lead's tools for people who lead, a manager's for
+ * people with reports, the sales tools for people who own a deal or manage a client account.
+ */
+export type AskerFacts = { leadsWork: boolean; managesPeople: boolean; worksAccounts: boolean };
 
-export const NO_FACTS: AskerFacts = { leadsWork: false, managesPeople: false };
+export const NO_FACTS: AskerFacts = { leadsWork: false, managesPeople: false, worksAccounts: false };
 
 export type ToolContext = { user: AgentUser; today: IsoDate; locale: "vi" | "en" };
 
@@ -52,6 +56,11 @@ export type ToolResult = {
   subject: ToolSubject | null;
   /** Handbook passages behind the result, shown as the answer's sources. */
   citations?: Citation[];
+  /**
+   * Did the model view hold pay (D36)? Then the turn's answer is shown once and not stored. Absent:
+   * the tool's tier decides. Set by tools that read pay for some inputs only.
+   */
+  compensation?: boolean;
 };
 
 export type AgentTool<Input = unknown> = {
@@ -62,7 +71,7 @@ export type AgentTool<Input = unknown> = {
   input: z.ZodType<Input>;
   offeredTo: (principal: Principal, facts: AskerFacts) => boolean;
   tier: Tier;
-  stepUp: boolean;
+  stepUp: boolean | ((input: Input) => boolean);
   kind: "read" | "propose";
   rowCap: number;
   tags: readonly ToolTag[];
@@ -75,6 +84,12 @@ export type AnyAgentTool = AgentTool<any>;
 export const defineTool = <Input>(tool: AgentTool<Input>): AgentTool<Input> => tool;
 
 /** The tools offered to this asker, in the registry's fixed order — the order is part of the cached prefix. */
+/** Does this call need a fresh step-up? */
+export const needsStepUp = (tool: AnyAgentTool, input: unknown): boolean => (typeof tool.stepUp === "function" ? tool.stepUp(input) : tool.stepUp);
+
+/** Did this result hold pay (D36)? */
+export const heldPay = (tool: AnyAgentTool, result: ToolResult): boolean => result.outcome === "answered" && (result.compensation ?? tool.tier === "compensation");
+
 export const toolsFor = (registry: readonly AnyAgentTool[], principal: Principal, facts: AskerFacts = NO_FACTS): AnyAgentTool[] => registry.filter((tool) => tool.offeredTo(principal, facts));
 
 // Keywords strict tool use does not take; the zod schema still enforces them when the input is parsed.
@@ -106,7 +121,7 @@ export async function runAgentTool(tool: AnyAgentTool, context: ToolContext, raw
   if (!parsed.success) return { outcome: "failed", model: { error: "invalid_input", issues: parsed.error.issues.slice(0, 5).map((issue) => `${issue.path.join(".")}: ${issue.message}`) }, card: null, subject: null, error: "invalid_input" };
   // The page's second lock (FR-PLT-06), before anything is read: a stale session learns nothing,
   // not even whether there is anything to read.
-  if (tool.stepUp && !isStepUpFresh(context.user.reauthAt ?? null, now)) return { outcome: "step_up", model: { link: "/step-up?next=%2Fassistant" }, card: { tool: "step_up", href: "/step-up?next=%2Fassistant", items: [], more: 0 }, subject: null, error: null };
+  if (needsStepUp(tool, parsed.data) && !isStepUpFresh(context.user.reauthAt ?? null, now)) return { outcome: "step_up", model: { link: "/step-up?next=%2Fassistant" }, card: { tool: "step_up", href: "/step-up?next=%2Fassistant", items: [], more: 0 }, subject: null, error: null };
   try {
     return { ...(await tool.run(context, parsed.data)), error: null };
   } catch (error) {

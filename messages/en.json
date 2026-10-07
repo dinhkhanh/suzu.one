@@ -11675,7 +11675,18 @@
         "team_workload": "your team's workload",
         "who_is_in": "who is in",
         "timesheets_to_approve": "timesheets to approve",
-        "person_overview": "a person's overview"
+        "person_overview": "a person's overview",
+        "headcount": "headcount",
+        "contracts_ending": "contracts ending",
+        "recruitment": "recruitment",
+        "leave_by_unit": "leave by unit",
+        "payroll_cost": "payroll cost",
+        "profitability": "profitability",
+        "receivables": "receivables",
+        "sales_pipeline": "the sales pipeline",
+        "company_health": "your dashboard",
+        "salary_estimate": "a salary estimate",
+        "run_report": "a report"
       },
       "cards": {
         "step_up": "Confirm it's you to see this",
@@ -11699,7 +11710,18 @@
         "team_workload": "Free hours this week",
         "who_is_in": "Who is in today",
         "timesheets_to_approve": "Timesheets to approve",
-        "person_overview": "Overview"
+        "person_overview": "Overview",
+        "headcount": "Headcount",
+        "contracts_ending": "Contracts ending",
+        "recruitment": "Recruitment",
+        "leave_by_unit": "Leave taken",
+        "payroll_cost": "Payroll cost",
+        "profitability": "Profitability",
+        "receivables": "Receivables",
+        "sales_pipeline": "Sales pipeline",
+        "company_health": "Dashboard",
+        "salary_estimate": "Salary estimate",
+        "run_report": "Report"
       },
       "meta": {
         "overdue": "overdue {date}",
@@ -11723,7 +11745,23 @@
         "health_at_risk": "at risk",
         "health_off_track": "off track",
         "board": "{overdue} overdue · {blocked} blocked",
-        "week": "week of {date} · {hours} h"
+        "week": "week of {date} · {hours} h",
+        "headcountOn": "{total} people on {date}",
+        "movement": "{joiners} joined · {leavers} left",
+        "contractEnds": "contract ends {date}",
+        "probationEnds": "probation ends {date}",
+        "applications": "{count} active applications",
+        "applicationsIn": "{count} applications",
+        "leaveTaken": "{people} people · {days} days",
+        "payrollReports": "Payroll reports",
+        "profitabilityReport": "Profitability report",
+        "daysLate": "{days} days late",
+        "openDeals": "{count} open deals",
+        "stale": "{count} stale",
+        "dashboard": "Open the dashboard",
+        "estimateFor": "estimate for {month}",
+        "netToGross": "Net-to-gross calculator",
+        "period": "{from} – {to}"
       }
     },
     "suggestions": {

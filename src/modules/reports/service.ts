@@ -31,5 +31,5 @@ export {
 export { COMPLIANCE_MAX_DAYS, type DeliveryDashboard, type DeliveryFilter, type DeliveryTile, defaultDeliveryPeriod, getDeliveryDashboard, getDeliveryTile, type TeamCompliance } from "./delivery";
 export type { Compliance, DeliverySummary, RetainerSummary } from "./engine/delivery";
 export { canOpenDelivery, canReadProfitability, canSeeProfitabilityOf, complianceTeamIds } from "./pjm-policy";
-export { type ClientLine, type CostGroup, getProfitability, type ProfitabilityFilter, type ProfitabilityReader, type ProfitabilityView, type ProjectLine } from "./profitability";
+export { buildProfitability, type ClientLine, type CostGroup, getProfitability, type ProfitabilityFilter, type ProfitabilityReader, type ProfitabilityView, type ProjectLine } from "./profitability";
 export { kpiFromWorkJob, runKpiFromWork } from "./kpi-from-work";

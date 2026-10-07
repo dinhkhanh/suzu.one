@@ -70,7 +70,7 @@ async function headcountScope(principal: Principal, filters: HeadcountFilters) {
 export async function getHeadcountReport(principal: Principal, filters: HeadcountFilters): Promise<HeadcountReport | null> {
   const found = await headcountScope(principal, filters);
   if (!found) return null;
-  const { reach, e, a, c, spansWindow, contractsDue } = found;
+  const { reach, e, a, spansWindow } = found;
   const [rows, due] = await Promise.all([
     db()
       .select({
@@ -90,27 +90,37 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
       .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
       .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
       .where(spansWindow),
-    db()
-      .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entityId: e.entityId, entity: schema.entity.shortName, departmentId: a.departmentId, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
-      .from(c)
-      .innerJoin(e, eq(e.id, c.employmentId))
-      .innerJoin(schema.person, eq(schema.person.id, e.personId))
-      .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
-      .leftJoinLateral(a, sql`true`)
-      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
-      .where(contractsDue)
-      .orderBy(asc(c.endDate)),
+    contractLists(found),
   ]);
   const spans: Span[] = rows;
-  const lists = due.flatMap((row) => (row.endDate ? [{ ...row, endDate: row.endDate }] : []));
+  return { snapshot: headcountSnapshot(spans, filters.asOf), movement: movement(spans, filters.from, filters.to), ...due, scoped: !reach.all };
+}
 
-  return {
-    snapshot: headcountSnapshot(spans, filters.asOf),
-    movement: movement(spans, filters.from, filters.to),
-    contractsExpiring: lists.filter((row) => row.type !== "probation"),
-    probations: lists.filter((row) => row.type === "probation"),
-    scoped: !reach.all,
-  };
+/**
+ * The report's two lists alone — contracts running out within 90 days of `asOf` and probations
+ * still running — over the same slice and rules as `getHeadcountReport`, without counting anybody.
+ * null = the viewer holds `report:read` nowhere.
+ */
+export async function listContractsDue(principal: Principal, asOf: IsoDate): Promise<{ contractsExpiring: ContractDue[]; probations: ContractDue[]; scoped: boolean } | null> {
+  const found = await headcountScope(principal, { asOf, from: asOf, to: asOf });
+  if (!found) return null;
+  return { ...(await contractLists(found)), scoped: !found.reach.all };
+}
+
+/** The contracts due in a scope, split into the two lists the report shows. */
+async function contractLists({ e, a, c, contractsDue }: NonNullable<Awaited<ReturnType<typeof headcountScope>>>): Promise<{ contractsExpiring: ContractDue[]; probations: ContractDue[] }> {
+  const due = await db()
+    .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entityId: e.entityId, entity: schema.entity.shortName, departmentId: a.departmentId, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
+    .from(c)
+    .innerJoin(e, eq(e.id, c.employmentId))
+    .innerJoin(schema.person, eq(schema.person.id, e.personId))
+    .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
+    .leftJoinLateral(a, sql`true`)
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
+    .where(contractsDue)
+    .orderBy(asc(c.endDate));
+  const lists = due.flatMap((row) => (row.endDate ? [{ ...row, endDate: row.endDate }] : []));
+  return { contractsExpiring: lists.filter((row) => row.type !== "probation"), probations: lists.filter((row) => row.type === "probation") };
 }
 
 export type HeadcountTotals = { total: number; joiners: number; leavers: number; contractsExpiring: number; probations: number; scoped: boolean };

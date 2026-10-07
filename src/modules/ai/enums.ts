@@ -66,7 +66,13 @@ export type AnswerOutcome = (typeof ANSWER_OUTCOMES)[number];
 export type AgentToolOutcome = "answered" | "empty" | "refused" | "step_up" | "failed";
 
 /** A line of a card: a record's name (data, as the asker may see it), its link, and a fact about it as a message key. */
-export type AgentCardItem = { label: string; href: string | null; meta: { key: string; params: Record<string, string | number> } | null };
+export type AgentCardItem = {
+  label: string;
+  href: string | null;
+  meta: { key: string; params: Record<string, string | number> } | null;
+  /** A label in the reader's words (`assistant.agent.meta.<key>`), for a row that is a figure or a screen rather than a record's name. Wins over `label`. */
+  title?: { key: string; params: Record<string, string | number> };
+};
 
 /**
  * What a tool shows the asker under the answer (FR-AGT-05, 30): the records it read, each linked

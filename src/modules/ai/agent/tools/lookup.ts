@@ -50,7 +50,7 @@ export const personCard = (row: PeopleListRow) => ({ personId: row.id, name: row
 const findPerson = defineTool({
   name: "find_person",
   module: "core-hr",
-  description: "Finds colleagues by name in the company directory as the asker sees it: name, job title, department, entity, and a personId to use with other tools. Use it before any question about a named person.",
+  description: "Finds colleagues by name in the company directory as the asker sees it: name, job title, department, entity, and a personId. Use it when the question is who someone is or where they work. For how a named person is doing (work, attendance, leave, performance) call person_overview with the name, and for a named person's pay estimate salary_estimate — both look the name up themselves.",
   input: z.strictObject({ name: z.string().min(2).max(80).describe("The name or part of it, as written in the question.") }),
   offeredTo: (principal) => canBrowsePeople(principal),
   tier: "public_internal",
@@ -63,7 +63,11 @@ const findPerson = defineTool({
     if (rows.length === 0) return { outcome: "empty", model: { people: [], link: "/people" }, card: null, subject: null };
     return {
       outcome: "answered",
-      model: { people: rows.map(personCard), ...(rows.length > 1 ? { note: "Several people match: ask the asker which one, or use the one the question clearly means." } : {}) },
+      model: {
+        people: rows.map(personCard),
+        ...(rows.length > 1 ? { note: "Several people match: ask the asker which one, or use the one the question clearly means." } : {}),
+        next: "This is only the directory card. If the question is about the person's work, attendance, leave, performance or pay, call the tool for that with the personId (person_overview, salary_estimate) when it is offered; otherwise answer from the card.",
+      },
       card: { tool: "find_person", href: null, items: rows.map((row) => ({ label: row.fullName, href: recordHref("person", row.id), meta: row.positionName ? { key: "text", params: { text: [row.positionName, row.departmentName].filter(Boolean).join(" · ") } } : null })), more: 0 },
       subject: rows.length === 1 ? { type: "person", id: rows[0].id } : null,
     };

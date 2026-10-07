@@ -14,8 +14,9 @@ const principalOf = (roles: readonly (typeof ROLES)[number][]): Principal => ({ 
 test("the agent's tool matrix matches docs/agent-tool-matrix.md", async () => {
   const rows: { label: string; principal: Principal; facts: AskerFacts }[] = [
     { label: "employee, no role", principal: principalOf([]), facts: NO_FACTS },
-    { label: "employee who leads a team or project", principal: principalOf([]), facts: { leadsWork: true, managesPeople: false } },
-    { label: "employee with people reporting to them", principal: principalOf([]), facts: { leadsWork: false, managesPeople: true } },
+    { label: "employee who leads a team or project", principal: principalOf([]), facts: { ...NO_FACTS, leadsWork: true } },
+    { label: "employee with people reporting to them", principal: principalOf([]), facts: { ...NO_FACTS, managesPeople: true } },
+    { label: "employee who owns a deal or manages a client account", principal: principalOf([]), facts: { ...NO_FACTS, worksAccounts: true } },
     { label: "collaborator", principal: { personId: "p", workforceType: "collaborator", grants: [] }, facts: NO_FACTS },
     ...ROLES.map((role) => ({ label: `\`${role}\``, principal: principalOf([role]), facts: NO_FACTS })),
   ];
@@ -31,7 +32,7 @@ test("the agent's tool matrix matches docs/agent-tool-matrix.md", async () => {
     "",
     "| Tool | Module | Highest tier it reads | Step-up | Tags |",
     "|---|---|---|---|---|",
-    ...tools.map((tool) => `| \`${tool.name}\` | ${tool.module} | ${tool.tier} | ${tool.stepUp ? "yes" : "·"} | ${tool.tags.join(", ") || "·"} |`),
+    ...tools.map((tool) => `| \`${tool.name}\` | ${tool.module} | ${tool.tier} | ${typeof tool.stepUp === "function" ? "for pay" : tool.stepUp ? "yes" : "·"} | ${tool.tags.join(", ") || "·"} |`),
     "",
     "## Offered to",
     "",

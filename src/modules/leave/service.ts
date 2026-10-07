@@ -13,7 +13,7 @@ export type { Portion } from "./engine/request";
 export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, listPayoutTotals, type PayoutLine, type PayoutTotal, postCompensatoryLeave, postCompensatoryLeaves } from "./ledger";
 export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage, whoApprovesLeave } from "./requests";
 /** Who is away on a range of days, as the viewer may see them (FR-LVE-09) — the dashboard's leave tile. */
-export { type CalendarCell, type CalendarPerson, getTeamCalendar, type TeamCalendar } from "./calendar";
+export { type CalendarCell, type CalendarPerson, getLeaveTakenByUnit, getTeamCalendar, type LeaveTakenByUnit, type TeamCalendar } from "./calendar";
 
 // ── For work management's leave cover (FR-PJM-44) ─────────────────────────────────────────
 // Pulled, not pushed: the work module reads leave; leave never imports work. Read-only.
