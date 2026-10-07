@@ -25,6 +25,7 @@ const EMAILS: Record<EvalWho, string> = {
   tuan: "tuan.vo@suzu.group",
   long: "long.dang@suzu.group",
   thu: "ha.nguyen@suzu.vn",
+  tam: "tam.bui@suzu.group",
 };
 
 export type EvalOutcome = {

@@ -170,7 +170,7 @@ function Bubble({ turn }: { turn: Turn }) {
   if (turn.outcome === "off_topic")
     return (
       <AnswerRow>
-        <p className="text-muted-foreground">{t("agent.offTopic")}</p>
+        <p className="text-muted-foreground">{turn.agent?.offTopic === "greeting" ? t("agent.greeting") : t("agent.offTopic")}</p>
       </AnswerRow>
     );
   // An answer that read pay is shown once and not kept (D36).
