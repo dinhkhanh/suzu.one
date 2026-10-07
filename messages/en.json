@@ -11664,7 +11664,18 @@
         "who_approves_my_request": "approvers",
         "my_payslip": "your payslip",
         "my_unacknowledged_announcements": "announcements to acknowledge",
-        "my_obligations": "your obligations"
+        "my_obligations": "your obligations",
+        "find_person": "the directory",
+        "find_project": "projects",
+        "find_task": "tasks",
+        "task_detail": "a task",
+        "project_status": "a project's status",
+        "portfolio_health": "portfolio health",
+        "team_board": "your team's board",
+        "team_workload": "your team's workload",
+        "who_is_in": "who is in",
+        "timesheets_to_approve": "timesheets to approve",
+        "person_overview": "a person's overview"
       },
       "cards": {
         "step_up": "Confirm it's you to see this",
@@ -11677,7 +11688,18 @@
         "who_approves_my_request": "Approvers",
         "my_payslip": "Payslip",
         "my_unacknowledged_announcements": "Announcements to acknowledge",
-        "my_obligations": "Your obligations"
+        "my_obligations": "Your obligations",
+        "find_person": "Directory",
+        "find_project": "Projects",
+        "find_task": "Tasks",
+        "task_detail": "Task",
+        "project_status": "Project",
+        "portfolio_health": "Portfolio health",
+        "team_board": "Team board",
+        "team_workload": "Free hours this week",
+        "who_is_in": "Who is in today",
+        "timesheets_to_approve": "Timesheets to approve",
+        "person_overview": "Overview"
       },
       "meta": {
         "overdue": "overdue {date}",
@@ -11695,7 +11717,13 @@
         "status_rejected": "rejected",
         "status_returned": "returned",
         "status_withdrawn": "withdrawn",
-        "status_cancelled": "cancelled"
+        "status_cancelled": "cancelled",
+        "text": "{text}",
+        "health_on_track": "on track",
+        "health_at_risk": "at risk",
+        "health_off_track": "off track",
+        "board": "{overdue} overdue · {blocked} blocked",
+        "week": "week of {date} · {hours} h"
       }
     },
     "suggestions": {

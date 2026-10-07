@@ -510,11 +510,14 @@ describe("the agent reads as the asker (Phase 13 R1)", () => {
   });
 
   it("never reads a report's pay for a line manager: the only payslip tool is the asker's own", async () => {
-    // Named in the question: Phase 9's router refuses it before any model is asked.
-    const unasked = scriptedDriver([{ text: "…" }]);
-    const named = await resolveAnswer(users.manager, "Lương của Ho Gia Huy tháng 8 là bao nhiêu?", "vi", { agent: unasked });
-    expect(named).toMatchObject({ kind: "tool", outcome: "refused" });
-    expect(unasked.calls).toHaveLength(0);
+    // Named in the question: with the agent on, it is the agent's (D33) — and every tool the model
+    // can reach for reads as the manager: the payslip tool is the manager's own, the overview has no
+    // pay section, the directory card has no figure.
+    const named = scriptedDriver([{ tools: [{ name: "my_payslip", input: { month: MONTH } }, { name: "find_person", input: { name: "Ho Gia Huy" } }, { name: "person_overview", input: { person: ids.huy } }] }, { text: "…" }]);
+    const resolved = await resolveAnswer(users.manager, "Lương của Ho Gia Huy tháng 8 là bao nhiêu?", "vi", { agent: named });
+    expect(resolved.kind).toBe("agent");
+    for (const figure of FIGURES) expect(outbound(named.calls)).not.toContain(figure);
+    expect(outbound(named.calls)).not.toMatch(/netVnd|grossVnd/u);
     // And a model that asks for the payslip tool anyway gets the asker's own.
     const driver = scriptedDriver([{ tools: [{ name: "my_payslip", input: { month: MONTH } }] }, { text: "…" }]);
     await resolveAnswer(users.manager, OPEN_QUESTION, "vi", { agent: driver });

@@ -29,7 +29,7 @@ type AgentReport = {
 const usd = (micro: number) => `$${(micro / 1_000_000).toFixed(4)}`;
 
 /** R1's exit (DEVELOPMENT_PLAN Phase 13): employee ≥ 85 %, out of scope ≥ 95 %, red team 100 %. */
-const AGENT_EXIT: Record<string, number> = { employee: 85, out_of_scope: 95, red_team: 100 };
+const AGENT_EXIT: Record<string, number> = { employee: 85, lead: 85, ceo: 85, out_of_scope: 95, red_team: 100 };
 
 function printAgent(report: AgentReport) {
   console.log("");
