@@ -2,6 +2,7 @@
 // The set lives in the app (it needs the app's retrieval, which needs the app's services), so the
 // app must be up: `pnpm dev` in another terminal, then `pnpm ai:eval`. `pnpm ai:eval --agent --yes`
 // runs evaluation set v2 on the agent and the real models instead (Phase 13) — it costs money.
+import { get } from "node:http";
 import { config } from "dotenv";
 
 config({ path: ".env.local" });
@@ -61,14 +62,24 @@ async function main() {
   const secret = process.env.CRON_SECRET;
   if (!secret) throw new Error("CRON_SECRET is not set in .env.local.");
 
-  let response: Response;
+  // `node:http`, not `fetch`: the agent's set takes longer than fetch waits for response headers
+  // (five minutes), and a client that gives up does not stop the run — it only loses the report.
+  let response: { status: number; text: string };
   try {
-    response = await fetch(`${base}/api/cron/${agent ? "ai-eval-agent" : "ai-eval"}`, { headers: { authorization: `Bearer ${secret}` } });
+    response = await new Promise((resolve, reject) => {
+      const request = get(`${base}/api/cron/${agent ? "ai-eval-agent" : "ai-eval"}`, { headers: { authorization: `Bearer ${secret}` } }, (reply) => {
+        let text = "";
+        reply.setEncoding("utf8");
+        reply.on("data", (chunk: string) => (text += chunk));
+        reply.on("end", () => resolve({ status: reply.statusCode ?? 0, text }));
+      });
+      request.on("error", reject);
+    });
   } catch {
     console.log("The dev server is not running. Start it with `pnpm dev`, then run `pnpm ai:eval`.");
     return;
   }
-  const body = (await response.json()) as { outcomes: { status: string; result: Report | AgentReport | null; error: string | null }[] };
+  const body = JSON.parse(response.text) as { outcomes: { status: string; result: Report | AgentReport | null; error: string | null }[] };
   const outcome = body.outcomes?.[0];
   if (!outcome || outcome.status !== "succeeded" || !outcome.result) {
     console.error(`ai-eval ${outcome?.status ?? response.status}: ${outcome?.error ?? "no result"}`);

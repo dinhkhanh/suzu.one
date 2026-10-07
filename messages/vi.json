@@ -11647,6 +11647,7 @@
     "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
     "noAnswerLogged": "Câu hỏi đã được ghi lại để phòng Nhân sự bổ sung trang còn thiếu. Bạn có thể hỏi trực tiếp phòng Nhân sự.",
     "agent": {
+      "greeting": "Chào bạn! Mình là Hỏi SuZu: hỏi mình về việc, giờ làm, ngày phép, chấm công, đề xuất, phiếu lương của bạn, hay nội quy và cách dùng SuZu One.",
       "offTopic": "Mình chỉ trả lời về công ty, công việc, chính sách và cách dùng SuZu One. Câu hỏi này nằm ngoài phạm vi đó.",
       "unstored": "Câu trả lời này có số liệu lương nên không được lưu lại. Hỏi lại để xem.",
       "limited": "Trợ lý chưa trả lời xong trong giới hạn của một lượt hỏi, nên đây là phần trích từ sổ tay. Hãy hỏi gọn hơn, hoặc mở màn hình liên quan.",

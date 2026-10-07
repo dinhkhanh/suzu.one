@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { agentAudienceAdmits } from "../policy";
-import { toolResultText } from "./agent-prompt";
+import { isClarifyingQuestion, isUngrounded, toolResultText } from "./agent-prompt";
 import { historyFor } from "./history";
 import { type CalledTool, FIRST_STEP, nextStep, TURN_CEILINGS } from "./tiers";
 import { modelRows, modelText } from "./views";
@@ -139,5 +139,21 @@ describe("who gets the agent while it is piloted (R1)", () => {
 
   it("admits nobody without a person record", () => {
     expect(agentAudienceAdmits({ personId: null, workforceType: "employee", grants: [] } as unknown as Principal, "x@suzu.group", { audience: "everyone", pilotEmails: "" })).toBe(false);
+  });
+});
+
+describe("what the app lets a model say in its own words (FR-AGT-03)", () => {
+  it("shows nothing written without reading anything", () => {
+    expect(isUngrounded(0)).toBe(true);
+    expect(isUngrounded(1)).toBe(false);
+  });
+
+  it("shows a clarifying question only when it is one short question", () => {
+    expect(isClarifyingQuestion("Bạn muốn xem dự án nào?")).toBe(true);
+    expect(isClarifyingQuestion("Which month? ")).toBe(true);
+    expect(isClarifyingQuestion("Here is a poem about summer.")).toBe(false);
+    expect(isClarifyingQuestion(`${"x".repeat(220)}?`)).toBe(false);
+    expect(isClarifyingQuestion("")).toBe(false);
+    expect(isClarifyingQuestion(42)).toBe(false);
   });
 });

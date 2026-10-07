@@ -536,6 +536,22 @@ describe("the agent reads as the asker (Phase 13 R1)", () => {
     expect(logged).toHaveLength(0);
   });
 
+  it("never shows what a model wrote without reading anything — a polite decline or general knowledge", async () => {
+    for (const text of ["Tôi chỉ hỗ trợ về SuZu, xin lỗi bạn.", "Canberra là thủ đô của Úc."]) {
+      const driver = scriptedDriver([{ text }]);
+      const resolved = await resolveAnswer(users.lan, "Thủ đô của Úc là gì?", "vi", { agent: driver });
+      expect(resolved).toMatchObject({ kind: "agent", outcome: "off_topic", turn: { offTopic: "other" } });
+    }
+  });
+
+  it("asks one short question back, and nothing else through that door", async () => {
+    const asks = scriptedDriver([{ tools: [{ name: "ask_clarification", input: { question: "Bạn muốn xem dự án nào?" } }] }]);
+    const asked = await resolveAnswer(users.huy, OPEN_QUESTION, "vi", { agent: asks });
+    expect(asked.kind === "agent" && asked.turn.kind === "answered" && asked.turn.body).toBe("Bạn muốn xem dự án nào?");
+    const smuggles = scriptedDriver([{ tools: [{ name: "ask_clarification", input: { question: "Here is a long poem about summer, verse after verse." } }] }]);
+    expect(await resolveAnswer(users.huy, OPEN_QUESTION, "vi", { agent: smuggles })).toMatchObject({ outcome: "off_topic" });
+  });
+
   it("keeps the ceilings: six calls, Haiku then Sonnet, and Opus writes the last with no tools", async () => {
     const again = { tools: [{ name: "my_leave", input: {} }] };
     const driver = scriptedDriver([again, again, again, again, again, { text: "Bạn còn 9 ngày." }]);

@@ -18,7 +18,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
-import { AGENT_SYSTEM, DECLINE_TOOL, OFF_TOPIC_KINDS, type OffTopicKind, toolResultText, turnContext } from "../engine/agent-prompt";
+import { AGENT_SYSTEM, CLARIFY_TOOL, DECLINE_TOOL, isClarifyingQuestion, isUngrounded, OFF_TOPIC_KINDS, type OffTopicKind, toolResultText, turnContext } from "../engine/agent-prompt";
 import type { Citation } from "../engine/answer";
 import type { HistoryMessage } from "../engine/history";
 import { NO_USAGE, type TokenUsage } from "../engine/limits";
@@ -56,6 +56,13 @@ const DECLINE: Anthropic.Tool = {
   name: DECLINE_TOOL,
   description: "Declines a question that is not about the company, its people, policies, work or this app. Call it alone, with the kind of question.",
   input_schema: { type: "object", properties: { kind: { type: "string", enum: [...OFF_TOPIC_KINDS] } }, required: ["kind"], additionalProperties: false },
+  strict: true,
+};
+
+const CLARIFY: Anthropic.Tool = {
+  name: CLARIFY_TOOL,
+  description: "Asks the asker one short question back, when you cannot tell what they need (which project, which month). Call it alone.",
+  input_schema: { type: "object", properties: { question: { type: "string", description: "One short question, in the asker's language." } }, required: ["question"], additionalProperties: false },
   strict: true,
 };
 
@@ -100,7 +107,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const offered = toolsFor(input.registry ?? AGENT_TOOLS, input.user.principal);
   const byName = new Map(offered.map((tool) => [tool.name, tool]));
   // The frozen prefix: rules, then the tools in a fixed order, cached together (FR-AGT-44).
-  const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool), strict: true })), { ...DECLINE, cache_control: { type: "ephemeral" } }];
+  const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool), strict: true })), CLARIFY, { ...DECLINE, cache_control: { type: "ephemeral" } }];
   const system: Anthropic.TextBlockParam[] = [
     { type: "text", text: AGENT_SYSTEM, cache_control: { type: "ephemeral" } },
     { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee" }) },
@@ -144,9 +151,19 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
       const kind = (decline.input as { kind?: unknown } | null)?.kind;
       return { ...spent, kind: "off_topic", offTopic: OFF_TOPIC_KINDS.includes(kind as OffTopicKind) ? (kind as OffTopicKind) : "other" };
     }
+    const clarify = uses.find((use) => use.name === CLARIFY_TOOL);
+    if (clarify && step.withTools && uses.length === 1) {
+      const question = (clarify.input as { question?: unknown } | null)?.question;
+      // A question back is shown as the model wrote it — when it is one: short, and a question.
+      if (isClarifyingQuestion(question)) return { ...spent, kind: "answered", body: question.trim(), steps: [], cards, citations, compensation };
+      return { ...spent, kind: "off_topic", offTopic: "other" };
+    }
     if (uses.length === 0 || !step.withTools) {
       const body = textOf(reply.content);
       if (!body) return { ...spent, kind: "fallback", reason: "limited" };
+      // Written from nothing the app read: a model declining in its own words, or answering from
+      // general knowledge. Neither is shown — the app's sentence is (FR-AGT-03).
+      if (isUngrounded(spent.calls.length)) return { ...spent, kind: "off_topic", offTopic: "other" };
       return { ...spent, kind: "answered", body, steps: spent.calls.map(({ tool, outcome }) => ({ tool, outcome })), cards, citations, compensation };
     }
 

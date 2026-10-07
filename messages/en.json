@@ -11647,6 +11647,7 @@
     "noAnswer": "I could not find an answer in the pages you may read.",
     "noAnswerLogged": "The question has been logged so HR can write the missing page. You can also ask HR directly.",
     "agent": {
+      "greeting": "Hello! I'm Ask SuZu: ask me about your tasks, logged time, leave, attendance, requests or payslip, or about the company's rules and how to use SuZu One.",
       "offTopic": "I only answer about the company, work, policies and using SuZu One. This question is outside that.",
       "unstored": "This answer held pay figures, so it was not kept. Ask again to see it.",
       "limited": "The assistant could not finish within one question's limits, so this is quoted from the handbook. Try a shorter question, or open the related screen.",
