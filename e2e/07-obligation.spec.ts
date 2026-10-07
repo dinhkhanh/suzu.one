@@ -26,7 +26,9 @@ test("HR closes the month's probation review with a note of what was done", asyn
   const note = "Đã thu thập đánh giá của quản lý cho 1 nhân sự sắp hết thử việc (e2e).";
   await signIn(context, "mai.le@suzu.group");
   await page.goto(`/ops/obligations/${open.taskId}`);
-  await page.getByLabel("Note").first().fill(note);
+  // The note is the rich-text editor, loaded on demand: type into its own text box once it is up,
+  // not into the stand-in or the hidden field it posts through.
+  await page.getByRole("textbox", { name: "Note", exact: true }).fill(note);
   await page.getByRole("button", { name: "Save progress" }).click();
   await expect(page.getByText("Saved.").first()).toBeVisible();
   await page.getByRole("button", { name: "Mark as done" }).click();

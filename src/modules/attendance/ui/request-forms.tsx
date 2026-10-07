@@ -322,7 +322,7 @@ export function LockPeriodForm({ entityId, month, blocked }: { entityId: string;
     <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4">
       <h3>{t("lock.title")}</h3>
       <p className="text-xs text-muted-foreground">{blocked ? t("lock.blockedHint") : t("lock.readyHint")}</p>
-      {blocked ? <Input name="overrideReason" required minLength={10} maxLength={500} placeholder={t("lock.overrideReason")} /> : null}
+      {blocked ? <Input name="overrideReason" required minLength={10} maxLength={500} placeholder={t("lock.overrideReason")} aria-label={t("lock.overrideReason")} /> : null}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="sm" variant={blocked ? "destructive" : "default"} disabled={form.pending}>
           {label}
