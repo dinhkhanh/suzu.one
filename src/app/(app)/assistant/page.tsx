@@ -12,6 +12,10 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("askSuZu");
 
+// The ask action runs on this page's function: an agent turn may take up to 40 seconds (FR-AGT-42),
+// and the free path after it a little more.
+export const maxDuration = 60;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function AssistantPage(props: PageProps<"/assistant">) {

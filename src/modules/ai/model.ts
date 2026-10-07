@@ -7,16 +7,14 @@
 //    work with no key anywhere. An extractive answer is also the safest possible failure mode — it
 //    cannot invent a rule that HR never wrote.
 //
-//  - key set → the CLAUDE DRIVER, written against the Messages API and **NEVER RUN**: the company
-//    has no key. Model, endpoint, headers and body shape follow the current API (Opus 5: adaptive
-//    thinking is on by default, `budget_tokens` is rejected, effort lives in `output_config`).
-//    It is written with `fetch` rather than `@anthropic-ai/sdk` on purpose, the way the Voyage,
-//    Resend and Google Calendar drivers in this codebase are: an untested path should not add a
-//    runtime dependency, and the request here is one POST with no streaming and no tool loop.
-//    Treat every line of it as unverified until somebody runs it against a real key.
+//  - key set → the CLAUDE DRIVER, on the official SDK through `gateway.ts` — the one door that
+//    admits a call against the kill switch and the budget, sends it on its tier's model and records
+//    what it cost (SRS D35, D38). A handbook answer and a draft are simple work: they run on the
+//    SIMPLE tier (Haiku). When the gateway refuses — switched off, budget spent, provider down — the
+//    driver answers as the local one would and says why (`notice`), so a refusal is never an error.
 //
-// FR-AI-06's "zero-data-retention provider setting" is not a request parameter — it is a property
-// of the Anthropic organisation the key belongs to. It is listed under "Needs the owner".
+// The key is the owner's own Anthropic account (D38): its standard retention applies, not zero data
+// retention, which the owner accepted (NFR-AGT-04).
 //
 // WHAT A CLAUDE DRIVER SENDS is decided in `engine/redact.ts` and nowhere else: each of the two
 // builds its request from `chatRequestForModel` / `draftRequestForModel`, so no passage, thread or
@@ -27,11 +25,15 @@
 import "server-only";
 import { env } from "@/lib/env";
 import { citationHref, type ExtractedAnswer, extractAnswer, type RankedPassage, renderExtractedAnswer } from "./engine/answer";
-import { NO_USAGE, type TokenUsage, usageOf } from "./engine/limits";
+import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { assemblePrompt, type PromptSource } from "./engine/prompt";
 import { chatRequestForModel, draftRequestForModel } from "./engine/redact";
+import { callModel, type ModelPurpose, modelFor, textOf } from "./gateway";
+import type { AiNotice, ModelAsker } from "./spend";
 
 export type ChatRequest = {
+  /** Whose question it is: their budget is spent, their band decides the allowance. */
+  asker: ModelAsker;
   question: string;
   /** Already permission-filtered and ranked. The driver may only use these. */
   passages: readonly RankedPassage[];
@@ -46,6 +48,11 @@ export type ChatAnswer = {
   extracted: ExtractedAnswer;
   /** Tokens in and out as the provider reported them; zero when nothing was sent to a model. */
   usage: TokenUsage;
+  /** Who answered: the driver and model that wrote `body` — the local one when the gateway refused. */
+  driver: string;
+  model: string;
+  /** Why a model did not answer, when the driver has a key and still answered the free way. */
+  notice: AiNotice | null;
 };
 
 export type ChatDriver = {
@@ -61,74 +68,63 @@ const localDriver: ChatDriver = {
   name: LOCAL_DRIVER_NAME,
   isLocal: true,
   model: LOCAL_DRIVER_NAME,
-  complete: async ({ question, passages }) => {
-    const extracted = extractAnswer(question, passages);
-    // Nothing is sent anywhere, so nothing was spent: zero, not an estimate.
-    return { body: renderExtractedAnswer(extracted), extracted, usage: NO_USAGE };
-  },
+  complete: async ({ question, passages }) => localAnswer(question, passages, null),
 };
+
+/** The free answer: the best passage, quoted with its citation. Nothing is sent, nothing is spent. */
+function localAnswer(question: string, passages: readonly RankedPassage[], notice: AiNotice | null): ChatAnswer {
+  const extracted = extractAnswer(question, passages);
+  return { body: renderExtractedAnswer(extracted), extracted, usage: NO_USAGE, driver: LOCAL_DRIVER_NAME, model: LOCAL_DRIVER_NAME, notice };
+}
 
 /** How many passages a real model is given. Enough to answer, few enough to stay cheap and focused. */
 const CLAUDE_SOURCES = 6;
 
-function claudeDriver(apiKey: string, model: string): ChatDriver {
+function claudeDriver(): ChatDriver {
+  const model = modelFor("simple");
   return {
     name: "claude",
     isLocal: false,
     model,
-    complete: async ({ question, passages, links = [] }) => {
+    complete: async ({ asker, question, passages, links = [] }) => {
       // The citations are decided HERE, from what was retrieved — never parsed out of what the
       // model wrote. A model that cites a page it was not given, or invents one, changes nothing:
       // the links under the answer are the passages the asker's own permissions produced.
       const extracted = extractAnswer(question, passages);
+      // Nothing retrieved: there is nothing a model may answer from, so nothing is sent or spent.
+      if (extracted.passages.length === 0) return localAnswer(question, passages, null);
       // FR-AI-06: the prompt is built from what `chatRequestForModel` hands back and from nothing
       // else — no contact detail and no amount of money in a passage, whichever page it is from.
       const outbound = chatRequestForModel({ question, passages: passages.slice(0, CLAUDE_SOURCES) });
       const sources: PromptSource[] = outbound.passages.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, href: citationHref(passage), content: passage.content }));
       const { system, user } = assemblePrompt(outbound.question, sources, links);
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1500,
-          system,
-          // Thinking is adaptive by default on Opus 5; `output_config.effort` is the dial. A grounded
-          // answer out of six short passages is not a hard problem — "low" keeps it quick and cheap.
-          output_config: { effort: "low" },
-          messages: [{ role: "user", content: user }],
-        }),
-        signal: AbortSignal.timeout(60_000),
-      });
-      if (!response.ok) throw new Error(`assistant: ${response.status} ${(await response.text()).slice(0, 200)}`);
-      const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: Record<string, unknown> };
-      // Whatever came back was paid for, answer or not.
-      const usage = usageOf(body.usage);
+      // A grounded answer out of six short passages is simple work (D38): the simple tier, low effort where the model takes it.
+      const result = await callModel({ asker, purpose: "ask", tier: "simple", effort: "low", timeoutMs: 45_000, request: { max_tokens: 1500, system, messages: [{ role: "user", content: user }] } });
+      if (!result.ok) return localAnswer(question, passages, result.notice);
       // A safety decline is not an answer; it is a question the knowledge base did not resolve.
-      if (body.stop_reason === "refusal") return { body: "", extracted: { passages: [] }, usage };
-      const text = (body.content ?? [])
-        .filter((block) => block.type === "text")
-        .map((block) => block.text ?? "")
-        .join("")
-        .trim();
-      // No text, or nothing retrieved to stand behind it: treat as unanswered rather than show a
-      // sentence with no source. Every answer in this module carries a citation or is not shown.
-      if (!text || extracted.passages.length === 0) return { body: "", extracted: { passages: [] }, usage };
-      return { body: text, extracted, usage };
+      // Whatever came back was paid for, answer or not.
+      const text = result.message.stop_reason === "refusal" ? "" : textOf(result.message);
+      // No text: treat as unanswered rather than show a sentence with no source. Every answer in
+      // this module carries a citation or is not shown.
+      if (!text) return { body: "", extracted: { passages: [] }, usage: result.usage, driver: "claude", model: result.model, notice: null };
+      return { body: text, extracted, usage: result.usage, driver: "claude", model: result.model, notice: null };
     },
   };
 }
 
+/** The free path's driver, whatever the key: what answers after the agent fell back (Phase 13). */
+export const localChatDriver = (): ChatDriver => localDriver;
+
+/** The Claude driver when there is a key — it still answers the free way when the gateway refuses. */
 export function chatDriver(): ChatDriver {
-  const { ANTHROPIC_API_KEY: apiKey, ANTHROPIC_MODEL: model } = env();
-  return apiKey ? claudeDriver(apiKey, model) : localDriver;
+  return env().ANTHROPIC_API_KEY ? claudeDriver() : localDriver;
 }
 
 // ── Drafting (FR-PJM-64) ────────────────────────────────────────────────────────────────────
 //
-// The same two drivers for the drafting helpers. The local driver has nothing to add: the caller
-// already holds the extractive draft (`engine/drafts.ts`) and uses it. The Claude driver is given
+// The same two drivers for the drafting helpers, on the simple tier and through the same gateway.
+// The local driver has nothing to add: the caller already holds the extractive draft
+// (`engine/drafts.ts`) and uses it. The Claude driver is given
 // the facts — already permission-checked, and passed through `draftRequestForModel` on its own
 // first line, so no caller can send a thread's phone numbers or a sentence about pay by forgetting
 // a step — and asked to write them up. Like the chat driver it is **unverified until run against a
@@ -137,6 +133,8 @@ export function chatDriver(): ChatDriver {
 // submits. What a call cost comes back with it, and is kept in the draft's audit entry.
 
 export type DraftRequest = {
+  asker: ModelAsker;
+  purpose: Extract<ModelPurpose, `draft.${string}`>;
   /** What to write, in one or two sentences. */
   instruction: string;
   /** The recorded facts, as plain text. The only material the model may use. */
@@ -147,7 +145,7 @@ export type DraftRequest = {
 };
 
 /** `text` is null when the driver has nothing usable — the caller keeps its extractive draft. */
-export type DraftAnswer = { text: string | null; usage: TokenUsage };
+export type DraftAnswer = { text: string | null; usage: TokenUsage; /** Why no model wrote it, when the gateway refused. */ notice?: AiNotice | null };
 
 export type DraftDriver = { name: string; isLocal: boolean; model: string; draft: (request: DraftRequest) => Promise<DraftAnswer> };
 
@@ -160,7 +158,8 @@ const DRAFT_SYSTEM = [
 
 const localDraftDriver: DraftDriver = { name: LOCAL_DRIVER_NAME, isLocal: true, model: LOCAL_DRIVER_NAME, draft: async () => ({ text: null, usage: NO_USAGE }) };
 
-function claudeDraftDriver(apiKey: string, model: string): DraftDriver {
+function claudeDraftDriver(): DraftDriver {
+  const model = modelFor("simple");
   return {
     name: "claude",
     isLocal: false,
@@ -169,39 +168,24 @@ function claudeDraftDriver(apiKey: string, model: string): DraftDriver {
       // FR-AI-06, SRS §4.15 rule 4: contact details, sentences about pay and amounts of money are
       // taken out here, whoever called and whatever they already did.
       const { instruction, facts, locale, schema } = draftRequestForModel(request);
-      try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({
-            model,
-            max_tokens: 2000,
-            system: DRAFT_SYSTEM,
-            // A short rewrite of a few recorded facts: low effort is enough, and quick.
-            output_config: { effort: "low", ...(schema ? { format: { type: "json_schema", schema } } : {}) },
-            messages: [{ role: "user", content: `${instruction}\nLanguage: ${locale === "en" ? "English" : "Vietnamese"}.\n\n<facts>\n${facts}\n</facts>` }],
-          }),
-          signal: AbortSignal.timeout(30_000),
-        });
-        if (!response.ok) return { text: null, usage: NO_USAGE };
-        const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[]; usage?: Record<string, unknown> };
-        // A refusal or a cut-off draft is thrown away, and was still paid for.
-        const usage = usageOf(body.usage);
-        if (body.stop_reason === "refusal" || body.stop_reason === "max_tokens") return { text: null, usage };
-        const text = (body.content ?? [])
-          .filter((block) => block.type === "text")
-          .map((block) => block.text ?? "")
-          .join("")
-          .trim();
-        return { text: text || null, usage };
-      } catch {
-        return { text: null, usage: NO_USAGE };
-      }
+      const result = await callModel({
+        asker: request.asker,
+        purpose: request.purpose,
+        // A short rewrite of a few recorded facts: simple work, low effort where the model takes it.
+        tier: "simple",
+        effort: "low",
+        timeoutMs: 30_000,
+        ...(schema ? { format: { type: "json_schema" as const, schema } } : {}),
+        request: { max_tokens: 2000, system: DRAFT_SYSTEM, messages: [{ role: "user", content: `${instruction}\nLanguage: ${locale === "en" ? "English" : "Vietnamese"}.\n\n<facts>\n${facts}\n</facts>` }] },
+      });
+      if (!result.ok) return { text: null, usage: NO_USAGE, notice: result.notice };
+      // A refusal or a cut-off draft is thrown away, and was still paid for.
+      if (result.message.stop_reason === "refusal" || result.message.stop_reason === "max_tokens") return { text: null, usage: result.usage };
+      return { text: textOf(result.message) || null, usage: result.usage };
     },
   };
 }
 
 export function draftDriver(): DraftDriver {
-  const { ANTHROPIC_API_KEY: apiKey, ANTHROPIC_MODEL: model } = env();
-  return apiKey ? claudeDraftDriver(apiKey, model) : localDraftDriver;
+  return env().ANTHROPIC_API_KEY ? claudeDraftDriver() : localDraftDriver;
 }

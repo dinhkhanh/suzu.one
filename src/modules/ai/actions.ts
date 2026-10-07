@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
-import { recordAudit } from "@/modules/platform/audit/service";
+import { recordAudit, recordAudits } from "@/modules/platform/audit/service";
 import { ask, deleteConversation, resolveUnanswered } from "./conversations";
 import { QUESTION_MAX } from "./enums";
 import { admitAiUse } from "./limits";
@@ -31,7 +31,7 @@ const askPipeline = createAction({
   authorize: (user) => canAskAssistant(user.principal),
   run: async ({ user, input }) => {
     await admitAiUse(user, "ask");
-    const { audit: toolCall, ...result } = await ask(user, input);
+    const { audit: toolCall, agentCalls, ...result } = await ask(user, input);
     // FR-AI-06: **every tool call is audited**, under its own action name, so an auditor can ask
     // "who had the assistant read a payslip this quarter" without reading every question. The
     // entry says which tool, about whom (always the asker), and how it ended — never a figure.
@@ -45,12 +45,24 @@ const askPipeline = createAction({
         after: { outcome: toolCall.outcome, reason: toolCall.reason, subjectIsAsker: toolCall.subjectPersonId === user.person.id },
       });
     }
+    // FR-AGT-50: the same for every tool the agent called — which tool, about what, how it ended.
+    // The input is kept (a month, a filter, a search) and the result is not: never a figure.
+    await recordAudits(
+      agentCalls.map((call) => ({
+        action: `ai.tool.${call.tool}`,
+        actor: { userId: user.userId, personId: user.person.id, email: user.email },
+        request: user.request,
+        resource: call.subject ?? { type: "person", id: user.person.id, entityId: user.person.primaryEntityId },
+        summary: input.question.slice(0, 300),
+        after: { outcome: call.outcome, input: call.input, error: call.error, agent: true },
+      })),
+    );
     return {
       data: result,
       audit: {
         resource: { type: "ai_message", id: result.messageId },
         summary: input.question.slice(0, 300),
-        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, citedPageIds: result.citations.map((citation) => citation.pageId) },
+        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, agentTools: agentCalls.map((call) => call.tool), citedPageIds: result.citations.map((citation) => citation.pageId) },
       },
     };
   },

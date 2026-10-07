@@ -8,10 +8,11 @@ import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { List, ListItem } from "@/components/ui/list";
 import { cn } from "cn";
 import { askAssistantAction } from "../actions";
 import { citationHref } from "../engine/answer";
-import { type ChatTurn as Turn, QUESTION_MAX, type ToolOutcome } from "../enums";
+import { type AgentCard, type AgentShown, type ChatTurn as Turn, QUESTION_MAX, type ToolOutcome } from "../enums";
 import { AnswerMarkdown } from "./answer-markdown";
 
 /** The assistant's mark beside every answer: a spark in a tinted tile. */
@@ -107,6 +108,54 @@ function Sources({ turn }: { turn: Turn }) {
   );
 }
 
+/** The steps the agent took, named (FR-AGT-07): "Đã xem: việc của bạn · sổ tay". */
+function Steps({ agent }: { agent: AgentShown }) {
+  const t = useTranslations("assistant.agent");
+  const names = [...new Set(agent.steps.map((step) => step.tool))].filter((tool) => t.has(`tools.${tool}`));
+  if (names.length === 0) return null;
+  return <p className="text-xs text-faint">{t("looked", { tools: names.map((tool) => t(`tools.${tool}`)).join(" · ") })}</p>;
+}
+
+/** What a tool read, as the asker sees it (FR-AGT-05, 30): each record linked to its own screen. */
+function AgentCards({ cards }: { cards: AgentCard[] }) {
+  const t = useTranslations("assistant.agent");
+  const format = useFormatter();
+  // Numbers by `Intl`; a day ("2026-10-08") as the reader writes one.
+  const shape = (params: Record<string, string | number>) =>
+    Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : /^\d{4}-\d{2}-\d{2}$/u.test(value) ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : value]));
+  // A card with no rows is shown only when it is the way forward: the step-up link.
+  const shown = cards.filter((card) => card.items.length > 0 || (card.tool === "step_up" && card.href));
+  if (shown.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      {shown.map((card, index) => (
+        <section key={`${card.tool}-${index}`} className="flex flex-col gap-1.5">
+          <h3 className="text-xs font-medium text-muted-foreground">
+            {card.href ? (
+              <Link href={card.href} className="hover:underline">
+                {t(`cards.${card.tool}`)}
+              </Link>
+            ) : (
+              t(`cards.${card.tool}`)
+            )}
+          </h3>
+          {card.items.length > 0 ? (
+            <List>
+              {card.items.map((item, row) => (
+                <ListItem key={`${item.label}-${row}`} href={item.href ?? undefined} className="flex min-w-0 items-baseline justify-between gap-3 py-2">
+                  <span className="min-w-0 truncate">{item.label}</span>
+                  {item.meta ? <span className="shrink-0 text-xs text-muted-foreground">{t(`meta.${item.meta.key}`, shape(item.meta.params))}</span> : null}
+                </ListItem>
+              ))}
+            </List>
+          ) : null}
+          {card.more > 0 ? <p className="text-xs text-faint">{t("more", { count: card.more })}</p> : null}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function Bubble({ turn }: { turn: Turn }) {
   const t = useTranslations("assistant");
   if (turn.role === "user")
@@ -117,18 +166,39 @@ function Bubble({ turn }: { turn: Turn }) {
         <ToolAnswer tool={turn.tool} />
       </AnswerRow>
     );
+  // The agent declined: the app's sentence, never the model's (FR-AGT-03).
+  if (turn.outcome === "off_topic")
+    return (
+      <AnswerRow>
+        <p className="text-muted-foreground">{t("agent.offTopic")}</p>
+      </AnswerRow>
+    );
+  // An answer that read pay is shown once and not kept (D36).
+  if (turn.agent?.unstored && !turn.body)
+    return (
+      <AnswerRow>
+        <p className="text-muted-foreground">{t("agent.unstored")}</p>
+        <Steps agent={turn.agent} />
+      </AnswerRow>
+    );
   return (
     <AnswerRow>
-      {turn.outcome === "unanswered" ? (
+      {turn.outcome === "unanswered" || (turn.outcome === "limited" && !turn.body) ? (
         <div className="text-muted-foreground">
           <p>{t("noAnswer")}</p>
-          <p className="mt-1 text-xs">{t("noAnswerLogged")}</p>
+          <p className="mt-1 text-xs">{turn.outcome === "limited" ? t("agent.limited") : t("noAnswerLogged")}</p>
         </div>
       ) : (
         <>
           {/* Markdown turned into elements, never into HTML: see `answer-markdown.tsx`. */}
           <AnswerMarkdown body={turn.body} citations={turn.citations} />
+          {turn.agent ? <AgentCards cards={turn.agent.cards} /> : null}
           <Sources turn={turn} />
+          {turn.agent ? <Steps agent={turn.agent} /> : null}
+          {/* The agent spent its calls or its time: what is shown is the free answer. */}
+          {turn.outcome === "limited" ? <p className="text-xs text-muted-foreground">{t("agent.limited")}</p> : null}
+          {/* Why this is a quoted passage and not a written answer: a ceiling, the switch, the provider. */}
+          {turn.notice && turn.notice !== "no_key" ? <p className="text-xs text-muted-foreground">{t(`notices.${turn.notice}`)}</p> : null}
           <p className="text-xs text-faint">{t("mayBeWrong")}</p>
         </>
       )}
@@ -153,7 +223,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
       setShown((before) => [
         ...before,
         { id: `${result.messageId}-q`, role: "user", body: asked.current, outcome: null, citations: [], tool: null },
-        { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool },
+        { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool, agent: result.agent, notice: result.notice },
       ]);
       formRef.current?.reset();
       router.refresh();

@@ -7,6 +7,7 @@
 import "server-only";
 import { isDevelopmentEnvironment } from "@/lib/env";
 import { runEval } from "@/modules/ai/eval/run";
+import { runAgentEval } from "@/modules/ai/eval/run-agent";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
 
 export const aiEvalJob: JobDefinition = {
@@ -14,6 +15,19 @@ export const aiEvalJob: JobDefinition = {
   run: async () => {
     if (!isDevelopmentEnvironment()) throw new Error("ai-eval runs on a development server only");
     const report = await runEval();
+    return { ...report } as unknown as Record<string, unknown>;
+  },
+};
+
+/**
+ * Evaluation set v2 (Phase 13): the agent, on the real model. **Spends money** on the owner's key —
+ * run only with the owner's approval of the cost (`pnpm ai:eval --agent`).
+ */
+export const aiAgentEvalJob: JobDefinition = {
+  name: "ai-eval-agent",
+  run: async () => {
+    if (!isDevelopmentEnvironment()) throw new Error("ai-eval-agent runs on a development server only");
+    const report = await runAgentEval();
     return { ...report } as unknown as Record<string, unknown>;
   },
 };

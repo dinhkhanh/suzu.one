@@ -68,3 +68,44 @@ export async function loggedMinutesByPersonWeek(personIds: readonly string[], we
   }
   return result;
 }
+
+export type LoggedGroup = { id: string | null; /** The project's name, the task's title, or the week's Monday. */ label: string | null; /** The task's key ("VID-12"), for tasks. */ key: string | null; minutes: number; billable: number; /** Every group's minutes together — the same on each row. */ totalMinutes: number };
+
+/**
+ * One person's logged time between two dates (inclusive), summed per project, task or week, most
+ * minutes first. Labels are the person's own view — show them to the person, or label them for
+ * another reader first, as `listTimeOf` says.
+ */
+export async function loggedMinutesOfPerson(personId: string, range: { from: IsoDate; to: IsoDate }, by: "project" | "task" | "week"): Promise<LoggedGroup[]> {
+  const minutes = sql<number>`coalesce(sum(${schema.timeEntry.minutes}), 0)::int`;
+  const billable = sql<number>`coalesce(sum(${schema.timeEntry.minutes}) filter (where ${schema.timeEntry.billable}), 0)::int`;
+  const totalMinutes = sql<number>`coalesce(sum(sum(${schema.timeEntry.minutes})) over (), 0)::int`;
+  const own = and(eq(schema.timeEntry.personId, personId), isNull(schema.timeEntry.deletedAt), gte(schema.timeEntry.date, range.from), lte(schema.timeEntry.date, range.to));
+  const shape = (rows: Omit<LoggedGroup, never>[]): LoggedGroup[] => rows.map((row) => ({ ...row, minutes: Number(row.minutes), billable: Number(row.billable), totalMinutes: Number(row.totalMinutes) }));
+  if (by === "week") {
+    const rows = await db().select({ id: sql<string | null>`null`, label: sql<string>`${schema.timeEntry.weekStart}::text`, key: sql<string | null>`null`, minutes, billable, totalMinutes }).from(schema.timeEntry).where(own).groupBy(schema.timeEntry.weekStart).orderBy(sql`${schema.timeEntry.weekStart} desc`);
+    return shape(rows);
+  }
+  if (by === "task") {
+    const rows = await db()
+      .select({ id: schema.timeEntry.taskId, label: sql<string | null>`max(${schema.task.title})`, key: sql<string | null>`max(${schema.workTeam.key} || '-' || ${schema.workTask.number})`, minutes, billable, totalMinutes })
+      .from(schema.timeEntry)
+      .leftJoin(schema.task, eq(schema.task.id, schema.timeEntry.taskId))
+      .leftJoin(schema.workTask, eq(schema.workTask.taskId, schema.timeEntry.taskId))
+      .leftJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+      .where(own)
+      .groupBy(schema.timeEntry.taskId)
+      .orderBy(sql`sum(${schema.timeEntry.minutes}) desc`);
+    return shape(rows);
+  }
+  const onProject = sql<string | null>`coalesce(${schema.timeEntry.projectId}, ${schema.workTask.projectId})`;
+  const rows = await db()
+    .select({ id: onProject, label: sql<string | null>`max(${schema.workProject.name})`, key: sql<string | null>`null`, minutes, billable, totalMinutes })
+    .from(schema.timeEntry)
+    .leftJoin(schema.workTask, eq(schema.workTask.taskId, schema.timeEntry.taskId))
+    .leftJoin(schema.workProject, eq(schema.workProject.id, onProject))
+    .where(own)
+    .groupBy(onProject)
+    .orderBy(sql`sum(${schema.timeEntry.minutes}) desc`);
+  return shape(rows);
+}

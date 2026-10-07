@@ -85,6 +85,17 @@ Decisions added 2026-09-23 (owner's answers to Q17–Q25):
 | D31 | **The owner oversees every feature, read-only** (owner, 2026-09-28): one `<feature>:oversee` permission per feature — `approval`, `work`, `pjm`, `kb`, `daily`, `performance`, `recruit` — listed in no role, so only the owner's `*` holds them today; one can later be given to a role without the rest. Each opens what the feature otherwise keeps to its members, authors or reporting line: every request (the *All requests* list at `/approvals/all` and a morning digest of the day before), private team backlogs and hours on private projects, every project's brief and change requests, every KB space and published page, everybody's daily plans, reports, timesheets and utilisation, managers' private 1:1 notes and draft review forms, and draft interview scorecards. Oversight never acts (no deciding, commenting as a lead, editing or scoring), never opens one's own 1:1 notes or review, and an owner who interviews stays blind until their own card is in. Left closed on purpose: the assistant answers only about the asker, other people's assistant conversations stay theirs, and step-up still guards pay pages. |
 | D32 | **A job title is two levels; a position is a post** (owner, 2026-10-02): every employee carries a *seniority level* (intern, junior, mid-level, senior) and a *position level* (executive, leader, manager, director, C-level) — two effective-dated fields of the assignment, read together as the job title ("chức danh": "Senior Manager"). The position ("chức vụ") is something else: the post HR types on the assignment, and beside it the posts the person holds in running projects (lead, account manager), which show by themselves, to viewers who may open the project. The free-text job level is retired; recruitment's hiring request, opening and offer carry the same two levels into the hire. |
 
+Decisions added 2026-10-07 for the agent (§4.13b, Phase 13), all answered by the owner that day; D34 is the owner's own brief ("only answers internal questions").
+
+| # | Proposed decision |
+|---|---|
+| D33 | **The assistant may be asked about anybody, and still answers only what the asker's own roles allow** (owner, 2026-10-07: "yes, still have to respect roles/permissions of asker"). Replaces D31's "the assistant answers only about the asker" and Phase 9's rule "a tool's subject is the asker, full stop". A name is resolved within the asker's own directory and every fact is read through the owning module with the asker's principal — the same answer the asker would get on that module's screen, never more. The rest of D31 stands: other people's conversations stay theirs, and step-up still guards pay. |
+| D34 | **Internal only** (the owner's brief, 2026-10-07: "only answers internal questions … not a public chat that answers anything"). The agent answers about the company, its people, policies and work, and the app; everything else gets one fixed sentence. No web, no code execution, no outside files. |
+| D35 | **Money has three ceilings** (owner, 2026-10-07: "okay, configurable"): per turn (calls, tokens, rows, time — FR-AGT-42), per person per day (model spend by band, priced from the tokens actually used, cached input included at its own price: *everyone* USD 0.30 · *leads* — anyone holding `work:manage` or leading a project — USD 0.75 · *HR, payroll, finance, directors, C-level, owner* USD 1.50), and per company per month (**USD 150** to start). All four figures are **settings** — `AI_MONTHLY_BUDGET_USD`, `AI_DAILY_BUDGET_USD_EVERYONE`, `_LEADS`, `_OFFICE` in the Vercel environment — changed by the owner without a change of code (a redeploy applies them). Not a screen: Phase 9's reasoning, a ceiling that can be raised from a screen can be switched off from one. |
+| D36 | **What the asker may see, the model may read — pay included** (owner, 2026-10-07, Q31 option C: "if the asker can see each employee's salary, he can see the detail in a list of five"). A pay figure reaches the model only for an asker whose own rights open it on a screen — the owning module decides (`canViewCompensationOf`, `payroll:read` reach, `pjm:cost`) — and only on a **fresh step-up**, exactly as the page asks for one. No minimum group size. FR-AI-06's "compensation data is never sent to the model except for the user's own payslip explanation" is withdrawn. Unchanged: contact details (phone, email, chat handles) and restricted-tier fields (ID numbers, bank accounts, health, home address) are still never sent — no question needs them, and the agent links to the page that shows them. Pay that reached the model is not stored in the conversation (Phase 13 architecture). |
+| D37 | **The agent proposes, the person confirms** (owner, 2026-10-07: "yes"): no write without a confirmed card, through the module's own action; deciding approvals, payroll steps and role changes are never proposed. |
+| D38 | **Provider, account and models** (owner, 2026-10-07: "Haiku for simple tasks, Sonnet for more complex tasks, Opus for much more complex tasks"; "an individual Anthropic account, because the app is personal"). The Anthropic API directly (as Phase 9 built it; SRS §7's "Vercel AI Gateway" line is withdrawn), through the official TypeScript SDK, **on the owner's individual Anthropic account** — so the provider's standard data retention applies, not zero data retention (NFR-AGT-04). **Three tiers, chosen by rules in code, never by the model**: **Claude Haiku 4.5** runs a turn first — look-ups, the asker's own data, the handbook; **Claude Sonnet 5.5** takes the turn over when it proposes a change, reads HR, report or money tools, crosses more than one module, or Haiku reaches the call ceiling without an answer; **Claude Opus 5.5** writes the final answer, with no tools, from what the turn gathered, when an *analysis* tool was called (company health, person overview, money compared across periods or units) or Sonnet reached the ceiling. The three models are settings (`ANTHROPIC_MODEL_SIMPLE`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_COMPLEX`); the usage screen shows how often each tier ran and what it cost. |
+
 ### 1.4 Assumptions (please correct any that are wrong)
 
 | # | Assumption |
@@ -667,6 +678,106 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 | FR-AI-06 | Guardrails: the AI has no access beyond the asking user's permissions; compensation data is never sent to the model except for the user's own payslip explanation; zero-data-retention provider setting; all AI tool calls audit-logged; clear "AI may be wrong — source linked" UX. | M (when AI ships) |
 | FR-AI-07 | Unanswered-question log → tells HR which KB pages are missing. | C |
 
+FR-AI-02, 03, 05 and 06 are widened by §4.13b once the owner confirms D33–D38.
+
+---
+
+### 4.13b The agent — Ask SuZu, version 2 (AGT)
+
+> **Decided 2026-10-07** (§1.3, D33–D38). Planned as Phase 13 (DEVELOPMENT_PLAN §3). It builds on the Phase 9 module `src/modules/ai/` — retrieval, citations, the four personal tools, the per-person ceiling, redaction, token accounting, the guardrail suite — and replaces none of it. Phase 9's assistant has never called a model: there is no key, so every answer today is a quoted handbook passage or a personal tool's figure.
+
+**What changes.** Phase 9 chooses a tool with a pattern over the question, and every tool answers about the asker alone. Version 2 lets a model choose among a catalogue of tools that cover the whole app — work, projects, daily reports, leave, attendance, requests, people, HR reports, payroll, profitability, CRM — and lets it *propose* changes the person then confirms. Each persona gets the questions the app can already answer for them on a screen, asked in a sentence:
+
+| Persona | Asks, for example |
+|---|---|
+| Employee | "Việc nào của tôi trễ hạn tuần này?" · "Tạo task cho Lan thiết kế banner Tết, hạn thứ Tư" · "Tôi đã log bao nhiêu giờ cho dự án SZM-26-042?" · "Xin nghỉ phép thứ Sáu tới" · "Báo cáo cuối ngày của tôi đã nộp chưa?" |
+| Team lead / PM | "Ai trong team chưa nộp báo cáo hôm qua?" · "Dự án nào của tôi đang có rủi ro?" · "Việc gì đang bị chặn và chờ ai?" · "Tuần sau team còn trống bao nhiêu giờ?" |
+| HR | "Biến động nhân sự quý 3 theo phòng ban?" · "Hợp đồng nào hết hạn trong 60 ngày tới?" · "Ai sắp hết thử việc tháng này?" |
+| Payroll / C&B | "Gross bao nhiêu để net 25 triệu, 1 người phụ thuộc, vùng I?" · "Chi phí lương tháng 9 so với tháng 8 theo pháp nhân?" |
+| Finance | "Chi phí nhân sự từ tháng 7 đến tháng 9?" · "Công nợ quá hạn theo khách hàng?" · "Biên lợi nhuận các dự án quý này?" |
+| CEO / owner | "Tình hình công ty tuần này thế nào?" · "Anh Huy dạo này làm việc thế nào?" · "Phòng nào đang quá tải?" |
+
+#### Design rules
+
+1. **The agent has no rights of its own.** A tool is a thin wrapper over a function the owning module already exposes in its `service.ts`, called with the **asker's own principal** — a scoped function that filters or answers null by itself, or an unscoped one only behind the module's own `can…` check, exactly as its page calls it. Step-up is checked by the tool wherever the page asks for it. A tool the asker's roles could never use is **not offered to the model at all**, so the model cannot even ask for it.
+2. **A name is resolved, then re-checked.** *(Amends D31's "the assistant answers only about the asker" and Phase 9's tool rule 1 — see D33.)* A question may be about anybody. A name becomes a person only within what the asker's own directory shows (`listPeople` with their principal), and every fact about that person is read through the module that owns it, which decides exactly as its screen does: a line manager still never sees a report's pay, payroll still never opens through the org chart, a colleague still sees only the directory card.
+3. **The model reads only what the asker may see, and not all of it.** A figure reaches the model only when the asker's own rights open it on a screen, with the page's step-up where the page asks for one — pay included (D36). Contact details and restricted-tier fields (ID numbers, bank accounts, health, home address) never reach a model: no question needs them, and the agent links to the page that shows them. Each tool returns two views — what the model may read and what the app renders to the asker — and the first is an allow-list of fields, never a filter over prose.
+4. **The agent never changes anything by itself.** It proposes; a card shows every field of the change and who it will notify; the person confirms; the module's **existing server action** runs as the person, with its own authorisation, approval flow and audit. Approving, deciding, payroll steps and role changes are never proposed.
+5. **Internal only.** The agent answers about the company, its people, policies, work and the app, and declines everything else with one fixed sentence, written by the app rather than by the model. No web search, no web fetch, no code execution, no files from outside are given to the model.
+6. **Every turn has a price ceiling, and so does the month.** Calls per turn, tokens per call, rows per tool result and wall-clock time are capped per turn; tokens are capped per person per day; the company has a monthly budget. A ceiling reached falls back to the free path — handbook quotes and the four personal tools of Phase 9, which cost nothing — never to an error and never to an unlimited model.
+7. **Everything is recorded, and conversations stay private.** Each tool call is audited with its subject and outcome, never a figure; each model call keeps its tokens and its price. A conversation remains its asker's own: the owner sees what the agent cost and the audit log, not the chats (D31 unchanged).
+
+#### Conversation and scope
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-01 | **Chat everywhere**: at `/assistant` and as a sheet opened from every page (a bottom sheet on a phone), in Vietnamese or English, answering in the language of the question. | M |
+| FR-AGT-02 | **Page context**: the sheet passes the record on screen (kind and id); "dự án này", "this task" refer to it. The id is re-checked by the tool like any other. | S |
+| FR-AGT-03 | **Scope guard**: a question outside rule 5 is declined with a fixed sentence in the asker's language and recorded with the outcome `off_topic`; it counts toward the person's allowance. Out of scope: general knowledge, news, coding, homework, translation or rewriting of outside text, creative writing unrelated to work, other companies, opinions on people. In scope: drafting a work text that will go into the app (FR-AI-04). | M |
+| FR-AGT-04 | **Follow-ups** use the last six turns of the conversation; tool results of earlier turns are not resent. | M |
+| FR-AGT-05 | **Every answer says where it came from**: handbook answers keep their citations (FR-AI-01); data answers link to the screen each figure comes from (`RecordLink`, `record-routes.ts`) and name the period and the scope ("trong các đơn vị bạn được xem"). | M |
+| FR-AGT-06 | **Honest refusals**: when a module says no, the answer says the asker has no access to that, without saying more about the record than the asker's directory already shows. | M |
+| FR-AGT-07 | **Progress you can see**: while it works, the chat names the step ("Đang xem việc của bạn…"); the answer appears when the turn ends. | S |
+
+#### Reading — the tools
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-10 | **Tool registry**: each tool declares its name, description, a strict input schema, who it is offered to (a pure function of the principal), the highest tier its output can hold, whether it needs step-up, its kind (read or propose) and its row cap. The tools sent to the model are the ones offered to the asker, in a fixed order. | M |
+| FR-AGT-11 | **My own** (everyone): my tasks (due, overdue, blocked, by date range or project); my day (plan, end-of-day report, missing reports); my time (by week, project or task); my leave balance and requests; my attendance month; my requests and the approvals waiting on me; who approves a request type; my payslip (step-up, Phase 9); announcements I have not acknowledged; my operations obligations. | M |
+| FR-AGT-12 | **Look-ups**, all within the asker's own visibility: find a person (directory card: name, title, unit, manager, link), a project (name or job number), a task (key or title) or a team. | M |
+| FR-AGT-13 | **Work**: a task's detail; a project's status, timeline, open risks and issues; portfolio health with filters; the team board (lead); workload and free capacity (lead); who is in and who is away; timesheets waiting for my approval. | S |
+| FR-AGT-14 | **Person overview** (manager, HR, CEO, owner): one tool that assembles a person from the modules that own each part — the directory card; tenure, unit and job title; work (open and overdue tasks, on-time rate over 90 days, utilisation, end-of-day report record); attendance this month; leave taken this year; goal and KPI progress; the latest released review. **Each section is absent when its module refuses it to the asker**, as on the dashboard (FR-RPT-01). | S |
+| FR-AGT-15 | **HR**: headcount, movement and turnover over a period and a scope; contracts expiring; probations ending; the recruitment funnel and open positions; leave taken by unit. | S |
+| FR-AGT-16 | **Money and company health**: payroll cost by period, entity and department (step-up); project and client profitability over a period (`pjm:cost`, step-up); receivables ageing and the pipeline (CRM reach); **company health** as the dashboard tiles the asker already sees (FR-RPT-01), each from its own module. | S |
+| FR-AGT-17 | **Salary estimate**: gross → net and net → gross for a hypothetical (entity, month, pay profile, dependants, allowances) on the effective-dated statutory parameters — the calculator of `/payroll/tools/net-to-gross`, under the same gate (`payroll:propose` over the entity, step-up). "Lương tháng sau của X" reads X's salary file through `getSalaryFile` with the asker's rights and estimates from it (D36). | S |
+| FR-AGT-18 | **Reports**: any report of the catalogue (`buildReportFor`) for a period, under the same `canSee` and step-up as `/reports`; the model gets a summary and the top rows, the asker gets a link to the full report and its export. | S |
+| FR-AGT-19 | **The handbook** is a tool too (Phase 9 retrieval), so one answer can combine a policy with the asker's figure ("12 ngày phép năm; bạn còn 7"). | M |
+
+#### Acting — confirm before anything changes (FR-AI-03)
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-20 | **Proposals**: a `propose_*` tool validates its input against the target action's own schema and stores a proposal (action, input, the fields as the person will read them, who will be notified, expiry 30 minutes). The chat shows it as a card with **Xác nhận** / **Sửa** / **Bỏ**. Confirm calls the existing server action as the person; nothing else can execute a proposal, and a proposal is executed at most once. | M |
+| FR-AGT-21 | **What can be proposed (v1)**: create a task; change a task's state, assignee, due date or priority; comment on a task; raise or resolve a blocker; log time; add a task to today's plan; submit the end-of-day report (drafted from activity, FR-PJM-64); request leave (the card carries `previewLeave`'s day count and conflicts); an attendance request (overtime, remote work, correction); file a generic request; post a project status update (lead). | S |
+| FR-AGT-22 | **Sửa** opens the module's normal form, filled in. | M |
+| FR-AGT-23 | **Never proposed**: approving, rejecting or deciding anything; payroll steps; changing roles, permissions or someone's record; deleting. | M |
+
+#### What reaches the model (amends FR-AI-06)
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-30 | **Two views per tool result**: the fields the model may read (an allow-list per tool, tested) and what the app renders to the asker. Free text inside the model's view (task titles, comments, report notes) still passes Phase 9's contact redaction. | M |
+| FR-AGT-31 | **Compensation** (D36): a pay figure is read by a tool only when the owning module opens it to the asker, and only on a fresh step-up — otherwise the chat asks the person to confirm who they are and links to the step-up page. Pay is not stored in the conversation: the message keeps the tool and its input, and reopening re-runs it. | M |
+| FR-AGT-32 | **Prompt injection**: tool output is framed as data. A sentence in a task title, a comment, a report or a handbook page cannot call a tool by itself: proposals come only from the asker's request, and a proposal does nothing until the asker confirms the card. A red-team set covers it (FR-AGT-60). | M |
+
+#### Cost
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-40 | **Monthly company budget** in USD (D35). At 80 % the owner is notified; at 100 % the model is switched off for everyone until the 1st of the next month and the free path answers, with a notice in the chat. | M |
+| FR-AGT-41 | **Daily allowance per person**: model spend per Vietnamese day by band (D35), on top of Phase 9's question counts. Spent = the free path for the rest of the day, and the chat says so. | M |
+| FR-AGT-42 | **Ceilings per turn**: at most 6 model calls, 2,000 output tokens per call, low effort, 40 s wall clock; a tool result carries at most 30 rows and says "and N more — open the screen". | M |
+| FR-AGT-43 | **Cost accounting**: every model call is kept with input, output, cache-read and cache-write tokens and its price in micro-USD from a dated price table. `/assistant/usage` (owner) shows cost by day, person, band and tool, and the month against the budget. | M |
+| FR-AGT-44 | **Cheapest path first**: a question Phase 9's router already answers (the four personal tools) is answered there, with no model; the system prompt and tool list are frozen and cached. | M |
+
+#### Audit, oversight and quality
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-AGT-50 | Every tool call is audited as `ai.tool.<name>` with its subject (person, project, task, report) and outcome, never a figure; creating, confirming and discarding a proposal is audited; the confirmed action audits itself as it always does. | M |
+| FR-AGT-51 | Feedback on an answer (đúng / sai, with a note). The owner and the handbook's keepers see the note, and the question and answer only when the asker ticks "chia sẻ câu trả lời này". | S |
+| FR-AGT-52 | **Kill switch**: one setting turns the agent off and puts the Phase 9 assistant back, with no deploy of code. | M |
+| FR-AGT-60 | **Evaluation set v2**: per persona (employee, lead, HR, payroll, finance, CEO/owner) at least 150 questions with the expected tool and outcome; a red team of at least 40 (another person's data, compensation, injection through records, escalation through proposals); at least 30 out-of-scope questions. Exit: ≥ 85 % correct, **100 % of the red team held**, ≥ 95 % of out-of-scope declined, cost per turn measured. | M |
+| FR-AGT-61 | **A scripted model** replays tool-call sequences, so the loop, the gating, the two views and the proposals are tested in CI with no key and no spend. | M |
+
+| ID | Non-functional requirement |
+|---|---|
+| NFR-AGT-01 | First sign of progress < 1 s; a full answer p50 < 8 s, p95 < 20 s. |
+| NFR-AGT-02 | The monthly budget is never exceeded by more than the turns already running when it is reached. |
+| NFR-AGT-03 | Provider down, key revoked or budget spent → the free path answers; never an error page. |
+| NFR-AGT-04 | The owner's individual Anthropic account (D38): the provider's commercial terms are the processor agreement (NFR-PRV-06), and its **standard retention applies — not zero data retention**, which the owner accepts for this app, as D10 accepted offshore hosting. The privacy notice names assistant processing of employee data, pay included, as a purpose (PDPL). |
+
 ---
 
 ### 4.14 Reporting & dashboards (RPT)
@@ -930,7 +1041,7 @@ Initial load via import templates: entities and org structure, people and employ
 | Files | Private object storage (Supabase Storage or Vercel Blob private) with signed URLs | |
 | Jobs | Scheduled jobs (Vercel Cron) + durable background workflows for payroll runs, imports, schedulers, notifications | |
 | Email | Transactional email provider on a `suzu.group` subdomain with SPF/DKIM/DMARC | |
-| AI | Claude models via Vercel AI Gateway (zero data retention), AI SDK, `pgvector` retrieval | |
+| AI | Claude models via Vercel AI Gateway (zero data retention), AI SDK, `pgvector` retrieval | D38: the Anthropic API directly through its TypeScript SDK, on the owner's account; Haiku 4.5 → Sonnet 5.5 → Opus 5.5 by tier |
 | i18n | next-intl (vi, en) | |
 | Hosting | Vercel (Singapore region functions), domain `suzu.one` | |
 | Observability | Sentry (errors) + platform logs + uptime monitor | |
@@ -978,6 +1089,11 @@ Still open:
 | Q28 | CRM: the rate card — which services, units and list prices per entity — and the wording of the quote (báo giá) template. | Phase 11 go-live |
 | Q29 | CRM: the sales commission scheme (FR-CRM-45) — rate, base (cash collected, the build's default), who earns (deal owner, account manager, split), tiers — or no commission. Nothing is computed until the owner approves a scheme. | Before the first commission month |
 | Q30 | CRM: a web enquiry form on the public site (FR-CRM-55) — a third public surface, which amends A8. | When wanted |
+| Q31 | ~~The agent and pay~~ — answered by D36 (owner, 2026-10-07): option C, whatever the asker may see on a screen, after step-up. | — |
+| Q32 | ~~The agent's money~~ — answered by D35 (owner, 2026-10-07): USD 150 a month, USD 0.30 / 0.75 / 1.50 a day per band, all four as settings. | — |
+| Q33 | ~~The model~~ — answered by D38 (owner, 2026-10-07): Haiku 4.5 for simple turns, Sonnet 5.5 for complex ones, Opus 5.5 for the hardest. Open: where the lines between the tiers sit, measured on the evaluation set in Phase 13 R0. | End of Phase 13 R0 |
+| Q34 | ~~The agent's key~~ — answered by D38 (owner, 2026-10-07): the owner's individual Anthropic account, standard retention. The key is in Vercel (production and preview); `.env.local` still to be filled in on the owner's machine. | — |
+| Q35 | ~~Who may ask the agent about a person~~ — answered by D33 (owner, 2026-10-07): anybody, and each gets what their own screens give them. | — |
 
 ---
 

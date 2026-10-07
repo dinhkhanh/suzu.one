@@ -25,7 +25,7 @@ export { getUtilisation, UTILISATION_WEEKS, type UtilisationGroup, type Utilisat
  * Logged time as totals for other modules (FR-PJM-09 budget burn, FR-PJM-61, later FR-PJM-63):
  * sums in SQL, never a person's rows, and no authorization inside — the caller decides who sees them.
  */
-export { type LoggedTotal, loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
+export { type LoggedGroup, type LoggedTotal, loggedMinutesByPersonWeek, loggedMinutesOfPerson, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 export { type BookingView, getToday, type TodayView } from "./today";
 /** The reminders' bookkeeping, for a reminder another module sends about a person's day back at work (leave cover, FR-PJM-44). */
 export { claimReminders } from "./reminders";

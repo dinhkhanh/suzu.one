@@ -72,6 +72,8 @@ export const KINDS = {
   "system.job_failed": "system",
   // A run the platform killed (it outlived its function): it never reached its own catch block.
   "system.job_timed_out": "system",
+  // The assistant has spent 80 % of its monthly budget (SRS D35, FR-AGT-40): told to the owners, once a month.
+  "system.ai_budget_warning": "system",
   "system.rule_proposed": "system",
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",

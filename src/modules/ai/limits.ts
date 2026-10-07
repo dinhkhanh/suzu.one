@@ -12,6 +12,7 @@ import { db, schema } from "@/lib/db";
 import { recordAudit } from "@/modules/platform/audit/service";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { AI_LIMITS, type AiLimitScope, type AiUseKind, bucketOf, isFirstRefusal, retryAfterSeconds, windowStartFor, withinLimit } from "./engine/limits";
+import { costByDaySince, costByPersonSince, type SpendSummary, spendSummary } from "./spend";
 
 const { aiMessage, aiUsageHit } = schema;
 
@@ -75,9 +76,10 @@ export async function purgeAiUsageHits(before: Date): Promise<number> {
 
 // ── What it cost ────────────────────────────────────────────────────────────────────────────
 
-export type UsageByDay = { day: string; answers: number; modelAnswers: number; inputTokens: number; outputTokens: number };
-export type UsageByPerson = { personId: string; fullName: string; answers: number; modelAnswers: number; inputTokens: number; outputTokens: number };
-export type AssistantUsage = { days: number; total: Omit<UsageByDay, "day">; byDay: UsageByDay[]; byPerson: UsageByPerson[] };
+/** `costMicroUsd` is everything the person's or the day's model calls cost — answers and drafts (`ai_model_call`). */
+export type UsageByDay = { day: string; answers: number; modelAnswers: number; inputTokens: number; outputTokens: number; costMicroUsd: number };
+export type UsageByPerson = { personId: string; fullName: string; answers: number; modelAnswers: number; inputTokens: number; outputTokens: number; costMicroUsd: number };
+export type AssistantUsage = { days: number; total: Omit<UsageByDay, "day">; byDay: UsageByDay[]; byPerson: UsageByPerson[]; month: SpendSummary };
 
 export const USAGE_DAYS = 30;
 
@@ -98,7 +100,7 @@ export async function assistantUsage(days: number = USAGE_DAYS, now: Date = new 
   };
   const answered = and(eq(aiMessage.role, "assistant"), gte(aiMessage.createdAt, since));
   const day = sql<string>`to_char(${aiMessage.createdAt} at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')`;
-  const [[total], byDay, byPerson] = await Promise.all([
+  const [[total], byDay, byPerson, costByDay, costByPerson, month] = await Promise.all([
     db().select(figures).from(aiMessage).where(answered),
     db().select({ day, ...figures }).from(aiMessage).where(answered).groupBy(day).orderBy(desc(day)),
     db()
@@ -110,6 +112,16 @@ export async function assistantUsage(days: number = USAGE_DAYS, now: Date = new 
       // The dearest first; among those who cost nothing, whoever asks most.
       .orderBy(desc(sql`coalesce(sum(${aiMessage.inputTokens}), 0) + coalesce(sum(${aiMessage.outputTokens}), 0)`), desc(sql`count(*)`), schema.person.fullName, aiMessage.personId)
       .limit(100),
+    costByDaySince(since),
+    costByPersonSince(since),
+    spendSummary(now),
   ]);
-  return { days, total: total ?? { answers: 0, modelAnswers: 0, inputTokens: 0, outputTokens: 0 }, byDay, byPerson };
+  const totalCost = [...costByDay.values()].reduce((sum, cost) => sum + cost, 0);
+  return {
+    days,
+    total: { ...(total ?? { answers: 0, modelAnswers: 0, inputTokens: 0, outputTokens: 0 }), costMicroUsd: totalCost },
+    byDay: byDay.map((row) => ({ ...row, costMicroUsd: costByDay.get(row.day) ?? 0 })),
+    byPerson: byPerson.map((row) => ({ ...row, costMicroUsd: costByPerson.get(row.personId) ?? 0 })),
+    month,
+  };
 }

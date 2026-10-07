@@ -41,7 +41,7 @@ const render = (lines: readonly DraftLine[], locale: Locale) => {
 };
 
 /** The model's text when there is a model and it answered; the extractive draft otherwise. */
-async function viaDriver(extractive: string, request: { instruction: string; facts: string; locale: Locale }): Promise<DraftResult<string>> {
+async function viaDriver(extractive: string, request: { asker: DraftUser; purpose: "draft.eod" | "draft.status"; instruction: string; facts: string; locale: Locale }): Promise<DraftResult<string>> {
   const driver = draftDriver();
   // The driver redacts what it sends (rule 2); a fallback after a failed call still cost its tokens.
   const answer = driver.isLocal ? null : await driver.draft(request);
@@ -58,6 +58,8 @@ export async function draftEodNotes(user: DraftUser, date: IsoDate, locale: Loca
   const facts = { done: form.draft.done, notDone: form.draft.notDone, activity: form.draft.activity, minutesLogged: form.draft.minutesLogged };
   const extractive = render(eodDraftLines(facts), locale);
   return viaDriver(extractive, {
+    asker: user,
+    purpose: "draft.eod",
     instruction: "Write the notes of this person's end-of-day report from their recorded activity: two to five short sentences in the first person, what they finished, what moved, what is still open.",
     facts: [extractive, ...facts.activity.map((item) => `- ${item.kind}: ${item.ref ? `${item.ref} ` : ""}${item.title}${item.detail ? ` (${item.detail})` : ""}`)].join("\n"),
     locale,
@@ -76,6 +78,8 @@ export async function draftStatusSummary(user: DraftUser, projectId: string, loc
   const facts = await loadStatusFacts(projectId, { budgetMinutes: context.plan.budgetMinutes, baseline: context.plan.baseline }, today);
   const extractive = render(statusDraftLines(facts), locale);
   const result = await viaDriver(extractive, {
+    asker: user,
+    purpose: "draft.status",
     instruction: `Write the summary of this week's status update for the project "${redactCompensation(context.project.name)}": three to five sentences for the client-facing team, from these facts only.`,
     facts: extractive,
     locale,
@@ -125,7 +129,7 @@ export async function draftHandoffNote(user: DraftUser, taskId: string, locale: 
   const driver = draftDriver();
   const answer = driver.isLocal
     ? null
-    : await driver.draft({ instruction: "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions and links. Leave a part empty when the thread does not say. Do not write anybody's contact details.", facts: threadText(facts), locale, schema: NOTE_SCHEMA });
+    : await driver.draft({ asker: user, purpose: "draft.handoff", instruction: "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions and links. Leave a part empty when the thread does not say. Do not write anybody's contact details.", facts: threadText(facts), locale, schema: NOTE_SCHEMA });
   const written = asNote(answer?.text ?? null);
   const usage = answer?.usage ?? NO_USAGE;
   // The links are the thread's own: a model may drop one, never add one.
