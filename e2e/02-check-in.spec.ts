@@ -17,6 +17,9 @@ test("an employee checks in at the office from their phone", async ({ page, cont
 
   await page.goto("/attendance/check-in");
   await page.getByRole("button", { name: "Check in", exact: true }).click();
+  // The first check-in that reads a position shows the location notice first (NFR-PRV-01); agreeing
+  // records the answer and the punch goes on.
+  await page.getByRole("dialog", { name: "Your location at check-in" }).getByRole("button", { name: "I agree" }).click();
 
   await expect(page.getByText(/^Checked in at \d{1,2}:\d{2}/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Check out", exact: true })).toBeVisible();

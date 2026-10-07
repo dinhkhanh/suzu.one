@@ -50,9 +50,11 @@ export async function runJob(request: APIRequestContext, job: string): Promise<v
 export async function clickAndConfirm(page: Page, button: ReturnType<Page["getByRole"]>, confirmName: RegExp): Promise<void> {
   page.once("dialog", (dialog) => void dialog.accept());
   await button.click();
-  const dialog = page.getByRole("alertdialog");
+  // The app asks in its own ConfirmDialog (components/ui/confirm.tsx), a plain `dialog` — a sheet
+  // on a phone; an `alertdialog` is accepted too.
+  const dialog = page.getByRole("alertdialog").or(page.getByRole("dialog")).filter({ has: page.getByRole("button", { name: confirmName }) });
   const shown = await dialog
-    .waitFor({ state: "visible", timeout: 1500 })
+    .waitFor({ state: "visible", timeout: 5000 })
     .then(() => true)
     .catch(() => false);
   if (shown) await dialog.getByRole("button", { name: confirmName }).click();

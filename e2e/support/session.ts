@@ -7,6 +7,7 @@
 // policy, which `sign-in-policy.test.ts` covers case by case.
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { BrowserContext } from "@playwright/test";
+import { WELCOME_LATER_COOKIE } from "../../src/modules/platform/shell/welcome";
 import { sql } from "./db";
 
 /** Better Auth's cookie on plain http (on https it carries the `__Secure-` prefix). */
@@ -27,6 +28,12 @@ export function signedCookie(token: string): string {
 export type SignInOptions = {
   /** Proved who they are just now (FR-PLT-06): compensation screens and payroll actions open without the Google round trip. */
   steppedUp?: boolean;
+  /**
+   * Shows the first-sign-in guide. Off by default: the guide is a modal that opens for anyone who
+   * has not finished it — every demo person — and would sit over the page a journey clicks on. It
+   * is put off the way its own "Later" button does, with a cookie naming this session.
+   */
+  welcome?: boolean;
 };
 
 /**
@@ -46,6 +53,9 @@ export async function signIn(context: BrowserContext, email: string, options: Si
   await db`
     insert into session (id, token, user_id, expires_at, ip_address, user_agent, reauth_at)
     values (${sessionId}, ${token}, ${account.id}, now() + interval '1 day', '127.0.0.1', 'playwright', ${options.steppedUp ? new Date() : null})`;
-  await context.addCookies([{ name: COOKIE, value: signedCookie(token), domain: "localhost", path: "/", httpOnly: true, sameSite: "Lax" }]);
+  await context.addCookies([
+    { name: COOKIE, value: signedCookie(token), domain: "localhost", path: "/", httpOnly: true, sameSite: "Lax" },
+    ...(options.welcome ? [] : [{ name: WELCOME_LATER_COOKIE, value: sessionId, domain: "localhost", path: "/", httpOnly: true, sameSite: "Lax" as const }]),
+  ]);
   return sessionId;
 }
