@@ -11646,11 +11646,11 @@
     },
     "sheet": {
       "context": {
-        "task": "Đang ở: việc này — hỏi “việc này” là SuZu hiểu.",
-        "project": "Đang ở: dự án này — hỏi “dự án này” là SuZu hiểu.",
-        "person": "Đang ở: hồ sơ người này — hỏi “người này” là SuZu hiểu."
+        "task": "Đang ở: việc này — hỏi “việc này” là SuZu AI hiểu.",
+        "project": "Đang ở: dự án này — hỏi “dự án này” là SuZu AI hiểu.",
+        "person": "Đang ở: hồ sơ người này — hỏi “người này” là SuZu AI hiểu."
       },
-      "noContext": "Hỏi về công việc, quy định, hoặc nhờ SuZu làm giúp.",
+      "noContext": "Hỏi về công việc, quy định, hoặc nhờ SuZu AI làm giúp.",
       "full": "Mở toàn trang",
       "suggest": {
         "task": {
@@ -11685,8 +11685,8 @@
       "provider_error": "Không kết nối được dịch vụ AI, nên đây là đoạn trích từ trang nguồn. Hãy thử lại sau ít phút."
     },
     "mayBeWrong": "Câu trả lời được trích từ trang Tri thức và có thể chưa đầy đủ — hãy mở trang nguồn để đọc đủ.",
-    "mayBeWrongData": "SuZu có thể nhầm — hãy mở các trang ở trên để kiểm tra.",
-    "mayBeWrongAny": "SuZu có thể nhầm — hãy kiểm tra lại trên trang liên quan.",
+    "mayBeWrongData": "SuZu AI có thể nhầm — hãy mở các trang ở trên để kiểm tra.",
+    "mayBeWrongAny": "SuZu AI có thể nhầm — hãy kiểm tra lại trên trang liên quan.",
     "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
     "noAnswerLogged": "Câu hỏi đã được ghi lại để phòng Nhân sự bổ sung trang còn thiếu. Bạn có thể hỏi trực tiếp phòng Nhân sự.",
     "agent": {
@@ -11821,7 +11821,7 @@
           "projects_status_post": "Đăng cập nhật dự án"
         }
       },
-      "greeting": "Chào bạn! Mình là Hỏi SuZu: hỏi mình về việc, giờ làm, ngày phép, chấm công, đề xuất, phiếu lương của bạn, hay nội quy và cách dùng SuZu One.",
+      "greeting": "Chào bạn! Mình là SuZu AI: hỏi mình về việc, giờ làm, ngày phép, chấm công, đề xuất, phiếu lương của bạn, hay nội quy và cách dùng SuZu One.",
       "offTopic": "Mình chỉ trả lời về công ty, công việc, chính sách và cách dùng SuZu One. Câu hỏi này nằm ngoài phạm vi đó.",
       "unstored": "Câu trả lời này có số liệu lương nên không được lưu lại. Hỏi lại để xem.",
       "limited": "Trợ lý chưa trả lời xong trong giới hạn của một lượt hỏi, nên đây là phần trích từ sổ tay. Hãy hỏi gọn hơn, hoặc mở màn hình liên quan.",
