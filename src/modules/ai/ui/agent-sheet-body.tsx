@@ -43,10 +43,11 @@ function SheetChat({ pathname }: { pathname: string }) {
 
   return (
     <>
-      <div className="-mt-1 flex items-center gap-1">
-        {/* What "this" means here, so the person knows what the assistant was told. */}
-        <p className="line-clamp-2 min-w-0 flex-1 text-xs text-muted-foreground">{page ? t(`sheet.context.${page.kind}`) : t("sheet.noContext")}</p>
-        {/* Icons on a phone, with their words on a desk. */}
+      {/* What "this" means here, so the person knows what the assistant was told. */}
+      <p className="-mt-2 truncate text-xs text-muted-foreground">{page ? t(`sheet.context.${page.kind}`) : t("sheet.noContext")}</p>
+      {/* Beside the title, left of the close button: one row of header, so a phone with its keyboard
+          up keeps most of the sheet for the conversation. Icons on a phone, with their words on a desk. */}
+      <div className="absolute top-3 right-12 flex items-center gap-1">
         {conversation ? (
           <Button
             type="button"

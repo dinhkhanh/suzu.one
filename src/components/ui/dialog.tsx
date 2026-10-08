@@ -45,6 +45,28 @@ function fitToVisible(element: HTMLDivElement | null) {
   }
 }
 
+const TYPED = /^(text|search|email|tel|url|number|password)$/
+
+/**
+ * iOS pans the whole page to bring a tapped field above its keyboard, and the frame above, kept to
+ * what is visible, then moves back: two jumps, a different distance each time. A field in a dialog
+ * is focused out of the way instead (React Aria's way), so iOS has nothing to pan, and the sheet
+ * alone rises onto the keyboard. Only the first tap: once the field has focus, taps place the caret.
+ */
+function focusWithoutPanning(event: React.TouchEvent) {
+  const field = event.target
+  if (!(field instanceof HTMLTextAreaElement || (field instanceof HTMLInputElement && TYPED.test(field.type)))) return
+  if (field === document.activeElement || field.disabled || field.readOnly) return
+  // Safari on iOS and iPadOS, by what it supports rather than by its name.
+  if (!CSS.supports("-webkit-touch-callout", "none")) return
+  event.preventDefault()
+  field.style.transform = "translateY(-2000px)"
+  field.focus()
+  requestAnimationFrame(() => {
+    field.style.transform = ""
+  })
+}
+
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root swipeDirection="down" {...props} />
 }
@@ -93,10 +115,11 @@ function DialogContent({
   return (
     <DialogPortal keepMounted={keepMounted}>
       <DialogOverlay />
-      <DialogPrimitive.Viewport ref={fitToVisible} className="fixed inset-x-0 top-[var(--visible-top,0px)] z-50 flex h-[var(--visible-height,100dvh)] items-end justify-center sm:items-center sm:p-4">
+      <DialogPrimitive.Viewport ref={fitToVisible} className="fixed inset-x-0 top-[var(--visible-top,0px)] z-50 flex h-[var(--visible-height,100dvh)] items-end justify-center transition-[height] duration-300 ease-(--ease-drawer) motion-reduce:transition-none sm:items-center sm:p-4">
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           data-base-ui-swipe-ignore={desk ? "" : undefined}
+          onTouchEnd={focusWithoutPanning}
           className={cn(
             // The phone: a sheet along the bottom edge. It rises on the iOS sheet curve, follows the
             // finger while held, and leaves at the speed it was thrown — a flick is enough.

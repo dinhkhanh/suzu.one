@@ -1,14 +1,18 @@
 "use client";
-import { ArrowUpIcon, BookOpenIcon, SparklesIcon } from "lucide-react";
+import { BookOpenIcon, ChevronDownIcon, SparklesIcon } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { createContext, use, useEffect, useRef, useState } from "react";
+import type { StickToBottomContext } from "use-stick-to-bottom";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ui/conversation";
 import { List, ListItem } from "@/components/ui/list";
+import { PromptInput, PromptInputBody, PromptInputSubmit, PromptInputTextarea } from "@/components/ui/prompt-input";
 import { cn } from "cn";
 import { askAssistantAction } from "../actions";
 import { citationHref } from "../engine/answer";
@@ -27,11 +31,15 @@ function Spark() {
   );
 }
 
-/** An answer's row: the spark at the left, the body beside it. */
+/** Where the chat is shown: on its own page, or in the sheet over another page (narrow, on a phone). */
+const ChatVariant = createContext<"page" | "sheet">("page");
+
+/** An answer's row: the spark at the left, the body beside it. In the sheet the answer takes the whole width. */
 function AnswerRow({ children }: { children: React.ReactNode }) {
+  const sheet = use(ChatVariant) === "sheet";
   return (
     <li className="flex min-w-0 items-start gap-3 md:max-w-[90%]">
-      <Spark />
+      {sheet ? null : <Spark />}
       <div className="flex min-w-0 flex-1 flex-col gap-3 pt-0.5 text-sm leading-relaxed">{children}</div>
     </li>
   );
@@ -85,29 +93,44 @@ function ToolAnswer({ tool }: { tool: ToolOutcome }) {
   );
 }
 
-/** The passages the assistant quoted, each as a card that opens the page it came from. The link re-checks permission. */
+/**
+ * The passages the assistant quoted, each as a card that opens the page it came from. The link
+ * re-checks permission. Folded under a count (AI Elements' Sources): open on the page, shut in the
+ * sheet, where they would push the next question off a phone's screen.
+ */
 function Sources({ turn }: { turn: Turn }) {
+  const t = useTranslations("assistant");
+  const sheet = use(ChatVariant) === "sheet";
   if (turn.citations.length === 0) return null;
   return (
-    <ol className="flex flex-col gap-2">
-      {turn.citations.map((citation, index) => (
-        <li key={citation.chunkId}>
-          <Link href={citationHref(citation)} className="block rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-            <Card size="sm" className="press gap-1.5 transition-colors hover:bg-canvas">
-              <div className="flex items-center gap-2 px-3 text-xs text-faint">
-                <BookOpenIcon aria-hidden className="size-3.5 shrink-0" />
-                <span className="font-mono tabular-nums">[{index + 1}]</span>
-                <span className="truncate">
-                  {citation.spaceName} › {citation.pageTitle}
-                </span>
-              </div>
-              {/* The section the passage was read from, set as a quotation. */}
-              {citation.headingPath.includes("›") ? <p className="mx-3 line-clamp-2 border-l-2 border-border pl-2.5 text-[0.8125rem] text-muted-foreground">{citation.headingPath.split("›").slice(1).join(" › ").trim()}</p> : null}
-            </Card>
-          </Link>
-        </li>
-      ))}
-    </ol>
+    <Collapsible defaultOpen={!sheet}>
+      <CollapsibleTrigger className="group/sources flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <BookOpenIcon aria-hidden className="size-3.5" />
+        {t("sources", { count: turn.citations.length })}
+        <ChevronDownIcon aria-hidden className="size-3.5 transition-transform group-data-[panel-open]/sources:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ol className="flex flex-col gap-2 pt-2">
+          {turn.citations.map((citation, index) => (
+            <li key={citation.chunkId}>
+              <Link href={citationHref(citation)} className="block rounded-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+                <Card size="sm" className="press gap-1.5 transition-colors hover:bg-canvas">
+                  <div className="flex items-center gap-2 px-3 text-xs text-faint">
+                    <BookOpenIcon aria-hidden className="size-3.5 shrink-0" />
+                    <span className="font-mono tabular-nums">[{index + 1}]</span>
+                    <span className="truncate">
+                      {citation.spaceName} › {citation.pageTitle}
+                    </span>
+                  </div>
+                  {/* The section the passage was read from, set as a quotation. */}
+                  {citation.headingPath.includes("›") ? <p className="mx-3 line-clamp-2 border-l-2 border-border pl-2.5 text-[0.8125rem] text-muted-foreground">{citation.headingPath.split("›").slice(1).join(" › ").trim()}</p> : null}
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -246,13 +269,13 @@ export function AssistantChat({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const threadRef = useRef<StickToBottomContext>(null);
   const asked = useRef("");
   // The same question, for the screen while it is being answered.
   const [asking, setAsking] = useState("");
   const [shown, setShown] = useState<Turn[]>(turns);
   const [conversation, setConversation] = useState(conversationId);
   const sheet = variant === "sheet";
-  const threadRef = useRef<HTMLDivElement>(null);
 
   const form = useActionForm(ask, {
     extra: { conversationId: conversation, locale, page },
@@ -270,29 +293,44 @@ export function AssistantChat({
     },
   });
 
-  // In the sheet the thread scrolls on its own: each new turn is brought into view.
-  useEffect(() => {
-    if (sheet) threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-  }, [sheet, shown.length, form.pending]);
-
   // The question is echoed from what was typed, so it has to be read before the form resets.
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     asked.current = inputRef.current?.value.trim() ?? "";
     setAsking(asked.current);
     form.onSubmit(event);
+    // The question has moved into the thread (the form was read above): the box is free for the next one.
+    // Safari on iOS repaints only part of the placeholder after a value set from code while the
+    // field has focus: a layer for one frame makes it draw the whole box again.
+    const box = inputRef.current;
+    if (box) {
+      box.value = "";
+      box.style.transform = "translateZ(0)";
+      requestAnimationFrame(() => {
+        box.style.transform = "";
+      });
+    }
+    // Asking brings the thread to its end, even when the reader had scrolled up to read.
+    void threadRef.current?.scrollToBottom();
   }
 
+  // A question that could not be sent goes back into the box, to send again.
+  useEffect(() => {
+    if (!form.pending && form.errorKey && inputRef.current && !inputRef.current.value) inputRef.current.value = asked.current;
+  }, [form.pending, form.errorKey]);
+
+  // A suggestion is asked as it is, as if typed and sent: no keyboard opens for it.
   const suggest = (suggestion: string) => {
-    if (!inputRef.current) return;
+    if (!inputRef.current || form.pending) return;
     inputRef.current.value = suggestion;
-    inputRef.current.focus();
+    formRef.current?.requestSubmit();
   };
 
+  // One line that scrolls sideways on a phone, so the empty sheet stays short; wrapped on a desk.
   const chips = (
-    <ul className="flex flex-wrap gap-2">
+    <ul className="flex gap-2 [scrollbar-width:none] max-sm:-mx-4 max-sm:overflow-x-auto max-sm:px-4 sm:flex-wrap [&::-webkit-scrollbar]:hidden">
       {suggestions.map((suggestion) => (
-        <li key={suggestion}>
-          <Button type="button" variant="outline" size="sm" onClick={() => suggest(suggestion)}>
+        <li key={suggestion} className="shrink-0">
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => suggest(suggestion)}>
             {suggestion}
           </Button>
         </li>
@@ -300,72 +338,71 @@ export function AssistantChat({
     </ul>
   );
 
-  return (
-    <div className={cn("flex min-w-0 flex-col", sheet ? "min-h-0 flex-1 gap-3" : "min-h-[60vh] gap-5")}>
-      {/* The padding keeps the thread's last line clear of the composer's fade when scrolled to the end.
-          In the sheet the thread scrolls by itself, above a composer that stays at the sheet's foot. */}
-      <div ref={threadRef} className={cn("flex min-w-0 flex-1 flex-col gap-5", sheet ? "min-h-0 overflow-y-auto overscroll-contain pb-2" : "pb-7")}>
-        {shown.length === 0 && !form.pending ? (
-          <div className={cn("flex flex-col gap-4", sheet ? "py-2" : "py-4 md:py-8")}>
-            <Spark />
-            <p className="max-w-prose text-sm text-muted-foreground">{t("emptyHint")}</p>
-            {chips}
-          </div>
-        ) : (
-          <>
-            <ol className="flex flex-col gap-5">
-              {shown.map((turn) => (
-                <Bubble key={turn.id} turn={turn} feedback={turn.role === "assistant"} />
-              ))}
-              {/* The question is on screen the moment it is sent, before any answer (NFR-AGT-01). */}
-              {form.pending && asking ? <Bubble turn={{ id: "pending", role: "user", body: asking, outcome: null, citations: [], tool: null }} feedback={false} /> : null}
-            </ol>
-            {/* The suggestions open an empty conversation only: once a question is asked they are gone. */}
-            {form.pending ? (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
-                <Spark />
-                <span className="animate-pulse">{t("thinking")}</span>
-              </div>
-            ) : null}
-          </>
-        )}
+  const thread =
+    shown.length === 0 && !form.pending ? (
+      <div className={cn("flex flex-col gap-4", sheet ? "py-2" : "py-4 md:py-8")}>
+        <Spark />
+        <p className="max-w-prose text-sm text-muted-foreground">{t("emptyHint")}</p>
+        {chips}
       </div>
+    ) : (
+      <>
+        <ol className="flex flex-col gap-5">
+          {shown.map((turn) => (
+            <Bubble key={turn.id} turn={turn} feedback={turn.role === "assistant"} />
+          ))}
+          {/* The question is on screen the moment it is sent, before any answer (NFR-AGT-01). */}
+          {form.pending && asking ? <Bubble turn={{ id: "pending", role: "user", body: asking, outcome: null, citations: [], tool: null }} feedback={false} /> : null}
+        </ol>
+        {/* The suggestions open an empty conversation only: once a question is asked they are gone. */}
+        {form.pending ? (
+          <div className="flex items-center gap-3 text-sm" role="status">
+            {sheet ? null : <Spark />}
+            <span className="shimmer">{t("thinking")}</span>
+          </div>
+        ) : null}
+      </>
+    );
 
-      {/* The composer, pinned under the thread: a floating box on a desk, a pill on a phone.
-          It sticks to the edge of `<main>`'s content, which that element's bottom padding already
-          holds off the screen's edge: on a phone the padding clears the tab bar, and half a rem
-          back into it sets the pill beside the quick-add button. */}
-      <form ref={formRef} onSubmit={onSubmit} className={cn("z-10 flex flex-col gap-2", sheet ? "shrink-0" : "sticky -bottom-2 mr-16 md:bottom-4 md:mr-0")}>
-        {/* The ground under the composer: the thread fades out as it reaches the box and is gone below it — down to the tab bar on a phone, to the edge of the page on a desk. */}
-        {sheet ? null : <div aria-hidden className="pointer-events-none absolute -top-12 -right-16 -bottom-6 left-0 -z-10 bg-[linear-gradient(to_top,var(--background)_calc(100%-3rem),transparent)] md:right-0 md:-bottom-16" />}
-        <label htmlFor={sheet ? "sheet-question" : "question"} className="sr-only">
-          {t("askLabel")}
-        </label>
-        <div className={cn("flex items-end gap-2 border border-border bg-background", sheet ? "rounded-[16px] px-2 py-1.5 pl-3" : "rounded-[24px] px-2 py-1.5 pl-4 shadow-[0_8px_24px_oklch(0_0_0/6%)] md:rounded-[16px] md:p-3 md:pl-4")}>
-          <textarea
-            ref={inputRef}
-            id={sheet ? "sheet-question" : "question"}
-            name="question"
-            required
-            rows={1}
-            maxLength={QUESTION_MAX}
-            placeholder={t("placeholder")}
-            enterKeyHint="send"
-            className={cn("max-h-40 min-h-[2.25rem] w-full flex-1 resize-none self-center bg-transparent py-2 text-base leading-5 md:text-sm outline-none [field-sizing:content] placeholder:text-faint", !sheet && "md:min-h-[3rem]")}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                formRef.current?.requestSubmit();
-              }
-            }}
-          />
-          <Button type="submit" size="icon" disabled={form.pending} aria-label={t("send")} className="rounded-full bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] md:bg-ink md:text-ink-foreground md:hover:bg-[color-mix(in_oklch,var(--ink),var(--background)_14%)] [&_svg]:text-current">
-            <ArrowUpIcon />
-          </Button>
+  // The composer (AI Elements' PromptInput): a box at the sheet's foot; on the page a floating box on
+  // a desk and a pill on a phone, stuck to the edge of `<main>`'s content — whose bottom padding
+  // holds it off the screen's edge, clear of the tab bar on a phone.
+  const composer = (
+    <PromptInput ref={formRef} onSubmit={onSubmit} className={cn("z-10 flex flex-col gap-2", sheet ? "shrink-0" : "sticky -bottom-2 md:bottom-4")}>
+      {/* The ground under the composer: the thread fades out as it reaches the box and is gone below it — down to the tab bar on a phone, to the edge of the page on a desk. */}
+      {sheet ? null : <div aria-hidden className="pointer-events-none absolute -top-12 right-0 -bottom-6 left-0 -z-10 bg-[linear-gradient(to_top,var(--background)_calc(100%-3rem),transparent)] md:-bottom-16" />}
+      <label htmlFor={sheet ? "sheet-question" : "question"} className="sr-only">
+        {t("askLabel")}
+      </label>
+      <PromptInputBody className={sheet ? undefined : "rounded-[24px] shadow-[0_8px_24px_oklch(0_0_0/6%)] md:rounded-[16px] md:p-1.5"}>
+        <PromptInputTextarea ref={inputRef} id={sheet ? "sheet-question" : "question"} name="question" required maxLength={QUESTION_MAX} placeholder={t("placeholder")} />
+        <PromptInputSubmit pending={form.pending} label={t("send")} className="bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] md:bg-ink md:text-ink-foreground md:hover:bg-[color-mix(in_oklch,var(--ink),var(--background)_14%)] [&_svg]:text-current" />
+      </PromptInputBody>
+      <FormError namespace="assistant.errors" errorKey={form.errorKey} />
+      {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrongAny")}</p>}
+    </PromptInput>
+  );
+
+  return (
+    <ChatVariant value={variant}>
+      {sheet ? (
+        // The sheet: the thread scrolls by itself and keeps to its newest message (AI Elements'
+        // Conversation), above a composer that stays at the sheet's foot.
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+          <Conversation contextRef={threadRef} className="-mx-4">
+            <ConversationContent className="px-4 pb-2">{thread}</ConversationContent>
+            <ConversationScrollButton label={t("scrollDown")} />
+          </Conversation>
+          {composer}
         </div>
-        <FormError namespace="assistant.errors" errorKey={form.errorKey} />
-        {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrongAny")}</p>}
-      </form>
-    </div>
+      ) : (
+        // The page: the thread is the page, and the page scrolls. The padding keeps its last line
+        // clear of the composer's fade when scrolled to the end.
+        <div className="flex min-h-[60vh] min-w-0 flex-col gap-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-5 pb-7">{thread}</div>
+          {composer}
+        </div>
+      )}
+    </ChatVariant>
   );
 }

@@ -42,7 +42,7 @@ export function AgentSheet() {
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent keepMounted className="flex h-[min(85dvh,calc(var(--visible-height,100dvh)-3rem))] flex-col gap-3 overflow-hidden sm:h-[min(46rem,calc(100dvh-4rem))] sm:max-w-xl">
-          <DialogTitle className="pr-8">{t("title")}</DialogTitle>
+          <DialogTitle className="pr-24 sm:pr-72">{t("title")}</DialogTitle>
           {started ? <SheetBody pathname={pathname} onClose={() => setOpen(false)} /> : null}
         </DialogContent>
       </Dialog>
