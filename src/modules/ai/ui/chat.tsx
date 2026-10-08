@@ -12,6 +12,7 @@ import { List, ListItem } from "@/components/ui/list";
 import { cn } from "cn";
 import { askAssistantAction } from "../actions";
 import { citationHref } from "../engine/answer";
+import { distinctCards } from "../engine/cards";
 import { type AgentCard, type AgentShown, type ChatTurn as Turn, type PageContext, QUESTION_MAX, type ToolOutcome } from "../enums";
 import { AnswerFeedback } from "./answer-feedback";
 import { AnswerMarkdown } from "./answer-markdown";
@@ -126,7 +127,7 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
   const shape = (params: Record<string, string | number>) =>
     Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : /^\d{4}-\d{2}-\d{2}$/u.test(value) ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : value]));
   // A card with no rows is shown only when it is the way forward: the step-up link, or a proposal.
-  const shown = cards.filter((card) => card.items.length > 0 || card.proposal || (card.tool === "step_up" && card.href));
+  const shown = distinctCards(cards).filter((card) => card.items.length > 0 || card.proposal || (card.tool === "step_up" && card.href));
   if (shown.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
