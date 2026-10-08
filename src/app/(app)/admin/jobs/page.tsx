@@ -11,7 +11,7 @@ import { listLatestRunPerJob, listRecentJobRuns } from "@/modules/platform/jobs/
 import { countFailedDeliveries, DELIVERY_CHANNELS } from "@/modules/platform/notifications/delivery-health";
 import { pageTitle } from "@/i18n/page-title";
 import vercel from "../../../../../vercel.json";
-import { ALL_JOBS, DEVELOPMENT_ONLY, schedulesOf } from "../../../api/cron/registry";
+import { ALL_JOBS, DEVELOPMENT_ONLY, everyMinutesOf, schedulesOf } from "../../../api/cron/registry";
 import { RunNowButton } from "./run-now-button";
 
 export const generateMetadata = pageTitle("scheduledJobs");
@@ -21,11 +21,12 @@ export const maxDuration = 300;
 
 // The schedule is Vercel's cron table: "<minute> <hour> * * *" in UTC, one line per schedule, the
 // schedule's name being the last segment of its path. Read here so the screen says when each job
-// runs next without a second copy of the timetable.
+// runs next without a second copy of the timetable. The every-few-minutes lines of `FREQUENT` jobs
+// are not daily and are left out: they are "every N minutes", not a next run.
 type Cron = { schedule: string; minute: number; hour: number };
 const CRONS: Cron[] = (vercel.crons ?? []).flatMap(({ path, schedule }) => {
   const [minute, hour, day, month, weekday] = schedule.split(/\s+/);
-  if (day !== "*" || month !== "*" || weekday !== "*") return [];
+  if (day !== "*" || month !== "*" || weekday !== "*" || !/^\d+$/.test(minute) || !/^\d+$/.test(hour)) return [];
   return [{ schedule: path.split("/").at(-1) ?? path, minute: Number(minute), hour: Number(hour) }];
 });
 
@@ -83,7 +84,9 @@ export default async function JobsPage() {
       const at = scheduleAt.get(schedule);
       return at ? [format.dateTime(at, { timeStyle: "short" })] : [];
     });
-    return times.length > 0 ? t("daily", { time: times.join(", ") }) : null;
+    if (times.length > 0) return t("daily", { time: times.join(", ") });
+    const minutes = everyMinutesOf(job);
+    return minutes ? t("everyMinutes", { minutes }) : null;
   };
 
   return (

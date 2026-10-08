@@ -12,6 +12,12 @@ export type JobDefinition = {
   name: string;
   /** Must be safe to run again: a retry or a second trigger on the same day changes nothing more. */
   run: (context: { today: IsoDate }) => Promise<Record<string, unknown>>;
+  /**
+   * For a job its cron calls every few minutes: whether there is anything to do now. When it says
+   * no, the cron answers "not_due" and records no run — a quiet tick leaves nothing in Admin → Jobs.
+   * "Run now" ignores it.
+   */
+  due?: () => Promise<boolean>;
 };
 
 export type JobRunRow = typeof schema.jobRun.$inferSelect;
@@ -97,7 +103,7 @@ export async function purgeJobRuns(now: Date = new Date()): Promise<number> {
  */
 export const SCHEDULE_BUDGET_SECONDS = 240;
 
-export type JobOutcome = { job: string; status: "succeeded" | "failed" | "already_running"; result: unknown; error: string | null };
+export type JobOutcome = { job: string; status: "succeeded" | "failed" | "already_running" | "not_due"; result: unknown; error: string | null };
 
 export type ScheduleProgress = {
   outcomes: JobOutcome[];

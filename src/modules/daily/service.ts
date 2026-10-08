@@ -27,8 +27,8 @@ export { getUtilisation, UTILISATION_WEEKS, type UtilisationGroup, type Utilisat
  */
 export { type LoggedGroup, type LoggedTotal, loggedMinutesByPersonWeek, loggedMinutesOfPerson, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 export { type BookingView, getToday, type TodayView } from "./today";
-/** The reminders' bookkeeping, for a reminder another module sends about a person's day back at work (leave cover, FR-PJM-44). */
-export { claimReminders } from "./reminders";
+/** The reminders' bookkeeping, for reminders other modules send about a person's day: back at work (leave cover, FR-PJM-44), the check-in (attendance). */
+export { claimReminders, remindedOn } from "./reminders";
 /** Time on one task, for the task's page: the totals the reader may see, their timer, the billable default. */
 export { getTaskTime, type TaskTime } from "./task-time";
 export { RECORD_DAYS, type WorkRecord, workRecordOf } from "./record";

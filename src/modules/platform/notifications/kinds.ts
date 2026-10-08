@@ -50,7 +50,7 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // Projects (Phase 10): a status update, a milestone coming due, a budget or quota running out,
   // a change request or acceptance to act on, a billing item for finance. Never a fee or an amount.
   projects: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
-  // The day (Phase 10): plan and report reminders, a lead's comment on a report, timesheets.
+  // The day (Phase 10): plan, report and check-in reminders, a lead's comment on a report, timesheets.
   // On the phone, not in the mailbox: a reminder by email tomorrow is no reminder.
   daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false, thirdParty: "full" },
   // CRM (Phase 11): a follow-up due, a lead or deal handed to you, a won deal to set up, a hand-off
@@ -239,6 +239,10 @@ export const KINDS = {
   // project and the item's title, nothing of what it costs.
   "projects.raid_assigned": "projects",
   // Phase 10 — the day.
+  // Five minutes after your working day starts and no check-in has come (attendance's
+  // checkin-reminders job): the start time, nothing else. In this category rather than
+  // "attendance", whose email is a digest — a check-in reminder in tomorrow's mail is no reminder.
+  "daily.checkin_reminder": "daily",
   "daily.plan_reminder": "daily",
   "daily.report_reminder": "daily",
   "daily.report_nudge": "daily",
