@@ -18,9 +18,17 @@ export { type CalendarCell, type CalendarPerson, getLeaveTakenByUnit, getTeamCal
 // ── For work management's leave cover (FR-PJM-44) ─────────────────────────────────────────
 // Pulled, not pushed: the work module reads leave; leave never imports work. Read-only.
 
-
 /** "live" = approved, or still waiting for a decision (pending or returned); "ended" = rejected, withdrawn or cancelled. */
-export type LeaveCoverFact = { id: string; personId: string; entityId: string | null; startDate: IsoDate; endDate: IsoDate; state: "approved" | "pending" | "ended"; /** Counted working days (half days as .5). */ workingDays: number; approvalRequestId: string | null };
+export type LeaveCoverFact = {
+  id: string;
+  personId: string;
+  entityId: string | null;
+  startDate: IsoDate;
+  endDate: IsoDate;
+  state: "approved" | "pending" | "ended";
+  /** Counted working days (half days as .5). */ workingDays: number;
+  approvalRequestId: string | null;
+};
 
 /**
  * Leave requests with their counted working days and where they stand — the approval engine's
@@ -41,7 +49,9 @@ export async function listLeaveForCover(filter: { endOnOrAfter?: IsoDate; person
       entityId: schema.leaveRequest.entityId,
       startDate: schema.leaveRequest.startDate,
       endDate: schema.leaveRequest.endDate,
-      state: sql<"approved" | "pending" | "ended">`case when ${schema.leaveRequest.status} = 'approved' then 'approved' when ${schema.leaveRequest.status} = 'pending' and coalesce(${schema.approvalRequest.status}::text, 'pending') in ('pending', 'returned') then 'pending' else 'ended' end`,
+      state: sql<
+        "approved" | "pending" | "ended"
+      >`case when ${schema.leaveRequest.status} = 'approved' then 'approved' when ${schema.leaveRequest.status} = 'pending' and coalesce(${schema.approvalRequest.status}::text, 'pending') in ('pending', 'returned') then 'pending' else 'ended' end`,
       workingCenti: sql<number>`coalesce((select sum(${schema.leaveRequestDay.amountCenti}) from ${schema.leaveRequestDay} where ${schema.leaveRequestDay.requestId} = ${schema.leaveRequest.id}), 0)::int`,
       approvalRequestId: schema.leaveRequest.approvalRequestId,
     })

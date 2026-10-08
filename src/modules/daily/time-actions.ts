@@ -43,9 +43,20 @@ const logTimePipeline = createAction({
   // One's own time, on a recent day (or in a returned week), on a task one may open.
   authorize: async (user, input) => (await withinTimeWindow(user.person.id, input.date, todayInVietnam())) && (await mayLogOn(user, input.taskId)),
   run: async ({ user, input }) => {
-    const entry = await logTime({ personId: user.person.id, date: input.date, taskId: input.taskId, category: input.category, minutes: input.minutes, note: input.note, billable: input.billable === "default" ? null : input.billable === "yes" });
+    const entry = await logTime({
+      personId: user.person.id,
+      date: input.date,
+      taskId: input.taskId,
+      category: input.category,
+      minutes: input.minutes,
+      note: input.note,
+      billable: input.billable === "default" ? null : input.billable === "yes",
+    });
     refresh();
-    return { data: { id: entry.id, billable: entry.billable }, audit: { resource: { type: "time_entry", id: entry.id }, summary: `${entry.date}: ${entry.minutes} min${entry.taskId ? ` on ${entry.taskId}` : ` (${entry.category})`}`, after: entry } };
+    return {
+      data: { id: entry.id, billable: entry.billable },
+      audit: { resource: { type: "time_entry", id: entry.id }, summary: `${entry.date}: ${entry.minutes} min${entry.taskId ? ` on ${entry.taskId}` : ` (${entry.category})`}`, after: entry },
+    };
   },
 });
 export async function logTimeAction(input: unknown) {
@@ -71,7 +82,11 @@ const updateTimePipeline = createAction({
   name: "daily.time.update",
   input: z.object({
     id: z.uuid(),
-    minutes: z.coerce.number().int().min(1).max(24 * 60),
+    minutes: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 60),
     note: optional(z.string().trim().max(500)),
     billable: z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean()),
   }),
@@ -80,7 +95,15 @@ const updateTimePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await updateTimeEntry(user.person.id, input.id, { minutes: input.minutes, note: input.note, billable: input.billable });
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "time_entry", id: after.id }, summary: `${after.date}: ${before.minutes} → ${after.minutes} min`, before: { minutes: before.minutes, note: before.note, billable: before.billable }, after: { minutes: after.minutes, note: after.note, billable: after.billable } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "time_entry", id: after.id },
+        summary: `${after.date}: ${before.minutes} → ${after.minutes} min`,
+        before: { minutes: before.minutes, note: before.note, billable: before.billable },
+        after: { minutes: after.minutes, note: after.note, billable: after.billable },
+      },
+    };
   },
 });
 export async function updateTimeEntryAction(input: unknown) {
@@ -98,12 +121,28 @@ const rowKey = z.string().transform((value, context) => {
 
 const setCellPipeline = createAction({
   name: "daily.time.cell",
-  input: z.object({ date: isoDate, row: rowKey, minutes: z.coerce.number().int().min(0).max(24 * 60) }),
+  input: z.object({
+    date: isoDate,
+    row: rowKey,
+    minutes: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 60),
+  }),
   authorize: async (user, input) => (await withinTimeWindow(user.person.id, input.date, todayInVietnam())) && (await mayLogOn(user, input.row.taskId)),
   run: async ({ user, input }) => {
     const result = await setCellMinutes(user.person.id, input.date, input.row, input.minutes);
     refresh();
-    return { data: result, audit: { resource: { type: "time_entry", id: result.changed[0] ?? null }, summary: `${input.date} ${input.row.taskId ?? input.row.category}: ${result.before} → ${result.after} min`, before: { minutes: result.before }, after: { minutes: result.after, entries: result.changed } } };
+    return {
+      data: result,
+      audit: {
+        resource: { type: "time_entry", id: result.changed[0] ?? null },
+        summary: `${input.date} ${input.row.taskId ?? input.row.category}: ${result.before} → ${result.after} min`,
+        before: { minutes: result.before },
+        after: { minutes: result.after, entries: result.changed },
+      },
+    };
   },
 });
 export async function setTimeCellAction(input: unknown) {
@@ -118,7 +157,14 @@ const setRowBillablePipeline = createAction({
   run: async ({ user, input }) => {
     const { changed } = await setRowBillable(user.person.id, input.weekStart, input.row, input.billable);
     refresh();
-    return { data: { changed }, audit: { resource: { type: "time_entry", id: null }, summary: `${input.weekStart} ${input.row.taskId ?? input.row.category}: billable ${input.billable ? "on" : "off"} (${changed} entries)`, after: { weekStart: input.weekStart, row: input.row, billable: input.billable, changed } } };
+    return {
+      data: { changed },
+      audit: {
+        resource: { type: "time_entry", id: null },
+        summary: `${input.weekStart} ${input.row.taskId ?? input.row.category}: billable ${input.billable ? "on" : "off"} (${changed} entries)`,
+        after: { weekStart: input.weekStart, row: input.row, billable: input.billable, changed },
+      },
+    };
   },
 });
 export async function setRowBillableAction(input: unknown) {
@@ -137,7 +183,12 @@ const startTimerPipeline = createAction({
     return {
       // The timer it replaced ran into a week submitted meanwhile: its minutes were not kept, and the person is told.
       data: { id: started.id, stopped: stopped && !stopped.deletedAt ? { id: stopped.id, minutes: stopped.minutes } : null, ...(stopped?.weekLocked ? { notice: "timer_week_locked" } : {}) },
-      audit: { resource: { type: "time_entry", id: started.id }, summary: `timer on ${input.taskId ?? input.category}${stopped ? `; stopped ${stopped.id} at ${stopped.minutes} min${stopped.weekLocked ? " (week locked, discarded)" : ""}` : ""}`, before: stopped ?? undefined, after: started },
+      audit: {
+        resource: { type: "time_entry", id: started.id },
+        summary: `timer on ${input.taskId ?? input.category}${stopped ? `; stopped ${stopped.id} at ${stopped.minutes} min${stopped.weekLocked ? " (week locked, discarded)" : ""}` : ""}`,
+        before: stopped ?? undefined,
+        after: started,
+      },
     };
   },
 });
@@ -154,7 +205,11 @@ const stopTimerPipeline = createAction({
     refresh();
     return {
       data: stopped ? { id: stopped.id, minutes: stopped.deletedAt ? 0 : stopped.minutes, capped: stopped.capped, ...(stopped.weekLocked ? { notice: "timer_week_locked" } : {}) } : null,
-      audit: { resource: { type: "time_entry", id: stopped?.id ?? null }, summary: stopped ? `timer stopped: ${stopped.weekLocked ? "week locked, discarded" : stopped.deletedAt ? "discarded" : `${stopped.minutes} min${stopped.capped ? " (capped)" : ""}`}` : "no timer", after: stopped ?? undefined },
+      audit: {
+        resource: { type: "time_entry", id: stopped?.id ?? null },
+        summary: stopped ? `timer stopped: ${stopped.weekLocked ? "week locked, discarded" : stopped.deletedAt ? "discarded" : `${stopped.minutes} min${stopped.capped ? " (capped)" : ""}`}` : "no timer",
+        after: stopped ?? undefined,
+      },
     };
   },
 });
@@ -173,7 +228,15 @@ const submitWeekPipeline = createAction({
     const { before, after } = await submitWeek(user.person.id, input.weekStart, todayInVietnam());
     refresh();
     revalidatePath("/daily/timesheets", "layout");
-    return { data: { id: after.id }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: submitted, ${after.minutes} min`, before: before ? { status: before.status } : undefined, after: { status: after.status, minutes: after.minutes } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "timesheet_week", id: after.id },
+        summary: `${after.weekStart}: submitted, ${after.minutes} min`,
+        before: before ? { status: before.status } : undefined,
+        after: { status: after.status, minutes: after.minutes },
+      },
+    };
   },
 });
 export async function submitWeekAction(input: unknown) {
@@ -189,7 +252,10 @@ const recallWeekPipeline = createAction({
     const { before, after } = await recallWeek(user.person.id, input.weekStart);
     refresh();
     revalidatePath("/daily/timesheets", "layout");
-    return { data: { id: after.id }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: recalled`, before: { status: before.status, submittedAt: before.submittedAt }, after: { status: after.status } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: recalled`, before: { status: before.status, submittedAt: before.submittedAt }, after: { status: after.status } },
+    };
   },
 });
 export async function recallWeekAction(input: unknown) {
@@ -218,7 +284,10 @@ const decidePipeline = createAction({
     const reader = await loadReportReader(user.person.id);
     const { before, after } = await decideWeek(reader, input.id, input.decision === "approve" ? { type: "approve" } : { type: "return", comment: input.comment });
     refreshDecided(after.personId);
-    return { data: { id: after.id, status: after.status }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: ${after.status}`, before: { status: before.status }, after: { status: after.status, comment: after.comment } } };
+    return {
+      data: { id: after.id, status: after.status },
+      audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: ${after.status}`, before: { status: before.status }, after: { status: after.status, comment: after.comment } },
+    };
   },
 });
 export async function decideWeekAction(input: unknown) {
@@ -255,7 +324,15 @@ const reopenPipeline = createAction({
     const reader = await loadReportReader(user.person.id);
     const { before, after } = await decideWeek(reader, input.id, { type: "reopen", reason: input.reason });
     refreshDecided(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "timesheet_week", id: after.id }, summary: `${after.weekStart}: reopened — ${input.reason}`, before: { status: before.status, decidedBy: before.decidedByPersonId }, after: { status: after.status, reason: input.reason } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "timesheet_week", id: after.id },
+        summary: `${after.weekStart}: reopened — ${input.reason}`,
+        before: { status: before.status, decidedBy: before.decidedByPersonId },
+        after: { status: after.status, reason: input.reason },
+      },
+    };
   },
 });
 export async function reopenWeekAction(input: unknown) {
@@ -278,7 +355,8 @@ const exportUtilisationPipeline = createAction({
     const rows: ExportRow[] = [];
     for (const group of view.groups) {
       const name = group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name;
-      if (group.kind === "team" || group.kind === "reports" || group.kind === "company") for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
+      if (group.kind === "team" || group.kind === "reports" || group.kind === "company")
+        for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
       view.weeks.forEach((week, index) => rows.push({ group: name, person: t("teamTotal"), week, cell: group.total[index] }));
     }
     const kept = rows.slice(0, EXPORT_ROW_LIMIT);
@@ -296,7 +374,14 @@ const exportUtilisationPipeline = createAction({
       kept,
     );
     const file: ExportFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}`, table, rowCount: kept.length, truncated: rows.length > kept.length };
-    return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
+    return {
+      data: file,
+      audit: {
+        resource: { type: "export:daily_utilisation" },
+        summary: `${file.rowCount} rows`,
+        after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount },
+      },
+    };
   },
 });
 export async function exportUtilisationAction(input: unknown) {

@@ -25,7 +25,14 @@ export type TaskLineView = { current: string | null; options: TaskLineOption[]; 
 export async function taskLineOptions(projectId: string, taskId: string, today: IsoDate = todayInVietnam()): Promise<{ current: string | null; options: TaskLineOption[] }> {
   const [lines, [link]] = await Promise.all([
     db()
-      .select({ id: schema.projectDeliverable.id, title: schema.projectDeliverable.title, quantity: schema.projectDeliverable.quantity, cancelledAt: schema.projectDeliverable.cancelledAt, month: schema.projectRetainerPeriod.month, periodStatus: schema.projectRetainerPeriod.status })
+      .select({
+        id: schema.projectDeliverable.id,
+        title: schema.projectDeliverable.title,
+        quantity: schema.projectDeliverable.quantity,
+        cancelledAt: schema.projectDeliverable.cancelledAt,
+        month: schema.projectRetainerPeriod.month,
+        periodStatus: schema.projectRetainerPeriod.status,
+      })
       .from(schema.projectDeliverable)
       .leftJoin(schema.projectRetainerPeriod, eq(schema.projectRetainerPeriod.id, schema.projectDeliverable.retainerPeriodId))
       .where(eq(schema.projectDeliverable.projectId, projectId))

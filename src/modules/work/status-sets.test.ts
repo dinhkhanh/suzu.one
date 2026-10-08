@@ -26,7 +26,11 @@ import { createTeam, listStates, updateTeam } from "./teams";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "lead" | "team", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const teamValues = (key: string) => ({ key, name: key, description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team" as const, isActive: true });
 const projectRow = async (projectId: string) => (await db().select().from(schema.workProject).where(eq(schema.workProject.id, projectId)))[0];
 const newProject = (name: string, status = "active") => createProject({ teamId: ids.team, name, description: null, clientId: null, status, visibility: "team", leadPersonId: null, startDate: null, dueDate: null }, ids.lead);
@@ -45,16 +49,52 @@ beforeAll(async () => {
 
 describe("task workflows", () => {
   it("start a new team as a copy, which the library can change or lose without touching the team", async () => {
-    const { after: set } = await saveStateSet(null, { name: "Video", description: null, ownerTeamId: null, isActive: true, states: [{ name: "Brief", category: "todo" }, { name: " ", category: "todo" }, { name: "Edit", category: "in_progress" }, { name: "Delivered", category: "done" }] }, ids.lead);
+    const { after: set } = await saveStateSet(
+      null,
+      {
+        name: "Video",
+        description: null,
+        ownerTeamId: null,
+        isActive: true,
+        states: [
+          { name: "Brief", category: "todo" },
+          { name: " ", category: "todo" },
+          { name: "Edit", category: "in_progress" },
+          { name: "Delivered", category: "done" },
+        ],
+      },
+      ids.lead,
+    );
     expect(set.states.map((state) => state.name)).toEqual(["Brief", "Edit", "Delivered"]);
     const team = await createTeam(teamValues("VDO"), startingStates(set, {}), ids.lead);
-    await saveStateSet(set.id, { name: "Video", description: null, ownerTeamId: null, isActive: true, states: [{ name: "Brief", category: "todo" }, { name: "Done", category: "done" }] }, ids.lead);
+    await saveStateSet(
+      set.id,
+      {
+        name: "Video",
+        description: null,
+        ownerTeamId: null,
+        isActive: true,
+        states: [
+          { name: "Brief", category: "todo" },
+          { name: "Done", category: "done" },
+        ],
+      },
+      ids.lead,
+    );
     await deleteStateSet(set.id);
-    expect((await listStates([team.id])).map((state) => [state.name, state.category])).toEqual([["Brief", "todo"], ["Edit", "in_progress"], ["Delivered", "done"]]);
+    expect((await listStates([team.id])).map((state) => [state.name, state.category])).toEqual([
+      ["Brief", "todo"],
+      ["Edit", "in_progress"],
+      ["Delivered", "done"],
+    ]);
   });
 
   it("fall back to one state per category, named by the caller", () => {
-    expect(startingStates(null, { todo: "Cần làm" }).slice(0, 3)).toEqual([{ name: "backlog", category: "backlog" }, { name: "Cần làm", category: "todo" }, { name: "in_progress", category: "in_progress" }]);
+    expect(startingStates(null, { todo: "Cần làm" }).slice(0, 3)).toEqual([
+      { name: "backlog", category: "backlog" },
+      { name: "Cần làm", category: "todo" },
+      { name: "in_progress", category: "in_progress" },
+    ]);
   });
 
   it("need somewhere to start and somewhere to end", async () => {
@@ -78,7 +118,22 @@ describe("project status sets", () => {
   });
 
   it("name each project's status once the team picks a set, and keep the category in step both ways", async () => {
-    const { after: set } = await saveProjectStatusSet(null, { name: "Client work", description: null, ownerTeamId: null, isActive: true, statuses: [{ id: null, name: "Pitching", category: "planned", isActive: true }, { id: null, name: "Shooting", category: "active", isActive: true }, { id: null, name: "Editing", category: "active", isActive: true }, { id: null, name: "Delivered", category: "done", isActive: true }] }, ids.lead);
+    const { after: set } = await saveProjectStatusSet(
+      null,
+      {
+        name: "Client work",
+        description: null,
+        ownerTeamId: null,
+        isActive: true,
+        statuses: [
+          { id: null, name: "Pitching", category: "planned", isActive: true },
+          { id: null, name: "Shooting", category: "active", isActive: true },
+          { id: null, name: "Editing", category: "active", isActive: true },
+          { id: null, name: "Delivered", category: "done", isActive: true },
+        ],
+      },
+      ids.lead,
+    );
     const [pitching, shooting, editing, delivered] = set.statuses;
     const before = await newProject("Before the set");
     await updateTeam(ids.team, { name: "VID", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true, projectStatusSetId: set.id });
@@ -111,9 +166,23 @@ describe("project status sets", () => {
     const shooting = keep.find((status) => status.name === "Shooting")!;
 
     expect(await fails(saveProjectStatusSet(set, { name: "Client work", description: null, ownerTeamId: null, isActive: true, statuses: keep.filter((status) => status.id !== shooting.id) }, ids.lead))).toBe("project_status_in_use");
-    expect(await fails(saveProjectStatusSet(set, { name: "Client work", description: null, ownerTeamId: null, isActive: true, statuses: keep.map((status) => (status.id === shooting.id ? { ...status, category: "paused" as const } : status)) }, ids.lead))).toBe("project_status_in_use");
+    expect(
+      await fails(
+        saveProjectStatusSet(set, { name: "Client work", description: null, ownerTeamId: null, isActive: true, statuses: keep.map((status) => (status.id === shooting.id ? { ...status, category: "paused" as const } : status)) }, ids.lead),
+      ),
+    ).toBe("project_status_in_use");
 
-    const { after } = await saveProjectStatusSet(set, { name: "Client work", description: null, ownerTeamId: null, isActive: true, statuses: [...keep.map((status) => (status.id === shooting.id ? { ...status, name: "On set", isActive: false } : status)), { id: null, name: "On hold", category: "paused", isActive: true }] }, ids.lead);
+    const { after } = await saveProjectStatusSet(
+      set,
+      {
+        name: "Client work",
+        description: null,
+        ownerTeamId: null,
+        isActive: true,
+        statuses: [...keep.map((status) => (status.id === shooting.id ? { ...status, name: "On set", isActive: false } : status)), { id: null, name: "On hold", category: "paused", isActive: true }],
+      },
+      ids.lead,
+    );
     expect(after.statuses.map((status) => status.name)).toEqual(["Pitching", "On set", "Editing", "Delivered", "On hold"]);
     // A retired status is still the project's own in its form, and offered to nobody else.
     const inShooting = (await db().select().from(schema.workProject).where(eq(schema.workProject.statusId, shooting.id)))[0];

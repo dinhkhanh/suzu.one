@@ -17,11 +17,7 @@ export default async function EditOpeningPage({ params }: PageProps<"/recruit/[o
   if (!view?.canEdit) notFound();
 
   const t = await getTranslations("recruit");
-  const [pipelines, entities, departments] = await Promise.all([
-    listPipelines(),
-    listEntities(),
-    listOrgUnits().then((units) => units.map((unit) => ({ id: unit.id, name: unit.name }))),
-  ]);
+  const [pipelines, entities, departments] = await Promise.all([listPipelines(), listEntities(), listOrgUnits().then((units) => units.map((unit) => ({ id: unit.id, name: unit.name })))]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

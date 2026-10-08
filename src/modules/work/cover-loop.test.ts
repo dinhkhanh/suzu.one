@@ -34,15 +34,24 @@ import { createTeam, setTeamMember } from "./teams";
 
 type Key = "long" | "lan" | "bao" | "huy" | "mai" | "tam" | "vy";
 const ids = {} as Record<Key | "szm" | "video" | "project" | "leaveType", string>;
-const noticesOf = async (key: Key, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = async (key: Key, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 const TODAY = todayInVietnam();
 
 /** A leave request with a full day on each of its dates — weekends too, when the range holds any. */
 async function leave(key: Key, start: string, end: string, status: "approved" | "pending" | "withdrawn") {
   const days: string[] = [];
   for (let date = start; date <= end; date = addDays(date, 1)) days.push(date);
-  const [request] = await db().insert(schema.leaveRequest).values({ personId: ids[key], entityId: ids.szm, leaveTypeId: ids.leaveType, startDate: start, endDate: end, totalCenti: days.length * 100, status }).returning();
-  await db().insert(schema.leaveRequestDay).values(days.map((date) => ({ requestId: request.id, personId: ids[key], date, portion: "full" as const, amountCenti: 100 })));
+  const [request] = await db()
+    .insert(schema.leaveRequest)
+    .values({ personId: ids[key], entityId: ids.szm, leaveTypeId: ids.leaveType, startDate: start, endDate: end, totalCenti: days.length * 100, status })
+    .returning();
+  await db()
+    .insert(schema.leaveRequestDay)
+    .values(days.map((date) => ({ requestId: request.id, personId: ids[key], date, portion: "full" as const, amountCenti: 100 })));
   return request.id;
 }
 const task = async (title: string, assignee: Key, dueDate: string) => (await createWorkTask({ teamId: ids.video, projectId: ids.project, title, assigneePersonId: ids[assignee], dueDate }, ids.long)).task;
@@ -52,7 +61,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "lan", "bao", "huy", "mai", "tam", "vy"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
@@ -128,14 +140,19 @@ describe("back from leave", () => {
   beforeAll(async () => {
     const held = await task("Việc Bảo đang giữ", "bao", "2026-09-16");
     const returned = await task("Việc đã trả", "tam", "2026-09-17");
-    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.tam, leaveRequestId: randomUUID(), fromDate: "2026-09-14", toDate: "2026-09-18", status: "submitted", defaultCoverPersonId: ids.bao, appliedAt: new Date("2026-09-14T00:05:00+07:00") }).returning();
+    const [plan] = await db()
+      .insert(schema.workCoverPlan)
+      .values({ personId: ids.tam, leaveRequestId: randomUUID(), fromDate: "2026-09-14", toDate: "2026-09-18", status: "submitted", defaultCoverPersonId: ids.bao, appliedAt: new Date("2026-09-14T00:05:00+07:00") })
+      .returning();
     planId = plan.id;
-    await db().insert(schema.workCoverItem).values([
-      { planId, itemType: "task", itemId: held.id },
-      { planId, itemType: "task", itemId: returned.id, handedBackAt: new Date("2026-09-18T17:00:00+07:00") },
-      // A booking never moved: it is not something to hand back.
-      { planId, itemType: "booking", itemId: randomUUID() },
-    ]);
+    await db()
+      .insert(schema.workCoverItem)
+      .values([
+        { planId, itemType: "task", itemId: held.id },
+        { planId, itemType: "task", itemId: returned.id, handedBackAt: new Date("2026-09-18T17:00:00+07:00") },
+        // A booking never moved: it is not something to hand back.
+        { planId, itemType: "booking", itemId: randomUUID() },
+      ]);
   });
 
   it("says nothing while the leave runs, nor on the weekend after it", async () => {
@@ -156,7 +173,10 @@ describe("back from leave", () => {
   it("waits for someone whose leave runs on: the reminder comes the day they are back, and stops once the work is handed back", async () => {
     // Vy's cover plan ended on Friday the 18th too, but she is on leave again on Monday the 21st.
     const held = await task("Việc của Vy", "bao", "2026-09-16");
-    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.vy, leaveRequestId: randomUUID(), fromDate: "2026-09-14", toDate: "2026-09-18", status: "submitted", defaultCoverPersonId: null, appliedAt: new Date("2026-09-14T00:05:00+07:00") }).returning();
+    const [plan] = await db()
+      .insert(schema.workCoverPlan)
+      .values({ personId: ids.vy, leaveRequestId: randomUUID(), fromDate: "2026-09-14", toDate: "2026-09-18", status: "submitted", defaultCoverPersonId: null, appliedAt: new Date("2026-09-14T00:05:00+07:00") })
+      .returning();
     const [item] = await db().insert(schema.workCoverItem).values({ planId: plan.id, itemType: "task", itemId: held.id, coverPersonId: ids.bao }).returning();
     await leave("vy", "2026-09-21", "2026-09-21", "approved");
     await sendCoverReturnReminders("2026-09-21");

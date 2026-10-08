@@ -79,10 +79,7 @@ export async function POST(request: Request, context: RouteContext<"/preview/[to
     return typeof value === "string" ? value : "";
   };
 
-  const result = await decideOnPreviewLink(
-    { token, website: text("website"), version: text("version"), decision: text("decision"), decidedByName: text("decidedByName"), comment: text("comment") },
-    visitorOf(request),
-  );
+  const result = await decideOnPreviewLink({ token, website: text("website"), version: text("version"), decision: text("decision"), decidedByName: text("decidedByName"), comment: text("comment") }, visitorOf(request));
 
   // The link is spent, so the page it goes back to is the closed one; `sent` is what turns its
   // sentence into a thank-you. Nothing of the decision travels in the URL.

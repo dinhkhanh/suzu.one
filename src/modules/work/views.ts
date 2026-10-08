@@ -32,7 +32,10 @@ function invalidateViews(...views: SavedViewRow[]): Promise<void> {
 /** The viewer's own views of a list, and the shared ones. The caller has checked they may open the list. */
 export async function listSavedViews(scope: SavedViewScope, personId: string): Promise<SavedViewRow[]> {
   const read = (where: ReturnType<typeof eq>) => db().select().from(schema.workSavedView).where(where).orderBy(asc(schema.workSavedView.name), asc(schema.workSavedView.id));
-  const [own, shared] = await Promise.all([cached(ownViewsKey(personId), TTL.personal, () => read(eq(schema.workSavedView.ownerPersonId, personId))), cached(SHARED_VIEWS_KEY, TTL.personal, () => read(eq(schema.workSavedView.isShared, true)))]);
+  const [own, shared] = await Promise.all([
+    cached(ownViewsKey(personId), TTL.personal, () => read(eq(schema.workSavedView.ownerPersonId, personId))),
+    cached(SHARED_VIEWS_KEY, TTL.personal, () => read(eq(schema.workSavedView.isShared, true))),
+  ]);
   const wanted = inList(scope);
   const seen = new Set<string>();
   return [...own, ...shared].filter((view) => wanted(view) && !seen.has(view.id) && !!seen.add(view.id)).sort(byName);
@@ -46,9 +49,15 @@ export async function findSavedView(viewId: string): Promise<SavedViewRow | unde
 /** `teamId` is the list's team — the project's own for a project's view; `projectId` null is the team's backlog. */
 export async function createSavedView(input: { teamId: string; projectId: string | null; name: string; filters: SavedViewFilters; isShared: boolean }, ownerPersonId: string): Promise<SavedViewRow> {
   const scope: SavedViewScope = input.projectId ? { projectId: input.projectId } : { teamId: input.teamId };
-  const mine = await db().select({ id: schema.workSavedView.id }).from(schema.workSavedView).where(and(inScope(scope), eq(schema.workSavedView.ownerPersonId, ownerPersonId)));
+  const mine = await db()
+    .select({ id: schema.workSavedView.id })
+    .from(schema.workSavedView)
+    .where(and(inScope(scope), eq(schema.workSavedView.ownerPersonId, ownerPersonId)));
   if (mine.length >= MAX_VIEWS_PER_LIST) throw new ActionError("view_limit");
-  const [row] = await db().insert(schema.workSavedView).values({ ...input, ownerPersonId }).returning();
+  const [row] = await db()
+    .insert(schema.workSavedView)
+    .values({ ...input, ownerPersonId })
+    .returning();
   await invalidateViews(row);
   return row;
 }

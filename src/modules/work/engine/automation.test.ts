@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { AutomationAction } from "../schema";
-import { addWorkingDays, automationsMayRun, changedFields, conditionHolds, conditionsHold, matchesTrigger, officeDayOff, type PlanFacts, planActions, presetRule, ruleCovers, type RuleContext, ruleProblem, runOutcome, type TaskSnapshot } from "./automation";
+import {
+  addWorkingDays,
+  automationsMayRun,
+  changedFields,
+  conditionHolds,
+  conditionsHold,
+  matchesTrigger,
+  officeDayOff,
+  type PlanFacts,
+  planActions,
+  presetRule,
+  ruleCovers,
+  type RuleContext,
+  ruleProblem,
+  runOutcome,
+  type TaskSnapshot,
+} from "./automation";
 
 const task: TaskSnapshot = { priority: 2, assigneePersonId: "huy", labelIds: ["urgent"], channel: "tiktok", contentFormat: null, customValues: { f1: "gold", f2: ["a", "b"], f3: false } };
 // 2026-09-02 (Wednesday) is National Day's second day off in this calendar.
@@ -31,7 +47,9 @@ describe("triggers", () => {
   });
 
   it("read the fields a change touched from its activity", () => {
-    expect(changedFields([{ type: "field_changed", field: "state" }, { type: "field_changed", field: "assignee" }, { type: "label_added" }, { type: "label_removed" }, { type: "custom_field_changed", field: "f1" }, { type: "person_added" }])).toEqual(["state", "assignee", "label", "cf.f1"]);
+    expect(
+      changedFields([{ type: "field_changed", field: "state" }, { type: "field_changed", field: "assignee" }, { type: "label_added" }, { type: "label_removed" }, { type: "custom_field_changed", field: "f1" }, { type: "person_added" }]),
+    ).toEqual(["state", "assignee", "label", "cf.f1"]);
   });
 
   it("cover their team, and only their project when they name one", () => {
@@ -67,8 +85,24 @@ describe("conditions", () => {
   });
 
   it("must all hold; a task-less event passes only a rule without conditions", () => {
-    expect(conditionsHold([{ field: "priority", op: "eq", value: 2 }, { field: "channel", op: "eq", value: "tiktok" }], task)).toBe(true);
-    expect(conditionsHold([{ field: "priority", op: "eq", value: 2 }, { field: "channel", op: "eq", value: "youtube" }], task)).toBe(false);
+    expect(
+      conditionsHold(
+        [
+          { field: "priority", op: "eq", value: 2 },
+          { field: "channel", op: "eq", value: "tiktok" },
+        ],
+        task,
+      ),
+    ).toBe(true);
+    expect(
+      conditionsHold(
+        [
+          { field: "priority", op: "eq", value: 2 },
+          { field: "channel", op: "eq", value: "youtube" },
+        ],
+        task,
+      ),
+    ).toBe(false);
     expect(conditionsHold([], null)).toBe(true);
     expect(conditionsHold([{ field: "priority", op: "set" }], null)).toBe(false);
   });
@@ -138,13 +172,33 @@ describe("planning the actions", () => {
   });
 
   it("does not reassign a task its sender just handed on to someone they chose", () => {
-    const plan = planActions([{ type: "assign", personId: "tam" }, { type: "set_due", days: 1 }], facts({}, { handedOff: true }));
-    expect(plan).toEqual([{ type: "skip", action: "assign", reason: "handed_off" }, { type: "set_due", dueDate: "2026-09-21" }]);
+    const plan = planActions(
+      [
+        { type: "assign", personId: "tam" },
+        { type: "set_due", days: 1 },
+      ],
+      facts({}, { handedOff: true }),
+    );
+    expect(plan).toEqual([
+      { type: "skip", action: "assign", reason: "handed_off" },
+      { type: "set_due", dueDate: "2026-09-21" },
+    ]);
   });
 
   it("on a project event without a task, only notices and new tasks", () => {
-    const plan = planActions([{ type: "move_state", stateId: "x" }, { type: "notify", to: "role:lead", text: "80% quota" }, { type: "create_task", templateId: "tpl" }], facts({}, { task: null }));
-    expect(plan).toEqual([{ type: "skip", action: "move_state", reason: "no_task" }, { type: "notify", recipients: ["long", "tam"], text: "80% quota" }, { type: "create_task", templateId: "tpl" }]);
+    const plan = planActions(
+      [
+        { type: "move_state", stateId: "x" },
+        { type: "notify", to: "role:lead", text: "80% quota" },
+        { type: "create_task", templateId: "tpl" },
+      ],
+      facts({}, { task: null }),
+    );
+    expect(plan).toEqual([
+      { type: "skip", action: "move_state", reason: "no_task" },
+      { type: "notify", recipients: ["long", "tam"], text: "80% quota" },
+      { type: "create_task", templateId: "tpl" },
+    ]);
   });
 
   it("sums a run up: failed beats done, all skipped is skipped", () => {
@@ -190,7 +244,15 @@ describe("starter rules", () => {
 
   it("fit the team's workflow", () => {
     expect(presetRule("client_review_due", states, texts)).toEqual({ name: "Rule", trigger: { type: "state_entered", stateId: "client" }, conditions: [], actions: [{ type: "set_due", days: 2 }] });
-    expect(presetRule("client_changes_reopen", states, texts)).toEqual({ name: "Rule", trigger: { type: "client_decision", decision: "changes_required" }, conditions: [], actions: [{ type: "move_state", stateId: "edit" }, { type: "notify", to: "role:assignee", text: "Text" }] });
+    expect(presetRule("client_changes_reopen", states, texts)).toEqual({
+      name: "Rule",
+      trigger: { type: "client_decision", decision: "changes_required" },
+      conditions: [],
+      actions: [
+        { type: "move_state", stateId: "edit" },
+        { type: "notify", to: "role:assignee", text: "Text" },
+      ],
+    });
     expect(presetRule("overdue_notify_lead", states, texts)).toEqual({ name: "Rule", trigger: { type: "due_date_reached", days: 1 }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "Text" }] });
   });
 

@@ -22,11 +22,20 @@ export async function listPageFiles(pageId: string): Promise<PageFileView[]> {
 }
 
 /** Page files carry no personal data by themselves: the KB policy, not a sensitivity tier, decides who opens them. */
-export const beginPageUpload = (loaded: LoadedPage, file: { fileName: string; sizeBytes: number }, actor: Actor) => beginUpload({ ownerType: PAGE_FILE_OWNER, ownerId: loaded.page.id, entityId: loaded.space.entityId, tier: "public_internal" }, file, actor);
+export const beginPageUpload = (loaded: LoadedPage, file: { fileName: string; sizeBytes: number }, actor: Actor) =>
+  beginUpload({ ownerType: PAGE_FILE_OWNER, ownerId: loaded.page.id, entityId: loaded.space.entityId, tier: "public_internal" }, file, actor);
 
 /** A page file with its page; `pending` looks at an upload that is still to be confirmed. */
 export async function findPageFile(fileId: string, options: { pending?: boolean } = {}): Promise<{ file: StoredFileRow; loaded: LoadedPage } | undefined> {
-  const file = options.pending ? (await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending"))).limit(1))[0] : await findFile(fileId);
+  const file = options.pending
+    ? (
+        await db()
+          .select()
+          .from(schema.storedFile)
+          .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending")))
+          .limit(1)
+      )[0]
+    : await findFile(fileId);
   if (!file || file.ownerType !== PAGE_FILE_OWNER) return undefined;
   const loaded = await loadPage(file.ownerId);
   return loaded ? { file, loaded } : undefined;
@@ -104,5 +113,15 @@ export async function listSpaceFiles(viewer: KbViewer, spaceId: string): Promise
       ),
     )
     .orderBy(desc(schema.storedFile.createdAt));
-  return rows.map(({ file, pageId, pageTitle, uploadedByName }) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType, createdAt: file.createdAt, pageId, pageTitle, uploadedByPersonId: file.uploadedByPersonId, uploadedByName }));
+  return rows.map(({ file, pageId, pageTitle, uploadedByName }) => ({
+    id: file.id,
+    fileName: file.fileName,
+    sizeBytes: file.sizeBytes,
+    contentType: file.contentType,
+    createdAt: file.createdAt,
+    pageId,
+    pageTitle,
+    uploadedByPersonId: file.uploadedByPersonId,
+    uploadedByName,
+  }));
 }

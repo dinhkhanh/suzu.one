@@ -54,7 +54,11 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
             ← {file.canManage ? t("salaries.title") : t("title")}
           </Link>
         }
-        title={<RecordLink kind="person" id={personId}>{file.person.fullName}</RecordLink>}
+        title={
+          <RecordLink kind="person" id={personId}>
+            {file.person.fullName}
+          </RecordLink>
+        }
         description={<span className="font-mono text-xs tabular-nums">{file.person.employeeCode}</span>}
       />
 
@@ -82,7 +86,9 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                     {day(profile.validFrom)} → {profile.validTo ? day(profile.validTo) : t("salaries.open")}
                   </TableCell>
                   <TableCell className="max-w-64 whitespace-normal">
-                    <Badge dot variant={statusTone(profile.status)}>{t(`rules.status.${profile.status}`)}</Badge>
+                    <Badge dot variant={statusTone(profile.status)}>
+                      {t(`rules.status.${profile.status}`)}
+                    </Badge>
                     {profile.status === "voided" ? <span className="mt-0.5 block text-xs text-muted-foreground">{t("rules.voided.because", { reason: profile.voidReason ?? "—" })}</span> : null}
                   </TableCell>
                   {anyProfileVoidable ? (
@@ -157,7 +163,9 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                     {day(structure.validFrom)} → {structure.validTo ? day(structure.validTo) : t("salaries.open")}
                   </span>
                   <Badge variant="outline">{t(`salaries.reasons.${structure.reason}`)}</Badge>
-                  <Badge dot variant={statusTone("voided")}>{t("rules.status.voided")}</Badge>
+                  <Badge dot variant={statusTone("voided")}>
+                    {t("rules.status.voided")}
+                  </Badge>
                   <span className="font-mono text-[0.8125rem] tabular-nums text-muted-foreground">{formatVnd(structure.terms.baseSalary)}</span>
                 </span>
                 <span className="text-sm text-muted-foreground">{t("rules.voided.because", { reason: structure.voidReason ?? "—" })}</span>
@@ -187,7 +195,9 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(request.status)}>{t(`salaries.requestStatus.${request.status}` as "salaries.requestStatus.pending")}</Badge>
+                      <Badge dot variant={statusTone(request.status)}>
+                        {t(`salaries.requestStatus.${request.status}` as "salaries.requestStatus.pending")}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

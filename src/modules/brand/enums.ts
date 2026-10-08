@@ -43,7 +43,22 @@ export const MAX_BRAND_RULES = 30;
 /** The most files one kit holds. */
 export const MAX_BRAND_ASSETS = 200;
 
-export const BRAND_LIMITS = { name: 80, slug: 60, tagline: 160, description: 4000, url: 300, email: 200, sectionTitle: 120, sectionBody: 20000, ruleText: 600, assetTitle: 150, colorName: 40, colorNote: 80, fontName: 60, fontUsage: 120 } as const;
+export const BRAND_LIMITS = {
+  name: 80,
+  slug: 60,
+  tagline: 160,
+  description: 4000,
+  url: 300,
+  email: 200,
+  sectionTitle: 120,
+  sectionBody: 20000,
+  ruleText: 600,
+  assetTitle: 150,
+  colorName: 40,
+  colorNote: 80,
+  fontName: 60,
+  fontUsage: 120,
+} as const;
 
 /** Extensions a picture of the file can be shown from on a page (through `<img>`). */
 export const THUMBNAIL_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"] as const;

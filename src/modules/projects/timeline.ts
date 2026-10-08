@@ -56,7 +56,10 @@ const HORIZON_DAYS = 400;
 
 async function loadCalendar(teamId: string, entityId: string | null, from: IsoDate, to: IsoDate): Promise<{ calendar: WorkCalendar; workingWeekdays: number[]; daysOff: { date: IsoDate; name: string }[] }> {
   const [rules, daysOff] = await Promise.all([getTeamRules(teamId), getDaysOff(entityId, from, to)]);
-  const calendar = workCalendar([...rules.reportDays], daysOff.map((day) => day.date));
+  const calendar = workCalendar(
+    [...rules.reportDays],
+    daysOff.map((day) => day.date),
+  );
   return { calendar, workingWeekdays: [...calendar.workingWeekdays].sort(), daysOff: daysOff.map(({ date, name }) => ({ date, name })) };
 }
 
@@ -73,7 +76,10 @@ async function dependenciesAmong(taskIds: readonly string[]): Promise<Dependency
 
 async function linksOf(taskIds: readonly string[]) {
   if (taskIds.length === 0) return new Map<string, typeof schema.projectTaskLink.$inferSelect>();
-  const rows = await db().select().from(schema.projectTaskLink).where(inArray(schema.projectTaskLink.taskId, [...taskIds]));
+  const rows = await db()
+    .select()
+    .from(schema.projectTaskLink)
+    .where(inArray(schema.projectTaskLink.taskId, [...taskIds]));
   return new Map(rows.map((row) => [row.taskId, row]));
 }
 
@@ -109,14 +115,38 @@ export async function getTimeline(viewer: WorkViewer, project: { id: string; tea
     };
   });
 
-  const slip = baselineSlip(plan.baseline, { startDate: project.startDate, dueDate: project.dueDate, budgetMinutes: plan.budgetMinutes, milestones: structure.milestones.map((milestone) => ({ id: milestone.id, dueDate: milestone.dueDate, doneOn: milestone.doneAt ? todayInVietnam(milestone.doneAt) : null })) }, today);
+  const slip = baselineSlip(
+    plan.baseline,
+    {
+      startDate: project.startDate,
+      dueDate: project.dueDate,
+      budgetMinutes: plan.budgetMinutes,
+      milestones: structure.milestones.map((milestone) => ({ id: milestone.id, dueDate: milestone.dueDate, doneOn: milestone.doneAt ? todayInVietnam(milestone.doneAt) : null })),
+    },
+    today,
+  );
   const plannedDue = new Map(plan.baseline?.milestones.map((milestone) => [milestone.id, milestone.dueDate]) ?? []);
   const slipOf = new Map(slip?.milestones.map((milestone) => [milestone.id, milestone.slipDays]) ?? []);
-  const milestones: TimelineMilestone[] = structure.milestones.map((milestone) => ({ id: milestone.id, name: milestone.name, dueDate: milestone.dueDate, baselineDue: plannedDue.get(milestone.id) ?? null, slipDays: slipOf.get(milestone.id) ?? null, phaseId: milestone.phaseId, done: !!milestone.doneAt }));
+  const milestones: TimelineMilestone[] = structure.milestones.map((milestone) => ({
+    id: milestone.id,
+    name: milestone.name,
+    dueDate: milestone.dueDate,
+    baselineDue: plannedDue.get(milestone.id) ?? null,
+    slipDays: slipOf.get(milestone.id) ?? null,
+    phaseId: milestone.phaseId,
+    done: !!milestone.doneAt,
+  }));
   const phases: TimelinePhase[] = structure.phases.map(({ id, name, startDate, endDate }) => ({ id, name, startDate, endDate }));
 
   // The chart spans every date it has to draw, with a little room either side.
-  const dates = [today, project.startDate, project.dueDate, ...tasks.flatMap((task) => [task.startDate, task.dueDate, task.baselineStart, task.baselineDue]), ...milestones.flatMap((milestone) => [milestone.dueDate, milestone.baselineDue]), ...phases.flatMap((phase) => [phase.startDate, phase.endDate])];
+  const dates = [
+    today,
+    project.startDate,
+    project.dueDate,
+    ...tasks.flatMap((task) => [task.startDate, task.dueDate, task.baselineStart, task.baselineDue]),
+    ...milestones.flatMap((milestone) => [milestone.dueDate, milestone.baselineDue]),
+    ...phases.flatMap((phase) => [phase.startDate, phase.endDate]),
+  ];
   const from = addDays(minDate(dates) ?? today, -7);
   const to = addDays(maxDate(dates) ?? today, 21);
   const { workingWeekdays, daysOff } = await loadCalendar(project.teamId, project.entityId, from, addDays(to, HORIZON_DAYS));

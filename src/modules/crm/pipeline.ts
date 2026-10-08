@@ -23,7 +23,9 @@ export function dealValueReach(viewer: CrmViewer): SQL | undefined | null {
   const entities = [...new Set(reaches.flatMap((reach) => (reach.all ? [] : reach.entityIds)))];
   const managed = [...viewer.ties].filter(([, ties]) => ties.includes("manager")).map(([clientId]) => clientId);
   const me = viewer.principal.personId;
-  const parts = [me ? eq(schema.crmDeal.ownerPersonId, me) : undefined, managed.length ? inArray(schema.crmDeal.clientId, managed) : undefined, entities.length ? inArray(schema.crmDeal.entityId, entities) : undefined].filter((part): part is SQL => !!part);
+  const parts = [me ? eq(schema.crmDeal.ownerPersonId, me) : undefined, managed.length ? inArray(schema.crmDeal.clientId, managed) : undefined, entities.length ? inArray(schema.crmDeal.entityId, entities) : undefined].filter(
+    (part): part is SQL => !!part,
+  );
   return parts.length ? or(...parts)! : null;
 }
 
@@ -78,14 +80,27 @@ export async function salesDashboard(viewer: CrmViewer, scope: PipelineScope = {
   const closedSince = sql`coalesce(${schema.crmDeal.wonAt}, ${schema.crmDeal.lostAt}) >= ${from}::date`;
   const [byStage, byMonth, [summary], lostReasons] = await Promise.all([
     db()
-      .select({ stageId: schema.crmStage.id, name: schema.crmStage.name, nameEn: schema.crmStage.nameEn, sortOrder: schema.crmStage.sortOrder, count: sql<number>`count(*)`, value: sql<number>`coalesce(sum(${dealValueSql}), 0)`, weighted: sql<number>`coalesce(sum(round(${dealValueSql} * ${probabilitySql} / 100.0)), 0)` })
+      .select({
+        stageId: schema.crmStage.id,
+        name: schema.crmStage.name,
+        nameEn: schema.crmStage.nameEn,
+        sortOrder: schema.crmStage.sortOrder,
+        count: sql<number>`count(*)`,
+        value: sql<number>`coalesce(sum(${dealValueSql}), 0)`,
+        weighted: sql<number>`coalesce(sum(round(${dealValueSql} * ${probabilitySql} / 100.0)), 0)`,
+      })
       .from(schema.crmDeal)
       .innerJoin(schema.crmStage, eq(schema.crmStage.id, schema.crmDeal.stageId))
       .where(and(where, eq(schema.crmDeal.status, "open")))
       .groupBy(schema.crmStage.id, schema.crmStage.name, schema.crmStage.nameEn, schema.crmStage.sortOrder)
       .orderBy(schema.crmStage.sortOrder),
     db()
-      .select({ month: closedMonth, wonCount: sql<number>`count(*) filter (where ${schema.crmDeal.status} = 'won')`, wonValue: sql<number>`coalesce(sum(${dealValueSql}) filter (where ${schema.crmDeal.status} = 'won'), 0)`, lostCount: sql<number>`count(*) filter (where ${schema.crmDeal.status} = 'lost')` })
+      .select({
+        month: closedMonth,
+        wonCount: sql<number>`count(*) filter (where ${schema.crmDeal.status} = 'won')`,
+        wonValue: sql<number>`coalesce(sum(${dealValueSql}) filter (where ${schema.crmDeal.status} = 'won'), 0)`,
+        lostCount: sql<number>`count(*) filter (where ${schema.crmDeal.status} = 'lost')`,
+      })
       .from(schema.crmDeal)
       .where(and(where, inArray(schema.crmDeal.status, ["won", "lost"]), closedSince))
       .groupBy(closedMonth)
@@ -136,7 +151,12 @@ export async function revenueOutlook(viewer: CrmViewer, today: IsoDate = todayIn
     return date.toISOString().slice(0, 7);
   });
   const monthSeries = sql`(select to_char(generate_series(${`${list[0]}-01`}::date, ${`${list.at(-1)}-01`}::date, interval '1 month'), 'YYYY-MM') as month) as m`;
-  const entityFilter = commercial.all ? sql`true` : sql`${schema.workProject.entityId} in (${sql.join(commercial.entityIds.map((id) => sql`${id}::uuid`), sql`, `)})`;
+  const entityFilter = commercial.all
+    ? sql`true`
+    : sql`${schema.workProject.entityId} in (${sql.join(
+        commercial.entityIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})`;
   const contracted = await db().execute<{ month: string; amount: string | number }>(sql`
     select m.month, coalesce(sum(${schema.projectRetainer.feePerMonthVnd}), 0) as amount
     from ${monthSeries}

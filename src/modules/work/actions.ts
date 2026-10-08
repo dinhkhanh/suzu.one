@@ -9,7 +9,24 @@ import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { MAX_LINKED_DIGITAL_ASSETS, setProjectDigitalAssets } from "./digital-links";
 import { setFollowing } from "./followers";
 import { ACCENT_COLORS, CLIENT_KINDS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
-import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask, canViewTeamBacklog } from "./policy";
+import {
+  canAddTeamMember,
+  canAdminTeam,
+  canContributeToProject,
+  canViewProject,
+  canContributeToTeam,
+  canCreateProject,
+  canDeleteTask,
+  canEditTask,
+  canGiveProjectRole,
+  canJoinTaskConversation,
+  canManageProject,
+  canManageWorkspace,
+  canModerateTask,
+  canTakeOutOfProject,
+  canViewTask,
+  canViewTeamBacklog,
+} from "./policy";
 import { createProject, findProject, projectFacts, projectRoleOf, setProjectArchived, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, loadTasks, removeDependency, restoreWorkTask, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamArchived, setTeamMember, teamFacts, updateTeam } from "./teams";
@@ -40,7 +57,11 @@ const createTeamPipeline = createAction({
   name: "work.team.create",
   input: z.object({
     ...teamFields,
-    key: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9]{1,7}$/),
+    key: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z][A-Z0-9]{1,7}$/),
     // The workflow to start from (the library); blank = one state per category, named in `stateNames`.
     stateSetId: optional(z.uuid()),
     stateNames: z.partialRecord(z.enum(STATE_CATEGORIES), z.string().trim().min(1).max(40)).default({}),
@@ -132,7 +153,15 @@ const teamMemberPipeline = createAction({
   run: async ({ user, input }) => {
     const change = await setTeamMember(input.teamId, input.personId, input.role, user.person.id);
     revalidatePath(`/work/teams/${input.teamId}`);
-    return { data: change, audit: { resource: { type: "work_team", id: input.teamId }, summary: `member ${input.personId}: ${change.before ?? "—"} → ${change.after ?? "—"}`, before: { personId: input.personId, role: change.before }, after: { personId: input.personId, role: change.after } } };
+    return {
+      data: change,
+      audit: {
+        resource: { type: "work_team", id: input.teamId },
+        summary: `member ${input.personId}: ${change.before ?? "—"} → ${change.after ?? "—"}`,
+        before: { personId: input.personId, role: change.before },
+        after: { personId: input.personId, role: change.after },
+      },
+    };
   },
 });
 export async function setTeamMemberAction(input: unknown) {
@@ -199,7 +228,11 @@ const clientPipeline = createAction({
   name: "work.client.save",
   input: z.object({
     clientId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,19}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9_-]{1,19}$/),
     name: z.string().trim().min(1).max(120),
     kind: z.enum(CLIENT_KINDS),
     parentId: optional(z.uuid()),
@@ -290,7 +323,10 @@ const projectDigitalAssetsPipeline = createAction({
     const found = (await findProject(input.projectId))!;
     const { before, after } = await setProjectDigitalAssets(input.projectId, input.digitalAssetIds);
     revalidatePath(`/work/projects/${input.projectId}`);
-    return { data: { count: after.length }, audit: { resource: { type: "work_project", id: input.projectId, entityId: found.project.entityId }, summary: found.project.name, before: { digitalAssets: before }, after: { digitalAssets: after } } };
+    return {
+      data: { count: after.length },
+      audit: { resource: { type: "work_project", id: input.projectId, entityId: found.project.entityId }, summary: found.project.name, before: { digitalAssets: before }, after: { digitalAssets: after } },
+    };
   },
 });
 export async function setProjectDigitalAssetsAction(input: unknown) {
@@ -328,7 +364,15 @@ const projectMemberPipeline = createAction({
   run: async ({ input }) => {
     const change = await setProjectMember(input.projectId, input.personId, input.role);
     revalidatePath(`/work/projects/${input.projectId}`);
-    return { data: change, audit: { resource: { type: "work_project", id: input.projectId }, summary: `member ${input.personId}: ${change.before ?? "—"} → ${change.after ?? "—"}`, before: { personId: input.personId, role: change.before }, after: { personId: input.personId, role: change.after } } };
+    return {
+      data: change,
+      audit: {
+        resource: { type: "work_project", id: input.projectId },
+        summary: `member ${input.personId}: ${change.before ?? "—"} → ${change.after ?? "—"}`,
+        before: { personId: input.personId, role: change.before },
+        after: { personId: input.personId, role: change.after },
+      },
+    };
   },
 });
 export async function setProjectMemberAction(input: unknown) {
@@ -366,7 +410,10 @@ const createTaskPipeline = createAction({
   run: async ({ user, input }) => {
     const { task, work, key } = await createWorkTask(input, user.person.id);
     refreshTask(task, work.projectId);
-    return { data: { id: task.id, key }, audit: { resource: auditTask(task.id, task.entityId), summary: `${key} ${task.title}`, after: { title: task.title, projectId: work.projectId, stateId: work.stateId, assigneePersonId: task.assigneePersonId, dueDate: task.dueDate } } };
+    return {
+      data: { id: task.id, key },
+      audit: { resource: auditTask(task.id, task.entityId), summary: `${key} ${task.title}`, after: { title: task.title, projectId: work.projectId, stateId: work.stateId, assigneePersonId: task.assigneePersonId, dueDate: task.dueDate } },
+    };
   },
 });
 export async function createTaskAction(input: unknown) {
@@ -396,7 +443,15 @@ const updateTaskPipeline = createAction({
     refreshTask(before.task, before.work.projectId);
     if (patch.projectId) revalidatePath(`/work/projects/${patch.projectId}`);
     const fields = changes.map((change) => change.field ?? change.type);
-    return { data: { id: taskId, changed: fields }, audit: { resource: auditTask(taskId, before.task.entityId), summary: `${before.task.title}: ${fields.join(", ") || "no change"}`, before: Object.fromEntries(changes.map((change, index) => [`${index}:${change.field ?? change.type}`, change.from ?? null])), after: Object.fromEntries(changes.map((change, index) => [`${index}:${change.field ?? change.type}`, change.to ?? null])) } };
+    return {
+      data: { id: taskId, changed: fields },
+      audit: {
+        resource: auditTask(taskId, before.task.entityId),
+        summary: `${before.task.title}: ${fields.join(", ") || "no change"}`,
+        before: Object.fromEntries(changes.map((change, index) => [`${index}:${change.field ?? change.type}`, change.from ?? null])),
+        after: Object.fromEntries(changes.map((change, index) => [`${index}:${change.field ?? change.type}`, change.to ?? null])),
+      },
+    };
   },
 });
 export async function updateTaskAction(input: unknown) {
@@ -514,7 +569,9 @@ const viewPath = (view: { projectId: string | null; teamId: string | null }) => 
 const saveViewPipeline = createAction({
   name: "work.view.save",
   // On a project's list, or — a team and no project — on the team's backlog.
-  input: z.object({ projectId: optional(z.uuid()), teamId: optional(z.uuid()), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: viewFilters }).refine((input) => !!input.projectId || !!input.teamId, { path: ["teamId"] }),
+  input: z
+    .object({ projectId: optional(z.uuid()), teamId: optional(z.uuid()), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: viewFilters })
+    .refine((input) => !!input.projectId || !!input.teamId, { path: ["teamId"] }),
   authorize: async (user, input) => {
     const rights = await viewRights(user, input);
     return !!rights && (input.isShared ? rights.share : rights.open);
@@ -588,7 +645,10 @@ const addCommentPipeline = createAction({
     const { comment, mentioned, told } = await addComment(input.taskId, input, user.person);
     revalidatePath(`/work/tasks/${input.taskId}`);
     // The audit log says that someone commented and who was called in — the words stay in the task.
-    return { data: { id: comment.id, mentioned: mentioned.length }, audit: { resource: { type: "task:work", id: input.taskId }, summary: `comment ${comment.id}`, after: { commentId: comment.id, parentId: comment.parentId, mentioned, notified: told.length } } };
+    return {
+      data: { id: comment.id, mentioned: mentioned.length },
+      audit: { resource: { type: "task:work", id: input.taskId }, summary: `comment ${comment.id}`, after: { commentId: comment.id, parentId: comment.parentId, mentioned, notified: told.length } },
+    };
   },
 });
 export async function addCommentAction(input: unknown) {

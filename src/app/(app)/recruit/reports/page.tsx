@@ -38,13 +38,7 @@ export default async function RecruitReportsPage(props: PageProps<"/recruit/repo
     openingId: pick("openingId", UUID),
   };
 
-  const [report, t, tStage, tSource, format] = await Promise.all([
-    getRecruitReport(user.principal, filters),
-    getTranslations("recruit.reports"),
-    getTranslations("recruit.stageCategory"),
-    getTranslations("recruit.source"),
-    getFormatter(),
-  ]);
+  const [report, t, tStage, tSource, format] = await Promise.all([getRecruitReport(user.principal, filters), getTranslations("recruit.reports"), getTranslations("recruit.stageCategory"), getTranslations("recruit.source"), getFormatter()]);
 
   const days = (value: number | null) => (value === null ? "—" : t("days", { count: value }));
   const percent = (value: number | null) => (value === null ? "—" : `${value}%`);

@@ -8,7 +8,12 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
-vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string, values: Record<string, unknown> = {}) => `${key}:${values.count ?? ""}` }));
+vi.mock("next-intl/server", () => ({
+  getTranslations:
+    async () =>
+    (key: string, values: Record<string, unknown> = {}) =>
+      `${key}:${values.count ?? ""}`,
+}));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {},
   createAction: () => async () => ({ ok: false, error: "failed" }),
@@ -33,7 +38,10 @@ beforeAll(async () => {
   ids.dept = dept.id;
   const grants: Record<Who, Grant[]> = { lead: [], one: [], two: [], solo: [], alone: [], head: [{ role: "department_head", scope: { type: "unit", id: dept.id } }] };
   for (const who of Object.keys(grants) as Who[]) {
-    const [person] = await db().insert(schema.person).values({ fullName: `Người ${who}`, searchName: who, workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [person] = await db()
+      .insert(schema.person)
+      .values({ fullName: `Người ${who}`, searchName: who, workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[who] = person.id;
     people[who] = { person, principal: { personId: person.id, workforceType: "employee", grants: grants[who] } };
   }
@@ -41,7 +49,9 @@ beforeAll(async () => {
 
   const team = async (key: string, name: string, members: [Who, "lead" | "member"][]) => {
     const [row] = await db().insert(schema.workTeam).values({ key, name, entityId: szm.id, departmentId: dept.id }).returning();
-    await db().insert(schema.workTeamMember).values(members.map(([who, role]) => ({ teamId: row.id, personId: ids[who], role })));
+    await db()
+      .insert(schema.workTeamMember)
+      .values(members.map(([who, role]) => ({ teamId: row.id, personId: ids[who], role })));
     return row.id;
   };
   ids.video = await team("VID", "Video", [

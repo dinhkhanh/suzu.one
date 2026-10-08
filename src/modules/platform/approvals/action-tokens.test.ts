@@ -14,10 +14,7 @@ beforeAll(async () => {
   const [entity] = await db().insert(schema.entity).values({ code: "T1", shortName: "T1", legalName: "T1" }).returning();
   const [person] = await db().insert(schema.person).values({ fullName: "Người duyệt", searchName: "nguoi duyet", status: "active" }).returning();
   const [other] = await db().insert(schema.person).values({ fullName: "Người khác", searchName: "nguoi khac", status: "active" }).returning();
-  const [request] = await db()
-    .insert(schema.approvalRequest)
-    .values({ type: "request:purchase", entityId: entity.id, requesterPersonId: other.id, summary: "x", flowSnapshot: {}, status: "pending" })
-    .returning();
+  const [request] = await db().insert(schema.approvalRequest).values({ type: "request:purchase", entityId: entity.id, requesterPersonId: other.id, summary: "x", flowSnapshot: {}, status: "pending" }).returning();
   Object.assign(ids, { person: person.id, other: other.id, request: request.id });
 });
 

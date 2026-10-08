@@ -64,7 +64,20 @@ export function StageForm({ stage, nextOrder }: { stage?: StageValues; nextOrder
   );
 }
 
-type ServiceValues = { id: string; code: string; name: string; nameEn: string | null; category: string; unit: string; isRecurring: boolean; format: string | null; channel: string | null; roleMinutes: { role: string; minutes: number }[]; description: string | null; isActive: boolean };
+type ServiceValues = {
+  id: string;
+  code: string;
+  name: string;
+  nameEn: string | null;
+  category: string;
+  unit: string;
+  isRecurring: boolean;
+  format: string | null;
+  channel: string | null;
+  roleMinutes: { role: string; minutes: number }[];
+  description: string | null;
+  isActive: boolean;
+};
 
 export function ServiceForm({ service }: { service?: ServiceValues }) {
   const t = useTranslations("crm.rateCard");

@@ -19,12 +19,18 @@ export function buildOrgTree<Person extends OrgPerson>(people: readonly Person[]
   const grow = (person: Person): OrgNode<Person> => {
     placed.add(person.id);
     // `placed` also stops a loop: whoever would appear a second time is left out of this branch.
-    const reports = (reportsOf.get(person.id) ?? []).filter((report) => !placed.has(report.id)).sort(bySortKey).map(grow);
+    const reports = (reportsOf.get(person.id) ?? [])
+      .filter((report) => !placed.has(report.id))
+      .sort(bySortKey)
+      .map(grow);
     return { person, reports, headcount: reports.reduce((sum, node) => sum + 1 + node.headcount, 0) };
   };
 
   const hasManager = (person: Person) => !!person.managerId && person.managerId !== person.id && byId.has(person.managerId);
-  const roots = people.filter((person) => !hasManager(person)).sort(bySortKey).map(grow);
+  const roots = people
+    .filter((person) => !hasManager(person))
+    .sort(bySortKey)
+    .map(grow);
   // Whoever is still missing sits in a loop with no way in from a root: open each loop at its first member.
   for (const person of [...people].sort(bySortKey)) if (!placed.has(person.id)) roots.push(grow(person));
   return roots;

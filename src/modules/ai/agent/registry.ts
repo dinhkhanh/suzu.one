@@ -121,7 +121,8 @@ export async function runAgentTool(tool: AnyAgentTool, context: ToolContext, raw
   if (!parsed.success) return { outcome: "failed", model: { error: "invalid_input", issues: parsed.error.issues.slice(0, 5).map((issue) => `${issue.path.join(".")}: ${issue.message}`) }, card: null, subject: null, error: "invalid_input" };
   // The page's second lock (FR-PLT-06), before anything is read: a stale session learns nothing,
   // not even whether there is anything to read.
-  if (needsStepUp(tool, parsed.data) && !isStepUpFresh(context.user.reauthAt ?? null, now)) return { outcome: "step_up", model: { link: "/step-up?next=%2Fassistant" }, card: { tool: "step_up", href: "/step-up?next=%2Fassistant", items: [], more: 0 }, subject: null, error: null };
+  if (needsStepUp(tool, parsed.data) && !isStepUpFresh(context.user.reauthAt ?? null, now))
+    return { outcome: "step_up", model: { link: "/step-up?next=%2Fassistant" }, card: { tool: "step_up", href: "/step-up?next=%2Fassistant", items: [], more: 0 }, subject: null, error: null };
   try {
     return { ...(await tool.run(context, parsed.data)), error: null };
   } catch (error) {

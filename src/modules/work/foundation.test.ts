@@ -35,9 +35,17 @@ import { viewerOfPerson } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "huy" | "duc" | "khoi" | "video" | "social" | "project" | "socialProject" | "form" | "format" | "platform" | "editor" | "videoLabel" | "sharedLabel", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error & { details?: unknown }) => error.message,
+  );
 const named = (key: "long" | "tam" | "huy" | "duc" | "khoi") => ({ personId: ids[key], fullName: key });
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const viewer = async (key: "long" | "tam" | "huy" | "duc" | "khoi") => (await viewerOfPerson(db(), ids[key]))!;
 
 beforeAll(async () => {
@@ -45,7 +53,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam", "huy", "duc", "khoi"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
@@ -62,8 +73,18 @@ beforeAll(async () => {
 
 describe("custom fields (FR-PJM-35)", () => {
   it("a team field and a project field; values checked, logged by name, cleared with a deleted option", async () => {
-    const format = await saveCustomField({ teamId: ids.video, projectId: null }, null, { name: "Định dạng", type: "select", options: [{ label: "Reels" }, { label: "TVC" }, { label: "Story" }], showOnCard: true, sortOrder: 0, isActive: true }, ids.long);
-    const platform = await saveCustomField({ teamId: ids.video, projectId: ids.project }, null, { name: "Nền tảng", type: "multi_select", options: [{ label: "Facebook" }, { label: "TikTok" }], showOnCard: false, sortOrder: 1, isActive: true }, ids.tam);
+    const format = await saveCustomField(
+      { teamId: ids.video, projectId: null },
+      null,
+      { name: "Định dạng", type: "select", options: [{ label: "Reels" }, { label: "TVC" }, { label: "Story" }], showOnCard: true, sortOrder: 0, isActive: true },
+      ids.long,
+    );
+    const platform = await saveCustomField(
+      { teamId: ids.video, projectId: ids.project },
+      null,
+      { name: "Nền tảng", type: "multi_select", options: [{ label: "Facebook" }, { label: "TikTok" }], showOnCard: false, sortOrder: 1, isActive: true },
+      ids.tam,
+    );
     const editor = await saveCustomField({ teamId: ids.video, projectId: null }, null, { name: "Người dựng", type: "person", options: [], showOnCard: false, sortOrder: 2, isActive: true }, ids.long);
     Object.assign(ids, { format: format.after.id, platform: platform.after.id, editor: editor.after.id });
     expect(await fails(saveCustomField({ teamId: ids.video, projectId: null }, null, { name: "Rỗng", type: "select", options: [], showOnCard: false, sortOrder: 0, isActive: true }, ids.long))).toBe("custom_field_needs_options");
@@ -76,7 +97,13 @@ describe("custom fields (FR-PJM-35)", () => {
     await updateWorkTask(task.id, { customValues: { [ids.format]: tvc.id, [ids.platform]: [tiktok.id, facebook.id], [ids.editor]: ids.huy } }, ids.tam);
     expect((await loadTask(task.id))!.work.customValues).toEqual({ [ids.format]: tvc.id, [ids.platform]: [facebook.id, tiktok.id], [ids.editor]: ids.huy });
     const logged = (await listActivity(task.id)).filter((entry) => entry.type === "custom_field_changed");
-    expect(logged.map((entry) => entry.toValue)).toEqual(expect.arrayContaining([{ name: "Định dạng", value: "TVC" }, { name: "Nền tảng", value: "Facebook, TikTok" }, { name: "Người dựng", value: "huy" }]));
+    expect(logged.map((entry) => entry.toValue)).toEqual(
+      expect.arrayContaining([
+        { name: "Định dạng", value: "TVC" },
+        { name: "Nền tảng", value: "Facebook, TikTok" },
+        { name: "Người dựng", value: "huy" },
+      ]),
+    );
 
     // Wrong values, and fields the task does not have, are refused.
     expect(await fails(updateWorkTask(task.id, { customValues: { [ids.format]: "poster" } }, ids.tam))).toBe("custom_value_invalid");
@@ -105,7 +132,12 @@ describe("bulk edit (FR-PJM-36)", () => {
     const secret = (await createWorkTask({ teamId: ids.video, projectId: privateProject.id, title: "Pitch deck" }, ids.long)).task;
     const inProgress = (await listStates([ids.video])).find((state) => state.category === "in_progress")!;
 
-    const outcome = await bulkEditTasks(await viewer("huy"), [mine.id, also.id, theirs.id, secret.id], { stateId: inProgress.id, assigneePersonId: ids.huy, dueDate: "2026-10-01", addLabelIds: [ids.sharedLabel], removeLabelIds: [ids.videoLabel], customValues: { [ids.editor]: ids.tam } }, ids.huy);
+    const outcome = await bulkEditTasks(
+      await viewer("huy"),
+      [mine.id, also.id, theirs.id, secret.id],
+      { stateId: inProgress.id, assigneePersonId: ids.huy, dueDate: "2026-10-01", addLabelIds: [ids.sharedLabel], removeLabelIds: [ids.videoLabel], customValues: { [ids.editor]: ids.tam } },
+      ids.huy,
+    );
     expect(outcome.updated.map((row) => row.key).sort()).toEqual(["VID-3", "VID-4"]);
     // Huy works in Social too, but a Video state is not in Social's workflow. The private pitch is
     // not his to see at all: it answers as if it were not there, with no task key to read off.
@@ -136,7 +168,10 @@ describe("moving a task between teams (FR-PJM-34)", () => {
     const huy = await viewer("huy");
     expect(await fails(moveTaskToTeam(root.id, { teamId: ids.social, projectId: ids.project }, ids.huy))).toBe("project_not_found");
     const result = await moveTaskToTeam(root.id, { teamId: ids.social, projectId: ids.socialProject }, ids.huy);
-    expect(result.moved.map((row) => [row.fromKey, row.toKey])).toEqual([[rootKey, "SOC-2"], [childKey, "SOC-3"]]);
+    expect(result.moved.map((row) => [row.fromKey, row.toKey])).toEqual([
+      [rootKey, "SOC-2"],
+      [childKey, "SOC-3"],
+    ]);
 
     const [movedRoot, movedChild] = [(await loadTask(root.id))!, (await loadTask(child.id))!];
     const socialStates = await listStates([ids.social]);
@@ -158,7 +193,12 @@ describe("moving a task between teams (FR-PJM-34)", () => {
 
 describe("triage (FR-PJM-32)", () => {
   it("intake lands in triage with the rules applied, out of the lists and everyone's My work; the leads have it", async () => {
-    const { after: form } = await saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: null, projectId: null, audience: "entity", fields: [{ label: "Nội dung", type: "long_text", required: true }], isActive: true }, ids.long);
+    const { after: form } = await saveIntakeForm(
+      ids.video,
+      null,
+      { name: "Yêu cầu quay dựng", description: null, projectId: null, audience: "entity", fields: [{ label: "Nội dung", type: "long_text", required: true }], isActive: true },
+      ids.long,
+    );
     ids.form = form.id;
     expect(await fails(saveTriageRule(ids.video, null, { name: "Trống", match: {}, set: {}, sortOrder: 0, isActive: true }, ids.long))).toBe("triage_rule_sets_nothing");
     expect(await fails(saveTriageRule(ids.video, null, { name: "Người ngoài", match: {}, set: { assigneePersonId: ids.khoi }, sortOrder: 0, isActive: true }, ids.long))).toBe("person_not_found");
@@ -251,9 +291,15 @@ describe("blockers (FR-PJM-28)", () => {
     expect(await listOpenBlockers([task.id])).toEqual([]);
     expect(await fails(resolveBlocker(task.id, null, named("tam")))).toBe("blocker_not_open");
     // Ninety minutes blocked, then a second blocker open for thirty so far.
-    await db().update(schema.workBlocker).set({ raisedAt: sql`resolved_at - interval '90 minutes'` }).where(eq(schema.workBlocker.id, blocker.id));
+    await db()
+      .update(schema.workBlocker)
+      .set({ raisedAt: sql`resolved_at - interval '90 minutes'` })
+      .where(eq(schema.workBlocker.id, blocker.id));
     const second = await raiseBlocker(task.id, { reason: "Máy dựng hỏng", neededPersonId: null }, named("huy"));
-    await db().update(schema.workBlocker).set({ raisedAt: sql`now() - interval '30 minutes'` }).where(eq(schema.workBlocker.id, second.blocker.id));
+    await db()
+      .update(schema.workBlocker)
+      .set({ raisedAt: sql`now() - interval '30 minutes'` })
+      .where(eq(schema.workBlocker.id, second.blocker.id));
     expect((await blockedMinutes([task.id])).get(task.id)).toBe(120);
     expect((await listActivity(task.id)).map((entry) => entry.type)).toEqual(expect.arrayContaining(["blocker_raised", "blocker_resolved"]));
   });
@@ -261,7 +307,13 @@ describe("blockers (FR-PJM-28)", () => {
   it("logged minutes are summed per task in SQL, deleted entries left out", async () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Quay" }, ids.long);
     const entry = { personId: ids.huy, date: "2026-09-21", weekStart: "2026-09-21", taskId: task.id, projectId: ids.project };
-    await db().insert(schema.timeEntry).values([{ ...entry, minutes: 90 }, { ...entry, minutes: 45 }, { ...entry, minutes: 600, deletedAt: new Date() }]);
+    await db()
+      .insert(schema.timeEntry)
+      .values([
+        { ...entry, minutes: 90 },
+        { ...entry, minutes: 45 },
+        { ...entry, minutes: 600, deletedAt: new Date() },
+      ]);
     expect((await loggedMinutesByTask([task.id])).get(task.id)).toBe(135);
   });
 });

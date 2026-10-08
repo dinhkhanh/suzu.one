@@ -6,7 +6,19 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RecordLink } from "@/components/ui/record-link";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageCycle, cycleProgress, listCycleParticipants, listReviewCycles, listReviewTemplates, loadDirectory, nextCycleStatus, releasable, type ReviewCycleKind, type ReviewCycleRow, type ReviewCycleStatus } from "@/modules/performance/service";
+import {
+  canManageCycle,
+  cycleProgress,
+  listCycleParticipants,
+  listReviewCycles,
+  listReviewTemplates,
+  loadDirectory,
+  nextCycleStatus,
+  releasable,
+  type ReviewCycleKind,
+  type ReviewCycleRow,
+  type ReviewCycleStatus,
+} from "@/modules/performance/service";
 import { FormStatusBadge, StageBadge, Timeline } from "@/modules/performance/ui/review";
 import { AddParticipantForm, AdvanceCycleForm, CycleForm, type CycleFormValue, LaunchCycleForm, ReleaseCycleForm } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -107,7 +119,9 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
                   ]}
                   labels={{ t, formatDate }}
                 />
-                {cycle.status !== "draft" ? <p className="text-xs text-muted-foreground tabular-nums">{t("admin.progress", { participants: counts.participants, self: counts.selfDone, manager: counts.managerDone, released: counts.released })}</p> : null}
+                {cycle.status !== "draft" ? (
+                  <p className="text-xs text-muted-foreground tabular-nums">{t("admin.progress", { participants: counts.participants, self: counts.selfDone, manager: counts.managerDone, released: counts.released })}</p>
+                ) : null}
                 <div className="flex flex-wrap items-center gap-3">
                   {cycle.status === "draft" ? <LaunchCycleForm cycleId={cycle.id} /> : null}
                   {/* Release everyone whose manager review is in — from the calibration stage on (PRF-02), or
@@ -129,7 +143,27 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
             </p>
           ) : (
             <CycleForm
-              value={{ id: null, entityId: manageable[0]?.id ?? null, name: "", kind: "annual", year, periodStart: `${year}-01-01`, periodEnd: `${year}-12-31`, templateId: "", selfDueOn: null, managerDueOn: null, peerDueOn: null, calibrationOn: null, releaseOn: null, peersEnabled: true, peerMin: 1, peerMax: 5, peerAnonymous: true, signOffRequired: false, isRolling: false }}
+              value={{
+                id: null,
+                entityId: manageable[0]?.id ?? null,
+                name: "",
+                kind: "annual",
+                year,
+                periodStart: `${year}-01-01`,
+                periodEnd: `${year}-12-31`,
+                templateId: "",
+                selfDueOn: null,
+                managerDueOn: null,
+                peerDueOn: null,
+                calibrationOn: null,
+                releaseOn: null,
+                peersEnabled: true,
+                peerMin: 1,
+                peerMax: 5,
+                peerAnonymous: true,
+                signOffRequired: false,
+                isRolling: false,
+              }}
               entities={entityOptions}
               templates={activeTemplates}
               groupWide={groupWide}
@@ -171,7 +205,15 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
                       {line.personName}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{line.managerName ? <RecordLink kind="person" id={line.managerPersonId}>{line.managerName}</RecordLink> : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {line.managerName ? (
+                      <RecordLink kind="person" id={line.managerPersonId}>
+                        {line.managerName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
                   </TableCell>

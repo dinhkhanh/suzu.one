@@ -153,7 +153,11 @@ export function carryFrom(rollover: RetainerRollover, previous: PreviousPeriod |
 /** One month of a retainer: its lines (quota plus carry, never below zero), hours and fee. */
 export function planPeriod(terms: RetainerTerms, month: Month, previous: PreviousPeriod | null): PeriodPlan {
   const share = monthShare(month, terms.startDate, terms.endDate);
-  const carried = carryFrom(terms.rollover, previous, terms.lines.map((line) => line.title));
+  const carried = carryFrom(
+    terms.rollover,
+    previous,
+    terms.lines.map((line) => line.title),
+  );
   const lines = terms.lines.map((line) => ({ title: line.title, quantity: Math.max(0, shareOf(line.quantity, share) + (carried[line.title] ?? 0)), format: line.format, channel: line.channel }));
   return {
     month,

@@ -55,8 +55,7 @@ function ToolAnswer({ tool }: { tool: ToolOutcome }) {
   const format = useFormatter();
   const locale = useLocale();
   // `Intl` formats the numbers: a payslip figure is integer đồng, days are days.
-  const shape = (params: Record<string, string | number>) =>
-    Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : value]));
+  const shape = (params: Record<string, string | number>) => Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : value]));
 
   if (tool.status === "refused")
     return (
@@ -148,7 +147,12 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
   const format = useFormatter();
   // Numbers by `Intl`; a day ("2026-10-08") as the reader writes one.
   const shape = (params: Record<string, string | number>) =>
-    Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : /^\d{4}-\d{2}-\d{2}$/u.test(value) ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : value]));
+    Object.fromEntries(
+      Object.entries(params).map(([key, value]) => [
+        key,
+        typeof value === "number" ? format.number(value, { maximumFractionDigits: 2 }) : /^\d{4}-\d{2}-\d{2}$/u.test(value) ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit" }) : value,
+      ]),
+    );
   // A card with no rows is shown only when it is the way forward: the step-up link, or a proposal.
   const shown = distinctCards(cards).filter((card) => card.items.length > 0 || card.proposal || (card.tool === "step_up" && card.href));
   if (shown.length === 0) return null;
@@ -158,28 +162,28 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
         card.proposal ? (
           <ProposalCard key={card.proposal.id} proposal={card.proposal} />
         ) : (
-        <section key={`${card.tool}-${index}`} className="flex flex-col gap-1.5">
-          <h3 className="text-xs font-medium text-muted-foreground">
-            {card.href ? (
-              <Link href={card.href} className="hover:underline">
-                {t(`cards.${card.tool}`)}
-              </Link>
-            ) : (
-              t(`cards.${card.tool}`)
-            )}
-          </h3>
-          {card.items.length > 0 ? (
-            <List>
-              {card.items.map((item, row) => (
-                <ListItem key={`${item.label}-${row}`} href={item.href ?? undefined} className="flex min-w-0 items-baseline justify-between gap-3 py-2">
-                  <span className="min-w-0 truncate">{item.title ? t(`meta.${item.title.key}`, shape(item.title.params)) : item.label}</span>
-                  {item.meta ? <span className="shrink-0 text-xs text-muted-foreground">{t(`meta.${item.meta.key}`, shape(item.meta.params))}</span> : null}
-                </ListItem>
-              ))}
-            </List>
-          ) : null}
-          {card.more > 0 ? <p className="text-xs text-faint">{t("more", { count: card.more })}</p> : null}
-        </section>
+          <section key={`${card.tool}-${index}`} className="flex flex-col gap-1.5">
+            <h3 className="text-xs font-medium text-muted-foreground">
+              {card.href ? (
+                <Link href={card.href} className="hover:underline">
+                  {t(`cards.${card.tool}`)}
+                </Link>
+              ) : (
+                t(`cards.${card.tool}`)
+              )}
+            </h3>
+            {card.items.length > 0 ? (
+              <List>
+                {card.items.map((item, row) => (
+                  <ListItem key={`${item.label}-${row}`} href={item.href ?? undefined} className="flex min-w-0 items-baseline justify-between gap-3 py-2">
+                    <span className="min-w-0 truncate">{item.title ? t(`meta.${item.title.key}`, shape(item.title.params)) : item.label}</span>
+                    {item.meta ? <span className="shrink-0 text-xs text-muted-foreground">{t(`meta.${item.meta.key}`, shape(item.meta.params))}</span> : null}
+                  </ListItem>
+                ))}
+              </List>
+            ) : null}
+            {card.more > 0 ? <p className="text-xs text-faint">{t("more", { count: card.more })}</p> : null}
+          </section>
         ),
       )}
     </div>
@@ -191,8 +195,7 @@ function AnswerBody({ turn }: { turn: Turn }) {
   const t = useTranslations("assistant");
   if (turn.tool) return <ToolAnswer tool={turn.tool} />;
   // The agent declined: the app's sentence, never the model's (FR-AGT-03).
-  if (turn.outcome === "off_topic")
-    return <p className="text-muted-foreground">{turn.agent?.offTopic === "greeting" ? t("agent.greeting") : t("agent.offTopic")}</p>;
+  if (turn.outcome === "off_topic") return <p className="text-muted-foreground">{turn.agent?.offTopic === "greeting" ? t("agent.greeting") : t("agent.offTopic")}</p>;
   // An answer that read pay is shown once and not kept (D36).
   if (turn.agent?.unstored && !turn.body)
     return (
@@ -231,8 +234,7 @@ function AnswerBody({ turn }: { turn: Turn }) {
 }
 
 function Bubble({ turn, feedback }: { turn: Turn; feedback: boolean }) {
-  if (turn.role === "user")
-    return <li className="max-w-[85%] self-end rounded-[16px_16px_4px_16px] bg-ink px-4 py-3 text-sm leading-relaxed text-ink-foreground md:max-w-[75%]">{turn.body}</li>;
+  if (turn.role === "user") return <li className="max-w-[85%] self-end rounded-[16px_16px_4px_16px] bg-ink px-4 py-3 text-sm leading-relaxed text-ink-foreground md:max-w-[75%]">{turn.body}</li>;
   return (
     <AnswerRow>
       <AnswerBody turn={turn} />
@@ -376,7 +378,11 @@ export function AssistantChat({
       </label>
       <PromptInputBody className={sheet ? undefined : "rounded-[24px] shadow-[0_8px_24px_oklch(0_0_0/6%)] md:rounded-[16px] md:p-1.5"}>
         <PromptInputTextarea ref={inputRef} id={sheet ? "sheet-question" : "question"} name="question" required maxLength={QUESTION_MAX} placeholder={t("placeholder")} />
-        <PromptInputSubmit pending={form.pending} label={t("send")} className="bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] md:bg-ink md:text-ink-foreground md:hover:bg-[color-mix(in_oklch,var(--ink),var(--background)_14%)] [&_svg]:text-current" />
+        <PromptInputSubmit
+          pending={form.pending}
+          label={t("send")}
+          className="bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] md:bg-ink md:text-ink-foreground md:hover:bg-[color-mix(in_oklch,var(--ink),var(--background)_14%)] [&_svg]:text-current"
+        />
       </PromptInputBody>
       <FormError namespace="assistant.errors" errorKey={form.errorKey} />
       {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrongAny")}</p>}

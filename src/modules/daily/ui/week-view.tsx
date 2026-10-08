@@ -28,7 +28,9 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
     }
     // A task this reader may not open: its hours belong on their screen, its name does not.
     if (label.hidden) return { label: t("privateWork"), sub: null };
-    return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName, job: label.projectName ? label.jobNumber : null, taskId: label.taskId, projectId: label.projectName ? label.projectId : null } : { label: categoryName(label.category), sub: null };
+    return label.taskId
+      ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName, job: label.projectName ? label.jobNumber : null, taskId: label.taskId, projectId: label.projectName ? label.projectId : null }
+      : { label: categoryName(label.category), sub: null };
   };
   const dayLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "numeric" });
 
@@ -41,7 +43,10 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
     off: day.dayOff,
   }));
   const options: RowOption[] = view.editable
-    ? [...openTasks.map((task) => ({ key: `task:${task.taskId}`, label: `${task.key} ${task.title}`, sub: [task.jobNumber, task.projectName].filter(Boolean).join(" ") || null })), ...TIME_CATEGORIES.map((category) => ({ key: `category:${category}`, label: categoryName(category), sub: t("otherTime") }))]
+    ? [
+        ...openTasks.map((task) => ({ key: `task:${task.taskId}`, label: `${task.key} ${task.title}`, sub: [task.jobNumber, task.projectName].filter(Boolean).join(" ") || null })),
+        ...TIME_CATEGORIES.map((category) => ({ key: `category:${category}`, label: categoryName(category), sub: t("otherTime") })),
+      ]
     : [];
   const copyRows: RowOption[] = view.lastWeekRows.map((key) => {
     const { label, sub, job } = labelOf(key);
@@ -50,7 +55,11 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   const entries: EntryView[] = view.entries.map((entry) => ({
     id: entry.id,
     day: format.dateTime(new Date(`${entry.date}T12:00:00Z`), { weekday: "short", day: "numeric" }),
-    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName, job: entry.projectName ? entry.jobNumber : null, taskId: entry.taskId, projectId: entry.projectName ? entry.projectId : null } : { label: categoryName(entry.category), sub: null }),
+    ...(entry.hidden
+      ? { label: t("privateWork"), sub: null }
+      : entry.taskId
+        ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName, job: entry.projectName ? entry.jobNumber : null, taskId: entry.taskId, projectId: entry.projectName ? entry.projectId : null }
+        : { label: categoryName(entry.category), sub: null }),
     minutes: entry.minutes,
     billable: entry.billable,
     note: entry.note,
@@ -74,11 +83,19 @@ export async function WeekStatus({ view }: { view: TimeWeekView }) {
   const [t, format] = await Promise.all([getTranslations("daily.time"), getFormatter()]);
   const week = view.week;
   const when = (date: Date | null) => (date ? format.dateTime(date, { dateStyle: "short", timeStyle: "short" }) : "");
-  const person = (chunks: ReactNode) => <RecordLink kind="person" id={week?.decidedByPersonId}>{chunks}</RecordLink>;
+  const person = (chunks: ReactNode) => (
+    <RecordLink kind="person" id={week?.decidedByPersonId}>
+      {chunks}
+    </RecordLink>
+  );
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        {view.approvalRequired || week ? <Badge dot variant={statusTone(view.status)}>{t(`status.${view.status}`)}</Badge> : null}
+        {view.approvalRequired || week ? (
+          <Badge dot variant={statusTone(view.status)}>
+            {t(`status.${view.status}`)}
+          </Badge>
+        ) : null}
         {view.timeMode === "required" ? <Badge variant="outline">{t("requiredBadge")}</Badge> : null}
         {week?.submittedAt && view.status === "submitted" ? <span className="text-xs text-muted-foreground">{t("submittedAt", { time: when(week.submittedAt) })}</span> : null}
       </div>

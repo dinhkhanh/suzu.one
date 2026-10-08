@@ -31,9 +31,23 @@ import { listWorkKpiDue, proposeWorkActuals } from "./work-actuals";
 
 const ids = {} as Record<"szm" | "tam" | "huy" | "lan" | "hr" | "onTime" | "output" | "manual" | "huyOnTime" | "huyOutput" | "huyManual" | "lanOnTime", string>;
 const MONTH = "2027-04";
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const actualOf = async (assignmentId: string) => (await db().select().from(schema.kpiActual).where(and(eq(schema.kpiActual.assignmentId, assignmentId), eq(schema.kpiActual.periodKey, MONTH))))[0];
-const noticesOf = async (personId: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.kpi_proposed")));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const actualOf = async (assignmentId: string) =>
+  (
+    await db()
+      .select()
+      .from(schema.kpiActual)
+      .where(and(eq(schema.kpiActual.assignmentId, assignmentId), eq(schema.kpiActual.periodKey, MONTH)))
+  )[0];
+const noticesOf = async (personId: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.kpi_proposed")));
 const entry = (assignmentId: string, actual: string | null) => ({ assignmentId, periodKey: MONTH, actual, notApplicable: false, note: null });
 
 beforeAll(async () => {
@@ -41,14 +55,26 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   // tam manages huy; lan has no manager (her scorer is HR); hr holds performance:manage over SZM.
-  for (const [key, manager] of [["tam", null], ["huy", "tam"], ["lan", null], ["hr", null]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, managerId: manager ? ids[manager] : null }).returning();
+  for (const [key, manager] of [
+    ["tam", null],
+    ["huy", "tam"],
+    ["lan", null],
+    ["hr", null],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, managerId: manager ? ids[manager] : null })
+      .returning();
     ids[key] = row.id;
   }
   await db().insert(schema.roleAssignment).values({ personId: ids.hr, role: "hr_admin", scopeType: "entity", scopeId: szm.id, validFrom: "2025-01-01" });
 
-  ids.onTime = (await saveKpi(null, { code: "ON_TIME", name: "Đúng hạn", description: null, unit: "percent", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "on_time_rate" })).after.id;
-  ids.output = (await saveKpi(null, { code: "ACCEPTED", name: "Sản phẩm được duyệt", description: null, unit: "number", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "deliverables_accepted" })).after.id;
+  ids.onTime = (
+    await saveKpi(null, { code: "ON_TIME", name: "Đúng hạn", description: null, unit: "percent", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "on_time_rate" })
+  ).after.id;
+  ids.output = (
+    await saveKpi(null, { code: "ACCEPTED", name: "Sản phẩm được duyệt", description: null, unit: "number", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "deliverables_accepted" })
+  ).after.id;
   ids.manual = (await saveKpi(null, { code: "CSAT", name: "Hài lòng", description: null, unit: "number", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true })).after.id;
   const assign = (personId: string, kpiId: string, target: string) => createAssignment(ids.tam, { personId, kpiId, weight: 1, target, fromPeriod: "2027-01", toPeriod: null }).then((row) => row.id);
   ids.huyOnTime = await assign(ids.huy, ids.onTime, "90");
@@ -59,7 +85,9 @@ beforeAll(async () => {
 
 describe("the library (FR-PJM-62)", () => {
   it("takes a work metric only on a KPI of the metric's unit", async () => {
-    expect(await fails(saveKpi(null, { code: "BAD", name: "x", description: null, unit: "number", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "on_time_rate" }))).toBe("kpi_work_metric_unit");
+    expect(await fails(saveKpi(null, { code: "BAD", name: "x", description: null, unit: "number", direction: "higher_better", frequency: "monthly", capBp: 12000, floorBp: 0, isActive: true, workMetric: "on_time_rate" }))).toBe(
+      "kpi_work_metric_unit",
+    );
     const [row] = await db().select().from(schema.kpiDefinition).where(eq(schema.kpiDefinition.id, ids.onTime));
     expect(row.workMetric).toBe("on_time_rate");
   });

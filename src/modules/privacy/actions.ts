@@ -50,7 +50,11 @@ const gpsPipeline = createAction({
     revalidatePath("/attendance", "layout");
     return {
       data: { decision: event.decision },
-      audit: { resource: { type: "privacy_consent", id: event.id, entityId: user.person.primaryEntityId }, summary: `GPS at check-in: ${event.decision}${event.noticeVersion ? ` (notice ${event.noticeVersion}, ${event.noticeLocale})` : ""}`, after: { purpose: event.purpose, decision: event.decision, noticeVersion: event.noticeVersion } },
+      audit: {
+        resource: { type: "privacy_consent", id: event.id, entityId: user.person.primaryEntityId },
+        summary: `GPS at check-in: ${event.decision}${event.noticeVersion ? ` (notice ${event.noticeVersion}, ${event.noticeLocale})` : ""}`,
+        after: { purpose: event.purpose, decision: event.decision, noticeVersion: event.noticeVersion },
+      },
     };
   },
 });

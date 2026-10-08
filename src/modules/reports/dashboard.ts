@@ -105,13 +105,23 @@ export async function getDashboard(user: DashboardViewer, today: IsoDate = today
       const presence = await getWhoIsIn(viewerId);
       // Only the person themselves: no tile worth a row on a dashboard.
       if (presence.rows.length <= 1) return null;
-      return { date: presence.date, in: presence.counts.in, notYet: presence.counts.not_yet, offSite: presence.counts.off_site, out: presence.counts.out, onLeave: presence.counts.on_leave, people: presence.rows.length } satisfies AttendanceTile;
+      return {
+        date: presence.date,
+        in: presence.counts.in,
+        notYet: presence.counts.not_yet,
+        offSite: presence.counts.off_site,
+        out: presence.counts.out,
+        onLeave: presence.counts.on_leave,
+        people: presence.rows.length,
+      } satisfies AttendanceTile;
     }),
 
     tile("leave", async () => {
       const calendar = await getTeamCalendar(viewerId, { from: today, to: today });
       const away = calendar.people
-        .flatMap((person) => person.cells.filter((cell) => cell.date === today).map((cell) => ({ personId: person.personId, fullName: person.fullName, departmentName: person.departmentName, typeName: cell.typeName, pending: cell.status === "pending" })))
+        .flatMap((person) =>
+          person.cells.filter((cell) => cell.date === today).map((cell) => ({ personId: person.personId, fullName: person.fullName, departmentName: person.departmentName, typeName: cell.typeName, pending: cell.status === "pending" })),
+        )
         .sort((left, right) => left.fullName.localeCompare(right.fullName));
       return away.length ? ({ date: today, away } satisfies LeaveTile) : null;
     }),

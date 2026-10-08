@@ -38,7 +38,14 @@ function workingDaysOf(task: WorkloadTask, today: string): string[] {
   return days.length > 0 ? days : [iso(due)];
 }
 
-export function workload<Person extends { id: string }>(input: { people: readonly Person[]; tasks: readonly WorkloadTask[]; away: readonly AwayDay[]; /** Days off per person (their entity's calendar). */ daysOff: (person: Person) => ReadonlySet<string>; weeks: readonly Week[]; today: string }): WorkloadRow<Person>[] {
+export function workload<Person extends { id: string }>(input: {
+  people: readonly Person[];
+  tasks: readonly WorkloadTask[];
+  away: readonly AwayDay[];
+  /** Days off per person (their entity's calendar). */ daysOff: (person: Person) => ReadonlySet<string>;
+  weeks: readonly Week[];
+  today: string;
+}): WorkloadRow<Person>[] {
   const { weeks, today } = input;
   const weekOf = (date: string) => weeks.findIndex((week) => date >= week.start && date <= week.end);
   return input.people.map((person) => {

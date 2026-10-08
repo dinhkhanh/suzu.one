@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -129,10 +135,34 @@ describe("review outcomes", () => {
   async function settledResult(status: "draft" | "locked") {
     const [weighting] = await db().select().from(schema.performanceWeighting);
     const versionId = weighting?.id ?? (await db().insert(schema.performanceWeighting).values({ entityId: null, value: DEFAULT_PERFORMANCE_WEIGHTING, validFrom: "2026-01-01", status: "approved" }).returning())[0].id;
-    const trace = finalResult({ reviewScoreBp: 11_000, kpiScoreBp: 11_500, okr: { individual: { progressBp: 11_000, goals: 2 }, team: { progressBp: null, goals: 0 }, department: { progressBp: null, goals: 0 }, entity: { progressBp: null, goals: 0 }, group: { progressBp: null, goals: 0 } }, weightingVersionId: versionId }, DEFAULT_PERFORMANCE_WEIGHTING);
+    const trace = finalResult(
+      {
+        reviewScoreBp: 11_000,
+        kpiScoreBp: 11_500,
+        okr: { individual: { progressBp: 11_000, goals: 2 }, team: { progressBp: null, goals: 0 }, department: { progressBp: null, goals: 0 }, entity: { progressBp: null, goals: 0 }, group: { progressBp: null, goals: 0 } },
+        weightingVersionId: versionId,
+      },
+      DEFAULT_PERFORMANCE_WEIGHTING,
+    );
     const [row] = await db()
       .insert(schema.performanceResult)
-      .values({ personId: ids.report, entityId: ids.entity, year: 2026, weightingVersionId: versionId, reviewScoreBp: 11_000, kpiScoreBp: 11_500, okrScoreBp: trace.okr.scoreBp, computedScoreBp: trace.computedScoreBp, computedBand: trace.computedBand?.key ?? null, finalScoreBp: trace.finalScoreBp, finalBand: trace.finalBand?.key ?? null, multiplierBp: trace.multiplierBp, trace, status, ...(status === "locked" ? { lockedAt: new Date() } : {}) })
+      .values({
+        personId: ids.report,
+        entityId: ids.entity,
+        year: 2026,
+        weightingVersionId: versionId,
+        reviewScoreBp: 11_000,
+        kpiScoreBp: 11_500,
+        okrScoreBp: trace.okr.scoreBp,
+        computedScoreBp: trace.computedScoreBp,
+        computedBand: trace.computedBand?.key ?? null,
+        finalScoreBp: trace.finalScoreBp,
+        finalBand: trace.finalBand?.key ?? null,
+        multiplierBp: trace.multiplierBp,
+        trace,
+        status,
+        ...(status === "locked" ? { lockedAt: new Date() } : {}),
+      })
       .returning();
     return row;
   }

@@ -34,7 +34,17 @@ export async function convertLead(leadId: string, input: ConversionInput, actorP
     } else if (input.contact && lead.contactName) {
       const [contact] = await tx
         .insert(schema.crmContact)
-        .values({ clientId: account.client.id, fullName: lead.contactName, searchName: toSearchKey(lead.contactName), title: lead.contactTitle, email: lead.email, phone: lead.phone, source: input.contact.create.source, lawfulBasis: input.contact.create.lawfulBasis, createdByPersonId: actorPersonId })
+        .values({
+          clientId: account.client.id,
+          fullName: lead.contactName,
+          searchName: toSearchKey(lead.contactName),
+          title: lead.contactTitle,
+          email: lead.email,
+          phone: lead.phone,
+          source: input.contact.create.source,
+          lawfulBasis: input.contact.create.lawfulBasis,
+          createdByPersonId: actorPersonId,
+        })
         .returning();
       contactId = contact.id;
     }

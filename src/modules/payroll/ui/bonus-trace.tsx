@@ -93,10 +93,16 @@ export async function BonusTraceView({ trace, result, kpiMonths }: { trace: Bonu
         <Row label={t("base")} value={formatVnd(trace.base.amountVnd)} hint={trace.base.componentCode} />
         <Row label={t("service")} value={factor(trace.service.factorBp)} hint={t("serviceHint", { months: trace.service.months, band: trace.service.label || "—" })} />
         <Row label={t("performanceFactor")} value={factor(trace.performance.multiplierBp)} hint={trace.performance.bandLabel ?? "—"} />
-        <Row label={t("unitOkr")} value={factor(trace.unitOkr.multiplierBp)} hint={trace.unitOkr.level === "none" ? t("unitOkrNone") : t("unitOkrHint", { level: trace.unitOkr.level, progress: percent(trace.unitOkr.progressBp), band: trace.unitOkr.label ?? "—" })} />
+        <Row
+          label={t("unitOkr")}
+          value={factor(trace.unitOkr.multiplierBp)}
+          hint={trace.unitOkr.level === "none" ? t("unitOkrNone") : t("unitOkrHint", { level: trace.unitOkr.level, progress: percent(trace.unitOkr.progressBp), band: trace.unitOkr.label ?? "—" })}
+        />
         <Row label={t("combined")} value={factor(trace.combinedMultiplierBp)} />
         {trace.cap.applied ? <Row label={t("cap")} value={factor(trace.cap.multiplierBp)} hint={t("capHint", { cap: factor(trace.cap.capMultiplierBp) })} /> : null}
-        {trace.rounding.beforeVnd !== trace.rounding.afterVnd ? <Row label={t("rounding")} value={formatVnd(trace.rounding.afterVnd)} hint={t("roundingHint", { before: formatVnd(trace.rounding.beforeVnd), unit: formatVnd(trace.rounding.unitVnd) })} /> : null}
+        {trace.rounding.beforeVnd !== trace.rounding.afterVnd ? (
+          <Row label={t("rounding")} value={formatVnd(trace.rounding.afterVnd)} hint={t("roundingHint", { before: formatVnd(trace.rounding.beforeVnd), unit: formatVnd(trace.rounding.unitVnd) })} />
+        ) : null}
       </Section>
 
       {/* 6. The arithmetic, step by step, exactly as the engine did it. */}

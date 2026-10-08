@@ -11,16 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { openCommandPalette } from "@/components/shell/palette-bus";
 import { QuickAdd, type QuickAddLabels } from "@/components/shell/quick-add";
-import {
-  readCollapsed,
-  readCollapsedOnServer,
-  readFolded,
-  readFoldedOnServer,
-  subscribeCollapsed,
-  subscribeFolded,
-  writeCollapsed,
-  writeFolded,
-} from "@/components/shell/sidebar-store";
+import { readCollapsed, readCollapsedOnServer, readFolded, readFoldedOnServer, subscribeCollapsed, subscribeFolded, writeCollapsed, writeFolded } from "@/components/shell/sidebar-store";
 import { useSwipeToClose } from "@/components/shell/use-swipe-to-close";
 import { setNavPinsAction } from "@/modules/platform/auth/preference-actions";
 import { MAX_NAV_PINS } from "@/modules/platform/auth/preferences";
@@ -163,7 +154,17 @@ function Row({ row, collapsed, active, soonLabel, pin }: { row: NavRow; collapse
   );
 }
 
-function SectionHeading({ label, open, count, current }: { label: string; open: boolean; /** What waits behind the rows of a shut section, so folding it hides no badge. */ count: number; /** The page open now is one of this shut section's rows. */ current: boolean }) {
+function SectionHeading({
+  label,
+  open,
+  count,
+  current,
+}: {
+  label: string;
+  open: boolean;
+  /** What waits behind the rows of a shut section, so folding it hides no badge. */ count: number;
+  /** The page open now is one of this shut section's rows. */ current: boolean;
+}) {
   return (
     <CollapsibleTrigger onClick={(event) => event.stopPropagation()} className="nav-section group/heading mt-3 w-full rounded-md text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
       <span className={cn("min-w-0 flex-1 truncate", !open && current && "text-primary")}>{label}</span>
@@ -190,7 +191,11 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
   const open = openAt === pathname;
   const setOpen = (next: boolean) => setOpenAt(next ? pathname : null);
   const drawer = useRef<HTMLElement>(null);
-  useSwipeToClose(drawer, open, useCallback(() => setOpenAt(null), []));
+  useSwipeToClose(
+    drawer,
+    open,
+    useCallback(() => setOpenAt(null), []),
+  );
   const toggleCollapsed = () => writeCollapsed(!collapsed);
 
   // The pins as this sidebar shows them: changed here at once, then saved to the account. The

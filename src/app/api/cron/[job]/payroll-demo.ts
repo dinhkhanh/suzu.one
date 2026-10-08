@@ -110,7 +110,10 @@ export const payrollDemoRunsJob: JobDefinition = {
       done.push(outcome);
     }
 
-    const payslips = await db().select({ id: schema.payslip.id }).from(schema.payslip).where(and(eq(schema.payslip.month, PAID_MONTH)));
+    const payslips = await db()
+      .select({ id: schema.payslip.id })
+      .from(schema.payslip)
+      .where(and(eq(schema.payslip.month, PAID_MONTH)));
     // The approved expense claims the demo seed left waiting now have somewhere to go: September's
     // draft (FR-REQ-03). The real use-case, not an insert — and idempotent, so running the demo
     // job again posts nothing twice.

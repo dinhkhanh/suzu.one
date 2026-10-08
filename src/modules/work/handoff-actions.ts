@@ -23,7 +23,9 @@ const actorOf = (user: User) => ({ personId: user.person.id, fullName: user.pers
 const text = (max: number) => z.string().trim().max(max).optional();
 
 /** FR-PJM-43: one note shape everywhere. */
-const noteInput = z.object({ context: text(4000), state: text(4000), done: text(4000), next: text(4000), questions: text(4000), contacts: text(2000), links: z.array(z.string().trim().max(1000)).max(MAX_NOTE_LINKS).default([]) }).default({ links: [] });
+const noteInput = z
+  .object({ context: text(4000), state: text(4000), done: text(4000), next: text(4000), questions: text(4000), contacts: text(2000), links: z.array(z.string().trim().max(1000)).max(MAX_NOTE_LINKS).default([]) })
+  .default({ links: [] });
 
 function refreshTask(taskId: string, projectId?: string | null) {
   revalidatePath(`/work/tasks/${taskId}`);
@@ -46,8 +48,14 @@ const savePackagePipeline = createAction({
     name: z.string().trim().min(1).max(80),
     fromStateId: optional(z.uuid()),
     toStateId: z.uuid(),
-    fields: z.array(z.object({ key: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), label: z.string().trim().min(1).max(80), type: z.enum(HANDOFF_FIELD_TYPES), required: checkbox.default(true) })).max(MAX_PACKAGE_FIELDS).default([]),
-    checklist: z.array(z.object({ id: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), text: z.string().trim().min(1).max(200) })).max(MAX_PACKAGE_CHECKS).default([]),
+    fields: z
+      .array(z.object({ key: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), label: z.string().trim().min(1).max(80), type: z.enum(HANDOFF_FIELD_TYPES), required: checkbox.default(true) }))
+      .max(MAX_PACKAGE_FIELDS)
+      .default([]),
+    checklist: z
+      .array(z.object({ id: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), text: z.string().trim().min(1).max(200) }))
+      .max(MAX_PACKAGE_CHECKS)
+      .default([]),
     checklistIds: z.array(z.uuid()).max(MAX_LINKED_CHECKLISTS).default([]),
     requireLink: checkbox.default(false),
     requireFile: checkbox.default(false),
@@ -97,7 +105,10 @@ const handOffPipeline = createAction({
     toStateId: z.uuid(),
     values: z.record(z.string().max(40), z.string().max(2000)).default({}),
     // The package's own checks and those of the library checklists it names.
-    checked: z.array(z.string().max(40)).max(MAX_PACKAGE_CHECKS + MAX_LINKED_CHECKLISTS * MAX_CHECKLIST_ITEMS).default([]),
+    checked: z
+      .array(z.string().max(40))
+      .max(MAX_PACKAGE_CHECKS + MAX_LINKED_CHECKLISTS * MAX_CHECKLIST_ITEMS)
+      .default([]),
     links: z.array(z.string().trim().max(1000)).max(MAX_NOTE_LINKS).default([]),
     fileId: optional(z.uuid()),
     toPersonId: optional(z.uuid()),
@@ -111,7 +122,10 @@ const handOffPipeline = createAction({
     const { taskId, ...rest } = input;
     const { handoff, loaded } = await handOffStage(taskId, rest, actorOf(user));
     refreshTask(taskId, loaded.work.projectId);
-    return { data: { id: handoff?.id ?? null, status: handoff?.status ?? null }, audit: { resource: { type: "task:work", id: taskId, entityId: loaded.task.entityId }, summary: `${loaded.task.title}: hand-off → ${input.toStateId}`, after: handoff ?? { stateId: input.toStateId } } };
+    return {
+      data: { id: handoff?.id ?? null, status: handoff?.status ?? null },
+      audit: { resource: { type: "task:work", id: taskId, entityId: loaded.task.entityId }, summary: `${loaded.task.title}: hand-off → ${input.toStateId}`, after: handoff ?? { stateId: input.toStateId } },
+    };
   },
 });
 export async function handOffTaskAction(input: unknown) {
@@ -167,7 +181,10 @@ const sendToTeamPipeline = createAction({
     const { handoff, loaded, target } = await sendToTeam(taskId, rest, actorOf(user));
     refreshTask(taskId, loaded.work.projectId);
     revalidatePath(`/work/teams/${input.teamId}/triage`);
-    return { data: { id: handoff.id, targetKey: target.key }, audit: { resource: { type: "task:work", id: taskId, entityId: loaded.task.entityId }, summary: `${loaded.task.title} → ${target.key}`, after: { handoffId: handoff.id, teamId: input.teamId, targetTaskId: target.id } } };
+    return {
+      data: { id: handoff.id, targetKey: target.key },
+      audit: { resource: { type: "task:work", id: taskId, entityId: loaded.task.entityId }, summary: `${loaded.task.title} → ${target.key}`, after: { handoffId: handoff.id, teamId: input.teamId, targetTaskId: target.id } },
+    };
   },
 });
 export async function sendToTeamAction(input: unknown) {
@@ -190,7 +207,12 @@ const accountPipeline = createAction({
     for (const project of result.projects) revalidatePath(`/work/projects/${project.id}`);
     return {
       data: { projects: result.projects.length, skipped: result.skipped.map((project) => project.name), withheld: result.withheld },
-      audit: { resource: { type: "work_client", id: input.clientId, entityId: client?.entityId ?? null }, summary: `account manager → ${input.toPersonId} (${result.projects.length} projects)`, before: { accountManagerPersonId: result.before }, after: { accountManagerPersonId: result.after, projects: result.projects, skipped: result.skipped, withheld: result.withheld, note: result.handoff.note } },
+      audit: {
+        resource: { type: "work_client", id: input.clientId, entityId: client?.entityId ?? null },
+        summary: `account manager → ${input.toPersonId} (${result.projects.length} projects)`,
+        before: { accountManagerPersonId: result.before },
+        after: { accountManagerPersonId: result.after, projects: result.projects, skipped: result.skipped, withheld: result.withheld, note: result.handoff.note },
+      },
     };
   },
 });
@@ -203,7 +225,10 @@ export async function changeAccountManagerAction(input: unknown) {
 const coverChoice = {
   planId: z.uuid(),
   defaultCoverPersonId: optional(z.uuid()),
-  items: z.array(z.object({ id: z.uuid(), coverPersonId: optional(z.uuid()) })).max(500).default([]),
+  items: z
+    .array(z.object({ id: z.uuid(), coverPersonId: optional(z.uuid()) }))
+    .max(500)
+    .default([]),
   note: noteInput,
 };
 
@@ -242,7 +267,10 @@ const submitCoverPipeline = createAction({
     const { plan, covers, applied } = await submitCoverPlan(planId, choice, actorOf(user), todayInVietnam());
     revalidatePath(`/work/cover/${planId}`);
     revalidatePath("/today");
-    return { data: { id: plan.id, covers: covers.length, applied }, audit: { resource: { type: "work_cover_plan", id: plan.id }, summary: `cover plan submitted: ${covers.length} covers${applied ? ", applied" : ""}`, after: { ...choice, covers } } };
+    return {
+      data: { id: plan.id, covers: covers.length, applied },
+      audit: { resource: { type: "work_cover_plan", id: plan.id }, summary: `cover plan submitted: ${covers.length} covers${applied ? ", applied" : ""}`, after: { ...choice, covers } },
+    };
   },
 });
 export async function submitCoverPlanAction(input: unknown) {
@@ -313,7 +341,15 @@ const runsHandover = async (user: User, handoverId: string) => {
 const reassignPipeline = createAction({
   name: "work.exit.reassign",
   // A kind of this module's or of another module's provider ("crm_deal"): the service keeps only what the leaver still owns.
-  input: z.object({ handoverId: z.uuid(), toPersonId: z.uuid(), items: z.array(z.object({ kind: z.string().regex(/^[a-z][a-z_]{1,39}$/), id: z.uuid() })).min(1).max(500), note: noteInput }),
+  input: z.object({
+    handoverId: z.uuid(),
+    toPersonId: z.uuid(),
+    items: z
+      .array(z.object({ kind: z.string().regex(/^[a-z][a-z_]{1,39}$/), id: z.uuid() }))
+      .min(1)
+      .max(500),
+    note: noteInput,
+  }),
   authorize: (user, input) => runsHandover(user, input.handoverId),
   run: async ({ user, input }) => {
     const { handoverId, ...rest } = input;
@@ -321,7 +357,14 @@ const reassignPipeline = createAction({
     revalidatePath(`/work/handover/${handoverId}`);
     revalidatePath("/today");
     revalidatePath("/work", "layout");
-    return { data: { moved: result.moved.length, remaining: result.remaining }, audit: { resource: { type: "work_exit_handover", id: handoverId }, summary: `${result.moved.length} items → ${input.toPersonId}, ${result.remaining} left`, after: { toPersonId: input.toPersonId, moved: result.moved, note: input.note } } };
+    return {
+      data: { moved: result.moved.length, remaining: result.remaining },
+      audit: {
+        resource: { type: "work_exit_handover", id: handoverId },
+        summary: `${result.moved.length} items → ${input.toPersonId}, ${result.remaining} left`,
+        after: { toPersonId: input.toPersonId, moved: result.moved, note: input.note },
+      },
+    };
   },
 });
 export async function reassignOwnershipAction(input: unknown) {

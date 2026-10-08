@@ -47,7 +47,10 @@ describe("merge rules (FR-ATT-08)", () => {
   });
   it("pairs in sequence for split shifts", () => {
     const merged = mergePunches([punch("05:00", "in"), punch("09:02", "out"), punch("15:58", "in"), punch("20:00", "out")], { rule: "first_in_last_out", duplicateWindowMinutes: 3, pairing: "sequence" });
-    expect(merged.pairs).toEqual([{ in: 300, out: 542 }, { in: 958, out: 1200 }]);
+    expect(merged.pairs).toEqual([
+      { in: 300, out: 542 },
+      { in: 958, out: 1200 },
+    ]);
   });
 });
 
@@ -55,7 +58,11 @@ describe("which day a punch belongs to", () => {
   const nightShift = [{ start: 1320, end: 1800 }];
   const office = [{ start: 510, end: 1050 }];
   it("a night shift's departure belongs to the day the shift started", () => {
-    const days = [{ date: "2026-08-12", segments: nightShift }, { date: "2026-08-13", segments: nightShift }, { date: "2026-08-14", segments: [] }];
+    const days = [
+      { date: "2026-08-12", segments: nightShift },
+      { date: "2026-08-13", segments: nightShift },
+      { date: "2026-08-14", segments: [] },
+    ];
     const raw = [
       { at: instantOf("2026-08-12", at("21:50")), direction: "in" as const, source: "device" as const },
       // Clocks without a direction column: the import guessed "in" for the first punch of the calendar day.
@@ -64,12 +71,21 @@ describe("which day a punch belongs to", () => {
       { at: instantOf("2026-08-14", at("06:10")), direction: "out" as const, source: "device" as const },
     ];
     const assigned = assignPunchesToDays(days, raw, 240);
-    expect(assigned.get("2026-08-12")).toEqual([{ at: at("21:50"), direction: "in", source: "device" }, { at: at("06:05", true), direction: "out", source: "device" }]);
-    expect(assigned.get("2026-08-13")).toEqual([{ at: at("21:55"), direction: "in", source: "device" }, { at: at("06:10", true), direction: "out", source: "device" }]);
+    expect(assigned.get("2026-08-12")).toEqual([
+      { at: at("21:50"), direction: "in", source: "device" },
+      { at: at("06:05", true), direction: "out", source: "device" },
+    ]);
+    expect(assigned.get("2026-08-13")).toEqual([
+      { at: at("21:55"), direction: "in", source: "device" },
+      { at: at("06:10", true), direction: "out", source: "device" },
+    ]);
     expect(assigned.get("2026-08-14")).toEqual([]);
   });
   it("leaving after midnight closes yesterday; arriving early does not", () => {
-    const days = [{ date: "2026-08-03", segments: office }, { date: "2026-08-04", segments: office }];
+    const days = [
+      { date: "2026-08-03", segments: office },
+      { date: "2026-08-04", segments: office },
+    ];
     const raw = [
       { at: instantOf("2026-08-03", at("08:25")), direction: "in" as const, source: "app" as const },
       { at: instantOf("2026-08-04", at("00:40")), direction: "out" as const, source: "app" as const },
@@ -80,8 +96,14 @@ describe("which day a punch belongs to", () => {
     expect(assigned.get("2026-08-04")!.map((item) => item.at)).toEqual([at("08:20")]);
   });
   it("a forgotten check-out is not closed by the next morning's arrival", () => {
-    const days = [{ date: "2026-08-03", segments: office }, { date: "2026-08-04", segments: office }];
-    const raw = [{ at: instantOf("2026-08-03", at("08:25")), direction: "in" as const, source: "app" as const }, { at: instantOf("2026-08-04", at("08:28")), direction: "in" as const, source: "app" as const }];
+    const days = [
+      { date: "2026-08-03", segments: office },
+      { date: "2026-08-04", segments: office },
+    ];
+    const raw = [
+      { at: instantOf("2026-08-03", at("08:25")), direction: "in" as const, source: "app" as const },
+      { at: instantOf("2026-08-04", at("08:28")), direction: "in" as const, source: "app" as const },
+    ];
     expect(assignPunchesToDays(days, raw, 240).get("2026-08-03")).toHaveLength(1);
   });
 });
@@ -221,7 +243,17 @@ describe("daily timesheet — office day 08:30–17:30, one hour break", () => {
 
 describe("daily timesheet — shifts and flexible hours", () => {
   const NIGHT_SHIFT: RosterEntry = { date: "2026-08-12", shift: { id: "night", segments: [{ start: "22:00", end: "06:00" }], breakMinutes: 45 } };
-  const SPLIT: RosterEntry = { date: "2026-08-25", shift: { id: "split", segments: [{ start: "05:00", end: "09:00" }, { start: "16:00", end: "20:00" }], breakMinutes: 0 } };
+  const SPLIT: RosterEntry = {
+    date: "2026-08-25",
+    shift: {
+      id: "split",
+      segments: [
+        { start: "05:00", end: "09:00" },
+        { start: "16:00", end: "20:00" },
+      ],
+      breakMinutes: 0,
+    },
+  };
 
   it("overnight shift across midnight", () => {
     const result = day("2026-08-12", [punch("21:50", "in"), punch("06:05", "out", "device", true)], { roster: NIGHT_SHIFT });
@@ -269,8 +301,22 @@ describe("month summary", () => {
       day("2026-09-07", inOut("08:30", "19:30"), { requests: requests({ overtime: [{ requestId: "r", from: at("17:30"), to: at("19:30"), confirmedMinutes: null, compensation: "pay" }] }) }),
     ];
     expect(summariseDays(days)).toMatchObject({
-      days: 8, standardDays: 7, standardMinutes: 3360, workedMinutes: 1418, creditedMinutes: 480, leavePaidMinutes: 480, holidayMinutes: 480, absenceMinutes: 502,
-      lateCount: 1, lateMinutes: 22, absentDays: 1, otWeekday: { day: 120, night: 0 }, otTotalMinutes: 120, paidDaysCenti: 595, unpaidDaysCenti: 105, anomalyDays: 2,
+      days: 8,
+      standardDays: 7,
+      standardMinutes: 3360,
+      workedMinutes: 1418,
+      creditedMinutes: 480,
+      leavePaidMinutes: 480,
+      holidayMinutes: 480,
+      absenceMinutes: 502,
+      lateCount: 1,
+      lateMinutes: 22,
+      absentDays: 1,
+      otWeekday: { day: 120, night: 0 },
+      otTotalMinutes: 120,
+      paidDaysCenti: 595,
+      unpaidDaysCenti: 105,
+      anomalyDays: 2,
     });
   });
 });

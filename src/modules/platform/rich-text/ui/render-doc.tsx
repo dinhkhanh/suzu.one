@@ -211,7 +211,12 @@ function renderNode(node: DocNode, key: string, context: Context): ReactNode {
       const files = context.files;
       if (typeof node.attrs?.fileId !== "string" || !files) return null;
       return (
-        <files.Link key={key} fileId={node.attrs.fileId} fileName={typeof node.attrs.fileName === "string" ? node.attrs.fileName : undefined} className="flex w-fit max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
+        <files.Link
+          key={key}
+          fileId={node.attrs.fileId}
+          fileName={typeof node.attrs.fileName === "string" ? node.attrs.fileName : undefined}
+          className="flex w-fit max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
+        >
           <span aria-hidden>📎</span>
           <span className="truncate">{String(node.attrs.fileName ?? "")}</span>
           {typeof node.attrs.sizeBytes === "number" ? <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(node.attrs.sizeBytes)}</span> : null}

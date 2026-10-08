@@ -46,7 +46,15 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
   const projectTeams = targets.teams.filter((team) => team.canCreateProject);
   const [clients, people] = projectTeams.length ? await Promise.all([listClients({ activeOnly: true }), listPersonNames()]) : [[], []];
 
-  const distinct = (pick: (row: PortfolioRow) => [string | null, string | null]) => [...new Map(all.flatMap((row) => { const [id, name] = pick(row); return id && name ? [[id, name] as const] : []; })).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const distinct = (pick: (row: PortfolioRow) => [string | null, string | null]) =>
+    [
+      ...new Map(
+        all.flatMap((row) => {
+          const [id, name] = pick(row);
+          return id && name ? [[id, name] as const] : [];
+        }),
+      ).entries(),
+    ].sort((a, b) => a[1].localeCompare(b[1]));
   const options = {
     teamId: distinct((row) => [row.teamId, row.teamName]),
     clientId: distinct((row) => [row.clientId, row.clientName]),
@@ -111,8 +119,16 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
             <div className="mt-auto flex flex-col gap-1.5">
               <ProgressBar percent={row.register.promised ? (row.register.percent ?? 0) : null} pending={row.register.promised ? Math.floor((row.register.awaitingClient / row.register.promised) * 100) : null} tone="success" />
               <div className="flex items-baseline justify-between gap-3 font-mono text-xs tabular-nums">
-                <span>{row.register.promised ? t("portfolio.cardProgress", { accepted: row.register.accepted, promised: row.register.promised, percent: row.register.percent ?? 0 }) : <span className="text-faint">{t("portfolio.noRegister")}</span>}</span>
-                <span className={burnTone}>{row.burn.budgetMinutes ? t("portfolio.cardHours", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes) }) : t("portfolio.cardHoursNoBudget", { used: hours(row.burn.loggedMinutes) })}</span>
+                <span>
+                  {row.register.promised ? (
+                    t("portfolio.cardProgress", { accepted: row.register.accepted, promised: row.register.promised, percent: row.register.percent ?? 0 })
+                  ) : (
+                    <span className="text-faint">{t("portfolio.noRegister")}</span>
+                  )}
+                </span>
+                <span className={burnTone}>
+                  {row.burn.budgetMinutes ? t("portfolio.cardHours", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes) }) : t("portfolio.cardHoursNoBudget", { used: hours(row.burn.loggedMinutes) })}
+                </span>
               </div>
             </div>
             <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
@@ -125,7 +141,9 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
                 <span className="text-faint">{t("portfolio.noMilestone")}</span>
               )}
               {row.dueSlipDays ? <span className={row.dueSlipDays > 0 ? "text-destructive" : undefined}>{t("plan.slip", slipWords(row.dueSlipDays))}</span> : null}
-              {withFees && "feeVnd" in row && row.feeVnd !== null && row.feeVnd !== undefined ? <span className="ml-auto font-mono tabular-nums">{format.number(row.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span> : null}
+              {withFees && "feeVnd" in row && row.feeVnd !== null && row.feeVnd !== undefined ? (
+                <span className="ml-auto font-mono tabular-nums">{format.number(row.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span>
+              ) : null}
             </p>
           </CardContent>
         </Card>
@@ -142,7 +160,9 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
         actions={
           <>
             <ExportButton action={exportPortfolioAction} input={{ ...filters, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />
-            {projectTeams.length ? <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : null}
+            {projectTeams.length ? (
+              <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} />
+            ) : null}
           </>
         }
       />
@@ -193,7 +213,19 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
         <Section title={t("portfolio.count", { count: rows.length })}>{grid(rows)}</Section>
       ) : (
         groups.map(({ id, label, rows: own }) => (
-          <Section key={label || "all"} title={groupKind ? <RecordLink kind={groupKind} id={id}>{label}</RecordLink> : label} count={own.length}>
+          <Section
+            key={label || "all"}
+            title={
+              groupKind ? (
+                <RecordLink kind={groupKind} id={id}>
+                  {label}
+                </RecordLink>
+              ) : (
+                label
+              )
+            }
+            count={own.length}
+          >
             {grid(own)}
           </Section>
         ))

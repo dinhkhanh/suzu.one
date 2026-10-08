@@ -64,7 +64,9 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
               <Button nativeButton={false} variant="outline" render={<Link href="/assets/import" />}>
                 {t("nav.import")}
               </Button>
-              <Button nativeButton={false} render={<Link href="/assets/new" />}>{t("nav.new")}</Button>
+              <Button nativeButton={false} render={<Link href="/assets/new" />}>
+                {t("nav.new")}
+              </Button>
             </>
           ) : null
         }

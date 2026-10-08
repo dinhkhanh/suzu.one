@@ -11,7 +11,10 @@ vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 
 // Each action's pipeline is kept as it was built, so its audit payload can be read here.
-type Pipeline = { name: string; run: (context: { user: unknown; input: Record<string, unknown> }) => Promise<{ audit: { resource: { entityId: string | null }; before?: Record<string, unknown> | null; after?: Record<string, unknown> | null } }> };
+type Pipeline = {
+  name: string;
+  run: (context: { user: unknown; input: Record<string, unknown> }) => Promise<{ audit: { resource: { entityId: string | null }; before?: Record<string, unknown> | null; after?: Record<string, unknown> | null } }>;
+};
 const pipelines = new Map<string, Pipeline>();
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -49,7 +52,11 @@ import { openProject } from "./views";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "owner" | "director" | "lead" | "am" | "member" | "outsider" | "team" | "lonely" | "private" | "hidden" | "open" | "retainer" | "fresh", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const principalOf = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 const userOf = (personId: string, grants: Principal["grants"] = []) => ({ person: { id: personId, primaryEntityId: ids.szm }, principal: principalOf(personId, grants) }) as never;
 const directorGrant = (): Principal["grants"] => [{ role: "entity_director", scope: { type: "entity", id: ids.szm } }];
@@ -61,15 +68,27 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
-  for (const [key, name] of [["owner", "Chu Tich"], ["director", "Giam Doc"], ["lead", "Truong Nhom"], ["am", "Quan Ly Khach"], ["member", "Thanh Vien"], ["outsider", "Nguoi Ngoai"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["owner", "Chu Tich"],
+    ["director", "Giam Doc"],
+    ["lead", "Truong Nhom"],
+    ["am", "Quan Ly Khach"],
+    ["member", "Thanh Vien"],
+    ["outsider", "Nguoi Ngoai"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2024-01-01" },
-    // `work:manage` and `pjm:commercial` over the entity — and no business with a private project.
-    { personId: ids.director, role: "entity_director", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2024-01-01" },
+      // `work:manage` and `pjm:commercial` over the entity — and no business with a private project.
+      { personId: ids.director, role: "entity_director", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+    ]);
   const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.team = team.id;
   for (const personId of [ids.am, ids.member]) await setTeamMember(team.id, personId, "member");
@@ -88,8 +107,12 @@ beforeAll(async () => {
   ids.lonely = lonely.id;
   await setTeamMember(lonely.id, ids.am, "member");
   ids.hidden = (await project("Dự án kín không có lead", "private", ids.am, lonely.id)).id;
-  await db().delete(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, lonely.id), eq(schema.workTeamMember.personId, ids.lead)));
-  await db().delete(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, ids.hidden), eq(schema.workProjectMember.role, "lead")));
+  await db()
+    .delete(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, lonely.id), eq(schema.workTeamMember.personId, ids.lead)));
+  await db()
+    .delete(schema.workProjectMember)
+    .where(and(eq(schema.workProjectMember.projectId, ids.hidden), eq(schema.workProjectMember.role, "lead")));
 });
 
 describe("a private project's approvals (finding 1)", () => {
@@ -188,7 +211,19 @@ describe("the fee is billed once (finding 8)", () => {
     expect(await fails(createAcceptance(ids.open, { scope: "project", milestoneId: null, retainerPeriodId: null }, ids.am))).toBe("acceptance_project_exists");
     const [file] = await db()
       .insert(schema.storedFile)
-      .values({ bucket: "test", objectPath: `project_acceptance/${acceptance.id}.pdf`, fileName: "bien-ban.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "project_acceptance", ownerId: acceptance.id, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.am })
+      .values({
+        bucket: "test",
+        objectPath: `project_acceptance/${acceptance.id}.pdf`,
+        fileName: "bien-ban.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 10,
+        ownerType: "project_acceptance",
+        ownerId: acceptance.id,
+        entityId: ids.szm,
+        tier: "personal",
+        status: "ready",
+        uploadedByPersonId: ids.am,
+      })
       .returning();
     await signAcceptance(acceptance.id, { signedFileId: file.id, signedOn: todayInVietnam(), signedByClient: "Khách" }, ids.am);
 
@@ -208,7 +243,8 @@ describe("only the project's people take its work (finding 19)", () => {
     // The team's own people are still offered the work.
     expect((await createTasksForLine(line.id, { count: 1, assigneePersonId: ids.member, dueDate: null }, ids.lead)).taskIds).toHaveLength(1);
 
-    const issue = (await saveRaidItem(ids.open, null, { kind: "issue", title: "Thiếu tư liệu", description: null, ownerPersonId: null, dueDate: null, severity: "high", decidedOn: null, evidenceUrl: null, evidenceFileId: null }, ids.lead)).after;
+    const issue = (await saveRaidItem(ids.open, null, { kind: "issue", title: "Thiếu tư liệu", description: null, ownerPersonId: null, dueDate: null, severity: "high", decidedOn: null, evidenceUrl: null, evidenceFileId: null }, ids.lead))
+      .after;
     expect(await fails(issueToTask(issue.id, { assigneePersonId: ids.outsider, dueDate: null }, ids.lead))).toBe("raid_owner_not_member");
     expect(await fails(saveRetro(ids.open, { heldOn: todayInVietnam(), attendeeIds: [ids.outsider], retro: { wentWell: "Ổn" } }, ids.lead))).toBe("person_not_in_project");
     // Its own people, and the Vietnamese title from the messages rather than an English literal.
@@ -238,7 +274,10 @@ describe("reading a project writes nothing (finding 18)", () => {
   });
 
   it("leaves the account manager's column to the nightly job rather than writing it on a read", async () => {
-    const [member] = await db().select().from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, ids.private), eq(schema.workProjectMember.role, "account_manager")));
+    const [member] = await db()
+      .select()
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, ids.private), eq(schema.workProjectMember.role, "account_manager")));
     await db().update(schema.workProjectMember).set({ role: "member" }).where(eq(schema.workProjectMember.id, member.id));
     // The page shows the truth (nobody), and the stored column is untouched by the read.
     expect((await openProject(userOf(ids.lead), ids.private))?.plan.accountManagerPersonId).toBeNull();
@@ -248,7 +287,10 @@ describe("reading a project writes nothing (finding 18)", () => {
   });
 
   it("does not write a change back when its request was withdrawn from the approvals inbox", async () => {
-    const [change] = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, ids.private), eq(schema.projectChangeRequest.status, "submitted")));
+    const [change] = await db()
+      .select()
+      .from(schema.projectChangeRequest)
+      .where(and(eq(schema.projectChangeRequest.projectId, ids.private), eq(schema.projectChangeRequest.status, "submitted")));
     await db().update(schema.approvalRequest).set({ status: "withdrawn" }).where(eq(schema.approvalRequest.id, change.approvalRequestId!));
     // The list shows it withdrawn; the row itself waits for the author's next move or the job.
     expect((await listChanges(ids.private, false)).find((row) => row.id === change.id)?.status).toBe("withdrawn");

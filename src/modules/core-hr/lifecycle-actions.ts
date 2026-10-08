@@ -20,7 +20,17 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const text = (max: number) => optional(z.string().trim().max(max));
 const id = optional(z.uuid());
 const day = z.iso.date();
-const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), seniorityLevel: optional(z.enum(SENIORITY_LEVELS)), positionLevel: optional(z.enum(POSITION_LEVELS)), managerId: id, dottedManagerId: id, workLocation: text(200) });
+const placementInput = z.object({
+  workforceType: z.enum(WORKFORCE_TYPES),
+  branchId: id,
+  orgUnitId: id,
+  positionName: text(120),
+  seniorityLevel: optional(z.enum(SENIORITY_LEVELS)),
+  positionLevel: optional(z.enum(POSITION_LEVELS)),
+  managerId: id,
+  dottedManagerId: id,
+  workLocation: text(200),
+});
 
 // Every lifecycle change is HR's: authority over the person where they sit today.
 const managesPerson = async (user: { principal: Parameters<typeof can>[0] }, personId: string) => {
@@ -50,7 +60,11 @@ const recordPipeline = createAction({
     refresh(personId);
     // Discipline notes are restricted tier and a salary change's words compensation tier: the audit
     // log keeps that they exist, not their text.
-    const after = { ...row, note: row.note && row.type === "discipline" ? "[restricted]" : row.note && row.type === "salary_change" ? "[compensation]" : row.note, reason: row.reason && row.type === "salary_change" ? "[compensation]" : row.reason };
+    const after = {
+      ...row,
+      note: row.note && row.type === "discipline" ? "[restricted]" : row.note && row.type === "salary_change" ? "[compensation]" : row.note,
+      reason: row.reason && row.type === "salary_change" ? "[compensation]" : row.reason,
+    };
     return { data: { id: row.id }, audit: { resource: { type: "person", id: personId, entityId: row.entityId }, summary: `${row.type} ${row.effectiveDate}`, after } };
   },
 });
@@ -165,7 +179,10 @@ const suspendPipeline = createAction({
   run: async ({ user, input }) => {
     const { person, sessionsRevoked } = await suspendPerson(input.personId, user.person.id);
     refresh(input.personId);
-    return { data: { id: person.id, sessionsRevoked }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: `suspended: ${input.reason}`, before: { status: "active" }, after: { status: person.status, reason: input.reason, sessionsRevoked } } };
+    return {
+      data: { id: person.id, sessionsRevoked },
+      audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: `suspended: ${input.reason}`, before: { status: "active" }, after: { status: person.status, reason: input.reason, sessionsRevoked } },
+    };
   },
 });
 
@@ -180,7 +197,15 @@ const liftSuspensionPipeline = createAction({
   run: async ({ input }) => {
     const { person } = await liftSuspension(input.personId);
     refresh(input.personId);
-    return { data: { id: person.id }, audit: { resource: { type: "person", id: person.id, entityId: person.primaryEntityId }, summary: input.reason ? `suspension lifted: ${input.reason}` : "suspension lifted", before: { status: "suspended" }, after: { status: person.status, reason: input.reason } } };
+    return {
+      data: { id: person.id },
+      audit: {
+        resource: { type: "person", id: person.id, entityId: person.primaryEntityId },
+        summary: input.reason ? `suspension lifted: ${input.reason}` : "suspension lifted",
+        before: { status: "suspended" },
+        after: { status: person.status, reason: input.reason },
+      },
+    };
   },
 });
 
@@ -200,7 +225,10 @@ const cancelPipeline = createAction({
     const event = (await findLifecycleEvent(input.eventId))!;
     const { before, after } = event.type === "termination" ? await cancelTermination(input.eventId) : await cancelRecordedEvent(input.eventId);
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "person", id: after.personId, entityId: after.entityId }, summary: `cancel ${after.type} ${after.effectiveDate}`, before: { status: before.status }, after: { status: after.status } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "person", id: after.personId, entityId: after.entityId }, summary: `cancel ${after.type} ${after.effectiveDate}`, before: { status: before.status }, after: { status: after.status } },
+    };
   },
 });
 
@@ -224,7 +252,10 @@ const rehirePipeline = createAction({
     const { personId, ...rehire } = input;
     const { person, employment, assignment, event } = await rehirePerson(personId, rehire, user.person.id);
     refresh(personId);
-    return { data: { id: personId }, audit: { resource: { type: "person", id: personId, entityId: employment.entityId }, summary: `${employment.employeeCode} ${person.fullName} (rehire)`, after: { employment, assignment, eventId: event.id } } };
+    return {
+      data: { id: personId },
+      audit: { resource: { type: "person", id: personId, entityId: employment.entityId }, summary: `${employment.employeeCode} ${person.fullName} (rehire)`, after: { employment, assignment, eventId: event.id } },
+    };
   },
 });
 
@@ -271,7 +302,15 @@ const decideLifecycleChangePipeline = createAction({
     if (request.subjectPersonId) refresh(request.subjectPersonId);
     revalidatePath("/approvals");
     revalidatePath(`/approvals/lifecycle/${request.id}`);
-    return { data: { outcome }, audit: { resource: { type: "person", id: request.subjectPersonId ?? request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, requestId: request.id, type: request.type } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "person", id: request.subjectPersonId ?? request.id, entityId: request.entityId },
+        summary: `${input.decision}: ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, requestId: request.id, type: request.type },
+      },
+    };
   },
 });
 
@@ -311,7 +350,15 @@ const decideResignationPipeline = createAction({
   run: async ({ user, input }) => {
     const { request, before, outcome, eventId } = await decideResignation(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
     refreshResignation(request.subjectPersonId, request.id);
-    return { data: { outcome }, audit: { resource: { type: "person", id: request.subjectPersonId, entityId: request.entityId }, summary: `${input.decision}: resignation, ${request.summary}`, before: { status: before.status }, after: { status: request.status, requestId: request.id, eventId } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "person", id: request.subjectPersonId, entityId: request.entityId },
+        summary: `${input.decision}: resignation, ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, requestId: request.id, eventId },
+      },
+    };
   },
 });
 

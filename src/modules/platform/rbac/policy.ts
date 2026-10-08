@@ -114,9 +114,7 @@ export function canReadTier(principal: Principal, person: Target & { personId: s
 // The set form of `readableTier`, for list queries: which people can the principal read at `tier`
 // or above, other than themselves? Services turn this into a WHERE clause; `matchesReach` is the
 // reference semantics and a test keeps both in step with `canReadTier`.
-export type TierReach =
-  | { all: true }
-  | { all: false; entityIds: string[]; unitIds: string[]; managerOf: string | null };
+export type TierReach = { all: true } | { all: false; entityIds: string[]; unitIds: string[]; managerOf: string | null };
 
 export function tierReach(principal: Principal, tier: Tier): TierReach {
   if (tier === "public_internal" && principal.workforceType !== "collaborator") return { all: true };
@@ -175,9 +173,5 @@ export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach
 
 export function matchesReach(reach: TierReach, person: Target): boolean {
   if (reach.all) return true;
-  return (
-    (!!person.entityId && reach.entityIds.includes(person.entityId)) ||
-    !!person.unitPath?.some((unitId) => reach.unitIds.includes(unitId)) ||
-    (!!reach.managerOf && person.managerId === reach.managerOf)
-  );
+  return (!!person.entityId && reach.entityIds.includes(person.entityId)) || !!person.unitPath?.some((unitId) => reach.unitIds.includes(unitId)) || (!!reach.managerOf && person.managerId === reach.managerOf);
 }

@@ -39,7 +39,15 @@ const saveDayPipeline = createAction({
     // The timesheet days the change touches (FR-ATT-09). Wide changes wait for the nightly job.
     await requestScopeRecompute({ entityId: after.entityId }, after.date);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "calendar_day", id: after.id, entityId: after.entityId }, summary: `${after.date} ${after.kind}: ${after.name}`, before: before ? { kind: before.kind, name: before.name, isConfirmed: before.isConfirmed } : null, after: { kind: after.kind, name: after.name, isConfirmed: true } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "calendar_day", id: after.id, entityId: after.entityId },
+        summary: `${after.date} ${after.kind}: ${after.name}`,
+        before: before ? { kind: before.kind, name: before.name, isConfirmed: before.isConfirmed } : null,
+        after: { kind: after.kind, name: after.name, isConfirmed: true },
+      },
+    };
   },
 });
 export async function saveCalendarDayAction(input: unknown) {
@@ -126,7 +134,10 @@ const dayRule = z.discriminatedUnion("type", [
 const weekday = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]);
 const pattern = z.object({
   days: z.object({ 1: dayRule, 2: dayRule, 3: dayRule, 4: dayRule, 5: dayRule, 6: dayRule, 7: dayRule }),
-  alternate: z.array(z.object({ weekday, anchor: day, rule: dayRule })).max(7).optional(),
+  alternate: z
+    .array(z.object({ weekday, anchor: day, rule: dayRule }))
+    .max(7)
+    .optional(),
 });
 
 const saveSchedulePipeline = createAction({
@@ -153,7 +164,16 @@ export async function saveScheduleAction(input: unknown) {
 
 const assignPipeline = createAction({
   name: "attendance.schedule.assign",
-  input: z.object({ scope: z.enum(["entity", "department", "person"]), entityId: optional(z.uuid()), departmentId: optional(z.uuid()), personId: optional(z.uuid()), scheduleId: z.uuid(), validFrom: day, validTo: optional(day), note: optional(z.string().trim().max(300)) }),
+  input: z.object({
+    scope: z.enum(["entity", "department", "person"]),
+    entityId: optional(z.uuid()),
+    departmentId: optional(z.uuid()),
+    personId: optional(z.uuid()),
+    scheduleId: z.uuid(),
+    validFrom: day,
+    validTo: optional(day),
+    note: optional(z.string().trim().max(300)),
+  }),
   authorize: async (user, input) => canAssignSchedule(user.principal, { ...input, unitPath: await unitPathOf(input.departmentId) }, input.scope === "person" && input.personId ? await getPersonTarget(input.personId) : null),
   run: async ({ user, input }) => {
     // Only the columns of the chosen scope count, whatever else the form posted.
@@ -162,7 +182,15 @@ const assignPipeline = createAction({
     if (assignment.personId) await requestTimesheetRecompute([assignment.personId], assignment.validFrom, assignment.validTo ?? "9999-12-31");
     else await requestScopeRecompute({ entityId: assignment.entityId, departmentId: assignment.departmentId }, assignment.validFrom);
     refresh();
-    return { data: { id: assignment.id }, audit: { resource: { type: "schedule_assignment", id: assignment.id, entityId: assignment.entityId }, summary: `${assignment.scope} → schedule ${assignment.scheduleId} from ${assignment.validFrom}`, before: closed ? { closedAssignmentId: closed.id, validTo: closed.validTo } : null, after: scoped } };
+    return {
+      data: { id: assignment.id },
+      audit: {
+        resource: { type: "schedule_assignment", id: assignment.id, entityId: assignment.entityId },
+        summary: `${assignment.scope} → schedule ${assignment.scheduleId} from ${assignment.validFrom}`,
+        before: closed ? { closedAssignmentId: closed.id, validTo: closed.validTo } : null,
+        after: scoped,
+      },
+    };
   },
 });
 export async function assignScheduleAction(input: unknown) {
@@ -181,7 +209,14 @@ const removeAssignmentPipeline = createAction({
     if (row.personId) await requestTimesheetRecompute([row.personId], row.validFrom, row.validTo ?? "9999-12-31");
     else await requestScopeRecompute({ entityId: row.entityId, departmentId: row.departmentId }, row.validFrom);
     refresh();
-    return { data: { id: row.id }, audit: { resource: { type: "schedule_assignment", id: row.id, entityId: row.entityId }, summary: `${row.scope} assignment removed`, before: { scheduleId: row.scheduleId, personId: row.personId, departmentId: row.departmentId, validFrom: row.validFrom, validTo: row.validTo } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "schedule_assignment", id: row.id, entityId: row.entityId },
+        summary: `${row.scope} assignment removed`,
+        before: { scheduleId: row.scheduleId, personId: row.personId, departmentId: row.departmentId, validFrom: row.validFrom, validTo: row.validTo },
+      },
+    };
   },
 });
 export async function removeAssignmentAction(input: unknown) {

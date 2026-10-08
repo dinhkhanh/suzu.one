@@ -72,7 +72,15 @@ export default async function LeaveTypesPage() {
                                 <TableCell>
                                   {date(policy.validFrom)} – {policy.validTo ? date(policy.validTo) : "…"}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">{policy.entityId ? <RecordLink kind="entity" id={policy.entityId}>{entityName(policy.entityId)}</RecordLink> : entityName(null)}</TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {policy.entityId ? (
+                                    <RecordLink kind="entity" id={policy.entityId}>
+                                      {entityName(policy.entityId)}
+                                    </RecordLink>
+                                  ) : (
+                                    entityName(null)
+                                  )}
+                                </TableCell>
                                 <TableCell>{t(`accrual.${policy.accrualMethod}`)}</TableCell>
                                 <TableCell>
                                   {policy.baseSource === "statutory_annual" ? t("base.statutory_annual") : days(policy.fixedDaysCenti)}

@@ -73,7 +73,12 @@ const reassignPipeline = createAction({
     revalidatePath("/approvals/delegation");
     return {
       data: { id: request.id },
-      audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `reassigned from ${fromName} to ${toName}: ${request.summary}`, before: { approverPersonId: input.fromPersonId }, after: { approverPersonId: input.toPersonId, reason: input.reason } },
+      audit: {
+        resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId },
+        summary: `reassigned from ${fromName} to ${toName}: ${request.summary}`,
+        before: { approverPersonId: input.fromPersonId },
+        after: { approverPersonId: input.toPersonId, reason: input.reason },
+      },
     };
   },
 });
@@ -130,7 +135,10 @@ const delegationPipeline = createAction({
     }
     revalidatePath("/approvals");
     revalidatePath("/approvals/delegation");
-    return { data: { id: row.id, handedOver }, audit: { resource: { type: "approval_delegation", id: row.id }, summary: `${row.validFrom} → ${row.validTo}`, after: { toPersonId: row.toPersonId, requestTypes: row.requestTypes, handedOver } } };
+    return {
+      data: { id: row.id, handedOver },
+      audit: { resource: { type: "approval_delegation", id: row.id }, summary: `${row.validFrom} → ${row.validTo}`, after: { toPersonId: row.toPersonId, requestTypes: row.requestTypes, handedOver } },
+    };
   },
 });
 
@@ -180,7 +188,14 @@ const delegationForPipeline = createAction({
     revalidatePath("/approvals");
     revalidatePath("/approvals/delegation");
     // Both people are named: whose approvals they are, and who answers them now.
-    return { data: { id: row.id, handedOver }, audit: { resource: { type: "approval_delegation", id: row.id }, summary: `on behalf: ${row.validFrom} → ${row.validTo}`, after: { fromPersonId, toPersonId: row.toPersonId, requestTypes: row.requestTypes, reason: row.reason, handedOver } } };
+    return {
+      data: { id: row.id, handedOver },
+      audit: {
+        resource: { type: "approval_delegation", id: row.id },
+        summary: `on behalf: ${row.validFrom} → ${row.validTo}`,
+        after: { fromPersonId, toPersonId: row.toPersonId, requestTypes: row.requestTypes, reason: row.reason, handedOver },
+      },
+    };
   },
 });
 
@@ -200,7 +215,10 @@ const revokeDelegationForPipeline = createAction({
     if (!found) throw new ActionError("delegation_not_found");
     const row = await revokeDelegation(found.fromPersonId, input.id);
     revalidatePath("/approvals/delegation");
-    return { data: { id: row.id }, audit: { resource: { type: "approval_delegation", id: row.id }, summary: "revoked on behalf", before: { revokedAt: null }, after: { revokedAt: row.revokedAt, fromPersonId: row.fromPersonId, toPersonId: row.toPersonId } } };
+    return {
+      data: { id: row.id },
+      audit: { resource: { type: "approval_delegation", id: row.id }, summary: "revoked on behalf", before: { revokedAt: null }, after: { revokedAt: row.revokedAt, fromPersonId: row.fromPersonId, toPersonId: row.toPersonId } },
+    };
   },
 });
 
@@ -216,7 +234,12 @@ const saveFlowPipeline = createAction({
   name: "approval.flow.save",
   input: z.object({
     // "leave", or a generic type from the request builder: "request:<code>".
-    requestType: z.string().trim().min(1).max(60).regex(/^[a-z][a-z0-9_]*(:[a-z][a-z0-9_]*)?$/),
+    requestType: z
+      .string()
+      .trim()
+      .min(1)
+      .max(60)
+      .regex(/^[a-z][a-z0-9_]*(:[a-z][a-z0-9_]*)?$/),
     entityId: z.preprocess(blankToNull, z.uuid().nullable().default(null)),
     active: z.preprocess((value) => value === "on" || value === true, z.boolean()),
     // The editor posts the flow as JSON text.
@@ -233,7 +256,15 @@ const saveFlowPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await saveFlow(input, user.person.id);
     revalidatePath("/admin/approval-flows");
-    return { data: { id: after.id }, audit: { resource: { type: "approval_flow", id: after.id, entityId: after.entityId }, summary: `${after.requestType}${after.active ? "" : " (off)"}`, before: before ? { definition: before.definition, active: before.active } : null, after: { definition: after.definition, active: after.active } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "approval_flow", id: after.id, entityId: after.entityId },
+        summary: `${after.requestType}${after.active ? "" : " (off)"}`,
+        before: before ? { definition: before.definition, active: before.active } : null,
+        after: { definition: after.definition, active: after.active },
+      },
+    };
   },
 });
 

@@ -8,7 +8,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ BETTER_AUTH_URL: "https://suzu.one", allowedWorkspaceDomains: ["suzu.group"], bootstrapOwnerEmails: [], DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    BETTER_AUTH_URL: "https://suzu.one",
+    allowedWorkspaceDomains: ["suzu.group"],
+    bootstrapOwnerEmails: [],
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -48,7 +54,10 @@ let taskNumber = 0;
 
 async function workTask(input: { title: string; projectId: string; assignee: string; status: "todo" | "done"; dueDate: string | null; completedAt?: Date }): Promise<string> {
   const [state] = await listStates([ids.video]);
-  const [row] = await db().insert(schema.task).values({ kind: "work", title: input.title, status: input.status, assigneePersonId: input.assignee, dueDate: input.dueDate, completedAt: input.completedAt ?? null, entityId: ids.szm }).returning();
+  const [row] = await db()
+    .insert(schema.task)
+    .values({ kind: "work", title: input.title, status: input.status, assigneePersonId: input.assignee, dueDate: input.dueDate, completedAt: input.completedAt ?? null, entityId: ids.szm })
+    .returning();
   await db().insert(schema.workTask).values({ taskId: row.id, teamId: ids.video, projectId: input.projectId, number: ++taskNumber, stateId: state.id });
   return row.id;
 }
@@ -59,7 +68,17 @@ async function signedRun(personId: string, month: string, employerCost: number, 
   const id = crypto.randomUUID();
   const result = { totals: { employerCost, grossEarnings: employerCost }, proration: { standardDays } };
   const input = { period: { standardDays }, timesheet: { standardDays, standardMinutes: standardDays * 480 } };
-  await db().insert(schema.payrollRunPerson).values({ id, runId: run.id, personId, entityId: ids.szm, profile: "statutory", resultEnc: fieldCipher().encrypt(JSON.stringify(result), runResultContext(id)), inputEnc: fieldCipher().encrypt(JSON.stringify(input), runInputContext(id)) });
+  await db()
+    .insert(schema.payrollRunPerson)
+    .values({
+      id,
+      runId: run.id,
+      personId,
+      entityId: ids.szm,
+      profile: "statutory",
+      resultEnc: fieldCipher().encrypt(JSON.stringify(result), runResultContext(id)),
+      inputEnc: fieldCipher().encrypt(JSON.stringify(input), runInputContext(id)),
+    });
 }
 
 beforeAll(async () => {
@@ -79,7 +98,10 @@ beforeAll(async () => {
   };
   for (const who of Object.keys(grants) as Who[]) {
     const entityId = who === "khoi" ? szc.id : szm.id;
-    const [person] = await db().insert(schema.person).values({ fullName: `Người ${who}`, searchName: who, workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: entityId, managerId: who === "huy" || who === "lan" ? ids.long : null }).returning();
+    const [person] = await db()
+      .insert(schema.person)
+      .values({ fullName: `Người ${who}`, searchName: who, workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: entityId, managerId: who === "huy" || who === "lan" ? ids.long : null })
+      .returning();
     ids[who] = person.id;
     people[who] = { person, principal: { personId: person.id, workforceType: "employee", grants: grants[who] } };
   }
@@ -88,7 +110,8 @@ beforeAll(async () => {
   ids.video = video.id;
   await setTeamMember(video.id, ids.huy, "member");
   await setTeamMember(video.id, ids.lan, "member");
-  const project = (name: string, visibility: "team" | "private") => createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: ids.long, startDate: "2026-09-01", dueDate: "2026-12-31" }, ids.long).then((row) => row.id);
+  const project = (name: string, visibility: "team" | "private") =>
+    createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: ids.long, startDate: "2026-09-01", dueDate: "2026-12-31" }, ids.long).then((row) => row.id);
   ids.tvc = await project("TVC Tết", "team");
   ids.secret = await project("Dự án riêng", "private");
   await db().update(schema.workProject).set({ entityId: szm.id }).where(eq(schema.workProject.teamId, video.id));
@@ -100,19 +123,30 @@ beforeAll(async () => {
   ids.done = doneOnTime;
   await workTask({ title: "Storyboard", projectId: ids.tvc, assignee: ids.huy, status: "done", dueDate: "2026-09-15", completedAt: at("2026-09-15T17:00:00") });
   const late = await workTask({ title: "Dựng bản 1", projectId: ids.tvc, assignee: ids.huy, status: "done", dueDate: "2026-09-20", completedAt: at("2026-09-22T09:00:00") });
-  await db().insert(schema.workHandoff).values({ taskId: late, kind: "stage", status: "returned", fromPersonId: ids.huy, toPersonId: ids.lan, createdAt: at("2026-09-18T09:00:00"), respondedAt: at("2026-09-18T11:00:00"), returnReason: "Thiếu phụ đề" });
-  const [deliverable] = await db().insert(schema.workDeliverable).values({ taskId: late, version: 1, kind: "link", url: "https://drive.google.com/x", submittedByPersonId: ids.huy, decision: "changes_requested", decidedAt: at("2026-09-19T09:00:00") }).returning();
-  await db().insert(schema.workDeliverableDecision).values({ deliverableId: deliverable.id, decision: "changes_required", decidedByPersonId: ids.long, isClient: true, createdAt: at("2026-09-19T09:00:00") });
-  await db().insert(schema.workBlocker).values({ taskId: late, reason: "Chờ nhạc", raisedByPersonId: ids.huy, raisedAt: at("2026-09-16T09:00:00"), resolvedAt: at("2026-09-16T12:00:00"), resolvedByPersonId: ids.long });
+  await db()
+    .insert(schema.workHandoff)
+    .values({ taskId: late, kind: "stage", status: "returned", fromPersonId: ids.huy, toPersonId: ids.lan, createdAt: at("2026-09-18T09:00:00"), respondedAt: at("2026-09-18T11:00:00"), returnReason: "Thiếu phụ đề" });
+  const [deliverable] = await db()
+    .insert(schema.workDeliverable)
+    .values({ taskId: late, version: 1, kind: "link", url: "https://drive.google.com/x", submittedByPersonId: ids.huy, decision: "changes_requested", decidedAt: at("2026-09-19T09:00:00") })
+    .returning();
+  await db()
+    .insert(schema.workDeliverableDecision)
+    .values({ deliverableId: deliverable.id, decision: "changes_required", decidedByPersonId: ids.long, isClient: true, createdAt: at("2026-09-19T09:00:00") });
+  await db()
+    .insert(schema.workBlocker)
+    .values({ taskId: late, reason: "Chờ nhạc", raisedByPersonId: ids.huy, raisedAt: at("2026-09-16T09:00:00"), resolvedAt: at("2026-09-16T12:00:00"), resolvedByPersonId: ids.long });
   // A private project's task: counted for its members, and never named on profitability.
   const secretTask = await workTask({ title: "Việc riêng", projectId: ids.secret, assignee: ids.lan, status: "done", dueDate: "2026-09-05", completedAt: at("2026-09-04T10:00:00") });
 
   // Time and pay: Huy 30 h and Lan 10 h on TVC in September, Lan 5 h on the private project.
-  await db().insert(schema.timeEntry).values([
-    { personId: ids.huy, date: "2026-09-09", weekStart: "2026-09-07", taskId: doneOnTime, minutes: 1_800, billable: true },
-    { personId: ids.lan, date: "2026-09-10", weekStart: "2026-09-07", taskId: late, minutes: 600, billable: true },
-    { personId: ids.lan, date: "2026-09-04", weekStart: "2026-08-31", taskId: secretTask, minutes: 300, billable: false },
-  ]);
+  await db()
+    .insert(schema.timeEntry)
+    .values([
+      { personId: ids.huy, date: "2026-09-09", weekStart: "2026-09-07", taskId: doneOnTime, minutes: 1_800, billable: true },
+      { personId: ids.lan, date: "2026-09-10", weekStart: "2026-09-07", taskId: late, minutes: 600, billable: true },
+      { personId: ids.lan, date: "2026-09-04", weekStart: "2026-08-31", taskId: secretTask, minutes: 300, billable: false },
+    ]);
   // Huy costs 22 000 000 over 22 days of 8 h = 125 000 an hour; Lan 17 600 000 = 100 000 an hour, in August only.
   await signedRun(ids.huy, "2026-09", 22_000_000, 22);
   await signedRun(ids.lan, "2026-08", 17_600_000, 22);
@@ -186,13 +220,19 @@ describe("profitability (FR-PJM-63)", () => {
     expect(view.projects.map((project) => project.id)).toContain(ids.secret);
     expect(view.privateProjects).toBeNull();
     // And naming it is a read of a private project they are none of the people of (Q25 — D30).
-    const rows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.owner)));
+    const rows = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.owner)));
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, actorEmail: "owner@suzu.group" });
     expect(rows[0].summary).toBeNull();
     // Finance may open it too (owner, 2026-09-23), so its reads are recorded the same way — and a
     // reader who holds neither the cost nor the portfolio right gets no report at all (below).
-    const financeRows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.finance)));
+    const financeRows = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.finance)));
     expect(financeRows.length).toBeGreaterThan(0);
     expect(financeRows.every((row) => row.resourceId === ids.secret && row.summary === null)).toBe(true);
   });
@@ -225,7 +265,10 @@ describe("profitability (FR-PJM-63)", () => {
 
   it("audits every screen read", async () => {
     await getProfitability({ ...people.finance, userId: null, email: "finance@suzu.group" }, PERIOD);
-    const rows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "pjm.profitability.read"), eq(schema.auditLog.actorPersonId, ids.finance)));
+    const rows = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(and(eq(schema.auditLog.action, "pjm.profitability.read"), eq(schema.auditLog.actorPersonId, ids.finance)));
     expect(rows).toHaveLength(1);
   });
 

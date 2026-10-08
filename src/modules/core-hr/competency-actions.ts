@@ -63,7 +63,10 @@ const updatePipeline = createAction({
   run: async ({ input }) => {
     const { before, after, merged } = await updateCompetency(input.competencyId, { name: input.name, kind: input.kind });
     revalidateCatalogue();
-    return { data: { merged, name: after.name }, audit: { resource: { type: "competency", id: input.competencyId, entityId: null }, summary: merged ? `${before.name} merged into ${after.name}` : `${before.name} → ${after.name}`, before, after: { ...after, merged } } };
+    return {
+      data: { merged, name: after.name },
+      audit: { resource: { type: "competency", id: input.competencyId, entityId: null }, summary: merged ? `${before.name} merged into ${after.name}` : `${before.name} → ${after.name}`, before, after: { ...after, merged } },
+    };
   },
 });
 

@@ -22,8 +22,10 @@ test("a task is created from Today, reviewed and done", async ({ page, context }
   await expect(page).toHaveURL(/\/work\/tasks\//);
 
   const stateOf = async () =>
-    (await sql()<{ state: string; status: string }[]>`
-      select s.name as state, t.status from task t join work_task w on w.task_id = t.id join work_state s on s.id = w.state_id where t.title = ${title}`)[0];
+    (
+      await sql()<{ state: string; status: string }[]>`
+      select s.name as state, t.status from task t join work_task w on w.task_id = t.id join work_state s on s.id = w.state_id where t.title = ${title}`
+    )[0];
 
   await choose(page, "State", IN_REVIEW);
   await expect.poll(async () => (await stateOf())?.state).toBe(IN_REVIEW);

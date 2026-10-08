@@ -47,18 +47,32 @@ export async function purgeNotificationHistory(now: Date = new Date()): Promise<
 
   const logBefore = daysBefore(now, DELIVERY_LOG_RETENTION_DAYS);
   const outboxes = [
-    db().delete(schema.emailOutbox).where(and(lt(schema.emailOutbox.createdAt, logBefore), inArray(schema.emailOutbox.status, ["sent", "failed", "skipped"]))),
-    db().delete(schema.pushDelivery).where(and(lt(schema.pushDelivery.createdAt, logBefore), inArray(schema.pushDelivery.status, ["sent", "simulated", "failed", "gone"]))),
-    db().delete(schema.chatDelivery).where(and(lt(schema.chatDelivery.createdAt, logBefore), inArray(schema.chatDelivery.status, ["sent", "simulated", "failed"]))),
-    db().delete(schema.messengerDelivery).where(and(lt(schema.messengerDelivery.createdAt, logBefore), inArray(schema.messengerDelivery.status, ["sent", "simulated", "failed", "dropped"]))),
-    db().delete(schema.telegramDelivery).where(and(lt(schema.telegramDelivery.createdAt, logBefore), inArray(schema.telegramDelivery.status, ["sent", "simulated", "failed", "dropped"]))),
+    db()
+      .delete(schema.emailOutbox)
+      .where(and(lt(schema.emailOutbox.createdAt, logBefore), inArray(schema.emailOutbox.status, ["sent", "failed", "skipped"]))),
+    db()
+      .delete(schema.pushDelivery)
+      .where(and(lt(schema.pushDelivery.createdAt, logBefore), inArray(schema.pushDelivery.status, ["sent", "simulated", "failed", "gone"]))),
+    db()
+      .delete(schema.chatDelivery)
+      .where(and(lt(schema.chatDelivery.createdAt, logBefore), inArray(schema.chatDelivery.status, ["sent", "simulated", "failed"]))),
+    db()
+      .delete(schema.messengerDelivery)
+      .where(and(lt(schema.messengerDelivery.createdAt, logBefore), inArray(schema.messengerDelivery.status, ["sent", "simulated", "failed", "dropped"]))),
+    db()
+      .delete(schema.telegramDelivery)
+      .where(and(lt(schema.telegramDelivery.createdAt, logBefore), inArray(schema.telegramDelivery.status, ["sent", "simulated", "failed", "dropped"]))),
   ];
   const deliveries = (await Promise.all(outboxes)).reduce((sum, result) => sum + deleted(result), 0);
 
   const linkBefore = daysBefore(now, LINK_REQUEST_RETENTION_DAYS);
   const requests = await Promise.all([
-    db().delete(schema.messengerLinkRequest).where(or(lt(schema.messengerLinkRequest.expiresAt, linkBefore), and(isNotNull(schema.messengerLinkRequest.closedAt), lt(schema.messengerLinkRequest.closedAt, linkBefore)))),
-    db().delete(schema.telegramLinkRequest).where(or(lt(schema.telegramLinkRequest.expiresAt, linkBefore), and(isNotNull(schema.telegramLinkRequest.closedAt), lt(schema.telegramLinkRequest.closedAt, linkBefore)))),
+    db()
+      .delete(schema.messengerLinkRequest)
+      .where(or(lt(schema.messengerLinkRequest.expiresAt, linkBefore), and(isNotNull(schema.messengerLinkRequest.closedAt), lt(schema.messengerLinkRequest.closedAt, linkBefore)))),
+    db()
+      .delete(schema.telegramLinkRequest)
+      .where(or(lt(schema.telegramLinkRequest.expiresAt, linkBefore), and(isNotNull(schema.telegramLinkRequest.closedAt), lt(schema.telegramLinkRequest.closedAt, linkBefore)))),
   ]);
 
   return { notifications: rows[0]?.total ?? 0, deliveries, linkRequests: requests.reduce((sum, result) => sum + deleted(result), 0) };

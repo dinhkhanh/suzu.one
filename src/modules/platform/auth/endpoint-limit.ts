@@ -13,7 +13,11 @@ export type AuthLimitOutcome = { ok: true } | { ok: false; retryAfterSeconds: nu
  * What a caller is counted under: a hash of its kind and value, so the table names nobody. An
  * address the platform did not give us is counted as one shared "unknown" — on Vercel it always does.
  */
-export const authLimitKey = (kind: "ip" | "session", value: string | null): string => createHash("sha256").update(`${kind}:${value ?? "unknown"}`).digest("hex").slice(0, 32);
+export const authLimitKey = (kind: "ip" | "session", value: string | null): string =>
+  createHash("sha256")
+    .update(`${kind}:${value ?? "unknown"}`)
+    .digest("hex")
+    .slice(0, 32);
 
 /**
  * Counts one call and says whether it is allowed: one row per (bucket, key, window), one atomic

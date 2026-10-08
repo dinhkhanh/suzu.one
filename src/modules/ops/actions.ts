@@ -15,7 +15,11 @@ const blankToNull = (value: unknown) => (typeof value === "string" && value.trim
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const lines = (value: string | null) => (value ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
+const lines = (value: string | null) =>
+  (value ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
 const auditInstance = (taskId: string, entityId: string) => ({ type: "task:obligation", id: taskId, entityId });
 function refresh(taskId: string) {
@@ -33,7 +37,11 @@ const templatePipeline = createAction({
   name: "ops.template.save",
   input: z.object({
     templateId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{1,39}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9-]{1,39}$/),
     name: z.string().trim().min(1).max(200),
     category: z.enum(OBLIGATION_CATEGORIES),
     authority: z.enum(AUTHORITIES),
@@ -41,7 +49,13 @@ const templatePipeline = createAction({
     ruleType: z.enum(["after_period", "in_period", "after_event"]),
     monthsAfter: z.coerce.number().int().default(1),
     month: z.coerce.number().int().default(1),
-    day: z.preprocess(blankToNull, z.union([z.literal("last"), z.coerce.number().int()]).nullable().default(null)),
+    day: z.preprocess(
+      blankToNull,
+      z
+        .union([z.literal("last"), z.coerce.number().int()])
+        .nullable()
+        .default(null),
+    ),
     days: z.coerce.number().int().default(0),
     shift: z.enum(SHIFTS),
     eventType: optional(z.enum(EVENT_TYPES)),
@@ -56,7 +70,12 @@ const templatePipeline = createAction({
     guidance: optional(z.string().trim().max(4000)),
     // One per line: "Title | https://…".
     links: optional(z.string().max(4000)),
-    reminderLeadDays: optional(z.string().trim().regex(/^\d{1,3}(\s*,\s*\d{1,3})*$/)),
+    reminderLeadDays: optional(
+      z
+        .string()
+        .trim()
+        .regex(/^\d{1,3}(\s*,\s*\d{1,3})*$/),
+    ),
     managerAfterDays: z.coerce.number().int().min(0).max(90).default(3),
     executiveAfterDays: z.coerce.number().int().min(0).max(180).default(7),
     evidence: z.object({ file: checkbox, reference: checkbox, submittedDate: checkbox, amount: checkbox }).default({ file: false, reference: false, submittedDate: false, amount: false }),
@@ -67,7 +86,12 @@ const templatePipeline = createAction({
   }),
   authorize: (user) => canManageLibrary(user.principal),
   run: async ({ user, input }) => {
-    const dueRule: DueRule = input.ruleType === "after_event" ? { type: "after_event", days: input.days } : input.ruleType === "after_period" ? { type: "after_period", monthsAfter: input.monthsAfter, day: input.day ?? 0 } : { type: "in_period", month: input.month, day: input.day ?? 0 };
+    const dueRule: DueRule =
+      input.ruleType === "after_event"
+        ? { type: "after_event", days: input.days }
+        : input.ruleType === "after_period"
+          ? { type: "after_period", monthsAfter: input.monthsAfter, day: input.day ?? 0 }
+          : { type: "in_period", month: input.month, day: input.day ?? 0 };
     const { before, after } = await saveTemplate(input.templateId, {
       code: input.code,
       name: input.name,
@@ -112,7 +136,10 @@ const reviewPipeline = createAction({
     const { before, after } = await setReviewStatus(input.templateId, input.reviewed, user.person.id);
     revalidatePath("/ops/templates");
     revalidatePath("/ops");
-    return { data: { id: after.id }, audit: { resource: { type: "obligation_template", id: after.id }, summary: `${after.code}: ${before.reviewStatus} → ${after.reviewStatus}`, before: { reviewStatus: before.reviewStatus }, after: { reviewStatus: after.reviewStatus } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "obligation_template", id: after.id }, summary: `${after.code}: ${before.reviewStatus} → ${after.reviewStatus}`, before: { reviewStatus: before.reviewStatus }, after: { reviewStatus: after.reviewStatus } },
+    };
   },
 });
 export async function reviewObligationTemplateAction(input: unknown) {
@@ -156,7 +183,15 @@ const progressPipeline = createAction({
     const { taskId, checklist, ...evidence } = input;
     const { before, after } = await saveProgress(taskId, { ...evidence, checklistState: checklist });
     refresh(taskId);
-    return { data: { id: taskId }, audit: { resource: auditInstance(taskId, after.entityId), summary: after.periodKey, before, after: { referenceNumber: after.referenceNumber, submittedDate: after.submittedDate, amountPaid: after.amountPaid, note: after.note, checklistState: after.checklistState } } };
+    return {
+      data: { id: taskId },
+      audit: {
+        resource: auditInstance(taskId, after.entityId),
+        summary: after.periodKey,
+        before,
+        after: { referenceNumber: after.referenceNumber, submittedDate: after.submittedDate, amountPaid: after.amountPaid, note: after.note, checklistState: after.checklistState },
+      },
+    };
   },
 });
 export async function saveObligationProgressAction(input: unknown) {
@@ -173,7 +208,15 @@ const completePipeline = createAction({
   run: async ({ user, input }) => {
     const { loaded, completedLate } = await completeInstance(input.taskId, user.person.id);
     refresh(input.taskId);
-    return { data: { completedLate }, audit: { resource: auditInstance(input.taskId, loaded.instance.entityId), summary: `${loaded.task.title}: ${loaded.task.status} → done${completedLate ? " (late)" : ""}`, before: { status: loaded.task.status }, after: { status: "done", completedLate, referenceNumber: loaded.instance.referenceNumber, submittedDate: loaded.instance.submittedDate, amountPaid: loaded.instance.amountPaid } } };
+    return {
+      data: { completedLate },
+      audit: {
+        resource: auditInstance(input.taskId, loaded.instance.entityId),
+        summary: `${loaded.task.title}: ${loaded.task.status} → done${completedLate ? " (late)" : ""}`,
+        before: { status: loaded.task.status },
+        after: { status: "done", completedLate, referenceNumber: loaded.instance.referenceNumber, submittedDate: loaded.instance.submittedDate, amountPaid: loaded.instance.amountPaid },
+      },
+    };
   },
 });
 export async function completeObligationAction(input: unknown) {
@@ -193,7 +236,15 @@ const reopenPipeline = createAction({
   run: async ({ input }) => {
     const loaded = await reopenInstance(input.taskId, input.reason);
     refresh(input.taskId);
-    return { data: { id: input.taskId }, audit: { resource: auditInstance(input.taskId, loaded.instance.entityId), summary: `${loaded.task.title}: ${input.reason}`, before: { status: loaded.task.status, completedLate: loaded.instance.completedLate }, after: { status: "in_progress", reason: input.reason } } };
+    return {
+      data: { id: input.taskId },
+      audit: {
+        resource: auditInstance(input.taskId, loaded.instance.entityId),
+        summary: `${loaded.task.title}: ${input.reason}`,
+        before: { status: loaded.task.status, completedLate: loaded.instance.completedLate },
+        after: { status: "in_progress", reason: input.reason },
+      },
+    };
   },
 });
 export async function reopenObligationAction(input: unknown) {
@@ -207,7 +258,10 @@ const cancelPipeline = createAction({
   run: async ({ input }) => {
     const loaded = await cancelInstance(input.taskId, input.reason);
     refresh(input.taskId);
-    return { data: { id: input.taskId }, audit: { resource: auditInstance(input.taskId, loaded.instance.entityId), summary: `${loaded.task.title}: ${input.reason}`, before: { status: loaded.task.status }, after: { status: "cancelled", reason: input.reason } } };
+    return {
+      data: { id: input.taskId },
+      audit: { resource: auditInstance(input.taskId, loaded.instance.entityId), summary: `${loaded.task.title}: ${input.reason}`, before: { status: loaded.task.status }, after: { status: "cancelled", reason: input.reason } },
+    };
   },
 });
 export async function cancelObligationAction(input: unknown) {
@@ -261,7 +315,10 @@ const completeUploadPipeline = createAction({
     const found = (await findEvidenceFile(input.fileId, { pending: true }))!;
     const file = await completeEvidenceUpload(input.fileId, actorOf(user));
     refresh(found.loaded.task.id);
-    return { data: { id: file.id }, audit: { resource: auditInstance(found.loaded.task.id, file.entityId ?? found.loaded.instance.entityId), summary: file.fileName, after: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes } } };
+    return {
+      data: { id: file.id },
+      audit: { resource: auditInstance(found.loaded.task.id, file.entityId ?? found.loaded.instance.entityId), summary: file.fileName, after: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes } },
+    };
   },
 });
 export async function completeEvidenceUploadAction(input: unknown) {

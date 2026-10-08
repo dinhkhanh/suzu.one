@@ -307,7 +307,12 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
             <li key={shot.id} className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element -- a data URL made here, never uploaded */}
               <img src={shot.preview} alt="" className="h-16 w-12 rounded-[10px] object-cover" />
-              <button type="button" aria-label={t("removePhoto")} className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-ink text-ink-foreground" onClick={() => setShots((current) => current.filter((item) => item.id !== shot.id))}>
+              <button
+                type="button"
+                aria-label={t("removePhoto")}
+                className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-ink text-ink-foreground"
+                onClick={() => setShots((current) => current.filter((item) => item.id !== shot.id))}
+              >
                 <X className="size-3" />
               </button>
             </li>

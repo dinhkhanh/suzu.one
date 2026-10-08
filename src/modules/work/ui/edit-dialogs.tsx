@@ -33,7 +33,11 @@ function EditDialog({ label, title, children }: { label: string; title: string; 
 
 export function EditTeamButton(props: Omit<ComponentProps<typeof TeamForm>, "onSaved"> & { team: NonNullable<ComponentProps<typeof TeamForm>["team"]> }) {
   const t = useTranslations("work.teams");
-  return <EditDialog label={t("edit")} title={t("editTitle", { name: props.team.name })}>{(close) => <TeamForm {...props} onSaved={close} />}</EditDialog>;
+  return (
+    <EditDialog label={t("edit")} title={t("editTitle", { name: props.team.name })}>
+      {(close) => <TeamForm {...props} onSaved={close} />}
+    </EditDialog>
+  );
 }
 
 /** The primary "New team" / "New project" button: the form opens in a dialog, and saving goes to what was made. */

@@ -38,7 +38,17 @@ import { openInput, openResult, type PayrollRunPersonRow, type PayrollRunRow } f
 
 type Executor = Tx | ReturnType<typeof db>;
 export type RetroItemRow = typeof schema.payrollRetroItem.$inferSelect;
-export type RetroItemView = RetroItem & { id: string; personId: string; entityId: string; status: RetroItemRow["status"]; sourceRef: string | null; payrollMonth: string | null; runId: string | null; createdByPersonId: string | null; createdAt: Date };
+export type RetroItemView = RetroItem & {
+  id: string;
+  personId: string;
+  entityId: string;
+  status: RetroItemRow["status"];
+  sourceRef: string | null;
+  payrollMonth: string | null;
+  runId: string | null;
+  createdByPersonId: string | null;
+  createdAt: Date;
+};
 
 const openAmount = (row: RetroItemRow): number => Number(fieldCipher().decrypt(row.amountEnc, retroAmountContext(row.id)));
 
@@ -74,7 +84,11 @@ const byPerson = (rows: readonly RetroItemRow[]): Map<string, RetroItemView[]> =
 /** Everything waiting for the run of `month`, by person. Items of later months are left alone. */
 export async function listOpenRetroItems(entityId: string, month: string, executor: Executor = db()): Promise<Map<string, RetroItemView[]>> {
   const table = schema.payrollRetroItem;
-  const rows = await executor.select().from(table).where(and(eq(table.entityId, entityId), eq(table.status, "open"), lt(table.sourceMonth, month))).orderBy(asc(table.sourceMonth), asc(table.createdAt));
+  const rows = await executor
+    .select()
+    .from(table)
+    .where(and(eq(table.entityId, entityId), eq(table.status, "open"), lt(table.sourceMonth, month)))
+    .orderBy(asc(table.sourceMonth), asc(table.createdAt));
   return byPerson(rows);
 }
 
@@ -98,9 +112,14 @@ export async function listRetroItemsForRun(run: Pick<PayrollRunRow, "id" | "enti
  * has already taken; once it has been put forward, only what it carried.
  */
 export async function listRetroItemsOnRun(run: Pick<PayrollRunRow, "id" | "entityId" | "month" | "status">, executor: Executor = db()): Promise<RetroItemView[]> {
-  if (run.status === "draft" || run.status === "calculated") return [...(await listRetroItemsForRun(run, executor)).values()].flat().sort((a, b) => a.sourceMonth.localeCompare(b.sourceMonth) || a.createdAt.getTime() - b.createdAt.getTime());
+  if (run.status === "draft" || run.status === "calculated")
+    return [...(await listRetroItemsForRun(run, executor)).values()].flat().sort((a, b) => a.sourceMonth.localeCompare(b.sourceMonth) || a.createdAt.getTime() - b.createdAt.getTime());
   const table = schema.payrollRetroItem;
-  const rows = await executor.select().from(table).where(and(eq(table.runId, run.id), eq(table.status, "taken"))).orderBy(asc(table.sourceMonth), asc(table.createdAt));
+  const rows = await executor
+    .select()
+    .from(table)
+    .where(and(eq(table.runId, run.id), eq(table.status, "taken")))
+    .orderBy(asc(table.sourceMonth), asc(table.createdAt));
   return rows.map(toView);
 }
 
@@ -219,7 +238,10 @@ export const ALL_MONTHS = "9999-12";
  *
  * A calculated run that would carry the item goes back to draft: it has to be calculated again.
  */
-export async function enterRetroItem(input: { entityId: string; personId: string; sourceMonth: string; amount: number; reason: string; adjustmentId?: string | null }, actorPersonId: string): Promise<{ item: RetroItemRow; reopenedRunIds: string[] }> {
+export async function enterRetroItem(
+  input: { entityId: string; personId: string; sourceMonth: string; amount: number; reason: string; adjustmentId?: string | null },
+  actorPersonId: string,
+): Promise<{ item: RetroItemRow; reopenedRunIds: string[] }> {
   // A month that has not happened yet has nothing to correct, and its item would never come due.
   if (input.sourceMonth > todayInVietnam().slice(0, 7)) throw new ActionError("retro_month_in_future");
   return db().transaction(async (tx) => {
@@ -310,11 +332,22 @@ async function weighAdjustments(entityId: string, beforeMonth: string, executor:
   const adjustments = await listAdjustmentsForPayroll(entityId, beforeMonth, executor);
   if (adjustments.length === 0) return [];
   const [paid, [latest]] = await Promise.all([
-    paidLines(entityId, adjustments.map((adjustment) => ({ personId: adjustment.personId, month: adjustment.month })), executor),
-    executor.select({ month: sql<string | null>`max(${schema.payrollRun.month})` }).from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled"))),
+    paidLines(
+      entityId,
+      adjustments.map((adjustment) => ({ personId: adjustment.personId, month: adjustment.month })),
+      executor,
+    ),
+    executor
+      .select({ month: sql<string | null>`max(${schema.payrollRun.month})` })
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled"))),
   ]);
   // The run being prepared counts as well: every month before it has been gone past.
-  const reached = [latest?.month, beforeMonth === ALL_MONTHS ? null : beforeMonth].filter((month): month is string => !!month).sort().at(-1) ?? null;
+  const reached =
+    [latest?.month, beforeMonth === ALL_MONTHS ? null : beforeMonth]
+      .filter((month): month is string => !!month)
+      .sort()
+      .at(-1) ?? null;
   return adjustments.map((adjustment) => {
     const line = paid.get(`${adjustment.personId}:${adjustment.month}`) ?? null;
     if (!line) return { adjustment, paid: null, skip: reached && adjustment.month < reached ? "month_not_run" : "pending" };
@@ -325,7 +358,10 @@ async function weighAdjustments(entityId: string, beforeMonth: string, executor:
 /** The sources that already have an item, cancelled ones included: C&B's "no" to one is kept. */
 async function knownSources(entityId: string, executor: Executor): Promise<{ any: Set<string>; live: Set<string> }> {
   const table = schema.payrollRetroItem;
-  const rows = await executor.select({ kind: table.kind, sourceRef: table.sourceRef, sourceMonth: table.sourceMonth, status: table.status }).from(table).where(and(eq(table.entityId, entityId), isNotNull(table.sourceRef)));
+  const rows = await executor
+    .select({ kind: table.kind, sourceRef: table.sourceRef, sourceMonth: table.sourceMonth, status: table.status })
+    .from(table)
+    .where(and(eq(table.entityId, entityId), isNotNull(table.sourceRef)));
   const key = (row: { kind: string; sourceRef: string | null; sourceMonth: string }) => `${row.kind}:${row.sourceRef}:${row.sourceMonth}`;
   return { any: new Set(rows.map(key)), live: new Set(rows.filter((row) => row.status !== "cancelled").map(key)) };
 }
@@ -379,7 +415,16 @@ export async function deriveRetroItems(entityId: string, beforeMonth: string, ac
     const after = calculatePerson(applyAdjustmentDeltas(openInput(paid.line), adjustment.deltas));
     const difference = differenceBetween(before, after);
     if (difference.amount === 0) continue;
-    await add({ entityId, personId: adjustment.personId, sourceMonth: adjustment.month, amount: difference.amount, kind: "timesheet_adjustment", reason: adjustment.reason, insuranceBaseChanged: difference.insuranceBaseChanged, sourceRef: adjustment.id });
+    await add({
+      entityId,
+      personId: adjustment.personId,
+      sourceMonth: adjustment.month,
+      amount: difference.amount,
+      kind: "timesheet_adjustment",
+      reason: adjustment.reason,
+      insuranceBaseChanged: difference.insuranceBaseChanged,
+      sourceRef: adjustment.id,
+    });
   }
 
   // 2. Salary structures approved after the month they apply to was paid. Only a month that can
@@ -424,7 +469,12 @@ export async function deriveRetroItems(entityId: string, beforeMonth: string, ac
         skipped.push({ personId: row.personId, sourceMonth: month, reason: "engine_changed" });
         continue;
       }
-      const difference = differenceFromStructures(line.line, month, structures.filter((entry) => entry.personId === row.personId), days.filter((day) => day.personId === row.personId));
+      const difference = differenceFromStructures(
+        line.line,
+        month,
+        structures.filter((entry) => entry.personId === row.personId),
+        days.filter((day) => day.personId === row.personId),
+      );
       if (!difference) {
         skipped.push({ personId: row.personId, sourceMonth: month, reason: "recalculation_failed" });
         continue;
@@ -433,7 +483,16 @@ export async function deriveRetroItems(entityId: string, beforeMonth: string, ac
       // was paid to what is due now: only the rest is new.
       const amount = difference.amount - (carried.get(`${row.personId}:${month}`) ?? 0);
       if (amount === 0) continue;
-      await add({ entityId, personId: row.personId, sourceMonth: month, amount, kind: "salary_change", reason: storedMessage("retroSalaryChange", { validFrom: row.validFrom, month }), insuranceBaseChanged: difference.insuranceBaseChanged, sourceRef: row.structureId });
+      await add({
+        entityId,
+        personId: row.personId,
+        sourceMonth: month,
+        amount,
+        kind: "salary_change",
+        reason: storedMessage("retroSalaryChange", { validFrom: row.validFrom, month }),
+        insuranceBaseChanged: difference.insuranceBaseChanged,
+        sourceRef: row.structureId,
+      });
     }
   }
 
@@ -448,7 +507,15 @@ async function salaryDifferencesCarried(entityId: string, pairs: readonly { pers
   const rows = await executor
     .select()
     .from(table)
-    .where(and(eq(table.entityId, entityId), eq(table.kind, "salary_change"), ne(table.status, "cancelled"), inArray(table.personId, [...new Set(pairs.map((pair) => pair.personId))]), inArray(table.sourceMonth, [...new Set(pairs.map((pair) => pair.month))])));
+    .where(
+      and(
+        eq(table.entityId, entityId),
+        eq(table.kind, "salary_change"),
+        ne(table.status, "cancelled"),
+        inArray(table.personId, [...new Set(pairs.map((pair) => pair.personId))]),
+        inArray(table.sourceMonth, [...new Set(pairs.map((pair) => pair.month))]),
+      ),
+    );
   // The amounts are sealed, so the sum is made here rather than in SQL.
   for (const row of rows) carried.set(`${row.personId}:${row.sourceMonth}`, (carried.get(`${row.personId}:${row.sourceMonth}`) ?? 0) + openAmount(row));
   return carried;
@@ -460,15 +527,31 @@ async function salaryDifferencesCarried(entityId: string, pairs: readonly { pers
  */
 async function cancelItemsOfVoidedAdjustments(entityId: string, executor: Executor): Promise<number> {
   const table = schema.payrollRetroItem;
-  const open = await executor.select({ id: table.id, sourceRef: table.sourceRef, reason: table.reason }).from(table).where(and(eq(table.entityId, entityId), eq(table.kind, "timesheet_adjustment"), eq(table.status, "open"), isNotNull(table.sourceRef)));
+  const open = await executor
+    .select({ id: table.id, sourceRef: table.sourceRef, reason: table.reason })
+    .from(table)
+    .where(and(eq(table.entityId, entityId), eq(table.kind, "timesheet_adjustment"), eq(table.status, "open"), isNotNull(table.sourceRef)));
   if (open.length === 0) return 0;
-  const voided = new Set(await listVoidedAdjustmentIds(open.map((row) => row.sourceRef!), executor));
+  const voided = new Set(
+    await listVoidedAdjustmentIds(
+      open.map((row) => row.sourceRef!),
+      executor,
+    ),
+  );
   const gone = open.filter((row) => voided.has(row.sourceRef!));
   if (gone.length === 0) return 0;
   const rows = await executor
     .update(table)
     .set({ status: "cancelled", reason: sql`${table.reason} || ' — huỷ: điều chỉnh bảng công đã bị huỷ'`, updatedAt: new Date() })
-    .where(and(inArray(table.id, gone.map((row) => row.id)), eq(table.status, "open")))
+    .where(
+      and(
+        inArray(
+          table.id,
+          gone.map((row) => row.id),
+        ),
+        eq(table.status, "open"),
+      ),
+    )
     .returning({ id: table.id });
   return rows.length;
 }

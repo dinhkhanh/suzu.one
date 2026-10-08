@@ -38,7 +38,10 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
     <Page>
       <ProjectHeader context={context} current="budget" />
 
-      <Section title={t("budget.burn")} action={burn.level !== "none" ? <Badge variant={burn.level === "over" ? "destructive" : burn.level === "warning" ? "warning" : "success"}>{t(`budget.level.${burn.level}`, { percent: burn.percent ?? 0 })}</Badge> : null}>
+      <Section
+        title={t("budget.burn")}
+        action={burn.level !== "none" ? <Badge variant={burn.level === "over" ? "destructive" : burn.level === "warning" ? "warning" : "success"}>{t(`budget.level.${burn.level}`, { percent: burn.percent ?? 0 })}</Badge> : null}
+      >
         <TileGrid>
           <Tile label={t("budget.logged")} value={hours(burn.loggedMinutes)} />
           <Tile label={t("budget.remaining")} value={hours(burn.remainingMinutes)} />
@@ -114,7 +117,9 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
         <Section title={t("budget.fee")}>
           <Card>
             <CardContent className="flex flex-col gap-2">
-              <p className="font-mono text-2xl font-medium tracking-[-0.02em] tabular-nums">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : format.number(plan.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</p>
+              <p className="font-mono text-2xl font-medium tracking-[-0.02em] tabular-nums">
+                {plan.feeVnd === null || plan.feeVnd === undefined ? "—" : format.number(plan.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}
+              </p>
               <p className="text-xs text-muted-foreground">{t("budget.feeNote")}</p>
               {can.editFees && !locked ? <FeeForm projectId={project.id} feeVnd={plan.feeVnd ?? null} /> : null}
               {can.editFees && locked ? (
@@ -134,7 +139,12 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
         <Section title={t("budget.edit")}>
           <Card>
             <CardContent>
-              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} scopeLocked={locked} />
+              <PlanSettingsForm
+                projectId={project.id}
+                values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }}
+                kinds={PROJECT_KINDS}
+                scopeLocked={locked}
+              />
               {locked ? (
                 <p className="mt-3 text-sm text-muted-foreground">
                   <Link href={`/projects/${project.id}/changes`} className="text-link hover:underline">

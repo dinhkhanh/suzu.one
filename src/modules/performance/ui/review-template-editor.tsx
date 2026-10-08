@@ -139,7 +139,12 @@ export function ReviewTemplateEditor({ draft, editable }: { draft: TemplateDraft
           description={t("sectionsHint")}
           actions={
             editable ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => setSections((current) => [...current, { key: freeKey(current), title: "", titleEn: null, kind: "rating", weight: "1", required: true, askedOf: ["self", "manager"] }])}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSections((current) => [...current, { key: freeKey(current), title: "", titleEn: null, kind: "rating", weight: "1", required: true, askedOf: ["self", "manager"] }])}
+              >
                 {t("addSection")}
               </Button>
             ) : null
@@ -182,7 +187,11 @@ export function ReviewTemplateEditor({ draft, editable }: { draft: TemplateDraft
                   <span className="text-sm text-muted-foreground">{t("askedOf")}</span>
                   {REVIEW_FORM_KINDS.map((kind: ReviewFormKind) => (
                     <Label key={kind} className="flex items-center gap-2 font-normal">
-                      <Checkbox checked={section.askedOf.includes(kind)} disabled={!editable} onCheckedChange={(checked) => patchSection(index, { askedOf: REVIEW_FORM_KINDS.filter((each) => (each === kind ? checked === true : section.askedOf.includes(each))) })} />
+                      <Checkbox
+                        checked={section.askedOf.includes(kind)}
+                        disabled={!editable}
+                        onCheckedChange={(checked) => patchSection(index, { askedOf: REVIEW_FORM_KINDS.filter((each) => (each === kind ? checked === true : section.askedOf.includes(each))) })}
+                      />
                       {tForm(`kind.${kind}`)}
                     </Label>
                   ))}

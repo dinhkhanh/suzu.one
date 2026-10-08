@@ -61,7 +61,8 @@ export const lineScopeChanged = (before: LineScope, after: LineScope): boolean =
 export type MonthlyQuota = { lines: readonly { title: string; quantity: number; format: string | null; channel: string | null }[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null };
 
 const sameLines = (a: MonthlyQuota["lines"], b: MonthlyQuota["lines"]): boolean =>
-  a.length === b.length && a.every((line, index) => line.title.trim() === b[index].title.trim() && line.quantity === b[index].quantity && (line.format ?? null) === (b[index].format ?? null) && (line.channel ?? null) === (b[index].channel ?? null));
+  a.length === b.length &&
+  a.every((line, index) => line.title.trim() === b[index].title.trim() && line.quantity === b[index].quantity && (line.format ?? null) === (b[index].format ?? null) && (line.channel ?? null) === (b[index].channel ?? null));
 
 /**
  * What of a retainer's terms is its monthly scope: the quota lines, the hours allowance and — when

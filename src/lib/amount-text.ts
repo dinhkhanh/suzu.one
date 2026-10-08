@@ -43,8 +43,16 @@ export function readAmount(text: string, separators: Separators, options: Amount
   const negative = options.allowNegative === true && /^\s*[-−]/.test(text);
   const { mark, at } = decimalMarkOf(text, separators.decimal);
   const hasMark = at >= 0;
-  const whole = (hasMark ? text.slice(0, at) : text).replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, MAX_DIGITS);
-  const fraction = hasMark ? text.slice(at + mark.length).replace(/\D/g, "").slice(0, decimals) : "";
+  const whole = (hasMark ? text.slice(0, at) : text)
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, MAX_DIGITS);
+  const fraction = hasMark
+    ? text
+        .slice(at + mark.length)
+        .replace(/\D/g, "")
+        .slice(0, decimals)
+    : "";
   const showMark = hasMark && decimals > 0;
   const shownWhole = whole === "" && showMark ? "0" : group(whole, separators.group);
   const display = (negative ? "-" : "") + shownWhole + (showMark ? separators.decimal + fraction : "");

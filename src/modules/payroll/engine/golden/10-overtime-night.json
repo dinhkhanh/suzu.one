@@ -20,9 +20,7 @@
   ],
   "month": "2026-08",
   "monthStandardDays": 22,
-  "segments": [
-    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }
-  ],
+  "segments": [{ "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }],
   "timesheet": {
     "standardDays": 22,
     "paidDaysCenti": 2200,

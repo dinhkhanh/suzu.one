@@ -68,7 +68,11 @@ export function applyChange(current: PlanFigures, impact: ChangeImpact): PlanFig
 
 /** What moved between two readings of the figures. */
 export type FigureDelta = { minutes: number; feeVnd: number; dueDate: boolean };
-const deltaOf = (before: PlanFigures, after: PlanFigures): FigureDelta => ({ minutes: (after.budgetMinutes ?? 0) - (before.budgetMinutes ?? 0), feeVnd: (after.feeVnd ?? 0) - (before.feeVnd ?? 0), dueDate: before.dueDate !== after.dueDate });
+const deltaOf = (before: PlanFigures, after: PlanFigures): FigureDelta => ({
+  minutes: (after.budgetMinutes ?? 0) - (before.budgetMinutes ?? 0),
+  feeVnd: (after.feeVnd ?? 0) - (before.feeVnd ?? 0),
+  dueDate: before.dueDate !== after.dueDate,
+});
 const moved = (delta: FigureDelta): boolean => delta.minutes !== 0 || delta.feeVnd !== 0 || delta.dueDate;
 
 /** An approved change with the figures it found and left; either may be missing on a change applied before they were stored. */
@@ -94,7 +98,8 @@ export type ChangeLedger = { original: PlanFigures; steps: LedgerStep[]; current
  * current plan, a row says so: the sum is shown not to add up rather than being made to.
  */
 export function changeLedger(current: PlanFigures, applied: readonly AppliedChange[], origin: PlanFigures | null = null): ChangeLedger {
-  const found = (change: AppliedChange): PlanFigures | null => change.before ?? (change.impact.applied ? { budgetMinutes: change.impact.applied.budgetMinutesBefore, feeVnd: change.impact.applied.feeVndBefore, dueDate: change.impact.applied.dueDateBefore } : null);
+  const found = (change: AppliedChange): PlanFigures | null =>
+    change.before ?? (change.impact.applied ? { budgetMinutes: change.impact.applied.budgetMinutesBefore, feeVnd: change.impact.applied.feeVndBefore, dueDate: change.impact.applied.dueDateBefore } : null);
   const original = origin ?? (applied.length ? found(applied[0]) : null) ?? current;
   const steps: LedgerStep[] = [];
   let running = original;

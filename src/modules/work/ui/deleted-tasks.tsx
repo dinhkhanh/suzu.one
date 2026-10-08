@@ -54,7 +54,15 @@ export function DeletedTasks({ tasks, days }: { tasks: DeletedTaskView[]; /** Ho
                     {task.subtasks > 0 ? <span className="text-xs text-muted-foreground">{t("subtasks", { count: task.subtasks })}</span> : null}
                   </span>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{task.deletedByName ? <RecordLink kind="person" id={task.deletedByPersonId}>{task.deletedByName}</RecordLink> : "—"}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {task.deletedByName ? (
+                    <RecordLink kind="person" id={task.deletedByPersonId}>
+                      {task.deletedByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell kind="date">{format.dateTime(new Date(task.deletedAt), { dateStyle: "short", timeStyle: "short" })}</TableCell>
                 <TableCell kind="actions">
                   <Button size="sm" variant="outline" disabled={pending} onClick={() => restore(task.id)}>

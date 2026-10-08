@@ -23,7 +23,14 @@ export async function findEmployment(employmentId: string): Promise<EmploymentRo
 /** A person's employment periods, newest first — for HR's corrections on the person page. Personal tier; the page checks. */
 export async function listEmploymentsOf(personId: string): Promise<{ id: string; entityName: string; employeeCode: string; startDate: IsoDate; seniorityDate: IsoDate; endDate: IsoDate | null }[]> {
   return db()
-    .select({ id: schema.employment.id, entityName: schema.entity.shortName, employeeCode: schema.employment.employeeCode, startDate: schema.employment.startDate, seniorityDate: schema.employment.seniorityDate, endDate: schema.employment.endDate })
+    .select({
+      id: schema.employment.id,
+      entityName: schema.entity.shortName,
+      employeeCode: schema.employment.employeeCode,
+      startDate: schema.employment.startDate,
+      seniorityDate: schema.employment.seniorityDate,
+      endDate: schema.employment.endDate,
+    })
     .from(schema.employment)
     .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
     .where(eq(schema.employment.personId, personId))
@@ -107,7 +114,11 @@ export async function renamePosition(positionId: string, name: string): Promise<
   const result = await db().transaction(async (tx) => {
     const [before] = await tx.select({ id: schema.position.id, name: schema.position.name }).from(schema.position).where(eq(schema.position.id, positionId)).limit(1).for("update");
     if (!before) throw new ActionError("position_not_found");
-    const [twin] = await tx.select({ id: schema.position.id }).from(schema.position).where(and(eq(schema.position.searchName, searchName), ne(schema.position.id, positionId))).limit(1);
+    const [twin] = await tx
+      .select({ id: schema.position.id })
+      .from(schema.position)
+      .where(and(eq(schema.position.searchName, searchName), ne(schema.position.id, positionId)))
+      .limit(1);
     if (twin) throw new ActionError("position_name_taken");
     await tx.update(schema.position).set({ name: cleaned, searchName, updatedAt: new Date() }).where(eq(schema.position.id, positionId));
     return { before, after: { id: positionId, name: cleaned } };
@@ -143,13 +154,29 @@ export async function removePersonCreatedInError(personId: string, actorPersonId
 
       // The checklist the hire started goes too — unless somebody has already done a step of it.
       if (events.length) {
-        const checklist = and(eq(schema.task.contextType, LIFECYCLE_CONTEXT), inArray(schema.task.contextId, events.map((event) => event.id)));
-        const [done] = await tx.select({ id: schema.task.id }).from(schema.task).where(and(checklist, isNotNull(schema.task.completedByPersonId))).limit(1);
+        const checklist = and(
+          eq(schema.task.contextType, LIFECYCLE_CONTEXT),
+          inArray(
+            schema.task.contextId,
+            events.map((event) => event.id),
+          ),
+        );
+        const [done] = await tx
+          .select({ id: schema.task.id })
+          .from(schema.task)
+          .where(and(checklist, isNotNull(schema.task.completedByPersonId)))
+          .limit(1);
         if (done) throw new ActionError("person_in_use");
         await tx.delete(schema.task).where(checklist);
       }
       await tx.delete(schema.notification).where(eq(schema.notification.recipientPersonId, personId));
-      if (events.length) await tx.delete(schema.lifecycleEvent).where(inArray(schema.lifecycleEvent.id, events.map((event) => event.id)));
+      if (events.length)
+        await tx.delete(schema.lifecycleEvent).where(
+          inArray(
+            schema.lifecycleEvent.id,
+            events.map((event) => event.id),
+          ),
+        );
       if (employmentIds.length) {
         await tx.delete(schema.assignment).where(inArray(schema.assignment.employmentId, employmentIds));
         await tx.delete(schema.employment).where(inArray(schema.employment.id, employmentIds));

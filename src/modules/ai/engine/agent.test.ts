@@ -163,13 +163,35 @@ describe("what the app lets a model say in its own words (FR-AGT-03)", () => {
 
 describe("a request to act goes to the agent, not the free router (R4)", () => {
   it("knows a request to do something", () => {
-    for (const question of ["Xin nghỉ phép năm thứ Sáu tuần sau", "Hôm qua tôi quên chấm công ra, về lúc 18:15", "Tạo việc thiết kế banner Tết cho Lan", "Ghi 2 tiếng hôm nay cho việc Dựng bản 3 phút", "Đăng ký làm từ xa ngày mai", "Nộp báo cáo cuối ngày giúp tôi", "Log 90 minutes of training today", "Please create a task to back up the archive", "Can you submit my end-of-day report?", "Request annual leave next Monday", "Put the opening graphics task on my plan for today", "Comment on the subtitles task that the script is missing", "Giao việc Mua bản quyền nhạc nền cho Huy", "Tạo đề nghị mua 2 ổ cứng 4TB"]) {
+    for (const question of [
+      "Xin nghỉ phép năm thứ Sáu tuần sau",
+      "Hôm qua tôi quên chấm công ra, về lúc 18:15",
+      "Tạo việc thiết kế banner Tết cho Lan",
+      "Ghi 2 tiếng hôm nay cho việc Dựng bản 3 phút",
+      "Đăng ký làm từ xa ngày mai",
+      "Nộp báo cáo cuối ngày giúp tôi",
+      "Log 90 minutes of training today",
+      "Please create a task to back up the archive",
+      "Can you submit my end-of-day report?",
+      "Request annual leave next Monday",
+      "Put the opening graphics task on my plan for today",
+      "Comment on the subtitles task that the script is missing",
+      "Giao việc Mua bản quyền nhạc nền cho Huy",
+      "Tạo đề nghị mua 2 ổ cứng 4TB",
+    ]) {
       expect(asksToAct(question), question).toBe(true);
     }
   });
 
   it("leaves a question about a figure to the router", () => {
-    for (const question of ["Tôi còn bao nhiêu ngày phép?", "Tháng này tôi đi muộn mấy lần?", "Ai duyệt đơn nghỉ phép của tôi?", "Giải thích phiếu lương tháng 9 của tôi", "How many leave days do I have left?", "What's my attendance this month?"]) {
+    for (const question of [
+      "Tôi còn bao nhiêu ngày phép?",
+      "Tháng này tôi đi muộn mấy lần?",
+      "Ai duyệt đơn nghỉ phép của tôi?",
+      "Giải thích phiếu lương tháng 9 của tôi",
+      "How many leave days do I have left?",
+      "What's my attendance this month?",
+    ]) {
       expect(asksToAct(question), question).toBe(false);
     }
   });

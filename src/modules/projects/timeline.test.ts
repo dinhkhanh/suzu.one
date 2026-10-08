@@ -37,7 +37,11 @@ const datesOf = async (taskId: string) => {
   return row;
 };
 const auditOf = (action: string) => db().select().from(schema.auditLog).where(eq(schema.auditLog.action, action));
-const noticesOf = (personId: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.booking_changed")));
+const noticesOf = (personId: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.booking_changed")));
 const brief = { objective: "Ra mắt dòng sản phẩm mới", scopeIn: "1 TVC 30s, 3 bản cắt ngắn", successCriteria: "Khách hàng duyệt trong hai vòng" };
 
 beforeAll(async () => {
@@ -45,10 +49,32 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   const grants: Record<string, Grant[]> = { dir: [{ role: "entity_director", scope: { type: "entity", id: szm.id } }] };
-  for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["huy", "Huy Ho"], ["an", "An Le"], ["khoa", "Khoa Vu"], ["dir", "Dung Director"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["long", "Long Dang"],
+    ["tam", "Tam Bui"],
+    ["huy", "Huy Ho"],
+    ["an", "An Le"],
+    ["khoa", "Khoa Vu"],
+    ["dir", "Dung Director"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
-    users[key] = { userId: `user-${key}`, sessionId: `session-${key}`, reauthAt: null, preferences: { locale: null, theme: null, navPins: [] }, email: `${key}@suzu.group`, name, image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] }, request: { ipAddress: null, userAgent: null } };
+    users[key] = {
+      userId: `user-${key}`,
+      sessionId: `session-${key}`,
+      reauthAt: null,
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${key}@suzu.group`,
+      name,
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] },
+      request: { ipAddress: null, userAgent: null },
+    };
   }
   // Huy reports to Tam.
   await db().update(schema.person).set({ managerId: ids.tam }).where(eq(schema.person.id, ids.huy));
@@ -74,14 +100,25 @@ beforeAll(async () => {
   await task("edit", "Dựng", "2026-10-19", "2026-10-20");
   await task("side", "Chọn nhạc", "2026-10-05", "2026-10-06", ids.khoa);
   await task("after", "Mix âm thanh", "2026-10-07", "2026-10-08");
-  for (const [blocker, blocked] of [["script", "board"], ["board", "shoot"], ["shoot", "edit"], ["side", "after"]] as const) await addDependency(ids[blocker], ids[blocked], "blocks", ids.tam);
+  for (const [blocker, blocked] of [
+    ["script", "board"],
+    ["board", "shoot"],
+    ["shoot", "edit"],
+    ["side", "after"],
+  ] as const)
+    await addDependency(ids[blocker], ids[blocked], "blocks", ids.tam);
 
   // A default schedule: 8 hours Monday to Friday. An works mornings only.
   const day = { type: "working" as const, segments: [{ start: "08:00", end: "17:00" }], breakMinutes: 60 };
   const morning = { type: "working" as const, segments: [{ start: "08:00", end: "12:00" }], breakMinutes: 0 };
   const off = { type: "off" as const };
-  await db().insert(schema.workSchedule).values({ name: "Hành chính", kind: "fixed", isDefault: true, pattern: { days: { 1: day, 2: day, 3: day, 4: day, 5: day, 6: off, 7: off } } });
-  const [partTime] = await db().insert(schema.workSchedule).values({ name: "Bán thời gian", kind: "fixed", pattern: { days: { 1: morning, 2: morning, 3: morning, 4: morning, 5: morning, 6: off, 7: off } } }).returning();
+  await db()
+    .insert(schema.workSchedule)
+    .values({ name: "Hành chính", kind: "fixed", isDefault: true, pattern: { days: { 1: day, 2: day, 3: day, 4: day, 5: day, 6: off, 7: off } } });
+  const [partTime] = await db()
+    .insert(schema.workSchedule)
+    .values({ name: "Bán thời gian", kind: "fixed", pattern: { days: { 1: morning, 2: morning, 3: morning, 4: morning, 5: morning, 6: off, 7: off } } })
+    .returning();
   await db().insert(schema.scheduleAssignment).values({ scope: "person", personId: ids.an, scheduleId: partTime.id, validFrom: "2026-01-01" });
   // Huy is away on Tuesday 6 October (approved annual leave).
   const [type] = await db().insert(schema.leaveType).values({ code: "AL", name: "Annual", category: "annual", isPaid: true, payrollTreatment: "paid_company" }).returning();
@@ -95,7 +132,10 @@ describe("kick-off takes a baseline of every task (FR-PJM-12)", () => {
     await updateBrief(ids.tvc, brief);
     const { requestId } = await submitBrief(ids.tvc, ids.tam);
     await decideBrief(ids.long, requestId, { action: "approve", comment: null });
-    const links = await db().select().from(schema.projectTaskLink).where(inArray(schema.projectTaskLink.taskId, [ids.script, ids.shoot]));
+    const links = await db()
+      .select()
+      .from(schema.projectTaskLink)
+      .where(inArray(schema.projectTaskLink.taskId, [ids.script, ids.shoot]));
     expect(links.map((link) => [link.taskId, link.baselineStart, link.baselineDue, link.milestoneId]).sort()).toEqual(
       [
         [ids.script, "2026-10-05", "2026-10-07", null],
@@ -127,7 +167,10 @@ describe("the timeline (FR-PJM-07)", () => {
     expect(await datesOf(ids.edit)).toEqual({ startDate: "2026-10-21", dueDate: "2026-10-22" });
     // Each date went through the work module's own update: its audit line and its activity.
     expect(await auditOf("work.task.update")).toHaveLength(4);
-    const activity = await db().select().from(schema.workActivity).where(and(eq(schema.workActivity.taskId, ids.board), eq(schema.workActivity.field, "dueDate")));
+    const activity = await db()
+      .select()
+      .from(schema.workActivity)
+      .where(and(eq(schema.workActivity.taskId, ids.board), eq(schema.workActivity.field, "dueDate")));
     expect(activity).toHaveLength(1);
     const [move] = await auditOf("projects.timeline.move");
     expect(move.before).toMatchObject({ [ids.board]: { startDate: "2026-10-08", dueDate: "2026-10-09" } });
@@ -196,7 +239,10 @@ describe("bookings (FR-PJM-13)", () => {
   it("confirm a tentative booking and remove one, telling the person each time", async () => {
     as("tam");
     await bookAction({ projectId: ids.tvc, personId: ids.huy, weekStart: "2026-10-19", hours: "10", status: "tentative" });
-    const [row] = await db().select().from(schema.projectBooking).where(and(eq(schema.projectBooking.personId, ids.huy), eq(schema.projectBooking.weekStart, "2026-10-19")));
+    const [row] = await db()
+      .select()
+      .from(schema.projectBooking)
+      .where(and(eq(schema.projectBooking.personId, ids.huy), eq(schema.projectBooking.weekStart, "2026-10-19")));
     expect(await updateBookingAction({ bookingId: row.id, hours: "12", status: "confirmed" })).toMatchObject({ ok: true });
     expect(await deleteBookingAction({ bookingId: row.id })).toMatchObject({ ok: true });
     expect(await noticesOf(ids.huy)).toHaveLength(5);
@@ -214,7 +260,12 @@ describe("bookings (FR-PJM-13)", () => {
       ["2026-10-12", 1200, "confirmed", null],
       ["2026-10-19", 960, "tentative", "Motion designer"],
     ]);
-    expect(await db().select().from(schema.projectBooking).where(and(eq(schema.projectBooking.projectId, ids.tvc), eq(schema.projectBooking.placeholderRole, "Motion designer"), eq(schema.projectBooking.minutes, 960)))).toHaveLength(2);
+    expect(
+      await db()
+        .select()
+        .from(schema.projectBooking)
+        .where(and(eq(schema.projectBooking.projectId, ids.tvc), eq(schema.projectBooking.placeholderRole, "Motion designer"), eq(schema.projectBooking.minutes, 960))),
+    ).toHaveLength(2);
     expect(await noticesOf(ids.an)).toHaveLength(2);
     expect(await fillPlaceholderAction({ projectId: ids.tvc, placeholderRole: "Motion designer", personId: ids.an })).toMatchObject({ ok: false, message: "booking_not_found" });
   });

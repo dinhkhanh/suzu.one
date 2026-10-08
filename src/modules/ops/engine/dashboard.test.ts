@@ -17,7 +17,10 @@ describe("dashboardMatrix (golden)", () => {
   ]);
 
   it("counts by entity, month and colour; leaves out cancelled, undated and out-of-range items", () => {
-    expect(rows.map((row) => row.cells.map((cell) => cell.total))).toEqual([[0, 0, 1], [1, 3, 0]]);
+    expect(rows.map((row) => row.cells.map((cell) => cell.total))).toEqual([
+      [0, 0, 1],
+      [1, 3, 0],
+    ]);
     expect(rows[1].cells[1]).toEqual({ month: "2026-09", total: 3, counts: { due_soon: 1, overdue: 1, done: 1 }, escalated: 1 });
   });
 

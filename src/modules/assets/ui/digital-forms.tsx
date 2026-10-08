@@ -15,7 +15,21 @@ import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { decideDigitalAccessAction, endDigitalAccessAction, grantDigitalAccessAction, markCredentialsRotatedAction, requestDigitalAccessAction, saveDigitalAssetAction } from "../digital-actions";
-import { ACCESS_LEVELS, ACCESS_METHODS, type AccessLevel, DIGITAL_KINDS, DIGITAL_OWNERSHIPS, DIGITAL_PLATFORMS, DIGITAL_STATUSES, DIGITAL_VISIBILITIES, type DigitalKind, type DigitalOwnership, type DigitalPlatform, type DigitalStatus, type DigitalVisibility } from "../enums";
+import {
+  ACCESS_LEVELS,
+  ACCESS_METHODS,
+  type AccessLevel,
+  DIGITAL_KINDS,
+  DIGITAL_OWNERSHIPS,
+  DIGITAL_PLATFORMS,
+  DIGITAL_STATUSES,
+  DIGITAL_VISIBILITIES,
+  type DigitalKind,
+  type DigitalOwnership,
+  type DigitalPlatform,
+  type DigitalStatus,
+  type DigitalVisibility,
+} from "../enums";
 
 type Named = { id: string; name: string };
 type Person = { id: string; fullName: string };
@@ -39,7 +53,19 @@ export type DigitalAssetFormValue = {
   notes: string | null;
 };
 
-export function DigitalAssetForm({ value, entities, clients, people, canMoveEntity }: { value: DigitalAssetFormValue; entities: { id: string; code: string; shortName: string | null }[]; clients: Named[]; people: Person[]; /** False for an owner who does not keep the register: the entity is shown, not changed. */ canMoveEntity: boolean }) {
+export function DigitalAssetForm({
+  value,
+  entities,
+  clients,
+  people,
+  canMoveEntity,
+}: {
+  value: DigitalAssetFormValue;
+  entities: { id: string; code: string; shortName: string | null }[];
+  clients: Named[];
+  people: Person[];
+  /** False for an owner who does not keep the register: the entity is shown, not changed. */ canMoveEntity: boolean;
+}) {
   const t = useTranslations("assets.digital");
   const router = useRouter();
   const [ownership, setOwnership] = useState<DigitalOwnership>(value.ownership);
@@ -331,7 +357,10 @@ export function AccessRequestActions({ accessId, level }: { accessId: string; le
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        run(() => decideDigitalAccessAction({ accessId, decision: mode, level: data.get("level"), method: data.get("method"), expiresOn: data.get("expiresOn"), note: data.get("note") }), () => setMode("none"));
+        run(
+          () => decideDigitalAccessAction({ accessId, decision: mode, level: data.get("level"), method: data.get("method"), expiresOn: data.get("expiresOn"), note: data.get("note") }),
+          () => setMode("none"),
+        );
       }}
     >
       {mode === "approve" ? (
@@ -378,7 +407,10 @@ export function EndAccessButton({ accessId, label, confirm }: { accessId: string
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        run(() => endDigitalAccessAction({ accessId, note: data.get("note") }), () => setOpen(false));
+        run(
+          () => endDigitalAccessAction({ accessId, note: data.get("note") }),
+          () => setOpen(false),
+        );
       }}
     >
       <Input name="note" maxLength={500} placeholder={t("note")} aria-label={t("note")} autoFocus />

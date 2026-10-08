@@ -49,13 +49,21 @@ const inForce = (table: typeof schema.salaryStructure, from: IsoDate, to: IsoDat
 /** Every structure of an entity's people that overlaps the period, decrypted — a run pro-rates across a mid-month change. */
 export async function listStructuresBetween(entityId: string, from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<SalaryStructureView[]> {
   const table = schema.salaryStructure;
-  const rows = await executor.select().from(table).where(and(eq(table.entityId, entityId), inForce(table, from, to))).orderBy(table.personId, table.validFrom);
+  const rows = await executor
+    .select()
+    .from(table)
+    .where(and(eq(table.entityId, entityId), inForce(table, from, to)))
+    .orderBy(table.personId, table.validFrom);
   return rows.map(openTerms);
 }
 
 export async function getStructureOn(personId: string, date: IsoDate, executor: Executor = db()): Promise<SalaryStructureView | null> {
   const table = schema.salaryStructure;
-  const [row] = await executor.select().from(table).where(and(eq(table.personId, personId), inForce(table, date, date))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(table)
+    .where(and(eq(table.personId, personId), inForce(table, date, date)))
+    .limit(1);
   return row ? openTerms(row) : null;
 }
 
@@ -73,7 +81,11 @@ export async function getStructureOn(personId: string, date: IsoDate, executor: 
 export async function listBaseSalariesOn(entityIds: readonly string[], date: IsoDate, baseComponentCode: string, executor: Executor = db()): Promise<Map<string, number>> {
   if (entityIds.length === 0) return new Map();
   const table = schema.salaryStructure;
-  const rows = await executor.select().from(table).where(and(inArray(table.entityId, [...entityIds]), inForce(table, date, date))).orderBy(table.personId, table.validFrom);
+  const rows = await executor
+    .select()
+    .from(table)
+    .where(and(inArray(table.entityId, [...entityIds]), inForce(table, date, date)))
+    .orderBy(table.personId, table.validFrom);
   const salaries = new Map<string, number>();
   for (const row of rows) {
     const terms = openTerms(row).terms;
@@ -145,7 +157,14 @@ export async function listSalaryOverview(principal: Principal, filter: { entityI
     .leftJoinLateral(employment, sql`true`)
     .leftJoinLateral(structure, sql`true`)
     .leftJoinLateral(profile, sql`true`)
-    .where(and(withinReach(schema.person.primaryEntityId, reach), inArray(schema.person.status, ["preboarding", "active", "suspended"]), filter.entityId ? eq(schema.person.primaryEntityId, filter.entityId) : undefined, search ? ilike(schema.person.searchName, search) : undefined))
+    .where(
+      and(
+        withinReach(schema.person.primaryEntityId, reach),
+        inArray(schema.person.status, ["preboarding", "active", "suspended"]),
+        filter.entityId ? eq(schema.person.primaryEntityId, filter.entityId) : undefined,
+        search ? ilike(schema.person.searchName, search) : undefined,
+      ),
+    )
     .orderBy(sql`substring(${schema.person.searchName} from '[^ ]+$') || ' ' || ${schema.person.searchName}`);
 
   return people.map((row) => {
@@ -159,7 +178,10 @@ export async function listSalaryOverview(principal: Principal, filter: { entityI
       workforceType: row.workforceType,
       profile: row.profile ?? null,
       simpleBasis: row.simpleBasis ?? null,
-      structure: terms && row.structureId && row.structureValidFrom ? { id: row.structureId, validFrom: row.structureValidFrom, baseSalary: terms.baseSalary, insuranceSalary: terms.insuranceSalary, allowancesTotal: terms.allowances.reduce((sum, line) => sum + line.amount, 0) } : null,
+      structure:
+        terms && row.structureId && row.structureValidFrom
+          ? { id: row.structureId, validFrom: row.structureValidFrom, baseSalary: terms.baseSalary, insuranceSalary: terms.insuranceSalary, allowancesTotal: terms.allowances.reduce((sum, line) => sum + line.amount, 0) }
+          : null,
       hasOpenChange: !!row.hasOpenChange,
     };
   });
@@ -251,7 +273,10 @@ async function checkProbationPercent(executor: Executor, percent: number | null,
 }
 
 async function plan(executor: Executor, employmentId: string, validFrom: IsoDate) {
-  const existing = await executor.select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, employmentId), isNull(schema.salaryStructure.voidedAt)));
+  const existing = await executor
+    .select()
+    .from(schema.salaryStructure)
+    .where(and(eq(schema.salaryStructure.employmentId, employmentId), isNull(schema.salaryStructure.voidedAt)));
   const result = planApproval(existing, validFrom);
   if (result.kind === "rejected") throw new ActionError(`salary_${result.reason}`);
   return { result, initial: existing.length === 0 };
@@ -262,7 +287,11 @@ export async function submitSalaryChange(actorPersonId: string, input: SalaryCha
     const [facts] = await listEmploymentFacts({ personIds: [input.personId] }, tx);
     if (!facts?.employmentId || !facts.entityId) throw new ActionError("person_without_employment");
     if (facts.startDate && input.validFrom < facts.startDate) throw new ActionError("salary_before_employment");
-    const [open] = await tx.select({ id: schema.approvalRequest.id }).from(schema.approvalRequest).where(and(eq(schema.approvalRequest.type, salaryChangeRequest.type), eq(schema.approvalRequest.subjectPersonId, input.personId), inArray(schema.approvalRequest.status, ["pending", "returned"]))).limit(1);
+    const [open] = await tx
+      .select({ id: schema.approvalRequest.id })
+      .from(schema.approvalRequest)
+      .where(and(eq(schema.approvalRequest.type, salaryChangeRequest.type), eq(schema.approvalRequest.subjectPersonId, input.personId), inArray(schema.approvalRequest.status, ["pending", "returned"])))
+      .limit(1);
     if (open) throw new ActionError("salary_change_open");
 
     const terms = await checkTerms(tx, facts.entityId, input);
@@ -298,20 +327,32 @@ export async function fileSalaryChange(tx: Tx, actorPersonId: string, change: Ch
 /** C&B's corrected proposal after it was sent back. */
 export async function resubmitSalaryChange(actorPersonId: string, requestId: string, input: SalaryChangeInput) {
   return db().transaction(async (tx) => {
-    const [row] = await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type))).limit(1);
+    const [row] = await tx
+      .select()
+      .from(schema.approvalRequest)
+      .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type)))
+      .limit(1);
     if (!row?.subjectPersonId || !row.entityId || row.subjectPersonId !== input.personId) throw new ActionError("approval_not_found");
     const before = row.payload as SalaryChangePayload;
     const terms = await checkTerms(tx, row.entityId, input);
     const { initial } = await plan(tx, before.employmentId, input.validFrom);
     const payload: SalaryChangePayload = { ...before, reason: initial ? "initial" : input.reason === "initial" ? "adjustment" : input.reason, validFrom: input.validFrom, initial };
-    const { request } = await resubmitRequest(tx, salaryChangeRequest, requestId, actorPersonId, { summary: summaryOf(payload), payload, payloadEnc: fieldCipher().encrypt(JSON.stringify({ terms, note: input.note } satisfies SealedSalaryChange), salaryChangeContext(requestId)) });
+    const { request } = await resubmitRequest(tx, salaryChangeRequest, requestId, actorPersonId, {
+      summary: summaryOf(payload),
+      payload,
+      payloadEnc: fieldCipher().encrypt(JSON.stringify({ terms, note: input.note } satisfies SealedSalaryChange), salaryChangeContext(requestId)),
+    });
     return { request, payload, entityId: row.entityId };
   });
 }
 
 export async function withdrawSalaryChange(actorPersonId: string, requestId: string) {
   return db().transaction(async (tx) => {
-    const [row] = await tx.select({ id: schema.approvalRequest.id }).from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type))).limit(1);
+    const [row] = await tx
+      .select({ id: schema.approvalRequest.id })
+      .from(schema.approvalRequest)
+      .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type)))
+      .limit(1);
     if (!row) throw new ActionError("approval_not_found");
     return withdrawRequest(tx, requestId, actorPersonId);
   });
@@ -326,7 +367,10 @@ export const unseal = (request: { id: string; payloadEnc: string | null }): Seal
 async function nextDecisionNumber(tx: Tx, entityId: string, year: string): Promise<string> {
   const [entity] = await tx.select({ code: schema.entity.code }).from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1);
   const suffix = `/${year}/QĐL-${entity?.code ?? "X"}`;
-  const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(schema.salaryStructure).where(and(eq(schema.salaryStructure.entityId, entityId), like(schema.salaryStructure.decisionNumber, `%${suffix}`)));
+  const [{ count }] = await tx
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.salaryStructure)
+    .where(and(eq(schema.salaryStructure.entityId, entityId), like(schema.salaryStructure.decisionNumber, `%${suffix}`)));
   return `${String(count + 1).padStart(3, "0")}${suffix}`;
 }
 
@@ -339,7 +383,12 @@ async function nextDecisionNumber(tx: Tx, entityId: string, year: string): Promi
  */
 export async function decideSalaryChange(actor: Viewer, requestId: string, decision: { action: "approve" | "reject" | "return"; comment: string | null }) {
   return db().transaction(async (tx) => {
-    const [row] = await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type))).limit(1).for("update");
+    const [row] = await tx
+      .select()
+      .from(schema.approvalRequest)
+      .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type)))
+      .limit(1)
+      .for("update");
     if (!row?.subjectPersonId || !row.entityId) throw new ActionError("approval_not_found");
     if (!canDecideSalaryChange(actor.principal, { entityId: row.entityId })) throw new ActionError("forbidden");
     const payload = row.payload as SalaryChangePayload;
@@ -365,7 +414,12 @@ export async function decideSalaryChange(actor: Viewer, requestId: string, decis
         createdByPersonId: row.requesterPersonId,
       });
       // The first structure comes with the hire, which already has its own event and obligations.
-      if (!payload.initial) await recordPayEvent(tx, { type: "salary_change", personId: row.subjectPersonId, employmentId: payload.employmentId, entityId: row.entityId, effectiveDate: payload.validFrom, reason: payload.reason, details: {}, approvalRequestId: requestId }, actor.personId);
+      if (!payload.initial)
+        await recordPayEvent(
+          tx,
+          { type: "salary_change", personId: row.subjectPersonId, employmentId: payload.employmentId, entityId: row.entityId, effectiveDate: payload.validFrom, reason: payload.reason, details: {}, approvalRequestId: requestId },
+          actor.personId,
+        );
     }
     return { request, before, outcome, payload, entityId: row.entityId, subjectPersonId: row.subjectPersonId, structureId };
   });
@@ -395,7 +449,16 @@ export async function getSalaryChange(viewer: Viewer, requestId: string): Promis
 
 // ── The decision document ───────────────────────────────────────────────────────────────────
 
-export type SalaryDecision = { structure: SalaryStructureView; previous: SalaryStructureView | null; personName: string; employeeCode: string | null; entity: { legalName: string; address: string | null; legalRepresentative: string | null; code: string }; decidedAt: Date; decidedByName: string | null; componentNames: Record<string, string> };
+export type SalaryDecision = {
+  structure: SalaryStructureView;
+  previous: SalaryStructureView | null;
+  personName: string;
+  employeeCode: string | null;
+  entity: { legalName: string; address: string | null; legalRepresentative: string | null; code: string };
+  decidedAt: Date;
+  decidedByName: string | null;
+  componentNames: Record<string, string>;
+};
 
 /** "Quyết định điều chỉnh lương", generated from the structure (FR-PAY-04). For the person themselves and C&B. */
 export async function getSalaryDecision(viewer: Viewer, structureId: string): Promise<SalaryDecision | null> {
@@ -405,7 +468,12 @@ export async function getSalaryDecision(viewer: Viewer, structureId: string): Pr
     listEmploymentFacts({ personIds: [row.personId] }),
     // The entity is reference data, in the org module's cache.
     listEntities().then((entities) => entities.filter((entity) => entity.id === row.entityId)),
-    db().select().from(schema.salaryStructure).where(and(eq(schema.salaryStructure.employmentId, row.employmentId), isNull(schema.salaryStructure.voidedAt), lte(schema.salaryStructure.validFrom, row.validFrom), sql`${schema.salaryStructure.id} <> ${row.id}`)).orderBy(desc(schema.salaryStructure.validFrom)).limit(1),
+    db()
+      .select()
+      .from(schema.salaryStructure)
+      .where(and(eq(schema.salaryStructure.employmentId, row.employmentId), isNull(schema.salaryStructure.voidedAt), lte(schema.salaryStructure.validFrom, row.validFrom), sql`${schema.salaryStructure.id} <> ${row.id}`))
+      .orderBy(desc(schema.salaryStructure.validFrom))
+      .limit(1),
     resolveCatalogue(row.entityId, row.validFrom),
     row.decidedByPersonId ? db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.decidedByPersonId)).limit(1) : Promise.resolve([]),
   ]);
@@ -444,7 +512,11 @@ export async function voidSalaryStructure(structureId: string, reason: string, a
     if (!before || before.voidedAt) throw new ActionError("version_not_voidable");
     const refusal = await personVersionRefusal(before, tx);
     if (refusal) throw new ActionError(refusal);
-    const standing = await tx.select().from(table).where(and(eq(table.employmentId, before.employmentId), isNull(table.voidedAt))).for("update");
+    const standing = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.employmentId, before.employmentId), isNull(table.voidedAt)))
+      .for("update");
     const now = new Date();
     const [after] = await tx.update(table).set({ voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, structureId)).returning();
     const outcome = planVoid(standing, before);
@@ -455,6 +527,10 @@ export async function voidSalaryStructure(structureId: string, reason: string, a
 
 /** Where a salary change request sits — for the actions' authorization. null = no such request (answered like a refusal). */
 export async function salaryChangeEntity(requestId: string): Promise<{ entityId: string; requesterPersonId: string } | null> {
-  const [row] = await db().select({ entityId: schema.approvalRequest.entityId, requesterPersonId: schema.approvalRequest.requesterPersonId }).from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type))).limit(1);
+  const [row] = await db()
+    .select({ entityId: schema.approvalRequest.entityId, requesterPersonId: schema.approvalRequest.requesterPersonId })
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, salaryChangeRequest.type)))
+    .limit(1);
   return row?.entityId ? { entityId: row.entityId, requesterPersonId: row.requesterPersonId } : null;
 }

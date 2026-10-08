@@ -1,10 +1,7 @@
 {
   "name": "A collaborator is not in the year-end bonus at all",
   "source": "synthetic",
-  "derivation": [
-    "The scheme excludes the workforce type 'collaborator'.",
-    "The exclusion is decided before any arithmetic, so the amount is 0 ₫ and the reason is on the line."
-  ],
+  "derivation": ["The scheme excludes the workforce type 'collaborator'.", "The exclusion is decided before any arithmetic, so the amount is 0 ₫ and the reason is on the line."],
   "person": {
     "baseSalaryVnd": 20000000,
     "serviceMonths": 30,

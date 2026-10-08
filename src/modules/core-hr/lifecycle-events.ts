@@ -29,7 +29,10 @@ export type NewLifecycleEvent = {
 };
 
 export async function recordLifecycleEvent(tx: Executor, event: NewLifecycleEvent, actorPersonId: string | null): Promise<LifecycleEventRow> {
-  const [row] = await tx.insert(schema.lifecycleEvent).values({ ...event, createdByPersonId: actorPersonId }).returning();
+  const [row] = await tx
+    .insert(schema.lifecycleEvent)
+    .values({ ...event, createdByPersonId: actorPersonId })
+    .returning();
   return row;
 }
 
@@ -48,14 +51,25 @@ export async function startChecklist(tx: Executor, event: LifecycleEventRow, pur
 }
 
 /** A placement in words, for the from → to snapshot of a transfer or promotion. Names, not ids: the timeline must still read right after a department is renamed or a manager leaves. */
-export async function describePlacement(tx: Executor, row: { departmentId: string | null; teamId: string | null; positionId: string | null; managerId: string | null; seniorityLevel: string | null; positionLevel: string | null; workforceType: string }) {
+export async function describePlacement(
+  tx: Executor,
+  row: { departmentId: string | null; teamId: string | null; positionId: string | null; managerId: string | null; seniorityLevel: string | null; positionLevel: string | null; workforceType: string },
+) {
   const [[department], [team], [position], [manager]] = await Promise.all([
     row.departmentId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.departmentId)) : [],
     row.teamId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.teamId)) : [],
     row.positionId ? tx.select({ name: schema.position.name }).from(schema.position).where(eq(schema.position.id, row.positionId)) : [],
     row.managerId ? tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.managerId)) : [],
   ]);
-  return { department: department?.name ?? null, team: team?.name ?? null, position: position?.name ?? null, manager: manager?.name ?? null, seniorityLevel: row.seniorityLevel, positionLevel: row.positionLevel, workforceType: row.workforceType };
+  return {
+    department: department?.name ?? null,
+    team: team?.name ?? null,
+    position: position?.name ?? null,
+    manager: manager?.name ?? null,
+    seniorityLevel: row.seniorityLevel,
+    positionLevel: row.positionLevel,
+    workforceType: row.workforceType,
+  };
 }
 
 /**
@@ -131,7 +145,17 @@ export async function markDueTerminationsApplied(tx: Executor, personId: string,
 }
 
 /** A lifecycle event as other modules may know it: who, where, what and when — never the note or the reason. */
-export type LifecycleEventFact = { id: string; type: LifecycleEventType; status: LifecycleEventRow["status"]; personId: string; personName: string; entityId: string; effectiveDate: IsoDate; /** A long absence carries its last day. */ until: IsoDate | null; createdAt: Date };
+export type LifecycleEventFact = {
+  id: string;
+  type: LifecycleEventType;
+  status: LifecycleEventRow["status"];
+  personId: string;
+  personName: string;
+  entityId: string;
+  effectiveDate: IsoDate;
+  /** A long absence carries its last day. */ until: IsoDate | null;
+  createdAt: Date;
+};
 
 /**
  * The events written since a moment, oldest first — the durable log that the ops tracker pulls its
@@ -146,5 +170,15 @@ export async function listLifecycleEventFacts(filter: { createdSince: Date; type
     .innerJoin(schema.person, eq(schema.person.id, schema.lifecycleEvent.personId))
     .where(and(gte(schema.lifecycleEvent.createdAt, filter.createdSince), inArray(schema.lifecycleEvent.type, [...filter.types])))
     .orderBy(asc(schema.lifecycleEvent.createdAt));
-  return rows.map(({ event, personName }) => ({ id: event.id, type: event.type, status: event.status, personId: event.personId, personName, entityId: event.entityId, effectiveDate: event.effectiveDate, until: typeof event.details.to === "string" ? event.details.to : null, createdAt: event.createdAt }));
+  return rows.map(({ event, personName }) => ({
+    id: event.id,
+    type: event.type,
+    status: event.status,
+    personId: event.personId,
+    personName,
+    entityId: event.entityId,
+    effectiveDate: event.effectiveDate,
+    until: typeof event.details.to === "string" ? event.details.to : null,
+    createdAt: event.createdAt,
+  }));
 }

@@ -46,12 +46,21 @@ const setReferencePipeline = createAction({
     const saved = await inTransaction((tx) =>
       saveReference(
         tx,
-        { entityId: input.entityId, month: input.month, personId: input.personId, figures: { gross: input.gross, employeeInsurance: input.employeeInsurance, unionDues: input.unionDues, pit: input.pit, otherDeductions: input.otherDeductions, net: input.net, employerCost: input.employerCost }, note: input.note },
+        {
+          entityId: input.entityId,
+          month: input.month,
+          personId: input.personId,
+          figures: { gross: input.gross, employeeInsurance: input.employeeInsurance, unionDues: input.unionDues, pit: input.pit, otherDeductions: input.otherDeductions, net: input.net, employerCost: input.employerCost },
+          note: input.note,
+        },
         user.person.id,
       ),
     );
     refresh();
-    return { data: { id: saved.id }, audit: { resource: { type: "payroll_parallel_reference", id: saved.id, entityId: input.entityId }, summary: `reference figures ${input.month}`, after: { month: input.month, personId: input.personId } } };
+    return {
+      data: { id: saved.id },
+      audit: { resource: { type: "payroll_parallel_reference", id: saved.id, entityId: input.entityId }, summary: `reference figures ${input.month}`, after: { month: input.month, personId: input.personId } },
+    };
   },
 });
 export async function setParallelReferenceAction(input: unknown) {
@@ -95,7 +104,11 @@ const classifyPipeline = createAction({
     refresh();
     return {
       data: { id: saved.id },
-      audit: { resource: { type: "payroll_parallel_finding", id: saved.id, entityId: input.entityId }, summary: `${input.field} ${input.classification} ${input.month}`, after: { field: input.field, classification: input.classification, month: input.month } },
+      audit: {
+        resource: { type: "payroll_parallel_finding", id: saved.id, entityId: input.entityId },
+        summary: `${input.field} ${input.classification} ${input.month}`,
+        after: { field: input.field, classification: input.classification, month: input.month },
+      },
     };
   },
 });
@@ -114,7 +127,14 @@ const signOffPipeline = createAction({
     const signed = await signOffParallel(input, user.person.id);
     refresh();
     // Counts and who it was checked with — the record itself holds nothing more.
-    return { data: { id: signed.id }, audit: { resource: { type: "payroll_parallel_signoff", id: signed.id, entityId: input.entityId }, summary: `parallel run ${input.month} signed off`, after: { month: input.month, people: signed.people, matching: signed.matching, explainedLines: signed.explainedLines, checkedWith: signed.checkedWith } } };
+    return {
+      data: { id: signed.id },
+      audit: {
+        resource: { type: "payroll_parallel_signoff", id: signed.id, entityId: input.entityId },
+        summary: `parallel run ${input.month} signed off`,
+        after: { month: input.month, people: signed.people, matching: signed.matching, explainedLines: signed.explainedLines, checkedWith: signed.checkedWith },
+      },
+    };
   },
 });
 export async function signOffParallelAction(input: unknown) {

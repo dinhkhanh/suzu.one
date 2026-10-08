@@ -17,7 +17,17 @@ import { cn } from "@/lib/utils";
 import { setRowBillableAction, setTimeCellAction } from "../time-actions";
 import { durationText, hoursOf, parseCellDuration } from "./format";
 
-export type GridRowView = { key: string; label: string; sub: string | null; /** The project's job number, shown before its name. */ job?: string | null; /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null; projectId?: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
+export type GridRowView = {
+  key: string;
+  label: string;
+  sub: string | null;
+  /** The project's job number, shown before its name. */ job?: string | null;
+  /** The task and the project the labels name, when the reader may open them. */ taskId?: string | null;
+  projectId?: string | null;
+  cells: number[];
+  /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number;
+  total: number;
+};
 export type GridDayView = {
   date: string;
   label: string;
@@ -70,7 +80,10 @@ function Cell({ date, rowKey, minutes, label, editable, onError }: { date: strin
         if (event.key === "Enter") event.currentTarget.blur();
         if (event.key === "Escape") setText(durationText(minutes));
       }}
-      className={cn("h-8 w-full min-w-12 rounded-[0.5rem] border border-transparent bg-transparent px-1.5 text-right outline-none transition-[border-color,box-shadow] hover:border-input focus:border-ring focus:bg-background focus:ring-[3px] focus:ring-ring/20 disabled:opacity-60 aria-invalid:border-destructive", MONO)}
+      className={cn(
+        "h-8 w-full min-w-12 rounded-[0.5rem] border border-transparent bg-transparent px-1.5 text-right outline-none transition-[border-color,box-shadow] hover:border-input focus:border-ring focus:bg-background focus:ring-[3px] focus:ring-ring/20 disabled:opacity-60 aria-invalid:border-destructive",
+        MONO,
+      )}
     />
   );
 }
@@ -191,14 +204,18 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                 <TableCell className="py-1.5">
                   <span className="flex items-center gap-1.5">
                     <span className="min-w-0 flex-1 truncate">
-                      <RecordLink kind="task" id={row.taskId}>{row.label}</RecordLink>
+                      <RecordLink kind="task" id={row.taskId}>
+                        {row.label}
+                      </RecordLink>
                     </span>
                     <BillableToggle weekStart={weekStart} rowKey={row.key} billable={row.billable} total={row.total} editable={editable} onError={setErrorKey} />
                   </span>
                   {row.sub ? (
                     <span className="block truncate text-xs text-muted-foreground">
                       {row.job ? <span className="font-mono text-faint">{row.job} </span> : null}
-                      <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
+                      <RecordLink kind="project" id={row.projectId}>
+                        {row.sub}
+                      </RecordLink>
                     </span>
                   ) : null}
                 </TableCell>
@@ -262,12 +279,16 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                   <li key={row.key} className="flex items-center gap-2 py-0.5">
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm">
                       <span className="min-w-0 truncate">
-                        <RecordLink kind="task" id={row.taskId}>{row.label}</RecordLink>
+                        <RecordLink kind="task" id={row.taskId}>
+                          {row.label}
+                        </RecordLink>
                         {row.sub ? (
                           <span className="text-xs text-muted-foreground">
                             {" "}
                             · {row.job ? <span className="font-mono text-faint">{row.job} </span> : null}
-                            <RecordLink kind="project" id={row.projectId}>{row.sub}</RecordLink>
+                            <RecordLink kind="project" id={row.projectId}>
+                              {row.sub}
+                            </RecordLink>
                           </span>
                         ) : null}
                       </span>

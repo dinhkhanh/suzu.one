@@ -47,7 +47,19 @@ beforeAll(async () => {
       .values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: szm.id })
       .returning();
     ids[who] = row.id;
-    users[who] = { userId: `user-${who}`, sessionId: `session-${who}`, reauthAt: null, preferences: { locale: null, theme: null, navPins: [] }, email: `${who}@suzu.group`, name: NAMES[who], image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: [] }, request: { ipAddress: null, userAgent: null } } as CurrentUser;
+    users[who] = {
+      userId: `user-${who}`,
+      sessionId: `session-${who}`,
+      reauthAt: null,
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${who}@suzu.group`,
+      name: NAMES[who],
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: [] },
+      request: { ipAddress: null, userAgent: null },
+    } as CurrentUser;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   for (const who of ["huy", "tam"] as const) await setTeamMember(video.id, ids[who], "member");
@@ -96,7 +108,10 @@ describe("propose_plan_today → daily.plan.add", () => {
     expect(result.card?.proposal?.editHref).toBe("/daily/plan");
     expect(result.card?.proposal?.fields.map((field) => field.key)).toEqual(["task", "date"]);
     expect(await confirm("huy", result)).toMatchObject({ ok: true, data: { state: "confirmed" } });
-    const [plan] = await db().select().from(schema.dailyPlan).where(and(eq(schema.dailyPlan.personId, ids.huy), eq(schema.dailyPlan.date, today)));
+    const [plan] = await db()
+      .select()
+      .from(schema.dailyPlan)
+      .where(and(eq(schema.dailyPlan.personId, ids.huy), eq(schema.dailyPlan.date, today)));
     expect(plan.items.map((item) => item.taskId)).toEqual([ids.mix]);
     expect((await run("huy", "propose_plan_today", { task: "VID-2" })).model).toMatchObject({ reason: "already_in_plan" });
   });
@@ -124,7 +139,10 @@ describe("propose_eod_report → daily.report.submit", () => {
     expect(report).toMatchObject({ date: today, status: "submitted", blockers: "Chờ nhạc từ khách" });
     expect(report.notes).toBeTruthy();
     expect(report.tomorrow.map((item) => item.taskId)).toEqual([ids.rough]);
-    const told = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.long), eq(schema.notification.kind, "daily.report_blockers")));
+    const told = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.long), eq(schema.notification.kind, "daily.report_blockers")));
     expect(told).toHaveLength(1);
   });
 

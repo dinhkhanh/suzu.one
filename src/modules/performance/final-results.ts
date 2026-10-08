@@ -85,7 +85,16 @@ async function previewResults(people: readonly { personId: string; entityId: str
     const okr = okrs.get(person.personId)!;
     const review = released.get(person.personId) ?? null;
     const trace = finalResult({ reviewScoreBp: review?.reviewScoreBp ?? null, kpiScoreBp: kpi.scoreBp, okr: okrInput(okr), override: person.override, weightingVersionId: weighting.id }, weighting.value);
-    return { personId: person.personId, entityId: person.entityId, year, trace, kpi, okr, review: review ? { participantId: review.participantId, reviewScoreBp: review.reviewScoreBp } : null, weighting: { id: weighting.id, value: weighting.value } };
+    return {
+      personId: person.personId,
+      entityId: person.entityId,
+      year,
+      trace,
+      kpi,
+      okr,
+      review: review ? { participantId: review.participantId, reviewScoreBp: review.reviewScoreBp } : null,
+      weighting: { id: weighting.id, value: weighting.value },
+    };
   });
 }
 
@@ -118,14 +127,22 @@ export async function computeResults(input: { personIds: readonly string[]; year
   const summary: ComputeSummary = { computed: 0, skipped: [] };
   const personIds = [...new Set(input.personIds)].filter((personId) => directory.has(personId));
   if (personIds.length === 0) return summary;
-  const existing = new Map((await executor.select().from(schema.performanceResult).where(and(eq(schema.performanceResult.year, input.year), inArray(schema.performanceResult.personId, personIds)))).map((row) => [row.personId, row]));
+  const existing = new Map(
+    (
+      await executor
+        .select()
+        .from(schema.performanceResult)
+        .where(and(eq(schema.performanceResult.year, input.year), inArray(schema.performanceResult.personId, personIds)))
+    ).map((row) => [row.personId, row]),
+  );
   const drafts = personIds.filter((personId) => {
     const row = existing.get(personId);
     if (row && row.status !== "draft") summary.skipped.push({ personId, reason: row.status as "locked" | "published" });
     return !row || row.status === "draft";
   });
   // A draft keeps an override that was already typed in: recomputing refreshes the inputs, not the decision.
-  const overrideOf = (row: PerformanceResultRow | undefined): ResultOverrideInput => (row && row.overrideScoreBp !== null ? { scoreBp: row.overrideScoreBp, reason: row.overrideReason ?? "", byPersonId: row.overrideByPersonId, at: row.overrideAt?.toISOString() ?? null } : null);
+  const overrideOf = (row: PerformanceResultRow | undefined): ResultOverrideInput =>
+    row && row.overrideScoreBp !== null ? { scoreBp: row.overrideScoreBp, reason: row.overrideReason ?? "", byPersonId: row.overrideByPersonId, at: row.overrideAt?.toISOString() ?? null } : null;
   const computed = await previewResults(
     drafts.map((personId) => ({ personId, entityId: directory.get(personId)!.entityId ?? null, override: overrideOf(existing.get(personId)) })),
     input.year,
@@ -147,9 +164,12 @@ export async function computeResults(input: { personIds: readonly string[]; year
   return summary;
 }
 
-
 export async function findResult(personId: string, year: number, executor: Executor = db()): Promise<PerformanceResultRow | null> {
-  const [row] = await executor.select().from(schema.performanceResult).where(and(eq(schema.performanceResult.personId, personId), eq(schema.performanceResult.year, year))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.performanceResult)
+    .where(and(eq(schema.performanceResult.personId, personId), eq(schema.performanceResult.year, year)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -162,7 +182,12 @@ export async function findResultById(resultId: string, executor: Executor = db()
  * The owner's override: a different figure, with the reason on the record. Only while the result
  * is still a draft — after the lock the year is settled. Passing `null` takes the override back.
  */
-export async function overrideResult(resultId: string, input: { scoreBp: number | null; reason: string }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: PerformanceResultRow; after: PerformanceResultRow }> {
+export async function overrideResult(
+  resultId: string,
+  input: { scoreBp: number | null; reason: string },
+  actorPersonId: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: PerformanceResultRow; after: PerformanceResultRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.performanceResult).where(eq(schema.performanceResult.id, resultId)).limit(1).for("update");
     if (!before) throw new ActionError("result_not_found");
@@ -209,7 +234,11 @@ export async function lockResult(resultId: string, actorPersonId: string, execut
     if (!before) throw new ActionError("result_not_found");
     if (before.status !== "draft") throw new ActionError("result_locked");
     if (before.finalScoreBp === null) throw new ActionError("result_nothing_scored");
-    const [after] = await tx.update(schema.performanceResult).set({ status: "locked" satisfies PerformanceResultStatus, lockedAt: new Date(), lockedByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.performanceResult.id, resultId)).returning();
+    const [after] = await tx
+      .update(schema.performanceResult)
+      .set({ status: "locked" satisfies PerformanceResultStatus, lockedAt: new Date(), lockedByPersonId: actorPersonId, updatedAt: new Date() })
+      .where(eq(schema.performanceResult.id, resultId))
+      .returning();
     return { before, after };
   });
 }
@@ -221,7 +250,11 @@ export async function publishResult(resultId: string, actorPersonId: string, exe
     if (!before) throw new ActionError("result_not_found");
     if (before.status === "draft") throw new ActionError("result_not_locked");
     if (before.status === "published") throw new ActionError("result_published");
-    const [after] = await tx.update(schema.performanceResult).set({ status: "published" satisfies PerformanceResultStatus, publishedAt: new Date(), publishedByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.performanceResult.id, resultId)).returning();
+    const [after] = await tx
+      .update(schema.performanceResult)
+      .set({ status: "published" satisfies PerformanceResultStatus, publishedAt: new Date(), publishedByPersonId: actorPersonId, updatedAt: new Date() })
+      .where(eq(schema.performanceResult.id, resultId))
+      .returning();
     return { before, after };
   });
   await notify({ recipients: [result.after.personId], kind: "performance.result_published", params: { year: result.after.year }, link: `/performance/results?year=${result.after.year}` });
@@ -234,7 +267,11 @@ export async function unlockResult(resultId: string, executor: ReturnType<typeof
     const [before] = await tx.select().from(schema.performanceResult).where(eq(schema.performanceResult.id, resultId)).limit(1).for("update");
     if (!before) throw new ActionError("result_not_found");
     if (before.status === "draft") throw new ActionError("result_not_locked");
-    const [use] = await tx.select({ id: schema.kpiScoreUse.id }).from(schema.kpiScoreUse).where(and(eq(schema.kpiScoreUse.personId, before.personId), eq(schema.kpiScoreUse.year, before.year))).limit(1);
+    const [use] = await tx
+      .select({ id: schema.kpiScoreUse.id })
+      .from(schema.kpiScoreUse)
+      .where(and(eq(schema.kpiScoreUse.personId, before.personId), eq(schema.kpiScoreUse.year, before.year)))
+      .limit(1);
     if (use) throw new ActionError("result_consumed");
     const [after] = await tx
       .update(schema.performanceResult)

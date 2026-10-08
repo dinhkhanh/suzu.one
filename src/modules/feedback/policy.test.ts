@@ -32,7 +32,10 @@ describe("feedback policy", () => {
   it("builds an inbox reach that agrees with canReadFeedback for staff", () => {
     const cases: Grant[][] = [
       [{ role: "hr_admin", scope: { type: "entity", id: A } }],
-      [{ role: "entity_director", scope: { type: "entity", id: B } }, { role: "hr_admin", scope: { type: "unit", id: DESIGN } }],
+      [
+        { role: "entity_director", scope: { type: "entity", id: B } },
+        { role: "hr_admin", scope: { type: "unit", id: DESIGN } },
+      ],
       [{ role: "c_level", scope: { type: "group" } }],
       [{ role: "department_head", scope: { type: "unit", id: DESIGN } }],
     ];

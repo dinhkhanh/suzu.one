@@ -75,7 +75,6 @@ export type MessengerStatus = {
   pending: { expiresAt: Date; codeSent: boolean } | null;
 };
 
-
 export async function getMessengerStatus(personId: string, now: Date = new Date()): Promise<MessengerStatus> {
   const status = await cached(messengerStatusKey(personId), TTL.personal, async (): Promise<MessengerStatus> => {
     const [[link], [pending]] = await Promise.all([
@@ -187,7 +186,10 @@ export async function confirmMessengerLink(personId: string, code: string, now: 
       .where(and(isNull(schema.messengerLink.revokedAt), or(eq(schema.messengerLink.personId, personId), eq(schema.messengerLink.psid, psid))))
       .returning({ personId: schema.messengerLink.personId });
     // Opening the link was a message to the Page: the 24-hour window starts there.
-    const [link] = await tx.insert(schema.messengerLink).values({ personId, psid, linkedAt: now, lastInboundAt: request.codeSentAt ?? now }).returning({ id: schema.messengerLink.id });
+    const [link] = await tx
+      .insert(schema.messengerLink)
+      .values({ personId, psid, linkedAt: now, lastInboundAt: request.codeSentAt ?? now })
+      .returning({ id: schema.messengerLink.id });
     return { linkId: link.id, replaced: old.map((row) => row.personId) };
   });
   await invalidateMessengerStatus(personId, ...replaced);

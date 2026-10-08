@@ -4,7 +4,25 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
-import { assignAsset, bookAsset, cancelBooking, checkInBooking, checkOutBooking, confirmHandover, decideBooking, findAssignment, findAsset, findBooking, findLicence, registerAsset, returnAsset, saveCategory, saveLicence, setAssetStatus, updateAsset } from "./service";
+import {
+  assignAsset,
+  bookAsset,
+  cancelBooking,
+  checkInBooking,
+  checkOutBooking,
+  confirmHandover,
+  decideBooking,
+  findAssignment,
+  findAsset,
+  findBooking,
+  findLicence,
+  registerAsset,
+  returnAsset,
+  saveCategory,
+  saveLicence,
+  setAssetStatus,
+  updateAsset,
+} from "./service";
 import { windowProblems } from "./engine/booking";
 import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, BILLING_CYCLES, HOLDER_TYPES, LICENCE_STATUSES } from "./enums";
 import { canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canManageLicences } from "./policy";
@@ -62,7 +80,10 @@ const updateAssetPipeline = createAction({
     const { assetId, ...fields } = input;
     const { before, after } = await updateAsset(assetId, fields, user.person.id);
     refresh(assetId);
-    return { data: { id: after.id }, audit: { resource: { type: "asset", id: assetId, entityId: after.entityId }, summary: after.code, before: { name: before.name, status: before.status }, after: { name: after.name, status: after.status } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "asset", id: assetId, entityId: after.entityId }, summary: after.code, before: { name: before.name, status: before.status }, after: { name: after.name, status: after.status } },
+    };
   },
 });
 
@@ -76,7 +97,16 @@ const assignAssetPipeline = createAction({
     dueBack: optional(isoDate),
     purpose: optional(z.string().trim().max(500)),
     // One per line: charger, case, spare battery.
-    accessories: z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.string().max(120)).max(30).default([])),
+    accessories: z.preprocess(
+      (value) =>
+        typeof value === "string"
+          ? value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+          : (value ?? []),
+      z.array(z.string().max(120)).max(30).default([]),
+    ),
   }),
   authorize: async (user, input) => {
     const asset = await findAsset(input.assetId);
@@ -87,7 +117,10 @@ const assignAssetPipeline = createAction({
     const asset = await findAsset(input.assetId);
     refresh(input.assetId);
     revalidatePath("/today");
-    return { data: { assignmentId: assignment.id }, audit: { resource: { type: "asset", id: input.assetId, entityId: asset?.entityId ?? null }, summary: asset?.code ?? input.assetId, after: { holderType: input.holderType, holderId: input.holderId } } };
+    return {
+      data: { assignmentId: assignment.id },
+      audit: { resource: { type: "asset", id: input.assetId, entityId: asset?.entityId ?? null }, summary: asset?.code ?? input.assetId, after: { holderType: input.holderType, holderId: input.holderId } },
+    };
   },
 });
 
@@ -119,7 +152,10 @@ const returnAssetPipeline = createAction({
     await returnAsset(input, user.person.id);
     refresh(found?.asset.id);
     revalidatePath("/today");
-    return { data: { ok: true }, audit: { resource: { type: "asset_assignment", id: input.assignmentId, entityId: found?.asset.entityId ?? null }, summary: found?.asset.code ?? input.assignmentId, after: { conditionIn: input.conditionIn } } };
+    return {
+      data: { ok: true },
+      audit: { resource: { type: "asset_assignment", id: input.assignmentId, entityId: found?.asset.entityId ?? null }, summary: found?.asset.code ?? input.assignmentId, after: { conditionIn: input.conditionIn } },
+    };
   },
 });
 
@@ -141,7 +177,11 @@ const saveAssetCategoryPipeline = createAction({
   name: "asset.category.save",
   input: z.object({
     categoryId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{1,11}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9-]{1,11}$/),
     name: z.string().trim().min(1).max(120),
     kind: z.enum(ASSET_KINDS),
     requiresSerial: checkbox,
@@ -159,7 +199,6 @@ const saveAssetCategoryPipeline = createAction({
     return { data: { id: after.id }, audit: { resource: { type: "asset_category", id: after.id }, summary: after.code, before: before && { name: before.name }, after: { name: after.name } } };
   },
 });
-
 
 // ── Booking shared gear (FR-AST-03) ─────────────────────────────────────────────────────────
 
@@ -198,12 +237,19 @@ const bookAssetPipeline = createAction({
   run: async ({ user, input }) => {
     const problems = windowProblems({ startAt: input.startAt, endAt: input.endAt }, new Date());
     if (problems.length > 0) throw new ActionError(problems[0]);
-    const booking = await bookAsset({ assetId: input.assetId, personId: input.personId ?? user.person.id, startAt: input.startAt, endAt: input.endAt, purpose: input.purpose, projectRef: input.projectRef }, { personId: user.person.id, principal: user.principal });
+    const booking = await bookAsset(
+      { assetId: input.assetId, personId: input.personId ?? user.person.id, startAt: input.startAt, endAt: input.endAt, purpose: input.purpose, projectRef: input.projectRef },
+      { personId: user.person.id, principal: user.principal },
+    );
     const asset = await findAsset(input.assetId);
     refreshBookings(input.assetId);
     return {
       data: { id: booking.id, status: booking.status },
-      audit: { resource: { type: "asset_booking", id: booking.id, entityId: asset?.entityId ?? null }, summary: `${asset?.code ?? input.assetId} ${input.startAt.toISOString()} → ${input.endAt.toISOString()}`, after: { status: booking.status, personId: booking.personId } },
+      audit: {
+        resource: { type: "asset_booking", id: booking.id, entityId: asset?.entityId ?? null },
+        summary: `${asset?.code ?? input.assetId} ${input.startAt.toISOString()} → ${input.endAt.toISOString()}`,
+        after: { status: booking.status, personId: booking.personId },
+      },
     };
   },
 });
@@ -219,7 +265,10 @@ const decideBookingPipeline = createAction({
     const before = await findBooking(input.bookingId);
     const after = await decideBooking(input.bookingId, input.decision, input.note, user.person.id);
     refreshBookings(before?.assetId);
-    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } },
+    };
   },
 });
 
@@ -234,7 +283,10 @@ const cancelBookingPipeline = createAction({
     const before = await findBooking(input.bookingId);
     const after = await cancelBooking(input.bookingId, input.note, user.person.id);
     refreshBookings(before?.assetId);
-    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } },
+    };
   },
 });
 
@@ -249,7 +301,10 @@ const checkOutBookingPipeline = createAction({
     const before = await findBooking(input.bookingId);
     const after = await checkOutBooking(input, user.person.id);
     refreshBookings(before?.assetId);
-    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionOut: input.conditionOut } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionOut: input.conditionOut } },
+    };
   },
 });
 
@@ -264,7 +319,10 @@ const checkInBookingPipeline = createAction({
     const before = await findBooking(input.bookingId);
     const after = await checkInBooking(input, user.person.id);
     refreshBookings(before?.assetId);
-    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionIn: input.conditionIn } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionIn: input.conditionIn } },
+    };
   },
 });
 
@@ -303,7 +361,12 @@ const saveLicencePipeline = createAction({
     // The audit names the subscription and its renewal date, never what it costs.
     return {
       data: { id: after.id },
-      audit: { resource: { type: "licence", id: after.id, entityId: after.entityId }, summary: after.name, before: before && { status: before.status, renewalDate: before.renewalDate }, after: { status: after.status, renewalDate: after.renewalDate } },
+      audit: {
+        resource: { type: "licence", id: after.id, entityId: after.entityId },
+        summary: after.name,
+        before: before && { status: before.status, renewalDate: before.renewalDate },
+        after: { status: after.status, renewalDate: after.renewalDate },
+      },
     };
   },
 });

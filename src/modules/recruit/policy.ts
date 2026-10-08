@@ -94,8 +94,7 @@ export const canManageCandidates = (principal: Principal): boolean => canBrowseC
  * that takes a group-wide grant. Hiring-team membership is not enough: a hiring manager reads the
  * candidates for their job and decides nothing about what the company keeps.
  */
-export const canEraseCandidate = (principal: Principal, appliedTo: readonly OpeningTarget[]): boolean =>
-  appliedTo.length === 0 ? can(principal, "recruit:manage", {}) : appliedTo.every((opening) => canRunRecruitment(principal, opening));
+export const canEraseCandidate = (principal: Principal, appliedTo: readonly OpeningTarget[]): boolean => (appliedTo.length === 0 ? can(principal, "recruit:manage", {}) : appliedTo.every((opening) => canRunRecruitment(principal, opening)));
 
 // ── Money ───────────────────────────────────────────────────────────────────────────────────
 
@@ -125,8 +124,7 @@ export const canFileHiringRequest = (principal: Principal): boolean => !!princip
  * request its own access — this rule is for everybody else.
  */
 export const canViewHiringRequest = (principal: Principal, request: OpeningTarget & { requestedByPersonId: string; hiringManagerPersonId: string | null }): boolean =>
-  canRunRecruitment(principal, request) ||
-  (!!principal.personId && (principal.personId === request.requestedByPersonId || principal.personId === request.hiringManagerPersonId));
+  canRunRecruitment(principal, request) || (!!principal.personId && (principal.personId === request.requestedByPersonId || principal.personId === request.hiringManagerPersonId));
 
 /** Turning an approved ask into an opening: the recruiter's job, over the entity that asked. */
 export const canOpenFromHiringRequest = (principal: Principal, request: OpeningTarget): boolean => canRunRecruitment(principal, request);
@@ -152,9 +150,7 @@ export const canScheduleInterview = (principal: Principal, opening: OpeningTarge
  *     candidates or to the candidate database. That is why being an interviewer is not a
  *     `job_opening_member` row — see the note on the table.
  */
-export const canViewInterview = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing): boolean =>
-  canViewOpening(principal, opening, member) || (interviewing && !!principal.personId);
-
+export const canViewInterview = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing): boolean => canViewOpening(principal, opening, member) || (interviewing && !!principal.personId);
 
 /**
  * Reading every card of an interview, drafts included and whether or not anyone has submitted —
@@ -264,5 +260,4 @@ export const canReadRecruitReports = (principal: Principal): boolean => can(prin
  * An interviewer on one of this application's interviews is included: reading the CV before the
  * conversation is the conversation. It admits them to that candidate's file, never to the opening.
  */
-export const canOpenCandidateFile = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing = false): boolean =>
-  canViewInterview(principal, opening, member, interviewing);
+export const canOpenCandidateFile = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing = false): boolean => canViewInterview(principal, opening, member, interviewing);

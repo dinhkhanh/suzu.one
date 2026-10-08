@@ -37,7 +37,14 @@ export const employeeColumns = {
   positionLevel: column<PositionLevel>({ headers: ["Cấp vị trí", "Position level"], parse: oneOf<PositionLevel>(POSITION_SPELLINGS), example: "Executive" }),
   workforceType: column<WorkforceType>({
     headers: ["Loại lao động", "Workforce type"],
-    parse: oneOf<WorkforceType>({ employee: ["Chính thức", "Nhân viên chính thức"], probation: ["Thử việc"], intern: ["Thực tập", "Thực tập sinh"], part_time: ["Bán thời gian", "Part-time"], collaborator: ["Cộng tác viên", "CTV", "Freelancer"], advisor: ["Cố vấn"] }),
+    parse: oneOf<WorkforceType>({
+      employee: ["Chính thức", "Nhân viên chính thức"],
+      probation: ["Thử việc"],
+      intern: ["Thực tập", "Thực tập sinh"],
+      part_time: ["Bán thời gian", "Part-time"],
+      collaborator: ["Cộng tác viên", "CTV", "Freelancer"],
+      advisor: ["Cố vấn"],
+    }),
     example: "Chính thức",
   }),
   startDate: column<string>({ headers: ["Ngày vào làm", "Start date"], required: true, parse: day, example: "01/03/2024" }),
@@ -45,7 +52,11 @@ export const employeeColumns = {
   manager: optionalText(["Quản lý trực tiếp (mã NV hoặc email)", "Manager (employee code or email)", "Quản lý trực tiếp", "Manager"], 200, "long.dang@suzu.group"),
   dateOfBirth: column<string>({ headers: ["Ngày sinh", "Date of birth"], parse: day, example: "15/08/1996" }),
   gender: column<"male" | "female" | "other">({ headers: ["Giới tính", "Gender"], parse: oneOf({ male: ["Nam"], female: ["Nữ"], other: ["Khác"] }), example: "Nam" }),
-  maritalStatus: column<"single" | "married" | "divorced" | "widowed">({ headers: ["Tình trạng hôn nhân", "Marital status"], parse: oneOf({ single: ["Độc thân"], married: ["Đã kết hôn", "Kết hôn"], divorced: ["Ly hôn"], widowed: ["Góa"] }), example: "" }),
+  maritalStatus: column<"single" | "married" | "divorced" | "widowed">({
+    headers: ["Tình trạng hôn nhân", "Marital status"],
+    parse: oneOf({ single: ["Độc thân"], married: ["Đã kết hôn", "Kết hôn"], divorced: ["Ly hôn"], widowed: ["Góa"] }),
+    example: "",
+  }),
   nationality: optionalText(["Quốc tịch", "Nationality"], 60, "Việt Nam"),
   // Format the phone column as text in Excel, or the leading zero is lost before the file gets here.
   phone: optionalText(["Số điện thoại", "Phone", "Điện thoại"], 30, "0901234567"),
@@ -92,8 +103,14 @@ export function linkManagers(rows: readonly Row[], existing: { personId: string;
     }
     const wanted = normalizeEmployeeCode(reference);
     const sameEntityFirst = <Candidate>(candidates: Candidate[], entityOf: (candidate: Candidate) => string | null) => candidates.find((candidate) => entityOf(candidate) === values.entityCode) ?? candidates[0];
-    const inFile = sameEntityFirst(rows.filter((candidate) => candidate.values.employeeCode === wanted), (candidate) => candidate.values.entityCode);
-    const onBooks = sameEntityFirst(existing.filter((candidate) => candidate.employeeCode === wanted), (candidate) => candidate.entityCode);
+    const inFile = sameEntityFirst(
+      rows.filter((candidate) => candidate.values.employeeCode === wanted),
+      (candidate) => candidate.values.entityCode,
+    );
+    const onBooks = sameEntityFirst(
+      existing.filter((candidate) => candidate.employeeCode === wanted),
+      (candidate) => candidate.entityCode,
+    );
     links.set(row, inFile ? { kind: "row", row: inFile.row } : onBooks ? { kind: "person", personId: onBooks.personId } : { kind: "missing" });
   }
   return links;
@@ -196,7 +213,16 @@ export const employeeImport = defineImport({
         {
           fullName: values.fullName!,
           workEmail: values.workEmail,
-          profile: { dateOfBirth: values.dateOfBirth, gender: values.gender, maritalStatus: values.maritalStatus, nationality: values.nationality, phone: values.phone, personalEmail: values.personalEmail, permanentAddress: values.permanentAddress, currentAddress: values.currentAddress },
+          profile: {
+            dateOfBirth: values.dateOfBirth,
+            gender: values.gender,
+            maritalStatus: values.maritalStatus,
+            nationality: values.nationality,
+            phone: values.phone,
+            personalEmail: values.personalEmail,
+            permanentAddress: values.permanentAddress,
+            currentAddress: values.currentAddress,
+          },
           entityId: entities.get(values.entityCode!)!.id,
           employeeCode: values.employeeCode,
           startDate: values.startDate!,

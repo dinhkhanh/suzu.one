@@ -32,7 +32,15 @@ export async function listPolicyVersions(executor?: Executor): Promise<PayrollPo
 /** The policy an entity's payroll follows on `date`: its own approved version, else the group's. Payroll never runs without one. */
 export async function getPayrollPolicy(entityId: string, date: IsoDate, executor?: Executor): Promise<ResolvedPayrollPolicy> {
   const approved = readsCache(executor) ? (await listPolicyVersions()).filter((row) => row.status === "approved") : await executor!.select().from(schema.payrollPolicy).where(eq(schema.payrollPolicy.status, "approved"));
-  const version = versionOn(approved.filter((row) => row.entityId === entityId), date) ?? versionOn(approved.filter((row) => row.entityId === null), date);
+  const version =
+    versionOn(
+      approved.filter((row) => row.entityId === entityId),
+      date,
+    ) ??
+    versionOn(
+      approved.filter((row) => row.entityId === null),
+      date,
+    );
   if (!version) throw new ActionError("payroll_policy_missing");
   return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: payrollPolicySchema.parse(version.value) };
 }
@@ -68,14 +76,26 @@ export async function decidePolicy(id: string, decision: "approve" | "reject", a
     if (!before || before.status !== "proposed") throw new ActionError("proposal_not_found");
     const decided = { decidedByPersonId: actorPersonId, decidedAt: new Date(), updatedAt: new Date() };
     if (decision === "reject") {
-      const [after] = await tx.update(table).set({ status: "rejected", ...decided }).where(eq(table.id, id)).returning();
+      const [after] = await tx
+        .update(table)
+        .set({ status: "rejected", ...decided })
+        .where(eq(table.id, id))
+        .returning();
       return { before, after };
     }
-    const approved = await tx.select().from(table).where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved")))
+      .for("update");
     const plan = planApproval(approved, before.validFrom);
     if (plan.kind === "rejected") throw new ActionError(`rule_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
-    const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    const [after] = await tx
+      .update(table)
+      .set({ status: "approved", ...decided })
+      .where(eq(table.id, id))
+      .returning();
     return { before, after };
   });
   await invalidate(POLICIES_CACHE);
@@ -94,7 +114,11 @@ export async function voidPolicy(id: string, reason: string, actorPersonId: stri
     if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
     const refusal = await ruleVersionRefusal("policy", id, tx);
     if (refusal) throw new ActionError(refusal);
-    const approved = await tx.select().from(table).where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved")))
+      .for("update");
     const now = new Date();
     const [after] = await tx.update(table).set({ status: "voided", voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, id)).returning();
     const plan = planVoid(approved, before);

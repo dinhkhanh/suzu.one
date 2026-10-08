@@ -8,7 +8,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 
 import { and, eq } from "drizzle-orm";
@@ -30,7 +36,11 @@ const ids = {} as Record<"entity" | "other" | "boss" | "huy" | "lan" | "hr", str
 const money = (amount: number) => `${amount} đ`;
 const TODAY = todayInVietnam();
 const ALL = { all: true } as const;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 async function requester(personId: string) {
   const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
@@ -40,7 +50,18 @@ async function requester(personId: string) {
 async function invoice(personId: string, amount: number) {
   const [file] = await db()
     .insert(schema.storedFile)
-    .values({ bucket: "suzu-private", ownerType: "request_attachment", ownerId: personId, entityId: ids.entity, tier: "personal", fileName: "hoadon.pdf", objectPath: `x/${Math.random()}`, contentType: "application/pdf", sizeBytes: 10, status: "ready" })
+    .values({
+      bucket: "suzu-private",
+      ownerType: "request_attachment",
+      ownerId: personId,
+      entityId: ids.entity,
+      tier: "personal",
+      fileName: "hoadon.pdf",
+      objectPath: `x/${Math.random()}`,
+      contentType: "application/pdf",
+      sizeBytes: 10,
+      status: "ready",
+    })
     .returning();
   return { payee: "Vietnam Airlines", amount, method: "transfer", bank_account: "0071000 VCB", due_date: "2099-01-01", purpose: "Quyết toán chuyến công tác Đà Nẵng", invoice: [file.id] };
 }
@@ -94,8 +115,12 @@ beforeAll(async () => {
   // The types as `pnpm db:seed` ships them, each approved by the line manager alone.
   for (const code of ["business_trip", "advance", "payment", "purchase", "confirmation_letter"]) {
     const seed = REQUEST_TYPE_SEED.find((entry) => entry.code === code)!;
-    await db().insert(schema.requestType).values({ ...seed, flow: undefined } as typeof schema.requestType.$inferInsert);
-    await db().insert(schema.approvalFlow).values({ requestType: `request:${code}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+    await db()
+      .insert(schema.requestType)
+      .values({ ...seed, flow: undefined } as typeof schema.requestType.$inferInsert);
+    await db()
+      .insert(schema.approvalFlow)
+      .values({ requestType: `request:${code}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
   }
   // The two letter templates by the codes `pnpm db:seed` gives them; the salary one is compensation tier.
   const template = (code: string, body: string, tier: TemplateInput["tier"]): TemplateInput => ({ code, name: code, entityId: null, kind: "confirmation_letter", tier, body, letterhead: {}, isActive: true });
@@ -112,7 +137,10 @@ describe("finance's queue", () => {
     const { after } = await pay(requestId, "FT26100501");
     expect(after).toMatchObject({ paidOn: TODAY, paidAmount: 900_000, paidReference: "FT26100501" });
     expect(await fails(pay(requestId))).toBe("request_already_paid");
-    const [told] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lan), eq(schema.notification.kind, "approvals.request_paid")));
+    const [told] = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.lan), eq(schema.notification.kind, "approvals.request_paid")));
     expect(told.params).toMatchObject({ reference: "FT26100501" });
     // Paid long ago, it drops off the list.
     expect((await listPayouts(ALL, { paidSince: addDays(TODAY, 1) })).some((row) => row.requestId === requestId)).toBe(false);
@@ -159,7 +187,10 @@ describe("a trip's advance and its settlement", () => {
     const settlementId = await fileApproved(ids.huy, "payment", await invoice(ids.huy, 1_200_000), tripId);
     expect((await payoutOf(settlementId))!.settlement).toEqual({ nettedAdvance: 3_000_000, toPay: -1_800_000 });
     expect((await pay(settlementId, "PT-0042")).after.paidAmount).toBe(-1_800_000);
-    const [told] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.request_repayment_recorded")));
+    const [told] = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.request_repayment_recorded")));
     expect(told.params).toMatchObject({ reference: "PT-0042" });
   });
 });

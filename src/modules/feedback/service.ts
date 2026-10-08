@@ -41,7 +41,17 @@ export async function submitFeedback(from: Submitter, input: FeedbackInput, user
   return db().transaction(async (tx) => {
     const [row] = await tx
       .insert(appFeedback)
-      .values({ personId: from.personId, entityId: from.entityId, category: input.category, message: input.message, blocking: input.blocking, pagePath, area: areaOfPath(pagePath), userAgent: userAgent?.slice(0, 400) ?? null, screenshotFileId: input.screenshotFileId })
+      .values({
+        personId: from.personId,
+        entityId: from.entityId,
+        category: input.category,
+        message: input.message,
+        blocking: input.blocking,
+        pagePath,
+        area: areaOfPath(pagePath),
+        userAgent: userAgent?.slice(0, 400) ?? null,
+        screenshotFileId: input.screenshotFileId,
+      })
       .returning();
     await notify({ recipients: triagers, kind: "feedback.received", params: { feedbackCategory: row.category, area: row.area ? `/${row.area}` : "—" }, link: `/feedback/${row.id}` }, tx);
     return row;
@@ -73,16 +83,10 @@ export async function listMyFeedback(personId: string, limit = 50): Promise<Feed
 export type FeedbackFilters = { status?: FeedbackStatus | "open"; category?: FeedbackCategory; area?: string; blocking?: boolean; page?: number };
 
 function filterClauses(reach: TierReach, filters: Omit<FeedbackFilters, "status" | "page">): (SQL | undefined)[] {
-  return [
-    personInReachSql(reach),
-    filters.category ? eq(appFeedback.category, filters.category) : undefined,
-    filters.area ? eq(appFeedback.area, filters.area) : undefined,
-    filters.blocking ? eq(appFeedback.blocking, true) : undefined,
-  ];
+  return [personInReachSql(reach), filters.category ? eq(appFeedback.category, filters.category) : undefined, filters.area ? eq(appFeedback.area, filters.area) : undefined, filters.blocking ? eq(appFeedback.blocking, true) : undefined];
 }
 
-const statusClause = (status: FeedbackFilters["status"]): SQL | undefined =>
-  status === "open" ? sql`${appFeedback.status} in ('new', 'in_progress')` : status ? eq(appFeedback.status, status) : undefined;
+const statusClause = (status: FeedbackFilters["status"]): SQL | undefined => (status === "open" ? sql`${appFeedback.status} in ('new', 'in_progress')` : status ? eq(appFeedback.status, status) : undefined);
 
 /**
  * The inbox: open items first by priority, then the newest. Blocking items lead within a priority,
@@ -144,7 +148,16 @@ export type FeedbackView = { row: FeedbackRow; target: FeedbackTarget; personNam
 export async function getFeedback(id: string): Promise<FeedbackView | null> {
   const handler = alias(person, "handler");
   const [found] = await db()
-    .select({ row: appFeedback, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId, personName: person.fullName, personEmail: person.workEmail, handlerName: handler.fullName, screenshotName: storedFile.fileName })
+    .select({
+      row: appFeedback,
+      entityId: person.primaryEntityId,
+      unitPath: person.orgUnitPath,
+      managerId: person.managerId,
+      personName: person.fullName,
+      personEmail: person.workEmail,
+      handlerName: handler.fullName,
+      screenshotName: storedFile.fileName,
+    })
     .from(appFeedback)
     .innerJoin(person, eq(person.id, appFeedback.personId))
     .leftJoin(handler, eq(handler.id, appFeedback.handledByPersonId))

@@ -118,9 +118,7 @@ export function compareRuns(input: VarianceInput): VarianceReport {
   const net = sum(input.current, "net");
   const previousNet = sum(input.previous, "net");
 
-  const flagged = people
-    .filter((person) => person.flags.length > 0 || person.warnings.length > 0)
-    .sort((left, right) => severity(right) - severity(left) || Math.abs(right.changeBp ?? 0) - Math.abs(left.changeBp ?? 0));
+  const flagged = people.filter((person) => person.flags.length > 0 || person.warnings.length > 0).sort((left, right) => severity(right) - severity(left) || Math.abs(right.changeBp ?? 0) - Math.abs(left.changeBp ?? 0));
 
   return {
     people,

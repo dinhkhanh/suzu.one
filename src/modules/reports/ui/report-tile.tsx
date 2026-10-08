@@ -6,7 +6,23 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "cn";
 
-export function ReportTile({ title, href, value, hint, series, tone, children }: { title: ReactNode; href: string; value: ReactNode; hint?: ReactNode; /** Up to six figures, oldest first; drawn as bars against the largest. */ series?: readonly number[]; tone?: "destructive" | "warning" | "success"; children?: ReactNode }) {
+export function ReportTile({
+  title,
+  href,
+  value,
+  hint,
+  series,
+  tone,
+  children,
+}: {
+  title: ReactNode;
+  href: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  /** Up to six figures, oldest first; drawn as bars against the largest. */ series?: readonly number[];
+  tone?: "destructive" | "warning" | "success";
+  children?: ReactNode;
+}) {
   return (
     <Link href={href} className="press group/tile flex flex-col gap-3 rounded-[14px] border border-border bg-card p-4 text-sm transition-colors hover:bg-canvas">
       <span className="flex items-center justify-between gap-2">
@@ -15,7 +31,9 @@ export function ReportTile({ title, href, value, hint, series, tone, children }:
       </span>
       <span className="flex items-end justify-between gap-3">
         <span className="flex min-w-0 flex-col gap-1">
-          <span className={cn("font-mono text-[1.625rem] leading-none font-medium tracking-[-0.02em] tabular-nums", tone === "destructive" && "text-destructive", tone === "warning" && "text-warning", tone === "success" && "text-success")}>{value}</span>
+          <span className={cn("font-mono text-[1.625rem] leading-none font-medium tracking-[-0.02em] tabular-nums", tone === "destructive" && "text-destructive", tone === "warning" && "text-warning", tone === "success" && "text-success")}>
+            {value}
+          </span>
           {hint ? <span className="truncate text-xs text-faint">{hint}</span> : null}
         </span>
         {series && series.length > 1 ? <Sparkline values={series} /> : null}

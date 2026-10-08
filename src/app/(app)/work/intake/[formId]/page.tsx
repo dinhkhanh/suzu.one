@@ -20,10 +20,17 @@ export default async function IntakeFormPage({ params }: PageProps<"/work/intake
 
   return (
     <Page width="narrow">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work/intake" className="hover:underline">
-            {t("title")}
-          </Link>{" "}
-          · {found.team.name}</span>} title={found.form.name}>
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work/intake" className="hover:underline">
+              {t("title")}
+            </Link>{" "}
+            · {found.team.name}
+          </span>
+        }
+        title={found.form.name}
+      >
         <RichText text={found.form.description} className="max-w-prose text-sm text-muted-foreground" />
       </PageHeader>
       <IntakeSubmitForm formId={found.form.id} fields={found.form.fields} />

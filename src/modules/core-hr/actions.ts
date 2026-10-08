@@ -158,7 +158,12 @@ const pastAssignmentPipeline = createAction({
     revalidatePath(`/people/${personId}`);
     return {
       data: { id: after.id },
-      audit: { resource: { type: "assignment", id: after.id, entityId: employment.entityId }, summary: `${employment.employeeCode} past period ${after.validFrom} → ${after.validTo}`, before, after: { ...after, shortenedId: shortened, delayedId: delayed } },
+      audit: {
+        resource: { type: "assignment", id: after.id, entityId: employment.entityId },
+        summary: `${employment.employeeCode} past period ${after.validFrom} → ${after.validTo}`,
+        before,
+        after: { ...after, shortenedId: shortened, delayedId: delayed },
+      },
     };
   },
 });

@@ -93,7 +93,10 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
     loadPolicies(executor),
     nightWindowOn(from, executor),
     nightWindowOn(until, executor),
-    executor.select({ id: schema.timesheetDay.id, personId: schema.timesheetDay.personId, date: schema.timesheetDay.date, inputsHash: schema.timesheetDay.inputsHash, lockedAt: schema.timesheetDay.lockedAt }).from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, ids), between(schema.timesheetDay.date, from, until))),
+    executor
+      .select({ id: schema.timesheetDay.id, personId: schema.timesheetDay.personId, date: schema.timesheetDay.date, inputsHash: schema.timesheetDay.inputsHash, lockedAt: schema.timesheetDay.lockedAt })
+      .from(schema.timesheetDay)
+      .where(and(inArray(schema.timesheetDay.personId, ids), between(schema.timesheetDay.date, from, until))),
     // A person-month with any locked day is closed as a whole: no new rows slip into it either.
     executor
       .select({ personId: schema.timesheetDay.personId, month: sql<string>`to_char(${schema.timesheetDay.date}, 'YYYY-MM')` })
@@ -122,7 +125,11 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
     const planOf = new Map(personPlans.days.map((day) => [day.date, day]));
     const own = punchesOf.get(fact.personId) ?? [];
     const boundary = policyOn(policies, fact.entityId, from).dayBoundary;
-    const assigned = assignPunchesToDays(personPlans.days.map((day) => ({ date: day.date, segments: day.segments })), own.map((punch) => ({ at: punch.at.getTime(), direction: punch.direction, source: punch.source })), boundary);
+    const assigned = assignPunchesToDays(
+      personPlans.days.map((day) => ({ date: day.date, segments: day.segments })),
+      own.map((punch) => ({ at: punch.at.getTime(), direction: punch.direction, source: punch.source })),
+      boundary,
+    );
 
     for (const date of dates) {
       const key = `${fact.personId}:${date}`;
@@ -139,7 +146,16 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
       }
       outcome.days++;
       const resolved = policyOn(policies, fact.entityId, date);
-      const policy = { mergeRule: resolved.mergeRule, graceLateMinutes: resolved.graceLateMinutes, graceEarlyMinutes: resolved.graceEarlyMinutes, roundingMinutes: resolved.roundingMinutes, otMinMinutes: resolved.otMinMinutes, otRequiresApproval: resolved.otRequiresApproval, duplicateWindowMinutes: resolved.duplicateWindowMinutes, breakStart: resolved.breakStart };
+      const policy = {
+        mergeRule: resolved.mergeRule,
+        graceLateMinutes: resolved.graceLateMinutes,
+        graceEarlyMinutes: resolved.graceEarlyMinutes,
+        roundingMinutes: resolved.roundingMinutes,
+        otMinMinutes: resolved.otMinMinutes,
+        otRequiresApproval: resolved.otRequiresApproval,
+        duplicateWindowMinutes: resolved.duplicateWindowMinutes,
+        breakStart: resolved.breakStart,
+      };
       // The day is over once its last planned minute (or midnight) has passed.
       const lastMinute = Math.max(1440, ...plan.segments.map((segment) => segment.end));
       const input = {
@@ -151,7 +167,10 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
         night: date === until ? nightTo : nightFrom,
         dayIsOver: now.getTime() >= instantOf(date, lastMinute),
       };
-      const inputsHash = createHash("sha256").update(JSON.stringify([ENGINE_VERSION, input, resolved.dayBoundary])).digest("hex").slice(0, 32);
+      const inputsHash = createHash("sha256")
+        .update(JSON.stringify([ENGINE_VERSION, input, resolved.dayBoundary]))
+        .digest("hex")
+        .slice(0, 32);
       if (row && row.inputsHash === inputsHash) continue;
       values.push({ personId: fact.personId, entityId: fact.entityId, date, ...toColumns(computeTimesheetDay(input)), inputsHash, computedAt: now });
     }
@@ -180,7 +199,11 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
 /** Stored timesheet days, oldest first. For week 5 (confirm → approve → lock) and payroll. */
 export async function getTimesheetDays(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<TimesheetDayRow[]> {
   if (personIds.length === 0 || to < from) return [];
-  return executor.select().from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to))).orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
+  return executor
+    .select()
+    .from(schema.timesheetDay)
+    .where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to)))
+    .orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
 }
 
 /** A stored day without its explanation (`trace`): what grids and totals read. */
@@ -195,7 +218,11 @@ export const cellColumns = (() => {
 /** `getTimesheetDays` without the trace — for month grids and summaries that never show it. */
 export async function getTimesheetDayCells(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<TimesheetDayCell[]> {
   if (personIds.length === 0 || to < from) return [];
-  return executor.select(cellColumns).from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to))).orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
+  return executor
+    .select(cellColumns)
+    .from(schema.timesheetDay)
+    .where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to)))
+    .orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
 }
 
 /** Rows grouped by person, each group in the rows' order. */
@@ -269,26 +296,47 @@ const targetOf = (person: PersonPlace): Target & { personId: string } => ({ pers
  * The month grid of the people whose timesheets the viewer may read: their reports, whoever they
  * read at the personal tier (department heads), and HR's `attendance:manage` reach. Never colleagues.
  */
-export async function getTeamMonth(viewer: { personId: string; principal: Principal }, month: string, options: { departmentId?: string | null; entityId?: string | null } = {}): Promise<{ rows: TeamMonthRow[]; departments: { id: string; name: string }[] }> {
+export async function getTeamMonth(
+  viewer: { personId: string; principal: Principal },
+  month: string,
+  options: { departmentId?: string | null; entityId?: string | null } = {},
+): Promise<{ rows: TeamMonthRow[]; departments: { id: string; name: string }[] }> {
   const hrReach = permissionReach(viewer.principal, "attendance:manage");
   const personalReach = tierReach(viewer.principal, "personal");
   const from = monthStart(month);
   const to = monthEnd(month);
   const candidates = await db()
     .select({
-      person: { id: schema.person.id, fullName: schema.person.fullName, status: schema.person.status, primaryEntityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId },
+      person: {
+        id: schema.person.id,
+        fullName: schema.person.fullName,
+        status: schema.person.status,
+        primaryEntityId: schema.person.primaryEntityId,
+        departmentId: schema.person.departmentId,
+        orgUnitPath: schema.person.orgUnitPath,
+        managerId: schema.person.managerId,
+      },
       departmentName: schema.orgUnit.name,
       employeeCode: latestEmployeeCode(),
     })
     .from(schema.person)
     .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
     .where(and(ne(schema.person.id, viewer.personId), anyReachSql([hrReach, personalReach], eq(schema.person.managerId, viewer.personId))));
-  const visible = candidates.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(hrReach, targetOf(person)) || matchesReach(personalReach, targetOf(person))) && canSeeTimesheetOf(viewer.principal, targetOf(person)));
-  const days = await getTimesheetDayCells(visible.map((row) => row.person.id), from, to);
+  const visible = candidates.filter(
+    ({ person }) =>
+      person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(hrReach, targetOf(person)) || matchesReach(personalReach, targetOf(person))) && canSeeTimesheetOf(viewer.principal, targetOf(person)),
+  );
+  const days = await getTimesheetDayCells(
+    visible.map((row) => row.person.id),
+    from,
+    to,
+  );
   const daysOf = daysByPerson(days);
   // People who left before the month or have not started have no rows and no line.
   const shownAll = visible.filter((row) => daysOf.has(row.person.id) || row.person.status === "active");
-  const departments = [...new Map(shownAll.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const departments = [...new Map(shownAll.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const shown = shownAll.filter((row) => (!options.departmentId || row.person.departmentId === options.departmentId) && (!options.entityId || row.person.primaryEntityId === options.entityId));
   const rows = shown
     .map(({ person, departmentName, employeeCode }) => {
@@ -301,7 +349,11 @@ export async function getTeamMonth(viewer: { personId: string; principal: Princi
 
 /** May the viewer read this person's timesheet? (self, personal-tier readers, HR.) Loads the person. */
 export async function timesheetTargetFor(viewer: Principal, personId: string): Promise<{ target: Target & { personId: string }; fullName: string } | null> {
-  const [person] = await db().select({ id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
+  const [person] = await db()
+    .select({ id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId })
+    .from(schema.person)
+    .where(eq(schema.person.id, personId))
+    .limit(1);
   if (!person) return null;
   const target = targetOf(person);
   return canSeeTimesheetOf(viewer, target) ? { target, fullName: person.fullName } : null;
@@ -315,6 +367,12 @@ export async function peopleIn(scope: { entityId?: string | null; departmentId?:
     .select({ id: schema.person.id })
     .from(schema.person)
     // A unit takes everyone below it too (FR-PLT-16): narrowing "Marketing" must not miss its teams.
-    .where(and(inArray(schema.person.status, ["active", "suspended"]), scope.entityId ? eq(schema.person.primaryEntityId, scope.entityId) : undefined, scope.departmentId ? arrayContains(schema.person.orgUnitPath, [scope.departmentId]) : undefined));
+    .where(
+      and(
+        inArray(schema.person.status, ["active", "suspended"]),
+        scope.entityId ? eq(schema.person.primaryEntityId, scope.entityId) : undefined,
+        scope.departmentId ? arrayContains(schema.person.orgUnitPath, [scope.departmentId]) : undefined,
+      ),
+    );
   return rows.map((row) => row.id);
 }

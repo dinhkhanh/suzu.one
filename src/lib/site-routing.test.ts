@@ -17,7 +17,24 @@ describe("routeRequest", () => {
     });
 
     it("serves nothing of the app", () => {
-      for (const path of ["/sign-in", "/today", "/privacy", "/portfolio", "/api/auth/session", "/api/cron/daily", "/api/messenger/webhook", "/api/telegram/webhook", "/api/attendance/device/punches", "/api/kiosk/identify", "/sw.js", "/manifest.webmanifest", "/careersx", "/previews", "/brandsx", "/admin/brands"]) {
+      for (const path of [
+        "/sign-in",
+        "/today",
+        "/privacy",
+        "/portfolio",
+        "/api/auth/session",
+        "/api/cron/daily",
+        "/api/messenger/webhook",
+        "/api/telegram/webhook",
+        "/api/attendance/device/punches",
+        "/api/kiosk/identify",
+        "/sw.js",
+        "/manifest.webmanifest",
+        "/careersx",
+        "/previews",
+        "/brandsx",
+        "/admin/brands",
+      ]) {
         expect(on("suzu.vn", path)).toEqual({ kind: "notFound" });
       }
     });

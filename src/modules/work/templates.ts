@@ -28,7 +28,17 @@ const isWorkPurpose = inArray(schema.taskTemplate.purpose, [...WORK_TEMPLATE_PUR
 
 export type WorkTemplateView = WorkTemplateRow & { items: WorkTemplateItemRow[]; roleKeys: string[] };
 
-const treeItem = (item: WorkTemplateItemRow): TreeItem => ({ id: item.id, parentItemId: item.parentItemId, title: item.title, description: item.description, assigneeRule: item.assigneeRule, assigneePersonId: item.assigneePersonId, dueOffsetDays: item.dueOffsetDays, sortOrder: item.sortOrder, estimateMinutes: item.estimateMinutes });
+const treeItem = (item: WorkTemplateItemRow): TreeItem => ({
+  id: item.id,
+  parentItemId: item.parentItemId,
+  title: item.title,
+  description: item.description,
+  assigneeRule: item.assigneeRule,
+  assigneePersonId: item.assigneePersonId,
+  dueOffsetDays: item.dueOffsetDays,
+  sortOrder: item.sortOrder,
+  estimateMinutes: item.estimateMinutes,
+});
 
 // The work templates and their steps are small reference data read by every picker that offers
 // one, so the whole set sits under a single cache key and the callers filter it here; every writer
@@ -43,7 +53,16 @@ async function allWorkTemplates(executor?: Executor): Promise<WorkTemplateView[]
   const load = async (from: Executor): Promise<WorkTemplateView[]> => {
     const templates = await from.select().from(schema.taskTemplate).where(isWorkPurpose).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name), asc(schema.taskTemplate.id));
     if (templates.length === 0) return [];
-    const items = await from.select().from(schema.taskTemplateItem).where(inArray(schema.taskTemplateItem.templateId, templates.map((template) => template.id))).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays), asc(schema.taskTemplateItem.id));
+    const items = await from
+      .select()
+      .from(schema.taskTemplateItem)
+      .where(
+        inArray(
+          schema.taskTemplateItem.templateId,
+          templates.map((template) => template.id),
+        ),
+      )
+      .orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays), asc(schema.taskTemplateItem.id));
     return templates.map((template) => {
       const own = items.filter((item) => item.templateId === template.id);
       return { ...template, items: own, roleKeys: roleKeysOf(own.map(treeItem)) };
@@ -61,12 +80,21 @@ export async function listWorkTemplates(teamIds?: readonly string[], options: { 
 }
 
 export async function findWorkTemplate(templateId: string, executor: Executor = db()): Promise<WorkTemplateRow | undefined> {
-  const [row] = await executor.select().from(schema.taskTemplate).where(and(eq(schema.taskTemplate.id, templateId), isWorkPurpose)).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.taskTemplate)
+    .where(and(eq(schema.taskTemplate.id, templateId), isWorkPurpose))
+    .limit(1);
   return row;
 }
 
 export async function findWorkTemplateItem(itemId: string): Promise<{ item: WorkTemplateItemRow; template: WorkTemplateRow } | undefined> {
-  const [row] = await db().select({ item: schema.taskTemplateItem, template: schema.taskTemplate }).from(schema.taskTemplateItem).innerJoin(schema.taskTemplate, eq(schema.taskTemplate.id, schema.taskTemplateItem.templateId)).where(and(eq(schema.taskTemplateItem.id, itemId), isWorkPurpose)).limit(1);
+  const [row] = await db()
+    .select({ item: schema.taskTemplateItem, template: schema.taskTemplate })
+    .from(schema.taskTemplateItem)
+    .innerJoin(schema.taskTemplate, eq(schema.taskTemplate.id, schema.taskTemplateItem.templateId))
+    .where(and(eq(schema.taskTemplateItem.id, itemId), isWorkPurpose))
+    .limit(1);
   return row;
 }
 
@@ -80,12 +108,25 @@ export async function saveWorkTemplate(templateId: string | null, input: WorkTem
   }
   const before = await findWorkTemplate(templateId);
   if (!before) throw new ActionError("template_not_found");
-  const [after] = await db().update(schema.taskTemplate).set({ ...input, updatedAt: new Date() }).where(eq(schema.taskTemplate.id, templateId)).returning();
+  const [after] = await db()
+    .update(schema.taskTemplate)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(schema.taskTemplate.id, templateId))
+    .returning();
   await invalidateWorkTemplates();
   return { before, after };
 }
 
-export type WorkTemplateItemInput = { title: string; description: string | null; parentItemId: string | null; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; sortOrder: number; /** Library checklists the step's task starts with. */ checklistIds?: string[] };
+export type WorkTemplateItemInput = {
+  title: string;
+  description: string | null;
+  parentItemId: string | null;
+  roleKey: string | null;
+  dueOffsetDays: number;
+  estimateMinutes: number | null;
+  sortOrder: number;
+  /** Library checklists the step's task starts with. */ checklistIds?: string[];
+};
 
 export async function addWorkTemplateItem(templateId: string, input: WorkTemplateItemInput): Promise<WorkTemplateItemRow> {
   if (input.roleKey && !ROLE_KEY.test(input.roleKey)) throw new ActionError("template_role_invalid");
@@ -98,7 +139,18 @@ export async function addWorkTemplateItem(templateId: string, input: WorkTemplat
   const checklistIds = await assertUsable(input.checklistIds ?? []);
   const [row] = await db()
     .insert(schema.taskTemplateItem)
-    .values({ templateId, title: input.title, description: input.description, parentItemId: input.parentItemId, roleKey: input.roleKey, assigneeRule: input.roleKey ? `role:${input.roleKey}` : "none", dueOffsetDays: input.dueOffsetDays, estimateMinutes: input.estimateMinutes, sortOrder: input.sortOrder, checklistIds })
+    .values({
+      templateId,
+      title: input.title,
+      description: input.description,
+      parentItemId: input.parentItemId,
+      roleKey: input.roleKey,
+      assigneeRule: input.roleKey ? `role:${input.roleKey}` : "none",
+      dueOffsetDays: input.dueOffsetDays,
+      estimateMinutes: input.estimateMinutes,
+      sortOrder: input.sortOrder,
+      checklistIds,
+    })
     .returning();
   await invalidateWorkTemplates();
   return row;
@@ -180,7 +232,10 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
     const found = await tx.select({ id: schema.person.id, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, peopleIds));
     if (found.length !== peopleIds.length || found.some((person) => person.status === "offboarded")) throw new ActionError("person_not_found");
     // Whoever plays a role works in the project.
-    await tx.insert(schema.workProjectMember).values(peopleIds.map((personId) => ({ projectId: target.project.id, personId, role: "member" }))).onConflictDoNothing();
+    await tx
+      .insert(schema.workProjectMember)
+      .values(peopleIds.map((personId) => ({ projectId: target.project.id, personId, role: "member" })))
+      .onConflictDoNothing();
     await invalidateMemberships(...peopleIds);
   }
 
@@ -193,12 +248,24 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
   for (const node of plan) {
     const { task } = await createWorkTaskIn(
       tx,
-      { teamId: target.team.id, projectId: target.project.id, title: node.title, description: node.description, assigneePersonId: node.assigneePersonId, dueDate: node.dueDate, estimateMinutes: node.estimateMinutes, parentTaskId: node.parentItemId ? (taskOf.get(node.parentItemId) ?? null) : null, templateItemId: node.templateItemId, checklistIds: checklistsOf.get(node.templateItemId) ?? [] },
+      {
+        teamId: target.team.id,
+        projectId: target.project.id,
+        title: node.title,
+        description: node.description,
+        assigneePersonId: node.assigneePersonId,
+        dueDate: node.dueDate,
+        estimateMinutes: node.estimateMinutes,
+        parentTaskId: node.parentItemId ? (taskOf.get(node.parentItemId) ?? null) : null,
+        templateItemId: node.templateItemId,
+        checklistIds: checklistsOf.get(node.templateItemId) ?? [],
+      },
       actorPersonId,
       { notify: false, checklists },
     );
     taskOf.set(node.templateItemId, task.id);
-    if (node.assigneePersonId && node.assigneePersonId !== actorPersonId) perAssignee.set(node.assigneePersonId, { count: (perAssignee.get(node.assigneePersonId)?.count ?? 0) + 1, title: perAssignee.get(node.assigneePersonId)?.title ?? node.title });
+    if (node.assigneePersonId && node.assigneePersonId !== actorPersonId)
+      perAssignee.set(node.assigneePersonId, { count: (perAssignee.get(node.assigneePersonId)?.count ?? 0) + 1, title: perAssignee.get(node.assigneePersonId)?.title ?? node.title });
   }
   // A thirty-step project is one notice per person, not thirty.
   for (const [personId, own] of perAssignee) await notify({ recipients: [personId], kind: "tasks.assigned", params: own, link: `/work/projects/${target.project.id}` }, tx);
@@ -207,7 +274,12 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
 
 export async function applyTemplate(use: TemplateUse, projectId: string, actorPersonId: string): Promise<{ template: WorkTemplateRow; project: ProjectRow; taskIds: string[] }> {
   return db().transaction(async (tx) => {
-    const [found] = await tx.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProject.id, projectId)).limit(1);
+    const [found] = await tx
+      .select({ project: schema.workProject, team: schema.workTeam })
+      .from(schema.workProject)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
+      .where(eq(schema.workProject.id, projectId))
+      .limit(1);
     if (!found) throw new ActionError("project_not_found");
     if (found.project.status === "archived") throw new ActionError("project_archived");
     return { ...(await applyTemplateIn(tx, use, found, actorPersonId)), project: found.project };
@@ -226,7 +298,10 @@ export async function createProjectFromTemplate(input: ProjectInput, use: Templa
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, project.teamId)).limit(1);
     const made = { project, ...(await applyTemplateIn(tx, use, { team, project }, actorPersonId)) };
     if (onCreated) {
-      const [last] = await tx.select({ day: sql<number | null>`max(${schema.taskTemplateItem.dueOffsetDays})` }).from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, made.template.id));
+      const [last] = await tx
+        .select({ day: sql<number | null>`max(${schema.taskTemplateItem.dueOffsetDays})` })
+        .from(schema.taskTemplateItem)
+        .where(eq(schema.taskTemplateItem.templateId, made.template.id));
       await onCreated(tx, { ...made, use, lastStepDay: last?.day ?? 0 });
     }
     return made;

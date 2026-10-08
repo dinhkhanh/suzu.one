@@ -7,7 +7,18 @@ import Link from "next/link";
 export const CRM_TABS = ["home", "deals", "accounts", "leads", "contracts", "invoices", "reports", "commission", "rateCard", "settings"] as const;
 export type CrmTab = (typeof CRM_TABS)[number];
 
-const HREF: Record<CrmTab, string> = { home: "/crm", accounts: "/crm/accounts", leads: "/crm/leads", deals: "/crm/deals", contracts: "/crm/contracts", invoices: "/crm/invoices", reports: "/crm/reports", commission: "/crm/commission", rateCard: "/crm/rate-card", settings: "/crm/settings" };
+const HREF: Record<CrmTab, string> = {
+  home: "/crm",
+  accounts: "/crm/accounts",
+  leads: "/crm/leads",
+  deals: "/crm/deals",
+  contracts: "/crm/contracts",
+  invoices: "/crm/invoices",
+  reports: "/crm/reports",
+  commission: "/crm/commission",
+  rateCard: "/crm/rate-card",
+  settings: "/crm/settings",
+};
 
 export async function CrmTabs({ current, show }: { current: CrmTab; show: Partial<Record<CrmTab, boolean>> }) {
   const t = await getTranslations("crm.tabs");

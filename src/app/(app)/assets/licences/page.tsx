@@ -20,7 +20,14 @@ export default async function LicencesPage() {
   const user = await requireUser();
   if (!canReadLicences(user.principal)) notFound();
 
-  const [rows, totals, t, tc, ts, tSeats] = await Promise.all([listLicences(user.principal), licenceTotals(user.principal), getTranslations("assets.licences"), getTranslations("assets.licences.cycle"), getTranslations("assets.licences.status"), getTranslations("assets.seats")]);
+  const [rows, totals, t, tc, ts, tSeats] = await Promise.all([
+    listLicences(user.principal),
+    licenceTotals(user.principal),
+    getTranslations("assets.licences"),
+    getTranslations("assets.licences.cycle"),
+    getTranslations("assets.licences.status"),
+    getTranslations("assets.seats"),
+  ]);
   const today = assetsToday();
   const manage = canManageLicences(user.principal);
 
@@ -37,7 +44,9 @@ export default async function LicencesPage() {
         description={t("description")}
         actions={
           manage ? (
-            <Button nativeButton={false} render={<Link href="/assets/licences/new" />}>{t("nav.new")}</Button>
+            <Button nativeButton={false} render={<Link href="/assets/licences/new" />}>
+              {t("nav.new")}
+            </Button>
           ) : null
         }
       />
@@ -47,7 +56,12 @@ export default async function LicencesPage() {
       <TileGrid>
         <Tile label={tSeats("tiles.active")} value={totals.active} />
         <Tile label={tSeats("used")} value={`${totals.seatsUsed} / ${totals.seats}`} />
-        <Tile label={tSeats("free")} value={totals.seatsUnused} tone={totals.seatsUnused > 0 ? "warning" : undefined} hint={totals.unusedPerMonth ? tSeats("idlePerMonth", { amount: totals.unusedPerMonth.toLocaleString("vi-VN") }) : undefined} />
+        <Tile
+          label={tSeats("free")}
+          value={totals.seatsUnused}
+          tone={totals.seatsUnused > 0 ? "warning" : undefined}
+          hint={totals.unusedPerMonth ? tSeats("idlePerMonth", { amount: totals.unusedPerMonth.toLocaleString("vi-VN") }) : undefined}
+        />
         {totals.costPerMonth !== null ? <Tile label={tSeats("tiles.perMonth")} value={totals.costPerMonth.toLocaleString("vi-VN")} /> : null}
       </TileGrid>
 
@@ -75,10 +89,18 @@ export default async function LicencesPage() {
                   </RecordLink>
                   {row.vendor ? <p className="text-xs text-faint">{row.vendor}</p> : null}
                 </TableCell>
-                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {row.entityName ? (
+                    <RecordLink kind="entity" id={row.entityId}>
+                      {row.entityName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 {/* Seats in use against seats paid for; idle seats of a running subscription are money for nobody. */}
                 <TableCell kind="number" className={row.status === "active" && row.seats !== null && row.seatsUsed < row.seats ? "text-warning" : undefined}>
-                  {row.seats === null ? (row.seatsUsed || "—") : `${row.seatsUsed} / ${row.seats}`}
+                  {row.seats === null ? row.seatsUsed || "—" : `${row.seatsUsed} / ${row.seats}`}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{tc(row.billingCycle)}</Badge>
@@ -87,11 +109,21 @@ export default async function LicencesPage() {
                   <span className="font-mono text-[0.8125rem] tabular-nums">{row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}</span>
                   {CYCLE_MONTHS[row.billingCycle] !== null && !row.autoRenews ? <span className="ml-1 text-xs text-muted-foreground">{t("manualRenew")}</span> : null}
                 </TableCell>
-                <TableCell>{row.ownerName ? <RecordLink kind="person" id={row.ownerPersonId}>{row.ownerName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {row.ownerName ? (
+                    <RecordLink kind="person" id={row.ownerPersonId}>
+                      {row.ownerName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 {/* An asset's price and a licence's price are exactly as visible as each other. */}
                 <TableCell kind="money">{row.canSeeMoney ? (row.costPerCycle === null ? "—" : row.costPerCycle.toLocaleString("vi-VN")) : "•••"}</TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{ts(row.status)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {ts(row.status)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

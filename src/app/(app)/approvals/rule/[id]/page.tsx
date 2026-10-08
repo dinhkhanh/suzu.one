@@ -50,7 +50,17 @@ export default async function RuleChangePage(props: PageProps<"/approvals/rule/[
 
   return (
     <Page width="narrow">
-      <RequestHeader title={request.summary} kind={tApprovals(`types.${request.type}` as "types.leave_rule")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
+      <RequestHeader
+        title={request.summary}
+        kind={tApprovals(`types.${request.type}` as "types.leave_rule")}
+        status={request.status}
+        requestId={request.id}
+        who={
+          <RecordLink kind="person" id={request.requesterPersonId}>
+            {view.requesterName}
+          </RecordLink>
+        }
+      />
       <Alert variant={request.status === "approved" ? "success" : "info"}>{request.status === "approved" ? t("inForce") : t("notYet")}</Alert>
       <Section title={t("changes")} description={before ? t("againstCurrent") : t("newRule")}>
         <Table numbered={false}>

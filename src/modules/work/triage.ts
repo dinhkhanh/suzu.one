@@ -27,7 +27,10 @@ export const triageLink = (teamId: string) => `/work/teams/${teamId}/triage`;
 const keyOf = (loaded: LoadedTask) => taskKey(loaded.team.key, loaded.work.number);
 
 async function teamLeads(tx: Executor, teamId: string): Promise<string[]> {
-  const rows = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead")));
+  const rows = await tx
+    .select({ personId: schema.workTeamMember.personId })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead")));
   return rows.map((row) => row.personId);
 }
 
@@ -111,7 +114,8 @@ async function cancelState(tx: Executor, teamId: string) {
 /** Tells whoever asked that their request went nowhere (or somewhere else), in the words of any other state change. */
 async function tellRequester(tx: Executor, loaded: LoadedTask, stateName: string, actor: { personId: string; fullName: string }): Promise<void> {
   const requester = loaded.task.requesterPersonId;
-  if (requester && requester !== actor.personId) await notify({ recipients: [requester], kind: "tasks.status_changed", params: { name: actor.fullName, key: keyOf(loaded), title: loaded.task.title, state: stateName }, link: taskLink(loaded.task.id) }, tx);
+  if (requester && requester !== actor.personId)
+    await notify({ recipients: [requester], kind: "tasks.status_changed", params: { name: actor.fullName, key: keyOf(loaded), title: loaded.task.title, state: stateName }, link: taskLink(loaded.task.id) }, tx);
 }
 
 /** Declined: cancelled, the reason left on the task as a comment for the requester to read. */
@@ -120,7 +124,10 @@ export async function declineTriage(taskId: string, reason: string, actor: { per
     const loaded = await waiting(tx, taskId);
     const state = await cancelState(tx, loaded.team.id);
     await updateWorkTaskIn(tx, taskId, { stateId: state.id }, actor.personId, { silent: true, handoff: "system" });
-    await tx.update(schema.workTask).set(decided("declined", actor.personId, reason)).where(eq(schema.workTask.taskId, taskId));
+    await tx
+      .update(schema.workTask)
+      .set(decided("declined", actor.personId, reason))
+      .where(eq(schema.workTask.taskId, taskId));
     await settleCrossTeamHandoff(tx, taskId, { status: "returned", reason }, actor);
     await tx.insert(schema.workComment).values({ taskId, authorPersonId: actor.personId, body: reason });
     await logActivity(tx, taskId, actor.personId, [{ type: "triage_declined", to: { name: reason } }]);
@@ -145,7 +152,10 @@ export async function mergeTriage(taskId: string, intoTaskId: string, actor: { p
     const requester = loaded.task.requesterPersonId;
     if (requester && requester !== into.task.requesterPersonId && requester !== into.task.assigneePersonId) await autoFollow(tx, intoTaskId, [requester]);
     await updateWorkTaskIn(tx, taskId, { stateId: state.id }, actor.personId, { silent: true, handoff: "system" });
-    await tx.update(schema.workTask).set(decided("merged", actor.personId, intoKey)).where(eq(schema.workTask.taskId, taskId));
+    await tx
+      .update(schema.workTask)
+      .set(decided("merged", actor.personId, intoKey))
+      .where(eq(schema.workTask.taskId, taskId));
     await settleCrossTeamHandoff(tx, taskId, { status: "accepted", targetTaskId: intoTaskId }, actor);
     await logActivity(tx, taskId, actor.personId, [{ type: "triage_merged", to: { id: intoTaskId, name: `${intoKey} ${into.task.title}` } }]);
     await logActivity(tx, intoTaskId, actor.personId, [{ type: "triage_merged_in", from: { id: taskId, name: `${fromKey} ${loaded.task.title}` } }]);
@@ -176,7 +186,11 @@ export async function wakeSnoozedTriage(today: IsoDate): Promise<{ woken: number
   for (const { taskId } of due) {
     await db().transaction(async (tx) => {
       // Guarded by the status, so a second run (or a lead acting meanwhile) changes nothing.
-      const [row] = await tx.update(schema.workTask).set({ triageStatus: "pending", triageSnoozedUntil: null }).where(and(eq(schema.workTask.taskId, taskId), eq(schema.workTask.triageStatus, "snoozed"))).returning({ taskId: schema.workTask.taskId });
+      const [row] = await tx
+        .update(schema.workTask)
+        .set({ triageStatus: "pending", triageSnoozedUntil: null })
+        .where(and(eq(schema.workTask.taskId, taskId), eq(schema.workTask.triageStatus, "snoozed")))
+        .returning({ taskId: schema.workTask.taskId });
       if (!row) return;
       const loaded = await loadTask(taskId, tx);
       if (!loaded) return;
@@ -190,7 +204,16 @@ export async function wakeSnoozedTriage(today: IsoDate): Promise<{ woken: number
 
 // ── Reading the queue ───────────────────────────────────────────────────────────────────────
 
-export type TriageItem = TaskListItem & { source: string | null; snoozedUntil: string | null; requesterPersonId: string | null; requesterName: string | null; createdAt: string; description: string | null; formName: string | null; projectName: string | null };
+export type TriageItem = TaskListItem & {
+  source: string | null;
+  snoozedUntil: string | null;
+  requesterPersonId: string | null;
+  requesterName: string | null;
+  createdAt: string;
+  description: string | null;
+  formName: string | null;
+  projectName: string | null;
+};
 
 /**
  * A team's queue: pending first (oldest first — first come, first served), then snoozed by wake-up
@@ -207,18 +230,43 @@ export async function listTriage(teamId: string, viewer: WorkViewer): Promise<Tr
   if (items.length === 0) return [];
   const requester = alias(schema.person, "requester");
   const extras = await db()
-    .select({ id: schema.task.id, source: schema.workTask.triageSource, snoozedUntil: schema.workTask.triageSnoozedUntil, requesterPersonId: schema.task.requesterPersonId, requesterName: requester.fullName, createdAt: schema.task.createdAt, description: schema.task.description, formName: schema.workIntakeForm.name, projectName: schema.workProject.name })
+    .select({
+      id: schema.task.id,
+      source: schema.workTask.triageSource,
+      snoozedUntil: schema.workTask.triageSnoozedUntil,
+      requesterPersonId: schema.task.requesterPersonId,
+      requesterName: requester.fullName,
+      createdAt: schema.task.createdAt,
+      description: schema.task.description,
+      formName: schema.workIntakeForm.name,
+      projectName: schema.workProject.name,
+    })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .leftJoin(requester, eq(requester.id, schema.task.requesterPersonId))
     .leftJoin(schema.workIntakeForm, eq(schema.workIntakeForm.id, schema.workTask.intakeFormId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-    .where(inArray(schema.task.id, items.map((item) => item.id)));
+    .where(
+      inArray(
+        schema.task.id,
+        items.map((item) => item.id),
+      ),
+    );
   const extraOf = new Map(extras.map((row) => [row.id, row]));
   return items
     .map((item) => {
       const extra = extraOf.get(item.id)!;
-      return { ...item, source: extra.source, snoozedUntil: extra.snoozedUntil, requesterPersonId: extra.requesterPersonId, requesterName: extra.requesterName, createdAt: extra.createdAt.toISOString(), description: extra.description, formName: extra.formName, projectName: extra.projectName };
+      return {
+        ...item,
+        source: extra.source,
+        snoozedUntil: extra.snoozedUntil,
+        requesterPersonId: extra.requesterPersonId,
+        requesterName: extra.requesterName,
+        createdAt: extra.createdAt.toISOString(),
+        description: extra.description,
+        formName: extra.formName,
+        projectName: extra.projectName,
+      };
     })
     .sort((a, b) => Number(a.triageStatus === "snoozed") - Number(b.triageStatus === "snoozed") || (a.snoozedUntil ?? "").localeCompare(b.snoozedUntil ?? "") || a.createdAt.localeCompare(b.createdAt));
 }
@@ -228,7 +276,16 @@ export type TriageWaiting = { id: string; key: string; title: string; teamId: st
 /** For "My work": pending work in every team this person leads. */
 export async function listTriageForLead(personId: string): Promise<TriageWaiting[]> {
   const rows = await db()
-    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, teamId: schema.workTeam.id, teamName: schema.workTeam.name, source: schema.workTask.triageSource, createdAt: schema.task.createdAt })
+    .select({
+      id: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      teamId: schema.workTeam.id,
+      teamName: schema.workTeam.name,
+      source: schema.workTask.triageSource,
+      createdAt: schema.task.createdAt,
+    })
     .from(schema.workTask)
     .innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), isNull(schema.task.deletedAt)))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
@@ -264,8 +321,18 @@ export const invalidateTriageRules = () => invalidate(RULES_KEY);
 /** Inside a transaction pass the executor, and the rules come from there, not the cache. */
 export async function listTriageRules(teamId: string, executor?: Executor): Promise<TriageRuleRow[]> {
   const order = [asc(schema.workTriageRule.sortOrder), desc(schema.workTriageRule.createdAt)];
-  if (executor) return executor.select().from(schema.workTriageRule).where(eq(schema.workTriageRule.teamId, teamId)).orderBy(...order);
-  const all = await cached(RULES_KEY, RULES_TTL, () => db().select().from(schema.workTriageRule).orderBy(...order, asc(schema.workTriageRule.id)));
+  if (executor)
+    return executor
+      .select()
+      .from(schema.workTriageRule)
+      .where(eq(schema.workTriageRule.teamId, teamId))
+      .orderBy(...order);
+  const all = await cached(RULES_KEY, RULES_TTL, () =>
+    db()
+      .select()
+      .from(schema.workTriageRule)
+      .orderBy(...order, asc(schema.workTriageRule.id)),
+  );
   return all.filter((rule) => rule.teamId === teamId);
 }
 
@@ -282,10 +349,25 @@ export async function saveTriageRule(teamId: string, ruleId: string | null, inpu
   if (problem) throw new ActionError(problem);
   const { assigneePersonId, projectId, labelIds, intakeFormId } = { ...input.set, intakeFormId: input.match.intakeFormId };
   const [member, project, labels, form] = await Promise.all([
-    assigneePersonId ? db().select({ id: schema.workTeamMember.id }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.personId, assigneePersonId))) : [],
-    projectId ? db().select({ id: schema.workProject.id }).from(schema.workProject).where(and(eq(schema.workProject.id, projectId), eq(schema.workProject.teamId, teamId))) : [],
+    assigneePersonId
+      ? db()
+          .select({ id: schema.workTeamMember.id })
+          .from(schema.workTeamMember)
+          .where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.personId, assigneePersonId)))
+      : [],
+    projectId
+      ? db()
+          .select({ id: schema.workProject.id })
+          .from(schema.workProject)
+          .where(and(eq(schema.workProject.id, projectId), eq(schema.workProject.teamId, teamId)))
+      : [],
     labelIds?.length ? db().select({ id: schema.workLabel.id, teamId: schema.workLabel.teamId }).from(schema.workLabel).where(inArray(schema.workLabel.id, labelIds)) : [],
-    intakeFormId ? db().select({ id: schema.workIntakeForm.id }).from(schema.workIntakeForm).where(and(eq(schema.workIntakeForm.id, intakeFormId), eq(schema.workIntakeForm.teamId, teamId))) : [],
+    intakeFormId
+      ? db()
+          .select({ id: schema.workIntakeForm.id })
+          .from(schema.workIntakeForm)
+          .where(and(eq(schema.workIntakeForm.id, intakeFormId), eq(schema.workIntakeForm.teamId, teamId)))
+      : [],
   ]);
   if (assigneePersonId && member.length === 0) throw new ActionError("person_not_found");
   if (projectId && project.length === 0) throw new ActionError("project_not_found");
@@ -293,13 +375,20 @@ export async function saveTriageRule(teamId: string, ruleId: string | null, inpu
   if (intakeFormId && form.length === 0) throw new ActionError("intake_form_not_found");
   const values = { name: input.name, match: input.match, set: input.set, sortOrder: input.sortOrder, isActive: input.isActive };
   if (!ruleId) {
-    const [after] = await db().insert(schema.workTriageRule).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = await db()
+      .insert(schema.workTriageRule)
+      .values({ teamId, ...values, createdByPersonId: actorPersonId })
+      .returning();
     await invalidateTriageRules();
     return { before: null, after };
   }
   const before = await findTriageRule(ruleId);
   if (!before || before.teamId !== teamId) throw new ActionError("triage_rule_not_found");
-  const [after] = await db().update(schema.workTriageRule).set({ ...values, updatedAt: new Date() }).where(eq(schema.workTriageRule.id, ruleId)).returning();
+  const [after] = await db()
+    .update(schema.workTriageRule)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(schema.workTriageRule.id, ruleId))
+    .returning();
   await invalidateTriageRules();
   return { before, after };
 }

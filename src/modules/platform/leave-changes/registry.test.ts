@@ -8,7 +8,12 @@ describe("leave-change hooks", () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       seen.push(`first:${personId}`);
     });
-    registerLeaveChangeHook("test.second", async () => async ({ personId }) => void seen.push(`second:${personId}`));
+    registerLeaveChangeHook(
+      "test.second",
+      async () =>
+        async ({ personId }) =>
+          void seen.push(`second:${personId}`),
+    );
     await runLeaveChangeHooks({ personId: "p1" });
     expect(seen).toEqual(["first:p1", "second:p1"]);
   });

@@ -82,10 +82,26 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
   ];
   // Navigation visibility only. Every page and action re-checks permissions itself.
   const admin: NavItem[] = [
-    ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
+    ...(can(principal, "org:read")
+      ? [
+          { key: "entities", href: "/admin/entities" },
+          { key: "org", href: "/admin/org" },
+        ]
+      : []),
     ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
-    ...(can(principal, "person:manage") ? [{ key: "documentTemplates", href: "/admin/document-templates" }, { key: "issuedDocuments", href: "/documents" }, { key: "privacy", href: "/admin/privacy" }] : []),
-    ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }, { key: "requestTypes", href: "/admin/request-types" }] : []),
+    ...(can(principal, "person:manage")
+      ? [
+          { key: "documentTemplates", href: "/admin/document-templates" },
+          { key: "issuedDocuments", href: "/documents" },
+          { key: "privacy", href: "/admin/privacy" },
+        ]
+      : []),
+    ...(can(principal, "org:manage")
+      ? [
+          { key: "approvalFlows", href: "/admin/approval-flows" },
+          { key: "requestTypes", href: "/admin/request-types" },
+        ]
+      : []),
     ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
     ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),
@@ -149,9 +165,6 @@ export function groupNav<Item extends { key: string }>(items: readonly Item[]): 
   const placed = new Set(NAV_GROUPS.flatMap((group) => group.keys));
   return NAV_GROUPS.map((group) => ({
     key: group.key,
-    items: [
-      ...group.keys.flatMap((key) => byKey.get(key) ?? []),
-      ...(group.key === FALLBACK_GROUP ? items.filter((item) => !placed.has(item.key)) : []),
-    ],
+    items: [...group.keys.flatMap((key) => byKey.get(key) ?? []), ...(group.key === FALLBACK_GROUP ? items.filter((item) => !placed.has(item.key)) : [])],
   })).filter((group) => group.items.length > 0);
 }

@@ -69,7 +69,10 @@ async function countByCell(filter: InstanceFilter, today: IsoDate): Promise<Dash
   const colour = colourSql(today);
   const month = sql<string>`to_char(${schema.task.dueDate}, 'YYYY-MM')`;
   // Escalated = open, overdue and a manager or executive was told (what `escalationLevel` > 0 means).
-  const escalated = sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress') and ${schema.task.dueDate} < ${today} and exists (select 1 from ${schema.obligationNoticeSent} where ${schema.obligationNoticeSent.instanceId} = ${schema.obligationInstance.id} and ${schema.obligationNoticeSent.key} in ('escalate:manager', 'escalate:executive')))`.mapWith(Number);
+  const escalated =
+    sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress') and ${schema.task.dueDate} < ${today} and exists (select 1 from ${schema.obligationNoticeSent} where ${schema.obligationNoticeSent.instanceId} = ${schema.obligationInstance.id} and ${schema.obligationNoticeSent.key} in ('escalate:manager', 'escalate:executive')))`.mapWith(
+      Number,
+    );
   const rows = await db()
     .select({ entityId: schema.obligationInstance.entityId, month, colour, count: sql<number>`count(*)`.mapWith(Number), escalated })
     .from(schema.obligationInstance)
@@ -94,7 +97,8 @@ async function ownersInView(filter: InstanceFilter): Promise<{ id: string; name:
 }
 
 /** Everything due inside a date range, for the calendar grid. */
-export const listForCalendar = (viewer: Viewer, range: { from: IsoDate; to: IsoDate }, filter: OverviewFilter & { entityId?: string | null } = {}, today: IsoDate = todayInVietnam()) => listInstances(viewer, { ...filter, dueFrom: range.from, dueTo: range.to, limit: 2000 }, today);
+export const listForCalendar = (viewer: Viewer, range: { from: IsoDate; to: IsoDate }, filter: OverviewFilter & { entityId?: string | null } = {}, today: IsoDate = todayInVietnam()) =>
+  listInstances(viewer, { ...filter, dueFrom: range.from, dueTo: range.to, limit: 2000 }, today);
 
 // ── Archive (FR-OPS-09) ─────────────────────────────────────────────────────────────────────
 
@@ -109,7 +113,24 @@ export async function getHistory(viewer: Viewer, filter: HistoryFilter, today: I
   const range = filter.year ? { dueFrom: `${filter.year}-01-01`, dueTo: `${filter.year}-12-31` } : {};
   const items = await listInstances(viewer, { templateId: filter.templateId, entityId: filter.entityId, entityIds: filter.entityIds, pastOrClosedOn: today, ...range, limit: EXPORT_ROW_LIMIT }, today);
   items.sort((a, b) => (b.dueDate ?? "").localeCompare(a.dueDate ?? "") || a.entityCode.localeCompare(b.entityCode) || a.title.localeCompare(b.title));
-  const files = items.length === 0 ? [] : await db().select({ id: schema.storedFile.id, fileName: schema.storedFile.fileName, ownerId: schema.storedFile.ownerId }).from(schema.storedFile).where(and(eq(schema.storedFile.ownerType, OBLIGATION_FILE_OWNER), inArray(schema.storedFile.ownerId, items.map((item) => item.instanceId)), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt))).orderBy(asc(schema.storedFile.createdAt));
+  const files =
+    items.length === 0
+      ? []
+      : await db()
+          .select({ id: schema.storedFile.id, fileName: schema.storedFile.fileName, ownerId: schema.storedFile.ownerId })
+          .from(schema.storedFile)
+          .where(
+            and(
+              eq(schema.storedFile.ownerType, OBLIGATION_FILE_OWNER),
+              inArray(
+                schema.storedFile.ownerId,
+                items.map((item) => item.instanceId),
+              ),
+              eq(schema.storedFile.status, "ready"),
+              isNull(schema.storedFile.deletedAt),
+            ),
+          )
+          .orderBy(asc(schema.storedFile.createdAt));
   const byInstance = Map.groupBy(files, (file) => file.ownerId);
   return items.map((item) => ({ ...item, files: (byInstance.get(item.instanceId) ?? []).map(({ id, fileName }) => ({ id, fileName })) }));
 }

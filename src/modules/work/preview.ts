@@ -376,8 +376,16 @@ export async function sweepPreviewLinks(at: Date = now()): Promise<Record<Previe
     .where(inArray(schema.workProject.status, [...CLOSED_PROJECT_STATUSES]));
   const whoLeft = db().select({ id: schema.person.id }).from(schema.person).where(eq(schema.person.status, "offboarded"));
 
-  const projectClosed = await db().update(link).set({ revokedAt: at }).where(and(live, inArray(link.taskId, ofClosedProjects))).returning(revoked);
-  const creatorOffboarded = await db().update(link).set({ revokedAt: at }).where(and(live, inArray(link.createdByPersonId, whoLeft))).returning(revoked);
+  const projectClosed = await db()
+    .update(link)
+    .set({ revokedAt: at })
+    .where(and(live, inArray(link.taskId, ofClosedProjects)))
+    .returning(revoked);
+  const creatorOffboarded = await db()
+    .update(link)
+    .set({ revokedAt: at })
+    .where(and(live, inArray(link.createdByPersonId, whoLeft)))
+    .returning(revoked);
 
   const swept = [...projectClosed.map((row) => ({ ...row, reason: "project_closed" as const })), ...creatorOffboarded.map((row) => ({ ...row, reason: "creator_offboarded" as const }))];
   if (swept.length > 0) {
@@ -678,7 +686,11 @@ export async function claimLink(linkId: string, at: Date): Promise<boolean> {
  * that cleared `decided_at` whatever it held could wipe another request's live claim and let a
  * second decision be recorded on the same link, which is the one thing the claim exists to stop.
  */
-export const releaseClaim = (linkId: string, at: Date) => db().update(schema.workPreviewLink).set({ decidedAt: null }).where(and(eq(schema.workPreviewLink.id, linkId), eq(schema.workPreviewLink.decidedAt, at)));
+export const releaseClaim = (linkId: string, at: Date) =>
+  db()
+    .update(schema.workPreviewLink)
+    .set({ decidedAt: null })
+    .where(and(eq(schema.workPreviewLink.id, linkId), eq(schema.workPreviewLink.decidedAt, at)));
 
 const decidePipeline = createPublicAction({
   name: "work.preview.decide",

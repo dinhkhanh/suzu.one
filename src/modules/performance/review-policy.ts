@@ -57,7 +57,8 @@ export const isReviewingManager = (principal: Principal, parties: ReviewParties)
  * asked for — but only that: every block on the page is behind `canReadReviewForm`, which lets a
  * peer read their own form and nothing else.
  */
-export const canSeeParticipant = (principal: Principal, parties: ReviewParties, nominated = false): boolean => canReadPerformanceOf(principal, parties.subject) || (nominated && !!principal.personId && principal.personId !== parties.subject.personId);
+export const canSeeParticipant = (principal: Principal, parties: ReviewParties, nominated = false): boolean =>
+  canReadPerformanceOf(principal, parties.subject) || (nominated && !!principal.personId && principal.personId !== parties.subject.personId);
 
 /**
  * Reading one filled form. A draft is its author's alone — and oversight's; after that the rules
@@ -108,7 +109,8 @@ export const canWriteSelfReview = (principal: Principal, parties: ReviewParties)
  * Writing the manager review: the manager named at launch, anyone above the subject (a manager who
  * has left must not stall a cycle), or HR over them — and never about oneself, whatever one holds.
  */
-export const canWriteManagerReview = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && collecting(parties) && (isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
+export const canWriteManagerReview = (principal: Principal, parties: ReviewParties): boolean =>
+  !isSelf(principal, parties) && collecting(parties) && (isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
 
 /** Writing peer feedback: the nominated peer, while the cycle collects, and never about oneself. */
 export const canWritePeerReview = (principal: Principal, parties: ReviewParties, nominated: boolean): boolean => !isSelf(principal, parties) && nominated && collecting(parties);
@@ -163,7 +165,8 @@ export const canReturnReviewForm = (principal: Principal, parties: ReviewParties
  * launch, or anyone above — or HR over the person, once the review has been released. Never the
  * person themself: it is the record that the conversation was had with them.
  */
-export const canRecordSignOff = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && parties.released && !parties.signedOff && (isReviewingManager(principal, parties) || isReviewCalibrator(principal, parties));
+export const canRecordSignOff = (principal: Principal, parties: ReviewParties): boolean =>
+  !isSelf(principal, parties) && parties.released && !parties.signedOff && (isReviewingManager(principal, parties) || isReviewCalibrator(principal, parties));
 
 /**
  * Acknowledging: the subject, once it has been released to them (FR-PRF-03's last step) — and,

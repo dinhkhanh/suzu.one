@@ -219,7 +219,13 @@ export function computeRouteNamespaces(why?: (where: string, namespace: string, 
   parsedCache.clear();
   const catalogue = JSON.parse(readFileSync(join(ROOT, "messages", "vi.json"), "utf8")) as Catalogue;
   const unresolved = new Set<string>();
-  const shellEntries = [join(ROOT, "src", "app", "layout.tsx"), ...readdirSync(APP).sort().map((name) => join(APP, name)).filter((path) => statSync(path).isFile() && /\.tsx?$/.test(path))];
+  const shellEntries = [
+    join(ROOT, "src", "app", "layout.tsx"),
+    ...readdirSync(APP)
+      .sort()
+      .map((name) => join(APP, name))
+      .filter((path) => statSync(path).isFile() && /\.tsx?$/.test(path)),
+  ];
   const shell = minimal(namespacesFrom(shellEntries, catalogue, unresolved, why && ((...args) => why("shell", ...args))));
   const covered = (namespace: string) => shell.some((held) => namespace === held || namespace.startsWith(`${held}.`));
   const segments: Record<string, string[]> = {};

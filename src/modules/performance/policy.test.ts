@@ -1,8 +1,43 @@
 import { describe, expect, it } from "vitest";
 import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
 import { canReadBonusRun, canViewBonusOf, canViewCompensationOf } from "../payroll/policy";
-import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeSalaryOutcome, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne, canWriteOneOnOnePrivate } from "./policy";
-import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
+import {
+  canComputeResults,
+  canDecideOutcome,
+  canDecidePerformanceRules,
+  canHoldOneOnOneWith,
+  canOverrideResult,
+  canProposeSalaryOutcome,
+  canProposeWeighting,
+  canRaiseOutcome,
+  canReadOneOnOne,
+  canReadOneOnOnePrivate,
+  canReadResultOf,
+  canSettleResultOf,
+  canWriteOneOnOne,
+  canWriteOneOnOnePrivate,
+} from "./policy";
+import {
+  canCheckIn,
+  canCloseGoal,
+  canCloseKpiMonth,
+  canEditGoal,
+  canEnterActualsFor,
+  canManageAssignmentsOf,
+  canManageKpiLibrary,
+  canManagePositionKpis,
+  canOpenOverview,
+  canReadPerformanceOf,
+  canReopenGoal,
+  canReopenKpiMonth,
+  canSeeGoal,
+  chainAbove,
+  type GoalParties,
+  overviewReach,
+  type PersonContext,
+  readablePeople,
+  unitTarget,
+} from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -12,7 +47,16 @@ const DES = "dept-des";
 const principal = (personId: string, grants: Grant[] = [], workforceType: Principal["workforceType"] = "employee"): Principal => ({ personId, workforceType, grants });
 
 // owner → ceo → long (head of VID) → tam → huy; chi heads DES at SZC.
-const managerOf = new Map<string, string | null>([["owner", null], ["ceo", "owner"], ["long", "ceo"], ["tam", "long"], ["huy", "tam"], ["linh", "long"], ["chi", "ceo"], ["khoi", "chi"]]);
+const managerOf = new Map<string, string | null>([
+  ["owner", null],
+  ["ceo", "owner"],
+  ["long", "ceo"],
+  ["tam", "long"],
+  ["huy", "tam"],
+  ["linh", "long"],
+  ["chi", "ceo"],
+  ["khoi", "chi"],
+]);
 const person = (personId: string, entityId: string, unitId: string): PersonContext => ({ personId, entityId, unitPath: [unitId], managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
 const huy = person("huy", SZM, VID);
 const khoi = person("khoi", SZC, DES);
@@ -29,7 +73,15 @@ describe("chainAbove", () => {
   it("lists every manager above, nearest first, and survives a loop", () => {
     expect(chainAbove(managerOf, "huy")).toEqual(["tam", "long", "ceo", "owner"]);
     expect(chainAbove(managerOf, "owner")).toEqual([]);
-    expect(chainAbove(new Map([["a", "b"], ["b", "a"]]), "a")).toEqual(["b"]);
+    expect(
+      chainAbove(
+        new Map([
+          ["a", "b"],
+          ["b", "a"],
+        ]),
+        "a",
+      ),
+    ).toEqual(["b"]);
   });
 });
 

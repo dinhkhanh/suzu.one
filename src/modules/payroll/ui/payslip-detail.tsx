@@ -52,7 +52,14 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
       <Section title={t("person")}>
         <Sheet
           rows={[
-            { label: t("person"), value: <RecordLink kind="person" id={person.id} className="font-medium">{person.fullName}</RecordLink> },
+            {
+              label: t("person"),
+              value: (
+                <RecordLink kind="person" id={person.id} className="font-medium">
+                  {person.fullName}
+                </RecordLink>
+              ),
+            },
             { label: t("employeeCode"), value: person.employeeCode ?? "—", mono: true },
             { label: t("position"), value: person.positionName ?? "—" },
             { label: t("department"), value: person.departmentName ?? "—" },
@@ -78,7 +85,11 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
                 <TableRow key={`${line.code}-${line.rule}`}>
                   <TableCell className="whitespace-normal">
                     {label(line)}
-                    {line.taxable !== line.amount ? <span className="block text-xs text-faint">{t("taxablePart")}: {formatVnd(line.taxable)}</span> : null}
+                    {line.taxable !== line.amount ? (
+                      <span className="block text-xs text-faint">
+                        {t("taxablePart")}: {formatVnd(line.taxable)}
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell kind="money">{formatVnd(line.amount)}</TableCell>
                 </TableRow>
@@ -87,7 +98,9 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
             <TableFooter>
               <TableRow>
                 <TableCell className="font-semibold">{t("grossEarnings")}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(result.totals.grossEarnings)}</TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(result.totals.grossEarnings)}
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>
@@ -114,7 +127,9 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
             <TableFooter>
               <TableRow>
                 <TableCell className="font-semibold">{t("totalDeductions")}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(result.totals.totalDeductions)}</TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(result.totals.totalDeductions)}
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>
@@ -138,9 +153,13 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
                 (["bhxh", "bhyt", "bhtn"] as const).map((fund) => (
                   <TableRow key={fund}>
                     <TableCell>{t(`insurance.funds.${fund}` as "insurance.funds.bhxh")}</TableCell>
-                    <TableCell kind="money" className="text-muted-foreground">{formatVnd(fund === "bhtn" ? result.insurance.bhtnBase : result.insurance.bhxhBhytBase)}</TableCell>
+                    <TableCell kind="money" className="text-muted-foreground">
+                      {formatVnd(fund === "bhtn" ? result.insurance.bhtnBase : result.insurance.bhxhBhytBase)}
+                    </TableCell>
                     <TableCell kind="money">{formatVnd(result.insurance.employee[fund])}</TableCell>
-                    <TableCell kind="money" className="text-muted-foreground">{formatVnd(result.insurance.employer[fund])}</TableCell>
+                    <TableCell kind="money" className="text-muted-foreground">
+                      {formatVnd(result.insurance.employer[fund])}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -148,7 +167,9 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
               )}
             </TableBody>
           </Table>
-          {result.insurance.declaredBase !== result.insurance.bhxhBhytBase ? <p className="border-t px-4 py-3 text-xs text-muted-foreground">{t("insurance.capped", { declared: formatVnd(result.insurance.declaredBase), capped: formatVnd(result.insurance.bhxhBhytBase) })}</p> : null}
+          {result.insurance.declaredBase !== result.insurance.bhxhBhytBase ? (
+            <p className="border-t px-4 py-3 text-xs text-muted-foreground">{t("insurance.capped", { declared: formatVnd(result.insurance.declaredBase), capped: formatVnd(result.insurance.bhxhBhytBase) })}</p>
+          ) : null}
         </TableCard>
       </Section>
 
@@ -187,7 +208,9 @@ export async function PayslipDetail({ result, componentNames, person, entity }: 
                     .filter((bracket) => bracket.amount > 0)
                     .map((bracket, index) => (
                       <TableRow key={index}>
-                        <TableCell kind="money" className="text-muted-foreground">{bracket.upTo === null ? t("pit.above") : `≤ ${formatVnd(bracket.upTo)}`}</TableCell>
+                        <TableCell kind="money" className="text-muted-foreground">
+                          {bracket.upTo === null ? t("pit.above") : `≤ ${formatVnd(bracket.upTo)}`}
+                        </TableCell>
                         <TableCell kind="percent">{percent(bracket.rateBp)}</TableCell>
                         <TableCell kind="money">{formatVnd(bracket.amount)}</TableCell>
                         <TableCell kind="money">{formatVnd(bracket.tax)}</TableCell>

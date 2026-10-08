@@ -55,8 +55,15 @@ const face = (seed: number, noise = 0, variant = 0): number[] => {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
-  const person = async (name: string, entityId: string, status: "active" | "offboarded" = "active") => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, status }).returning())[0].id;
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
+  const person = async (name: string, entityId: string, status: "active" | "offboarded" = "active") =>
+    (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, status }).returning())[0].id;
   Object.assign(ids, { media: media.id, creative: creative.id, huy: await person("Huy", media.id), nhu: await person("Nhu", media.id), lan: await person("Lan", creative.id), hr: await person("Bao", media.id) });
   const { after: profile } = await saveProfile({ id: null, entityId: null, ...PROFILE_SEED[1], isActive: true });
   const { after: device } = await saveDevice({ id: null, entityId: media.id, name: "Cửa chính", model: null, serialNumber: null, locationId: null, profileId: profile.id, isActive: true });
@@ -150,7 +157,7 @@ describe("a kiosk on the wall", () => {
     await expect(closeKioskSession(session.id, ids.hr)).rejects.toThrow("not_found");
   });
 
-  it("punches for a face, takes it back on \"Not me\", and remembers who checked in a moment ago", async () => {
+  it('punches for a face, takes it back on "Not me", and remembers who checked in a moment ago', async () => {
     const since = new Date(Date.now() - 60_000);
     const made = (await commitKioskPunch(ids.device, { personId: ids.huy, entityId: ids.media }, "face")) as { punchId: string; direction: "in" | "out" };
     const [row] = await db().select().from(schema.punch).where(eq(schema.punch.id, made.punchId));
@@ -182,10 +189,14 @@ describe("a kiosk on the wall", () => {
     expect((await recentKioskPunches(ids.device, [ids.nhu], new Date(Date.now() - 60_000))).get(ids.nhu)).toMatchObject({ direction: "out" });
     // Out is out: the next punch arrives. And an arrival more than 16 hours old no longer holds a stay open.
     expect(await nextKioskDirection(ids.nhu, new Date(tonight.getTime() + 1000))).toBe("in");
-    await db().insert(schema.punch).values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 17 * 3_600_000), direction: "in", source: "app" });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 17 * 3_600_000), direction: "in", source: "app" });
     expect(await nextKioskDirection(ids.hr)).toBe("in");
     // A rejected punch does not count.
-    await db().insert(schema.punch).values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 3_600_000), direction: "in", source: "app", reviewStatus: "rejected" });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: ids.hr, entityId: ids.media, at: new Date(Date.now() - 3_600_000), direction: "in", source: "app", reviewStatus: "rejected" });
     expect(await nextKioskDirection(ids.hr)).toBe("in");
   });
 });
@@ -234,7 +245,7 @@ describe("how long a kiosk stays a kiosk", () => {
     await expect(closeKioskSession(session.id, ids.hr)).rejects.toThrow("not_found");
   });
 
-  it("answers a kiosk HR closed with nothing, not with \"expired\"", async () => {
+  it('answers a kiosk HR closed with nothing, not with "expired"', async () => {
     const { token, session } = await openKioskSession({ device: await deviceRow(), openedByPersonId: ids.hr, userAgent: "Tablet" });
     await closeKioskSession(session.id, ids.hr);
     expect(await kioskAccessOfToken(token)).toEqual({ status: "none" });
@@ -284,7 +295,9 @@ describe("what a kiosk's cookie can do to somebody's day", () => {
     const scanned = await commitKioskPunch(ids.device, { personId: ids.huy, entityId: ids.media }, "qr", now, session.id);
     expect((await db().select().from(schema.punch).where(eq(schema.punch.id, scanned.punchId!)))[0]).toMatchObject({ kioskSessionId: session.id });
     // Yesterday's does not count as today's.
-    await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: new Date(now.getTime() - 2 * DAY), direction: "in", source: "device", deviceId: ids.device, deviceUserId: `face:${ids.huy}`, kioskSessionId: session.id });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: ids.huy, entityId: ids.media, at: new Date(now.getTime() - 2 * DAY), direction: "in", source: "device", deviceId: ids.device, deviceUserId: `face:${ids.huy}`, kioskSessionId: session.id });
 
     const [listed] = await listKioskDevices(hrAdmin, now);
     const byId = new Map(listed.sessions.map((row) => [row.id, row]));
@@ -315,7 +328,14 @@ describe("the limiter of the kiosk's and the clocks' endpoints", () => {
     expect(await countEndpointHit("kiosk_undo", key, new Date(at.getTime() + 40_000))).toEqual({ ok: true });
     // One row per (bucket, key, window), whatever the number of calls.
     expect(await db().select().from(schema.attendanceEndpointHit)).toHaveLength(4);
-    expect((await db().select().from(schema.attendanceEndpointHit).where(eq(schema.attendanceEndpointHit.windowStart, new Date("2026-01-05T03:00:00Z")))).find((row) => row.bucket === "kiosk_undo" && row.keyHash === key)).toMatchObject({ hits: max + 1 });
+    expect(
+      (
+        await db()
+          .select()
+          .from(schema.attendanceEndpointHit)
+          .where(eq(schema.attendanceEndpointHit.windowStart, new Date("2026-01-05T03:00:00Z")))
+      ).find((row) => row.bucket === "kiosk_undo" && row.keyHash === key),
+    ).toMatchObject({ hits: max + 1 });
   });
 
   it("keys a kiosk and a clock apart, and names neither", () => {

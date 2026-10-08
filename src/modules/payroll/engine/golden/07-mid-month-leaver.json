@@ -12,9 +12,7 @@
   "month": "2026-08",
   "monthStandardDays": 22,
   "employment": { "endDate": "2026-08-07", "serviceMonths": 25 },
-  "segments": [
-    { "from": "2026-08-01", "to": "2026-08-07", "standardDays": 5, "paidDaysCenti": 500, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
-  ],
+  "segments": [{ "from": "2026-08-01", "to": "2026-08-07", "standardDays": 5, "paidDaysCenti": 500, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }],
   "timesheet": { "standardDays": 5, "paidDaysCenti": 500 },
   "expect": {
     "lines": { "BASE": 6818182 },

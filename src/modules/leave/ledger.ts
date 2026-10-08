@@ -108,7 +108,15 @@ async function pendingByType(executor: Executor, personIds: string[], year: numb
     .from(schema.leaveRequestDay)
     .innerJoin(schema.leaveRequest, eq(schema.leaveRequest.id, schema.leaveRequestDay.requestId))
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.leaveRequest.approvalRequestId))
-    .where(and(inArray(schema.leaveRequest.personId, personIds), eq(schema.leaveRequest.status, "pending"), inArray(schema.approvalRequest.status, ["pending", "returned"]), gte(schema.leaveRequestDay.date, `${year}-01-01`), lte(schema.leaveRequestDay.date, `${year}-12-31`)))
+    .where(
+      and(
+        inArray(schema.leaveRequest.personId, personIds),
+        eq(schema.leaveRequest.status, "pending"),
+        inArray(schema.approvalRequest.status, ["pending", "returned"]),
+        gte(schema.leaveRequestDay.date, `${year}-01-01`),
+        lte(schema.leaveRequestDay.date, `${year}-12-31`),
+      ),
+    )
     .groupBy(schema.leaveRequest.personId, schema.leaveRequest.leaveTypeId);
   return new Map(rows.map((row) => [`${row.personId}:${row.leaveTypeId}`, row.total]));
 }
@@ -162,14 +170,27 @@ export async function listPayoutTotals(entityId: string, from: IsoDate, to: IsoD
 // ── HR's postings ───────────────────────────────────────────────────────────────────────────
 
 /** A manual correction with a reason (FR-LVE-07). Positive adds days, negative takes them. */
-export async function adjustBalance(input: { personId: string; leaveTypeId: string; year: number; amountCenti: number; reason: string; effectiveDate?: IsoDate }, actorPersonId: string): Promise<{ entry: LedgerEntryRow; balanceBefore: number; balanceAfter: number }> {
+export async function adjustBalance(
+  input: { personId: string; leaveTypeId: string; year: number; amountCenti: number; reason: string; effectiveDate?: IsoDate },
+  actorPersonId: string,
+): Promise<{ entry: LedgerEntryRow; balanceBefore: number; balanceAfter: number }> {
   return db().transaction(async (tx) => {
     const [[type], [person]] = await Promise.all([tx.select().from(schema.leaveType).where(eq(schema.leaveType.id, input.leaveTypeId)).limit(1), tx.select().from(schema.person).where(eq(schema.person.id, input.personId)).limit(1)]);
     if (!type || !person) throw new ActionError("leave_type_not_found");
     if (!type.tracksBalance) throw new ActionError("leave_type_keeps_no_balance");
     if (input.amountCenti === 0) throw new ActionError("leave_adjustment_zero");
     const balanceBefore = await balanceOf(tx, input.personId, input.leaveTypeId, input.year);
-    const entry = await postEntry(tx, { personId: input.personId, entityId: person.primaryEntityId, leaveTypeId: input.leaveTypeId, leaveYear: input.year, kind: "adjustment", amountCenti: input.amountCenti, effectiveDate: input.effectiveDate ?? todayInVietnam(), reason: input.reason, createdByPersonId: actorPersonId });
+    const entry = await postEntry(tx, {
+      personId: input.personId,
+      entityId: person.primaryEntityId,
+      leaveTypeId: input.leaveTypeId,
+      leaveYear: input.year,
+      kind: "adjustment",
+      amountCenti: input.amountCenti,
+      effectiveDate: input.effectiveDate ?? todayInVietnam(),
+      reason: input.reason,
+      createdByPersonId: actorPersonId,
+    });
     return { entry: entry!, balanceBefore, balanceAfter: balanceBefore + input.amountCenti };
   });
 }
@@ -193,7 +214,10 @@ type CompensatoryLeaveInput = { personId: string; amountCenti: number; effective
 export async function postCompensatoryLeaves(tx: Executor, inputs: readonly CompensatoryLeaveInput[]): Promise<(LedgerEntryRow | null)[]> {
   if (inputs.length === 0) return [];
   const [people, types] = await Promise.all([
-    tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(inArray(schema.person.id, [...new Set(inputs.map((input) => input.personId))])),
+    tx
+      .select({ id: schema.person.id, entityId: schema.person.primaryEntityId })
+      .from(schema.person)
+      .where(inArray(schema.person.id, [...new Set(inputs.map((input) => input.personId))])),
     allLeaveTypes(tx),
   ]);
   const entityOf = new Map(people.map((person) => [person.id, person.entityId]));
@@ -202,7 +226,18 @@ export async function postCompensatoryLeaves(tx: Executor, inputs: readonly Comp
     const entityId = entityOf.get(input.personId)!;
     const type = leaveTypesOf(types, entityId).find((row) => row.category === "compensatory" && row.tracksBalance);
     if (!type) throw new ActionError("leave_no_compensatory_type");
-    return { personId: input.personId, entityId, leaveTypeId: type.id, leaveYear: Number(input.effectiveDate.slice(0, 4)), kind: "grant", amountCenti: input.amountCenti, effectiveDate: input.effectiveDate, sourceKey: `toil:${input.sourceKey}`, reason: input.reason, createdByPersonId: input.actorPersonId };
+    return {
+      personId: input.personId,
+      entityId,
+      leaveTypeId: type.id,
+      leaveYear: Number(input.effectiveDate.slice(0, 4)),
+      kind: "grant",
+      amountCenti: input.amountCenti,
+      effectiveDate: input.effectiveDate,
+      sourceKey: `toil:${input.sourceKey}`,
+      reason: input.reason,
+      createdByPersonId: input.actorPersonId,
+    };
   });
   const posting = entries.filter((entry) => entry.amountCenti !== 0);
   const posted = posting.length ? await tx.insert(schema.leaveLedgerEntry).values(posting).onConflictDoNothing({ target: schema.leaveLedgerEntry.sourceKey }).returning() : [];
@@ -257,27 +292,47 @@ export async function runLeaveAccruals(today: IsoDate = todayInVietnam(), option
   const ledger = await db()
     .select()
     .from(schema.leaveLedgerEntry)
-    .where(and(inArray(schema.leaveLedgerEntry.personId, people.map((facts) => facts.personId)), gte(schema.leaveLedgerEntry.leaveYear, year - 1)))
+    .where(
+      and(
+        inArray(
+          schema.leaveLedgerEntry.personId,
+          people.map((facts) => facts.personId),
+        ),
+        gte(schema.leaveLedgerEntry.leaveYear, year - 1),
+      ),
+    )
     .orderBy(asc(schema.leaveLedgerEntry.createdAt), asc(schema.leaveLedgerEntry.id));
   const ledgerOf = new Map<string, LedgerEntryRow[]>();
   for (const row of ledger) ledgerOf.set(`${row.personId}:${row.leaveTypeId}`, [...(ledgerOf.get(`${row.personId}:${row.leaveTypeId}`) ?? []), row]);
 
   for (const facts of people) {
-    if (!typesByEntity.has(facts.entityId)) typesByEntity.set(facts.entityId, leaveTypesOf(allTypes, facts.entityId, { includeInactive: true }).filter((type) => type.tracksBalance));
+    if (!typesByEntity.has(facts.entityId))
+      typesByEntity.set(
+        facts.entityId,
+        leaveTypesOf(allTypes, facts.entityId, { includeInactive: true }).filter((type) => type.tracksBalance),
+      );
     for (const type of typesByEntity.get(facts.entityId)!) {
       const settle = { facts, type, policies, statutory, current, year, today };
       const entries = [...(ledgerOf.get(`${facts.personId}:${type.id}`) ?? [])];
       const known = new Set(entries.map((row) => row.sourceKey).filter((key) => key !== null));
       let wouldPost = false;
-      await settleLeaveYear(settle, entries, async (entry) => {
-        if (entry.amountCenti === 0 || (entry.sourceKey && known.has(entry.sourceKey))) return null;
-        wouldPost = true;
-        return null;
-      }, { ...counts });
+      await settleLeaveYear(
+        settle,
+        entries,
+        async (entry) => {
+          if (entry.amountCenti === 0 || (entry.sourceKey && known.has(entry.sourceKey))) return null;
+          wouldPost = true;
+          return null;
+        },
+        { ...counts },
+      );
       if (!wouldPost) continue;
 
       await db().transaction(async (tx) => {
-        const entries = await tx.select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, facts.personId), eq(schema.leaveLedgerEntry.leaveTypeId, type.id), gte(schema.leaveLedgerEntry.leaveYear, year - 1)));
+        const entries = await tx
+          .select()
+          .from(schema.leaveLedgerEntry)
+          .where(and(eq(schema.leaveLedgerEntry.personId, facts.personId), eq(schema.leaveLedgerEntry.leaveTypeId, type.id), gte(schema.leaveLedgerEntry.leaveYear, year - 1)));
         await settleLeaveYear(settle, entries, (entry) => postEntry(tx, { personId: facts.personId, entityId: facts.entityId, leaveTypeId: type.id, createdByPersonId: null, ...entry }), counts);
       });
     }
@@ -335,8 +390,12 @@ async function settleLeaveYear({ facts, type, policies, statutory, current, year
   // 4. Employment over: pay out what is left, once per employment.
   if (policy && facts.endDate && facts.endDate < today && facts.employmentId) {
     const endYear = Number(facts.endDate.slice(0, 4));
-    const payout = terminationPayout(sum(entries, (row) => row.leaveYear === endYear), policyRules(policy));
-    if (payout > 0 && (await post({ leaveYear: endYear, kind: "payout", amountCenti: -payout, effectiveDate: facts.endDate, sourceKey: key("payout", facts.employmentId), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" }))) counts.payouts++;
+    const payout = terminationPayout(
+      sum(entries, (row) => row.leaveYear === endYear),
+      policyRules(policy),
+    );
+    if (payout > 0 && (await post({ leaveYear: endYear, kind: "payout", amountCenti: -payout, effectiveDate: facts.endDate, sourceKey: key("payout", facts.employmentId), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" })))
+      counts.payouts++;
   }
 }
 
@@ -345,11 +404,26 @@ type Post = (entry: Pick<NewEntry, "leaveYear" | "kind" | "amountCenti" | "effec
 // One row per checkpoint at which something became due (see `accrualPostings`), so that the ledger
 // reads like a calendar even when the job catches up on several months at once. After a payout
 // nothing more is given.
-async function accrue(facts: EmploymentFacts, type: LeaveTypeRow, policies: readonly LeavePolicyRow[], statutory: { baseDays: number; yearsOfServicePerExtraDay: number }, year: number, asOf: IsoDate, entries: LedgerEntryRow[], post: Post, key: (what: string, ...parts: (string | number)[]) => string): Promise<number> {
+async function accrue(
+  facts: EmploymentFacts,
+  type: LeaveTypeRow,
+  policies: readonly LeavePolicyRow[],
+  statutory: { baseDays: number; yearsOfServicePerExtraDay: number },
+  year: number,
+  asOf: IsoDate,
+  entries: LedgerEntryRow[],
+  post: Post,
+  key: (what: string, ...parts: (string | number)[]) => string,
+): Promise<number> {
   if (entries.some((row) => row.kind === "payout")) return 0;
   // Leave the person's kind of employment does not have is not earned either.
   if (type.eligibleWorkforceTypes && !type.eligibleWorkforceTypes.includes(facts.workforceType)) return 0;
-  const opening = entries.filter((row) => row.leaveYear === year && row.kind === "opening").map((row) => row.effectiveDate).sort().at(-1) ?? null;
+  const opening =
+    entries
+      .filter((row) => row.leaveYear === year && row.kind === "opening")
+      .map((row) => row.effectiveDate)
+      .sort()
+      .at(-1) ?? null;
   const postings = accrualPostings({
     year,
     asOf,

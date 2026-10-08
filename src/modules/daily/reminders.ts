@@ -11,7 +11,11 @@ import { db, schema, type Tx } from "@/lib/db";
 export async function claimReminders(tx: Tx, personIds: readonly string[], kind: string, sentOn: IsoDate): Promise<string[]> {
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return [];
-  const fresh = await tx.insert(schema.dailyReminderSent).values(ids.map((personId) => ({ personId, kind, sentOn }))).onConflictDoNothing().returning({ personId: schema.dailyReminderSent.personId });
+  const fresh = await tx
+    .insert(schema.dailyReminderSent)
+    .values(ids.map((personId) => ({ personId, kind, sentOn })))
+    .onConflictDoNothing()
+    .returning({ personId: schema.dailyReminderSent.personId });
   return fresh.map((row) => row.personId);
 }
 

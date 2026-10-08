@@ -4,7 +4,25 @@
 // week, blocked, in review, done. Rows are written the way the work use-cases write them.
 import { and, eq, inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { orgUnit, entity, person, task, workActivity, workComment, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
+import {
+  orgUnit,
+  entity,
+  person,
+  task,
+  workActivity,
+  workComment,
+  workClient,
+  workLabel,
+  workProject,
+  workProjectMember,
+  workState,
+  workTask,
+  workTaskDependency,
+  workTaskLabel,
+  workTaskPerson,
+  workTeam,
+  workTeamMember,
+} from "../src/lib/db/schema";
 import { CATEGORY_STATUS, type StateCategory } from "../src/modules/work/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -14,13 +32,55 @@ const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:
 // The content workflow, named as a Vietnamese team would name it.
 // The demo teams' content workflow (the app ships none: teams make theirs in the library).
 const CONTENT_WORKFLOW: { key: string; category: StateCategory }[] = (
-  [["backlog", "backlog"], ["brief", "todo"], ["ideation", "in_progress"], ["script", "in_progress"], ["design", "in_progress"], ["edit", "in_progress"], ["internal_review", "in_review"], ["client_review", "in_review"], ["scheduled", "in_progress"], ["published", "done"], ["reported", "done"], ["cancelled", "cancelled"]] as const
+  [
+    ["backlog", "backlog"],
+    ["brief", "todo"],
+    ["ideation", "in_progress"],
+    ["script", "in_progress"],
+    ["design", "in_progress"],
+    ["edit", "in_progress"],
+    ["internal_review", "in_review"],
+    ["client_review", "in_review"],
+    ["scheduled", "in_progress"],
+    ["published", "done"],
+    ["reported", "done"],
+    ["cancelled", "cancelled"],
+  ] as const
 ).map(([key, category]) => ({ key, category }));
-const STATE_NAMES: Record<string, string> = { backlog: "Tồn đọng", brief: "Brief", ideation: "Lên ý tưởng", script: "Kịch bản / Nội dung", design: "Thiết kế / Quay", edit: "Dựng / Chỉnh sửa", internal_review: "Duyệt nội bộ", client_review: "Khách duyệt", scheduled: "Đã lên lịch", published: "Đã đăng", reported: "Đã báo cáo", cancelled: "Đã hủy" };
+const STATE_NAMES: Record<string, string> = {
+  backlog: "Tồn đọng",
+  brief: "Brief",
+  ideation: "Lên ý tưởng",
+  script: "Kịch bản / Nội dung",
+  design: "Thiết kế / Quay",
+  edit: "Dựng / Chỉnh sửa",
+  internal_review: "Duyệt nội bộ",
+  client_review: "Khách duyệt",
+  scheduled: "Đã lên lịch",
+  published: "Đã đăng",
+  reported: "Đã báo cáo",
+  cancelled: "Đã hủy",
+};
 
 const TEAMS = [
-  { key: "VID", name: "Sản xuất Video", description: "TVC, video thương hiệu, hậu kỳ", entity: "SZM", department: "VID", lead: "long.dang@suzu.group", members: ["tam.bui@suzu.group", "huy.ho@suzu.group", "linh.do@suzu.group", "name:Ngô Bảo Anh"] },
-  { key: "CRS", name: "Sáng tạo & Social", description: "Thiết kế, nội dung và vận hành kênh social cho khách hàng", entity: "SZC", department: null, lead: "chi.duong@suzu.group", members: ["khoi.ly@suzu.group", "anh.trinh@suzu.group", "duc.phan@suzu.group", "duyen.huynh@suzu.group"] },
+  {
+    key: "VID",
+    name: "Sản xuất Video",
+    description: "TVC, video thương hiệu, hậu kỳ",
+    entity: "SZM",
+    department: "VID",
+    lead: "long.dang@suzu.group",
+    members: ["tam.bui@suzu.group", "huy.ho@suzu.group", "linh.do@suzu.group", "name:Ngô Bảo Anh"],
+  },
+  {
+    key: "CRS",
+    name: "Sáng tạo & Social",
+    description: "Thiết kế, nội dung và vận hành kênh social cho khách hàng",
+    entity: "SZC",
+    department: null,
+    lead: "chi.duong@suzu.group",
+    members: ["khoi.ly@suzu.group", "anh.trinh@suzu.group", "duc.phan@suzu.group", "duyen.huynh@suzu.group"],
+  },
 ] as const;
 
 const CLIENTS = [
@@ -42,11 +102,66 @@ const LABELS = [
 
 type ProjectSeed = { code: string; team: "VID" | "CRS"; name: string; description: string; client: string | null; visibility: "entity" | "team" | "private"; lead: string; start: number; due: number | null; members: string[] };
 const PROJECTS: ProjectSeed[] = [
-  { code: "tvc", team: "VID", name: "TVC Tết 2027 — Sữa Mộc An", description: "TVC 30 giây + bản cắt 15 giây và 6 giây cho mùa Tết", client: "MOCAN", visibility: "team", lead: "tam.bui@suzu.group", start: -19, due: 70, members: ["long.dang@suzu.group", "huy.ho@suzu.group", "linh.do@suzu.group", "khoi.ly@suzu.group"] },
-  { code: "brand", team: "VID", name: "Video thương hiệu SuZu Group", description: "Phim giới thiệu tập đoàn cho website và tuyển dụng", client: null, visibility: "entity", lead: "long.dang@suzu.group", start: -40, due: 25, members: ["huy.ho@suzu.group"] },
-  { code: "pitch", team: "VID", name: "Pitch Ngân hàng Đại Việt (bảo mật)", description: "Hồ sơ dự thầu sản xuất video 2027 — chỉ thành viên dự án được xem", client: "DAIVIET", visibility: "private", lead: "long.dang@suzu.group", start: -6, due: 12, members: ["tam.bui@suzu.group"] },
-  { code: "retainer", team: "CRS", name: "Retainer social tháng 9 — Trà Lá Xanh", description: "12 bài Facebook, 8 video TikTok, báo cáo cuối tháng", client: "TLX", visibility: "team", lead: "duc.phan@suzu.group", start: -19, due: 10, members: ["duyen.huynh@suzu.group", "khoi.ly@suzu.group", "anh.trinh@suzu.group"] },
-  { code: "kids", team: "CRS", name: "Bộ nhận diện Mộc An Kids", description: "Logo, bao bì, key visual ra mắt nhãn hàng", client: "MOCAN-KIDS", visibility: "team", lead: "chi.duong@suzu.group", start: -30, due: 35, members: ["khoi.ly@suzu.group", "anh.trinh@suzu.group", "tam.bui@suzu.group"] },
+  {
+    code: "tvc",
+    team: "VID",
+    name: "TVC Tết 2027 — Sữa Mộc An",
+    description: "TVC 30 giây + bản cắt 15 giây và 6 giây cho mùa Tết",
+    client: "MOCAN",
+    visibility: "team",
+    lead: "tam.bui@suzu.group",
+    start: -19,
+    due: 70,
+    members: ["long.dang@suzu.group", "huy.ho@suzu.group", "linh.do@suzu.group", "khoi.ly@suzu.group"],
+  },
+  {
+    code: "brand",
+    team: "VID",
+    name: "Video thương hiệu SuZu Group",
+    description: "Phim giới thiệu tập đoàn cho website và tuyển dụng",
+    client: null,
+    visibility: "entity",
+    lead: "long.dang@suzu.group",
+    start: -40,
+    due: 25,
+    members: ["huy.ho@suzu.group"],
+  },
+  {
+    code: "pitch",
+    team: "VID",
+    name: "Pitch Ngân hàng Đại Việt (bảo mật)",
+    description: "Hồ sơ dự thầu sản xuất video 2027 — chỉ thành viên dự án được xem",
+    client: "DAIVIET",
+    visibility: "private",
+    lead: "long.dang@suzu.group",
+    start: -6,
+    due: 12,
+    members: ["tam.bui@suzu.group"],
+  },
+  {
+    code: "retainer",
+    team: "CRS",
+    name: "Retainer social tháng 9 — Trà Lá Xanh",
+    description: "12 bài Facebook, 8 video TikTok, báo cáo cuối tháng",
+    client: "TLX",
+    visibility: "team",
+    lead: "duc.phan@suzu.group",
+    start: -19,
+    due: 10,
+    members: ["duyen.huynh@suzu.group", "khoi.ly@suzu.group", "anh.trinh@suzu.group"],
+  },
+  {
+    code: "kids",
+    team: "CRS",
+    name: "Bộ nhận diện Mộc An Kids",
+    description: "Logo, bao bì, key visual ra mắt nhãn hàng",
+    client: "MOCAN-KIDS",
+    visibility: "team",
+    lead: "chi.duong@suzu.group",
+    start: -30,
+    due: 35,
+    members: ["khoi.ly@suzu.group", "anh.trinh@suzu.group", "tam.bui@suzu.group"],
+  },
 ];
 
 type TaskSeed = {
@@ -71,19 +186,55 @@ type TaskSeed = {
   description?: string;
 };
 
-const LONG = "long.dang@suzu.group", TAM = "tam.bui@suzu.group", HUY = "huy.ho@suzu.group", LINH = "linh.do@suzu.group", ANH_Q = "name:Ngô Bảo Anh";
-const CHI = "chi.duong@suzu.group", KHOI = "khoi.ly@suzu.group", ANH = "anh.trinh@suzu.group", DUC = "duc.phan@suzu.group", DUYEN = "duyen.huynh@suzu.group";
+const LONG = "long.dang@suzu.group",
+  TAM = "tam.bui@suzu.group",
+  HUY = "huy.ho@suzu.group",
+  LINH = "linh.do@suzu.group",
+  ANH_Q = "name:Ngô Bảo Anh";
+const CHI = "chi.duong@suzu.group",
+  KHOI = "khoi.ly@suzu.group",
+  ANH = "anh.trinh@suzu.group",
+  DUC = "duc.phan@suzu.group",
+  DUYEN = "duyen.huynh@suzu.group";
 
 const TASKS: TaskSeed[] = [
   // TVC Tết — mid-production, with a dependency chain and a few late items.
   { ref: "tvc-brief", project: "tvc", title: "Nhận brief và chốt thông điệp với khách", state: "reported", who: TAM, due: -16, priority: 2 },
   { ref: "tvc-idea", project: "tvc", title: "Ba hướng ý tưởng TVC Tết", state: "published", who: TAM, due: -10, priority: 2, blockedBy: ["tvc-brief"] },
-  { ref: "tvc-script", project: "tvc", title: "Kịch bản phân cảnh bản 30 giây", state: "client_review", who: TAM, due: -2, priority: 1, labels: ["Chờ khách"], blockedBy: ["tvc-idea"], description: "Khách đang xem bản v2. Cần chốt trước khi đặt bối cảnh.", links: [["https://drive.google.com/drive/folders/demo-tvc-tet-script", "Thư mục kịch bản (Drive)"]] },
+  {
+    ref: "tvc-script",
+    project: "tvc",
+    title: "Kịch bản phân cảnh bản 30 giây",
+    state: "client_review",
+    who: TAM,
+    due: -2,
+    priority: 1,
+    labels: ["Chờ khách"],
+    blockedBy: ["tvc-idea"],
+    description: "Khách đang xem bản v2. Cần chốt trước khi đặt bối cảnh.",
+    links: [["https://drive.google.com/drive/folders/demo-tvc-tet-script", "Thư mục kịch bản (Drive)"]],
+  },
   { ref: "tvc-story", project: "tvc", title: "Storyboard 24 khung", state: "design", who: KHOI, due: 3, priority: 2, estimate: 960, blockedBy: ["tvc-script"], with: [TAM] },
   { ref: "tvc-cast", project: "tvc", title: "Casting gia đình ba thế hệ", state: "ideation", who: LONG, due: 5, priority: 2 },
   { ref: "tvc-location", project: "tvc", title: "Khảo sát bối cảnh nhà cổ Đường Lâm", state: "brief", who: ANH_Q, due: 6, priority: 3, labels: ["Ngoại cảnh"] },
   { ref: "tvc-budget", project: "tvc", title: "Dự toán sản xuất gửi khách duyệt", state: "internal_review", who: LONG, due: -1, priority: 1, labels: ["Gấp"] },
-  { ref: "tvc-shoot", project: "tvc", title: "Quay chính (2 ngày)", state: "backlog", who: TAM, due: 21, start: 20, priority: 2, labels: ["Ngoại cảnh"], blockedBy: ["tvc-story", "tvc-cast", "tvc-location"], checklist: [["Thuê máy quay và ánh sáng", false], ["Giấy phép quay tại di tích", false], ["Bảo hiểm đoàn phim", false]] },
+  {
+    ref: "tvc-shoot",
+    project: "tvc",
+    title: "Quay chính (2 ngày)",
+    state: "backlog",
+    who: TAM,
+    due: 21,
+    start: 20,
+    priority: 2,
+    labels: ["Ngoại cảnh"],
+    blockedBy: ["tvc-story", "tvc-cast", "tvc-location"],
+    checklist: [
+      ["Thuê máy quay và ánh sáng", false],
+      ["Giấy phép quay tại di tích", false],
+      ["Bảo hiểm đoàn phim", false],
+    ],
+  },
   { ref: "tvc-shoot-1", project: "tvc", title: "Ngày quay 1: cảnh sum họp", state: "backlog", who: TAM, due: 20, parent: "tvc-shoot" },
   { ref: "tvc-shoot-2", project: "tvc", title: "Ngày quay 2: cảnh sản phẩm", state: "backlog", who: ANH_Q, due: 21, parent: "tvc-shoot" },
   { ref: "tvc-edit", project: "tvc", title: "Dựng bản offline 30 giây", state: "backlog", who: HUY, due: 30, estimate: 1440, labels: ["Hậu kỳ"], blockedBy: ["tvc-shoot"] },
@@ -96,7 +247,23 @@ const TASKS: TaskSeed[] = [
   { ref: "brand-script", project: "brand", title: "Kịch bản phim giới thiệu tập đoàn", state: "reported", who: LONG, due: -30 },
   { ref: "brand-interview", project: "brand", title: "Phỏng vấn ban lãnh đạo (3 người)", state: "published", who: TAM, due: -18 },
   { ref: "brand-broll", project: "brand", title: "Quay b-roll văn phòng ba công ty", state: "published", who: ANH_Q, due: -12, labels: ["Ngoại cảnh"] },
-  { ref: "brand-edit", project: "brand", title: "Dựng bản 3 phút", state: "edit", who: HUY, due: 2, priority: 2, estimate: 1200, labels: ["Hậu kỳ"], checklist: [["Bản dựng thô", true], ["Chèn phỏng vấn", true], ["Đồ họa tên và chức danh", false], ["Phụ đề Việt – Anh", false]] },
+  {
+    ref: "brand-edit",
+    project: "brand",
+    title: "Dựng bản 3 phút",
+    state: "edit",
+    who: HUY,
+    due: 2,
+    priority: 2,
+    estimate: 1200,
+    labels: ["Hậu kỳ"],
+    checklist: [
+      ["Bản dựng thô", true],
+      ["Chèn phỏng vấn", true],
+      ["Đồ họa tên và chức danh", false],
+      ["Phụ đề Việt – Anh", false],
+    ],
+  },
   { ref: "brand-sub", project: "brand", title: "Phụ đề song ngữ", state: "brief", who: LINH, due: 6, parent: "brand-edit" },
   { ref: "brand-gfx", project: "brand", title: "Đồ họa mở đầu và kết", state: "design", who: LINH, due: 1, parent: "brand-edit", priority: 2 },
   { ref: "brand-hr", project: "brand", title: "Bản cắt 60 giây cho trang tuyển dụng", state: "backlog", who: HUY, due: 15, channel: "website", format: "short_video", blockedBy: ["brand-edit"] },
@@ -124,7 +291,21 @@ const TASKS: TaskSeed[] = [
   { ref: "ret-tt-1", project: "retainer", title: "TikTok: 3 cách uống trà không mất ngủ", state: "published", who: DUC, due: -9, channel: "tiktok", format: "short_video", labels: ["Social"] },
   { ref: "ret-tt-2", project: "retainer", title: "TikTok: Hậu trường đồi chè", state: "edit", who: DUC, due: -1, priority: 2, channel: "tiktok", format: "short_video", labels: ["Social"], with: [HUY] },
   { ref: "ret-tt-3", project: "retainer", title: "TikTok: Thử thách pha trà 15 giây", state: "ideation", who: DUC, due: 6, channel: "tiktok", format: "short_video", labels: ["Social"] },
-  { ref: "ret-kol", project: "retainer", title: "Chọn 3 KOL ẩm thực cho đợt ra mắt trà ổi hồng", state: "internal_review", who: DUC, due: 0, priority: 2, labels: ["KOL"], checklist: [["Danh sách dài 10 KOL", true], ["Báo giá", true], ["Khách chọn 3", false]] },
+  {
+    ref: "ret-kol",
+    project: "retainer",
+    title: "Chọn 3 KOL ẩm thực cho đợt ra mắt trà ổi hồng",
+    state: "internal_review",
+    who: DUC,
+    due: 0,
+    priority: 2,
+    labels: ["KOL"],
+    checklist: [
+      ["Danh sách dài 10 KOL", true],
+      ["Báo giá", true],
+      ["Khách chọn 3", false],
+    ],
+  },
   { ref: "ret-kol-brief", project: "retainer", title: "Brief cho KOL", state: "brief", who: DUYEN, due: 4, parent: "ret-kol", labels: ["KOL"] },
   { ref: "ret-banner", project: "retainer", title: "Banner website ưu đãi cuối tháng", state: "design", who: ANH, due: 7, channel: "website", format: "banner", labels: ["Thiết kế"] },
   { ref: "ret-ig", project: "retainer", title: "Story Instagram: bình chọn vị trà mới", state: "brief", who: ANH, due: 9, channel: "instagram", format: "story", labels: ["Social"] },
@@ -152,7 +333,16 @@ const TASKS: TaskSeed[] = [
 ];
 
 export async function seedWork(db: Db, today: string): Promise<string> {
-  const [existing] = await db.select({ id: workTeam.id }).from(workTeam).where(inArray(workTeam.key, TEAMS.map((team) => team.key))).limit(1);
+  const [existing] = await db
+    .select({ id: workTeam.id })
+    .from(workTeam)
+    .where(
+      inArray(
+        workTeam.key,
+        TEAMS.map((team) => team.key),
+      ),
+    )
+    .limit(1);
   if (existing) return "no work data (demo teams already exist)";
 
   const people = await db.select({ id: person.id, email: person.workEmail, name: person.fullName }).from(person);
@@ -169,31 +359,60 @@ export async function seedWork(db: Db, today: string): Promise<string> {
     const teamEntity = new Map<string, string | null>();
     const states = new Map<string, { id: string; category: StateCategory }>();
     for (const team of TEAMS) {
-      const [row] = await tx.insert(workTeam).values({ key: team.key, name: team.name, description: team.description, entityId: entities.get(team.entity) ?? null, departmentId: team.department ? (departments.get(team.department) ?? null) : null, defaultVisibility: "team" }).returning();
+      const [row] = await tx
+        .insert(workTeam)
+        .values({ key: team.key, name: team.name, description: team.description, entityId: entities.get(team.entity) ?? null, departmentId: team.department ? (departments.get(team.department) ?? null) : null, defaultVisibility: "team" })
+        .returning();
       teamIds.set(team.key, row.id);
       teamEntity.set(team.key, row.entityId);
-      const created = await tx.insert(workState).values(CONTENT_WORKFLOW.map((state, index) => ({ teamId: row.id, name: STATE_NAMES[state.key], category: state.category, sortOrder: (index + 1) * 10 }))).returning();
+      const created = await tx
+        .insert(workState)
+        .values(CONTENT_WORKFLOW.map((state, index) => ({ teamId: row.id, name: STATE_NAMES[state.key], category: state.category, sortOrder: (index + 1) * 10 })))
+        .returning();
       CONTENT_WORKFLOW.forEach((state, index) => states.set(`${team.key}:${state.key}`, { id: created[index].id, category: state.category }));
       await tx.insert(workTeamMember).values([{ teamId: row.id, personId: personId(team.lead), role: "lead" }, ...team.members.map((member) => ({ teamId: row.id, personId: personId(member), role: "member" }))]);
     }
 
     const clientIds = new Map<string, string>();
     for (const client of CLIENTS) {
-      const [row] = await tx.insert(workClient).values({ code: client.code, name: client.name, kind: client.kind, parentId: client.parent ? clientIds.get(client.parent) : null }).onConflictDoUpdate({ target: workClient.code, set: { name: client.name } }).returning();
+      const [row] = await tx
+        .insert(workClient)
+        .values({ code: client.code, name: client.name, kind: client.kind, parentId: client.parent ? clientIds.get(client.parent) : null })
+        .onConflictDoUpdate({ target: workClient.code, set: { name: client.name } })
+        .returning();
       clientIds.set(client.code, row.id);
     }
     const labelIds = new Map<string, string>();
     for (const label of LABELS) {
-      const [row] = await tx.insert(workLabel).values({ teamId: label.team ? teamIds.get(label.team)! : null, name: label.name, color: label.color }).returning();
+      const [row] = await tx
+        .insert(workLabel)
+        .values({ teamId: label.team ? teamIds.get(label.team)! : null, name: label.name, color: label.color })
+        .returning();
       labelIds.set(label.name, row.id);
     }
 
     const projects = new Map<string, { id: string; team: "VID" | "CRS"; clientId: string | null }>();
     for (const project of PROJECTS) {
       const clientId = project.client ? clientIds.get(project.client)! : null;
-      const [row] = await tx.insert(workProject).values({ teamId: teamIds.get(project.team)!, entityId: teamEntity.get(project.team) ?? null, name: project.name, description: project.description, clientId, visibility: project.visibility, leadPersonId: personId(project.lead), startDate: addDays(today, project.start), dueDate: project.due === null ? null : addDays(today, project.due), createdByPersonId: personId(project.lead) }).returning();
+      const [row] = await tx
+        .insert(workProject)
+        .values({
+          teamId: teamIds.get(project.team)!,
+          entityId: teamEntity.get(project.team) ?? null,
+          name: project.name,
+          description: project.description,
+          clientId,
+          visibility: project.visibility,
+          leadPersonId: personId(project.lead),
+          startDate: addDays(today, project.start),
+          dueDate: project.due === null ? null : addDays(today, project.due),
+          createdByPersonId: personId(project.lead),
+        })
+        .returning();
       projects.set(project.code, { id: row.id, team: project.team, clientId });
-      await tx.insert(workProjectMember).values([{ projectId: row.id, personId: personId(project.lead), role: "lead" }, ...project.members.filter((member) => member !== project.lead).map((member) => ({ projectId: row.id, personId: personId(member), role: "member" }))]);
+      await tx
+        .insert(workProjectMember)
+        .values([{ projectId: row.id, personId: personId(project.lead), role: "lead" }, ...project.members.filter((member) => member !== project.lead).map((member) => ({ projectId: row.id, personId: personId(member), role: "member" }))]);
     }
 
     const taskIds = new Map<string, string>();
@@ -211,7 +430,27 @@ export async function seedWork(db: Db, today: string): Promise<string> {
       const created = new Date(Date.parse(`${addDays(today, Math.min(seed.due ?? 0, 0) - 14)}T02:00:00Z`));
       const [row] = await tx
         .insert(task)
-        .values({ kind: "work", title: seed.title, description: seed.description ?? null, status, assigneePersonId: assignee, requesterPersonId: creator, createdByPersonId: creator, dueDate: due, startDate: seed.start === undefined ? null : addDays(today, seed.start), estimateMinutes: seed.estimate ?? null, priority: seed.priority ?? null, entityId: teamEntity.get(teamKey) ?? null, parentTaskId: seed.parent ? taskIds.get(seed.parent)! : null, contextType: project ? "work_project" : null, contextId: project?.id ?? null, completedAt: finished, completedByPersonId: finished ? assignee : null, createdAt: created, updatedAt: finished ?? created })
+        .values({
+          kind: "work",
+          title: seed.title,
+          description: seed.description ?? null,
+          status,
+          assigneePersonId: assignee,
+          requesterPersonId: creator,
+          createdByPersonId: creator,
+          dueDate: due,
+          startDate: seed.start === undefined ? null : addDays(today, seed.start),
+          estimateMinutes: seed.estimate ?? null,
+          priority: seed.priority ?? null,
+          entityId: teamEntity.get(teamKey) ?? null,
+          parentTaskId: seed.parent ? taskIds.get(seed.parent)! : null,
+          contextType: project ? "work_project" : null,
+          contextId: project?.id ?? null,
+          completedAt: finished,
+          completedByPersonId: finished ? assignee : null,
+          createdAt: created,
+          updatedAt: finished ?? created,
+        })
         .returning();
       taskIds.set(seed.ref, row.id);
       const number = (numbers.get(teamKey) ?? 0) + 1;
@@ -236,7 +475,11 @@ export async function seedWork(db: Db, today: string): Promise<string> {
       if (seed.blockedBy?.length) await tx.insert(workTaskDependency).values(seed.blockedBy.map((ref) => ({ blockerTaskId: taskIds.get(ref)!, blockedTaskId: row.id, type: "blocks", createdByPersonId: creator })));
       await tx.insert(workActivity).values({ taskId: row.id, actorPersonId: creator, type: "created", toValue: { title: seed.title, state: STATE_NAMES[seed.state] }, createdAt: created });
     }
-    for (const [teamKey, last] of numbers) await tx.update(workTeam).set({ taskSeq: last }).where(eq(workTeam.id, teamIds.get(teamKey)!));
+    for (const [teamKey, last] of numbers)
+      await tx
+        .update(workTeam)
+        .set({ taskSeq: last })
+        .where(eq(workTeam.id, teamIds.get(teamKey)!));
     return `${TEAMS.length} work teams, ${CLIENTS.length} clients and brands, ${PROJECTS.length} projects (one private) and ${TASKS.length} tasks`;
   });
 }
@@ -276,7 +519,13 @@ const CONVERSATIONS: { title: string; followers?: string[]; comments: CommentSee
     title: "Bao bì hộp 110ml — 4 vị",
     followers: [DUC],
     comments: [
-      { by: CHI, text: "Nhà in yêu cầu file theo khuôn bế mới: https://drive.google.com/file/d/demo-kids-dieline/view. {@} {@} cập nhật trước khi làm tiếp hai vị còn lại.", mentions: [KHOI, ANH], daysAgo: 3, reactions: { "✅": [KHOI, ANH] } },
+      {
+        by: CHI,
+        text: "Nhà in yêu cầu file theo khuôn bế mới: https://drive.google.com/file/d/demo-kids-dieline/view. {@} {@} cập nhật trước khi làm tiếp hai vị còn lại.",
+        mentions: [KHOI, ANH],
+        daysAgo: 3,
+        reactions: { "✅": [KHOI, ANH] },
+      },
       { by: ANH, text: "Em đã chuyển vị chuối sang khuôn mới ạ.", daysAgo: 1, replyTo: 0 },
     ],
   },
@@ -294,7 +543,11 @@ export async function seedWorkConversations(db: Db, today: string): Promise<stri
   let comments = 0;
   await db.transaction(async (tx) => {
     for (const conversation of CONVERSATIONS) {
-      const [row] = await tx.select({ id: task.id }).from(task).where(and(eq(task.kind, "work"), eq(task.title, conversation.title))).limit(1);
+      const [row] = await tx
+        .select({ id: task.id })
+        .from(task)
+        .where(and(eq(task.kind, "work"), eq(task.title, conversation.title)))
+        .limit(1);
       if (!row) continue;
       const inserted: string[] = [];
       const following = new Set(conversation.followers ?? []);
@@ -305,7 +558,15 @@ export async function seedWorkConversations(db: Db, today: string): Promise<stri
         const at = new Date(Date.parse(`${addDays(today, -seed.daysAgo)}T0${2 + inserted.length}:15:00Z`));
         const [comment] = await tx
           .insert(workComment)
-          .values({ taskId: row.id, authorPersonId: find(seed.by).id, parentId: seed.replyTo === undefined ? null : inserted[seed.replyTo], body, mentions: mentioned.map((person) => person.id), reactions: Object.fromEntries(Object.entries(seed.reactions ?? {}).map(([emoji, who]) => [emoji, who.map((ref) => find(ref).id)])), createdAt: at })
+          .values({
+            taskId: row.id,
+            authorPersonId: find(seed.by).id,
+            parentId: seed.replyTo === undefined ? null : inserted[seed.replyTo],
+            body,
+            mentions: mentioned.map((person) => person.id),
+            reactions: Object.fromEntries(Object.entries(seed.reactions ?? {}).map(([emoji, who]) => [emoji, who.map((ref) => find(ref).id)])),
+            createdAt: at,
+          })
           .returning({ id: workComment.id });
         inserted.push(comment.id);
         await tx.insert(workActivity).values({ taskId: row.id, actorPersonId: find(seed.by).id, type: "commented", toValue: { id: comment.id }, createdAt: at });
@@ -313,7 +574,10 @@ export async function seedWorkConversations(db: Db, today: string): Promise<stri
         comments += 1;
       }
       // Commenters and mentioned people follow; someone already on the task keeps their role.
-      await tx.insert(workTaskPerson).values([...following].map((ref) => ({ taskId: row.id, personId: find(ref).id, role: "follower" }))).onConflictDoNothing();
+      await tx
+        .insert(workTaskPerson)
+        .values([...following].map((ref) => ({ taskId: row.id, personId: find(ref).id, role: "follower" })))
+        .onConflictDoNothing();
     }
   });
   return `${comments} comments on ${CONVERSATIONS.length} tasks (mentions, replies, reactions, followers)`;

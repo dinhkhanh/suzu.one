@@ -59,7 +59,9 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
             <ListItem key={row.personId}>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">
-                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.fullName}
+                  </RecordLink>
                   {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
                 </span>
                 <span className="flex flex-wrap items-center gap-1.5">
@@ -91,7 +93,9 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
               {presence.rows.map((row) => (
                 <TableRow key={row.personId}>
                   <TableCell className="font-medium">
-                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                    <RecordLink kind="person" id={row.personId}>
+                      {row.fullName}
+                    </RecordLink>
                     {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
                   </TableCell>
                   <TableCell>
@@ -105,7 +109,9 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
                   </TableCell>
                   <TableCell className="text-left font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{times(row)}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink>
+                    <RecordLink kind="unit" id={row.departmentId}>
+                      {row.departmentName}
+                    </RecordLink>
                   </TableCell>
                 </TableRow>
               ))}

@@ -19,7 +19,11 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {}
 vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
 
 // Each action's pipeline is kept as it was built, so its rule can be asked and its audit payload read here.
-type Pipeline = { name: string; authorize: (user: unknown, input: Record<string, unknown>) => boolean | Promise<boolean>; run: (context: { user: unknown; input: Record<string, unknown> }) => Promise<{ data: unknown; audit: Record<string, unknown> }> };
+type Pipeline = {
+  name: string;
+  authorize: (user: unknown, input: Record<string, unknown>) => boolean | Promise<boolean>;
+  run: (context: { user: unknown; input: Record<string, unknown> }) => Promise<{ data: unknown; audit: Record<string, unknown> }>;
+};
 const pipelines = new Map<string, Pipeline>();
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -58,12 +62,28 @@ import { setTaskLine, taskLineOptions } from "./task-line";
 import { openableProjectIds } from "./views";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "tam" | "lan" | "huy" | "ke" | "team" | "teamC" | "retainer" | "tvc" | "house" | "other" | "private", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const principalOf = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 const userOf = (personId: string, grants: Principal["grants"] = []) => ({ person: { id: personId, primaryEntityId: ids.szm }, principal: principalOf(personId, grants) }) as never;
 const finance = () => principalOf(ids.ke, [{ role: "finance", scope: { type: "entity", id: ids.szm } }]);
-const words = { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals: { promised: number; accepted: number }) => `${totals.accepted}/${totals.promised}`, described: "Theo mô tả" };
+const words = {
+  title: "Biên bản nghiệm thu",
+  scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" },
+  promised: "Cam kết",
+  delivered: "Đã giao",
+  accepted: "Đã duyệt",
+  totals: (totals: { promised: number; accepted: number }) => `${totals.accepted}/${totals.promised}`,
+  described: "Theo mô tả",
+};
 const today = todayInVietnam();
 const thisMonth = monthOf(today);
 const lastMonth = addMonths(thisMonth, -1);
@@ -73,7 +93,19 @@ let done = "";
 async function scanFor(ownerId: string, fileName = "bien-ban.pdf"): Promise<string> {
   const [file] = await db()
     .insert(schema.storedFile)
-    .values({ bucket: "test", objectPath: `project_acceptance/${ownerId}-${fileName}`, fileName, contentType: "application/pdf", sizeBytes: 1000, ownerType: "project_acceptance", ownerId, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.lan })
+    .values({
+      bucket: "test",
+      objectPath: `project_acceptance/${ownerId}-${fileName}`,
+      fileName,
+      contentType: "application/pdf",
+      sizeBytes: 1000,
+      ownerType: "project_acceptance",
+      ownerId,
+      entityId: ids.szm,
+      tier: "personal",
+      status: "ready",
+      uploadedByPersonId: ids.lan,
+    })
     .returning();
   return file.id;
 }
@@ -88,8 +120,17 @@ beforeAll(async () => {
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   ids.szm = szm.id;
   ids.szc = szc.id;
-  for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["lan", "Lan Tran"], ["huy", "Huy Ho"], ["ke", "Ke Toan"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["long", "Long Dang"],
+    ["tam", "Tam Bui"],
+    ["lan", "Lan Tran"],
+    ["huy", "Huy Ho"],
+    ["ke", "Ke Toan"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   await db().insert(schema.roleAssignment).values({ personId: ids.ke, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" });
@@ -97,7 +138,8 @@ beforeAll(async () => {
   ids.team = team.id;
   for (const personId of [ids.tam, ids.huy, ids.lan]) await setTeamMember(team.id, personId, "member");
   done = (await listStates([team.id])).find((state) => state.category === "done")!.id;
-  const project = (name: string, startDate: string | null = null, visibility: "team" | "private" = "team") => createProject({ teamId: team.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: ids.tam, startDate, dueDate: null }, ids.long);
+  const project = (name: string, startDate: string | null = null, visibility: "team" | "private" = "team") =>
+    createProject({ teamId: team.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: ids.tam, startDate, dueDate: null }, ids.long);
   // The retainer began two months ago; its terms are only entered today — the cut-over.
   ids.retainer = (await project("Retainer Fanpage", `${firstMonth}-01`)).id;
   ids.tvc = (await project("TVC Tết")).id;
@@ -144,7 +186,10 @@ describe("a retainer month can be worked (PJM-07)", () => {
     expect(await fails(makeMissedPeriod(ids.retainer, firstMonth, today))).toBe("retainer_month_exists");
     const periods = await listPeriods(retainer, false);
     expect(periods.map((view) => view.period.month)).toEqual([thisMonth, lastMonth, firstMonth]);
-    expect(periods.at(-1)!.lines.map((line) => [line.title, line.quantity])).toEqual([["Bài đăng Facebook", 4], ["Video TikTok", 2]]);
+    expect(periods.at(-1)!.lines.map((line) => [line.title, line.quantity])).toEqual([
+      ["Bài đăng Facebook", 4],
+      ["Video TikTok", 2],
+    ]);
     expect(await listMissedMonths(retainer, today)).toEqual([]);
     // The job finds the month made and makes nothing more.
     expect((await runRetainers(today)).periods).toBe(0);
@@ -218,8 +263,14 @@ describe("a retainer month can be worked (PJM-07)", () => {
     const retainer = await retainerRow();
     // Only this month stays open: 600 minutes allowed.
     await db().update(schema.projectRetainerPeriod).set({ status: "closed" }).where(eq(schema.projectRetainerPeriod.retainerId, retainer.id));
-    await db().update(schema.projectRetainerPeriod).set({ status: "open" }).where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, thisMonth)));
-    const log = (minutes: number) => db().insert(schema.timeEntry).values({ personId: ids.huy, date: `${thisMonth}-01`, weekStart: `${thisMonth}-01`, projectId: ids.retainer, minutes });
+    await db()
+      .update(schema.projectRetainerPeriod)
+      .set({ status: "open" })
+      .where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, thisMonth)));
+    const log = (minutes: number) =>
+      db()
+        .insert(schema.timeEntry)
+        .values({ personId: ids.huy, date: `${thisMonth}-01`, weekStart: `${thisMonth}-01`, projectId: ids.retainer, minutes });
     await log(400);
     expect(await sendQuotaAlerts()).toEqual({ alerts: 0 });
     await log(90);
@@ -233,7 +284,10 @@ describe("a retainer month can be worked (PJM-07)", () => {
     expect(await sendQuotaAlerts()).toEqual({ alerts: 0 });
     [lan, tam] = [await noticesOf(ids.lan, "projects.retainer_hours_alert"), await noticesOf(ids.tam, "projects.retainer_hours_alert")];
     expect([lan.length, tam.length]).toEqual([2, 2]);
-    const [period] = await db().select().from(schema.projectRetainerPeriod).where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, thisMonth)));
+    const [period] = await db()
+      .select()
+      .from(schema.projectRetainerPeriod)
+      .where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, thisMonth)));
     expect(period.alerted.filter((key) => key.startsWith("hours:")).sort()).toEqual(["hours:100", "hours:80"]);
     // A month without an allowance never alerts on hours, however much is logged.
     await db().update(schema.projectRetainerPeriod).set({ minutesAllowance: null, alerted: [] }).where(eq(schema.projectRetainerPeriod.id, period.id));
@@ -278,7 +332,10 @@ describe("billing and acceptance: nothing fails silently (PJM-08)", () => {
   });
 
   it("corrects the amount of an item that is not invoiced, with a reason — the figures on the item, never in the audit log", async () => {
-    const [item] = await db().select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.projectId, ids.tvc), eq(schema.projectBillingItem.source, "milestone")));
+    const [item] = await db()
+      .select()
+      .from(schema.projectBillingItem)
+      .where(and(eq(schema.projectBillingItem.projectId, ids.tvc), eq(schema.projectBillingItem.source, "milestone")));
     expect(await fails(correctBillingAmount(item.id, { amountVnd: 40_000_000, reason: "như cũ" }, ids.ke))).toBe("billing_amount_unchanged");
 
     const { audit } = await pipelines.get("projects.billing.correct_amount")!.run({ user: userOf(ids.ke, finance().grants), input: { itemId: item.id, amountVnd: 45_000_000, reason: "Phụ lục 01 tăng đợt tạm ứng" } });
@@ -349,11 +406,13 @@ describe("billing and acceptance: nothing fails silently (PJM-08)", () => {
   });
 
   it("sums what waits in the queue in Postgres, cut to the reader's entities", async () => {
-    await db().insert(schema.projectBillingItem).values([
-      { projectId: ids.tvc, entityId: ids.szm, source: "manual", description: "Chi phí in ấn", amountVnd: 2_500_000_000 },
-      { projectId: ids.tvc, entityId: ids.szm, source: "manual", description: "Chưa có số tiền", amountVnd: null },
-      { projectId: ids.other, entityId: ids.szc, source: "manual", description: "Của pháp nhân khác", amountVnd: 9_000_000 },
-    ]);
+    await db()
+      .insert(schema.projectBillingItem)
+      .values([
+        { projectId: ids.tvc, entityId: ids.szm, source: "manual", description: "Chi phí in ấn", amountVnd: 2_500_000_000 },
+        { projectId: ids.tvc, entityId: ids.szm, source: "manual", description: "Chưa có số tiền", amountVnd: null },
+        { projectId: ids.other, entityId: ids.szc, source: "manual", description: "Của pháp nhân khác", amountVnd: 9_000_000 },
+      ]);
     // What the page used to add up over its rows, here over every row: the yardstick for the SQL sum.
     const ready = await db().select({ entityId: schema.projectBillingItem.entityId, amountVnd: schema.projectBillingItem.amountVnd }).from(schema.projectBillingItem).where(eq(schema.projectBillingItem.status, "ready"));
     const sumOf = (rows: typeof ready) => ({ count: rows.length, totalVnd: rows.reduce((sum, row) => sum + (row.amountVnd ?? 0), 0) });
@@ -402,7 +461,10 @@ describe("who may use the new paths", () => {
 
   it("a missed retainer month and a signed record's correction: the client side — the lead and the account manager", async () => {
     const [signed] = (await listAcceptances(ids.tvc)).filter((row) => row.status === "signed");
-    for (const [name, input] of [["projects.retainer.make_month", { projectId: ids.retainer, month: firstMonth }], ["projects.acceptance.correct_signed", { acceptanceId: signed.id }]] as const) {
+    for (const [name, input] of [
+      ["projects.retainer.make_month", { projectId: ids.retainer, month: firstMonth }],
+      ["projects.acceptance.correct_signed", { acceptanceId: signed.id }],
+    ] as const) {
       expect(await may(name, ids.lan, input), name).toBe(true);
       expect(await may(name, ids.tam, input), name).toBe(true);
       expect(await may(name, ids.huy, input), name).toBe(false);
@@ -470,7 +532,13 @@ describe("the biên bản that was issued is the one that is kept (CHR-01)", () 
     expect(await fileOf(signed.generatedFileId!)).toMatchObject({ ownerId: direct.id, status: "ready", deletedAt: null });
 
     // A refusal takes the file it stored back: signing a signed record leaves no stray paper.
-    const files = async () => (await db().select({ value: count() }).from(schema.storedFile).where(and(eq(schema.storedFile.ownerId, direct.id), eq(schema.storedFile.status, "ready"))))[0].value;
+    const files = async () =>
+      (
+        await db()
+          .select({ value: count() })
+          .from(schema.storedFile)
+          .where(and(eq(schema.storedFile.ownerId, direct.id), eq(schema.storedFile.status, "ready")))
+      )[0].value;
     const before = await files();
     expect(await fails(sendAcceptance(direct.id))).toBe("acceptance_wrong_status");
     expect(await files()).toBe(before);

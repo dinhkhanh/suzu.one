@@ -1,6 +1,22 @@
 // Golden tests for the leave entitlement and accrual engine (FR-LVE-02, 03).
 import { describe, expect, it } from "vitest";
-import { accrualPostings, accrualTarget, type BookingAheadInput, bookingAhead, carryOverExpiryDate, carryOverLapse, completedYears, countedMonths, type EmploymentFacts, fullYearDays, isOnProbation, type PolicyRules, roundDays, terminationPayout, yearEndCarryOver } from "./entitlement";
+import {
+  accrualPostings,
+  accrualTarget,
+  type BookingAheadInput,
+  bookingAhead,
+  carryOverExpiryDate,
+  carryOverLapse,
+  completedYears,
+  countedMonths,
+  type EmploymentFacts,
+  fullYearDays,
+  isOnProbation,
+  type PolicyRules,
+  roundDays,
+  terminationPayout,
+  yearEndCarryOver,
+} from "./entitlement";
 
 const STATUTORY = { baseDays: 12, yearsOfServicePerExtraDay: 5 };
 const ANNUAL: PolicyRules = {

@@ -27,7 +27,11 @@ async function sendDecision(target: DecisionTarget, input: Record<string, unknow
 
 /** Uploads the evidence to the task and answers with its file id. */
 async function uploadEvidence(taskId: string, file: File): Promise<{ ok: true; fileId: string } | { ok: false; errorKey: string }> {
-  const result = await uploadThroughSignedUrl(file, (meta) => beginEvidenceUploadAction({ taskId, ...meta }), (fileId) => completeEvidenceUploadAction({ fileId }));
+  const result = await uploadThroughSignedUrl(
+    file,
+    (meta) => beginEvidenceUploadAction({ taskId, ...meta }),
+    (fileId) => completeEvidenceUploadAction({ fileId }),
+  );
   return result.ok ? { ok: true, fileId: result.data.id } : result;
 }
 
@@ -49,7 +53,23 @@ export function ContactSuggestions({ id, contacts }: { id: string; contacts: rea
 }
 
 /** `contacts`: the account's contacts (the CRM's, FR-CRM-46), offered as suggestions — the name is still typed text. */
-export function ClientDecisionForm({ target, version, clientName, contacts = [], files, today, onDone }: { target: DecisionTarget; version: number; clientName: string | null; contacts?: ClientContactChoice[]; files: { id: string; fileName: string }[]; today: string; onDone?: () => void }) {
+export function ClientDecisionForm({
+  target,
+  version,
+  clientName,
+  contacts = [],
+  files,
+  today,
+  onDone,
+}: {
+  target: DecisionTarget;
+  version: number;
+  clientName: string | null;
+  contacts?: ClientContactChoice[];
+  files: { id: string; fileName: string }[];
+  today: string;
+  onDone?: () => void;
+}) {
   const t = useTranslations("work.clientDecision");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -79,7 +99,15 @@ export function ClientDecisionForm({ target, version, clientName, contacts = [],
             }
             evidenceFileId = stored.fileId;
           }
-          const result = await sendDecision(target, { decision, comment: data.get("comment"), channel: data.get("channel"), decidedByName: data.get("decidedByName"), decidedOn: data.get("decidedOn"), evidenceFileId, evidenceUrl: evidence === "link" ? data.get("evidenceUrl") : "" });
+          const result = await sendDecision(target, {
+            decision,
+            comment: data.get("comment"),
+            channel: data.get("channel"),
+            decidedByName: data.get("decidedByName"),
+            decidedOn: data.get("decidedOn"),
+            evidenceFileId,
+            evidenceUrl: evidence === "link" ? data.get("evidenceUrl") : "",
+          });
           setErrorKey(errorKeyOf(result));
           if (result.ok) {
             form.reset();

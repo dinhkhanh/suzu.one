@@ -27,7 +27,11 @@ const proposeComponentPipeline = createAction({
   stepUp: true,
   input: z.object({
     entityId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9_]{1,39}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z][A-Z0-9_]{1,39}$/),
     name: z.string().trim().min(1).max(120),
     nameEn: text(120),
     kind: z.enum(COMPONENT_KINDS),
@@ -141,7 +145,10 @@ const submitProfilePipeline = createAction({
     const created = await submitProfile(input, user.person.id);
     revalidatePath("/payroll/profiles");
     revalidatePath(`/payroll/salaries/${input.personId}`);
-    return { data: { id: created.id, status: created.status }, audit: { resource: { type: "pay_profile", id: created.id, entityId: created.entityId }, summary: `${created.profile} from ${created.validFrom} (${created.status})`, after: created } };
+    return {
+      data: { id: created.id, status: created.status },
+      audit: { resource: { type: "pay_profile", id: created.id, entityId: created.entityId }, summary: `${created.profile} from ${created.validFrom} (${created.status})`, after: created },
+    };
   },
 });
 export async function submitProfileAction(input: unknown) {

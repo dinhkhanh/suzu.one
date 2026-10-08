@@ -45,8 +45,16 @@ import { loadRetainerFacts } from "../reports/retainer-source";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "tam" | "lan" | "huy" | "ke" | "keC" | "cfo" | "team" | "teamC" | "retainer" | "tvc" | "other", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const principalOf = (personId: string, grants: Principal["grants"]): Principal => ({ personId, workforceType: "employee", grants });
 let done = "";
 
@@ -57,15 +65,32 @@ async function finishTasks(taskIds: readonly string[]) {
 /** The client's approval on record for each task: a version handed in, approved and frozen (FR-PJM-51). */
 async function clientApproves(taskIds: readonly string[]) {
   for (const taskId of taskIds) {
-    const [deliverable] = await db().insert(schema.workDeliverable).values({ taskId, version: 1, kind: "link", url: "https://drive.google.com/final", submittedByPersonId: ids.huy, decision: "approved", decidedByPersonId: ids.tam, decidedAt: new Date(), frozenAt: new Date() }).returning();
-    await db().insert(schema.workDeliverableDecision).values({ deliverableId: deliverable.id, decision: "approved", decidedByPersonId: ids.lan, isClient: true, client: { channel: "email", decidedByName: "Chị Mai", decidedOn: "2026-09-20" } });
+    const [deliverable] = await db()
+      .insert(schema.workDeliverable)
+      .values({ taskId, version: 1, kind: "link", url: "https://drive.google.com/final", submittedByPersonId: ids.huy, decision: "approved", decidedByPersonId: ids.tam, decidedAt: new Date(), frozenAt: new Date() })
+      .returning();
+    await db()
+      .insert(schema.workDeliverableDecision)
+      .values({ deliverableId: deliverable.id, decision: "approved", decidedByPersonId: ids.lan, isClient: true, client: { channel: "email", decidedByName: "Chị Mai", decidedOn: "2026-09-20" } });
   }
 }
 
 async function scanFor(ownerId: string): Promise<string> {
   const [file] = await db()
     .insert(schema.storedFile)
-    .values({ bucket: "test", objectPath: `project_acceptance/${ownerId}.pdf`, fileName: "bien-ban.pdf", contentType: "application/pdf", sizeBytes: 1000, ownerType: "project_acceptance", ownerId, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.lan })
+    .values({
+      bucket: "test",
+      objectPath: `project_acceptance/${ownerId}.pdf`,
+      fileName: "bien-ban.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 1000,
+      ownerType: "project_acceptance",
+      ownerId,
+      entityId: ids.szm,
+      tier: "personal",
+      status: "ready",
+      uploadedByPersonId: ids.lan,
+    })
     .returning();
   return file.id;
 }
@@ -76,15 +101,28 @@ beforeAll(async () => {
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   ids.szm = szm.id;
   ids.szc = szc.id;
-  for (const [key, name, entity] of [["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["lan", "Lan Tran", szm.id], ["huy", "Huy Ho", szm.id], ["ke", "Ke Toan", szm.id], ["keC", "Ke Toan C", szc.id], ["cfo", "Giam Doc Tai Chinh", szm.id]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity }).returning();
+  for (const [key, name, entity] of [
+    ["long", "Long Dang", szm.id],
+    ["tam", "Tam Bui", szm.id],
+    ["lan", "Lan Tran", szm.id],
+    ["huy", "Huy Ho", szm.id],
+    ["ke", "Ke Toan", szm.id],
+    ["keC", "Ke Toan C", szc.id],
+    ["cfo", "Giam Doc Tai Chinh", szm.id],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.ke, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-    { personId: ids.keC, role: "finance", scopeType: "entity", scopeId: szc.id, validFrom: "2024-01-01" },
-    { personId: ids.cfo, role: "finance", scopeType: "group", scopeId: null, validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.ke, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+      { personId: ids.keC, role: "finance", scopeType: "entity", scopeId: szc.id, validFrom: "2024-01-01" },
+      { personId: ids.cfo, role: "finance", scopeType: "group", scopeId: null, validFrom: "2024-01-01" },
+    ]);
   const team = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.team = team.id;
   for (const personId of [ids.tam, ids.huy, ids.lan]) await setTeamMember(team.id, personId, "member");
@@ -104,7 +142,9 @@ beforeAll(async () => {
 
 describe("retainer months (FR-PJM-06)", () => {
   it("is refused on a project that is not a retainer", async () => {
-    expect(await fails(saveRetainer(ids.tvc, { startMonth: "2026-10", endMonth: null, lines: [{ title: "Post", quantity: 1, format: null, channel: null }], minutesPerMonth: null, rollover: "reset", isActive: true }))).toBe("retainer_not_retainer_project");
+    expect(await fails(saveRetainer(ids.tvc, { startMonth: "2026-10", endMonth: null, lines: [{ title: "Post", quantity: 1, format: null, channel: null }], minutesPerMonth: null, rollover: "reset", isActive: true }))).toBe(
+      "retainer_not_retainer_project",
+    );
   });
 
   it("makes each month once, carrying unused and over-delivered units forward, and bills a closed month once", async () => {
@@ -127,7 +167,10 @@ describe("retainer months (FR-PJM-06)", () => {
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, ids.retainer));
     let periods = await listPeriods(retainer, true);
     const october = periods[0];
-    expect(october.lines.map((line) => [line.title, line.quantity])).toEqual([["Bài đăng Facebook", 4], ["Video TikTok", 2]]);
+    expect(october.lines.map((line) => [line.title, line.quantity])).toEqual([
+      ["Bài đăng Facebook", 4],
+      ["Video TikTok", 2],
+    ]);
     // October: 1 post of 4, but 3 videos of 2.
     const posts = october.lines.find((line) => line.title === "Bài đăng Facebook")!;
     const videos = october.lines.find((line) => line.title === "Video TikTok")!;
@@ -140,7 +183,10 @@ describe("retainer months (FR-PJM-06)", () => {
     periods = await listPeriods(retainer, true);
     const november = periods.find((view) => view.period.month === "2026-11")!;
     expect(november.period.carried).toEqual({ "Bài đăng Facebook": 3, "Video TikTok": -1 });
-    expect(november.lines.map((line) => [line.title, line.quantity])).toEqual([["Bài đăng Facebook", 7], ["Video TikTok", 1]]);
+    expect(november.lines.map((line) => [line.title, line.quantity])).toEqual([
+      ["Bài đăng Facebook", 7],
+      ["Video TikTok", 1],
+    ]);
     const oct = periods.find((view) => view.period.month === "2026-10")!;
     expect(oct.period.status).toBe("closed");
     expect(oct.lines.find((line) => line.title === "Video TikTok")!.usage).toMatchObject({ consumed: 3, percent: 150, level: "over" });
@@ -163,8 +209,14 @@ describe("retainer months (FR-PJM-06)", () => {
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, ids.retainer));
     const december = (await listPeriods(retainer, true)).find((view) => view.period.month === "2026-12")!;
     // Only December stays open for this test.
-    await db().update(schema.projectRetainerPeriod).set({ status: "closed" }).where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, "2026-10")));
-    await db().update(schema.projectRetainerPeriod).set({ status: "closed" }).where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, "2026-11")));
+    await db()
+      .update(schema.projectRetainerPeriod)
+      .set({ status: "closed" })
+      .where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, "2026-10")));
+    await db()
+      .update(schema.projectRetainerPeriod)
+      .set({ status: "closed" })
+      .where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.month, "2026-11")));
     const video = december.lines.find((line) => line.title === "Video TikTok")!;
     // Two a month, less October's extra one in November, plus November's unused one: three.
     expect(video.quantity).toBe(3);
@@ -222,7 +274,14 @@ describe("change requests (FR-PJM-11)", () => {
     const { after: change } = await saveChange(
       ids.tvc,
       null,
-      { title: "Thêm 2 video, bỏ poster", description: "Khách đổi kế hoạch", requestedBy: "client", impact: { deliverables: [{ title: "Video 15s", quantity: 2, format: "short_video", channel: "tiktok" }], cancelDeliverableIds: [line.id], minutesDelta: 1200, feeDeltaVnd: 99, dueDateTo: "2027-01-15" }, evidenceFileId: null, evidenceUrl: "https://mail.example/thread/1" },
+      {
+        title: "Thêm 2 video, bỏ poster",
+        description: "Khách đổi kế hoạch",
+        requestedBy: "client",
+        impact: { deliverables: [{ title: "Video 15s", quantity: 2, format: "short_video", channel: "tiktok" }], cancelDeliverableIds: [line.id], minutesDelta: 1200, feeDeltaVnd: 99, dueDateTo: "2027-01-15" },
+        evidenceFileId: null,
+        evidenceUrl: "https://mail.example/thread/1",
+      },
       ids.lan,
       { withFee: false },
     );
@@ -314,16 +373,41 @@ describe("change requests (FR-PJM-11)", () => {
     const before = (await getRetainer(ids.retainer))!;
     const sameLines = before.lines.map((line) => ({ ...line }));
     // The form posts the whole scope: a change that repeats the terms as they stand changes nothing.
-    const { after: nothing } = await saveChange(ids.retainer, null, { title: "Không đổi gì", description: null, requestedBy: "internal", impact: { retainer: { lines: sameLines, minutesPerMonth: before.minutesPerMonth, feePerMonthVnd: before.feePerMonthVnd } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: true });
+    const { after: nothing } = await saveChange(
+      ids.retainer,
+      null,
+      {
+        title: "Không đổi gì",
+        description: null,
+        requestedBy: "internal",
+        impact: { retainer: { lines: sameLines, minutesPerMonth: before.minutesPerMonth, feePerMonthVnd: before.feePerMonthVnd } },
+        evidenceFileId: null,
+        evidenceUrl: null,
+      },
+      ids.lan,
+      { withFee: true },
+    );
     expect(nothing.impact.retainer).toBeUndefined();
     expect(await fails(submitChange(nothing.id, ids.lan))).toBe("change_empty");
 
     const more = sameLines.map((line, index) => (index === 0 ? { ...line, quantity: line.quantity + 4 } : line));
     // Without `pjm:commercial` the monthly fee in the input is not taken.
-    const { after: change } = await saveChange(ids.retainer, null, { title: "Thêm 4 bài mỗi tháng", description: null, requestedBy: "client", impact: { retainer: { lines: more, minutesPerMonth: 1500, feePerMonthVnd: 1 } }, evidenceFileId: null, evidenceUrl: "https://mail.example/thread/2" }, ids.lan, { withFee: false });
+    const { after: change } = await saveChange(
+      ids.retainer,
+      null,
+      { title: "Thêm 4 bài mỗi tháng", description: null, requestedBy: "client", impact: { retainer: { lines: more, minutesPerMonth: 1500, feePerMonthVnd: 1 } }, evidenceFileId: null, evidenceUrl: "https://mail.example/thread/2" },
+      ids.lan,
+      { withFee: false },
+    );
     expect(change.impact.retainer).toEqual({ lines: more, minutesPerMonth: 1500 });
-    expect(await fails(saveChange(ids.retainer, null, { title: "Trùng tên", description: null, requestedBy: "internal", impact: { retainer: { lines: [more[0], more[0]] } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false }))).toBe("retainer_lines_duplicate");
-    expect(await fails(saveChange(ids.tvc, null, { title: "Không phải retainer", description: null, requestedBy: "internal", impact: { retainer: { lines: more } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false }))).toBe("retainer_not_retainer_project");
+    expect(
+      await fails(
+        saveChange(ids.retainer, null, { title: "Trùng tên", description: null, requestedBy: "internal", impact: { retainer: { lines: [more[0], more[0]] } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false }),
+      ),
+    ).toBe("retainer_lines_duplicate");
+    expect(
+      await fails(saveChange(ids.tvc, null, { title: "Không phải retainer", description: null, requestedBy: "internal", impact: { retainer: { lines: more } }, evidenceFileId: null, evidenceUrl: null }, ids.lan, { withFee: false })),
+    ).toBe("retainer_not_retainer_project");
 
     const { requestId } = await submitChange(change.id, ids.lan);
     // Until it is approved the retainer is as it was.
@@ -413,7 +497,15 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(await noticesOf(ids.ke, "projects.acceptance_signed")).toHaveLength(1);
 
     // The paper: the entity's letterhead, the items, and no money anywhere.
-    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}`, described: "Theo mô tả" });
+    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, {
+      title: "Biên bản nghiệm thu",
+      scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" },
+      promised: "Cam kết",
+      delivered: "Đã giao",
+      accepted: "Đã duyệt",
+      totals: (totals) => `${totals.accepted}/${totals.promised}`,
+      described: "Theo mô tả",
+    });
     expect(paper.letterhead).toMatchObject({ companyName: "Công ty TNHH SuZu Media", taxCode: "0312345678" });
     expect(paper.number).toMatch(/^SZM-\d{2}-\d{3}\/NT-01$/);
     expect(paper.title).toBe("Biên bản nghiệm thu");
@@ -426,7 +518,10 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
   });
 
   it("opens the attached acceptance to finance of the item's entity through the item, and to nobody else that way", async () => {
-    const [item] = await db().select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.projectId, ids.tvc), eq(schema.projectBillingItem.source, "milestone")));
+    const [item] = await db()
+      .select()
+      .from(schema.projectBillingItem)
+      .where(and(eq(schema.projectBillingItem.projectId, ids.tvc), eq(schema.projectBillingItem.source, "milestone")));
     expect(item.acceptanceId).not.toBeNull();
     const finance = principalOf(ids.ke, [{ role: "finance", scope: { type: "entity", id: ids.szm } }]);
     expect((await billingItemForAcceptance(finance, item.acceptanceId!))?.id).toBe(item.id);

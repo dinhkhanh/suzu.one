@@ -6,7 +6,31 @@ import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, competency, contract, orgUnit, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personCompetency, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import {
+  approvalAssignee,
+  approvalEvent,
+  approvalRequest,
+  approvalStep,
+  assignment,
+  competency,
+  contract,
+  orgUnit,
+  dependent,
+  emergencyContact,
+  employeeCodeScheme,
+  employment,
+  entity,
+  lifecycleEvent,
+  person,
+  personCompetency,
+  personProfile,
+  personSensitive,
+  position,
+  roleAssignment,
+  task,
+  taskTemplate,
+  taskTemplateItem,
+} from "../src/lib/db/schema";
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
@@ -152,7 +176,10 @@ async function main() {
     }
     for (const [code, used] of counters) {
       const home = entities.get(code)!;
-      await tx.insert(employeeCodeScheme).values({ entityId: home.id, prefix: `${code}-`, nextNumber: used + 1 }).onConflictDoUpdate({ target: employeeCodeScheme.entityId, set: { nextNumber: used + 1 } });
+      await tx
+        .insert(employeeCodeScheme)
+        .values({ entityId: home.id, prefix: `${code}-`, nextNumber: used + 1 })
+        .onConflictDoUpdate({ target: employeeCodeScheme.entityId, set: { nextNumber: used + 1 } });
     }
   });
 
@@ -218,10 +245,12 @@ async function seedCompetencies(db: ReturnType<typeof drizzle>): Promise<number>
   const rows = Object.entries(DEMO_COMPETENCIES).flatMap(([email, lists]) => {
     const personId = people.get(email);
     if (!personId || listed.has(personId)) return [];
-    return (["profession", "skill"] as const).flatMap((kind) => lists[kind].flatMap((name) => {
-      const competencyId = catalogue.get(`${kind}:${toSearchKey(name)}`);
-      return competencyId ? [{ personId, competencyId }] : [];
-    }));
+    return (["profession", "skill"] as const).flatMap((kind) =>
+      lists[kind].flatMap((name) => {
+        const competencyId = catalogue.get(`${kind}:${toSearchKey(name)}`);
+        return competencyId ? [{ personId, competencyId }] : [];
+      }),
+    );
   });
   if (rows.length) await db.insert(personCompetency).values(rows).onConflictDoNothing();
   return rows.length;
@@ -241,7 +270,12 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
   const cipher = createFieldCipher(parseKeyRing(keys));
   // By work email, or by name for someone without one yet (the collaborator gets hers in the PJM seed).
   const find = async (who: string) => {
-    const [row] = await db.select({ person, job: employment }).from(person).innerJoin(employment, eq(employment.personId, person.id)).where(who.includes("@") ? eq(person.workEmail, who) : eq(person.fullName, who)).limit(1);
+    const [row] = await db
+      .select({ person, job: employment })
+      .from(person)
+      .innerJoin(employment, eq(employment.personId, person.id))
+      .where(who.includes("@") ? eq(person.workEmail, who) : eq(person.fullName, who))
+      .limit(1);
     return row;
   };
 
@@ -276,7 +310,19 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     const id = randomUUID();
     const rows = await db
       .insert(contract)
-      .values({ id, employmentId: found.job.id, personId: found.person.id, entityId: found.job.entityId, number: demo.number, type: demo.type, jobCategory: demo.jobCategory ?? null, signDate: demo.start, startDate: demo.start, endDate: demo.end, salaryTerms: cipher.encrypt(demo.terms, contractTermsContext(id)) })
+      .values({
+        id,
+        employmentId: found.job.id,
+        personId: found.person.id,
+        entityId: found.job.entityId,
+        number: demo.number,
+        type: demo.type,
+        jobCategory: demo.jobCategory ?? null,
+        signDate: demo.start,
+        startDate: demo.start,
+        endDate: demo.end,
+        salaryTerms: cipher.encrypt(demo.terms, contractTermsContext(id)),
+      })
       .onConflictDoNothing()
       .returning();
     written += rows.length;
@@ -288,7 +334,13 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     { email: "linh.do@suzu.group", nationalId: "001301009876", taxCode: null, socialInsuranceNumber: null, bank: { bankName: "Vietcombank", accountNumber: "0451000987654", accountHolder: "DO KHANH LINH", branch: "Hà Nội" } },
     // Everyone paid by transfer needs somewhere for the money to go, or the run cannot settle
     // (FR-PAY-39). Two banks between them, so a month produces a VCB batch and an ACB batch.
-    { email: "bao.pham@suzu.group", nationalId: "079092003456", taxCode: "8523641079", socialInsuranceNumber: "7912034567", bank: { bankName: "Vietcombank", accountNumber: "0071000778899", accountHolder: "PHAM GIA BAO", branch: "TP.HCM" } },
+    {
+      email: "bao.pham@suzu.group",
+      nationalId: "079092003456",
+      taxCode: "8523641079",
+      socialInsuranceNumber: "7912034567",
+      bank: { bankName: "Vietcombank", accountNumber: "0071000778899", accountHolder: "PHAM GIA BAO", branch: "TP.HCM" },
+    },
     { email: "long.dang@suzu.group", nationalId: "001289007654", taxCode: "8467230915", socialInsuranceNumber: "7913045678", bank: { bankName: "ACB", accountNumber: "245667881", accountHolder: "DANG VAN LONG", branch: "Hà Nội" } },
     { email: "mai.le@suzu.group", nationalId: "079090002345", taxCode: "8391746205", socialInsuranceNumber: "7911023456", bank: { bankName: "Vietcombank", accountNumber: "0071000334455", accountHolder: "LE THI MAI", branch: "TP.HCM" } },
     { email: "chi.duong@suzu.group", nationalId: "079094005678", taxCode: "8412903746", socialInsuranceNumber: "7915067890", bank: { bankName: "ACB", accountNumber: "231889076", accountHolder: "DUONG THI CHI", branch: "Sài Gòn" } },
@@ -318,7 +370,9 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
   const huy = await find("huy.ho@suzu.group");
   if (huy && (await db.select().from(dependent).where(eq(dependent.personId, huy.person.id))).length === 0) {
     const id = randomUUID();
-    await db.insert(dependent).values({ id, personId: huy.person.id, fullName: "Hồ Gia Bảo", relationship: "child", dateOfBirth: "2022-04-09", idNumber: cipher.encrypt("079222003344", dependentContext("idNumber", id)), deductionFrom: "2023-07-01" });
+    await db
+      .insert(dependent)
+      .values({ id, personId: huy.person.id, fullName: "Hồ Gia Bảo", relationship: "child", dateOfBirth: "2022-04-09", idNumber: cipher.encrypt("079222003344", dependentContext("idNumber", id)), deductionFrom: "2023-07-01" });
     await db.insert(emergencyContact).values({ personId: huy.person.id, fullName: "Trần Thị Hoa", relationship: "Vợ", phone: "0903123456" });
     written += 2;
   }
@@ -389,7 +443,10 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
   const bare = await db.select({ personId: personProfile.personId, fullName: person.fullName }).from(personProfile).innerJoin(person, eq(person.id, personProfile.personId)).where(isNull(personProfile.gender));
   for (const [index, row] of bare.entries()) {
     const female = /Thị|Thu |Thùy|Mỹ|Ngọc|Khánh Linh|Anh Thư/.test(row.fullName);
-    await db.update(personProfile).set({ gender: female ? "female" : "male", dateOfBirth: `${1978 + ((index * 7) % 25)}-${String(1 + ((index * 5) % 12)).padStart(2, "0")}-15` }).where(eq(personProfile.personId, row.personId));
+    await db
+      .update(personProfile)
+      .set({ gender: female ? "female" : "male", dateOfBirth: `${1978 + ((index * 7) % 25)}-${String(1 + ((index * 5) % 12)).padStart(2, "0")}-15` })
+      .where(eq(personProfile.personId, row.personId));
   }
 
   // Every employment starts with a hire event.
@@ -401,21 +458,43 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
   }
 
   const checklist = async (purpose: "onboarding" | "offboarding", event: typeof lifecycleEvent.$inferSelect, subject: typeof person.$inferSelect, hrId: string, doneCount: number) => {
-    const [template] = await db.select().from(taskTemplate).where(and(eq(taskTemplate.purpose, purpose), eq(taskTemplate.isActive, true))).limit(1);
+    const [template] = await db
+      .select()
+      .from(taskTemplate)
+      .where(and(eq(taskTemplate.purpose, purpose), eq(taskTemplate.isActive, true)))
+      .limit(1);
     if (!template) return;
     const items = await db.select().from(taskTemplateItem).where(eq(taskTemplateItem.templateId, template.id));
     const planned = planChecklist(items, event.effectiveDate, (rule) => (rule.rule === "subject" ? subject.id : rule.rule === "line_manager" ? subject.managerId : rule.rule === "person" ? rule.personId : hrId));
     await db.insert(task).values(
-      planned.map((row, index) => ({ ...row, kind: "checklist", entityId: event.entityId, contextType: "lifecycle_event", contextId: event.id, subjectPersonId: subject.id, createdByPersonId: hrId, ...(index < doneCount ? { status: "done" as const, completedAt: new Date(), completedByPersonId: row.assigneePersonId ?? hrId } : {}) })),
+      planned.map((row, index) => ({
+        ...row,
+        kind: "checklist",
+        entityId: event.entityId,
+        contextType: "lifecycle_event",
+        contextId: event.id,
+        subjectPersonId: subject.id,
+        createdByPersonId: hrId,
+        ...(index < doneCount ? { status: "done" as const, completedAt: new Date(), completedByPersonId: row.assigneePersonId ?? hrId } : {}),
+      })),
     );
     written += planned.length;
   };
   const hasTasks = async (eventId: string) => (await db.select({ id: task.id }).from(task).where(eq(task.contextId, eventId)).limit(1)).length > 0;
 
   // Onboarding under way: the pre-boarding account executive and the probationer.
-  for (const [email, hrId, done] of [["thu.mai@suzu.group", hrAdmin.id, 1], ["linh.do@suzu.group", hrMedia.id, 4]] as const) {
+  for (const [email, hrId, done] of [
+    ["thu.mai@suzu.group", hrAdmin.id, 1],
+    ["linh.do@suzu.group", hrMedia.id, 4],
+  ] as const) {
     const subject = await byEmail(email);
-    const [event] = subject ? await db.select().from(lifecycleEvent).where(and(eq(lifecycleEvent.personId, subject.id), eq(lifecycleEvent.type, "hire"))).limit(1) : [];
+    const [event] = subject
+      ? await db
+          .select()
+          .from(lifecycleEvent)
+          .where(and(eq(lifecycleEvent.personId, subject.id), eq(lifecycleEvent.type, "hire")))
+          .limit(1)
+      : [];
     if (subject && event && !(await hasTasks(event.id))) await checklist("onboarding", event, subject, hrId, done);
   }
 
@@ -424,9 +503,15 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
   const [video] = await db.select().from(orgUnit).where(eq(orgUnit.code, "VID")).limit(1);
   const head = await byEmail("long.dang@suzu.group");
   if (szm && video && head && !(await byEmail("dang.vu@suzu.group"))) {
-    const [gone] = await db.insert(person).values({ fullName: "Vũ Hải Đăng", searchName: toSearchKey("Vũ Hải Đăng"), workEmail: "dang.vu@suzu.group", status: "offboarded", primaryEntityId: szm.id, orgUnitId: video.id, managerId: head.id }).returning();
+    const [gone] = await db
+      .insert(person)
+      .values({ fullName: "Vũ Hải Đăng", searchName: toSearchKey("Vũ Hải Đăng"), workEmail: "dang.vu@suzu.group", status: "offboarded", primaryEntityId: szm.id, orgUnitId: video.id, managerId: head.id })
+      .returning();
     await db.insert(personProfile).values({ personId: gone.id, nationality: "Việt Nam", dateOfBirth: "1994-02-11", gender: "male", phone: "0933555777" });
-    const [job] = await db.insert(employment).values({ personId: gone.id, entityId: szm.id, employeeCode: "SZM-0090", startDate: "2022-05-09", seniorityDate: "2022-05-09", endDate: day(-60) }).returning();
+    const [job] = await db
+      .insert(employment)
+      .values({ personId: gone.id, entityId: szm.id, employeeCode: "SZM-0090", startDate: "2022-05-09", seniorityDate: "2022-05-09", endDate: day(-60) })
+      .returning();
     await db.insert(assignment).values({ employmentId: job.id, workforceType: "employee", departmentId: video.id, managerId: head.id, validFrom: "2022-05-09", validTo: day(-60) });
     await db.insert(lifecycleEvent).values([
       { personId: gone.id, employmentId: job.id, entityId: szm.id, type: "hire", effectiveDate: "2022-05-09", createdByPersonId: hrMedia.id },
@@ -444,7 +529,17 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
     const open = await db.update(assignment).set({ validTo: lastDay }).where(eq(assignment.employmentId, leavingJob.id)).returning({ id: assignment.id });
     const [event] = await db
       .insert(lifecycleEvent)
-      .values({ personId: leaving.id, employmentId: leavingJob.id, entityId: leavingJob.entityId, type: "termination", effectiveDate: lastDay, status: "pending", reason: "contract_end", details: { closed: { assignments: open.map((row) => ({ id: row.id, validTo: null })), grants: [], contracts: [] }, droppedAssignments: 0 }, createdByPersonId: hrAdmin.id })
+      .values({
+        personId: leaving.id,
+        employmentId: leavingJob.id,
+        entityId: leavingJob.entityId,
+        type: "termination",
+        effectiveDate: lastDay,
+        status: "pending",
+        reason: "contract_end",
+        details: { closed: { assignments: open.map((row) => ({ id: row.id, validTo: null })), grants: [], contracts: [] }, droppedAssignments: 0 },
+        createdByPersonId: hrAdmin.id,
+      })
       .returning();
     await checklist("offboarding", event, leaving, hrAdmin.id, 0);
     written++;
@@ -452,7 +547,16 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
 
   // A resignation waiting for the line manager (long.dang).
   const resigning = await byEmail("tam.bui@suzu.group");
-  if (resigning?.managerId && (await db.select({ id: approvalRequest.id }).from(approvalRequest).where(and(eq(approvalRequest.subjectPersonId, resigning.id), eq(approvalRequest.type, "resignation"))).limit(1)).length === 0) {
+  if (
+    resigning?.managerId &&
+    (
+      await db
+        .select({ id: approvalRequest.id })
+        .from(approvalRequest)
+        .where(and(eq(approvalRequest.subjectPersonId, resigning.id), eq(approvalRequest.type, "resignation")))
+        .limit(1)
+    ).length === 0
+  ) {
     const id = randomUUID();
     const lastWorkingDay = day(45);
     const flow = { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] };

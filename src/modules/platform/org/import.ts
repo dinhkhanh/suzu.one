@@ -76,7 +76,10 @@ export const departmentImport = defineImport({
     }
     const ids = new Map((await tx.select({ id: schema.orgUnit.id, code: schema.orgUnit.code }).from(schema.orgUnit)).flatMap((department) => (department.code ? [[department.code, department.id] as const] : [])));
     for (const { values } of rows) {
-      await tx.update(schema.orgUnit).set({ parentId: values.parentCode ? (ids.get(values.parentCode) ?? null) : null }).where(eq(schema.orgUnit.code, values.code!));
+      await tx
+        .update(schema.orgUnit)
+        .set({ parentId: values.parentCode ? (ids.get(values.parentCode) ?? null) : null })
+        .where(eq(schema.orgUnit.code, values.code!));
     }
     return { created, updated };
   },

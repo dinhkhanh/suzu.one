@@ -113,7 +113,15 @@ function intersect(a: readonly Interval[], b: readonly Interval[]): Interval[] {
 
 function subtract(a: readonly Interval[], b: readonly Interval[]): Interval[] {
   let result = [...a];
-  for (const cut of b) result = result.flatMap((piece) => (cut.end <= piece.start || cut.start >= piece.end ? [piece] : [{ start: piece.start, end: Math.max(piece.start, cut.start) }, { start: Math.min(piece.end, cut.end), end: piece.end }].filter((part) => part.end > part.start)));
+  for (const cut of b)
+    result = result.flatMap((piece) =>
+      cut.end <= piece.start || cut.start >= piece.end
+        ? [piece]
+        : [
+            { start: piece.start, end: Math.max(piece.start, cut.start) },
+            { start: Math.min(piece.end, cut.end), end: piece.end },
+          ].filter((part) => part.end > part.start),
+    );
   return result;
 }
 
@@ -200,7 +208,12 @@ export function computeTimesheetDay(input: TimesheetDayInput): TimesheetDayResul
   const workable = subtract(blocks, pause ? [pause] : []);
   let leaveMinutes = 0;
   for (const leave of input.leave) {
-    const share = leave.portion === "hours" ? (leave.minutes ?? 0) : (leave.portion === "am" || leave.portion === "pm") && plan.kind === "working" && !plan.flexible ? length(intersect(workable, [half(leave.portion)])) : Math.round((required * Math.min(100, leave.amountCenti)) / 100);
+    const share =
+      leave.portion === "hours"
+        ? (leave.minutes ?? 0)
+        : (leave.portion === "am" || leave.portion === "pm") && plan.kind === "working" && !plan.flexible
+          ? length(intersect(workable, [half(leave.portion)]))
+          : Math.round((required * Math.min(100, leave.amountCenti)) / 100);
     const minutes = Math.min(required - leaveMinutes, share);
     if (minutes <= 0) continue;
     leaveMinutes += minutes;
@@ -211,7 +224,10 @@ export function computeTimesheetDay(input: TimesheetDayInput): TimesheetDayResul
 
   // Overtime: time outside the plan, by the day's category.
   const category: "otWeekday" | "otRestDay" | "otHoliday" = plan.kind === "holiday" ? "otHoliday" : plan.kind === "working" || plan.kind === "untracked" ? "otWeekday" : "otRestDay";
-  const approvals = [...input.requests.overtime.map((request) => ({ ...request, from: request.from as number | null, to: request.to as number | null })), ...(plan.kind === "working" || plan.kind === "untracked" ? [] : input.requests.holidayWork)];
+  const approvals = [
+    ...input.requests.overtime.map((request) => ({ ...request, from: request.from as number | null, to: request.to as number | null })),
+    ...(plan.kind === "working" || plan.kind === "untracked" ? [] : input.requests.holidayWork),
+  ];
   // `extra`: presence outside the plan. `unasked`: the part of it that counts without a request when
   // the policy asks for none, and that is reported when it does — on a working day only what comes
   // after the planned end (arriving early is not overtime unless a request says so).
@@ -440,14 +456,57 @@ export type MonthSummary = {
 
 export type SummaryDay = Pick<
   TimesheetDayResult,
-  "requiredMinutes" | "workedMinutes" | "creditedMinutes" | "leavePaidMinutes" | "leaveUnpaidMinutes" | "holidayMinutes" | "absenceMinutes" | "lateMinutes" | "earlyMinutes" | "missingPunch" | "wfhMinutes" | "tripMinutes" | "nightMinutes" | "otWeekday" | "otRestDay" | "otHoliday" | "otUnapprovedMinutes" | "otTimeOffMinutes" | "status" | "anomalies"
+  | "requiredMinutes"
+  | "workedMinutes"
+  | "creditedMinutes"
+  | "leavePaidMinutes"
+  | "leaveUnpaidMinutes"
+  | "holidayMinutes"
+  | "absenceMinutes"
+  | "lateMinutes"
+  | "earlyMinutes"
+  | "missingPunch"
+  | "wfhMinutes"
+  | "tripMinutes"
+  | "nightMinutes"
+  | "otWeekday"
+  | "otRestDay"
+  | "otHoliday"
+  | "otUnapprovedMinutes"
+  | "otTimeOffMinutes"
+  | "status"
+  | "anomalies"
 >;
 
 export function summariseDays(days: readonly SummaryDay[]): MonthSummary {
   const summary: MonthSummary = {
-    days: days.length, standardDays: 0, standardMinutes: 0, workedMinutes: 0, creditedMinutes: 0, leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-    lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0, otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-    otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 0, unpaidDaysCenti: 0, anomalyDays: 0,
+    days: days.length,
+    standardDays: 0,
+    standardMinutes: 0,
+    workedMinutes: 0,
+    creditedMinutes: 0,
+    leavePaidMinutes: 0,
+    leaveUnpaidMinutes: 0,
+    holidayMinutes: 0,
+    absenceMinutes: 0,
+    lateMinutes: 0,
+    earlyMinutes: 0,
+    lateCount: 0,
+    earlyCount: 0,
+    missingPunchDays: 0,
+    absentDays: 0,
+    wfhMinutes: 0,
+    tripMinutes: 0,
+    nightMinutes: 0,
+    otWeekday: { day: 0, night: 0 },
+    otRestDay: { day: 0, night: 0 },
+    otHoliday: { day: 0, night: 0 },
+    otTotalMinutes: 0,
+    otUnapprovedMinutes: 0,
+    otTimeOffMinutes: 0,
+    paidDaysCenti: 0,
+    unpaidDaysCenti: 0,
+    anomalyDays: 0,
   };
   for (const day of days) {
     // What the day asked: its required minutes, or the paid day off that replaced them.
@@ -459,7 +518,22 @@ export function summariseDays(days: readonly SummaryDay[]): MonthSummary {
       summary.paidDaysCenti += Math.round((Math.min(asked, paid) * 100) / asked);
       summary.unpaidDaysCenti += Math.round((Math.min(asked, day.leaveUnpaidMinutes + day.absenceMinutes) * 100) / asked);
     }
-    for (const key of ["workedMinutes", "creditedMinutes", "leavePaidMinutes", "leaveUnpaidMinutes", "holidayMinutes", "absenceMinutes", "lateMinutes", "earlyMinutes", "wfhMinutes", "tripMinutes", "nightMinutes", "otUnapprovedMinutes", "otTimeOffMinutes"] as const) summary[key] += day[key];
+    for (const key of [
+      "workedMinutes",
+      "creditedMinutes",
+      "leavePaidMinutes",
+      "leaveUnpaidMinutes",
+      "holidayMinutes",
+      "absenceMinutes",
+      "lateMinutes",
+      "earlyMinutes",
+      "wfhMinutes",
+      "tripMinutes",
+      "nightMinutes",
+      "otUnapprovedMinutes",
+      "otTimeOffMinutes",
+    ] as const)
+      summary[key] += day[key];
     for (const key of ["otWeekday", "otRestDay", "otHoliday"] as const) {
       summary[key] = { day: summary[key].day + day[key].day, night: summary[key].night + day[key].night };
       summary.otTotalMinutes += day[key].day + day[key].night;

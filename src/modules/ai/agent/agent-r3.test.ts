@@ -14,7 +14,14 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", EMBEDDINGS_MODEL: "@cf/baai/bge-m3", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    EMBEDDINGS_MODEL: "@cf/baai/bge-m3",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
   isDevelopmentEnvironment: () => true,
 }));
 vi.mock("@/lib/action", () => ({
@@ -69,11 +76,33 @@ const text = (value: unknown) => JSON.stringify(value);
 const holds = (haystack: string, figure: number) => new RegExp(`(?<!\\d)${figure}(?!\\d)`, "u").test(haystack);
 
 const summary = () => ({
-  days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
-  leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-  lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0,
-  otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-  otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 2200, unpaidDaysCenti: 0, anomalyDays: 0,
+  days: 31,
+  standardDays: 22,
+  standardMinutes: 10_560,
+  workedMinutes: 10_560,
+  creditedMinutes: 0,
+  leavePaidMinutes: 0,
+  leaveUnpaidMinutes: 0,
+  holidayMinutes: 0,
+  absenceMinutes: 0,
+  lateMinutes: 0,
+  earlyMinutes: 0,
+  lateCount: 0,
+  earlyCount: 0,
+  missingPunchDays: 0,
+  absentDays: 0,
+  wfhMinutes: 0,
+  tripMinutes: 0,
+  nightMinutes: 0,
+  otWeekday: { day: 0, night: 0 },
+  otRestDay: { day: 0, night: 0 },
+  otHoliday: { day: 0, night: 0 },
+  otTotalMinutes: 0,
+  otUnapprovedMinutes: 0,
+  otTimeOffMinutes: 0,
+  paidDaysCenti: 2200,
+  unpaidDaysCenti: 0,
+  anomalyDays: 0,
 });
 
 /** The August figures of each entity's run, as the owner reads them: what nobody else may be sent. */
@@ -90,7 +119,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, entityId: string, orgUnitId: string, contact: { phone: string | null; personalEmail: string | null } = { phone: null, personalEmail: null }) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: contact.phone, personalEmail: contact.personalEmail, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: contact.phone, personalEmail: contact.personalEmail, permanentAddress: null, currentAddress: null },
+        entityId,
+        employeeCode: null,
+        startDate: "2025-01-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -101,7 +139,10 @@ beforeAll(async () => {
   ids.long = await hire(NAMES.long, creative.id, social.id);
   // The personas who hold roles are people in the directory, not on any payroll here.
   for (const who of ["ha", "cuc", "tai", "dung"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: media.id, orgUnitId: video.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: media.id, orgUnitId: video.id })
+      .returning();
     ids[who] = row.id;
   }
   const grants: Record<Who, Principal["grants"]> = {
@@ -120,9 +161,13 @@ beforeAll(async () => {
   }
 
   // Payroll: the law, the components, the policy, a profile and a salary for each of the three.
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
-  await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" as const });
+  await db()
+    .insert(schema.payrollPolicy)
+    .values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" as const });
   const employments = await db().select().from(schema.employment);
   const employmentOf = (personId: string) => employments.find((row) => row.personId === personId)!.id;
   for (const [personId, entityId, amount] of [
@@ -130,14 +175,28 @@ beforeAll(async () => {
     [ids.lan, media.id, 15_000_000],
     [ids.long, creative.id, 24_000_000],
   ] as const) {
-    await db().insert(schema.payProfile).values({ personId, employmentId: employmentOf(personId), entityId, profile: "statutory" as const, validFrom: "2025-01-01", status: "approved" as const });
+    await db()
+      .insert(schema.payProfile)
+      .values({ personId, employmentId: employmentOf(personId), entityId, profile: "statutory" as const, validFrom: "2025-01-01", status: "approved" as const });
     const id = crypto.randomUUID();
-    await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employmentOf(personId), entityId, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({
+        id,
+        personId,
+        employmentId: employmentOf(personId),
+        entityId,
+        validFrom: "2026-01-01",
+        reason: "initial",
+        termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)),
+      });
   }
   const lock = async (entityId: string, month: string, personIds: string[]) => {
     const lockedAt = new Date(`${month}-28T03:00:00Z`);
     await db().insert(schema.timesheetPeriod).values({ entityId, month, status: "locked", lockedAt, lockedByPersonId: actor.id });
-    await db().insert(schema.timesheetMonth).values(personIds.map((personId) => ({ personId, entityId, month, status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
+    await db()
+      .insert(schema.timesheetMonth)
+      .values(personIds.map((personId) => ({ personId, entityId, month, status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
     const created = await createRegularRun({ entityId, month }, actor.id);
     await calculateRun(created.id);
     for (const step of ["propose", "approve"] as const) await stepRun(created.id, step, { personId: actor.id });
@@ -145,13 +204,18 @@ beforeAll(async () => {
   await lock(media.id, "2026-08", [ids.huy, ids.lan]);
   await lock(creative.id, "2026-08", [ids.long]);
   const owner: Principal = { personId: null, workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] } as unknown as Principal;
-  for (const [key, entityId] of [["media", media.id], ["creative", creative.id]] as const) {
+  for (const [key, entityId] of [
+    ["media", media.id],
+    ["creative", creative.id],
+  ] as const) {
     const [point] = await costTrend(owner, { entityId, fromMonth: "2026-08", toMonth: "2026-08" });
     figures[key] = [point.gross, point.net, point.employerCost];
   }
 
   // Lan is on probation until 1 November; Huy took a day of annual leave on 2 October.
-  await db().insert(schema.contract).values({ employmentId: employmentOf(ids.lan), personId: ids.lan, entityId: media.id, number: "TV-01", type: "probation", startDate: "2026-09-01", endDate: "2026-11-01" });
+  await db()
+    .insert(schema.contract)
+    .values({ employmentId: employmentOf(ids.lan), personId: ids.lan, entityId: media.id, number: "TV-01", type: "probation", startDate: "2026-09-01", endDate: "2026-11-01" });
   const [annual] = await db().insert(schema.leaveType).values({ code: "AL", name: "Annual", category: "annual", isPaid: true, payrollTreatment: "paid_company" }).returning();
   const [request] = await db().insert(schema.leaveRequest).values({ personId: ids.huy, entityId: media.id, leaveTypeId: annual.id, startDate: "2026-10-02", endDate: "2026-10-02", totalCenti: 100, status: "approved" }).returning();
   await db().insert(schema.leaveRequestDay).values({ requestId: request.id, personId: ids.huy, date: "2026-10-02", portion: "full", amountCenti: 100 });
@@ -258,7 +322,14 @@ describe("money and pay (FR-AGT-16, 17, D36)", () => {
   });
 
   it("does not store a turn that read pay (D36), and stores one that read headcount", async () => {
-    const pay = await runAgentTurn({ user: userOf("cuc"), question: "Chi phí lương tháng 8?", locale: "vi", today: TODAY, history: [], driver: scriptedDriver([{ tools: [{ name: "payroll_cost", input: {} }] }, { text: "Đây là chi phí lương." }]) });
+    const pay = await runAgentTurn({
+      user: userOf("cuc"),
+      question: "Chi phí lương tháng 8?",
+      locale: "vi",
+      today: TODAY,
+      history: [],
+      driver: scriptedDriver([{ tools: [{ name: "payroll_cost", input: {} }] }, { text: "Đây là chi phí lương." }]),
+    });
     expect(pay.kind === "answered" && pay.compensation).toBe(true);
     const people = await runAgentTurn({ user: userOf("ha"), question: "Công ty có bao nhiêu người?", locale: "vi", today: TODAY, history: [], driver: scriptedDriver([{ tools: [{ name: "headcount", input: {} }] }, { text: "Ba người." }]) });
     expect(people.kind === "answered" && people.compensation).toBe(false);

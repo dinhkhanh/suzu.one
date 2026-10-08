@@ -8,7 +8,13 @@ import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 
 export type ActionResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: "unauthenticated" | "forbidden" | "invalid" | "failed"; fieldErrors?: Record<string, string[]>; message?: string; /** What the form needs to explain a refusal, e.g. the likely duplicates of a new hire. */ details?: unknown };
+  | {
+      ok: false;
+      error: "unauthenticated" | "forbidden" | "invalid" | "failed";
+      fieldErrors?: Record<string, string[]>;
+      message?: string;
+      /** What the form needs to explain a refusal, e.g. the likely duplicates of a new hire. */ details?: unknown;
+    };
 
 type AuditDetails = Omit<AuditEntry, "actor" | "request" | "action">;
 

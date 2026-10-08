@@ -146,9 +146,7 @@ export async function saveRequestType(id: string | null, input: SaveTypeInput, a
     if (followUpProblem) throw new ActionError(followUpProblem);
 
     const values = { ...input, updatedByPersonId: actorPersonId, updatedAt: new Date() };
-    const [after] = before
-      ? await tx.update(schema.requestType).set(values).where(eq(schema.requestType.id, before.id)).returning()
-      : await tx.insert(schema.requestType).values(values).returning();
+    const [after] = before ? await tx.update(schema.requestType).set(values).where(eq(schema.requestType.id, before.id)).returning() : await tx.insert(schema.requestType).values(values).returning();
     return { before: before ?? null, after };
   });
   await invalidate(TYPES_CACHE);
@@ -240,10 +238,7 @@ export async function fileRequest(
 
     const amountField = amountFieldOf(type.form);
     const amount = extras.amount ?? (amountField && typeof values[amountField] === "number" ? Math.round(values[amountField] as number) : null);
-    const fileIds = [
-      ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(values[field.key]) ? (values[field.key] as string[]) : [])),
-      ...(extras.extraFileIds ?? []),
-    ];
+    const fileIds = [...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(values[field.key]) ? (values[field.key] as string[]) : [])), ...(extras.extraFileIds ?? [])];
     await checkAttachments(tx, fileIds, requester.personId);
 
     const definition = genericRequestType(type);
@@ -311,10 +306,7 @@ export async function refileRequest(requestId: string, actorPersonId: string, va
 
     const amountField = amountFieldOf(type.form);
     const amount = extras.amount ?? (amountField && typeof clean[amountField] === "number" ? Math.round(clean[amountField] as number) : null);
-    const fileIds = [
-      ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(clean[field.key]) ? (clean[field.key] as string[]) : [])),
-      ...(extras.extraFileIds ?? []),
-    ];
+    const fileIds = [...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(clean[field.key]) ? (clean[field.key] as string[]) : [])), ...(extras.extraFileIds ?? [])];
     // Only the requester sends a returned request round again (the engine refuses anyone else).
     await checkAttachments(tx, fileIds, actorPersonId);
 
@@ -358,7 +350,13 @@ const isoDate = (value: unknown): IsoDate | null => (typeof value === "string" &
  *  - a business trip becomes the attendance record of its days (REQ-02): the trip is filed once,
  *    here with its money, and attendance reads it — nobody files it a second time there.
  */
-async function applyApprovedEffect(tx: Tx, code: string, submission: { id: string; values: Record<string, unknown>; amount: number | null }, request: { id: string; requesterPersonId: string; entityId: string | null }, actorPersonId: string): Promise<void> {
+async function applyApprovedEffect(
+  tx: Tx,
+  code: string,
+  submission: { id: string; values: Record<string, unknown>; amount: number | null },
+  request: { id: string; requesterPersonId: string; entityId: string | null },
+  actorPersonId: string,
+): Promise<void> {
   if (code === EXPENSE_CLAIM_CODE) {
     await postApprovedClaim(tx, { submissionId: submission.id, personId: request.requesterPersonId, entityId: request.entityId, amount: submission.amount ?? 0 }, actorPersonId);
   }

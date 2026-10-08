@@ -39,16 +39,41 @@ export default async function TriagePage({ params }: PageProps<"/work/teams/[tea
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
-            {t("title")}
-          </Link>
-          <span className="text-faint">/</span>
-          <RecordLink kind="team" id={team.id}>
-            {team.name}
-          </RecordLink></span>} title={t("triage.title")} description={t("triage.description")} />
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <RecordLink kind="team" id={team.id}>
+              {team.name}
+            </RecordLink>
+          </span>
+        }
+        title={t("triage.title")}
+        description={t("triage.description")}
+      />
 
       <TriageQueue
-        items={items.map(({ id, key, title, description, source, triageStatus, snoozedUntil, requesterPersonId, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }) => ({ id, key, title, description, source, triageStatus, snoozedUntil, requesterPersonId, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }))}
+        items={items.map(({ id, key, title, description, source, triageStatus, snoozedUntil, requesterPersonId, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }) => ({
+          id,
+          key,
+          title,
+          description,
+          source,
+          triageStatus,
+          snoozedUntil,
+          requesterPersonId,
+          requesterName,
+          formName,
+          createdAt,
+          assigneePersonId,
+          projectId,
+          dueDate,
+          priority,
+          labelIds,
+        }))}
         choices={{ ...choices, mergeTargets }}
         canDecide={decide}
         today={today}

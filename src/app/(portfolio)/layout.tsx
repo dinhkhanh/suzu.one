@@ -48,8 +48,12 @@ export default async function PortfolioLayout({ children }: LayoutProps<"/">) {
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>{t("footer")}</span>
             <span className="flex flex-wrap gap-x-4 gap-y-1">
-              <Link href="/brands" className="hover:text-foreground">{t("brandsLink")}</Link>
-              <Link href="/careers" className="hover:text-foreground">{t("careersLink")}</Link>
+              <Link href="/brands" className="hover:text-foreground">
+                {t("brandsLink")}
+              </Link>
+              <Link href="/careers" className="hover:text-foreground">
+                {t("careersLink")}
+              </Link>
             </span>
           </div>
         </footer>

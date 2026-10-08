@@ -152,8 +152,23 @@ export async function terminateEmploymentIn(tx: Tx, personId: string, input: Ter
   const assignments = await tx.select().from(schema.assignment).where(eq(schema.assignment.employmentId, employment.id));
   const never = assignments.filter((row) => row.validFrom > input.lastDay);
   const open = assignments.filter((row) => row.validFrom <= input.lastDay && (row.validTo === null || row.validTo > input.lastDay));
-  if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
-  if (open.length) await tx.update(schema.assignment).set({ validTo: input.lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
+  if (never.length)
+    await tx.delete(schema.assignment).where(
+      inArray(
+        schema.assignment.id,
+        never.map((row) => row.id),
+      ),
+    );
+  if (open.length)
+    await tx
+      .update(schema.assignment)
+      .set({ validTo: input.lastDay, updatedAt: new Date() })
+      .where(
+        inArray(
+          schema.assignment.id,
+          open.map((row) => row.id),
+        ),
+      );
   await invalidatePersonView(personId);
   const current = open.find((row) => row.kind === "primary") ?? null;
 
@@ -168,11 +183,24 @@ export async function terminateEmploymentIn(tx: Tx, personId: string, input: Ter
   const today = todayInVietnam();
   const event = await recordLifecycleEvent(
     tx,
-    { personId, employmentId: employment.id, entityId: employment.entityId, type: "termination", effectiveDate: input.lastDay, status: input.lastDay < today ? "applied" : "pending", reason: input.reason, note: input.note, details: { closed, droppedAssignments: never.length, resignationEventId: input.resignationEventId ?? null } },
+    {
+      personId,
+      employmentId: employment.id,
+      entityId: employment.entityId,
+      type: "termination",
+      effectiveDate: input.lastDay,
+      status: input.lastDay < today ? "applied" : "pending",
+      reason: input.reason,
+      note: input.note,
+      details: { closed, droppedAssignments: never.length, resignationEventId: input.resignationEventId ?? null },
+    },
     actorPersonId,
   );
   if (input.resignationEventId) {
-    await tx.update(schema.lifecycleEvent).set({ status: "applied", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, input.resignationEventId), eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "resignation")));
+    await tx
+      .update(schema.lifecycleEvent)
+      .set({ status: "applied", updatedAt: new Date() })
+      .where(and(eq(schema.lifecycleEvent.id, input.resignationEventId), eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "resignation")));
   }
   const { tasks } = await startChecklist(tx, event, "offboarding", { departmentId: current?.departmentId ?? null, positionId: current?.positionId ?? null }, actorPersonId);
   // Whatever the leaver is still holding becomes one return task each, due by the last working
@@ -199,7 +227,11 @@ export async function cancelTermination(eventId: string) {
     await restoreRoleGrants(tx, closed.grants);
     // The resignation it carried out is called off with it: the person is staying, and may resign again later.
     const resignationEventId = typeof event.details.resignationEventId === "string" ? event.details.resignationEventId : null;
-    if (resignationEventId) await tx.update(schema.lifecycleEvent).set({ status: "cancelled", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, resignationEventId), eq(schema.lifecycleEvent.type, "resignation")));
+    if (resignationEventId)
+      await tx
+        .update(schema.lifecycleEvent)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(and(eq(schema.lifecycleEvent.id, resignationEventId), eq(schema.lifecycleEvent.type, "resignation")));
     const cancelledTasks = await cancelOpenTasksOfContext(tx, { type: LIFECYCLE_CONTEXT, id: event.id });
     // The equipment is not going back after all. Anything already handed in stays handed in.
     const cancelledReturns = await cancelReturnTasks(tx, event.personId);
@@ -288,7 +320,10 @@ export async function transferToEntity(personId: string, input: EntityTransferIn
     if (previous.entityId === input.entityId) throw new ActionError("transfer_same_entity");
     if (input.startDate <= previous.startDate) throw new ActionError("transfer_before_start");
     if (input.startDate > todayInVietnam()) throw new ActionError("transfer_in_future");
-    const entities = await tx.select().from(schema.entity).where(inArray(schema.entity.id, [previous.entityId, input.entityId]));
+    const entities = await tx
+      .select()
+      .from(schema.entity)
+      .where(inArray(schema.entity.id, [previous.entityId, input.entityId]));
     const entity = entities.find((row) => row.id === input.entityId);
     if (!entity?.isActive) throw new ActionError("entity_not_found");
     const fromEntity = entities.find((row) => row.id === previous.entityId)!;
@@ -299,8 +334,23 @@ export async function transferToEntity(personId: string, input: EntityTransferIn
     const assignments = await tx.select().from(schema.assignment).where(eq(schema.assignment.employmentId, previous.id));
     const never = assignments.filter((row) => row.validFrom > lastDay);
     const open = assignments.filter((row) => row.validFrom <= lastDay && (row.validTo === null || row.validTo > lastDay));
-    if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
-    if (open.length) await tx.update(schema.assignment).set({ validTo: lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
+    if (never.length)
+      await tx.delete(schema.assignment).where(
+        inArray(
+          schema.assignment.id,
+          never.map((row) => row.id),
+        ),
+      );
+    if (open.length)
+      await tx
+        .update(schema.assignment)
+        .set({ validTo: lastDay, updatedAt: new Date() })
+        .where(
+          inArray(
+            schema.assignment.id,
+            open.map((row) => row.id),
+          ),
+        );
     const before = open.find((row) => row.kind === "primary") ?? null;
     // A labour contract is signed with an entity: the new one needs its own.
     const contracts = await tx
@@ -355,7 +405,12 @@ export async function findLikelyDuplicates(input: { fullName: string; dateOfBirt
     .select({ personId: schema.employment.personId, employeeCode: schema.employment.employeeCode, entityName: schema.entity.shortName })
     .from(schema.employment)
     .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
-    .where(inArray(schema.employment.personId, matches.map((row) => row.id)))
+    .where(
+      inArray(
+        schema.employment.personId,
+        matches.map((row) => row.id),
+      ),
+    )
     .orderBy(desc(schema.employment.startDate));
   return matches.map((row) => {
     const latest = employments.find((employment) => employment.personId === row.id);

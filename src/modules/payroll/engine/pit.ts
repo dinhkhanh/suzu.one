@@ -117,11 +117,43 @@ export function calculatePit(input: PersonPayInput, figures: PitInput): { result
       priorTax,
       tax,
     };
-    trace.push({ stage: "pit", rule: prior ? "progressive_month_aggregated" : "progressive", detail: { taxableIncome, thisRunTaxableIncome: figures.taxableIncome, priorTaxableIncome: prior?.taxableIncome ?? 0, insurance, personalDeduction: deductions.personal, dependentDeduction, dependents: figures.dependents, otherDeductions, assessableIncome: assessable, monthTax, priorTax, tax } });
+    trace.push({
+      stage: "pit",
+      rule: prior ? "progressive_month_aggregated" : "progressive",
+      detail: {
+        taxableIncome,
+        thisRunTaxableIncome: figures.taxableIncome,
+        priorTaxableIncome: prior?.taxableIncome ?? 0,
+        insurance,
+        personalDeduction: deductions.personal,
+        dependentDeduction,
+        dependents: figures.dependents,
+        otherDeductions,
+        assessableIncome: assessable,
+        monthTax,
+        priorTax,
+        tax,
+      },
+    });
   }
 
   const component = findComponent(components, ENGINE_CODES.pit);
-  const lines: PayLine[] = component && tax > 0 ? [{ code: component.code, kind: "deduction", category: component.category, amount: tax, taxable: 0, insurable: 0, rule: `pit_${method}`, roundingRule: component.roundingRule, inputs: { taxableIncome: figures.taxableIncome, assessableIncome: result.assessableIncome, dependents: figures.dependents } }] : [];
+  const lines: PayLine[] =
+    component && tax > 0
+      ? [
+          {
+            code: component.code,
+            kind: "deduction",
+            category: component.category,
+            amount: tax,
+            taxable: 0,
+            insurable: 0,
+            rule: `pit_${method}`,
+            roundingRule: component.roundingRule,
+            inputs: { taxableIncome: figures.taxableIncome, assessableIncome: result.assessableIncome, dependents: figures.dependents },
+          },
+        ]
+      : [];
   return { result, lines, trace };
 }
 

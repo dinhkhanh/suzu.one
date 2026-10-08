@@ -20,7 +20,12 @@ export async function crmDay(executor: unknown, personId: string, date: string):
       .where(and(eq(schema.crmDealStageChange.changedByPersonId, personId), sql`(${schema.crmDealStageChange.changedAt} at time zone 'Asia/Ho_Chi_Minh')::date = ${date}::date`)),
   ]);
   return [
-    ...activities.map((activity) => ({ kind: "client_activity", title: [activity.accountName ?? activity.leadCompany, activity.subject].filter(Boolean).join(": "), detail: activity.outcome, at: (activity.occurredAt ?? activity.doneAt ?? activity.createdAt).toISOString() })),
+    ...activities.map((activity) => ({
+      kind: "client_activity",
+      title: [activity.accountName ?? activity.leadCompany, activity.subject].filter(Boolean).join(": "),
+      detail: activity.outcome,
+      at: (activity.occurredAt ?? activity.doneAt ?? activity.createdAt).toISOString(),
+    })),
     ...moves.map((move) => ({ kind: "deal_moved", title: `${move.account}: ${move.title}`, detail: move.stage, at: move.at.toISOString() })),
   ];
 }

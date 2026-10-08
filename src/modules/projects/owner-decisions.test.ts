@@ -56,7 +56,11 @@ import { workflow } from "../../../tests/helpers/workflows";
 
 type Who = "lead" | "am" | "member" | "colleague" | "hr" | "payroll" | "auditor" | "director" | "teamLead";
 const ids = {} as Record<Who | "szm" | "team" | "client" | "tvc" | "retainer" | "secret", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const principalOf = (personId: string, grants: Grant[] = []): Principal => ({ personId, workforceType: "employee", grants });
 const userOf = (who: Who, grants: Grant[] = []) => ({ person: { id: ids[who], primaryEntityId: ids.szm }, principal: principalOf(ids[who], grants), userId: `u-${who}`, email: `${who}@suzu.group` }) as never;
 const month = monthOf(todayInVietnam());
@@ -71,7 +75,10 @@ const GRANTS: Partial<Record<Who, () => Grant[]>> = {
 const asUser = (who: Who) => userOf(who, GRANTS[who]?.() ?? []);
 
 const privateReadsOf = async (who: Who) =>
-  db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids[who])));
+  db()
+    .select()
+    .from(schema.auditLog)
+    .where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids[who])));
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -82,11 +89,17 @@ beforeAll(async () => {
   ids.szm = szm.id;
   const names: Record<Who, string> = { lead: "Truong Du An", am: "Quan Ly Khach", member: "Thanh Vien", colleague: "Dong Nghiep", hr: "Nhan Su", payroll: "Tien Luong", auditor: "Kiem Toan", director: "Giam Doc", teamLead: "Truong Nhom" };
   for (const [key, name] of Object.entries(names) as [Who, string][]) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   for (const [who, grants] of Object.entries(GRANTS) as [Who, () => Grant[]][]) {
-    for (const grant of grants()) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id, validFrom: "2024-01-01" });
+    for (const grant of grants())
+      await db()
+        .insert(schema.roleAssignment)
+        .values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id, validFrom: "2024-01-01" });
   }
   const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.teamLead);
   ids.team = team.id;
@@ -143,12 +156,23 @@ describe("who reads a project's money (Q21)", () => {
 
   it("gives the retainer's monthly fee to its own lead and account manager, and to nobody else", async () => {
     await updatePlanSettings(ids.retainer, { kind: "retainer", budgetMinutes: null, budgetByRole: [], updateCadenceDays: 7, driveUrl: null });
-    await saveRetainer(ids.retainer, { startMonth: addMonths(month, -1), endMonth: null, lines: [{ title: "Bài đăng", quantity: 4, format: null, channel: null }], minutesPerMonth: null, rollover: "reset", isActive: true, feePerMonthVnd: 30_000_000 });
+    await saveRetainer(ids.retainer, {
+      startMonth: addMonths(month, -1),
+      endMonth: null,
+      lines: [{ title: "Bài đăng", quantity: 4, format: null, channel: null }],
+      minutesPerMonth: null,
+      rollover: "reset",
+      isActive: true,
+      feePerMonthVnd: 30_000_000,
+    });
     const retainer = (await getRetainer(ids.retainer))!;
     for (const who of ["lead", "am"] as const) {
       const context = (await openProject(asUser(who), ids.retainer))!;
       expect(context.can.seeFees, who).toBe(true);
-      expect((await listPeriods(retainer, context.can.seeFees)).every((view) => view.feeVnd !== undefined), who).toBe(true);
+      expect(
+        (await listPeriods(retainer, context.can.seeFees)).every((view) => view.feeVnd !== undefined),
+        who,
+      ).toBe(true);
     }
     const asMember = (await openProject(asUser("member"), ids.retainer))!;
     expect(asMember.can.seeFees).toBe(false);
@@ -184,7 +208,19 @@ describe("acceptance before billing, for every client (Q22)", () => {
     const acceptance = await createAcceptance(ids.retainer, { scope: "retainer_period", milestoneId: null, retainerPeriodId: over.period.id }, ids.am);
     const [file] = await db()
       .insert(schema.storedFile)
-      .values({ bucket: "test", objectPath: `project_acceptance/${acceptance.id}.pdf`, fileName: "bien-ban.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "project_acceptance", ownerId: acceptance.id, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.am })
+      .values({
+        bucket: "test",
+        objectPath: `project_acceptance/${acceptance.id}.pdf`,
+        fileName: "bien-ban.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 10,
+        ownerType: "project_acceptance",
+        ownerId: acceptance.id,
+        entityId: ids.szm,
+        tier: "personal",
+        status: "ready",
+        uploadedByPersonId: ids.am,
+      })
       .returning();
     await signAcceptance(acceptance.id, { signedFileId: file.id, signedOn: todayInVietnam(), signedByClient: "Khách" }, ids.am);
     const items = await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.projectId, ids.retainer));
@@ -324,10 +360,7 @@ describe("a private project opened by a leader (Q25)", () => {
   });
 
   it("refuses to let the reader close a RAID item even when the item names them as its owner", async () => {
-    const [item] = await db()
-      .insert(schema.projectRaidItem)
-      .values({ projectId: ids.secret, kind: "risk", title: "Rủi ro ngân sách", ownerPersonId: ids.director, createdByPersonId: ids.lead, severity: "high" })
-      .returning();
+    const [item] = await db().insert(schema.projectRaidItem).values({ projectId: ids.secret, kind: "risk", title: "Rủi ro ngân sách", ownerPersonId: ids.director, createdByPersonId: ids.lead, severity: "high" }).returning();
     const pipeline = pipelines.get("projects.raid.status")!;
     expect(await pipeline.authorize(asUser("director"), { itemId: item.id, status: "closed" })).toBe(false);
     // Its lead, who runs the project, still closes it.
@@ -355,7 +388,19 @@ const billingOf = (projectId: string) => db().select().from(schema.projectBillin
 async function signFor(acceptanceId: string) {
   const [file] = await db()
     .insert(schema.storedFile)
-    .values({ bucket: "test", objectPath: `project_acceptance/${acceptanceId}.pdf`, fileName: "bien-ban.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "project_acceptance", ownerId: acceptanceId, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.am })
+    .values({
+      bucket: "test",
+      objectPath: `project_acceptance/${acceptanceId}.pdf`,
+      fileName: "bien-ban.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 10,
+      ownerType: "project_acceptance",
+      ownerId: acceptanceId,
+      entityId: ids.szm,
+      tier: "personal",
+      status: "ready",
+      uploadedByPersonId: ids.am,
+    })
     .returning();
   return signAcceptance(acceptanceId, { signedFileId: file.id, signedOn: todayInVietnam(), signedByClient: "Khách" }, ids.am);
 }

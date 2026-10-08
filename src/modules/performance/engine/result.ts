@@ -102,7 +102,15 @@ export function okrFigure(okr: Record<OkrLevel, OkrLevelInput>, mix: Performance
     const flags: ResultFlag[] = [];
     if (line.weightBp === 0) flags.push("zero_weight");
     else if (line.scoreBp === null) flags.push("missing");
-    return { level: line.level, progressBp: line.scoreBp, weightBp: line.weightBp, normalisedWeightBp: normalised[index], contributionBp: normalised[index] === 0 || line.scoreBp === null ? null : share(normalised[index], line.scoreBp), goals: line.goals, flags };
+    return {
+      level: line.level,
+      progressBp: line.scoreBp,
+      weightBp: line.weightBp,
+      normalisedWeightBp: normalised[index],
+      contributionBp: normalised[index] === 0 || line.scoreBp === null ? null : share(normalised[index], line.scoreBp),
+      goals: line.goals,
+      flags,
+    };
   });
   return { lines, scoreBp, renormalised: countedWeightBp > 0 && countedWeightBp < askedWeight };
 }

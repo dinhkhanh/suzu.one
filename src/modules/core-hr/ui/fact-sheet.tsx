@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 export function FactSheet({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <Card className={cn("py-0", className)}>
-      <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-4 px-4 py-1 md:grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_minmax(7rem,9rem)_minmax(0,1fr)] md:gap-x-6 [&>div:last-child>*]:border-0 md:[&>div:nth-last-child(-n+2)>*]:border-0">{children}</dl>
+      <dl className="grid grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)] gap-x-4 px-4 py-1 md:grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)_minmax(7rem,9rem)_minmax(0,1fr)] md:gap-x-6 [&>div:last-child>*]:border-0 md:[&>div:nth-last-child(-n+2)>*]:border-0">
+        {children}
+      </dl>
     </Card>
   );
 }

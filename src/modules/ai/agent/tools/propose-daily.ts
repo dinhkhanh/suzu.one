@@ -6,18 +6,7 @@
 import "server-only";
 import { z } from "zod";
 import { recordHref } from "@/lib/record-routes";
-import {
-  addToPlanInput,
-  firstReadersOf,
-  getPlanPage,
-  getReportForm,
-  logTimeInput,
-  submitReportInput,
-  TIME_CATEGORIES,
-  weekStartOf,
-  withinReportWindow,
-  withinTimeWindow,
-} from "@/modules/daily/service";
+import { addToPlanInput, firstReadersOf, getPlanPage, getReportForm, logTimeInput, submitReportInput, TIME_CATEGORIES, weekStartOf, withinReportWindow, withinTimeWindow } from "@/modules/daily/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { countOpenBlockersRaisedBy, type LoadedTask, taskKey } from "@/modules/work/service";
 import { draftEodNotes } from "../../drafts";
@@ -61,7 +50,12 @@ const proposeTimeLog = defineTool({
   input: z.strictObject({
     task: TASK_REF.optional(),
     category: z.enum(TIME_CATEGORIES).optional(),
-    minutes: z.number().int().min(1).max(24 * 60).describe("Whole minutes: 1h30 is 90."),
+    minutes: z
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 60)
+      .describe("Whole minutes: 1h30 is 90."),
     date: DATE.optional().describe("YYYY-MM-DD; today when left out."),
     note: z.string().max(500).optional(),
   }),

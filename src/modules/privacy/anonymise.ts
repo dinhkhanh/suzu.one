@@ -103,13 +103,40 @@ export async function anonymiseFormerEmployee(personId: string, actorPersonId: s
       .from(schema.personDocument)
       .where(and(eq(schema.personDocument.personId, personId), inArray(schema.personDocument.category, [...ERASED_DOCUMENT_CATEGORIES])));
     const fileIds = [...documents.map((row) => row.fileId), ...(person.photoFileId ? [person.photoFileId] : [])];
-    const users = person.workEmail ? await tx.select({ id: schema.user.id }).from(schema.user).where(sql`lower(${schema.user.email}) = ${person.workEmail}`) : [];
-    const sessions = users.length ? await tx.select({ token: schema.session.token }).from(schema.session).where(inArray(schema.session.userId, users.map((row) => row.id))) : [];
+    const users = person.workEmail
+      ? await tx
+          .select({ id: schema.user.id })
+          .from(schema.user)
+          .where(sql`lower(${schema.user.email}) = ${person.workEmail}`)
+      : [];
+    const sessions = users.length
+      ? await tx
+          .select({ token: schema.session.token })
+          .from(schema.session)
+          .where(
+            inArray(
+              schema.session.userId,
+              users.map((row) => row.id),
+            ),
+          )
+      : [];
 
     const count = (rows: readonly unknown[]) => rows.length;
     await tx.update(schema.person).set({ workEmail: null, photoFileId: null, updatedAt: now }).where(eq(schema.person.id, personId));
     await tx.update(schema.personProfile).set({ phone: null, personalEmail: null, currentAddress: null, maritalStatus: null, updatedAt: now }).where(eq(schema.personProfile.personId, personId));
-    if (documents.length) await tx.update(schema.personDocument).set({ deletedAt: now }).where(and(inArray(schema.personDocument.id, documents.map((row) => row.id)), isNull(schema.personDocument.deletedAt)));
+    if (documents.length)
+      await tx
+        .update(schema.personDocument)
+        .set({ deletedAt: now })
+        .where(
+          and(
+            inArray(
+              schema.personDocument.id,
+              documents.map((row) => row.id),
+            ),
+            isNull(schema.personDocument.deletedAt),
+          ),
+        );
     const removed: Record<string, number> = {
       emergencyContacts: count(await tx.delete(schema.emergencyContact).where(eq(schema.emergencyContact.personId, personId)).returning({ id: schema.emergencyContact.id })),
       documents: documents.length,
@@ -117,8 +144,20 @@ export async function anonymiseFormerEmployee(personId: string, actorPersonId: s
       notifications: count(await tx.delete(schema.notification).where(eq(schema.notification.recipientPersonId, personId)).returning({ id: schema.notification.id })),
       notificationSettings: count(await tx.delete(schema.notificationPreference).where(eq(schema.notificationPreference.personId, personId)).returning({ personId: schema.notificationPreference.personId })),
       pushDevices: count(await tx.delete(schema.pushSubscription).where(eq(schema.pushSubscription.personId, personId)).returning({ id: schema.pushSubscription.id })),
-      messengerLinks: count(await tx.update(schema.messengerLink).set({ psid: "", revokedAt: sql`coalesce(${schema.messengerLink.revokedAt}, now())`, revokedReason: sql`coalesce(${schema.messengerLink.revokedReason}, 'anonymised')` }).where(eq(schema.messengerLink.personId, personId)).returning({ id: schema.messengerLink.id })),
-      telegramLinks: count(await tx.update(schema.telegramLink).set({ chatId: "", revokedAt: sql`coalesce(${schema.telegramLink.revokedAt}, now())`, revokedReason: sql`coalesce(${schema.telegramLink.revokedReason}, 'anonymised')` }).where(eq(schema.telegramLink.personId, personId)).returning({ id: schema.telegramLink.id })),
+      messengerLinks: count(
+        await tx
+          .update(schema.messengerLink)
+          .set({ psid: "", revokedAt: sql`coalesce(${schema.messengerLink.revokedAt}, now())`, revokedReason: sql`coalesce(${schema.messengerLink.revokedReason}, 'anonymised')` })
+          .where(eq(schema.messengerLink.personId, personId))
+          .returning({ id: schema.messengerLink.id }),
+      ),
+      telegramLinks: count(
+        await tx
+          .update(schema.telegramLink)
+          .set({ chatId: "", revokedAt: sql`coalesce(${schema.telegramLink.revokedAt}, now())`, revokedReason: sql`coalesce(${schema.telegramLink.revokedReason}, 'anonymised')` })
+          .where(eq(schema.telegramLink.personId, personId))
+          .returning({ id: schema.telegramLink.id }),
+      ),
       conversations: count(await tx.delete(schema.aiConversation).where(eq(schema.aiConversation.personId, personId)).returning({ id: schema.aiConversation.id })),
       unansweredQuestions: count(await tx.delete(schema.aiUnansweredQuestion).where(eq(schema.aiUnansweredQuestion.personId, personId)).returning({ id: schema.aiUnansweredQuestion.id })),
       faceTemplates: count(await tx.delete(schema.faceEnrolment).where(eq(schema.faceEnrolment.personId, personId)).returning({ personId: schema.faceEnrolment.personId })),
@@ -126,11 +165,29 @@ export async function anonymiseFormerEmployee(personId: string, actorPersonId: s
         await tx
           .update(schema.punch)
           .set(PUNCH_POSITION_FIELDS)
-          .where(and(eq(schema.punch.personId, personId), sql`${schema.punch.source} = 'app'`, or(sql`${schema.punch.latitude} is not null`, sql`${schema.punch.ipAddress} is not null`, sql`${schema.punch.userAgent} is not null`, sql`${schema.punch.deviceInfo} is not null`)))
+          .where(
+            and(
+              eq(schema.punch.personId, personId),
+              sql`${schema.punch.source} = 'app'`,
+              or(sql`${schema.punch.latitude} is not null`, sql`${schema.punch.ipAddress} is not null`, sql`${schema.punch.userAgent} is not null`, sql`${schema.punch.deviceInfo} is not null`),
+            ),
+          )
           .returning({ id: schema.punch.id }),
       ),
       // Sessions and the Google link go with the account (on delete cascade).
-      accounts: users.length ? count(await tx.delete(schema.user).where(inArray(schema.user.id, users.map((row) => row.id))).returning({ id: schema.user.id })) : 0,
+      accounts: users.length
+        ? count(
+            await tx
+              .delete(schema.user)
+              .where(
+                inArray(
+                  schema.user.id,
+                  users.map((row) => row.id),
+                ),
+              )
+              .returning({ id: schema.user.id }),
+          )
+        : 0,
     };
     await tx.insert(schema.personAnonymisation).values({ personId, lastDay, anonymisedAt: now, anonymisedByPersonId: actorPersonId, removed });
     return { person, lastDay, removed, fileIds, tokens: sessions.map((row) => row.token) };

@@ -64,7 +64,10 @@ export async function loadTasks(taskIds: readonly string[], executor: Executor =
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
       .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
       .where(and(ids.length === 1 ? eq(schema.task.id, ids[0]) : inArray(schema.task.id, ids), present)),
-    executor.select({ taskId: schema.workTaskPerson.taskId, personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).where(ids.length === 1 ? eq(schema.workTaskPerson.taskId, ids[0]) : inArray(schema.workTaskPerson.taskId, ids)),
+    executor
+      .select({ taskId: schema.workTaskPerson.taskId, personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role })
+      .from(schema.workTaskPerson)
+      .where(ids.length === 1 ? eq(schema.workTaskPerson.taskId, ids[0]) : inArray(schema.workTaskPerson.taskId, ids)),
   ]);
   const peopleOf = Map.groupBy(people, (person) => person.taskId);
   for (const row of rows) {
@@ -100,7 +103,16 @@ export type ActivityView = { id: string; type: string; field: string | null; fro
 
 export async function listActivity(taskId: string, limit = 200): Promise<ActivityView[]> {
   return db()
-    .select({ id: schema.workActivity.id, type: schema.workActivity.type, field: schema.workActivity.field, fromValue: schema.workActivity.fromValue, toValue: schema.workActivity.toValue, createdAt: schema.workActivity.createdAt, actorPersonId: schema.workActivity.actorPersonId, actorName: schema.person.fullName })
+    .select({
+      id: schema.workActivity.id,
+      type: schema.workActivity.type,
+      field: schema.workActivity.field,
+      fromValue: schema.workActivity.fromValue,
+      toValue: schema.workActivity.toValue,
+      createdAt: schema.workActivity.createdAt,
+      actorPersonId: schema.workActivity.actorPersonId,
+      actorName: schema.person.fullName,
+    })
     .from(schema.workActivity)
     .leftJoin(schema.person, eq(schema.person.id, schema.workActivity.actorPersonId))
     .where(eq(schema.workActivity.taskId, taskId))
@@ -132,8 +144,14 @@ export async function assertInsidePrivateProject(tx: Executor, projectId: string
   const [project] = await tx.select({ id: schema.workProject.id, teamId: schema.workProject.teamId, visibility: schema.workProject.visibility }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project || project.visibility !== "private") return;
   const [members, leads] = await Promise.all([
-    tx.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, project.id), inArray(schema.workProjectMember.personId, wanted))),
-    tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"), inArray(schema.workTeamMember.personId, wanted))),
+    tx
+      .select({ personId: schema.workProjectMember.personId })
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, project.id), inArray(schema.workProjectMember.personId, wanted))),
+    tx
+      .select({ personId: schema.workTeamMember.personId })
+      .from(schema.workTeamMember)
+      .where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"), inArray(schema.workTeamMember.personId, wanted))),
   ]);
   const inside = new Set([...members, ...leads].map((row) => row.personId));
   if (wanted.some((id) => !inside.has(id))) throw new ActionError("person_not_assignable");
@@ -177,13 +195,21 @@ async function stateOfTeam(tx: Executor, stateId: string, teamId: string): Promi
 
 async function labelsOfTeam(tx: Executor, labelIds: readonly string[], teamId: string): Promise<{ id: string; name: string }[]> {
   if (labelIds.length === 0) return [];
-  const rows = await tx.select().from(schema.workLabel).where(inArray(schema.workLabel.id, [...labelIds]));
+  const rows = await tx
+    .select()
+    .from(schema.workLabel)
+    .where(inArray(schema.workLabel.id, [...labelIds]));
   if (rows.length !== new Set(labelIds).size || rows.some((row) => row.teamId !== null && row.teamId !== teamId)) throw new ActionError("label_not_found");
   return rows.map((row) => ({ id: row.id, name: row.name }));
 }
 
 async function parentOfTeam(tx: Executor, parentTaskId: string, teamId: string): Promise<{ task: TaskRow; work: WorkTaskRow }> {
-  const [row] = await tx.select({ task: schema.task, work: schema.workTask }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(eq(schema.task.id, parentTaskId), live)).limit(1);
+  const [row] = await tx
+    .select({ task: schema.task, work: schema.workTask })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .where(and(eq(schema.task.id, parentTaskId), live))
+    .limit(1);
   if (!row || row.work.teamId !== teamId) throw new ActionError("parent_not_found");
   return row;
 }
@@ -218,7 +244,10 @@ async function cycleNamed(tx: Executor, cycleId: string | null, teamId: string, 
 }
 
 async function nextRank(tx: Executor, stateId: string): Promise<number> {
-  const [row] = await tx.select({ value: sql<number | null>`max(${schema.workTask.boardRank})` }).from(schema.workTask).where(eq(schema.workTask.stateId, stateId));
+  const [row] = await tx
+    .select({ value: sql<number | null>`max(${schema.workTask.boardRank})` })
+    .from(schema.workTask)
+    .where(eq(schema.workTask.stateId, stateId));
   return rankBetween(row?.value ?? null, null);
 }
 
@@ -284,7 +313,11 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
   // Nobody chose these one by one, so what does not fit under the cap is left out rather than refusing the task.
   const checklist = appendChecklists([], [...named, ...staged.map((hook) => hook.checklist)], newChecklistItemId, { max: MAX_TASK_CHECKLIST });
 
-  const [team] = await tx.update(schema.workTeam).set({ taskSeq: sql`${schema.workTeam.taskSeq} + 1` }).where(and(eq(schema.workTeam.id, input.teamId), eq(schema.workTeam.isActive, true))).returning();
+  const [team] = await tx
+    .update(schema.workTeam)
+    .set({ taskSeq: sql`${schema.workTeam.taskSeq} + 1` })
+    .where(and(eq(schema.workTeam.id, input.teamId), eq(schema.workTeam.isActive, true)))
+    .returning();
   if (!team) throw new ActionError("team_not_found");
 
   const task = await createTask(
@@ -312,7 +345,20 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
 
   const [work] = await tx
     .insert(schema.workTask)
-    .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id), checklist: checklist.items, recurrenceId: input.recurrence?.id ?? null, occurrenceDate: input.recurrence?.occurrenceDate ?? null })
+    .values({
+      taskId: task.id,
+      teamId: team.id,
+      projectId: project?.id ?? null,
+      number: team.taskSeq,
+      stateId: state.id,
+      clientId: clientId ?? project?.clientId ?? null,
+      channel: input.channel ?? null,
+      contentFormat: input.contentFormat ?? null,
+      boardRank: await nextRank(tx, state.id),
+      checklist: checklist.items,
+      recurrenceId: input.recurrence?.id ?? null,
+      occurrenceDate: input.recurrence?.occurrenceDate ?? null,
+    })
     .returning();
   if (labels.length) await tx.insert(schema.workTaskLabel).values(labels.map((label) => ({ taskId: task.id, labelId: label.id })));
   if (input.digitalAssetIds?.length) await syncTaskDigitalAssets(tx, task.id, input.digitalAssetIds);
@@ -519,38 +565,75 @@ export async function updateWorkTaskIn(
       if (fields.status !== task.status) Object.assign(taskSet, fields);
       if (!patch.position) workSet.boardRank = await nextRank(tx, to.id);
       plain("state", from ? { id: from.id, name: from.name, category: from.category } : null, { id: to.id, name: to.name, category: to.category });
-      addLists(hooks.filter((hook) => hook.stateId === to.id).map((hook) => hook.checklist), { lenient: options.handoff === "system" });
+      addLists(
+        hooks.filter((hook) => hook.stateId === to.id).map((hook) => hook.checklist),
+        { lenient: options.handoff === "system" },
+      );
     }
     if (patch.position) {
       const neighbourIds = [patch.position.beforeTaskId, patch.position.afterTaskId].filter((id): id is string => !!id);
-      const neighbours = neighbourIds.length ? await tx.select({ taskId: schema.workTask.taskId, rank: schema.workTask.boardRank }).from(schema.workTask).where(and(inArray(schema.workTask.taskId, neighbourIds), eq(schema.workTask.stateId, targetStateId))) : [];
+      const neighbours = neighbourIds.length
+        ? await tx
+            .select({ taskId: schema.workTask.taskId, rank: schema.workTask.boardRank })
+            .from(schema.workTask)
+            .where(and(inArray(schema.workTask.taskId, neighbourIds), eq(schema.workTask.stateId, targetStateId)))
+        : [];
       const rankOf = (id: string | null) => neighbours.find((row) => row.taskId === id)?.rank ?? null;
       workSet.boardRank = rankBetween(rankOf(patch.position.beforeTaskId), rankOf(patch.position.afterTaskId));
     }
 
     if (patch.labelIds) {
-      const current = await tx.select({ id: schema.workLabel.id, name: schema.workLabel.name }).from(schema.workTaskLabel).innerJoin(schema.workLabel, eq(schema.workLabel.id, schema.workTaskLabel.labelId)).where(eq(schema.workTaskLabel.taskId, taskId));
+      const current = await tx
+        .select({ id: schema.workLabel.id, name: schema.workLabel.name })
+        .from(schema.workTaskLabel)
+        .innerJoin(schema.workLabel, eq(schema.workLabel.id, schema.workTaskLabel.labelId))
+        .where(eq(schema.workTaskLabel.taskId, taskId));
       const wanted = await labelsOfTeam(tx, patch.labelIds, team.id);
       const added = wanted.filter((label) => !current.some((row) => row.id === label.id));
       const removed = current.filter((row) => !wanted.some((label) => label.id === row.id));
       if (added.length) await tx.insert(schema.workTaskLabel).values(added.map((label) => ({ taskId, labelId: label.id })));
-      if (removed.length) await tx.delete(schema.workTaskLabel).where(and(eq(schema.workTaskLabel.taskId, taskId), inArray(schema.workTaskLabel.labelId, removed.map((row) => row.id))));
+      if (removed.length)
+        await tx.delete(schema.workTaskLabel).where(
+          and(
+            eq(schema.workTaskLabel.taskId, taskId),
+            inArray(
+              schema.workTaskLabel.labelId,
+              removed.map((row) => row.id),
+            ),
+          ),
+        );
       changes.push(...added.map((label) => ({ type: "label_added", to: label })), ...removed.map((label) => ({ type: "label_removed", from: label })));
     }
     if (patch.digitalAssetIds) changes.push(...(await syncTaskDigitalAssets(tx, taskId, patch.digitalAssetIds)));
 
     const newCollaborators: string[] = [];
     if (patch.collaboratorIds) {
-      const current = await tx.select({ id: schema.person.id, name: schema.person.fullName, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).innerJoin(schema.person, eq(schema.person.id, schema.workTaskPerson.personId)).where(eq(schema.workTaskPerson.taskId, taskId));
+      const current = await tx
+        .select({ id: schema.person.id, name: schema.person.fullName, role: schema.workTaskPerson.role })
+        .from(schema.workTaskPerson)
+        .innerJoin(schema.person, eq(schema.person.id, schema.workTaskPerson.personId))
+        .where(eq(schema.workTaskPerson.taskId, taskId));
       const wantedIds = [...new Set(patch.collaboratorIds)];
       for (const personId of wantedIds.filter((id) => !current.some((row) => row.id === id && row.role === "collaborator"))) {
         const person = (await personNamed(tx, personId, { mustBeActive: true }))!;
-        await tx.insert(schema.workTaskPerson).values({ taskId, personId, role: "collaborator" }).onConflictDoUpdate({ target: [schema.workTaskPerson.taskId, schema.workTaskPerson.personId], set: { role: "collaborator" } });
+        await tx
+          .insert(schema.workTaskPerson)
+          .values({ taskId, personId, role: "collaborator" })
+          .onConflictDoUpdate({ target: [schema.workTaskPerson.taskId, schema.workTaskPerson.personId], set: { role: "collaborator" } });
         changes.push({ type: "person_added", to: person });
         newCollaborators.push(personId);
       }
       const removed = current.filter((row) => row.role === "collaborator" && !wantedIds.includes(row.id));
-      if (removed.length) await tx.delete(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, taskId), inArray(schema.workTaskPerson.personId, removed.map((row) => row.id))));
+      if (removed.length)
+        await tx.delete(schema.workTaskPerson).where(
+          and(
+            eq(schema.workTaskPerson.taskId, taskId),
+            inArray(
+              schema.workTaskPerson.personId,
+              removed.map((row) => row.id),
+            ),
+          ),
+        );
       changes.push(...removed.map((row) => ({ type: "person_removed", from: { id: row.id, name: row.name } })));
     }
 
@@ -591,7 +674,11 @@ export async function updateWorkTaskIn(
       plain("links", work.links.length, patch.links.length);
     }
 
-    if (Object.keys(taskSet).length || changes.length || Object.keys(workSet).length) await tx.update(schema.task).set({ ...taskSet, updatedAt: new Date() }).where(eq(schema.task.id, taskId));
+    if (Object.keys(taskSet).length || changes.length || Object.keys(workSet).length)
+      await tx
+        .update(schema.task)
+        .set({ ...taskSet, updatedAt: new Date() })
+        .where(eq(schema.task.id, taskId));
     if (Object.keys(workSet).length) await tx.update(schema.workTask).set(workSet).where(eq(schema.workTask.taskId, taskId));
     await logActivity(tx, taskId, actorPersonId, changes);
 
@@ -618,7 +705,11 @@ export async function updateWorkTaskIn(
 async function automateChange(tx: Executor, before: LoadedTask, changes: readonly ActivityEntry[], status: string | undefined, depth: number, handedOff: boolean): Promise<void> {
   if (changes.length === 0) return;
   // Most teams have no rules: one indexed look, and nothing more. (A parent is always of the same team.)
-  const [any] = await tx.select({ id: schema.workAutomation.id }).from(schema.workAutomation).where(and(eq(schema.workAutomation.teamId, before.team.id), eq(schema.workAutomation.isActive, true))).limit(1);
+  const [any] = await tx
+    .select({ id: schema.workAutomation.id })
+    .from(schema.workAutomation)
+    .where(and(eq(schema.workAutomation.teamId, before.team.id), eq(schema.workAutomation.isActive, true)))
+    .limit(1);
   if (!any) return;
   const taskId = before.task.id;
   const state = changes.find((change) => change.field === "state")?.to as { id: string } | undefined;
@@ -627,8 +718,18 @@ async function automateChange(tx: Executor, before: LoadedTask, changes: readonl
   if (fields.length) await runTaskAutomations(tx, taskId, { type: "field_changed", fields }, depth);
   const parentId = before.task.parentTaskId;
   if (parentId && (status === "done" || status === "cancelled")) {
-    const [open] = await tx.select({ id: schema.task.id }).from(schema.task).where(and(eq(schema.task.parentTaskId, parentId), live, inArray(schema.task.status, ["todo", "in_progress"]))).limit(1);
-    const [done] = open ? [] : await tx.select({ id: schema.task.id }).from(schema.task).where(and(eq(schema.task.parentTaskId, parentId), live, eq(schema.task.status, "done"))).limit(1);
+    const [open] = await tx
+      .select({ id: schema.task.id })
+      .from(schema.task)
+      .where(and(eq(schema.task.parentTaskId, parentId), live, inArray(schema.task.status, ["todo", "in_progress"])))
+      .limit(1);
+    const [done] = open
+      ? []
+      : await tx
+          .select({ id: schema.task.id })
+          .from(schema.task)
+          .where(and(eq(schema.task.parentTaskId, parentId), live, eq(schema.task.status, "done")))
+          .limit(1);
     if (!open && done) await runTaskAutomations(tx, parentId, { type: "all_subtasks_done" }, depth);
   }
 }
@@ -639,8 +740,11 @@ export async function deleteWorkTask(taskId: string, actorPersonId: string): Pro
     const found = await loadTask(taskId, tx);
     if (!found) throw new ActionError("task_not_found");
     const ids = [taskId];
-    for (let frontier = [taskId]; frontier.length > 0; ) {
-      const children = await tx.select({ id: schema.task.id }).from(schema.task).where(and(inArray(schema.task.parentTaskId, frontier), live));
+    for (let frontier = [taskId]; frontier.length > 0;) {
+      const children = await tx
+        .select({ id: schema.task.id })
+        .from(schema.task)
+        .where(and(inArray(schema.task.parentTaskId, frontier), live));
       frontier = children.map((child) => child.id).filter((id) => !ids.includes(id));
       ids.push(...frontier);
     }
@@ -657,7 +761,16 @@ export async function deleteWorkTask(taskId: string, actorPersonId: string): Pro
 export const RESTORE_WINDOW_DAYS = 30;
 const restoreSince = (now: Date) => new Date(now.getTime() - RESTORE_WINDOW_DAYS * 86_400_000);
 
-export type DeletedTask = { id: string; key: string; title: string; projectId: string | null; deletedAt: Date; deletedByPersonId: string | null; deletedByName: string | null; /** Sub-tasks deleted with it, which come back with it. */ subtasks: number };
+export type DeletedTask = {
+  id: string;
+  key: string;
+  title: string;
+  projectId: string | null;
+  deletedAt: Date;
+  deletedByPersonId: string | null;
+  deletedByName: string | null;
+  /** Sub-tasks deleted with it, which come back with it. */ subtasks: number;
+};
 
 /**
  * Recently deleted (FR-WRK-03): the tasks of a project, or of a team's backlog, deleted in the last
@@ -676,7 +789,17 @@ export async function listDeletedTasks(scope: { projectId: string } | { teamId: 
     .limit(1)
     .as("last_delete");
   const rows = await db()
-    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, projectId: schema.workTask.projectId, deletedAt: schema.task.deletedAt, deletedByPersonId: lastDelete.actorPersonId, deletedByName: deleter.fullName, subtasks: sql<number>`coalesce((${lastDelete.fromValue}->>'withSubtasks')::int, 0)` })
+    .select({
+      id: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      projectId: schema.workTask.projectId,
+      deletedAt: schema.task.deletedAt,
+      deletedByPersonId: lastDelete.actorPersonId,
+      deletedByName: deleter.fullName,
+      subtasks: sql<number>`coalesce((${lastDelete.fromValue}->>'withSubtasks')::int, 0)`,
+    })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
@@ -694,7 +817,16 @@ export async function listDeletedTasks(scope: { projectId: string } | { teamId: 
     )
     .orderBy(desc(schema.task.deletedAt), asc(schema.workTask.number))
     .limit(limit);
-  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, projectId: row.projectId, deletedAt: row.deletedAt!, deletedByPersonId: row.deletedByPersonId, deletedByName: row.deletedByName, subtasks: Number(row.subtasks) }));
+  return rows.map((row) => ({
+    id: row.id,
+    key: taskKey(row.teamKey, row.number),
+    title: row.title,
+    projectId: row.projectId,
+    deletedAt: row.deletedAt!,
+    deletedByPersonId: row.deletedByPersonId,
+    deletedByName: row.deletedByName,
+    subtasks: Number(row.subtasks),
+  }));
 }
 
 /**
@@ -725,7 +857,10 @@ export async function restoreWorkTask(taskId: string, actorPersonId: string, now
         returning id`),
     );
     if (orphaned) await tx.update(schema.task).set({ parentTaskId: null }).where(eq(schema.task.id, taskId));
-    await logActivity(tx, taskId, actorPersonId, [{ type: "restored", to: { title: found.task.title, withSubtasks: restored.length - 1 } }, ...(orphaned ? [{ type: "field_changed", field: "parent", from: { id: found.task.parentTaskId }, to: null }] : [])]);
+    await logActivity(tx, taskId, actorPersonId, [
+      { type: "restored", to: { title: found.task.title, withSubtasks: restored.length - 1 } },
+      ...(orphaned ? [{ type: "field_changed", field: "parent", from: { id: found.task.parentTaskId }, to: null }] : []),
+    ]);
     return { task: found.task, projectId: found.work.projectId, restored: restored.length };
   });
 }
@@ -738,7 +873,15 @@ export async function addDependency(blockerTaskId: string, blockedTaskId: string
     const both = await loadTasks([blockerTaskId, blockedTaskId], tx);
     const [blocker, blocked] = [both.get(blockerTaskId), both.get(blockedTaskId)];
     if (!blocker || !blocked) throw new ActionError("task_not_found");
-    const existing = await tx.select().from(schema.workTaskDependency).where(or(and(eq(schema.workTaskDependency.blockerTaskId, blockerTaskId), eq(schema.workTaskDependency.blockedTaskId, blockedTaskId)), and(eq(schema.workTaskDependency.blockerTaskId, blockedTaskId), eq(schema.workTaskDependency.blockedTaskId, blockerTaskId), eq(schema.workTaskDependency.type, "relates"))));
+    const existing = await tx
+      .select()
+      .from(schema.workTaskDependency)
+      .where(
+        or(
+          and(eq(schema.workTaskDependency.blockerTaskId, blockerTaskId), eq(schema.workTaskDependency.blockedTaskId, blockedTaskId)),
+          and(eq(schema.workTaskDependency.blockerTaskId, blockedTaskId), eq(schema.workTaskDependency.blockedTaskId, blockerTaskId), eq(schema.workTaskDependency.type, "relates")),
+        ),
+      );
     if (existing.length) throw new ActionError("dependency_exists");
     if (type === "blocks") {
       // Dependencies may cross teams and projects, so the whole "blocks" graph is the input.
@@ -916,7 +1059,9 @@ export async function awayToday(executor: Executor, personIds: readonly string[]
       personId: schema.workCoverPlan.personId,
       until: schema.workCoverPlan.toDate,
       // Spelled out: in a one-table query drizzle leaves columns unqualified, and "id" would be ambiguous inside the subqueries.
-      coverName: sql<string | null>`coalesce((select p.full_name from person p where p.id = work_cover_plan.default_cover_person_id), (select p.full_name from work_cover_item i join person p on p.id = i.cover_person_id where i.plan_id = work_cover_plan.id order by p.full_name limit 1))`,
+      coverName: sql<
+        string | null
+      >`coalesce((select p.full_name from person p where p.id = work_cover_plan.default_cover_person_id), (select p.full_name from work_cover_item i join person p on p.id = i.cover_person_id where i.plan_id = work_cover_plan.id order by p.full_name limit 1))`,
     })
     .from(schema.workCoverPlan)
     .where(and(inArray(schema.workCoverPlan.personId, [...personIds]), eq(schema.workCoverPlan.status, "submitted"), sql`${schema.workCoverPlan.fromDate} <= ${today} and ${schema.workCoverPlan.toDate} >= ${today}`));
@@ -946,7 +1091,14 @@ export async function listLinkableTasks(scope: { projectId: string | null; teamI
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(eq(schema.task.kind, WORK_KIND), live, inArray(schema.task.status, ["todo", "in_progress"]), scope.projectId ? eq(schema.workTask.projectId, scope.projectId) : and(eq(schema.workTask.teamId, scope.teamId), isNull(schema.workTask.projectId))))
+    .where(
+      and(
+        eq(schema.task.kind, WORK_KIND),
+        live,
+        inArray(schema.task.status, ["todo", "in_progress"]),
+        scope.projectId ? eq(schema.workTask.projectId, scope.projectId) : and(eq(schema.workTask.teamId, scope.teamId), isNull(schema.workTask.projectId)),
+      ),
+    )
     .orderBy(asc(schema.workTask.boardRank), asc(schema.workTask.number))
     .limit(limit);
   return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, under: !!row.under }));
@@ -983,8 +1135,7 @@ export function listTaskSlice(of: { projectId: string } | { backlogOf: string },
 }
 
 /** The content calendar's month (FR-WRK-05): past the limit, open work first, then the earliest due. */
-export const listCalendarItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> =>
-  listItemsCounted(where, db(), limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, sql`${schema.task.dueDate} asc`]);
+export const listCalendarItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> => listItemsCounted(where, db(), limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, sql`${schema.task.dueDate} asc`]);
 
 /** A running cycle's tasks (FR-PJM-10): past the limit, open work first. */
 export const listCycleItems = (where: SQL | undefined, limit: number): Promise<TaskSlice> => listItemsCounted(where, db(), limit, [sql`(${schema.task.status} in ('todo', 'in_progress')) desc`, desc(schema.task.updatedAt)]);
@@ -1012,23 +1163,29 @@ export async function visibleTaskCondition(viewer: WorkViewer, executor?: Execut
   if (!executor) await notePrivateProjectReads(viewer, admitted);
   const teamIds = teams.filter((team) => canViewTeamBacklog(viewer, teamFacts(team))).map((team) => team.id);
   const self = viewer.principal.personId;
-  const clauses: (SQL | undefined)[] = [
-    projectIds.length ? inArray(schema.workTask.projectId, projectIds) : undefined,
-    teamIds.length ? and(isNull(schema.workTask.projectId), inArray(schema.workTask.teamId, teamIds)) : undefined,
-  ];
+  const clauses: (SQL | undefined)[] = [projectIds.length ? inArray(schema.workTask.projectId, projectIds) : undefined, teamIds.length ? and(isNull(schema.workTask.projectId), inArray(schema.workTask.teamId, teamIds)) : undefined];
   if (self) {
     clauses.push(
       eq(schema.task.assigneePersonId, self),
       eq(schema.task.requesterPersonId, self),
       eq(schema.task.createdByPersonId, self),
-      exists((executor ?? db()).select({ one: sql`1` }).from(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self), eq(schema.workTaskPerson.role, "collaborator")))),
+      exists(
+        (executor ?? db())
+          .select({ one: sql`1` })
+          .from(schema.workTaskPerson)
+          .where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self), eq(schema.workTaskPerson.role, "collaborator"))),
+      ),
     );
   }
   return or(...clauses.filter((clause): clause is SQL => !!clause)) ?? sql`false`;
 }
 
 export async function listVisibleTaskIds(viewer: WorkViewer, executor?: Executor): Promise<string[]> {
-  const rows = await (executor ?? db()).select({ id: schema.task.id }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(eq(schema.task.kind, WORK_KIND), live, await visibleTaskCondition(viewer, executor)));
+  const rows = await (executor ?? db())
+    .select({ id: schema.task.id })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .where(and(eq(schema.task.kind, WORK_KIND), live, await visibleTaskCondition(viewer, executor)));
   return rows.map((row) => row.id);
 }
 
@@ -1052,9 +1209,19 @@ export async function resolveTaskKey(key: string, executor: Executor = db()): Pr
   const match = /^([a-z][a-z0-9]{1,7})-(\d{1,7})$/i.exec(key.trim());
   if (!match) return null;
   const [teamKey, number] = [match[1].toUpperCase(), Number(match[2])];
-  const [current] = await executor.select({ id: schema.workTask.taskId }).from(schema.workTask).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId)).where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTask.number, number))).limit(1);
+  const [current] = await executor
+    .select({ id: schema.workTask.taskId })
+    .from(schema.workTask)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+    .where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTask.number, number)))
+    .limit(1);
   if (current) return current.id;
-  const [moved] = await executor.select({ id: schema.workTaskNumberAlias.taskId }).from(schema.workTaskNumberAlias).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId)).where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTaskNumberAlias.number, number))).limit(1);
+  const [moved] = await executor
+    .select({ id: schema.workTaskNumberAlias.taskId })
+    .from(schema.workTaskNumberAlias)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId))
+    .where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTaskNumberAlias.number, number)))
+    .limit(1);
   return moved?.id ?? null;
 }
 
@@ -1069,10 +1236,22 @@ export async function resolveTaskKeys(keys: readonly string[], executor: Executo
   });
   const result = new Map<string, string>();
   if (pairs.length === 0) return result;
-  const wanted = (number: AnyPgColumn) => sql`(${schema.workTeam.key}, ${number}) in (${sql.join(pairs.map((pair) => sql`(${pair.teamKey}, ${pair.number})`), sql`, `)})`;
+  const wanted = (number: AnyPgColumn) =>
+    sql`(${schema.workTeam.key}, ${number}) in (${sql.join(
+      pairs.map((pair) => sql`(${pair.teamKey}, ${pair.number})`),
+      sql`, `,
+    )})`;
   const [current, moved] = await Promise.all([
-    executor.select({ id: schema.workTask.taskId, teamKey: schema.workTeam.key, number: schema.workTask.number }).from(schema.workTask).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId)).where(wanted(schema.workTask.number)),
-    executor.select({ id: schema.workTaskNumberAlias.taskId, teamKey: schema.workTeam.key, number: schema.workTaskNumberAlias.number }).from(schema.workTaskNumberAlias).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId)).where(wanted(schema.workTaskNumberAlias.number)),
+    executor
+      .select({ id: schema.workTask.taskId, teamKey: schema.workTeam.key, number: schema.workTask.number })
+      .from(schema.workTask)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+      .where(wanted(schema.workTask.number)),
+    executor
+      .select({ id: schema.workTaskNumberAlias.taskId, teamKey: schema.workTeam.key, number: schema.workTaskNumberAlias.number })
+      .from(schema.workTaskNumberAlias)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId))
+      .where(wanted(schema.workTaskNumberAlias.number)),
   ]);
   // A number a task carries now wins over one it used to carry.
   const idOf = new Map([...moved, ...current].map((row) => [`${row.teamKey}-${row.number}`, row.id]));
@@ -1091,7 +1270,11 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12)
   if (text.length < 2 && !/^\d+$/.test(text)) return [];
   const keyMatch = /^(?:([a-z0-9]{2,8})-)?(\d{1,7})$/i.exec(text);
   const escaped = text.replace(/[\\%_]/g, (character) => `\\${character}`);
-  const matches = or(ilike(schema.task.title, `%${escaped}%`), keyMatch ? and(eq(schema.workTask.number, Number(keyMatch[2])), keyMatch[1] ? eq(schema.workTeam.key, keyMatch[1].toUpperCase()) : undefined) : undefined, keyMatch ? aliasMatches(Number(keyMatch[2]), keyMatch[1] ?? null) : undefined);
+  const matches = or(
+    ilike(schema.task.title, `%${escaped}%`),
+    keyMatch ? and(eq(schema.workTask.number, Number(keyMatch[2])), keyMatch[1] ? eq(schema.workTeam.key, keyMatch[1].toUpperCase()) : undefined) : undefined,
+    keyMatch ? aliasMatches(Number(keyMatch[2]), keyMatch[1] ?? null) : undefined,
+  );
   const rows = await db()
     .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, status: schema.task.status, projectName: schema.workProject.name })
     .from(schema.task)
@@ -1159,7 +1342,10 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     work.clientId ? db().select({ name: schema.workClient.name }).from(schema.workClient).where(eq(schema.workClient.id, work.clientId)) : [],
     db().select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, taskId)),
     listItems(eq(schema.task.parentTaskId, taskId), db()),
-    db().select().from(schema.workTaskDependency).where(or(eq(schema.workTaskDependency.blockerTaskId, taskId), eq(schema.workTaskDependency.blockedTaskId, taskId))),
+    db()
+      .select()
+      .from(schema.workTaskDependency)
+      .where(or(eq(schema.workTaskDependency.blockerTaskId, taskId), eq(schema.workTaskDependency.blockedTaskId, taskId))),
     task.parentTaskId ? loadTask(task.parentTaskId) : undefined,
     digitalAssetsByTask([taskId]),
   ]);
@@ -1185,7 +1371,10 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
   }
   // What the page names from other private projects is read there too (Q25); its own was noted above.
   const shownOthers = [...shownSubtasks.map((subtask) => subtask.id), ...linked.map((link) => link.id)].map((id) => others.get(id)?.facts.project);
-  await notePrivateProjectReads(viewer, shownOthers.filter((project) => project && project.id !== loaded.facts.project?.id));
+  await notePrivateProjectReads(
+    viewer,
+    shownOthers.filter((project) => project && project.id !== loaded.facts.project?.id),
+  );
   return {
     ...loaded,
     key: taskKey(team.key, work.number),

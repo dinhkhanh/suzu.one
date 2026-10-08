@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { Grant } from "@/modules/platform/rbac/policy";
-import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, overseesDaily, type ReportReader, type ReportSubject, type TimeReader, type TimesheetSubject } from "./policy";
+import {
+  canApproveTimesheet,
+  canCommentOnReport,
+  canViewAttendanceHint,
+  canOverseeReport,
+  canViewReport,
+  canViewTimeEntry,
+  canViewTimesheet,
+  canViewUtilisation,
+  overseesDaily,
+  type ReportReader,
+  type ReportSubject,
+  type TimeReader,
+  type TimesheetSubject,
+} from "./policy";
 
 const reader = (personId: string, led: string[] = []): ReportReader => ({ personId, ledTeamIds: new Set(led) });
 

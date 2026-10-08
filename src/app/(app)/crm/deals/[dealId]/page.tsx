@@ -81,7 +81,11 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
   // The staffing check (FR-CRM-17): the quote's hours against the team's free time, for whoever may plan that team.
   const staffing = quotesVisible && deal.status === "open" ? await staffingCheck(user, deal, quotes, today) : null;
   const hours = (minutes: number) => f.hours(minutes);
-  const [members, templates, contracts] = await Promise.all([needsTeams ? listAssignableByTeam(activeTeams.map((team) => team.id)) : Promise.resolve(new Map<string, { id: string; fullName: string }[]>()), setsUp ? listWorkTemplates(undefined, { activeOnly: true }) : Promise.resolve([]), setsUp ? contractChoices(account.client.id) : Promise.resolve([])]);
+  const [members, templates, contracts] = await Promise.all([
+    needsTeams ? listAssignableByTeam(activeTeams.map((team) => team.id)) : Promise.resolve(new Map<string, { id: string; fullName: string }[]>()),
+    setsUp ? listWorkTemplates(undefined, { activeOnly: true }) : Promise.resolve([]),
+    setsUp ? contractChoices(account.client.id) : Promise.resolve([]),
+  ]);
   const teamsWithPeople = activeTeams.map((team) => ({ id: team.id, name: team.name, people: members.get(team.id) ?? [] })).filter((team) => team.people.length > 0);
   const stageOptions = stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }));
   const currentStage = stages.find((stage) => stage.id === deal.stageId);
@@ -92,22 +96,53 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
 
   return (
     <Page width="wide">
-      <PageHeader eyebrow={<><Link href="/crm/deals" className="underline">
-            {t("deals.title")}
-          </Link>{" "}
-          ·{" "}
-          <RecordLink kind="account" id={account.client.id} className="underline">
-            {account.client.name}
-          </RecordLink>
-          {deal.brandName ? ` · ${deal.brandName}` : ""}</>} title={<span className="inline-flex flex-wrap items-center gap-2">{deal.title}
-          <span className="font-mono text-sm text-muted-foreground">{deal.code}</span>
-          <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
-            {stageName(deal.stage, locale)}
-          </Badge></span>}>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/crm/deals" className="underline">
+              {t("deals.title")}
+            </Link>{" "}
+            ·{" "}
+            <RecordLink kind="account" id={account.client.id} className="underline">
+              {account.client.name}
+            </RecordLink>
+            {deal.brandName ? ` · ${deal.brandName}` : ""}
+          </>
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {deal.title}
+            <span className="font-mono text-sm text-muted-foreground">{deal.code}</span>
+            <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
+              {stageName(deal.stage, locale)}
+            </Badge>
+          </span>
+        }
+      >
         <p className="text-sm text-muted-foreground">
           {[
-            <span key="owner">{t.rich("deal.ownerIs", { name: deal.ownerName ?? "—", person: (chunks) => <RecordLink kind="person" id={deal.ownerPersonId}>{chunks}</RecordLink> })}</span>,
-            deal.teamName ? <span key="team">{t.rich("deal.teamIs", { name: deal.teamName, team: (chunks) => <RecordLink kind="team" id={deal.teamId}>{chunks}</RecordLink> })}</span> : null,
+            <span key="owner">
+              {t.rich("deal.ownerIs", {
+                name: deal.ownerName ?? "—",
+                person: (chunks) => (
+                  <RecordLink kind="person" id={deal.ownerPersonId}>
+                    {chunks}
+                  </RecordLink>
+                ),
+              })}
+            </span>,
+            deal.teamName ? (
+              <span key="team">
+                {t.rich("deal.teamIs", {
+                  name: deal.teamName,
+                  team: (chunks) => (
+                    <RecordLink kind="team" id={deal.teamId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })}
+              </span>
+            ) : null,
             deal.entityName ? (
               <RecordLink key="entity" kind="entity" id={deal.entityId}>
                 {deal.entityName}
@@ -135,7 +170,16 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
 
       {handoffWaiting ? (
         <section className="flex flex-col gap-2 rounded-xl border border-amber-300 p-4">
-          <h2 className="text-sm font-medium">{t.rich("deal.handoff.waiting", { project: handoffWaiting.projectName, link: (chunks) => <RecordLink kind="project" id={handoffWaiting.projectId}>{chunks}</RecordLink> })}</h2>
+          <h2 className="text-sm font-medium">
+            {t.rich("deal.handoff.waiting", {
+              project: handoffWaiting.projectName,
+              link: (chunks) => (
+                <RecordLink kind="project" id={handoffWaiting.projectId}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}
+          </h2>
           <HandoffNoteView note={handoffWaiting.handoffNote} />
           <HandoffAnswerForm projectId={handoffWaiting.projectId} />
         </section>
@@ -169,7 +213,17 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
                       <Badge dot variant={statusTone(project.handoffStatus)}>
                         {t(`enums.handoffStatus.${project.handoffStatus as "pending"}`)}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{t.rich("deal.handoff.to", { name: project.leadName ?? "—", date: f.when(project.createdAt), person: (chunks) => <RecordLink kind="person" id={project.handoffToPersonId}>{chunks}</RecordLink> })}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t.rich("deal.handoff.to", {
+                          name: project.leadName ?? "—",
+                          date: f.when(project.createdAt),
+                          person: (chunks) => (
+                            <RecordLink kind="person" id={project.handoffToPersonId}>
+                              {chunks}
+                            </RecordLink>
+                          ),
+                        })}
+                      </span>
                     </p>
                     {project.handoffStatus === "returned" ? <p className="text-sm text-destructive">{t("deal.handoff.returnedBecause", { reason: project.handoffReturnReason ?? "—" })}</p> : null}
                     <details>
@@ -182,7 +236,15 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
               </List>
               {setsUp && teamsWithPeople.length ? (
                 <TableAddRow label={t("deal.delivery.title")} open={projects.length === 0}>
-                  <DeliverySetupForm dealId={dealId} dealTitle={deal.title} teams={teamsWithPeople} defaultTeamId={deal.teamId} templates={templates.filter((template) => template.purpose === "work_project").map((template) => ({ id: template.id, name: template.name }))} contracts={contracts.map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} today={today} />
+                  <DeliverySetupForm
+                    dealId={dealId}
+                    dealTitle={deal.title}
+                    teams={teamsWithPeople}
+                    defaultTeamId={deal.teamId}
+                    templates={templates.filter((template) => template.purpose === "work_project").map((template) => ({ id: template.id, name: template.name }))}
+                    contracts={contracts.map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))}
+                    today={today}
+                  />
                 </TableAddRow>
               ) : null}
             </TableCard>
@@ -190,7 +252,11 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
 
           {quotesVisible ? (
             <TableCard>
-              <TableCardHeader title={t("deal.sections.quotes")} count={quotes.length || null} actions={edits ? <CrmButton action={createQuoteAction} input={{ dealId }} label={t("quote.create")} navigateTo={(data) => `/crm/deals/${dealId}/quotes/${(data as { id: string }).id}`} /> : null} />
+              <TableCardHeader
+                title={t("deal.sections.quotes")}
+                count={quotes.length || null}
+                actions={edits ? <CrmButton action={createQuoteAction} input={{ dealId }} label={t("quote.create")} navigateTo={(data) => `/crm/deals/${dealId}/quotes/${(data as { id: string }).id}`} /> : null}
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -228,9 +294,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
               <h2 className="text-sm font-medium">{t("deal.staffing.title")}</h2>
               <div className={`flex flex-col gap-2 rounded-xl border p-3 text-sm ${staffing.shortMinutes > 0 ? "border-destructive/50" : ""}`}>
                 <p>{t("deal.staffing.summary", { need: hours(staffing.needMinutes), quote: staffing.quoteNumber, free: hours(staffing.freeMinutes), people: staffing.people, weeks: staffing.weeks, from: f.date(staffing.from) })}</p>
-                <p className="text-xs text-muted-foreground">
-                  {staffing.needByRole.map((entry) => t("deal.staffing.role", { role: entry.role, hours: hours(entry.minutes) })).join(" · ")}
-                </p>
+                <p className="text-xs text-muted-foreground">{staffing.needByRole.map((entry) => t("deal.staffing.role", { role: entry.role, hours: hours(entry.minutes) })).join(" · ")}</p>
                 <p className="text-xs text-muted-foreground">
                   {staffing.freeByPosition.map((entry) => t("deal.staffing.position", { position: entry.name ?? t("deal.staffing.noPosition"), hours: hours(entry.minutes), people: entry.people })).join(" · ")}
                 </p>
@@ -283,7 +347,19 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
             <Timeline items={timeline} />
             <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
               {changes.map((change) => (
-                <li key={change.id}>{t.rich("deal.stageChange", { from: change.fromName ?? "—", to: change.toName, by: change.byName ?? "—", date: f.when(change.changedAt), person: (chunks) => <RecordLink kind="person" id={change.byPersonId}>{chunks}</RecordLink> })}</li>
+                <li key={change.id}>
+                  {t.rich("deal.stageChange", {
+                    from: change.fromName ?? "—",
+                    to: change.toName,
+                    by: change.byName ?? "—",
+                    date: f.when(change.changedAt),
+                    person: (chunks) => (
+                      <RecordLink kind="person" id={change.byPersonId}>
+                        {chunks}
+                      </RecordLink>
+                    ),
+                  })}
+                </li>
               ))}
             </ul>
           </section>
@@ -331,7 +407,27 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
               <details className="rounded-xl border p-3">
                 <summary className="cursor-pointer text-sm">{t("deal.edit")}</summary>
                 <div className="pt-3">
-                  <EditDealForm dealId={dealId} deal={{ title: deal.title, brandId: deal.brandId, serviceLines: deal.serviceLines, oneOffVnd: deal.value?.oneOffVnd ?? null, monthlyVnd: deal.value?.monthlyVnd ?? null, months: deal.value?.months ?? null, probability: deal.probability, expectedCloseOn: deal.expectedCloseOn, teamId: deal.teamId, entityId: deal.entityId, source: deal.source, competitors: deal.competitors, nextStep: deal.nextStep }} brands={account.brands.map((brand) => ({ id: brand.id, name: brand.name }))} teams={activeTeams.map((team) => ({ id: team.id, name: team.name }))} entities={entityOptions} />
+                  <EditDealForm
+                    dealId={dealId}
+                    deal={{
+                      title: deal.title,
+                      brandId: deal.brandId,
+                      serviceLines: deal.serviceLines,
+                      oneOffVnd: deal.value?.oneOffVnd ?? null,
+                      monthlyVnd: deal.value?.monthlyVnd ?? null,
+                      months: deal.value?.months ?? null,
+                      probability: deal.probability,
+                      expectedCloseOn: deal.expectedCloseOn,
+                      teamId: deal.teamId,
+                      entityId: deal.entityId,
+                      source: deal.source,
+                      competitors: deal.competitors,
+                      nextStep: deal.nextStep,
+                    }}
+                    brands={account.brands.map((brand) => ({ id: brand.id, name: brand.name }))}
+                    teams={activeTeams.map((team) => ({ id: team.id, name: team.name }))}
+                    entities={entityOptions}
+                  />
                 </div>
               </details>
               {canReassignDeal(shell.viewer, facts) ? <ReassignDealForm dealId={dealId} current={deal.ownerPersonId} sellers={people} /> : null}

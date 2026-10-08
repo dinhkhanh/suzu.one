@@ -2,7 +2,27 @@
 import "server-only";
 
 export * from "./enums";
-export { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePerformanceOf, canManagePositionKpis, canOpenKpiAdmin, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, canSetUnitGoals, type GoalParties, overviewReach, type PersonContext } from "./policy";
+export {
+  canCheckIn,
+  canCloseGoal,
+  canCloseKpiMonth,
+  canEditGoal,
+  canEnterActualsFor,
+  canManageAssignmentsOf,
+  canManageKpiLibrary,
+  canManagePerformanceOf,
+  canManagePositionKpis,
+  canOpenKpiAdmin,
+  canOpenOverview,
+  canReadPerformanceOf,
+  canReopenGoal,
+  canReopenKpiMonth,
+  canSeeGoal,
+  canSetUnitGoals,
+  type GoalParties,
+  overviewReach,
+  type PersonContext,
+} from "./policy";
 export { type CheckInRow, type GoalFormOptions, goalFormOptions, type GoalRights, type GoalRow, type GoalView, type KeyResultRow, type KeyResultView, listGoals, type LoadedGoal, loadGoal, type Viewer } from "./goals";
 export { FULL_BP, type GoalProgress, type ProgressLine } from "./engine/progress";
 
@@ -74,7 +94,20 @@ export { findNomination, isApprovedPeer, listPeerInvitations, peerCandidates, ty
 
 // ── The final yearly result (week 2, FR-PRF-09) ─────────────────────────────────────────────
 export { canComputeResults, canDecidePerformanceRules, canOpenResults, canOverrideResult, canProposeWeighting, canReadResultOf, canSettleResultOf } from "./policy";
-export { bandOf, DEFAULT_PERFORMANCE_WEIGHTING, FULL_WEIGHT_BP, OKR_LEVELS, type OkrLevel, PERFORMANCE_RESULT_STATUSES, type PerformanceResultStatus, type PerformanceWeightingValue, performanceWeightingSchema, type ResultBand, RESULT_COMPONENTS, type ResultComponentKey } from "./enums";
+export {
+  bandOf,
+  DEFAULT_PERFORMANCE_WEIGHTING,
+  FULL_WEIGHT_BP,
+  OKR_LEVELS,
+  type OkrLevel,
+  PERFORMANCE_RESULT_STATUSES,
+  type PerformanceResultStatus,
+  type PerformanceWeightingValue,
+  performanceWeightingSchema,
+  type ResultBand,
+  RESULT_COMPONENTS,
+  type ResultComponentKey,
+} from "./enums";
 export { finalResult, okrFigure, type OkrMixLine, type ResultComponentLine, type ResultOverride, type ResultTrace } from "./engine/result";
 export { getWeighting, getWeightingVersion, hasWeighting, listWeightingVersions, type PerformanceWeightingRow, type ResolvedWeighting, weightingDateOf } from "./weighting";
 /**
@@ -96,7 +129,22 @@ export { loadReviewEvidence, type ReviewEvidence } from "./evidence";
 
 // ── 1:1 notes and review outcomes (week 3, FR-PRF-04, 06) ───────────────────────────────────
 export { canDecideOutcome, canHoldOneOnOneWith, canProposeSalaryOutcome, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canSeeOutcome, canWriteOneOnOne, canWriteOneOnOnePrivate } from "./policy";
-export { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, listOneOnOnes, loadOneOnOne, myReports, ONE_ON_ONE_CONTEXT, type OneOnOneActionRow, type OneOnOneRow, type OneOnOneView, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
+export {
+  addOneOnOneAction,
+  completeOneOnOneAction,
+  createOneOnOne,
+  findOneOnOne,
+  findOneOnOneAction,
+  listOneOnOnes,
+  loadOneOnOne,
+  myReports,
+  ONE_ON_ONE_CONTEXT,
+  type OneOnOneActionRow,
+  type OneOnOneRow,
+  type OneOnOneView,
+  shareOneOnOne,
+  updateOneOnOne,
+} from "./one-on-ones";
 export { decideOutcome, findOutcome, listOutcomes, OUTCOME_CONTEXT, type OutcomeInput, raiseOutcome, type ReviewOutcomeRow } from "./outcomes";
 
 // ── KPI actuals proposed from work (Phase 10, FR-PJM-62) ────────────────────────────────────

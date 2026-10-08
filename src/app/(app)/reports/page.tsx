@@ -62,18 +62,38 @@ async function DashboardTiles({ user, today }: { user: CurrentUser; today: IsoDa
   if (dashboard.headcount) {
     const tile = dashboard.headcount;
     tiles.push(
-      <ReportTile key="headcount" title={t("tiles.headcount")} href="/reports/headcount" value={tile.total} hint={join(`${t("headcount.joiners")} ${tile.joiners}`, `${t("headcount.leavers")} ${tile.leavers}`, tile.contractsExpiring > 0 && `${t("headcount.contracts")} ${tile.contractsExpiring}`, tile.probations > 0 && `${t("headcount.probations")} ${tile.probations}`, tile.scoped && t("scoped"))} />,
+      <ReportTile
+        key="headcount"
+        title={t("tiles.headcount")}
+        href="/reports/headcount"
+        value={tile.total}
+        hint={join(
+          `${t("headcount.joiners")} ${tile.joiners}`,
+          `${t("headcount.leavers")} ${tile.leavers}`,
+          tile.contractsExpiring > 0 && `${t("headcount.contracts")} ${tile.contractsExpiring}`,
+          tile.probations > 0 && `${t("headcount.probations")} ${tile.probations}`,
+          tile.scoped && t("scoped"),
+        )}
+      />,
     );
   }
 
   if (dashboard.payroll) {
     const tile = dashboard.payroll;
-    const change = tile.latest && tile.previous ? format.number((tile.latest.employerCost - tile.previous.employerCost) / Math.max(1, tile.previous.employerCost), { style: "percent", maximumFractionDigits: 1, signDisplay: "exceptZero" }) : null;
+    const change =
+      tile.latest && tile.previous ? format.number((tile.latest.employerCost - tile.previous.employerCost) / Math.max(1, tile.previous.employerCost), { style: "percent", maximumFractionDigits: 1, signDisplay: "exceptZero" }) : null;
     tiles.push(
       !stepUpFresh ? (
         <ReportTile key="payroll" title={t("tiles.payroll")} href={`/step-up?next=${encodeURIComponent("/payroll/reports")}`} value="•••" hint={t("payroll.locked")} />
       ) : tile.latest ? (
-        <ReportTile key="payroll" title={t("tiles.payroll")} href="/payroll/reports" value={money(tile.latest.employerCost)} hint={join(t("payroll.month", { month: tile.latest.month }), change && `${t("payroll.change")} ${change}`, `${t("payroll.headcount")} ${tile.latest.headcount}`)} series={tile.points.map((point) => point.employerCost)} />
+        <ReportTile
+          key="payroll"
+          title={t("tiles.payroll")}
+          href="/payroll/reports"
+          value={money(tile.latest.employerCost)}
+          hint={join(t("payroll.month", { month: tile.latest.month }), change && `${t("payroll.change")} ${change}`, `${t("payroll.headcount")} ${tile.latest.headcount}`)}
+          series={tile.points.map((point) => point.employerCost)}
+        />
       ) : (
         <ReportTile key="payroll" title={t("tiles.payroll")} href="/payroll/reports" value="—" hint={t("payroll.noRuns")} />
       ),
@@ -82,7 +102,16 @@ async function DashboardTiles({ user, today }: { user: CurrentUser; today: IsoDa
 
   if (dashboard.attendance) {
     const tile = dashboard.attendance;
-    tiles.push(<ReportTile key="attendance" title={t("tiles.attendance")} href="/attendance/today" value={tile.in + tile.offSite} hint={join(t("attendance.of", { total: tile.people }), tile.notYet > 0 && `${t("attendance.notYet")} ${tile.notYet}`, `${t("attendance.onLeave")} ${tile.onLeave}`)} tone={tile.notYet > 0 ? "warning" : undefined} />);
+    tiles.push(
+      <ReportTile
+        key="attendance"
+        title={t("tiles.attendance")}
+        href="/attendance/today"
+        value={tile.in + tile.offSite}
+        hint={join(t("attendance.of", { total: tile.people }), tile.notYet > 0 && `${t("attendance.notYet")} ${tile.notYet}`, `${t("attendance.onLeave")} ${tile.onLeave}`)}
+        tone={tile.notYet > 0 ? "warning" : undefined}
+      />,
+    );
   }
 
   if (dashboard.leave) {
@@ -104,13 +133,28 @@ async function DashboardTiles({ user, today }: { user: CurrentUser; today: IsoDa
 
   if (dashboard.recruit) {
     const tile = dashboard.recruit;
-    tiles.push(<ReportTile key="recruit" title={t("tiles.recruit")} href="/recruit/reports" value={tile.openOpenings} hint={join(t("recruit.openOpenings"), `${t("recruit.applications")} ${tile.applications}`, `${t("recruit.active")} ${tile.active}`)} />);
+    tiles.push(
+      <ReportTile
+        key="recruit"
+        title={t("tiles.recruit")}
+        href="/recruit/reports"
+        value={tile.openOpenings}
+        hint={join(t("recruit.openOpenings"), `${t("recruit.applications")} ${tile.applications}`, `${t("recruit.active")} ${tile.active}`)}
+      />,
+    );
   }
 
   if (dashboard.ops) {
     const tile = dashboard.ops;
     tiles.push(
-      <ReportTile key="ops" title={t("tiles.ops")} href="/ops" value={tile.overdue} tone={tile.overdue > 0 ? "destructive" : undefined} hint={tile.overdue > 0 ? `${t("ops.dueSoon")} ${tile.dueSoon}` : join(t("ops.none"), `${t("ops.dueSoon")} ${tile.dueSoon}`)}>
+      <ReportTile
+        key="ops"
+        title={t("tiles.ops")}
+        href="/ops"
+        value={tile.overdue}
+        tone={tile.overdue > 0 ? "destructive" : undefined}
+        hint={tile.overdue > 0 ? `${t("ops.dueSoon")} ${tile.dueSoon}` : join(t("ops.none"), `${t("ops.dueSoon")} ${tile.dueSoon}`)}
+      >
         {tile.worst.length ? (
           <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground">
             {tile.worst.slice(0, 3).map((instance) => (
@@ -126,23 +170,63 @@ async function DashboardTiles({ user, today }: { user: CurrentUser; today: IsoDa
 
   if (dashboard.work) {
     const tile = dashboard.work;
-    tiles.push(<ReportTile key="work" title={t("tiles.work")} href="/work/leader" value={tile.open} hint={join(t("work.open"), `${t("work.overdue")} ${tile.overdue}`, `${t("work.atRisk")} ${tile.atRisk}`)} tone={tile.overdue > 0 ? "warning" : undefined} />);
+    tiles.push(
+      <ReportTile
+        key="work"
+        title={t("tiles.work")}
+        href="/work/leader"
+        value={tile.open}
+        hint={join(t("work.open"), `${t("work.overdue")} ${tile.overdue}`, `${t("work.atRisk")} ${tile.atRisk}`)}
+        tone={tile.overdue > 0 ? "warning" : undefined}
+      />,
+    );
   }
 
   if (dashboard.delivery) {
     const tile = dashboard.delivery;
     const trouble = tile.health.off_track + tile.stale + tile.overdueMilestones;
-    tiles.push(<ReportTile key="delivery" title={t("tiles.delivery")} href="/reports/delivery" value={tile.health.on_track} hint={join(t("delivery.onTrack"), `${t("delivery.offTrack")} ${tile.health.off_track}`, `${t("delivery.stale")} ${tile.stale}`, `${t("delivery.overdueMilestones")} ${tile.overdueMilestones}`)} tone={trouble > 0 ? "warning" : "success"}>
-      <span className="text-xs text-faint">{t("delivery.of", { total: tile.projects })}</span>
-    </ReportTile>);
+    tiles.push(
+      <ReportTile
+        key="delivery"
+        title={t("tiles.delivery")}
+        href="/reports/delivery"
+        value={tile.health.on_track}
+        hint={join(t("delivery.onTrack"), `${t("delivery.offTrack")} ${tile.health.off_track}`, `${t("delivery.stale")} ${tile.stale}`, `${t("delivery.overdueMilestones")} ${tile.overdueMilestones}`)}
+        tone={trouble > 0 ? "warning" : "success"}
+      >
+        <span className="text-xs text-faint">{t("delivery.of", { total: tile.projects })}</span>
+      </ReportTile>,
+    );
   }
 
   if (dashboard.sales) {
     const tile = dashboard.sales;
-    tiles.push(<ReportTile key="sales" title={t("tiles.sales")} href="/crm/reports" value={money(tile.wonVnd)} hint={join(t("sales.won", { count: tile.wonCount }), `${t("sales.pipeline", { count: tile.openDeals })} ${money(tile.weightedVnd)}`, tile.overdueVnd !== null && tile.overdueVnd > 0 && `${t("sales.overdue")} ${money(tile.overdueVnd)}`)} tone={tile.overdueVnd !== null && tile.overdueVnd > 0 ? "warning" : undefined} />);
+    tiles.push(
+      <ReportTile
+        key="sales"
+        title={t("tiles.sales")}
+        href="/crm/reports"
+        value={money(tile.wonVnd)}
+        hint={join(
+          t("sales.won", { count: tile.wonCount }),
+          `${t("sales.pipeline", { count: tile.openDeals })} ${money(tile.weightedVnd)}`,
+          tile.overdueVnd !== null && tile.overdueVnd > 0 && `${t("sales.overdue")} ${money(tile.overdueVnd)}`,
+        )}
+        tone={tile.overdueVnd !== null && tile.overdueVnd > 0 ? "warning" : undefined}
+      />,
+    );
   }
 
-  tiles.push(<ReportTile key="approvals" title={t("tiles.approvals")} href="/approvals" value={dashboard.approvals.waiting} hint={dashboard.approvals.waiting > 0 ? t("approvals.waiting", { count: dashboard.approvals.waiting }) : t("approvals.none")} tone={dashboard.approvals.waiting > 0 ? "warning" : undefined} />);
+  tiles.push(
+    <ReportTile
+      key="approvals"
+      title={t("tiles.approvals")}
+      href="/approvals"
+      value={dashboard.approvals.waiting}
+      hint={dashboard.approvals.waiting > 0 ? t("approvals.waiting", { count: dashboard.approvals.waiting }) : t("approvals.none")}
+      tone={dashboard.approvals.waiting > 0 ? "warning" : undefined}
+    />,
+  );
 
   return tiles.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tiles}</div>;
 }

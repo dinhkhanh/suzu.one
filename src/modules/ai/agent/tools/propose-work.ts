@@ -91,12 +91,12 @@ const proposeTask = defineTool({
   name: "propose_task",
   module: "work",
   description:
-    "Proposes a NEW task for the asker to confirm (nothing is created until they do) — only for work that does not exist yet: to give, move or reschedule an existing task (\"giao việc X cho Y\" when X is already a task), use propose_task_change. Give the title; a project (name or job number) or a team (key or name) to put it in — without either it goes to the asker's team when they have one; the assignee by name as the asker said it (\"me\" for the asker); a due date; priority 1 urgent … 4 low; a short description.",
+    'Proposes a NEW task for the asker to confirm (nothing is created until they do) — only for work that does not exist yet: to give, move or reschedule an existing task ("giao việc X cho Y" when X is already a task), use propose_task_change. Give the title; a project (name or job number) or a team (key or name) to put it in — without either it goes to the asker\'s team when they have one; the assignee by name as the asker said it ("me" for the asker); a due date; priority 1 urgent … 4 low; a short description.',
   input: z.strictObject({
     title: z.string().min(1).max(200),
     project: z.string().min(2).max(120).optional().describe("Project name or job number."),
     team: z.string().min(2).max(80).optional().describe("Team key (e.g. VID) or name, when there is no project."),
-    assignee: PERSON_REF.optional().describe("Name as the asker wrote it, \"me\", or a personId."),
+    assignee: PERSON_REF.optional().describe('Name as the asker wrote it, "me", or a personId.'),
     dueDate: DATE.optional().describe("YYYY-MM-DD"),
     priority: PRIORITY.optional(),
     description: z.string().max(2000).optional(),
@@ -192,7 +192,7 @@ const proposeTaskChange = defineTool({
   name: "propose_task_change",
   module: "work",
   description:
-    "Proposes a change to one task for the asker to confirm: its state (the team's state name, or done / in progress / review / to do / cancelled), its assignee (a name, \"me\", or \"none\" to unassign), its due date (YYYY-MM-DD, or \"none\" to clear), its priority (1 urgent … 4 low, or 0 for none). Name the task by key or title.",
+    'Proposes a change to one task for the asker to confirm: its state (the team\'s state name, or done / in progress / review / to do / cancelled), its assignee (a name, "me", or "none" to unassign), its due date (YYYY-MM-DD, or "none" to clear), its priority (1 urgent … 4 low, or 0 for none). Name the task by key or title.',
   input: z.strictObject({
     task: TASK_REF,
     state: z.string().min(2).max(40).optional(),
@@ -305,8 +305,7 @@ const proposeComment = defineTool({
 const proposeBlocker = defineTool({
   name: "propose_blocker",
   module: "work",
-  description:
-    "Proposes marking a task blocked (action raise: the reason, and who it waits on by name if the asker said) or clearing its open blocker (action resolve: an optional note on how it was solved), for the asker to confirm.",
+  description: "Proposes marking a task blocked (action raise: the reason, and who it waits on by name if the asker said) or clearing its open blocker (action resolve: an optional note on how it was solved), for the asker to confirm.",
   input: z.strictObject({
     task: TASK_REF,
     action: z.enum(["raise", "resolve"]),

@@ -60,9 +60,19 @@ const formatDay = (date: IsoDate) => date.split("-").reverse().join("/");
 
 /** A month nobody may change any more: the entity's period is locked, or the person's days are. */
 export async function isMonthClosedFor(executor: Executor, personId: string, entityId: string | null, month: string): Promise<boolean> {
-  const [period] = entityId ? await executor.select({ id: schema.timesheetPeriod.id }).from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked"))).limit(1) : [];
+  const [period] = entityId
+    ? await executor
+        .select({ id: schema.timesheetPeriod.id })
+        .from(schema.timesheetPeriod)
+        .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked")))
+        .limit(1)
+    : [];
   if (period) return true;
-  const [day] = await executor.select({ id: schema.timesheetDay.id }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), isNotNull(schema.timesheetDay.lockedAt))).limit(1);
+  const [day] = await executor
+    .select({ id: schema.timesheetDay.id })
+    .from(schema.timesheetDay)
+    .where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), isNotNull(schema.timesheetDay.lockedAt)))
+    .limit(1);
   return !!day;
 }
 
@@ -85,7 +95,8 @@ function summaryOf(input: AttendanceRequestInput): string {
   const { details } = input;
   const range = input.startDate === input.endDate ? formatDay(input.startDate) : `${formatDay(input.startDate)} – ${formatDay(input.endDate)}`;
   // Vietnamese, like every approval summary: it is read in the inbox and the email.
-  if (details.type === "attendance_correction") return `Bổ sung công ${range}: ${[details.inTime ? `vào ${details.inTime}` : null, details.outTime ? `ra ${details.outTime}${details.outNextDay ? " (hôm sau)" : ""}` : null].filter(Boolean).join(", ")}`;
+  if (details.type === "attendance_correction")
+    return `Bổ sung công ${range}: ${[details.inTime ? `vào ${details.inTime}` : null, details.outTime ? `ra ${details.outTime}${details.outNextDay ? " (hôm sau)" : ""}` : null].filter(Boolean).join(", ")}`;
   if (details.type === "remote_work") return `${details.kind === "wfh" ? "Làm việc tại nhà" : details.kind === "off_site" ? "Làm việc ngoài văn phòng" : "Công tác"} ${range}${details.locationName ? ` — ${details.locationName}` : ""}`;
   if (details.type === "overtime") return `Làm thêm giờ ${range}, ${details.from}–${details.to}${input.compensation === "time_off" ? " (nghỉ bù)" : ""}`;
   return `Làm việc ngày nghỉ/lễ ${range}${details.from && details.to ? `, ${details.from}–${details.to}` : ""}${input.compensation === "time_off" ? " (nghỉ bù)" : ""}`;
@@ -97,13 +108,28 @@ async function overtimeTotals(executor: Executor, personId: string, date: IsoDat
   const today = todayInVietnam();
   const total = sql<number>`coalesce(sum(${schema.timesheetDay.otWeekdayMinutes} + ${schema.timesheetDay.otWeekdayNightMinutes} + ${schema.timesheetDay.otRestDayMinutes} + ${schema.timesheetDay.otRestDayNightMinutes} + ${schema.timesheetDay.otHolidayMinutes} + ${schema.timesheetDay.otHolidayNightMinutes}), 0)::int`;
   const [[monthRow], [yearRow], ahead] = await Promise.all([
-    executor.select({ value: total }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(monthOf(date))), lte(schema.timesheetDay.date, monthEnd(monthOf(date))))),
-    executor.select({ value: total }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, `${year}-01-01`), lte(schema.timesheetDay.date, `${year}-12-31`))),
+    executor
+      .select({ value: total })
+      .from(schema.timesheetDay)
+      .where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(monthOf(date))), lte(schema.timesheetDay.date, monthEnd(monthOf(date))))),
+    executor
+      .select({ value: total })
+      .from(schema.timesheetDay)
+      .where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, `${year}-01-01`), lte(schema.timesheetDay.date, `${year}-12-31`))),
     // What is approved or asked for days that have not happened yet counts as planned.
     executor
       .select()
       .from(schema.attendanceRequest)
-      .where(and(eq(schema.attendanceRequest.personId, personId), inArray(schema.attendanceRequest.type, ["overtime", "holiday_work"]), inArray(schema.attendanceRequest.status, ["pending", "approved"]), gte(schema.attendanceRequest.startDate, today), gte(schema.attendanceRequest.startDate, `${year}-01-01`), lte(schema.attendanceRequest.startDate, `${year}-12-31`))),
+      .where(
+        and(
+          eq(schema.attendanceRequest.personId, personId),
+          inArray(schema.attendanceRequest.type, ["overtime", "holiday_work"]),
+          inArray(schema.attendanceRequest.status, ["pending", "approved"]),
+          gte(schema.attendanceRequest.startDate, today),
+          gte(schema.attendanceRequest.startDate, `${year}-01-01`),
+          lte(schema.attendanceRequest.startDate, `${year}-12-31`),
+        ),
+      ),
   ]);
   const planned = ahead.filter((row) => row.id !== excludeRequestId);
   const plannedMinutes = (rows: AttendanceRequestRow[]) => rows.reduce((sum, row) => sum + minutesOfRequest(row.details), 0);
@@ -129,13 +155,25 @@ export async function correctionsUsed(executor: Executor, personId: string, mont
   const rows = await executor
     .select({ id: schema.attendanceRequest.id })
     .from(schema.attendanceRequest)
-    .where(and(eq(schema.attendanceRequest.personId, personId), eq(schema.attendanceRequest.type, "attendance_correction"), inArray(schema.attendanceRequest.status, ["pending", "approved"]), gte(schema.attendanceRequest.startDate, monthStart(month)), lte(schema.attendanceRequest.startDate, monthEnd(month))));
+    .where(
+      and(
+        eq(schema.attendanceRequest.personId, personId),
+        eq(schema.attendanceRequest.type, "attendance_correction"),
+        inArray(schema.attendanceRequest.status, ["pending", "approved"]),
+        gte(schema.attendanceRequest.startDate, monthStart(month)),
+        lte(schema.attendanceRequest.startDate, monthEnd(month)),
+      ),
+    );
   return rows.filter((row) => row.id !== excludeRequestId).length;
 }
 
 /** The uploader's own evidence file that still waits for its check — what the "complete" action may touch. */
 export async function isPendingEvidence(fileId: string, uploaderPersonId: string): Promise<boolean> {
-  const [file] = await db().select({ id: schema.storedFile.id }).from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, "attendance_evidence"), eq(schema.storedFile.uploadedByPersonId, uploaderPersonId), eq(schema.storedFile.status, "pending"))).limit(1);
+  const [file] = await db()
+    .select({ id: schema.storedFile.id })
+    .from(schema.storedFile)
+    .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, "attendance_evidence"), eq(schema.storedFile.uploadedByPersonId, uploaderPersonId), eq(schema.storedFile.status, "pending")))
+    .limit(1);
   return !!file;
 }
 
@@ -146,7 +184,13 @@ async function checkEvidence(executor: Executor, fileId: string | null, personId
 }
 
 /** Everything wrong with a request, first problem thrown. Returns what submit needs. */
-async function check(tx: Tx, personId: string, input: AttendanceRequestInput, actor: { personId: string; isHr: boolean }, existingId: string | null): Promise<{ entityId: string; minutes: number; days: number; kind: string; warnings: OvertimeCapWarning[] }> {
+async function check(
+  tx: Tx,
+  personId: string,
+  input: AttendanceRequestInput,
+  actor: { personId: string; isHr: boolean },
+  existingId: string | null,
+): Promise<{ entityId: string; minutes: number; days: number; kind: string; warnings: OvertimeCapWarning[] }> {
   await syncWithdrawn(tx, personId);
   const target = await getPersonTarget(personId, tx);
   if (!target?.entityId) throw new ActionError("no_employment");
@@ -163,7 +207,16 @@ async function check(tx: Tx, personId: string, input: AttendanceRequestInput, ac
   const clash = await tx
     .select({ id: schema.attendanceRequest.id })
     .from(schema.attendanceRequest)
-    .where(and(eq(schema.attendanceRequest.personId, personId), eq(schema.attendanceRequest.type, input.type), inArray(schema.attendanceRequest.status, ["pending", "approved"]), lte(schema.attendanceRequest.startDate, input.endDate), gte(schema.attendanceRequest.endDate, input.startDate), existingId ? ne(schema.attendanceRequest.id, existingId) : undefined))
+    .where(
+      and(
+        eq(schema.attendanceRequest.personId, personId),
+        eq(schema.attendanceRequest.type, input.type),
+        inArray(schema.attendanceRequest.status, ["pending", "approved"]),
+        lte(schema.attendanceRequest.startDate, input.endDate),
+        gte(schema.attendanceRequest.endDate, input.startDate),
+        existingId ? ne(schema.attendanceRequest.id, existingId) : undefined,
+      ),
+    )
     .limit(1);
   if (clash.length > 0) throw new ActionError("attendance_request_duplicate");
 
@@ -182,7 +235,8 @@ async function check(tx: Tx, personId: string, input: AttendanceRequestInput, ac
     const policy = await getAttendancePolicy(target.entityId, input.startDate, tx);
     const used = await correctionsUsed(tx, personId, monthOf(input.startDate), existingId);
     // HR filing for someone is the way past the cap (the device really was broken all week).
-    if (!correctionAllowed({ usedThisMonth: used, cap: policy.monthlyCorrectionCap, filedByHr: actor.isHr && actor.personId !== personId }).allowed) throw new ActionError("correction_cap_reached", { cap: policy.monthlyCorrectionCap, used });
+    if (!correctionAllowed({ usedThisMonth: used, cap: policy.monthlyCorrectionCap, filedByHr: actor.isHr && actor.personId !== personId }).allowed)
+      throw new ActionError("correction_cap_reached", { cap: policy.monthlyCorrectionCap, used });
     kind = details.cause;
   } else if (details.type === "remote_work") {
     if ((details.latitude === null) !== (details.longitude === null)) throw new ActionError("remote_position_incomplete");
@@ -213,7 +267,18 @@ export async function submitAttendanceRequest(personId: string, input: Attendanc
     const checked = await check(tx, personId, input, actor, null);
     const [row] = await tx
       .insert(schema.attendanceRequest)
-      .values({ type: input.type, personId, entityId: checked.entityId, filedByPersonId: actor.personId, startDate: input.startDate, endDate: input.endDate, details: input.details, reason: input.reason, evidenceFileId: input.evidenceFileId, compensation: input.type === "overtime" || input.type === "holiday_work" ? input.compensation : null })
+      .values({
+        type: input.type,
+        personId,
+        entityId: checked.entityId,
+        filedByPersonId: actor.personId,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        details: input.details,
+        reason: input.reason,
+        evidenceFileId: input.evidenceFileId,
+        compensation: input.type === "overtime" || input.type === "holiday_work" ? input.compensation : null,
+      })
       .returning();
     const payload: AttendancePayload = { attendanceRequestId: row.id, startDate: input.startDate, endDate: input.endDate, hasEvidence: !!input.evidenceFileId, minutes: checked.minutes, days: checked.days, kind: checked.kind };
     const { request, outcome } = await submitRequest(tx, REQUEST_DEFINITIONS[input.type], {
@@ -242,7 +307,15 @@ export async function resubmitAttendanceRequest(approvalRequestId: string, input
     const checked = await check(tx, before.personId, input, actor, before.id);
     const [saved] = await tx
       .update(schema.attendanceRequest)
-      .set({ startDate: input.startDate, endDate: input.endDate, details: input.details, reason: input.reason, evidenceFileId: input.evidenceFileId ?? before.evidenceFileId, compensation: input.type === "overtime" || input.type === "holiday_work" ? input.compensation : null, updatedAt: new Date() })
+      .set({
+        startDate: input.startDate,
+        endDate: input.endDate,
+        details: input.details,
+        reason: input.reason,
+        evidenceFileId: input.evidenceFileId ?? before.evidenceFileId,
+        compensation: input.type === "overtime" || input.type === "holiday_work" ? input.compensation : null,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.attendanceRequest.id, before.id))
       .returning();
     const payload: AttendancePayload = { attendanceRequestId: saved.id, startDate: input.startDate, endDate: input.endDate, hasEvidence: !!saved.evidenceFileId, minutes: checked.minutes, days: checked.days, kind: checked.kind };
@@ -267,7 +340,18 @@ async function applyApproval(tx: Tx, row: AttendanceRequestRow): Promise<Attenda
     const inAt = clockMinutes(row.details.inTime);
     const outAt = clockMinutes(row.details.outTime);
     const punches = [inAt === null ? null : { direction: "in" as const, minute: inAt }, outAt === null ? null : { direction: "out" as const, minute: outAt + (row.details.outNextDay ? 1440 : 0) }].filter((value) => value !== null);
-    await tx.insert(schema.punch).values(punches.map((punch) => ({ personId: row.personId, entityId: row.entityId, at: new Date(instantOf(row.startDate, punch.minute)), direction: punch.direction, source: "request" as const, flags: [], note: REQUEST_PUNCH_NOTE, deviceInfo: { requestId: row.id } })));
+    await tx.insert(schema.punch).values(
+      punches.map((punch) => ({
+        personId: row.personId,
+        entityId: row.entityId,
+        at: new Date(instantOf(row.startDate, punch.minute)),
+        direction: punch.direction,
+        source: "request" as const,
+        flags: [],
+        note: REQUEST_PUNCH_NOTE,
+        deviceInfo: { requestId: row.id },
+      })),
+    );
   }
   const [saved] = await tx.update(schema.attendanceRequest).set({ status: "approved", updatedAt: new Date() }).where(eq(schema.attendanceRequest.id, row.id)).returning();
   await requestTimesheetRecompute([row.personId], addDays(row.startDate, -1), addDays(row.endDate, 1), tx);
@@ -299,10 +383,17 @@ export async function cancelAttendanceRequest(attendanceRequestId: string, actor
       const [approval] = before.approvalRequestId ? await tx.select().from(schema.approvalRequest).where(eq(schema.approvalRequest.id, before.approvalRequestId)).limit(1) : [];
       if (approval && approval.requesterPersonId === actor.personId) await withdrawRequest(tx, approval.id, actor.personId);
       else if (approval) {
-        await tx.update(schema.approvalRequest).set({ status: "cancelled", decidedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.approvalRequest.id, approval.id), inArray(schema.approvalRequest.status, ["pending", "returned"])));
+        await tx
+          .update(schema.approvalRequest)
+          .set({ status: "cancelled", decidedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(schema.approvalRequest.id, approval.id), inArray(schema.approvalRequest.status, ["pending", "returned"])));
         await tx.insert(schema.approvalEvent).values({ requestId: approval.id, type: "cancelled", actorPersonId: actor.personId, stepIndex: approval.currentStep, comment: reason });
       }
-      const [after] = await tx.update(schema.attendanceRequest).set({ status: approval?.requesterPersonId === actor.personId ? "withdrawn" : "cancelled", updatedAt: new Date() }).where(eq(schema.attendanceRequest.id, before.id)).returning();
+      const [after] = await tx
+        .update(schema.attendanceRequest)
+        .set({ status: approval?.requesterPersonId === actor.personId ? "withdrawn" : "cancelled", updatedAt: new Date() })
+        .where(eq(schema.attendanceRequest.id, before.id))
+        .returning();
       return { before, after };
     }
 
@@ -310,7 +401,10 @@ export async function cancelAttendanceRequest(attendanceRequestId: string, actor
     if (!actor.isHr && before.startDate <= todayInVietnam()) throw new ActionError("attendance_cancel_started");
     for (const month of new Set(eachDate(before.startDate, before.endDate).map(monthOf))) if (await isMonthClosedFor(tx, before.personId, before.entityId, month)) throw new ActionError("attendance_period_locked");
     if (before.type === "attendance_correction") {
-      await tx.update(schema.punch).set({ reviewStatus: "rejected", reviewedByPersonId: actor.personId, reviewedAt: new Date(), reviewNote: reason ?? "Huỷ đơn bổ sung công" }).where(and(eq(schema.punch.personId, before.personId), eq(schema.punch.source, "request"), sql`${schema.punch.deviceInfo}->>'requestId' = ${before.id}`));
+      await tx
+        .update(schema.punch)
+        .set({ reviewStatus: "rejected", reviewedByPersonId: actor.personId, reviewedAt: new Date(), reviewNote: reason ?? "Huỷ đơn bổ sung công" })
+        .where(and(eq(schema.punch.personId, before.personId), eq(schema.punch.source, "request"), sql`${schema.punch.deviceInfo}->>'requestId' = ${before.id}`));
     }
     const [after] = await tx.update(schema.attendanceRequest).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.attendanceRequest.id, before.id)).returning();
     if (before.approvalRequestId) await tx.insert(schema.approvalEvent).values({ requestId: before.approvalRequestId, type: "cancelled", actorPersonId: actor.personId, stepIndex: 0, comment: reason });
@@ -341,7 +435,16 @@ export async function recordApprovedTrip(tx: Tx, input: { personId: string; file
   const [clash] = await tx
     .select({ id: schema.attendanceRequest.id })
     .from(schema.attendanceRequest)
-    .where(and(eq(schema.attendanceRequest.personId, input.personId), eq(schema.attendanceRequest.type, "remote_work"), inArray(schema.attendanceRequest.status, ["pending", "approved"]), sql`${schema.attendanceRequest.details}->>'kind' = 'business_trip'`, lte(schema.attendanceRequest.startDate, input.endDate), gte(schema.attendanceRequest.endDate, startDate)))
+    .where(
+      and(
+        eq(schema.attendanceRequest.personId, input.personId),
+        eq(schema.attendanceRequest.type, "remote_work"),
+        inArray(schema.attendanceRequest.status, ["pending", "approved"]),
+        sql`${schema.attendanceRequest.details}->>'kind' = 'business_trip'`,
+        lte(schema.attendanceRequest.startDate, input.endDate),
+        gte(schema.attendanceRequest.endDate, startDate),
+      ),
+    )
     .limit(1);
   if (clash) return null;
   const [row] = await tx
@@ -375,7 +478,11 @@ export async function confirmWorkedMinutes(attendanceRequestId: string, actorPer
     if (before.personId === actorPersonId) throw new ActionError("confirm_own_hours");
     if (before.startDate > todayInVietnam()) throw new ActionError("confirm_hours_future");
     if (await isMonthClosedFor(tx, before.personId, before.entityId, monthOf(before.startDate))) throw new ActionError("attendance_period_locked");
-    const [after] = await tx.update(schema.attendanceRequest).set({ confirmedMinutes: minutes, confirmedByPersonId: actorPersonId, confirmedAt: new Date(), updatedAt: new Date() }).where(eq(schema.attendanceRequest.id, before.id)).returning();
+    const [after] = await tx
+      .update(schema.attendanceRequest)
+      .set({ confirmedMinutes: minutes, confirmedByPersonId: actorPersonId, confirmedAt: new Date(), updatedAt: new Date() })
+      .where(eq(schema.attendanceRequest.id, before.id))
+      .returning();
     await requestTimesheetRecompute([before.personId], before.startDate, before.endDate, tx);
     return { before, after };
   });
@@ -438,7 +545,20 @@ export async function listHoursToConfirm(personIds: readonly string[], from: Iso
     .select({ row: schema.attendanceRequest, day: schema.timesheetDay })
     .from(schema.attendanceRequest)
     .leftJoin(schema.timesheetDay, and(eq(schema.timesheetDay.personId, schema.attendanceRequest.personId), eq(schema.timesheetDay.date, schema.attendanceRequest.startDate)))
-    .where(and(inArray(schema.attendanceRequest.personId, [...personIds]), inArray(schema.attendanceRequest.type, ["overtime", "holiday_work"]), eq(schema.attendanceRequest.status, "approved"), gte(schema.attendanceRequest.startDate, from), lte(schema.attendanceRequest.startDate, to)))
+    .where(
+      and(
+        inArray(schema.attendanceRequest.personId, [...personIds]),
+        inArray(schema.attendanceRequest.type, ["overtime", "holiday_work"]),
+        eq(schema.attendanceRequest.status, "approved"),
+        gte(schema.attendanceRequest.startDate, from),
+        lte(schema.attendanceRequest.startDate, to),
+      ),
+    )
     .orderBy(schema.attendanceRequest.startDate);
-  return rows.filter(({ row, day }) => row.confirmedMinutes === null && !day?.lockedAt && (!day || day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes === 0)).map(({ row }) => row);
+  return rows
+    .filter(
+      ({ row, day }) =>
+        row.confirmedMinutes === null && !day?.lockedAt && (!day || day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes === 0),
+    )
+    .map(({ row }) => row);
 }

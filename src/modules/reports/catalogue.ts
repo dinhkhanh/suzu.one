@@ -79,7 +79,6 @@ function hasPayrollReach(principal: Principal): boolean {
   return reach.all || reach.entityIds.length > 0;
 }
 
-
 // ── headcount ───────────────────────────────────────────────────────────────────────────────
 
 const headcount: ReportDefinition<{ entityId?: string }> = {
@@ -157,7 +156,18 @@ const workAnalytics: ReportDefinition<{ teamId?: string; clientId?: string }> = 
     const t = translator(locale);
     const viewer = await loadViewer(user);
     const analytics = await getWorkAnalytics(viewer, { from: period.from, to: period.to, teamId: parameters.teamId ?? null, clientId: parameters.clientId ?? null });
-    const line = (kind: string, name: string, cell: (typeof analytics.total)) => [kind, name, cell.completed, cell.onTime, cell.late, percent(cell.onTimeRate), cell.open, cell.overdue, number(cell.revisionsPerTask === null ? null : Math.round(cell.revisionsPerTask * 10) / 10), cell.contributors];
+    const line = (kind: string, name: string, cell: typeof analytics.total) => [
+      kind,
+      name,
+      cell.completed,
+      cell.onTime,
+      cell.late,
+      percent(cell.onTimeRate),
+      cell.open,
+      cell.overdue,
+      number(cell.revisionsPerTask === null ? null : Math.round(cell.revisionsPerTask * 10) / 10),
+      cell.contributors,
+    ];
     return {
       title: t("reports.catalogue.work_analytics.name"),
       columns: [
@@ -260,7 +270,26 @@ const delivery: ReportDefinition<{ teamId?: string }> = {
     const compliance = view.compliance?.total;
     return {
       title: t("reports.catalogue.delivery.name"),
-      columns: (["team", "projects", "onTrack", "atRisk", "offTrack", "stale", "slipped", "overdueMilestones", "onTimeRate", "acceptedRate", "burnRate", "internalRounds", "clientRounds", "returnedHandoffs", "handoffWaitHours", "blockedHours"] as const).map((key) => t(`reports.delivery.columns.${key}`)),
+      columns: (
+        [
+          "team",
+          "projects",
+          "onTrack",
+          "atRisk",
+          "offTrack",
+          "stale",
+          "slipped",
+          "overdueMilestones",
+          "onTimeRate",
+          "acceptedRate",
+          "burnRate",
+          "internalRounds",
+          "clientRounds",
+          "returnedHandoffs",
+          "handoffWaitHours",
+          "blockedHours",
+        ] as const
+      ).map((key) => t(`reports.delivery.columns.${key}`)),
       rows: [line(t("reports.delivery.total"), view.total), ...view.byTeam.map((team) => line(team.name, team.summary))],
       summary: t("reports.catalogue.delivery.summary", { projects: view.total.projects, onTime: percent(view.total.onTime.rate), stale: view.total.health.stale, eod: percent(compliance?.reports.rate ?? null) }),
     };
@@ -285,10 +314,57 @@ const profitabilityReport: ReportDefinition<{ clientId?: string }> = {
     const rows: (string | number)[][] = [];
     const cell = (value: number | null) => (value === null ? "—" : value);
     if (view) {
-      for (const project of view.projects) rows.push([t("reports.profitability.project"), [project.jobNumber, project.name].filter(Boolean).join(" · "), project.clientName ?? "—", t(`reports.profitability.basis.${project.basis}`), project.hours, cell(project.feeVnd), project.costVnd, cell(project.marginVnd), percent(project.marginRate), project.estimated ? t("reports.profitability.estimated") : ""]);
-      if (view.privateProjects) rows.push([t("reports.profitability.project"), t("reports.profitability.privateProjects", { count: view.privateProjects.projects }), "—", "—", view.privateProjects.hours, cell(view.privateProjects.feeVnd), view.privateProjects.costVnd, cell(view.privateProjects.marginVnd), percent(view.privateProjects.marginRate), view.privateProjects.estimated ? t("reports.profitability.estimated") : ""]);
-      for (const client of view.clients) rows.push([t("reports.profitability.client"), client.clientName ?? t("reports.profitability.noClient"), "—", "—", client.hours, cell(client.feeVnd), client.costVnd, cell(client.marginVnd), percent(client.marginRate), client.estimated ? t("reports.profitability.estimated") : ""]);
-      rows.push([t("reports.profitability.total"), "—", "—", "—", view.total.hours, cell(view.total.feeVnd), view.total.costVnd, cell(view.total.marginVnd), percent(view.total.marginRate), view.total.estimated ? t("reports.profitability.estimated") : ""]);
+      for (const project of view.projects)
+        rows.push([
+          t("reports.profitability.project"),
+          [project.jobNumber, project.name].filter(Boolean).join(" · "),
+          project.clientName ?? "—",
+          t(`reports.profitability.basis.${project.basis}`),
+          project.hours,
+          cell(project.feeVnd),
+          project.costVnd,
+          cell(project.marginVnd),
+          percent(project.marginRate),
+          project.estimated ? t("reports.profitability.estimated") : "",
+        ]);
+      if (view.privateProjects)
+        rows.push([
+          t("reports.profitability.project"),
+          t("reports.profitability.privateProjects", { count: view.privateProjects.projects }),
+          "—",
+          "—",
+          view.privateProjects.hours,
+          cell(view.privateProjects.feeVnd),
+          view.privateProjects.costVnd,
+          cell(view.privateProjects.marginVnd),
+          percent(view.privateProjects.marginRate),
+          view.privateProjects.estimated ? t("reports.profitability.estimated") : "",
+        ]);
+      for (const client of view.clients)
+        rows.push([
+          t("reports.profitability.client"),
+          client.clientName ?? t("reports.profitability.noClient"),
+          "—",
+          "—",
+          client.hours,
+          cell(client.feeVnd),
+          client.costVnd,
+          cell(client.marginVnd),
+          percent(client.marginRate),
+          client.estimated ? t("reports.profitability.estimated") : "",
+        ]);
+      rows.push([
+        t("reports.profitability.total"),
+        "—",
+        "—",
+        "—",
+        view.total.hours,
+        cell(view.total.feeVnd),
+        view.total.costVnd,
+        cell(view.total.marginVnd),
+        percent(view.total.marginRate),
+        view.total.estimated ? t("reports.profitability.estimated") : "",
+      ]);
     }
     return {
       title: t("reports.catalogue.profitability.name"),
@@ -325,7 +401,9 @@ const crmPipeline: ReportDefinition<{ entityId?: string }> = {
       columns: (["section", "name", "deals", "value", "weighted"] as const).map((key) => t(`reports.catalogue.crm_pipeline.${key}`)),
       rows,
       // `winRate` is already a whole percentage, not a share.
-      summary: dashboard ? t("reports.catalogue.crm_pipeline.summary", { open: dashboard.openCount, weighted, stale: dashboard.staleCount, winRate: dashboard.winRate === null ? "—" : `${dashboard.winRate}%` }) : t("reports.catalogue.empty"),
+      summary: dashboard
+        ? t("reports.catalogue.crm_pipeline.summary", { open: dashboard.openCount, weighted, stale: dashboard.staleCount, winRate: dashboard.winRate === null ? "—" : `${dashboard.winRate}%` })
+        : t("reports.catalogue.empty"),
     };
   },
 };
@@ -410,7 +488,11 @@ export function reportToFile(table: ReportTable, fileName: string): ExportFile {
 /** The plain-text body of a scheduled report's email: the summary, the table, and where to look. */
 export function reportToText(table: ReportTable, period: Period, link: string): string {
   const widths = table.columns.map((header, index) => Math.max(header.length, ...table.rows.map((row) => String(row[index] ?? "").length)));
-  const line = (cells: (string | number)[]) => cells.map((cell, index) => String(cell ?? "").padEnd(widths[index])).join("  ").trimEnd();
+  const line = (cells: (string | number)[]) =>
+    cells
+      .map((cell, index) => String(cell ?? "").padEnd(widths[index]))
+      .join("  ")
+      .trimEnd();
   const body = table.rows.length ? [line(table.columns), widths.map((width) => "-".repeat(width)).join("  "), ...table.rows.map(line)].join("\n") : "";
   return [`${table.title}`, `${period.from} → ${period.to}`, "", table.summary, "", body, "", link].join("\n");
 }

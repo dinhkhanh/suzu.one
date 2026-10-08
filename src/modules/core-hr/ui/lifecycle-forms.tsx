@@ -10,7 +10,17 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CONTRACT_EVENT_TYPES, CONTRACT_TYPES, HAND_RECORDED_EVENT_TYPES, JOB_CATEGORIES, TERMINATION_REASONS, WORKFORCE_TYPES } from "../enums";
-import { cancelLifecycleEventAction, liftSuspensionAction, recordContractEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, suspendPersonAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
+import {
+  cancelLifecycleEventAction,
+  liftSuspensionAction,
+  recordContractEventAction,
+  recordLifecycleEventAction,
+  rehirePersonAction,
+  submitResignationAction,
+  suspendPersonAction,
+  terminateEmploymentAction,
+  transferToEntityAction,
+} from "../lifecycle-actions";
 import { TableAddRow } from "@/components/ui/table";
 import { ConfirmButton } from "@/components/ui/confirm";
 import { PlacementFields, type PlacementOptions } from "./fields";
@@ -68,7 +78,19 @@ export function RecordEventForm({ personId, today }: { personId: string; today: 
  * that day and — when a template is chosen — the decision paper, in one step. `templates` are the
  * ones this viewer may issue for this person; `canWritePay` shows the pay-terms field.
  */
-export function ContractEventForm({ personId, today, templates, canWritePay, onProbation }: { personId: string; today: string; templates: { id: string; name: string }[]; canWritePay: boolean; /** On probation now: the form opens on "passed probation". */ onProbation: boolean }) {
+export function ContractEventForm({
+  personId,
+  today,
+  templates,
+  canWritePay,
+  onProbation,
+}: {
+  personId: string;
+  today: string;
+  templates: { id: string; name: string }[];
+  canWritePay: boolean;
+  /** On probation now: the form opens on "passed probation". */ onProbation: boolean;
+}) {
   const t = useTranslations("lifecycle");
   const tr = useTranslations("records");
   const tp = useTranslations("people");
@@ -195,7 +217,10 @@ export function TerminateForm({ personId, today, resignation }: { personId: stri
   const form = useRef<HTMLFormElement>(null);
   // Where a flow was saved for terminations, this proposes one and it waits for its approval (FR-CHR-09).
   const [proposed, setProposed] = useState(false);
-  const { onSubmit, pending, errorKey } = useActionForm<{ pendingApproval: boolean }>(terminateEmploymentAction, { extra: { personId, resignationEventId: resignation?.eventId ?? "" }, onSuccess: (data) => setProposed(data.pendingApproval) });
+  const { onSubmit, pending, errorKey } = useActionForm<{ pendingApproval: boolean }>(terminateEmploymentAction, {
+    extra: { personId, resignationEventId: resignation?.eventId ?? "" },
+    onSuccess: (data) => setProposed(data.pendingApproval),
+  });
   return (
     <details className="rounded-xl border p-4" open={!!resignation}>
       <summary className="cursor-pointer text-sm font-medium">{resignation ? t("terminate.fromResignation") : t("terminate.title")}</summary>
@@ -221,7 +246,15 @@ export function TerminateForm({ personId, today, resignation }: { personId: stri
         <FormError namespace="lifecycle.errors" errorKey={errorKey} />
         {proposed ? <Alert variant="info">{t("terminate.proposed")}</Alert> : null}
         <div>
-          <ConfirmButton variant="destructive" destructive disabled={pending} label={t("terminate.submit")} question={t("terminate.confirm")} beforeOpen={() => !!form.current?.reportValidity()} onConfirm={() => form.current?.requestSubmit()} />
+          <ConfirmButton
+            variant="destructive"
+            destructive
+            disabled={pending}
+            label={t("terminate.submit")}
+            question={t("terminate.confirm")}
+            beforeOpen={() => !!form.current?.reportValidity()}
+            onConfirm={() => form.current?.requestSubmit()}
+          />
         </div>
       </form>
     </details>
@@ -315,7 +348,21 @@ export function RehireForm({ personId, entities, options, today, defaultEntityId
  * Moves an employee to another entity of the group (FR-PLT-15): the employment with today's entity
  * ends the day before, a new one opens with the chosen entity, seniority carries over.
  */
-export function TransferEntityForm({ personId, entities, options, today, minDate, defaults }: { personId: string; entities: { id: string; name: string }[]; options: PlacementOptions; today: string; /** The day after the current employment started. */ minDate: string; defaults: Parameters<typeof PlacementFields>[0]["defaults"] }) {
+export function TransferEntityForm({
+  personId,
+  entities,
+  options,
+  today,
+  minDate,
+  defaults,
+}: {
+  personId: string;
+  entities: { id: string; name: string }[];
+  options: PlacementOptions;
+  today: string;
+  /** The day after the current employment started. */ minDate: string;
+  defaults: Parameters<typeof PlacementFields>[0]["defaults"];
+}) {
   const t = useTranslations("lifecycle");
   const tp = useTranslations("people");
   const router = useRouter();

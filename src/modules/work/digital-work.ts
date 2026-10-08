@@ -25,7 +25,18 @@ export async function listWorkOfDigitalAsset(viewer: WorkViewer, digitalAssetId:
   const live = isNull(schema.task.deletedAt);
   const [tasks, posts, links, directory] = await Promise.all([
     db()
-      .select({ id: schema.task.id, title: schema.task.title, status: schema.task.status, dueDate: schema.task.dueDate, assigneePersonId: schema.task.assigneePersonId, assigneeName: schema.person.fullName, number: schema.workTask.number, teamKey: schema.workTeam.key, stateName: schema.workState.name, projectName: schema.workProject.name })
+      .select({
+        id: schema.task.id,
+        title: schema.task.title,
+        status: schema.task.status,
+        dueDate: schema.task.dueDate,
+        assigneePersonId: schema.task.assigneePersonId,
+        assigneeName: schema.person.fullName,
+        number: schema.workTask.number,
+        teamKey: schema.workTeam.key,
+        stateName: schema.workState.name,
+        projectName: schema.workProject.name,
+      })
       .from(schema.workTaskDigitalAsset)
       .innerJoin(schema.task, eq(schema.task.id, schema.workTaskDigitalAsset.taskId))
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
@@ -37,7 +48,17 @@ export async function listWorkOfDigitalAsset(viewer: WorkViewer, digitalAssetId:
       .orderBy(sql`${schema.task.dueDate} asc nulls last`, asc(schema.workTask.number))
       .limit(LIMIT),
     db()
-      .select({ id: schema.workPublish.id, taskId: schema.workPublish.taskId, status: schema.workPublish.status, plannedAt: schema.workPublish.plannedAt, publishedAt: schema.workPublish.publishedAt, url: schema.workPublish.url, title: schema.task.title, number: schema.workTask.number, teamKey: schema.workTeam.key })
+      .select({
+        id: schema.workPublish.id,
+        taskId: schema.workPublish.taskId,
+        status: schema.workPublish.status,
+        plannedAt: schema.workPublish.plannedAt,
+        publishedAt: schema.workPublish.publishedAt,
+        url: schema.workPublish.url,
+        title: schema.task.title,
+        number: schema.workTask.number,
+        teamKey: schema.workTeam.key,
+      })
       .from(schema.workPublish)
       .innerJoin(schema.task, eq(schema.task.id, schema.workPublish.taskId))
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))

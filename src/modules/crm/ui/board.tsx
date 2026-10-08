@@ -101,7 +101,11 @@ export function DealBoard({ columns }: { columns: BoardColumn[] }) {
                   }}
                   onDragEnd={() => setDragging(null)}
                   style={{ "--i": index } as CSSProperties}
-                  className={cn("rise flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-3.5 transition-[opacity,box-shadow] duration-100", card.canMove && "cursor-grab active:cursor-grabbing", dragging === card.id && "opacity-50")}
+                  className={cn(
+                    "rise flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-3.5 transition-[opacity,box-shadow] duration-100",
+                    card.canMove && "cursor-grab active:cursor-grabbing",
+                    dragging === card.id && "opacity-50",
+                  )}
                 >
                   <Link href={`/crm/deals/${card.id}`} className="text-[0.84375rem] leading-snug font-semibold hover:underline">
                     {card.title}

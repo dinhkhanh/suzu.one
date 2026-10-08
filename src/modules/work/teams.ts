@@ -28,7 +28,12 @@ const invalidateWorkStates = () => invalidate(WORK_CACHE.states);
 /** After a write to `work_client` outside `saveClient` (an account handover) has committed. */
 export const invalidateWorkClients = () => invalidate(WORK_CACHE.clients);
 
-export const teamFacts = (team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): TeamFacts => ({ id: team.id, entityId: team.entityId, departmentId: team.departmentId, defaultVisibility: team.defaultVisibility as Visibility });
+export const teamFacts = (team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): TeamFacts => ({
+  id: team.id,
+  entityId: team.entityId,
+  departmentId: team.departmentId,
+  defaultVisibility: team.defaultVisibility as Visibility,
+});
 
 // ── Teams ───────────────────────────────────────────────────────────────────────────────────
 
@@ -49,7 +54,17 @@ export const listTeams = cache(async (): Promise<TeamSummary[]> => {
   return rows.map(({ team, ...rest }) => ({ ...team, ...rest }));
 });
 
-export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean; color?: string | null; projectStatusSetId?: string | null };
+export type TeamInput = {
+  key: string;
+  name: string;
+  description: string | null;
+  entityId: string | null;
+  departmentId: string | null;
+  defaultVisibility: Visibility;
+  isActive: boolean;
+  color?: string | null;
+  projectStatusSetId?: string | null;
+};
 
 /** A new team starts with its workflow's states (`startingStates`) and its creator as lead. */
 export async function createTeam(input: TeamInput, states: readonly StateSetItem[], actorPersonId: string): Promise<TeamRow> {
@@ -129,7 +144,11 @@ export async function personPlacement(personId: string, executor: Executor = db(
 }
 
 export async function isTeamMember(teamId: string, personId: string, executor: Executor = db()): Promise<boolean> {
-  const [row] = await executor.select({ id: schema.workTeamMember.id }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.personId, personId))).limit(1);
+  const [row] = await executor
+    .select({ id: schema.workTeamMember.id })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.personId, personId)))
+    .limit(1);
   return !!row;
 }
 
@@ -191,8 +210,18 @@ export async function setTeamMember(teamId: string, personId: string, role: Team
 export async function listStates(teamIds: readonly string[], executor?: Executor): Promise<StateRow[]> {
   if (teamIds.length === 0) return [];
   const order = [asc(schema.workState.sortOrder), asc(schema.workState.createdAt)];
-  if (executor) return executor.select().from(schema.workState).where(inArray(schema.workState.teamId, [...teamIds])).orderBy(...order);
-  const all = await cached(WORK_CACHE.states, WORK_CACHE_TTL, () => db().select().from(schema.workState).orderBy(...order, asc(schema.workState.id)));
+  if (executor)
+    return executor
+      .select()
+      .from(schema.workState)
+      .where(inArray(schema.workState.teamId, [...teamIds]))
+      .orderBy(...order);
+  const all = await cached(WORK_CACHE.states, WORK_CACHE_TTL, () =>
+    db()
+      .select()
+      .from(schema.workState)
+      .orderBy(...order, asc(schema.workState.id)),
+  );
   const wanted = new Set(teamIds);
   return all.filter((state) => wanted.has(state.teamId));
 }
@@ -207,14 +236,21 @@ export type StateInput = { name: string; category: StateCategory; sortOrder: num
 export async function saveState(teamId: string, stateId: string | null, input: StateInput): Promise<{ before: StateRow | null; after: StateRow }> {
   const saved = await db().transaction(async (tx) => {
     if (!stateId) {
-      const [after] = await tx.insert(schema.workState).values({ teamId, ...input }).returning();
+      const [after] = await tx
+        .insert(schema.workState)
+        .values({ teamId, ...input })
+        .returning();
       return { before: null, after };
     }
     const before = await findState(stateId, tx);
     if (!before || before.teamId !== teamId) throw new ActionError("state_not_found");
     if (before.isActive && !input.isActive) {
       // Tasks must never sit in a state nobody can see on the board.
-      const [used] = await tx.select({ value: count() }).from(schema.workTask).innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId)).where(and(eq(schema.workTask.stateId, stateId), isNull(schema.task.deletedAt)));
+      const [used] = await tx
+        .select({ value: count() })
+        .from(schema.workTask)
+        .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+        .where(and(eq(schema.workTask.stateId, stateId), isNull(schema.task.deletedAt)));
       if ((used?.value ?? 0) > 0) throw new ActionError("state_in_use");
     }
     if (before.category !== input.category) {
@@ -222,9 +258,19 @@ export async function saveState(teamId: string, stateId: string | null, input: S
       const [used] = await tx.select({ value: count() }).from(schema.workTask).where(eq(schema.workTask.stateId, stateId));
       if ((used?.value ?? 0) > 0 && isOpenCategory(before.category as StateCategory) !== isOpenCategory(input.category)) throw new ActionError("state_category_in_use");
     }
-    const [after] = await tx.update(schema.workState).set({ ...input, updatedAt: new Date() }).where(eq(schema.workState.id, stateId)).returning();
-    const stillOpen = await tx.select({ value: count() }).from(schema.workState).where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true), inArray(schema.workState.category, ["backlog", "todo"])));
-    const stillDone = await tx.select({ value: count() }).from(schema.workState).where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true), eq(schema.workState.category, "done")));
+    const [after] = await tx
+      .update(schema.workState)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.workState.id, stateId))
+      .returning();
+    const stillOpen = await tx
+      .select({ value: count() })
+      .from(schema.workState)
+      .where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true), inArray(schema.workState.category, ["backlog", "todo"])));
+    const stillDone = await tx
+      .select({ value: count() })
+      .from(schema.workState)
+      .where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true), eq(schema.workState.category, "done")));
     if ((stillOpen[0]?.value ?? 0) === 0 || (stillDone[0]?.value ?? 0) === 0) throw new ActionError("workflow_needs_start_and_done");
     return { before, after };
   });
@@ -247,7 +293,12 @@ export function entryState(states: readonly StateRow[], preferBacklog = false): 
 
 /** A team's own labels and the shared ones. */
 export async function listLabels(teamIds: readonly string[], executor?: Executor): Promise<LabelRow[]> {
-  if (executor) return executor.select().from(schema.workLabel).where(teamIds.length ? or(isNull(schema.workLabel.teamId), inArray(schema.workLabel.teamId, [...teamIds])) : isNull(schema.workLabel.teamId)).orderBy(asc(schema.workLabel.name));
+  if (executor)
+    return executor
+      .select()
+      .from(schema.workLabel)
+      .where(teamIds.length ? or(isNull(schema.workLabel.teamId), inArray(schema.workLabel.teamId, [...teamIds])) : isNull(schema.workLabel.teamId))
+      .orderBy(asc(schema.workLabel.name));
   const all = await cached(WORK_CACHE.labels, WORK_CACHE_TTL, () => db().select().from(schema.workLabel).orderBy(asc(schema.workLabel.name), asc(schema.workLabel.id)));
   const wanted = new Set(teamIds);
   return all.filter((label) => label.teamId === null || wanted.has(label.teamId));
@@ -309,7 +360,11 @@ export async function saveClient(clientId: string | null, input: ClientInput): P
     }
     const before = await findClient(clientId, tx);
     if (!before) throw new ActionError("client_not_found");
-    const [after] = await tx.update(schema.workClient).set({ ...input, updatedAt: new Date() }).where(eq(schema.workClient.id, clientId)).returning();
+    const [after] = await tx
+      .update(schema.workClient)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.workClient.id, clientId))
+      .returning();
     return { before, after };
   });
   await invalidate(WORK_CACHE.clients);

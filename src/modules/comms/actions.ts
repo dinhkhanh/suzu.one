@@ -19,11 +19,31 @@ const vietnamTime = optional(z.string().regex(LOCAL_TIME)).transform((value) => 
 const UUID_IN_LINK = /(?:^|\/kb\/pages\/)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[/?#].*)?$/i;
 const kbPage = optional(z.string().trim().max(300).regex(UUID_IN_LINK)).transform((value) => (value ? value.match(UUID_IN_LINK)![1].toLowerCase() : null));
 
-const audience = z.preprocess((value) => (typeof value === "string" ? [value] : value), z.array(z.string().max(60).refine((key) => parseAudienceKey(key) !== null)).min(1).max(50));
+const audience = z.preprocess(
+  (value) => (typeof value === "string" ? [value] : value),
+  z
+    .array(
+      z
+        .string()
+        .max(60)
+        .refine((key) => parseAudienceKey(key) !== null),
+    )
+    .min(1)
+    .max(50),
+);
 
 const auditOf = (row: Pick<AnnouncementRow, "id" | "entityId">) => ({ type: "announcement", id: row.id, entityId: row.entityId });
 // What the audit log keeps: the facts, not the prose.
-const facts = (row: AnnouncementRow, audienceKeys?: readonly string[]) => ({ title: row.title, status: row.status, pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, kbPageId: row.kbPageId, ...(audienceKeys ? { audience: audienceKeys } : {}) });
+const facts = (row: AnnouncementRow, audienceKeys?: readonly string[]) => ({
+  title: row.title,
+  status: row.status,
+  pinned: row.pinned,
+  mustAcknowledge: row.mustAcknowledge,
+  publishAt: row.publishAt,
+  expiresAt: row.expiresAt,
+  kbPageId: row.kbPageId,
+  ...(audienceKeys ? { audience: audienceKeys } : {}),
+});
 
 function refresh(id?: string) {
   revalidatePath("/home");
@@ -138,7 +158,10 @@ const removeKudosPipeline = createAction({
     const row = await removeKudos(input.id, user.person.id);
     revalidatePath("/home");
     revalidatePath("/kudos");
-    return { data: { id: row.id }, audit: { resource: { type: "kudos", id: row.id, entityId: found.to.entityId ?? null }, summary: "removed", before: { fromPersonId: row.fromPersonId, toPersonId: row.toPersonId, valueKey: row.valueKey } } };
+    return {
+      data: { id: row.id },
+      audit: { resource: { type: "kudos", id: row.id, entityId: found.to.entityId ?? null }, summary: "removed", before: { fromPersonId: row.fromPersonId, toPersonId: row.toPersonId, valueKey: row.valueKey } },
+    };
   },
 });
 export async function removeKudosAction(input: unknown) {

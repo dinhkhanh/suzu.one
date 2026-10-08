@@ -73,7 +73,11 @@ async function openTimeWeeks(personId: string, today: IsoDate): Promise<OwnedIte
  * Everything in work management that still hangs on the person, and the weeks of time they have
  * not submitted (the daily module's, read through its service).
  */
-export async function listOwnership(personId: string, executor: Executor = db(), options: { today?: IsoDate; /** Inside a transaction the daily module's reads (own connection) are left out: time weeks are never reassigned anyway. */ timeWeeks?: boolean } = {}): Promise<OwnedItem[]> {
+export async function listOwnership(
+  personId: string,
+  executor: Executor = db(),
+  options: { today?: IsoDate; /** Inside a transaction the daily module's reads (own connection) are left out: time weeks are never reassigned anyway. */ timeWeeks?: boolean } = {},
+): Promise<OwnedItem[]> {
   const workTask = and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), inArray(schema.task.status, [...OPEN_TASK]));
   const [tasks, reviews, projectsLed, accountRoles, clients, recurrences, forms, automations, teams] = await Promise.all([
     executor
@@ -104,15 +108,26 @@ export async function listOwnership(personId: string, executor: Executor = db(),
       .innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId))
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
       .where(and(OPEN_PROJECT, eq(schema.workProjectMember.personId, personId), eq(schema.workProjectMember.role, "account_manager"))),
-    executor.select({ id: schema.workClient.id, name: schema.workClient.name, code: schema.workClient.code }).from(schema.workClient).where(and(eq(schema.workClient.accountManagerPersonId, personId), eq(schema.workClient.isActive, true))),
+    executor
+      .select({ id: schema.workClient.id, name: schema.workClient.name, code: schema.workClient.code })
+      .from(schema.workClient)
+      .where(and(eq(schema.workClient.accountManagerPersonId, personId), eq(schema.workClient.isActive, true))),
     executor
       .select({ id: schema.workRecurrence.id, title: schema.workRecurrence.title, context: sql<string>`coalesce(${schema.workProject.name}, ${schema.workTeam.name})` })
       .from(schema.workRecurrence)
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId))
       .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId))
       .where(and(eq(schema.workRecurrence.isActive, true), sql`${schema.workRecurrence.draft}->>'assigneePersonId' = ${personId}`)),
-    executor.select({ id: schema.workIntakeForm.id, name: schema.workIntakeForm.name, teamName: schema.workTeam.name }).from(schema.workIntakeForm).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId)).where(and(eq(schema.workIntakeForm.isActive, true), eq(schema.workIntakeForm.createdByPersonId, personId))),
-    executor.select({ id: schema.workAutomation.id, name: schema.workAutomation.name, teamName: schema.workTeam.name }).from(schema.workAutomation).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workAutomation.teamId)).where(and(eq(schema.workAutomation.isActive, true), eq(schema.workAutomation.createdByPersonId, personId))),
+    executor
+      .select({ id: schema.workIntakeForm.id, name: schema.workIntakeForm.name, teamName: schema.workTeam.name })
+      .from(schema.workIntakeForm)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId))
+      .where(and(eq(schema.workIntakeForm.isActive, true), eq(schema.workIntakeForm.createdByPersonId, personId))),
+    executor
+      .select({ id: schema.workAutomation.id, name: schema.workAutomation.name, teamName: schema.workTeam.name })
+      .from(schema.workAutomation)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workAutomation.teamId))
+      .where(and(eq(schema.workAutomation.isActive, true), eq(schema.workAutomation.createdByPersonId, personId))),
     executor
       .select({ id: schema.workTeam.id, name: schema.workTeam.name })
       .from(schema.workTeamMember)
@@ -146,7 +161,12 @@ export async function listOwnership(personId: string, executor: Executor = db(),
  * leaver worked in: an item of a project (or a team) the runner does not run is listed without its
  * name ("ask its lead") and is reassigned by someone who does run it.
  */
-export type ItemGate = { /** May the runner read the item's name? */ visible: boolean; /** May the runner hand it on? */ manage: boolean; /** Who to ask when they may not. */ ownerName: string | null; /** Who may receive it: the people of its project and team; null = no place decides (a client relationship). */ eligible: ReadonlySet<string> | null };
+export type ItemGate = {
+  /** May the runner read the item's name? */ visible: boolean;
+  /** May the runner hand it on? */ manage: boolean;
+  /** Who to ask when they may not. */ ownerName: string | null;
+  /** Who may receive it: the people of its project and team; null = no place decides (a client relationship). */ eligible: ReadonlySet<string> | null;
+};
 
 const gateKey = (item: { kind: HeldKind; id: string }) => `${item.kind}:${item.id}`;
 const CLOSED_GATE: ItemGate = { visible: false, manage: false, ownerName: null, eligible: new Set() };
@@ -168,21 +188,66 @@ export async function gateOwnership(
   const clientIds = idsOf("client_account");
   const [tasks, projects, recurrences, forms, automations, clients, ledTeams] = await Promise.all([
     loadTasks(taskIds, executor),
-    projectIds.length ? executor.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(inArray(schema.workProject.id, projectIds)) : [],
-    recurrenceIds.length ? executor.select({ id: schema.workRecurrence.id, project: schema.workProject, team: schema.workTeam }).from(schema.workRecurrence).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId)).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, recurrenceIds)) : [],
-    formIds.length ? executor.select({ id: schema.workIntakeForm.id, team: schema.workTeam }).from(schema.workIntakeForm).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId)).where(inArray(schema.workIntakeForm.id, formIds)) : [],
-    automationIds.length ? executor.select({ id: schema.workAutomation.id, projectId: schema.workAutomation.projectId, team: schema.workTeam }).from(schema.workAutomation).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workAutomation.teamId)).where(inArray(schema.workAutomation.id, automationIds)) : [],
+    projectIds.length
+      ? executor.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(inArray(schema.workProject.id, projectIds))
+      : [],
+    recurrenceIds.length
+      ? executor
+          .select({ id: schema.workRecurrence.id, project: schema.workProject, team: schema.workTeam })
+          .from(schema.workRecurrence)
+          .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId))
+          .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId))
+          .where(inArray(schema.workRecurrence.id, recurrenceIds))
+      : [],
+    formIds.length
+      ? executor.select({ id: schema.workIntakeForm.id, team: schema.workTeam }).from(schema.workIntakeForm).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId)).where(inArray(schema.workIntakeForm.id, formIds))
+      : [],
+    automationIds.length
+      ? executor
+          .select({ id: schema.workAutomation.id, projectId: schema.workAutomation.projectId, team: schema.workTeam })
+          .from(schema.workAutomation)
+          .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workAutomation.teamId))
+          .where(inArray(schema.workAutomation.id, automationIds))
+      : [],
     clientIds.length ? executor.select().from(schema.workClient).where(inArray(schema.workClient.id, clientIds)) : [],
-    idsOf("team_lead").length ? executor.select().from(schema.workTeam).where(inArray(schema.workTeam.id, idsOf("team_lead"))) : [],
+    idsOf("team_lead").length
+      ? executor
+          .select()
+          .from(schema.workTeam)
+          .where(inArray(schema.workTeam.id, idsOf("team_lead")))
+      : [],
   ]);
 
   // Who may take work in each place: its team's and its project's people who have not left.
-  const teamIds = [...new Set([...[...tasks.values()].map((task) => task.team.id), ...projects.map((row) => row.team.id), ...recurrences.map((row) => row.team.id), ...forms.map((row) => row.team.id), ...automations.map((row) => row.team.id), ...ledTeams.map((team) => team.id)])];
-  const allProjectIds = [...new Set([...[...tasks.values()].flatMap((task) => (task.work.projectId ? [task.work.projectId] : [])), ...projects.map((row) => row.project.id), ...recurrences.flatMap((row) => (row.project ? [row.project.id] : []))])];
+  const teamIds = [
+    ...new Set([
+      ...[...tasks.values()].map((task) => task.team.id),
+      ...projects.map((row) => row.team.id),
+      ...recurrences.map((row) => row.team.id),
+      ...forms.map((row) => row.team.id),
+      ...automations.map((row) => row.team.id),
+      ...ledTeams.map((team) => team.id),
+    ]),
+  ];
+  const allProjectIds = [
+    ...new Set([...[...tasks.values()].flatMap((task) => (task.work.projectId ? [task.work.projectId] : [])), ...projects.map((row) => row.project.id), ...recurrences.flatMap((row) => (row.project ? [row.project.id] : []))]),
+  ];
   const notGone = sql`${schema.person.status} <> 'offboarded'`;
   const [teamPeople, projectPeople, projectVisibility] = await Promise.all([
-    teamIds.length ? executor.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), notGone)) : [],
-    allProjectIds.length ? executor.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, allProjectIds), notGone)) : [],
+    teamIds.length
+      ? executor
+          .select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role })
+          .from(schema.workTeamMember)
+          .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
+          .where(and(inArray(schema.workTeamMember.teamId, teamIds), notGone))
+      : [],
+    allProjectIds.length
+      ? executor
+          .select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId })
+          .from(schema.workProjectMember)
+          .innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId))
+          .where(and(inArray(schema.workProjectMember.projectId, allProjectIds), notGone))
+      : [],
     allProjectIds.length ? executor.select({ id: schema.workProject.id, visibility: schema.workProject.visibility }).from(schema.workProject).where(inArray(schema.workProject.id, allProjectIds)) : [],
   ]);
   const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
@@ -197,7 +262,9 @@ export async function gateOwnership(
   };
 
   // The lead to ask about work the runner may not open.
-  const leadIds = [...new Set([...[...tasks.values()].map((task) => task.project?.leadPersonId), ...projects.map((row) => row.project.leadPersonId), ...recurrences.map((row) => row.project?.leadPersonId)].filter((id): id is string => !!id))];
+  const leadIds = [
+    ...new Set([...[...tasks.values()].map((task) => task.project?.leadPersonId), ...projects.map((row) => row.project.leadPersonId), ...recurrences.map((row) => row.project?.leadPersonId)].filter((id): id is string => !!id)),
+  ];
   const leadNames = new Map((leadIds.length ? await executor.select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, leadIds)) : []).map((row) => [row.id, row.name]));
 
   const gates = new Map<string, ItemGate>();
@@ -220,14 +287,24 @@ export async function gateOwnership(
       if (visible) read.push(facts);
       // The lead's and the account manager's seats read the project's fee (Q21): handing one on is
       // `canGiveProjectRole`'s call — running the project and `pjm:commercial` over it.
-      gates.set(key, { visible, manage: canGiveProjectRole(viewer, facts, null, item.kind === "project_lead" ? "lead" : "account_manager"), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
+      gates.set(key, {
+        visible,
+        manage: canGiveProjectRole(viewer, facts, null, item.kind === "project_lead" ? "lead" : "account_manager"),
+        ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null,
+        eligible: peopleOf(row.team.id, row.project.id),
+      });
     } else if (item.kind === "recurrence") {
       const row = recurrences.find((entry) => entry.id === item.id);
       if (!row) continue;
       const facts = row.project ? projectFacts(row.project, row.team) : null;
       const visible = facts ? canViewProject(viewer, facts) : canViewTeamBacklog(viewer, teamFacts(row.team));
       if (visible) read.push(facts);
-      gates.set(key, { visible, manage: facts ? canManageProject(viewer, facts) : canAdminTeam(viewer, teamFacts(row.team)), ownerName: leadNames.get(row.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project?.id ?? null) });
+      gates.set(key, {
+        visible,
+        manage: facts ? canManageProject(viewer, facts) : canAdminTeam(viewer, teamFacts(row.team)),
+        ownerName: leadNames.get(row.project?.leadPersonId ?? "") ?? null,
+        eligible: peopleOf(row.team.id, row.project?.id ?? null),
+      });
     } else if (item.kind === "intake_form" || item.kind === "automation" || item.kind === "team_lead") {
       const team = item.kind === "intake_form" ? forms.find((entry) => entry.id === item.id)?.team : item.kind === "automation" ? automations.find((entry) => entry.id === item.id)?.team : ledTeams.find((entry) => entry.id === item.id);
       const projectId = item.kind === "automation" ? (automations.find((entry) => entry.id === item.id)?.projectId ?? null) : null;
@@ -271,14 +348,28 @@ export async function syncExitHandovers(now: Date, today: IsoDate): Promise<{ op
   const since = new Date(now.getTime() - HANDOVER_LOOKBACK_DAYS * 86_400_000);
   const facts = await listLifecycleEventFacts({ createdSince: since, types: HANDOVER_EVENT_TYPES });
   const result = { opened: 0, cancelled: 0, done: 0 };
-  const known = facts.length ? await db().select().from(schema.workExitHandover).where(inArray(schema.workExitHandover.lifecycleEventId, facts.map((fact) => fact.id))) : [];
+  const known = facts.length
+    ? await db()
+        .select()
+        .from(schema.workExitHandover)
+        .where(
+          inArray(
+            schema.workExitHandover.lifecycleEventId,
+            facts.map((fact) => fact.id),
+          ),
+        )
+    : [];
   for (const fact of facts) {
     const existing = known.find((row) => row.lifecycleEventId === fact.id);
     if (fact.status === "cancelled") {
       if (existing?.status === "open") {
         await db().transaction(async (tx) => {
           await tx.update(schema.workExitHandover).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.workExitHandover.id, existing.id));
-          if (existing.taskId) await tx.update(schema.task).set({ status: "cancelled", updatedAt: new Date() }).where(and(eq(schema.task.id, existing.taskId), inArray(schema.task.status, [...OPEN_TASK])));
+          if (existing.taskId)
+            await tx
+              .update(schema.task)
+              .set({ status: "cancelled", updatedAt: new Date() })
+              .where(and(eq(schema.task.id, existing.taskId), inArray(schema.task.status, [...OPEN_TASK])));
         });
         result.cancelled += 1;
       }
@@ -293,7 +384,17 @@ export async function syncExitHandovers(now: Date, today: IsoDate): Promise<{ op
       if (!handover) return false;
       const step = await createTask(
         tx,
-        { kind: "checklist", title: HANDOVER_STEP_TITLE, linkUrl: handoverLink(handover.id), assigneePersonId: person?.managerId ?? null, dueDate: fact.effectiveDate, entityId: fact.entityId, context: { type: "lifecycle_event", id: fact.id }, subjectPersonId: fact.personId, sortOrder: -1 },
+        {
+          kind: "checklist",
+          title: HANDOVER_STEP_TITLE,
+          linkUrl: handoverLink(handover.id),
+          assigneePersonId: person?.managerId ?? null,
+          dueDate: fact.effectiveDate,
+          entityId: fact.entityId,
+          context: { type: "lifecycle_event", id: fact.id },
+          subjectPersonId: fact.personId,
+          sortOrder: -1,
+        },
         null,
         { notify: false },
       );
@@ -316,7 +417,16 @@ export async function syncExitHandovers(now: Date, today: IsoDate): Promise<{ op
 
 // ── Reading one handover ────────────────────────────────────────────────────────────────────
 
-export type ExitHandoverView = ExitHandoverRow & { personName: string; managerId: string | null; entityId: string | null; teamIds: string[]; step: { id: string; status: string; assigneeName: string | null } | null; owned: OwnedItemView[]; summary: ReturnType<typeof ownershipSummary>; facts: ExitHandoverFacts };
+export type ExitHandoverView = ExitHandoverRow & {
+  personName: string;
+  managerId: string | null;
+  entityId: string | null;
+  teamIds: string[];
+  step: { id: string; status: string; assigneeName: string | null } | null;
+  owned: OwnedItemView[];
+  summary: ReturnType<typeof ownershipSummary>;
+  facts: ExitHandoverFacts;
+};
 
 export async function findExitHandover(handoverId: string, executor: Executor = db()): Promise<ExitHandoverRow | undefined> {
   const [row] = await executor.select().from(schema.workExitHandover).where(eq(schema.workExitHandover.id, handoverId)).limit(1);
@@ -344,7 +454,9 @@ export async function getExitHandover(handoverId: string, viewer: WorkViewer): P
     exitHandoverFacts(handover),
     listOwnership(handover.personId),
     db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, handover.personId)).limit(1),
-    handover.taskId ? db().select({ id: schema.task.id, status: schema.task.status, assigneeName: assignee.fullName }).from(schema.task).leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId)).where(eq(schema.task.id, handover.taskId)).limit(1) : [],
+    handover.taskId
+      ? db().select({ id: schema.task.id, status: schema.task.status, assigneeName: assignee.fullName }).from(schema.task).leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId)).where(eq(schema.task.id, handover.taskId)).limit(1)
+      : [],
   ]);
   const gates = await gateOwnership(db(), viewer, owned, { leaverId: handover.personId, record: true });
   const shown = owned.map((item): OwnedItemView => {
@@ -357,7 +469,10 @@ export async function getExitHandover(handoverId: string, viewer: WorkViewer): P
 
 /** Open handovers a person runs as line manager or team lead — for "My work". */
 export async function listExitHandoversFor(personId: string): Promise<{ id: string; personName: string; reason: string; lastDay: string | null }[]> {
-  const ledTeams = db().select({ teamId: schema.workTeamMember.teamId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.personId, personId), eq(schema.workTeamMember.role, "lead")));
+  const ledTeams = db()
+    .select({ teamId: schema.workTeamMember.teamId })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.personId, personId), eq(schema.workTeamMember.role, "lead")));
   const inLedTeam = db().select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(inArray(schema.workTeamMember.teamId, ledTeams));
   const rows = await db()
     .select({ id: schema.workExitHandover.id, personName: schema.person.fullName, reason: schema.workExitHandover.reason, lastDay: schema.workExitHandover.lastDay })
@@ -403,7 +518,17 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
     const leaver = handover.personId;
     const sourceRef = { lifecycleEventId: handover.lifecycleEventId, handoverId: handover.id };
     const record = (values: { taskId?: string | null; clientId?: string | null; ref?: Record<string, string> }) =>
-      tx.insert(schema.workHandoff).values({ taskId: values.taskId ?? null, clientId: values.clientId ?? null, kind: "exit", fromPersonId: leaver, toPersonId: to.id, note, status: "recorded", sourceRef: { ...sourceRef, ...values.ref }, createdByPersonId: actor.personId });
+      tx.insert(schema.workHandoff).values({
+        taskId: values.taskId ?? null,
+        clientId: values.clientId ?? null,
+        kind: "exit",
+        fromPersonId: leaver,
+        toPersonId: to.id,
+        note,
+        status: "recorded",
+        sourceRef: { ...sourceRef, ...values.ref },
+        createdByPersonId: actor.personId,
+      });
     let directory = false;
     let clients = false;
     let forms = false;
@@ -419,30 +544,55 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
           await record({ taskId: item.id, ref: { duty: "review" } });
           break;
         case "project_lead":
-          await tx.update(schema.workProject).set({ leadPersonId: to.id, updatedAt: new Date() }).where(and(eq(schema.workProject.id, item.id), eq(schema.workProject.leadPersonId, leaver)));
-          await tx.update(schema.workProjectMember).set({ role: "member" }).where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "lead")));
-          await tx.insert(schema.workProjectMember).values({ projectId: item.id, personId: to.id, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
+          await tx
+            .update(schema.workProject)
+            .set({ leadPersonId: to.id, updatedAt: new Date() })
+            .where(and(eq(schema.workProject.id, item.id), eq(schema.workProject.leadPersonId, leaver)));
+          await tx
+            .update(schema.workProjectMember)
+            .set({ role: "member" })
+            .where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "lead")));
+          await tx
+            .insert(schema.workProjectMember)
+            .values({ projectId: item.id, personId: to.id, role: "lead" })
+            .onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
           await invalidateMemberships(leaver, to.id);
           await record({ ref: { projectId: item.id, duty: "project_lead" } });
           directory = true;
           break;
         case "account_manager": {
-          const [current] = await tx.select({ role: schema.workProjectMember.role }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, to.id))).limit(1);
+          const [current] = await tx
+            .select({ role: schema.workProjectMember.role })
+            .from(schema.workProjectMember)
+            .where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, to.id)))
+            .limit(1);
           // A project's lead is not also its account manager (FR-PJM-14).
           if (current?.role === "lead") throw new ActionError("account_manager_is_lead", { project: item.label });
-          await tx.update(schema.workProjectMember).set({ role: "member" }).where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "account_manager")));
-          await tx.insert(schema.workProjectMember).values({ projectId: item.id, personId: to.id, role: "account_manager" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "account_manager" } });
+          await tx
+            .update(schema.workProjectMember)
+            .set({ role: "member" })
+            .where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "account_manager")));
+          await tx
+            .insert(schema.workProjectMember)
+            .values({ projectId: item.id, personId: to.id, role: "account_manager" })
+            .onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "account_manager" } });
           await invalidateMemberships(leaver, to.id);
           await record({ ref: { projectId: item.id, duty: "account_manager" } });
           break;
         }
         case "client_account":
-          await tx.update(schema.workClient).set({ accountManagerPersonId: to.id, updatedAt: new Date() }).where(and(eq(schema.workClient.id, item.id), eq(schema.workClient.accountManagerPersonId, leaver)));
+          await tx
+            .update(schema.workClient)
+            .set({ accountManagerPersonId: to.id, updatedAt: new Date() })
+            .where(and(eq(schema.workClient.id, item.id), eq(schema.workClient.accountManagerPersonId, leaver)));
           await record({ clientId: item.id });
           clients = true;
           break;
         case "recurrence":
-          await tx.update(schema.workRecurrence).set({ draft: sql`jsonb_set(${schema.workRecurrence.draft}, '{assigneePersonId}', to_jsonb(${to.id}::text))`, updatedAt: new Date() }).where(eq(schema.workRecurrence.id, item.id));
+          await tx
+            .update(schema.workRecurrence)
+            .set({ draft: sql`jsonb_set(${schema.workRecurrence.draft}, '{assigneePersonId}', to_jsonb(${to.id}::text))`, updatedAt: new Date() })
+            .where(eq(schema.workRecurrence.id, item.id));
           await record({ ref: { recurrenceId: item.id } });
           break;
         case "intake_form":
@@ -456,8 +606,14 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
           rules = true;
           break;
         case "team_lead":
-          await tx.insert(schema.workTeamMember).values({ teamId: item.id, personId: to.id, role: "lead" }).onConflictDoUpdate({ target: [schema.workTeamMember.teamId, schema.workTeamMember.personId], set: { role: "lead" } });
-          await tx.update(schema.workTeamMember).set({ role: "member" }).where(and(eq(schema.workTeamMember.teamId, item.id), eq(schema.workTeamMember.personId, leaver)));
+          await tx
+            .insert(schema.workTeamMember)
+            .values({ teamId: item.id, personId: to.id, role: "lead" })
+            .onConflictDoUpdate({ target: [schema.workTeamMember.teamId, schema.workTeamMember.personId], set: { role: "lead" } });
+          await tx
+            .update(schema.workTeamMember)
+            .set({ role: "member" })
+            .where(and(eq(schema.workTeamMember.teamId, item.id), eq(schema.workTeamMember.personId, leaver)));
           await invalidateMemberships(leaver, to.id);
           await record({ ref: { teamId: item.id, duty: "team_lead" } });
           break;
@@ -481,7 +637,13 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
     await tx.update(schema.workExitHandover).set({ updatedAt: new Date() }).where(eq(schema.workExitHandover.id, handoverId));
     return { moved: chosen.map(({ kind, id, label }) => ({ kind, id, label })), leaver, directory, clients, forms, rules, afterCommit };
   });
-  await Promise.all([result.directory ? invalidateWorkDirectory() : null, result.clients ? invalidateWorkClients() : null, result.forms ? invalidateIntakeForms() : null, result.rules ? invalidateAutomations() : null, ...result.afterCommit.map((then) => then())]);
+  await Promise.all([
+    result.directory ? invalidateWorkDirectory() : null,
+    result.clients ? invalidateWorkClients() : null,
+    result.forms ? invalidateIntakeForms() : null,
+    result.rules ? invalidateAutomations() : null,
+    ...result.afterCommit.map((then) => then()),
+  ]);
   return { moved: result.moved, remaining: (await listOwnership(result.leaver)).length };
 }
 
@@ -494,6 +656,10 @@ export async function completeExitHandover(handoverId: string, actorPersonId: st
   if (!handover || handover.status !== "open") throw new ActionError("exit_handover_closed");
   if (handover.taskId) await setTaskStatus(handover.taskId, "done", actorPersonId);
   else if (!ownershipSummary(await listOwnership(handover.personId)).clear) throw new ActionError("work_handover_open");
-  const [after] = await db().update(schema.workExitHandover).set({ status: "done", doneAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.workExitHandover.id, handoverId), eq(schema.workExitHandover.status, "open"))).returning();
+  const [after] = await db()
+    .update(schema.workExitHandover)
+    .set({ status: "done", doneAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(schema.workExitHandover.id, handoverId), eq(schema.workExitHandover.status, "open")))
+    .returning();
   return after ?? handover;
 }

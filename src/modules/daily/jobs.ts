@@ -33,7 +33,10 @@ export async function sendPlanReminders(today: IsoDate): Promise<{ reminded: num
   const days = await dayOf(people, today);
   const due = people.filter((personId) => days.get(personId)?.plan.required);
   if (due.length === 0) return { reminded: 0 };
-  const planned = await db().select({ personId: schema.dailyPlan.personId }).from(schema.dailyPlan).where(and(inArray(schema.dailyPlan.personId, due), eq(schema.dailyPlan.date, today), isNotNull(schema.dailyPlan.submittedAt)));
+  const planned = await db()
+    .select({ personId: schema.dailyPlan.personId })
+    .from(schema.dailyPlan)
+    .where(and(inArray(schema.dailyPlan.personId, due), eq(schema.dailyPlan.date, today), isNotNull(schema.dailyPlan.submittedAt)));
   const missing = due.filter((personId) => !planned.some((row) => row.personId === personId));
   const reminded = await claim(missing, "plan", today, (fresh, tx) => notify({ recipients: fresh, kind: "daily.plan_reminder", link: "/daily/plan" }, tx));
   return { reminded };
@@ -49,7 +52,10 @@ export async function sendReportReminders(today: IsoDate): Promise<{ reminded: n
   const days = await dayOf(people, today);
   const due = people.filter((personId) => days.get(personId)?.report.required);
   if (due.length === 0) return { reminded: 0 };
-  const submitted = await db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, due), eq(schema.dailyReport.date, today), eq(schema.dailyReport.status, "submitted")));
+  const submitted = await db()
+    .select({ personId: schema.dailyReport.personId })
+    .from(schema.dailyReport)
+    .where(and(inArray(schema.dailyReport.personId, due), eq(schema.dailyReport.date, today), eq(schema.dailyReport.status, "submitted")));
   const missing = due.filter((personId) => !submitted.some((row) => row.personId === personId));
   let reminded = 0;
   // One notice per deadline: the wording names it.
@@ -70,7 +76,10 @@ export async function sendMissedReportReminders(today: IsoDate): Promise<{ date:
   const days = await dayOf(people, date);
   const due = people.filter((personId) => days.get(personId)?.report.required);
   if (due.length === 0) return { date, reminded: 0 };
-  const submitted = await db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, due), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")));
+  const submitted = await db()
+    .select({ personId: schema.dailyReport.personId })
+    .from(schema.dailyReport)
+    .where(and(inArray(schema.dailyReport.personId, due), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")));
   const sent = new Set(submitted.map((row) => row.personId));
   const missing = due.filter((personId) => !sent.has(personId));
   const reminded = await claim(missing, "report_missed", today, (fresh, tx) => notify({ recipients: fresh, kind: "daily.report_missed", params: { date: date.split("-").reverse().join("/") }, link: reportLink(date) }, tx));

@@ -83,19 +83,36 @@ export async function getRunReadiness(run: PayrollRunRow, options: { executor?: 
 
   const [inputs, people, locked, waiting, salaries, payouts, flagged, voided] = await Promise.all([
     // Codes and times only: the amounts stay sealed.
-    executor.select({ personId: schema.payrollRunInput.personId, code: schema.payrollRunInput.code, touchedAt: sql<Date>`greatest(${schema.payrollRunInput.createdAt}, ${schema.payrollRunInput.updatedAt})`.mapWith(schema.payrollRunInput.updatedAt) }).from(schema.payrollRunInput).where(eq(schema.payrollRunInput.runId, run.id)),
+    executor
+      .select({
+        personId: schema.payrollRunInput.personId,
+        code: schema.payrollRunInput.code,
+        touchedAt: sql<Date>`greatest(${schema.payrollRunInput.createdAt}, ${schema.payrollRunInput.updatedAt})`.mapWith(schema.payrollRunInput.updatedAt),
+      })
+      .from(schema.payrollRunInput)
+      .where(eq(schema.payrollRunInput.runId, run.id)),
     executor.select({ personId: schema.payrollRunPerson.personId, warnings: schema.payrollRunPerson.warnings }).from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, run.id)),
     regular ? getLockedTimesheets(run.entityId, run.month, executor) : Promise.resolve(null),
     // Differences of earlier months that no run has carried yet (FR-PAY-17).
     regular
-      ? executor.selectDistinct({ personId: schema.payrollRetroItem.personId }).from(schema.payrollRetroItem).where(and(eq(schema.payrollRetroItem.entityId, run.entityId), eq(schema.payrollRetroItem.status, "open"), lt(schema.payrollRetroItem.sourceMonth, run.month)))
+      ? executor
+          .selectDistinct({ personId: schema.payrollRetroItem.personId })
+          .from(schema.payrollRetroItem)
+          .where(and(eq(schema.payrollRetroItem.entityId, run.entityId), eq(schema.payrollRetroItem.status, "open"), lt(schema.payrollRetroItem.sourceMonth, run.month)))
       : Promise.resolve([]),
     // Salary decisions taken — or voided as wrong — after the calculation that apply inside the month.
     regular && run.calculatedAt
       ? executor
           .selectDistinct({ personId: schema.salaryStructure.personId })
           .from(schema.salaryStructure)
-          .where(and(eq(schema.salaryStructure.entityId, run.entityId), or(gt(schema.salaryStructure.createdAt, run.calculatedAt), gt(schema.salaryStructure.voidedAt, run.calculatedAt)), lte(schema.salaryStructure.validFrom, period.end), or(isNull(schema.salaryStructure.validTo), gte(schema.salaryStructure.validTo, period.start))))
+          .where(
+            and(
+              eq(schema.salaryStructure.entityId, run.entityId),
+              or(gt(schema.salaryStructure.createdAt, run.calculatedAt), gt(schema.salaryStructure.voidedAt, run.calculatedAt)),
+              lte(schema.salaryStructure.validFrom, period.end),
+              or(isNull(schema.salaryStructure.validTo), gte(schema.salaryStructure.validTo, period.start)),
+            ),
+          )
       : Promise.resolve([]),
     // Unused leave the ledger paid out to a leaver after the calculation (the daily leave job posts it the day after the last day).
     regular && run.calculatedAt ? listPayoutTotals(run.entityId, period.start, period.end, executor, { postedAfter: run.calculatedAt }) : Promise.resolve([]),

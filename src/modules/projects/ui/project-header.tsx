@@ -27,7 +27,9 @@ export function ProjectMark({ project, accent, size = "default", className }: { 
   return (
     <Avatar className={cn(size === "sm" ? "size-8" : "size-10", radius, "after:border-foreground/10", className)}>
       {src ? <AvatarImage src={src} alt={project.name} className={radius} /> : null}
-      <AvatarFallback className={cn(radius, "font-semibold tracking-tight", size === "sm" ? "text-xs" : "text-sm", accent ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground")}>{initialsOf(project.name.replace(/[^\p{L}\p{N}\s]+/gu, " "))}</AvatarFallback>
+      <AvatarFallback className={cn(radius, "font-semibold tracking-tight", size === "sm" ? "text-xs" : "text-sm", accent ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground")}>
+        {initialsOf(project.name.replace(/[^\p{L}\p{N}\s]+/gu, " "))}
+      </AvatarFallback>
     </Avatar>
   );
 }
@@ -82,9 +84,13 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <h1 className="min-w-0 break-words">{project.name}</h1>
               <span className="flex flex-wrap items-center gap-1.5">
-                <Badge dot variant={statusTone(project.status)}>{(project.statusId && statusNames.get(project.statusId)) || tWork(`projects.status.${project.status as "active"}`)}</Badge>
+                <Badge dot variant={statusTone(project.status)}>
+                  {(project.statusId && statusNames.get(project.statusId)) || tWork(`projects.status.${project.status as "active"}`)}
+                </Badge>
                 <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
-                <Badge dot variant={statusTone(plan.briefStatus)}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
+                <Badge dot variant={statusTone(plan.briefStatus)}>
+                  {t(`brief.status.${plan.briefStatus as "draft"}`)}
+                </Badge>
                 {plan.health ? <Badge variant={healthVariant(plan.health)}>{t(`health.${plan.health as "on_track"}`)}</Badge> : null}
                 {plan.closedAt ? <Badge variant="secondary">{t("close.closedBadge")}</Badge> : null}
               </span>

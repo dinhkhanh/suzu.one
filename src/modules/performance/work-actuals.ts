@@ -35,7 +35,15 @@ export async function listWorkKpiDue(month: string): Promise<WorkKpiLine[]> {
     .from(schema.kpiAssignment)
     .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId))
     .innerJoin(schema.person, eq(schema.person.id, schema.kpiAssignment.personId))
-    .where(and(isNotNull(schema.kpiDefinition.workMetric), eq(schema.kpiDefinition.isActive, true), ne(schema.person.status, "offboarded"), lte(schema.kpiAssignment.fromPeriod, month), or(isNull(schema.kpiAssignment.toPeriod), gte(schema.kpiAssignment.toPeriod, month))));
+    .where(
+      and(
+        isNotNull(schema.kpiDefinition.workMetric),
+        eq(schema.kpiDefinition.isActive, true),
+        ne(schema.person.status, "offboarded"),
+        lte(schema.kpiAssignment.fromPeriod, month),
+        or(isNull(schema.kpiAssignment.toPeriod), gte(schema.kpiAssignment.toPeriod, month)),
+      ),
+    );
   const due = rows.flatMap(({ assignment, kpi }) => {
     const periodKey = periodDueIn(kpi.frequency as KpiFrequency, month);
     if (!periodKey || !isWorkMetric(kpi.workMetric) || WORK_METRIC_UNITS[kpi.workMetric] !== kpi.unit) return [];
@@ -43,8 +51,19 @@ export async function listWorkKpiDue(month: string): Promise<WorkKpiLine[]> {
   });
   if (due.length === 0) return [];
   const [existing, closed] = await Promise.all([
-    db().select({ assignmentId: schema.kpiActual.assignmentId, periodKey: schema.kpiActual.periodKey }).from(schema.kpiActual).where(inArray(schema.kpiActual.assignmentId, due.map((line) => line.assignmentId))),
-    db().select({ entityId: schema.kpiPeriod.entityId }).from(schema.kpiPeriod).where(and(eq(schema.kpiPeriod.month, month), eq(schema.kpiPeriod.status, "closed"))),
+    db()
+      .select({ assignmentId: schema.kpiActual.assignmentId, periodKey: schema.kpiActual.periodKey })
+      .from(schema.kpiActual)
+      .where(
+        inArray(
+          schema.kpiActual.assignmentId,
+          due.map((line) => line.assignmentId),
+        ),
+      ),
+    db()
+      .select({ entityId: schema.kpiPeriod.entityId })
+      .from(schema.kpiPeriod)
+      .where(and(eq(schema.kpiPeriod.month, month), eq(schema.kpiPeriod.status, "closed"))),
   ]);
   const taken = new Set(existing.map((row) => `${row.assignmentId}:${row.periodKey}`));
   const closedEntities = new Set(closed.map((row) => row.entityId));
@@ -63,7 +82,20 @@ export async function proposeWorkActuals(proposals: readonly WorkProposal[]): Pr
   const written = await db().transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.kpiActual)
-      .values(proposals.map(({ line, value }) => ({ assignmentId: line.assignmentId, personId: line.personId, kpiId: line.kpiId, periodKey: line.periodKey, actualValue: value, proposedValue: value, notApplicable: false, source: "work", status: "proposed", enteredByPersonId: null })))
+      .values(
+        proposals.map(({ line, value }) => ({
+          assignmentId: line.assignmentId,
+          personId: line.personId,
+          kpiId: line.kpiId,
+          periodKey: line.periodKey,
+          actualValue: value,
+          proposedValue: value,
+          notApplicable: false,
+          source: "work",
+          status: "proposed",
+          enteredByPersonId: null,
+        })),
+      )
       .onConflictDoNothing({ target: [schema.kpiActual.assignmentId, schema.kpiActual.periodKey] })
       .returning({ assignmentId: schema.kpiActual.assignmentId });
     const ids = new Set(inserted.map((row) => row.assignmentId));
@@ -73,7 +105,15 @@ export async function proposeWorkActuals(proposals: readonly WorkProposal[]): Pr
   const directory = await loadDirectory();
   // Nobody above them: whoever runs performance for them scores it — one read of the grants for all of them.
   const unmanaged = [...new Set(written.map(({ line }) => line.personId))].filter((personId) => directory.has(personId) && !directory.get(personId)!.chainAbove[0]);
-  const managers = new Map((await listPeopleHoldingEach("performance:manage", unmanaged.map((personId) => directory.get(personId)!), { includeWildcard: false })).map((holders, index) => [unmanaged[index], holders]));
+  const managers = new Map(
+    (
+      await listPeopleHoldingEach(
+        "performance:manage",
+        unmanaged.map((personId) => directory.get(personId)!),
+        { includeWildcard: false },
+      )
+    ).map((holders, index) => [unmanaged[index], holders]),
+  );
   const scorers = new Map<string, Set<string>>();
   for (const { line } of written) {
     const person = directory.get(line.personId);

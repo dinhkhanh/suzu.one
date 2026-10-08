@@ -66,7 +66,18 @@ export async function seedPerformanceResults(db: Db): Promise<string> {
 
   // ── OKR attainment, the way `getOkrResults` works it out ──────────────────────────────────
   const goals = await db.select().from(goal).where(eq(goal.year, YEAR)).orderBy(asc(goal.createdAt), asc(goal.id));
-  const keyResults = goals.length === 0 ? [] : await db.select().from(keyResult).where(inArray(keyResult.goalId, goals.map((row) => row.id)));
+  const keyResults =
+    goals.length === 0
+      ? []
+      : await db
+          .select()
+          .from(keyResult)
+          .where(
+            inArray(
+              keyResult.goalId,
+              goals.map((row) => row.id),
+            ),
+          );
   const children = new Map<string, string[]>();
   for (const row of goals) if (row.parentGoalId) children.set(row.parentGoalId, [...(children.get(row.parentGoalId) ?? []), row.id]);
   const inputs = new Map<string, GoalInput>(
@@ -80,7 +91,16 @@ export async function seedPerformanceResults(db: Db): Promise<string> {
         childIds: children.get(row.id) ?? [],
         keyResults: keyResults
           .filter((kr) => kr.goalId === row.id)
-          .map((kr) => ({ id: kr.id, metricType: kr.metricType as MetricType, startValue: kr.startValue, targetValue: kr.targetValue, currentValue: kr.currentValue, milestones: kr.milestones, weight: kr.weight, confidence: kr.confidence as Confidence | null })),
+          .map((kr) => ({
+            id: kr.id,
+            metricType: kr.metricType as MetricType,
+            startValue: kr.startValue,
+            targetValue: kr.targetValue,
+            currentValue: kr.currentValue,
+            milestones: kr.milestones,
+            weight: kr.weight,
+            confidence: kr.confidence as Confidence | null,
+          })),
       },
     ]),
   );
@@ -93,7 +113,11 @@ export async function seedPerformanceResults(db: Db): Promise<string> {
   };
 
   // ── The stored KPI scores of the year ──────────────────────────────────────────────────────
-  const scores = await db.select().from(kpiScore).where(and(like(kpiScore.month, `${YEAR}-%`), isNull(kpiScore.supersededAt))).orderBy(asc(kpiScore.month));
+  const scores = await db
+    .select()
+    .from(kpiScore)
+    .where(and(like(kpiScore.month, `${YEAR}-%`), isNull(kpiScore.supersededAt)))
+    .orderBy(asc(kpiScore.month));
   const assignments = await db.select({ assignment: kpiAssignment, frequency: kpiDefinition.frequency }).from(kpiAssignment).innerJoin(kpiDefinition, eq(kpiDefinition.id, kpiAssignment.kpiId));
 
   let published = 0;

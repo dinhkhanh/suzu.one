@@ -28,7 +28,11 @@ export function PhotoEditor({ person, compact = false }: { person: { id: string;
       // Square, cut a little above the middle, where a portrait's face usually is.
       const picture = await squarePicture(file, { edge: PHOTO_EDGE_PX, name: "photo.jpg", top: 1 / 3 });
       if (!picture) return setErrorKey("photo_unreadable");
-      const result = await uploadThroughSignedUrl(picture, (meta) => beginPhotoUploadAction({ personId: person.id, ...meta }), (fileId) => completePhotoUploadAction({ personId: person.id, fileId }));
+      const result = await uploadThroughSignedUrl(
+        picture,
+        (meta) => beginPhotoUploadAction({ personId: person.id, ...meta }),
+        (fileId) => completePhotoUploadAction({ personId: person.id, fileId }),
+      );
       setErrorKey(result.ok ? null : result.errorKey);
       if (result.ok) router.refresh();
     });

@@ -13,7 +13,18 @@
     "workforceType": "employee",
     "activeOnReferenceDay": true,
     "unitOkrProgressBp": 9000,
-    "result": { "resultId": "r13", "finalScoreBp": 10200, "bandKey": "exceeds", "bandMultiplierBp": 12500, "bandLabel": "Vượt", "reviewScoreBp": 7000, "kpiScoreBp": 8000, "okrScoreBp": 7800, "overridden": true, "overrideReason": "Gánh toàn bộ mảng khách hàng lớn sau khi trưởng nhóm nghỉ" }
+    "result": {
+      "resultId": "r13",
+      "finalScoreBp": 10200,
+      "bandKey": "exceeds",
+      "bandMultiplierBp": 12500,
+      "bandLabel": "Vượt",
+      "reviewScoreBp": 7000,
+      "kpiScoreBp": 8000,
+      "okrScoreBp": 7800,
+      "overridden": true,
+      "overrideReason": "Gánh toàn bộ mảng khách hàng lớn sau khi trưởng nhóm nghỉ"
+    }
   },
   "expect": { "eligible": true, "performanceMultiplierBp": 12500, "combinedMultiplierBp": 12500, "computedAmountVnd": 25000000, "finalAmountVnd": 25000000 }
 }

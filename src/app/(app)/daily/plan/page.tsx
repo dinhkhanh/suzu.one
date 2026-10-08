@@ -18,10 +18,26 @@ export default async function PlanPage({ searchParams }: PageProps<"/daily/plan"
   const [t, format, page] = await Promise.all([getTranslations("daily"), getFormatter(), getPlanPage(user.person.id, date)]);
   const day = page.day;
   const badges = [
-    day?.plan.required ? <Badge key="required" variant="outline">{t("plan.requiredBy", { time: day.rules.planCutoff })}</Badge> : null,
-    day?.dayOff ? <Badge key="off" variant="secondary">{t("plan.dayOff")}</Badge> : null,
-    page.carried ? <Badge key="carried" variant="info">{t("plan.carried")}</Badge> : null,
-    page.plan?.submittedAt ? <Badge key="saved" dot variant="success">{t("plan.savedAt", { time: format.dateTime(page.plan.updatedAt, { timeStyle: "short" }) })}</Badge> : null,
+    day?.plan.required ? (
+      <Badge key="required" variant="outline">
+        {t("plan.requiredBy", { time: day.rules.planCutoff })}
+      </Badge>
+    ) : null,
+    day?.dayOff ? (
+      <Badge key="off" variant="secondary">
+        {t("plan.dayOff")}
+      </Badge>
+    ) : null,
+    page.carried ? (
+      <Badge key="carried" variant="info">
+        {t("plan.carried")}
+      </Badge>
+    ) : null,
+    page.plan?.submittedAt ? (
+      <Badge key="saved" dot variant="success">
+        {t("plan.savedAt", { time: format.dateTime(page.plan.updatedAt, { timeStyle: "short" }) })}
+      </Badge>
+    ) : null,
   ].filter(Boolean);
 
   return (
@@ -29,7 +45,14 @@ export default async function PlanPage({ searchParams }: PageProps<"/daily/plan"
       <PageHeader eyebrow={format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long" })} title={date === today ? t("plan.title") : t("plan.titleTomorrow")}>
         {badges.length > 0 ? <div className="flex flex-wrap gap-1.5 pt-1">{badges}</div> : null}
       </PageHeader>
-      <PlanForm date={date} today={today} candidates={page.candidates.map(({ taskId, key, title, dueDate, estimateMinutes, projectName, stateName, status }) => ({ taskId, key, title, dueDate, estimateMinutes, projectName, stateName, status }))} selected={page.selected} dayMinutes={day?.minutes ?? 480} note={page.plan?.note ?? null} />
+      <PlanForm
+        date={date}
+        today={today}
+        candidates={page.candidates.map(({ taskId, key, title, dueDate, estimateMinutes, projectName, stateName, status }) => ({ taskId, key, title, dueDate, estimateMinutes, projectName, stateName, status }))}
+        selected={page.selected}
+        dayMinutes={day?.minutes ?? 480}
+        note={page.plan?.note ?? null}
+      />
     </Page>
   );
 }

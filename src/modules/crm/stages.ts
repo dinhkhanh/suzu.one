@@ -46,10 +46,17 @@ export async function saveStage(stageId: string | null, input: StageInput): Prom
     if (!before) throw new ActionError("stage_not_found");
     // A stage deals sit in keeps its category: moving "Negotiation" into "won" would win them all silently.
     if (before.category !== input.category) {
-      const [used] = await tx.select({ n: sql<number>`count(*)` }).from(schema.crmDeal).where(eq(schema.crmDeal.stageId, stageId));
+      const [used] = await tx
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.crmDeal)
+        .where(eq(schema.crmDeal.stageId, stageId));
       if (Number(used?.n ?? 0) > 0) throw new ActionError("stage_in_use");
     }
-    const [after] = await tx.update(schema.crmStage).set({ ...values, updatedAt: new Date() }).where(eq(schema.crmStage.id, stageId)).returning();
+    const [after] = await tx
+      .update(schema.crmStage)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.crmStage.id, stageId))
+      .returning();
     return { before, after };
   });
   await invalidateStages();

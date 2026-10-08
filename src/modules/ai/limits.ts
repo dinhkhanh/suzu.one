@@ -102,7 +102,12 @@ export async function assistantUsage(days: number = USAGE_DAYS, now: Date = new 
   const day = sql<string>`to_char(${aiMessage.createdAt} at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')`;
   const [[total], byDay, byPerson, costByDay, costByPerson, month] = await Promise.all([
     db().select(figures).from(aiMessage).where(answered),
-    db().select({ day, ...figures }).from(aiMessage).where(answered).groupBy(day).orderBy(desc(day)),
+    db()
+      .select({ day, ...figures })
+      .from(aiMessage)
+      .where(answered)
+      .groupBy(day)
+      .orderBy(desc(day)),
     db()
       .select({ personId: aiMessage.personId, fullName: schema.person.fullName, ...figures })
       .from(aiMessage)

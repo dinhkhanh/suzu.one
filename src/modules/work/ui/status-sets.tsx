@@ -88,7 +88,12 @@ export function StatusSetLibrary({ kind, sets, owners, canCreate }: { kind: SetK
                 <span className="font-medium">{set.name}</span>
               </TableCell>
               <TableCell className="text-muted-foreground">{set.ownerName ?? t("shared")}</TableCell>
-              <TableCell className="max-w-72 truncate text-xs text-muted-foreground">{set.statuses.filter((status) => status.isActive).map((status) => status.name).join(" → ")}</TableCell>
+              <TableCell className="max-w-72 truncate text-xs text-muted-foreground">
+                {set.statuses
+                  .filter((status) => status.isActive)
+                  .map((status) => status.name)
+                  .join(" → ")}
+              </TableCell>
               <TableCell kind="number">{kind === "project" ? (set.teams ?? 0) : set.statuses.length}</TableCell>
               <TableCell>
                 <Badge dot variant={set.isActive ? "success" : "outline"}>
@@ -96,7 +101,16 @@ export function StatusSetLibrary({ kind, sets, owners, canCreate }: { kind: SetK
                 </Badge>
               </TableCell>
               <TableCell kind="actions">
-                <Button type="button" variant="ghost" size="icon-xs" aria-label={t("expand")} onClick={(event) => { event.stopPropagation(); setOpenId(set.id); }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={t("expand")}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setOpenId(set.id);
+                  }}
+                >
                   <ChevronRightIcon />
                 </Button>
               </TableCell>
@@ -114,7 +128,13 @@ export function StatusSetLibrary({ kind, sets, owners, canCreate }: { kind: SetK
           <DialogHeader>
             <DialogTitle>{open?.name}</DialogTitle>
           </DialogHeader>
-          {open ? open.canManage ? <SetEditor key={open.id} kind={kind} set={open} owners={owners.some((owner) => owner.value === open.owner) ? owners : [{ value: open.owner, name: open.ownerName ?? t("shared") }, ...owners]} onDone={() => setOpenId(null)} /> : <SetReadOnly kind={kind} set={open} /> : null}
+          {open ? (
+            open.canManage ? (
+              <SetEditor key={open.id} kind={kind} set={open} owners={owners.some((owner) => owner.value === open.owner) ? owners : [{ value: open.owner, name: open.ownerName ?? t("shared") }, ...owners]} onDone={() => setOpenId(null)} />
+            ) : (
+              <SetReadOnly kind={kind} set={open} />
+            )
+          ) : null}
         </DialogContent>
       </Dialog>
     </TableCard>
@@ -134,7 +154,9 @@ function SetReadOnly({ kind, set }: { kind: SetKind; set: SetCard }) {
             <span className="w-5 text-right font-mono text-xs text-faint tabular-nums">{index + 1}</span>
             <span className="min-w-0 flex-1 text-sm font-medium">{status.name}</span>
             {status.isActive ? null : <Badge variant="secondary">{t("inactive")}</Badge>}
-            <Badge dot variant={kind === "project" ? statusTone(status.category) : "outline"}>{tWork(`${KIND[kind].categoryKey}.${status.category}` as "categories.todo")}</Badge>
+            <Badge dot variant={kind === "project" ? statusTone(status.category) : "outline"}>
+              {tWork(`${KIND[kind].categoryKey}.${status.category}` as "categories.todo")}
+            </Badge>
           </ListItem>
         ))}
       </List>
@@ -269,7 +291,10 @@ export function SaveWorkflowToLibrary({ teamId, teamName }: { teamId: string; te
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         setDone(false);
-        run(() => saveTeamWorkflowAsSetAction({ teamId, name: data.get("name") }), () => setDone(true));
+        run(
+          () => saveTeamWorkflowAsSetAction({ teamId, name: data.get("name") }),
+          () => setDone(true),
+        );
       }}
     >
       <Input name="name" required maxLength={80} aria-label={t("name")} defaultValue={t("fromTeamName", { team: teamName })} className="min-w-0 flex-[1_1_14rem] sm:max-w-80" />

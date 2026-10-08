@@ -154,12 +154,25 @@ const toRule = (day: EditableDay, flexible: boolean): DayRule =>
     ? { type: "off" }
     : day.type === "untracked"
       ? { type: "untracked", creditMinutes: day.creditMinutes }
-      : { type: "working", segments: [{ start: day.start, end: day.end }, ...(day.start2 && day.end2 ? [{ start: day.start2, end: day.end2 }] : [])], breakMinutes: day.breakMinutes, ...(flexible ? { flexible: true, requiredMinutes: day.requiredMinutes } : {}) };
+      : {
+          type: "working",
+          segments: [{ start: day.start, end: day.end }, ...(day.start2 && day.end2 ? [{ start: day.start2, end: day.end2 }] : [])],
+          breakMinutes: day.breakMinutes,
+          ...(flexible ? { flexible: true, requiredMinutes: day.requiredMinutes } : {}),
+        };
 
 export type ScheduleFormValue = { id: string; entityId: string | null; name: string; kind: "fixed" | "flexible" | "shift"; pattern: SchedulePattern; isDefault: boolean; isActive: boolean };
 
 const OFFICE_WEEK: SchedulePattern = {
-  days: { 1: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 }, 2: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 }, 3: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 }, 4: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 }, 5: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 }, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } },
+  days: {
+    1: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 },
+    2: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 },
+    3: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 },
+    4: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 },
+    5: { type: "working", segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 },
+    6: { type: "untracked", creditMinutes: 480 },
+    7: { type: "off" },
+  },
 };
 
 export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: ScheduleFormValue; entities: Option[]; canGroup: boolean }) {
@@ -185,7 +198,15 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
     };
     setSaved(false);
     startTransition(async () => {
-      const result = await saveScheduleAction({ id: schedule?.id ?? "", entityId: schedule ? (schedule.entityId ?? "") : form.get("entityId"), name: form.get("name"), kind, pattern: JSON.stringify(built), isDefault: form.get("isDefault") === "on", isActive: form.get("isActive") === "on" });
+      const result = await saveScheduleAction({
+        id: schedule?.id ?? "",
+        entityId: schedule ? (schedule.entityId ?? "") : form.get("entityId"),
+        name: form.get("name"),
+        kind,
+        pattern: JSON.stringify(built),
+        isDefault: form.get("isDefault") === "on",
+        isActive: form.get("isActive") === "on",
+      });
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
       setSaved(result.ok);
     });

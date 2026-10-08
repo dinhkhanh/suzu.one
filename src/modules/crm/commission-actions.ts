@@ -41,7 +41,10 @@ const proposeSchemePipeline = createAction({
         return { fromVnd: from.data, rateBp: Math.round(rate.data * 100) };
       });
     if (tiers.length === 0) throw new ActionError("commission_tiers");
-    const created = await proposeCommissionScheme({ entityId: input.entityId, name: input.name, validFrom: input.validFrom, rule: { base: "cash_collected", earner: input.earner, splitOwnerBp: Math.round((input.splitOwnerPercent ?? 100) * 100), tiers } }, user.person.id);
+    const created = await proposeCommissionScheme(
+      { entityId: input.entityId, name: input.name, validFrom: input.validFrom, rule: { base: "cash_collected", earner: input.earner, splitOwnerBp: Math.round((input.splitOwnerPercent ?? 100) * 100), tiers } },
+      user.person.id,
+    );
     refresh();
     return { data: { id: created.id }, audit: { resource: { type: "crm_commission_scheme", id: created.id, entityId: created.entityId }, summary: `quy chế hoa hồng "${created.name}" từ ${created.validFrom}`, after: created } };
   },
@@ -58,7 +61,10 @@ const decideSchemePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await decideCommissionScheme(input.id, input.decision, user.person.id);
     refresh();
-    return { data: { id: after.id }, audit: { resource: { type: "crm_commission_scheme", id: after.id, entityId: after.entityId }, summary: `${input.decision === "approved" ? "duyệt" : "từ chối"} quy chế hoa hồng "${after.name}"`, before, after } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "crm_commission_scheme", id: after.id, entityId: after.entityId }, summary: `${input.decision === "approved" ? "duyệt" : "từ chối"} quy chế hoa hồng "${after.name}"`, before, after },
+    };
   },
 });
 export async function decideCommissionSchemeAction(input: unknown) {
@@ -89,7 +95,14 @@ const confirmPipeline = createAction({
   run: async ({ user, input }) => {
     const { after, posted } = await confirmStatement(input.id, user.principal, user.person.id);
     refresh();
-    return { data: { posted }, audit: { resource: { type: "crm_commission_statement", id: after.id, entityId: after.entityId }, summary: `xác nhận bảng kê hoa hồng tháng ${after.month}${posted ? ", đưa vào kỳ lương" : ""}`, after: { id: after.id, personId: after.personId, month: after.month, status: after.status, payrollRunId: after.payrollRunId } } };
+    return {
+      data: { posted },
+      audit: {
+        resource: { type: "crm_commission_statement", id: after.id, entityId: after.entityId },
+        summary: `xác nhận bảng kê hoa hồng tháng ${after.month}${posted ? ", đưa vào kỳ lương" : ""}`,
+        after: { id: after.id, personId: after.personId, month: after.month, status: after.status, payrollRunId: after.payrollRunId },
+      },
+    };
   },
 });
 export async function confirmCommissionStatementAction(input: unknown) {

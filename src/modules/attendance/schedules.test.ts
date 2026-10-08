@@ -21,9 +21,16 @@ const kinds = async (personId: string, from: string, to: string) => (await getDa
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
   const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
-  const person = async (name: string, entityId: string, departmentId: string | null) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, orgUnitId: departmentId }).returning())[0].id;
+  const person = async (name: string, entityId: string, departmentId: string | null) =>
+    (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, orgUnitId: departmentId }).returning())[0].id;
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, huy: await person("Huy", media.id, video.id), tam: await person("Tam", media.id, video.id), lan: await person("Lan", creative.id, null) });
 });
 
@@ -65,7 +72,9 @@ describe("schedules and day plans", () => {
     await expect(assignSchedule({ ...person, personId: null, scheduleId: ids.office, validFrom: "2026-08-01" }, ids.huy)).rejects.toThrow("schedule_assignment_scope");
     const { after: mediaOnly } = await saveSchedule({ id: null, entityId: ids.media, name: "Crew", kind: "shift", pattern: ALL_OFF, isDefault: false, isActive: true });
     ids.crew = mediaOnly.id;
-    await expect(assignSchedule({ scope: "entity", entityId: ids.creative, departmentId: null, personId: null, scheduleId: mediaOnly.id, validFrom: "2026-01-01", validTo: null, note: null }, ids.huy)).rejects.toThrow("schedule_other_entity");
+    await expect(assignSchedule({ scope: "entity", entityId: ids.creative, departmentId: null, personId: null, scheduleId: mediaOnly.id, validFrom: "2026-01-01", validTo: null, note: null }, ids.huy)).rejects.toThrow(
+      "schedule_other_entity",
+    );
     // The database itself refuses overlapping rows of one scope, whatever the service does.
     await expect(db().insert(schema.scheduleAssignment).values({ scope: "person", personId: ids.huy, scheduleId: ids.office, validFrom: "2026-08-20" })).rejects.toThrow();
     const rows = await listAssignments();

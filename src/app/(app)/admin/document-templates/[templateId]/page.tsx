@@ -28,7 +28,9 @@ export default async function DocumentTemplatePage({ params }: PageProps<"/admin
         title={
           <span className="flex items-center gap-3">
             <span className="min-w-0 truncate">{template.name}</span>
-            <Badge dot variant={template.isActive ? "success" : "outline"}>{template.isActive ? t("active") : t("inactive")}</Badge>
+            <Badge dot variant={template.isActive ? "success" : "outline"}>
+              {template.isActive ? t("active") : t("inactive")}
+            </Badge>
           </span>
         }
         description={

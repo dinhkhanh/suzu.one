@@ -48,7 +48,10 @@ const removePipeline = createAction({
   run: async ({ input }) => {
     const [target, previous] = await Promise.all([getPersonTarget(input.personId), removePhoto(input.personId)]);
     revalidatePath("/", "layout");
-    return { data: { removed: !!previous }, audit: { resource: { type: "person", id: input.personId, entityId: target?.entityId ?? null }, summary: "profile picture removed", before: { photoFileId: previous }, after: { photoFileId: null } } };
+    return {
+      data: { removed: !!previous },
+      audit: { resource: { type: "person", id: input.personId, entityId: target?.entityId ?? null }, summary: "profile picture removed", before: { photoFileId: previous }, after: { photoFileId: null } },
+    };
   },
 });
 export async function removePhotoAction(input: unknown) {

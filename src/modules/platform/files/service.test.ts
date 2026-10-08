@@ -40,7 +40,10 @@ const store = (fileName = "report.pdf") => storeIncomingFile({ ownerType: "note"
 /** A stored file that was deleted `days` ago. */
 async function deleted(days: number, fileName?: string) {
   const file = await store(fileName);
-  await db().update(schema.storedFile).set({ deletedAt: daysAgo(days) }).where(eq(schema.storedFile.id, file.id));
+  await db()
+    .update(schema.storedFile)
+    .set({ deletedAt: daysAgo(days) })
+    .where(eq(schema.storedFile.id, file.id));
   return file;
 }
 const row = async (fileId: string) => (await db().select().from(schema.storedFile).where(eq(schema.storedFile.id, fileId)))[0];
@@ -129,7 +132,10 @@ describe("the cleanup job", () => {
   it("is what `files-cleanup` runs, beside the abandoned uploads", async () => {
     // The job reads the real clock, so this one is deleted relative to it.
     const old = await store();
-    await db().update(schema.storedFile).set({ deletedAt: new Date(Date.now() - (DELETED_FILE_GRACE_DAYS + 3) * 24 * 60 * 60 * 1000) }).where(eq(schema.storedFile.id, old.id));
+    await db()
+      .update(schema.storedFile)
+      .set({ deletedAt: new Date(Date.now() - (DELETED_FILE_GRACE_DAYS + 3) * 24 * 60 * 60 * 1000) })
+      .where(eq(schema.storedFile.id, old.id));
     const result = await filesCleanupJob.run({ today: todayInVietnam() });
     expect(result).toEqual({ abandonedUploads: 0, purgedFiles: 1 });
     expect(bucket.objects.has(old.objectPath)).toBe(false);
@@ -147,7 +153,10 @@ describe("erasing files", () => {
     expect(bucket.objects.has(alreadyDeleted.objectPath)).toBe(false);
     expect(bucket.objects.has(somebodyElses.objectPath)).toBe(true);
 
-    const rows = await db().select().from(schema.storedFile).where(inArray(schema.storedFile.id, [live.id, alreadyDeleted.id]));
+    const rows = await db()
+      .select()
+      .from(schema.storedFile)
+      .where(inArray(schema.storedFile.id, [live.id, alreadyDeleted.id]));
     for (const file of rows) {
       expect(file.fileName).toBe(ERASED_FILE_NAME);
       expect(file.deletedAt).not.toBeNull();

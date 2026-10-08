@@ -39,7 +39,11 @@ type Who = "owner" | "hrGroup" | "hrSzm" | "editor" | "huy" | "khoi" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
 const viewers = {} as Record<Who, KbViewer>;
 const spaces = {} as Record<"handbook" | "szmHr" | "tools", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const body = (title: string, text: string) => doc(heading(1, title), paragraph(text));
 
 beforeAll(async () => {
@@ -60,18 +64,30 @@ beforeAll(async () => {
     ["ngo", szm.id, vid.id, null, null, "collaborator"],
   ];
   for (const [key, entityId, departmentId, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : { type: "entity", id: entityId } }] : [];
-    if (role) await db().insert(schema.roleAssignment).values({ personId: row.id, role, scopeType: scope!, scopeId: scope === "entity" ? entityId : null, validFrom: "2024-01-01" });
+    if (role)
+      await db()
+        .insert(schema.roleAssignment)
+        .values({ personId: row.id, role, scopeType: scope!, scopeId: scope === "entity" ? entityId : null, validFrom: "2024-01-01" });
     const principal: Principal = { personId: row.id, workforceType, grants };
     viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId, unitId: departmentId, unitPath: departmentId ? [departmentId] : [] }) };
   }
 
   const make = async (key: string, over: { entityId?: string | null; kind?: "open" | "controlled" }, access: { subjectKey: string; level: "view" | "edit" }[]) =>
     (await createSpace({ key, name: key, description: null, icon: null, entityId: over.entityId ?? null, kind: over.kind ?? "open", sortOrder: 0 }, ids.owner, access)).id;
-  spaces.handbook = await make("handbook", { kind: "controlled" }, [{ subjectKey: "all", level: "view" }, { subjectKey: `person:${ids.editor}`, level: "edit" }]);
-  spaces.szmHr = await make("szm-hr", { entityId: szm.id, kind: "controlled" }, [{ subjectKey: `entity:${szm.id}`, level: "view" }, { subjectKey: `person:${ids.editor}`, level: "edit" }]);
+  spaces.handbook = await make("handbook", { kind: "controlled" }, [
+    { subjectKey: "all", level: "view" },
+    { subjectKey: `person:${ids.editor}`, level: "edit" },
+  ]);
+  spaces.szmHr = await make("szm-hr", { entityId: szm.id, kind: "controlled" }, [
+    { subjectKey: `entity:${szm.id}`, level: "view" },
+    { subjectKey: `person:${ids.editor}`, level: "edit" },
+  ]);
   spaces.tools = await make("tools", {}, [{ subjectKey: "all", level: "edit" }]);
 });
 
@@ -175,7 +191,10 @@ describe("policy acknowledgement", () => {
     expect([await countMyPendingAcks(viewers.huy), await countMyPendingAcks(viewers.ngo)]).toEqual([1, 0]);
     const report = await getAckReport(published);
     expect(report).toMatchObject({ versionNo: 1, total: 7, done: 0 });
-    expect(report.byEntity).toEqual([{ name: "Creative", total: 1, done: 0 }, { name: "Media", total: 6, done: 0 }]);
+    expect(report.byEntity).toEqual([
+      { name: "Creative", total: 1, done: 0 },
+      { name: "Media", total: 6, done: 0 },
+    ]);
   });
 
   it("confirms once, only for the audience, and reports it", async () => {
@@ -426,7 +445,10 @@ describe("chunks and retrieval", () => {
     expect(await chunksOf(page.id)).toHaveLength(0);
     const first = await publishPage(page.id, hr);
     const cut = await chunksOf(page.id);
-    expect(cut.map((chunk) => [chunk.headingPath, chunk.versionId === first.version.id, chunk.embeddingVector])).toEqual([["Công tác phí › Tạm ứng", true, null], ["Công tác phí › Hoàn ứng", true, null]]);
+    expect(cut.map((chunk) => [chunk.headingPath, chunk.versionId === first.version.id, chunk.embeddingVector])).toEqual([
+      ["Công tác phí › Tạm ứng", true, null],
+      ["Công tác phí › Hoàn ứng", true, null],
+    ]);
 
     expect(await embedPendingChunks()).toMatchObject({ model: "fake-hash-256", remaining: 0 });
     expect(await embedPendingChunks()).toMatchObject({ embedded: 0 });
@@ -436,7 +458,10 @@ describe("chunks and retrieval", () => {
     await saveDraft(page.id, { title: "Công tác phí", content: doc(heading(1, "Tạm ứng"), paragraph("Lập đề nghị tạm ứng trước chuyến công tác."), heading(1, "Hoàn ứng"), paragraph("Nộp chứng từ trong 7 ngày làm việc.")) }, hr);
     const second = await publishPage(page.id, hr);
     const recut = await chunksOf(page.id);
-    expect(recut.map((chunk) => [chunk.versionId === second.version.id, chunk.embeddingVector !== null])).toEqual([[true, true], [true, false]]);
+    expect(recut.map((chunk) => [chunk.versionId === second.version.id, chunk.embeddingVector !== null])).toEqual([
+      [true, true],
+      [true, false],
+    ]);
     expect(recut[0].embeddedAt).toEqual(embedded[0].embeddedAt);
     await embedPendingChunks();
 
@@ -520,8 +545,23 @@ describe("files of a page", () => {
     await publishPage(page.id, { personId: ids.hrGroup });
     // A revision not yet through review: a new title and a second upload.
     await saveDraft(page.id, { title: "Quy trình (sửa, chưa duyệt)", content: doc(paragraph("Tải:"), attachment(shown), attachment(drafted)) }, { personId: ids.editor });
-    const file = (id: string, fileName: string) => ({ id, bucket: "test", objectPath: `kb_page/${page.id}/${fileName}`, fileName, contentType: "application/pdf", sizeBytes: 2048, ownerType: "kb_page", ownerId: page.id, entityId: null, tier: "public_internal" as const, status: "ready" as const, uploadedByPersonId: ids.editor });
-    await db().insert(schema.storedFile).values([file(shown, "published.pdf"), file(drafted, "draft.pdf")]);
+    const file = (id: string, fileName: string) => ({
+      id,
+      bucket: "test",
+      objectPath: `kb_page/${page.id}/${fileName}`,
+      fileName,
+      contentType: "application/pdf",
+      sizeBytes: 2048,
+      ownerType: "kb_page",
+      ownerId: page.id,
+      entityId: null,
+      tier: "public_internal" as const,
+      status: "ready" as const,
+      uploadedByPersonId: ids.editor,
+    });
+    await db()
+      .insert(schema.storedFile)
+      .values([file(shown, "published.pdf"), file(drafted, "draft.pdf")]);
 
     const ofPage = async (who: Who) => (await listSpaceFiles(viewers[who], spaces.handbook)).filter((row) => row.pageId === page.id).map((row) => [row.fileName, row.pageTitle]);
     expect(await ofPage("huy")).toEqual([["published.pdf", "Quy trình"]]);
@@ -555,7 +595,13 @@ describe("acknowledgement audiences on the org tree", () => {
 
   beforeAll(async () => {
     // Marketing › Social › Video Editing, with Brand beside Social.
-    const unit = async (name: string, parentId: string | null) => (await db().insert(schema.orgUnit).values({ name, parentId, kind: parentId ? "team" : "department" }).returning())[0].id;
+    const unit = async (name: string, parentId: string | null) =>
+      (
+        await db()
+          .insert(schema.orgUnit)
+          .values({ name, parentId, kind: parentId ? "team" : "department" })
+          .returning()
+      )[0].id;
     units.marketing = await unit("Marketing", null);
     units.social = await unit("Social", units.marketing);
     units.video = await unit("Video Editing", units.social);
@@ -568,7 +614,10 @@ describe("acknowledgement audiences on the org tree", () => {
       ["ctv", units.video, "collaborator"],
     ];
     for (const [key, orgUnitId, workforceType] of placed) {
-      const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: ids.szm, orgUnitId }).returning();
+      const [row] = await db()
+        .insert(schema.person)
+        .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: ids.szm, orgUnitId })
+        .returning();
       staff[key] = row.id;
     }
     const created = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Quy định đăng bài", content: body("Quy định đăng bài", "Duyệt trước khi đăng.") }, { personId: ids.hrGroup });
@@ -635,9 +684,24 @@ describe("acknowledgement audiences on the org tree", () => {
 
   it("names exactly the people an access row with the same key would", async () => {
     const people = await db().select().from(schema.person).where(eq(schema.person.status, "active"));
-    const keys = ["all", `entity:${ids.szm}`, `entity:${ids.szc}`, `unit:${units.marketing}`, `unit:${units.social}`, `unit:${units.video}`, `unit:${ids.des}`, `unit_only:${units.marketing}`, `unit_only:${units.brand}`, `unit_only:${ids.des}`, `person:${staff.ctv}`, `person:${staff.an}`];
+    const keys = [
+      "all",
+      `entity:${ids.szm}`,
+      `entity:${ids.szc}`,
+      `unit:${units.marketing}`,
+      `unit:${units.social}`,
+      `unit:${units.video}`,
+      `unit:${ids.des}`,
+      `unit_only:${units.marketing}`,
+      `unit_only:${units.brand}`,
+      `unit_only:${ids.des}`,
+      `person:${staff.ctv}`,
+      `person:${staff.an}`,
+    ];
     for (const key of keys) {
-      const expected = people.filter((row) => viewerKeys({ personId: row.id, workforceType: row.workforceType, grants: [] }, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }).includes(key)).map((row) => row.fullName);
+      const expected = people
+        .filter((row) => viewerKeys({ personId: row.id, workforceType: row.workforceType, grants: [] }, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }).includes(key))
+        .map((row) => row.fullName);
       expect(await audience(key), key).toEqual(expected.sort());
     }
   });

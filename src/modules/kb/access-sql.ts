@@ -62,12 +62,20 @@ export const projectPeopleSql = (): SQL<string[] | null> => sql<string[] | null>
 ) end)`;
 
 /** The owning project's visibility and team place for a `project:<id>` row, and null for any other row. */
-export const projectPlaceSql = (): SQL<{ entityId: string | null; departmentId: string | null; visibility: string } | null> => sql<{ entityId: string | null; departmentId: string | null; visibility: string } | null>`(case when kb_access.subject_key like 'project:%' then (
+export const projectPlaceSql = (): SQL<{ entityId: string | null; departmentId: string | null; visibility: string } | null> => sql<{
+  entityId: string | null;
+  departmentId: string | null;
+  visibility: string;
+} | null>`(case when kb_access.subject_key like 'project:%' then (
   select json_build_object('entityId', t.entity_id, 'departmentId', t.department_id, 'visibility', p.visibility)
   from work_project p inner join work_team t on t.id = p.team_id where p.id::text = substr(kb_access.subject_key, 9)
 ) end)`;
 
-const values = (list: readonly string[]): SQL => sql.join(list.map((value) => sql`${value}`), sql`, `);
+const values = (list: readonly string[]): SQL =>
+  sql.join(
+    list.map((value) => sql`${value}`),
+    sql`, `,
+  );
 
 /**
  * A **private** project's `project:<id>` row also opens the space to the one reader the owner's

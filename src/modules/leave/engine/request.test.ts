@@ -65,7 +65,19 @@ describe("portions", () => {
   });
 });
 
-const ANNUAL: TypeRules = { isActive: true, tracksBalance: true, allowHalfDay: true, allowHourly: false, requiresAttachment: false, noticeDays: 3, allowBackdated: false, maxDaysPerRequestCenti: null, eligibleWorkforceTypes: ["employee", "probation", "part_time"], gender: null, minSeniorityMonths: null };
+const ANNUAL: TypeRules = {
+  isActive: true,
+  tracksBalance: true,
+  allowHalfDay: true,
+  allowHourly: false,
+  requiresAttachment: false,
+  noticeDays: 3,
+  allowBackdated: false,
+  maxDaysPerRequestCenti: null,
+  eligibleWorkforceTypes: ["employee", "probation", "part_time"],
+  gender: null,
+  minSeniorityMonths: null,
+};
 const PERSON = { workforceType: "employee", gender: "female", seniorityDate: "2023-07-17", employmentStart: "2023-07-17", employmentEnd: null, onProbationAtStart: false };
 
 function check(overrides: Partial<CheckInput> = {}, days: PlannedDay[] = WEEK.slice(0, 2)) {

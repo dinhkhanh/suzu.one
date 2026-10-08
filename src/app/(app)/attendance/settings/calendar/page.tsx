@@ -58,7 +58,15 @@ export default async function CalendarSettingsPage(props: PageProps<"/attendance
                       {day.isConfirmed ? null : <Badge variant="outline">{t("calendar.unconfirmed")}</Badge>}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{day.entityName ? <RecordLink kind="entity" id={day.entityId}>{day.entityName}</RecordLink> : t("everyEntity")}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {day.entityName ? (
+                      <RecordLink kind="entity" id={day.entityId}>
+                        {day.entityName}
+                      </RecordLink>
+                    ) : (
+                      t("everyEntity")
+                    )}
+                  </TableCell>
                   <TableCell kind="actions">
                     <span className="flex items-center justify-end gap-2">
                       {manage && !day.isConfirmed ? <RowAction action="confirmDay" id={day.id} label={t("calendar.confirm")} /> : null}

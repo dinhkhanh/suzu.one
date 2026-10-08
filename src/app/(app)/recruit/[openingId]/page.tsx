@@ -51,19 +51,25 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
           <>
             {view.entityName ? (
               <>
-                <RecordLink kind="entity" id={view.opening.entityId}>{view.entityName}</RecordLink>
+                <RecordLink kind="entity" id={view.opening.entityId}>
+                  {view.entityName}
+                </RecordLink>
                 {" · "}
               </>
             ) : null}
             {view.departmentName ? (
               <>
-                <RecordLink kind="unit" id={view.opening.departmentId}>{view.departmentName}</RecordLink>
+                <RecordLink kind="unit" id={view.opening.departmentId}>
+                  {view.departmentName}
+                </RecordLink>
                 {" · "}
               </>
             ) : null}
             {view.teamName ? (
               <>
-                <RecordLink kind="unit" id={view.opening.teamId}>{view.teamName}</RecordLink>
+                <RecordLink kind="unit" id={view.opening.teamId}>
+                  {view.teamName}
+                </RecordLink>
                 {" · "}
               </>
             ) : null}
@@ -86,7 +92,9 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
         }
       >
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <Badge dot variant={statusTone(view.opening.status)}>{t(`status.${view.opening.status}`)}</Badge>
+          <Badge dot variant={statusTone(view.opening.status)}>
+            {t(`status.${view.opening.status}`)}
+          </Badge>
           {view.canEdit ? <OpeningStatusControls openingId={openingId} status={view.opening.status} /> : null}
         </div>
       </PageHeader>
@@ -129,7 +137,9 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
             <ul className="flex flex-col gap-1 text-sm">
               {view.members.map((member) => (
                 <li key={member.personId} className="flex justify-between gap-3">
-                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
+                  <RecordLink kind="person" id={member.personId}>
+                    {member.fullName}
+                  </RecordLink>
                   <span className="text-xs text-muted-foreground">{t(`memberRole.${member.role}`)}</span>
                 </li>
               ))}
@@ -210,7 +220,9 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
                   {closed.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="max-w-72 truncate">
-                        <RecordLink kind="application" id={row.id}>{row.candidateName}</RecordLink>
+                        <RecordLink kind="application" id={row.id}>
+                          {row.candidateName}
+                        </RecordLink>
                       </TableCell>
                       <TableCell>{row.stageName}</TableCell>
                       <TableCell>
@@ -225,11 +237,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
         ) : null}
         {view.canEdit && candidates.length > 0 ? (
           <TableAddRow label={t("actions.addApplication")} open={applications.length === 0}>
-            <AddApplicationForm
-              openingId={openingId}
-              candidates={candidates}
-              canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })}
-            />
+            <AddApplicationForm openingId={openingId} candidates={candidates} canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })} />
           </TableAddRow>
         ) : null}
       </TableCard>

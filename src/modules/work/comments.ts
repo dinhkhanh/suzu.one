@@ -19,7 +19,18 @@ const taskLink = (taskId: string) => `/work/tasks/${taskId}`;
 // ── Comments ────────────────────────────────────────────────────────────────────────────────
 
 /** `authorPersonId` null = posted by an automation (FR-PJM-33); `authorName` is then the rule's name. */
-export type CommentView = { id: string; parentId: string | null; authorPersonId: string | null; authorName: string; byAutomation: boolean; body: string; reactions: Record<string, string[]>; editedAt: Date | null; deleted: boolean; createdAt: Date };
+export type CommentView = {
+  id: string;
+  parentId: string | null;
+  authorPersonId: string | null;
+  authorName: string;
+  byAutomation: boolean;
+  body: string;
+  reactions: Record<string, string[]>;
+  editedAt: Date | null;
+  deleted: boolean;
+  createdAt: Date;
+};
 
 /** Oldest first. A deleted comment keeps its place (its replies still make sense) but not its words. */
 export async function listComments(taskId: string): Promise<CommentView[]> {
@@ -33,11 +44,26 @@ export async function listComments(taskId: string): Promise<CommentView[]> {
   const withReplies = new Set(rows.map((row) => row.comment.parentId).filter(Boolean));
   return rows
     .filter((row) => !row.comment.deletedAt || withReplies.has(row.comment.id))
-    .map(({ comment, personName, ruleName }) => ({ id: comment.id, parentId: comment.parentId, authorPersonId: comment.authorPersonId, authorName: personName ?? ruleName ?? "", byAutomation: !comment.authorPersonId, body: comment.deletedAt ? "" : comment.body, reactions: comment.deletedAt ? {} : comment.reactions, editedAt: comment.editedAt, deleted: !!comment.deletedAt, createdAt: comment.createdAt }));
+    .map(({ comment, personName, ruleName }) => ({
+      id: comment.id,
+      parentId: comment.parentId,
+      authorPersonId: comment.authorPersonId,
+      authorName: personName ?? ruleName ?? "",
+      byAutomation: !comment.authorPersonId,
+      body: comment.deletedAt ? "" : comment.body,
+      reactions: comment.deletedAt ? {} : comment.reactions,
+      editedAt: comment.editedAt,
+      deleted: !!comment.deletedAt,
+      createdAt: comment.createdAt,
+    }));
 }
 
 export async function findComment(commentId: string, executor: Executor = db()): Promise<CommentRow | undefined> {
-  const [row] = await executor.select().from(schema.workComment).where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.workComment)
+    .where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt)))
+    .limit(1);
   return row;
 }
 
@@ -45,14 +71,19 @@ export async function findComment(commentId: string, executor: Executor = db()):
 async function allowedMentions(tx: Executor, loaded: LoadedTask, body: string): Promise<Set<string>> {
   const candidates = extractMentionIds(body).slice(0, 20);
   const viewers = await viewersOfPeople(candidates, tx);
-  return new Set(candidates.filter((personId) => {
-    const viewer = viewers.get(personId);
-    return !!viewer && canViewTask(viewer, loaded.facts);
-  }));
+  return new Set(
+    candidates.filter((personId) => {
+      const viewer = viewers.get(personId);
+      return !!viewer && canViewTask(viewer, loaded.facts);
+    }),
+  );
 }
 
 const excerpt = (body: string) => {
-  const plain = body.replace(/@\[([^\]]+)\]\([0-9a-f-]{36}\)/g, "@$1").replace(/\s+/g, " ").trim();
+  const plain = body
+    .replace(/@\[([^\]]+)\]\([0-9a-f-]{36}\)/g, "@$1")
+    .replace(/\s+/g, " ")
+    .trim();
   return plain.length > 140 ? `${plain.slice(0, 139)}…` : plain;
 };
 
@@ -70,7 +101,10 @@ export async function addComment(taskId: string, input: { body: string; parentId
     const allowed = await allowedMentions(tx, loaded, input.body);
     const body = dropMentions(input.body, allowed);
     const mentioned = [...allowed].filter((id) => id !== author.id);
-    const [comment] = await tx.insert(schema.workComment).values({ taskId, authorPersonId: author.id, parentId, body, mentions: [...allowed] }).returning();
+    const [comment] = await tx
+      .insert(schema.workComment)
+      .values({ taskId, authorPersonId: author.id, parentId, body, mentions: [...allowed] })
+      .returning();
     await logActivity(tx, taskId, author.id, [{ type: "commented", to: { id: comment.id } }]);
     await tx.update(schema.task).set({ updatedAt: new Date() }).where(eq(schema.task.id, taskId));
 
@@ -78,7 +112,11 @@ export async function addComment(taskId: string, input: { body: string; parentId
     await notify({ recipients: mentioned, kind: "tasks.mentioned", params: { key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, ...params }, link: taskLink(taskId) }, tx);
     const told = await notifyFollowers(tx, loaded, author.id, "tasks.commented", params, mentioned);
     // From now on the author and the people they called in hear about the task.
-    await autoFollow(tx, taskId, [author.id, ...mentioned].filter((id) => followStateOf(loaded, id) === "none"));
+    await autoFollow(
+      tx,
+      taskId,
+      [author.id, ...mentioned].filter((id) => followStateOf(loaded, id) === "none"),
+    );
     return { comment, mentioned, told };
   });
 }
@@ -90,18 +128,33 @@ export async function editComment(commentId: string, body: string, author: { id:
     const loaded = await loadTask(before.taskId, tx);
     if (!loaded) throw new ActionError("task_not_found");
     const allowed = await allowedMentions(tx, loaded, body);
-    const [after] = await tx.update(schema.workComment).set({ body: dropMentions(body, allowed), mentions: [...allowed], editedAt: new Date() }).where(eq(schema.workComment.id, commentId)).returning();
+    const [after] = await tx
+      .update(schema.workComment)
+      .set({ body: dropMentions(body, allowed), mentions: [...allowed], editedAt: new Date() })
+      .where(eq(schema.workComment.id, commentId))
+      .returning();
     // Only people the edit newly calls in are told; nobody is told twice about one comment.
     const mentioned = [...allowed].filter((id) => id !== author.id && !before.mentions.includes(id));
-    await notify({ recipients: mentioned, kind: "tasks.mentioned", params: { key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, name: author.fullName, excerpt: excerpt(after.body) }, link: taskLink(before.taskId) }, tx);
-    await autoFollow(tx, before.taskId, mentioned.filter((id) => followStateOf(loaded, id) === "none"));
+    await notify(
+      { recipients: mentioned, kind: "tasks.mentioned", params: { key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, name: author.fullName, excerpt: excerpt(after.body) }, link: taskLink(before.taskId) },
+      tx,
+    );
+    await autoFollow(
+      tx,
+      before.taskId,
+      mentioned.filter((id) => followStateOf(loaded, id) === "none"),
+    );
     return { before, after, mentioned };
   });
 }
 
 export async function deleteComment(commentId: string, actorPersonId: string): Promise<CommentRow> {
   return db().transaction(async (tx) => {
-    const [row] = await tx.update(schema.workComment).set({ deletedAt: new Date() }).where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt))).returning();
+    const [row] = await tx
+      .update(schema.workComment)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt)))
+      .returning();
     if (!row) throw new ActionError("comment_not_found");
     await logActivity(tx, row.taskId, actorPersonId, [{ type: "comment_deleted", from: { id: row.id } }]);
     return row;
@@ -111,7 +164,12 @@ export async function deleteComment(commentId: string, actorPersonId: string): P
 export async function toggleReaction(commentId: string, emoji: Reaction, personId: string): Promise<{ comment: CommentRow; added: boolean }> {
   if (!REACTIONS.includes(emoji)) throw new ActionError("reaction_invalid");
   return db().transaction(async (tx) => {
-    const [row] = await tx.select().from(schema.workComment).where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt))).for("update").limit(1);
+    const [row] = await tx
+      .select()
+      .from(schema.workComment)
+      .where(and(eq(schema.workComment.id, commentId), isNull(schema.workComment.deletedAt)))
+      .for("update")
+      .limit(1);
     if (!row) throw new ActionError("comment_not_found");
     const people = row.reactions[emoji] ?? [];
     const added = !people.includes(personId);
@@ -130,10 +188,7 @@ export async function listMentionable(loaded: LoadedTask): Promise<{ id: string;
   ]);
   const ids = [...new Set([...teamMembers, ...projectMembers].map((row) => row.id).concat(followersOf(loaded), loaded.task.createdByPersonId ?? []))];
   if (ids.length === 0) return [];
-  const [people, viewers] = await Promise.all([
-    db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids)).orderBy(asc(schema.person.fullName)),
-    viewersOfPeople(ids),
-  ]);
+  const [people, viewers] = await Promise.all([db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids)).orderBy(asc(schema.person.fullName)), viewersOfPeople(ids)]);
   return people.filter((person) => {
     const viewer = viewers.get(person.id);
     return !!viewer && canViewTask(viewer, loaded.facts);

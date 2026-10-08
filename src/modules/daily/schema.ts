@@ -159,7 +159,9 @@ export const timeEntry = pgTable(
     index("time_entry_project_idx").on(t.projectId, t.date),
     index("time_entry_task_idx").on(t.taskId),
     // One running timer per person, held by the database: two quick taps cannot start two.
-    uniqueIndex("time_entry_timer_idx").on(t.personId).where(sql`${t.timerStartedAt} IS NOT NULL AND ${t.deletedAt} IS NULL`),
+    uniqueIndex("time_entry_timer_idx")
+      .on(t.personId)
+      .where(sql`${t.timerStartedAt} IS NOT NULL AND ${t.deletedAt} IS NULL`),
   ],
 ).enableRLS();
 

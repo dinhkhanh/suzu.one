@@ -32,7 +32,15 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
     .orderBy(schema.task.dueDate, schema.task.title);
   if (rows.length === 0) return { reminders: 0, overdue: 0, escalated: 0, people: 0 };
 
-  const sentRows = await tx.select({ instanceId: schema.obligationNoticeSent.instanceId, key: schema.obligationNoticeSent.key }).from(schema.obligationNoticeSent).where(inArray(schema.obligationNoticeSent.instanceId, rows.map((row) => row.instance.id)));
+  const sentRows = await tx
+    .select({ instanceId: schema.obligationNoticeSent.instanceId, key: schema.obligationNoticeSent.key })
+    .from(schema.obligationNoticeSent)
+    .where(
+      inArray(
+        schema.obligationNoticeSent.instanceId,
+        rows.map((row) => row.instance.id),
+      ),
+    );
   const sentBy = new Map<string, Set<string>>();
   for (const row of sentRows) sentBy.set(row.instanceId, (sentBy.get(row.instanceId) ?? new Set()).add(row.key));
 
@@ -49,7 +57,16 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
   const marks: { instanceId: string; key: string }[] = [];
   const ownerIds = [...new Set(rows.flatMap((row) => (row.task.assigneePersonId ? [row.task.assigneePersonId] : [])))];
   // Every owner's name and place, in one read.
-  const ownerRows = new Map(ownerIds.length === 0 ? [] : (await tx.select({ id: schema.person.id, name: schema.person.fullName, unitPath: schema.person.orgUnitPath, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId }).from(schema.person).where(inArray(schema.person.id, ownerIds))).map((row) => [row.id, row] as const));
+  const ownerRows = new Map(
+    ownerIds.length === 0
+      ? []
+      : (
+          await tx
+            .select({ id: schema.person.id, name: schema.person.fullName, unitPath: schema.person.orgUnitPath, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId })
+            .from(schema.person)
+            .where(inArray(schema.person.id, ownerIds))
+        ).map((row) => [row.id, row] as const),
+  );
   const ownerNames = new Map([...ownerRows].map(([id, row]) => [id, row.name] as const));
 
   /** The owner's department head, else their line manager — whoever is one step up from the person who is late. */
@@ -73,7 +90,8 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
       marks.push({ instanceId: instance.id, key: notice.key });
       if (notice.kind === "reminder") for (const key of supersededLeadKeys(facts, Number(notice.key.split(":")[1]))) marks.push({ instanceId: instance.id, key });
       // Catching up after days without a run, a manager who is also an executive would hear twice about one item: once is enough.
-      for (const recipient of recipients.filter((id) => !outgoing.some((item) => item.recipient === id && item.kind === notice.kind && item.taskId === task.id))) outgoing.push({ recipient, kind: notice.kind, taskId: task.id, title: task.title, dueDate: task.dueDate!, days: notice.days, ownerName: ownerId ? (ownerNames.get(ownerId) ?? null) : null });
+      for (const recipient of recipients.filter((id) => !outgoing.some((item) => item.recipient === id && item.kind === notice.kind && item.taskId === task.id)))
+        outgoing.push({ recipient, kind: notice.kind, taskId: task.id, title: task.title, dueDate: task.dueDate!, days: notice.days, ownerName: ownerId ? (ownerNames.get(ownerId) ?? null) : null });
     }
   }
 
@@ -97,7 +115,15 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
     const [recipient, kind] = groupKey.split("|") as [string, NoticeKind];
     // The most pressing item names the notice: the longest overdue, or the one due first.
     const [first] = [...own].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    await notify({ recipients: [recipient], kind: KIND[kind], params: { count: own.length, title: first.title, dueDate: display(first.dueDate), days: first.days, owner: first.ownerName ?? "—" }, link: own.length === 1 ? `/ops/obligations/${first.taskId}` : "/ops/list" }, tx);
+    await notify(
+      {
+        recipients: [recipient],
+        kind: KIND[kind],
+        params: { count: own.length, title: first.title, dueDate: display(first.dueDate), days: first.days, owner: first.ownerName ?? "—" },
+        link: own.length === 1 ? `/ops/obligations/${first.taskId}` : "/ops/list",
+      },
+      tx,
+    );
     counts[kind] += own.length;
     people.add(recipient);
   }
@@ -108,7 +134,10 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
 export async function sentKeysOf(instanceIds: readonly string[], executor: Executor = db()): Promise<Map<string, string[]>> {
   const byInstance = new Map<string, string[]>();
   if (instanceIds.length === 0) return byInstance;
-  const rows = await executor.select({ instanceId: schema.obligationNoticeSent.instanceId, key: schema.obligationNoticeSent.key }).from(schema.obligationNoticeSent).where(and(inArray(schema.obligationNoticeSent.instanceId, [...instanceIds]), inArray(schema.obligationNoticeSent.key, ["escalate:manager", "escalate:executive"])));
+  const rows = await executor
+    .select({ instanceId: schema.obligationNoticeSent.instanceId, key: schema.obligationNoticeSent.key })
+    .from(schema.obligationNoticeSent)
+    .where(and(inArray(schema.obligationNoticeSent.instanceId, [...instanceIds]), inArray(schema.obligationNoticeSent.key, ["escalate:manager", "escalate:executive"])));
   for (const row of rows) byInstance.set(row.instanceId, [...(byInstance.get(row.instanceId) ?? []), row.key]);
   return byInstance;
 }

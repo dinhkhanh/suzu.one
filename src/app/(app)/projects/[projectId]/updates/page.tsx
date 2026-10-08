@@ -71,7 +71,9 @@ export default async function ProjectUpdatesPage({ params, searchParams }: PageP
                 <span className="text-sm text-muted-foreground">
                   {update.authorName ? (
                     <>
-                      <RecordLink kind="person" id={update.authorPersonId}>{update.authorName}</RecordLink>
+                      <RecordLink kind="person" id={update.authorPersonId}>
+                        {update.authorName}
+                      </RecordLink>
                       {" · "}
                     </>
                   ) : null}
@@ -114,7 +116,10 @@ async function Facts({ facts }: { facts: StatusFacts }) {
     [t("overdue"), String(facts.overdue)],
     [t("blocked"), String(facts.blocked)],
     [t("milestoneSlip"), facts.milestoneSlipDays === null ? "—" : t("days", slipWords(facts.milestoneSlipDays))],
-    [t("nextMilestone"), facts.nextMilestone ? [facts.nextMilestone.name, facts.nextMilestone.dueDate ? format.dateTime(new Date(`${facts.nextMilestone.dueDate}T00:00:00`), { dateStyle: "medium" }) : null].filter(Boolean).join(" · ") : "—"],
+    [
+      t("nextMilestone"),
+      facts.nextMilestone ? [facts.nextMilestone.name, facts.nextMilestone.dueDate ? format.dateTime(new Date(`${facts.nextMilestone.dueDate}T00:00:00`), { dateStyle: "medium" }) : null].filter(Boolean).join(" · ") : "—",
+    ],
     [t("hours"), facts.budgetMinutes ? t("hoursOfBudget", { used: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes) }) : hours(facts.minutesLogged)],
     [t("deliverables"), facts.deliverablesPromised ? t("deliverablesValue", { accepted: facts.deliverablesAccepted, promised: facts.deliverablesPromised }) : "—"],
     // Updates posted before the RAID log existed carry no counts: a dash, not a zero.

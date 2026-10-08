@@ -42,9 +42,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
         <h1>{assignment.title}</h1>
-        <p className="text-sm text-muted-foreground">
-          {[assignment.companyName, assignment.jobTitle].filter(Boolean).join(" · ")}
-        </p>
+        <p className="text-sm text-muted-foreground">{[assignment.companyName, assignment.jobTitle].filter(Boolean).join(" · ")}</p>
         <p className="text-sm">
           {t("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "full", timeStyle: "short" })}
         </p>
@@ -59,7 +57,9 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
       <section className="flex flex-col gap-4 rounded-xl border p-4">
         <h2 className="text-base font-medium">{t("submit")}</h2>
         {error ? (
-          <p role="alert" className="text-sm text-destructive">{t.has(`errors.${error}`) ? t(`errors.${error}` as "errors.failed") : t("errors.failed")}</p>
+          <p role="alert" className="text-sm text-destructive">
+            {t.has(`errors.${error}`) ? t(`errors.${error}` as "errors.failed") : t("errors.failed")}
+          </p>
         ) : null}
 
         <form method="post" action={`/careers/assignment/${encodeURIComponent(token)}/submit`} encType="multipart/form-data" className="flex flex-col gap-4">

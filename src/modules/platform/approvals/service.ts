@@ -20,7 +20,21 @@ import { issueActionTokens, voidActionTokens } from "./action-tokens";
 import { standIns } from "./delegations";
 import { effectiveFlow } from "./flows";
 import { canOpenRequest, canOverseeRequests, canReassignTurns } from "./policy";
-import { applyDecision, type ApproverRule, conditionHolds, type DecisionAction, type DecisionResult, delegate, type FlowDefinition, type RequestState, type RequestStatus, type ResolvedStep, resubmit, startFlow, waitingFor } from "./engine/flow";
+import {
+  applyDecision,
+  type ApproverRule,
+  conditionHolds,
+  type DecisionAction,
+  type DecisionResult,
+  delegate,
+  type FlowDefinition,
+  type RequestState,
+  type RequestStatus,
+  type ResolvedStep,
+  resubmit,
+  startFlow,
+  waitingFor,
+} from "./engine/flow";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type ApprovalRequestRow = typeof schema.approvalRequest.$inferSelect;
@@ -114,7 +128,10 @@ export async function resolveApprovers(executor: Executor, rule: ApproverRule, s
   const subject = await subjectTarget(executor, subjectPersonId);
   const named = await peopleFor(executor, rule, subject, subject ?? where, holders);
   if (named.length === 0) return [];
-  const rows = await executor.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, [...new Set(named)]), eq(schema.person.status, "active")));
+  const rows = await executor
+    .select({ id: schema.person.id })
+    .from(schema.person)
+    .where(and(inArray(schema.person.id, [...new Set(named)]), eq(schema.person.status, "active")));
   return rows.map((row) => row.id);
 }
 
@@ -162,7 +179,10 @@ async function usableApprovers(executor: Executor, ids: readonly string[], conte
   const candidates = [...new Set(ids)].filter((id) => id !== context.requesterId && id !== context.subject?.personId && !without.includes(id));
   if (candidates.length === 0) return [];
   // Someone who has left, or has not started, cannot answer.
-  const rows = await executor.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, candidates), eq(schema.person.status, "active")));
+  const rows = await executor
+    .select({ id: schema.person.id })
+    .from(schema.person)
+    .where(and(inArray(schema.person.id, candidates), eq(schema.person.status, "active")));
   return rows.map((row) => row.id);
 }
 
@@ -212,7 +232,12 @@ type Loaded = { request: ApprovalRequestRow; state: RequestState; stepIds: strin
 
 async function load(tx: Tx, requestId: string, type: string): Promise<Loaded> {
   // The row lock serialises two approvers answering at the same moment.
-  const [request] = await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, type))).limit(1).for("update");
+  const [request] = await tx
+    .select()
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, type)))
+    .limit(1)
+    .for("update");
   if (!request) throw new ActionError("approval_not_found");
   const steps = await tx.select().from(schema.approvalStep).where(eq(schema.approvalStep.requestId, requestId)).orderBy(asc(schema.approvalStep.stepIndex));
   const assignees = await tx.select().from(schema.approvalAssignee).where(eq(schema.approvalAssignee.requestId, requestId)).orderBy(asc(schema.approvalAssignee.id));
@@ -226,7 +251,13 @@ async function load(tx: Tx, requestId: string, type: string): Promise<Loaded> {
       subjectId: request.subjectPersonId,
       status: request.status,
       currentStep: request.currentStep,
-      steps: steps.map((step, index) => ({ key: step.key, mode: step.mode, status: step.status, ...(step.parallel ? { parallel: true } : {}), assignees: perStep[index].map((row) => ({ personId: row.approverPersonId, status: row.status, delegatedFrom: row.delegatedFromPersonId })) })),
+      steps: steps.map((step, index) => ({
+        key: step.key,
+        mode: step.mode,
+        status: step.status,
+        ...(step.parallel ? { parallel: true } : {}),
+        assignees: perStep[index].map((row) => ({ personId: row.approverPersonId, status: row.status, delegatedFrom: row.delegatedFromPersonId })),
+      })),
     },
   };
 }
@@ -246,7 +277,12 @@ async function persist(tx: Tx, loaded: Loaded, next: RequestState, actor: { pers
       await tx
         .update(schema.approvalAssignee)
         // A turn that starts over starts its SLA clock over too (FR-PLT-23).
-        .set({ status: assignee.status, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null, ...(answered ? { comment: actor.comment, decidedAt: now } : assignee.status === "pending" ? { comment: null, decidedAt: null, remindedAt: null, escalatedAt: null } : {}) })
+        .set({
+          status: assignee.status,
+          approverPersonId: assignee.personId,
+          delegatedFromPersonId: assignee.delegatedFrom ?? null,
+          ...(answered ? { comment: actor.comment, decidedAt: now } : assignee.status === "pending" ? { comment: null, decidedAt: null, remindedAt: null, escalatedAt: null } : {}),
+        })
         .where(eq(schema.approvalAssignee.id, loaded.assigneeIds[index][position]));
     }
   }
@@ -344,7 +380,8 @@ export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, i
     .returning();
   for (const [index, step] of state.steps.entries()) {
     const [row] = await tx.insert(schema.approvalStep).values({ requestId: id, stepIndex: index, key: step.key, mode: step.mode, status: step.status, parallel: !!step.parallel }).returning({ id: schema.approvalStep.id });
-    if (step.assignees.length) await tx.insert(schema.approvalAssignee).values(step.assignees.map((assignee) => ({ stepId: row.id, requestId: id, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null })));
+    if (step.assignees.length)
+      await tx.insert(schema.approvalAssignee).values(step.assignees.map((assignee) => ({ stepId: row.id, requestId: id, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null })));
   }
   await tx.insert(schema.approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: input.requesterPersonId, stepIndex: state.currentStep });
   const approverIds = waitingFor(state);
@@ -393,11 +430,21 @@ export async function withdrawRequest(tx: Tx, requestId: string, actorPersonId: 
 }
 
 /** After "return for changes": the requester sends the corrected request round again. */
-export async function resubmitRequest(tx: Tx, definition: RequestTypeDefinition, requestId: string, actorPersonId: string, changes: { summary?: string; payload?: Record<string, unknown>; payloadEnc?: string | null }): Promise<{ request: ApprovalRequestRow; before: ApprovalRequestRow }> {
+export async function resubmitRequest(
+  tx: Tx,
+  definition: RequestTypeDefinition,
+  requestId: string,
+  actorPersonId: string,
+  changes: { summary?: string; payload?: Record<string, unknown>; payloadEnc?: string | null },
+): Promise<{ request: ApprovalRequestRow; before: ApprovalRequestRow }> {
   const loaded = await load(tx, requestId, definition.type);
   const result = resubmit(loaded.state, actorPersonId);
   if (!result.ok) throw new ActionError(REFUSALS[result.reason]);
-  const edits = { ...(changes.summary === undefined ? {} : { summary: changes.summary }), ...(changes.payload === undefined ? {} : { payload: changes.payload }), ...(changes.payloadEnc === undefined ? {} : { payloadEnc: changes.payloadEnc }) };
+  const edits = {
+    ...(changes.summary === undefined ? {} : { summary: changes.summary }),
+    ...(changes.payload === undefined ? {} : { payload: changes.payload }),
+    ...(changes.payloadEnc === undefined ? {} : { payloadEnc: changes.payloadEnc }),
+  };
   // Sent round again unchanged is allowed (the approver asked a question, not for an edit); an
   // UPDATE with nothing to set is not.
   if (Object.keys(edits).length > 0) await tx.update(schema.approvalRequest).set(edits).where(eq(schema.approvalRequest.id, requestId));
@@ -412,13 +459,22 @@ export async function resubmitRequest(tx: Tx, definition: RequestTypeDefinition,
     .innerJoin(schema.person, eq(schema.person.id, schema.approvalAssignee.approverPersonId))
     .where(and(eq(schema.approvalAssignee.requestId, requestId), eq(schema.approvalAssignee.status, "pending"), eq(schema.person.status, "offboarded")));
   for (const { personId } of gone) await reassignTurnsOfLeaver(tx, personId, { requestId });
-  await askApprovers(tx, request, result.nowWaitingFor.filter((personId) => !gone.some((row) => row.personId === personId)), definition);
+  await askApprovers(
+    tx,
+    request,
+    result.nowWaitingFor.filter((personId) => !gone.some((row) => row.personId === personId)),
+    definition,
+  );
   return { request, before: loaded.request };
 }
 
 // Only someone who works here answers: a collaborator sees no directory, so cannot judge a request.
 async function eligibleApprover(tx: Tx, personId: string) {
-  const [to] = await tx.select({ id: schema.person.id, fullName: schema.person.fullName, workforceType: schema.person.workforceType }).from(schema.person).where(and(eq(schema.person.id, personId), eq(schema.person.status, "active"), ne(schema.person.workforceType, "collaborator"))).limit(1);
+  const [to] = await tx
+    .select({ id: schema.person.id, fullName: schema.person.fullName, workforceType: schema.person.workforceType })
+    .from(schema.person)
+    .where(and(eq(schema.person.id, personId), eq(schema.person.status, "active"), ne(schema.person.workforceType, "collaborator")))
+    .limit(1);
   if (!to) throw new ActionError("delegation_person_unknown");
   return to;
 }
@@ -486,13 +542,23 @@ export async function reassignRequest(tx: Tx, requestId: string, actorPersonId: 
   // Only the link of the approver who lost the turn: the others on the step keep theirs.
   await voidActionTokens(tx, requestId, input.fromPersonId);
   const fromName = await personName(tx, input.fromPersonId);
-  await tx.insert(schema.approvalEvent).values({ requestId, type: "reassigned", actorPersonId, stepIndex: loaded.state.currentStep, comment: input.reason.trim(), meta: { reason: "administrator", fromPersonId: input.fromPersonId, fromName, toPersonId: to.id, toName: to.fullName } });
+  await tx.insert(schema.approvalEvent).values({
+    requestId,
+    type: "reassigned",
+    actorPersonId,
+    stepIndex: loaded.state.currentStep,
+    comment: input.reason.trim(),
+    meta: { reason: "administrator", fromPersonId: input.fromPersonId, fromName, toPersonId: to.id, toName: to.fullName },
+  });
   await askApprovers(tx, request, [to.id], null);
   await notify({ recipients: [input.fromPersonId], kind: "approvals.turn_reassigned", params: { actor: await personName(tx, actorPersonId), to: to.fullName, requestType: typeLabel(request) }, link: request.link }, tx);
   return { request, fromName, toName: to.fullName };
 }
 
-export type MovedTurns = { /** Turns that now wait for somebody else, or that the others on the step answer without the leaver. */ moved: number; /** Turns nobody could take (the requester is the only owner left): they wait for an administrator. */ stranded: number };
+export type MovedTurns = {
+  /** Turns that now wait for somebody else, or that the others on the step answer without the leaver. */ moved: number;
+  /** Turns nobody could take (the requester is the only owner left): they wait for an administrator. */ stranded: number;
+};
 
 /**
  * Someone has left the company: every turn they had not answered — on the step that is open and on
@@ -507,23 +573,49 @@ export type MovedTurns = { /** Turns that now wait for somebody else, or that th
  * new approvers; whoever's turn it is now is told. Runs in the caller's transaction, which is the
  * one that makes the person a leaver.
  */
-export async function reassignTurnsOfLeaver(tx: Executor, leaverPersonId: string, options: { /** Who ended the employment; nobody when the daily roll-over did. */ actorPersonId?: string | null; requestId?: string } = {}): Promise<MovedTurns> {
+export async function reassignTurnsOfLeaver(
+  tx: Executor,
+  leaverPersonId: string,
+  options: { /** Who ended the employment; nobody when the daily roll-over did. */ actorPersonId?: string | null; requestId?: string } = {},
+): Promise<MovedTurns> {
   const result: MovedTurns = { moved: 0, stranded: 0 };
   const found = await tx
     .select({ stepId: schema.approvalAssignee.stepId, requestId: schema.approvalAssignee.requestId })
     .from(schema.approvalAssignee)
     .innerJoin(schema.approvalStep, eq(schema.approvalStep.id, schema.approvalAssignee.stepId))
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.approvalAssignee.requestId))
-    .where(and(eq(schema.approvalAssignee.approverPersonId, leaverPersonId), eq(schema.approvalAssignee.status, "pending"), inArray(schema.approvalStep.status, ["pending", "waiting"]), eq(schema.approvalRequest.status, "pending"), options.requestId ? eq(schema.approvalRequest.id, options.requestId) : undefined));
+    .where(
+      and(
+        eq(schema.approvalAssignee.approverPersonId, leaverPersonId),
+        eq(schema.approvalAssignee.status, "pending"),
+        inArray(schema.approvalStep.status, ["pending", "waiting"]),
+        eq(schema.approvalRequest.status, "pending"),
+        options.requestId ? eq(schema.approvalRequest.id, options.requestId) : undefined,
+      ),
+    );
   if (found.length === 0) return result;
 
   // The row locks serialise this with an approver answering at the same moment; everything below
   // is read after them, so it is the state the move is made on.
-  const requests = await tx.select().from(schema.approvalRequest).where(and(inArray(schema.approvalRequest.id, [...new Set(found.map((row) => row.requestId))]), eq(schema.approvalRequest.status, "pending"))).orderBy(asc(schema.approvalRequest.id)).for("update");
+  const requests = await tx
+    .select()
+    .from(schema.approvalRequest)
+    .where(and(inArray(schema.approvalRequest.id, [...new Set(found.map((row) => row.requestId))]), eq(schema.approvalRequest.status, "pending")))
+    .orderBy(asc(schema.approvalRequest.id))
+    .for("update");
   const subjectIds = [...new Set(requests.flatMap((request) => (request.subjectPersonId ? [request.subjectPersonId] : [])))];
   const [onSteps, subjects, leaverName] = await Promise.all([
     tx
-      .select({ id: schema.approvalAssignee.id, stepId: schema.approvalAssignee.stepId, requestId: schema.approvalAssignee.requestId, personId: schema.approvalAssignee.approverPersonId, status: schema.approvalAssignee.status, stepIndex: schema.approvalStep.stepIndex, stepStatus: schema.approvalStep.status, active: sql<boolean>`${schema.person.status} = 'active'` })
+      .select({
+        id: schema.approvalAssignee.id,
+        stepId: schema.approvalAssignee.stepId,
+        requestId: schema.approvalAssignee.requestId,
+        personId: schema.approvalAssignee.approverPersonId,
+        status: schema.approvalAssignee.status,
+        stepIndex: schema.approvalStep.stepIndex,
+        stepStatus: schema.approvalStep.status,
+        active: sql<boolean>`${schema.person.status} = 'active'`,
+      })
       .from(schema.approvalAssignee)
       .innerJoin(schema.approvalStep, eq(schema.approvalStep.id, schema.approvalAssignee.stepId))
       .innerJoin(schema.person, eq(schema.person.id, schema.approvalAssignee.approverPersonId))
@@ -570,7 +662,10 @@ export async function reassignTurnsOfLeaver(tx: Executor, leaverPersonId: string
         const [first, ...rest] = asked;
         const fromOf = (personId: string) => resolved.delegatedFrom[personId] ?? leaverPersonId;
         // A turn that starts over starts its SLA clock over too (FR-PLT-23).
-        await tx.update(schema.approvalAssignee).set({ approverPersonId: first, delegatedFromPersonId: fromOf(first), remindedAt: null, escalatedAt: null }).where(eq(schema.approvalAssignee.id, turn.id));
+        await tx
+          .update(schema.approvalAssignee)
+          .set({ approverPersonId: first, delegatedFromPersonId: fromOf(first), remindedAt: null, escalatedAt: null })
+          .where(eq(schema.approvalAssignee.id, turn.id));
         if (rest.length) await tx.insert(schema.approvalAssignee).values(rest.map((personId) => ({ stepId: turn.stepId, requestId: request.id, approverPersonId: personId, delegatedFromPersonId: fromOf(personId) })));
         if (turn.stepStatus === "pending") nowAsked.push(...asked);
       }
@@ -656,7 +751,11 @@ export const placeOfPerson = (personId: string): Promise<SubjectTarget | null> =
 
 /** May this person move a turn on this request to somebody else? What the reassign action asks before it runs. */
 export async function mayReassignRequest(principal: Principal, requestId: string): Promise<boolean> {
-  const [request] = await db().select({ requesterPersonId: schema.approvalRequest.requesterPersonId, subjectPersonId: schema.approvalRequest.subjectPersonId }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, requestId)).limit(1);
+  const [request] = await db()
+    .select({ requesterPersonId: schema.approvalRequest.requesterPersonId, subjectPersonId: schema.approvalRequest.subjectPersonId })
+    .from(schema.approvalRequest)
+    .where(eq(schema.approvalRequest.id, requestId))
+    .limit(1);
   if (!request) return false;
   return canReassignTurns(principal, request, await subjectTarget(db(), request.subjectPersonId ?? request.requesterPersonId));
 }
@@ -664,7 +763,10 @@ export async function mayReassignRequest(principal: Principal, requestId: string
 /** The rows behind a bulk action: type and everything a type's `bulkApprovable` looks at. */
 export async function getRequestRows(requestIds: readonly string[]): Promise<ApprovalRequestRow[]> {
   if (requestIds.length === 0) return [];
-  return db().select().from(schema.approvalRequest).where(inArray(schema.approvalRequest.id, [...requestIds]));
+  return db()
+    .select()
+    .from(schema.approvalRequest)
+    .where(inArray(schema.approvalRequest.id, [...requestIds]));
 }
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
@@ -686,12 +788,10 @@ const LIST_COLUMNS = {
   subjectName: subject.fullName,
 };
 
-const listQuery = () =>
-  db().select(LIST_COLUMNS).from(schema.approvalRequest).innerJoin(requester, eq(requester.id, schema.approvalRequest.requesterPersonId)).leftJoin(subject, eq(subject.id, schema.approvalRequest.subjectPersonId));
+const listQuery = () => db().select(LIST_COLUMNS).from(schema.approvalRequest).innerJoin(requester, eq(requester.id, schema.approvalRequest.requesterPersonId)).leftJoin(subject, eq(subject.id, schema.approvalRequest.subjectPersonId));
 
 // "My turn": the request is pending, my step is the open one, and I have not answered yet.
-const myTurn = (personId: string) =>
-  and(eq(schema.approvalAssignee.approverPersonId, personId), eq(schema.approvalAssignee.status, "pending"), eq(schema.approvalStep.status, "pending"), eq(schema.approvalRequest.status, "pending"));
+const myTurn = (personId: string) => and(eq(schema.approvalAssignee.approverPersonId, personId), eq(schema.approvalAssignee.status, "pending"), eq(schema.approvalStep.status, "pending"), eq(schema.approvalRequest.status, "pending"));
 
 /**
  * Requests waiting for this person's answer, oldest first, each with its full row (what a type's
@@ -711,7 +811,18 @@ export const listInboxWithRows = cache(async (personId: string): Promise<(Reques
 
 /** Requests waiting for this person's answer, oldest first. */
 export async function listInbox(personId: string): Promise<RequestListRow[]> {
-  return (await listInboxWithRows(personId)).map(({ id, type, summary, status, link, createdAt, decidedAt, requesterPersonId, requesterName, subjectName }) => ({ id, type, summary, status, link, createdAt, decidedAt, requesterPersonId, requesterName, subjectName }));
+  return (await listInboxWithRows(personId)).map(({ id, type, summary, status, link, createdAt, decidedAt, requesterPersonId, requesterName, subjectName }) => ({
+    id,
+    type,
+    summary,
+    status,
+    link,
+    createdAt,
+    decidedAt,
+    requesterPersonId,
+    requesterName,
+    subjectName,
+  }));
 }
 
 /** Once per request: the home feed and the dashboard both show it. */
@@ -823,7 +934,9 @@ export async function listTurnsOf(personId: string): Promise<TurnRow[]> {
     .where(myTurn(personId))
     .orderBy(asc(schema.approvalRequest.createdAt));
   // Asked on two steps that are open together: one row.
-  return rows.filter((row, index) => rows.findIndex((other) => other.id === row.id) === index).map(({ requesterPlace, subjectPlace, ...row }) => ({ ...row, reassignTarget: row.subjectPersonId ? (subjectPlace?.personId ? subjectPlace : null) : requesterPlace }));
+  return rows
+    .filter((row, index) => rows.findIndex((other) => other.id === row.id) === index)
+    .map(({ requesterPlace, subjectPlace, ...row }) => ({ ...row, reassignTarget: row.subjectPersonId ? (subjectPlace?.personId ? subjectPlace : null) : requesterPlace }));
 }
 
 /** What was filed in a window and how much of it is still open — the oversight digest's figures, counted in SQL. */
@@ -873,7 +986,11 @@ export type RequestView = {
 
 /** A request with its history. null = not found, or none of the viewer's business. */
 export async function getRequest(viewer: { personId: string; principal: Principal }, definition: RequestTypeDefinition, requestId: string): Promise<RequestView | null> {
-  const [request] = await db().select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, definition.type))).limit(1);
+  const [request] = await db()
+    .select()
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, definition.type)))
+    .limit(1);
   if (!request) return null;
   const actor = alias(schema.person, "actor");
   const delegator = alias(schema.person, "delegator");
@@ -887,13 +1004,24 @@ export async function getRequest(viewer: { personId: string; principal: Principa
       .where(eq(schema.approvalAssignee.requestId, requestId))
       .orderBy(asc(schema.approvalAssignee.id)),
     db()
-      .select({ id: schema.approvalEvent.id, type: schema.approvalEvent.type, actorPersonId: schema.approvalEvent.actorPersonId, actorName: actor.fullName, comment: schema.approvalEvent.comment, meta: schema.approvalEvent.meta, at: schema.approvalEvent.at })
+      .select({
+        id: schema.approvalEvent.id,
+        type: schema.approvalEvent.type,
+        actorPersonId: schema.approvalEvent.actorPersonId,
+        actorName: actor.fullName,
+        comment: schema.approvalEvent.comment,
+        meta: schema.approvalEvent.meta,
+        at: schema.approvalEvent.at,
+      })
       .from(schema.approvalEvent)
       .leftJoin(actor, eq(actor.id, schema.approvalEvent.actorPersonId))
       .where(eq(schema.approvalEvent.requestId, requestId))
       .orderBy(asc(schema.approvalEvent.id)),
     subjectTarget(db(), request.subjectPersonId),
-    db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, [request.requesterPersonId, ...(request.subjectPersonId ? [request.subjectPersonId] : [])])),
+    db()
+      .select({ id: schema.person.id, fullName: schema.person.fullName })
+      .from(schema.person)
+      .where(inArray(schema.person.id, [request.requesterPersonId, ...(request.subjectPersonId ? [request.subjectPersonId] : [])])),
     // A request about nobody is reassigned by whoever answers for its requester.
     request.subjectPersonId ? null : subjectTarget(db(), request.requesterPersonId),
   ]);
@@ -914,7 +1042,9 @@ export async function getRequest(viewer: { personId: string; principal: Principa
       mode: step.mode,
       status: step.status,
       parallel: step.parallel,
-      assignees: assignees.filter(({ row }) => row.stepId === step.id).map(({ row, name, delegatedFromName }) => ({ personId: row.approverPersonId, name, status: row.status, comment: row.comment, decidedAt: row.decidedAt, delegatedFromName })),
+      assignees: assignees
+        .filter(({ row }) => row.stepId === step.id)
+        .map(({ row, name, delegatedFromName }) => ({ personId: row.approverPersonId, name, status: row.status, comment: row.comment, decidedAt: row.decidedAt, delegatedFromName })),
     })),
     events,
     isRequester,

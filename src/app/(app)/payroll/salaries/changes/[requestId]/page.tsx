@@ -51,7 +51,9 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
           <span className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{tApprovals("types.salary_change")}</Badge>
             <span className="font-mono text-xs text-faint tabular-nums">{requestCode(view.request.id)}</span>
-            <Badge dot variant={statusTone(view.request.status)}>{t(`salaries.requestStatus.${view.request.status}` as "salaries.requestStatus.pending")}</Badge>
+            <Badge dot variant={statusTone(view.request.status)}>
+              {t(`salaries.requestStatus.${view.request.status}` as "salaries.requestStatus.pending")}
+            </Badge>
           </span>
         }
         title={view.request.summary}
@@ -63,10 +65,20 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
                 {view.subjectName}
               </Link>
             ) : (
-              <RecordLink kind="person" id={view.request.subjectPersonId}>{view.subjectName}</RecordLink>
+              <RecordLink kind="person" id={view.request.subjectPersonId}>
+                {view.subjectName}
+              </RecordLink>
             )}
             {" · "}
-            {t.rich("salaries.requestedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={view.request.requesterPersonId}>{chunks}</RecordLink> })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}
+            {t.rich("salaries.requestedBy", {
+              name: view.requesterName,
+              person: (chunks) => (
+                <RecordLink kind="person" id={view.request.requesterPersonId}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}{" "}
+            · {t("salaries.effective", { date: day(view.payload.validFrom) })}
           </>
         }
       />
@@ -86,8 +98,12 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
                 {lines.map((line) => (
                   <TableRow key={line.label}>
                     <TableCell>{line.label}</TableCell>
-                    <TableCell kind="money" className="text-muted-foreground">{line.from === null ? "—" : formatVnd(line.from)}</TableCell>
-                    <TableCell kind="money" className={line.from !== null && line.from !== line.to ? "font-semibold" : undefined}>{formatVnd(line.to)}</TableCell>
+                    <TableCell kind="money" className="text-muted-foreground">
+                      {line.from === null ? "—" : formatVnd(line.from)}
+                    </TableCell>
+                    <TableCell kind="money" className={line.from !== null && line.from !== line.to ? "font-semibold" : undefined}>
+                      {formatVnd(line.to)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -103,10 +119,14 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
         <List>
           {view.steps.map((step) => (
             <ListItem key={step.key} className="flex-wrap gap-2">
-              <Badge dot variant={statusTone(step.status)}>{tApprovals.has(`assignee.${step.status}`) ? tApprovals(`assignee.${step.status}` as "assignee.pending") : step.status}</Badge>
+              <Badge dot variant={statusTone(step.status)}>
+                {tApprovals.has(`assignee.${step.status}`) ? tApprovals(`assignee.${step.status}` as "assignee.pending") : step.status}
+              </Badge>
               {step.assignees.map((assignee) => (
                 <span key={assignee.personId}>
-                  <RecordLink kind="person" id={assignee.personId}>{assignee.name}</RecordLink>
+                  <RecordLink kind="person" id={assignee.personId}>
+                    {assignee.name}
+                  </RecordLink>
                   {assignee.comment ? <span className="text-muted-foreground"> — “{assignee.comment}”</span> : null}
                 </span>
               ))}
@@ -117,7 +137,14 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
 
       {view.canDecide ? <DecideSalaryChangeForm requestId={requestId} /> : null}
       {view.canResubmit && view.request.subjectPersonId && figures ? (
-        <SalaryChangeForm personId={view.request.subjectPersonId} allowances={allowanceOptions} current={figures.proposed} initial={view.payload.initial} requestId={requestId} defaults={{ validFrom: view.payload.validFrom, reason: view.payload.reason, note: figures.note }} />
+        <SalaryChangeForm
+          personId={view.request.subjectPersonId}
+          allowances={allowanceOptions}
+          current={figures.proposed}
+          initial={view.payload.initial}
+          requestId={requestId}
+          defaults={{ validFrom: view.payload.validFrom, reason: view.payload.reason, note: figures.note }}
+        />
       ) : null}
       {view.isRequester && (view.request.status === "pending" || view.request.status === "returned") ? <WithdrawSalaryChangeButton requestId={requestId} /> : null}
     </Page>

@@ -32,9 +32,42 @@ const LONG = "Đặng Hoàng Long";
 const TAM = "Bùi Thanh Tâm";
 
 const SPACES: { key: string; name: string; icon: string; description: string; entity?: string; unit?: string; kind: "open" | "controlled"; access: Access[] }[] = [
-  { key: "so-tay", name: "Sổ tay nhân viên", icon: "📘", kind: "controlled", description: "Những điều mọi người ở SuZu cần biết: văn hoá, nội quy, quyền lợi.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
-  { key: "chinh-sach-nhan-su", name: "Chính sách nhân sự", icon: "⚖️", kind: "controlled", description: "Chính sách và quy định do phòng Hành chính – Nhân sự ban hành.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
-  { key: "quy-trinh-tai-chinh", name: "Quy trình tài chính", icon: "🧾", kind: "controlled", description: "Tạm ứng, thanh toán, hoá đơn — dành cho phòng Tài chính – Kế toán.", access: [["role:finance", "edit"], ["role:payroll", "edit"], ["department:FIN", "view"]] },
+  {
+    key: "so-tay",
+    name: "Sổ tay nhân viên",
+    icon: "📘",
+    kind: "controlled",
+    description: "Những điều mọi người ở SuZu cần biết: văn hoá, nội quy, quyền lợi.",
+    access: [
+      ["all", "view"],
+      ["role:hr_admin", "edit"],
+      ["role:hr_staff", "edit"],
+    ],
+  },
+  {
+    key: "chinh-sach-nhan-su",
+    name: "Chính sách nhân sự",
+    icon: "⚖️",
+    kind: "controlled",
+    description: "Chính sách và quy định do phòng Hành chính – Nhân sự ban hành.",
+    access: [
+      ["all", "view"],
+      ["role:hr_admin", "edit"],
+      ["role:hr_staff", "edit"],
+    ],
+  },
+  {
+    key: "quy-trinh-tai-chinh",
+    name: "Quy trình tài chính",
+    icon: "🧾",
+    kind: "controlled",
+    description: "Tạm ứng, thanh toán, hoá đơn — dành cho phòng Tài chính – Kế toán.",
+    access: [
+      ["role:finance", "edit"],
+      ["role:payroll", "edit"],
+      ["department:FIN", "view"],
+    ],
+  },
   { key: "san-xuat-video", name: "Sản xuất Video", icon: "🎬", kind: "open", description: "SOP và kinh nghiệm của phòng Sản xuất Video.", unit: "VID", access: [["unit:VID", "edit"]] },
   // A small team inside that department, with a space its own lead runs (FR-KB-13): the people in
   // "Hậu kỳ" reach it, the rest of the video department does not.
@@ -44,10 +77,16 @@ const SPACES: { key: string; name: string; icon: string; description: string; en
 
 const PAGES: DemoPage[] = [
   {
-    key: "welcome", space: "so-tay", title: "Chào mừng đến với SuZu", owner: MAI, reviewBy: "2027-06-30",
+    key: "welcome",
+    space: "so-tay",
+    title: "Chào mừng đến với SuZu",
+    owner: MAI,
+    reviewBy: "2027-06-30",
     revisions: [
       {
-        on: "2026-03-02", by: MAI, note: "Bản đầu tiên",
+        on: "2026-03-02",
+        by: MAI,
+        note: "Bản đầu tiên",
         content: doc(
           heading(1, "Chào mừng bạn"),
           paragraph("SuZu Group gồm ba công ty: ", bold("SuZu Group"), ", ", bold("SuZu Media"), " và ", bold("SuZu Creative"), ". Sổ tay này giúp bạn nắm nhanh cách chúng ta làm việc."),
@@ -55,7 +94,11 @@ const PAGES: DemoPage[] = [
           heading(2, "Giá trị cốt lõi"),
           bulletList("Tử tế với đồng nghiệp và khách hàng", "Làm đến nơi đến chốn", "Học mỗi ngày", "Nói thẳng, nói thật, nói sớm"),
           heading(2, "Bắt đầu từ đâu"),
-          orderedList([paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")], "Cài ứng dụng SuZu One lên điện thoại để chấm công.", "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày."),
+          orderedList(
+            [paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")],
+            "Cài ứng dụng SuZu One lên điện thoại để chấm công.",
+            "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày.",
+          ),
           heading(2, "Video giới thiệu"),
           embed("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
         ),
@@ -63,27 +106,51 @@ const PAGES: DemoPage[] = [
     ],
   },
   {
-    key: "leave", space: "chinh-sach-nhan-su", title: "Quy định nghỉ phép", owner: MAI, reviewBy: "2027-01-31",
+    key: "leave",
+    space: "chinh-sach-nhan-su",
+    title: "Quy định nghỉ phép",
+    owner: MAI,
+    reviewBy: "2027-01-31",
     revisions: [
       {
-        on: "2026-01-05", by: MAI, note: "Ban hành", major: true,
+        on: "2026-01-05",
+        by: MAI,
+        note: "Ban hành",
+        major: true,
         content: doc(
           heading(1, "Phạm vi áp dụng"),
           paragraph("Áp dụng cho toàn bộ nhân viên chính thức, thử việc và bán thời gian của các công ty trong tập đoàn."),
           heading(1, "Số ngày nghỉ"),
-          table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
+          table(
+            ["Loại nghỉ", "Số ngày", "Hưởng lương"],
+            ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"],
+            ["Kết hôn", "3 ngày", "Có"],
+            ["Con kết hôn", "1 ngày", "Có"],
+            ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"],
+            ["Nghỉ không lương", "Theo thoả thuận", "Không"],
+          ),
           heading(1, "Cách xin nghỉ"),
           orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
         ),
       },
       {
-        on: "2026-07-01", by: BAO, note: "Thêm quy định chuyển phép sang năm sau", major: true,
+        on: "2026-07-01",
+        by: BAO,
+        note: "Thêm quy định chuyển phép sang năm sau",
+        major: true,
         content: doc(
           heading(1, "Phạm vi áp dụng"),
           paragraph("Áp dụng cho toàn bộ nhân viên chính thức, thử việc và bán thời gian của các công ty trong tập đoàn."),
           heading(1, "Số ngày nghỉ"),
-          table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
+          table(
+            ["Loại nghỉ", "Số ngày", "Hưởng lương"],
+            ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"],
+            ["Kết hôn", "3 ngày", "Có"],
+            ["Con kết hôn", "1 ngày", "Có"],
+            ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"],
+            ["Nghỉ không lương", "Theo thoả thuận", "Không"],
+          ),
           heading(1, "Cách xin nghỉ"),
           orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
@@ -93,23 +160,31 @@ const PAGES: DemoPage[] = [
       },
     ],
     draft: {
-      content: doc(
-        heading(1, "Phạm vi áp dụng"),
-        paragraph("Áp dụng cho toàn bộ nhân viên chính thức, thử việc và bán thời gian của các công ty trong tập đoàn."),
-        callout("info", "Bản nháp 2027: đang cân nhắc tăng phép năm lên 14 ngày."),
-      ),
+      content: doc(heading(1, "Phạm vi áp dụng"), paragraph("Áp dụng cho toàn bộ nhân viên chính thức, thử việc và bán thời gian của các công ty trong tập đoàn."), callout("info", "Bản nháp 2027: đang cân nhắc tăng phép năm lên 14 ngày.")),
     },
   },
   {
-    key: "managers", space: "chinh-sach-nhan-su", title: "Dành cho quản lý", owner: MAI,
-    access: [["role:department_head", "view"], ["role:entity_director", "view"], ["role:c_level", "view"]],
+    key: "managers",
+    space: "chinh-sach-nhan-su",
+    title: "Dành cho quản lý",
+    owner: MAI,
+    access: [
+      ["role:department_head", "view"],
+      ["role:entity_director", "view"],
+      ["role:c_level", "view"],
+    ],
     revisions: [{ on: "2026-02-10", by: MAI, content: doc(paragraph("Tài liệu trong mục này chỉ dành cho cấp quản lý: hướng dẫn đánh giá, xử lý kỷ luật, trao đổi về lương.")) }],
   },
   {
-    key: "managers-discipline", space: "chinh-sach-nhan-su", parent: "managers", title: "Hướng dẫn xử lý kỷ luật lao động", owner: MAI,
+    key: "managers-discipline",
+    space: "chinh-sach-nhan-su",
+    parent: "managers",
+    title: "Hướng dẫn xử lý kỷ luật lao động",
+    owner: MAI,
     revisions: [
       {
-        on: "2026-02-12", by: MAI,
+        on: "2026-02-12",
+        by: MAI,
         content: doc(
           heading(1, "Nguyên tắc"),
           bulletList("Trao đổi riêng, có biên bản, có mặt đại diện nhân sự.", "Không xử lý kỷ luật khi người lao động đang nghỉ ốm, mang thai hoặc nuôi con dưới 12 tháng tuổi.", "Thời hiệu xử lý: 6 tháng kể từ ngày xảy ra vi phạm."),
@@ -119,10 +194,14 @@ const PAGES: DemoPage[] = [
     ],
   },
   {
-    key: "advance", space: "quy-trinh-tai-chinh", title: "Quy trình tạm ứng và hoàn ứng", owner: TUAN,
+    key: "advance",
+    space: "quy-trinh-tai-chinh",
+    title: "Quy trình tạm ứng và hoàn ứng",
+    owner: TUAN,
     revisions: [
       {
-        on: "2026-04-01", by: TUAN,
+        on: "2026-04-01",
+        by: TUAN,
         content: doc(
           heading(1, "Tạm ứng"),
           orderedList("Người đề nghị lập phiếu tạm ứng, trưởng phòng ký duyệt.", "Kế toán kiểm tra ngân sách dự án và chuyển khoản trong 2 ngày làm việc.", "Khoản trên 20.000.000 đ cần giám đốc công ty duyệt."),
@@ -133,13 +212,24 @@ const PAGES: DemoPage[] = [
     ],
   },
   {
-    key: "video-sop", space: "san-xuat-video", title: "SOP: từ brief đến bản dựng cuối", owner: LONG,
+    key: "video-sop",
+    space: "san-xuat-video",
+    title: "SOP: từ brief đến bản dựng cuối",
+    owner: LONG,
     revisions: [
       {
-        on: "2026-05-15", by: LONG,
+        on: "2026-05-15",
+        by: LONG,
         content: doc(
           heading(1, "Các bước"),
-          table(["Bước", "Người phụ trách", "Đầu ra"], ["Nhận brief", "Account + Producer", "Brief đã xác nhận"], ["Kịch bản & storyboard", "Content", "Kịch bản được khách duyệt"], ["Quay", "Đạo diễn, quay phim", "Footage + log"], ["Dựng & màu", "Editor", "Bản dựng v1"], ["Sửa theo phản hồi", "Editor", "Tối đa 2 vòng sửa"]),
+          table(
+            ["Bước", "Người phụ trách", "Đầu ra"],
+            ["Nhận brief", "Account + Producer", "Brief đã xác nhận"],
+            ["Kịch bản & storyboard", "Content", "Kịch bản được khách duyệt"],
+            ["Quay", "Đạo diễn, quay phim", "Footage + log"],
+            ["Dựng & màu", "Editor", "Bản dựng v1"],
+            ["Sửa theo phản hồi", "Editor", "Tối đa 2 vòng sửa"],
+          ),
           callout("success", "Đặt tên tệp theo mẫu: KHACH_DUAN_NGAY_vX.mp4"),
         ),
       },
@@ -147,13 +237,29 @@ const PAGES: DemoPage[] = [
     draft: { content: doc(heading(1, "Các bước"), paragraph("Đang cập nhật quy trình lưu trữ footage trên NAS.")) },
   },
   {
-    key: "video-gear", space: "san-xuat-video", parent: "video-sop", title: "Mượn và trả thiết bị quay", owner: TAM,
+    key: "video-gear",
+    space: "san-xuat-video",
+    parent: "video-sop",
+    title: "Mượn và trả thiết bị quay",
+    owner: TAM,
     revisions: [],
     draft: { content: doc(paragraph("Bản nháp: đăng ký mượn thiết bị trước 24 giờ, kiểm tra pin và thẻ nhớ khi trả.")) },
   },
   {
-    key: "drive", space: "cong-cu", title: "Đặt tên và sắp xếp tệp trên Google Drive", owner: BAO,
-    revisions: [{ on: "2026-06-03", by: BAO, content: doc(paragraph("Mỗi dự án một thư mục theo mẫu ", bold("NĂM_KHÁCH HÀNG_DỰ ÁN"), ". Tài liệu cuối cùng để trong thư mục ", bold("FINAL"), ", không đặt tên kiểu “final_v2_sửa”."), bulletList("Chia sẻ theo nhóm Google, không chia sẻ cho từng người.", "Tệp của khách hàng không tải về máy cá nhân.")) }],
+    key: "drive",
+    space: "cong-cu",
+    title: "Đặt tên và sắp xếp tệp trên Google Drive",
+    owner: BAO,
+    revisions: [
+      {
+        on: "2026-06-03",
+        by: BAO,
+        content: doc(
+          paragraph("Mỗi dự án một thư mục theo mẫu ", bold("NĂM_KHÁCH HÀNG_DỰ ÁN"), ". Tài liệu cuối cùng để trong thư mục ", bold("FINAL"), ", không đặt tên kiểu “final_v2_sửa”."),
+          bulletList("Chia sẻ theo nhóm Google, không chia sẻ cho từng người.", "Tệp của khách hàng không tải về máy cá nhân."),
+        ),
+      },
+    ],
   },
 ];
 
@@ -170,10 +276,42 @@ export async function seedKb(db: Db): Promise<string> {
   await db.execute(sql`update person set created_at = e.first_day from (select person_id, min(start_date)::timestamptz as first_day from employment group by person_id) e where e.person_id = person.id and e.first_day < person.created_at`);
 
   const staged: DemoPage[] = [
-    ...HANDBOOK_PAGES.filter((page) => page.key !== "rules" && page.key !== "remote").map((page) => ({ key: page.key, space: page.space, parent: page.parent, title: page.title, owner: page.owner, reviewBy: page.reviewBy, revisions: [{ on: page.on, by: page.by, note: page.note, major: page.major, content: md(page.markdown) }] })),
-    ...HANDBOOK_PAGES.filter((page) => page.key === "rules").map((page) => ({ key: page.key, space: page.space, title: page.title, owner: page.owner, reviewBy: page.reviewBy, revisions: [{ on: day(-27), by: page.by, note: page.note, major: true, content: md(page.markdown) }] })),
-    { key: "security", space: "so-tay", title: "Bảo mật thông tin và thiết bị", owner: MAI, reviewBy: day(200), revisions: [{ on: day(-45), by: MAI, note: "Ban hành", major: true, content: md(SECURITY_V1) }, { on: day(-10), by: MAI, note: "Thêm quy định về công cụ AI và xử lý sự cố", major: true, content: md(SECURITY_V2) }] },
-    ...HANDBOOK_PAGES.filter((page) => page.key === "remote").map((page) => ({ key: page.key, space: page.space, title: page.title, owner: page.owner, revisions: [{ on: page.on, by: page.by, content: md(page.markdown) }], draft: { content: md(REMOTE_DRAFT) } })),
+    ...HANDBOOK_PAGES.filter((page) => page.key !== "rules" && page.key !== "remote").map((page) => ({
+      key: page.key,
+      space: page.space,
+      parent: page.parent,
+      title: page.title,
+      owner: page.owner,
+      reviewBy: page.reviewBy,
+      revisions: [{ on: page.on, by: page.by, note: page.note, major: page.major, content: md(page.markdown) }],
+    })),
+    ...HANDBOOK_PAGES.filter((page) => page.key === "rules").map((page) => ({
+      key: page.key,
+      space: page.space,
+      title: page.title,
+      owner: page.owner,
+      reviewBy: page.reviewBy,
+      revisions: [{ on: day(-27), by: page.by, note: page.note, major: true, content: md(page.markdown) }],
+    })),
+    {
+      key: "security",
+      space: "so-tay",
+      title: "Bảo mật thông tin và thiết bị",
+      owner: MAI,
+      reviewBy: day(200),
+      revisions: [
+        { on: day(-45), by: MAI, note: "Ban hành", major: true, content: md(SECURITY_V1) },
+        { on: day(-10), by: MAI, note: "Thêm quy định về công cụ AI và xử lý sự cố", major: true, content: md(SECURITY_V2) },
+      ],
+    },
+    ...HANDBOOK_PAGES.filter((page) => page.key === "remote").map((page) => ({
+      key: page.key,
+      space: page.space,
+      title: page.title,
+      owner: page.owner,
+      revisions: [{ on: page.on, by: page.by, content: md(page.markdown) }],
+      draft: { content: md(REMOTE_DRAFT) },
+    })),
   ];
   // The handbook reads in a sensible order: welcome, the rules, then the rest.
   const order = ["welcome", "rules", "hours", "overtime", "pay", "insurance", "contract", "conduct", "security", "remote"];
@@ -201,7 +339,17 @@ export async function seedKb(db: Db): Promise<string> {
   for (const [index, space] of SPACES.entries()) {
     const [row] = await db
       .insert(kbSpace)
-      .values({ key: space.key, name: space.name, icon: space.icon, description: space.description, kind: space.kind, entityId: space.entity ? entities.get(space.entity)! : null, ownerUnitId: space.unit ? (departments.get(space.unit) ?? null) : null, sortOrder: index, createdByPersonId: who(MAI) })
+      .values({
+        key: space.key,
+        name: space.name,
+        icon: space.icon,
+        description: space.description,
+        kind: space.kind,
+        entityId: space.entity ? entities.get(space.entity)! : null,
+        ownerUnitId: space.unit ? (departments.get(space.unit) ?? null) : null,
+        sortOrder: index,
+        createdByPersonId: who(MAI),
+      })
       .returning();
     spaceIds.set(space.key, row.id);
     await db.insert(kbAccess).values(space.access.map(([key, level]) => ({ spaceId: row.id, subjectKey: subject(key), level })));
@@ -226,7 +374,22 @@ export async function seedKb(db: Db): Promise<string> {
     slugsTaken.add(`${page.space}/${slug}`);
     const [row] = await db
       .insert(kbPage)
-      .values({ spaceId, parentId, title: workingTitle, slug, content: working, contentText: docToPlainText(working), hasUnpublishedChanges: !!page.draft, sortOrder: index, status: last ? "published" : "draft", ownerPersonId: who(page.owner), reviewBy: page.reviewBy ?? null, createdByPersonId: who(page.owner), updatedByPersonId: who(page.owner), createdAt: new Date(`${page.revisions[0]?.on ?? "2026-09-01"}T02:00:00Z`) })
+      .values({
+        spaceId,
+        parentId,
+        title: workingTitle,
+        slug,
+        content: working,
+        contentText: docToPlainText(working),
+        hasUnpublishedChanges: !!page.draft,
+        sortOrder: index,
+        status: last ? "published" : "draft",
+        ownerPersonId: who(page.owner),
+        reviewBy: page.reviewBy ?? null,
+        createdByPersonId: who(page.owner),
+        updatedByPersonId: who(page.owner),
+        createdAt: new Date(`${page.revisions[0]?.on ?? "2026-09-01"}T02:00:00Z`),
+      })
       .returning();
     pageIds.set(page.key, row.id);
 
@@ -240,7 +403,17 @@ export async function seedKb(db: Db): Promise<string> {
       const at = new Date(`${revision.on}T03:00:00Z`);
       const [version] = await db
         .insert(kbPageVersion)
-        .values({ pageId: row.id, versionNo: number + 1, title: revision.title ?? page.title, content, contentText: docToPlainText(content), authorPersonId: who(revision.by), changeNote: revision.note ?? null, isMajor: !!revision.major, createdAt: at })
+        .values({
+          pageId: row.id,
+          versionNo: number + 1,
+          title: revision.title ?? page.title,
+          content,
+          contentText: docToPlainText(content),
+          authorPersonId: who(revision.by),
+          changeNote: revision.note ?? null,
+          isMajor: !!revision.major,
+          createdAt: at,
+        })
         .returning();
       published = { id: version.id, title: version.title, text: version.contentText, at };
       versionIds.set(page.key, [...(versionIds.get(page.key) ?? []), version.id]);
@@ -249,7 +422,21 @@ export async function seedKb(db: Db): Promise<string> {
     // What a publish leaves behind for the assistant: the passages of the published version, embedded by the local fake.
     if (published) {
       const chunks = chunkDoc(checked(page.revisions.at(-1)!.content), published.title);
-      if (chunks.length) await db.insert(kbPageChunk).values(chunks.map((chunk) => ({ pageId: row.id, versionId: published!.id, chunkIndex: chunk.index, headingPath: chunk.headingPath, content: chunk.content, contentHash: createHash("sha256").update(`${chunk.headingPath}\n${chunk.content}`).digest("hex"), tokenEstimate: chunk.tokenEstimate, embedding: fakeEmbedding(chunkEmbeddingText(chunk)), embeddingModel: FAKE_EMBEDDING_MODEL, embeddedAt: published!.at })));
+      if (chunks.length)
+        await db.insert(kbPageChunk).values(
+          chunks.map((chunk) => ({
+            pageId: row.id,
+            versionId: published!.id,
+            chunkIndex: chunk.index,
+            headingPath: chunk.headingPath,
+            content: chunk.content,
+            contentHash: createHash("sha256").update(`${chunk.headingPath}\n${chunk.content}`).digest("hex"),
+            tokenEstimate: chunk.tokenEstimate,
+            embedding: fakeEmbedding(chunkEmbeddingText(chunk)),
+            embeddingModel: FAKE_EMBEDDING_MODEL,
+            embeddedAt: published!.at,
+          })),
+        );
       chunkCount += chunks.length;
     }
     await db
@@ -267,7 +454,10 @@ export async function seedKb(db: Db): Promise<string> {
     const pageId = pageIds.get(key)!;
     const versionsOf = versionIds.get(key)!;
     const current = versionsOf.at(-1)!;
-    await db.update(kbPage).set({ ackRequired: true, ackVersionId: current, ackSince: at(since), ackDueDays: dueDays }).where(eq(kbPage.id, pageId));
+    await db
+      .update(kbPage)
+      .set({ ackRequired: true, ackVersionId: current, ackSince: at(since), ackDueDays: dueDays })
+      .where(eq(kbPage.id, pageId));
     await db.insert(kbAckAudience).values({ pageId, subjectKey: "all" });
     const rows = [...earlier.map(([name, on]) => ({ name, on, versionId: versionsOf[0] })), ...confirmed.map(([name, on]) => ({ name, on, versionId: current }))].filter((row) => who(row.name));
     if (rows.length) await db.insert(kbAcknowledgement).values(rows.map((row) => ({ pageId, versionId: row.versionId, personId: who(row.name)!, acknowledgedAt: at(row.on, 2 + (row.name.length % 8)) })));
@@ -287,13 +477,26 @@ export async function seedKb(db: Db): Promise<string> {
     if (notices.length) await db.insert(kbAckReminder).values(notices);
   };
   // The work rules: in force for four weeks, half the staff confirmed — Huy only after the second reminder — and the rest are overdue.
-  await mustRead("rules", day(-27), 14, [[MAI, day(-27)], [BAO, day(-26)], [LONG, day(-26)], [TUAN, day(-25)], ["Dương Thùy Chi", day(-24)], ["Nguyễn Thu Hà", day(-22)], ["Hồ Gia Huy", day(-20)]]);
+  await mustRead("rules", day(-27), 14, [
+    [MAI, day(-27)],
+    [BAO, day(-26)],
+    [LONG, day(-26)],
+    [TUAN, day(-25)],
+    ["Dương Thùy Chi", day(-24)],
+    ["Nguyễn Thu Hà", day(-22)],
+    ["Hồ Gia Huy", day(-20)],
+  ]);
   // The security policy: nearly everyone confirmed version 1; the major revision ten days ago asked everybody again.
   await mustRead(
     "security",
     day(-10),
     14,
-    [[MAI, day(-10)], [BAO, day(-9)], [LONG, day(-8)], ["Hồ Gia Huy", day(-6)]],
+    [
+      [MAI, day(-10)],
+      [BAO, day(-9)],
+      [LONG, day(-8)],
+      ["Hồ Gia Huy", day(-6)],
+    ],
     [MAI, BAO, LONG, TUAN, TAM, "Hồ Gia Huy", "Dương Thùy Chi", "Lý Minh Khôi", "Phan Văn Đức", "Nguyễn Thu Hà"].map((name, index) => [name, day(-44 + (index % 6))] as [string, string]),
   );
 
@@ -322,7 +525,10 @@ export async function seedKb(db: Db): Promise<string> {
   const [step] = await db.insert(approvalStep).values({ requestId, stepIndex: 0, key: "review", mode: "any", status: "pending" }).returning();
   await db.insert(approvalAssignee).values({ stepId: step.id, requestId, approverPersonId: who(MAI)!, status: "pending" });
   await db.insert(approvalEvent).values({ requestId, type: "submitted", actorPersonId: who(BAO)!, stepIndex: 0, at: filedAt });
-  await db.update(kbPage).set({ status: "in_review", reviewRequestId: requestId, updatedByPersonId: who(BAO) }).where(eq(kbPage.id, remoteId));
+  await db
+    .update(kbPage)
+    .set({ status: "in_review", reviewRequestId: requestId, updatedByPersonId: who(BAO) })
+    .where(eq(kbPage.id, remoteId));
 
   return `${SPACES.length} knowledge-base spaces, ${ALL.length} pages, ${versions} published versions, ${chunkCount} chunks (${FAKE_EMBEDDING_MODEL}), ${confirmations} acknowledgements, 1 revision in review`;
 }

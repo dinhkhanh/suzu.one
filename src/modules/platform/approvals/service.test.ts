@@ -16,7 +16,24 @@ import { createDelegation, findDelegation, followDelegations, listDelegations, r
 import { deleteFlow, effectiveFlow, saveFlow } from "./flows";
 import { buildAllRequestsExport } from "./exports";
 import { sendOversightDigest } from "./jobs";
-import { commentOnRequest, decideRequest, defineRequestType, delegateRequest, getRequest, isRequestParty, listAllRequests, listInbox, listTurnsOf, mayReassignRequest, reassignRequest, reassignStrandedTurns, reassignTurnsOfLeaver, resubmitRequest, submitRequest, withdrawRequest } from "./service";
+import {
+  commentOnRequest,
+  decideRequest,
+  defineRequestType,
+  delegateRequest,
+  getRequest,
+  isRequestParty,
+  listAllRequests,
+  listInbox,
+  listTurnsOf,
+  mayReassignRequest,
+  reassignRequest,
+  reassignStrandedTurns,
+  reassignTurnsOfLeaver,
+  resubmitRequest,
+  submitRequest,
+  withdrawRequest,
+} from "./service";
 
 const leave = defineRequestType({
   type: "test_leave",
@@ -29,9 +46,18 @@ const ids = {} as Record<"media" | "creative" | "owner" | "head" | "manager" | "
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
   const person = async (name: string, entityId: string, managerId: string | null = null) => {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, primaryEntityId: entityId, managerId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, primaryEntityId: entityId, managerId })
+      .returning();
     return row.id;
   };
   const owner = await person("The Owner", media.id);
@@ -41,10 +67,12 @@ beforeAll(async () => {
   const hr = await person("Hr Staff", media.id);
   const huy = await person("Ho Gia Huy", media.id, manager);
   const lan = await person("Tran Lan", creative.id, manager);
-  await db().insert(schema.roleAssignment).values([
-    { personId: owner, role: "owner", scopeType: "group", validFrom: "2024-01-01" },
-    { personId: hr, role: "hr_staff", scopeType: "entity", scopeId: media.id, validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: owner, role: "owner", scopeType: "group", validFrom: "2024-01-01" },
+      { personId: hr, role: "hr_staff", scopeType: "entity", scopeId: media.id, validFrom: "2024-01-01" },
+    ]);
   Object.assign(ids, { media: media.id, creative: creative.id, owner, head, manager, deputy, hr, huy, lan });
 });
 
@@ -61,7 +89,12 @@ beforeEach(async () => {
 const submit = (personId: string, entityId: string, days: number) =>
   db().transaction((tx) => submitRequest(tx, leave, { entityId, requesterPersonId: personId, subjectPersonId: personId, summary: `${days} days`, payload: { days }, link: (id) => `/x/${id}` }));
 const decide = (requestId: string, actorId: string, action: "approve" | "reject" | "return" = "approve") => db().transaction((tx) => decideRequest(tx, leave, requestId, actorId, { action, comment: action === "approve" ? null : "why" }));
-const twoStep = { steps: [{ key: "manager", mode: "any" as const, approvers: [{ rule: "line_manager" as const }] }, { key: "head", mode: "any" as const, approvers: [{ rule: "manager_level" as const, level: 2 }], condition: { field: "days", op: "gt" as const, value: 3 } }] };
+const twoStep = {
+  steps: [
+    { key: "manager", mode: "any" as const, approvers: [{ rule: "line_manager" as const }] },
+    { key: "head", mode: "any" as const, approvers: [{ rule: "manager_level" as const, level: 2 }], condition: { field: "days", op: "gt" as const, value: 3 } },
+  ],
+};
 
 describe("configured flows", () => {
   it("uses the entity's flow, then the group's, then the default in code", async () => {
@@ -97,22 +130,53 @@ describe("configured flows", () => {
 
   it("refuses a flow that could approve by nobody, and a named approver who is not there", async () => {
     await expect(saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ ...twoStep.steps[1] }] }, active: true }, ids.owner)).rejects.toThrow("flow_no_unconditional_step");
-    await expect(saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ key: "x", mode: "any", approvers: [{ rule: "person", personId: "00000000-0000-4000-8000-000000000000" }] }] }, active: true }, ids.owner)).rejects.toThrow("flow_person_unknown");
+    await expect(
+      saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ key: "x", mode: "any", approvers: [{ rule: "person", personId: "00000000-0000-4000-8000-000000000000" }] }] }, active: true }, ids.owner),
+    ).rejects.toThrow("flow_person_unknown");
   });
 
   it("runs parallel steps: both open at once, the request is approved when both are done", async () => {
-    await saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }, { key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "leave:manage" }], parallel: true }] }, active: true }, ids.owner);
+    await saveFlow(
+      {
+        requestType: "test_leave",
+        entityId: null,
+        definition: {
+          steps: [
+            { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+            { key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "leave:manage" }], parallel: true },
+          ],
+        },
+        active: true,
+      },
+      ids.owner,
+    );
     const { request, approverIds } = await submit(ids.huy, ids.media, 1);
     expect(approverIds.sort()).toEqual([ids.manager, ids.hr].sort());
     expect((await decide(request.id, ids.hr)).outcome).toBe("pending");
     const view = await getRequest({ personId: ids.manager, principal: { personId: ids.manager, workforceType: "employee", grants: [] } }, leave, request.id);
     expect(view?.canDecide).toBe(true);
-    expect(view?.steps.map((step) => [step.status, step.parallel])).toEqual([["pending", false], ["approved", true]]);
+    expect(view?.steps.map((step) => [step.status, step.parallel])).toEqual([
+      ["pending", false],
+      ["approved", true],
+    ]);
     expect((await decide(request.id, ids.manager)).outcome).toBe("approved");
   });
 
   it("asks several approvers in one notice, each with their own one-click link", async () => {
-    await saveFlow({ requestType: "test_leave", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }, { key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "leave:manage" }], parallel: true }] }, active: true }, ids.owner);
+    await saveFlow(
+      {
+        requestType: "test_leave",
+        entityId: null,
+        definition: {
+          steps: [
+            { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+            { key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "leave:manage" }], parallel: true },
+          ],
+        },
+        active: true,
+      },
+      ids.owner,
+    );
     await db().delete(schema.chatDelivery);
     const { request } = await submit(ids.huy, ids.media, 1);
     const cards = await db().select().from(schema.chatDelivery).where(eq(schema.chatDelivery.kind, "approvals.requested"));
@@ -128,7 +192,8 @@ describe("configured flows", () => {
 
 describe("requests about no person", () => {
   const pagePublish = defineRequestType({ type: "test_page", flow: { steps: [{ key: "review", mode: "any", approvers: [{ rule: "permission", permission: "person:manage" }] }] } });
-  const submitPage = (target?: { entityId: string }) => db().transaction((tx) => submitRequest(tx, pagePublish, { entityId: target?.entityId ?? null, requesterPersonId: ids.huy, subjectPersonId: null, subjectType: "page", subjectId: null, summary: "A page", target }));
+  const submitPage = (target?: { entityId: string }) =>
+    db().transaction((tx) => submitRequest(tx, pagePublish, { entityId: target?.entityId ?? null, requesterPersonId: ids.huy, subjectPersonId: null, subjectType: "page", subjectId: null, summary: "A page", target }));
 
   it("asks the people whose scope covers the target, and the owners when nothing says where it sits", async () => {
     expect((await submitPage({ entityId: ids.media })).approverIds).toEqual([ids.hr]);
@@ -142,9 +207,20 @@ describe("delegation", () => {
   const today = todayInVietnam();
 
   it("follows chains, but not loops or a stand-in who is the requester", () => {
-    const next = new Map([["a", "b"], ["b", "c"]]);
+    const next = new Map([
+      ["a", "b"],
+      ["b", "c"],
+    ]);
     expect(followDelegations("a", next)).toBe("c");
-    expect(followDelegations("a", new Map([["a", "b"], ["b", "a"]]))).toBe("a");
+    expect(
+      followDelegations(
+        "a",
+        new Map([
+          ["a", "b"],
+          ["b", "a"],
+        ]),
+      ),
+    ).toBe("a");
     expect(followDelegations("a", next, new Set(["c"]))).toBe("a");
   });
 
@@ -250,7 +326,10 @@ describe("oversight (approval:oversee)", () => {
     await decide(request.id, ids.manager);
     expect(await listAllRequests({ all: true }, { state: "open" })).toEqual([]);
     // Newest first: the withdrawn one, then the approved one — both waiting on nobody.
-    expect((await listAllRequests({ all: true }, { state: "decided" })).map((row) => [row.id, row.waitingOn])).toEqual([[returned.request.id, null], [request.id, null]]);
+    expect((await listAllRequests({ all: true }, { state: "decided" })).map((row) => [row.id, row.waitingOn])).toEqual([
+      [returned.request.id, null],
+      [request.id, null],
+    ]);
     // An entity reach sees its own entity's requests only.
     expect((await listAllRequests({ all: false, entityIds: [ids.creative] })).map((row) => row.id)).toEqual([returned.request.id]);
     expect(await listAllRequests({ all: false, entityIds: [] })).toEqual([]);
@@ -261,7 +340,10 @@ describe("oversight (approval:oversee)", () => {
     await submit(ids.lan, ids.creative, 1);
     const all = await buildAllRequestsExport({ all: true }, { state: "open" }, new Map([["test_leave", "Nghỉ thử"]]), "en");
     expect(all.file.table.header).toEqual(["Type", "Request", "From", "Status", "Waiting for", "Sent", "Decided"]);
-    expect(all.file.table.rows.map((row) => [row[0], row[2], row[3], row[4]]).sort()).toEqual([["Nghỉ thử", "Ho Gia Huy", "Waiting for approval", "Line Manager"], ["Nghỉ thử", "Tran Lan", "Waiting for approval", "Line Manager"]]);
+    expect(all.file.table.rows.map((row) => [row[0], row[2], row[3], row[4]]).sort()).toEqual([
+      ["Nghỉ thử", "Ho Gia Huy", "Waiting for approval", "Line Manager"],
+      ["Nghỉ thử", "Tran Lan", "Waiting for approval", "Line Manager"],
+    ]);
     expect(all.file.table.rows[0][5]).toBe(todayInVietnam());
     const scoped = await buildAllRequestsExport({ all: false, entityIds: [ids.creative] }, {}, new Map(), "vi");
     expect(scoped.file.table.rows.map((row) => [row[0], row[2]])).toEqual([["test_leave", "Tran Lan"]]);
@@ -366,7 +448,12 @@ describe("a turn whose approver has left", () => {
     const { request } = await submit(ids.huy, ids.media, 1);
     expect((await decide(request.id, hrTwo)).outcome).toBe("pending");
     await leave_(ids.hr);
-    expect((await turnsOf(request.id)).sort()).toEqual([[hrTwo, "approved", null], [ids.owner, "pending", ids.hr]].sort());
+    expect((await turnsOf(request.id)).sort()).toEqual(
+      [
+        [hrTwo, "approved", null],
+        [ids.owner, "pending", ids.hr],
+      ].sort(),
+    );
     expect((await decide(request.id, ids.owner)).outcome).toBe("approved");
   });
 
@@ -395,7 +482,14 @@ describe("a turn whose approver has left", () => {
     const done = await submit(ids.huy, ids.media, 1);
     await decide(done.request.id, ids.manager);
     // The owner's own request, waiting for a head who is also the only other candidate: no owner may answer it.
-    const own = await db().transaction((tx) => submitRequest(tx, defineRequestType({ type: "test_named", flow: { steps: [{ key: "named", mode: "any", approvers: [{ rule: "person", personId: ids.head }] }] } }), { entityId: ids.media, requesterPersonId: ids.owner, subjectPersonId: ids.owner, summary: "the owner asks" }));
+    const own = await db().transaction((tx) =>
+      submitRequest(tx, defineRequestType({ type: "test_named", flow: { steps: [{ key: "named", mode: "any", approvers: [{ rule: "person", personId: ids.head }] }] } }), {
+        entityId: ids.media,
+        requesterPersonId: ids.owner,
+        subjectPersonId: ids.owner,
+        summary: "the owner asks",
+      }),
+    );
     expect(await leave_(ids.manager)).toEqual({ moved: 0, stranded: 0 });
     expect(await leave_(ids.head)).toEqual({ moved: 0, stranded: 1 });
     expect(await turnsOf(own.request.id)).toEqual([[ids.head, "pending", null]]);
@@ -461,7 +555,14 @@ describe("an administrator moves a turn", () => {
     expect(await mayReassignRequest(ownerPrincipal(), "00000000-0000-4000-8000-000000000000")).toBe(false);
 
     // A request about nobody: whoever answers for its requester.
-    const page = await db().transaction((tx) => submitRequest(tx, defineRequestType({ type: "test_page", flow: { steps: [{ key: "review", mode: "any", approvers: [{ rule: "line_manager" }] }] } }), { entityId: ids.creative, requesterPersonId: ids.lan, subjectPersonId: null, summary: "A page" }));
+    const page = await db().transaction((tx) =>
+      submitRequest(tx, defineRequestType({ type: "test_page", flow: { steps: [{ key: "review", mode: "any", approvers: [{ rule: "line_manager" }] }] } }), {
+        entityId: ids.creative,
+        requesterPersonId: ids.lan,
+        subjectPersonId: null,
+        summary: "A page",
+      }),
+    );
     expect(await mayReassignRequest(hrPrincipal(), page.request.id)).toBe(false);
     expect(await mayReassignRequest(ownerPrincipal(), page.request.id)).toBe(true);
   });
@@ -531,7 +632,12 @@ describe("a delegation set for someone who is away", () => {
     const row = await createDelegation(ids.manager, { toPersonId: ids.deputy, validFrom: today, validTo: addDays(today, 7), requestTypes: null, reason: "In hospital" }, ids.hr);
     expect(row).toMatchObject({ fromPersonId: ids.manager, toPersonId: ids.deputy, reason: "In hospital" });
     const notices = await db().select().from(schema.notification);
-    expect(notices.map((notice) => [notice.kind, notice.recipientPersonId]).sort()).toEqual([["approvals.delegated_to_you", ids.deputy], ["approvals.delegation_set_for_you", ids.manager]].sort());
+    expect(notices.map((notice) => [notice.kind, notice.recipientPersonId]).sort()).toEqual(
+      [
+        ["approvals.delegated_to_you", ids.deputy],
+        ["approvals.delegation_set_for_you", ids.manager],
+      ].sort(),
+    );
     expect(notices.find((notice) => notice.kind === "approvals.delegation_set_for_you")?.params).toMatchObject({ actor: "Hr Staff", delegate: "The Deputy" });
     expect((await submit(ids.huy, ids.media, 1)).approverIds).toEqual([ids.deputy]);
     // Theirs to see and to end; an administrator ends it through the same row.

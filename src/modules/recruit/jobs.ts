@@ -152,23 +152,22 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
   const assignmentIds = assignments.map((row) => row.id);
   // The pages the colleagues' notifications about this candidate point at: older notifications
   // named the candidate, and those words are emptied with everything else.
-  const noticeLinks = [
-    ...applicationIds.map((id) => `/recruit/applications/${id}`),
-    ...interviews.map((row) => `/recruit/interviews/${row.id}`),
-    ...offers.map((row) => `/recruit/offers/${row.id}`),
-  ];
-  const files = applicationIds.length === 0 ? [] : await db()
-    .select({ id: schema.storedFile.id })
-    .from(schema.storedFile)
-    .where(
-      and(
-        isNull(schema.storedFile.purgedAt),
-        or(
-          and(eq(schema.storedFile.ownerType, "job_application"), inArray(schema.storedFile.ownerId, applicationIds)),
-          assignmentIds.length > 0 ? and(eq(schema.storedFile.ownerType, "recruit_assignment"), inArray(schema.storedFile.ownerId, assignmentIds)) : undefined,
-        ),
-      ),
-    );
+  const noticeLinks = [...applicationIds.map((id) => `/recruit/applications/${id}`), ...interviews.map((row) => `/recruit/interviews/${row.id}`), ...offers.map((row) => `/recruit/offers/${row.id}`)];
+  const files =
+    applicationIds.length === 0
+      ? []
+      : await db()
+          .select({ id: schema.storedFile.id })
+          .from(schema.storedFile)
+          .where(
+            and(
+              isNull(schema.storedFile.purgedAt),
+              or(
+                and(eq(schema.storedFile.ownerType, "job_application"), inArray(schema.storedFile.ownerId, applicationIds)),
+                assignmentIds.length > 0 ? and(eq(schema.storedFile.ownerType, "recruit_assignment"), inArray(schema.storedFile.ownerId, assignmentIds)) : undefined,
+              ),
+            ),
+          );
 
   await db().transaction(async (tx) => {
     const [claimed] = await tx
@@ -218,7 +217,12 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
         .where(
           and(
             sql`lower(${schema.emailOutbox.toEmail}) = ${candidate.email.toLowerCase()}`,
-            notExists(tx.select({ one: sql`1` }).from(schema.person).where(eq(schema.person.workEmail, candidate.email.toLowerCase()))),
+            notExists(
+              tx
+                .select({ one: sql`1` })
+                .from(schema.person)
+                .where(eq(schema.person.workEmail, candidate.email.toLowerCase())),
+            ),
           ),
         );
     }
@@ -257,17 +261,9 @@ export async function anonymiseCandidate(candidateId: string, cause: AnonymiseCa
       await tx
         .update(schema.interviewScorecard)
         .set({ strengths: null, concerns: null, notes: null, updatedAt: now() })
-        .where(
-          inArray(
-            schema.interviewScorecard.interviewId,
-            db().select({ id: schema.interview.id }).from(schema.interview).where(inArray(schema.interview.applicationId, applicationIds)),
-          ),
-        );
+        .where(inArray(schema.interviewScorecard.interviewId, db().select({ id: schema.interview.id }).from(schema.interview).where(inArray(schema.interview.applicationId, applicationIds))));
 
-      await tx
-        .update(schema.recruitAssignment)
-        .set({ submissionNote: null, submissionLinks: [], submissionFileId: null, updatedAt: now() })
-        .where(inArray(schema.recruitAssignment.applicationId, applicationIds));
+      await tx.update(schema.recruitAssignment).set({ submissionNote: null, submissionLinks: [], submissionFileId: null, updatedAt: now() }).where(inArray(schema.recruitAssignment.applicationId, applicationIds));
 
       // Written once, by the run that did the emptying: a second call finds nothing to claim.
       if (claimed) await tx.insert(schema.applicationEvent).values(applicationIds.map((applicationId) => ({ applicationId, type: "anonymised" as const, actorPersonId: cause.actorPersonId, detail: { reason: cause.reason } })));

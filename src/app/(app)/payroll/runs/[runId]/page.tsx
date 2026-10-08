@@ -94,13 +94,18 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
               ← {t("runs.title")}
             </Link>
             <span className="text-faint">·</span>
-            <Badge dot variant={statusTone(run.status)}>{t(`runs.statuses.${run.status}`)}</Badge>
+            <Badge dot variant={statusTone(run.status)}>
+              {t(`runs.statuses.${run.status}`)}
+            </Badge>
             <Badge variant="outline">{t(`runs.kinds.${run.kind}`)}</Badge>
           </span>
         }
         title={
           <>
-            <span className="font-mono tabular-nums">{run.month}</span> · <RecordLink kind="entity" id={run.entityId}>{entity.code}</RecordLink>
+            <span className="font-mono tabular-nums">{run.month}</span> ·{" "}
+            <RecordLink kind="entity" id={run.entityId}>
+              {entity.code}
+            </RecordLink>
             {run.name ? <span className="text-muted-foreground"> — {run.name}</span> : null}
           </>
         }
@@ -167,7 +172,12 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
         <Tile label={t("runs.totals.gross")} value={<>{formatVnd(totals.grossEarnings)}</>} hint={`${t("runs.totals.headcount")}: ${totals.headcount}`} />
         <Tile label={t("runs.totals.net")} value={<>{formatVnd(totals.net)}</>} hint={`${t("runs.totals.netStatutory")} ${formatVnd(totals.netStatutory)}`} />
         <Tile label={t("runs.totals.insurance")} value={<>{formatVnd(totals.employerInsurance)}</>} hint={`${t("runs.totals.pit")} ${formatVnd(totals.pit)} · ${t("runs.totals.employerCost")} ${formatVnd(totals.employerCost)}`} />
-        <Tile label={t("runs.exceptions")} value={<>{variance.flagged.length}</>} tone={variance.flagged.length > 0 ? "destructive" : "success"} hint={variance.hasPrevious ? t("runs.variance.against", { month: variance.previousMonth, previous: formatVnd(variance.totals.previousNet), change: percent(variance.totals.changeBp) }) : t("runs.variance.noPrevious")} />
+        <Tile
+          label={t("runs.exceptions")}
+          value={<>{variance.flagged.length}</>}
+          tone={variance.flagged.length > 0 ? "destructive" : "success"}
+          hint={variance.hasPrevious ? t("runs.variance.against", { month: variance.previousMonth, previous: formatVnd(variance.totals.previousNet), change: percent(variance.totals.changeBp) }) : t("runs.variance.noPrevious")}
+        />
       </TileGrid>
 
       {/* ── What stands in the way of a proposal, and what to settle before payment ── */}
@@ -178,13 +188,17 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
             {/* A warning and never a blocker: the parallel run happens before the accountant's sign-off. */}
             {view.unverifiedParameters.length > 0 ? (
               <ListItem className="flex-wrap gap-x-3 gap-y-1.5">
-                <Badge dot variant="warning">{t("runs.readiness.warning")}</Badge>
+                <Badge dot variant="warning">
+                  {t("runs.readiness.warning")}
+                </Badge>
                 <span className="text-muted-foreground">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</span>
               </ListItem>
             ) : null}
             {issues.map((issue) => (
               <ListItem key={`${issue.kind}:${issue.personId}`} className="flex-wrap gap-x-3 gap-y-1.5">
-                <Badge dot variant={issue.blocking ? "destructive" : "warning"}>{t(issue.blocking ? "runs.readiness.blocker" : "runs.readiness.warning")}</Badge>
+                <Badge dot variant={issue.blocking ? "destructive" : "warning"}>
+                  {t(issue.blocking ? "runs.readiness.blocker" : "runs.readiness.warning")}
+                </Badge>
                 <RecordLink kind="person" id={issue.personId} className="font-medium">
                   {nameOf(issue.personId)}
                 </RecordLink>
@@ -220,7 +234,9 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
             {variance.flagged.map((person) => (
               <TableRow key={person.personId}>
                 <TableCell className="font-medium">
-                  <RecordLink kind="person" id={person.personId}>{variance.names.get(person.personId)?.fullName ?? "—"}</RecordLink>
+                  <RecordLink kind="person" id={person.personId}>
+                    {variance.names.get(person.personId)?.fullName ?? "—"}
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
                   <span className="flex flex-wrap gap-1">
@@ -236,9 +252,13 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                     ))}
                   </span>
                 </TableCell>
-                <TableCell kind="money" className="text-muted-foreground">{person.previousNet === null ? "—" : formatVnd(person.previousNet)}</TableCell>
+                <TableCell kind="money" className="text-muted-foreground">
+                  {person.previousNet === null ? "—" : formatVnd(person.previousNet)}
+                </TableCell>
                 <TableCell kind="money">{formatVnd(person.net)}</TableCell>
-                <TableCell kind="percent" className={person.changeBp !== null && Math.abs(person.changeBp) >= 2000 ? "text-warning" : undefined}>{percent(person.changeBp)}</TableCell>
+                <TableCell kind="percent" className={person.changeBp !== null && Math.abs(person.changeBp) >= 2000 ? "text-warning" : undefined}>
+                  {percent(person.changeBp)}
+                </TableCell>
                 <TableCell kind="actions">
                   <span className="flex justify-end gap-1.5">
                     <Link href={`/payroll/salaries/${person.personId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
@@ -304,7 +324,9 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
           <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-[0.9375rem]">{t("payslips.runTitle")}</h2>
-              <p className="text-sm text-muted-foreground">{run.payslipsPublishedAt ? `${t("payslips.released")} · ${when(run.payslipsPublishedAt)} · ${payslips.filter((row) => row.firstViewedAt).length}/${payslips.length} ${t("payslips.readBy")}` : t("payslips.notReleased")}</p>
+              <p className="text-sm text-muted-foreground">
+                {run.payslipsPublishedAt ? `${t("payslips.released")} · ${when(run.payslipsPublishedAt)} · ${payslips.filter((row) => row.firstViewedAt).length}/${payslips.length} ${t("payslips.readBy")}` : t("payslips.notReleased")}
+              </p>
             </div>
             <PublishPayslipsButton runId={run.id} published={!!run.payslipsPublishedAt} />
           </CardContent>
@@ -355,9 +377,19 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                       <Badge variant={person.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${person.profile}`)}</Badge>
                     </TableCell>
                     {seesPayslips ? <TableCell kind="money">{formatVnd(person.result!.totals.grossEarnings)}</TableCell> : null}
-                    {seesPayslips ? <TableCell kind="money" className="text-muted-foreground">{formatVnd(person.result!.totals.employeeInsurance)}</TableCell> : null}
-                    {seesPayslips ? <TableCell kind="money" className="text-muted-foreground">{formatVnd(person.result!.totals.pit)}</TableCell> : null}
-                    <TableCell kind="money" className="font-medium">{formatVnd(person.net)}</TableCell>
+                    {seesPayslips ? (
+                      <TableCell kind="money" className="text-muted-foreground">
+                        {formatVnd(person.result!.totals.employeeInsurance)}
+                      </TableCell>
+                    ) : null}
+                    {seesPayslips ? (
+                      <TableCell kind="money" className="text-muted-foreground">
+                        {formatVnd(person.result!.totals.pit)}
+                      </TableCell>
+                    ) : null}
+                    <TableCell kind="money" className="font-medium">
+                      {formatVnd(person.net)}
+                    </TableCell>
                     <TableCell>
                       {person.warnings.length > 0 ? (
                         // Every warning, not the first: one that says a figure was not paid must not hide behind another.
@@ -375,7 +407,9 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                           </Badge>
                         </Link>
                       ) : (
-                        <Badge dot variant={statusTone(run.status)}>{t(`runs.statuses.${run.status}`)}</Badge>
+                        <Badge dot variant={statusTone(run.status)}>
+                          {t(`runs.statuses.${run.status}`)}
+                        </Badge>
                       )}
                     </TableCell>
                     {seesPayslips ? (

@@ -221,7 +221,13 @@ export function markdownToDoc(markdown: string, options: MarkdownOptions = {}): 
   let title: string | null = null;
   const first = tokens.find((token) => token.type !== "space");
   if (options.liftTitle !== false && first?.type === "heading" && (first as Tokens.Heading).depth === 1) {
-    title = inlines((first as Tokens.Heading).tokens).map((node) => node.text ?? "").join("").replace(/\s+/g, " ").trim().slice(0, 200) || null;
+    title =
+      inlines((first as Tokens.Heading).tokens)
+        .map((node) => node.text ?? "")
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 200) || null;
     if (title) tokens.splice(tokens.indexOf(first), 1);
   }
   const content = blocks(tokens, { media: options.media ?? true });

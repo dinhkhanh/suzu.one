@@ -19,7 +19,6 @@ import { CANDIDATE_SOURCES, type CandidateSource } from "../enums";
 import type { DuplicateSignal, RedactedDuplicateMatch } from "../engine/duplicates";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
-
 export type CandidateFormValue = {
   id: string | null;
   fullName: string;

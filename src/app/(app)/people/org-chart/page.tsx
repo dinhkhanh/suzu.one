@@ -80,11 +80,13 @@ export default async function OrgChartPage(props: PageProps<"/people/org-chart">
         <div className="w-64">
           <Select name="entityId" defaultValue={entityId ?? ""} aria-label={t("fields.entity")}>
             <option value="">{t("orgChart.wholeGroup")}</option>
-            {entities.filter((entity) => entity.isActive).map((entity) => (
-              <option key={entity.id} value={entity.id}>
-                {entity.shortName}
-              </option>
-            ))}
+            {entities
+              .filter((entity) => entity.isActive)
+              .map((entity) => (
+                <option key={entity.id} value={entity.id}>
+                  {entity.shortName}
+                </option>
+              ))}
           </Select>
         </div>
         <Button type="submit" variant="outline">

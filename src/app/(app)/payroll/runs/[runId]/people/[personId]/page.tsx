@@ -50,7 +50,9 @@ export default async function PayrollRunPersonPage({ params }: PageProps<"/payro
               ← <span className="font-mono tabular-nums">{run.month}</span> · {entity.code}
             </Link>
             <span className="text-faint">·</span>
-            <Badge dot variant={statusTone(run.status)}>{t(`runs.statuses.${run.status}`)}</Badge>
+            <Badge dot variant={statusTone(run.status)}>
+              {t(`runs.statuses.${run.status}`)}
+            </Badge>
           </span>
         }
         title={t("runs.lines.title", { month: monthLabel(run.month) })}

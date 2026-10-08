@@ -64,10 +64,26 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
                   <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
                 </TableCell>
                 <TableCell>{[date(meeting.heldOn), meeting.startTime ? meeting.startTime.slice(0, 5) : null].filter(Boolean).join(" · ")}</TableCell>
-                <TableCell>{meeting.authorName ? <RecordLink kind="person" id={meeting.createdByPersonId}>{meeting.authorName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {meeting.authorName ? (
+                    <RecordLink kind="person" id={meeting.createdByPersonId}>
+                      {meeting.authorName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell kind="number">{meeting.attendeeIds.length}</TableCell>
                 <TableCell kind="number">{meeting.decisions}</TableCell>
-                <TableCell>{meeting.actionItems ? <Badge dot variant={meeting.openActionItems ? "warning" : "success"}>{t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}</Badge> : "—"}</TableCell>
+                <TableCell>
+                  {meeting.actionItems ? (
+                    <Badge dot variant={meeting.openActionItems ? "warning" : "success"}>
+                      {t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

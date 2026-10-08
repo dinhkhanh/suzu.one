@@ -22,15 +22,15 @@ const LAPTOP = (name: string, price: number, bought: string): Kit => ({ category
 const KIT: Record<string, Kit[]> = {
   "owner@suzu.vn": [LAPTOP("MacBook Pro 16", 78_000_000, "2024-05-10"), { category: "PHO", name: "iPhone 15 Pro", brand: "Apple", price: 28_000_000, bought: "2024-09-25" }],
   "ha.nguyen@suzu.vn": [LAPTOP("MacBook Air 15", 38_000_000, "2024-08-02"), { category: "PHO", name: "iPhone 14", brand: "Apple", price: 19_000_000, bought: "2024-08-02" }],
-  "mai.le@suzu.group": [LAPTOP("Dell Latitude 5450", 26_000_000, "2024-03-18"), { category: "MON", name: "Dell U2723QE 27\"", brand: "Dell", price: 12_500_000, bought: "2024-03-18" }],
+  "mai.le@suzu.group": [LAPTOP("Dell Latitude 5450", 26_000_000, "2024-03-18"), { category: "MON", name: 'Dell U2723QE 27"', brand: "Dell", price: 12_500_000, bought: "2024-03-18" }],
   "bao.pham@suzu.group": [LAPTOP("Dell Latitude 5440", 23_000_000, "2023-07-11")],
-  "tuan.vo@suzu.group": [LAPTOP("Dell Latitude 5450", 26_000_000, "2024-03-18"), { category: "MON", name: "Dell P2422H 24\"", brand: "Dell", price: 5_200_000, bought: "2024-03-18" }],
+  "tuan.vo@suzu.group": [LAPTOP("Dell Latitude 5450", 26_000_000, "2024-03-18"), { category: "MON", name: 'Dell P2422H 24"', brand: "Dell", price: 5_200_000, bought: "2024-03-18" }],
   "long.dang@suzu.group": [LAPTOP("MacBook Pro 14", 52_000_000, "2024-02-20"), { category: "PHO", name: "iPhone 13", brand: "Apple", price: 15_000_000, bought: "2023-04-04" }],
-  "tam.bui@suzu.group": [LAPTOP("MacBook Pro 14", 52_000_000, "2024-06-12"), { category: "MON", name: "BenQ PD2705U 27\"", brand: "BenQ", price: 14_900_000, bought: "2024-06-12" }],
+  "tam.bui@suzu.group": [LAPTOP("MacBook Pro 14", 52_000_000, "2024-06-12"), { category: "MON", name: 'BenQ PD2705U 27"', brand: "BenQ", price: 14_900_000, bought: "2024-06-12" }],
   "huy.ho@suzu.group": [LAPTOP("MacBook Pro 14", 49_000_000, "2023-08-01"), { category: "STOR", name: "Ổ cứng di động Samsung T7 2TB", brand: "Samsung", price: 4_300_000, bought: "2023-08-01" }],
-  "linh.do@suzu.group": [LAPTOP("MacBook Air 13", 28_000_000, "2026-08-03", )],
-  "chi.duong@suzu.group": [LAPTOP("MacBook Pro 14", 52_000_000, "2024-01-15"), { category: "MON", name: "Dell U2723QE 27\"", brand: "Dell", price: 12_500_000, bought: "2024-01-15" }],
-  "khoi.ly@suzu.group": [LAPTOP("MacBook Air 13", 28_000_000, "2024-04-22"), { category: "MON", name: "Dell P2422H 24\"", brand: "Dell", price: 5_200_000, bought: "2024-04-22" }],
+  "linh.do@suzu.group": [LAPTOP("MacBook Air 13", 28_000_000, "2026-08-03")],
+  "chi.duong@suzu.group": [LAPTOP("MacBook Pro 14", 52_000_000, "2024-01-15"), { category: "MON", name: 'Dell U2723QE 27"', brand: "Dell", price: 12_500_000, bought: "2024-01-15" }],
+  "khoi.ly@suzu.group": [LAPTOP("MacBook Air 13", 28_000_000, "2024-04-22"), { category: "MON", name: 'Dell P2422H 24"', brand: "Dell", price: 5_200_000, bought: "2024-04-22" }],
   "anh.trinh@suzu.group": [LAPTOP("Dell Vostro 3520", 15_500_000, "2026-06-15")],
   "duc.phan@suzu.group": [LAPTOP("MacBook Air 13", 27_000_000, "2023-03-06"), { category: "PHO", name: "iPhone 13", brand: "Apple", price: 15_000_000, bought: "2023-03-06" }],
   "duyen.huynh@suzu.group": [LAPTOP("Dell Vostro 3520", 15_500_000, "2024-10-01")],
@@ -57,7 +57,7 @@ const TEAM_GEAR: Kit[] = [
 /** Not handed to anyone: the spares, the machine in for repair, the thing that was written off. */
 const UNASSIGNED: (Kit & { status?: "in_stock" | "in_repair" | "lost"; location?: string })[] = [
   { category: "LAP", name: "MacBook Air 13 (máy dự phòng)", brand: "Apple", price: 28_000_000, bought: "2023-02-14", status: "in_stock", location: "Kho tầng 3" },
-  { category: "MON", name: "Dell P2422H 24\" (dự phòng)", brand: "Dell", price: 5_200_000, bought: "2023-02-14", status: "in_stock", location: "Kho tầng 3" },
+  { category: "MON", name: 'Dell P2422H 24" (dự phòng)', brand: "Dell", price: 5_200_000, bought: "2023-02-14", status: "in_stock", location: "Kho tầng 3" },
   { category: "LGT", name: "Aputure 120d II", brand: "Aputure", price: 13_000_000, bought: "2021-08-03", status: "in_repair", condition: "broken", location: "Gửi bảo hành Aputure" },
   { category: "STOR", name: "Thẻ nhớ CFexpress 512GB", brand: "SanDisk", price: 9_800_000, bought: "2023-05-19", status: "lost", condition: "good" },
 ];
@@ -154,7 +154,8 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
       .returning();
     assets += 1;
     await db.insert(assetEvent).values({ assetId: row.id, type: "acquired", actorPersonId: keeper?.id ?? null, detail: { code: row.code, name: row.name } });
-    if (kit.status === "in_repair") await db.insert(assetEvent).values({ assetId: row.id, type: "condition_changed", actorPersonId: keeper?.id ?? null, note: "Đèn không lên nguồn, đã gửi bảo hành.", detail: { from: "in_stock", to: "in_repair" } });
+    if (kit.status === "in_repair")
+      await db.insert(assetEvent).values({ assetId: row.id, type: "condition_changed", actorPersonId: keeper?.id ?? null, note: "Đèn không lên nguồn, đã gửi bảo hành.", detail: { from: "in_stock", to: "in_repair" } });
     if (kit.status === "lost") await db.insert(assetEvent).values({ assetId: row.id, type: "lost", actorPersonId: keeper?.id ?? null, note: "Thất lạc tại hiện trường quay Đà Lạt." });
 
     if (holder) {
@@ -213,7 +214,21 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
     const back = new Date("2025-06-30T09:00:00Z");
     const [first] = await db
       .insert(assetAssignment)
-      .values({ assetId: shared.id, holderType: "person", holderPersonId: intern.id, assignedByPersonId: keeper?.id ?? null, assignedAt: out, conditionOut: "good", accessories: ["Sạc"], handoverConfirmedAt: new Date(out.getTime() + 3_600_000), handoverNote: "Đã nhận.", returnedAt: back, returnedToPersonId: keeper?.id ?? null, conditionIn: "fair", returnNote: "Xước nhẹ mặt A, bản lề còn tốt." })
+      .values({
+        assetId: shared.id,
+        holderType: "person",
+        holderPersonId: intern.id,
+        assignedByPersonId: keeper?.id ?? null,
+        assignedAt: out,
+        conditionOut: "good",
+        accessories: ["Sạc"],
+        handoverConfirmedAt: new Date(out.getTime() + 3_600_000),
+        handoverNote: "Đã nhận.",
+        returnedAt: back,
+        returnedToPersonId: keeper?.id ?? null,
+        conditionIn: "fair",
+        returnNote: "Xước nhẹ mặt A, bản lề còn tốt.",
+      })
       .returning();
     await db.insert(assetEvent).values([
       { assetId: shared.id, assignmentId: first.id, type: "assigned", actorPersonId: keeper?.id ?? null, detail: { holderType: "person" } },
@@ -249,9 +264,7 @@ async function seedBookings(db: Db, byKey: Map<string, { id: string }>, keeper: 
   const existing = await db.select({ id: assetBooking.id }).from(assetBooking).limit(1);
   if (existing.length > 0) return 0;
 
-  const gear = new Map(
-    (await db.select({ id: asset.id, name: asset.name }).from(asset).innerJoin(assetCategory, eq(assetCategory.id, asset.categoryId)).where(eq(assetCategory.bookable, true))).map((row) => [row.name, row.id] as const),
-  );
+  const gear = new Map((await db.select({ id: asset.id, name: asset.name }).from(asset).innerJoin(assetCategory, eq(assetCategory.id, asset.categoryId)).where(eq(assetCategory.bookable, true))).map((row) => [row.name, row.id] as const));
   const tam = byKey.get("tam.bui@suzu.group");
   const huy = byKey.get("huy.ho@suzu.group");
   const baoAnh = byKey.get("Ngô Bảo Anh");
@@ -271,7 +284,14 @@ async function seedBookings(db: Db, byKey: Map<string, { id: string }>, keeper: 
 
   // Out on a shoot right now: taken off the shelf this morning, back on Wednesday.
   add("Sony FX6", tam.id, day(0, 8), day(2, 18), { status: "checked_out", purpose: "Quay TVC cho khách hàng Vinamilk", projectRef: "PRJ-2026-014", checkedOutAt: day(0, 8), checkedOutByPersonId: keeper, conditionOut: "good" });
-  add("Sony 24-70mm f/2.8 GM II", tam.id, day(0, 8), day(2, 18), { status: "checked_out", purpose: "Quay TVC cho khách hàng Vinamilk", projectRef: "PRJ-2026-014", checkedOutAt: day(0, 8), checkedOutByPersonId: keeper, conditionOut: "good" });
+  add("Sony 24-70mm f/2.8 GM II", tam.id, day(0, 8), day(2, 18), {
+    status: "checked_out",
+    purpose: "Quay TVC cho khách hàng Vinamilk",
+    projectRef: "PRJ-2026-014",
+    checkedOutAt: day(0, 8),
+    checkedOutByPersonId: keeper,
+    conditionOut: "good",
+  });
   // Confirmed, still to come.
   add("DJI Mavic 3 Pro", baoAnh?.id ?? huy.id, day(8, 7), day(9, 17), { purpose: "Quay flycam khu nghỉ dưỡng Hồ Tràm", projectRef: "PRJ-2026-019" });
   add("Aputure 600d Pro", huy.id, day(3, 9), day(3, 18), { purpose: "Quay phỏng vấn nội bộ" });
@@ -355,7 +375,19 @@ async function seedSeats(db: Db, byKey: Map<string, { id: string }>, keeper: str
 
   const [capcut] = await db
     .insert(licence)
-    .values({ name: "CapCut Pro (Teams)", vendor: "Bytedance", entityId: adobe.entityId, seats: 3, costPerCycle: 690_000, billingCycle: "monthly" as const, renewalDate: new Date(Date.now() + 12 * 86_400_000).toISOString().slice(0, 10), autoRenews: true, ownerPersonId: idOf("khoi.ly@suzu.group"), accountRef: "social@suzu.group", notes: "Dựng video ngắn cho TikTok và Reels." })
+    .values({
+      name: "CapCut Pro (Teams)",
+      vendor: "Bytedance",
+      entityId: adobe.entityId,
+      seats: 3,
+      costPerCycle: 690_000,
+      billingCycle: "monthly" as const,
+      renewalDate: new Date(Date.now() + 12 * 86_400_000).toISOString().slice(0, 10),
+      autoRenews: true,
+      ownerPersonId: idOf("khoi.ly@suzu.group"),
+      accountRef: "social@suzu.group",
+      notes: "Dựng video ngắn cho TikTok và Reels.",
+    })
     .returning({ id: licence.id });
 
   const seats: (typeof licenceSeat.$inferInsert)[] = [
@@ -385,7 +417,13 @@ async function seedDigitalAssets(db: Db, byKey: Map<string, { id: string }>): Pr
     const lead = idOf("khoi.ly@suzu.group");
     const owner = idOf("owner@suzu.vn");
     const accountant = idOf("mai.le@suzu.group");
-    const row = (values: Partial<typeof digitalAsset.$inferInsert> & Pick<typeof digitalAsset.$inferInsert, "name" | "platform" | "kind">): typeof digitalAsset.$inferInsert => ({ entityId: media.id, ownerPersonId: lead, createdByPersonId: owner, credentialLocation: "1Password › Social", ...values });
+    const row = (values: Partial<typeof digitalAsset.$inferInsert> & Pick<typeof digitalAsset.$inferInsert, "name" | "platform" | "kind">): typeof digitalAsset.$inferInsert => ({
+      entityId: media.id,
+      ownerPersonId: lead,
+      createdByPersonId: owner,
+      credentialLocation: "1Password › Social",
+      ...values,
+    });
     const rows = await db
       .insert(digitalAsset)
       .values([
@@ -396,11 +434,40 @@ async function seedDigitalAssets(db: Db, byKey: Map<string, { id: string }>): Pr
         row({ name: "suzu.vn", platform: "website", kind: "website", url: "https://suzu.vn", ownerPersonId: owner, credentialLocation: "1Password › Hạ tầng › Tên miền", notes: "Tên miền gia hạn hằng năm; DNS ở Cloudflare." }),
         ...(client
           ? [
-              row({ name: "Trà Lá Xanh Fanpage", platform: "facebook", kind: "social_channel", ownership: "client", clientId: client.id, handle: "@tralaxanh", url: "https://www.facebook.com/tralaxanh", loginIdentity: "Khách cấp quyền qua Business Manager", credentialLocation: null }),
-              row({ name: "@tralaxanh", platform: "tiktok", kind: "social_channel", ownership: "client", clientId: client.id, handle: "@tralaxanh", url: "https://www.tiktok.com/@tralaxanh", loginIdentity: "marketing@tralaxanh.vn", credentialLocation: "1Password › Khách hàng › Trà Lá Xanh" }),
+              row({
+                name: "Trà Lá Xanh Fanpage",
+                platform: "facebook",
+                kind: "social_channel",
+                ownership: "client",
+                clientId: client.id,
+                handle: "@tralaxanh",
+                url: "https://www.facebook.com/tralaxanh",
+                loginIdentity: "Khách cấp quyền qua Business Manager",
+                credentialLocation: null,
+              }),
+              row({
+                name: "@tralaxanh",
+                platform: "tiktok",
+                kind: "social_channel",
+                ownership: "client",
+                clientId: client.id,
+                handle: "@tralaxanh",
+                url: "https://www.tiktok.com/@tralaxanh",
+                loginIdentity: "marketing@tralaxanh.vn",
+                credentialLocation: "1Password › Khách hàng › Trà Lá Xanh",
+              }),
             ]
           : []),
-        row({ name: "Thuế điện tử (eTax) — SuZu Media", platform: "other", kind: "business_account", visibility: "restricted", ownerPersonId: accountant, url: "https://thuedientu.gdt.gov.vn", loginIdentity: "Mã số thuế của pháp nhân", credentialLocation: "Két sắt phòng kế toán — USB chữ ký số" }),
+        row({
+          name: "Thuế điện tử (eTax) — SuZu Media",
+          platform: "other",
+          kind: "business_account",
+          visibility: "restricted",
+          ownerPersonId: accountant,
+          url: "https://thuedientu.gdt.gov.vn",
+          loginIdentity: "Mã số thuế của pháp nhân",
+          credentialLocation: "Két sắt phòng kế toán — USB chữ ký số",
+        }),
       ])
       .returning({ id: digitalAsset.id, name: digitalAsset.name });
     created = rows.length;
@@ -432,7 +499,11 @@ async function seedDigitalAssets(db: Db, byKey: Map<string, { id: string }>): Pr
     if (access.length) await db.insert(digitalAssetAccess).values(access);
     // Huy knew the TikTok password and is out: it has not been changed since.
     const tiktok = assetId("SuZu Media — TikTok");
-    if (tiktok) await db.update(digitalAsset).set({ rotationDueSince: daysAgo(3) }).where(eq(digitalAsset.id, tiktok));
+    if (tiktok)
+      await db
+        .update(digitalAsset)
+        .set({ rotationDueSince: daysAgo(3) })
+        .where(eq(digitalAsset.id, tiktok));
   }
 
   // The posts the project demo typed a page name for now point at the registered page of that

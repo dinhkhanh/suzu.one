@@ -22,15 +22,7 @@ export async function isPendingPhoto(fileId: string, personId: string, actorPers
   const [row] = await db()
     .select({ id: schema.storedFile.id })
     .from(schema.storedFile)
-    .where(
-      and(
-        eq(schema.storedFile.id, fileId),
-        eq(schema.storedFile.ownerType, PHOTO_OWNER_TYPE),
-        eq(schema.storedFile.ownerId, personId),
-        eq(schema.storedFile.uploadedByPersonId, actorPersonId),
-        eq(schema.storedFile.status, "pending"),
-      ),
-    )
+    .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, PHOTO_OWNER_TYPE), eq(schema.storedFile.ownerId, personId), eq(schema.storedFile.uploadedByPersonId, actorPersonId), eq(schema.storedFile.status, "pending")))
     .limit(1);
   return !!row;
 }

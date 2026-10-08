@@ -8,7 +8,27 @@ import { ActionError, createAction } from "@/lib/action";
 import type { CurrentUser } from "../platform/auth/session";
 import { getRequest } from "../platform/approvals/service";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
-import { canCreateProject, canEditTask, canGiveProjectRole, canManageTemplate, CHANNELS, CONTENT_FORMATS, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, projectRoleOf, teamFacts, updateTaskAction, VISIBILITIES, type WorkViewer } from "../work/service";
+import {
+  canCreateProject,
+  canEditTask,
+  canGiveProjectRole,
+  canManageTemplate,
+  CHANNELS,
+  CONTENT_FORMATS,
+  createProjectFromTemplate,
+  findProject,
+  findTeam,
+  findWorkTemplate,
+  invalidateWorkDirectory,
+  loadTask,
+  loadViewer,
+  projectFacts,
+  projectRoleOf,
+  teamFacts,
+  updateTaskAction,
+  VISIBILITIES,
+  type WorkViewer,
+} from "../work/service";
 import { PROJECT_KINDS } from "./engine/brief";
 import { HEALTHS } from "./engine/status";
 import { postStatusUpdateInput } from "./inputs";
@@ -35,8 +55,13 @@ const hours = z.preprocess(blankToNull, z.coerce.number().min(0).max(100_000).nu
 /** Rows of a repeated group: the form posts "roles.0.role", "roles.1.role"… which arrive as an object keyed by position. Blank rows are dropped. */
 const rows = <Schema extends z.ZodType>(schema: Schema, max: number) =>
   z.preprocess((value) => {
-    const list = value && typeof value === "object" && !Array.isArray(value) ? Object.entries(value).sort(([a], [b]) => Number(a) - Number(b)).map(([, row]) => row) : (value ?? []);
-    return (list as unknown[]).filter((row) => !row || typeof row !== "object" || Object.values(row).some((cell) => typeof cell === "string" ? cell.trim() !== "" : cell !== undefined && cell !== null && cell !== false));
+    const list =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? Object.entries(value)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([, row]) => row)
+        : (value ?? []);
+    return (list as unknown[]).filter((row) => !row || typeof row !== "object" || Object.values(row).some((cell) => (typeof cell === "string" ? cell.trim() !== "" : cell !== undefined && cell !== null && cell !== false)));
   }, z.array(schema).max(max));
 /** Integer VND; "12.000.000" and "12,000,000" are what people type. */
 const vnd = z.preprocess((value) => (typeof value === "string" ? (value.trim() === "" ? null : value.replace(/[.,\s]/g, "")) : value), z.coerce.number().int().min(0).max(1_000_000_000_000).nullable().default(null));
@@ -99,7 +124,10 @@ const feePipeline = createAction({
     refresh(input.projectId);
     // The log says the fee changed, never what it is: an audit reader is not a `pjm:commercial`
     // holder. The entity is on the record so the reading itself is kept to the project's own.
-    return { data: { ok: true }, audit: { resource: auditProject(input.projectId, found?.project.entityId ?? null), summary: "fee", before: { feeSet: change.before !== null }, after: { feeSet: change.after !== null, feeChanged: change.before !== change.after } } };
+    return {
+      data: { ok: true },
+      audit: { resource: auditProject(input.projectId, found?.project.entityId ?? null), summary: "fee", before: { feeSet: change.before !== null }, after: { feeSet: change.after !== null, feeChanged: change.before !== change.after } },
+    };
   },
 });
 export async function setFeeAction(input: unknown) {
@@ -121,7 +149,10 @@ const accountManagerPipeline = createAction({
   run: async ({ input }) => {
     const change = await setAccountManager(input.projectId, input.personId);
     refresh(input.projectId);
-    return { data: change, audit: { resource: auditProject(input.projectId), summary: `account manager: ${change.before ?? "—"} → ${change.after ?? "—"}`, before: { accountManagerPersonId: change.before }, after: { accountManagerPersonId: change.after } } };
+    return {
+      data: change,
+      audit: { resource: auditProject(input.projectId), summary: `account manager: ${change.before ?? "—"} → ${change.after ?? "—"}`, before: { accountManagerPersonId: change.before }, after: { accountManagerPersonId: change.after } },
+    };
   },
 });
 export async function setAccountManagerAction(input: unknown) {
@@ -130,11 +161,30 @@ export async function setAccountManagerAction(input: unknown) {
 
 // ── The brief and the kick-off gate (FR-PJM-03) ─────────────────────────────────────────────
 
-const lines = (max: number) => z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.string().max(max)).max(30));
+const lines = (max: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string"
+        ? value
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+        : (value ?? []),
+    z.array(z.string().max(max)).max(30),
+  );
 
 /** One contact per line: "Name — role — phone or email". */
 const contactLines = lines(300);
-const linkLines = z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : (value ?? [])), z.array(z.url().max(500)).max(20));
+const linkLines = z.preprocess(
+  (value) =>
+    typeof value === "string"
+      ? value
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+      : (value ?? []),
+  z.array(z.url().max(500)).max(20),
+);
 const contactsOf = (clientContacts: readonly string[]) =>
   clientContacts.map((line) => {
     const [name, role, contact] = line.split(/\s+[—–-]\s+/).map((part) => part.trim());
@@ -229,7 +279,15 @@ export async function decideBriefAction(input: unknown) {
 
 const phasePipeline = createAction({
   name: "projects.phase.save",
-  input: z.object({ projectId: z.uuid(), phaseId: optional(z.uuid()), name: z.string().trim().min(1).max(120), startDate: optional(isoDate), endDate: optional(isoDate), budgetHours: hours, sortOrder: z.coerce.number().int().min(0).max(1000).default(0) }),
+  input: z.object({
+    projectId: z.uuid(),
+    phaseId: optional(z.uuid()),
+    name: z.string().trim().min(1).max(120),
+    startDate: optional(isoDate),
+    endDate: optional(isoDate),
+    budgetHours: hours,
+    sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
+  }),
   authorize: (user, input) => may(user, input.projectId, canEditPlan),
   run: async ({ input }) => {
     const { projectId, phaseId, budgetHours, ...values } = input;
@@ -280,7 +338,10 @@ const milestonePipeline = createAction({
     const { before, after } = await saveMilestone(projectId, milestoneId, { ...values, ...amount });
     refresh(projectId);
     const shape = (row: typeof after | null) => (row ? { name: row.name, dueDate: row.dueDate, phaseId: row.phaseId, ownerPersonId: row.ownerPersonId, isClientFacing: row.isClientFacing, isBilling: row.isBilling } : null);
-    return { data: { id: after.id }, audit: { resource: auditProject(projectId, found?.project.entityId ?? null), summary: `milestone: ${after.name}`, before: shape(before), after: { ...shape(after), billingAmountChanged: "billingAmountVnd" in amount } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: auditProject(projectId, found?.project.entityId ?? null), summary: `milestone: ${after.name}`, before: shape(before), after: { ...shape(after), billingAmountChanged: "billingAmountVnd" in amount } },
+    };
   },
 });
 export async function saveMilestoneAction(input: unknown) {
@@ -424,7 +485,15 @@ export async function postStatusUpdateAction(input: unknown) {
 const filterId = optional(z.uuid());
 const exportPipeline = createAction({
   name: "projects.portfolio.export",
-  input: z.object({ teamId: filterId, clientId: filterId, leadPersonId: filterId, entityId: filterId, kind: optional(z.enum(PROJECT_KINDS)), health: optional(z.enum([...HEALTHS, "stale", "none"])), locale: z.enum(["vi", "en"]).default("vi") }),
+  input: z.object({
+    teamId: filterId,
+    clientId: filterId,
+    leadPersonId: filterId,
+    entityId: filterId,
+    kind: optional(z.enum(PROJECT_KINDS)),
+    health: optional(z.enum([...HEALTHS, "stale", "none"])),
+    locale: z.enum(["vi", "en"]).default("vi"),
+  }),
   // Anyone may export what they may see: the rows are the portfolio's own, filtered by the same policy.
   authorize: () => true,
   run: async ({ user, input }) => {
@@ -458,7 +527,17 @@ const templatePlanPipeline = createAction({
     updateCadenceDays: z.coerce.number().int().min(1).max(60).default(7),
     phases: rows(z.object({ name: z.string().trim().min(1).max(120), startDay: day, endDay: day }), 20).default([]),
     milestones: rows(z.object({ name: z.string().trim().min(1).max(160), day, phase: index, isClientFacing: checkbox.default(false), isBilling: checkbox.default(false) }), 40).default([]),
-    deliverables: rows(z.object({ title: z.string().trim().min(1).max(200), quantity: z.coerce.number().int().min(1).max(1000), format: optional(z.enum(CONTENT_FORMATS)), channel: optional(z.enum(CHANNELS)), milestone: index, day: z.preprocess(blankToNull, day.nullable().default(null)) }), 60).default([]),
+    deliverables: rows(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        quantity: z.coerce.number().int().min(1).max(1000),
+        format: optional(z.enum(CONTENT_FORMATS)),
+        channel: optional(z.enum(CHANNELS)),
+        milestone: index,
+        day: z.preprocess(blankToNull, day.nullable().default(null)),
+      }),
+      60,
+    ).default([]),
     roles: rows(z.object({ role: z.string().trim().max(60), hours }), 20).default([]),
     objective: text(4000),
     scopeIn: text(4000),
@@ -513,7 +592,10 @@ const projectFromTemplatePipeline = createAction({
     );
     revalidatePath("/work");
     revalidatePath("/projects");
-    return { data: { id: project.id, tasks: taskIds.length }, audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { project, templateId: template.id, tasks: taskIds.length } } };
+    return {
+      data: { id: project.id, tasks: taskIds.length },
+      audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { project, templateId: template.id, tasks: taskIds.length } },
+    };
   },
 });
 export async function createProjectFromTemplatePlanAction(input: unknown) {
@@ -545,7 +627,12 @@ const movePipeline = createAction({
     const shape = (key: "from" | "to") => Object.fromEntries(result.applied.map((change) => [change.taskId, change[key]]));
     return {
       data: { moved: result.applied.length, shifted: Math.max(0, result.applied.length - 1), leftAlone: result.leftAlone },
-      audit: { resource: { type: "task:work", id: input.taskId }, summary: `timeline move, ${result.plan.shiftDays} working days; ${input.shiftDependents ? `${result.plan.shifts.length} dependents shifted` : `${result.leftAlone} dependents left`}`, before: shape("from"), after: shape("to") },
+      audit: {
+        resource: { type: "task:work", id: input.taskId },
+        summary: `timeline move, ${result.plan.shiftDays} working days; ${input.shiftDependents ? `${result.plan.shifts.length} dependents shifted` : `${result.leftAlone} dependents left`}`,
+        before: shape("from"),
+        after: shape("to"),
+      },
     };
   },
 });
@@ -584,7 +671,15 @@ const reopenPipeline = createAction({
     refresh(input.projectId);
     revalidatePath("/work");
     // The reason is the point of this record; the close-out it undid stays on the plan as history.
-    return { data: { reopenedAt: entry.reopenedAt }, audit: { resource: auditProject(input.projectId, found?.project.entityId ?? null), summary: `re-opened: ${input.reason}`.slice(0, 300), before: { status: projectStatusBefore, closedAt: entry.closedAt, closedByPersonId: entry.closedByPersonId }, after: { status: "active", reason: input.reason } } };
+    return {
+      data: { reopenedAt: entry.reopenedAt },
+      audit: {
+        resource: auditProject(input.projectId, found?.project.entityId ?? null),
+        summary: `re-opened: ${input.reason}`.slice(0, 300),
+        before: { status: projectStatusBefore, closedAt: entry.closedAt, closedByPersonId: entry.closedByPersonId },
+        after: { status: "active", reason: input.reason },
+      },
+    };
   },
 });
 export async function reopenProjectAction(input: unknown) {
@@ -593,7 +688,11 @@ export async function reopenProjectAction(input: unknown) {
 
 // ── Bookings (FR-PJM-13) ────────────────────────────────────────────────────────────────────
 
-const bookingHours = z.coerce.number().min(0.5).max(80).transform((value) => Math.round(value * 60));
+const bookingHours = z.coerce
+  .number()
+  .min(0.5)
+  .max(80)
+  .transform((value) => Math.round(value * 60));
 const bookPipeline = createAction({
   name: "projects.booking.create",
   input: z.object({
@@ -612,7 +711,15 @@ const bookPipeline = createAction({
     const { created, changed } = await bookWeeks(projectId, { ...rest, minutes: hours }, { personId: user.person.id, fullName: user.person.fullName });
     refresh(projectId);
     revalidatePath("/projects/capacity");
-    return { data: { created: created.length, changed: changed.length }, audit: { resource: auditProject(projectId), summary: `booking: ${input.personId ?? input.placeholderRole} × ${created.length + changed.length} weeks from ${input.weekStart}`, before: changed.length ? { bookings: changed.map((row) => row.before) } : undefined, after: { bookings: [...created, ...changed.map((row) => row.after)] } } };
+    return {
+      data: { created: created.length, changed: changed.length },
+      audit: {
+        resource: auditProject(projectId),
+        summary: `booking: ${input.personId ?? input.placeholderRole} × ${created.length + changed.length} weeks from ${input.weekStart}`,
+        before: changed.length ? { bookings: changed.map((row) => row.before) } : undefined,
+        after: { bookings: [...created, ...changed.map((row) => row.after)] },
+      },
+    };
   },
 });
 export async function bookAction(input: unknown) {
@@ -658,7 +765,15 @@ const fillPipeline = createAction({
     const { filled, merged } = await fillPlaceholder(projectId, rest, { personId: user.person.id, fullName: user.person.fullName });
     refresh(projectId);
     revalidatePath("/projects/capacity");
-    return { data: { filled: filled.length, merged }, audit: { resource: auditProject(projectId), summary: `placeholder filled: ${input.placeholderRole} → ${input.personId} (${filled.length} weeks)`, before: { bookings: filled.map((row) => row.before) }, after: { bookings: filled.map((row) => row.after) } } };
+    return {
+      data: { filled: filled.length, merged },
+      audit: {
+        resource: auditProject(projectId),
+        summary: `placeholder filled: ${input.placeholderRole} → ${input.personId} (${filled.length} weeks)`,
+        before: { bookings: filled.map((row) => row.before) },
+        after: { bookings: filled.map((row) => row.after) },
+      },
+    };
   },
 });
 export async function fillPlaceholderAction(input: unknown) {

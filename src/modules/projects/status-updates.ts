@@ -21,8 +21,14 @@ export async function projectFollowers(projectId: string, except: string | null)
   const [project] = await db().select({ teamId: schema.workProject.teamId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project) return [];
   const [members, leads] = await Promise.all([
-    db().select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), inArray(schema.workProjectMember.role, ["lead", "account_manager", "member"]))),
-    db().select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"))),
+    db()
+      .select({ personId: schema.workProjectMember.personId })
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, projectId), inArray(schema.workProjectMember.role, ["lead", "account_manager", "member"]))),
+    db()
+      .select({ personId: schema.workTeamMember.personId })
+      .from(schema.workTeamMember)
+      .where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"))),
   ]);
   return [...new Set([...members, ...leads].map((row) => row.personId))].filter((id) => id !== except);
 }
@@ -34,7 +40,10 @@ export async function postStatusUpdate(projectId: string, input: StatusUpdateInp
   const [project] = await db().select({ name: schema.workProject.name }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   const followers = await projectFollowers(projectId, author.personId);
   return db().transaction(async (tx) => {
-    const [row] = await tx.insert(schema.projectStatusUpdate).values({ projectId, ...input, facts, authorPersonId: author.personId }).returning();
+    const [row] = await tx
+      .insert(schema.projectStatusUpdate)
+      .values({ projectId, ...input, facts, authorPersonId: author.personId })
+      .returning();
     await tx.update(schema.projectPlan).set({ health: input.health, healthUpdatedAt: row.createdAt, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
     await notify({ recipients: followers, kind: "projects.status_posted", params: { actor: author.fullName, project: project?.name ?? "" }, link: `/projects/${projectId}/updates` }, tx);
     return row;

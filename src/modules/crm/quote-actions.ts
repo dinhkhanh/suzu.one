@@ -76,10 +76,25 @@ const saveQuotePipeline = createAction({
       vatRateBp: input.vatRateBp,
       intro: input.intro,
       terms: input.terms,
-      lines: input.lines.map((line) => ({ serviceId: line.serviceId, title: line.title, description: line.description, quantity: line.quantity, unit: line.unit, unitPriceVnd: line.unitPriceVnd, discountBp: line.discountPercent, months: line.months, format: line.format, channel: line.channel, roleMinutes: line.roles.filter((role) => role.role && role.hours > 0).map((role) => ({ role: role.role, minutes: role.hours })) })),
+      lines: input.lines.map((line) => ({
+        serviceId: line.serviceId,
+        title: line.title,
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitPriceVnd: line.unitPriceVnd,
+        discountBp: line.discountPercent,
+        months: line.months,
+        format: line.format,
+        channel: line.channel,
+        roleMinutes: line.roles.filter((role) => role.role && role.hours > 0).map((role) => ({ role: role.role, minutes: role.hours })),
+      })),
     });
     refreshQuote(after.dealId, after.id);
-    return { data: { id: after.id, totalVnd: after.totalVnd }, audit: { resource: auditQuote(after.id), before: { totalVnd: before.totalVnd, maxDiscountBp: before.maxDiscountBp }, after: { totalVnd: after.totalVnd, maxDiscountBp: after.maxDiscountBp } } };
+    return {
+      data: { id: after.id, totalVnd: after.totalVnd },
+      audit: { resource: auditQuote(after.id), before: { totalVnd: before.totalVnd, maxDiscountBp: before.maxDiscountBp }, after: { totalVnd: after.totalVnd, maxDiscountBp: after.maxDiscountBp } },
+    };
   },
 });
 export async function saveQuoteAction(input: unknown) {
@@ -106,8 +121,7 @@ const quoteStepPipeline = createAction({
       const sent = await sendQuote(input.quoteId, user.person.id);
       status = sent.after.status;
       marginChecked = sent.check?.marginChecked ?? null;
-    }
-    else if (input.step === "accept" || input.step === "reject") status = (await answerQuote(input.quoteId, input.step === "accept", input.note)).after.status;
+    } else if (input.step === "accept" || input.step === "reject") status = (await answerQuote(input.quoteId, input.step === "accept", input.note)).after.status;
     else {
       const revised = await reviseQuote(input.quoteId, user.person.id);
       resultId = revised.id;
@@ -117,7 +131,15 @@ const quoteStepPipeline = createAction({
     revalidatePath("/approvals");
     // A quote that left without its margin being checked says so on its trail — never the margin itself.
     const unchecked = marginChecked === false;
-    return { data: { id: resultId, status }, audit: { resource: auditQuote(input.quoteId), summary: `${input.step} → ${status}${unchecked ? " (margin not checked: no cost rate)" : ""}`, before: { status: quote.status }, after: { status, ...(marginChecked === null ? {} : { marginChecked }) } } };
+    return {
+      data: { id: resultId, status },
+      audit: {
+        resource: auditQuote(input.quoteId),
+        summary: `${input.step} → ${status}${unchecked ? " (margin not checked: no cost rate)" : ""}`,
+        before: { status: quote.status },
+        after: { status, ...(marginChecked === null ? {} : { marginChecked }) },
+      },
+    };
   },
 });
 export async function quoteStepAction(input: unknown) {
@@ -145,7 +167,11 @@ const servicePipeline = createAction({
   name: "crm.service.save",
   input: z.object({
     serviceId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,29}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9_-]{1,29}$/),
     name: z.string().trim().min(1).max(200),
     nameEn: text(200),
     category: z.enum(SERVICE_LINES),

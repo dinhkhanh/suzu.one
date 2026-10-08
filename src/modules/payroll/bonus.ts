@@ -136,7 +136,13 @@ export async function getBonusCost(runId: string, executor: Executor = db()): Pr
 /** The same from lines already read — the run screen lists them anyway. Entity names come from the shared cache. */
 export async function bonusCostOf(lines: readonly BonusLineView[]): Promise<BonusCost> {
   const nameOf = new Map((await listEntities()).map((row) => [row.id, row.shortName]));
-  return { totals: sumBonus(lines.map((line) => line.trace)), byEntity: costByEntity(lines.map((line) => ({ entityId: line.row.entityId, trace: line.trace })), nameOf) };
+  return {
+    totals: sumBonus(lines.map((line) => line.trace)),
+    byEntity: costByEntity(
+      lines.map((line) => ({ entityId: line.row.entityId, trace: line.trace })),
+      nameOf,
+    ),
+  };
 }
 
 /** Per entity, in id order, each with its lines added up — one pass over the lines. */
@@ -216,12 +222,20 @@ export type BonusSimulation = { cost: BonusCost; lines: { personId: string; pers
  * salary on the reference day, and the scheme in force. Pure reads — nothing is written, so this
  * is both what `simulateBonusRun` stores and what a what-if hands back.
  */
-async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, executor: Executor = db()): Promise<{ lines: { input: BonusPersonInput; trace: BonusTrace; personId: string; personName: string; entityId: string; schemeVersionId: string; result: PerformanceResultRow | null; kpiScoreIds: string[] }[] }> {
+async function buildLines(
+  run: BonusRunRow,
+  options: SimulationOptions = {},
+  executor: Executor = db(),
+): Promise<{ lines: { input: BonusPersonInput; trace: BonusTrace; personId: string; personName: string; entityId: string; schemeVersionId: string; result: PerformanceResultRow | null; kpiScoreIds: string[] }[] }> {
   const entityIds = run.entityIds;
   const referenceDates = new Map<string, IsoDate>();
   const schemes = new Map<string, ResolvedBonusScheme>();
   const resolved = await Promise.all(
-    entityIds.map((entityId) => (options.schemeOverride ? { id: "", entityId: options.schemeOverride.entityId, validFrom: schemeDateOf(run.year), value: bonusSchemeSchema.parse(options.schemeOverride.value) } : getBonusScheme(entityId, schemeDateOf(run.year), executor))),
+    entityIds.map((entityId) =>
+      options.schemeOverride
+        ? { id: "", entityId: options.schemeOverride.entityId, validFrom: schemeDateOf(run.year), value: bonusSchemeSchema.parse(options.schemeOverride.value) }
+        : getBonusScheme(entityId, schemeDateOf(run.year), executor),
+    ),
   );
   entityIds.forEach((entityId, index) => {
     schemes.set(entityId, resolved[index]);
@@ -262,7 +276,16 @@ async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, exe
       unitOkrProgressBp: unitProgressOf(okr, scheme.value.unitOkr.level),
       schemeVersionId: scheme.id || null,
     };
-    lines.push({ input, trace: bonusForPerson(input, scheme.value), personId: person.personId, personName: person.fullName, entityId: person.entityId, schemeVersionId: scheme.id, result, kpiScoreIds: kpi.months.map((month) => month.scoreId) });
+    lines.push({
+      input,
+      trace: bonusForPerson(input, scheme.value),
+      personId: person.personId,
+      personName: person.fullName,
+      entityId: person.entityId,
+      schemeVersionId: scheme.id,
+      result,
+      kpiScoreIds: kpi.months.map((month) => month.scoreId),
+    });
   }
   return { lines };
 }
@@ -296,7 +319,7 @@ export async function simulateBonusRun(runId: string, actorPersonId: string, exe
     const traces: BonusTrace[] = [];
     for (const line of lines) {
       const kept = overrides.get(line.personId);
-      const trace = kept ? bonusForPerson({ ...line.input, override: kept.override }, (await schemeValueFor(line.schemeVersionId, run.year, line.entityId, tx))) : line.trace;
+      const trace = kept ? bonusForPerson({ ...line.input, override: kept.override }, await schemeValueFor(line.schemeVersionId, run.year, line.entityId, tx)) : line.trace;
       const id = randomUUID();
       await tx.insert(schema.bonusRunLine).values({
         id,
@@ -351,12 +374,21 @@ const schemeValueFor = async (schemeVersionId: string, year: number, entityId: s
  * signed. Passing `null` takes the adjustment back. The computed amount is never rewritten: it
  * stays in the trace beside the override, and the explanation page shows both.
  */
-export async function overrideBonusLine(input: { runId: string; personId: string; amountVnd: number | null; reason: string }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: BonusTrace; after: BonusTrace }> {
+export async function overrideBonusLine(
+  input: { runId: string; personId: string; amountVnd: number | null; reason: string },
+  actorPersonId: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: BonusTrace; after: BonusTrace }> {
   return executor.transaction(async (tx) => {
     const run = await getBonusRun(input.runId, tx);
     if (!run) throw new ActionError("bonus_run_not_found");
     if (!isOpenForEditing(run)) throw new ActionError("bonus_run_not_editable");
-    const [row] = await tx.select().from(schema.bonusRunLine).where(and(eq(schema.bonusRunLine.runId, input.runId), eq(schema.bonusRunLine.personId, input.personId))).limit(1).for("update");
+    const [row] = await tx
+      .select()
+      .from(schema.bonusRunLine)
+      .where(and(eq(schema.bonusRunLine.runId, input.runId), eq(schema.bonusRunLine.personId, input.personId)))
+      .limit(1)
+      .for("update");
     if (!row) throw new ActionError("bonus_line_not_found");
     if (input.amountVnd !== null && (!Number.isSafeInteger(input.amountVnd) || input.amountVnd < 0)) throw new ActionError("amount_invalid");
     if (input.amountVnd !== null && input.reason.trim() === "") throw new ActionError("reason_required");
@@ -369,7 +401,13 @@ export async function overrideBonusLine(input: { runId: string; personId: string
     const after = bonusForPerson(traceToInput(before, override), scheme);
     await tx
       .update(schema.bonusRunLine)
-      .set({ traceEnc: fieldCipher().encrypt(JSON.stringify(after), bonusLineContext(row.id)), overrideReason: override?.reason ?? null, overrideByPersonId: override ? actorPersonId : null, overrideAt: override ? now : null, updatedAt: now })
+      .set({
+        traceEnc: fieldCipher().encrypt(JSON.stringify(after), bonusLineContext(row.id)),
+        overrideReason: override?.reason ?? null,
+        overrideByPersonId: override ? actorPersonId : null,
+        overrideAt: override ? now : null,
+        updatedAt: now,
+      })
       .where(eq(schema.bonusRunLine.id, row.id));
     await refreshTotals(input.runId, tx);
     return { before, after };
@@ -443,7 +481,11 @@ export async function stepBonusRun(runId: string, step: BonusStep, actorPersonId
               ? { cancelledAt: now }
               : {};
 
-    const [after] = await tx.update(schema.bonusRun).set({ status: rule.to, ...signature, updatedAt: now }).where(eq(schema.bonusRun.id, runId)).returning();
+    const [after] = await tx
+      .update(schema.bonusRun)
+      .set({ status: rule.to, ...signature, updatedAt: now })
+      .where(eq(schema.bonusRun.id, runId))
+      .returning();
     await tx.insert(schema.bonusRunEvent).values({ runId, fromStatus: before.status, toStatus: rule.to, actorPersonId, comment: input.comment?.trim() || null });
 
     if (step === "approve") await freezeScores(after, tx);
@@ -542,7 +584,13 @@ export async function payBonusRun(runId: string, actorPersonId: string, options:
     if (wanted.some((entityId) => !run.entityIds.includes(entityId))) throw new ActionError("bonus_entity_not_in_run");
 
     const lines = await listBonusLines(runId, {}, tx);
-    const state = new Map(bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), await listBonusHandoffs(runId, tx)).map((entity) => [entity.entityId, entity]));
+    const state = new Map(
+      bonusHandoffState(
+        run,
+        lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })),
+        await listBonusHandoffs(runId, tx),
+      ).map((entity) => [entity.entityId, entity]),
+    );
     const headcountOf = (entityId: string) => state.get(entityId)?.payable ?? 0;
 
     const payrollRuns: BonusPaymentResult["payrollRuns"] = [];
@@ -570,7 +618,18 @@ export async function payBonusRun(runId: string, actorPersonId: string, options:
       // Only the lines that were actually in the payroll run. A line worth nothing was never paid,
       // and must not claim on its explanation page that it was. (On a paid run this is the one
       // change the database still lets a line take — migration 0115.)
-      await tx.update(schema.bonusRunLine).set({ payrollRunId: created.id, updatedAt: new Date() }).where(and(eq(schema.bonusRunLine.runId, runId), inArray(schema.bonusRunLine.personId, payable.map((line) => line.row.personId))));
+      await tx
+        .update(schema.bonusRunLine)
+        .set({ payrollRunId: created.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.bonusRunLine.runId, runId),
+            inArray(
+              schema.bonusRunLine.personId,
+              payable.map((line) => line.row.personId),
+            ),
+          ),
+        );
       payrollRuns.push({ entityId, payrollRunId: created.id, headcount: payable.length, created: true });
     }
     if (payrollRuns.length === 0) throw new ActionError("bonus_run_nothing_to_pay");

@@ -164,7 +164,8 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [missing, setMissing] = useState<Missing[]>([]);
   const { package: pkg } = requirement;
-  const missingText = (item: Missing) => (item.kind === "field" ? t("missing.field", { label: item.label }) : item.kind === "invalid" ? t("missing.invalid", { label: item.label }) : item.kind === "check" ? t("missing.check", { text: item.text }) : t(`missing.${item.kind}`));
+  const missingText = (item: Missing) =>
+    item.kind === "field" ? t("missing.field", { label: item.label }) : item.kind === "invalid" ? t("missing.invalid", { label: item.label }) : item.kind === "check" ? t("missing.check", { text: item.text }) : t(`missing.${item.kind}`);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,7 +221,14 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
               {field.type === "date" ? (
                 <DatePicker id={`value-${field.key}`} name={`value.${field.key}`} required={field.required} />
               ) : (
-                <Input id={`value-${field.key}`} name={`value.${field.key}`} type={field.type === "url" ? "url" : field.type === "number" ? "number" : "text"} step={field.type === "number" ? "any" : undefined} required={field.required} maxLength={2000} />
+                <Input
+                  id={`value-${field.key}`}
+                  name={`value.${field.key}`}
+                  type={field.type === "url" ? "url" : field.type === "number" ? "number" : "text"}
+                  step={field.type === "number" ? "any" : undefined}
+                  required={field.required}
+                  maxLength={2000}
+                />
               )}
             </div>
           ))}
@@ -380,7 +388,6 @@ export type HandoffItem = {
   canRespond: boolean;
 };
 
-
 /** Every hand-off of the task, newest first, with its note (FR-PJM-43) — and "send to another team" (FR-PJM-42). */
 export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { taskId: string; taskTitle: string; handoffs: HandoffItem[]; teams: { id: string; name: string }[]; canSend: boolean }) {
   const t = useTranslations("work.handoff");
@@ -400,15 +407,33 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
           <ListItem key={item.id} className={`flex-col items-stretch gap-2 ${item.status === "pending" ? "bg-primary/5" : ""}`}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{t(`kinds.${item.kind}`)}</Badge>
-              <Badge dot variant={statusTone(item.status)}>{t(`statuses.${item.status}`)}</Badge>
+              <Badge dot variant={statusTone(item.status)}>
+                {t(`statuses.${item.status}`)}
+              </Badge>
               <span className="text-muted-foreground">
                 {item.kind === "cross_team"
-                  ? t.rich("toTeam", { from: item.fromName ?? "—", team: item.toTeamName ?? "—", a: (chunks) => <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>{chunks}</RecordLink> })
+                  ? t.rich("toTeam", {
+                      from: item.fromName ?? "—",
+                      team: item.toTeamName ?? "—",
+                      a: (chunks) => (
+                        <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>
+                          {chunks}
+                        </RecordLink>
+                      ),
+                    })
                   : t.rich("fromTo", {
                       from: item.fromName ?? "—",
                       to: item.toName ?? "—",
-                      a: (chunks) => <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>{chunks}</RecordLink>,
-                      b: (chunks) => <RecordLink kind="person" id={item.toName ? item.toPersonId : null}>{chunks}</RecordLink>,
+                      a: (chunks) => (
+                        <RecordLink kind="person" id={item.fromName ? item.fromPersonId : null}>
+                          {chunks}
+                        </RecordLink>
+                      ),
+                      b: (chunks) => (
+                        <RecordLink kind="person" id={item.toName ? item.toPersonId : null}>
+                          {chunks}
+                        </RecordLink>
+                      ),
                     })}
                 {item.fromStateName && item.toStateName ? ` · ${item.fromStateName} → ${item.toStateName}` : ""}
               </span>
@@ -434,7 +459,15 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
                 {Object.entries(item.packageValues).map(([key, value]) => (
                   <div key={key} className="contents">
                     <dt className="text-xs text-muted-foreground">{item.packageFields.find((field) => field.key === key)?.label ?? key}</dt>
-                    <dd className="break-words">{/^https?:\/\//.test(value) ? <a href={value} target="_blank" rel="noopener noreferrer" className="underline">{value}</a> : value}</dd>
+                    <dd className="break-words">
+                      {/^https?:\/\//.test(value) ? (
+                        <a href={value} target="_blank" rel="noopener noreferrer" className="underline">
+                          {value}
+                        </a>
+                      ) : (
+                        value
+                      )}
+                    </dd>
                   </div>
                 ))}
               </dl>

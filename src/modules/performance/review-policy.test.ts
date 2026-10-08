@@ -30,13 +30,33 @@ const DES = "dept-des";
 const principal = (personId: string, grants: Grant[] = [], workforceType: Principal["workforceType"] = "employee"): Principal => ({ personId, workforceType, grants });
 
 // owner → ceo → long (head of VID) → tam → huy; chi heads DES at SZC.
-const managerOf = new Map<string, string | null>([["owner", null], ["ceo", "owner"], ["long", "ceo"], ["tam", "long"], ["huy", "tam"], ["linh", "tam"], ["chi", "ceo"], ["khoi", "chi"]]);
+const managerOf = new Map<string, string | null>([
+  ["owner", null],
+  ["ceo", "owner"],
+  ["long", "ceo"],
+  ["tam", "long"],
+  ["huy", "tam"],
+  ["linh", "tam"],
+  ["chi", "ceo"],
+  ["khoi", "chi"],
+]);
 const person = (personId: string, entityId: string, unitId: string): PersonContext => ({ personId, entityId, unitPath: [unitId], managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
 
 const huy = person("huy", SZM, VID);
 const khoi = person("khoi", SZC, DES);
 
-const parties = (subject: PersonContext, over: Partial<ReviewParties> = {}): ReviewParties => ({ subject, managerPersonId: managerOf.get(subject.personId) ?? null, stage: "manager_done", released: false, cycleStatus: "active", peerAnonymous: true, rolling: false, signOffRequired: false, signedOff: false, ...over });
+const parties = (subject: PersonContext, over: Partial<ReviewParties> = {}): ReviewParties => ({
+  subject,
+  managerPersonId: managerOf.get(subject.personId) ?? null,
+  stage: "manager_done",
+  released: false,
+  cycleStatus: "active",
+  peerAnonymous: true,
+  rolling: false,
+  signOffRequired: false,
+  signedOff: false,
+  ...over,
+});
 
 const owner = principal("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrSzm = principal("bao", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);

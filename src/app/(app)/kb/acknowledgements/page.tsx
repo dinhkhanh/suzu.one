@@ -49,10 +49,14 @@ export default async function MyAcknowledgementsPage() {
                   </RecordLink>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  <RecordLink kind="kbSpace" id={row.spaceKey}>{row.spaceName}</RecordLink>
+                  <RecordLink kind="kbSpace" id={row.spaceKey}>
+                    {row.spaceName}
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
+                  <Badge dot variant={row.overdue ? "destructive" : "outline"}>
+                    {row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -75,7 +79,9 @@ export default async function MyAcknowledgementsPage() {
             {done.map((row) => (
               <TableRow key={`${row.pageId}-${row.versionNo}`}>
                 <TableCell>
-                  <RecordLink kind="kbPage" id={row.pageId}>{row.title}</RecordLink>
+                  <RecordLink kind="kbPage" id={row.pageId}>
+                    {row.title}
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
                   v{row.versionNo} {row.current ? null : <span className="text-xs text-muted-foreground">· {t("ack.superseded")}</span>}

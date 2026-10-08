@@ -13,7 +13,18 @@ import { Select } from "@/components/ui/select";
 import { saveTeamRulesAction } from "../actions";
 import { RULE_MODES, WEEKDAYS } from "../enums";
 
-type Rules = { planMode: string; reportMode: string; reportDays: readonly number[]; planCutoff: string; reportDeadline: string; timeMode: string; timesheetApproval: boolean; coverMinDays: number; cycleWeeks: number | null; cycleStart: string | null };
+type Rules = {
+  planMode: string;
+  reportMode: string;
+  reportDays: readonly number[];
+  planCutoff: string;
+  reportDeadline: string;
+  timeMode: string;
+  timesheetApproval: boolean;
+  coverMinDays: number;
+  cycleWeeks: number | null;
+  cycleStart: string | null;
+};
 
 export function TeamRulesForm({ teamId, rules, canManage }: { teamId: string; rules: Rules; canManage: boolean }) {
   const t = useTranslations("daily.rules");

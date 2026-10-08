@@ -21,7 +21,11 @@ const saveTemplatePipeline = createAction({
   name: "document.template.save",
   input: z.object({
     templateId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{1,23}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9-]{1,23}$/),
     name: z.string().trim().min(1).max(200),
     entityId: optional(z.uuid()),
     kind: z.enum(DOCUMENT_KINDS),
@@ -54,7 +58,12 @@ const saveTemplatePipeline = createAction({
     revalidatePath("/admin/document-templates");
     return {
       data: { id: after.id, version: after.version },
-      audit: { resource: { type: "document_template", id: after.id, entityId: after.entityId }, summary: `${after.code} ${after.name}`, before: before && { tier: before.tier, version: before.version }, after: { tier: after.tier, version: after.version } },
+      audit: {
+        resource: { type: "document_template", id: after.id, entityId: after.entityId },
+        summary: `${after.code} ${after.name}`,
+        before: before && { tier: before.tier, version: before.version },
+        after: { tier: after.tier, version: after.version },
+      },
     };
   },
 });

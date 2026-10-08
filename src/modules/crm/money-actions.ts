@@ -126,7 +126,11 @@ const beginScanPipeline = createAction({
   authorize: (user, input) => mayContract(user, input.contractId, canEditContracts),
   run: async ({ user, input }) => {
     const contract = (await findContract(input.contractId))!;
-    const upload = await beginUpload({ ownerType: SIGNED_CONTRACT, ownerId: contract.id, entityId: contract.entityId, tier: FILE_TIER }, { fileName: input.fileName, sizeBytes: input.sizeBytes }, { personId: user.person.id, email: user.email });
+    const upload = await beginUpload(
+      { ownerType: SIGNED_CONTRACT, ownerId: contract.id, entityId: contract.entityId, tier: FILE_TIER },
+      { fileName: input.fileName, sizeBytes: input.sizeBytes },
+      { personId: user.person.id, email: user.email },
+    );
     return { data: upload, audit: { resource: { type: "stored_file", id: upload.fileId, entityId: contract.entityId }, summary: input.fileName } };
   },
 });
@@ -266,7 +270,15 @@ const voidPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after, released } = await voidInvoice(input.invoiceId, input.reason, user.person.id);
     refreshInvoice(after);
-    return { data: { status: after.status, released }, audit: { resource: { type: "crm_invoice", id: after.id, entityId: after.entityId }, summary: after.number ?? "", before: { status: before.status }, after: { status: after.status, reason: after.voidedReason, itemsReleased: released } } };
+    return {
+      data: { status: after.status, released },
+      audit: {
+        resource: { type: "crm_invoice", id: after.id, entityId: after.entityId },
+        summary: after.number ?? "",
+        before: { status: before.status },
+        after: { status: after.status, reason: after.voidedReason, itemsReleased: released },
+      },
+    };
   },
 });
 export async function voidInvoiceAction(input: unknown) {
@@ -283,7 +295,14 @@ const paymentPipeline = createAction({
     revalidatePath("/crm/invoices");
     if (commission.reopened) revalidatePath("/crm/commission");
     // The statements a late payment reopened are counted, never priced: commission is compensation.
-    return { data: { id: payment.id, status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: `payment ${payment.amountVnd}`, after: { ...payment, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled } } };
+    return {
+      data: { id: payment.id, status: invoice.status },
+      audit: {
+        resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId },
+        summary: `payment ${payment.amountVnd}`,
+        after: { ...payment, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled },
+      },
+    };
   },
 });
 export async function recordPaymentAction(input: unknown) {
@@ -302,7 +321,15 @@ const reversePaymentPipeline = createAction({
     revalidatePath(`/crm/invoices/${invoice.id}`);
     revalidatePath("/crm/invoices");
     if (commission.reopened) revalidatePath("/crm/commission");
-    return { data: { status: invoice.status }, audit: { resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId }, summary: `payment ${before.amountVnd} reversed`, before, after: { ...after, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled } } };
+    return {
+      data: { status: invoice.status },
+      audit: {
+        resource: { type: "crm_invoice", id: invoice.id, entityId: invoice.entityId },
+        summary: `payment ${before.amountVnd} reversed`,
+        before,
+        after: { ...after, commissionReopened: commission.reopened, commissionAfterPayroll: commission.settled },
+      },
+    };
   },
 });
 export async function reversePaymentAction(input: unknown) {

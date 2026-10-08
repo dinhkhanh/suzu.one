@@ -31,7 +31,5 @@ export function Field({ name, label, children }: { name: string; label: string; 
 export function FormError({ namespace, errorKey }: { namespace: string; errorKey: string | null }) {
   const t = useTranslations(namespace);
   if (!errorKey) return null;
-  return (
-    <Alert variant="destructive">{t.has(errorKey) ? t(errorKey) : t("generic")}</Alert>
-  );
+  return <Alert variant="destructive">{t.has(errorKey) ? t(errorKey) : t("generic")}</Alert>;
 }

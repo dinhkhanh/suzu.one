@@ -48,17 +48,35 @@ export async function applySalePlanIn(tx: Tx, projectId: string, sale: SalePlanI
     // is every line of a project made a moment ago.
     await tx
       .delete(schema.projectDeliverable)
-      .where(and(eq(schema.projectDeliverable.projectId, projectId), isNull(schema.projectDeliverable.retainerPeriodId), notExists(tx.select().from(schema.projectTaskLink).where(eq(schema.projectTaskLink.deliverableId, schema.projectDeliverable.id)))));
+      .where(
+        and(
+          eq(schema.projectDeliverable.projectId, projectId),
+          isNull(schema.projectDeliverable.retainerPeriodId),
+          notExists(tx.select().from(schema.projectTaskLink).where(eq(schema.projectTaskLink.deliverableId, schema.projectDeliverable.id))),
+        ),
+      );
   }
   if (sale.deliverables.length) {
-    await tx.insert(schema.projectDeliverable).values(sale.deliverables.map((line, index) => ({ projectId, title: line.title.slice(0, 200), quantity: Math.max(1, line.quantity), format: line.format, channel: line.channel, sortOrder: (index + 1) * 10 })));
+    await tx
+      .insert(schema.projectDeliverable)
+      .values(sale.deliverables.map((line, index) => ({ projectId, title: line.title.slice(0, 200), quantity: Math.max(1, line.quantity), format: line.format, channel: line.channel, sortOrder: (index + 1) * 10 })));
   }
 
   if (sale.retainer) {
     if (!MONTH.test(sale.retainer.startMonth) || (sale.retainer.endMonth && (!MONTH.test(sale.retainer.endMonth) || sale.retainer.endMonth < sale.retainer.startMonth))) throw new ActionError("retainer_months_invalid");
     await tx
       .insert(schema.projectRetainer)
-      .values({ projectId, clientId: project.clientId, startMonth: sale.retainer.startMonth, endMonth: sale.retainer.endMonth, lines: sale.retainer.lines, minutesPerMonth: sale.retainer.minutesPerMonth, feePerMonthVnd: sale.retainer.feePerMonthVnd, rollover: "reset", isActive: true })
+      .values({
+        projectId,
+        clientId: project.clientId,
+        startMonth: sale.retainer.startMonth,
+        endMonth: sale.retainer.endMonth,
+        lines: sale.retainer.lines,
+        minutesPerMonth: sale.retainer.minutesPerMonth,
+        feePerMonthVnd: sale.retainer.feePerMonthVnd,
+        rollover: "reset",
+        isActive: true,
+      })
       .onConflictDoNothing({ target: schema.projectRetainer.projectId });
   }
 
@@ -94,7 +112,11 @@ export async function applySalePlanIn(tx: Tx, projectId: string, sale: SalePlanI
     touched.push(sale.accountManagerPersonId);
   }
   const viewers = [...new Set(sale.viewerPersonIds)].filter((personId) => !roleOf.has(personId) && personId !== sale.accountManagerPersonId);
-  if (viewers.length) await tx.insert(schema.workProjectMember).values(viewers.map((personId) => ({ projectId, personId, role: "viewer" }))).onConflictDoNothing();
+  if (viewers.length)
+    await tx
+      .insert(schema.workProjectMember)
+      .values(viewers.map((personId) => ({ projectId, personId, role: "viewer" })))
+      .onConflictDoNothing();
   touched.push(...viewers);
   if (touched.length) await invalidateMemberships(...touched);
 
@@ -114,7 +136,10 @@ export async function applySalePlanIn(tx: Tx, projectId: string, sale: SalePlanI
 export async function eraseBriefContactDetailsIn(tx: Tx, clientIds: readonly string[], details: readonly string[]): Promise<number> {
   const needles = [...new Set(details.map((detail) => detail.trim().toLowerCase()).filter((detail) => detail.length >= 3))];
   if (clientIds.length === 0 || needles.length === 0) return 0;
-  const holds = sql.join(needles.map((needle) => sql`position(${needle}::text in lower(c.entry->>'contact')) > 0`), sql` or `);
+  const holds = sql.join(
+    needles.map((needle) => sql`position(${needle}::text in lower(c.entry->>'contact')) > 0`),
+    sql` or `,
+  );
   // The guard is inside the call, not beside it: the planner may run either side of an AND first,
   // and `jsonb_array_elements` over a brief without contacts would be an error, not "no rows".
   const contacts = sql`jsonb_array_elements(case when jsonb_typeof(p.brief->'clientContacts') = 'array' then p.brief->'clientContacts' else '[]'::jsonb end)`;
@@ -126,7 +151,10 @@ export async function eraseBriefContactDetailsIn(tx: Tx, clientIds: readonly str
         updated_at = now()
     from work_project w
     where w.id = p.project_id
-      and w.client_id in (${sql.join(clientIds.map((id) => sql`${id}::uuid`), sql`, `)})
+      and w.client_id in (${sql.join(
+        clientIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})
       and exists (select 1 from ${contacts} as c(entry) where ${holds})
     returning p.project_id`);
   return rowsOf<{ project_id: string }>(result).length;

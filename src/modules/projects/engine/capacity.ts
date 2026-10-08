@@ -75,7 +75,10 @@ export type CapacityCell = {
 export function capacityWeek(input: { week: Week; days: readonly PlannedDay[]; leave: readonly LeaveDay[]; bookings: readonly Booking[]; daysOff: ReadonlySet<IsoDate> }): CapacityCell {
   const { week } = input;
   const inWeek = (date: IsoDate) => date >= week.start && date <= week.end;
-  const leaveOn = Map.groupBy(input.leave.filter((day) => inWeek(day.date)), (day) => day.date);
+  const leaveOn = Map.groupBy(
+    input.leave.filter((day) => inWeek(day.date)),
+    (day) => day.date,
+  );
   let scheduledMinutes = 0;
   let awayMinutes = 0;
   let awayDays = 0;
@@ -100,12 +103,31 @@ export function capacityWeek(input: { week: Week; days: readonly PlannedDay[]; l
   const confirmedMinutes = own.filter((booking) => booking.status === "confirmed").reduce((total, booking) => total + booking.minutes, 0);
   const tentativeMinutes = own.filter((booking) => booking.status === "tentative").reduce((total, booking) => total + booking.minutes, 0);
   const over = confirmedMinutes > availableMinutes;
-  return { week, scheduledMinutes, awayMinutes, awayDays, holidayDays, availableMinutes, confirmedMinutes, tentativeMinutes, freeMinutes: availableMinutes - confirmedMinutes, over, atRisk: !over && tentativeMinutes > 0 && confirmedMinutes + tentativeMinutes > availableMinutes };
+  return {
+    week,
+    scheduledMinutes,
+    awayMinutes,
+    awayDays,
+    holidayDays,
+    availableMinutes,
+    confirmedMinutes,
+    tentativeMinutes,
+    freeMinutes: availableMinutes - confirmedMinutes,
+    over,
+    atRisk: !over && tentativeMinutes > 0 && confirmedMinutes + tentativeMinutes > availableMinutes,
+  };
 }
 
 export type CapacityRow<Person> = { person: Person; cells: CapacityCell[]; overWeeks: number };
 
-export function capacity<Person extends { id: string }>(input: { people: readonly Person[]; weeks: readonly Week[]; days: (person: Person) => readonly PlannedDay[]; leave: readonly (LeaveDay & { personId: string })[]; bookings: readonly (Booking & { personId: string })[]; daysOff: (person: Person) => ReadonlySet<IsoDate> }): CapacityRow<Person>[] {
+export function capacity<Person extends { id: string }>(input: {
+  people: readonly Person[];
+  weeks: readonly Week[];
+  days: (person: Person) => readonly PlannedDay[];
+  leave: readonly (LeaveDay & { personId: string })[];
+  bookings: readonly (Booking & { personId: string })[];
+  daysOff: (person: Person) => ReadonlySet<IsoDate>;
+}): CapacityRow<Person>[] {
   const leaveOf = Map.groupBy(input.leave, (day) => day.personId);
   const bookingsOf = Map.groupBy(input.bookings, (booking) => booking.personId);
   return input.people.map((person) => {

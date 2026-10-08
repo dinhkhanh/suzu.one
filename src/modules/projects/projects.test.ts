@@ -44,8 +44,16 @@ import { workflow } from "../../../tests/helpers/workflows";
 import { tableToCsv } from "../platform/export/csv";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "lan" | "huy" | "ke" | "video" | "tvc" | "social" | "group" | "tvcLine", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const year = String(Number(todayInVietnam().slice(0, 4)) % 100).padStart(2, "0");
 
 /** A viewer as the policy sees them, built by hand: the grants are the point of these tests. */
@@ -70,25 +78,51 @@ async function handIn(taskId: string, client: "approved" | "changes_required" | 
   const [last] = await db().select({ version: schema.workDeliverable.version }).from(schema.workDeliverable).where(eq(schema.workDeliverable.taskId, taskId)).orderBy(desc(schema.workDeliverable.version)).limit(1);
   const [deliverable] = await db()
     .insert(schema.workDeliverable)
-    .values({ taskId, version: (last?.version ?? 0) + 1, kind: "link", url: "https://drive.google.com/cut", submittedByPersonId: ids.huy, decision: client === "changes_required" ? "changes_requested" : "approved", decidedByPersonId: ids.tam, decidedAt: new Date(), frozenAt: client === "approved" ? new Date() : null })
+    .values({
+      taskId,
+      version: (last?.version ?? 0) + 1,
+      kind: "link",
+      url: "https://drive.google.com/cut",
+      submittedByPersonId: ids.huy,
+      decision: client === "changes_required" ? "changes_requested" : "approved",
+      decidedByPersonId: ids.tam,
+      decidedAt: new Date(),
+      frozenAt: client === "approved" ? new Date() : null,
+    })
     .returning();
-  if (client === "link") await db().insert(schema.workPreviewLink).values({ taskId, deliverableId: deliverable.id, tokenHash: `hash-${deliverable.id}`, expiresAt: new Date(Date.now() + 86_400_000), createdByPersonId: ids.lan });
-  else if (client) await db().insert(schema.workDeliverableDecision).values({ deliverableId: deliverable.id, decision: client, decidedByPersonId: ids.lan, isClient: true, client: { channel: "email", decidedByName: "Chị Mai", decidedOn: todayInVietnam() } });
+  if (client === "link")
+    await db()
+      .insert(schema.workPreviewLink)
+      .values({ taskId, deliverableId: deliverable.id, tokenHash: `hash-${deliverable.id}`, expiresAt: new Date(Date.now() + 86_400_000), createdByPersonId: ids.lan });
+  else if (client)
+    await db()
+      .insert(schema.workDeliverableDecision)
+      .values({ deliverableId: deliverable.id, decision: client, decidedByPersonId: ids.lan, isClient: true, client: { channel: "email", decidedByName: "Chị Mai", decidedOn: todayInVietnam() } });
 }
 
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
-  for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["lan", "Lan Tran"], ["huy", "Huy Ho"], ["ke", "Ke Toan"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["long", "Long Dang"],
+    ["tam", "Tam Bui"],
+    ["lan", "Lan Tran"],
+    ["huy", "Huy Ho"],
+    ["ke", "Ke Toan"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   // Long leads the video team; Tam leads the TVC project; Huy works in it.
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy, ids.lan]) await setTeamMember(video.id, personId, "member");
-  const project = (name: string, status: "planned" | "active") => createProject({ teamId: video.id, name, description: null, clientId: null, status, visibility: "team", leadPersonId: ids.tam, startDate: "2026-10-01", dueDate: "2026-11-30" }, ids.long);
+  const project = (name: string, status: "planned" | "active") =>
+    createProject({ teamId: video.id, name, description: null, clientId: null, status, visibility: "team", leadPersonId: ids.tam, startDate: "2026-10-01", dueDate: "2026-11-30" }, ids.long);
   ids.tvc = (await project("TVC Tết", "planned")).id;
   ids.social = (await project("Social tháng 10", "active")).id;
   // The fee is agreed before the kick-off: afterwards it moves only through a change request.
@@ -120,7 +154,10 @@ describe("the plan and its job number (FR-PJM-02)", () => {
 
   it("keeps the account manager in the plan and in the member roles", async () => {
     await setAccountManager(ids.tvc, ids.lan);
-    const [member] = await db().select().from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, ids.tvc), eq(schema.workProjectMember.personId, ids.lan)));
+    const [member] = await db()
+      .select()
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, ids.tvc), eq(schema.workProjectMember.personId, ids.lan)));
     expect(member.role).toBe("account_manager");
     expect((await ensurePlan(ids.tvc)).accountManagerPersonId).toBe(ids.lan);
     expect(await fails(setAccountManager(ids.tvc, ids.tam))).toBe("account_manager_is_lead");
@@ -157,7 +194,16 @@ describe("the deliverables register (FR-PJM-05)", () => {
 describe("the kick-off gate (FR-PJM-03, 12)", () => {
   it("refuses an incomplete brief, then goes to the team lead; approval takes the baseline and starts the project", async () => {
     expect(await fails(submitBrief(ids.tvc, ids.lan))).toBe("brief_incomplete");
-    await updatePlanSettings(ids.tvc, { kind: "client", budgetMinutes: null, budgetByRole: [{ role: "Dựng phim", minutes: 2400 }, { role: "Đạo diễn", minutes: 1200 }], updateCadenceDays: 7, driveUrl: null });
+    await updatePlanSettings(ids.tvc, {
+      kind: "client",
+      budgetMinutes: null,
+      budgetByRole: [
+        { role: "Dựng phim", minutes: 2400 },
+        { role: "Đạo diễn", minutes: 1200 },
+      ],
+      updateCadenceDays: 7,
+      driveUrl: null,
+    });
     await updateBrief(ids.tvc, brief);
     const milestone = (await saveMilestone(ids.tvc, null, { name: "Bàn giao master", dueDate: "2026-11-28", phaseId: null, ownerPersonId: ids.tam, isClientFacing: true, isBilling: true, sortOrder: 0 })).after;
     ids.tvcLine = (await saveDeliverable(ids.tvc, null, { title: "Bản cắt 15s", quantity: 3, format: "short_video", channel: "tiktok", dueDate: "2026-11-20", milestoneId: null, sortOrder: 0 })).after.id;
@@ -183,7 +229,10 @@ describe("the kick-off gate (FR-PJM-03, 12)", () => {
     expect(await fails(decideBrief(ids.long, requestId, { action: "return", comment: null }))).toBe("approval_comment_required");
     const returned = await decideBrief(ids.long, requestId, { action: "return", comment: "Thiếu KPI cụ thể" });
     expect(returned.plan.briefStatus).toBe("returned");
-    const [event] = await db().select().from(schema.approvalEvent).where(and(eq(schema.approvalEvent.requestId, requestId), eq(schema.approvalEvent.type, "returned")));
+    const [event] = await db()
+      .select()
+      .from(schema.approvalEvent)
+      .where(and(eq(schema.approvalEvent.requestId, requestId), eq(schema.approvalEvent.type, "returned")));
     expect(event.comment).toBe("Thiếu KPI cụ thể");
 
     await updateBrief(ids.social, { ...brief, successCriteria: "Tương tác +15%" });
@@ -222,9 +271,36 @@ describe("after the kick-off, scope, hours and fee change only through change re
   it("refuses a new hours budget and a new fee, and lets the same total be split between roles again", async () => {
     const settings = { kind: "client" as const, updateCadenceDays: 7, driveUrl: null };
     expect(await fails(updatePlanSettings(ids.tvc, { ...settings, budgetMinutes: 600, budgetByRole: [] }))).toBe("scope_locked");
-    expect(await fails(updatePlanSettings(ids.tvc, { ...settings, budgetMinutes: null, budgetByRole: [{ role: "Dựng phim", minutes: 3000 }, { role: "Đạo diễn", minutes: 1200 }] }))).toBe("scope_locked");
-    const { after } = await updatePlanSettings(ids.tvc, { ...settings, updateCadenceDays: 10, driveUrl: "https://drive.google.com/drive/folders/tvc", budgetMinutes: null, budgetByRole: [{ role: "Dựng phim", minutes: 3000 }, { role: "Đạo diễn", minutes: 600 }] });
-    expect(after).toMatchObject({ budgetMinutes: 3600, updateCadenceDays: 10, budgetByRole: [{ role: "Dựng phim", minutes: 3000 }, { role: "Đạo diễn", minutes: 600 }] });
+    expect(
+      await fails(
+        updatePlanSettings(ids.tvc, {
+          ...settings,
+          budgetMinutes: null,
+          budgetByRole: [
+            { role: "Dựng phim", minutes: 3000 },
+            { role: "Đạo diễn", minutes: 1200 },
+          ],
+        }),
+      ),
+    ).toBe("scope_locked");
+    const { after } = await updatePlanSettings(ids.tvc, {
+      ...settings,
+      updateCadenceDays: 10,
+      driveUrl: "https://drive.google.com/drive/folders/tvc",
+      budgetMinutes: null,
+      budgetByRole: [
+        { role: "Dựng phim", minutes: 3000 },
+        { role: "Đạo diễn", minutes: 600 },
+      ],
+    });
+    expect(after).toMatchObject({
+      budgetMinutes: 3600,
+      updateCadenceDays: 10,
+      budgetByRole: [
+        { role: "Dựng phim", minutes: 3000 },
+        { role: "Đạo diễn", minutes: 600 },
+      ],
+    });
     expect(await fails(setFee(ids.tvc, 150_000_000))).toBe("scope_locked");
     expect(await fails(setFee(ids.tvc, null))).toBe("scope_locked");
     // Saving the fee it already has changes nothing and is not refused.
@@ -268,7 +344,15 @@ describe("done internally is not accepted by the client (FR-PJM-05)", () => {
 
     // The client approves the first: accepted. They send the second back: in production again, whatever its state.
     await handIn(first, "approved");
-    await db().insert(schema.workDeliverableDecision).values({ deliverableId: (await db().select().from(schema.workDeliverable).where(eq(schema.workDeliverable.taskId, second)))[0].id, decision: "changes_required", decidedByPersonId: ids.lan, isClient: true, client: { channel: "zalo", decidedByName: "Chị Mai", decidedOn: todayInVietnam() } });
+    await db()
+      .insert(schema.workDeliverableDecision)
+      .values({
+        deliverableId: (await db().select().from(schema.workDeliverable).where(eq(schema.workDeliverable.taskId, second)))[0].id,
+        decision: "changes_required",
+        decidedByPersonId: ids.lan,
+        isClient: true,
+        client: { channel: "zalo", decidedByName: "Chị Mai", decidedOn: todayInVietnam() },
+      });
     expect(await lineOf()).toMatchObject({ status: "in_production", accepted: 1, awaitingClient: 0, counts: { accepted: 1, in_production: 1, promised: 1 } });
     expect((await loadRegisters([ids.tvc])).get(ids.tvc)).toMatchObject({ accepted: 1, percent: 33 });
 
@@ -431,7 +515,10 @@ describe("status reminders (FR-PJM-27)", () => {
     const due = addDays(todayInVietnam(), 8);
 
     // Its lead role is taken off the member list; the project still names Huy as its lead.
-    await db().update(schema.workProjectMember).set({ role: "member" }).where(and(eq(schema.workProjectMember.projectId, orphan.id), eq(schema.workProjectMember.personId, ids.huy)));
+    await db()
+      .update(schema.workProjectMember)
+      .set({ role: "member" })
+      .where(and(eq(schema.workProjectMember.projectId, orphan.id), eq(schema.workProjectMember.personId, ids.huy)));
     await sendStatusReminders(due);
     expect([await remindedOf(ids.huy), await remindedOf(ids.long)]).toEqual([1, 0]);
 
@@ -457,7 +544,9 @@ describe("project templates v2 (FR-PJM-15)", () => {
       budgetByRole: [{ role: "Dựng phim", minutes: 1200 }],
       brief: { objective: "Bốn video ngắn cho đợt ra mắt" },
     });
-    expect(await fails(saveTemplatePlan(template.id, { kind: "client", updateCadenceDays: 7, phases: [], milestones: [{ name: "X", day: 1, phase: 3, isClientFacing: false, isBilling: false }], deliverables: [], budgetByRole: [], brief: {} }))).toBe("template_plan_invalid");
+    expect(
+      await fails(saveTemplatePlan(template.id, { kind: "client", updateCadenceDays: 7, phases: [], milestones: [{ name: "X", day: 1, phase: 3, isClientFacing: false, isBilling: false }], deliverables: [], budgetByRole: [], brief: {} })),
+    ).toBe("template_plan_invalid");
 
     const { project, taskIds } = await createProjectFromTemplate(
       { teamId: ids.video, name: "Video ra mắt", description: null, clientId: null, status: "planned", visibility: "team", leadPersonId: ids.tam, startDate: "2026-12-01", dueDate: null },

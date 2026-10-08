@@ -10,12 +10,41 @@ import { matchesReach, permissionReach, type Principal, type Target } from "@/mo
 import { anyReachSql } from "./people-sql";
 import { cellColumns, monthEnd, monthStart, type TimesheetDayCell } from "./timesheets";
 
-export const ANOMALY_KINDS = ["missing_punch", "absent", "late", "early", "short_hours", "ot_unapproved", "worked_on_day_off", "worked_on_leave", "no_schedule", "punch_to_review", "holiday_work_unconfirmed", "request_pending", "month_not_confirmed", "month_not_approved", "unmapped_device_id"] as const;
+export const ANOMALY_KINDS = [
+  "missing_punch",
+  "absent",
+  "late",
+  "early",
+  "short_hours",
+  "ot_unapproved",
+  "worked_on_day_off",
+  "worked_on_leave",
+  "no_schedule",
+  "punch_to_review",
+  "holiday_work_unconfirmed",
+  "request_pending",
+  "month_not_confirmed",
+  "month_not_approved",
+  "unmapped_device_id",
+] as const;
 export type AnomalyKind = (typeof ANOMALY_KINDS)[number];
 /** What opens from a line: a correction or overtime form on the person's behalf, the punch review, the clock's ID map, the request, the timesheets screen. */
 export type AnomalyFix = "correction" | "overtime" | "holiday_work" | "review" | "device" | "request" | "timesheets" | "schedule" | "none";
 
-export type AnomalyLine = { key: string; kind: AnomalyKind; personId: string | null; fullName: string | null; entityId: string | null; departmentId: string | null; date: IsoDate | null; minutes: number | null; detail: string | null; fix: AnomalyFix; href: string | null; blocking: boolean };
+export type AnomalyLine = {
+  key: string;
+  kind: AnomalyKind;
+  personId: string | null;
+  fullName: string | null;
+  entityId: string | null;
+  departmentId: string | null;
+  date: IsoDate | null;
+  minutes: number | null;
+  detail: string | null;
+  fix: AnomalyFix;
+  href: string | null;
+  blocking: boolean;
+};
 
 const DAY_KINDS: Record<string, { kind: AnomalyKind; fix: AnomalyFix; blocking: boolean }> = {
   missing_in: { kind: "missing_punch", fix: "correction", blocking: true },
@@ -32,7 +61,12 @@ const DAY_KINDS: Record<string, { kind: AnomalyKind; fix: AnomalyFix; blocking: 
 
 const DAYS_OFF = ["rest", "holiday", "compensatory_off", "company_off"];
 
-const targetOf = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+const targetOf = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }): Target & { personId: string } => ({
+  personId: person.id,
+  entityId: person.primaryEntityId,
+  unitPath: person.orgUnitPath,
+  managerId: person.managerId,
+});
 
 export type AnomalyFilters = { entityId?: string | null; departmentId?: string | null; personId?: string | null; kind?: AnomalyKind | null; /** Late / early days below this many minutes are left out. */ minMinutes?: number };
 
@@ -41,11 +75,21 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
   const from = monthStart(month);
   const to = monthEnd(month);
   const candidates = await db()
-    .select({ id: schema.person.id, fullName: schema.person.fullName, status: schema.person.status, primaryEntityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId })
+    .select({
+      id: schema.person.id,
+      fullName: schema.person.fullName,
+      status: schema.person.status,
+      primaryEntityId: schema.person.primaryEntityId,
+      departmentId: schema.person.departmentId,
+      orgUnitPath: schema.person.orgUnitPath,
+      managerId: schema.person.managerId,
+    })
     .from(schema.person)
     .where(anyReachSql([reach]));
   const inReach = candidates.filter((person) => matchesReach(reach, targetOf(person)));
-  const people = inReach.filter((person) => (!filters.entityId || person.primaryEntityId === filters.entityId) && (!filters.departmentId || person.departmentId === filters.departmentId) && (!filters.personId || person.id === filters.personId));
+  const people = inReach.filter(
+    (person) => (!filters.entityId || person.primaryEntityId === filters.entityId) && (!filters.departmentId || person.departmentId === filters.departmentId) && (!filters.personId || person.id === filters.personId),
+  );
   const ids = people.map((person) => person.id);
   const byId = new Map(people.map((person) => [person.id, person]));
   const lines: AnomalyLine[] = [];
@@ -53,14 +97,23 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
 
   const end = new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86_400_000);
   const [days, punches, requests, months, unmapped] = await Promise.all([
-    db().select(cellColumns).from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, ids), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to), sql`jsonb_array_length(${schema.timesheetDay.anomalies}) > 0`)),
-    db().select({ id: schema.punch.id, personId: schema.punch.personId, at: schema.punch.at, flags: schema.punch.flags }).from(schema.punch).where(and(inArray(schema.punch.personId, ids), eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, new Date(`${from}T00:00:00+07:00`)), lt(schema.punch.at, end))),
+    db()
+      .select(cellColumns)
+      .from(schema.timesheetDay)
+      .where(and(inArray(schema.timesheetDay.personId, ids), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to), sql`jsonb_array_length(${schema.timesheetDay.anomalies}) > 0`)),
+    db()
+      .select({ id: schema.punch.id, personId: schema.punch.personId, at: schema.punch.at, flags: schema.punch.flags })
+      .from(schema.punch)
+      .where(and(inArray(schema.punch.personId, ids), eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, new Date(`${from}T00:00:00+07:00`)), lt(schema.punch.at, end))),
     db()
       .select({ row: schema.attendanceRequest, approvalStatus: schema.approvalRequest.status })
       .from(schema.attendanceRequest)
       .leftJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.attendanceRequest.approvalRequestId))
       .where(and(inArray(schema.attendanceRequest.personId, ids), lte(schema.attendanceRequest.startDate, to), gte(schema.attendanceRequest.endDate, from), inArray(schema.attendanceRequest.status, ["pending", "approved"]))),
-    db().select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month))),
+    db()
+      .select()
+      .from(schema.timesheetMonth)
+      .where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month))),
     db()
       .select({ deviceId: schema.deviceUnmappedLog.deviceId, deviceUserId: schema.deviceUnmappedLog.deviceUserId, deviceName: schema.attendanceDevice.name, entityId: schema.attendanceDevice.entityId, value: sql<number>`count(*)::int` })
       .from(schema.deviceUnmappedLog)
@@ -91,7 +144,12 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
       if ((code === "late" || code === "early") && (minutes ?? 0) < minMinutes) continue;
       seen.add(known.kind);
       const form = known.fix === "correction" ? "attendance_correction" : known.fix;
-      const href = known.fix === "correction" || known.fix === "overtime" || known.fix === "holiday_work" ? `/attendance/requests/new?type=${form}&date=${day.date}&person=${day.personId}` : known.fix === "schedule" ? "/attendance/settings/schedules" : `/attendance?month=${month}&person=${day.personId}`;
+      const href =
+        known.fix === "correction" || known.fix === "overtime" || known.fix === "holiday_work"
+          ? `/attendance/requests/new?type=${form}&date=${day.date}&person=${day.personId}`
+          : known.fix === "schedule"
+            ? "/attendance/settings/schedules"
+            : `/attendance?month=${month}&person=${day.personId}`;
       line({ key: `${day.id}:${known.kind}`, kind: known.kind, personId: day.personId, date: day.date, minutes, detail: code, fix: known.fix, href, blocking: known.blocking });
     }
   }
@@ -100,10 +158,22 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
   // Days with anomalies only are loaded; a clean day with holiday overtime is not in the list, so look those minutes up — all at once.
   const unsure = holidayWork.filter(({ row }) => !dayOf.has(`${row.personId}:${row.startDate}`)).map(({ row }) => ({ personId: row.personId, date: row.startDate }));
   const holidayMinutes = await holidayOvertimeOn(unsure);
-  for (const punch of punches) line({ key: `punch:${punch.id}`, kind: "punch_to_review", personId: punch.personId, date: new Date(punch.at.getTime() + 7 * 3_600_000).toISOString().slice(0, 10), minutes: null, detail: punch.flags.join(", "), fix: "review", href: "/attendance/review", blocking: true });
+  for (const punch of punches)
+    line({
+      key: `punch:${punch.id}`,
+      kind: "punch_to_review",
+      personId: punch.personId,
+      date: new Date(punch.at.getTime() + 7 * 3_600_000).toISOString().slice(0, 10),
+      minutes: null,
+      detail: punch.flags.join(", "),
+      fix: "review",
+      href: "/attendance/review",
+      blocking: true,
+    });
   for (const { row, approvalStatus } of requests) {
     const href = row.approvalRequestId ? `/approvals/attendance/${row.approvalRequestId}` : null;
-    if (row.status === "pending" && (approvalStatus === "pending" || approvalStatus === "returned")) line({ key: `request:${row.id}`, kind: "request_pending", personId: row.personId, date: row.startDate, minutes: null, detail: row.type, fix: "request", href, blocking: true });
+    if (row.status === "pending" && (approvalStatus === "pending" || approvalStatus === "returned"))
+      line({ key: `request:${row.id}`, kind: "request_pending", personId: row.personId, date: row.startDate, minutes: null, detail: row.type, fix: "request", href, blocking: true });
     if (row.type === "holiday_work" && row.status === "approved" && row.confirmedMinutes === null) {
       const day = dayOf.get(`${row.personId}:${row.startDate}`);
       const worked = day ? day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes : (holidayMinutes.get(`${row.personId}:${row.startDate}`) ?? 0);
@@ -112,7 +182,10 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
   }
   // Once the month is over, whoever has days in it and no confirmed / approved month is on the list.
   if (to < new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10)) {
-    const withDays = await db().selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, ids), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to)));
+    const withDays = await db()
+      .selectDistinct({ personId: schema.timesheetDay.personId })
+      .from(schema.timesheetDay)
+      .where(and(inArray(schema.timesheetDay.personId, ids), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to)));
     const statusOf = new Map(months.map((row) => [row.personId, row.status]));
     for (const { personId } of withDays) {
       if (locked.has(personId)) continue;
@@ -124,21 +197,48 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
   if (!filters.personId && !filters.departmentId) {
     for (const row of unmapped) {
       if (!matchesReach(reach, { entityId: row.entityId }) || (filters.entityId && row.entityId !== filters.entityId)) continue;
-      line({ key: `device:${row.deviceId}:${row.deviceUserId}`, kind: "unmapped_device_id", personId: null, entityId: row.entityId, date: null, minutes: row.value, detail: `${row.deviceName} · ID ${row.deviceUserId}`, fix: "device", href: `/attendance/devices/${row.deviceId}`, blocking: false });
+      line({
+        key: `device:${row.deviceId}:${row.deviceUserId}`,
+        kind: "unmapped_device_id",
+        personId: null,
+        entityId: row.entityId,
+        date: null,
+        minutes: row.value,
+        detail: `${row.deviceName} · ID ${row.deviceUserId}`,
+        fix: "device",
+        href: `/attendance/devices/${row.deviceId}`,
+        blocking: false,
+      });
     }
   }
 
   const counts: Partial<Record<AnomalyKind, number>> = {};
   for (const item of lines) counts[item.kind] = (counts[item.kind] ?? 0) + 1;
-  const shown = (filters.kind ? lines.filter((item) => item.kind === filters.kind) : lines).sort((a, b) => Number(b.blocking) - Number(a.blocking) || (a.date ?? "9999").localeCompare(b.date ?? "9999") || (a.fullName ?? "").localeCompare(b.fullName ?? ""));
-  return { lines: shown, counts, people: inReach.filter((person) => person.status === "active").map((person) => ({ id: person.id, fullName: person.fullName })).sort((a, b) => a.fullName.localeCompare(b.fullName)) };
+  const shown = (filters.kind ? lines.filter((item) => item.kind === filters.kind) : lines).sort(
+    (a, b) => Number(b.blocking) - Number(a.blocking) || (a.date ?? "9999").localeCompare(b.date ?? "9999") || (a.fullName ?? "").localeCompare(b.fullName ?? ""),
+  );
+  return {
+    lines: shown,
+    counts,
+    people: inReach
+      .filter((person) => person.status === "active")
+      .map((person) => ({ id: person.id, fullName: person.fullName }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName)),
+  };
 }
 
 /** Rest-day and holiday overtime of these person-days, keyed `personId:date` (a day with no row is absent). */
 async function holidayOvertimeOn(personDays: readonly { personId: string; date: IsoDate }[]): Promise<Map<string, number>> {
   if (personDays.length === 0) return new Map();
   const rows = await db()
-    .select({ personId: schema.timesheetDay.personId, date: schema.timesheetDay.date, otRestDayMinutes: schema.timesheetDay.otRestDayMinutes, otRestDayNightMinutes: schema.timesheetDay.otRestDayNightMinutes, otHolidayMinutes: schema.timesheetDay.otHolidayMinutes, otHolidayNightMinutes: schema.timesheetDay.otHolidayNightMinutes })
+    .select({
+      personId: schema.timesheetDay.personId,
+      date: schema.timesheetDay.date,
+      otRestDayMinutes: schema.timesheetDay.otRestDayMinutes,
+      otRestDayNightMinutes: schema.timesheetDay.otRestDayNightMinutes,
+      otHolidayMinutes: schema.timesheetDay.otHolidayMinutes,
+      otHolidayNightMinutes: schema.timesheetDay.otHolidayNightMinutes,
+    })
     .from(schema.timesheetDay)
     .where(and(inArray(schema.timesheetDay.personId, [...new Set(personDays.map((item) => item.personId))]), inArray(schema.timesheetDay.date, [...new Set(personDays.map((item) => item.date))])));
   return new Map(rows.map((day) => [`${day.personId}:${day.date}`, day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes]));
@@ -148,7 +248,11 @@ export type OwnAnomaly = { date: IsoDate; code: string; fix: AnomalyFix };
 
 /** The person's own open anomalies of a month — for "my attendance", each with the form that fixes it. */
 export async function listOwnAnomalies(personId: string, month: string): Promise<OwnAnomaly[]> {
-  const days = await db().select(cellColumns).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), sql`jsonb_array_length(${schema.timesheetDay.anomalies}) > 0`)).orderBy(schema.timesheetDay.date);
+  const days = await db()
+    .select(cellColumns)
+    .from(schema.timesheetDay)
+    .where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), sql`jsonb_array_length(${schema.timesheetDay.anomalies}) > 0`))
+    .orderBy(schema.timesheetDay.date);
   return ownAnomaliesIn(days);
 }
 
@@ -156,5 +260,9 @@ export async function listOwnAnomalies(personId: string, month: string): Promise
 export function ownAnomaliesIn(days: readonly Pick<TimesheetDayCell, "date" | "lockedAt" | "anomalies" | "planKind">[]): OwnAnomaly[] {
   return days
     .filter((day) => day.anomalies.length > 0 && !day.lockedAt)
-    .flatMap((day) => day.anomalies.filter((code) => DAY_KINDS[code] && !(code === "ot_unapproved" && day.anomalies.includes("worked_on_day_off"))).map((code) => ({ date: day.date, code, fix: code === "ot_unapproved" && DAYS_OFF.includes(day.planKind) ? ("holiday_work" as const) : DAY_KINDS[code].fix })));
+    .flatMap((day) =>
+      day.anomalies
+        .filter((code) => DAY_KINDS[code] && !(code === "ot_unapproved" && day.anomalies.includes("worked_on_day_off")))
+        .map((code) => ({ date: day.date, code, fix: code === "ot_unapproved" && DAYS_OFF.includes(day.planKind) ? ("holiday_work" as const) : DAY_KINDS[code].fix })),
+    );
 }

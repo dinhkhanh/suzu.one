@@ -67,7 +67,11 @@ export async function runJob(definition: JobDefinition, now: Date = new Date()):
     return finished;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const [failed] = await db().update(schema.jobRun).set({ status: "failed", finishedAt: new Date(), error: message.slice(0, 2000) }).where(eq(schema.jobRun.id, run.id)).returning();
+    const [failed] = await db()
+      .update(schema.jobRun)
+      .set({ status: "failed", finishedAt: new Date(), error: message.slice(0, 2000) })
+      .where(eq(schema.jobRun.id, run.id))
+      .returning();
     await recordAudit({ action: `job.${definition.name}.failed`, resource: { type: "job_run", id: run.id }, summary: message.slice(0, 300) });
     await reportError(error, { event: "job.failed", source: "job", route: `/api/cron/${definition.name}`, tags: { job: definition.name, runId: run.id } });
     // NFR-OPS-03: a failed job must reach a human, not just a log.
@@ -88,7 +92,9 @@ export async function listLatestRunPerJob(): Promise<JobRunRow[]> {
 /** Finished runs older than JOB_RUN_RETENTION_DAYS. A run still going is never touched. */
 export async function purgeJobRuns(now: Date = new Date()): Promise<number> {
   const before = new Date(now.getTime() - JOB_RUN_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-  const result = (await db().delete(schema.jobRun).where(and(lt(schema.jobRun.startedAt, before), ne(schema.jobRun.status, "running")))) as { count?: number; rowCount?: number } | undefined;
+  const result = (await db()
+    .delete(schema.jobRun)
+    .where(and(lt(schema.jobRun.startedAt, before), ne(schema.jobRun.status, "running")))) as { count?: number; rowCount?: number } | undefined;
   // postgres-js answers with `count`, the PGlite the service tests run on with `rowCount`.
   return result?.count ?? result?.rowCount ?? 0;
 }

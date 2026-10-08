@@ -21,7 +21,16 @@ describe("merging several teams' rules", () => {
     // Video reports only when it wants to, Saturdays included — its Saturday is not mandatory.
     const video = team({ reportMode: "optional", reportDays: [1, 2, 3, 4, 5, 6], reportDeadline: "17:00", planMode: "required", planCutoff: "10:00", timeMode: "required", timesheetApproval: true, coverMinDays: 3 });
     const design = team({ reportMode: "required", reportDays: [2, 4], reportDeadline: "18:00", planMode: "required", planCutoff: "09:00", coverMinDays: 1 });
-    expect(mergeRules([social, video, design])).toEqual({ planMode: "required", reportMode: "required", reportDays: [1, 2, 3, 4, 5], planCutoff: "09:00", reportDeadline: "18:00", timeMode: "required", timesheetApproval: true, coverMinDays: 1 });
+    expect(mergeRules([social, video, design])).toEqual({
+      planMode: "required",
+      reportMode: "required",
+      reportDays: [1, 2, 3, 4, 5],
+      planCutoff: "09:00",
+      reportDeadline: "18:00",
+      timeMode: "required",
+      timesheetApproval: true,
+      coverMinDays: 1,
+    });
   });
 
   it("one team narrowing the days does not narrow another's whole calendar", () => {

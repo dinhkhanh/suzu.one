@@ -75,7 +75,14 @@ const submitPipeline = createAction({
     const filed = await submitLeave(subjectId, leave, { personId: user.person.id, isHr: await isHrFor(user, subjectId) });
     await leaveChanged(subjectId);
     refresh();
-    return { data: { id: filed.leaveRequest.id, approvalRequestId: filed.approvalRequestId, outcome: filed.outcome, conflicts: filed.conflicts }, audit: { resource: { type: "leave_request", id: filed.leaveRequest.id, entityId: filed.leaveRequest.entityId }, summary: `${leave.startDate} – ${leave.endDate}, ${filed.leaveRequest.totalCenti / 100} day(s)`, after: { personId: subjectId, leaveTypeId: leave.leaveTypeId, startDate: leave.startDate, endDate: leave.endDate, totalCenti: filed.leaveRequest.totalCenti, approvalRequestId: filed.approvalRequestId } } };
+    return {
+      data: { id: filed.leaveRequest.id, approvalRequestId: filed.approvalRequestId, outcome: filed.outcome, conflicts: filed.conflicts },
+      audit: {
+        resource: { type: "leave_request", id: filed.leaveRequest.id, entityId: filed.leaveRequest.entityId },
+        summary: `${leave.startDate} – ${leave.endDate}, ${filed.leaveRequest.totalCenti / 100} day(s)`,
+        after: { personId: subjectId, leaveTypeId: leave.leaveTypeId, startDate: leave.startDate, endDate: leave.endDate, totalCenti: filed.leaveRequest.totalCenti, approvalRequestId: filed.approvalRequestId },
+      },
+    };
   },
 });
 export async function submitLeaveAction(input: unknown) {
@@ -100,7 +107,15 @@ const amendPipeline = createAction({
     const result = await amendLeave(leaveRequestId, leave, { personId: user.person.id, isHr: await isHrFor(user, current!.personId) });
     await leaveChanged(result.leaveRequest.personId);
     refresh();
-    return { data: { id: result.leaveRequest.id, approvalRequestId: result.approvalRequestId, conflicts: result.conflicts }, audit: { resource: { type: "leave_request", id: result.leaveRequest.id, entityId: result.leaveRequest.entityId }, summary: `amends ${leaveRequestId}: ${leave.startDate} – ${leave.endDate}`, before: { id: result.before.id, startDate: result.before.startDate, endDate: result.before.endDate, status: result.before.status }, after: { startDate: leave.startDate, endDate: leave.endDate, totalCenti: result.leaveRequest.totalCenti } } };
+    return {
+      data: { id: result.leaveRequest.id, approvalRequestId: result.approvalRequestId, conflicts: result.conflicts },
+      audit: {
+        resource: { type: "leave_request", id: result.leaveRequest.id, entityId: result.leaveRequest.entityId },
+        summary: `amends ${leaveRequestId}: ${leave.startDate} – ${leave.endDate}`,
+        before: { id: result.before.id, startDate: result.before.startDate, endDate: result.before.endDate, status: result.before.status },
+        after: { startDate: leave.startDate, endDate: leave.endDate, totalCenti: result.leaveRequest.totalCenti },
+      },
+    };
   },
 });
 export async function amendLeaveAction(input: unknown) {
@@ -117,7 +132,15 @@ const cancelPipeline = createAction({
     await leaveChanged(after.personId);
     refresh();
     if (after.approvalRequestId) revalidatePath(`/approvals/leave/${after.approvalRequestId}`);
-    return { data: { status: after.status }, audit: { resource: { type: "leave_request", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}: ${after.startDate} – ${after.endDate}`, before: { status: before.status }, after: { status: after.status, reason: input.reason } } };
+    return {
+      data: { status: after.status },
+      audit: {
+        resource: { type: "leave_request", id: after.id, entityId: after.entityId },
+        summary: `${before.status} → ${after.status}: ${after.startDate} – ${after.endDate}`,
+        before: { status: before.status },
+        after: { status: after.status, reason: input.reason },
+      },
+    };
   },
 });
 export async function cancelLeaveAction(input: unknown) {
@@ -134,7 +157,15 @@ const decidePipeline = createAction({
     await leaveChanged(leaveRequest.personId);
     refresh();
     revalidatePath(`/approvals/leave/${request.id}`);
-    return { data: { outcome }, audit: { resource: { type: "leave_request", id: leaveRequest.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, leaveStatus: leaveRequest.status, requestId: request.id } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "leave_request", id: leaveRequest.id, entityId: request.entityId },
+        summary: `${input.decision}: ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, leaveStatus: leaveRequest.status, requestId: request.id },
+      },
+    };
   },
 });
 export async function decideLeaveAction(input: unknown) {
@@ -203,7 +234,15 @@ const adjustPipeline = createAction({
     const target = await getPersonTarget(input.personId);
     const { entry, balanceBefore, balanceAfter } = await adjustBalance({ personId: input.personId, leaveTypeId: input.leaveTypeId, year: input.year, amountCenti: input.days, reason: input.reason }, user.person.id);
     refresh();
-    return { data: { id: entry.id, balanceCenti: balanceAfter }, audit: { resource: { type: "person", id: input.personId, entityId: target?.entityId ?? null }, summary: `leave adjustment ${input.days / 100} day(s), ${input.year}: ${input.reason}`, before: { balanceCenti: balanceBefore }, after: { balanceCenti: balanceAfter, leaveTypeId: input.leaveTypeId, entryId: entry.id } } };
+    return {
+      data: { id: entry.id, balanceCenti: balanceAfter },
+      audit: {
+        resource: { type: "person", id: input.personId, entityId: target?.entityId ?? null },
+        summary: `leave adjustment ${input.days / 100} day(s), ${input.year}: ${input.reason}`,
+        before: { balanceCenti: balanceBefore },
+        after: { balanceCenti: balanceAfter, leaveTypeId: input.leaveTypeId, entryId: entry.id },
+      },
+    };
   },
 });
 export async function adjustLeaveBalanceAction(input: unknown) {
@@ -232,7 +271,11 @@ const typePipeline = createAction({
   input: z.object({
     id: optional(z.uuid()),
     entityId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{2,24}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9_-]{2,24}$/),
     name: z.string().trim().min(1).max(120),
     nameEn: text(120),
     category: z.enum(LEAVE_CATEGORIES),
@@ -264,11 +307,17 @@ const typePipeline = createAction({
     if (!decidesLeaveRules(user.principal)) {
       const { requestId } = await proposeLeaveRuleChange({ kind: "leave_type", input: values }, user.person.id);
       refresh();
-      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave type ${values.code}: ${values.name}`, after: values } };
+      return {
+        data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null },
+        audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave type ${values.code}: ${values.name}`, after: values },
+      };
     }
     const { before, after } = await saveLeaveType(values);
     refresh();
-    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after } };
+    return {
+      data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null },
+      audit: { resource: { type: "leave_type", id: after.id, entityId: after.entityId }, summary: `${after.code}: ${after.name}`, before, after },
+    };
   },
 });
 export async function saveLeaveTypeAction(input: unknown) {
@@ -290,7 +339,12 @@ const policyPipeline = createAction({
     rounding: z.enum(ROUNDINGS),
     probationRule: z.enum(PROBATION_RULES),
     carryOverCap: optional(daysCenti(0, 36_500)),
-    carryOverExpiry: optional(z.string().trim().regex(/^\d{2}-\d{2}$/)),
+    carryOverExpiry: optional(
+      z
+        .string()
+        .trim()
+        .regex(/^\d{2}-\d{2}$/),
+    ),
     payoutOnTermination: checkbox,
     allowNegative: daysCenti(0, 36_500).default(0),
     note: text(500),
@@ -304,11 +358,17 @@ const policyPipeline = createAction({
     if (!decidesLeaveRules(user.principal)) {
       const { requestId } = await proposeLeaveRuleChange({ kind: "leave_policy", input: values }, user.person.id);
       refresh();
-      return { data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null }, audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave policy from ${values.validFrom}`, after: values } };
+      return {
+        data: { id: null as string | null, proposed: true, approvalRequestId: requestId as string | null },
+        audit: { resource: { type: "approval:leave_rule", id: requestId, entityId: values.entityId ?? null }, summary: `proposed leave policy from ${values.validFrom}`, after: values },
+      };
     }
     const { before, after } = await saveLeavePolicy(values, user.person.id);
     refresh();
-    return { data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null }, audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after } };
+    return {
+      data: { id: after.id as string | null, proposed: false, approvalRequestId: null as string | null },
+      audit: { resource: { type: "leave_policy", id: after.id, entityId: after.entityId }, summary: `policy from ${after.validFrom}`, before, after },
+    };
   },
 });
 export async function saveLeavePolicyAction(input: unknown) {
@@ -325,7 +385,15 @@ const decideRulePipeline = createAction({
     const { request, before, outcome } = await decideLeaveRuleChange(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
     refresh();
     revalidatePath(`/approvals/rule/${request.id}`);
-    return { data: { outcome }, audit: { resource: { type: "approval:leave_rule", id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, change: request.payload } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "approval:leave_rule", id: request.id, entityId: request.entityId },
+        summary: `${input.decision}: ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, change: request.payload },
+      },
+    };
   },
 });
 export async function decideLeaveRuleAction(input: unknown) {

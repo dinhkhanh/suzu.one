@@ -116,7 +116,11 @@ export type ProfileChangeDecision = { action: "approve" | "reject" | "return"; c
  */
 export async function decideProfileChange(actor: { personId: string; principal: Principal }, requestId: string, decision: ProfileChangeDecision) {
   return inTransaction(async (tx) => {
-    const [row] = await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, profileChangeRequest.type))).limit(1);
+    const [row] = await tx
+      .select()
+      .from(schema.approvalRequest)
+      .where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, profileChangeRequest.type)))
+      .limit(1);
     if (!row?.subjectPersonId) throw new ActionError("approval_not_found");
     const payload = row.payload as ProfileChangePayload;
     const target = await getPersonTarget(row.subjectPersonId, tx);

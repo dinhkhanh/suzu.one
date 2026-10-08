@@ -30,7 +30,26 @@ export default async function NewRequestTypePage() {
         description={t("addHint")}
       />
       <TypeDesigner
-        draft={{ id: null, code: "", nameVi: "", nameEn: "", descriptionVi: null, descriptionEn: null, category: "other", entityId: null, icon: null, sortOrder: 0, active: true, slaRemindAfterDays: 0, slaEscalateAfterDays: 0, slaEscalateTo: null, form: { fields: [] }, followUps: [], standalone: true, payout: "none" }}
+        draft={{
+          id: null,
+          code: "",
+          nameVi: "",
+          nameEn: "",
+          descriptionVi: null,
+          descriptionEn: null,
+          category: "other",
+          entityId: null,
+          icon: null,
+          sortOrder: 0,
+          active: true,
+          slaRemindAfterDays: 0,
+          slaEscalateAfterDays: 0,
+          slaEscalateTo: null,
+          form: { fields: [] },
+          followUps: [],
+          standalone: true,
+          payout: "none",
+        }}
         entities={entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
         canGroup={can(user.principal, "org:manage", {})}
         catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))}

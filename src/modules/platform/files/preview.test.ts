@@ -13,7 +13,26 @@ function zipOf(entries: { name: string; data: string }[]): Uint8Array {
     const data = [...encoder.encode(entry.data)];
     const offset = locals.length;
     locals.push(...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...name, ...data);
-    central.push(...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...name);
+    central.push(
+      ...u32(0x02014b50),
+      ...u16(20),
+      ...u16(20),
+      ...u16(0x0800),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u32(0),
+      ...u32(data.length),
+      ...u32(data.length),
+      ...u16(name.length),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u32(0),
+      ...u32(offset),
+      ...name,
+    );
   }
   const end = [...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entries.length), ...u16(entries.length), ...u32(central.length), ...u32(locals.length), ...u16(0)];
   return new Uint8Array([...locals, ...central, ...end]);
@@ -53,7 +72,14 @@ describe("previewKindOf", () => {
 
 describe("listZipEntries", () => {
   it("lists files and folders from the central directory, Vietnamese names included", () => {
-    expect(listZipEntries(zipOf([{ name: "docs/", data: "" }, { name: "docs/Bảng lương.txt", data: "hi" }]))).toEqual([
+    expect(
+      listZipEntries(
+        zipOf([
+          { name: "docs/", data: "" },
+          { name: "docs/Bảng lương.txt", data: "hi" },
+        ]),
+      ),
+    ).toEqual([
       { name: "docs/", sizeBytes: 0, directory: true },
       { name: "docs/Bảng lương.txt", sizeBytes: 2, directory: false },
     ]);

@@ -44,13 +44,20 @@ it("does not start a job that is already running, but takes over from a run that
   const takeover = await runJob({ name: "slow", run: async () => ({}) }, new Date("2026-03-01T00:20:00Z"));
   expect(takeover?.status).toBe("succeeded");
   const runs = await db().select().from(schema.jobRun);
-  expect(runs.filter((row) => row.job === "slow").map((row) => row.error ?? row.status).sort()).toEqual(["succeeded", "timed_out"]);
+  expect(
+    runs
+      .filter((row) => row.job === "slow")
+      .map((row) => row.error ?? row.status)
+      .sort(),
+  ).toEqual(["succeeded", "timed_out"]);
 });
 
 it("tells the owners when a run died with its server, once", async () => {
   const [owner] = await db().insert(schema.person).values({ fullName: "Chủ", searchName: "chu", status: "active" }).returning();
   await db().insert(schema.roleAssignment).values({ personId: owner.id, role: "owner", scopeType: "group", validFrom: "2020-01-01" });
-  await db().insert(schema.jobRun).values({ job: "killed", startedAt: new Date("2026-04-01T00:00:00Z") });
+  await db()
+    .insert(schema.jobRun)
+    .values({ job: "killed", startedAt: new Date("2026-04-01T00:00:00Z") });
 
   // Ten minutes in, it may still be working; at twenty it cannot be.
   expect(await sweepTimedOutRuns(new Date("2026-04-01T00:10:00Z"))).toHaveLength(0);
@@ -88,11 +95,13 @@ it("runs a schedule in order until its time budget is spent, and says where to g
 it("forgets finished runs after the retention period, never one still going", async () => {
   const now = new Date("2026-01-01T00:00:00Z");
   const old = new Date(now.getTime() - (JOB_RUN_RETENTION_DAYS + 1) * 86_400_000);
-  await db().insert(schema.jobRun).values([
-    { job: "retention-old", startedAt: old, status: "succeeded", finishedAt: old },
-    { job: "retention-old-running", startedAt: old },
-    { job: "retention-recent", startedAt: new Date(now.getTime() - 86_400_000), status: "failed", finishedAt: now },
-  ]);
+  await db()
+    .insert(schema.jobRun)
+    .values([
+      { job: "retention-old", startedAt: old, status: "succeeded", finishedAt: old },
+      { job: "retention-old-running", startedAt: old },
+      { job: "retention-recent", startedAt: new Date(now.getTime() - 86_400_000), status: "failed", finishedAt: now },
+    ]);
   expect(await purgeJobRuns(now)).toBe(1);
   const left = (await db().select({ job: schema.jobRun.job }).from(schema.jobRun)).map((row) => row.job);
   expect(left).toEqual(expect.arrayContaining(["retention-old-running", "retention-recent"]));

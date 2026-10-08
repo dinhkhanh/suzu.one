@@ -58,7 +58,10 @@ export function showTeamWeek(week: TeamWeek, seen: Seen, mayRead: (personId: str
 }
 
 /** A time entry's labels: the task's key and title, the project's name and — going where the name goes — its job number. */
-export function showTimeLabels<Entry extends { taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; jobNumber?: string | null }>(entry: Entry, seen: Seen): Entry & { hidden?: true } {
+export function showTimeLabels<Entry extends { taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; jobNumber?: string | null }>(
+  entry: Entry,
+  seen: Seen,
+): Entry & { hidden?: true } {
   const task = entry.taskId ? seen.tasks.get(entry.taskId) : undefined;
   const project = entry.projectId && !seen.projects.has(entry.projectId) ? { projectName: null, ...(entry.jobNumber === undefined ? {} : { jobNumber: null }) } : {};
   if (!entry.taskId) return { ...entry, ...project };

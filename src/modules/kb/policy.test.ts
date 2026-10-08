@@ -37,7 +37,13 @@ describe("viewerKeys", () => {
 });
 
 describe("spaces", () => {
-  const handbook = space({ kind: "controlled", access: [{ subjectKey: "all", level: "view" }, { subjectKey: "role:hr_staff", level: "edit" }] });
+  const handbook = space({
+    kind: "controlled",
+    access: [
+      { subjectKey: "all", level: "view" },
+      { subjectKey: "role:hr_staff", level: "edit" },
+    ],
+  });
 
   it("opens a space by its rows: all staff read, HR edits, a group-wide manager manages", () => {
     expect(spaceLevel(huy, handbook)).toBe("view");
@@ -109,7 +115,13 @@ describe("a unit's own space", () => {
 });
 
 describe("pages", () => {
-  const handbook = space({ kind: "controlled", access: [{ subjectKey: "all", level: "view" }, { subjectKey: "role:hr_staff", level: "edit" }] });
+  const handbook = space({
+    kind: "controlled",
+    access: [
+      { subjectKey: "all", level: "view" },
+      { subjectKey: "role:hr_staff", level: "edit" },
+    ],
+  });
   const tools = space({ access: [{ subjectKey: "all", level: "edit" }] });
 
   it("shows readers published pages only; editors see drafts", () => {
@@ -131,7 +143,13 @@ describe("pages", () => {
   });
 
   it("lets a page row make a reader the editor of that subtree, drafts included", () => {
-    const delegated: PageFacts = { ...draft, rootAccess: [{ subjectKey: "person:huy", level: "edit" }, { subjectKey: "all", level: "view" }] };
+    const delegated: PageFacts = {
+      ...draft,
+      rootAccess: [
+        { subjectKey: "person:huy", level: "edit" },
+        { subjectKey: "all", level: "view" },
+      ],
+    };
     expect(pageLevel(huy, handbook, delegated)).toBe("edit");
     expect(pageLevel(head, handbook, delegated)).toBeNull(); // named as a reader: the draft is not theirs to see
     expect(canCreatePage(huy, handbook, delegated)).toBe(true);

@@ -20,7 +20,15 @@ import { PersonName } from "./person-name";
 export type BulkInboxRow = { id: string; type: string; summary: string; link: string | null; createdAt: Date; requesterPersonId: string; requesterName: string; bulk: boolean };
 export type BulkResult = { requestId: string; ok: boolean; error?: string };
 
-export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[]; action: (input: unknown) => Promise<ActionResult<{ results: BulkResult[] }>>; /** Names of the request builder's types, which the message bundle does not know. */ labels?: Record<string, string> }) {
+export function BulkInbox({
+  rows,
+  action,
+  labels = {},
+}: {
+  rows: BulkInboxRow[];
+  action: (input: unknown) => Promise<ActionResult<{ results: BulkResult[] }>>;
+  /** Names of the request builder's types, which the message bundle does not know. */ labels?: Record<string, string>;
+}) {
   const t = useTranslations("approvals");
   const format = useFormatter();
   const [selected, setSelected] = useState<string[]>([]);
@@ -49,7 +57,12 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
 
   const outcome = (row: BulkInboxRow) => {
     const result = results[row.id];
-    if (result?.ok) return <Badge dot variant="success">{t("status.approved")}</Badge>;
+    if (result?.ok)
+      return (
+        <Badge dot variant="success">
+          {t("status.approved")}
+        </Badge>
+      );
     if (result && !result.ok)
       return (
         <Badge dot variant="destructive">

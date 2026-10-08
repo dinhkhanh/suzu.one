@@ -24,11 +24,29 @@ import { canEditGoal } from "./policy";
 
 type Who = "owner" | "ceo" | "hrSzm" | "long" | "tam" | "huy" | "linh" | "ngo" | "chi" | "khoi";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des" | "crew", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const YEAR = 2027;
 
 const viewers = {} as Record<Who, Viewer>;
-const draft = (over: Partial<GoalDraft>): GoalDraft => ({ level: "group", entityId: null, departmentId: null, teamId: null, personId: null, ownerPersonId: null, parentGoalId: null, title: "Goal", description: null, periodKey: "2027", weight: 1, activate: true, ...over });
+const draft = (over: Partial<GoalDraft>): GoalDraft => ({
+  level: "group",
+  entityId: null,
+  departmentId: null,
+  teamId: null,
+  personId: null,
+  ownerPersonId: null,
+  parentGoalId: null,
+  title: "Goal",
+  description: null,
+  periodKey: "2027",
+  weight: 1,
+  activate: true,
+  ...over,
+});
 const numberKr = (title: string, start: string, target: string, weight = 1) => ({ title, metricType: "number" as const, startValue: start, targetValue: target, milestones: [], weight });
 const titles = async (viewer: Viewer) => (await listGoals(viewer, { year: YEAR })).map((goal) => goal.title).sort();
 
@@ -58,7 +76,19 @@ beforeAll(async () => {
     ["khoi", szc.id, des.id, "chi", null, null, "employee"],
   ];
   for (const [key, entityId, departmentId, manager, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: key === "huy" || key === "tam" ? crew.id : departmentId, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({
+        fullName: key,
+        searchName: key,
+        workEmail: `${key}@suzu.group`,
+        status: "active",
+        workforceType,
+        primaryEntityId: entityId,
+        orgUnitId: key === "huy" || key === "tam" ? crew.id : departmentId,
+        managerId: manager ? ids[manager] : null,
+      })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     const principal: Principal = { personId: row.id, workforceType, grants };
@@ -76,7 +106,9 @@ beforeAll(async () => {
 
   krs.huyVideos = (await saveKeyResult(goals.huy, null, numberKr("Videos delivered", "0", "40", 2))).after.id;
   krs.huyRounds = (await saveKeyResult(goals.huy, null, numberKr("Revision rounds per video", "4", "2"))).after.id;
-  krs.huyCourse = (await saveKeyResult(goals.huy, null, { title: "Colour grading course", metricType: "milestone", startValue: null, targetValue: null, milestones: ["Enrol", "Finish", "Apply to a project", "Share with the team"], weight: 1 })).after.id;
+  krs.huyCourse = (
+    await saveKeyResult(goals.huy, null, { title: "Colour grading course", metricType: "milestone", startValue: null, targetValue: null, milestones: ["Enrol", "Finish", "Apply to a project", "Share with the team"], weight: 1 })
+  ).after.id;
   krs.vidRevenue = (await saveKeyResult(goals.szm, null, { title: "Revenue", metricType: "currency", startValue: "0", targetValue: "12.000.000.000", milestones: [], weight: 1 })).after.id;
 });
 
@@ -137,7 +169,11 @@ describe("check-ins and the roll-up", () => {
   it("starts at the start value and at nothing where nothing is measured", async () => {
     const loaded = await loadGoal(viewers.huy, goals.huy);
     expect(loaded?.goal.progress).toMatchObject({ progressBp: 0, source: "key_results", confidence: null });
-    expect(loaded?.goal.keyResults.map((keyResult) => [keyResult.currentValue, keyResult.stale])).toEqual([[0, true], [400, true], [0, true]]);
+    expect(loaded?.goal.keyResults.map((keyResult) => [keyResult.currentValue, keyResult.stale])).toEqual([
+      [0, true],
+      [400, true],
+      [0, true],
+    ]);
     expect((await loadGoal(viewers.huy, goals.group))?.goal.progress).toMatchObject({ progressBp: 0, source: "children" }); // SZM's revenue stands at its start
     expect((await loadGoal(viewers.tam, goals.ngo))?.goal.progress).toMatchObject({ progressBp: null, source: "none" });
   });
@@ -150,8 +186,18 @@ describe("check-ins and the roll-up", () => {
     const loaded = await loadGoal(viewers.tam, goals.huy, new Date("2027-02-12T00:00:00Z"));
     // (2 × 25 % + 1 × 25 % + 1 × 50 %) / 4 = 31.25 %
     expect(loaded?.goal.progress).toMatchObject({ progressBp: 3125, confidence: "at_risk", source: "key_results" });
-    expect(loaded?.goal.keyResults.map((keyResult) => [keyResult.currentValue, keyResult.progressBp, keyResult.confidence, keyResult.stale])).toEqual([[1000, 2500, "on_track", false], [350, 2500, "at_risk", false], [2, 5000, "on_track", false]]);
-    expect(loaded?.checkIns.map((checkIn) => [checkIn.keyResultTitle, checkIn.authorName, checkIn.weekStart, checkIn.value])).toEqual([["Colour grading course", "tam", "2027-02-08", 2], ["Revision rounds per video", "huy", "2027-02-08", 350], ["Videos delivered", "huy", "2027-02-08", 1000]] /* newest first */);
+    expect(loaded?.goal.keyResults.map((keyResult) => [keyResult.currentValue, keyResult.progressBp, keyResult.confidence, keyResult.stale])).toEqual([
+      [1000, 2500, "on_track", false],
+      [350, 2500, "at_risk", false],
+      [2, 5000, "on_track", false],
+    ]);
+    expect(loaded?.checkIns.map((checkIn) => [checkIn.keyResultTitle, checkIn.authorName, checkIn.weekStart, checkIn.value])).toEqual(
+      [
+        ["Colour grading course", "tam", "2027-02-08", 2],
+        ["Revision rounds per video", "huy", "2027-02-08", 350],
+        ["Videos delivered", "huy", "2027-02-08", 1000],
+      ] /* newest first */,
+    );
     // Crew A and VID have no key results: they take their children's figure. SZM has its own (revenue): children do not move it.
     expect((await loadGoal(viewers.linh, goals.crew))?.goal.progress).toMatchObject({ progressBp: 3125, source: "children", confidence: "at_risk" });
     expect((await loadGoal(viewers.linh, goals.vid))?.goal.progress.progressBp).toBe(3125);

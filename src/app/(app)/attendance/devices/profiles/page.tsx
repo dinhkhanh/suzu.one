@@ -34,7 +34,10 @@ export default async function ProfilesPage() {
                 </summary>
                 {canManageAttendanceConfig(user.principal, profile.entityId) ? (
                   <div className="mt-4">
-                    <ProfileForm profile={{ id: profile.id, entityId: profile.entityId, name: profile.name, deviceModel: profile.deviceModel, fileKind: profile.fileKind, mapping: profile.mapping, isActive: profile.isActive }} {...options} />
+                    <ProfileForm
+                      profile={{ id: profile.id, entityId: profile.entityId, name: profile.name, deviceModel: profile.deviceModel, fileKind: profile.fileKind, mapping: profile.mapping, isActive: profile.isActive }}
+                      {...options}
+                    />
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">{t("profile.groupOnly")}</p>

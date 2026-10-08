@@ -32,16 +32,32 @@ import { viewerOfPerson } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "huy" | "khoi" | "video" | "project" | "task", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const named = (key: "long" | "tam" | "huy") => ({ personId: ids[key], fullName: { long: "Long Dang", tam: "Tam Bui", huy: "Huy Ho" }[key] });
-const noticesOf = async (personId: string, kind: string) => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind))));
+const noticesOf = async (personId: string, kind: string) =>
+  await db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
-  for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["huy", "Huy Ho"], ["khoi", "Khoi Ly"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["long", "Long Dang"],
+    ["tam", "Tam Bui"],
+    ["huy", "Huy Ho"],
+    ["khoi", "Khoi Ly"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
@@ -96,12 +112,21 @@ describe("review step", () => {
     const approved = await decideReview(ids.task, "approved", "Ổn", named("tam"));
     expect(approved.deliverable.version).toBe(3);
     expect(approved.revisionRounds).toBe(1);
-    expect((await listDeliverables(ids.task)).map((row) => [row.version, row.decision])).toEqual([[3, "approved"], [2, "superseded"], [1, "changes_requested"]]);
+    expect((await listDeliverables(ids.task)).map((row) => [row.version, row.decision])).toEqual([
+      [3, "approved"],
+      [2, "superseded"],
+      [1, "changes_requested"],
+    ]);
     // Internal review approved → the next step of the content workflow.
     const final = (await loadTask(ids.task))!;
     expect(final.work.reviewStatus).toBe("approved");
     expect(states.find((state) => state.id === final.work.stateId)!.sortOrder).toBeGreaterThan(states.find((state) => state.id === afterSubmit.work.stateId)!.sortOrder);
-    expect((await listActivity(ids.task)).filter((entry) => entry.type.startsWith("review_")).map((entry) => entry.type).sort()).toEqual(["review_approved", "review_changes_requested", "review_submitted", "review_submitted", "review_submitted"]);
+    expect(
+      (await listActivity(ids.task))
+        .filter((entry) => entry.type.startsWith("review_"))
+        .map((entry) => entry.type)
+        .sort(),
+    ).toEqual(["review_approved", "review_changes_requested", "review_submitted", "review_submitted", "review_submitted"]);
   });
 
   it("refuses when nobody but the submitter could review, and a file that is not on the task", async () => {
@@ -157,13 +182,22 @@ describe("templates", () => {
 
     const again = await applyTemplate({ templateId: template.id, anchor: { mode: "end", date: "2026-11-20" }, roles: {} }, project.id, ids.long);
     expect(again.taskIds).toHaveLength(3);
-    expect((await listProjectTasks(project.id)).filter((task) => task.title === "Dựng phim").map((task) => task.dueDate).sort()).toEqual(["2026-10-13", "2026-11-20"]);
+    expect(
+      (await listProjectTasks(project.id))
+        .filter((task) => task.title === "Dựng phim")
+        .map((task) => task.dueDate)
+        .sort(),
+    ).toEqual(["2026-10-13", "2026-11-20"]);
   });
 });
 
 describe("recurring tasks", () => {
   it("makes each occurrence once, a lead time ahead, and stops when paused or ended", async () => {
-    const { recurrence, made } = await createRecurrence({ projectId: ids.project, title: "Báo cáo tuần", rule: { freq: "weekly", interval: 1, weekdays: [5] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: { assigneePersonId: ids.huy, priority: 2 } }, ids.long, "2026-09-20");
+    const { recurrence, made } = await createRecurrence(
+      { projectId: ids.project, title: "Báo cáo tuần", rule: { freq: "weekly", interval: 1, weekdays: [5] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: { assigneePersonId: ids.huy, priority: 2 } },
+      ids.long,
+      "2026-09-20",
+    );
     // Fridays within [today, today + 7]: 25 Sep. Nothing is back-filled before today.
     expect(made).toBe(1);
     expect(await generateOccurrences("2026-09-20")).toMatchObject({ made: 0 });
@@ -185,7 +219,9 @@ describe("recurring tasks", () => {
     expect(await generateOccurrences("2026-11-01")).toMatchObject({ made: 0 });
     const [view] = await listRecurrences({ projectId: ids.project }, "2026-11-01");
     expect(view).toMatchObject({ made: 4, nextDate: null, assigneeName: "Huy Ho" });
-    expect(await fails(createRecurrence({ projectId: ids.project, title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: {} }, ids.long, "2026-09-20"))).toBe("recurrence_rule_invalid");
+    expect(await fails(createRecurrence({ projectId: ids.project, title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, startDate: "2026-09-01", endDate: null, leadDays: 7, draft: {} }, ids.long, "2026-09-20"))).toBe(
+      "recurrence_rule_invalid",
+    );
   });
 });
 

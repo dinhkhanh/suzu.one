@@ -23,10 +23,7 @@ export function interviewTimeText(start: Date, end: Date, locale: CandidateLocal
  * link, a phone call says so, and an office interview with no address typed names the company's
  * office rather than leaving a hole.
  */
-export function interviewPlaceText(
-  interview: { mode: InterviewMode; location: string | null; meetingUrl: string | null },
-  words: { video: string; phone: string; office: string },
-): string {
+export function interviewPlaceText(interview: { mode: InterviewMode; location: string | null; meetingUrl: string | null }, words: { video: string; phone: string; office: string }): string {
   const location = interview.location?.trim() || null;
   switch (interview.mode) {
     case "video":

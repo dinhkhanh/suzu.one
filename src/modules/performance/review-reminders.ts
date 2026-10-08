@@ -104,7 +104,9 @@ export function plannedReminders(today: IsoDate, owed: Awaited<ReturnType<typeof
   return [
     ...owed.map((row): Reminder => {
       const subject = `${row.participantId}:${row.formKind}`;
-      return row.dueOn >= today ? { personId: row.personId, kind: "review_due", subject, dueOn: row.dueOn } : { personId: row.personId, kind: "review_overdue", subject: `${subject}:${weekOf(addDays(row.dueOn, 1), today)}`, dueOn: row.dueOn };
+      return row.dueOn >= today
+        ? { personId: row.personId, kind: "review_due", subject, dueOn: row.dueOn }
+        : { personId: row.personId, kind: "review_overdue", subject: `${subject}:${weekOf(addDays(row.dueOn, 1), today)}`, dueOn: row.dueOn };
     }),
     ...waiting.map((row): Reminder => ({ personId: row.personId, kind: row.kind, subject: `${row.participantId}:${weekOf(addDays(row.sinceDay, SETTLE_DAYS), today)}`, dueOn: null })),
   ];

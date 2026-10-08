@@ -64,7 +64,15 @@ async function portfolioTeams(principal: Principal, ledTeamIds: ReadonlySet<stri
     .select({ teamId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId })
     .from(schema.workTeamMember)
     .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
-    .where(and(inArray(schema.workTeamMember.teamId, teams.map((team) => team.id)), eq(schema.person.status, "active")));
+    .where(
+      and(
+        inArray(
+          schema.workTeamMember.teamId,
+          teams.map((team) => team.id),
+        ),
+        eq(schema.person.status, "active"),
+      ),
+    );
   const byTeam = Map.groupBy(members, (row) => row.teamId);
   return teams.map((team) => ({ id: team.id, name: team.name, personIds: (byTeam.get(team.id) ?? []).map((row) => row.personId) })).sort((a, b) => a.name.localeCompare(b.name, "vi"));
 }
@@ -82,7 +90,10 @@ export async function getUtilisation(viewer: { personId: string; principal: Prin
   });
   // A team of one person is that person: the small ones are added together, and if even that would
   // be one person they are left out (security review, finding 22). The reader's own teams are theirs.
-  const folded = foldSmallGroups(portfolio.map((team) => ({ key: team.id, personIds: team.personIds })), new Set());
+  const folded = foldSmallGroups(
+    portfolio.map((team) => ({ key: team.id, personIds: team.personIds })),
+    new Set(),
+  );
   const shownTeams = portfolio.filter((team) => folded.kept.includes(team.id));
   const otherPeople = folded.other?.personIds ?? [];
   const numbers = await utilisationOfPeople([...visible, ...shownTeams.flatMap((team) => team.personIds), ...otherPeople], weeks, today);

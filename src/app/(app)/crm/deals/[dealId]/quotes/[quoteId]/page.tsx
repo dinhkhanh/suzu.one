@@ -42,7 +42,17 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
   const services = card
     ? card.services
         .filter((service) => service.isActive)
-        .map((service) => ({ id: service.id, code: service.code, name: service.name, unit: service.unit, isRecurring: service.isRecurring, format: service.format, channel: service.channel, priceVnd: priceOn(card, service.id, found.deal.entityId, today), roleMinutes: service.roleMinutes }))
+        .map((service) => ({
+          id: service.id,
+          code: service.code,
+          name: service.name,
+          unit: service.unit,
+          isRecurring: service.isRecurring,
+          format: service.format,
+          channel: service.channel,
+          priceVnd: priceOn(card, service.id, found.deal.entityId, today),
+          roleMinutes: service.roleMinutes,
+        }))
     : [];
   // What may happen next: the steps the status allows. A draft offers one of "submit" and "send":
   // submit when a rule this reader may know already asks for approval, send otherwise — and a send
@@ -52,18 +62,36 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
   // Why approval is asked, as this reader may know it: the discount is plain to see; the margin is
   // named only to a reader of margins, and is "the company's rules" to everyone else.
   const payload = request ? (request.request.payload as Partial<QuotePayload>) : null;
-  const named = (reasons: readonly string[]) => reasons.filter((reason) => reason === "discount" || seesMargin).map((reason) => t(`enums.approvalReason.${reason as "discount"}`)).join(", ");
+  const named = (reasons: readonly string[]) =>
+    reasons
+      .filter((reason) => reason === "discount" || seesMargin)
+      .map((reason) => t(`enums.approvalReason.${reason as "discount"}`))
+      .join(", ");
   const waiting = quote.quote.status === "in_approval" && payload ? (payload.reasons ?? []) : null;
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<><RecordLink kind="deal" id={dealId} className="underline">
-            {found.deal.title}
-          </RecordLink>{" "}
-          · <RecordLink kind="account" id={found.account.client.id}>{found.account.client.name}</RecordLink></>} title={<span className="inline-flex flex-wrap items-center gap-2">{quote.quote.number} v{quote.quote.version}
-          <Badge dot variant={statusTone(quote.quote.status === "in_approval" ? "pending" : quote.quote.status)}>
-            {t(`enums.quoteStatus.${quote.quote.status as "draft"}`)}
-          </Badge></span>}>
+      <PageHeader
+        eyebrow={
+          <>
+            <RecordLink kind="deal" id={dealId} className="underline">
+              {found.deal.title}
+            </RecordLink>{" "}
+            ·{" "}
+            <RecordLink kind="account" id={found.account.client.id}>
+              {found.account.client.name}
+            </RecordLink>
+          </>
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {quote.quote.number} v{quote.quote.version}
+            <Badge dot variant={statusTone(quote.quote.status === "in_approval" ? "pending" : quote.quote.status)}>
+              {t(`enums.quoteStatus.${quote.quote.status as "draft"}`)}
+            </Badge>
+          </span>
+        }
+      >
         <p className="text-sm text-muted-foreground">
           {t("quote.totalIs", { total: f.money(quote.quote.totalVnd), valid: f.date(quote.quote.validUntil) })}
           {quote.quote.sentAt ? ` · ${t("quote.sentOn", { date: f.when(quote.quote.sentAt) })}` : ""}

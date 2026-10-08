@@ -287,13 +287,19 @@ export const workTask = pgTable(
   },
   (t) => [
     unique("work_task_number_unique").on(t.teamId, t.number),
-    uniqueIndex("work_task_occurrence_unique").on(t.recurrenceId, t.occurrenceDate).where(sql`${t.recurrenceId} IS NOT NULL`),
+    uniqueIndex("work_task_occurrence_unique")
+      .on(t.recurrenceId, t.occurrenceDate)
+      .where(sql`${t.recurrenceId} IS NOT NULL`),
     index("work_task_project_idx").on(t.projectId),
     index("work_task_state_idx").on(t.stateId),
     index("work_task_client_idx").on(t.clientId),
     // Deliverables waiting for this reviewer: a badge in the app frame on every page.
-    index("work_task_reviewer_idx").on(t.reviewerPersonId).where(sql`${t.reviewStatus} = 'submitted'`),
-    index("work_task_triage_idx").on(t.teamId).where(sql`${t.triageStatus} IN ('pending', 'snoozed')`),
+    index("work_task_reviewer_idx")
+      .on(t.reviewerPersonId)
+      .where(sql`${t.reviewStatus} = 'submitted'`),
+    index("work_task_triage_idx")
+      .on(t.teamId)
+      .where(sql`${t.triageStatus} IN ('pending', 'snoozed')`),
     index("work_task_cycle_idx").on(t.cycleId),
   ],
 ).enableRLS();
@@ -466,17 +472,28 @@ export const workDeliverable = pgTable(
     // Set when the client approved this version (FR-PJM-51): it can no longer change.
     frozenAt: timestamp("frozen_at", { withTimezone: true }),
   },
-  (t) => [unique("work_deliverable_version_unique").on(t.taskId, t.version), index("work_deliverable_stage_reviewer_idx").on(t.stageReviewerPersonId).where(sql`${t.decision} = 'pending'`)],
+  (t) => [
+    unique("work_deliverable_version_unique").on(t.taskId, t.version),
+    index("work_deliverable_stage_reviewer_idx")
+      .on(t.stageReviewerPersonId)
+      .where(sql`${t.decision} = 'pending'`),
+  ],
 ).enableRLS();
 
 /** engine/recurrence.ts reads this. */
-export type RecurrenceRuleJson =
-  | { freq: "daily"; interval: number }
-  | { freq: "weekly"; interval: number; weekdays: number[] }
-  | { freq: "monthly"; interval: number; monthDay: number | "last" };
+export type RecurrenceRuleJson = { freq: "daily"; interval: number } | { freq: "weekly"; interval: number; weekdays: number[] } | { freq: "monthly"; interval: number; monthDay: number | "last" };
 
 /** What each occurrence starts with; people and labels that no longer fit are dropped when it is made. */
-export type RecurrenceDraft = { description?: string | null; assigneePersonId?: string | null; priority?: number | null; estimateMinutes?: number | null; clientId?: string | null; channel?: string | null; contentFormat?: string | null; labelIds?: string[] };
+export type RecurrenceDraft = {
+  description?: string | null;
+  assigneePersonId?: string | null;
+  priority?: number | null;
+  estimateMinutes?: number | null;
+  clientId?: string | null;
+  channel?: string | null;
+  contentFormat?: string | null;
+  labelIds?: string[];
+};
 
 // A task that comes back (FR-WRK-11): the daily job makes each occurrence once, `leadDays` before
 // its date (work_task's unique recurrence + occurrence date is the guard). On a project, or — with
@@ -616,7 +633,15 @@ export const workBlocker = pgTable(
     resolvedByPersonId: uuid("resolved_by_person_id").references(() => person.id),
     resolution: text("resolution"),
   },
-  (t) => [index("work_blocker_task_idx").on(t.taskId), uniqueIndex("work_blocker_open_unique").on(t.taskId).where(sql`${t.resolvedAt} IS NULL`), index("work_blocker_needed_idx").on(t.neededPersonId).where(sql`${t.resolvedAt} IS NULL`)],
+  (t) => [
+    index("work_blocker_task_idx").on(t.taskId),
+    uniqueIndex("work_blocker_open_unique")
+      .on(t.taskId)
+      .where(sql`${t.resolvedAt} IS NULL`),
+    index("work_blocker_needed_idx")
+      .on(t.neededPersonId)
+      .where(sql`${t.resolvedAt} IS NULL`),
+  ],
 ).enableRLS();
 
 // Cycles (FR-PJM-10): a team's time boxes, made ahead by the daily job.
@@ -749,7 +774,18 @@ export const workHandoff = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("work_handoff_task_idx").on(t.taskId, t.createdAt), index("work_handoff_client_idx").on(t.clientId).where(sql`${t.clientId} IS NOT NULL`), index("work_handoff_to_idx").on(t.toPersonId).where(sql`${t.status} = 'pending'`), index("work_handoff_team_idx").on(t.toTeamId).where(sql`${t.status} = 'pending'`)],
+  (t) => [
+    index("work_handoff_task_idx").on(t.taskId, t.createdAt),
+    index("work_handoff_client_idx")
+      .on(t.clientId)
+      .where(sql`${t.clientId} IS NOT NULL`),
+    index("work_handoff_to_idx")
+      .on(t.toPersonId)
+      .where(sql`${t.status} = 'pending'`),
+    index("work_handoff_team_idx")
+      .on(t.toTeamId)
+      .where(sql`${t.status} = 'pending'`),
+  ],
 ).enableRLS();
 
 // Leave cover (FR-PJM-44): one plan per leave request, one row per thing covered.
@@ -927,7 +963,13 @@ export const workPublish = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("work_publish_task_idx").on(t.taskId), index("work_publish_planned_idx").on(t.plannedAt).where(sql`${t.status} = 'planned'`), index("work_publish_digital_asset_idx").on(t.digitalAssetId)],
+  (t) => [
+    index("work_publish_task_idx").on(t.taskId),
+    index("work_publish_planned_idx")
+      .on(t.plannedAt)
+      .where(sql`${t.status} = 'planned'`),
+    index("work_publish_digital_asset_idx").on(t.digitalAssetId),
+  ],
 ).enableRLS();
 
 // The pages, channels and accounts a task's output is for (FR-AST-09): "this post goes out on

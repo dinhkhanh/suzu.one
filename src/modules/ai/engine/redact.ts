@@ -86,7 +86,13 @@ export function chatRequestForModel<Request extends { question: string; passages
   return {
     ...request,
     question: redactContacts(request.question),
-    passages: request.passages.map((passage) => ({ ...passage, pageTitle: passageForModel(passage.pageTitle), spaceName: passageForModel(passage.spaceName), headingPath: passageForModel(passage.headingPath), content: passageForModel(passage.content) })),
+    passages: request.passages.map((passage) => ({
+      ...passage,
+      pageTitle: passageForModel(passage.pageTitle),
+      spaceName: passageForModel(passage.spaceName),
+      headingPath: passageForModel(passage.headingPath),
+      content: passageForModel(passage.content),
+    })),
   };
 }
 

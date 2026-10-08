@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -70,7 +76,9 @@ async function addStructure(personId: string, validFrom: string, baseSalary: num
   const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, personId)).limit(1);
   const id = crypto.randomUUID();
   const terms = { baseSalary, insuranceSalary: baseSalary, allowances: [{ code: "ALW_MEAL", amount: 730_000 }] };
-  await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employment.id, entityId: ids.entity, validFrom, validTo, reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+  await db()
+    .insert(schema.salaryStructure)
+    .values({ id, personId, employmentId: employment.id, entityId: ids.entity, validFrom, validTo, reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
   return id;
 }
 
@@ -84,7 +92,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate,
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -131,7 +148,9 @@ async function lockMonth(people: { personId: string; summary: Record<string, unk
   await db().delete(schema.timesheetMonth);
   await db().delete(schema.timesheetPeriod);
   await db().insert(schema.timesheetPeriod).values({ entityId: ids.entity, month: MONTH, status: "locked", lockedAt, lockedByPersonId: ids.actor });
-  await db().insert(schema.timesheetMonth).values(people.map((row) => ({ personId: row.personId, entityId: ids.entity, month: MONTH, status: "locked" as const, summary: row.summary, lockedAt, lockedByPersonId: ids.actor })));
+  await db()
+    .insert(schema.timesheetMonth)
+    .values(people.map((row) => ({ personId: row.personId, entityId: ids.entity, month: MONTH, status: "locked" as const, summary: row.summary, lockedAt, lockedByPersonId: ids.actor })));
 }
 
 describe("calculating an entity's month", () => {
@@ -287,7 +306,8 @@ describe("splitting a month into segments", () => {
   });
 
   // FR-PAY-05: a structure with a probation share is cut where the probation contract ends.
-  const onProbation = (validFrom: string, percent: number) => ({ ...structure(validFrom, null, 20_000_000), terms: { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: percent } }) as unknown as Structure;
+  const onProbation = (validFrom: string, percent: number) =>
+    ({ ...structure(validFrom, null, 20_000_000), terms: { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: percent } }) as unknown as Structure;
 
   it("cuts the month where probation ends, and marks only the days on probation", () => {
     const segments = buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }]);
@@ -302,11 +322,18 @@ describe("splitting a month into segments", () => {
     expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-05-01", end: "2026-06-30" }]).map((segment) => segment.probationPercent ?? null)).toEqual([null]);
     expect(buildSegments([structure("2026-07-15", null, 20_000_000)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: "2026-08-14" }])).toHaveLength(1);
     // A probation still running covers the whole month.
-    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: null }]).map((segment) => [segment.from, segment.to, segment.probationPercent])).toEqual([["2026-08-01", "2026-08-31", 85]]);
+    expect(buildSegments([onProbation("2026-07-15", 85)], timesheet, "2026-08-01", "2026-08-31", [], [{ start: "2026-07-15", end: null }]).map((segment) => [segment.from, segment.to, segment.probationPercent])).toEqual([
+      ["2026-08-01", "2026-08-31", 85],
+    ]);
   });
 
   it("finds every piece of a month cut by probation more than once", () => {
-    expect(splitByProbation("2026-08-01", "2026-08-31", [{ start: "2026-08-05", end: "2026-08-10" }, { start: "2026-08-20", end: null }])).toEqual([
+    expect(
+      splitByProbation("2026-08-01", "2026-08-31", [
+        { start: "2026-08-05", end: "2026-08-10" },
+        { start: "2026-08-20", end: null },
+      ]),
+    ).toEqual([
       { from: "2026-08-01", to: "2026-08-04", onProbation: false },
       { from: "2026-08-05", to: "2026-08-10", onProbation: true },
       { from: "2026-08-11", to: "2026-08-19", onProbation: false },

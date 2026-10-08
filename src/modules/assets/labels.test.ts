@@ -21,7 +21,12 @@ const row = (index: number, over: Partial<LabelRow> = {}): LabelRow => ({
 });
 
 const render = (rows: readonly LabelRow[]) => renderLabelSheetPdf({ rows, labels, font, createdAt: new Date("2026-09-20T03:00:00Z") });
-const pageCount = (pdf: Uint8Array) => [...Buffer.from(pdf).toString("latin1").matchAll(/\/Type\s*\/Page[^s]/g)].length;
+const pageCount = (pdf: Uint8Array) =>
+  [
+    ...Buffer.from(pdf)
+      .toString("latin1")
+      .matchAll(/\/Type\s*\/Page[^s]/g),
+  ].length;
 
 describe("the label sheet", () => {
   it("draws every label at one version, so a printed page has squares of one size", () => {

@@ -104,7 +104,11 @@ export function WaitingList({ rows }: { rows: WaitingRow[] }) {
             <TableRow key={row.id} data-state={picked.includes(row.id) ? "selected" : undefined}>
               <TableCell>
                 <span className="flex items-center gap-3">
-                  <Checkbox aria-label={t("pick", { name: row.name, week: row.week })} checked={picked.includes(row.id)} onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, row.id] : current.filter((id) => id !== row.id)))} />
+                  <Checkbox
+                    aria-label={t("pick", { name: row.name, week: row.week })}
+                    checked={picked.includes(row.id)}
+                    onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, row.id] : current.filter((id) => id !== row.id)))}
+                  />
                   <Link href={row.href} className="font-medium hover:underline">
                     {row.name}
                   </Link>

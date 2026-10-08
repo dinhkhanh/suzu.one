@@ -99,11 +99,7 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
       <ul className="flex flex-col gap-px">
         <TreeRows nodes={tree} selected={unit?.id ?? ""} />
       </ul>
-      {canAdd ? (
-        <TableCard className="mt-2">
-          {addRow()}
-        </TableCard>
-      ) : null}
+      {canAdd ? <TableCard className="mt-2">{addRow()}</TableCard> : null}
     </nav>
   );
 
@@ -131,15 +127,36 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
     );
   }
 
-  const ancestors = unit.path.slice(0, -1).map((id) => byId.get(id)).filter((item): item is TreeNode => !!item);
+  const ancestors = unit.path
+    .slice(0, -1)
+    .map((id) => byId.get(id))
+    .filter((item): item is TreeNode => !!item);
   const parent = ancestors.at(-1);
   const manage = canManage(unit);
   const inside = flattenTree(unit.children).length;
   const facts: { label: string; value: ReactNode }[] = [
     { label: t("code"), value: unit.code ? <span className="font-mono text-[0.8125rem]">{unit.code}</span> : <span className="text-faint">—</span> },
     { label: t("kind"), value: <Badge variant="outline">{t(`kinds.${unit.kind}`)}</Badge> },
-    { label: t("parent"), value: parent ? <Link href={`/admin/org?unit=${parent.id}`} className="text-link hover:underline">{parent.name}</Link> : <span className="text-muted-foreground">{t("noParent")}</span> },
-    { label: t("belongsTo"), value: unit.entityId ? <RecordLink kind="entity" id={unit.entityId}>{entityName.get(unit.entityId) ?? "—"}</RecordLink> : <Badge variant="secondary">{t("shared")}</Badge> },
+    {
+      label: t("parent"),
+      value: parent ? (
+        <Link href={`/admin/org?unit=${parent.id}`} className="text-link hover:underline">
+          {parent.name}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground">{t("noParent")}</span>
+      ),
+    },
+    {
+      label: t("belongsTo"),
+      value: unit.entityId ? (
+        <RecordLink kind="entity" id={unit.entityId}>
+          {entityName.get(unit.entityId) ?? "—"}
+        </RecordLink>
+      ) : (
+        <Badge variant="secondary">{t("shared")}</Badge>
+      ),
+    },
     { label: t("path"), value: <span className="font-mono text-xs text-faint">{[...ancestors, unit].map((item) => item.code ?? item.name).join(" / ")}</span> },
     { label: t("unitsInside"), value: <span className="font-mono text-[0.8125rem] tabular-nums">{unit.children.length}</span> },
   ];
@@ -161,7 +178,9 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
         <div className="flex items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-muted font-mono text-[0.6875rem] font-medium tracking-tight text-muted-foreground">{unit.code ?? unit.name.slice(0, 2).toUpperCase()}</span>
           <h1 className="min-w-0 flex-1 truncate">{unit.name}</h1>
-          <Badge dot variant={unit.isActive ? "success" : "outline"}>{unit.isActive ? t("active") : t("inactive")}</Badge>
+          <Badge dot variant={unit.isActive ? "success" : "outline"}>
+            {unit.isActive ? t("active") : t("inactive")}
+          </Badge>
         </div>
       </header>
 
@@ -214,7 +233,9 @@ export default async function OrgPage(props: PageProps<"/admin/org">) {
                   </TableCell>
                   <TableCell kind="number">{child.children.length || <span className="text-faint">—</span>}</TableCell>
                   <TableCell>
-                    <Badge dot variant={child.isActive ? "success" : "outline"}>{child.isActive ? t("active") : t("inactive")}</Badge>
+                    <Badge dot variant={child.isActive ? "success" : "outline"}>
+                      {child.isActive ? t("active") : t("inactive")}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

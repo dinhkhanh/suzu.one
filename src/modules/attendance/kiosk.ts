@@ -42,13 +42,25 @@ export async function openKioskSession(input: { device: DeviceRow; openedByPerso
   const token = `szk_${randomBytes(32).toString("base64url")}`;
   const [session] = await db()
     .insert(schema.kioskSession)
-    .values({ deviceId: input.device.id, entityId: input.device.entityId, tokenHash: hashToken(token), qrSecret: randomBytes(32).toString("base64url"), openedByPersonId: input.openedByPersonId, userAgent: input.userAgent?.slice(0, 300) ?? null, lastSeenAt: new Date() })
+    .values({
+      deviceId: input.device.id,
+      entityId: input.device.entityId,
+      tokenHash: hashToken(token),
+      qrSecret: randomBytes(32).toString("base64url"),
+      openedByPersonId: input.openedByPersonId,
+      userAgent: input.userAgent?.slice(0, 300) ?? null,
+      lastSeenAt: new Date(),
+    })
     .returning();
   return { token, session };
 }
 
 export async function closeKioskSession(sessionId: string, byPersonId: string): Promise<KioskSessionRow> {
-  const [session] = await db().update(schema.kioskSession).set({ closedAt: new Date(), closedByPersonId: byPersonId }).where(and(eq(schema.kioskSession.id, sessionId), isNull(schema.kioskSession.closedAt))).returning();
+  const [session] = await db()
+    .update(schema.kioskSession)
+    .set({ closedAt: new Date(), closedByPersonId: byPersonId })
+    .where(and(eq(schema.kioskSession.id, sessionId), isNull(schema.kioskSession.closedAt)))
+    .returning();
   if (!session) throw new ActionError("not_found");
   return session;
 }
@@ -190,10 +202,42 @@ export async function listKioskDevices(principal: Principal, now: Date = new Dat
   // The day's punches of each session, counted where they are (the punch's partial index on its session).
   const punchesToday = sql<number>`(select count(*)::int from ${schema.punch} where ${schema.punch.kioskSessionId} = ${schema.kioskSession.id} and ${schema.punch.at} >= ${`${todayInVietnam(now)}T00:00:00+07:00`}::timestamptz)`;
   const sessions = await db()
-    .select({ id: schema.kioskSession.id, deviceId: schema.kioskSession.deviceId, openedAt: schema.kioskSession.openedAt, openedByPersonId: schema.kioskSession.openedByPersonId, openedBy: schema.person.fullName, lastSeenAt: schema.kioskSession.lastSeenAt, userAgent: schema.kioskSession.userAgent, punchesToday })
+    .select({
+      id: schema.kioskSession.id,
+      deviceId: schema.kioskSession.deviceId,
+      openedAt: schema.kioskSession.openedAt,
+      openedByPersonId: schema.kioskSession.openedByPersonId,
+      openedBy: schema.person.fullName,
+      lastSeenAt: schema.kioskSession.lastSeenAt,
+      userAgent: schema.kioskSession.userAgent,
+      punchesToday,
+    })
     .from(schema.kioskSession)
     .innerJoin(schema.person, eq(schema.person.id, schema.kioskSession.openedByPersonId))
-    .where(and(inArray(schema.kioskSession.deviceId, devices.map((device) => device.id)), isNull(schema.kioskSession.closedAt)))
+    .where(
+      and(
+        inArray(
+          schema.kioskSession.deviceId,
+          devices.map((device) => device.id),
+        ),
+        isNull(schema.kioskSession.closedAt),
+      ),
+    )
     .orderBy(desc(schema.kioskSession.openedAt));
-  return devices.map((device) => ({ ...device, sessions: sessions.filter((session) => session.deviceId === device.id).map((session) => ({ id: session.id, openedAt: session.openedAt, openedByPersonId: session.openedByPersonId, openedBy: session.openedBy, lastSeenAt: session.lastSeenAt, userAgent: session.userAgent, expiresAt: kioskExpiresAt(session), lapsed: kioskLapse(session, now) !== null, punchesToday: Number(session.punchesToday) })) }));
+  return devices.map((device) => ({
+    ...device,
+    sessions: sessions
+      .filter((session) => session.deviceId === device.id)
+      .map((session) => ({
+        id: session.id,
+        openedAt: session.openedAt,
+        openedByPersonId: session.openedByPersonId,
+        openedBy: session.openedBy,
+        lastSeenAt: session.lastSeenAt,
+        userAgent: session.userAgent,
+        expiresAt: kioskExpiresAt(session),
+        lapsed: kioskLapse(session, now) !== null,
+        punchesToday: Number(session.punchesToday),
+      })),
+  }));
 }

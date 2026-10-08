@@ -54,7 +54,17 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     [face],
   ] = await Promise.all([
     db()
-      .select({ id: schema.person.id, fullName: schema.person.fullName, workEmail: schema.person.workEmail, workforceType: schema.person.workforceType, status: schema.person.status, entity: schema.entity.legalName, unit: schema.orgUnit.name, manager: manager.fullName, createdAt: schema.person.createdAt })
+      .select({
+        id: schema.person.id,
+        fullName: schema.person.fullName,
+        workEmail: schema.person.workEmail,
+        workforceType: schema.person.workforceType,
+        status: schema.person.status,
+        entity: schema.entity.legalName,
+        unit: schema.orgUnit.name,
+        manager: manager.fullName,
+        createdAt: schema.person.createdAt,
+      })
       .from(schema.person)
       .leftJoin(schema.entity, eq(schema.entity.id, schema.person.primaryEntityId))
       .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.orgUnitId))
@@ -64,7 +74,11 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     db().select().from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1),
     getSensitiveFields(principal, personId),
     listEmergencyContacts(principal, personId),
-    db().select().from(schema.dependent).where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt))).orderBy(asc(schema.dependent.createdAt)),
+    db()
+      .select()
+      .from(schema.dependent)
+      .where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt)))
+      .orderBy(asc(schema.dependent.createdAt)),
     db()
       .select({ employment: schema.employment, entity: schema.entity.legalName })
       .from(schema.employment)
@@ -102,7 +116,17 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     db().select().from(schema.timesheetMonth).where(eq(schema.timesheetMonth.personId, personId)).orderBy(asc(schema.timesheetMonth.month)),
     db().select().from(schema.timesheetDay).where(eq(schema.timesheetDay.personId, personId)).orderBy(asc(schema.timesheetDay.date)),
     db()
-      .select({ id: schema.approvalRequest.id, type: schema.approvalRequest.type, typeName: schema.approvalRequest.typeName, summary: schema.approvalRequest.summary, payload: schema.approvalRequest.payload, status: schema.approvalRequest.status, createdAt: schema.approvalRequest.createdAt, decidedAt: schema.approvalRequest.decidedAt, askedByMe: sql<boolean>`${schema.approvalRequest.requesterPersonId} = ${personId}` })
+      .select({
+        id: schema.approvalRequest.id,
+        type: schema.approvalRequest.type,
+        typeName: schema.approvalRequest.typeName,
+        summary: schema.approvalRequest.summary,
+        payload: schema.approvalRequest.payload,
+        status: schema.approvalRequest.status,
+        createdAt: schema.approvalRequest.createdAt,
+        decidedAt: schema.approvalRequest.decidedAt,
+        askedByMe: sql<boolean>`${schema.approvalRequest.requesterPersonId} = ${personId}`,
+      })
       .from(schema.approvalRequest)
       .where(or(eq(schema.approvalRequest.requesterPersonId, personId), eq(schema.approvalRequest.subjectPersonId, personId)))
       .orderBy(asc(schema.approvalRequest.createdAt)),
@@ -115,7 +139,14 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     db().select().from(schema.aiConversation).where(eq(schema.aiConversation.personId, personId)).orderBy(asc(schema.aiConversation.createdAt)),
     db()
       // With the feedback they gave on an answer (FR-AGT-51): theirs too.
-      .select({ conversationId: schema.aiMessage.conversationId, role: schema.aiMessage.role, body: schema.aiMessage.body, toolResult: schema.aiMessage.toolResult, createdAt: schema.aiMessage.createdAt, feedback: { verdict: schema.aiFeedback.verdict, note: schema.aiFeedback.note, shared: schema.aiFeedback.shared } })
+      .select({
+        conversationId: schema.aiMessage.conversationId,
+        role: schema.aiMessage.role,
+        body: schema.aiMessage.body,
+        toolResult: schema.aiMessage.toolResult,
+        createdAt: schema.aiMessage.createdAt,
+        feedback: { verdict: schema.aiFeedback.verdict, note: schema.aiFeedback.note, shared: schema.aiFeedback.shared },
+      })
       .from(schema.aiMessage)
       .leftJoin(schema.aiFeedback, eq(schema.aiFeedback.messageId, schema.aiMessage.id))
       .where(eq(schema.aiMessage.personId, personId))
@@ -139,11 +170,43 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     profile: profile ?? null,
     identityAndBank: sensitive ? { ...sensitive, dependents: undefined } : null,
     emergencyContacts: emergencyContacts ?? [],
-    dependents: dependents.map((row) => ({ fullName: row.fullName, relationship: row.relationship, dateOfBirth: row.dateOfBirth, idNumber: dependentNumbers.get(row.id)?.idNumber ?? null, taxCode: dependentNumbers.get(row.id)?.taxCode ?? null, deductionFrom: row.deductionFrom, deductionTo: row.deductionTo, note: row.note })),
+    dependents: dependents.map((row) => ({
+      fullName: row.fullName,
+      relationship: row.relationship,
+      dateOfBirth: row.dateOfBirth,
+      idNumber: dependentNumbers.get(row.id)?.idNumber ?? null,
+      taxCode: dependentNumbers.get(row.id)?.taxCode ?? null,
+      deductionFrom: row.deductionFrom,
+      deductionTo: row.deductionTo,
+      note: row.note,
+    })),
     employments: employments.map(({ employment, entity }) => ({ entity, employeeCode: employment.employeeCode, startDate: employment.startDate, seniorityDate: employment.seniorityDate, endDate: employment.endDate })),
-    assignments: assignments.map(({ assignment, unit, position, manager: managerName }) => ({ validFrom: assignment.validFrom, validTo: assignment.validTo, kind: assignment.kind, workforceType: assignment.workforceType, unit, position, seniorityLevel: assignment.seniorityLevel, positionLevel: assignment.positionLevel, manager: managerName, workLocation: assignment.workLocation, changeReason: assignment.changeReason })),
+    assignments: assignments.map(({ assignment, unit, position, manager: managerName }) => ({
+      validFrom: assignment.validFrom,
+      validTo: assignment.validTo,
+      kind: assignment.kind,
+      workforceType: assignment.workforceType,
+      unit,
+      position,
+      seniorityLevel: assignment.seniorityLevel,
+      positionLevel: assignment.positionLevel,
+      manager: managerName,
+      workLocation: assignment.workLocation,
+      changeReason: assignment.changeReason,
+    })),
     lifecycleEvents: lifecycleEvents.map((row) => ({ type: row.type, effectiveDate: row.effectiveDate, status: row.status, reason: row.reason, note: row.note, details: row.details })),
-    contracts: (contracts ?? []).map((row) => ({ number: row.number, type: row.type, jobCategory: row.jobCategory, signDate: row.signDate, startDate: row.startDate, endDate: row.endDate, terminatedOn: row.terminatedOn, note: row.note, salaryTerms: salaryTerms.get(row.id) ?? null, files: row.files?.map((file) => file.fileName) ?? [] })),
+    contracts: (contracts ?? []).map((row) => ({
+      number: row.number,
+      type: row.type,
+      jobCategory: row.jobCategory,
+      signDate: row.signDate,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      terminatedOn: row.terminatedOn,
+      note: row.note,
+      salaryTerms: salaryTerms.get(row.id) ?? null,
+      files: row.files?.map((file) => file.fileName) ?? [],
+    })),
     documentsOnFile: vaultDocuments.map((row) => ({ category: row.category, title: row.title, fileName: row.fileName, expiresOn: row.expiresOn, uploadedAt: row.createdAt })),
     documentsIssued: issuedDocuments,
     leave: {
@@ -154,8 +217,15 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     requests,
     notifications,
     payslips,
-    assistant: conversations.map((conversation) => ({ title: conversation.title, createdAt: conversation.createdAt, messages: (messagesOf.get(conversation.id) ?? []).map(({ role, body, toolResult, createdAt, feedback }) => ({ role, body, toolResult, createdAt, ...(feedback?.verdict ? { feedback } : {}) })) })),
-    privacy: { consents: consents.map((row) => ({ purpose: row.purpose, decision: row.decision, at: row.at, noticeVersion: row.noticeVersion, noticeLocale: row.noticeLocale, noticeText: row.noticeText })), faceEnrolment: face ? { templates: face.templates, consentAt: face.consentAt } : null },
+    assistant: conversations.map((conversation) => ({
+      title: conversation.title,
+      createdAt: conversation.createdAt,
+      messages: (messagesOf.get(conversation.id) ?? []).map(({ role, body, toolResult, createdAt, feedback }) => ({ role, body, toolResult, createdAt, ...(feedback?.verdict ? { feedback } : {}) })),
+    })),
+    privacy: {
+      consents: consents.map((row) => ({ purpose: row.purpose, decision: row.decision, at: row.at, noticeVersion: row.noticeVersion, noticeLocale: row.noticeLocale, noticeText: row.noticeText })),
+      faceEnrolment: face ? { templates: face.templates, consentAt: face.consentAt } : null,
+    },
   };
 
   const counts = {

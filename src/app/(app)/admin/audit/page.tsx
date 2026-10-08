@@ -118,7 +118,11 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
 
   return (
     <Page width="wide">
-      <PageHeader title={t("title")} description={t("description")} actions={<ExportButton action={exportAuditAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton action={exportAuditAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />}
+      />
 
       <Form action="/admin/audit" className="toolbar">
         <Input name="action" defaultValue={filters.action} placeholder={t("filters.action")} aria-label={t("filters.action")} className="w-full md:w-56" />
@@ -142,13 +146,20 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
         <DatePicker name="from" defaultValue={filters.from} aria-label={t("filters.from")} className="w-full md:w-40" />
         <DatePicker name="to" defaultValue={filters.to} aria-label={t("filters.to")} className="w-full md:w-40" />
         {filters.resourceId ? <input type="hidden" name="resourceId" value={filters.resourceId} /> : null}
-        <Button type="submit" variant="secondary">{t("filters.apply")}</Button>
+        <Button type="submit" variant="secondary">
+          {t("filters.apply")}
+        </Button>
       </Form>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs text-faint tabular-nums">{t("count", { count: total })}</span>
         {Object.entries(activeFilters).map(([key, value]) => (
-          <Link key={key} href={link({ ...activeFilters, [key]: undefined })} className="press inline-flex h-7 items-center gap-1 rounded-full bg-primary/8 pr-1.5 pl-2.5 text-xs font-medium text-primary ring-1 ring-primary/25 hover:bg-primary/12" aria-label={t("removeFilter", { filter: chipLabel(key, value) })}>
+          <Link
+            key={key}
+            href={link({ ...activeFilters, [key]: undefined })}
+            className="press inline-flex h-7 items-center gap-1 rounded-full bg-primary/8 pr-1.5 pl-2.5 text-xs font-medium text-primary ring-1 ring-primary/25 hover:bg-primary/12"
+            aria-label={t("removeFilter", { filter: chipLabel(key, value) })}
+          >
             <span className="max-w-48 truncate">{chipLabel(key, value)}</span>
             <XIcon aria-hidden className="size-3.5" />
           </Link>
@@ -209,7 +220,9 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
               ].map(([label, value]) => (
                 <div key={label} className="flex min-w-0 flex-col gap-0.5">
                   <dt className="text-faint">{label}</dt>
-                  <dd className="truncate font-mono text-foreground/80" title={value}>{value}</dd>
+                  <dd className="truncate font-mono text-foreground/80" title={value}>
+                    {value}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -222,7 +235,9 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
         <Table className="min-w-[56rem]" numberFrom={(page - 1) * AUDIT_PAGE_SIZE + 1}>
           <TableHeader>
             <TableRow>
-              <TableHead kind="time" className="text-left">{t("when")}</TableHead>
+              <TableHead kind="time" className="text-left">
+                {t("when")}
+              </TableHead>
               <TableHead kind="person">{t("who")}</TableHead>
               <TableHead kind="status">{t("action")}</TableHead>
               <TableHead kind="text">{t("resource")}</TableHead>
@@ -243,7 +258,9 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
                   <TableCell className="max-w-56">{who(row.actorEmail)}</TableCell>
                   <TableCell>
                     <Link href={entryHref(id)} className="flex items-center gap-2">
-                      <Badge variant={actionTone(row.action)} className="font-mono text-[0.6875rem]">{row.action}</Badge>
+                      <Badge variant={actionTone(row.action)} className="font-mono text-[0.6875rem]">
+                        {row.action}
+                      </Badge>
                       {row.summary ? <span className="hidden max-w-64 truncate text-xs text-muted-foreground xl:inline">{row.summary}</span> : null}
                     </Link>
                   </TableCell>
@@ -256,7 +273,15 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-xs">{row.entityId ? <RecordLink kind="entity" id={row.entityId}>{entityName.get(row.entityId) ?? row.entityId}</RecordLink> : <span className="text-faint">—</span>}</TableCell>
+                  <TableCell className="text-xs">
+                    {row.entityId ? (
+                      <RecordLink kind="entity" id={row.entityId}>
+                        {entityName.get(row.entityId) ?? row.entityId}
+                      </RecordLink>
+                    ) : (
+                      <span className="text-faint">—</span>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}

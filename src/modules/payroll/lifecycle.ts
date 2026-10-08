@@ -157,7 +157,13 @@ export async function stepRun(runId: string, step: RunStep, actor: { personId: s
     // them again under the same id.
     const withdrawn =
       step === "return"
-        ? (await tx.update(schema.payslip).set({ withdrawnAt: now }).where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt))).returning({ personId: schema.payslip.personId })).map((row) => row.personId)
+        ? (
+            await tx
+              .update(schema.payslip)
+              .set({ withdrawnAt: now })
+              .where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt)))
+              .returning({ personId: schema.payslip.personId })
+          ).map((row) => row.personId)
         : [];
 
     const [event] = await tx.insert(schema.payrollRunEvent).values({ runId, fromStatus: before.status, toStatus: rule.to, actorPersonId: actor.personId, comment }).returning();
@@ -180,7 +186,11 @@ export async function stepRun(runId: string, step: RunStep, actor: { personId: s
  * a run in any other status, and answers whether it did anything.
  */
 export async function reopenCalculatedRun(executor: Executor, runId: string, actorPersonId: string | null): Promise<boolean> {
-  const [reopened] = await executor.update(schema.payrollRun).set({ status: "draft", updatedAt: new Date() }).where(and(eq(schema.payrollRun.id, runId), eq(schema.payrollRun.status, "calculated"))).returning({ id: schema.payrollRun.id });
+  const [reopened] = await executor
+    .update(schema.payrollRun)
+    .set({ status: "draft", updatedAt: new Date() })
+    .where(and(eq(schema.payrollRun.id, runId), eq(schema.payrollRun.status, "calculated")))
+    .returning({ id: schema.payrollRun.id });
   if (!reopened) return false;
   await executor.insert(schema.payrollRunEvent).values({ runId, fromStatus: "calculated", toStatus: "draft", actorPersonId, comment: null });
   return true;

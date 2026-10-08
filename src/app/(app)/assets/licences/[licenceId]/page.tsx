@@ -62,7 +62,10 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
           {licence.vendor ? `${licence.vendor} · ` : null}
           {licence.entityName ? (
             <>
-              <RecordLink kind="entity" id={licence.entityId}>{licence.entityName}</RecordLink> ·{" "}
+              <RecordLink kind="entity" id={licence.entityId}>
+                {licence.entityName}
+              </RecordLink>{" "}
+              ·{" "}
             </>
           ) : null}
           {t(`cycle.${licence.billingCycle}`)}
@@ -82,8 +85,12 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
           <TableHeader>
             <TableRow>
               <TableHead kind="person">{tSeats("holder")}</TableHead>
-              <TableHead kind="date" className="hidden md:table-cell">{tSeats("since")}</TableHead>
-              <TableHead kind="person" className="hidden md:table-cell">{tSeats("by")}</TableHead>
+              <TableHead kind="date" className="hidden md:table-cell">
+                {tSeats("since")}
+              </TableHead>
+              <TableHead kind="person" className="hidden md:table-cell">
+                {tSeats("by")}
+              </TableHead>
               <TableHead kind="actions" />
             </TableRow>
           </TableHeader>
@@ -97,10 +104,23 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
                       <RecordLink kind="asset" id={seat.assetId} className="font-medium">
                         <span className="font-mono text-xs text-muted-foreground">{seat.assetCode}</span> {seat.assetName}
                       </RecordLink>
-                      <p className="text-xs text-faint">{seat.deviceHolderName ? tSeats.rich("deviceWith", { name: seat.deviceHolderName, person: (chunks) => <RecordLink kind="person" id={seat.deviceHolderPersonId}>{chunks}</RecordLink> }) : tSeats("deviceOnShelf")}</p>
+                      <p className="text-xs text-faint">
+                        {seat.deviceHolderName
+                          ? tSeats.rich("deviceWith", {
+                              name: seat.deviceHolderName,
+                              person: (chunks) => (
+                                <RecordLink kind="person" id={seat.deviceHolderPersonId}>
+                                  {chunks}
+                                </RecordLink>
+                              ),
+                            })
+                          : tSeats("deviceOnShelf")}
+                      </p>
                     </>
                   ) : (
-                    <RecordLink kind="person" id={seat.personId} className="font-medium">{seat.personName}</RecordLink>
+                    <RecordLink kind="person" id={seat.personId} className="font-medium">
+                      {seat.personName}
+                    </RecordLink>
                   )}
                   {seat.note ? <p className="text-xs text-faint">{seat.note}</p> : null}
                   {/* On a phone the two columns to the right fold into this line. */}
@@ -109,13 +129,25 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
                     {seat.assignedByName ? (
                       <>
                         {" · "}
-                        <RecordLink kind="person" id={seat.assignedByPersonId}>{seat.assignedByName}</RecordLink>
+                        <RecordLink kind="person" id={seat.assignedByPersonId}>
+                          {seat.assignedByName}
+                        </RecordLink>
                       </>
                     ) : null}
                   </p>
                 </TableCell>
-                <TableCell kind="date" className="hidden md:table-cell">{day(seat.assignedAt)}</TableCell>
-                <TableCell className="hidden md:table-cell">{seat.assignedByName ? <RecordLink kind="person" id={seat.assignedByPersonId}>{seat.assignedByName}</RecordLink> : "—"}</TableCell>
+                <TableCell kind="date" className="hidden md:table-cell">
+                  {day(seat.assignedAt)}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {seat.assignedByName ? (
+                    <RecordLink kind="person" id={seat.assignedByPersonId}>
+                      {seat.assignedByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell kind="actions">
                   <ReleaseSeatButton seatId={seat.id} />
                 </TableCell>
@@ -149,7 +181,9 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
                   {seat.releasedByName ? (
                     <>
                       {" · "}
-                      <RecordLink kind="person" id={seat.releasedByPersonId}>{seat.releasedByName}</RecordLink>
+                      <RecordLink kind="person" id={seat.releasedByPersonId}>
+                        {seat.releasedByName}
+                      </RecordLink>
                     </>
                   ) : null}
                   {seat.releaseNote ? ` · ${seat.releaseNote}` : null}

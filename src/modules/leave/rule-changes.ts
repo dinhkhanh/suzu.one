@@ -24,9 +24,7 @@ export const leaveRuleRequest = defineRequestType({
 export const decidesLeaveRules = (principal: Principal) => can(principal, "payroll:rules", {});
 
 /** What a proposal holds: the whole input the form sent, and the row as it stood (for the diff). */
-export type LeaveRuleChange =
-  | { kind: "leave_type"; input: LeaveTypeInput; before: Partial<LeaveTypeRow> | null }
-  | { kind: "leave_policy"; input: LeavePolicyInput; before: Partial<LeavePolicyRow> | null; typeName: string };
+export type LeaveRuleChange = { kind: "leave_type"; input: LeaveTypeInput; before: Partial<LeaveTypeRow> | null } | { kind: "leave_policy"; input: LeavePolicyInput; before: Partial<LeavePolicyRow> | null; typeName: string };
 
 /** Only the fields the form edits, JSON-safe, so the before/after sheet compares like with like. */
 function pick<Row extends object>(row: Row | null | undefined, keys: readonly string[]): Partial<Row> | null {

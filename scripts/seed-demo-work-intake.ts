@@ -23,8 +23,18 @@ const FORMS = [
       { label: "Link brief hoặc tài liệu", type: "url", required: false },
     ]),
     requests: [
-      { by: "duc.phan@suzu.group", title: "Clip recap workshop khách hàng Lumi", daysAgo: 3, answers: ["Recap 60 giây buổi workshop ngày 18/9 cho fanpage Lumi, cần phụ đề.", "Reels / TikTok (dọc)", 8, "https://drive.google.com/drive/folders/lumi-workshop"] },
-      { by: "mai.le@suzu.group", title: "Video giới thiệu văn hóa công ty cho nhân viên mới", daysAgo: 1, answers: ["Video 2–3 phút dùng trong buổi hội nhập: lời chào của CEO, một ngày ở SuZu, các phòng ban.", "YouTube (ngang)", 25, null] },
+      {
+        by: "duc.phan@suzu.group",
+        title: "Clip recap workshop khách hàng Lumi",
+        daysAgo: 3,
+        answers: ["Recap 60 giây buổi workshop ngày 18/9 cho fanpage Lumi, cần phụ đề.", "Reels / TikTok (dọc)", 8, "https://drive.google.com/drive/folders/lumi-workshop"],
+      },
+      {
+        by: "mai.le@suzu.group",
+        title: "Video giới thiệu văn hóa công ty cho nhân viên mới",
+        daysAgo: 1,
+        answers: ["Video 2–3 phút dùng trong buổi hội nhập: lời chào của CEO, một ngày ở SuZu, các phòng ban.", "YouTube (ngang)", 25, null],
+      },
     ],
   },
   {
@@ -61,8 +71,15 @@ export async function seedWorkIntake(db: Db, today: string): Promise<string> {
     for (const form of FORMS) {
       const team = teams.get(form.team)!;
       const [lead] = await tx.select({ id: workProject.leadPersonId }).from(workProject).where(eq(workProject.teamId, team.id)).limit(1);
-      const [row] = await tx.insert(workIntakeForm).values({ teamId: team.id, projectId: null, name: form.name, description: form.description, audience: "group", fields: [...form.fields], isActive: true, createdByPersonId: lead?.id ?? null }).returning();
-      const backlog = states.filter((state) => state.teamId === team.id && state.isActive).sort((a, b) => a.sortOrder - b.sortOrder).find((state) => state.category === "backlog") ?? states.find((state) => state.teamId === team.id)!;
+      const [row] = await tx
+        .insert(workIntakeForm)
+        .values({ teamId: team.id, projectId: null, name: form.name, description: form.description, audience: "group", fields: [...form.fields], isActive: true, createdByPersonId: lead?.id ?? null })
+        .returning();
+      const backlog =
+        states
+          .filter((state) => state.teamId === team.id && state.isActive)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .find((state) => state.category === "backlog") ?? states.find((state) => state.teamId === team.id)!;
       for (const request of form.requests) {
         const requester = personId(request.by);
         if (!requester) continue;
@@ -75,10 +92,25 @@ export async function seedWorkIntake(db: Db, today: string): Promise<string> {
         const createdAt = new Date(Date.parse(`${addDays(today, -request.daysAgo)}T03:00:00Z`));
         const [created] = await tx
           .insert(task)
-          .values({ kind: "work", title: request.title, description: describeAnswers(form.name, form.fields, answers), status: "todo", assigneePersonId: null, requesterPersonId: requester, createdByPersonId: requester, dueDate: dueDateFrom(form.fields, answers), entityId: team.entityId, createdAt, updatedAt: createdAt })
+          .values({
+            kind: "work",
+            title: request.title,
+            description: describeAnswers(form.name, form.fields, answers),
+            status: "todo",
+            assigneePersonId: null,
+            requesterPersonId: requester,
+            createdByPersonId: requester,
+            dueDate: dueDateFrom(form.fields, answers),
+            entityId: team.entityId,
+            createdAt,
+            updatedAt: createdAt,
+          })
           .returning();
         const [{ seq }] = await tx.select({ seq: workTeam.taskSeq }).from(workTeam).where(eq(workTeam.id, team.id));
-        await tx.update(workTeam).set({ taskSeq: seq + 1 }).where(eq(workTeam.id, team.id));
+        await tx
+          .update(workTeam)
+          .set({ taskSeq: seq + 1 })
+          .where(eq(workTeam.id, team.id));
         await tx.insert(workTask).values({ taskId: created.id, teamId: team.id, projectId: null, number: seq + 1, stateId: backlog.id, boardRank: (seq + 1) * 1000, intakeFormId: row.id });
         await tx.insert(workActivity).values({ taskId: created.id, actorPersonId: requester, type: "created", createdAt });
         requests += 1;
@@ -98,7 +130,10 @@ export async function seedWorkIntake(db: Db, today: string): Promise<string> {
       // Every sixth task stays without an estimate: the view has to show that too.
       if (index % 6 === 5) continue;
       const options = ESTIMATE_BY_CATEGORY[row.category] ?? ESTIMATE_BY_CATEGORY.todo;
-      await tx.update(task).set({ estimateMinutes: options[index % options.length] }).where(eq(task.id, row.id));
+      await tx
+        .update(task)
+        .set({ estimateMinutes: options[index % options.length] })
+        .where(eq(task.id, row.id));
       estimated += 1;
     }
     return `${FORMS.length} intake forms with ${requests} requests, estimates on ${estimated} open tasks`;

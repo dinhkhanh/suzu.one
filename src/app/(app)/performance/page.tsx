@@ -100,12 +100,22 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
                         {goal.unitName ? " · " : null}
                         <GoalUnitLink goal={goal} />
                         {" · "}
-                        {[periodLabel(t, goal.periodKey), goal.keyResults.length > 0 ? t("keyResultCount", { count: goal.keyResults.length }) : goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults"), stale ? t("stale") : null].filter(Boolean).join(" · ")}
+                        {[
+                          periodLabel(t, goal.periodKey),
+                          goal.keyResults.length > 0 ? t("keyResultCount", { count: goal.keyResults.length }) : goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults"),
+                          stale ? t("stale") : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                     <ProgressBar wide bp={goal.progress.progressBp} label={progressLabel(labels, goal.progress.progressBp)} />
                     <div className="flex items-center gap-1.5 md:justify-end">
-                      {goal.status === "active" ? <ConfidenceBadge confidence={goal.progress.confidence} label={goal.progress.confidence ? t(`enums.confidence.${goal.progress.confidence}`) : ""} /> : <GoalStatusBadge status={goal.status} label={t(`enums.status.${goal.status}`)} />}
+                      {goal.status === "active" ? (
+                        <ConfidenceBadge confidence={goal.progress.confidence} label={goal.progress.confidence ? t(`enums.confidence.${goal.progress.confidence}`) : ""} />
+                      ) : (
+                        <GoalStatusBadge status={goal.status} label={t(`enums.status.${goal.status}`)} />
+                      )}
                       {goal.status === "active" && !goal.progress.confidence ? <Badge variant="outline">{t("enums.status.active")}</Badge> : null}
                     </div>
                   </div>
@@ -153,11 +163,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
         )}
       </Section>
 
-      <Section
-        title={t("company.title")}
-        count={company.length || null}
-        action={<Link href={`/performance/goals?year=${year}`}>{t("company.all")}</Link>}
-      >
+      <Section title={t("company.title")} count={company.length || null} action={<Link href={`/performance/goals?year=${year}`}>{t("company.all")}</Link>}>
         <List>
           {company.length === 0 ? <ListEmpty>{t("company.empty", { year })}</ListEmpty> : null}
           {company.map((goal) => (

@@ -21,11 +21,7 @@ export const bandLabel = (band: ResultBand | null | undefined, locale: string): 
 
 export function StatusBadge({ status, label }: { status: string; label: string }) {
   const tone =
-    status === "published"
-      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
-      : status === "locked"
-        ? "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200"
-        : "border border-dashed text-muted-foreground";
+    status === "published" ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : status === "locked" ? "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200" : "border border-dashed text-muted-foreground";
   return <span className={`${pill} ${tone}`}>{label}</span>;
 }
 
@@ -61,7 +57,9 @@ export function ResultTraceTable({ trace, labels, locale, provenance }: { trace:
                 {line.flags.includes("missing") ? <span className="block text-xs text-warning">{t("trace.missing")}</span> : null}
               </TableCell>
               <TableCell kind="percent">{percentText(format, line.scoreBp)}</TableCell>
-              <TableCell kind="percent" className="text-muted-foreground">{percentText(format, line.weightBp)}</TableCell>
+              <TableCell kind="percent" className="text-muted-foreground">
+                {percentText(format, line.weightBp)}
+              </TableCell>
               <TableCell kind="percent">{percentText(format, line.normalisedWeightBp)}</TableCell>
               <TableCell kind="percent">{percentText(format, line.contributionBp)}</TableCell>
             </TableRow>
@@ -89,19 +87,13 @@ export function ResultTraceTable({ trace, labels, locale, provenance }: { trace:
 
       <div className="flex flex-col gap-0.5 text-sm">
         {trace.renormalised ? <p className="text-xs text-warning">{t("trace.renormalised")}</p> : null}
-        {trace.computedScoreBp === null ? (
-          <p className="text-muted-foreground">{t("trace.nothing")}</p>
-        ) : (
-          <p className="tabular-nums">{t("trace.computed", { value: percentText(format, trace.computedScoreBp) })}</p>
-        )}
+        {trace.computedScoreBp === null ? <p className="text-muted-foreground">{t("trace.nothing")}</p> : <p className="tabular-nums">{t("trace.computed", { value: percentText(format, trace.computedScoreBp) })}</p>}
         {trace.override ? (
           <p className="rounded-md bg-warning/10 px-2 py-1 text-xs text-warning">
             {t("override.was", { value: percentText(format, trace.computedScoreBp) })} — {trace.override.reason}
           </p>
         ) : null}
-        <p className="font-medium tabular-nums">
-          {t("trace.finalLine", { value: percentText(format, trace.finalScoreBp), band: bandLabel(trace.finalBand, locale), multiplier: percentText(format, trace.multiplierBp) })}
-        </p>
+        <p className="font-medium tabular-nums">{t("trace.finalLine", { value: percentText(format, trace.finalScoreBp), band: bandLabel(trace.finalBand, locale), multiplier: percentText(format, trace.multiplierBp) })}</p>
         {provenance ? (
           <p className="text-xs text-muted-foreground">
             {t("trace.provenance", { months: provenance.months, goals: provenance.goals })}

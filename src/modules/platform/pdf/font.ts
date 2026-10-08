@@ -99,9 +99,11 @@ function readWidths(bytes: Uint8Array, hmtx: { offset: number }, numberOfHMetric
 
 export function parseFont(bytes: Uint8Array): ParsedFont {
   const tables = tableDirectory(bytes);
-  const need = (tag: string) => tables.get(tag) ?? (() => {
-    throw new FontError(`font_missing_${tag.trim()}_table`);
-  })();
+  const need = (tag: string) =>
+    tables.get(tag) ??
+    (() => {
+      throw new FontError(`font_missing_${tag.trim()}_table`);
+    })();
 
   const head = need("head");
   const hhea = need("hhea");

@@ -28,7 +28,16 @@ export async function giveFeedback(personId: string, input: FeedbackInput): Prom
     .insert(aiFeedback)
     .select(
       db()
-        .select({ id: sql<string>`gen_random_uuid()`.as("id"), messageId: aiMessage.id, personId: aiMessage.personId, verdict: sql<FeedbackVerdict>`${input.verdict}::ai_feedback_verdict`.as("verdict"), note: sql<string | null>`${note}::text`.as("note"), shared: sql<boolean>`${input.shared}::boolean`.as("shared"), createdAt: sql<Date>`now()`.as("created_at"), updatedAt: sql<Date>`now()`.as("updated_at") })
+        .select({
+          id: sql<string>`gen_random_uuid()`.as("id"),
+          messageId: aiMessage.id,
+          personId: aiMessage.personId,
+          verdict: sql<FeedbackVerdict>`${input.verdict}::ai_feedback_verdict`.as("verdict"),
+          note: sql<string | null>`${note}::text`.as("note"),
+          shared: sql<boolean>`${input.shared}::boolean`.as("shared"),
+          createdAt: sql<Date>`now()`.as("created_at"),
+          updatedAt: sql<Date>`now()`.as("updated_at"),
+        })
         .from(aiMessage)
         .where(and(eq(aiMessage.id, input.messageId), eq(aiMessage.personId, personId), eq(aiMessage.role, "assistant"))),
     )
@@ -70,7 +79,9 @@ export async function listFeedback(reader: Principal, options: { verdict?: Feedb
   if (askers === null) return { right: 0, wrong: 0, rows: [] };
   const inReach = askers ? sql`${aiFeedback.personId} in (select ${schema.person.id} from ${schema.person} where ${askers})` : undefined;
   // The question is the asker's message just before the answer, in the same conversation.
-  const question = sql<string | null>`case when ${aiFeedback.shared} then (select q.body from ${aiMessage} q where q.conversation_id = ${aiMessage.conversationId} and q.role = 'user' and q.created_at <= ${aiMessage.createdAt} order by q.created_at desc limit 1) end`;
+  const question = sql<
+    string | null
+  >`case when ${aiFeedback.shared} then (select q.body from ${aiMessage} q where q.conversation_id = ${aiMessage.conversationId} and q.role = 'user' and q.created_at <= ${aiMessage.createdAt} order by q.created_at desc limit 1) end`;
   const [[totals], rows] = await Promise.all([
     db()
       .select({ right: sql<number>`count(*) filter (where ${aiFeedback.verdict} = 'right')::int`, wrong: sql<number>`count(*) filter (where ${aiFeedback.verdict} = 'wrong')::int` })

@@ -52,7 +52,13 @@ export function peopleScope(filter: PeopleFilter, executor: Executor): (column: 
   }
   const onPerson = and(
     filter.employeeCodes
-      ? inArray(schema.person.id, executor.select({ id: schema.employment.personId }).from(schema.employment).where(inArray(schema.employment.employeeCode, [...filter.employeeCodes])))
+      ? inArray(
+          schema.person.id,
+          executor
+            .select({ id: schema.employment.personId })
+            .from(schema.employment)
+            .where(inArray(schema.employment.employeeCode, [...filter.employeeCodes])),
+        )
       : filter.personIds
         ? inArray(schema.person.id, [...filter.personIds])
         : undefined,
@@ -73,7 +79,10 @@ export async function listEmploymentFacts(filter: PeopleFilter = {}, executor: E
       .leftJoin(schema.personProfile, eq(schema.personProfile.personId, schema.person.id))
       .where(scope(schema.person.id)),
     executor.select().from(schema.employment).where(scope(schema.employment.personId)).orderBy(schema.employment.personId, desc(schema.employment.startDate)),
-    executor.select({ personId: schema.contract.personId, employmentId: schema.contract.employmentId, startDate: schema.contract.startDate, endDate: schema.contract.endDate, terminatedOn: schema.contract.terminatedOn }).from(schema.contract).where(and(scope(schema.contract.personId), eq(schema.contract.type, "probation"), isNull(schema.contract.deletedAt))),
+    executor
+      .select({ personId: schema.contract.personId, employmentId: schema.contract.employmentId, startDate: schema.contract.startDate, endDate: schema.contract.endDate, terminatedOn: schema.contract.terminatedOn })
+      .from(schema.contract)
+      .where(and(scope(schema.contract.personId), eq(schema.contract.type, "probation"), isNull(schema.contract.deletedAt))),
   ]);
   if (people.length === 0) return [];
   const employmentsOf = new Map<string, typeof employments>();
@@ -120,7 +129,15 @@ export async function listPositionHolders(onDate: IsoDate, executor: Executor = 
     .select({ personId: schema.employment.personId, entityId: schema.employment.entityId, positionId: schema.assignment.positionId, employeeCode: schema.employment.employeeCode, validFrom: schema.assignment.validFrom })
     .from(schema.assignment)
     .innerJoin(schema.employment, eq(schema.employment.id, schema.assignment.employmentId))
-    .where(and(eq(schema.assignment.kind, "primary"), isNotNull(schema.assignment.positionId), lte(schema.assignment.validFrom, onDate), or(isNull(schema.assignment.validTo), gte(schema.assignment.validTo, onDate)), or(isNull(schema.employment.endDate), gte(schema.employment.endDate, onDate))))
+    .where(
+      and(
+        eq(schema.assignment.kind, "primary"),
+        isNotNull(schema.assignment.positionId),
+        lte(schema.assignment.validFrom, onDate),
+        or(isNull(schema.assignment.validTo), gte(schema.assignment.validTo, onDate)),
+        or(isNull(schema.employment.endDate), gte(schema.employment.endDate, onDate)),
+      ),
+    )
     .orderBy(desc(schema.assignment.validFrom));
   const seen = new Set<string>();
   return rows.flatMap((row) => {
@@ -139,7 +156,17 @@ export async function recordLongLeave(tx: Executor, input: { personId: string; f
   if (!latest) return null;
   const event = await recordLifecycleEvent(
     tx,
-    { personId: input.personId, employmentId: latest.id, entityId: latest.entityId, type: "long_leave", effectiveDate: input.from, status: "applied", reason: input.leaveTypeName, details: { from: input.from, to: input.to, source: "leave_request" }, approvalRequestId: input.approvalRequestId },
+    {
+      personId: input.personId,
+      employmentId: latest.id,
+      entityId: latest.entityId,
+      type: "long_leave",
+      effectiveDate: input.from,
+      status: "applied",
+      reason: input.leaveTypeName,
+      details: { from: input.from, to: input.to, source: "leave_request" },
+      approvalRequestId: input.approvalRequestId,
+    },
     actorPersonId,
   );
   return { eventId: event.id };
@@ -147,5 +174,8 @@ export async function recordLongLeave(tx: Executor, input: { personId: string; f
 
 /** The leave was cancelled: the event stays on the timeline as called off. */
 export async function cancelLongLeave(tx: Executor, eventId: string): Promise<void> {
-  await tx.update(schema.lifecycleEvent).set({ status: "cancelled" }).where(and(eq(schema.lifecycleEvent.id, eventId), eq(schema.lifecycleEvent.type, "long_leave")));
+  await tx
+    .update(schema.lifecycleEvent)
+    .set({ status: "cancelled" })
+    .where(and(eq(schema.lifecycleEvent.id, eventId), eq(schema.lifecycleEvent.type, "long_leave")));
 }

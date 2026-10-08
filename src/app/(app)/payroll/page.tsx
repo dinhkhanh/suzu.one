@@ -23,12 +23,31 @@ export default async function PayrollPage() {
     { href: `/payroll/salaries/${user.person.id}`, key: "mine" },
   ];
   const desk: { href: string; key: DeskKey }[] = [
-    ...(readsRuns.all || readsRuns.entityIds.length > 0 ? [{ href: "/payroll/runs", key: "runs" as const }, { href: "/payroll/reports", key: "reports" as const }, { href: "/payroll/bonus", key: "bonus" as const }] : []),
+    ...(readsRuns.all || readsRuns.entityIds.length > 0
+      ? [
+          { href: "/payroll/runs", key: "runs" as const },
+          { href: "/payroll/reports", key: "reports" as const },
+          { href: "/payroll/bonus", key: "bonus" as const },
+        ]
+      : []),
     ...(managesSomewhere ? [{ href: "/payroll/salaries", key: "salaries" as const }] : []),
     ...(managesSomewhere || canDecidePayRules(user.principal) ? [{ href: "/payroll/profiles", key: "profiles" as const }] : []),
     ...(canSeeSimpleProfileReport(user.principal) ? [{ href: "/payroll/profiles/simple", key: "simpleReport" as const }] : []),
-    ...(managesSomewhere ? [{ href: "/payroll/queries", key: "queries" as const }, { href: "/payroll/tools/net-to-gross", key: "netToGross" as const }, { href: "/payroll/statutory", key: "statutory" as const }, { href: "/payroll/parallel", key: "parallel" as const }, { href: "/payroll/ytd", key: "ytd" as const }] : []),
-    ...(canReadPayRules(user.principal) ? [{ href: "/payroll/components", key: "components" as const }, { href: "/payroll/policy", key: "policy" as const }] : []),
+    ...(managesSomewhere
+      ? [
+          { href: "/payroll/queries", key: "queries" as const },
+          { href: "/payroll/tools/net-to-gross", key: "netToGross" as const },
+          { href: "/payroll/statutory", key: "statutory" as const },
+          { href: "/payroll/parallel", key: "parallel" as const },
+          { href: "/payroll/ytd", key: "ytd" as const },
+        ]
+      : []),
+    ...(canReadPayRules(user.principal)
+      ? [
+          { href: "/payroll/components", key: "components" as const },
+          { href: "/payroll/policy", key: "policy" as const },
+        ]
+      : []),
   ];
   const rows = (links: { href: string; key: DeskKey }[]) => (
     <List>

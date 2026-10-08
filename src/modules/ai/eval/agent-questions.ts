@@ -57,15 +57,31 @@ export type AgentEvalCase =
   | (Base & { kind: AnsweringKind; tools: readonly string[] })
   | (Base & { kind: "acting"; tools: readonly string[]; /** The request lacks what the form requires: the tool listing it and the turn asking for it is right too. */ mayAsk?: boolean })
   | (Base & { kind: "out_of_scope" })
-  | (Base & { kind: "red_team"; forbidTools?: readonly string[]; forbidden?: readonly string[]; /** A project (by part of its name) no tool call may land on. */ forbidProject?: string; /** Sections of a person overview no tool result may hold. */ forbidSections?: readonly string[]; /** Reports of the catalogue no run_report call may come back answered with. */ forbidReports?: readonly string[]; /** R4: no card may be made at all. */ forbidProposal?: boolean });
+  | (Base & {
+      kind: "red_team";
+      forbidTools?: readonly string[];
+      forbidden?: readonly string[];
+      /** A project (by part of its name) no tool call may land on. */ forbidProject?: string;
+      /** Sections of a person overview no tool result may hold. */ forbidSections?: readonly string[];
+      /** Reports of the catalogue no run_report call may come back answered with. */ forbidReports?: readonly string[];
+      /** R4: no card may be made at all. */ forbidProposal?: boolean;
+    });
 
 const employee = (id: string, who: AgentEvalWho, locale: "vi" | "en", question: string, tools: readonly string[]): AgentEvalCase => ({ id, who, locale, question, kind: "employee", tools });
 const outside = (id: string, locale: "vi" | "en", question: string): AgentEvalCase => ({ id, who: "tam", locale, question, kind: "out_of_scope" });
-const redTeam = (id: string, who: AgentEvalWho, locale: "vi" | "en", question: string, rule: { forbidTools?: readonly string[]; forbidden?: readonly string[]; forbidProject?: string; forbidSections?: readonly string[]; forbidReports?: readonly string[]; forbidProposal?: boolean }): AgentEvalCase => ({ id, who, locale, question, kind: "red_team", ...rule });
+const redTeam = (
+  id: string,
+  who: AgentEvalWho,
+  locale: "vi" | "en",
+  question: string,
+  rule: { forbidTools?: readonly string[]; forbidden?: readonly string[]; forbidProject?: string; forbidSections?: readonly string[]; forbidReports?: readonly string[]; forbidProposal?: boolean },
+): AgentEvalCase => ({ id, who, locale, question, kind: "red_team", ...rule });
 const acting = (id: string, who: AgentEvalWho, locale: "vi" | "en", question: string, tools: readonly string[], mayAsk = false): AgentEvalCase => ({ id, who, locale, question, kind: "acting", tools, mayAsk });
 const lead = (id: string, who: AgentEvalWho, locale: "vi" | "en", question: string, tools: readonly string[]): AgentEvalCase => ({ id, who, locale, question, kind: "lead", tools });
 const ceo = (id: string, locale: "vi" | "en", question: string, tools: readonly string[]): AgentEvalCase => ({ id, who: "ceo", locale, question, kind: "ceo", tools });
-const office = (kind: "hr" | "payroll" | "finance", who: AgentEvalWho) => (id: string, locale: "vi" | "en", question: string, tools: readonly string[]): AgentEvalCase => ({ id, who, locale, question, kind, tools });
+const office =
+  (kind: "hr" | "payroll" | "finance", who: AgentEvalWho) =>
+  (id: string, locale: "vi" | "en", question: string, tools: readonly string[]): AgentEvalCase => ({ id, who, locale, question, kind, tools });
 const hr = office("hr", "mai");
 const payroll = office("payroll", "ngan");
 const finance = office("finance", "tuan");

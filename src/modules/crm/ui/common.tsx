@@ -15,7 +15,25 @@ export type Person = { id: string; fullName: string };
 export type Named = { id: string; name: string };
 
 /** A form that posts to an action and shows what went wrong in the CRM's words. `children` may be a function of the refusal's details. */
-export function CrmForm({ action, extra, children, submit, className, onDone, navigateTo, footer }: { action: Action; extra?: Record<string, unknown>; children: ReactNode | ((details: unknown) => ReactNode); submit: string; className?: string; onDone?: (data: unknown) => void; navigateTo?: (data: unknown) => string | null; footer?: ReactNode }) {
+export function CrmForm({
+  action,
+  extra,
+  children,
+  submit,
+  className,
+  onDone,
+  navigateTo,
+  footer,
+}: {
+  action: Action;
+  extra?: Record<string, unknown>;
+  children: ReactNode | ((details: unknown) => ReactNode);
+  submit: string;
+  className?: string;
+  onDone?: (data: unknown) => void;
+  navigateTo?: (data: unknown) => string | null;
+  footer?: ReactNode;
+}) {
   const t = useTranslations("crm");
   const router = useRouter();
   const { onSubmit, pending, errorKey, saved, fieldErrors, details } = useActionForm(action, {
@@ -47,7 +65,21 @@ export function CrmForm({ action, extra, children, submit, className, onDone, na
  * tap asks first in a sheet (a card on a desk) that names what will happen — never the browser's
  * own dialog, which a phone shows as a bare system alert.
  */
-export function CrmButton({ action, input, label, confirm, variant = "outline", navigateTo }: { action: Action; input: unknown; label: string; confirm?: string; variant?: "outline" | "ghost" | "default" | "destructive"; navigateTo?: (data: unknown) => string | null }) {
+export function CrmButton({
+  action,
+  input,
+  label,
+  confirm,
+  variant = "outline",
+  navigateTo,
+}: {
+  action: Action;
+  input: unknown;
+  label: string;
+  confirm?: string;
+  variant?: "outline" | "ghost" | "default" | "destructive";
+  navigateTo?: (data: unknown) => string | null;
+}) {
   const t = useTranslations("crm.errors");
   const router = useRouter();
   const [pending, startTransition] = useTransition();

@@ -70,14 +70,24 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="outline">{t(`kinds.${item.kind as RaidKind}`)}</Badge>
                     {item.severity ? <Badge variant={severityVariant(item.severity)}>{t(`severities.${item.severity as "high"}`)}</Badge> : null}
-                    <Badge dot variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
+                    <Badge dot variant={open ? "info" : "secondary"}>
+                      {t(`statuses.${item.status as "open"}`)}
+                    </Badge>
                   </div>
                   <p className="font-medium">{item.title}</p>
                   <RichText text={item.description} className="text-sm text-muted-foreground" />
                   <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.owner")}</dt>
-                      <dd>{item.ownerName ? <RecordLink kind="person" id={item.ownerPersonId}>{item.ownerName}</RecordLink> : "—"}</dd>
+                      <dd>
+                        {item.ownerName ? (
+                          <RecordLink kind="person" id={item.ownerPersonId}>
+                            {item.ownerName}
+                          </RecordLink>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
@@ -91,7 +101,15 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                     ) : null}
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("fields.author")}</dt>
-                      <dd>{item.authorName ? <RecordLink kind="person" id={item.createdByPersonId}>{item.authorName}</RecordLink> : "—"}</dd>
+                      <dd>
+                        {item.authorName ? (
+                          <RecordLink kind="person" id={item.createdByPersonId}>
+                            {item.authorName}
+                          </RecordLink>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
                     </div>
                   </dl>
                   {item.evidenceFile || item.evidenceUrl ? (
@@ -129,7 +147,18 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                         projectId={project.id}
                         people={people}
                         today={today}
-                        item={{ id: item.id, kind: item.kind as RaidKind, title: item.title, description: item.description, ownerPersonId: item.ownerPersonId, dueDate: item.dueDate, severity: item.severity, decidedOn: item.decidedOn, evidenceUrl: item.evidenceUrl, evidence: item.evidenceFile ? { fileId: item.evidenceFile.id, fileName: item.evidenceFile.fileName } : null }}
+                        item={{
+                          id: item.id,
+                          kind: item.kind as RaidKind,
+                          title: item.title,
+                          description: item.description,
+                          ownerPersonId: item.ownerPersonId,
+                          dueDate: item.dueDate,
+                          severity: item.severity,
+                          decidedOn: item.decidedOn,
+                          evidenceUrl: item.evidenceUrl,
+                          evidence: item.evidenceFile ? { fileId: item.evidenceFile.id, fileName: item.evidenceFile.fileName } : null,
+                        }}
                       />
                     ) : null}
                   </div>

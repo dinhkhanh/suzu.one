@@ -178,7 +178,9 @@ export const FIXTURE_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 
 /** Every `.json` file beside this one, in name order. Dropping a file in adds a case. */
 export function loadFixtures(directory: string = FIXTURE_DIRECTORY): GoldenFixture[] {
-  const files = readdirSync(directory).filter((name) => name.endsWith(".json")).sort();
+  const files = readdirSync(directory)
+    .filter((name) => name.endsWith(".json"))
+    .sort();
   return files.map((file) => {
     const parsed = fixtureSchema.safeParse(JSON.parse(readFileSync(join(directory, file), "utf8")));
     if (!parsed.success) throw new Error(`${file} is not a valid golden fixture:\n${z.prettifyError(parsed.error)}`);

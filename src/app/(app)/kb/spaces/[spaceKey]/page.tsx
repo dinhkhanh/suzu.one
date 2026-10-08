@@ -110,9 +110,19 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
                         {Math.max(1, Math.round(file.sizeBytes / 1024))} KB
                       </TableCell>
                       <TableCell kind="link" className="max-w-64 truncate">
-                        <RecordLink kind="kbPage" id={file.pageId}>{file.pageTitle}</RecordLink>
+                        <RecordLink kind="kbPage" id={file.pageId}>
+                          {file.pageTitle}
+                        </RecordLink>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {file.uploadedByName ? (
+                          <RecordLink kind="person" id={file.uploadedByPersonId}>
+                            {file.uploadedByName}
+                          </RecordLink>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

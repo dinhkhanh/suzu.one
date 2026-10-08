@@ -66,8 +66,15 @@ async function main() {
   // The receipts go into the R2 bucket when one is configured (the bucket itself is made by hand,
   // README "File storage"); without one the rows still appear and a download says so.
   const bucket = process.env.STORAGE_BUCKET ?? "suzu-private";
-  const endpoint = process.env.R2_ENDPOINT ? process.env.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${bucket}$`), "") : process.env.CLOUDFLARE_ACCOUNT_ID ? `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com` : null;
-  const storage = endpoint && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY ? { base: `${endpoint.replace(/\/$/, "")}/${bucket}`, client: new AwsClient({ accessKeyId: process.env.R2_ACCESS_KEY_ID, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" }) } : null;
+  const endpoint = process.env.R2_ENDPOINT
+    ? process.env.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${bucket}$`), "")
+    : process.env.CLOUDFLARE_ACCOUNT_ID
+      ? `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`
+      : null;
+  const storage =
+    endpoint && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
+      ? { base: `${endpoint.replace(/\/$/, "")}/${bucket}`, client: new AwsClient({ accessKeyId: process.env.R2_ACCESS_KEY_ID, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" }) }
+      : null;
 
   let closed = 0;
   let late = 0;
@@ -82,7 +89,10 @@ async function main() {
     if (due >= today) {
       // Due in the next two weeks: a few are being worked on.
       if (template.checklist.length > 1 && inProgress < 6) {
-        await db.update(obligationInstance).set({ checklistState: { "0": true } }).where(eq(obligationInstance.id, instance.id));
+        await db
+          .update(obligationInstance)
+          .set({ checklistState: { "0": true } })
+          .where(eq(obligationInstance.id, instance.id));
         await db.update(task).set({ status: "in_progress" }).where(eq(task.id, row.id));
         inProgress++;
       }
@@ -102,8 +112,22 @@ async function main() {
       const fileId = randomUUID();
       const objectPath = `obligation_instance/${due.slice(0, 4)}/${fileId}.pdf`;
       const fileName = `bien-nhan-${template.code.toLowerCase()}-${instance.periodKey.replace(/[^0-9a-zA-Z-]/g, "").slice(0, 12)}.pdf`;
-      if (storage) await storage.client.fetch(`${storage.base}/${objectPath}`, { method: "PUT", headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${fileName}"` }, body: RECEIPT }).catch(() => undefined);
-      await db.insert(storedFile).values({ id: fileId, bucket, objectPath, fileName, contentType: "application/pdf", sizeBytes: RECEIPT.length, ownerType: "obligation_instance", ownerId: instance.id, entityId: instance.entityId, tier: "public_internal", status: "ready", uploadedByPersonId: closedBy });
+      if (storage)
+        await storage.client.fetch(`${storage.base}/${objectPath}`, { method: "PUT", headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${fileName}"` }, body: RECEIPT }).catch(() => undefined);
+      await db.insert(storedFile).values({
+        id: fileId,
+        bucket,
+        objectPath,
+        fileName,
+        contentType: "application/pdf",
+        sizeBytes: RECEIPT.length,
+        ownerType: "obligation_instance",
+        ownerId: instance.id,
+        entityId: instance.entityId,
+        tier: "public_internal",
+        status: "ready",
+        uploadedByPersonId: closedBy,
+      });
       files++;
     }
     await db
@@ -112,11 +136,14 @@ async function main() {
         checklistState: steps,
         referenceNumber: template.evidence.reference ? `${template.authority === "tax" ? "TK" : "HS"}-${entityCode}-${due.replaceAll("-", "")}` : null,
         submittedDate: template.evidence.submittedDate ? submitted : null,
-        amountPaid: template.evidence.amount ? (12_000_000 + ((instance.id.charCodeAt(0) * 37 + instance.id.charCodeAt(1)) % 90) * 1_000_000) : null,
+        amountPaid: template.evidence.amount ? 12_000_000 + ((instance.id.charCodeAt(0) * 37 + instance.id.charCodeAt(1)) % 90) * 1_000_000 : null,
         completedLate: isLate,
       })
       .where(eq(obligationInstance.id, instance.id));
-    await db.update(task).set({ status: "done", completedAt: new Date(`${submitted}T09:30:00+07:00`), completedByPersonId: closedBy }).where(eq(task.id, row.id));
+    await db
+      .update(task)
+      .set({ status: "done", completedAt: new Date(`${submitted}T09:30:00+07:00`), completedByPersonId: closedBy })
+      .where(eq(task.id, row.id));
     closed++;
     if (isLate) late++;
   }

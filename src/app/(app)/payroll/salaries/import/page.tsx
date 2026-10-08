@@ -77,7 +77,10 @@ export default async function SalaryImportPage({ searchParams }: PageProps<"/pay
           {t("salaries.filter")}
         </Button>
         <span className="text-sm text-muted-foreground">
-          {t("imports.forEntity")} <RecordLink kind="entity" id={entityId}>{entityCode.get(entityId)}</RecordLink>
+          {t("imports.forEntity")}{" "}
+          <RecordLink kind="entity" id={entityId}>
+            {entityCode.get(entityId)}
+          </RecordLink>
         </span>
       </form>
 

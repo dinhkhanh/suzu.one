@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 5).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 8).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 5).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 8).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -51,8 +57,14 @@ async function approvedStructure(personId: string, validFrom: string, baseSalary
 
 /** A run of the entity's month with these people in it, at the given status — what "used" means. */
 async function runWith(month: string, status: "calculated" | "approved" | "paid", personIds: string[], context: Record<string, unknown> | null = null) {
-  const [run] = await db().insert(schema.payrollRun).values({ entityId: ids.media, month, status, context, calculatedAt: new Date("2020-01-01T00:00:00Z"), kind: "off_cycle" }).returning();
-  if (personIds.length > 0) await db().insert(schema.payrollRunPerson).values(personIds.map((personId) => ({ runId: run.id, personId, entityId: ids.media, profile: "statutory" as const, resultEnc: "sealed", inputEnc: "sealed" })));
+  const [run] = await db()
+    .insert(schema.payrollRun)
+    .values({ entityId: ids.media, month, status, context, calculatedAt: new Date("2020-01-01T00:00:00Z"), kind: "off_cycle" })
+    .returning();
+  if (personIds.length > 0)
+    await db()
+      .insert(schema.payrollRunPerson)
+      .values(personIds.map((personId) => ({ runId: run.id, personId, entityId: ids.media, profile: "statutory" as const, resultEnc: "sealed", inputEnc: "sealed" })));
   return run;
 }
 
@@ -63,21 +75,43 @@ beforeAll(async () => {
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (name: string, employeeCode: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: media.id, employeeCode, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: unit.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: media.id,
+        employeeCode,
+        startDate: "2025-01-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: unit.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
     return person.id;
   };
-  Object.assign(ids, { media: media.id, owner: await hire("The Owner", "SZM-0001"), cnb: await hire("Cnb Media", "SZM-0002"), huy: await hire("Ho Gia Huy", "SZM-0003"), lan: await hire("Tran Thi Lan", "SZM-0004"), minh: await hire("Le Van Minh", "SZM-0005"), tam: await hire("Vo Thi Tam", "SZM-0006") });
+  Object.assign(ids, {
+    media: media.id,
+    owner: await hire("The Owner", "SZM-0001"),
+    cnb: await hire("Cnb Media", "SZM-0002"),
+    huy: await hire("Ho Gia Huy", "SZM-0003"),
+    lan: await hire("Tran Thi Lan", "SZM-0004"),
+    minh: await hire("Le Van Minh", "SZM-0005"),
+    tam: await hire("Vo Thi Tam", "SZM-0006"),
+  });
   const grants: Record<string, Grant[]> = { [ids.owner]: [{ role: "owner", scope: { type: "group" } }], [ids.cnb]: [{ role: "payroll", scope: { type: "entity", id: media.id } }] };
-  for (const [personId, list] of Object.entries(grants)) await db().insert(schema.roleAssignment).values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
+  for (const [personId, list] of Object.entries(grants))
+    await db()
+      .insert(schema.roleAssignment)
+      .values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
   const viewer = (personId: string): Viewer => ({ personId, principal: { personId, workforceType: "employee", grants: grants[personId] ?? [] } });
   Object.assign(who, { owner: viewer(ids.owner), cnb: viewer(ids.cnb) });
 
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
-  await db().insert(schema.statutoryParameter).values({ key: "probation.limits", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, validFrom: "2021-01-01", status: "approved" });
+  await db()
+    .insert(schema.statutoryParameter)
+    .values({ key: "probation.limits", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, validFrom: "2021-01-01", status: "approved" });
 });
 
 describe("voiding a salary structure approved wrong (PAY-13)", () => {
@@ -103,7 +137,7 @@ describe("voiding a salary structure approved wrong (PAY-13)", () => {
 
   it("lets the correct figure be approved from the same day", async () => {
     const fixed = await approvedStructure(ids.huy, "2026-09-01", 25_000_000);
-    expect((await getStructureOn(ids.huy, "2026-09-15"))).toMatchObject({ id: fixed, terms: { baseSalary: 25_000_000 } });
+    expect(await getStructureOn(ids.huy, "2026-09-15")).toMatchObject({ id: fixed, terms: { baseSalary: 25_000_000 } });
     expect((await getStructureOn(ids.huy, "2026-08-31"))?.validTo).toBe("2026-08-31");
   });
 
@@ -122,8 +156,38 @@ describe("voiding a salary structure approved wrong (PAY-13)", () => {
 
 describe("voiding a pay profile, a component and a pay policy (PAY-13)", () => {
   it("takes back a profile approved wrong and lets the one before run on", async () => {
-    const first = await submitProfile({ personId: ids.lan, profile: "statutory", simpleBasis: null, reviewDate: null, taxResidency: "resident", pitMethod: "progressive", pitCommitment: false, insuranceExemption: null, unionMember: false, validFrom: "2025-01-01", note: null }, ids.cnb);
-    const move = await submitProfile({ personId: ids.lan, profile: "simple", simpleBasis: "other", reviewDate: null, taxResidency: "resident", pitMethod: "progressive", pitCommitment: false, insuranceExemption: null, unionMember: false, validFrom: "2026-10-01", note: null }, ids.cnb);
+    const first = await submitProfile(
+      {
+        personId: ids.lan,
+        profile: "statutory",
+        simpleBasis: null,
+        reviewDate: null,
+        taxResidency: "resident",
+        pitMethod: "progressive",
+        pitCommitment: false,
+        insuranceExemption: null,
+        unionMember: false,
+        validFrom: "2025-01-01",
+        note: null,
+      },
+      ids.cnb,
+    );
+    const move = await submitProfile(
+      {
+        personId: ids.lan,
+        profile: "simple",
+        simpleBasis: "other",
+        reviewDate: null,
+        taxResidency: "resident",
+        pitMethod: "progressive",
+        pitCommitment: false,
+        insuranceExemption: null,
+        unionMember: false,
+        validFrom: "2026-10-01",
+        note: null,
+      },
+      ids.cnb,
+    );
     await decideProfile(move.id, "approve", ids.owner);
     expect((await getProfilesOn([ids.lan], "2026-10-15")).get(ids.lan)?.profile).toBe("simple");
 
@@ -134,7 +198,27 @@ describe("voiding a pay profile, a component and a pay policy (PAY-13)", () => {
 
   it("takes back a component version and a policy version; the earlier ones apply again", async () => {
     const [meal] = (await resolveCatalogue(ids.media, "2026-09-30")).filter((component) => component.code === "ALW_MEAL");
-    const proposed = await proposeComponent({ entityId: null, code: "ALW_MEAL", name: "Phụ cấp ăn trưa", nameEn: null, kind: meal.kind, category: meal.category, source: meal.source, taxTreatment: meal.taxTreatment, exemptCap: meal.exemptCap, subjectToInsurance: meal.subjectToInsurance, proration: meal.proration, roundingRule: meal.roundingRule, formula: meal.formula, sortOrder: meal.sortOrder, validFrom: "2026-10-01", note: null }, ids.cnb);
+    const proposed = await proposeComponent(
+      {
+        entityId: null,
+        code: "ALW_MEAL",
+        name: "Phụ cấp ăn trưa",
+        nameEn: null,
+        kind: meal.kind,
+        category: meal.category,
+        source: meal.source,
+        taxTreatment: meal.taxTreatment,
+        exemptCap: meal.exemptCap,
+        subjectToInsurance: meal.subjectToInsurance,
+        proration: meal.proration,
+        roundingRule: meal.roundingRule,
+        formula: meal.formula,
+        sortOrder: meal.sortOrder,
+        validFrom: "2026-10-01",
+        note: null,
+      },
+      ids.cnb,
+    );
     await decideComponent(proposed.id, "approve", ids.owner);
     expect((await resolveCatalogue(ids.media, "2026-10-15")).find((component) => component.code === "ALW_MEAL")?.id).toBe(proposed.id);
     await voidComponent(proposed.id, "Sai mức trần", ids.owner);
@@ -171,7 +255,8 @@ describe("a probation share below the law (FR-PAY-05)", () => {
 });
 
 describe("salaries from a spreadsheet, approved by the owner as one import (PAY-14)", () => {
-  const row = (line: number, values: Partial<Parameters<typeof resolveSalaryRows>[0][number]["values"]>) => ({ row: line, values: { employeeCode: null, validFrom: null, reason: null, baseSalary: null, insuranceSalary: null, allowances: null, probationPercent: null, note: null, ...values } }) as Parameters<typeof resolveSalaryRows>[0][number];
+  const row = (line: number, values: Partial<Parameters<typeof resolveSalaryRows>[0][number]["values"]>) =>
+    ({ row: line, values: { employeeCode: null, validFrom: null, reason: null, baseSalary: null, insuranceSalary: null, allowances: null, probationPercent: null, note: null, ...values } }) as Parameters<typeof resolveSalaryRows>[0][number];
   const batchId = crypto.randomUUID();
 
   it("checks every row the way the pay file's form checks one change", async () => {
@@ -224,10 +309,18 @@ describe("salaries from a spreadsheet, approved by the owner as one import (PAY-
 
 describe("pay profiles from a spreadsheet (PAY-14)", () => {
   const batchId = crypto.randomUUID();
-  const row = (line: number, values: Record<string, unknown>) => ({ row: line, values: { employeeCode: null, profile: null, simpleBasis: null, validFrom: null, taxResidency: null, pitMethod: null, pitCommitment: null, insuranceExemption: null, unionMember: null, reviewDate: null, note: null, ...values } }) as never;
+  const row = (line: number, values: Record<string, unknown>) =>
+    ({
+      row: line,
+      values: { employeeCode: null, profile: null, simpleBasis: null, validFrom: null, taxResidency: null, pitMethod: null, pitCommitment: null, insuranceExemption: null, unionMember: null, reviewDate: null, note: null, ...values },
+    }) as never;
 
   it("puts a first Statutory profile in force at once and leaves the rest to the owner", async () => {
-    const rows = [row(2, { employeeCode: "SZM-0005", profile: "statutory", validFrom: "2025-01-01", unionMember: "yes" }), row(3, { employeeCode: "SZM-0006", profile: "simple", simpleBasis: "probation", validFrom: "2025-01-01" }), row(4, { employeeCode: "SZM-0002", profile: "simple", validFrom: "2025-01-01" })];
+    const rows = [
+      row(2, { employeeCode: "SZM-0005", profile: "statutory", validFrom: "2025-01-01", unionMember: "yes" }),
+      row(3, { employeeCode: "SZM-0006", profile: "simple", simpleBasis: "probation", validFrom: "2025-01-01" }),
+      row(4, { employeeCode: "SZM-0002", profile: "simple", validFrom: "2025-01-01" }),
+    ];
     const { problems } = await import("./profile-import").then((module) => module.resolveProfileRows(rows, who.cnb, { entityId: ids.media }));
     // A Simple profile needs its basis.
     expect(problems.map((problem) => [problem.row, problem.code])).toEqual([[4, "profile_basis_required"]]);
@@ -245,6 +338,11 @@ describe("pay profiles from a spreadsheet (PAY-14)", () => {
     expect(waiting).toHaveLength(1);
     expect(await approveProfileImport(ids.owner, batchId, waiting)).toEqual({ approved: 1, failed: [] });
     expect((await getProfilesOn([ids.tam], "2025-02-01")).get(ids.tam)).toMatchObject({ profile: "simple", simpleBasis: "probation", status: "approved" });
-    expect(await db().select().from(schema.payProfile).where(and(eq(schema.payProfile.importBatchId, batchId), isNull(schema.payProfile.decidedAt)))).toEqual([]);
+    expect(
+      await db()
+        .select()
+        .from(schema.payProfile)
+        .where(and(eq(schema.payProfile.importBatchId, batchId), isNull(schema.payProfile.decidedAt))),
+    ).toEqual([]);
   });
 });

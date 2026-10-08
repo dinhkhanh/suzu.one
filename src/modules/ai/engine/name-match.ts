@@ -111,7 +111,10 @@ export function scoreName(query: string, name: string): { score: number; band: N
   // Initials: "NTH" for Nguyễn Thị Hoa, "TC" for Tết Campaign 2026 — all the words, or a run of them.
   let initials: { score: number; band: NameBand } | null = null;
   if (askedWords.length === 1 && /^\p{L}{2,6}$/u.test(askedCompact)) {
-    const letters = ownWords.filter((word) => !isNumber(word)).map((word) => word[0]).join("");
+    const letters = ownWords
+      .filter((word) => !isNumber(word))
+      .map((word) => word[0])
+      .join("");
     if (letters === askedCompact) initials = { score: 0.86, band: "guess" };
     else if (askedCompact.length >= 2 && letters.includes(askedCompact)) initials = { score: 0.76, band: "guess" };
   }

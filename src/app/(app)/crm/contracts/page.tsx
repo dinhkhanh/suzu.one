@@ -28,7 +28,16 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
   const [t, f, accounts] = await Promise.all([getTranslations("crm"), formatters(), accountsById()]);
   // The accounts whose contracts this reader may see; the value only where account money is theirs to read.
   const visible = [...new Set([...accounts.values()].filter((account) => canViewContracts(shell.viewer, account.facts)).map((account) => account.client.id))];
-  const contracts = (await listContracts(visible, (row) => { const account = accounts.get(row.clientId); return !!account && canSeeAccountMoney(shell.viewer, account.facts); }, today)).filter((contract) => state === "all" || (state === "live" ? contract.state === "active" || contract.state === "upcoming" || contract.state === "draft" : contract.state === state));
+  const contracts = (
+    await listContracts(
+      visible,
+      (row) => {
+        const account = accounts.get(row.clientId);
+        return !!account && canSeeAccountMoney(shell.viewer, account.facts);
+      },
+      today,
+    )
+  ).filter((contract) => state === "all" || (state === "live" ? contract.state === "active" || contract.state === "upcoming" || contract.state === "draft" : contract.state === state));
 
   return (
     <Page width="wide">
@@ -63,7 +72,9 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
                 <p className="font-sans text-xs text-faint">{contract.title}</p>
               </TableCell>
               <TableCell>
-                <RecordLink kind="account" id={contract.clientId}>{contract.accountName}</RecordLink>
+                <RecordLink kind="account" id={contract.clientId}>
+                  {contract.accountName}
+                </RecordLink>
               </TableCell>
               <TableCell>
                 <Badge variant="outline">{t(`contract.kinds.${contract.kind as "service"}`)}</Badge>

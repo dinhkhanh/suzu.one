@@ -127,7 +127,11 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
                 <details>
                   <summary className="cursor-pointer text-sm text-muted-foreground">{t("edit")}</summary>
                   <div className="pt-2">
-                    <ClientReportForm projectId={project.id} report={{ id: report.id, title: report.title, periodFrom: report.periodFrom, periodTo: report.periodTo, summary: report.summary, nextPlan: report.nextPlan, showHours: report.showHours }} defaults={{ title: report.title, from: report.periodFrom, to: report.periodTo }} />
+                    <ClientReportForm
+                      projectId={project.id}
+                      report={{ id: report.id, title: report.title, periodFrom: report.periodFrom, periodTo: report.periodTo, summary: report.summary, nextPlan: report.nextPlan, showHours: report.showHours }}
+                      defaults={{ title: report.title, from: report.periodFrom, to: report.periodTo }}
+                    />
                   </div>
                 </details>
               ) : null}

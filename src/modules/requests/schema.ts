@@ -92,11 +92,7 @@ export const requestSubmission = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    unique("request_submission_approval_key").on(t.approvalRequestId),
-    index("request_submission_type_idx").on(t.requestTypeId, t.createdAt),
-    index("request_submission_parent_idx").on(t.parentSubmissionId),
-  ],
+  (t) => [unique("request_submission_approval_key").on(t.approvalRequestId), index("request_submission_type_idx").on(t.requestTypeId, t.createdAt), index("request_submission_parent_idx").on(t.parentSubmissionId)],
 ).enableRLS();
 
 // ── Expense claims (FR-REQ-03) ──────────────────────────────────────────────────────────────

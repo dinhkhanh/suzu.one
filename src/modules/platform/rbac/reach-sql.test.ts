@@ -46,7 +46,10 @@ async function admitted(reach: TierReach): Promise<string[]> {
 
 async function expected(reach: TierReach): Promise<string[]> {
   const rows = await db().select().from(schema.person).where(inArray(schema.person.id, everyone()));
-  return rows.filter((row) => matchesReach(reach, { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId })).map((row) => row.id).sort();
+  return rows
+    .filter((row) => matchesReach(reach, { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId }))
+    .map((row) => row.id)
+    .sort();
 }
 
 describe("personInReachSql", () => {
@@ -79,7 +82,10 @@ describe("unitColumnInReachSql", () => {
   it("matches no row for no units", async () => {
     const rows = await db().select({ id: schema.person.id }).from(schema.person).where(unitColumnInReachSql(schema.person.departmentId, []));
     expect(rows).toEqual([]);
-    const video = await db().select({ id: schema.person.id }).from(schema.person).where(and(unitColumnInReachSql(schema.person.departmentId, [ids.video, ids.social, ids.design]), eq(schema.person.id, ids.an)));
+    const video = await db()
+      .select({ id: schema.person.id })
+      .from(schema.person)
+      .where(and(unitColumnInReachSql(schema.person.departmentId, [ids.video, ids.social, ids.design]), eq(schema.person.id, ids.an)));
     expect(video.map((row) => row.id)).toEqual([ids.an]);
   });
 });

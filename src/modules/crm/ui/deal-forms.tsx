@@ -13,12 +13,40 @@ import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
-import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, eraseLeadContactAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
+import {
+  assignLeadAction,
+  convertLeadAction,
+  createDealAction,
+  createLeadAction,
+  eraseLeadContactAction,
+  moveDealAction,
+  openPitchAction,
+  reassignDealAction,
+  reopenDealAction,
+  resendHandoffAction,
+  respondToHandoffAction,
+  setDealContactsAction,
+  setLeadStatusAction,
+  setUpDeliveryAction,
+  updateDealAction,
+  updateLeadAction,
+} from "../deal-actions";
 import { ACCOUNT_TIERS, LOST_REASONS, SERVICE_LINES, SOURCES } from "../enums";
 import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
 export type StageOption = { id: string; name: string; category: string };
-type LeadValues = { entityId: string | null; clientId: string | null; companyName: string; contactName: string | null; contactTitle: string | null; email: string | null; phone: string | null; need: string | null; budgetText: string | null; source: string };
+type LeadValues = {
+  entityId: string | null;
+  clientId: string | null;
+  companyName: string;
+  contactName: string | null;
+  contactTitle: string | null;
+  email: string | null;
+  phone: string | null;
+  need: string | null;
+  budgetText: string | null;
+  source: string;
+};
 
 function LeadFields({ lead, entities, accounts }: { lead?: LeadValues; entities: Named[]; accounts: Named[] }) {
   const t = useTranslations("crm");
@@ -192,7 +220,21 @@ function ServiceLineChecks({ selected }: { selected?: readonly string[] }) {
   );
 }
 
-type DealValues = { title: string; brandId: string | null; serviceLines: string[]; oneOffVnd: number | null; monthlyVnd: number | null; months: number | null; probability: number | null; expectedCloseOn: string | null; teamId: string | null; entityId: string | null; source: string | null; competitors: string | null; nextStep: string | null };
+type DealValues = {
+  title: string;
+  brandId: string | null;
+  serviceLines: string[];
+  oneOffVnd: number | null;
+  monthlyVnd: number | null;
+  months: number | null;
+  probability: number | null;
+  expectedCloseOn: string | null;
+  teamId: string | null;
+  entityId: string | null;
+  source: string | null;
+  competitors: string | null;
+  nextStep: string | null;
+};
 
 function DealFields({ deal, brands, teams, entities, seesValue }: { deal?: Partial<DealValues>; brands: Named[]; teams: Named[]; entities: Named[]; seesValue: boolean }) {
   const t = useTranslations("crm");
@@ -280,7 +322,25 @@ function DealFields({ deal, brands, teams, entities, seesValue }: { deal?: Parti
 }
 
 /** A new deal on an account: the gates of the first stage apply, so contacts and a date may be needed at once. */
-export function NewDealForm({ clientId, brands, teams, entities, contacts, stages, sellers, meId }: { clientId: string; brands: Named[]; teams: Named[]; entities: Named[]; contacts: Named[]; stages: StageOption[]; sellers: Person[]; meId: string }) {
+export function NewDealForm({
+  clientId,
+  brands,
+  teams,
+  entities,
+  contacts,
+  stages,
+  sellers,
+  meId,
+}: {
+  clientId: string;
+  brands: Named[];
+  teams: Named[];
+  entities: Named[];
+  contacts: Named[];
+  stages: StageOption[];
+  sellers: Person[];
+  meId: string;
+}) {
   const t = useTranslations("crm");
   return (
     <CrmForm action={createDealAction} extra={{ clientId }} submit={t("deals.create")} navigateTo={(data) => `/crm/deals/${(data as { id: string }).id}`}>
@@ -499,7 +559,23 @@ export function PitchForm({ dealId, dealTitle, teams, defaultTeamId, today }: { 
 }
 
 /** The won deal's delivery project, prefilled from what was sold, and the note to its lead. */
-export function DeliverySetupForm({ dealId, dealTitle, teams, defaultTeamId, templates, contracts, today }: { dealId: string; dealTitle: string; teams: TeamWithPeople[]; defaultTeamId: string | null; templates: Named[]; contracts: Named[]; today: string }) {
+export function DeliverySetupForm({
+  dealId,
+  dealTitle,
+  teams,
+  defaultTeamId,
+  templates,
+  contracts,
+  today,
+}: {
+  dealId: string;
+  dealTitle: string;
+  teams: TeamWithPeople[];
+  defaultTeamId: string | null;
+  templates: Named[];
+  contracts: Named[];
+  today: string;
+}) {
   const t = useTranslations("crm");
   return (
     <CrmForm action={setUpDeliveryAction} extra={{ dealId }} submit={t("deal.delivery.create")}>
@@ -604,7 +680,25 @@ export function ResendHandoffForm({ dealId, projectId }: { dealId: string; proje
 }
 
 /** Converting a lead: an existing account or a new one, the contact from the lead, and the deal. */
-export function ConvertLeadForm({ leadId, lead, accounts, entities, teams, stages, sellers, ownerId }: { leadId: string; lead: { companyName: string; clientId: string | null; entityId: string | null; need: string | null; contactName: string | null }; accounts: Named[]; entities: Named[]; teams: Named[]; stages: StageOption[]; sellers: Person[]; ownerId: string }) {
+export function ConvertLeadForm({
+  leadId,
+  lead,
+  accounts,
+  entities,
+  teams,
+  stages,
+  sellers,
+  ownerId,
+}: {
+  leadId: string;
+  lead: { companyName: string; clientId: string | null; entityId: string | null; need: string | null; contactName: string | null };
+  accounts: Named[];
+  entities: Named[];
+  teams: Named[];
+  stages: StageOption[];
+  sellers: Person[];
+  ownerId: string;
+}) {
   const t = useTranslations("crm");
   const [existing, setExisting] = useState(!!lead.clientId);
   return (

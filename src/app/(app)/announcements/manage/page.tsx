@@ -56,10 +56,16 @@ export default async function ManageAnnouncementsPage() {
                   <Link href={`/announcements/manage/${row.id}`} className="font-medium hover:underline">
                     {row.title}
                   </Link>
-                  {row.pinned ? <Badge variant="secondary" className="ml-2">{t("list.pinned")}</Badge> : null}
+                  {row.pinned ? (
+                    <Badge variant="secondary" className="ml-2">
+                      {t("list.pinned")}
+                    </Badge>
+                  ) : null}
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.phase)}>{t(`phase.${row.phase}`)}</Badge>
+                  <Badge dot variant={statusTone(row.phase)}>
+                    {t(`phase.${row.phase}`)}
+                  </Badge>
                 </TableCell>
                 <TableCell className="max-w-64 truncate">{row.audience.map((key) => audienceLabel(key, names, t)).join(", ")}</TableCell>
                 <TableCell>{row.publishAt ? format.dateTime(row.publishAt, { dateStyle: "medium", timeStyle: "short" }) : "—"}</TableCell>

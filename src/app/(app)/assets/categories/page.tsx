@@ -21,7 +21,17 @@ export default async function AssetCategoriesPage() {
         {categories.map((category) => (
           <CategoryForm
             key={category.id}
-            value={{ id: category.id, code: category.code, name: category.name, kind: category.kind, requiresSerial: category.requiresSerial, defaultWarrantyMonths: category.defaultWarrantyMonths, bookable: category.bookable, sortOrder: category.sortOrder, isActive: category.isActive }}
+            value={{
+              id: category.id,
+              code: category.code,
+              name: category.name,
+              kind: category.kind,
+              requiresSerial: category.requiresSerial,
+              defaultWarrantyMonths: category.defaultWarrantyMonths,
+              bookable: category.bookable,
+              sortOrder: category.sortOrder,
+              isActive: category.isActive,
+            }}
           />
         ))}
         <div>

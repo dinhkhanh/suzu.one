@@ -74,7 +74,16 @@ const payrollCost = defineTool({
         link: "/payroll/reports",
         currency: "VND",
         months: points.map((point) => ({ month: point.month, headcount: point.headcount, grossVnd: point.gross, netVnd: point.net, employerCostVnd: point.employerCost })),
-        ...(split && split.byEntity.length ? { split: { month: splitMonth, byEntity: modelRows(split.byEntity, costRow, CAP), byDepartment: modelRows(split.byDepartment, costRow, CAP), total: { headcount: split.total.headcount, grossVnd: split.total.gross, employerCostVnd: split.total.employerCost } } } : {}),
+        ...(split && split.byEntity.length
+          ? {
+              split: {
+                month: splitMonth,
+                byEntity: modelRows(split.byEntity, costRow, CAP),
+                byDepartment: modelRows(split.byDepartment, costRow, CAP),
+                total: { headcount: split.total.headcount, grossVnd: split.total.gross, employerCostVnd: split.total.employerCost },
+              },
+            }
+          : {}),
       },
       card: screen("payroll_cost", "/payroll/reports", "payrollReports"),
       subject: null,
@@ -102,7 +111,19 @@ const profitability = defineTool({
     if (!view) return { outcome: "refused", model: { link: "/reports" }, card: null, subject: null };
     if (view.projects.length === 0 && !view.privateProjects) return { outcome: "empty", model: { link: "/reports/profitability", period, projects: [] }, card: null, subject: null };
     const rate = (value: number | null) => (value === null ? null : Math.round(value * 1000) / 10);
-    const projects = view.projects.map((row) => ({ project: [row.jobNumber, row.name].filter(Boolean).join(" · "), client: row.clientName, team: row.teamName, basis: row.basis, hours: row.hours, feeVnd: row.feeVnd, costVnd: row.costVnd, marginVnd: row.marginVnd, marginPercent: rate(row.marginRate), estimated: row.estimated, link: recordHref("project", row.id) }));
+    const projects = view.projects.map((row) => ({
+      project: [row.jobNumber, row.name].filter(Boolean).join(" · "),
+      client: row.clientName,
+      team: row.teamName,
+      basis: row.basis,
+      hours: row.hours,
+      feeVnd: row.feeVnd,
+      costVnd: row.costVnd,
+      marginVnd: row.marginVnd,
+      marginPercent: rate(row.marginRate),
+      estimated: row.estimated,
+      link: recordHref("project", row.id),
+    }));
     const clients = view.clients.map((row) => ({ client: row.clientName ?? "—", projects: row.projects, hours: row.hours, feeVnd: row.feeVnd, costVnd: row.costVnd, marginVnd: row.marginVnd, marginPercent: rate(row.marginRate) }));
     return {
       outcome: "answered",
@@ -113,7 +134,9 @@ const profitability = defineTool({
         total: { hours: view.total.hours, feeVnd: view.total.feeVnd, costVnd: view.total.costVnd, marginVnd: view.total.marginVnd, marginPercent: rate(view.total.marginRate), estimated: view.total.estimated },
         projects: modelRows(projects, { project: "text", client: "text", team: "text", basis: "value", hours: "value", feeVnd: "value", costVnd: "value", marginVnd: "value", marginPercent: "value", estimated: "value", link: "value" }, CAP),
         clients: modelRows(clients, { client: "text", projects: "value", hours: "value", feeVnd: "value", costVnd: "value", marginVnd: "value", marginPercent: "value" }, CAP),
-        ...(view.privateProjects ? { privateProjects: { projects: view.privateProjects.projects, hours: view.privateProjects.hours, feeVnd: view.privateProjects.feeVnd, costVnd: view.privateProjects.costVnd, marginVnd: view.privateProjects.marginVnd } } : {}),
+        ...(view.privateProjects
+          ? { privateProjects: { projects: view.privateProjects.projects, hours: view.privateProjects.hours, feeVnd: view.privateProjects.feeVnd, costVnd: view.privateProjects.costVnd, marginVnd: view.privateProjects.marginVnd } }
+          : {}),
       },
       card: screen("profitability", `/reports/profitability?from=${period.from}&to=${period.to}`, "profitabilityReport"),
       subject: null,
@@ -126,7 +149,8 @@ const profitability = defineTool({
 const receivables = defineTool({
   name: "receivables",
   module: "crm",
-  description: "Money clients owe, as far as the asker's CRM reach goes: outstanding by ageing bucket (current, 1–30, 31–60, 61–90, over 90 days late) and the overdue invoices with client, number, due date, days late and amount outstanding, latest first.",
+  description:
+    "Money clients owe, as far as the asker's CRM reach goes: outstanding by ageing bucket (current, 1–30, 31–60, 61–90, over 90 days late) and the overdue invoices with client, number, due date, days late and amount outstanding, latest first.",
   input: z.strictObject({}),
   offeredTo: (principal, facts) => can(principal, "pjm:commercial") || can(principal, "crm:manage") || facts.worksAccounts,
   tier: "restricted",
@@ -147,7 +171,14 @@ const receivables = defineTool({
         outstanding: { ...Object.fromEntries(AGING_BUCKETS.map((bucket) => [bucket, aging[bucket]])), total: aging.total, openInvoices: aging.invoices },
         overdueInvoices: modelRows(shaped, { client: "text", number: "value", dueOn: "value", daysLate: "value", outstandingVnd: "value", link: "value" }, CAP),
       },
-      card: shaped.length ? { tool: "receivables", href: "/crm/invoices?status=overdue", items: shaped.slice(0, 8).map((row) => ({ label: `${row.number} · ${row.client}`, href: row.link, meta: { key: "daysLate", params: { days: row.daysLate } } })), more: Math.max(0, shaped.length - 8) } : null,
+      card: shaped.length
+        ? {
+            tool: "receivables",
+            href: "/crm/invoices?status=overdue",
+            items: shaped.slice(0, 8).map((row) => ({ label: `${row.number} · ${row.client}`, href: row.link, meta: { key: "daysLate", params: { days: row.daysLate } } })),
+            more: Math.max(0, shaped.length - 8),
+          }
+        : null,
       subject: null,
     };
   },
@@ -186,7 +217,12 @@ const salesPipeline = defineTool({
         outcomesByMonth: dashboard.byMonth.map((month) => ({ month: month.month, won: month.wonCount, wonVnd: month.wonValue, lost: month.lostCount })),
         lostReasons: dashboard.lostReasons.slice(0, 5),
       },
-      card: { tool: "sales_pipeline", href: "/crm/reports", items: [{ label: "", title: { key: "openDeals", params: { count: dashboard.openCount } }, href: "/crm/deals", meta: dashboard.staleCount ? { key: "stale", params: { count: dashboard.staleCount } } : null }], more: 0 },
+      card: {
+        tool: "sales_pipeline",
+        href: "/crm/reports",
+        items: [{ label: "", title: { key: "openDeals", params: { count: dashboard.openCount } }, href: "/crm/deals", meta: dashboard.staleCount ? { key: "stale", params: { count: dashboard.staleCount } } : null }],
+        more: 0,
+      },
       subject: null,
     };
   },
@@ -210,7 +246,14 @@ const companyHealth = defineTool({
     const dashboard = await getDashboard(asViewer(user), today);
     // The dashboard's own lock on its payroll tile: figures only on a fresh step-up.
     const payFresh = isStepUpFresh(user.reauthAt ?? null);
-    const payroll = dashboard.payroll ? (payFresh ? { latest: dashboard.payroll.latest && { month: dashboard.payroll.latest.month, headcount: dashboard.payroll.latest.headcount, employerCostVnd: dashboard.payroll.latest.employerCost }, previous: dashboard.payroll.previous && { month: dashboard.payroll.previous.month, employerCostVnd: dashboard.payroll.previous.employerCost } } : { locked: "Confirm identity at /step-up to see payroll figures." }) : null;
+    const payroll = dashboard.payroll
+      ? payFresh
+        ? {
+            latest: dashboard.payroll.latest && { month: dashboard.payroll.latest.month, headcount: dashboard.payroll.latest.headcount, employerCostVnd: dashboard.payroll.latest.employerCost },
+            previous: dashboard.payroll.previous && { month: dashboard.payroll.previous.month, employerCostVnd: dashboard.payroll.previous.employerCost },
+          }
+        : { locked: "Confirm identity at /step-up to see payroll figures." }
+      : null;
     const tiles: Record<string, unknown> = {
       headcount: dashboard.headcount,
       payroll,
@@ -220,7 +263,14 @@ const companyHealth = defineTool({
       obligations: dashboard.ops && { overdue: dashboard.ops.overdue, dueWithin14Days: dashboard.ops.dueSoon, worst: dashboard.ops.worst.map((row) => ({ entity: row.entityCode, obligation: row.templateName, dueDate: row.dueDate })) },
       work: dashboard.work,
       projects: dashboard.delivery,
-      sales: dashboard.sales && { wonThisMonth: dashboard.sales.wonCount, wonVnd: dashboard.sales.wonVnd, openDeals: dashboard.sales.openDeals, weightedPipelineVnd: dashboard.sales.weightedVnd, overdueReceivablesVnd: dashboard.sales.overdueVnd, collectedThisMonthVnd: dashboard.sales.collectedVnd },
+      sales: dashboard.sales && {
+        wonThisMonth: dashboard.sales.wonCount,
+        wonVnd: dashboard.sales.wonVnd,
+        openDeals: dashboard.sales.openDeals,
+        weightedPipelineVnd: dashboard.sales.weightedVnd,
+        overdueReceivablesVnd: dashboard.sales.overdueVnd,
+        collectedThisMonthVnd: dashboard.sales.collectedVnd,
+      },
       approvalsWaitingOnAsker: dashboard.approvals.waiting,
     };
     const shown = Object.fromEntries(Object.entries(tiles).filter(([, value]) => value !== null && value !== undefined));
@@ -288,7 +338,13 @@ const salaryEstimate = defineTool({
         const found = named.rows;
         guessed = named.guessed;
         if (found.length === 0) return { outcome: "empty", model: { people: [], link: "/payroll/salaries" }, card: null, subject: null };
-        if (found.length > 1) return { outcome: "answered", model: { note: "Several people match: ask which one.", people: found.map((row) => ({ personId: row.id, name: row.fullName, department: row.departmentName })), ...nameGuess(named) }, card: null, subject: null };
+        if (found.length > 1)
+          return {
+            outcome: "answered",
+            model: { note: "Several people match: ask which one.", people: found.map((row) => ({ personId: row.id, name: row.fullName, department: row.departmentName })), ...nameGuess(named) },
+            card: null,
+            subject: null,
+          };
         personId = found[0].id;
       }
       const estimate = await estimateFromSalaryFile({ personId: user.person.id, principal: user.principal }, personId, month);
@@ -296,20 +352,52 @@ const salaryEstimate = defineTool({
       const link = `/payroll/salaries/${personId}`;
       return {
         outcome: "answered",
-        model: { link, name: estimate.person.fullName, ...nameGuess({ guessed }), month, structureInForceFrom: estimate.structureFrom, dependants: estimate.dependents, note: "An ordinary full month on the salary file: no overtime, absence, bonus or one-off item. The payslip will differ when those apply.", ...quoteView(estimate.quote) },
+        model: {
+          link,
+          name: estimate.person.fullName,
+          ...nameGuess({ guessed }),
+          month,
+          structureInForceFrom: estimate.structureFrom,
+          dependants: estimate.dependents,
+          note: "An ordinary full month on the salary file: no overtime, absence, bonus or one-off item. The payslip will differ when those apply.",
+          ...quoteView(estimate.quote),
+        },
         card: { tool: "salary_estimate", href: link, items: [{ label: estimate.person.fullName, href: link, meta: { key: "estimateFor", params: { month } } }], more: 0 },
         subject: { type: "person", id: personId },
       };
     }
     if (!input.amountVnd) return { outcome: "failed", model: { error: "amount_required" }, card: null, subject: null };
     const { entities, entity } = await pricedEntity(user.principal, input.entity);
-    if (!entity) return { outcome: entities.length ? "answered" : "refused", model: entities.length ? { note: "Ask which entity to price for.", entities: entities.map((row) => ({ code: row.code, name: row.shortName })) } : { link: "/payroll" }, card: null, subject: null };
+    if (!entity)
+      return {
+        outcome: entities.length ? "answered" : "refused",
+        model: entities.length ? { note: "Ask which entity to price for.", entities: entities.map((row) => ({ code: row.code, name: row.shortName })) } : { link: "/payroll" },
+        card: null,
+        subject: null,
+      };
     if (!canManageCompensation(user.principal, { entityId: entity.id })) return { outcome: "refused", model: { link: "/payroll" }, card: null, subject: null };
-    const terms = { entityId: entity.id, month, dependents: input.dependants ?? 0, profile: "statutory" as const, taxResidency: input.nonResident ? ("non_resident" as const) : ("resident" as const), insuranceExempt: input.insuranceExempt ?? false, allowances: [], insuranceSalary: null };
+    const terms = {
+      entityId: entity.id,
+      month,
+      dependents: input.dependants ?? 0,
+      profile: "statutory" as const,
+      taxResidency: input.nonResident ? ("non_resident" as const) : ("resident" as const),
+      insuranceExempt: input.insuranceExempt ?? false,
+      allowances: [],
+      insuranceSalary: null,
+    };
     const quote = input.mode === "gross_to_net" ? await estimateNet({ ...terms, grossSalary: input.amountVnd }) : await quoteOffer({ ...terms, netSalary: input.amountVnd });
     return {
       outcome: "answered",
-      model: { link: "/payroll/tools/net-to-gross", entity: entity.shortName, month, mode: input.mode, dependants: terms.dependents, note: "No allowances; insurance on the whole base salary. The calculator page takes allowances and a declared insurance salary.", ...quoteView(quote) },
+      model: {
+        link: "/payroll/tools/net-to-gross",
+        entity: entity.shortName,
+        month,
+        mode: input.mode,
+        dependants: terms.dependents,
+        note: "No allowances; insurance on the whole base salary. The calculator page takes allowances and a declared insurance salary.",
+        ...quoteView(quote),
+      },
       card: screen("salary_estimate", "/payroll/tools/net-to-gross", "netToGross"),
       subject: { type: "entity", id: entity.id },
     };

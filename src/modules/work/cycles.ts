@@ -55,9 +55,17 @@ async function makeCycles(tx: Executor, teamId: string, start: IsoDate | null, w
  * cycle). The close is claimed first, so only one run does it.
  */
 async function closeCycle(tx: Executor, cycle: CycleRow, rules: { cycleStart: IsoDate | null; cycleWeeks: number | null }): Promise<{ rolled: number }> {
-  const [claimed] = await tx.update(schema.workCycle).set({ closedAt: new Date() }).where(and(eq(schema.workCycle.id, cycle.id), isNull(schema.workCycle.closedAt))).returning();
+  const [claimed] = await tx
+    .update(schema.workCycle)
+    .set({ closedAt: new Date() })
+    .where(and(eq(schema.workCycle.id, cycle.id), isNull(schema.workCycle.closedAt)))
+    .returning();
   if (!claimed) return { rolled: 0 };
-  const tasks = await tx.select({ id: schema.task.id, status: schema.task.status }).from(schema.workTask).innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live)).where(eq(schema.workTask.cycleId, cycle.id));
+  const tasks = await tx
+    .select({ id: schema.task.id, status: schema.task.status })
+    .from(schema.workTask)
+    .innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live))
+    .where(eq(schema.workTask.cycleId, cycle.id));
   const summary = cycleSummary(tasks);
   await tx.update(schema.workCycle).set({ summary }).where(eq(schema.workCycle.id, cycle.id));
   const rolling = rolloverIds(tasks);
@@ -66,8 +74,15 @@ async function closeCycle(tx: Executor, cycle: CycleRow, rules: { cycleStart: Is
   let next: CycleRow | undefined;
   if (rules.cycleStart && validCycleWeeks(rules.cycleWeeks)) {
     const window = cycleNumbered(rules.cycleStart, rules.cycleWeeks, cycle.number + 1);
-    await tx.insert(schema.workCycle).values({ teamId: cycle.teamId, ...window }).onConflictDoNothing();
-    [next] = await tx.select().from(schema.workCycle).where(and(eq(schema.workCycle.teamId, cycle.teamId), eq(schema.workCycle.number, cycle.number + 1))).limit(1);
+    await tx
+      .insert(schema.workCycle)
+      .values({ teamId: cycle.teamId, ...window })
+      .onConflictDoNothing();
+    [next] = await tx
+      .select()
+      .from(schema.workCycle)
+      .where(and(eq(schema.workCycle.teamId, cycle.teamId), eq(schema.workCycle.number, cycle.number + 1)))
+      .limit(1);
   }
   await tx
     .update(schema.workTask)
@@ -84,7 +99,11 @@ export async function runCycles(today: IsoDate): Promise<{ teams: number; made: 
   const result = { teams: 0, made: 0, closed: 0, rolled: 0 };
   for (const team of teams) {
     const rules = await getTeamRules(team.id);
-    const ended = await db().select().from(schema.workCycle).where(and(eq(schema.workCycle.teamId, team.id), isNull(schema.workCycle.closedAt), lt(schema.workCycle.endDate, today))).orderBy(asc(schema.workCycle.number));
+    const ended = await db()
+      .select()
+      .from(schema.workCycle)
+      .where(and(eq(schema.workCycle.teamId, team.id), isNull(schema.workCycle.closedAt), lt(schema.workCycle.endDate, today)))
+      .orderBy(asc(schema.workCycle.number));
     const on = !!rules.cycleStart && validCycleWeeks(rules.cycleWeeks);
     if (!on && ended.length === 0) continue;
     result.teams += 1;
@@ -121,7 +140,13 @@ export async function getCyclePage(teamId: string, today: IsoDate, visibleTasks:
   const past = cycles.filter((cycle) => cycle.closedAt);
   const [slice, counts, figures, rolledIn] = await Promise.all([
     current ? listCycleItems(eq(schema.workTask.cycleId, current.id), limit) : Promise.resolve({ items: [] as TaskListItem[], total: 0 }),
-    upcoming ? db().select({ count: sql<number>`count(*)::int` }).from(schema.workTask).innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live)).where(eq(schema.workTask.cycleId, upcoming.id)) : Promise.resolve([{ count: 0 }]),
+    upcoming
+      ? db()
+          .select({ count: sql<number>`count(*)::int` })
+          .from(schema.workTask)
+          .innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live))
+          .where(eq(schema.workTask.cycleId, upcoming.id))
+      : Promise.resolve([{ count: 0 }]),
     // Progress over every task in the cycle, counted by Postgres — not over the rows the list kept.
     current
       ? db()
@@ -133,12 +158,15 @@ export async function getCyclePage(teamId: string, today: IsoDate, visibleTasks:
           .innerJoin(schema.task, and(eq(schema.task.id, schema.workTask.taskId), live))
           .where(and(eq(schema.task.kind, WORK_KIND), eq(schema.workTask.cycleId, current.id)))
       : Promise.resolve([{ planned: 0, done: 0 }]),
-    current ? db().select({ count: sql<number>`count(*)::int` }).from(schema.workTask).where(and(eq(schema.workTask.cycleId, current.id), sql`${schema.workTask.cycleRollovers} > 0`)) : Promise.resolve([{ count: 0 }]),
+    current
+      ? db()
+          .select({ count: sql<number>`count(*)::int` })
+          .from(schema.workTask)
+          .where(and(eq(schema.workTask.cycleId, current.id), sql`${schema.workTask.cycleRollovers} > 0`))
+      : Promise.resolve([{ count: 0 }]),
   ]);
   return {
-    current: current
-      ? { ...current, progress: cycleProgressOf(Number(figures[0]?.planned ?? 0), Number(figures[0]?.done ?? 0)), tasks: visibleTasks(slice.items), taskTotal: slice.total, rolledIn: Number(rolledIn[0]?.count ?? 0) }
-      : null,
+    current: current ? { ...current, progress: cycleProgressOf(Number(figures[0]?.planned ?? 0), Number(figures[0]?.done ?? 0)), tasks: visibleTasks(slice.items), taskTotal: slice.total, rolledIn: Number(rolledIn[0]?.count ?? 0) } : null,
     upcoming: upcoming ? { ...upcoming, planned: Number(counts[0]?.count ?? 0) } : null,
     past,
   };

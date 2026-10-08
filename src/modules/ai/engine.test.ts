@@ -11,7 +11,16 @@ import { GLOSSARY, languageOf, questionVariants, translateWords } from "./engine
 import { buildIdf, keywords, lexicalScore, phrases, retrievalQuery } from "./engine/question";
 import { approverKindIn, monthIn, namedPersonIn, routeQuestion } from "./engine/routing";
 
-const passage = (over: Partial<Passage> & { chunkId: string; content: string }): Passage => ({ pageId: `page-${over.chunkId}`, pageTitle: "Trang", spaceKey: "so-tay", spaceName: "Sổ tay", headingPath: "Trang", anchor: null, vectorScore: 0, ...over });
+const passage = (over: Partial<Passage> & { chunkId: string; content: string }): Passage => ({
+  pageId: `page-${over.chunkId}`,
+  pageTitle: "Trang",
+  spaceKey: "so-tay",
+  spaceName: "Sổ tay",
+  headingPath: "Trang",
+  anchor: null,
+  vectorScore: 0,
+  ...over,
+});
 
 describe("the question", () => {
   it("keeps the content words and drops the ones that ask", () => {
@@ -86,7 +95,10 @@ describe("ranking", () => {
 });
 
 describe("the answer", () => {
-  const passages = [passage({ chunkId: "period", pageTitle: "Lương và ngày trả lương", headingPath: "Lương và ngày trả lương › Kỳ lương", content: "Kỳ tính lương: từ ngày 1 đến ngày cuối tháng.\nNgày trả lương: ngày 5 của tháng kế tiếp." }), passage({ chunkId: "far", content: "Điều gì đó hoàn toàn khác." })];
+  const passages = [
+    passage({ chunkId: "period", pageTitle: "Lương và ngày trả lương", headingPath: "Lương và ngày trả lương › Kỳ lương", content: "Kỳ tính lương: từ ngày 1 đến ngày cuối tháng.\nNgày trả lương: ngày 5 của tháng kế tiếp." }),
+    passage({ chunkId: "far", content: "Điều gì đó hoàn toàn khác." }),
+  ];
 
   it("quotes the knowledge base and cites the page it quoted", () => {
     const answer = extractAnswer("Ngày trả lương là ngày nào?", rankPassages("Ngày trả lương là ngày nào?", passages));
@@ -149,7 +161,8 @@ describe("links in an answer (engine/app-links.ts)", () => {
     expect(answerLinkTarget("/leave/new")).toEqual({ kind: "internal", href: "/leave/new" });
     expect(answerLinkTarget(" /kb/pages/p#h-2 ")).toEqual({ kind: "internal", href: "/kb/pages/p#h-2" });
     expect(answerLinkTarget("https://vssid.vn/tai-app")).toEqual({ kind: "external", href: "https://vssid.vn/tai-app" });
-    for (const hostile of ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "http://plain.example", "https://user@evil.example", "vbscript:x", "leave/new", ""]) expect(answerLinkTarget(hostile)).toBeNull();
+    for (const hostile of ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "http://plain.example", "https://user@evil.example", "vbscript:x", "leave/new", ""])
+      expect(answerLinkTarget(hostile)).toBeNull();
   });
 });
 

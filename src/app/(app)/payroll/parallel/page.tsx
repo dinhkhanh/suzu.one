@@ -80,9 +80,18 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
       {report.hasReference ? (
         <TileGrid>
           <Tile label={t("totals.netSystem")} value={<>{formatVnd(report.totals.system.net)}</>} />
-          <Tile label={t("totals.netReference")} value={<>{formatVnd(report.totals.reference.net)}</>} hint={`${t("totals.difference")} ${formatVnd(report.totals.system.net - report.totals.reference.net)}`} tone={report.totals.system.net === report.totals.reference.net ? "success" : "warning"} />
+          <Tile
+            label={t("totals.netReference")}
+            value={<>{formatVnd(report.totals.reference.net)}</>}
+            hint={`${t("totals.difference")} ${formatVnd(report.totals.system.net - report.totals.reference.net)}`}
+            tone={report.totals.system.net === report.totals.reference.net ? "success" : "warning"}
+          />
           <Tile label={t("totals.costSystem")} value={<>{formatVnd(report.totals.system.employerCost)}</>} />
-          <Tile label={t("totals.costReference")} value={<>{report.totals.reference.withEmployerCost > 0 ? formatVnd(report.totals.reference.employerCost) : "—"}</>} hint={t("totals.costCoverage", { count: report.totals.reference.withEmployerCost, people: summary.people })} />
+          <Tile
+            label={t("totals.costReference")}
+            value={<>{report.totals.reference.withEmployerCost > 0 ? formatVnd(report.totals.reference.employerCost) : "—"}</>}
+            hint={t("totals.costCoverage", { count: report.totals.reference.withEmployerCost, people: summary.people })}
+          />
         </TileGrid>
       ) : null}
 
@@ -96,54 +105,68 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
             {summary.missingFromReference > 0 ? <Badge variant="outline">{t("summary.missingFromReference", { count: summary.missingFromReference })}</Badge> : null}
           </div>
           <TableCard>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead kind="person">{t("person")}</TableHead>
-                <TableHead kind="money">{t("columns.netSystem")}</TableHead>
-                <TableHead kind="money">{t("columns.netReference")}</TableHead>
-                <TableHead kind="money">{t("columns.netDifference")}</TableHead>
-                <TableHead kind="money">{t("columns.costSystem")}</TableHead>
-                <TableHead kind="money">{t("columns.costReference")}</TableHead>
-                <TableHead kind="text">{t("differences")}</TableHead>
-                <TableHead kind="actions" className="w-40 text-left">{t("action")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.rows.map((row) => (
-                <TableRow key={row.personId}>
-                  <TableCell className="align-top">
-                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
-                    {row.presence !== "both" ? <p className="text-xs text-warning">{t(`presence.${row.presence}`)}</p> : null}
-                  </TableCell>
-                  <TableCell kind="money" className="align-top">{money(row.system?.net)}</TableCell>
-                  <TableCell kind="money" className="align-top text-muted-foreground">{money(row.reference?.net)}</TableCell>
-                  <TableCell kind="money" className={`align-top ${gap(row.system?.net, row.reference?.net) ? "text-warning" : "text-muted-foreground"}`}>{money(gap(row.system?.net, row.reference?.net))}</TableCell>
-                  <TableCell kind="money" className="align-top">{money(row.system?.employerCost)}</TableCell>
-                  <TableCell kind="money" className="align-top text-muted-foreground">{money(row.reference?.employerCost)}</TableCell>
-                  <TableCell className="align-top">
-                    {row.matches ? (
-                      <span className="text-sm text-muted-foreground">{t("identical")}</span>
-                    ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="person">{t("person")}</TableHead>
+                  <TableHead kind="money">{t("columns.netSystem")}</TableHead>
+                  <TableHead kind="money">{t("columns.netReference")}</TableHead>
+                  <TableHead kind="money">{t("columns.netDifference")}</TableHead>
+                  <TableHead kind="money">{t("columns.costSystem")}</TableHead>
+                  <TableHead kind="money">{t("columns.costReference")}</TableHead>
+                  <TableHead kind="text">{t("differences")}</TableHead>
+                  <TableHead kind="actions" className="w-40 text-left">
+                    {t("action")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.rows.map((row) => (
+                  <TableRow key={row.personId}>
+                    <TableCell className="align-top">
+                      <RecordLink kind="person" id={row.personId}>
+                        {row.fullName}
+                      </RecordLink>
+                      <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                      {row.presence !== "both" ? <p className="text-xs text-warning">{t(`presence.${row.presence}`)}</p> : null}
+                    </TableCell>
+                    <TableCell kind="money" className="align-top">
+                      {money(row.system?.net)}
+                    </TableCell>
+                    <TableCell kind="money" className="align-top text-muted-foreground">
+                      {money(row.reference?.net)}
+                    </TableCell>
+                    <TableCell kind="money" className={`align-top ${gap(row.system?.net, row.reference?.net) ? "text-warning" : "text-muted-foreground"}`}>
+                      {money(gap(row.system?.net, row.reference?.net))}
+                    </TableCell>
+                    <TableCell kind="money" className="align-top">
+                      {money(row.system?.employerCost)}
+                    </TableCell>
+                    <TableCell kind="money" className="align-top text-muted-foreground">
+                      {money(row.reference?.employerCost)}
+                    </TableCell>
+                    <TableCell className="align-top">
+                      {row.matches ? (
+                        <span className="text-sm text-muted-foreground">{t("identical")}</span>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {row.differences.map((line) => (
+                            <DifferenceCell key={line.field} line={line} />
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="align-top">
                       <div className="flex flex-col gap-2">
                         {row.differences.map((line) => (
-                          <DifferenceCell key={line.field} line={line} />
+                          <ClassifyForm key={line.field} entityId={entityId} month={month} personId={row.personId} line={line} />
                         ))}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <div className="flex flex-col gap-2">
-                      {row.differences.map((line) => (
-                        <ClassifyForm key={line.field} entityId={entityId} month={month} personId={row.personId} line={line} />
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </TableCard>
         </section>
       ) : null}
@@ -156,7 +179,9 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
             {signoffs.map((signoff) => (
               <ListItem key={signoff.id} className="flex-col items-stretch gap-1 py-3">
                 <span className="flex flex-wrap items-center gap-2">
-                  <Badge dot variant={signoff.current ? "success" : "outline"}>{t(signoff.current ? "signoff.holds" : "signoff.outdated")}</Badge>
+                  <Badge dot variant={signoff.current ? "success" : "outline"}>
+                    {t(signoff.current ? "signoff.holds" : "signoff.outdated")}
+                  </Badge>
                   <RecordLink kind="person" id={signoff.signedByPersonId} className="font-medium">
                     {signoff.signedByName ?? "—"}
                   </RecordLink>

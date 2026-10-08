@@ -4,7 +4,10 @@
 import { subscribePushAction } from "../actions";
 
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
-  const base64 = base64url.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(base64url.length / 4) * 4, "=");
+  const base64 = base64url
+    .replaceAll("-", "+")
+    .replaceAll("_", "/")
+    .padEnd(Math.ceil(base64url.length / 4) * 4, "=");
   const raw = atob(base64);
   const bytes = new Uint8Array(new ArrayBuffer(raw.length));
   for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index);

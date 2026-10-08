@@ -15,7 +15,17 @@ import { accountMemberAction, createAccountAction, eraseContactAction, moveAccou
 import { ACCOUNT_SIZES, ACCOUNT_TIERS, CONTACT_CHANNELS, CONTACT_SOURCES, CONTACT_STATUSES, DECISION_ROLES, LAWFUL_BASES, LIFECYCLES, SOURCES } from "../enums";
 import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
-type Profile = { legalName: string | null; taxCode: string | null; address: string | null; website: string | null; industry: string | null; size: string | null; source: string | null; tier: string | null; contractingEntityId: string | null };
+type Profile = {
+  legalName: string | null;
+  taxCode: string | null;
+  address: string | null;
+  website: string | null;
+  industry: string | null;
+  size: string | null;
+  source: string | null;
+  tier: string | null;
+  contractingEntityId: string | null;
+};
 
 function ProfileFields({ profile, entities }: { profile?: Partial<Profile>; entities: Named[] }) {
   const t = useTranslations("crm");
@@ -248,7 +258,16 @@ export function RemoveMemberButton({ clientId, personId }: { clientId: string; p
   return <CrmButton action={accountMemberAction} input={{ clientId, personId, op: "remove" }} label={t("account.team.remove")} variant="ghost" />;
 }
 
-type ContactValues = { id: string; fullName: string; title: string | null; decisionRole: string | null; isPrimary: boolean; status: string; brandIds: string[]; details: { email: string | null; phone: string | null; zalo: string | null; preferredChannel: string | null; birthday: string | null; notes: string | null; source: string; lawfulBasis: string } | null };
+type ContactValues = {
+  id: string;
+  fullName: string;
+  title: string | null;
+  decisionRole: string | null;
+  isPrimary: boolean;
+  status: string;
+  brandIds: string[];
+  details: { email: string | null; phone: string | null; zalo: string | null; preferredChannel: string | null; birthday: string | null; notes: string | null; source: string; lawfulBasis: string } | null;
+};
 
 /** A contact, new or existing. The source and the lawful basis are required (PDPL). */
 export function ContactForm({ clientId, contact, brands }: { clientId: string; contact?: ContactValues; brands: Named[] }) {

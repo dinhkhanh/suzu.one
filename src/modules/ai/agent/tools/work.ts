@@ -152,8 +152,35 @@ const portfolioHealth = defineTool({
     const counts = { total: rows.length, offTrack: rows.filter((row) => row.health === "off_track").length, atRisk: rows.filter((row) => row.health === "at_risk").length, stale: rows.filter((row) => row.stale).length };
     return {
       outcome: "answered",
-      model: { link: "/projects", counts, ...modelRows(shaped, { name: "text", jobNumber: "value", team: "text", client: "text", lead: "text", health: "value", stale: "value", dueDate: "value", dueSlipDays: "value", burnPercent: "value", highRisks: "value", openIssues: "value", link: "value" }, CAP) },
-      card: { tool: "portfolio_health", href: "/projects", items: rows.slice(0, 8).map((row) => ({ label: row.name, href: recordHref("project", row.id), meta: row.health ? meta(`health_${row.health}`) : null })), more: Math.max(0, rows.length - 8) },
+      model: {
+        link: "/projects",
+        counts,
+        ...modelRows(
+          shaped,
+          {
+            name: "text",
+            jobNumber: "value",
+            team: "text",
+            client: "text",
+            lead: "text",
+            health: "value",
+            stale: "value",
+            dueDate: "value",
+            dueSlipDays: "value",
+            burnPercent: "value",
+            highRisks: "value",
+            openIssues: "value",
+            link: "value",
+          },
+          CAP,
+        ),
+      },
+      card: {
+        tool: "portfolio_health",
+        href: "/projects",
+        items: rows.slice(0, 8).map((row) => ({ label: row.name, href: recordHref("project", row.id), meta: row.health ? meta(`health_${row.health}`) : null })),
+        more: Math.max(0, rows.length - 8),
+      },
       subject: null,
     };
   },
@@ -180,7 +207,17 @@ const teamBoard = defineTool({
     const risky = people
       .flatMap((person) => person.tasks)
       .filter((task) => task.risk !== null || task.blockedBy > 0)
-      .map((task) => ({ key: task.key, title: task.title, assignee: task.assigneeName, state: task.stateName, dueDate: task.dueDate, risk: task.risk, blocked: task.blockedBy > 0, project: task.projectName, link: recordHref("task", task.id) }));
+      .map((task) => ({
+        key: task.key,
+        title: task.title,
+        assignee: task.assigneeName,
+        state: task.stateName,
+        dueDate: task.dueDate,
+        risk: task.risk,
+        blocked: task.blockedBy > 0,
+        project: task.projectName,
+        link: recordHref("task", task.id),
+      }));
     return {
       outcome: "answered",
       model: {
@@ -188,7 +225,12 @@ const teamBoard = defineTool({
         people: people.slice(0, CAP).map((person) => ({ name: person.name ?? "—", open: person.counts.todo + person.counts.in_progress + person.counts.in_review, overdue: person.overdue, atRisk: person.atRisk, blocked: person.blocked })),
         riskiest: modelRows(risky, { key: "value", title: "text", assignee: "text", state: "text", dueDate: "value", risk: "value", blocked: "value", project: "text", link: "value" }, CAP),
       },
-      card: { tool: "team_board", href: "/work/leader", items: people.slice(0, 8).map((person) => ({ label: person.name ?? "—", href: null, meta: meta("board", { overdue: person.overdue, blocked: person.blocked }) })), more: Math.max(0, people.length - 8) },
+      card: {
+        tool: "team_board",
+        href: "/work/leader",
+        items: people.slice(0, 8).map((person) => ({ label: person.name ?? "—", href: null, meta: meta("board", { overdue: person.overdue, blocked: person.blocked }) })),
+        more: Math.max(0, people.length - 8),
+      },
       subject: null,
     };
   },
@@ -215,7 +257,14 @@ const teamWorkload = defineTool({
     if (!view || view.rows.length === 0) return { outcome: "empty", model: { link: "/work/workload" }, card: null, subject: null };
     const rows = view.rows.map((row) => ({
       name: row.person.fullName,
-      weeks: row.cells.map((cell) => ({ week: cell.week.start, plannedHours: HOURS(cell.minutes), capacityHours: HOURS(cell.capacityMinutes), freeHours: HOURS(Math.max(0, cell.capacityMinutes - cell.minutes)), over: cell.over, awayDays: cell.awayDays })),
+      weeks: row.cells.map((cell) => ({
+        week: cell.week.start,
+        plannedHours: HOURS(cell.minutes),
+        capacityHours: HOURS(cell.capacityMinutes),
+        freeHours: HOURS(Math.max(0, cell.capacityMinutes - cell.minutes)),
+        over: cell.over,
+        awayDays: cell.awayDays,
+      })),
       unscheduledTasks: row.unscheduled.tasks,
     }));
     return {
@@ -269,7 +318,12 @@ const timesheetsToApprove = defineTool({
     return {
       outcome: "answered",
       model: { link: "/daily/timesheets", ...modelRows(shaped, { name: "text", weekStart: "value", hours: "value", submittedAt: "value" }, CAP) },
-      card: { tool: "timesheets_to_approve", href: "/daily/timesheets", items: shaped.slice(0, 8).map((week) => ({ label: week.name, href: "/daily/timesheets", meta: meta("week", { date: week.weekStart, hours: week.hours }) })), more: Math.max(0, shaped.length - 8) },
+      card: {
+        tool: "timesheets_to_approve",
+        href: "/daily/timesheets",
+        items: shaped.slice(0, 8).map((week) => ({ label: week.name, href: "/daily/timesheets", meta: meta("week", { date: week.weekStart, hours: week.hours }) })),
+        more: Math.max(0, shaped.length - 8),
+      },
       subject: null,
     };
   },

@@ -7,10 +7,11 @@ import { db, schema } from "@/lib/db";
 import { rowsOf } from "@/lib/db/rows";
 import type { ClientDecisionFacts } from "./schema";
 
-const uuidArray = (ids: readonly string[]) => sql`ARRAY[${sql.join(
-  ids.map((id) => sql`${id}::uuid`),
-  sql`, `,
-)}]::uuid[]`;
+const uuidArray = (ids: readonly string[]) =>
+  sql`ARRAY[${sql.join(
+    ids.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  )}]::uuid[]`;
 
 export type RevisionRounds = { internal: number; client: number };
 
@@ -66,7 +67,19 @@ export async function deliveryFactsByTask(taskIds: readonly string[]): Promise<M
   const ids = [...new Set(taskIds)];
   const result = new Map<string, DeliveryFacts>(ids.map((id) => [id, { clientApproved: false, delivered: false, published: false, lastClientDecision: null, currentVersion: null, withClient: false }]));
   if (ids.length === 0) return result;
-  const rows = rowsOf<{ task_id: string; client_approved: boolean; delivered: boolean; published: boolean; decision: string | null; version: number | null; client: ClientDecisionFacts | null; recorded_at: Date | string | null; comment: string | null; current_version: number | null; with_client: boolean | null }>(
+  const rows = rowsOf<{
+    task_id: string;
+    client_approved: boolean;
+    delivered: boolean;
+    published: boolean;
+    decision: string | null;
+    version: number | null;
+    client: ClientDecisionFacts | null;
+    recorded_at: Date | string | null;
+    comment: string | null;
+    current_version: number | null;
+    with_client: boolean | null;
+  }>(
     await db().execute(sql`
       SELECT t.id AS task_id,
              EXISTS (SELECT 1 FROM ${schema.workDeliverable} d WHERE d.task_id = t.id AND d.frozen_at IS NOT NULL) AS client_approved,

@@ -56,7 +56,9 @@ export default async function UtilisationPage() {
           : group.people.map((person: UtilisationPerson) => (
               <TableRow key={person.personId}>
                 <TableCell className="align-top font-medium">
-                  <RecordLink kind="person" id={person.personId}>{person.name}</RecordLink>
+                  <RecordLink kind="person" id={person.personId}>
+                    {person.name}
+                  </RecordLink>
                 </TableCell>
                 {person.weeks.map((value, index) => (
                   <Fragment key={view.weeks[index]}>{cell(value)}</Fragment>
@@ -77,7 +79,11 @@ export default async function UtilisationPage() {
 
   return (
     <Page width="full">
-      <PageHeader title={t("title")} description={t("intro")} actions={view.groups.length > 0 ? <ExportButton action={exportUtilisationAction} input={{}} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} /> : null} />
+      <PageHeader
+        title={t("title")}
+        description={t("intro")}
+        actions={view.groups.length > 0 ? <ExportButton action={exportUtilisationAction} input={{}} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} /> : null}
+      />
 
       {view.groups.length === 0 ? (
         <List>
@@ -85,7 +91,22 @@ export default async function UtilisationPage() {
         </List>
       ) : null}
       {view.groups.map((group) => (
-        <Section key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} title={group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : <RecordLink kind="team" id={group.teamId}>{group.name}</RecordLink>}>
+        <Section
+          key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`}
+          title={
+            group.kind === "reports" ? (
+              t("myReports")
+            ) : group.kind === "company" ? (
+              t("everyoneElse")
+            ) : group.kind === "portfolio_other" ? (
+              t("otherTeams", { count: group.teams })
+            ) : (
+              <RecordLink kind="team" id={group.teamId}>
+                {group.name}
+              </RecordLink>
+            )
+          }
+        >
           {group.kind === "portfolio" || group.kind === "portfolio_other" ? <p className="px-0.5 text-xs text-muted-foreground">{t("portfolioHint")}</p> : null}
           {table(group)}
         </Section>

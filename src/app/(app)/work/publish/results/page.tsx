@@ -20,13 +20,21 @@ export default async function PublishResultsImportPage() {
   const t = await getTranslations("work");
   return (
     <Page width="default">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
-            {t("title")}
-          </Link>
-          <span className="text-faint">/</span>
-          <Link href="/work/calendar" className="hover:underline">
-            {t("calendar.title")}
-          </Link></span>} title={t("results.importTitle")} description={t("results.importDescription")} />
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <Link href="/work/calendar" className="hover:underline">
+              {t("calendar.title")}
+            </Link>
+          </span>
+        }
+        title={t("results.importTitle")}
+        description={t("results.importDescription")}
+      />
       <ul className="list-disc pl-5 text-sm text-muted-foreground">
         <li>{t("results.notes.match")}</li>
         <li>{t("results.notes.reading")}</li>

@@ -90,7 +90,11 @@ export async function bookWeeks(projectId: string, input: BookingInput, actor: A
     if (input.personId) await activePerson(tx, input.personId);
     const weeks = Array.from({ length: Math.max(1, input.weeks) }, (_, index) => addDays(input.weekStart, index * 7));
     const same = input.personId ? eq(schema.projectBooking.personId, input.personId) : and(isNull(schema.projectBooking.personId), eq(schema.projectBooking.placeholderRole, input.placeholderRole!));
-    const existing = await tx.select().from(schema.projectBooking).where(and(eq(schema.projectBooking.projectId, projectId), same, inArray(schema.projectBooking.weekStart, weeks))).for("update");
+    const existing = await tx
+      .select()
+      .from(schema.projectBooking)
+      .where(and(eq(schema.projectBooking.projectId, projectId), same, inArray(schema.projectBooking.weekStart, weeks)))
+      .for("update");
     const byWeek = new Map(existing.map((row) => [row.weekStart, row]));
     const created: BookingRow[] = [];
     const changed: { before: BookingRow; after: BookingRow }[] = [];
@@ -98,10 +102,17 @@ export async function bookWeeks(projectId: string, input: BookingInput, actor: A
       const values = { minutes: input.minutes, status: input.status, note: input.note };
       const before = byWeek.get(weekStart);
       if (before) {
-        const [after] = await tx.update(schema.projectBooking).set({ ...values, updatedAt: new Date() }).where(eq(schema.projectBooking.id, before.id)).returning();
+        const [after] = await tx
+          .update(schema.projectBooking)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(schema.projectBooking.id, before.id))
+          .returning();
         changed.push({ before, after });
       } else {
-        const [after] = await tx.insert(schema.projectBooking).values({ projectId, personId: input.personId, placeholderRole: input.personId ? null : input.placeholderRole, weekStart, ...values, createdByPersonId: actor.personId }).returning();
+        const [after] = await tx
+          .insert(schema.projectBooking)
+          .values({ projectId, personId: input.personId, placeholderRole: input.personId ? null : input.placeholderRole, weekStart, ...values, createdByPersonId: actor.personId })
+          .returning();
         created.push(after);
       }
     }
@@ -119,7 +130,11 @@ export async function updateBooking(bookingId: string, patch: BookingPatch, acto
     const [before] = await tx.select().from(schema.projectBooking).where(eq(schema.projectBooking.id, bookingId)).limit(1).for("update");
     if (!before) throw new ActionError("booking_not_found");
     const name = await projectName(tx, before.projectId);
-    const [after] = await tx.update(schema.projectBooking).set({ ...patch, updatedAt: new Date() }).where(eq(schema.projectBooking.id, bookingId)).returning();
+    const [after] = await tx
+      .update(schema.projectBooking)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(schema.projectBooking.id, bookingId))
+      .returning();
     if (before.minutes !== after.minutes || before.status !== after.status) await tellBooked(tx, after.personId, actor, { id: before.projectId, name }, after.weekStart);
     return { before, after };
   });
@@ -148,11 +163,31 @@ export async function fillPlaceholder(projectId: string, input: { placeholderRol
     const open = await tx
       .select()
       .from(schema.projectBooking)
-      .where(and(eq(schema.projectBooking.projectId, projectId), isNull(schema.projectBooking.personId), eq(schema.projectBooking.placeholderRole, input.placeholderRole), input.fromWeek ? gte(schema.projectBooking.weekStart, input.fromWeek) : undefined))
+      .where(
+        and(
+          eq(schema.projectBooking.projectId, projectId),
+          isNull(schema.projectBooking.personId),
+          eq(schema.projectBooking.placeholderRole, input.placeholderRole),
+          input.fromWeek ? gte(schema.projectBooking.weekStart, input.fromWeek) : undefined,
+        ),
+      )
       .orderBy(asc(schema.projectBooking.weekStart))
       .for("update");
     if (open.length === 0) throw new ActionError("booking_not_found");
-    const own = await tx.select().from(schema.projectBooking).where(and(eq(schema.projectBooking.projectId, projectId), eq(schema.projectBooking.personId, input.personId), inArray(schema.projectBooking.weekStart, open.map((row) => row.weekStart)))).for("update");
+    const own = await tx
+      .select()
+      .from(schema.projectBooking)
+      .where(
+        and(
+          eq(schema.projectBooking.projectId, projectId),
+          eq(schema.projectBooking.personId, input.personId),
+          inArray(
+            schema.projectBooking.weekStart,
+            open.map((row) => row.weekStart),
+          ),
+        ),
+      )
+      .for("update");
     const ownWeek = new Map(own.map((row) => [row.weekStart, row]));
     const filled: { before: BookingRow; after: BookingRow }[] = [];
     let merged = 0;
@@ -161,7 +196,11 @@ export async function fillPlaceholder(projectId: string, input: { placeholderRol
       if (mine) {
         // Confirmed wins: a person already confirmed on the week stays confirmed.
         const status = mine.status === "confirmed" || before.status === "confirmed" ? "confirmed" : "tentative";
-        const [after] = await tx.update(schema.projectBooking).set({ minutes: mine.minutes + before.minutes, status, updatedAt: new Date() }).where(eq(schema.projectBooking.id, mine.id)).returning();
+        const [after] = await tx
+          .update(schema.projectBooking)
+          .set({ minutes: mine.minutes + before.minutes, status, updatedAt: new Date() })
+          .where(eq(schema.projectBooking.id, mine.id))
+          .returning();
         await tx.delete(schema.projectBooking).where(eq(schema.projectBooking.id, before.id));
         filled.push({ before, after });
         merged += 1;

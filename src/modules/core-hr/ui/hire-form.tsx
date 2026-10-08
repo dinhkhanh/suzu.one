@@ -27,41 +27,40 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-8">
       <FieldErrors value={fieldErrors}>
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sections.identity")}</h2>
-        <IdentityFields />
-      </section>
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("sections.identity")}</h2>
+          <IdentityFields />
+        </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sections.employment")}</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field name="entityId" label={t("fields.entity")}>
-            <Select id="entityId" name="entityId" required value={entityId} onChange={(event) => setEntityId(event.target.value)}>
-              {entities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field name="employeeCode" label={t("fields.employeeCode")}>
-            <Input id="employeeCode" name="employeeCode" maxLength={30} placeholder={t("fields.employeeCodeHint")} />
-          </Field>
-          <div className="hidden lg:block" />
-          <Field name="startDate" label={t("fields.startDate")}>
-            <DatePicker id="startDate" name="startDate" required defaultValue={today} />
-          </Field>
-          <Field name="seniorityDate" label={t("fields.seniorityDate")}>
-            <DatePicker id="seniorityDate" name="seniorityDate" />
-          </Field>
-        </div>
-      </section>
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("sections.employment")}</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field name="entityId" label={t("fields.entity")}>
+              <Select id="entityId" name="entityId" required value={entityId} onChange={(event) => setEntityId(event.target.value)}>
+                {entities.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field name="employeeCode" label={t("fields.employeeCode")}>
+              <Input id="employeeCode" name="employeeCode" maxLength={30} placeholder={t("fields.employeeCodeHint")} />
+            </Field>
+            <div className="hidden lg:block" />
+            <Field name="startDate" label={t("fields.startDate")}>
+              <DatePicker id="startDate" name="startDate" required defaultValue={today} />
+            </Field>
+            <Field name="seniorityDate" label={t("fields.seniorityDate")}>
+              <DatePicker id="seniorityDate" name="seniorityDate" />
+            </Field>
+          </div>
+        </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sections.placement")}</h2>
-        <PlacementFields options={{ ...options, branches: options.branches.filter((branch) => branch.entityId === entityId) }} />
-      </section>
-
+        <section className="flex flex-col gap-4">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("sections.placement")}</h2>
+          <PlacementFields options={{ ...options, branches: options.branches.filter((branch) => branch.entityId === entityId) }} />
+        </section>
       </FieldErrors>
       {duplicates.length > 0 ? (
         <Alert variant="warning">

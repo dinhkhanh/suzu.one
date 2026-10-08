@@ -127,7 +127,13 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                       <span className="block text-xs text-muted-foreground">{t(`sources.${item.source as "manual"}`)}</span>
                     </TableCell>
                     <TableCell className="whitespace-normal">
-                      {item.clientName ? <RecordLink kind="account" id={item.clientId}>{item.clientName}</RecordLink> : "—"}
+                      {item.clientName ? (
+                        <RecordLink kind="account" id={item.clientId}>
+                          {item.clientName}
+                        </RecordLink>
+                      ) : (
+                        "—"
+                      )}
                       {item.entityName ? (
                         <RecordLink kind="entity" id={item.entityId} className="block text-xs text-muted-foreground">
                           {item.entityName}
@@ -158,7 +164,9 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                               {item.decidedByName ? (
                                 <>
                                   {" · "}
-                                  <RecordLink kind="person" id={item.decidedByPersonId}>{item.decidedByName}</RecordLink>
+                                  <RecordLink kind="person" id={item.decidedByPersonId}>
+                                    {item.decidedByName}
+                                  </RecordLink>
                                 </>
                               ) : null}
                             </p>
@@ -169,14 +177,22 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
                               {item.decidedByName ? (
                                 <>
                                   {" · "}
-                                  <RecordLink kind="person" id={item.decidedByPersonId}>{item.decidedByName}</RecordLink>
+                                  <RecordLink kind="person" id={item.decidedByPersonId}>
+                                    {item.decidedByName}
+                                  </RecordLink>
                                 </>
                               ) : null}
                             </p>
                           ) : null}
                           {item.corrections.map((correction) => (
                             <p key={correction.at} className="text-xs text-muted-foreground">
-                              {t("corrected", { date: format.dateTime(new Date(correction.at), { dateStyle: "medium" }), name: correctorOf.get(correction.byPersonId) ?? "—", before: money(correction.beforeVnd), after: money(correction.afterVnd), reason: correction.reason })}
+                              {t("corrected", {
+                                date: format.dateTime(new Date(correction.at), { dateStyle: "medium" }),
+                                name: correctorOf.get(correction.byPersonId) ?? "—",
+                                before: money(correction.beforeVnd),
+                                after: money(correction.afterVnd),
+                                reason: correction.reason,
+                              })}
                             </p>
                           ))}
                           {item.status === "ready" && decides ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}

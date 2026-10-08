@@ -104,7 +104,9 @@ export function keptValues(pkg: Pick<PackageDef, "fields">, values: Readonly<Rec
 export type PackageProblem = "handoff_package_same_state" | "handoff_package_empty" | "handoff_package_field_label" | "handoff_package_field_duplicate" | "handoff_package_too_many" | "handoff_package_check_text";
 
 /** A package definition a team lead saves. Keys are made by the service; labels are what people read. */
-export function packageProblem(pkg: Pick<PackageDef, "fromStateId" | "toStateId" | "fields" | "checklist" | "requireLink" | "requireFile" | "requireAccept"> & { /** Library checklists it asks for as well. */ checklistIds?: readonly string[] }): PackageProblem | null {
+export function packageProblem(
+  pkg: Pick<PackageDef, "fromStateId" | "toStateId" | "fields" | "checklist" | "requireLink" | "requireFile" | "requireAccept"> & { /** Library checklists it asks for as well. */ checklistIds?: readonly string[] },
+): PackageProblem | null {
   if (pkg.fromStateId === pkg.toStateId) return "handoff_package_same_state";
   if (pkg.fields.length > MAX_PACKAGE_FIELDS || pkg.checklist.length > MAX_PACKAGE_CHECKS) return "handoff_package_too_many";
   if (pkg.fields.some((field) => !field.label.trim())) return "handoff_package_field_label";

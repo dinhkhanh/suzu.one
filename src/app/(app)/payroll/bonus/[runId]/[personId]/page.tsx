@@ -31,7 +31,12 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
   if (!canViewBonusOf(user.principal, { personId, entityId: line.row.entityId })) notFound();
   requireStepUp(user, `/payroll/bonus/${runId}/${personId}`);
 
-  const [t, result, kpi, handoffs] = await Promise.all([getTranslations("payroll.bonus"), line.row.resultId ? getFinalResult(personId, run.year) : null, getKpiResults({ personId, year: run.year }), line.row.payrollRunId ? listBonusHandoffs(runId) : []]);
+  const [t, result, kpi, handoffs] = await Promise.all([
+    getTranslations("payroll.bonus"),
+    line.row.resultId ? getFinalResult(personId, run.year) : null,
+    getKpiResults({ personId, year: run.year }),
+    line.row.payrollRunId ? listBonusHandoffs(runId) : [],
+  ]);
   // The payroll run this line was handed to may have been cancelled since: then nothing is paying it.
   const handedTo = handoffs.find((handoff) => handoff.payrollRunId === line.row.payrollRunId);
   const runCancelled = handedTo?.payrollRunStatus === "cancelled";
@@ -46,7 +51,9 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
           ← {run.name}
         </Link>
         <h1 className="flex flex-wrap items-center gap-2">
-          <RecordLink kind="person" id={personId}>{line.personName}</RecordLink>
+          <RecordLink kind="person" id={personId}>
+            {line.personName}
+          </RecordLink>
           <Badge variant="outline">{run.year}</Badge>
         </h1>
         <p className="text-sm text-muted-foreground">{t("trace.description")}</p>

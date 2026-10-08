@@ -45,7 +45,10 @@ const vnd = (cell: string) => {
 /** "ALW_MEAL=730000; ALW_PHONE=200000" — each allowance by its catalogue code, the amount in VND. */
 const allowanceList = (cell: string) => {
   const lines: { code: string; amount: number }[] = [];
-  for (const part of cell.split(/[;\n]/).map((piece) => piece.trim()).filter(Boolean)) {
+  for (const part of cell
+    .split(/[;\n]/)
+    .map((piece) => piece.trim())
+    .filter(Boolean)) {
     const match = /^([A-Za-z][A-Za-z0-9_]{1,39})\s*[=:]\s*([\d.,\s]+)$/.exec(part);
     const amount = match ? vnd(match[2]) : null;
     if (!match || !amount?.ok) return { ok: false as const, code: "bad_allowances" };
@@ -103,15 +106,45 @@ export async function resolveSalaryRows(rows: Row[], user: { principal: Principa
   const structures = schema.salaryStructure;
   const [open, standing, catalogues, limits] = await Promise.all([
     named.length > 0
-      ? executor.selectDistinct({ personId: requests.subjectPersonId }).from(requests).where(and(eq(requests.type, salaryChangeRequest.type), inArray(requests.status, ["pending", "returned"]), inArray(requests.subjectPersonId, named.map((fact) => fact.personId))))
+      ? executor
+          .selectDistinct({ personId: requests.subjectPersonId })
+          .from(requests)
+          .where(
+            and(
+              eq(requests.type, salaryChangeRequest.type),
+              inArray(requests.status, ["pending", "returned"]),
+              inArray(
+                requests.subjectPersonId,
+                named.map((fact) => fact.personId),
+              ),
+            ),
+          )
       : [],
-    named.length > 0 ? executor.select({ id: structures.id, employmentId: structures.employmentId, validFrom: structures.validFrom, validTo: structures.validTo }).from(structures).where(and(inArray(structures.employmentId, named.map((fact) => fact.employmentId!)), isNull(structures.voidedAt))) : [],
+    named.length > 0
+      ? executor
+          .select({ id: structures.id, employmentId: structures.employmentId, validFrom: structures.validFrom, validTo: structures.validTo })
+          .from(structures)
+          .where(
+            and(
+              inArray(
+                structures.employmentId,
+                named.map((fact) => fact.employmentId!),
+              ),
+              isNull(structures.voidedAt),
+            ),
+          )
+      : [],
     // The catalogue is the shared cached table; a salary may name a component in force on its start or today.
     Promise.all(dates.map((date) => resolveCatalogue(params.entityId, date, executor === db() ? undefined : executor))),
     Promise.all(dates.map((date) => getParameter("probation.limits", date, executor === db() ? undefined : executor).catch(() => null))),
   ]);
   const waiting = new Set(open.map((row) => row.personId));
-  const allowed = new Set(catalogues.flat().filter((component) => component.source === "structure" && component.kind === "earning" && component.code !== BASE_SALARY_CODE).map((component) => component.code));
+  const allowed = new Set(
+    catalogues
+      .flat()
+      .filter((component) => component.source === "structure" && component.kind === "earning" && component.code !== BASE_SALARY_CODE)
+      .map((component) => component.code),
+  );
   const minimumOn = new Map(dates.map((date, index) => [date, limits[index]?.minimumPayPercent ?? 100]));
   const seen = new Set<string>();
 
@@ -158,7 +191,16 @@ export async function resolveSalaryRows(rows: Row[], user: { principal: Principa
       problems.push({ row: row.row, column: salaryColumns.allowances.headers[0], code: "bad_allowances" });
       continue;
     }
-    resolved.push({ personId: fact.personId, entityId: params.entityId, employmentId: fact.employmentId!, validFrom, reason: row.values.reason ?? "adjustment", initial: existing.length === 0, terms: terms.data, note: row.values.note ?? null });
+    resolved.push({
+      personId: fact.personId,
+      entityId: params.entityId,
+      employmentId: fact.employmentId!,
+      validFrom,
+      reason: row.values.reason ?? "adjustment",
+      initial: existing.length === 0,
+      terms: terms.data,
+      note: row.values.note ?? null,
+    });
   }
 
   return { problems, resolved };
@@ -227,7 +269,14 @@ export async function getSalaryImport(viewer: { personId: string; principal: Pri
   // The same question again, row by row, before anything is decrypted.
   const visible = rows.filter(({ request }) => request.entityId && request.subjectPersonId && canDecideSalaryChange(viewer.principal, { entityId: request.entityId }));
   if (visible.length === 0) return null;
-  const names = new Map((await listPayrollNames(visible.map(({ request }) => request.subjectPersonId!), executor)).map((name) => [name.personId, name]));
+  const names = new Map(
+    (
+      await listPayrollNames(
+        visible.map(({ request }) => request.subjectPersonId!),
+        executor,
+      )
+    ).map((name) => [name.personId, name]),
+  );
   const lines = visible.map(({ request, currentId, currentEnc }): SalaryImportLine => {
     const sealed = unseal(request);
     return {
@@ -289,7 +338,13 @@ export async function listPendingSalaryImports(principal: Principal, executor: E
   const requests = schema.approvalRequest;
   const batch = sql<string>`${requests.payload} ->> 'importBatchId'`;
   const rows = await executor
-    .select({ batchId: batch, entityId: sql<string>`min(${requests.entityId}::text)`, pending: sql<number>`count(*) filter (where ${requests.status} = 'pending')::int`, total: sql<number>`count(*)::int`, createdAt: sql<Date>`min(${requests.createdAt})`.mapWith(requests.createdAt) })
+    .select({
+      batchId: batch,
+      entityId: sql<string>`min(${requests.entityId}::text)`,
+      pending: sql<number>`count(*) filter (where ${requests.status} = 'pending')::int`,
+      total: sql<number>`count(*)::int`,
+      createdAt: sql<Date>`min(${requests.createdAt})`.mapWith(requests.createdAt),
+    })
     .from(requests)
     .where(and(eq(requests.type, salaryChangeRequest.type), sql`${batch} is not null`, withinReach(requests.entityId, compensationReach(principal))))
     .groupBy(batch)

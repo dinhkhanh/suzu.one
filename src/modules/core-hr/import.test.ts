@@ -141,7 +141,10 @@ describe("employee import", () => {
     const employments = await db().select().from(schema.employment);
     expect(employments.find((row) => row.personId === tam.id)?.employeeCode).toBe("TAM-01");
     expect(employments.find((row) => row.personId === huy.id)?.employeeCode).toMatch(/^SZM-\d{4}$/);
-    const [assignment] = await db().select().from(schema.assignment).where(eq(schema.assignment.employmentId, employments.find((row) => row.personId === huy.id)!.id));
+    const [assignment] = await db()
+      .select()
+      .from(schema.assignment)
+      .where(eq(schema.assignment.employmentId, employments.find((row) => row.personId === huy.id)!.id));
     expect(assignment.managerId).toBe(tam.id);
 
     const [raw] = await db().select().from(schema.personSensitive).where(eq(schema.personSensitive.personId, huy.id));

@@ -11,7 +11,19 @@ import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
-import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, savePageAsTemplateAction, setPageMetaAction, setPageSlugAction, submitPageReviewAction, unpublishPageAction } from "../actions";
+import {
+  archivePageAction,
+  createPageAction,
+  deletePageAction,
+  movePageAction,
+  publishPageAction,
+  restoreVersionAction,
+  savePageAsTemplateAction,
+  setPageMetaAction,
+  setPageSlugAction,
+  submitPageReviewAction,
+  unpublishPageAction,
+} from "../actions";
 import { pagePath, pageSlugOf } from "../enums";
 
 type ParentOption = { id: string; title: string; depth: number };
@@ -24,12 +36,34 @@ function SlugInput({ spaceKey, value, onChange }: { spaceKey: string; value: str
       <InputGroupAddon>
         <InputGroupText className="max-w-[60%] truncate font-mono text-xs">/kb/spaces/{spaceKey}/</InputGroupText>
       </InputGroupAddon>
-      <InputGroupInput id="slug" name="slug" value={value} onChange={(event) => onChange(event.target.value.toLowerCase())} maxLength={100} pattern="[a-z0-9](?:[a-z0-9\-]{0,98}[a-z0-9])?" spellCheck={false} autoComplete="off" className="font-mono" />
+      <InputGroupInput
+        id="slug"
+        name="slug"
+        value={value}
+        onChange={(event) => onChange(event.target.value.toLowerCase())}
+        maxLength={100}
+        pattern="[a-z0-9](?:[a-z0-9\-]{0,98}[a-z0-9])?"
+        spellCheck={false}
+        autoComplete="off"
+        className="font-mono"
+      />
     </InputGroup>
   );
 }
 
-export function NewPageForm({ spaceId, spaceKey, parents, defaultParentId, templates = [] }: { spaceId: string; spaceKey: string; parents: ParentOption[]; defaultParentId: string; templates?: { id: string; name: string; description: string | null }[] }) {
+export function NewPageForm({
+  spaceId,
+  spaceKey,
+  parents,
+  defaultParentId,
+  templates = [],
+}: {
+  spaceId: string;
+  spaceKey: string;
+  parents: ParentOption[];
+  defaultParentId: string;
+  templates?: { id: string; name: string; description: string | null }[];
+}) {
   const t = useTranslations("kb");
   const router = useRouter();
   const form = useActionForm(createPageAction, { extra: { spaceId }, onSuccess: (data) => router.push(`/kb/pages/${data.id}/edit`) });
@@ -256,7 +290,20 @@ export function PageLifecycleButtons({ pageId, spaceKey, status, published, canP
           </Button>
         ) : null}
         {canDelete ? (
-          <ConfirmButton variant="destructive" size="sm" disabled={pending} destructive label={t("page.delete")} question={t("page.deleteConfirm")} onConfirm={() => run(() => deletePageAction({ pageId }), () => router.push(`/kb/spaces/${spaceKey}`))} />
+          <ConfirmButton
+            variant="destructive"
+            size="sm"
+            disabled={pending}
+            destructive
+            label={t("page.delete")}
+            question={t("page.deleteConfirm")}
+            onConfirm={() =>
+              run(
+                () => deletePageAction({ pageId }),
+                () => router.push(`/kb/spaces/${spaceKey}`),
+              )
+            }
+          />
         ) : null}
       </div>
       <RunError errorKey={errorKey} />
@@ -270,7 +317,19 @@ export function RestoreVersionButton({ pageId, versionNo }: { pageId: string; ve
   const { run, pending, errorKey } = useRun();
   return (
     <span className="inline-flex items-center gap-2">
-      <ConfirmButton variant="outline" size="xs" disabled={pending} label={t("history.restore")} question={t("history.restoreConfirm", { n: versionNo })} onConfirm={() => run(() => restoreVersionAction({ pageId, versionNo }), () => router.push(`/kb/pages/${pageId}?draft=1`))} />
+      <ConfirmButton
+        variant="outline"
+        size="xs"
+        disabled={pending}
+        label={t("history.restore")}
+        question={t("history.restoreConfirm", { n: versionNo })}
+        onConfirm={() =>
+          run(
+            () => restoreVersionAction({ pageId, versionNo }),
+            () => router.push(`/kb/pages/${pageId}?draft=1`),
+          )
+        }
+      />
       <RunError errorKey={errorKey} />
     </span>
   );

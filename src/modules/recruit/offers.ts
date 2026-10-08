@@ -42,14 +42,7 @@ import { ROLE_DEFINITIONS, type Tier } from "@/modules/platform/rbac/roles";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import { getParameter } from "@/modules/platform/statutory/service";
 import { submitSalaryChange } from "@/modules/payroll/service";
-import {
-  DEFAULT_OFFER_VALID_DAYS,
-  type EmploymentType,
-  OFFER_LIMITS,
-  OFFER_LIVE,
-  type OfferDeclineReason,
-  type OfferStatus,
-} from "./enums";
+import { DEFAULT_OFFER_VALID_DAYS, type EmploymentType, OFFER_LIMITS, OFFER_LIVE, type OfferDeclineReason, type OfferStatus } from "./enums";
 import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, type OfferLegalLimits, type OfferProblem, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
 import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
 import { type LetterOutcome, sendLetter } from "./letters";
@@ -114,7 +107,10 @@ export const offerRequestType = defineRequestType({
 /** "SZM-TM-2026-0001". Counted from what is already on the books, per entity and year. */
 async function nextOfferNumber(executor: Executor, entityCode: string, year: number): Promise<string> {
   const prefix = `${entityCode}-TM-${year}-`;
-  const rows = await executor.select({ number: schema.jobOffer.number }).from(schema.jobOffer).where(like(schema.jobOffer.number, `${prefix}%`));
+  const rows = await executor
+    .select({ number: schema.jobOffer.number })
+    .from(schema.jobOffer)
+    .where(like(schema.jobOffer.number, `${prefix}%`));
   const highest = rows.reduce((top, row) => {
     const tail = row.number.slice(prefix.length);
     return /^\d+$/.test(tail) ? Math.max(top, Number(tail)) : top;
@@ -534,9 +530,7 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   const maker = people.find((row) => row.id === offer.createdByPersonId);
 
   const status = effectiveOfferStatus({ status: offer.status, expiresOn: offer.expiresOn as IsoDate }, today);
-  const money = canReadOfferMoney(viewer.principal, target)
-    ? { baseSalaryVnd: offer.baseSalaryVnd, allowancesVnd: offer.allowancesVnd, totalVnd: offerTotalVnd(offer), probationMonthlyVnd: probationMonthlyVnd(offer) }
-    : null;
+  const money = canReadOfferMoney(viewer.principal, target) ? { baseSalaryVnd: offer.baseSalaryVnd, allowancesVnd: offer.allowancesVnd, totalVnd: offerTotalVnd(offer), probationMonthlyVnd: probationMonthlyVnd(offer) } : null;
 
   return {
     offer,
@@ -563,7 +557,19 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   };
 }
 
-export type OfferListRow = { id: string; number: string; candidateName: string; positionName: string; openingId: string; openingCode: string; status: OfferStatus; startDate: IsoDate; expiresOn: IsoDate; entityName: string | null; hiredPersonId: string | null };
+export type OfferListRow = {
+  id: string;
+  number: string;
+  candidateName: string;
+  positionName: string;
+  openingId: string;
+  openingCode: string;
+  status: OfferStatus;
+  startDate: IsoDate;
+  expiresOn: IsoDate;
+  entityName: string | null;
+  hiredPersonId: string | null;
+};
 
 /** Every offer the reader may see, newest first. No figure: this is a list, and a list is glanced at. */
 /**
@@ -591,11 +597,8 @@ function offerScope(principal: Principal, personId: string | null) {
         )
       : undefined;
   return (
-    or(
-      entityIds.length > 0 ? inArray(schema.jobOpening.entityId, entityIds) : undefined,
-      unitIds.length > 0 ? or(inArray(schema.jobOpening.departmentId, unitIds), inArray(schema.jobOpening.teamId, unitIds)) : undefined,
-      member,
-    ) ?? sql`false`
+    or(entityIds.length > 0 ? inArray(schema.jobOpening.entityId, entityIds) : undefined, unitIds.length > 0 ? or(inArray(schema.jobOpening.departmentId, unitIds), inArray(schema.jobOpening.teamId, unitIds)) : undefined, member) ??
+    sql`false`
   );
 }
 
@@ -737,7 +740,13 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
 async function renderOfferLetter(offer: OfferRow, today: IsoDate, mayRead: (tier: Tier) => boolean, executor?: Executor): Promise<RenderedOffer | null> {
   if (!offer.letterTemplateId) return null;
   const template = executor
-    ? (await executor.select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1))[0]
+    ? (
+        await executor
+          .select()
+          .from(schema.documentTemplate)
+          .where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true)))
+          .limit(1)
+      )[0]
     : await findTemplate(offer.letterTemplateId).then((row) => (row?.isActive ? row : undefined));
   if (!template || !mayRead(template.tier)) return null;
 

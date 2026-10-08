@@ -107,7 +107,10 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
         </Section>
       ) : usage ? (
         <>
-          <Section title={t("usage.month.title")} description={t("usage.month.intro", { everyone: usd(usage.month.budget.dayMicroUsd.everyone), lead: usd(usage.month.budget.dayMicroUsd.lead), office: usd(usage.month.budget.dayMicroUsd.office) })}>
+          <Section
+            title={t("usage.month.title")}
+            description={t("usage.month.intro", { everyone: usd(usage.month.budget.dayMicroUsd.everyone), lead: usd(usage.month.budget.dayMicroUsd.lead), office: usd(usage.month.budget.dayMicroUsd.office) })}
+          >
             <TileGrid>
               <Tile label={t("usage.month.spent")} value={usd(usage.month.monthMicroUsd)} />
               <Tile label={t("usage.month.budget")} value={usd(usage.month.budget.monthMicroUsd)} />
@@ -138,7 +141,10 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
             </Table>
           </Section>
 
-          <Section title={t("usage.title", { days: USAGE_DAYS })} description={t("usage.intro", { askDay: AI_LIMITS.ask_day.max, askBurst: AI_LIMITS.ask_burst.max, draftDay: AI_LIMITS.draft_day.max, draftBurst: AI_LIMITS.draft_burst.max })}>
+          <Section
+            title={t("usage.title", { days: USAGE_DAYS })}
+            description={t("usage.intro", { askDay: AI_LIMITS.ask_day.max, askBurst: AI_LIMITS.ask_burst.max, draftDay: AI_LIMITS.draft_day.max, draftBurst: AI_LIMITS.draft_burst.max })}
+          >
             <TileGrid>
               <Tile label={t("usage.answers")} value={format.number(usage.total.answers)} />
               <Tile label={t("usage.modelAnswers")} value={format.number(usage.total.modelAnswers)} />

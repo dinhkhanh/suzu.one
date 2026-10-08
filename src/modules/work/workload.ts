@@ -28,7 +28,15 @@ export async function getWorkload(viewer: WorkViewer, today: IsoDate, options: {
     .select({ id: schema.person.id, fullName: schema.person.fullName, entityId: schema.person.primaryEntityId, teamId: schema.workTeamMember.teamId })
     .from(schema.workTeamMember)
     .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
-    .where(and(inArray(schema.workTeamMember.teamId, chosen.map((team) => team.id)), inArray(schema.person.status, ["active", "preboarding"])))
+    .where(
+      and(
+        inArray(
+          schema.workTeamMember.teamId,
+          chosen.map((team) => team.id),
+        ),
+        inArray(schema.person.status, ["active", "preboarding"]),
+      ),
+    )
     .orderBy(asc(schema.person.searchName));
   const people = [...Map.groupBy(members, (row) => row.id).values()].map((own) => ({ id: own[0].id, fullName: own[0].fullName, entityId: own[0].entityId, teamIds: own.map((row) => row.teamId) }));
   const weeks = weeksFrom(today, WORKLOAD_WEEKS);

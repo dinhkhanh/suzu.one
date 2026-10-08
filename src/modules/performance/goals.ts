@@ -49,7 +49,19 @@ const loadYearOnce = cache((year: number): Promise<Year> => readYear(year, db())
 
 async function readYear(year: number, executor: Executor): Promise<Year> {
   const goals = await executor.select().from(schema.goal).where(eq(schema.goal.year, year)).orderBy(asc(schema.goal.createdAt), asc(schema.goal.id));
-  const keyResultRows = goals.length === 0 ? [] : await executor.select().from(schema.keyResult).where(inArray(schema.keyResult.goalId, goals.map((goal) => goal.id))).orderBy(asc(schema.keyResult.sortOrder), asc(schema.keyResult.createdAt));
+  const keyResultRows =
+    goals.length === 0
+      ? []
+      : await executor
+          .select()
+          .from(schema.keyResult)
+          .where(
+            inArray(
+              schema.keyResult.goalId,
+              goals.map((goal) => goal.id),
+            ),
+          )
+          .orderBy(asc(schema.keyResult.sortOrder), asc(schema.keyResult.createdAt));
   const keyResults = new Map<string, KeyResultRow[]>();
   for (const row of keyResultRows) keyResults.set(row.goalId, [...(keyResults.get(row.goalId) ?? []), row]);
   const children = new Map<string, string[]>();
@@ -63,7 +75,16 @@ async function readYear(year: number, executor: Executor): Promise<Year> {
         weight: goal.weight,
         finalProgressBp: goal.finalProgressBp,
         childIds: children.get(goal.id) ?? [],
-        keyResults: (keyResults.get(goal.id) ?? []).map((row) => ({ id: row.id, metricType: row.metricType as MetricType, startValue: row.startValue, targetValue: row.targetValue, currentValue: row.currentValue, milestones: row.milestones, weight: row.weight, confidence: row.confidence as Confidence | null })),
+        keyResults: (keyResults.get(goal.id) ?? []).map((row) => ({
+          id: row.id,
+          metricType: row.metricType as MetricType,
+          startValue: row.startValue,
+          targetValue: row.targetValue,
+          currentValue: row.currentValue,
+          milestones: row.milestones,
+          weight: row.weight,
+          confidence: row.confidence as Confidence | null,
+        })),
       },
     ]),
   );
@@ -208,11 +229,7 @@ export type GoalFormOptions = {
 };
 
 export async function goalFormOptions(viewer: Viewer): Promise<GoalFormOptions> {
-  const [directory, entities, units] = await Promise.all([
-    loadDirectory(),
-    listEntities().then((rows) => rows.filter((entity) => entity.isActive)),
-    orgUnitOptions({ activeOnly: true }),
-  ]);
+  const [directory, entities, units] = await Promise.all([loadDirectory(), listEntities().then((rows) => rows.filter((entity) => entity.isActive)), orgUnitOptions({ activeOnly: true })]);
   // A unit goal is offered at whatever depth the unit sits; `kind` only decides which of the two
   // columns it is stored in, so that "department goals" still roll up as they used to.
   const departments = units.filter((row) => row.kind === "department");
@@ -233,13 +250,17 @@ export async function goalFormOptions(viewer: Viewer): Promise<GoalFormOptions> 
     levels: [],
     entities: entities.filter((entity) => canEditGoal(viewer.principal, unit("entity", { entityId: entity.id }))).map((entity) => ({ id: entity.id, name: entity.shortName })),
     // A shared department's goal may be set for one entity: offer the department when any such pairing is the viewer's.
-    departments: departments.filter((department) => (department.entityId ? [department.entityId] : entityChoices).some((entityId) => canEditGoal(viewer.principal, unit("department", { departmentId: department.id, entityId })))).map((department) => ({ id: department.id, name: department.name })),
+    departments: departments
+      .filter((department) => (department.entityId ? [department.entityId] : entityChoices).some((entityId) => canEditGoal(viewer.principal, unit("department", { departmentId: department.id, entityId }))))
+      .map((department) => ({ id: department.id, name: department.name })),
     teams: teams.filter((team) => entityChoices.some((entityId) => canEditGoal(viewer.principal, unit("team", { teamId: team.id, departmentId: departmentOf.get(team.id), entityId })))).map((team) => ({ id: team.id, name: team.name })),
     people: [],
     owners: [...directory.values()].filter((person) => person.status === "active" || person.status === "preboarding").map((person) => ({ id: person.personId, name: person.fullName })),
   };
   const mine = new Set([viewer.personId, ...reportsBelow(directory, viewer.personId).map((person) => person.personId)]);
-  options.people = [...directory.values()].filter((person) => person.status !== "offboarded" && (mine.has(person.personId) || canManagePerformanceOf(viewer.principal, person))).map((person) => ({ id: person.personId, name: person.fullName }));
+  options.people = [...directory.values()]
+    .filter((person) => person.status !== "offboarded" && (mine.has(person.personId) || canManagePerformanceOf(viewer.principal, person)))
+    .map((person) => ({ id: person.personId, name: person.fullName }));
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "vi");
   options.people.sort(byName);
   options.owners.sort(byName);
@@ -253,7 +274,20 @@ export async function goalFormOptions(viewer: Viewer): Promise<GoalFormOptions> 
 
 // ── Use-cases ───────────────────────────────────────────────────────────────────────────────
 
-export type GoalDraft = { level: GoalLevel; entityId: string | null; departmentId: string | null; teamId: string | null; personId: string | null; ownerPersonId: string | null; parentGoalId: string | null; title: string; description: string | null; periodKey: string; weight: number; activate: boolean };
+export type GoalDraft = {
+  level: GoalLevel;
+  entityId: string | null;
+  departmentId: string | null;
+  teamId: string | null;
+  personId: string | null;
+  ownerPersonId: string | null;
+  parentGoalId: string | null;
+  title: string;
+  description: string | null;
+  periodKey: string;
+  weight: number;
+  activate: boolean;
+};
 
 /**
  * Where a new goal would sit, with everything the level implies filled in (a team's department, a
@@ -319,7 +353,17 @@ export async function createGoal(viewer: Viewer, draft: GoalDraft): Promise<Goal
     if (draft.parentGoalId) await assertParent(tx, viewer, { id: null, level: draft.level, periodKey: draft.periodKey }, draft.parentGoalId);
     const [row] = await tx
       .insert(schema.goal)
-      .values({ ...resolved.values, parentGoalId: draft.parentGoalId, title: draft.title, description: draft.description, year: yearOfPeriod(draft.periodKey), periodKey: draft.periodKey, status: draft.activate ? "active" : "draft", weight: draft.weight, createdByPersonId: viewer.personId })
+      .values({
+        ...resolved.values,
+        parentGoalId: draft.parentGoalId,
+        title: draft.title,
+        description: draft.description,
+        year: yearOfPeriod(draft.periodKey),
+        periodKey: draft.periodKey,
+        status: draft.activate ? "active" : "draft",
+        weight: draft.weight,
+        createdByPersonId: viewer.personId,
+      })
       .returning();
     return row;
   });
@@ -346,7 +390,11 @@ export async function updateGoal(goalId: string, input: { title: string; descrip
     if (!owner) throw new ActionError("owner_not_found");
     // An individual goal stays its person's: accountability does not move to someone else.
     const ownerPersonId = before.level === "individual" ? before.ownerPersonId : input.ownerPersonId;
-    const [after] = await tx.update(schema.goal).set({ title: input.title, description: input.description, periodKey: input.periodKey, weight: input.weight, ownerPersonId, updatedAt: new Date() }).where(eq(schema.goal.id, goalId)).returning();
+    const [after] = await tx
+      .update(schema.goal)
+      .set({ title: input.title, description: input.description, periodKey: input.periodKey, weight: input.weight, ownerPersonId, updatedAt: new Date() })
+      .where(eq(schema.goal.id, goalId))
+      .returning();
     return { before, after };
   });
 }
@@ -386,7 +434,11 @@ export async function moveGoal(viewer: Viewer, goalId: string, move: StatusMove)
       values = { status: "closed", finalProgressBp: figure, closedAt: new Date(), closedByPersonId: viewer.personId };
     } else if (move === "reopen") values = { status: "active", finalProgressBp: null, closedAt: null, closedByPersonId: null };
     else values = { status: move === "activate" ? "active" : "cancelled" };
-    const [after] = await tx.update(schema.goal).set({ ...values, updatedAt: new Date() }).where(eq(schema.goal.id, goalId)).returning();
+    const [after] = await tx
+      .update(schema.goal)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.goal.id, goalId))
+      .returning();
     return { before, after };
   });
 }
@@ -398,7 +450,12 @@ export async function saveKeyResult(goalId: string, keyResultId: string | null, 
     const [goal] = await tx.select().from(schema.goal).where(eq(schema.goal.id, goalId)).for("update");
     if (!goal) throw new ActionError("not_found");
     assertOpen(goal);
-    const [before] = keyResultId ? await tx.select().from(schema.keyResult).where(and(eq(schema.keyResult.id, keyResultId), eq(schema.keyResult.goalId, goalId))) : [];
+    const [before] = keyResultId
+      ? await tx
+          .select()
+          .from(schema.keyResult)
+          .where(and(eq(schema.keyResult.id, keyResultId), eq(schema.keyResult.goalId, goalId)))
+      : [];
     if (keyResultId && !before) throw new ActionError("not_found");
     const [{ checkIns }] = before ? await tx.select({ checkIns: count() }).from(schema.goalCheckIn).where(eq(schema.goalCheckIn.keyResultId, before.id)) : [{ checkIns: 0 }];
     // Its history was recorded in one unit; that cannot be reinterpreted afterwards.
@@ -419,11 +476,18 @@ export async function saveKeyResult(goalId: string, keyResultId: string | null, 
       values = { startValue, targetValue, currentValue: before && checkIns > 0 ? before.currentValue : startValue, milestones: null };
     }
     if (before) {
-      const [after] = await tx.update(schema.keyResult).set({ title: input.title, metricType: input.metricType, weight: input.weight, ...values, updatedAt: new Date() }).where(eq(schema.keyResult.id, before.id)).returning();
+      const [after] = await tx
+        .update(schema.keyResult)
+        .set({ title: input.title, metricType: input.metricType, weight: input.weight, ...values, updatedAt: new Date() })
+        .where(eq(schema.keyResult.id, before.id))
+        .returning();
       return { before, after };
     }
     const [{ total }] = await tx.select({ total: count() }).from(schema.keyResult).where(eq(schema.keyResult.goalId, goalId));
-    const [after] = await tx.insert(schema.keyResult).values({ goalId, title: input.title, metricType: input.metricType, weight: input.weight, sortOrder: total, ...values }).returning();
+    const [after] = await tx
+      .insert(schema.keyResult)
+      .values({ goalId, title: input.title, metricType: input.metricType, weight: input.weight, sortOrder: total, ...values })
+      .returning();
     return { before: null, after };
   });
 }

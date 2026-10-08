@@ -30,7 +30,11 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
     if (!loaded) throw new ActionError("task_not_found");
     const fromTeam = loaded.team;
     if (fromTeam.id === target.teamId) throw new ActionError("move_same_team");
-    const [toTeam] = await tx.select().from(schema.workTeam).where(and(eq(schema.workTeam.id, target.teamId), eq(schema.workTeam.isActive, true))).limit(1);
+    const [toTeam] = await tx
+      .select()
+      .from(schema.workTeam)
+      .where(and(eq(schema.workTeam.id, target.teamId), eq(schema.workTeam.isActive, true)))
+      .limit(1);
     if (!toTeam) throw new ActionError("team_not_found");
     let project: typeof schema.workProject.$inferSelect | null = null;
     if (target.projectId) {
@@ -41,8 +45,12 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
 
     // The task and every live sub-task below it, parents before children.
     const ids = [taskId];
-    for (let frontier = [taskId]; frontier.length > 0; ) {
-      const children = await tx.select({ id: schema.task.id }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(inArray(schema.task.parentTaskId, frontier), isNull(schema.task.deletedAt), eq(schema.workTask.teamId, fromTeam.id)));
+    for (let frontier = [taskId]; frontier.length > 0;) {
+      const children = await tx
+        .select({ id: schema.task.id })
+        .from(schema.task)
+        .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+        .where(and(inArray(schema.task.parentTaskId, frontier), isNull(schema.task.deletedAt), eq(schema.workTask.teamId, fromTeam.id)));
       frontier = children.map((child) => child.id).filter((id) => !ids.includes(id));
       ids.push(...frontier);
     }
@@ -53,11 +61,18 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
     // task from elsewhere (the move is weighed against the root's project only), so the move is refused.
     const elsewhere = [...new Set(rows.flatMap((row) => (row.work.projectId && row.work.projectId !== loaded.work.projectId ? [row.work.projectId] : [])))];
     if (elsewhere.length) {
-      const [closed] = await tx.select({ id: schema.workProject.id }).from(schema.workProject).where(and(inArray(schema.workProject.id, elsewhere), eq(schema.workProject.visibility, "private"))).limit(1);
+      const [closed] = await tx
+        .select({ id: schema.workProject.id })
+        .from(schema.workProject)
+        .where(and(inArray(schema.workProject.id, elsewhere), eq(schema.workProject.visibility, "private")))
+        .limit(1);
       if (closed) throw new ActionError("move_subtask_private");
     }
     // Everyone on the family ends up in the target project: a private one takes only its own people.
-    const collaborators = await tx.select({ personId: schema.workTaskPerson.personId }).from(schema.workTaskPerson).where(and(inArray(schema.workTaskPerson.taskId, ids), eq(schema.workTaskPerson.role, "collaborator")));
+    const collaborators = await tx
+      .select({ personId: schema.workTaskPerson.personId })
+      .from(schema.workTaskPerson)
+      .where(and(inArray(schema.workTaskPerson.taskId, ids), eq(schema.workTaskPerson.role, "collaborator")));
     await assertInsidePrivateProject(tx, project?.id ?? null, [...rows.flatMap((row) => [row.task.assigneePersonId, row.task.requesterPersonId, row.work.reviewerPersonId]), ...collaborators.map((row) => row.personId)]);
 
     const [fromStates, toStates] = await Promise.all([listStates([fromTeam.id], tx), listStates([toTeam.id], tx)]);
@@ -65,11 +80,18 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
     for (const row of rows) if (!mapping.get(row.work.stateId)) throw new ActionError("move_no_state");
 
     // One bump of the target's sequence for the whole family: numbers follow the order above.
-    const [bumped] = await tx.update(schema.workTeam).set({ taskSeq: sql`${schema.workTeam.taskSeq} + ${ids.length}` }).where(eq(schema.workTeam.id, toTeam.id)).returning({ taskSeq: schema.workTeam.taskSeq });
+    const [bumped] = await tx
+      .update(schema.workTeam)
+      .set({ taskSeq: sql`${schema.workTeam.taskSeq} + ${ids.length}` })
+      .where(eq(schema.workTeam.id, toTeam.id))
+      .returning({ taskSeq: schema.workTeam.taskSeq });
     const firstNumber = bumped.taskSeq - ids.length + 1;
     const oldTeamLabels = (await tx.select({ id: schema.workLabel.id }).from(schema.workLabel).where(eq(schema.workLabel.teamId, fromTeam.id))).map((row) => row.id);
     const stateName = (id: string, states: typeof toStates) => states.find((state) => state.id === id);
-    const [{ rank }] = await tx.select({ rank: sql<number | null>`max(${schema.workTask.boardRank})` }).from(schema.workTask).where(eq(schema.workTask.teamId, toTeam.id));
+    const [{ rank }] = await tx
+      .select({ rank: sql<number | null>`max(${schema.workTask.boardRank})` })
+      .from(schema.workTask)
+      .where(eq(schema.workTask.teamId, toTeam.id));
     let lastRank = rank ?? null;
 
     const moved: MoveResult["moved"] = [];
@@ -81,7 +103,10 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
       const status = CATEGORY_STATUS[toState.category as StateCategory];
       lastRank = rankBetween(lastRank, null);
       await tx.insert(schema.workTaskNumberAlias).values({ teamId: fromTeam.id, number: work.number, taskId: id }).onConflictDoNothing();
-      await tx.update(schema.workTask).set({ teamId: toTeam.id, number, stateId, projectId: project?.id ?? null, boardRank: lastRank, cycleId: null, triageStatus: null, triageSource: null, triageSnoozedUntil: null }).where(eq(schema.workTask.taskId, id));
+      await tx
+        .update(schema.workTask)
+        .set({ teamId: toTeam.id, number, stateId, projectId: project?.id ?? null, boardRank: lastRank, cycleId: null, triageStatus: null, triageSource: null, triageSnoozedUntil: null })
+        .where(eq(schema.workTask.taskId, id));
       await tx
         .update(schema.task)
         .set({
@@ -94,10 +119,19 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
           updatedAt: new Date(),
         })
         .where(eq(schema.task.id, id));
-      const dropped = oldTeamLabels.length ? await tx.delete(schema.workTaskLabel).where(and(eq(schema.workTaskLabel.taskId, id), inArray(schema.workTaskLabel.labelId, oldTeamLabels))).returning({ labelId: schema.workTaskLabel.labelId }) : [];
+      const dropped = oldTeamLabels.length
+        ? await tx
+            .delete(schema.workTaskLabel)
+            .where(and(eq(schema.workTaskLabel.taskId, id), inArray(schema.workTaskLabel.labelId, oldTeamLabels)))
+            .returning({ labelId: schema.workTaskLabel.labelId })
+        : [];
       const [fromKey, toKey] = [taskKey(fromTeam.key, work.number), taskKey(toTeam.key, number)];
       await logActivity(tx, id, actorPersonId, [
-        { type: "moved", from: { id: fromTeam.id, name: fromKey, team: fromTeam.name, state: fromState.name }, to: { id: toTeam.id, name: toKey, team: toTeam.name, state: toState.name, project: project?.name ?? null, labelsDropped: dropped.length } },
+        {
+          type: "moved",
+          from: { id: fromTeam.id, name: fromKey, team: fromTeam.name, state: fromState.name },
+          to: { id: toTeam.id, name: toKey, team: toTeam.name, state: toState.name, project: project?.name ?? null, labelsDropped: dropped.length },
+        },
         ...(id === taskId && task.parentTaskId ? [{ type: "field_changed", field: "parent", from: { id: task.parentTaskId }, to: null }] : []),
       ]);
       moved.push({ taskId: id, fromKey, toKey });
@@ -107,7 +141,10 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
 }
 
 /** Where the viewer may move this task: other active teams, each with the projects there that would take it. */
-export async function listMoveTargets(viewer: WorkViewer, task: TaskFacts): Promise<{ id: string; key: string; name: string; /** Into the team's backlog, without a project. */ backlog: boolean; projects: { id: string; name: string }[] }[]> {
+export async function listMoveTargets(
+  viewer: WorkViewer,
+  task: TaskFacts,
+): Promise<{ id: string; key: string; name: string; /** Into the team's backlog, without a project. */ backlog: boolean; projects: { id: string; name: string }[] }[]> {
   const directory = await workDirectory();
   const projects = projectsWithTeams(directory).filter(({ project }) => project.status !== "archived" && project.status !== "done");
   return directory.teams

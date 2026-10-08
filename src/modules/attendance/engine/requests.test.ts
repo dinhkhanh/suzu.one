@@ -60,7 +60,10 @@ describe("lock pre-check (FR-ATT-14)", () => {
   const clean = { monthStatus: "approved" as const, missingPunchDays: 0, punchesToReview: 0, pendingRequests: 0, unconfirmedHolidayWork: 0, absentDays: 0, unapprovedOvertimeDays: 0 };
 
   it("lets a month of approved people with nothing open through", () => {
-    const issues = lockIssues([{ personId: "a", ...clean }, { personId: "b", ...clean, monthStatus: "locked" }]);
+    const issues = lockIssues([
+      { personId: "a", ...clean },
+      { personId: "b", ...clean, monthStatus: "locked" },
+    ]);
     expect(issues).toEqual([]);
     expect(canLock(issues, false)).toBe(true);
   });
@@ -85,7 +88,10 @@ describe("lock pre-check (FR-ATT-14)", () => {
 
   it("only warns about absences and unapproved overtime: they are facts of the month, not gaps", () => {
     const issues = lockIssues([{ personId: "a", ...clean, absentDays: 1, unapprovedOvertimeDays: 3 }]);
-    expect(issues).toEqual([{ personId: "a", code: "absent", count: 1, blocking: false }, { personId: "a", code: "ot_unapproved", count: 3, blocking: false }]);
+    expect(issues).toEqual([
+      { personId: "a", code: "absent", count: 1, blocking: false },
+      { personId: "a", code: "ot_unapproved", count: 3, blocking: false },
+    ]);
     expect(canLock(issues, false)).toBe(true);
   });
 });

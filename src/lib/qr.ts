@@ -98,9 +98,30 @@ const VERSIONS: Record<number, VersionSpec> = {
   5: { total: 134, ecPerBlock: 24, groups: [{ blocks: 2, dataCodewords: 43 }] },
   6: { total: 172, ecPerBlock: 16, groups: [{ blocks: 4, dataCodewords: 27 }] },
   7: { total: 196, ecPerBlock: 18, groups: [{ blocks: 4, dataCodewords: 31 }] },
-  8: { total: 242, ecPerBlock: 22, groups: [{ blocks: 2, dataCodewords: 38 }, { blocks: 2, dataCodewords: 39 }] },
-  9: { total: 292, ecPerBlock: 22, groups: [{ blocks: 3, dataCodewords: 36 }, { blocks: 2, dataCodewords: 37 }] },
-  10: { total: 346, ecPerBlock: 26, groups: [{ blocks: 4, dataCodewords: 43 }, { blocks: 1, dataCodewords: 44 }] },
+  8: {
+    total: 242,
+    ecPerBlock: 22,
+    groups: [
+      { blocks: 2, dataCodewords: 38 },
+      { blocks: 2, dataCodewords: 39 },
+    ],
+  },
+  9: {
+    total: 292,
+    ecPerBlock: 22,
+    groups: [
+      { blocks: 3, dataCodewords: 36 },
+      { blocks: 2, dataCodewords: 37 },
+    ],
+  },
+  10: {
+    total: 346,
+    ecPerBlock: 26,
+    groups: [
+      { blocks: 4, dataCodewords: 43 },
+      { blocks: 1, dataCodewords: 44 },
+    ],
+  },
 };
 
 export const versionSpec = (version: number): VersionSpec => {
@@ -269,12 +290,13 @@ function drawFunctionPatterns(canvas: Canvas, version: number): void {
     canvas.reserved[canvas.size - 1 - position][8] = true;
   }
 
-  if (version >= 7) for (let index = 0; index < 18; index++) {
-    const row = Math.floor(index / 3);
-    const col = canvas.size - 11 + (index % 3);
-    canvas.reserved[row][col] = true;
-    canvas.reserved[col][row] = true;
-  }
+  if (version >= 7)
+    for (let index = 0; index < 18; index++) {
+      const row = Math.floor(index / 3);
+      const col = canvas.size - 11 + (index % 3);
+      canvas.reserved[row][col] = true;
+      canvas.reserved[col][row] = true;
+    }
 }
 
 /**

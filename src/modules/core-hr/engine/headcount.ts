@@ -68,7 +68,17 @@ export function headcountSnapshot(spans: readonly Span[], asOf: IsoDate): Headco
   };
 }
 
-export type Movement = { from: IsoDate; to: IsoDate; opening: number; closing: number; joiners: number; leavers: number; /** Leavers ÷ average headcount, in basis points (1234 = 12.34%). null when nobody was employed. */ turnoverBp: number | null; joinersByDepartment: Count[]; leaversByDepartment: Count[] };
+export type Movement = {
+  from: IsoDate;
+  to: IsoDate;
+  opening: number;
+  closing: number;
+  joiners: number;
+  leavers: number;
+  /** Leavers ÷ average headcount, in basis points (1234 = 12.34%). null when nobody was employed. */ turnoverBp: number | null;
+  joinersByDepartment: Count[];
+  leaversByDepartment: Count[];
+};
 
 /**
  * Joiners start within the period; leavers have their last day within it. Opening headcount is

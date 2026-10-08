@@ -18,10 +18,41 @@ import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CONTRACT_KINDS, PAYMENT_METHODS } from "../enums";
-import { beginContractScanAction, completeContractScanAction, deleteDraftInvoiceAction, issueInvoiceAction, linkProjectContractAction, openContractScanAction, recordInvoiceAction, recordPaymentAction, reversePaymentAction, saveContractAction, saveDraftInvoiceAction, signContractAction, terminateContractAction, voidInvoiceAction, writeOffInvoiceAction } from "../money-actions";
+import {
+  beginContractScanAction,
+  completeContractScanAction,
+  deleteDraftInvoiceAction,
+  issueInvoiceAction,
+  linkProjectContractAction,
+  openContractScanAction,
+  recordInvoiceAction,
+  recordPaymentAction,
+  reversePaymentAction,
+  saveContractAction,
+  saveDraftInvoiceAction,
+  signContractAction,
+  terminateContractAction,
+  voidInvoiceAction,
+  writeOffInvoiceAction,
+} from "../money-actions";
 import { CrmButton, CrmForm, type Named } from "./common";
 
-type ContractValues = { id: string; number: string; title: string; kind: string; entityId: string | null; parentContractId: string | null; dealId: string | null; startDate: string | null; endDate: string | null; valueVnd?: number | null; paymentTermsDays: number | null; autoRenew: boolean; noticeDays: number | null; note: string | null };
+type ContractValues = {
+  id: string;
+  number: string;
+  title: string;
+  kind: string;
+  entityId: string | null;
+  parentContractId: string | null;
+  dealId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  valueVnd?: number | null;
+  paymentTermsDays: number | null;
+  autoRenew: boolean;
+  noticeDays: number | null;
+  note: string | null;
+};
 
 export function ContractForm({ clientId, contract, entities, parents, deals, seesValue }: { clientId: string; contract?: ContractValues; entities: Named[]; parents: Named[]; deals: Named[]; seesValue: boolean }) {
   const t = useTranslations("crm.contract");
@@ -139,7 +170,11 @@ export function SignContractForm({ contractId, today }: { contractId: string; to
               const file = event.currentTarget.files?.[0];
               if (!file) return;
               startTransition(async () => {
-                const result = await uploadThroughSignedUrl(file, (meta) => beginContractScanAction({ contractId, ...meta }) as Promise<ActionResult<{ fileId: string; uploadUrl: string; contentType: string }>>, (fileId) => completeContractScanAction({ fileId }) as Promise<ActionResult<Stored>>);
+                const result = await uploadThroughSignedUrl(
+                  file,
+                  (meta) => beginContractScanAction({ contractId, ...meta }) as Promise<ActionResult<{ fileId: string; uploadUrl: string; contentType: string }>>,
+                  (fileId) => completeContractScanAction({ fileId }) as Promise<ActionResult<Stored>>,
+                );
                 setError(result.ok ? null : result.errorKey);
                 setStored(result.ok ? result.data : null);
               });
@@ -273,7 +308,15 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today, draft }:
                 {item.amountVnd !== null ? (
                   money(item.amountVnd)
                 ) : (
-                  <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id) && !preparing} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="ml-auto w-36" />
+                  <MoneyInput
+                    name={`amounts.${item.id}`}
+                    required={picked.has(item.id) && !preparing}
+                    value={typed[item.id] ?? ""}
+                    onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))}
+                    placeholder={t("amount")}
+                    aria-label={t("amount")}
+                    className="ml-auto w-36"
+                  />
                 )}
               </TableCell>
             </TableRow>

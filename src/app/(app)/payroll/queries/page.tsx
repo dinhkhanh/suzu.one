@@ -37,40 +37,42 @@ export default async function PayslipQueriesPage() {
       />
 
       <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="person">{t("asker")}</TableHead>
-              <TableHead kind="text">{t("lastMessage")}</TableHead>
-              <TableHead kind="status">{t("statuses.open")}</TableHead>
-              <TableHead kind="actions" />
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("asker")}</TableHead>
+            <TableHead kind="text">{t("lastMessage")}</TableHead>
+            <TableHead kind="status">{t("statuses.open")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("noneInQueue")}</TableEmpty> : null}
+          {rows.map((row) => (
+            <TableRow key={row.query.id}>
+              <TableCell>
+                <RecordLink kind="person" id={row.payslip.personId} className="font-medium">
+                  {row.personName}
+                </RecordLink>
+                <span className="ml-2 font-mono text-xs text-muted-foreground">
+                  {row.entityCode} · {row.payslip.month}
+                </span>
+              </TableCell>
+              <TableCell className="max-w-md truncate text-muted-foreground">{noteToPlainText(row.lastMessage)}</TableCell>
+              <TableCell>
+                <Badge dot variant={statusTone(row.query.status)}>
+                  {t(`statuses.${row.query.status}` as "statuses.open")}
+                </Badge>
+                <span className="ml-2 text-xs text-muted-foreground">{format.dateTime(row.lastAt, { dateStyle: "short", timeStyle: "short" })}</span>
+              </TableCell>
+              <TableCell kind="actions">
+                <Link href={`/payslips/${row.payslip.id}`} className="text-sm hover:underline">
+                  {t("reply")}
+                </Link>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? <TableEmpty>{t("noneInQueue")}</TableEmpty> : null}
-            {rows.map((row) => (
-              <TableRow key={row.query.id}>
-                <TableCell>
-                  <RecordLink kind="person" id={row.payslip.personId} className="font-medium">
-                    {row.personName}
-                  </RecordLink>
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">
-                    {row.entityCode} · {row.payslip.month}
-                  </span>
-                </TableCell>
-                <TableCell className="max-w-md truncate text-muted-foreground">{noteToPlainText(row.lastMessage)}</TableCell>
-                <TableCell>
-                  <Badge dot variant={statusTone(row.query.status)}>{t(`statuses.${row.query.status}` as "statuses.open")}</Badge>
-                  <span className="ml-2 text-xs text-muted-foreground">{format.dateTime(row.lastAt, { dateStyle: "short", timeStyle: "short" })}</span>
-                </TableCell>
-                <TableCell kind="actions">
-                  <Link href={`/payslips/${row.payslip.id}`} className="text-sm hover:underline">
-                    {t("reply")}
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+          ))}
+        </TableBody>
+      </Table>
     </Page>
   );
 }

@@ -40,11 +40,18 @@ export async function openPitchProject(dealId: string, input: PitchInput, actorP
     if (deal.pitchProjectId) throw new ActionError("pitch_exists");
     const [stage] = await tx.select({ allowsPitch: schema.crmStage.allowsPitch }).from(schema.crmStage).where(eq(schema.crmStage.id, deal.stageId)).limit(1);
     if (!stage?.allowsPitch) throw new ActionError("pitch_not_allowed");
-    const made = await createProjectIn(tx, { teamId: input.teamId, name: input.name, description: null, clientId: deal.brandId ?? deal.clientId, status: "active", visibility: "team", leadPersonId: input.leadPersonId, startDate: todayInVietnam(), dueDate: input.dueDate }, actorPersonId);
+    const made = await createProjectIn(
+      tx,
+      { teamId: input.teamId, name: input.name, description: null, clientId: deal.brandId ?? deal.clientId, status: "active", visibility: "team", leadPersonId: input.leadPersonId, startDate: todayInVietnam(), dueDate: input.dueDate },
+      actorPersonId,
+    );
     await markPitchIn(tx, made.id);
     // The seller pitches with the team: a member of the pitch, whose time on it is the cost of sale.
     if (deal.ownerPersonId !== actorPersonId && deal.ownerPersonId !== input.leadPersonId) await tx.insert(schema.workProjectMember).values({ projectId: made.id, personId: deal.ownerPersonId, role: "member" }).onConflictDoNothing();
-    await tx.update(schema.crmDeal).set({ pitchProjectId: made.id, teamId: deal.teamId ?? input.teamId, updatedAt: new Date() }).where(eq(schema.crmDeal.id, dealId));
+    await tx
+      .update(schema.crmDeal)
+      .set({ pitchProjectId: made.id, teamId: deal.teamId ?? input.teamId, updatedAt: new Date() })
+      .where(eq(schema.crmDeal.id, dealId));
     return { made, owner: deal.ownerPersonId };
   });
   await Promise.all([invalidateWorkDirectory(), invalidateMemberships(project.owner), invalidateTies(actorPersonId, input.leadPersonId, project.owner)]);
@@ -68,7 +75,12 @@ export type DeliverySetup = {
 
 /** The accepted quote's lines, or none. */
 async function soldLines(executor: Tx, dealId: string): Promise<SaleLine[]> {
-  const [quote] = await executor.select({ id: schema.crmQuote.id }).from(schema.crmQuote).where(and(eq(schema.crmQuote.dealId, dealId), eq(schema.crmQuote.status, "accepted"))).orderBy(desc(schema.crmQuote.version)).limit(1);
+  const [quote] = await executor
+    .select({ id: schema.crmQuote.id })
+    .from(schema.crmQuote)
+    .where(and(eq(schema.crmQuote.dealId, dealId), eq(schema.crmQuote.status, "accepted")))
+    .orderBy(desc(schema.crmQuote.version))
+    .limit(1);
   if (!quote) return [];
   const lines = await executor.select().from(schema.crmQuoteLine).where(eq(schema.crmQuoteLine.quoteId, quote.id)).orderBy(asc(schema.crmQuoteLine.sortOrder));
   return lines.map((line) => ({ title: line.title, quantity: line.quantity, unitPriceVnd: line.unitPriceVnd, discountBp: line.discountBp, months: line.months, format: line.format, channel: line.channel, roleMinutes: line.roleMinutes }));
@@ -107,7 +119,17 @@ export async function setUpDelivery(dealId: string, setup: DeliverySetup, actorP
     const [contract] = await db().select({ clientId: schema.crmContract.clientId }).from(schema.crmContract).where(eq(schema.crmContract.id, setup.contractId)).limit(1);
     if (!contract || contract.clientId !== account.client.id) throw new ActionError("contract_not_found");
   }
-  const input: ProjectInput = { teamId: setup.teamId, name: setup.name, description: null, clientId: deal.brandId ?? deal.clientId, status: "planned", visibility: setup.visibility, leadPersonId: setup.leadPersonId, startDate: setup.startDate, dueDate: setup.dueDate };
+  const input: ProjectInput = {
+    teamId: setup.teamId,
+    name: setup.name,
+    description: null,
+    clientId: deal.brandId ?? deal.clientId,
+    status: "planned",
+    visibility: setup.visibility,
+    leadPersonId: setup.leadPersonId,
+    startDate: setup.startDate,
+    dueDate: setup.dueDate,
+  };
   let link: DealProjectRow | null = null;
 
   const fill = async (tx: Tx, project: ProjectRow) => {
@@ -176,7 +198,15 @@ export async function listDealProjects(dealIds: readonly string[]): Promise<Deal
 /** The deal a project came from (the project page's link back, FR-CRM-46). */
 export async function dealOfProject(projectId: string): Promise<{ dealId: string; code: string; title: string; handoffStatus: string; entityId: string | null; ownerPersonId: string; status: string } | null> {
   const [row] = await db()
-    .select({ dealId: schema.crmDeal.id, code: schema.crmDeal.code, title: schema.crmDeal.title, handoffStatus: schema.crmDealProject.handoffStatus, entityId: schema.crmDeal.entityId, ownerPersonId: schema.crmDeal.ownerPersonId, status: schema.crmDeal.status })
+    .select({
+      dealId: schema.crmDeal.id,
+      code: schema.crmDeal.code,
+      title: schema.crmDeal.title,
+      handoffStatus: schema.crmDealProject.handoffStatus,
+      entityId: schema.crmDeal.entityId,
+      ownerPersonId: schema.crmDeal.ownerPersonId,
+      status: schema.crmDeal.status,
+    })
     .from(schema.crmDealProject)
     .innerJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId))
     .where(eq(schema.crmDealProject.projectId, projectId))
@@ -190,7 +220,15 @@ export type SalesHandoffWaiting = { projectId: string; projectName: string; deal
 export async function listSalesHandoffsFor(personId: string): Promise<SalesHandoffWaiting[]> {
   const from = alias(schema.person, "handoff_from");
   return db()
-    .select({ projectId: schema.crmDealProject.projectId, projectName: schema.workProject.name, dealId: schema.crmDeal.id, dealTitle: schema.crmDeal.title, fromPersonId: schema.crmDealProject.createdByPersonId, fromName: from.fullName, createdAt: schema.crmDealProject.createdAt })
+    .select({
+      projectId: schema.crmDealProject.projectId,
+      projectName: schema.workProject.name,
+      dealId: schema.crmDeal.id,
+      dealTitle: schema.crmDeal.title,
+      fromPersonId: schema.crmDealProject.createdByPersonId,
+      fromName: from.fullName,
+      createdAt: schema.crmDealProject.createdAt,
+    })
     .from(schema.crmDealProject)
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
     .innerJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId))
@@ -222,7 +260,8 @@ export async function respondToHandoff(projectId: string, answer: { accept: true
       .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
       .where(eq(schema.crmDealProject.projectId, projectId))
       .limit(1);
-    if (facts && facts.owner !== actorPersonId) await notify({ recipients: [facts.owner], kind: "crm.delivery_handoff_answered", params: { deal: facts.deal, project: facts.project, outcome: answer.accept ? "approved" : "returned" }, link: `/crm/deals/${before.dealId}` }, tx);
+    if (facts && facts.owner !== actorPersonId)
+      await notify({ recipients: [facts.owner], kind: "crm.delivery_handoff_answered", params: { deal: facts.deal, project: facts.project, outcome: answer.accept ? "approved" : "returned" }, link: `/crm/deals/${before.dealId}` }, tx);
     return { before, after };
   });
 }
@@ -234,8 +273,14 @@ export async function resendHandoff(projectId: string, note: HandoffNote, actorP
     if (!before) throw new ActionError("handoff_not_found");
     if (before.handoffStatus !== "returned") throw new ActionError("handoff_not_returned");
     const [after] = await tx.update(schema.crmDealProject).set({ handoffNote: note, handoffStatus: "pending", handoffRespondedAt: null, handoffReturnReason: null }).where(eq(schema.crmDealProject.projectId, projectId)).returning();
-    const [facts] = await tx.select({ deal: schema.crmDeal.title, project: schema.workProject.name }).from(schema.crmDeal).innerJoin(schema.workProject, eq(schema.workProject.id, projectId)).where(eq(schema.crmDeal.id, before.dealId)).limit(1);
-    if (after.handoffToPersonId && after.handoffToPersonId !== actorPersonId) await notify({ recipients: [after.handoffToPersonId], kind: "crm.delivery_handoff", params: { deal: facts?.deal ?? "", project: facts?.project ?? "" }, link: `/crm/deals/${before.dealId}` }, tx);
+    const [facts] = await tx
+      .select({ deal: schema.crmDeal.title, project: schema.workProject.name })
+      .from(schema.crmDeal)
+      .innerJoin(schema.workProject, eq(schema.workProject.id, projectId))
+      .where(eq(schema.crmDeal.id, before.dealId))
+      .limit(1);
+    if (after.handoffToPersonId && after.handoffToPersonId !== actorPersonId)
+      await notify({ recipients: [after.handoffToPersonId], kind: "crm.delivery_handoff", params: { deal: facts?.deal ?? "", project: facts?.project ?? "" }, link: `/crm/deals/${before.dealId}` }, tx);
     return after;
   });
 }

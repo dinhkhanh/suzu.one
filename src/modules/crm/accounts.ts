@@ -217,7 +217,14 @@ export async function listAccounts(viewer: CrmViewer, filters: AccountFilters = 
       managerName: client.accountManagerPersonId ? (nameOf.get(client.accountManagerPersonId) ?? null) : null,
       salesOwnerName: profile?.salesOwnerPersonId ? (nameOf.get(profile.salesOwnerPersonId) ?? null) : null,
       mine: tiesTo(viewer, client.id).length > 0,
-      signals: { ...raw, pipelineVnd: seesMoney ? raw.pipelineVnd : 0, weightedVnd: seesMoney ? raw.weightedVnd : 0, wonVnd12m: seesMoney ? raw.wonVnd12m : 0, receivableVnd: seesReceivables ? raw.receivableVnd : 0, overdueVnd: seesReceivables ? raw.overdueVnd : 0 },
+      signals: {
+        ...raw,
+        pipelineVnd: seesMoney ? raw.pipelineVnd : 0,
+        weightedVnd: seesMoney ? raw.weightedVnd : 0,
+        wonVnd12m: seesMoney ? raw.wonVnd12m : 0,
+        receivableVnd: seesReceivables ? raw.receivableVnd : 0,
+        overdueVnd: seesReceivables ? raw.overdueVnd : 0,
+      },
       seesMoney,
       seesReceivables,
     };
@@ -336,7 +343,9 @@ export async function addAccountMember(clientId: string, personId: string, actor
 }
 
 export async function removeAccountMember(clientId: string, personId: string): Promise<void> {
-  await db().delete(schema.crmAccountMember).where(and(eq(schema.crmAccountMember.clientId, clientId), eq(schema.crmAccountMember.personId, personId)));
+  await db()
+    .delete(schema.crmAccountMember)
+    .where(and(eq(schema.crmAccountMember.clientId, clientId), eq(schema.crmAccountMember.personId, personId)));
   await invalidateTies(personId);
 }
 
@@ -378,7 +387,13 @@ export async function listAccountTeam(account: AccountRef): Promise<TeamMemberVi
 }
 
 export const isNamedMember = async (clientId: string, personId: string): Promise<boolean> =>
-  (await db().select({ personId: schema.crmAccountMember.personId }).from(schema.crmAccountMember).where(and(eq(schema.crmAccountMember.clientId, clientId), eq(schema.crmAccountMember.personId, personId))).limit(1)).length > 0;
+  (
+    await db()
+      .select({ personId: schema.crmAccountMember.personId })
+      .from(schema.crmAccountMember)
+      .where(and(eq(schema.crmAccountMember.clientId, clientId), eq(schema.crmAccountMember.personId, personId)))
+      .limit(1)
+  ).length > 0;
 
 // ── Lifecycle (FR-CRM-01) ───────────────────────────────────────────────────────────────────
 
@@ -417,7 +432,11 @@ export async function lifecycleProposals(accountIds: readonly string[], today: I
     ids.map((id) => {
       const project = projectOf.get(id);
       const lastWonOn = wonOf.get(id) ?? null;
-      const lastWorkOn = [project?.last ?? null, invoiceOf.get(id) ?? null].filter((day): day is string => !!day).sort().at(-1) ?? null;
+      const lastWorkOn =
+        [project?.last ?? null, invoiceOf.get(id) ?? null]
+          .filter((day): day is string => !!day)
+          .sort()
+          .at(-1) ?? null;
       return [id, proposeLifecycle({ openProjects: n(project?.open), lastWorkOn, lastWonOn, everBought: n(project?.all) > 0 || !!lastWonOn }, today)];
     }),
   );
@@ -428,7 +447,12 @@ export async function lifecycleProposals(accountIds: readonly string[], today: I
  * suggest. Returns how many moved. Running it twice moves nothing the second time.
  */
 export async function refreshLifecycles(today: IsoDate = todayInVietnam()): Promise<{ lifecyclesChanged: number }> {
-  const clients = (await db().select({ id: schema.workClient.id }).from(schema.workClient).where(sql`${schema.workClient.parentId} is null`)).map((row) => row.id);
+  const clients = (
+    await db()
+      .select({ id: schema.workClient.id })
+      .from(schema.workClient)
+      .where(sql`${schema.workClient.parentId} is null`)
+  ).map((row) => row.id);
   const [proposals, profiles] = await Promise.all([lifecycleProposals(clients, today), db().select().from(schema.crmAccount)]);
   const profileOf = new Map(profiles.map((row) => [row.clientId, row]));
   // Clients nobody has opened in the CRM keep no profile row until there is something to say.

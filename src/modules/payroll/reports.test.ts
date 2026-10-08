@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -36,14 +42,40 @@ import { payComponentSeedRows } from "./seed-components";
 const ids = {} as Record<"media" | "creative" | "actor" | "mediaPerson" | "mediaSimple" | "creativePerson", string>;
 
 const summary = () => ({
-  days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
-  leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-  lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0,
-  otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-  otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 2200, unpaidDaysCenti: 0, anomalyDays: 0,
+  days: 31,
+  standardDays: 22,
+  standardMinutes: 10_560,
+  workedMinutes: 10_560,
+  creditedMinutes: 0,
+  leavePaidMinutes: 0,
+  leaveUnpaidMinutes: 0,
+  holidayMinutes: 0,
+  absenceMinutes: 0,
+  lateMinutes: 0,
+  earlyMinutes: 0,
+  lateCount: 0,
+  earlyCount: 0,
+  missingPunchDays: 0,
+  absentDays: 0,
+  wfhMinutes: 0,
+  tripMinutes: 0,
+  nightMinutes: 0,
+  otWeekday: { day: 0, night: 0 },
+  otRestDay: { day: 0, night: 0 },
+  otHoliday: { day: 0, night: 0 },
+  otTotalMinutes: 0,
+  otUnapprovedMinutes: 0,
+  otTimeOffMinutes: 0,
+  paidDaysCenti: 2200,
+  unpaidDaysCenti: 0,
+  anomalyDays: 0,
 });
 
-const grantee = (role: "hr_admin" | "payroll" | "c_level" | "finance" | "auditor" | "department_head" | "hr_staff" | "entity_director", entityId: string): Principal => ({ personId: crypto.randomUUID(), workforceType: "employee", grants: [{ role, scope: { type: "entity", id: entityId } }] });
+const grantee = (role: "hr_admin" | "payroll" | "c_level" | "finance" | "auditor" | "department_head" | "hr_staff" | "entity_director", entityId: string): Principal => ({
+  personId: crypto.randomUUID(),
+  workforceType: "employee",
+  grants: [{ role, scope: { type: "entity", id: entityId } }],
+});
 const owner = (): Principal => ({ personId: crypto.randomUUID(), workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] });
 const nobody = (): Principal => ({ personId: crypto.randomUUID(), workforceType: "employee", grants: [] });
 
@@ -60,7 +92,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, entityId: string, orgUnitId: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId,
+        employeeCode: null,
+        startDate: "2025-01-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -70,13 +111,17 @@ beforeAll(async () => {
   ids.mediaSimple = await hire("Tran Thi Lan", media.id, video.id);
   ids.creativePerson = await hire("Dang Van Long", creative.id, social.id);
 
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   // The group policy has no union; Media switches it on, so the union report has something in it.
-  await db().insert(schema.payrollPolicy).values([
-    { entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" as const },
-    { entityId: media.id, value: { ...DEFAULT_PAYROLL_POLICY, unionEnabled: true }, validFrom: "2026-01-01", status: "approved" as const },
-  ]);
+  await db()
+    .insert(schema.payrollPolicy)
+    .values([
+      { entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" as const },
+      { entityId: media.id, value: { ...DEFAULT_PAYROLL_POLICY, unionEnabled: true }, validFrom: "2026-01-01", status: "approved" as const },
+    ]);
 
   const employments = await db().select().from(schema.employment);
   const employmentOf = (personId: string) => employments.find((row) => row.personId === personId)!.id;
@@ -94,7 +139,17 @@ beforeAll(async () => {
     [ids.creativePerson, creative.id, 24_000_000],
   ] as const) {
     const id = crypto.randomUUID();
-    await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employmentOf(personId), entityId, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({
+        id,
+        personId,
+        employmentId: employmentOf(personId),
+        entityId,
+        validFrom: "2026-01-01",
+        reason: "initial",
+        termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)),
+      });
   }
 
   // Two months for Media (so the trend has a shape), one for Creative. August is signed by the
@@ -102,7 +157,9 @@ beforeAll(async () => {
   const lock = async (entityId: string, month: string, people: string[], signed: boolean) => {
     const lockedAt = new Date(`${month}-28T03:00:00Z`);
     await db().insert(schema.timesheetPeriod).values({ entityId, month, status: "locked", lockedAt, lockedByPersonId: actor.id });
-    await db().insert(schema.timesheetMonth).values(people.map((personId) => ({ personId, entityId, month, status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
+    await db()
+      .insert(schema.timesheetMonth)
+      .values(people.map((personId) => ({ personId, entityId, month, status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
     const run = await createRegularRun({ entityId, month }, actor.id);
     await calculateRun(run.id);
     if (signed) for (const step of ["propose", "approve"] as const) await stepRun(run.id, step, { personId: actor.id });

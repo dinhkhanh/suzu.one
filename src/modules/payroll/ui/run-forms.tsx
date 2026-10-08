@@ -190,7 +190,19 @@ type OffCycleLine = { key: number; personId: string; code: string; amount: strin
  * person and pay component; "everyone" fills a line for each person of the entity at one amount,
  * which is then changed person by person where it differs. Nobody is offered a line for themselves.
  */
-export function OffCycleRunForm({ entities, people, codes, defaultMonth, defaultEntityId }: { entities: EntityOption[]; people: OffCyclePerson[]; /** The input components of each entity's catalogue. */ codes: Record<string, { code: string; name: string }[]>; defaultMonth: string; defaultEntityId?: string }) {
+export function OffCycleRunForm({
+  entities,
+  people,
+  codes,
+  defaultMonth,
+  defaultEntityId,
+}: {
+  entities: EntityOption[];
+  people: OffCyclePerson[];
+  /** The input components of each entity's catalogue. */ codes: Record<string, { code: string; name: string }[]>;
+  defaultMonth: string;
+  defaultEntityId?: string;
+}) {
   const t = useTranslations("payroll.runs");
   const router = useRouter();
   const [entityId, setEntityId] = useState(defaultEntityId ?? entities[0]?.id ?? "");

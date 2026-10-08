@@ -57,7 +57,19 @@ describe("markdownToDoc", () => {
     const [, , list, callout, , table, deep, code, , image, embed] = doc.content;
     expect(list.content).toHaveLength(3);
     expect(list.content![1].content!.map((node) => node.type)).toEqual(["paragraph", "bulletList"]);
-    expect(callout).toMatchObject({ attrs: { kind: "warning" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Đăng ký trước " }, { type: "text", text: "3 ngày", marks: [{ type: "bold" }] }, { type: "text", text: " làm việc." }] }] });
+    expect(callout).toMatchObject({
+      attrs: { kind: "warning" },
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Đăng ký trước " },
+            { type: "text", text: "3 ngày", marks: [{ type: "bold" }] },
+            { type: "text", text: " làm việc." },
+          ],
+        },
+      ],
+    });
     expect(table.content).toHaveLength(3);
     expect(table.content![0].content!.map((cell) => cell.type)).toEqual(["tableHeader", "tableHeader", "tableHeader"]);
     expect(table.content![2].content![2].content![0].content![0].text).toBe("Tứ thân phụ mẫu");
@@ -88,7 +100,10 @@ describe("markdownToDoc", () => {
     expect(markdownToDoc("# Giữ lại", { liftTitle: false }).doc.content[0].type).toBe("heading");
     const tasks = markdownToDoc("- [x] Xong\n- [ ] Chưa").doc.content[0];
     expect(tasks.type).toBe("taskList");
-    expect(tasks.content!.map((item) => [item.attrs?.checked ?? false, item.content![0].content![0].text])).toEqual([[true, "Xong"], [false, "Chưa"]]);
+    expect(tasks.content!.map((item) => [item.attrs?.checked ?? false, item.content![0].content![0].text])).toEqual([
+      [true, "Xong"],
+      [false, "Chưa"],
+    ]);
     // A list that is only partly boxes stays a list, the boxes written out.
     const mixed = markdownToDoc("- [x] Xong\n- Khác").doc.content[0];
     expect(mixed.type).toBe("bulletList");

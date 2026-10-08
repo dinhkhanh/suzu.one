@@ -14,7 +14,18 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction, updateRecurrenceAction, updateWorkTemplateItemAction } from "../planning-actions";
+import {
+  addWorkTemplateItemAction,
+  applyTemplateAction,
+  changeRecurrenceAction,
+  createProjectFromTemplateAction,
+  createRecurrenceAction,
+  nudgeTaskAction,
+  removeWorkTemplateItemAction,
+  saveWorkTemplateAction,
+  updateRecurrenceAction,
+  updateWorkTemplateItemAction,
+} from "../planning-actions";
 
 type Result = { ok: boolean; error?: string; message?: string; data?: unknown };
 type Person = { id: string; fullName: string };
@@ -37,7 +48,15 @@ function useRun() {
 
 // ── Templates ───────────────────────────────────────────────────────────────────────────────
 
-export type TemplateItemView = { id: string; parentItemId: string | null; title: string; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; /** Library checklists the step's task starts with. */ checklistIds?: string[] };
+export type TemplateItemView = {
+  id: string;
+  parentItemId: string | null;
+  title: string;
+  roleKey: string | null;
+  dueOffsetDays: number;
+  estimateMinutes: number | null;
+  /** Library checklists the step's task starts with. */ checklistIds?: string[];
+};
 export type TemplateView = { id: string; purpose: string; name: string; description: string | null; ownerId: string | null; ownerName: string | null; isActive: boolean; canManage: boolean; roleKeys: string[]; items: TemplateItemView[] };
 
 export function TemplateCreateForm({ owners, canShare }: { owners: { id: string; name: string }[]; canShare: boolean }) {
@@ -108,7 +127,13 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
         <Badge variant="outline">{template.ownerName ?? t("shared")}</Badge>
         {template.isActive ? null : <Badge variant="destructive">{t("inactive")}</Badge>}
         {template.canManage ? (
-          <Button size="sm" variant="ghost" className="ml-auto" disabled={pending} onClick={() => run(saveWorkTemplateAction, { templateId: template.id, purpose: template.purpose, name: template.name, description: template.description, ownerId: template.ownerId, isActive: !template.isActive })}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            disabled={pending}
+            onClick={() => run(saveWorkTemplateAction, { templateId: template.id, purpose: template.purpose, name: template.name, description: template.description, ownerId: template.ownerId, isActive: !template.isActive })}
+          >
             {template.isActive ? t("retire") : t("restore")}
           </Button>
         ) : null}
@@ -122,7 +147,20 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
             event.preventDefault();
             const form = event.currentTarget;
             const data = new FormData(form);
-            run(addWorkTemplateItemAction, { templateId: template.id, title: data.get("title"), parentItemId: data.get("parentItemId"), roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), checklistId: data.get("checklistId"), sortOrder: template.items.length }, () => form.reset());
+            run(
+              addWorkTemplateItemAction,
+              {
+                templateId: template.id,
+                title: data.get("title"),
+                parentItemId: data.get("parentItemId"),
+                roleKey: data.get("roleKey"),
+                dueOffsetDays: data.get("dueOffsetDays"),
+                estimateHours: data.get("estimateHours"),
+                checklistId: data.get("checklistId"),
+                sortOrder: template.items.length,
+              },
+              () => form.reset(),
+            );
           }}
         >
           <Input name="title" required maxLength={200} placeholder={t("itemTitle")} aria-label={t("itemTitle")} className="min-w-48 flex-1" />
@@ -191,7 +229,11 @@ function TemplateItemEditButton({ item, template, roots, checklists }: { item: T
             // — and so is one retired from the library, which the picker cannot show.
             const shown = checklists.some((list) => list.id === checklist) ? checklist : "";
             const checklistChange = chosen !== null && chosen !== shown ? { checklistId: chosen } : {};
-            run(updateWorkTemplateItemAction, { itemId: item.id, title: data.get("title"), parentItemId: data.get("parentItemId") ?? "", roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), ...checklistChange }, () => setOpen(false));
+            run(
+              updateWorkTemplateItemAction,
+              { itemId: item.id, title: data.get("title"), parentItemId: data.get("parentItemId") ?? "", roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), ...checklistChange },
+              () => setOpen(false),
+            );
           }}
         >
           <Input name="title" required maxLength={200} defaultValue={item.title} placeholder={t("itemTitle")} aria-label={t("itemTitle")} />
@@ -277,7 +319,10 @@ export function TemplateUseForm({
         const roles = Object.fromEntries((template?.roleKeys ?? []).map((key) => [key, String(data.get(`role.${key}`) ?? "")]));
         const use = { templateId: template?.id, anchorMode: data.get("anchorMode"), anchorDate: data.get("anchorDate"), roles };
         if (projectId) run(applyTemplateAction, { ...use, projectId }, (result) => setMade((result as { tasks: number }).tasks));
-        else run(createProjectFromTemplateAction, { ...use, teamId, name: data.get("name"), visibility: data.get("visibility"), description: "", clientId: "", leadPersonId: "" }, (result) => router.push(`/work/projects/${(result as { id: string }).id}`));
+        else
+          run(createProjectFromTemplateAction, { ...use, teamId, name: data.get("name"), visibility: data.get("visibility"), description: "", clientId: "", leadPersonId: "" }, (result) =>
+            router.push(`/work/projects/${(result as { id: string }).id}`),
+          );
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -352,7 +397,21 @@ export function TemplateUseForm({
 
 type RecurrenceRuleView = { freq: "daily" | "weekly" | "monthly"; interval: number; weekdays?: number[]; monthDay?: number | "last" };
 type DayOffMode = "shift" | "skip" | "keep";
-export type RecurrenceItem = { id: string; title: string; rule: RecurrenceRuleView; startDate: string; endDate: string | null; leadDays: number; onDayOff: string; isActive: boolean; assigneePersonId?: string | null; assigneeName: string | null; estimateMinutes?: number | null; nextDate: string | null; made: number };
+export type RecurrenceItem = {
+  id: string;
+  title: string;
+  rule: RecurrenceRuleView;
+  startDate: string;
+  endDate: string | null;
+  leadDays: number;
+  onDayOff: string;
+  isActive: boolean;
+  assigneePersonId?: string | null;
+  assigneeName: string | null;
+  estimateMinutes?: number | null;
+  nextDate: string | null;
+  made: number;
+};
 
 /**
  * The fields of a rule, for adding one and for changing one: its title and who its tasks go to,
@@ -518,11 +577,21 @@ export function RecurrenceManager({ target, recurrences, people, canManage, toda
                     {describe(item.rule)}
                     {item.onDayOff !== "shift" ? <span className="block text-xs text-muted-foreground">{t(`dayOff.${item.onDayOff as DayOffMode}`)}</span> : null}
                   </TableCell>
-                  <TableCell>{item.assigneeName ? <RecordLink kind="person" id={item.assigneePersonId}>{item.assigneeName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {item.assigneeName ? (
+                      <RecordLink kind="person" id={item.assigneePersonId}>
+                        {item.assigneeName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell kind="number">{item.made}</TableCell>
                   <TableCell>{item.nextDate ? day(item.nextDate) : "—"}</TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(ended ? "ended" : item.isActive ? "active" : "paused")}>{t(ended ? "ended" : item.isActive ? "active" : "paused")}</Badge>
+                    <Badge dot variant={statusTone(ended ? "ended" : item.isActive ? "active" : "paused")}>
+                      {t(ended ? "ended" : item.isActive ? "active" : "paused")}
+                    </Badge>
                   </TableCell>
                   {canManage ? (
                     <TableCell kind="actions">

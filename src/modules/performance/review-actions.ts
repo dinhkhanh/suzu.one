@@ -63,7 +63,20 @@ function refresh(participantId?: string) {
 }
 
 const templateFacts = (row: ReviewTemplateRow) => ({ name: row.name, kinds: row.kinds, sections: row.sections.length, scalePoints: row.ratingScale.length, isActive: row.isActive });
-const cycleFacts = (row: ReviewCycleRow) => ({ name: row.name, kind: row.kind, year: row.year, entityId: row.entityId, status: row.status, templateId: row.templateId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn, releaseOn: row.releaseOn, peersEnabled: row.peersEnabled, signOffRequired: row.signOffRequired, isRolling: row.isRolling });
+const cycleFacts = (row: ReviewCycleRow) => ({
+  name: row.name,
+  kind: row.kind,
+  year: row.year,
+  entityId: row.entityId,
+  status: row.status,
+  templateId: row.templateId,
+  selfDueOn: row.selfDueOn,
+  managerDueOn: row.managerDueOn,
+  releaseOn: row.releaseOn,
+  peersEnabled: row.peersEnabled,
+  signOffRequired: row.signOffRequired,
+  isRolling: row.isRolling,
+});
 
 /** The parties of one participant, loaded once for both the authorize step and the run step. */
 async function partiesOf(participantId: string): Promise<ReviewParties | null> {
@@ -225,7 +238,14 @@ const addParticipantPipeline = createAction({
     // Into a cycle already open: the person and their manager are told now, as at the launch.
     if (cycle.status === "active") await sendOpenNotices([enrolledOf(row, cycle)]);
     refresh();
-    return { data: { id: row.id }, audit: { resource: { type: "review_participant", id: row.id, entityId: row.entityId }, summary: "added", after: { personId: row.personId, managerPersonId: row.managerPersonId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "review_participant", id: row.id, entityId: row.entityId },
+        summary: "added",
+        after: { personId: row.personId, managerPersonId: row.managerPersonId, selfDueOn: row.selfDueOn, managerDueOn: row.managerDueOn },
+      },
+    };
   },
 });
 export async function addReviewParticipantAction(input: unknown) {
@@ -275,7 +295,12 @@ const saveFormPipeline = createAction({
     // The audit keeps what changed, never the prose: a review is personal-tier content.
     return {
       data: { id: after.id, status: after.status, stage: participant.stage },
-      audit: { resource: { type: "review_form", id: after.id, entityId: participant.entityId }, summary: `${after.kind} · ${after.status}`, before: before ? { status: before.status, answered: Object.keys(before.answers).length } : undefined, after: { status: after.status, answered: Object.keys(after.answers).length, overallRatingBp: after.overallRatingBp } },
+      audit: {
+        resource: { type: "review_form", id: after.id, entityId: participant.entityId },
+        summary: `${after.kind} · ${after.status}`,
+        before: before ? { status: before.status, answered: Object.keys(before.answers).length } : undefined,
+        after: { status: after.status, answered: Object.keys(after.answers).length, overallRatingBp: after.overallRatingBp },
+      },
     };
   },
 });
@@ -293,7 +318,15 @@ const calibratePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await calibrateParticipant(input.participantId, { reviewScoreBp: input.ratingPercent === null ? null : Math.round(input.ratingPercent * 100), note: input.note }, user.person.id);
     refresh(input.participantId);
-    return { data: { reviewScoreBp: after.reviewScoreBp }, audit: { resource: { type: "review_participant", id: after.id, entityId: after.entityId }, summary: "calibrated", before: { reviewScoreBp: before.reviewScoreBp }, after: { reviewScoreBp: after.reviewScoreBp, note: after.calibrationNote } } };
+    return {
+      data: { reviewScoreBp: after.reviewScoreBp },
+      audit: {
+        resource: { type: "review_participant", id: after.id, entityId: after.entityId },
+        summary: "calibrated",
+        before: { reviewScoreBp: before.reviewScoreBp },
+        after: { reviewScoreBp: after.reviewScoreBp, note: after.calibrationNote },
+      },
+    };
   },
 });
 export async function calibrateReviewAction(input: unknown) {
@@ -313,7 +346,10 @@ const releasePipeline = createAction({
     // The person is told there is something to read — never what it says, and never the figure.
     await notify({ recipients: [after.personId], kind: "performance.review_released", params: { cycle: cycle?.name ?? "" }, link: `/performance/reviews/${after.id}` });
     refresh(input.participantId);
-    return { data: { releasedAt: after.releasedAt }, audit: { resource: { type: "review_participant", id: after.id, entityId: after.entityId }, summary: "released", before: { stage: before.stage }, after: { stage: after.stage, reviewScoreBp: after.reviewScoreBp } } };
+    return {
+      data: { releasedAt: after.releasedAt },
+      audit: { resource: { type: "review_participant", id: after.id, entityId: after.entityId }, summary: "released", before: { stage: before.stage }, after: { stage: after.stage, reviewScoreBp: after.reviewScoreBp } },
+    };
   },
 });
 export async function releaseReviewAction(input: unknown) {
@@ -335,7 +371,15 @@ const returnFormPipeline = createAction({
     await notify({ recipients: [after.authorPersonId], kind: "performance.review_returned", params: { cycle: cycle.name }, link: `/performance/reviews/${participant.id}` });
     refresh(participant.id);
     // The reason is HR's note to the author, kept on the form; the audit says that it was sent back.
-    return { data: { stage: participant.stage }, audit: { resource: { type: "review_form", id: after.id, entityId: participant.entityId }, summary: `${after.kind} returned`, before: { status: before.status, overallRatingBp: before.overallRatingBp }, after: { status: after.status, stage: participant.stage } } };
+    return {
+      data: { stage: participant.stage },
+      audit: {
+        resource: { type: "review_form", id: after.id, entityId: participant.entityId },
+        summary: `${after.kind} returned`,
+        before: { status: before.status, overallRatingBp: before.overallRatingBp },
+        after: { status: after.status, stage: participant.stage },
+      },
+    };
   },
 });
 export async function returnReviewFormAction(input: unknown) {
@@ -380,7 +424,11 @@ const releaseCyclePipeline = createAction({
     refresh();
     return {
       data: { released: result.released.length, skipped: result.skipped },
-      audit: { resource: { type: "review_cycle", id: input.cycleId, entityId: cycle?.entityId ?? null }, summary: `released ${result.released.length}, skipped ${result.skipped.length}`, after: { released: result.released.length, skipped: result.skipped.map((row) => row.reason) } },
+      audit: {
+        resource: { type: "review_cycle", id: input.cycleId, entityId: cycle?.entityId ?? null },
+        summary: `released ${result.released.length}, skipped ${result.skipped.length}`,
+        after: { released: result.released.length, skipped: result.skipped.map((row) => row.reason) },
+      },
     };
   },
 });
@@ -404,7 +452,10 @@ const nominatePipeline = createAction({
     const { nomination } = await nominatePeer({ participantId: input.participantId, peerPersonId: input.peerPersonId, approved, note: input.note }, user.person.id);
     if (approved) await notify({ recipients: [input.peerPersonId], kind: "performance.peer_requested", params: {}, link: "/performance/reviews" });
     refresh(input.participantId);
-    return { data: { id: nomination.id, status: nomination.status }, audit: { resource: { type: "review_peer_nomination", id: nomination.id }, summary: nomination.status, after: { participantId: nomination.participantId, peerPersonId: nomination.peerPersonId, status: nomination.status } } };
+    return {
+      data: { id: nomination.id, status: nomination.status },
+      audit: { resource: { type: "review_peer_nomination", id: nomination.id }, summary: nomination.status, after: { participantId: nomination.participantId, peerPersonId: nomination.peerPersonId, status: nomination.status } },
+    };
   },
 });
 export async function nominatePeerAction(input: unknown) {
@@ -424,7 +475,10 @@ const decideNominationPipeline = createAction({
     const { before, after } = await decideNomination(input.nominationId, input.decision, user.person.id);
     if (after.status === "approved") await notify({ recipients: [after.peerPersonId], kind: "performance.peer_requested", params: {}, link: "/performance/reviews" });
     refresh(after.participantId);
-    return { data: { status: after.status }, audit: { resource: { type: "review_peer_nomination", id: after.id }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, peerPersonId: after.peerPersonId } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "review_peer_nomination", id: after.id }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, peerPersonId: after.peerPersonId } },
+    };
   },
 });
 export async function decidePeerNominationAction(input: unknown) {

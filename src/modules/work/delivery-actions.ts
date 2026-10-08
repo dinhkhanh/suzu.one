@@ -37,7 +37,18 @@ function refreshTask(taskId: string, projectId?: string | null) {
 
 // ── Review chains (FR-PJM-50) ───────────────────────────────────────────────────────────────
 
-const stageInput = z.object({ key: optional(z.string().max(20)), name: z.string().trim().min(1).max(60), reviewer: z.string().max(60), dueHours: optional(z.coerce.number().int().min(1).max(24 * 31)) });
+const stageInput = z.object({
+  key: optional(z.string().max(20)),
+  name: z.string().trim().min(1).max(60),
+  reviewer: z.string().max(60),
+  dueHours: optional(
+    z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 31),
+  ),
+});
 
 /** Who keeps a team's chains, or a project's own. */
 async function managesChainsOf(user: User, teamId: string, projectId: string | null): Promise<boolean> {
@@ -57,7 +68,15 @@ const refreshChains = (teamId: string, projectId: string | null) => {
 
 const saveChainPipeline = createAction({
   name: "work.review_chain.save",
-  input: z.object({ chainId: optional(z.uuid()), teamId: z.uuid(), projectId: optional(z.uuid()), name: z.string().trim().min(1).max(80), contentFormat: optional(z.enum(CONTENT_FORMATS)), stages: z.array(stageInput).min(1).max(MAX_CHAIN_STAGES), isActive: checkbox.default(true) }),
+  input: z.object({
+    chainId: optional(z.uuid()),
+    teamId: z.uuid(),
+    projectId: optional(z.uuid()),
+    name: z.string().trim().min(1).max(80),
+    contentFormat: optional(z.enum(CONTENT_FORMATS)),
+    stages: z.array(stageInput).min(1).max(MAX_CHAIN_STAGES),
+    isActive: checkbox.default(true),
+  }),
   authorize: async (user, input) => {
     const existing = input.chainId ? await findReviewChain(input.chainId) : null;
     if (input.chainId && (existing?.teamId !== input.teamId || (existing?.projectId ?? null) !== input.projectId)) return false;
@@ -126,7 +145,14 @@ const decideStagePipeline = createAction({
     const client = stage && isClientStage(stage.stage) ? await clientFactsOf(loaded, input) : null;
     const result = await decideStage(input.taskId, { decision: input.decision, comment: input.comment, client }, actorOf(user));
     refreshTask(input.taskId, loaded.work.projectId);
-    return { data: { version: result.deliverable.version, outcome: result.outcome }, audit: { resource: auditTask(loaded), summary: `${loaded.task.title}: v${result.deliverable.version} ${stage?.stage.name ?? ""} ${input.decision}`, after: { version: result.deliverable.version, stage: stage?.stage.name, decision: input.decision, outcome: result.outcome, client: client ? { channel: client.channel, decidedOn: client.decidedOn } : undefined } } };
+    return {
+      data: { version: result.deliverable.version, outcome: result.outcome },
+      audit: {
+        resource: auditTask(loaded),
+        summary: `${loaded.task.title}: v${result.deliverable.version} ${stage?.stage.name ?? ""} ${input.decision}`,
+        after: { version: result.deliverable.version, stage: stage?.stage.name, decision: input.decision, outcome: result.outcome, client: client ? { channel: client.channel, decidedOn: client.decidedOn } : undefined },
+      },
+    };
   },
 });
 export async function decideStageAction(input: unknown) {
@@ -148,7 +174,14 @@ const clientDecisionPipeline = createAction({
     const client = await clientFactsOf(loaded, input);
     const result = await recordClientDecision(input.deliverableId, { decision: input.decision, comment: input.comment, client }, actorOf(user));
     refreshTask(loaded.task.id, loaded.work.projectId);
-    return { data: { version: result.deliverable.version, outcome: result.outcome, frozen: !!result.deliverable.frozenAt }, audit: { resource: auditTask(loaded), summary: `${loaded.task.title}: v${deliverable.version} client ${input.decision}`, after: { version: deliverable.version, decision: input.decision, channel: client.channel, decidedOn: client.decidedOn, evidence: client.evidenceFileId ? "file" : "link", frozen: !!result.deliverable.frozenAt } } };
+    return {
+      data: { version: result.deliverable.version, outcome: result.outcome, frozen: !!result.deliverable.frozenAt },
+      audit: {
+        resource: auditTask(loaded),
+        summary: `${loaded.task.title}: v${deliverable.version} client ${input.decision}`,
+        after: { version: deliverable.version, decision: input.decision, channel: client.channel, decidedOn: client.decidedOn, evidence: client.evidenceFileId ? "file" : "link", frozen: !!result.deliverable.frozenAt },
+      },
+    };
   },
 });
 export async function recordClientDecisionAction(input: unknown) {
@@ -315,7 +348,11 @@ const replanPipeline = createAction({
   input: z.object({ publishId: z.uuid(), ...planFields }),
   authorize: (user, input) => managesPublish(user, input.publishId),
   run: async ({ user, input }) => {
-    const { before, after } = await updatePublishPlan(input.publishId, { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null, digitalAssetId: input.digitalAssetId }, actorOf(user));
+    const { before, after } = await updatePublishPlan(
+      input.publishId,
+      { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null, digitalAssetId: input.digitalAssetId },
+      actorOf(user),
+    );
     const loaded = (await loadTask(after.taskId))!;
     refreshTask(after.taskId, loaded.work.projectId);
     revalidatePath("/work/calendar");
@@ -331,7 +368,11 @@ const publishedPipeline = createAction({
   input: z.object({ publishId: z.uuid(), url: https, publishedAt: optional(localDateTime), boosted: checkbox.default(false), adAccount: optional(z.string().trim().max(120)) }),
   authorize: (user, input) => managesPublish(user, input.publishId),
   run: async ({ user, input }) => {
-    const { before, after } = await markPublished(input.publishId, { url: input.url, publishedAt: (input.publishedAt ? fromVietnamLocal(input.publishedAt) : null) ?? new Date(), boosted: input.boosted, adAccount: input.adAccount }, actorOf(user));
+    const { before, after } = await markPublished(
+      input.publishId,
+      { url: input.url, publishedAt: (input.publishedAt ? fromVietnamLocal(input.publishedAt) : null) ?? new Date(), boosted: input.boosted, adAccount: input.adAccount },
+      actorOf(user),
+    );
     const loaded = (await loadTask(after.taskId))!;
     refreshTask(after.taskId, loaded.work.projectId);
     revalidatePath("/work/calendar");

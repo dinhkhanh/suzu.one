@@ -28,7 +28,24 @@ import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
 import { buildLockedMonthExport } from "./exports";
 import { eachDate, isoWeekday } from "./engine/calendar";
-import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, listVoidedAdjustmentIds, lockPeriod, markAdjustmentsTaken, releaseAdjustments, remindMonthReady, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
+import {
+  approveMonth,
+  confirmMonth,
+  createAdjustment,
+  getLockedTimesheets,
+  getPeriodOverview,
+  isPeriodLocked,
+  listAdjustmentsForPayroll,
+  listMonthsToApprove,
+  listVoidedAdjustmentIds,
+  lockPeriod,
+  markAdjustmentsTaken,
+  releaseAdjustments,
+  remindMonthReady,
+  remindToConfirm,
+  reopenMonth,
+  voidAdjustment,
+} from "./months";
 import { reviewPunch } from "./punches";
 import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
@@ -46,14 +63,53 @@ const at = (date: string, clock: string) => new Date(`${date}T${clock}:00+07:00`
 const dayOf = async (personId: string, date: string) => (await getTimesheetDays([personId], date, date))[0];
 const self = (personId: string) => ({ personId, isHr: false });
 
-const correction = (date: string, inTime: string | null, outTime: string | null): AttendanceRequestInput => ({ type: "attendance_correction", startDate: date, endDate: date, details: { type: "attendance_correction", cause: "forgot", inTime, outTime, outNextDay: false }, reason: "Quên chấm công", evidenceFileId: null, compensation: null });
-const overtime = (date: string, from: string, to: string, compensation: "pay" | "time_off"): AttendanceRequestInput => ({ type: "overtime", startDate: date, endDate: date, details: { type: "overtime", from, to }, reason: "Kịp hạn dựng phim", evidenceFileId: null, compensation });
-const holidayWork = (date: string, from: string | null, to: string | null): AttendanceRequestInput => ({ type: "holiday_work", startDate: date, endDate: date, details: { type: "holiday_work", from, to }, reason: "Quay sự kiện", evidenceFileId: null, compensation: "pay" });
-const remote = (from: string, to: string, kind: "wfh" | "off_site", place: { name: string; latitude: number; longitude: number } | null = null): AttendanceRequestInput => ({ type: "remote_work", startDate: from, endDate: to, details: { type: "remote_work", kind, portion: "full", locationName: place?.name ?? null, latitude: place?.latitude ?? null, longitude: place?.longitude ?? null, radiusM: null }, reason: "Theo kế hoạch", evidenceFileId: null, compensation: null });
+const correction = (date: string, inTime: string | null, outTime: string | null): AttendanceRequestInput => ({
+  type: "attendance_correction",
+  startDate: date,
+  endDate: date,
+  details: { type: "attendance_correction", cause: "forgot", inTime, outTime, outNextDay: false },
+  reason: "Quên chấm công",
+  evidenceFileId: null,
+  compensation: null,
+});
+const overtime = (date: string, from: string, to: string, compensation: "pay" | "time_off"): AttendanceRequestInput => ({
+  type: "overtime",
+  startDate: date,
+  endDate: date,
+  details: { type: "overtime", from, to },
+  reason: "Kịp hạn dựng phim",
+  evidenceFileId: null,
+  compensation,
+});
+const holidayWork = (date: string, from: string | null, to: string | null): AttendanceRequestInput => ({
+  type: "holiday_work",
+  startDate: date,
+  endDate: date,
+  details: { type: "holiday_work", from, to },
+  reason: "Quay sự kiện",
+  evidenceFileId: null,
+  compensation: "pay",
+});
+const remote = (from: string, to: string, kind: "wfh" | "off_site", place: { name: string; latitude: number; longitude: number } | null = null): AttendanceRequestInput => ({
+  type: "remote_work",
+  startDate: from,
+  endDate: to,
+  details: { type: "remote_work", kind, portion: "full", locationName: place?.name ?? null, latitude: place?.latitude ?? null, longitude: place?.longitude ?? null, radiusM: null },
+  reason: "Theo kế hoạch",
+  evidenceFileId: null,
+  compensation: null,
+});
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative, holding] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }, { code: "SZG", legalName: "SuZu Group", shortName: "Group" }]).returning();
+  const [media, creative, holding] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+      { code: "SZG", legalName: "SuZu Group", shortName: "Group" },
+    ])
+    .returning();
   const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const person = async (name: string, entityId: string, code: string, managerId: string | null = null) => {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, orgUnitId: video.id, managerId, status: "active" }).returning();
@@ -63,14 +119,46 @@ beforeAll(async () => {
   // The owner and HR sit in the holding company: the Media month is Long, Huy and Nhu.
   const owner = await person("Owner", holding.id, "SZG-0001");
   const lead = await person("Long", media.id, "SZM-0002", owner);
-  Object.assign(ids, { media: media.id, creative: creative.id, owner, lead, huy: await person("Huy", media.id, "SZM-0003", lead), nhu: await person("Nhu", media.id, "SZM-0004", lead), hr: await person("Bao", holding.id, "SZG-0002", owner), lan: await person("Lan", creative.id, "SZC-0001") });
-  await db().insert(schema.roleAssignment).values([{ personId: owner, role: "owner", scopeType: "group" }, { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id }]);
+  Object.assign(ids, {
+    media: media.id,
+    creative: creative.id,
+    owner,
+    lead,
+    huy: await person("Huy", media.id, "SZM-0003", lead),
+    nhu: await person("Nhu", media.id, "SZM-0004", lead),
+    hr: await person("Bao", holding.id, "SZG-0002", owner),
+    lan: await person("Lan", creative.id, "SZC-0001"),
+  });
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: owner, role: "owner", scopeType: "group" },
+      { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
+    ]);
   await saveSchedule({ id: null, entityId: null, name: "Office", kind: "fixed", pattern: WEEK, isDefault: true, isActive: true });
-  await db().insert(schema.statutoryParameter).values([
-    { key: "work.night_window", validFrom: "2021-01-01", value: { start: "22:00", end: "06:00" }, status: "approved", isVerified: false, legalReference: "test" },
-    { key: "overtime.caps", validFrom: "2021-01-01", value: { monthlyHours: 40, yearlyHours: 200, yearlyHoursExtended: 300 }, status: "approved", isVerified: false, legalReference: "test" },
-  ]);
-  await savePolicy({ entityId: null, validFrom: "2026-01-01", mergeRule: "first_in_last_out", graceLateMinutes: 5, graceEarlyMinutes: 5, roundingMinutes: 0, otMinMinutes: 30, otRequiresApproval: true, duplicateWindowMinutes: 3, breakStart: "12:00", dayBoundary: "04:00", monthlyCorrectionCap: 2 }, owner);
+  await db()
+    .insert(schema.statutoryParameter)
+    .values([
+      { key: "work.night_window", validFrom: "2021-01-01", value: { start: "22:00", end: "06:00" }, status: "approved", isVerified: false, legalReference: "test" },
+      { key: "overtime.caps", validFrom: "2021-01-01", value: { monthlyHours: 40, yearlyHours: 200, yearlyHoursExtended: 300 }, status: "approved", isVerified: false, legalReference: "test" },
+    ]);
+  await savePolicy(
+    {
+      entityId: null,
+      validFrom: "2026-01-01",
+      mergeRule: "first_in_last_out",
+      graceLateMinutes: 5,
+      graceEarlyMinutes: 5,
+      roundingMinutes: 0,
+      otMinMinutes: 30,
+      otRequiresApproval: true,
+      duplicateWindowMinutes: 3,
+      breakStart: "12:00",
+      dayBoundary: "04:00",
+      monthlyCorrectionCap: 2,
+    },
+    owner,
+  );
   const [comp] = await db().insert(schema.leaveType).values({ code: "COMP", name: "Nghỉ bù", category: "compensatory", isPaid: true, payrollTreatment: "paid_company", tracksBalance: true }).returning();
   ids.comp = comp.id;
 
@@ -87,7 +175,10 @@ beforeAll(async () => {
     }
   }
   // Huy worked Sunday the 16th.
-  punches.push({ personId: ids.huy, entityId: media.id, at: at("2026-08-16", "09:00"), direction: "in", source: "app", flags: [] }, { personId: ids.huy, entityId: media.id, at: at("2026-08-16", "13:00"), direction: "out", source: "app", flags: [] });
+  punches.push(
+    { personId: ids.huy, entityId: media.id, at: at("2026-08-16", "09:00"), direction: "in", source: "app", flags: [] },
+    { personId: ids.huy, entityId: media.id, at: at("2026-08-16", "13:00"), direction: "out", source: "app", flags: [] },
+  );
   await db().insert(schema.punch).values(punches);
   await recomputeDays([ids.lead, ids.huy, ids.nhu, ids.lan], "2026-08-01", "2026-08-31");
 });
@@ -108,7 +199,10 @@ describe("attendance requests (FR-ATT-10, 11, 12, 18)", () => {
     await expect(decideAttendanceRequest(ids.nhu, filed.approvalRequestId, { action: "approve", comment: null })).rejects.toThrow("approval_not_assignee");
     const decided = await decideAttendanceRequest(ids.lead, filed.approvalRequestId, { action: "approve", comment: null });
     expect(decided.attendanceRequest.status).toBe("approved");
-    const written = await db().select().from(schema.punch).where(and(eq(schema.punch.personId, ids.huy), eq(schema.punch.source, "request")));
+    const written = await db()
+      .select()
+      .from(schema.punch)
+      .where(and(eq(schema.punch.personId, ids.huy), eq(schema.punch.source, "request")));
     expect(written).toHaveLength(1);
     expect(written[0]).toMatchObject({ direction: "out", at: at("2026-08-20", "17:30"), deviceInfo: { requestId: filed.attendanceRequest.id } });
     expect(await dayOf(ids.huy, "2026-08-20")).toMatchObject({ missingPunch: false, workedMinutes: 480, status: "present" });
@@ -197,7 +291,10 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
 
   it("shows a manager the months of their reports only", async () => {
     const mine = await listMonthsToApprove({ personId: ids.lead, principal: principal(ids.lead) }, MONTH);
-    expect(mine.map((row) => [row.fullName, row.status, row.canApprove])).toEqual([["Huy", "approved", true], ["Nhu", "approved", true]]);
+    expect(mine.map((row) => [row.fullName, row.status, row.canApprove])).toEqual([
+      ["Huy", "approved", true],
+      ["Nhu", "approved", true],
+    ]);
     expect(await listMonthsToApprove({ personId: ids.huy, principal: principal(ids.huy) }, MONTH)).toEqual([]);
     const hr = await listMonthsToApprove({ personId: ids.hr, principal: principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]) }, MONTH);
     expect(hr.map((row) => row.fullName)).toEqual(["Huy", "Long", "Nhu"]);
@@ -213,13 +310,33 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
   });
 
   it("a check-in still waiting for review blocks the lock, and its reviewer hears it from the reminder and from the refusal (ATT-01)", async () => {
-    const [waiting] = await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-18", "12:10"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" }).returning();
-    const blockLock = async () => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lead), eq(schema.notification.kind, "attendance.punches_block_lock")))).map((row) => row.params);
+    const [waiting] = await db()
+      .insert(schema.punch)
+      .values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-18", "12:10"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" })
+      .returning();
+    const blockLock = async () =>
+      (
+        await db()
+          .select()
+          .from(schema.notification)
+          .where(and(eq(schema.notification.recipientPersonId, ids.lead), eq(schema.notification.kind, "attendance.punches_block_lock")))
+      ).map((row) => row.params);
     // HR's reminder: Long (still open) is asked to confirm, and as Huy's manager to review the check-in.
     expect(await remindToConfirm(ids.media, MONTH)).toEqual({ told: 1, reviewers: 1 });
     expect(await blockLock()).toEqual([{ count: 1, month: MONTH }]);
-    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toMatchObject({ message: "timesheet_lock_blocked", details: { issues: [{ personId: ids.lead, code: "not_approved" }, { personId: ids.huy, code: "punch_to_review" }] } });
-    expect(await blockLock()).toEqual([{ count: 1, month: MONTH }, { count: 1, month: MONTH }]);
+    await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toMatchObject({
+      message: "timesheet_lock_blocked",
+      details: {
+        issues: [
+          { personId: ids.lead, code: "not_approved" },
+          { personId: ids.huy, code: "punch_to_review" },
+        ],
+      },
+    });
+    expect(await blockLock()).toEqual([
+      { count: 1, month: MONTH },
+      { count: 1, month: MONTH },
+    ]);
     // A refusal for other reasons alone tells no reviewer.
     await reviewPunch(waiting.id, ids.lead, { decision: "accept", note: null });
     await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_lock_blocked");
@@ -233,11 +350,22 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
     expect(await isPeriodLocked(ids.media, MONTH)).toBe(true);
     expect(await isPeriodLocked(ids.creative, MONTH)).toBe(false);
     await expect(lockPeriod(ids.media, MONTH, ids.hr)).rejects.toThrow("timesheet_period_locked");
-    const grants = await db().select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, ids.huy), eq(schema.leaveLedgerEntry.leaveTypeId, ids.comp)));
+    const grants = await db()
+      .select()
+      .from(schema.leaveLedgerEntry)
+      .where(and(eq(schema.leaveLedgerEntry.personId, ids.huy), eq(schema.leaveLedgerEntry.leaveTypeId, ids.comp)));
     expect(grants.map((row) => [row.kind, row.amountCenti, row.effectiveDate])).toEqual([["grant", 25, "2026-08-31"]]);
-    expect(await db().select({ personId: schema.attendanceToilPosting.personId, minutes: schema.attendanceToilPosting.minutes, amountCenti: schema.attendanceToilPosting.amountCenti }).from(schema.attendanceToilPosting).where(eq(schema.attendanceToilPosting.month, MONTH))).toEqual([{ personId: ids.huy, minutes: 120, amountCenti: 25 }]);
+    expect(
+      await db()
+        .select({ personId: schema.attendanceToilPosting.personId, minutes: schema.attendanceToilPosting.minutes, amountCenti: schema.attendanceToilPosting.amountCenti })
+        .from(schema.attendanceToilPosting)
+        .where(eq(schema.attendanceToilPosting.month, MONTH)),
+    ).toEqual([{ personId: ids.huy, minutes: 120, amountCenti: 25 }]);
     // All three months frozen in one statement, each with its own person's totals.
-    const months = await db().select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.entityId, ids.media), eq(schema.timesheetMonth.month, MONTH)));
+    const months = await db()
+      .select()
+      .from(schema.timesheetMonth)
+      .where(and(eq(schema.timesheetMonth.entityId, ids.media), eq(schema.timesheetMonth.month, MONTH)));
     expect(months.map((row) => [row.personId, row.status, row.lockedByPersonId]).sort()).toEqual([ids.lead, ids.huy, ids.nhu].sort().map((personId) => [personId, "locked", ids.hr]));
     expect(months.find((row) => row.personId === ids.huy)?.summary).toMatchObject({ otTimeOffMinutes: 120 });
     expect(months.find((row) => row.personId === ids.nhu)?.summary).toMatchObject({ otTimeOffMinutes: 0 });
@@ -250,7 +378,9 @@ describe("monthly timesheet: confirm → approve → lock (FR-ATT-14)", () => {
 
   it("a locked month stays exactly as it was, whatever arrives afterwards", async () => {
     const before = await dayOf(ids.huy, "2026-08-05");
-    await db().insert(schema.punch).values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-05", "21:00"), direction: "out", source: "device", flags: [] });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: ids.huy, entityId: ids.media, at: at("2026-08-05", "21:00"), direction: "out", source: "device", flags: [] });
     const outcome = await recomputeDays([ids.huy], "2026-08-01", "2026-08-31");
     expect(outcome).toMatchObject({ written: 0, lockedSkipped: 31 });
     expect(await dayOf(ids.huy, "2026-08-05")).toEqual(before);
@@ -337,13 +467,18 @@ describe("what payroll reads", () => {
 
 describe("HR anomaly console (FR-ATT-15)", () => {
   it("lists what is open in HR's reach only, locked months left out", async () => {
-    await db().insert(schema.punch).values({ personId: ids.lan, entityId: ids.creative, at: at("2026-08-10", "12:30"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: ids.lan, entityId: ids.creative, at: at("2026-08-10", "12:30"), direction: "out", source: "app", flags: ["outside_geofence"], reviewStatus: "pending" });
     const mediaHr = principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]);
     const forMedia = await listAnomalies(mediaHr, MONTH);
     expect(forMedia.lines).toEqual([]);
     expect(forMedia.people.map((row) => row.fullName)).toEqual(["Huy", "Long", "Nhu"]);
     const group = await listAnomalies(principal(ids.owner, [{ role: "owner", scope: { type: "group" } }]), MONTH);
-    expect(group.lines.map((row) => [row.fullName, row.kind, row.blocking])).toEqual([["Lan", "punch_to_review", true], ["Lan", "month_not_confirmed", true]]);
+    expect(group.lines.map((row) => [row.fullName, row.kind, row.blocking])).toEqual([
+      ["Lan", "punch_to_review", true],
+      ["Lan", "month_not_confirmed", true],
+    ]);
     expect((await listAnomalies(principal(ids.huy), MONTH)).lines).toEqual([]);
   });
 });
@@ -353,7 +488,10 @@ describe("month-ready reminder", () => {
     expect(await remindMonthReady("2026-09-02")).toEqual({ told: 0 });
     // Media's August is locked; in Creative, Lan has days and an open month.
     expect(await remindMonthReady("2026-09-01")).toEqual({ told: 1 });
-    const [notice] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lan), eq(schema.notification.kind, "attendance.month_ready")));
+    const [notice] = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.lan), eq(schema.notification.kind, "attendance.month_ready")));
     expect(notice).toMatchObject({ link: "/attendance?month=2026-08" });
   });
 });

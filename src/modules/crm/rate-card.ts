@@ -44,7 +44,19 @@ export function priceOn(card: RateCard, serviceId: string, entityId: string | nu
   return (entityId ? inForce(entityId) : undefined)?.priceVnd ?? inForce(null)?.priceVnd ?? null;
 }
 
-export type ServiceInput = { code: string; name: string; nameEn: string | null; category: string; unit: string; isRecurring: boolean; format: string | null; channel: string | null; roleMinutes: RoleMinutes[]; description: string | null; isActive: boolean };
+export type ServiceInput = {
+  code: string;
+  name: string;
+  nameEn: string | null;
+  category: string;
+  unit: string;
+  isRecurring: boolean;
+  format: string | null;
+  channel: string | null;
+  roleMinutes: RoleMinutes[];
+  description: string | null;
+  isActive: boolean;
+};
 
 export async function saveService(serviceId: string | null, input: ServiceInput): Promise<{ before: ServiceRow | null; after: ServiceRow }> {
   const values = { ...input, roleMinutes: input.roleMinutes.filter((entry) => entry.role.trim() && entry.minutes > 0) };
@@ -57,7 +69,11 @@ export async function saveService(serviceId: string | null, input: ServiceInput)
     }
     const [before] = await tx.select().from(schema.crmService).where(eq(schema.crmService.id, serviceId)).limit(1);
     if (!before) throw new ActionError("service_not_found");
-    const [after] = await tx.update(schema.crmService).set({ ...values, updatedAt: new Date() }).where(eq(schema.crmService.id, serviceId)).returning();
+    const [after] = await tx
+      .update(schema.crmService)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.crmService.id, serviceId))
+      .returning();
     return { before, after };
   });
   await invalidateRateCard();
@@ -74,7 +90,10 @@ export async function setPrice(serviceId: string, input: { entityId: string | nu
       const [row] = await tx.update(schema.crmServicePrice).set({ priceVnd: input.priceVnd, createdByPersonId: actorPersonId }).where(eq(schema.crmServicePrice.id, existing.id)).returning();
       return row;
     }
-    const [row] = await tx.insert(schema.crmServicePrice).values({ serviceId, ...input, createdByPersonId: actorPersonId }).returning();
+    const [row] = await tx
+      .insert(schema.crmServicePrice)
+      .values({ serviceId, ...input, createdByPersonId: actorPersonId })
+      .returning();
     return row;
   });
   await invalidateRateCard();

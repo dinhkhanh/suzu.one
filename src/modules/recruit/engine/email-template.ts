@@ -57,7 +57,12 @@ export function renderEmail(template: EmailTemplateDraft, context: Readonly<Reco
   const optional = new Set(options.optional ?? []);
   const unfilled = (key: string) => context[key] === undefined || context[key] === "";
   const dropOptionalLines = (text: string) =>
-    optional.size === 0 ? text : text.split("\n").filter((line) => !placeholdersIn(line).some((key) => optional.has(key) && unfilled(key))).join("\n");
+    optional.size === 0
+      ? text
+      : text
+          .split("\n")
+          .filter((line) => !placeholdersIn(line).some((key) => optional.has(key) && unfilled(key)))
+          .join("\n");
   const substitute = (raw: string) => {
     const text = dropOptionalLines(raw);
     return text.replace(PLACEHOLDER, (whole, key: string) => {

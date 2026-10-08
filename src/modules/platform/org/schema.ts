@@ -47,7 +47,9 @@ export const entityBankAccount = pgTable(
   (t) => [
     uniqueIndex("entity_bank_account_key").on(t.entityId, t.bank, t.accountNumber),
     // One default per entity and bank among the accounts still in use.
-    uniqueIndex("entity_bank_account_default_key").on(t.entityId, t.bank).where(sql`${t.isDefault} AND ${t.isActive}`),
+    uniqueIndex("entity_bank_account_default_key")
+      .on(t.entityId, t.bank)
+      .where(sql`${t.isDefault} AND ${t.isActive}`),
   ],
 ).enableRLS();
 

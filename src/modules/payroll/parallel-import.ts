@@ -44,7 +44,12 @@ export const parallelParams = z.object({ entityId: z.uuid(), month: z.string().r
 export type ParallelParams = z.output<typeof parallelParams>;
 
 /** Exported for the tests; the import itself goes through `parallelImport`. */
-export async function resolveParallelRows(rows: Row[], user: { principal: Parameters<typeof canManageCompensation>[0] }, params: ParallelParams, executor: Tx | ReturnType<typeof db> = db()): Promise<{ problems: Problem[]; resolved: Resolved[] }> {
+export async function resolveParallelRows(
+  rows: Row[],
+  user: { principal: Parameters<typeof canManageCompensation>[0] },
+  params: ParallelParams,
+  executor: Tx | ReturnType<typeof db> = db(),
+): Promise<{ problems: Problem[]; resolved: Resolved[] }> {
   const problems: Problem[] = [];
   const resolved: Resolved[] = [];
   const header = parallelColumns.employeeCode.headers[0];

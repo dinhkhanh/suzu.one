@@ -8,7 +8,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -49,7 +55,9 @@ async function addStructure(personId: string, entityId: string, validFrom: strin
   const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, personId)).limit(1);
   const id = crypto.randomUUID();
   const terms = { baseSalary, insuranceSalary: baseSalary, allowances: [] };
-  await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employment.id, entityId, validFrom, reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+  await db()
+    .insert(schema.salaryStructure)
+    .values({ id, personId, employmentId: employment.id, entityId, validFrom, reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
 }
 
 /** A closed KPI month with a stored score — the immutable snapshot the bonus is computed from. */
@@ -71,7 +79,13 @@ async function storeKpiScore(personId: string, month: string, scoreBp: number) {
 
 /** A settled (locked) performance result, computed by the real engine so the trace is genuine. */
 async function storeResult(personId: string, figures: { reviewScoreBp: number | null; kpiScoreBp: number | null; okrProgressBp: number | null }, kpiScoreIds: string[], weightingVersionId: string) {
-  const okrLevels = { individual: { progressBp: figures.okrProgressBp, goals: figures.okrProgressBp === null ? 0 : 2 }, team: { progressBp: null, goals: 0 }, department: { progressBp: null, goals: 0 }, entity: { progressBp: 9_500, goals: 1 }, group: { progressBp: null, goals: 0 } };
+  const okrLevels = {
+    individual: { progressBp: figures.okrProgressBp, goals: figures.okrProgressBp === null ? 0 : 2 },
+    team: { progressBp: null, goals: 0 },
+    department: { progressBp: null, goals: 0 },
+    entity: { progressBp: 9_500, goals: 1 },
+    group: { progressBp: null, goals: 0 },
+  };
   const trace = finalResult({ reviewScoreBp: figures.reviewScoreBp, kpiScoreBp: figures.kpiScoreBp, okr: okrLevels, weightingVersionId }, DEFAULT_PERFORMANCE_WEIGHTING);
   const [row] = await db()
     .insert(schema.performanceResult)
@@ -130,7 +144,9 @@ beforeAll(async () => {
   ids.partner = await hire("Do Thi Partner", "2021-03-01", "collaborator");
   ids.owner = actor.id;
 
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
 
@@ -138,7 +154,9 @@ beforeAll(async () => {
   const employmentOf = (personId: string) => employments.find((row) => row.personId === personId)!.id;
   await db()
     .insert(schema.payProfile)
-    .values([ids.star, ids.steady, ids.newcomer, ids.partner].map((personId) => ({ personId, employmentId: employmentOf(personId), entityId: entity.id, profile: "statutory" as const, validFrom: "2021-01-01", status: "approved" as const })));
+    .values(
+      [ids.star, ids.steady, ids.newcomer, ids.partner].map((personId) => ({ personId, employmentId: employmentOf(personId), entityId: entity.id, profile: "statutory" as const, validFrom: "2021-01-01", status: "approved" as const })),
+    );
 
   await addStructure(ids.star, entity.id, "2023-01-09", 30_000_000);
   await addStructure(ids.steady, entity.id, "2022-05-02", 20_000_000);
@@ -185,11 +203,18 @@ describe("the bonus scheme is configuration with a history", () => {
     const noBottomBand = { ...DEFAULT_BONUS_SCHEME, serviceBands: DEFAULT_BONUS_SCHEME.serviceBands.filter((band) => band.minMonths !== 0) };
     expect(bonusSchemeIssues(noBottomBand)).toEqual([{ path: "serviceBands", code: "no_bottom_service_band" }]);
 
-    const twoAlike = { ...DEFAULT_BONUS_SCHEME, performanceMultiplier: { ...DEFAULT_BONUS_SCHEME.performanceMultiplier, bands: [...DEFAULT_BONUS_SCHEME.performanceMultiplier.bands, { key: "meets", label: "Đạt (lần hai)", minScoreBp: 9_000, multiplierBp: 11_000 }] } };
+    const twoAlike = {
+      ...DEFAULT_BONUS_SCHEME,
+      performanceMultiplier: { ...DEFAULT_BONUS_SCHEME.performanceMultiplier, bands: [...DEFAULT_BONUS_SCHEME.performanceMultiplier.bands, { key: "meets", label: "Đạt (lần hai)", minScoreBp: 9_000, multiplierBp: 11_000 }] },
+    };
     expect(bonusSchemeIssues(twoAlike)).toEqual([{ path: "performanceMultiplier.bands", code: "duplicate_performance_band" }]);
 
     const badFigure = { ...DEFAULT_BONUS_SCHEME, serviceBands: DEFAULT_BONUS_SCHEME.serviceBands.map((band, index) => (index === 2 ? { ...band, factorBp: -1 } : band)), referenceDay: "31/12" };
-    expect(bonusSchemeIssues(badFigure).map((issue) => issue.path).sort()).toEqual(["referenceDay", "serviceBands.2.factorBp"]);
+    expect(
+      bonusSchemeIssues(badFigure)
+        .map((issue) => issue.path)
+        .sort(),
+    ).toEqual(["referenceDay", "serviceBands.2.factorBp"]);
     expect(() => checkBonusSchemeValue(badFigure)).toThrow("bonus_scheme_invalid");
     const thrown = (() => {
       try {
@@ -437,7 +462,11 @@ describe("handing a run over two entities to payroll is all-or-nothing and safe 
   const stateOf = async (runId: string) => {
     const [run] = await db().select().from(schema.bonusRun).where(eq(schema.bonusRun.id, runId));
     const lines = await listBonusLines(runId);
-    return bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), await listBonusHandoffs(runId));
+    return bonusHandoffState(
+      run,
+      lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })),
+      await listBonusHandoffs(runId),
+    );
   };
 
   beforeAll(async () => {

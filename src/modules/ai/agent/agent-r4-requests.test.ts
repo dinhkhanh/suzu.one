@@ -55,30 +55,67 @@ beforeAll(async () => {
     const managed = who === "huy" || who === "tam";
     const [row] = await db()
       .insert(schema.person)
-      .values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", workforceType: "employee", primaryEntityId: szm.id, orgUnitId: who === "khoa" ? null : unit.id, managerId: managed ? ids.quan : null })
+      .values({
+        fullName: NAMES[who],
+        searchName: NAMES[who].toLowerCase(),
+        workEmail: `${who}@suzu.group`,
+        status: "active",
+        workforceType: "employee",
+        primaryEntityId: szm.id,
+        orgUnitId: who === "khoa" ? null : unit.id,
+        managerId: managed ? ids.quan : null,
+      })
       .returning();
     ids[who] = row.id;
-    await db().insert(schema.employment).values({ personId: row.id, entityId: szm.id, employeeCode: `SZM-${who}`, startDate: "2023-01-09", seniorityDate: "2023-01-09" });
+    await db()
+      .insert(schema.employment)
+      .values({ personId: row.id, entityId: szm.id, employeeCode: `SZM-${who}`, startDate: "2023-01-09", seniorityDate: "2023-01-09" });
     await db().insert(schema.personProfile).values({ personId: row.id, gender: "male" });
-    users[who] = { userId: `user-${who}`, sessionId: `session-${who}`, reauthAt: null, preferences: { locale: null, theme: null, navPins: [] }, email: `${who}@suzu.group`, name: NAMES[who], image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: [] }, request: { ipAddress: null, userAgent: null } } as CurrentUser;
+    users[who] = {
+      userId: `user-${who}`,
+      sessionId: `session-${who}`,
+      reauthAt: null,
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${who}@suzu.group`,
+      name: NAMES[who],
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: [] },
+      request: { ipAddress: null, userAgent: null },
+    } as CurrentUser;
   }
 
   // Leave: the seeded types, an office week, and Tâm away (approved) on 27 October.
-  await db().insert(schema.statutoryParameter).values({ key: "leave.annual", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, validFrom: "2021-01-01", status: "approved" });
+  await db()
+    .insert(schema.statutoryParameter)
+    .values({ key: "leave.annual", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, validFrom: "2021-01-01", status: "approved" });
   const office = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
-  await db().insert(schema.workSchedule).values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "off" }, 7: { type: "off" } } }, entityId: null, isDefault: true });
+  await db()
+    .insert(schema.workSchedule)
+    .values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "off" }, 7: { type: "off" } } }, entityId: null, isDefault: true });
   for (const seed of leaveSeedRows()) {
     const [created] = await db().insert(schema.leaveType).values(seed.type).returning();
     types[created.code] = created.id;
-    if (seed.policy) await db().insert(schema.leavePolicy).values({ ...seed.policy, leaveTypeId: created.id });
+    if (seed.policy)
+      await db()
+        .insert(schema.leavePolicy)
+        .values({ ...seed.policy, leaveTypeId: created.id });
   }
-  const [away] = await db().insert(schema.leaveRequest).values({ personId: ids.tam, entityId: szm.id, leaveTypeId: types.UNPAID, startDate: "2026-10-27", endDate: "2026-10-27", totalCenti: 100, status: "approved", filedByPersonId: ids.tam }).returning();
+  const [away] = await db()
+    .insert(schema.leaveRequest)
+    .values({ personId: ids.tam, entityId: szm.id, leaveTypeId: types.UNPAID, startDate: "2026-10-27", endDate: "2026-10-27", totalCenti: 100, status: "approved", filedByPersonId: ids.tam })
+    .returning();
   await db().insert(schema.leaveRequestDay).values({ requestId: away.id, personId: ids.tam, date: "2026-10-27", portion: "full", amountCenti: 100 });
 
   // Requests: the purchase form, on the line manager alone.
   const purchase = REQUEST_TYPE_SEED.find((seed) => seed.code === "purchase")!;
-  await db().insert(schema.requestType).values({ ...purchase, flow: undefined } as typeof schema.requestType.$inferInsert);
-  await db().insert(schema.approvalFlow).values({ requestType: "request:purchase", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+  await db()
+    .insert(schema.requestType)
+    .values({ ...purchase, flow: undefined } as typeof schema.requestType.$inferInsert);
+  await db()
+    .insert(schema.approvalFlow)
+    .values({ requestType: "request:purchase", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
 
   // Projects.
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
@@ -212,7 +249,12 @@ describe("requests (request.file)", () => {
     const before = await proposals();
     const invalid = await run("huy", "propose_request", { type: "purchase", values: { ...values, category: "đồ ăn", reason: "ngắn" } });
     expect(invalid.model).toMatchObject({ reason: "invalid_values" });
-    expect((invalid.model as { problems: { field: string; problem: string }[] }).problems).toEqual(expect.arrayContaining([{ field: "category", problem: "not_an_option" }, { field: "reason", problem: "too_short" }]));
+    expect((invalid.model as { problems: { field: string; problem: string }[] }).problems).toEqual(
+      expect.arrayContaining([
+        { field: "category", problem: "not_an_option" },
+        { field: "reason", problem: "too_short" },
+      ]),
+    );
     expect((await run("huy", "propose_request", { type: "nghỉ việc", values })).model).toMatchObject({ reason: "request_type_not_found" });
     expect(await proposals()).toBe(before);
   });
@@ -237,7 +279,13 @@ describe("a project's status update (projects.status.post)", () => {
 
   it("takes the lead's own words and health", async () => {
     const result = await run("long", "propose_status_update", { project: ids.tet, health: "at_risk", summary: "Chậm một tuần vì chờ nhạc.", nextSteps: "Chốt nhạc thứ Sáu" });
-    expect(result.card?.proposal?.fields).toEqual(expect.arrayContaining([{ key: "health", valueKey: "health_at_risk" }, { key: "summary", text: "Chậm một tuần vì chờ nhạc." }, { key: "nextSteps", text: "Chốt nhạc thứ Sáu" }]));
+    expect(result.card?.proposal?.fields).toEqual(
+      expect.arrayContaining([
+        { key: "health", valueKey: "health_at_risk" },
+        { key: "summary", text: "Chậm một tuần vì chờ nhạc." },
+        { key: "nextSteps", text: "Chốt nhạc thứ Sáu" },
+      ]),
+    );
     expect(await confirm("long", result)).toMatchObject({ ok: true, data: { state: "confirmed" } });
     const [latest] = await db().select().from(schema.projectStatusUpdate).where(eq(schema.projectStatusUpdate.health, "at_risk"));
     expect(latest).toMatchObject({ summary: "Chậm một tuần vì chờ nhạc.", nextSteps: "Chốt nhạc thứ Sáu", authorPersonId: ids.long });

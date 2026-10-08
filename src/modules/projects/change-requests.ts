@@ -19,7 +19,20 @@ import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "../platform/approvals/service";
 import { notify } from "../platform/notifications/service";
 import { can, type Principal } from "../platform/rbac/policy";
-import { applyChange, type ChangeLedger, changeLedger, changeProblems, type ChangeRequester, type ChangeStatus, changeEditable, hasFeeChange, hasRetainerChange, ledgerWithoutFee, type PlanFigures, withoutFee } from "./engine/change-request";
+import {
+  applyChange,
+  type ChangeLedger,
+  changeLedger,
+  changeProblems,
+  type ChangeRequester,
+  type ChangeStatus,
+  changeEditable,
+  hasFeeChange,
+  hasRetainerChange,
+  ledgerWithoutFee,
+  type PlanFigures,
+  withoutFee,
+} from "./engine/change-request";
 import { monthlyQuotaChanged } from "./engine/gates";
 import { ensurePlan, readPlan } from "./plans";
 import type { ChangeImpact } from "./schema";
@@ -99,7 +112,10 @@ export async function saveChange(projectId: string, changeId: string | null, inp
     await tx.select({ id: schema.projectPlan.projectId }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).for("update");
     const cancelIds = [...new Set(input.impact.cancelDeliverableIds ?? [])];
     if (cancelIds.length) {
-      const owned = await tx.select({ id: schema.projectDeliverable.id }).from(schema.projectDeliverable).where(and(eq(schema.projectDeliverable.projectId, projectId), inArray(schema.projectDeliverable.id, cancelIds)));
+      const owned = await tx
+        .select({ id: schema.projectDeliverable.id })
+        .from(schema.projectDeliverable)
+        .where(and(eq(schema.projectDeliverable.projectId, projectId), inArray(schema.projectDeliverable.id, cancelIds)));
       if (owned.length !== cancelIds.length) throw new ActionError("deliverable_not_found");
     }
     const before = changeId ? await lockOwnChange(tx, changeId) : null;
@@ -108,12 +124,23 @@ export async function saveChange(projectId: string, changeId: string | null, inp
     const fee = options.withFee ? feeDeltaVnd : before?.impact.feeDeltaVnd;
     const retainer = await retainerTermsOf(tx, projectId, askedTerms, before?.impact.retainer, options.withFee);
     const impact: ChangeImpact = { ...rest, cancelDeliverableIds: cancelIds.length ? cancelIds : undefined, ...(fee ? { feeDeltaVnd: fee } : {}), ...(retainer ? { retainer } : {}) };
-    const values = { title: input.title, description: input.description, requestedBy: input.requestedBy, impact: JSON.parse(JSON.stringify(impact)) as ChangeImpact, evidenceFileId: input.evidenceFileId, evidenceUrl: input.evidenceUrl, updatedAt: new Date() };
+    const values = {
+      title: input.title,
+      description: input.description,
+      requestedBy: input.requestedBy,
+      impact: JSON.parse(JSON.stringify(impact)) as ChangeImpact,
+      evidenceFileId: input.evidenceFileId,
+      evidenceUrl: input.evidenceUrl,
+      updatedAt: new Date(),
+    };
     if (before) {
       const [after] = await tx.update(schema.projectChangeRequest).set(values).where(eq(schema.projectChangeRequest.id, before.id)).returning();
       return { before, after };
     }
-    const [top] = await tx.select({ value: max(schema.projectChangeRequest.number) }).from(schema.projectChangeRequest).where(eq(schema.projectChangeRequest.projectId, projectId));
+    const [top] = await tx
+      .select({ value: max(schema.projectChangeRequest.number) })
+      .from(schema.projectChangeRequest)
+      .where(eq(schema.projectChangeRequest.projectId, projectId));
     const [after] = await tx
       .insert(schema.projectChangeRequest)
       .values({ projectId, number: (top?.value ?? 0) + 1, ...values, createdByPersonId: actorPersonId })
@@ -150,10 +177,17 @@ async function retainerTermsOf(tx: Tx, projectId: string, asked: ChangeImpact["r
 
 /** The project's leads, else the owning team's leads — whoever answers for the plan, the author aside. */
 async function leadsFor(tx: Tx, project: { id: string; teamId: string }, authorPersonId: string): Promise<string[]> {
-  const projectLeads = await tx.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, project.id), eq(schema.workProjectMember.role, "lead")));
+  const projectLeads = await tx
+    .select({ personId: schema.workProjectMember.personId })
+    .from(schema.workProjectMember)
+    .where(and(eq(schema.workProjectMember.projectId, project.id), eq(schema.workProjectMember.role, "lead")));
   const own = projectLeads.map((row) => row.personId).filter((id) => id !== authorPersonId);
   if (own.length) return own;
-  const teamLeads = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"))).orderBy(asc(schema.workTeamMember.createdAt));
+  const teamLeads = await tx
+    .select({ personId: schema.workTeamMember.personId })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead")))
+    .orderBy(asc(schema.workTeamMember.createdAt));
   return teamLeads.map((row) => row.personId).filter((id) => id !== authorPersonId);
 }
 
@@ -173,7 +207,13 @@ export async function submitChange(changeId: string, actorPersonId: string): Pro
     const payload: ChangeRequestPayload = { projectId: change.projectId, changeId: change.id, number: change.number, title: change.title, feeChange: hasFeeChange(change.impact) };
     const summary = [plan.jobNumber, `CR-${change.number}`, change.title].filter(Boolean).join(" · ").slice(0, 300);
 
-    const [returned] = change.approvalRequestId ? await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, change.approvalRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actorPersonId))).limit(1) : [];
+    const [returned] = change.approvalRequestId
+      ? await tx
+          .select()
+          .from(schema.approvalRequest)
+          .where(and(eq(schema.approvalRequest.id, change.approvalRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actorPersonId)))
+          .limit(1)
+      : [];
     if (returned) {
       await resubmitRequest(tx, changeRequestType, returned.id, actorPersonId, { summary, payload });
       const [after] = await tx.update(schema.projectChangeRequest).set({ status: "submitted", updatedAt: new Date() }).where(eq(schema.projectChangeRequest.id, change.id)).returning();
@@ -210,7 +250,9 @@ async function applyApproved(tx: Tx, change: ChangeRow, now: Date): Promise<Chan
 
   const lines = change.impact.deliverables ?? [];
   if (lines.length) {
-    await tx.insert(schema.projectDeliverable).values(lines.map((line, index) => ({ projectId: change.projectId, changeRequestId: change.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: next.dueDate, sortOrder: 900 + index })));
+    await tx
+      .insert(schema.projectDeliverable)
+      .values(lines.map((line, index) => ({ projectId: change.projectId, changeRequestId: change.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: next.dueDate, sortOrder: 900 + index })));
   }
   const cancel = change.impact.cancelDeliverableIds ?? [];
   if (cancel.length) {
@@ -237,7 +279,12 @@ async function applyApproved(tx: Tx, change: ChangeRow, now: Date): Promise<Chan
     replaced = { lines: retainer.lines, minutesPerMonth: retainer.minutesPerMonth, feePerMonthVnd: retainer.feePerMonthVnd };
     await tx
       .update(schema.projectRetainer)
-      .set({ ...(terms.lines !== undefined ? { lines: terms.lines } : {}), ...(terms.minutesPerMonth !== undefined ? { minutesPerMonth: terms.minutesPerMonth } : {}), ...(terms.feePerMonthVnd !== undefined ? { feePerMonthVnd: terms.feePerMonthVnd } : {}), updatedAt: now })
+      .set({
+        ...(terms.lines !== undefined ? { lines: terms.lines } : {}),
+        ...(terms.minutesPerMonth !== undefined ? { minutesPerMonth: terms.minutesPerMonth } : {}),
+        ...(terms.feePerMonthVnd !== undefined ? { feePerMonthVnd: terms.feePerMonthVnd } : {}),
+        updatedAt: now,
+      })
       .where(eq(schema.projectRetainer.id, retainer.id));
   }
 
@@ -266,7 +313,8 @@ export async function decideChange(actorPersonId: string, requestId: string, dec
     else if (outcome === "returned") [change] = await tx.update(schema.projectChangeRequest).set({ status: "draft", updatedAt: now }).where(eq(schema.projectChangeRequest.id, change.id)).returning();
     if (outcome === "approved" || outcome === "rejected") {
       const [project] = await tx.select({ name: schema.workProject.name }).from(schema.workProject).where(eq(schema.workProject.id, change.projectId)).limit(1);
-      if (change.createdByPersonId !== actorPersonId) await notify({ recipients: [change.createdByPersonId], kind: "projects.change_decided", params: { title: change.title, project: project?.name ?? "" }, link: `/projects/${change.projectId}/changes` }, tx);
+      if (change.createdByPersonId !== actorPersonId)
+        await notify({ recipients: [change.createdByPersonId], kind: "projects.change_decided", params: { title: change.title, project: project?.name ?? "" }, link: `/projects/${change.projectId}/changes` }, tx);
     }
     return { change, outcome, entityId: request.entityId, before: { status: before.status } };
   });
@@ -310,7 +358,15 @@ async function reconcileChange(tx: Tx, row: ChangeRow): Promise<ChangeRow> {
 async function asTheyStand(rows: ChangeRow[]): Promise<ChangeRow[]> {
   const waiting = rows.filter((row) => row.status === "submitted" && row.approvalRequestId);
   if (waiting.length === 0) return rows;
-  const requests = await db().select({ id: schema.approvalRequest.id, status: schema.approvalRequest.status }).from(schema.approvalRequest).where(inArray(schema.approvalRequest.id, waiting.map((row) => row.approvalRequestId!)));
+  const requests = await db()
+    .select({ id: schema.approvalRequest.id, status: schema.approvalRequest.status })
+    .from(schema.approvalRequest)
+    .where(
+      inArray(
+        schema.approvalRequest.id,
+        waiting.map((row) => row.approvalRequestId!),
+      ),
+    );
   const statusOf = new Map(requests.map((row) => [row.id, row.status]));
   return rows.map((row) => {
     const next = changeStatusNow(row, row.approvalRequestId ? statusOf.get(row.approvalRequestId) : null);
@@ -340,7 +396,9 @@ export async function listChanges(projectId: string, seesFees: boolean): Promise
     .orderBy(desc(schema.projectChangeRequest.number));
   const synced = await asTheyStand(rows.map((row) => row.change));
   const cancelIds = [...new Set(synced.flatMap((row) => row.impact.cancelDeliverableIds ?? []))];
-  const titles = cancelIds.length ? new Map((await db().select({ id: schema.projectDeliverable.id, title: schema.projectDeliverable.title }).from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.id, cancelIds))).map((row) => [row.id, row.title])) : new Map<string, string>();
+  const titles = cancelIds.length
+    ? new Map((await db().select({ id: schema.projectDeliverable.id, title: schema.projectDeliverable.title }).from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.id, cancelIds))).map((row) => [row.id, row.title]))
+    : new Map<string, string>();
   const noFee = (figures: PlanFigures | null) => (figures && !seesFees ? { ...figures, feeVnd: null } : figures);
   return synced.map((change, index) => ({
     ...change,
@@ -362,12 +420,21 @@ export async function listChanges(projectId: string, seesFees: boolean): Promise
 export async function getChangeLedger(projectId: string, seesFees: boolean): Promise<ChangeLedger> {
   const plan = (await readPlan(projectId)) ?? { budgetMinutes: null, feeVnd: null, baseline: null };
   const [project] = await db().select({ dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
-  const applied = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.status, "approved"))).orderBy(asc(schema.projectChangeRequest.appliedAt), asc(schema.projectChangeRequest.number));
+  const applied = await db()
+    .select()
+    .from(schema.projectChangeRequest)
+    .where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.status, "approved")))
+    .orderBy(asc(schema.projectChangeRequest.appliedAt), asc(schema.projectChangeRequest.number));
   const current: PlanFigures = { budgetMinutes: plan.budgetMinutes, feeVnd: plan.feeVnd, dueDate: project?.dueDate ?? null };
   const [first] = applied;
   const firstFee = first ? (first.figuresBefore ?? (first.impact.applied ? { feeVnd: first.impact.applied.feeVndBefore } : null)) : null;
-  const atKickoff = plan.baseline && (!first?.appliedAt || new Date(plan.baseline.takenAt) <= first.appliedAt) ? { budgetMinutes: plan.baseline.budgetMinutes, dueDate: plan.baseline.dueDate, feeVnd: firstFee ? firstFee.feeVnd : plan.feeVnd } : null;
-  const ledger = changeLedger(current, applied.map((change) => ({ number: change.number, title: change.title, impact: change.impact, before: change.figuresBefore, after: change.figuresAfter })), atKickoff);
+  const atKickoff =
+    plan.baseline && (!first?.appliedAt || new Date(plan.baseline.takenAt) <= first.appliedAt) ? { budgetMinutes: plan.baseline.budgetMinutes, dueDate: plan.baseline.dueDate, feeVnd: firstFee ? firstFee.feeVnd : plan.feeVnd } : null;
+  const ledger = changeLedger(
+    current,
+    applied.map((change) => ({ number: change.number, title: change.title, impact: change.impact, before: change.figuresBefore, after: change.figuresAfter })),
+    atKickoff,
+  );
   return seesFees ? ledger : ledgerWithoutFee(ledger);
 }
 
@@ -378,7 +445,11 @@ export async function getChangeRequest(viewer: { personId: string; principal: Pr
 
 /** A project's change whose evidence file this is — for opening it. */
 export async function changeWithEvidence(projectId: string, fileId: string): Promise<ChangeRow | undefined> {
-  const [row] = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.evidenceFileId, fileId))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.projectChangeRequest)
+    .where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.evidenceFileId, fileId)))
+    .limit(1);
   return row;
 }
 
@@ -388,8 +459,16 @@ export async function changeWithEvidence(projectId: string, fileId: string): Pro
  * changes, nothing else. The fee is there only for a reader with `pjm:commercial` over the project's
  * entity. null = neither.
  */
-export async function openChangesForApprover(viewer: { personId: string; principal: Principal }, projectId: string): Promise<{ projectName: string; jobNumber: string | null; seesFees: boolean; changes: (ChangeView & { request: RequestView })[] } | null> {
-  const [project] = await db().select({ name: schema.workProject.name, entityId: schema.workProject.entityId, jobNumber: schema.projectPlan.jobNumber }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(eq(schema.workProject.id, projectId)).limit(1);
+export async function openChangesForApprover(
+  viewer: { personId: string; principal: Principal },
+  projectId: string,
+): Promise<{ projectName: string; jobNumber: string | null; seesFees: boolean; changes: (ChangeView & { request: RequestView })[] } | null> {
+  const [project] = await db()
+    .select({ name: schema.workProject.name, entityId: schema.workProject.entityId, jobNumber: schema.projectPlan.jobNumber })
+    .from(schema.workProject)
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id))
+    .where(eq(schema.workProject.id, projectId))
+    .limit(1);
   if (!project) return null;
   const seesFees = can(viewer.principal, "pjm:commercial", { entityId: project.entityId });
   const changes: (ChangeView & { request: RequestView })[] = [];

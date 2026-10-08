@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { acceptanceBody, acceptanceHasScope, acceptanceItems, acceptanceItemsText, acceptanceNext, acceptanceNumber, acceptanceRefreshable, acceptanceTotals, billingDecidable, linesInScope, milestoneBillingState, projectFeeLeft, type ScopedLine, signedCorrectable } from "./acceptance";
+import {
+  acceptanceBody,
+  acceptanceHasScope,
+  acceptanceItems,
+  acceptanceItemsText,
+  acceptanceNext,
+  acceptanceNumber,
+  acceptanceRefreshable,
+  acceptanceTotals,
+  billingDecidable,
+  linesInScope,
+  milestoneBillingState,
+  projectFeeLeft,
+  type ScopedLine,
+  signedCorrectable,
+} from "./acceptance";
 
 const counts = (values: Partial<ScopedLine["counts"]>): ScopedLine["counts"] => ({ promised: 0, in_production: 0, ready_for_client: 0, client_review: 0, accepted: 0, delivered: 0, published: 0, ...values });
 const lines: ScopedLine[] = [
@@ -27,7 +42,9 @@ describe("acceptance snapshot (FR-PJM-55)", () => {
     expect(acceptanceTotals(items)).toEqual({ promised: 4, delivered: 2, accepted: 3, complete: false });
     expect(acceptanceTotals([items[0]]).complete).toBe(true);
     expect(acceptanceTotals([]).complete).toBe(false);
-    expect(acceptanceItemsText(items, { promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt" })).toBe("1. TVC 30s — Cam kết: 1; Đã giao: 1; Đã duyệt: 1\n2. Bản cắt 15s — Cam kết: 3; Đã giao: 1; Đã duyệt: 2\n   https://facebook.com/p/1");
+    expect(acceptanceItemsText(items, { promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt" })).toBe(
+      "1. TVC 30s — Cam kết: 1; Đã giao: 1; Đã duyệt: 1\n2. Bản cắt 15s — Cam kết: 3; Đã giao: 1; Đã duyệt: 2\n   https://facebook.com/p/1",
+    );
   });
 
   it("goes draft → sent → signed, and void only before signing", () => {
@@ -45,7 +62,13 @@ describe("acceptance snapshot (FR-PJM-55)", () => {
 
 describe("billing hand-off amounts (FR-PJM-56)", () => {
   it("bills the project fee less what milestones and months billed, waived items aside", () => {
-    expect(projectFeeLeft(100_000_000, [{ amountVnd: 30_000_000, status: "invoiced" }, { amountVnd: 20_000_000, status: "ready" }, { amountVnd: 40_000_000, status: "waived" }])).toBe(50_000_000);
+    expect(
+      projectFeeLeft(100_000_000, [
+        { amountVnd: 30_000_000, status: "invoiced" },
+        { amountVnd: 20_000_000, status: "ready" },
+        { amountVnd: 40_000_000, status: "waived" },
+      ]),
+    ).toBe(50_000_000);
     expect(projectFeeLeft(10_000_000, [{ amountVnd: 30_000_000, status: "invoiced" }])).toBe(0);
     expect(projectFeeLeft(null, [])).toBeNull();
     expect(billingDecidable("ready")).toBe(true);

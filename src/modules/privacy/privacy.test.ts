@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }));
 vi.mock("@/modules/platform/files/storage", () => import("../../../tests/helpers/storage"));
@@ -42,7 +48,13 @@ let hrAdmin: Principal;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
   const person = async (name: string, entityId: string, status: "active" | "offboarded", workEmail: string | null = null) =>
     (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, status, workEmail }).returning())[0].id;
   Object.assign(ids, {
@@ -105,10 +117,16 @@ describe("the GPS notice", () => {
 
 describe("face withdrawals, as the NAS roster reads them", () => {
   it("names who withdrew and was not enrolled again since", async () => {
-    await db().insert(schema.privacyConsentEvent).values({ personId: ids.huy, purpose: "face_check_in", decision: "withdrawn", at: new Date("2026-09-01T00:00:00Z") });
-    await db().insert(schema.privacyConsentEvent).values({ personId: ids.nhu, purpose: "face_check_in", decision: "withdrawn", at: new Date("2026-09-01T00:00:00Z") });
+    await db()
+      .insert(schema.privacyConsentEvent)
+      .values({ personId: ids.huy, purpose: "face_check_in", decision: "withdrawn", at: new Date("2026-09-01T00:00:00Z") });
+    await db()
+      .insert(schema.privacyConsentEvent)
+      .values({ personId: ids.nhu, purpose: "face_check_in", decision: "withdrawn", at: new Date("2026-09-01T00:00:00Z") });
     // Như signed a new form afterwards: HR enrolled her again.
-    await db().insert(schema.faceEnrolment).values({ personId: ids.nhu, entityId: ids.media, consentAt: new Date("2026-09-15T00:00:00Z"), consentRecordedByPersonId: ids.hr });
+    await db()
+      .insert(schema.faceEnrolment)
+      .values({ personId: ids.nhu, entityId: ids.media, consentAt: new Date("2026-09-15T00:00:00Z"), consentRecordedByPersonId: ids.hr });
     expect([...(await faceWithdrawnAmong([ids.huy, ids.nhu, ids.hr]))]).toEqual([ids.huy]);
     expect(await faceWithdrawnAmong([])).toEqual(new Set());
   });
@@ -146,8 +164,18 @@ describe("the nightly retention sweeps", () => {
         { personId: ids.huy, title: "Lương tháng 9", updatedAt: new Date("2026-10-01T00:00:00Z") },
       ])
       .returning();
-    await db().insert(schema.aiMessage).values([{ conversationId: stale.id, personId: ids.huy, role: "user", body: "Tôi còn mấy ngày phép?" }, { conversationId: fresh.id, personId: ids.huy, role: "user", body: "Lương tháng 9?" }]);
-    await db().insert(schema.aiUnansweredQuestion).values([{ personId: ids.huy, question: "cũ", createdAt: new Date("2026-01-01T00:00:00Z") }, { personId: ids.huy, question: "mới" }]);
+    await db()
+      .insert(schema.aiMessage)
+      .values([
+        { conversationId: stale.id, personId: ids.huy, role: "user", body: "Tôi còn mấy ngày phép?" },
+        { conversationId: fresh.id, personId: ids.huy, role: "user", body: "Lương tháng 9?" },
+      ]);
+    await db()
+      .insert(schema.aiUnansweredQuestion)
+      .values([
+        { personId: ids.huy, question: "cũ", createdAt: new Date("2026-01-01T00:00:00Z") },
+        { personId: ids.huy, question: "mới" },
+      ]);
     expect(await purgeAiConversations(new Date("2026-04-08T00:00:00Z"))).toEqual({ conversations: 1, unansweredQuestions: 1 });
     expect((await db().select().from(schema.aiMessage)).map((row) => row.conversationId)).toEqual([fresh.id]);
     expect(await purgeAiConversations(new Date("2026-04-08T00:00:00Z"))).toEqual({ conversations: 0, unansweredQuestions: 0 });
@@ -165,7 +193,11 @@ describe("former employees", () => {
   });
 
   it("refuses anyone not due, and the person themselves", async () => {
-    const error = (promise: Promise<unknown>) => promise.then(() => "no error", (failure: Error) => failure.message);
+    const error = (promise: Promise<unknown>) =>
+      promise.then(
+        () => "no error",
+        (failure: Error) => failure.message,
+      );
     expect(await error(anonymiseFormerEmployee(ids.recent, ids.hr, TODAY))).toBe("retention_not_over");
     expect(await error(anonymiseFormerEmployee(ids.stillHere, ids.hr, TODAY))).toBe("not_former_employee");
     expect(await error(anonymiseFormerEmployee(ids.huy, ids.hr, TODAY))).toBe("not_former_employee");
@@ -178,14 +210,20 @@ describe("former employees", () => {
     await db().insert(schema.emergencyContact).values({ personId: id, fullName: "Mẹ của Lan", phone: "0987654321" });
     const scan = await storeIncomingFile({ ownerType: "person_document", ownerId: id, entityId: ids.media, tier: "restricted" }, { fileName: "cccd.pdf", bytes: pdf });
     const signed = await storeIncomingFile({ ownerType: "person_document", ownerId: id, entityId: ids.media, tier: "compensation" }, { fileName: "hop-dong.pdf", bytes: pdf });
-    await db().insert(schema.personDocument).values([
-      { personId: id, entityId: ids.media, category: "id_scan", title: "CCCD", tier: "restricted", fileId: scan.id },
-      { personId: id, entityId: ids.media, category: "contract", title: "HĐLĐ", tier: "compensation", fileId: signed.id },
-    ]);
+    await db()
+      .insert(schema.personDocument)
+      .values([
+        { personId: id, entityId: ids.media, category: "id_scan", title: "CCCD", tier: "restricted", fileId: scan.id },
+        { personId: id, entityId: ids.media, category: "contract", title: "HĐLĐ", tier: "compensation", fileId: signed.id },
+      ]);
     await db().insert(schema.notification).values({ recipientPersonId: id, kind: "system.welcome" });
-    await db().insert(schema.punch).values({ personId: id, entityId: ids.media, at: new Date("2022-06-30T01:00:00Z"), direction: "in", source: "app", latitude: 10.7, longitude: 106.6, ipAddress: "198.51.100.4" });
+    await db()
+      .insert(schema.punch)
+      .values({ personId: id, entityId: ids.media, at: new Date("2022-06-30T01:00:00Z"), direction: "in", source: "app", latitude: 10.7, longitude: 106.6, ipAddress: "198.51.100.4" });
     await db().insert(schema.user).values({ id: "user-lan", name: "Lan", email: "Lan@suzu.vn" });
-    await db().insert(schema.session).values({ id: "session-lan", token: "token-lan", userId: "user-lan", expiresAt: new Date("2030-01-01T00:00:00Z") });
+    await db()
+      .insert(schema.session)
+      .values({ id: "session-lan", token: "token-lan", userId: "user-lan", expiresAt: new Date("2030-01-01T00:00:00Z") });
     await db().insert(schema.privacyConsentEvent).values({ personId: id, purpose: "gps_check_in", decision: "given", noticeVersion: GPS_NOTICE_VERSION });
 
     const result = await anonymiseFormerEmployee(id, ids.hr, TODAY);
@@ -219,7 +257,12 @@ describe("former employees", () => {
 
 describe("export my data", () => {
   it("holds the person's own records, positions and answers included, and nobody else's", async () => {
-    await db().insert(schema.notification).values([{ recipientPersonId: ids.huy, kind: "system.welcome" }, { recipientPersonId: ids.nhu, kind: "system.welcome" }]);
+    await db()
+      .insert(schema.notification)
+      .values([
+        { recipientPersonId: ids.huy, kind: "system.welcome" },
+        { recipientPersonId: ids.nhu, kind: "system.welcome" },
+      ]);
     await db().insert(schema.personProfile).values({ personId: ids.huy, phone: "0901111222" });
     const file = await buildMyDataExport({ personId: ids.huy, principal: principal(ids.huy) }, new Date("2026-10-05T03:00:00Z"));
     const data = JSON.parse(file.json);

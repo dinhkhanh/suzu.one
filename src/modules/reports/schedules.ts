@@ -99,7 +99,11 @@ async function loadScheduleViews(viewer: ScheduleViewer, id?: string): Promise<S
 }
 
 export async function findSchedule(id: string): Promise<ScheduleRow | undefined> {
-  const [row] = await db().select().from(schema.reportSchedule).where(and(eq(schema.reportSchedule.id, id), live)).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.reportSchedule)
+    .where(and(eq(schema.reportSchedule.id, id), live))
+    .limit(1);
   return row;
 }
 

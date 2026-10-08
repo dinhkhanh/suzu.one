@@ -42,8 +42,7 @@ export const canReviewPunchOf = (principal: Principal, person: PersonTarget): bo
  * whoever reads their personal tier (line manager, department head, HR) and the HR who keep their
  * attendance. Colleagues never.
  */
-export const canSeeTimesheetOf = (principal: Principal, person: PersonTarget): boolean =>
-  principal.personId === person.personId || canReadTier(principal, person, "personal") || can(principal, "attendance:manage", person);
+export const canSeeTimesheetOf = (principal: Principal, person: PersonTarget): boolean => principal.personId === person.personId || canReadTier(principal, person, "personal") || can(principal, "attendance:manage", person);
 
 /** Recomputing on demand, device logs and the ID map: HR over the entity. */
 export const canManageDevices = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });

@@ -35,7 +35,9 @@ const sheet = (csv: string) => parseTable(parseCsv(`${HEAD}\n${csv}\n`), contrac
 
 beforeAll(async () => {
   await migrateTestDb();
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [media, creative] = await db()
     .insert(schema.entity)
     .values([

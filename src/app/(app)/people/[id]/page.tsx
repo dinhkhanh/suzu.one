@@ -59,7 +59,12 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const format = await getFormatter();
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
   // A name with the way to its record; null without a name, so an empty fact still shows its dash.
-  const record = (kind: RecordKind, id: string | null | undefined, name: string | null | undefined) => (name ? <RecordLink kind={kind} id={id}>{name}</RecordLink> : null);
+  const record = (kind: RecordKind, id: string | null | undefined, name: string | null | undefined) =>
+    name ? (
+      <RecordLink kind={kind} id={id}>
+        {name}
+      </RecordLink>
+    ) : null;
   const { personal } = person;
   // HR sees what the employee has asked to change; listProfileChanges answers null to everyone else.
   const rehiring = person.canManage && personal?.status === "offboarded";
@@ -99,14 +104,12 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         <PageHeader
           eyebrow={person.employeeCode}
           title={person.fullName}
-          description={[person.current?.positionName, record("unit", person.current?.departmentId, person.current?.departmentName), record("entity", person.entityId, person.entityName)]
-            .filter(Boolean)
-            .map((part, index) => (
-              <Fragment key={index}>
-                {index ? " · " : null}
-                {part}
-              </Fragment>
-            ))}
+          description={[person.current?.positionName, record("unit", person.current?.departmentId, person.current?.departmentName), record("entity", person.entityId, person.entityName)].filter(Boolean).map((part, index) => (
+            <Fragment key={index}>
+              {index ? " · " : null}
+              {part}
+            </Fragment>
+          ))}
           actions={
             photoEditable || impersonable ? (
               <>
@@ -119,7 +122,9 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         >
           {personal && personal.status !== "active" ? (
             <div className="pt-1">
-              <Badge dot variant={statusTone(personal.status)}>{t(`status.${personal.status}`)}</Badge>
+              <Badge dot variant={statusTone(personal.status)}>
+                {t(`status.${personal.status}`)}
+              </Badge>
             </div>
           ) : null}
         </PageHeader>
@@ -258,7 +263,15 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                 minDate={addDays(personal.startDate, 1)}
                 defaults={
                   personal.current
-                    ? { workforceType: personal.current.workforceType, positionName: personal.current.positionName, seniorityLevel: personal.current.seniorityLevel, positionLevel: personal.current.positionLevel, managerId: personal.current.managerId, dottedManagerId: personal.current.dottedManagerId, workLocation: personal.current.workLocation }
+                    ? {
+                        workforceType: personal.current.workforceType,
+                        positionName: personal.current.positionName,
+                        seniorityLevel: personal.current.seniorityLevel,
+                        positionLevel: personal.current.positionLevel,
+                        managerId: personal.current.managerId,
+                        dottedManagerId: personal.current.dottedManagerId,
+                        workLocation: personal.current.workLocation,
+                      }
                     : undefined
                 }
               />
@@ -286,9 +299,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           {/* A record that should never have been made (CHR-02): the service refuses once anything else names the person. */}
           {canRemovePerson(user.principal, target) ? <RemovePersonForm personId={person.id} fullName={person.fullName} /> : null}
           {/* A former employee comes back on the same record (FR-CHR-16). */}
-          {rehiring && otherEntityOptions ? (
-            <RehireForm personId={person.id} today={today} defaultEntityId={person.entityId} options={otherEntityOptions} entities={manageableEntities} />
-          ) : null}
+          {rehiring && otherEntityOptions ? <RehireForm personId={person.id} today={today} defaultEntityId={person.entityId} options={otherEntityOptions} entities={manageableEntities} /> : null}
         </>
       ) : null}
     </Page>

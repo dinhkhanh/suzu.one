@@ -70,7 +70,15 @@ export default async function LeaderPage() {
       {view.people.map((person) => (
         <TableCard key={person.personId ?? "none"}>
           <TableCardHeader
-            title={person.name ? <RecordLink kind="person" id={person.personId}>{person.name}</RecordLink> : t("unassigned")}
+            title={
+              person.name ? (
+                <RecordLink kind="person" id={person.personId}>
+                  {person.name}
+                </RecordLink>
+              ) : (
+                t("unassigned")
+              )
+            }
             description={t("counts", person.counts)}
             actions={
               person.blocked || person.tasks[0]?.away || person.overdue || person.atRisk ? (
@@ -94,11 +102,21 @@ export default async function LeaderPage() {
                     <RecordLink kind="task" id={task.id} className="block truncate font-medium">
                       {task.title}
                     </RecordLink>
-                    {task.blocker ? <p className="truncate text-xs text-muted-foreground">{t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })})` : task.blocker.reason })}</p> : null}
+                    {task.blocker ? (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork.markup("blockers.waitingOn", { name: task.blocker.neededName, who: (chunks) => chunks })})` : task.blocker.reason })}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     {task.projectId && jobNumbers.get(task.projectId) ? <span className="mr-1.5 font-mono text-xs text-faint">{jobNumbers.get(task.projectId)}</span> : null}
-                    {task.projectName ? <RecordLink kind="project" id={task.projectId}>{task.projectName}</RecordLink> : "—"}
+                    {task.projectName ? (
+                      <RecordLink kind="project" id={task.projectId}>
+                        {task.projectName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell>{task.stateName ? <StateBadge category={task.category} name={task.stateName} /> : "—"}</TableCell>
                   <TableCell>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}</TableCell>

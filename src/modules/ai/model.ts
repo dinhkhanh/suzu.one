@@ -96,7 +96,14 @@ function claudeDriver(): ChatDriver {
       // FR-AI-06: the prompt is built from what `chatRequestForModel` hands back and from nothing
       // else — no contact detail and no amount of money in a passage, whichever page it is from.
       const outbound = chatRequestForModel({ question, passages: passages.slice(0, CLAUDE_SOURCES) });
-      const sources: PromptSource[] = outbound.passages.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, href: citationHref(passage), content: passage.content }));
+      const sources: PromptSource[] = outbound.passages.map((passage, index) => ({
+        index: index + 1,
+        pageTitle: passage.pageTitle,
+        spaceName: passage.spaceName,
+        headingPath: passage.headingPath,
+        href: citationHref(passage),
+        content: passage.content,
+      }));
       const { system, user } = assemblePrompt(outbound.question, sources, links);
       // A grounded answer out of six short passages is simple work (D38): the simple tier, low effort where the model takes it.
       const result = await callModel({ asker, purpose: "ask", tier: "simple", effort: "low", timeoutMs: 45_000, request: { max_tokens: 1500, system, messages: [{ role: "user", content: user }] } });

@@ -112,7 +112,14 @@ export function LinkControl({ editor, active, open, onOpenChange }: { editor: Ed
         <div className="flex items-center justify-end gap-2">
           {current ? (
             <>
-              <a href={safeHref(current) ?? undefined} target="_blank" rel="noopener noreferrer" title={t("linkOpen")} aria-label={t("linkOpen")} className="mr-auto inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted">
+              <a
+                href={safeHref(current) ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={t("linkOpen")}
+                aria-label={t("linkOpen")}
+                className="mr-auto inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+              >
                 <ExternalLink className="size-4" />
               </a>
               <Button type="button" variant="ghost" size="sm" onClick={remove}>

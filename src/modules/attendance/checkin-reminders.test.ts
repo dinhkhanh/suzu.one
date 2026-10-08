@@ -22,7 +22,11 @@ const OFFICE: SchedulePattern = { days: { 1: OFFICE_DAY, 2: OFFICE_DAY, 3: OFFIC
 const PEOPLE = ["an", "binh", "cuong", "dao", "em"] as const;
 const ids = {} as Record<(typeof PEOPLE)[number], string>;
 const dueIds = async (now: Date) => (await findDueCheckIns(now)).map((item) => item.personId).sort();
-const noticesOf = async (personId: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "daily.checkin_reminder")));
+const noticesOf = async (personId: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "daily.checkin_reminder")));
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -36,12 +40,17 @@ beforeAll(async () => {
     ids[key] = row.id;
   }
   // Binh checked in early; Cuong only yesterday.
-  await db().insert(schema.punch).values([
-    { personId: ids.binh, entityId: media.id, at: vn("08:12"), direction: "in", source: "app" },
-    { personId: ids.cuong, entityId: media.id, at: vn("17:40", "2026-10-06"), direction: "out", source: "app" },
-  ]);
+  await db()
+    .insert(schema.punch)
+    .values([
+      { personId: ids.binh, entityId: media.id, at: vn("08:12"), direction: "in", source: "app" },
+      { personId: ids.cuong, entityId: media.id, at: vn("17:40", "2026-10-06"), direction: "out", source: "app" },
+    ]);
   // Em punches on a clock whose log HR uploads later.
-  const [profile] = await db().insert(schema.deviceMappingProfile).values({ name: "CSV", fileKind: "csv", mapping: { hasHeader: true, userId: 0, timestamp: 1, timestampFormat: "YYYY-MM-DD HH:mm" } as never }).returning();
+  const [profile] = await db()
+    .insert(schema.deviceMappingProfile)
+    .values({ name: "CSV", fileKind: "csv", mapping: { hasHeader: true, userId: 0, timestamp: 1, timestampFormat: "YYYY-MM-DD HH:mm" } as never })
+    .returning();
   const [clock] = await db().insert(schema.attendanceDevice).values({ entityId: media.id, name: "Door", profileId: profile.id }).returning();
   await db().insert(schema.deviceUserMap).values({ deviceId: clock.id, deviceUserId: "7", personId: ids.em });
 });

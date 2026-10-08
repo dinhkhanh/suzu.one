@@ -40,7 +40,11 @@ import {
   updateAsset,
 } from "./service";
 
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const principal = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 
 const ids = {} as Record<"szm" | "szc" | "vid" | "laptop" | "camera" | "long" | "huy" | "tam" | "keeper" | "financePerson" | "team", string>;
@@ -138,7 +142,10 @@ describe("putting things on the books", () => {
   it("records what changed without recording what it cost", async () => {
     const asset = await newAsset();
     await updateAsset(asset.id, { name: "MacBook Pro 14 (2025)", purchasePrice: 49_000_000 }, ids.keeper);
-    const [event] = await db().select().from(schema.assetEvent).where(and(eq(schema.assetEvent.assetId, asset.id), eq(schema.assetEvent.type, "edited")));
+    const [event] = await db()
+      .select()
+      .from(schema.assetEvent)
+      .where(and(eq(schema.assetEvent.assetId, asset.id), eq(schema.assetEvent.type, "edited")));
     expect(event.detail).toEqual({ fields: ["name", "purchasePrice"] });
     expect(JSON.stringify(event.detail)).not.toContain("49000000");
   });
@@ -165,7 +172,10 @@ describe("one thing, one holder", () => {
     const raw = await db()
       .insert(schema.assetAssignment)
       .values({ assetId: asset.id, holderType: "person", holderPersonId: ids.long, conditionOut: "good" })
-      .then(() => null, (error: Error & { cause?: Error }) => `${error.message} ${error.cause?.message ?? ""}`);
+      .then(
+        () => null,
+        (error: Error & { cause?: Error }) => `${error.message} ${error.cause?.message ?? ""}`,
+      );
     expect(raw).toMatch(/asset_assignment_open_key/);
   });
 
@@ -287,7 +297,10 @@ describe("what the lifecycle asks of the register", () => {
 
     const opened = await db().transaction(async (tx) => openReturnTasks(tx, leaver, "2026-10-31", ids.keeper));
     expect(opened).toBe(2);
-    const tasks = await db().select().from(schema.task).where(and(eq(schema.task.kind, "asset_return"), eq(schema.task.subjectPersonId, leaver)));
+    const tasks = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.kind, "asset_return"), eq(schema.task.subjectPersonId, leaver)));
     expect(tasks).toHaveLength(2);
     expect(tasks.every((task) => task.assigneePersonId === ids.long)).toBe(true); // the line manager collects
     expect(tasks.every((task) => task.dueDate === "2026-10-31")).toBe(true);
@@ -297,7 +310,10 @@ describe("what the lifecycle asks of the register", () => {
 
     // A termination called off takes the tasks with it.
     expect(await db().transaction(async (tx) => cancelReturnTasks(tx, leaver))).toBe(2);
-    const after = await db().select().from(schema.task).where(and(eq(schema.task.kind, "asset_return"), eq(schema.task.subjectPersonId, leaver)));
+    const after = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.kind, "asset_return"), eq(schema.task.subjectPersonId, leaver)));
     expect(after.every((task) => task.status === "cancelled")).toBe(true);
   });
 
@@ -306,7 +322,10 @@ describe("what the lifecycle asks of the register", () => {
     const asset = await newAsset();
     const assignment = await assignAsset({ assetId: asset.id, holderType: "person", holderId: holder, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
     await db().transaction(async (tx) => openReturnTasks(tx, holder, "2026-11-30", ids.keeper));
-    const [task] = await db().select().from(schema.task).where(and(eq(schema.task.contextType, "asset_assignment"), eq(schema.task.contextId, assignment.id)));
+    const [task] = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.contextType, "asset_assignment"), eq(schema.task.contextId, assignment.id)));
     expect(task.status).toBe("todo");
 
     await returnAsset({ assignmentId: assignment.id, conditionIn: "good", returnNote: null }, ids.keeper);
@@ -330,7 +349,12 @@ describe("the open-assignment index", () => {
     }
     const spells = await db().select().from(schema.assetAssignment).where(eq(schema.assetAssignment.assetId, asset.id));
     expect(spells).toHaveLength(3);
-    expect(await db().select().from(schema.assetAssignment).where(and(eq(schema.assetAssignment.assetId, asset.id), isNull(schema.assetAssignment.returnedAt)))).toHaveLength(0);
+    expect(
+      await db()
+        .select()
+        .from(schema.assetAssignment)
+        .where(and(eq(schema.assetAssignment.assetId, asset.id), isNull(schema.assetAssignment.returnedAt))),
+    ).toHaveLength(0);
   });
 });
 
@@ -368,7 +392,10 @@ describe("telling the holder", () => {
     const holder = await newPerson("Người nhận máy");
     const asset = await newAsset();
     await assignAsset({ assetId: asset.id, holderType: "person", holderId: holder, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
-    const told = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, holder), eq(schema.notification.kind, "approvals.asset_handover")));
+    const told = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, holder), eq(schema.notification.kind, "approvals.asset_handover")));
     expect(told).toHaveLength(1);
     expect(told[0]).toMatchObject({ link: "/assets/mine", params: { asset: `${asset.code} ${asset.name}` } });
 

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ageBand, countBy, employedOn, headcountSnapshot, movement, seniorityBand, type Span, yearsBetween } from "./headcount";
 
-const span = (personId: string, startDate: string, endDate: string | null, more: Partial<Span> = {}): Span => ({ personId, startDate, endDate, seniorityDate: startDate, entity: "Media", department: "Video", workforceType: "employee", gender: "female", dateOfBirth: "1995-06-15", ...more });
+const span = (personId: string, startDate: string, endDate: string | null, more: Partial<Span> = {}): Span => ({
+  personId,
+  startDate,
+  endDate,
+  seniorityDate: startDate,
+  entity: "Media",
+  department: "Video",
+  workforceType: "employee",
+  gender: "female",
+  dateOfBirth: "1995-06-15",
+  ...more,
+});
 
 describe("bands", () => {
   it("counts whole years the way birthdays do", () => {
@@ -28,14 +39,37 @@ describe("headcountSnapshot", () => {
     expect(employedOn(spans[1], "2026-10-01")).toBe(false);
     const snapshot = headcountSnapshot(spans, "2026-09-30");
     expect(snapshot.total).toBe(3);
-    expect(snapshot.byDepartment).toEqual([{ key: "Design", count: 1 }, { key: "unknown", count: 1 }, { key: "Video", count: 1 }]);
-    expect(snapshot.byWorkforceType).toEqual([{ key: "collaborator", count: 1 }, { key: "employee", count: 2 }].sort((x, y) => y.count - x.count));
-    expect(snapshot.byGender).toEqual([{ key: "female", count: 1 }, { key: "male", count: 1 }, { key: "unknown", count: 1 }]);
-    expect(snapshot.byAge).toEqual([{ key: "25_34", count: 2 }, { key: "unknown", count: 1 }]);
-    expect(snapshot.bySeniority).toEqual([{ key: "under_1", count: 1 }, { key: "3_5", count: 1 }, { key: "5_10", count: 1 }]);
+    expect(snapshot.byDepartment).toEqual([
+      { key: "Design", count: 1 },
+      { key: "unknown", count: 1 },
+      { key: "Video", count: 1 },
+    ]);
+    expect(snapshot.byWorkforceType).toEqual(
+      [
+        { key: "collaborator", count: 1 },
+        { key: "employee", count: 2 },
+      ].sort((x, y) => y.count - x.count),
+    );
+    expect(snapshot.byGender).toEqual([
+      { key: "female", count: 1 },
+      { key: "male", count: 1 },
+      { key: "unknown", count: 1 },
+    ]);
+    expect(snapshot.byAge).toEqual([
+      { key: "25_34", count: 2 },
+      { key: "unknown", count: 1 },
+    ]);
+    expect(snapshot.bySeniority).toEqual([
+      { key: "under_1", count: 1 },
+      { key: "3_5", count: 1 },
+      { key: "5_10", count: 1 },
+    ]);
   });
   it("keeps band order and drops empty bands", () => {
-    expect(countBy(["b", "a", "b"], (value) => value, ["a", "b", "c"])).toEqual([{ key: "a", count: 1 }, { key: "b", count: 2 }]);
+    expect(countBy(["b", "a", "b"], (value) => value, ["a", "b", "c"])).toEqual([
+      { key: "a", count: 1 },
+      { key: "b", count: 2 },
+    ]);
   });
 });
 
@@ -55,7 +89,10 @@ describe("movement", () => {
     expect(result).toMatchObject({ opening: 4, closing: 3, joiners: 2, leavers: 2 });
     // 2 ÷ 3.5 = 57.14%
     expect(result.turnoverBp).toBe(5714);
-    expect(result.leaversByDepartment).toEqual([{ key: "Design", count: 1 }, { key: "Video", count: 1 }]);
+    expect(result.leaversByDepartment).toEqual([
+      { key: "Design", count: 1 },
+      { key: "Video", count: 1 },
+    ]);
   });
   it("has no turnover rate when nobody was employed", () => {
     expect(movement([], "2026-01-01", "2026-01-31").turnoverBp).toBeNull();

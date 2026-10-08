@@ -33,12 +33,33 @@ import { viewerOfPerson } from "./viewer";
 
 type Key = "khoi" | "huy" | "lan" | "long";
 const ids = {} as Record<Key | "szm" | "social" | "hr" | "project" | "secret" | "fanpage" | "tiktok" | "x" | "bank", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const actor = (key: Key) => ({ personId: ids[key], fullName: key });
 const eqId = (taskId: string) => eq(schema.task.id, taskId);
 const viewerOf = async (key: Key) => (await viewerOfPerson(db(), ids[key]))!;
 
-const asset = (over: Partial<DigitalAssetInput>): DigitalAssetInput => ({ kind: "social_channel", platform: "facebook", name: "Fanpage", handle: null, url: null, entityId: ids.szm, ownership: "company", clientId: null, ownerPersonId: ids.khoi, visibility: "staff", status: "active", loginIdentity: null, recoveryContact: null, credentialLocation: null, notes: null, ...over });
+const asset = (over: Partial<DigitalAssetInput>): DigitalAssetInput => ({
+  kind: "social_channel",
+  platform: "facebook",
+  name: "Fanpage",
+  handle: null,
+  url: null,
+  entityId: ids.szm,
+  ownership: "company",
+  clientId: null,
+  ownerPersonId: ids.khoi,
+  visibility: "staff",
+  status: "active",
+  loginIdentity: null,
+  recoveryContact: null,
+  credentialLocation: null,
+  notes: null,
+  ...over,
+});
 const register = async (over: Partial<DigitalAssetInput>) => (await saveDigitalAsset(null, asset(over), ids.khoi)).after.id;
 
 beforeAll(async () => {
@@ -46,7 +67,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["khoi", "huy", "lan", "long"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   // Social: led by Khôi, Huy a member. HR: a private team of Long's — Lan and Huy are outside it.

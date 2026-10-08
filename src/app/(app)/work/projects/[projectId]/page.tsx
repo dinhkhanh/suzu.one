@@ -11,7 +11,28 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { readFilters, readGrouping, readSort, taskSliceFor } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listDeletedTasks, listLabels, listProjectMembers, listRecurrences, listTaskSlice, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, RESTORE_WINDOW_DAYS, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import {
+  canContributeToProject,
+  canManageProject,
+  canViewProject,
+  findProject,
+  listAssignable,
+  listClients,
+  listDeletedTasks,
+  listLabels,
+  listProjectMembers,
+  listRecurrences,
+  listTaskSlice,
+  listSavedViews,
+  listStates,
+  listWorkTemplates,
+  loadViewer,
+  projectFacts,
+  RESTORE_WINDOW_DAYS,
+  withEditable,
+  WORK_VIEWS,
+  type WorkView,
+} from "@/modules/work/service";
 import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
 import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains, projectStatusChoices, projectStatusNames } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
@@ -86,12 +107,33 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const fields = toFieldViews(fieldRows);
   const clientName = clients.find((client) => client.id === project.clientId)?.name;
   // FR-PJM-10: the owning team's open cycles, for the filter and bulk edit.
-  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
-  const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields, cycles };
+  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({
+    id: cycle.id,
+    label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }),
+  }));
+  const options = {
+    states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })),
+    people: assignable,
+    labels: labels.map(({ id, name, color }) => ({ id, name, color })),
+    clients: clients.map(({ id, name }) => ({ id, name })),
+    fields,
+    cycles,
+  };
   const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
   // Logged time per task is for the project's lead and the team's leads (PJM access rules).
   const logged = view === "table" && canSeeLoggedTime(viewer, { team: teamFacts(team), project: facts }) ? Object.fromEntries(await loggedMinutesByTask(tasks.map((task) => task.id))) : null;
-  const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
+  const [calendarTasks, daysOff, content] =
+    view === "calendar"
+      ? await Promise.all([
+          withEditable(viewer, tasks),
+          getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to),
+          contentCalendar(
+            viewer,
+            { ...grid, projectId: project.id },
+            tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to),
+          ),
+        ])
+      : [[], [], null];
 
   return (
     <Page width="wide" data-accent={accentOf(project.color, team.color)}>
@@ -119,7 +161,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         description={
           clientName || project.description ? (
             <>
-              {clientName ? <RecordLink kind="account" id={project.clientId}>{clientName}</RecordLink> : null}
+              {clientName ? (
+                <RecordLink kind="account" id={project.clientId}>
+                  {clientName}
+                </RecordLink>
+              ) : null}
               {clientName && project.description ? " · " : null}
               {project.description}
             </>
@@ -141,39 +187,47 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       <Section>
         <ViewTabs current={view} />
         {taskTotal > tasks.length ? <p className="text-sm text-muted-foreground">{t("list.truncated", { shown: tasks.length, total: taskTotal })}</p> : null}
-      {view === "table" ? (
-        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} scope={{ teamId: team.id, projectId: project.id }} />
-      ) : view === "board" ? (
-        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} scope={{ teamId: team.id, projectId: project.id }} />
-      ) : view === "calendar" ? (
-        <CalendarView
-          tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
-          options={options}
-          month={month}
-          daysOff={daysOff.map(({ date, name }) => ({ date, name }))}
-          initialFilters={filters}
-          initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
-          selfId={user.person.id}
-          today={today}
-          posts={content?.posts}
-          missingTaskIds={content?.missingTaskIds}
-          scope={canContribute ? { teamId: team.id, projectId: project.id } : undefined}
-        />
-      ) : (
-        <TaskListView
-          tasks={tasks}
-          options={options}
-          scope={{ teamId: team.id, projectId: project.id }}
-          initialFilters={filters}
-          initialGrouping={grouping}
-          initialSort={sort}
-          selfId={user.person.id}
-          today={today}
-          canContribute={canContribute}
-          // One's own view is one's own to change; a shared one of somebody else's, the project's leads'.
-          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canEdit: view.ownerPersonId === user.person.id || manage, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
-        />
-      )}
+        {view === "table" ? (
+          <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} scope={{ teamId: team.id, projectId: project.id }} />
+        ) : view === "board" ? (
+          <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} scope={{ teamId: team.id, projectId: project.id }} />
+        ) : view === "calendar" ? (
+          <CalendarView
+            tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
+            options={options}
+            month={month}
+            daysOff={daysOff.map(({ date, name }) => ({ date, name }))}
+            initialFilters={filters}
+            initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
+            selfId={user.person.id}
+            today={today}
+            posts={content?.posts}
+            missingTaskIds={content?.missingTaskIds}
+            scope={canContribute ? { teamId: team.id, projectId: project.id } : undefined}
+          />
+        ) : (
+          <TaskListView
+            tasks={tasks}
+            options={options}
+            scope={{ teamId: team.id, projectId: project.id }}
+            initialFilters={filters}
+            initialGrouping={grouping}
+            initialSort={sort}
+            selfId={user.person.id}
+            today={today}
+            canContribute={canContribute}
+            // One's own view is one's own to change; a shared one of somebody else's, the project's leads'.
+            savedViews={views.map((view) => ({
+              id: view.id,
+              name: view.name,
+              isShared: view.isShared,
+              mine: view.ownerPersonId === user.person.id,
+              canEdit: view.ownerPersonId === user.person.id || manage,
+              canDelete: view.ownerPersonId === user.person.id || manage,
+              filters: view.filters,
+            }))}
+          />
+        )}
       </Section>
 
       <details className="group/details rounded-[14px] border border-border bg-background" open={recurrences.length > 0 && typeof query.planning === "string"}>
@@ -186,7 +240,21 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <h2 className="section-label">{t("recurrence.heading")}</h2>
             <RecurrenceManager
               target={{ projectId: project.id }}
-              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, assigneePersonId: draft.assigneePersonId ?? null, estimateMinutes: draft.estimateMinutes ?? null, assigneeName, nextDate, made }))}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({
+                id,
+                title,
+                rule,
+                startDate,
+                endDate,
+                leadDays,
+                onDayOff,
+                isActive,
+                assigneePersonId: draft.assigneePersonId ?? null,
+                estimateMinutes: draft.estimateMinutes ?? null,
+                assigneeName,
+                nextDate,
+                made,
+              }))}
               people={assignable}
               canManage={canContribute}
               today={today}
@@ -195,7 +263,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           {canContribute ? (
             <section className="flex flex-col gap-2">
               <h2 className="section-label">{t("templates.addToProject")}</h2>
-              <TemplateUseForm templates={templates.filter((template) => template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))} projectId={project.id} peopleByTeam={{ "": assignable }} today={today} />
+              <TemplateUseForm
+                templates={templates.filter((template) => template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))}
+                projectId={project.id}
+                peopleByTeam={{ "": assignable }}
+                today={today}
+              />
             </section>
           ) : null}
         </div>
@@ -208,7 +281,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             {t("deleted.title", { count: deleted.length })}
           </summary>
           <div className="border-t p-4">
-            <DeletedTasks tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))} days={RESTORE_WINDOW_DAYS} />
+            <DeletedTasks
+              tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))}
+              days={RESTORE_WINDOW_DAYS}
+            />
           </div>
         </details>
       ) : null}
@@ -230,7 +306,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           </section>
           <section className="flex flex-col gap-2">
             <h2 className="section-label">{t("chains.title")}</h2>
-            <ReviewChainManager teamId={team.id} projectId={project.id} chains={chains.map(({ id, name, projectId: chainProject, contentFormat, isActive, stages }) => ({ id, name, projectId: chainProject, contentFormat, isActive, stages }))} people={assignable} canManage={canManageReviewChains(viewer, teamFacts(team), facts)} />
+            <ReviewChainManager
+              teamId={team.id}
+              projectId={project.id}
+              chains={chains.map(({ id, name, projectId: chainProject, contentFormat, isActive, stages }) => ({ id, name, projectId: chainProject, contentFormat, isActive, stages }))}
+              people={assignable}
+              canManage={canManageReviewChains(viewer, teamFacts(team), facts)}
+            />
           </section>
           {automations ? (
             <section className="flex flex-col gap-2">

@@ -115,7 +115,15 @@ const setInputPipeline = createAction({
     const run = await runFor(input.runId);
     refresh(input.runId);
     // A calculated run that the change sent back to draft says so here, and in the run's own history.
-    return { data: { ok: true, reopened }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code}${reopened ? " — run back to draft" : ""}`, ...(reopened ? { before: { status: "calculated" } } : {}), after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) } } };
+    return {
+      data: { ok: true, reopened },
+      audit: {
+        resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null },
+        summary: `input ${input.code}${reopened ? " — run back to draft" : ""}`,
+        ...(reopened ? { before: { status: "calculated" } } : {}),
+        after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) },
+      },
+    };
   },
 });
 export async function setPayrollRunInputAction(input: unknown) {
@@ -131,7 +139,15 @@ const removeInputPipeline = createAction({
     const { reopened } = await removeRunInput(input.runId, input.personId, input.code, undefined, user.person.id);
     const run = await runFor(input.runId);
     refresh(input.runId);
-    return { data: { ok: true, reopened }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `input ${input.code} removed${reopened ? " — run back to draft" : ""}`, ...(reopened ? { before: { status: "calculated" } } : {}), after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) } } };
+    return {
+      data: { ok: true, reopened },
+      audit: {
+        resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null },
+        summary: `input ${input.code} removed${reopened ? " — run back to draft" : ""}`,
+        ...(reopened ? { before: { status: "calculated" } } : {}),
+        after: { personId: input.personId, code: input.code, ...(reopened ? { status: "draft" } : {}) },
+      },
+    };
   },
 });
 export async function removePayrollRunInputAction(input: unknown) {

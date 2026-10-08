@@ -26,7 +26,15 @@ const MAX_BODY_BYTES = MAX_CV_BYTES + 256 * 1024;
 const seeOther = (location: string) => new Response(null, { status: 303, headers: { location, "cache-control": "no-store" } });
 
 /** One line per link; blanks and duplicates dropped. Validation is the schema's job, not this one's. */
-const linesOf = (value: string, max: number): string[] => [...new Set(value.split(/[\n\r]+/).map((line) => line.trim()).filter(Boolean))].slice(0, max);
+const linesOf = (value: string, max: number): string[] =>
+  [
+    ...new Set(
+      value
+        .split(/[\n\r]+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, max);
 
 export async function POST(request: Request, context: RouteContext<"/careers/[slug]/apply">) {
   const { slug } = await context.params;

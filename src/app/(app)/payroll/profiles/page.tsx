@@ -71,7 +71,15 @@ export default async function ProfilesPage() {
               </TableCell>
               <TableCell>{proposal.simpleBasis ? t(`profiles.bases.${proposal.simpleBasis}`) : "—"}</TableCell>
               <TableCell>{day(proposal.validFrom)}</TableCell>
-              <TableCell>{proposal.proposedByName ? <RecordLink kind="person" id={proposal.proposedByPersonId}>{proposal.proposedByName}</RecordLink> : "—"}</TableCell>
+              <TableCell>
+                {proposal.proposedByName ? (
+                  <RecordLink kind="person" id={proposal.proposedByPersonId}>
+                    {proposal.proposedByName}
+                  </RecordLink>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell className="max-w-64 truncate text-muted-foreground">{proposal.note ?? "—"}</TableCell>
               {canDecide ? (
                 <TableCell kind="actions">

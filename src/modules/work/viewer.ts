@@ -79,7 +79,11 @@ export async function viewersOfPeople(personIds: readonly string[], executor?: E
   const present = people.filter((person) => person.status !== "offboarded");
   // One pass over the grants for all of them: an automation naming a dozen people must not cost a
   // round trip each, and inside a transaction that would be a dozen queries.
-  const grants = await loadGrantsOfPeople(present.map((person) => person.id), undefined, executor);
+  const grants = await loadGrantsOfPeople(
+    present.map((person) => person.id),
+    undefined,
+    executor,
+  );
   const teamsOf = Map.groupBy(teams, (row) => row.personId);
   const projectsOf = Map.groupBy(projects, (row) => row.personId);
   present.forEach((person) => {

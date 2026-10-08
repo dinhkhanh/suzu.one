@@ -26,7 +26,17 @@ export default async function ResignationPage(props: PageProps<"/approvals/resig
 
   return (
     <Page width="narrow">
-      <RequestHeader title={t("resign.detailTitle")} kind={tApprovals("types.resignation")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
+      <RequestHeader
+        title={t("resign.detailTitle")}
+        kind={tApprovals("types.resignation")}
+        status={request.status}
+        requestId={request.id}
+        who={
+          <RecordLink kind="person" id={request.requesterPersonId}>
+            {view.requesterName}
+          </RecordLink>
+        }
+      />
       <Section title={tRequests("view.details")}>
         <PropertySheet
           rows={[

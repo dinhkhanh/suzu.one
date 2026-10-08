@@ -48,7 +48,15 @@ function namedMeetings(executor: Executor) {
   const manager = alias(schema.person, "manager");
   const subject = alias(schema.person, "subject");
   return executor
-    .select({ row: schema.oneOnOne, managerName: manager.fullName, personName: subject.fullName, actionCount: sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.oneOnOneAction).where(eq(schema.oneOnOneAction.meetingId, schema.oneOnOne.id))})` })
+    .select({
+      row: schema.oneOnOne,
+      managerName: manager.fullName,
+      personName: subject.fullName,
+      actionCount: sql<number>`(${db()
+        .select({ value: sql<number>`count(*)::int` })
+        .from(schema.oneOnOneAction)
+        .where(eq(schema.oneOnOneAction.meetingId, schema.oneOnOne.id))})`,
+    })
     .from(schema.oneOnOne)
     .leftJoin(manager, eq(manager.id, schema.oneOnOne.managerPersonId))
     .leftJoin(subject, eq(subject.id, schema.oneOnOne.personId))
@@ -70,7 +78,10 @@ export type OneOnOneInput = { personId: string; meetingOn: IsoDate; agenda: stri
 
 export async function createOneOnOne(input: OneOnOneInput, managerPersonId: string, executor: Executor = db()): Promise<OneOnOneRow> {
   if (input.personId === managerPersonId) throw new ActionError("one_on_one_with_self");
-  const [created] = await executor.insert(schema.oneOnOne).values({ ...input, managerPersonId }).returning();
+  const [created] = await executor
+    .insert(schema.oneOnOne)
+    .values({ ...input, managerPersonId })
+    .returning();
   return created;
 }
 
@@ -147,5 +158,9 @@ export async function findOneOnOneAction(actionId: string, executor: Executor = 
 
 /** Whom a manager may open a 1:1 with — their own reports. Navigation only; the action re-checks. */
 export async function myReports(managerPersonId: string, executor: Executor = db()): Promise<{ id: string; fullName: string }[]> {
-  return executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.managerId, managerPersonId), eq(schema.person.status, "active"))).orderBy(schema.person.searchName);
+  return executor
+    .select({ id: schema.person.id, fullName: schema.person.fullName })
+    .from(schema.person)
+    .where(and(eq(schema.person.managerId, managerPersonId), eq(schema.person.status, "active")))
+    .orderBy(schema.person.searchName);
 }

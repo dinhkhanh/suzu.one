@@ -39,7 +39,28 @@ describe("the editor's schema and the server's validator", () => {
   });
 
   it("know the same blocks and marks", () => {
-    for (const name of ["paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "horizontalRule", "hardBreak", "table", "tableRow", "tableCell", "tableHeader", "callout", "embed", "attachment", "image", "taskList", "taskItem"]) expect(schema.nodes[name], name).toBeDefined();
+    for (const name of [
+      "paragraph",
+      "heading",
+      "bulletList",
+      "orderedList",
+      "listItem",
+      "blockquote",
+      "codeBlock",
+      "horizontalRule",
+      "hardBreak",
+      "table",
+      "tableRow",
+      "tableCell",
+      "tableHeader",
+      "callout",
+      "embed",
+      "attachment",
+      "image",
+      "taskList",
+      "taskItem",
+    ])
+      expect(schema.nodes[name], name).toBeDefined();
     for (const name of ["bold", "italic", "strike", "underline", "highlight", "code", "link"]) expect(schema.marks[name], name).toBeDefined();
   });
 });

@@ -70,7 +70,10 @@ beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   for (const key of ["hr", "huy"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType: "employee", primaryEntityId: entity.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType: "employee", primaryEntityId: entity.id })
+      .returning();
     ids[key] = row.id;
   }
   const principal: Principal = { personId: ids.huy, workforceType: "employee", grants: [] };
@@ -113,7 +116,11 @@ describe("right after a publish", () => {
   it("embeds only what an edit changed: a passage that kept its words kept its vector", async () => {
     const page = await publish("Thẻ nhân viên", ["Cấp thẻ", "Thẻ được cấp trong tuần đầu tiên."], ["Mất thẻ", "Báo phòng Hành chính để cấp lại."]);
     await embedPublishedPage(page);
-    await saveDraft(page, { title: "Thẻ nhân viên", content: doc(heading(1, "Cấp thẻ"), paragraph("Thẻ được cấp trong tuần đầu tiên."), heading(1, "Mất thẻ"), paragraph("Báo phòng Hành chính trong 3 ngày để cấp lại.")) }, { personId: ids.hr });
+    await saveDraft(
+      page,
+      { title: "Thẻ nhân viên", content: doc(heading(1, "Cấp thẻ"), paragraph("Thẻ được cấp trong tuần đầu tiên."), heading(1, "Mất thẻ"), paragraph("Báo phòng Hành chính trong 3 ngày để cấp lại.")) },
+      { personId: ids.hr },
+    );
     await publishPage(page, { personId: ids.hr });
     provider.calls.length = 0;
     expect(await embedPublishedPage(page)).toEqual({ embedded: 1, deferred: false });

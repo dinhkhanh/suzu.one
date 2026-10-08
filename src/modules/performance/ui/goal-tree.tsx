@@ -17,13 +17,29 @@ export function GoalUnitLink({ goal }: { goal: Pick<GoalView, "level" | "unitNam
   if (!goal.unitName) return null;
   switch (goal.level) {
     case "entity":
-      return <RecordLink kind="entity" id={goal.entityId}>{goal.unitName}</RecordLink>;
+      return (
+        <RecordLink kind="entity" id={goal.entityId}>
+          {goal.unitName}
+        </RecordLink>
+      );
     case "department":
-      return <RecordLink kind="unit" id={goal.departmentId}>{goal.unitName}</RecordLink>;
+      return (
+        <RecordLink kind="unit" id={goal.departmentId}>
+          {goal.unitName}
+        </RecordLink>
+      );
     case "team":
-      return <RecordLink kind="unit" id={goal.teamId}>{goal.unitName}</RecordLink>;
+      return (
+        <RecordLink kind="unit" id={goal.teamId}>
+          {goal.unitName}
+        </RecordLink>
+      );
     case "individual":
-      return <RecordLink kind="person" id={goal.personId}>{goal.unitName}</RecordLink>;
+      return (
+        <RecordLink kind="person" id={goal.personId}>
+          {goal.unitName}
+        </RecordLink>
+      );
     default:
       return <>{goal.unitName}</>;
   }
@@ -43,7 +59,11 @@ export function GoalLine({ goal, labels }: { goal: GoalView; labels: Labels }) {
           {goal.unitName ? " · " : null}
           <GoalUnitLink goal={goal} />
           {goal.level === "individual" ? null : " · "}
-          {goal.level === "individual" ? null : <RecordLink kind="person" id={goal.ownerPersonId}>{goal.ownerName}</RecordLink>}
+          {goal.level === "individual" ? null : (
+            <RecordLink kind="person" id={goal.ownerPersonId}>
+              {goal.ownerName}
+            </RecordLink>
+          )}
           {` · ${[periodLabel(t, goal.periodKey), stale ? t("stale") : null, goal.hiddenChildren > 0 ? t("hiddenChildren", { count: goal.hiddenChildren }) : null].filter(Boolean).join(" · ")}`}
         </p>
       </div>

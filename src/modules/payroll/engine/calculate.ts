@@ -36,7 +36,14 @@ export function calculatePerson(input: PersonPayInput): PersonPayResult {
   trace.push({
     stage: "proration",
     rule: input.policy.prorationBasis,
-    detail: { divisorDays: earnings.divisor, monthStandardDays: input.period.standardDays, personStandardDays: input.timesheet.standardDays, paidDaysCenti: input.timesheet.paidDaysCenti, unpaidDaysCenti: input.timesheet.unpaidDaysCenti, segments: input.segments.length },
+    detail: {
+      divisorDays: earnings.divisor,
+      monthStandardDays: input.period.standardDays,
+      personStandardDays: input.timesheet.standardDays,
+      paidDaysCenti: input.timesheet.paidDaysCenti,
+      unpaidDaysCenti: input.timesheet.unpaidDaysCenti,
+      segments: input.segments.length,
+    },
   });
   for (const line of earnings.lines) trace.push({ stage: "earnings", rule: line.rule, detail: { code: line.code, amount: line.amount, taxable: line.taxable } });
 

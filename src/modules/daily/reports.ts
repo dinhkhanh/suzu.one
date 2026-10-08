@@ -34,7 +34,11 @@ export const withinReportWindow = (date: IsoDate, today: IsoDate): boolean => da
 export const reportLink = (date: IsoDate) => `/daily/report?date=${date}`;
 
 export async function findReport(personId: string, date: IsoDate): Promise<ReportRow | null> {
-  const [row] = await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, date))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.dailyReport)
+    .where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, date)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -171,7 +175,14 @@ export async function getReportView(reader: ReportReader, reportId: string): Pro
   if (!subject) return null;
   const [comments, openBlockers, tomorrowTasks] = await Promise.all([
     db()
-      .select({ id: schema.dailyReportComment.id, authorPersonId: schema.dailyReportComment.authorPersonId, authorName: schema.person.fullName, body: schema.dailyReportComment.body, reaction: schema.dailyReportComment.reaction, createdAt: schema.dailyReportComment.createdAt })
+      .select({
+        id: schema.dailyReportComment.id,
+        authorPersonId: schema.dailyReportComment.authorPersonId,
+        authorName: schema.person.fullName,
+        body: schema.dailyReportComment.body,
+        reaction: schema.dailyReportComment.reaction,
+        createdAt: schema.dailyReportComment.createdAt,
+      })
       .from(schema.dailyReportComment)
       .leftJoin(schema.person, eq(schema.person.id, schema.dailyReportComment.authorPersonId))
       .where(eq(schema.dailyReportComment.reportId, reportId))
@@ -220,7 +231,15 @@ export async function listMissingReportDays(personId: string, today: IsoDate): P
 /** The person's own recent reports. */
 export async function listMyReports(personId: string, limit = 30): Promise<Pick<ReportRow, "id" | "date" | "status" | "late" | "submittedAt" | "blockers" | "minutesLogged">[]> {
   return db()
-    .select({ id: schema.dailyReport.id, date: schema.dailyReport.date, status: schema.dailyReport.status, late: schema.dailyReport.late, submittedAt: schema.dailyReport.submittedAt, blockers: schema.dailyReport.blockers, minutesLogged: schema.dailyReport.minutesLogged })
+    .select({
+      id: schema.dailyReport.id,
+      date: schema.dailyReport.date,
+      status: schema.dailyReport.status,
+      late: schema.dailyReport.late,
+      submittedAt: schema.dailyReport.submittedAt,
+      blockers: schema.dailyReport.blockers,
+      minutesLogged: schema.dailyReport.minutesLogged,
+    })
     .from(schema.dailyReport)
     .where(eq(schema.dailyReport.personId, personId))
     .orderBy(desc(schema.dailyReport.date))
@@ -239,14 +258,22 @@ export async function commentOnReport(reader: ReportReader, reportId: string, in
   if (!input.body && !input.reaction) throw new ActionError("comment_empty");
   const author = reader.personId!;
   return db().transaction(async (tx) => {
-    const [comment] = await tx.insert(schema.dailyReportComment).values({ reportId, authorPersonId: author, body: input.body ?? "", reaction: input.reaction }).returning();
+    const [comment] = await tx
+      .insert(schema.dailyReportComment)
+      .values({ reportId, authorPersonId: author, body: input.body ?? "", reaction: input.reaction })
+      .returning();
     let recipients: string[] = [];
     if (author !== report.personId) recipients = [report.personId];
     else {
       // Whoever wrote here before — as long as they may still read the report: a lead who has left
       // the team, or a manager no longer above the person, hears nothing more of it.
       const earlier = await tx.selectDistinct({ personId: schema.dailyReportComment.authorPersonId }).from(schema.dailyReportComment).where(eq(schema.dailyReportComment.reportId, reportId));
-      const readers = await Promise.all(earlier.map((row) => row.personId).filter((id) => id !== author).map((personId) => loadReportReader(personId, tx)));
+      const readers = await Promise.all(
+        earlier
+          .map((row) => row.personId)
+          .filter((id) => id !== author)
+          .map((personId) => loadReportReader(personId, tx)),
+      );
       recipients = readers.filter((earlierReader) => canViewReport(earlierReader, subject)).map((earlierReader) => earlierReader.personId!);
     }
     await notify({ recipients, kind: "daily.report_commented", params: { actor: actorName, date: dayLabel(report.date) }, link: `/daily/reports/${reportId}` }, tx);
@@ -298,8 +325,14 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
   const [subjects, days, reports, plans, blockers, reminded] = await Promise.all([
     loadSubjects(personIds),
     dayOf(personIds, date),
-    db().select().from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, personIds), eq(schema.dailyReport.date, date))),
-    db().select().from(schema.dailyPlan).where(and(inArray(schema.dailyPlan.personId, personIds), eq(schema.dailyPlan.date, date), isNotNull(schema.dailyPlan.submittedAt))),
+    db()
+      .select()
+      .from(schema.dailyReport)
+      .where(and(inArray(schema.dailyReport.personId, personIds), eq(schema.dailyReport.date, date))),
+    db()
+      .select()
+      .from(schema.dailyPlan)
+      .where(and(inArray(schema.dailyPlan.personId, personIds), eq(schema.dailyPlan.date, date), isNotNull(schema.dailyPlan.submittedAt))),
     // The board shows how many, never which: the count comes from Postgres.
     countOpenBlockersRaisedBy(personIds),
     db()
@@ -369,7 +402,14 @@ export async function remindMissing(reader: ReportReader, personIds: readonly st
   if (!withinReportWindow(date, today)) throw new ActionError("report_date_invalid");
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return [];
-  const [subjects, days, reports] = await Promise.all([loadSubjects(ids), dayOf(ids, date), db().select({ personId: schema.dailyReport.personId }).from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, ids), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted")))]);
+  const [subjects, days, reports] = await Promise.all([
+    loadSubjects(ids),
+    dayOf(ids, date),
+    db()
+      .select({ personId: schema.dailyReport.personId })
+      .from(schema.dailyReport)
+      .where(and(inArray(schema.dailyReport.personId, ids), eq(schema.dailyReport.date, date), eq(schema.dailyReport.status, "submitted"))),
+  ]);
   const due = ids.filter((personId) => {
     const subject = subjects.get(personId);
     return !!subject && canOverseeReport(reader, subject) && !!days.get(personId)?.report.required && !reports.some((row) => row.personId === personId);
@@ -382,7 +422,12 @@ export async function remindMissing(reader: ReportReader, personIds: readonly st
       .onConflictDoNothing()
       .returning({ personId: schema.dailyReminderSent.personId });
     const told = fresh.map((row) => row.personId);
-    await notify(date === today ? { recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: reportLink(date) } : { recipients: told, kind: "daily.report_nudge_past", params: { actor: actorName, date: dayLabel(date) }, link: reportLink(date) }, tx);
+    await notify(
+      date === today
+        ? { recipients: told, kind: "daily.report_nudge", params: { actor: actorName }, link: reportLink(date) }
+        : { recipients: told, kind: "daily.report_nudge_past", params: { actor: actorName, date: dayLabel(date) }, link: reportLink(date) },
+      tx,
+    );
     return told;
   });
 }

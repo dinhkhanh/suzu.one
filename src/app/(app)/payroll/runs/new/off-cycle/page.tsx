@@ -36,7 +36,12 @@ export default async function NewOffCycleRunPage({ searchParams }: PageProps<"/p
     .filter((fact) => fact.entityId && fact.status !== "offboarded" && fact.personId !== user.person.id)
     .map((fact) => ({ personId: fact.personId, fullName: fact.fullName, employeeCode: fact.employeeCode, entityId: fact.entityId! }))
     .sort((a, b) => a.fullName.localeCompare(b.fullName, "vi"));
-  const codes = Object.fromEntries(entities.map((entity, index) => [entity.id, catalogues[index].filter((component) => component.source === "input" && component.kind !== "employer_cost").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` }))]));
+  const codes = Object.fromEntries(
+    entities.map((entity, index) => [
+      entity.id,
+      catalogues[index].filter((component) => component.source === "input" && component.kind !== "employer_cost").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` })),
+    ]),
+  );
 
   return (
     <Page>

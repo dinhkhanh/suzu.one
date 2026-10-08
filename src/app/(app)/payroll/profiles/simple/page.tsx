@@ -69,7 +69,9 @@ export default async function SimpleProfileReportPage() {
                 <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
               </TableCell>
               <TableCell>
-                <RecordLink kind="entity" id={row.entityId}>{entityCode.get(row.entityId)}</RecordLink>
+                <RecordLink kind="entity" id={row.entityId}>
+                  {entityCode.get(row.entityId)}
+                </RecordLink>
               </TableCell>
               <TableCell>{t(`profiles.bases.${row.basis}`)}</TableCell>
               <TableCell>{row.contractType ? t(`exposure.contracts.${row.contractType}` as "exposure.contracts.probation") : "—"}</TableCell>

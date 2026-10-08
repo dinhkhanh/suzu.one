@@ -66,7 +66,12 @@ const savePipeline = createAction({
   name: "request_type.save",
   input: z.object({
     id: z.preprocess(blankToNull, z.uuid().nullable().default(null)),
-    code: z.string().trim().min(1).max(40).regex(/^[a-z][a-z0-9_]*$/),
+    code: z
+      .string()
+      .trim()
+      .min(1)
+      .max(40)
+      .regex(/^[a-z][a-z0-9_]*$/),
     nameVi: z.string().trim().min(1).max(160),
     nameEn: z.string().trim().min(1).max(160),
     descriptionVi: optionalText(500),
@@ -193,7 +198,12 @@ const decidePipeline = createAction({
     revalidatePath("/requests");
     return {
       data: { outcome },
-      audit: { resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, ...(letter && "documentId" in letter ? { documentId: letter.documentId, documentNumber: letter.number } : {}) } },
+      audit: {
+        resource: { type: `approval:${request.type}`, id: request.id, entityId: request.entityId },
+        summary: `${input.decision}: ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, ...(letter && "documentId" in letter ? { documentId: letter.documentId, documentNumber: letter.number } : {}) },
+      },
     };
   },
 });

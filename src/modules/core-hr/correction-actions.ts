@@ -66,7 +66,14 @@ const removePersonPipeline = createAction({
     const target = await getPersonTarget(input.personId);
     const removed = await removePersonCreatedInError(input.personId, user.person.id, input.confirmName);
     revalidatePath("/people");
-    return { data: { id: removed.id }, audit: { resource: { type: "person", id: removed.id, entityId: target?.entityId ?? null }, summary: `removed as created in error: ${removed.fullName}`, before: { fullName: removed.fullName, workEmail: removed.workEmail, status: removed.status } } };
+    return {
+      data: { id: removed.id },
+      audit: {
+        resource: { type: "person", id: removed.id, entityId: target?.entityId ?? null },
+        summary: `removed as created in error: ${removed.fullName}`,
+        before: { fullName: removed.fullName, workEmail: removed.workEmail, status: removed.status },
+      },
+    };
   },
 });
 

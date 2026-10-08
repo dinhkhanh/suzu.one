@@ -72,7 +72,17 @@ async function main() {
   // ── Accounts ────────────────────────────────────────────────────────────────────────────
   // The demo's clients get a profile and terms; their account managers are set as the client
   // record holds them (a hand-over through the app would also log it — not needed for a seed).
-  const profile = (legalName: string, taxCode: string, industry: string, size: "small" | "medium" | "large" | "enterprise", tier: "a" | "b" | "c", entity: string, source: Source) => ({ legalName, taxCode, address: null, website: null, industry, size, source, tier, contractingEntityId: entities.get(entity)! });
+  const profile = (legalName: string, taxCode: string, industry: string, size: "small" | "medium" | "large" | "enterprise", tier: "a" | "b" | "c", entity: string, source: Source) => ({
+    legalName,
+    taxCode,
+    address: null,
+    website: null,
+    industry,
+    size,
+    source,
+    tier,
+    contractingEntityId: entities.get(entity)!,
+  });
   const mocan = clients.get("MOCAN")!;
   const tlx = clients.get("TLX")!;
   const daiviet = clients.get("DAIVIET")!;
@@ -82,7 +92,8 @@ async function main() {
   await saveProfile(tlx.id, profile("Công ty TNHH Trà Lá Xanh", "0398765432", "Đồ uống", "medium", "a", "SZC", "existing"));
   await saveProfile(daiviet.id, profile("Ngân hàng TMCP Đại Việt", "0100112233", "Ngân hàng", "enterprise", "b", "SZM", "event"));
   for (const client of [mocan, tlx, daiviet]) await saveCommercialTerms(client.id, { paymentTermsDays: 30, creditHold: false, creditHoldReason: null, creditLimitVnd: null });
-  const prospect = async (code: string, name: string, entity: string, legal: Parameters<typeof profile>) => (await createAccount({ code, name, entityId: entities.get(entity)!, note: null, profile: profile(...legal), salesOwnerPersonId: id.duc, accountManagerPersonId: null, confirmDuplicate: true })).client;
+  const prospect = async (code: string, name: string, entity: string, legal: Parameters<typeof profile>) =>
+    (await createAccount({ code, name, entityId: entities.get(entity)!, note: null, profile: profile(...legal), salesOwnerPersonId: id.duc, accountManagerPersonId: null, confirmDuplicate: true })).client;
   const caphe = await prospect("CAPHE", "Cà phê Đất Việt", "SZM", ["Công ty CP Cà phê Đất Việt", "0311122233", "Đồ uống", "medium", "b", "SZM", "website"]);
   const luaha = await prospect("LUAHA", "Thời trang Lụa Hà", "SZC", ["Công ty TNHH Lụa Hà", "0109988776", "Thời trang", "small", "c", "SZC", "social"]);
   const saomai = await prospect("SAOMAI", "Điện máy Sao Mai", "SZC", ["Công ty CP Điện máy Sao Mai", "0305566778", "Bán lẻ điện máy", "large", "b", "SZC", "cold"]);
@@ -97,17 +108,79 @@ async function main() {
     [luaha, "Đỗ Thu Hà", "Chủ thương hiệu", "ha.do@luaha.example.vn"],
     [saomai, "Võ Thanh Tùng", "Trưởng phòng Marketing", "tung.vo@saomai.example.vn"],
   ] as const) {
-    const { after } = await saveContact(client.id, null, { fullName, title, email: slug, phone: null, zalo: null, decisionRole: "decision_maker", isPrimary: true, preferredChannel: "email", birthday: null, notes: null, source: "business_card", lawfulBasis: "legitimate_interest", status: "active", brandIds: [] }, id.duc, { confirmDuplicate: true });
+    const { after } = await saveContact(
+      client.id,
+      null,
+      {
+        fullName,
+        title,
+        email: slug,
+        phone: null,
+        zalo: null,
+        decisionRole: "decision_maker",
+        isPrimary: true,
+        preferredChannel: "email",
+        birthday: null,
+        notes: null,
+        source: "business_card",
+        lawfulBasis: "legitimate_interest",
+        status: "active",
+        brandIds: [],
+      },
+      id.duc,
+      { confirmDuplicate: true },
+    );
     contactOf.set(client.id, after.id);
   }
 
   // ── Deals: created at the first stage and moved through each gate, as a seller would ──────
-  type DealSeed = { client: { id: string }; title: string; lines: ServiceLine[]; oneOff?: number; monthly?: number; months?: number; close: IsoDate; to: string; owner: Key; team?: string; entity: string; source: Source; lost?: LostReason; closedDaysAgo?: number; stageDaysAgo?: number; nextStep?: string };
+  type DealSeed = {
+    client: { id: string };
+    title: string;
+    lines: ServiceLine[];
+    oneOff?: number;
+    monthly?: number;
+    months?: number;
+    close: IsoDate;
+    to: string;
+    owner: Key;
+    team?: string;
+    entity: string;
+    source: Source;
+    lost?: LostReason;
+    closedDaysAgo?: number;
+    stageDaysAgo?: number;
+    nextStep?: string;
+  };
   const DEALS: DealSeed[] = [
     // Open, one per stage, and a second negotiation that renews the retainer.
-    { client: caphe, title: "Chiến dịch Tết 2027 — Cà phê Đất Việt", lines: ["video", "social"], oneOff: 180_000_000, close: addDays(today, 20), to: "Negotiation", owner: "duc", team: "VID", entity: "SZM", source: "website", nextStep: "Gửi báo giá điều chỉnh sau buổi họp thứ Năm" },
+    {
+      client: caphe,
+      title: "Chiến dịch Tết 2027 — Cà phê Đất Việt",
+      lines: ["video", "social"],
+      oneOff: 180_000_000,
+      close: addDays(today, 20),
+      to: "Negotiation",
+      owner: "duc",
+      team: "VID",
+      entity: "SZM",
+      source: "website",
+      nextStep: "Gửi báo giá điều chỉnh sau buổi họp thứ Năm",
+    },
     { client: tlx, title: "Gia hạn retainer fanpage Trà Lá Xanh 2027", lines: ["social"], monthly: 25_000_000, months: 12, close: addDays(today, 45), to: "Negotiation", owner: "duc", team: "CRS", entity: "SZC", source: "existing" },
-    { client: daiviet, title: "Phim thương hiệu Ngân hàng Đại Việt", lines: ["video"], oneOff: 350_000_000, close: addDays(today, 15), to: "Proposal / pitch", owner: "tam", team: "VID", entity: "SZM", source: "event", nextStep: "Thuyết trình ý tưởng vòng 2" },
+    {
+      client: daiviet,
+      title: "Phim thương hiệu Ngân hàng Đại Việt",
+      lines: ["video"],
+      oneOff: 350_000_000,
+      close: addDays(today, 15),
+      to: "Proposal / pitch",
+      owner: "tam",
+      team: "VID",
+      entity: "SZM",
+      source: "event",
+      nextStep: "Thuyết trình ý tưởng vòng 2",
+    },
     { client: luaha, title: "Lookbook Xuân Hè 2027 — Lụa Hà", lines: ["design", "social"], oneOff: 60_000_000, close: addDays(today, 35), to: "Proposal / pitch", owner: "duc", team: "CRS", entity: "SZC", source: "social" },
     { client: saomai, title: "Retainer TikTok 2027 — Điện máy Sao Mai", lines: ["social", "kol"], monthly: 30_000_000, months: 12, close: addDays(today, 60), to: "Discovery", owner: "duc", team: "CRS", entity: "SZC", source: "cold" },
     // Stale: nothing has moved for a month.
@@ -118,14 +191,46 @@ async function main() {
     { client: tlx, title: "Retainer fanpage Trà Lá Xanh 2026", lines: ["social"], monthly: 25_000_000, months: 12, close: addDays(today, -110), to: "Won", owner: "duc", team: "CRS", entity: "SZC", source: "existing", closedDaysAgo: 110 },
     { client: luaha, title: "Key visual khai trương cửa hàng — Lụa Hà", lines: ["design"], oneOff: 15_000_000, close: addDays(today, -20), to: "Won", owner: "duc", team: "CRS", entity: "SZC", source: "social", closedDaysAgo: 20 },
     { client: saomai, title: "TVC khai trương chi nhánh — Sao Mai", lines: ["video"], oneOff: 150_000_000, close: addDays(today, -45), to: "Lost", owner: "duc", team: "VID", entity: "SZM", source: "cold", lost: "price", closedDaysAgo: 45 },
-    { client: caphe, title: "Event activation hội chợ — Đất Việt", lines: ["event"], oneOff: 90_000_000, close: addDays(today, -80), to: "Lost", owner: "duc", team: "VID", entity: "SZM", source: "website", lost: "timing", closedDaysAgo: 80 },
+    {
+      client: caphe,
+      title: "Event activation hội chợ — Đất Việt",
+      lines: ["event"],
+      oneOff: 90_000_000,
+      close: addDays(today, -80),
+      to: "Lost",
+      owner: "duc",
+      team: "VID",
+      entity: "SZM",
+      source: "website",
+      lost: "timing",
+      closedDaysAgo: 80,
+    },
   ];
   const dealOf = new Map<string, string>();
   let won = 0;
   let lost = 0;
   for (const seed of DEALS) {
     const deal = await createDeal(
-      { clientId: seed.client.id, title: seed.title, brandId: null, serviceLines: seed.lines, oneOffVnd: seed.oneOff ?? null, monthlyVnd: seed.monthly ?? null, months: seed.months ?? null, probability: null, expectedCloseOn: seed.close, teamId: seed.team ? (teams.get(seed.team) ?? null) : null, entityId: entities.get(seed.entity)!, source: seed.source, competitors: null, nextStep: seed.nextStep ?? null, ownerPersonId: id[seed.owner], stageId: null, leadId: null, contacts: [{ contactId: contactOf.get(seed.client.id)!, role: "decision_maker" }] },
+      {
+        clientId: seed.client.id,
+        title: seed.title,
+        brandId: null,
+        serviceLines: seed.lines,
+        oneOffVnd: seed.oneOff ?? null,
+        monthlyVnd: seed.monthly ?? null,
+        months: seed.months ?? null,
+        probability: null,
+        expectedCloseOn: seed.close,
+        teamId: seed.team ? (teams.get(seed.team) ?? null) : null,
+        entityId: entities.get(seed.entity)!,
+        source: seed.source,
+        competitors: null,
+        nextStep: seed.nextStep ?? null,
+        ownerPersonId: id[seed.owner],
+        stageId: null,
+        leadId: null,
+        contacts: [{ contactId: contactOf.get(seed.client.id)!, role: "decision_maker" }],
+      },
       id[seed.owner],
     );
     dealOf.set(seed.title, deal.id);
@@ -154,8 +259,46 @@ async function main() {
   }
 
   // ── Contracts for the two running clients ───────────────────────────────────────────────
-  await saveContract(tlx.id, null, { number: "08/2026/HĐDV-SZC", title: "Retainer fanpage Trà Lá Xanh 2026", kind: "service", entityId: entities.get("SZC")!, parentContractId: null, dealId: dealOf.get("Retainer fanpage Trà Lá Xanh 2026")!, startDate: "2026-01-01", endDate: "2026-12-31", valueVnd: 300_000_000, paymentTermsDays: 30, autoRenew: false, noticeDays: 30, note: null }, id.duc);
-  await saveContract(mocan.id, null, { number: "21/2026/HĐDV-SZM", title: "TVC Tết 2027 — Sữa Mộc An", kind: "service", entityId: entities.get("SZM")!, parentContractId: null, dealId: dealOf.get("TVC Tết 2027 — Sữa Mộc An")!, startDate: addDays(today, -55), endDate: addDays(today, 120), valueVnd: 240_000_000, paymentTermsDays: 30, autoRenew: false, noticeDays: null, note: null }, id.tam);
+  await saveContract(
+    tlx.id,
+    null,
+    {
+      number: "08/2026/HĐDV-SZC",
+      title: "Retainer fanpage Trà Lá Xanh 2026",
+      kind: "service",
+      entityId: entities.get("SZC")!,
+      parentContractId: null,
+      dealId: dealOf.get("Retainer fanpage Trà Lá Xanh 2026")!,
+      startDate: "2026-01-01",
+      endDate: "2026-12-31",
+      valueVnd: 300_000_000,
+      paymentTermsDays: 30,
+      autoRenew: false,
+      noticeDays: 30,
+      note: null,
+    },
+    id.duc,
+  );
+  await saveContract(
+    mocan.id,
+    null,
+    {
+      number: "21/2026/HĐDV-SZM",
+      title: "TVC Tết 2027 — Sữa Mộc An",
+      kind: "service",
+      entityId: entities.get("SZM")!,
+      parentContractId: null,
+      dealId: dealOf.get("TVC Tết 2027 — Sữa Mộc An")!,
+      startDate: addDays(today, -55),
+      endDate: addDays(today, 120),
+      valueVnd: 240_000_000,
+      paymentTermsDays: 30,
+      autoRenew: false,
+      noticeDays: null,
+      note: null,
+    },
+    id.tam,
+  );
 
   // ── Invoices and payments: every ageing bucket ─────────────────────────────────────────
   const { defaultBp } = await vatRates(today);
@@ -193,16 +336,51 @@ async function main() {
   }
 
   // ── Leads and activities ────────────────────────────────────────────────────────────────
-  await createLead({ entityId: entities.get("SZC")!, clientId: null, companyName: "Mỹ phẩm Hoa Sen", contactName: "Ngô Thảo", contactTitle: "Brand manager", email: null, phone: null, need: "Quản lý kênh TikTok và booking KOC", budgetText: "~40tr/tháng", source: "website" }, { personId: id.duc, sells: true }, null);
-  await createLead({ entityId: entities.get("SZM")!, clientId: null, companyName: "Chuỗi nhà thuốc An Tâm", contactName: null, contactTitle: null, email: null, phone: null, need: "Video giới thiệu thương hiệu", budgetText: null, source: "referral" }, { personId: id.long, sells: false }, null);
+  await createLead(
+    {
+      entityId: entities.get("SZC")!,
+      clientId: null,
+      companyName: "Mỹ phẩm Hoa Sen",
+      contactName: "Ngô Thảo",
+      contactTitle: "Brand manager",
+      email: null,
+      phone: null,
+      need: "Quản lý kênh TikTok và booking KOC",
+      budgetText: "~40tr/tháng",
+      source: "website",
+    },
+    { personId: id.duc, sells: true },
+    null,
+  );
+  await createLead(
+    { entityId: entities.get("SZM")!, clientId: null, companyName: "Chuỗi nhà thuốc An Tâm", contactName: null, contactTitle: null, email: null, phone: null, need: "Video giới thiệu thương hiệu", budgetText: null, source: "referral" },
+    { personId: id.long, sells: false },
+    null,
+  );
   const activity = (client: { id: string }, dealTitle: string | null, kind: "call" | "meeting" | "email", subject: string, daysAgo: number, followUp: { owner: Key; dueIn: number; subject: string } | null) =>
-    recordActivity({ kind, subject, body: null, clientId: client.id, contactId: contactOf.get(client.id) ?? null, dealId: dealTitle ? (dealOf.get(dealTitle) ?? null) : null, leadId: null, occurredAt: new Date(`${addDays(today, -daysAgo)}T10:00:00+07:00`), outcome: null, followUp: followUp && { ownerPersonId: id[followUp.owner], dueOn: addDays(today, followUp.dueIn), subject: followUp.subject } }, id.duc);
+    recordActivity(
+      {
+        kind,
+        subject,
+        body: null,
+        clientId: client.id,
+        contactId: contactOf.get(client.id) ?? null,
+        dealId: dealTitle ? (dealOf.get(dealTitle) ?? null) : null,
+        leadId: null,
+        occurredAt: new Date(`${addDays(today, -daysAgo)}T10:00:00+07:00`),
+        outcome: null,
+        followUp: followUp && { ownerPersonId: id[followUp.owner], dueOn: addDays(today, followUp.dueIn), subject: followUp.subject },
+      },
+      id.duc,
+    );
   await activity(caphe, "Chiến dịch Tết 2027 — Cà phê Đất Việt", "meeting", "Họp chốt phạm vi chiến dịch Tết", 2, { owner: "duc", dueIn: 2, subject: "Gửi báo giá điều chỉnh" });
   await activity(daiviet, "Phim thương hiệu Ngân hàng Đại Việt", "meeting", "Thuyết trình ý tưởng vòng 1", 6, { owner: "duc", dueIn: 5, subject: "Chuẩn bị vòng 2 cùng đạo diễn" });
   await activity(tlx, "Gia hạn retainer fanpage Trà Lá Xanh 2027", "call", "Trao đổi kế hoạch 2027", 9, { owner: "duc", dueIn: -3, subject: "Gửi đề xuất gia hạn" });
   await activity(mocan, null, "email", "Nhắc thanh toán đợt tạm ứng TVC", 12, null);
 
-  console.log(`Seeded CRM demo: 6 accounts (3 new prospects), 6 contacts, ${DEALS.length} deals (${DEALS.length - won - lost} open, ${won} won, ${lost} lost), 2 contracts, ${invoices} invoices with ${payments} payments, 2 leads, 4 activities; Phan Văn Đức holds \`sales\`.`);
+  console.log(
+    `Seeded CRM demo: 6 accounts (3 new prospects), 6 contacts, ${DEALS.length} deals (${DEALS.length - won - lost} open, ${won} won, ${lost} lost), 2 contracts, ${invoices} invoices with ${payments} payments, 2 leads, 4 activities; Phan Văn Đức holds \`sales\`.`,
+  );
 }
 
 main()

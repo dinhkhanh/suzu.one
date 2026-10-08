@@ -26,7 +26,10 @@ async function projectTaskIds(projectId: string): Promise<string[]> {
 export async function adapterLineLinks(lineIds: readonly string[]): Promise<Map<string, string[]>> {
   const result = new Map<string, string[]>();
   if (lineIds.length === 0) return result;
-  const links = await db().select({ taskId: schema.projectTaskLink.taskId, lineId: schema.projectTaskLink.deliverableId }).from(schema.projectTaskLink).where(inArray(schema.projectTaskLink.deliverableId, [...lineIds]));
+  const links = await db()
+    .select({ taskId: schema.projectTaskLink.taskId, lineId: schema.projectTaskLink.deliverableId })
+    .from(schema.projectTaskLink)
+    .where(inArray(schema.projectTaskLink.deliverableId, [...lineIds]));
   const lineOf = new Map(links.map((row) => [row.taskId, row.lineId]));
   const taskIds = [...lineOf.keys()];
   const [deliveries, publishes] = await Promise.all([listDeliveriesByTask(taskIds), listPublishesByTask(taskIds)]);
@@ -47,10 +50,23 @@ export async function adapterPublishes(projectId: string, period: { from: IsoDat
   const taskIds = await projectTaskIds(projectId);
   const publishes = (await listPublishesByTask(taskIds)).filter((row) => row.status === "published" && row.publishedAt);
   if (publishes.length === 0) return [];
-  const titles = new Map((await db().select({ id: schema.task.id, title: schema.task.title }).from(schema.task).where(inArray(schema.task.id, [...new Set(publishes.map((row) => row.taskId))]))).map((row) => [row.id, row.title]));
+  const titles = new Map(
+    (
+      await db()
+        .select({ id: schema.task.id, title: schema.task.title })
+        .from(schema.task)
+        .where(inArray(schema.task.id, [...new Set(publishes.map((row) => row.taskId))]))
+    ).map((row) => [row.id, row.title]),
+  );
   // Results carry the client's ad spend too; the report shows reach and response, not money.
   return publishes
-    .map((row) => ({ platform: row.platform, url: row.url, publishedOn: todayInVietnam(row.publishedAt!), title: titles.get(row.taskId) ?? "", metrics: { reach: row.latest.reach, views: row.latest.views, engagement: row.latest.engagement, clicks: row.latest.clicks } }))
+    .map((row) => ({
+      platform: row.platform,
+      url: row.url,
+      publishedOn: todayInVietnam(row.publishedAt!),
+      title: titles.get(row.taskId) ?? "",
+      metrics: { reach: row.latest.reach, views: row.latest.views, engagement: row.latest.engagement, clicks: row.latest.clicks },
+    }))
     .filter((row) => row.publishedOn >= period.from && row.publishedOn <= period.to);
 }
 

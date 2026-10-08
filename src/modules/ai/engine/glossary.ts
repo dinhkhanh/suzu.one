@@ -179,10 +179,56 @@ export type Language = "vi" | "en";
 // Vietnamese words that survive being typed without accents and are not English words. Enough to
 // tell "Nghi phep bao nhieu ngay?" from "How many leave days?" without a language model.
 const VIETNAMESE_MARKERS = new Set([
-  "khong", "duoc", "phai", "nguoi", "nhan", "vien", "cong", "ty", "lam", "viec", "nghi", "phep",
-  "luong", "ngay", "thang", "nam", "gio", "bao", "nhieu", "the", "nao", "gi", "cua", "cho", "voi",
-  "trong", "khi", "thi", "ma", "neu", "hoac", "minh", "toi", "quy", "dinh", "tinh", "tien", "muon",
-  "xin", "hop", "dong", "bao_hiem", "hiem", "xa", "hoi", "tra", "tinh", "chi", "anh", "chuyen",
+  "khong",
+  "duoc",
+  "phai",
+  "nguoi",
+  "nhan",
+  "vien",
+  "cong",
+  "ty",
+  "lam",
+  "viec",
+  "nghi",
+  "phep",
+  "luong",
+  "ngay",
+  "thang",
+  "nam",
+  "gio",
+  "bao",
+  "nhieu",
+  "the",
+  "nao",
+  "gi",
+  "cua",
+  "cho",
+  "voi",
+  "trong",
+  "khi",
+  "thi",
+  "ma",
+  "neu",
+  "hoac",
+  "minh",
+  "toi",
+  "quy",
+  "dinh",
+  "tinh",
+  "tien",
+  "muon",
+  "xin",
+  "hop",
+  "dong",
+  "bao_hiem",
+  "hiem",
+  "xa",
+  "hoi",
+  "tra",
+  "tinh",
+  "chi",
+  "anh",
+  "chuyen",
 ]);
 
 /**
@@ -259,7 +305,7 @@ export function translateWords(source: readonly string[], to: Language): { words
   const map = phraseMap();
   const out: string[] = [];
   let matched = 0;
-  for (let at = 0; at < source.length; ) {
+  for (let at = 0; at < source.length;) {
     let hit: { length: number; replacement: string[] } | undefined;
     for (let span = Math.min(MAX_PHRASE_WORDS, source.length - at); span >= 1; span--) {
       hit = lookup(map, source.slice(at, at + span).join(" "), to, span);

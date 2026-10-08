@@ -12,12 +12,20 @@ import type { FeedbackListItem } from "../service";
 import { CATEGORY_ICONS } from "./icons";
 
 export function StatusBadge({ status, label }: { status: FeedbackStatus; label: string }) {
-  return <Badge dot variant={statusTone(status)}>{label}</Badge>;
+  return (
+    <Badge dot variant={statusTone(status)}>
+      {label}
+    </Badge>
+  );
 }
 
 export function PriorityBadge({ priority, label }: { priority: FeedbackPriority; label: string }) {
   if (priority === "normal") return null;
-  return <Badge dot variant={priority === "urgent" ? "destructive" : priority === "high" ? "warning" : "outline"}>{label}</Badge>;
+  return (
+    <Badge dot variant={priority === "urgent" ? "destructive" : priority === "high" ? "warning" : "outline"}>
+      {label}
+    </Badge>
+  );
 }
 
 export async function FeedbackList({ items, showPerson, empty, numberFrom }: { items: FeedbackListItem[]; showPerson: boolean; empty: string; /** The number of the first row, for one page of many. */ numberFrom?: number }) {

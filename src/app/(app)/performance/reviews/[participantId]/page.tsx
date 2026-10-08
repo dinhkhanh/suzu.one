@@ -113,12 +113,25 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
             {t("back")}
           </Link>
         }
-        title={<RecordLink kind="person" id={participant.personId}>{nameOf(participant.personId)}</RecordLink>}
+        title={
+          <RecordLink kind="person" id={participant.personId}>
+            {nameOf(participant.personId)}
+          </RecordLink>
+        }
         description={
           <>
             {cycle.name} · {t(`cycle.kinds.${cycle.kind}`)} · {t(`cycleStatus.${cycle.status}`)}
             {participant.managerPersonId ? " · " : null}
-            {participant.managerPersonId ? t.rich("manager", { name: nameOf(participant.managerPersonId), person: (chunks) => <RecordLink kind="person" id={participant.managerPersonId}>{chunks}</RecordLink> }) : null}
+            {participant.managerPersonId
+              ? t.rich("manager", {
+                  name: nameOf(participant.managerPersonId),
+                  person: (chunks) => (
+                    <RecordLink kind="person" id={participant.managerPersonId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })
+              : null}
           </>
         }
         aside={<StageBadge stage={parties.stage} label={t(`stage.${parties.stage}`)} />}
@@ -162,7 +175,11 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           never the fact that somebody was asked — HR and the manager have to be able to chase them. */}
       {seesNominations ? (
         <TableCard>
-          <TableCardHeader title={t("peers.title")} count={cycle.peersEnabled ? nominations.length || null : null} description={cycle.peersEnabled ? t("peers.range", { min: cycle.peerMin, max: cycle.peerMax, approved: approvedPeers }) : undefined} />
+          <TableCardHeader
+            title={t("peers.title")}
+            count={cycle.peersEnabled ? nominations.length || null : null}
+            description={cycle.peersEnabled ? t("peers.range", { min: cycle.peerMin, max: cycle.peerMax, approved: approvedPeers }) : undefined}
+          />
           {!cycle.peersEnabled ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">{t("peers.disabled")}</p>
           ) : (
@@ -187,7 +204,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
                   {nominations.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="font-medium">
-                        <RecordLink kind="person" id={row.peerPersonId}>{nameOf(row.peerPersonId)}</RecordLink>
+                        <RecordLink kind="person" id={row.peerPersonId}>
+                          {nameOf(row.peerPersonId)}
+                        </RecordLink>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{t(`peers.status.${row.status as PeerNominationStatus}`)}</TableCell>
                       {peersByCountOnly ? null : <TableCell className="text-muted-foreground">{peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}</TableCell>}
@@ -317,7 +336,10 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       {/* The settled yearly result, once it has been published (FR-PRF-09). Score, band and
           multiplier — a number, never money: the bonus it drives lives in payroll. */}
       {published ? (
-        <Section title={tr("title")} action={<BandBadge band={published.finalBand} label={published.trace.finalBand ? (locale.startsWith("en") && published.trace.finalBand.labelEn ? published.trace.finalBand.labelEn : published.trace.finalBand.label) : "—"} />}>
+        <Section
+          title={tr("title")}
+          action={<BandBadge band={published.finalBand} label={published.trace.finalBand ? (locale.startsWith("en") && published.trace.finalBand.labelEn ? published.trace.finalBand.labelEn : published.trace.finalBand.label) : "—"} />}
+        >
           <ResultTraceTable trace={published.trace} labels={{ t: tr, format }} locale={locale} provenance={{ months: published.kpiScoreIds.length, goals: published.goalIds.length, weightingFrom: null }} />
         </Section>
       ) : null}

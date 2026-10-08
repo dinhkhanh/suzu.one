@@ -52,7 +52,9 @@ export default async function MyAssetsPage() {
             <div>
               <p className="font-mono text-xs text-faint">{item.code}</p>
               <p className="font-medium">
-                <RecordLink kind="asset" id={item.assetId}>{item.name}</RecordLink>
+                <RecordLink kind="asset" id={item.assetId}>
+                  {item.name}
+                </RecordLink>
               </p>
               <p className="text-sm text-muted-foreground">
                 {item.categoryName} · {t("since", { date: item.assignedAt.toLocaleDateString("vi-VN") })}

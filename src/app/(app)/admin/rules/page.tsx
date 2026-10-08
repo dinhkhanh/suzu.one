@@ -35,14 +35,20 @@ function show(key: string, item: unknown, format: Format): string {
   if (item === null) return "∞";
   if (typeof item === "number") return format(item, RATE_KEY.test(key) ? "rate" : "plain");
   if (Array.isArray(item)) return item.map((inner) => show(key, inner, format)).join(", ");
-  if (typeof item === "object") return Object.entries(item as Record<string, unknown>).map(([innerKey, inner]) => `${innerKey}: ${show(innerKey, inner, format)}`).join(" · ");
+  if (typeof item === "object")
+    return Object.entries(item as Record<string, unknown>)
+      .map(([innerKey, inner]) => `${innerKey}: ${show(innerKey, inner, format)}`)
+      .join(" · ");
   return String(item);
 }
 
 /** The whole value on one line, for the table's value column. */
 function summarize(value: unknown, format: Format): string {
   if (Array.isArray(value)) return value.map((item, index) => `${index + 1}. ${show(String(index), item, format)}`).join("  ");
-  if (value && typeof value === "object") return Object.entries(value as Record<string, unknown>).map(([key, item]) => `${key} ${show(key, item, format)}`).join(" · ");
+  if (value && typeof value === "object")
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => `${key} ${show(key, item, format)}`)
+      .join(" · ");
   return String(value ?? "—");
 }
 
@@ -54,7 +60,9 @@ function ValueTable({ value, format }: { value: unknown; format: Format }) {
         {rows.map(([key, item]) => (
           <TableRow key={key}>
             <TableCell className="h-9 py-1 font-mono text-xs text-muted-foreground">{key}</TableCell>
-            <TableCell kind="number" className="h-9 py-1 whitespace-normal">{show(key, item, format)}</TableCell>
+            <TableCell kind="number" className="h-9 py-1 whitespace-normal">
+              {show(key, item, format)}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -94,7 +102,9 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
 
   const meta = (version: ParameterRow) => (
     <p className="text-xs text-muted-foreground">
-      <span className="font-mono tabular-nums">{day(version.validFrom)} → {version.validTo ? day(version.validTo) : "…"}</span>
+      <span className="font-mono tabular-nums">
+        {day(version.validFrom)} → {version.validTo ? day(version.validTo) : "…"}
+      </span>
       {version.legalReference ? ` · ${version.legalReference}` : ""}
       {version.note ? ` · ${version.note}` : ""}
     </p>
@@ -141,8 +151,16 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
                       {canDecide && version.status === "approved" ? <VoidVersionButton action={voidParameterAction} id={version.id} title={`${label(selectedKey)} — ${day(version.validFrom)}`} errorNamespace="rules.errors" /> : null}
                     </div>
                     {version.status === "voided" && version.voidReason ? <p className="text-xs text-muted-foreground">{t("void.because", { reason: version.voidReason })}</p> : null}
-                    {version.legalReference ? <p className="truncate text-xs text-faint" title={version.legalReference}>{version.legalReference}</p> : null}
-                    {live ? null : <p className="truncate text-xs text-muted-foreground" title={summarize(version.value, format)}>{summarize(version.value, format)}</p>}
+                    {version.legalReference ? (
+                      <p className="truncate text-xs text-faint" title={version.legalReference}>
+                        {version.legalReference}
+                      </p>
+                    ) : null}
+                    {live ? null : (
+                      <p className="truncate text-xs text-muted-foreground" title={summarize(version.value, format)}>
+                        {summarize(version.value, format)}
+                      </p>
+                    )}
                   </li>
                 );
               })}
@@ -172,7 +190,9 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
           <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" />
           <Input name="q" defaultValue={search} placeholder={t("search")} aria-label={t("search")} className="pl-9" />
         </div>
-        <Button type="submit" variant="secondary">{t("filter")}</Button>
+        <Button type="submit" variant="secondary">
+          {t("filter")}
+        </Button>
         <span className={buttonVariants({ variant: "outline", className: "ml-auto cursor-default gap-2 font-normal" })}>
           <CalendarIcon aria-hidden />
           <span className="text-muted-foreground">{t("asOf")}</span>
@@ -186,7 +206,9 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
             <TableHeader>
               <TableRow>
                 <TableHead kind="text">{t("parameter")}</TableHead>
-                <TableHead kind="number" className="text-left">{t("value")}</TableHead>
+                <TableHead kind="number" className="text-left">
+                  {t("value")}
+                </TableHead>
                 <TableHead kind="date">{t("validFrom")}</TableHead>
                 <TableHead kind="file">{t("legalReference")}</TableHead>
                 <TableHead kind="number">{t("version")}</TableHead>
@@ -216,8 +238,12 @@ export default async function RulesPage(props: PageProps<"/admin/rules">) {
                           {inForce ? summarize(inForce.value, format) : <span className="text-destructive">{t("missing")}</span>}
                         </TableCell>
                         <TableCell className="font-mono text-xs tabular-nums">{inForce ? day(inForce.validFrom) : "—"}</TableCell>
-                        <TableCell className="max-w-56 truncate text-xs text-faint" title={inForce?.legalReference ?? undefined}>{inForce?.legalReference ?? "—"}</TableCell>
-                        <TableCell kind="number" className="text-faint">{approved.length || "—"}</TableCell>
+                        <TableCell className="max-w-56 truncate text-xs text-faint" title={inForce?.legalReference ?? undefined}>
+                          {inForce?.legalReference ?? "—"}
+                        </TableCell>
+                        <TableCell kind="number" className="text-faint">
+                          {approved.length || "—"}
+                        </TableCell>
                       </TableRow>
                     );
                   })}

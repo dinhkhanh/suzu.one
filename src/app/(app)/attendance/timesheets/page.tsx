@@ -40,7 +40,17 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
   const mine = entities.filter((entity) => canLockPeriod(user.principal, entity.id));
   const chosen = typeof query.entity === "string" ? mine.find((entity) => entity.id === query.entity) : mine[0];
   const [[team, toConfirm], overview, adjustments] = await Promise.all([
-    listMonthsToApprove(viewer, month).then(async (rows) => [rows, await listHoursToConfirm(rows.filter((row) => row.canApprove).map((row) => row.personId), monthStart(month), monthEnd(month) < today ? monthEnd(month) : today)] as const),
+    listMonthsToApprove(viewer, month).then(
+      async (rows) =>
+        [
+          rows,
+          await listHoursToConfirm(
+            rows.filter((row) => row.canApprove).map((row) => row.personId),
+            monthStart(month),
+            monthEnd(month) < today ? monthEnd(month) : today,
+          ),
+        ] as const,
+    ),
     chosen ? getPeriodOverview(chosen.id, month) : null,
     chosen ? listAdjustments({ entityId: chosen.id, month }) : [],
   ]);
@@ -61,13 +71,27 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           <p className="text-sm text-muted-foreground">{t("team.empty")}</p>
         ) : (
           <>
-            <ApproveMonthsForm month={month} rows={team.map((row) => ({ personId: row.personId, fullName: row.fullName, status: row.status, canApprove: row.canApprove, href: `/attendance?month=${month}&person=${row.personId}`, line: t("team.line", { paid: days(row.summary.paidDaysCenti), standard: row.summary.standardDays, overtime: hours(row.summary.otTotalMinutes), anomalies: row.summary.anomalyDays }) }))} />
-            {team.filter((row) => row.canApprove && (row.status === "confirmed" || row.status === "approved")).map((row) => (
-              <div key={row.personId} className="flex flex-wrap items-center gap-2 text-sm">
-                <RecordLink kind="person" id={row.personId} className="min-w-40">{row.fullName}</RecordLink>
-                <ReopenMonthForm month={month} personId={row.personId} label={t("team.sendBack")} placeholder={t("team.sendBackWhy")} />
-              </div>
-            ))}
+            <ApproveMonthsForm
+              month={month}
+              rows={team.map((row) => ({
+                personId: row.personId,
+                fullName: row.fullName,
+                status: row.status,
+                canApprove: row.canApprove,
+                href: `/attendance?month=${month}&person=${row.personId}`,
+                line: t("team.line", { paid: days(row.summary.paidDaysCenti), standard: row.summary.standardDays, overtime: hours(row.summary.otTotalMinutes), anomalies: row.summary.anomalyDays }),
+              }))}
+            />
+            {team
+              .filter((row) => row.canApprove && (row.status === "confirmed" || row.status === "approved"))
+              .map((row) => (
+                <div key={row.personId} className="flex flex-wrap items-center gap-2 text-sm">
+                  <RecordLink kind="person" id={row.personId} className="min-w-40">
+                    {row.fullName}
+                  </RecordLink>
+                  <ReopenMonthForm month={month} personId={row.personId} label={t("team.sendBack")} placeholder={t("team.sendBackWhy")} />
+                </div>
+              ))}
           </>
         )}
       </Section>
@@ -120,17 +144,21 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           ) : (
             <>
               {overview.issues.length > 0 ? (
-                <Section
-                  title={t("period.issues", { blocking: blocking.length, total: overview.issues.length })}
-                  action={<Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`}>{t("period.openConsole")}</Link>}
-                >
+                <Section title={t("period.issues", { blocking: blocking.length, total: overview.issues.length })} action={<Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`}>{t("period.openConsole")}</Link>}>
                   <List>
                     {overview.issues.map((issue) => (
                       <ListItem key={`${issue.personId}:${issue.code}`} className={issue.blocking ? "" : "text-muted-foreground"}>
                         <span className="flex-1">
-                          <RecordLink kind="person" id={issue.personId} className="font-medium">{nameOf.get(issue.personId)}</RecordLink> — {t(`issues.${issue.code}`, { count: issue.count })}
+                          <RecordLink kind="person" id={issue.personId} className="font-medium">
+                            {nameOf.get(issue.personId)}
+                          </RecordLink>{" "}
+                          — {t(`issues.${issue.code}`, { count: issue.count })}
                         </span>
-                        {issue.blocking ? <Badge dot variant="destructive">{t("issues.blocking")}</Badge> : null}
+                        {issue.blocking ? (
+                          <Badge dot variant="destructive">
+                            {t("issues.blocking")}
+                          </Badge>
+                        ) : null}
                       </ListItem>
                     ))}
                   </List>
@@ -155,12 +183,17 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
                   {adjustments.map((row) => (
                     <ListItem key={row.id} className="flex-col items-stretch gap-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <RecordLink kind="person" id={row.personId} className="font-medium">{row.fullName}</RecordLink>
+                        <RecordLink kind="person" id={row.personId} className="font-medium">
+                          {row.fullName}
+                        </RecordLink>
                         {row.date ? <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{row.date.split("-").reverse().join("/")}</span> : null}
                         <Badge variant={row.status === "voided" ? "outline" : "secondary"}>{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</Badge>
                       </div>
                       <p className="text-muted-foreground">
-                        {Object.entries(row.deltas).map(([field, value]) => `${t(`adjust.fields.${field}`)}: ${(value ?? 0) > 0 ? "+" : ""}${value}`).join(" · ")} — {row.reason}
+                        {Object.entries(row.deltas)
+                          .map(([field, value]) => `${t(`adjust.fields.${field}`)}: ${(value ?? 0) > 0 ? "+" : ""}${value}`)
+                          .join(" · ")}{" "}
+                        — {row.reason}
                       </p>
                       {row.status === "active" && !row.payrollMonth ? <VoidAdjustmentButton adjustmentId={row.id} label={t("adjust.void")} placeholder={t("adjust.voidWhy")} /> : null}
                     </ListItem>

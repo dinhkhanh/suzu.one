@@ -27,7 +27,11 @@ const saveKpiPipeline = createAction({
   name: "performance.kpi.save",
   input: z.object({
     kpiId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,39}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9_-]{1,39}$/),
     name: z.string().trim().min(1).max(200),
     description: optional(z.string().trim().max(2000)),
     unit: z.enum(KPI_UNITS),
@@ -41,7 +45,18 @@ const saveKpiPipeline = createAction({
   }),
   authorize: (user) => canManageKpiLibrary(user.principal),
   run: async ({ input }) => {
-    const { before, after } = await saveKpi(input.kpiId, { code: input.code, name: input.name, description: input.description, unit: input.unit, direction: input.direction, frequency: input.frequency, capBp: input.capPercent, floorBp: input.floorPercent, isActive: input.isActive, workMetric: input.workMetric });
+    const { before, after } = await saveKpi(input.kpiId, {
+      code: input.code,
+      name: input.name,
+      description: input.description,
+      unit: input.unit,
+      direction: input.direction,
+      frequency: input.frequency,
+      capBp: input.capPercent,
+      floorBp: input.floorPercent,
+      isActive: input.isActive,
+      workMetric: input.workMetric,
+    });
     refresh();
     return { data: { id: after.id }, audit: { resource: { type: "kpi_definition", id: after.id }, summary: after.code, before: before ? kpiFacts(before) : undefined, after: kpiFacts(after) } };
   },
@@ -98,7 +113,10 @@ const applyPipeline = createAction({
   run: async ({ user, input }) => {
     const result = await applyTemplates({ principal: user.principal, personId: user.person.id }, input, todayInVietnam());
     refresh();
-    return { data: { holders: result.holders, created: result.created, skipped: result.skipped, withoutTemplate: result.withoutTemplate }, audit: { resource: { type: "kpi_assignment", id: input.personId ?? input.positionId ?? "all" }, summary: `from ${input.fromPeriod}: ${result.created} created, ${result.skipped} kept`, after: result } };
+    return {
+      data: { holders: result.holders, created: result.created, skipped: result.skipped, withoutTemplate: result.withoutTemplate },
+      audit: { resource: { type: "kpi_assignment", id: input.personId ?? input.positionId ?? "all" }, summary: `from ${input.fromPeriod}: ${result.created} created, ${result.skipped} kept`, after: result },
+    };
   },
 });
 export async function applyTemplatesAction(input: unknown) {
@@ -147,7 +165,13 @@ export async function endAssignmentAction(input: unknown) {
 
 // ── Actuals ─────────────────────────────────────────────────────────────────────────────────
 
-const entry = z.object({ assignmentId: z.uuid(), periodKey: z.string().regex(/^\d{4}-(0[1-9]|1[0-2]|Q[1-4])$/), actual: optional(z.string().trim().max(30)), notApplicable: checkbox.default(false), note: optional(z.string().trim().max(500)) });
+const entry = z.object({
+  assignmentId: z.uuid(),
+  periodKey: z.string().regex(/^\d{4}-(0[1-9]|1[0-2]|Q[1-4])$/),
+  actual: optional(z.string().trim().max(30)),
+  notApplicable: checkbox.default(false),
+  note: optional(z.string().trim().max(500)),
+});
 
 const saveActualsPipeline = createAction({
   name: "performance.actual.save",
@@ -168,7 +192,12 @@ const saveActualsPipeline = createAction({
     refresh();
     return {
       data: { saved: result.saved, cleared: result.cleared, unchanged: result.unchanged },
-      audit: { resource: { type: "kpi_actual", id: result.personIds.length === 1 ? result.personIds[0] : "bulk", entityId: result.entityIds.length === 1 ? result.entityIds[0] : null }, summary: `${result.saved} saved, ${result.cleared} cleared, ${result.unchanged} unchanged`, before: result.before, after: result.after },
+      audit: {
+        resource: { type: "kpi_actual", id: result.personIds.length === 1 ? result.personIds[0] : "bulk", entityId: result.entityIds.length === 1 ? result.entityIds[0] : null },
+        summary: `${result.saved} saved, ${result.cleared} cleared, ${result.unchanged} unchanged`,
+        before: result.before,
+        after: result.after,
+      },
     };
   },
 });
@@ -187,7 +216,11 @@ const closePipeline = createAction({
     refresh();
     return {
       data: { people: result.people, scored: result.scored, averageBp: result.averageBp, exceptions: result.exceptions.length },
-      audit: { resource: { type: "kpi_period", id: result.period.id, entityId: input.entityId }, summary: `${input.month} closed: ${result.people} people${result.exceptions.length > 0 ? `, ${result.exceptions.length} missing actuals overridden` : ""}`, after: { month: input.month, people: result.people, averageBp: result.averageBp, overrideReason: result.period.overrideReason, exceptions: result.period.exceptions } },
+      audit: {
+        resource: { type: "kpi_period", id: result.period.id, entityId: input.entityId },
+        summary: `${input.month} closed: ${result.people} people${result.exceptions.length > 0 ? `, ${result.exceptions.length} missing actuals overridden` : ""}`,
+        after: { month: input.month, people: result.people, averageBp: result.averageBp, overrideReason: result.period.overrideReason, exceptions: result.period.exceptions },
+      },
     };
   },
 });
@@ -202,7 +235,15 @@ const reopenPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after, superseded } = await reopenMonth(user.person.id, input);
     refresh();
-    return { data: { superseded }, audit: { resource: { type: "kpi_period", id: after.id, entityId: input.entityId }, summary: `${input.month} reopened: ${superseded} scores superseded — ${input.reason}`, before: { status: before.status, closedAt: before.closedAt }, after: { status: after.status, reopenReason: after.reopenReason, superseded } } };
+    return {
+      data: { superseded },
+      audit: {
+        resource: { type: "kpi_period", id: after.id, entityId: input.entityId },
+        summary: `${input.month} reopened: ${superseded} scores superseded — ${input.reason}`,
+        before: { status: before.status, closedAt: before.closedAt },
+        after: { status: after.status, reopenReason: after.reopenReason, superseded },
+      },
+    };
   },
 });
 export async function reopenKpiMonthAction(input: unknown) {

@@ -18,7 +18,19 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 
 /** One link per line; blanks and duplicates dropped, the rest capped by the schema. */
 const links = z.preprocess(
-  (value) => (typeof value === "string" ? [...new Set(value.split(/[\n\r]+/).map((line) => line.trim()).filter(Boolean))] : Array.isArray(value) ? value : []),
+  (value) =>
+    typeof value === "string"
+      ? [
+          ...new Set(
+            value
+              .split(/[\n\r]+/)
+              .map((line) => line.trim())
+              .filter(Boolean),
+          ),
+        ]
+      : Array.isArray(value)
+        ? value
+        : [],
   z.array(z.string().max(300)).max(8),
 );
 

@@ -30,10 +30,36 @@ import { OBLIGATION_LIBRARY } from "./seed-library";
 import { saveTemplate, setReviewStatus, type TemplateInput, templateProblem } from "./templates";
 
 const ids = {} as Record<"szm" | "szc" | "finance" | "hrSzm" | "hrAdmin" | "ceo" | "owner" | "newHire" | "employment", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => ({ message: error.message, details: error.details }));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error & { details?: unknown }) => ({ message: error.message, details: error.details }),
+  );
 const TODAY = "2026-09-20";
 
-const base: TemplateInput = { code: "X", name: "X", category: "external", authority: "tax", recurrence: "monthly", dueRule: { type: "after_period", monthsAfter: 1, day: 20 }, shift: "next_working_day", eventType: null, entityIds: null, ownerRule: "role:finance", ownerPersonId: null, reviewerRule: "none", reviewerPersonId: null, checklist: [], guidance: null, links: [], reminderLeadDays: [7, 3, 1], escalation: { managerAfterDays: 3, executiveAfterDays: 7 }, evidence: NO_EVIDENCE, penaltyNote: null, isActive: true };
+const base: TemplateInput = {
+  code: "X",
+  name: "X",
+  category: "external",
+  authority: "tax",
+  recurrence: "monthly",
+  dueRule: { type: "after_period", monthsAfter: 1, day: 20 },
+  shift: "next_working_day",
+  eventType: null,
+  entityIds: null,
+  ownerRule: "role:finance",
+  ownerPersonId: null,
+  reviewerRule: "none",
+  reviewerPersonId: null,
+  checklist: [],
+  guidance: null,
+  links: [],
+  reminderLeadDays: [7, 3, 1],
+  escalation: { managerAfterDays: 3, executiveAfterDays: 7 },
+  evidence: NO_EVIDENCE,
+  penaltyNote: null,
+  isActive: true,
+};
 
 const instancesOf = async (code: string) =>
   db()
@@ -50,25 +76,39 @@ beforeAll(async () => {
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   await db().insert(schema.entity).values({ code: "OLD", legalName: "Closed", shortName: "Closed", isActive: false });
   Object.assign(ids, { szm: szm.id, szc: szc.id });
-  const people: [keyof typeof ids, string, string][] = [["finance", "Tuan Vo", szc.id], ["hrSzm", "Bao Pham", szm.id], ["hrAdmin", "Mai Le", szc.id], ["ceo", "Ha Nguyen", szc.id], ["owner", "Khanh Tran", szc.id], ["newHire", "Thu Mai", szm.id]];
+  const people: [keyof typeof ids, string, string][] = [
+    ["finance", "Tuan Vo", szc.id],
+    ["hrSzm", "Bao Pham", szm.id],
+    ["hrAdmin", "Mai Le", szc.id],
+    ["ceo", "Ha Nguyen", szc.id],
+    ["owner", "Khanh Tran", szc.id],
+    ["newHire", "Thu Mai", szm.id],
+  ];
   for (const [key, name, entityId] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key.toLowerCase()}@suzu.group`, status: "active", primaryEntityId: entityId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key.toLowerCase()}@suzu.group`, status: "active", primaryEntityId: entityId })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.finance, role: "finance", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.hrSzm, role: "hr_staff", scopeType: "entity", scopeId: szm.id, validFrom: "2020-01-01" },
-    { personId: ids.hrAdmin, role: "hr_admin", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.ceo, role: "c_level", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.finance, role: "finance", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+      { personId: ids.hrSzm, role: "hr_staff", scopeType: "entity", scopeId: szm.id, validFrom: "2020-01-01" },
+      { personId: ids.hrAdmin, role: "hr_admin", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+      { personId: ids.ceo, role: "c_level", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+      { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+    ]);
   const [employment] = await db().insert(schema.employment).values({ personId: ids.newHire, entityId: szm.id, employeeCode: "SZM-0099", startDate: "2026-09-14", seniorityDate: "2026-09-14" }).returning();
   ids.employment = employment.id;
   // National Day 2026 for the group; SZM alone takes Monday 21 September off.
-  await db().insert(schema.calendarDay).values([
-    { entityId: null, date: "2026-09-02", kind: "public_holiday", name: "Quốc khánh" },
-    { entityId: szm.id, date: "2026-09-21", kind: "company_off", name: "Ngày thành lập" },
-  ]);
+  await db()
+    .insert(schema.calendarDay)
+    .values([
+      { entityId: null, date: "2026-09-02", kind: "public_holiday", name: "Quốc khánh" },
+      { entityId: szm.id, date: "2026-09-21", kind: "company_off", name: "Ngày thành lập" },
+    ]);
 });
 
 describe("the starter library", () => {
@@ -117,7 +157,12 @@ describe("the scheduler", () => {
     expect(rows.find((row) => row.instance.entityId === ids.szm)!.instance.reviewerPersonId).toBe(ids.hrSzm);
     expect(rows.find((row) => row.instance.entityId === ids.szc)!.instance.reviewerPersonId).toBe(ids.hrAdmin);
     // One notice for the whole batch.
-    expect(await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.finance), eq(schema.notification.kind, "ops.assigned")))).toHaveLength(1);
+    expect(
+      await db()
+        .select()
+        .from(schema.notification)
+        .where(and(eq(schema.notification.recipientPersonId, ids.finance), eq(schema.notification.kind, "ops.assigned"))),
+    ).toHaveLength(1);
 
     expect(await generateInstances(TODAY, { from: "2026-09-01", horizonDays: 45 })).toMatchObject({ created: 0 });
     expect(await instancesOf("VAT")).toHaveLength(4);
@@ -133,12 +178,33 @@ describe("the scheduler", () => {
   });
 
   it("pulls obligations from HR events once, about the person, and calls them off with the event", async () => {
-    await saveTemplate(null, { ...base, code: "HIRE-INS", name: "Register insurance", recurrence: "event", eventType: "hire", dueRule: { type: "after_event", days: 30 }, ownerRule: "permission:person:manage", authority: "social_insurance" });
-    await saveTemplate(null, { ...base, code: "LEAVE-RETURN", name: "Insurance increase", recurrence: "event", eventType: "long_leave_return", dueRule: { type: "after_event", days: 10 }, ownerRule: "permission:person:manage", authority: "social_insurance" });
+    await saveTemplate(null, {
+      ...base,
+      code: "HIRE-INS",
+      name: "Register insurance",
+      recurrence: "event",
+      eventType: "hire",
+      dueRule: { type: "after_event", days: 30 },
+      ownerRule: "permission:person:manage",
+      authority: "social_insurance",
+    });
+    await saveTemplate(null, {
+      ...base,
+      code: "LEAVE-RETURN",
+      name: "Insurance increase",
+      recurrence: "event",
+      eventType: "long_leave_return",
+      dueRule: { type: "after_event", days: 10 },
+      ownerRule: "permission:person:manage",
+      authority: "social_insurance",
+    });
     const [hire] = await db().insert(schema.lifecycleEvent).values({ personId: ids.newHire, employmentId: ids.employment, entityId: ids.szm, type: "hire", effectiveDate: "2026-09-14", status: "applied" }).returning();
     // A hire from years ago that was only just imported is history, not a duty.
     await db().insert(schema.lifecycleEvent).values({ personId: ids.newHire, employmentId: ids.employment, entityId: ids.szm, type: "hire", effectiveDate: "2021-03-01", status: "applied" });
-    const [leave] = await db().insert(schema.lifecycleEvent).values({ personId: ids.newHire, employmentId: ids.employment, entityId: ids.szm, type: "long_leave", effectiveDate: "2026-09-01", status: "applied", details: { from: "2026-09-01", to: "2026-10-15" } }).returning();
+    const [leave] = await db()
+      .insert(schema.lifecycleEvent)
+      .values({ personId: ids.newHire, employmentId: ids.employment, entityId: ids.szm, type: "long_leave", effectiveDate: "2026-09-01", status: "applied", details: { from: "2026-09-01", to: "2026-10-15" } })
+      .returning();
 
     expect(await generateInstances(TODAY, { horizonDays: 45 })).toMatchObject({ fromEvents: 2 });
     const [registered] = await instancesOf("HIRE-INS");
@@ -156,17 +222,33 @@ describe("the scheduler", () => {
   });
 
   it("closes the timesheet-lock instance once attendance says the month is locked", async () => {
-    await saveTemplate(null, { ...base, code: "INT-TIMESHEET-LOCK", name: "Lock timesheet", category: "internal", authority: "internal", dueRule: { type: "after_period", monthsAfter: 1, day: 2 }, ownerRule: "permission:attendance:manage", entityIds: [ids.szm] });
+    await saveTemplate(null, {
+      ...base,
+      code: "INT-TIMESHEET-LOCK",
+      name: "Lock timesheet",
+      category: "internal",
+      authority: "internal",
+      dueRule: { type: "after_period", monthsAfter: 1, day: 2 },
+      ownerRule: "permission:attendance:manage",
+      entityIds: [ids.szm],
+    });
     await generateInstances(TODAY, { from: "2026-09-01", horizonDays: 20 });
-    expect((await instancesOf("INT-TIMESHEET-LOCK")).map((row) => [row.instance.periodKey, row.task.status])).toEqual([["2026-08", "todo"], ["2026-09", "todo"]]);
+    expect((await instancesOf("INT-TIMESHEET-LOCK")).map((row) => [row.instance.periodKey, row.task.status])).toEqual([
+      ["2026-08", "todo"],
+      ["2026-09", "todo"],
+    ]);
     await db().insert(schema.timesheetPeriod).values({ entityId: ids.szm, month: "2026-08", status: "locked" });
     expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 1 });
-    expect((await instancesOf("INT-TIMESHEET-LOCK")).map((row) => [row.instance.periodKey, row.task.status, row.instance.note])).toEqual([["2026-08", "done", "system:timesheet_locked"], ["2026-09", "todo", null]]);
+    expect((await instancesOf("INT-TIMESHEET-LOCK")).map((row) => [row.instance.periodKey, row.task.status, row.instance.note])).toEqual([
+      ["2026-08", "done", "system:timesheet_locked"],
+      ["2026-09", "todo", null],
+    ]);
   });
 
   // FR-OPS-10: the deferred half of the payroll calendar, closed by payroll's own lifecycle.
   it("closes the payroll calendar as the month's run is proposed, signed and paid", async () => {
-    const payrollTemplate = (code: string, name: string, day: number, ownerRule: string) => saveTemplate(null, { ...base, code, name, category: "internal", authority: "internal", dueRule: { type: "after_period", monthsAfter: 1, day }, ownerRule, entityIds: [ids.szm] });
+    const payrollTemplate = (code: string, name: string, day: number, ownerRule: string) =>
+      saveTemplate(null, { ...base, code, name, category: "internal", authority: "internal", dueRule: { type: "after_period", monthsAfter: 1, day }, ownerRule, entityIds: [ids.szm] });
     await payrollTemplate("INT-PAYROLL-PROPOSE", "Trình bảng lương", 3, "permission:payroll:propose");
     await payrollTemplate("INT-PAYROLL-SIGN", "Ký duyệt bảng lương", 4, "permission:payroll:approve");
     await payrollTemplate("INT-SALARY-PAYMENT", "Chi lương", 5, "permission:payroll:pay");
@@ -214,7 +296,21 @@ describe("working an instance", () => {
     expect(progressed.instance.checklistState).toEqual({ "0": true, "1": true });
     expect(await fails(completeInstance(task.id, ids.finance, TODAY))).toMatchObject({ details: { evidence: ["file"], checklist: [] } });
 
-    await db().insert(schema.storedFile).values({ bucket: "files", objectPath: `ops/${instance.id}/receipt.pdf`, fileName: "receipt.pdf", contentType: "application/pdf", sizeBytes: 1200, ownerType: OBLIGATION_FILE_OWNER, ownerId: instance.id, entityId: ids.szc, tier: "public_internal", status: "ready", uploadedByPersonId: ids.finance });
+    await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "files",
+        objectPath: `ops/${instance.id}/receipt.pdf`,
+        fileName: "receipt.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1200,
+        ownerType: OBLIGATION_FILE_OWNER,
+        ownerId: instance.id,
+        entityId: ids.szc,
+        tier: "public_internal",
+        status: "ready",
+        uploadedByPersonId: ids.finance,
+      });
     // Closed two days after the due date, but the receipt is dated in time: not late.
     expect(await completeInstance(task.id, ids.finance, "2026-09-23")).toMatchObject({ completedLate: false });
     const closed = (await loadInstance(task.id))!;
@@ -226,7 +322,21 @@ describe("working an instance", () => {
   it("is late when neither the receipt nor the day it was closed is in time; reopening takes it back to work", async () => {
     const { task, instance } = await vat("szm", "2026-08");
     await saveProgress(task.id, { referenceNumber: "TK-2", submittedDate: "2026-09-24", amountPaid: 1_250_000, note: null, checklistState: { "0": true, "1": true } }, "2026-09-24");
-    await db().insert(schema.storedFile).values({ bucket: "files", objectPath: `ops/${instance.id}/receipt.pdf`, fileName: "receipt.pdf", contentType: "application/pdf", sizeBytes: 1200, ownerType: OBLIGATION_FILE_OWNER, ownerId: instance.id, entityId: ids.szm, tier: "public_internal", status: "ready", uploadedByPersonId: ids.finance });
+    await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "files",
+        objectPath: `ops/${instance.id}/receipt.pdf`,
+        fileName: "receipt.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1200,
+        ownerType: OBLIGATION_FILE_OWNER,
+        ownerId: instance.id,
+        entityId: ids.szm,
+        tier: "public_internal",
+        status: "ready",
+        uploadedByPersonId: ids.finance,
+      });
     expect(await completeInstance(task.id, ids.finance, "2026-09-24")).toMatchObject({ completedLate: true });
     expect((await loadInstance(task.id))!.instance).toMatchObject({ completedLate: true, amountPaid: 1_250_000 });
 
@@ -240,7 +350,12 @@ describe("working an instance", () => {
     expect(await fails(reassignInstance(task.id, { assigneePersonId: ids.hrSzm, reviewerPersonId: ids.hrSzm }, ids.finance))).toMatchObject({ message: "obligation_reviewer_is_owner" });
     await reassignInstance(task.id, { assigneePersonId: ids.hrSzm, reviewerPersonId: ids.finance }, ids.finance);
     expect((await loadInstance(task.id))!.parties).toMatchObject({ assigneePersonId: ids.hrSzm, reviewerPersonId: ids.finance });
-    expect(await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.hrSzm), eq(schema.notification.kind, "ops.assigned")))).not.toHaveLength(0);
+    expect(
+      await db()
+        .select()
+        .from(schema.notification)
+        .where(and(eq(schema.notification.recipientPersonId, ids.hrSzm), eq(schema.notification.kind, "ops.assigned"))),
+    ).not.toHaveLength(0);
     await cancelInstance(task.id, "Entity files quarterly");
     expect((await loadInstance(task.id))!).toMatchObject({ task: { status: "cancelled" }, instance: { note: "Entity files quarterly" } });
   });

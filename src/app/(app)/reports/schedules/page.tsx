@@ -30,7 +30,16 @@ export default async function SchedulesPage() {
 
   return (
     <Page width="wide">
-      <PageHeader eyebrow={<Link href="/reports">{t("back")}</Link>} title={t("title")} description={t("description")} actions={<Button nativeButton={false} render={<Link href="/reports/schedules/new" />}>{t("new")}</Button>} />
+      <PageHeader
+        eyebrow={<Link href="/reports">{t("back")}</Link>}
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Button nativeButton={false} render={<Link href="/reports/schedules/new" />}>
+            {t("new")}
+          </Button>
+        }
+      />
 
       {emailConfigured ? null : <p className="rounded-[10px] border border-dashed border-border p-3 text-sm text-muted-foreground">{t("noEmailDriver")}</p>}
 
@@ -68,7 +77,9 @@ export default async function SchedulesPage() {
                   {schedule.recipients.map((recipient, index) => (
                     <Fragment key={recipient.personId}>
                       {index ? ", " : null}
-                      <RecordLink kind="person" id={recipient.personId}>{recipient.fullName}</RecordLink>
+                      <RecordLink kind="person" id={recipient.personId}>
+                        {recipient.fullName}
+                      </RecordLink>
                     </Fragment>
                   ))}
                 </TableCell>
@@ -76,7 +87,9 @@ export default async function SchedulesPage() {
                 <TableCell kind="date">{day(schedule.lastRunOn)}</TableCell>
                 <TableCell>
                   <div className="flex flex-col items-start gap-1">
-                    <Badge dot variant={schedule.isActive ? "success" : "warning"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
+                    <Badge dot variant={schedule.isActive ? "success" : "warning"}>
+                      {schedule.isActive ? t("active") : t("paused")}
+                    </Badge>
                     {schedule.lastRun ? (
                       <span className="text-xs text-faint">
                         {t("delivered", { count: schedule.lastRun.delivered })}

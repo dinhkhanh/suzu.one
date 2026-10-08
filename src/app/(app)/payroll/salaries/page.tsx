@@ -87,13 +87,33 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
                   </Badge>
                 ) : null}
               </TableCell>
-              <TableCell>{row.entityId ? <RecordLink kind="entity" id={row.entityId}>{entityCode.get(row.entityId)}</RecordLink> : "—"}</TableCell>
-              <TableCell>{row.profile ? <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge> : <Badge dot variant="destructive">{t("salaries.noProfile")}</Badge>}</TableCell>
+              <TableCell>
+                {row.entityId ? (
+                  <RecordLink kind="entity" id={row.entityId}>
+                    {entityCode.get(row.entityId)}
+                  </RecordLink>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
+              <TableCell>
+                {row.profile ? (
+                  <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge>
+                ) : (
+                  <Badge dot variant="destructive">
+                    {t("salaries.noProfile")}
+                  </Badge>
+                )}
+              </TableCell>
               {row.structure ? (
                 <>
                   <TableCell kind="money">{formatVnd(row.structure.baseSalary)}</TableCell>
-                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(row.structure.insuranceSalary)}</TableCell>
-                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(row.structure.allowancesTotal)}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">
+                    {formatVnd(row.structure.insuranceSalary)}
+                  </TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">
+                    {formatVnd(row.structure.allowancesTotal)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{day(row.structure.validFrom)}</TableCell>
                 </>
               ) : (

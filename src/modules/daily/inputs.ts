@@ -15,7 +15,11 @@ export const logTimeInput = z
     taskId: optional(z.uuid()),
     category: optional(z.enum(TIME_CATEGORIES)),
     // "1h30", "90", "1.5h" are parsed by the form; the server takes minutes.
-    minutes: z.coerce.number().int().min(1).max(24 * 60),
+    minutes: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 60),
     note: optional(z.string().trim().max(500)),
     // "default" = the project's kind decides.
     billable: z.enum(["default", "yes", "no"]).default("default"),

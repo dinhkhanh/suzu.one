@@ -8,13 +8,38 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
-vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one", ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "@cf/baai/bge-m3", AI_MONTHLY_BUDGET_USD: 150, AI_DAILY_BUDGET_USD_EVERYONE: 0.3, AI_DAILY_BUDGET_USD_LEADS: 0.75, AI_DAILY_BUDGET_USD_OFFICE: 1.5 }) }));
+vi.mock("@/lib/env", () => ({
+  env: () => ({
+    BETTER_AUTH_URL: "https://suzu.one",
+    ANTHROPIC_MODEL: "claude-opus-5",
+    EMBEDDINGS_MODEL: "@cf/baai/bge-m3",
+    AI_MONTHLY_BUDGET_USD: 150,
+    AI_DAILY_BUDGET_USD_EVERYONE: 0.3,
+    AI_DAILY_BUDGET_USD_LEADS: 0.75,
+    AI_DAILY_BUDGET_USD_OFFICE: 1.5,
+  }),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }));
 vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => session.user, requireUser: async () => session.user }));
 // Everything past the door, replaced by a counter: a call that gets this far has reached the
 // assistant — retrieval, a tool, a driver. A refused call must leave these untouched.
 vi.mock("./conversations", () => ({
-  ask: vi.fn(async () => ({ conversationId: "c", messageId: "m", outcome: "answered", body: "…", citations: [], tool: null, score: 1, driver: "local-extractive", model: "local-extractive", usage: { inputTokens: 0, outputTokens: 0 }, notice: null, agent: null, audit: null, agentCalls: [] })),
+  ask: vi.fn(async () => ({
+    conversationId: "c",
+    messageId: "m",
+    outcome: "answered",
+    body: "…",
+    citations: [],
+    tool: null,
+    score: 1,
+    driver: "local-extractive",
+    model: "local-extractive",
+    usage: { inputTokens: 0, outputTokens: 0 },
+    notice: null,
+    agent: null,
+    audit: null,
+    agentCalls: [],
+  })),
   deleteConversation: vi.fn(),
   resolveUnanswered: vi.fn(),
 }));
@@ -51,9 +76,29 @@ beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const grants: Record<string, Grant[]> = { owner: [{ role: "owner", scope: { type: "group" } }] };
-  for (const [key, name] of [["huy", "Ho Gia Huy"], ["lan", "Tran Thi Lan"], ["mai", "Le Thi Mai"], ["owner", "Nguyen Thu Ha"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity.id }).returning();
-    users[key] = { userId: `user-${key}`, sessionId: `session-${key}`, reauthAt: null, preferences: { locale: null, theme: null, navPins: [] }, email: `${key}@suzu.group`, name, image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] }, request: { ipAddress: null, userAgent: null } };
+  for (const [key, name] of [
+    ["huy", "Ho Gia Huy"],
+    ["lan", "Tran Thi Lan"],
+    ["mai", "Le Thi Mai"],
+    ["owner", "Nguyen Thu Ha"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity.id })
+      .returning();
+    users[key] = {
+      userId: `user-${key}`,
+      sessionId: `session-${key}`,
+      reauthAt: null,
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${key}@suzu.group`,
+      name,
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] },
+      request: { ipAddress: null, userAgent: null },
+    };
   }
 });
 
@@ -139,11 +184,7 @@ describe("the door on the drafts", () => {
   it("counts the three kinds together, and a refused draft reads nothing", async () => {
     session.user = users.lan;
     const { max } = AI_LIMITS.draft_burst;
-    const calls = [
-      () => draftEodNotesAction({ date: "2026-10-05", locale: "vi" }),
-      () => draftStatusSummaryAction({ projectId: TASK, locale: "vi" }),
-      () => draftHandoffNoteAction({ taskId: TASK, locale: "vi" }),
-    ];
+    const calls = [() => draftEodNotesAction({ date: "2026-10-05", locale: "vi" }), () => draftStatusSummaryAction({ projectId: TASK, locale: "vi" }), () => draftHandoffNoteAction({ taskId: TASK, locale: "vi" })];
     const results = [];
     for (let call = 0; call < max + 3; call++) results.push(await calls[call % calls.length]());
     expect(results.slice(0, max).every((result) => result.ok)).toBe(true);
@@ -178,7 +219,9 @@ describe("what the assistant cost", () => {
     await turn("lan", "2026-08-01T03:00:00Z", [9_000_000, 9_000_000]); // older than the window
     // What the calls cost, as the gateway writes them down: two answers and one draft of Huy's.
     const call = (at: string, costMicroUsd: number, purpose = "ask") => ({ personId: users.huy.person.id, purpose, tier: "simple", model: "claude-haiku-4-5", outputTokens: costMicroUsd / 5, costMicroUsd, createdAt: new Date(at) });
-    await db().insert(schema.aiModelCall).values([call("2026-10-04T16:30:00Z", 6000), call("2026-10-04T17:30:00Z", 8500), call("2026-10-05T04:00:00Z", 1500, "draft.eod")]);
+    await db()
+      .insert(schema.aiModelCall)
+      .values([call("2026-10-04T16:30:00Z", 6000), call("2026-10-04T17:30:00Z", 8500), call("2026-10-05T04:00:00Z", 1500, "draft.eod")]);
 
     const usage = await assistantUsage(30, now);
     expect(usage.total).toEqual({ answers: 4, modelAnswers: 2, inputTokens: 12_000, outputTokens: 500, costMicroUsd: 16_000 });

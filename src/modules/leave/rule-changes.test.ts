@@ -16,24 +16,53 @@ import { leaveSeedRows } from "./seed-types";
 import { type LeavePolicyInput, listPolicies } from "./types";
 
 const ids = {} as Record<"entity" | "owner" | "hr" | "annual", string>;
-const policy = (overrides: Partial<LeavePolicyInput> = {}): LeavePolicyInput => ({ leaveTypeId: ids.annual, entityId: null, validFrom: "2027-01-01", accrualMethod: "monthly_accrual", baseSource: "statutory_annual", fixedDaysCenti: 0, extraDaysCenti: 200, seniorityBonus: true, prorate: true, rounding: "half_day", probationRule: "accrue_no_use", carryOverCapCenti: 500, carryOverExpiry: "03-31", payoutOnTermination: true, allowNegativeCenti: 0, note: null, ...overrides });
+const policy = (overrides: Partial<LeavePolicyInput> = {}): LeavePolicyInput => ({
+  leaveTypeId: ids.annual,
+  entityId: null,
+  validFrom: "2027-01-01",
+  accrualMethod: "monthly_accrual",
+  baseSource: "statutory_annual",
+  fixedDaysCenti: 0,
+  extraDaysCenti: 200,
+  seniorityBonus: true,
+  prorate: true,
+  rounding: "half_day",
+  probationRule: "accrue_no_use",
+  carryOverCapCenti: 500,
+  carryOverExpiry: "03-31",
+  payoutOnTermination: true,
+  allowNegativeCenti: 0,
+  note: null,
+  ...overrides,
+});
 const versions = async () => (await listPolicies([ids.annual], db())).map((row) => [row.validFrom, row.extraDaysCenti]);
 
 beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "SZM" }).returning();
   ids.entity = entity.id;
-  const person = async (name: string) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id }).returning())[0].id;
+  const person = async (name: string) =>
+    (
+      await db()
+        .insert(schema.person)
+        .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id })
+        .returning()
+    )[0].id;
   ids.owner = await person("Owner");
   ids.hr = await person("Hr");
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.owner, role: "owner", scopeType: "group" },
-    { personId: ids.hr, role: "hr_admin", scopeType: "group" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.owner, role: "owner", scopeType: "group" },
+      { personId: ids.hr, role: "hr_admin", scopeType: "group" },
+    ]);
   for (const seed of leaveSeedRows()) {
     const [created] = await db().insert(schema.leaveType).values(seed.type).returning();
     if (created.code === "ANNUAL") ids.annual = created.id;
-    if (seed.policy) await db().insert(schema.leavePolicy).values({ ...seed.policy, leaveTypeId: created.id });
+    if (seed.policy)
+      await db()
+        .insert(schema.leavePolicy)
+        .values({ ...seed.policy, leaveTypeId: created.id });
   }
 });
 

@@ -14,7 +14,17 @@ import { sendCandidateEmailAction } from "../actions";
 
 export type EmailTemplateOption = { id: string; name: string; kind: string };
 
-export function SendCandidateEmail({ applicationId, templates, hasEmail, defaultLocale }: { applicationId: string; templates: EmailTemplateOption[]; hasEmail: boolean; /** The candidate's own language, as recorded. */ defaultLocale: string }) {
+export function SendCandidateEmail({
+  applicationId,
+  templates,
+  hasEmail,
+  defaultLocale,
+}: {
+  applicationId: string;
+  templates: EmailTemplateOption[];
+  hasEmail: boolean;
+  /** The candidate's own language, as recorded. */ defaultLocale: string;
+}) {
   const t = useTranslations("recruit");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const form = useActionForm<{ to: string }>(sendCandidateEmailAction, { extra: { applicationId }, onSuccess: (data) => setSentTo(data.to) });

@@ -19,7 +19,17 @@ import type { KbViewer } from "./policy";
 
 const { kbPage, kbPageVersion, kbPageView, kbSpace } = schema;
 
-export type KbSearchHit = { pageId: string; title: string; spaceId: string; spaceKey: string; spaceName: string; /** Titles from the top of the space down to the page's parent. */ path: string[]; snippet: string; rank: number; publishedAt: Date | null };
+export type KbSearchHit = {
+  pageId: string;
+  title: string;
+  spaceId: string;
+  spaceKey: string;
+  spaceName: string;
+  /** Titles from the top of the space down to the page's parent. */ path: string[];
+  snippet: string;
+  rank: number;
+  publishedAt: Date | null;
+};
 export type KbSearchResult = { hits: KbSearchHit[]; total: number };
 
 /**
@@ -72,16 +82,40 @@ export async function searchKb(viewer: KbViewer, input: { query: string; spaceId
       .orderBy(desc(rank), desc(kbPage.publishedAt))
       .limit(limit)
       .offset(Math.max(0, input.offset ?? 0)),
-    db().select({ n: sql<number>`count(*)::int` }).from(kbPage).innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId)).where(where),
+    db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(kbPage)
+      .innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId))
+      .where(where),
   ]);
   const paths = await pathsOf(viewer, rows);
-  return { total: counted?.n ?? 0, hits: rows.map((row) => ({ pageId: row.pageId, title: row.title ?? "", spaceId: row.spaceId, spaceKey: row.spaceKey, spaceName: row.spaceName, path: paths.get(row.pageId) ?? [], snippet: snippetOf(row.text, input.query).text, rank: Number(row.rank), publishedAt: row.publishedAt })) };
+  return {
+    total: counted?.n ?? 0,
+    hits: rows.map((row) => ({
+      pageId: row.pageId,
+      title: row.title ?? "",
+      spaceId: row.spaceId,
+      spaceKey: row.spaceKey,
+      spaceName: row.spaceName,
+      path: paths.get(row.pageId) ?? [],
+      snippet: snippetOf(row.text, input.query).text,
+      rank: Number(row.rank),
+      publishedAt: row.publishedAt,
+    })),
+  };
 }
 
 export type KbPageCard = { pageId: string; title: string; spaceKey: string; spaceName: string; at: Date | null; views?: number };
 
 const card = { pageId: kbPage.id, title: kbPage.publishedTitle, spaceKey: kbSpace.key, spaceName: kbSpace.name };
-const toCard = <Row extends { pageId: string; title: string | null; spaceKey: string; spaceName: string }>(row: Row, at: Date | null, views?: number): KbPageCard => ({ pageId: row.pageId, title: row.title ?? "", spaceKey: row.spaceKey, spaceName: row.spaceName, at, ...(views === undefined ? {} : { views }) });
+const toCard = <Row extends { pageId: string; title: string | null; spaceKey: string; spaceName: string }>(row: Row, at: Date | null, views?: number): KbPageCard => ({
+  pageId: row.pageId,
+  title: row.title ?? "",
+  spaceKey: row.spaceKey,
+  spaceName: row.spaceName,
+  at,
+  ...(views === undefined ? {} : { views }),
+});
 
 /** What the viewer opened last — still filtered: a page they can no longer see drops out. */
 export async function listRecentlyViewed(viewer: KbViewer, limit = 6): Promise<KbPageCard[]> {
@@ -131,11 +165,13 @@ export async function listPopularPages(viewer: KbViewer, limit = 6, today: IsoDa
   // A reader who may open only a few of the group's top pages still gets a full list: the exact
   // per-reader ranking, as before the cache.
   if (rows.length < limit && counts.length >= POPULAR_TOP) return popularPagesFor(viewer, limit, today);
-  return rows
-    .map((row) => toCard(row, row.at, viewsOf.get(row.pageId) ?? 0))
-    // As Postgres orders `published_at desc`: a missing date first.
-    .sort((a, b) => b.views! - a.views! || (b.at?.getTime() ?? Number.MAX_SAFE_INTEGER) - (a.at?.getTime() ?? Number.MAX_SAFE_INTEGER))
-    .slice(0, limit);
+  return (
+    rows
+      .map((row) => toCard(row, row.at, viewsOf.get(row.pageId) ?? 0))
+      // As Postgres orders `published_at desc`: a missing date first.
+      .sort((a, b) => b.views! - a.views! || (b.at?.getTime() ?? Number.MAX_SAFE_INTEGER) - (a.at?.getTime() ?? Number.MAX_SAFE_INTEGER))
+      .slice(0, limit)
+  );
 }
 
 async function popularPagesFor(viewer: KbViewer, limit: number, today: IsoDate): Promise<KbPageCard[]> {

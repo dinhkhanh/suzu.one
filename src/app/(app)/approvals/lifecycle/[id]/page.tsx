@@ -53,7 +53,14 @@ export default async function LifecycleChangePage(props: PageProps<"/approvals/l
       { label: tPeople("fields.position"), value: payload.placement.positionName },
       { label: tPeople("fields.jobTitle"), value: jobTitle(tPeople, payload.placement) },
       { label: tPeople("fields.team"), value: names.unit },
-      { label: tPeople("fields.managerId"), value: names.manager ? <RecordLink kind="person" id={payload.placement.managerId}>{names.manager}</RecordLink> : null },
+      {
+        label: tPeople("fields.managerId"),
+        value: names.manager ? (
+          <RecordLink kind="person" id={payload.placement.managerId}>
+            {names.manager}
+          </RecordLink>
+        ) : null,
+      },
       { label: tPeople("fields.branch"), value: names.branch },
       { label: tPeople("fields.changeReason"), value: payload.changeReason, long: true },
     ];
@@ -61,7 +68,17 @@ export default async function LifecycleChangePage(props: PageProps<"/approvals/l
 
   return (
     <Page width="narrow">
-      <RequestHeader title={t(`change.title.${view.kind}`)} kind={tApprovals(`types.${request.type}` as "types.resignation")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
+      <RequestHeader
+        title={t(`change.title.${view.kind}`)}
+        kind={tApprovals(`types.${request.type}` as "types.resignation")}
+        status={request.status}
+        requestId={request.id}
+        who={
+          <RecordLink kind="person" id={request.requesterPersonId}>
+            {view.requesterName}
+          </RecordLink>
+        }
+      />
       <Section title={tRequests("view.details")}>
         <PropertySheet rows={rows} />
       </Section>

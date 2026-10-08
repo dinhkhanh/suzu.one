@@ -31,10 +31,15 @@ export default async function KioskPage() {
           {devices.map((device) => (
             <ListItem key={device.id} className="flex-wrap justify-between">
               <span className="min-w-0">
-                <RecordLink kind="device" id={canManageDevices(user.principal, device.entityId) ? device.id : null} className="font-medium">{device.name}</RecordLink>
+                <RecordLink kind="device" id={canManageDevices(user.principal, device.entityId) ? device.id : null} className="font-medium">
+                  {device.name}
+                </RecordLink>
                 <span className="text-muted-foreground">
                   {" "}
-                  · <RecordLink kind="entity" id={device.entityId}>{device.entityName}</RecordLink>
+                  ·{" "}
+                  <RecordLink kind="entity" id={device.entityId}>
+                    {device.entityName}
+                  </RecordLink>
                 </span>
                 {device.sessions.length ? <span className="text-muted-foreground"> · {t("openCount", { count: device.sessions.length })}</span> : null}
               </span>
@@ -66,7 +71,9 @@ export default async function KioskPage() {
                   {session.deviceName} {here?.session.id === session.id ? <Badge variant="info">{t("sessions.thisDevice")}</Badge> : null}
                 </TableCell>
                 <TableCell>
-                  <RecordLink kind="person" id={session.openedByPersonId}>{session.openedBy}</RecordLink>
+                  <RecordLink kind="person" id={session.openedByPersonId}>
+                    {session.openedBy}
+                  </RecordLink>
                 </TableCell>
                 <TableCell kind="date">{when(session.openedAt)}</TableCell>
                 <TableCell kind="date">{session.lastSeenAt ? when(session.lastSeenAt) : "—"}</TableCell>

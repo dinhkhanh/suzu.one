@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import prettier from "eslint-config-prettier/flat";
 import path from "node:path";
 
 // Module boundaries (development plan §2.1), checked on the resolved path, so a relative import
@@ -26,7 +27,15 @@ function placeOf(file) {
 }
 
 const moduleBoundaries = {
-  meta: { type: "problem", schema: [], messages: { door: "Import another module only through its service.ts (or client.ts from a screen): {{target}}.", kernel: "Shared code (the platform kernel, src/lib, src/components) must not depend on a feature module: {{target}}.", own: "Inside a module, use relative imports: {{target}}." } },
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      door: "Import another module only through its service.ts (or client.ts from a screen): {{target}}.",
+      kernel: "Shared code (the platform kernel, src/lib, src/components) must not depend on a feature module: {{target}}.",
+      own: "Inside a module, use relative imports: {{target}}.",
+    },
+  },
   create(context) {
     const file = context.filename;
     // src/lib and src/components are shared code too: held to the kernel's rule.
@@ -113,6 +122,8 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Formatting is Prettier's (.prettierrc.json, `pnpm format`): last, so no rule above argues with it.
+  prettier,
 ]);
 
 export default eslintConfig;

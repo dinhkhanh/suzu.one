@@ -140,7 +140,11 @@ export function ChangeRequestReveal({ requestId, fields, canReveal }: { requestI
             {values ? t("reveal.hide") : t("reveal.show")}
           </Button>
           <span className="text-xs text-muted-foreground">{t("reveal.audited")}</span>
-          {failed ? <span role="alert" className="text-xs text-destructive">{t("errors.generic")}</span> : null}
+          {failed ? (
+            <span role="alert" className="text-xs text-destructive">
+              {t("errors.generic")}
+            </span>
+          ) : null}
         </div>
       ) : null}
     </div>

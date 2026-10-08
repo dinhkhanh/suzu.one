@@ -14,7 +14,22 @@ import vi_ from "../../../../messages/vi.json";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { loadShellCounts } from "../shell/service";
 import { KINDS, messageKey } from "./kinds";
-import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueRawEmail, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
+import {
+  countUnread,
+  deliverPendingEmails,
+  deliverPendingPushes,
+  getPreferences,
+  listNotifications,
+  listPushSubscriptions,
+  markRead,
+  notify,
+  queueRawEmail,
+  queueTestPush,
+  removePushSubscription,
+  savePushSubscription,
+  sendDigests,
+  setPreferences,
+} from "./service";
 
 const people = {} as Record<"an" | "binh" | "ctv" | "gone", string>;
 
@@ -71,10 +86,12 @@ describe("notify", () => {
   // in-app notice, no email, no push, no chat card — and they come back to nothing stale either.
   it("tells a suspended person nothing, on any channel", async () => {
     const [held] = await db().insert(schema.person).values({ fullName: "Held", searchName: "held", workEmail: "held@suzu.vn", status: "suspended" }).returning();
-    await db().insert(schema.pushSubscription).values([
-      { personId: held.id, endpoint: "https://push.example/held", p256dh: "k", auth: "a" },
-      { personId: people.an, endpoint: "https://push.example/an", p256dh: "k", auth: "a" },
-    ]);
+    await db()
+      .insert(schema.pushSubscription)
+      .values([
+        { personId: held.id, endpoint: "https://push.example/held", p256dh: "k", auth: "a" },
+        { personId: people.an, endpoint: "https://push.example/an", p256dh: "k", auth: "a" },
+      ]);
     await db().delete(schema.chatDelivery);
     // A kind that reaches every channel by default: An, beside them, gets it everywhere.
     await notify({ recipients: [held.id, people.an], kind: "approvals.requested", params: { requester: "Huy", requestType: "leave" }, link: "/approvals", chat: {} });

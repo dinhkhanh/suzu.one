@@ -28,7 +28,12 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
 
   const facts: [string, ReactNode][] = [
     [t("columns.asset"), <RecordLink key="asset" kind="asset" id={booking.assetId}>{`${booking.assetCode} — ${booking.assetName}`}</RecordLink>],
-    [t("columns.person"), <RecordLink key="person" kind="person" id={booking.personId}>{booking.personName}</RecordLink>],
+    [
+      t("columns.person"),
+      <RecordLink key="person" kind="person" id={booking.personId}>
+        {booking.personName}
+      </RecordLink>,
+    ],
     [t("columns.window"), formatWindow(booking.startAt, booking.endAt)],
     [t("columns.purpose"), booking.purpose ?? "—"],
     [t("form.projectRef"), booking.projectRef ?? "—"],
@@ -37,7 +42,12 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
   return (
     <Page width="narrow">
       <PageHeader
-        title={<span className="inline-flex flex-wrap items-center gap-2"><span className="font-mono">{booking.assetCode}</span><BookingStatusBadge status={booking.status} /></span>}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span className="font-mono">{booking.assetCode}</span>
+            <BookingStatusBadge status={booking.status} />
+          </span>
+        }
         description={booking.categoryName ?? booking.assetName}
         actions={
           <Button nativeButton={false} variant="outline" render={<Link href="/assets/bookings" />}>

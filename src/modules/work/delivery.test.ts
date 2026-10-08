@@ -39,9 +39,17 @@ import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "bao" | "an" | "khoi";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "project" | "client" | "edit" | "internal" | "clientReview" | "published" | "socialEdit" | "chain", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const actor = (key: Key) => ({ personId: ids[key], fullName: key });
-const noticesOf = async (key: Key, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = async (key: Key, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 const evidence = (url = "https://mail.google.com/mail/u/0/#inbox/abc") => ({ channel: "email", decidedByName: "Chị Mai (Vinamilk)", decidedOn: "2026-09-22", evidenceFileId: null, evidenceUrl: url });
 const stateOf = async (taskId: string) => (await loadTask(taskId))!.work.stateId;
 
@@ -50,7 +58,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam", "huy", "bao", "an", "khoi"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   // Video: the content workflow, led by Long. Social: a simple workflow with a "Published" state, led by Khôi.
@@ -94,8 +105,38 @@ describe("a review chain: team lead, then the client (FR-PJM-50, 51)", () => {
   let taskId: string;
 
   it("is kept by the team and refuses a client stage that is not last", async () => {
-    expect(await fails(saveReviewChain({ teamId: ids.video, projectId: null }, null, { name: "Sai", contentFormat: null, isActive: true, stages: [{ name: "Khách", reviewer: "client", dueHours: 48 }, { name: "Lead", reviewer: "team_lead", dueHours: 24 }] }, ids.long))).toBe("chain_client_not_last");
-    const { after } = await saveReviewChain({ teamId: ids.video, projectId: null }, null, { name: "Video: lead → khách", contentFormat: "tvc", isActive: true, stages: [{ name: "Trưởng nhóm duyệt", reviewer: "team_lead", dueHours: 24 }, { name: "Khách duyệt", reviewer: "client", dueHours: 72 }] }, ids.long);
+    expect(
+      await fails(
+        saveReviewChain(
+          { teamId: ids.video, projectId: null },
+          null,
+          {
+            name: "Sai",
+            contentFormat: null,
+            isActive: true,
+            stages: [
+              { name: "Khách", reviewer: "client", dueHours: 48 },
+              { name: "Lead", reviewer: "team_lead", dueHours: 24 },
+            ],
+          },
+          ids.long,
+        ),
+      ),
+    ).toBe("chain_client_not_last");
+    const { after } = await saveReviewChain(
+      { teamId: ids.video, projectId: null },
+      null,
+      {
+        name: "Video: lead → khách",
+        contentFormat: "tvc",
+        isActive: true,
+        stages: [
+          { name: "Trưởng nhóm duyệt", reviewer: "team_lead", dueHours: 24 },
+          { name: "Khách duyệt", reviewer: "client", dueHours: 72 },
+        ],
+      },
+      ids.long,
+    );
     ids.chain = after.id;
     expect(after.stages.map((stage) => stage.key)).toHaveLength(2);
   });
@@ -172,7 +213,24 @@ describe("a review chain: team lead, then the client (FR-PJM-50, 51)", () => {
   });
 
   it("the frozen version's file cannot be removed, nor the evidence of a client decision", async () => {
-    const file = async (name: string) => (await db().insert(schema.storedFile).values({ bucket: "b", objectPath: `work_task/${taskId}/${name}`, fileName: name, contentType: "image/png", sizeBytes: 10, ownerType: "work_task", ownerId: taskId, tier: "public_internal", status: "ready", uploadedByPersonId: ids.huy }).returning())[0];
+    const file = async (name: string) =>
+      (
+        await db()
+          .insert(schema.storedFile)
+          .values({
+            bucket: "b",
+            objectPath: `work_task/${taskId}/${name}`,
+            fileName: name,
+            contentType: "image/png",
+            sizeBytes: 10,
+            ownerType: "work_task",
+            ownerId: taskId,
+            tier: "public_internal",
+            status: "ready",
+            uploadedByPersonId: ids.huy,
+          })
+          .returning()
+      )[0];
     const shot = await file("zalo.png");
     // v4 is still in the chain's first stage; the lead approves, the client approves with a screenshot.
     await decideStage(taskId, { decision: "approved", comment: null, client: null }, actor("long"));
@@ -208,7 +266,21 @@ describe("a client decision outside a chain (FR-PJM-51)", () => {
 describe("pins on a version (FR-PJM-52)", () => {
   it("pin a point of an image, refuse one outside it or on a link", async () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Banner", stateId: ids.edit, assigneePersonId: ids.huy }, ids.long);
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "b", objectPath: `work_task/${task.id}/banner.png`, fileName: "banner.png", contentType: "image/png", sizeBytes: 10, ownerType: "work_task", ownerId: task.id, tier: "public_internal", status: "ready", uploadedByPersonId: ids.huy }).returning();
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "b",
+        objectPath: `work_task/${task.id}/banner.png`,
+        fileName: "banner.png",
+        contentType: "image/png",
+        sizeBytes: 10,
+        ownerType: "work_task",
+        ownerId: task.id,
+        tier: "public_internal",
+        status: "ready",
+        uploadedByPersonId: ids.huy,
+      })
+      .returning();
     const { deliverable } = await submitDeliverable(task.id, { kind: "file", fileId: file.id, note: null }, actor("huy"));
     await addPin(deliverable.id, { x: 0.25, y: 0.75, timecodeMs: null, body: "Logo bị lệch" }, actor("tam"));
     expect(await fails(addPin(deliverable.id, { x: 1.5, y: 0.5, timecodeMs: null, body: "?" }, actor("tam")))).toBe("pin_position_invalid");
@@ -306,7 +378,13 @@ describe("delivery records and the register's facts (FR-PJM-53)", () => {
     // One version handed in, waiting on internal review: not with the client.
     expect(facts.get(task.id)).toEqual({ clientApproved: false, delivered: true, published: false, lastClientDecision: null, currentVersion: 1, withClient: false });
     // The client answered the version that went through the chain: nothing is waiting on them any more.
-    expect(facts.get(chained.taskId)).toMatchObject({ clientApproved: true, delivered: false, published: false, withClient: false, lastClientDecision: { decision: "approved", channel: "email", decidedByName: "Chị Mai (Vinamilk)", decidedOn: "2026-09-22" } });
+    expect(facts.get(chained.taskId)).toMatchObject({
+      clientApproved: true,
+      delivered: false,
+      published: false,
+      withClient: false,
+      lastClientDecision: { decision: "approved", channel: "email", decidedByName: "Chị Mai (Vinamilk)", decidedOn: "2026-09-22" },
+    });
     expect(facts.get(social.taskId)).toMatchObject({ clientApproved: false, published: true });
   });
 });

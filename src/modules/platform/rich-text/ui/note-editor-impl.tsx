@@ -258,11 +258,7 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
   const nearLimit = maxLength !== undefined && note.length > maxLength * 0.8;
 
   return (
-    <div
-      data-slot="note-editor"
-      aria-invalid={ariaInvalid || shown !== null || undefined}
-      className={noteEditorFrame(disabled, className)}
-    >
+    <div data-slot="note-editor" aria-invalid={ariaInvalid || shown !== null || undefined} className={noteEditorFrame(disabled, className)}>
       {/* What the form posts, and what the browser checks `required` and the length against. First,
           so a <label> wrapped around the editor names this — and focuses the text — rather than
           clicking the first toolbar button. */}

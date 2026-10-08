@@ -80,15 +80,29 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
               {register.lines.map((line) => (
                 <TableRow key={line.personId}>
                   <TableCell>
-                    <RecordLink kind="person" id={line.personId}>{line.fullName}</RecordLink>
+                    <RecordLink kind="person" id={line.personId}>
+                      {line.fullName}
+                    </RecordLink>
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{line.employeeCode}</span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{line.departmentName ? <RecordLink kind="unit" id={line.departmentId}>{line.departmentName}</RecordLink> : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {line.departmentName ? (
+                      <RecordLink kind="unit" id={line.departmentId}>
+                        {line.departmentName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell kind="money">{formatVnd(line.gross)}</TableCell>
                   <TableCell kind="money">{formatVnd(line.employeeInsurance)}</TableCell>
                   <TableCell kind="money">{formatVnd(line.pit)}</TableCell>
-                  <TableCell kind="money" className="font-medium">{formatVnd(line.net)}</TableCell>
-                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(line.employerCost)}</TableCell>
+                  <TableCell kind="money" className="font-medium">
+                    {formatVnd(line.net)}
+                  </TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">
+                    {formatVnd(line.employerCost)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -96,11 +110,21 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
               <TableRow>
                 <TableCell>{t("total")}</TableCell>
                 <TableCell />
-                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.grossEarnings)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.employeeInsurance)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.pit)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.net)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.employerCost)}</TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(register.totals.grossEarnings)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(register.totals.employeeInsurance)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(register.totals.pit)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(register.totals.net)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(register.totals.employerCost)}
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>
@@ -135,10 +159,18 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
             <TableFooter>
               <TableRow>
                 <TableCell>{t("total")}</TableCell>
-                <TableCell kind="number" className="font-semibold">{cost.total.headcount}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.gross)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.employerInsurance)}</TableCell>
-                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.employerCost)}</TableCell>
+                <TableCell kind="number" className="font-semibold">
+                  {cost.total.headcount}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(cost.total.gross)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(cost.total.employerInsurance)}
+                </TableCell>
+                <TableCell kind="money" className="font-semibold">
+                  {formatVnd(cost.total.employerCost)}
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>

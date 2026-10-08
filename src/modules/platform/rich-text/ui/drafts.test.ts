@@ -53,7 +53,12 @@ describe("note drafts", () => {
   it("carries on without storage", () => {
     expect(() => writeDraft("k", "text", now, null)).not.toThrow();
     expect(readDraft("k", now, null)).toBeNull();
-    const full = { ...memoryStore(), setItem: () => { throw new Error("QuotaExceededError"); } };
+    const full = {
+      ...memoryStore(),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+    };
     expect(() => writeDraft("k", "text", now, full)).not.toThrow();
   });
 });

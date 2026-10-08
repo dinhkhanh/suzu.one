@@ -54,7 +54,13 @@ export async function GET(_request: Request, context: RouteContext<"/projects/[p
   const code = [project.plan.jobNumber, report.periodTo].filter(Boolean).join(" · ");
   const pdf = renderDocumentPdf({ title: report.title, number: code, text: `${project.project.name}\n\n${text}`, letterhead, footer: tDocuments("pdfFooter", { number: code }), today: todayInVietnam() });
 
-  await recordAudit({ action: "projects.client_report.pdf", actor: { userId: user.userId, personId: user.person.id, email: user.email }, request: user.request, resource: { type: "project_client_report", id: report.id, entityId: project.project.entityId }, summary: `${report.periodFrom}–${report.periodTo}` });
+  await recordAudit({
+    action: "projects.client_report.pdf",
+    actor: { userId: user.userId, personId: user.person.id, email: user.email },
+    request: user.request,
+    resource: { type: "project_client_report", id: report.id, entityId: project.project.entityId },
+    summary: `${report.periodFrom}–${report.periodTo}`,
+  });
 
   return new NextResponse(pdf as BodyInit, {
     headers: {

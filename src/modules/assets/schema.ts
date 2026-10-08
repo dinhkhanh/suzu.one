@@ -5,7 +5,24 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
-import type { AccessLevel, AccessMethod, AccessStatus, AssetCondition, AssetEventType, AssetKind, AssetStatus, BillingCycle, BookingStatus, DigitalKind, DigitalOwnership, DigitalPlatform, DigitalStatus, DigitalVisibility, HolderType, LicenceStatus } from "./enums";
+import type {
+  AccessLevel,
+  AccessMethod,
+  AccessStatus,
+  AssetCondition,
+  AssetEventType,
+  AssetKind,
+  AssetStatus,
+  BillingCycle,
+  BookingStatus,
+  DigitalKind,
+  DigitalOwnership,
+  DigitalPlatform,
+  DigitalStatus,
+  DigitalVisibility,
+  HolderType,
+  LicenceStatus,
+} from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -106,7 +123,9 @@ export const assetAssignment = pgTable(
   (t) => [
     // One thing, one holder. Two people cannot both have the camera, and the database says so
     // rather than the code remembering to check.
-    uniqueIndex("asset_assignment_open_key").on(t.assetId).where(sql`${t.returnedAt} is null`),
+    uniqueIndex("asset_assignment_open_key")
+      .on(t.assetId)
+      .where(sql`${t.returnedAt} is null`),
     index("asset_assignment_holder_idx").on(t.holderPersonId, t.returnedAt),
     index("asset_assignment_asset_idx").on(t.assetId, t.assignedAt),
   ],
@@ -233,11 +252,19 @@ export const licenceSeat = pgTable(
   (t) => [
     check("licence_seat_one_holder", sql`(${t.personId} IS NULL) <> (${t.assetId} IS NULL)`),
     // Nobody holds two seats of one subscription, and no machine does either — the database says so.
-    uniqueIndex("licence_seat_person_open_key").on(t.licenceId, t.personId).where(sql`${t.releasedAt} is null and ${t.personId} is not null`),
-    uniqueIndex("licence_seat_asset_open_key").on(t.licenceId, t.assetId).where(sql`${t.releasedAt} is null and ${t.assetId} is not null`),
+    uniqueIndex("licence_seat_person_open_key")
+      .on(t.licenceId, t.personId)
+      .where(sql`${t.releasedAt} is null and ${t.personId} is not null`),
+    uniqueIndex("licence_seat_asset_open_key")
+      .on(t.licenceId, t.assetId)
+      .where(sql`${t.releasedAt} is null and ${t.assetId} is not null`),
     index("licence_seat_licence_idx").on(t.licenceId, t.releasedAt),
-    index("licence_seat_person_idx").on(t.personId).where(sql`${t.releasedAt} is null`),
-    index("licence_seat_asset_idx").on(t.assetId).where(sql`${t.releasedAt} is null`),
+    index("licence_seat_person_idx")
+      .on(t.personId)
+      .where(sql`${t.releasedAt} is null`),
+    index("licence_seat_asset_idx")
+      .on(t.assetId)
+      .where(sql`${t.releasedAt} is null`),
   ],
 ).enableRLS();
 
@@ -315,8 +342,12 @@ export const digitalAssetAccess = pgTable(
   },
   (t) => [
     // One open grant or request per person per asset; the history of closed ones is unlimited.
-    uniqueIndex("digital_asset_access_open_key").on(t.digitalAssetId, t.personId).where(sql`${t.status} in ('requested', 'active')`),
+    uniqueIndex("digital_asset_access_open_key")
+      .on(t.digitalAssetId, t.personId)
+      .where(sql`${t.status} in ('requested', 'active')`),
     index("digital_asset_access_asset_idx").on(t.digitalAssetId, t.status),
-    index("digital_asset_access_person_idx").on(t.personId).where(sql`${t.status} in ('requested', 'active')`),
+    index("digital_asset_access_person_idx")
+      .on(t.personId)
+      .where(sql`${t.status} in ('requested', 'active')`),
   ],
 ).enableRLS();

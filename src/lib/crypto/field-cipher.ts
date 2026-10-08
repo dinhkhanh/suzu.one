@@ -39,7 +39,10 @@ function open(key: Buffer, iv: Buffer, sealed: Buffer, context: string): Buffer 
 /** Parses "k1:<base64 32 bytes>,k2:<base64 32 bytes>". The first key is the active one. */
 export function parseKeyRing(spec: string): KeyRing {
   const keys = new Map<string, Buffer>();
-  for (const entry of spec.split(",").map((part) => part.trim()).filter(Boolean)) {
+  for (const entry of spec
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
     const separator = entry.indexOf(":");
     const id = entry.slice(0, separator);
     const key = Buffer.from(entry.slice(separator + 1), "base64");

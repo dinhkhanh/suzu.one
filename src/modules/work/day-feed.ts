@@ -119,7 +119,14 @@ export async function listWorkActivityBetween(personIds: readonly string[], from
     .innerJoin(schema.task, eq(schema.task.id, schema.workActivity.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(inArray(schema.workActivity.actorPersonId, people), within(schema.workActivity.createdAt), or(eq(schema.workActivity.type, "created"), and(eq(schema.workActivity.type, "field_changed"), eq(schema.workActivity.field, "state"))), live));
+    .where(
+      and(
+        inArray(schema.workActivity.actorPersonId, people),
+        within(schema.workActivity.createdAt),
+        or(eq(schema.workActivity.type, "created"), and(eq(schema.workActivity.type, "field_changed"), eq(schema.workActivity.field, "state"))),
+        live,
+      ),
+    );
 
   const handedIn = db()
     .select({ ...taskColumns, personId: schema.workDeliverable.submittedByPersonId, version: schema.workDeliverable.version, at: schema.workDeliverable.submittedAt })
@@ -135,7 +142,9 @@ export async function listWorkActivityBetween(personIds: readonly string[], from
     .innerJoin(schema.task, eq(schema.task.id, schema.workDeliverable.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(inArray(schema.workDeliverable.decidedByPersonId, people), isNotNull(schema.workDeliverable.decidedAt), within(schema.workDeliverable.decidedAt), inArray(schema.workDeliverable.decision, ["approved", "changes_requested"]), live));
+    .where(
+      and(inArray(schema.workDeliverable.decidedByPersonId, people), isNotNull(schema.workDeliverable.decidedAt), within(schema.workDeliverable.decidedAt), inArray(schema.workDeliverable.decision, ["approved", "changes_requested"]), live),
+    );
 
   const comments = db()
     .select({ ...taskColumns, personId: schema.workComment.authorPersonId, at: schema.workComment.createdAt })
@@ -204,7 +213,16 @@ export type HandoffWaiting = { handoffId: string; taskId: string; key: string; t
 /** Hand-offs addressed to the person and not yet answered (FR-PJM-41). Accepting happens on the task. */
 export async function listHandoffsWaitingFor(personId: string): Promise<HandoffWaiting[]> {
   const rows = await db()
-    .select({ handoffId: schema.workHandoff.id, taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, kind: schema.workHandoff.kind, fromName: schema.person.fullName, createdAt: schema.workHandoff.createdAt })
+    .select({
+      handoffId: schema.workHandoff.id,
+      taskId: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      kind: schema.workHandoff.kind,
+      fromName: schema.person.fullName,
+      createdAt: schema.workHandoff.createdAt,
+    })
     .from(schema.workHandoff)
     .innerJoin(schema.task, eq(schema.task.id, schema.workHandoff.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
@@ -228,7 +246,19 @@ export async function listOpenBlockersRaisedBy(personIds: readonly string[]): Pr
   const raiser = alias(schema.person, "raiser");
   const needed = alias(schema.person, "needed");
   const rows = await db()
-    .select({ blockerId: schema.workBlocker.id, taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, reason: schema.workBlocker.reason, raisedByPersonId: schema.workBlocker.raisedByPersonId, raisedByName: raiser.fullName, neededPersonId: schema.workBlocker.neededPersonId, neededName: needed.fullName, raisedAt: schema.workBlocker.raisedAt })
+    .select({
+      blockerId: schema.workBlocker.id,
+      taskId: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      reason: schema.workBlocker.reason,
+      raisedByPersonId: schema.workBlocker.raisedByPersonId,
+      raisedByName: raiser.fullName,
+      neededPersonId: schema.workBlocker.neededPersonId,
+      neededName: needed.fullName,
+      raisedAt: schema.workBlocker.raisedAt,
+    })
     .from(schema.workBlocker)
     .innerJoin(schema.task, eq(schema.task.id, schema.workBlocker.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))

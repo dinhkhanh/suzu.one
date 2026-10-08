@@ -56,7 +56,14 @@ const milestoneMet = (milestone: { reached?: RunStatus; published?: true }, run:
 
 // Only the event types that come from a person's lifecycle appear here; `licence_renewal` has its
 // own source and its own branch below, which is why this is partial rather than total.
-const LIFECYCLE_TYPE: Partial<Record<ObligationEventType, LifecycleEventFact["type"]>> = { hire: "hire", rehire: "rehire", termination: "termination", long_leave: "long_leave", salary_change: "salary_change", long_leave_return: "long_leave" };
+const LIFECYCLE_TYPE: Partial<Record<ObligationEventType, LifecycleEventFact["type"]>> = {
+  hire: "hire",
+  rehire: "rehire",
+  termination: "termination",
+  long_leave: "long_leave",
+  salary_change: "salary_change",
+  long_leave_return: "long_leave",
+};
 
 /** "08/2026", "Q3/2026", "H2/2026", "2026". */
 export function periodLabel(key: string): string {
@@ -123,21 +130,46 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
       const ids = rule.startsWith("role:") ? byRole.withRole(rule.slice(5) as Role, { entityId }) : byPermission.holding(rule.slice("permission:".length) as Exclude<Permission, "*">, { entityId }, { includeWildcard: false });
       const people = ids.length ? await tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, ids)) : [];
       const active = people.filter((person) => person.status !== "offboarded").sort((a, b) => a.id.localeCompare(b.id));
-      parties.set(key, [...active.filter((person) => person.entityId === entityId), ...active.filter((person) => person.entityId !== entityId)].map((person) => person.id));
+      parties.set(
+        key,
+        [...active.filter((person) => person.entityId === entityId), ...active.filter((person) => person.entityId !== entityId)].map((person) => person.id),
+      );
     }
     return parties.get(key)!;
   };
 
-  type Planned = { template: ObligationTemplateRow; entityId: string; periodKey: string; period: Period | null; nominal: IsoDate; title: string; subjectPersonId: string | null; source: { type: string; id: string } | null; /** The person the fact itself names as responsible; tried before the template's rule. */ preferredOwnerId?: string | null };
+  type Planned = {
+    template: ObligationTemplateRow;
+    entityId: string;
+    periodKey: string;
+    period: Period | null;
+    nominal: IsoDate;
+    title: string;
+    subjectPersonId: string | null;
+    source: { type: string; id: string } | null;
+    /** The person the fact itself names as responsible; tried before the template's rule. */ preferredOwnerId?: string | null;
+  };
   const planned: Planned[] = [];
 
   const periodic = templates.filter((template) => template.recurrence !== "event").map((template) => ({ template, dues: periodsDueBetween(template.recurrence as PeriodicRecurrence, template.dueRule, from, to) }));
-  await readExisting(periodic.map(({ template }) => template.id), periodic.flatMap(({ dues }) => dues.map((due) => due.period.key)));
+  await readExisting(
+    periodic.map(({ template }) => template.id),
+    periodic.flatMap(({ dues }) => dues.map((due) => due.period.key)),
+  );
   for (const { template, dues } of periodic) {
     for (const due of dues) {
       for (const entity of entities) {
         if (!appliesTo(template, entity.id) || have.has(`${template.id}|${entity.id}|${due.period.key}`)) continue;
-        planned.push({ template, entityId: entity.id, periodKey: due.period.key, period: due.period, nominal: due.nominalDueDate, title: `${template.name} — ${periodLabel(due.period.key)} · ${entity.code}`, subjectPersonId: null, source: null });
+        planned.push({
+          template,
+          entityId: entity.id,
+          periodKey: due.period.key,
+          period: due.period,
+          nominal: due.nominalDueDate,
+          title: `${template.name} — ${periodLabel(due.period.key)} · ${entity.code}`,
+          subjectPersonId: null,
+          source: null,
+        });
       }
     }
   }
@@ -150,7 +182,10 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     const since = eventTemplates.reduce((earliest, template) => (template.createdAt < earliest ? template.createdAt : earliest), lookback);
     const facts = await listLifecycleEventFacts({ createdSince: since, types: [...new Set(eventTemplates.flatMap((template) => LIFECYCLE_TYPE[template.eventType as ObligationEventType] ?? []))] }, tx);
 
-    await readExisting(eventTemplates.map((template) => template.id), facts.map((fact) => `event:${fact.id}`));
+    await readExisting(
+      eventTemplates.map((template) => template.id),
+      facts.map((fact) => `event:${fact.id}`),
+    );
     const calledOff = facts.filter((fact) => fact.status === "cancelled").map((fact) => fact.id);
     if (calledOff.length) cancelled = await cancelForSources(tx, "lifecycle_event", calledOff);
 
@@ -167,7 +202,16 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
         // A return far in the future waits until it comes into the horizon.
         const nominal = nominalDueDate(template.dueRule, { eventDate });
         if (nominal > to) continue;
-        planned.push({ template, entityId: fact.entityId, periodKey, period: null, nominal, title: `${template.name} — ${fact.personName} · ${entityCode.get(fact.entityId)}`, subjectPersonId: fact.personId, source: { type: "lifecycle_event", id: fact.id } });
+        planned.push({
+          template,
+          entityId: fact.entityId,
+          periodKey,
+          period: null,
+          nominal,
+          title: `${template.name} — ${fact.personName} · ${entityCode.get(fact.entityId)}`,
+          subjectPersonId: fact.personId,
+          source: { type: "lifecycle_event", id: fact.id },
+        });
       }
     }
   }
@@ -180,14 +224,14 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   const licenceTemplates = templates.filter((template) => template.recurrence === "event" && template.eventType === "licence_renewal");
   if (licenceTemplates.length) {
     const renewals = await listLicenceRenewalFacts(from, to, tx);
-    await readExisting(licenceTemplates.map((template) => template.id), renewals.map((fact) => `event:${fact.id}`));
+    await readExisting(
+      licenceTemplates.map((template) => template.id),
+      renewals.map((fact) => `event:${fact.id}`),
+    );
     // A licence that was cancelled or has expired renews no more: what was opened for it goes.
     const inactive = await listInactiveLicenceIds(tx);
     if (inactive.length) {
-      const stale = await tx
-        .select({ sourceId: schema.obligationInstance.sourceId })
-        .from(schema.obligationInstance)
-        .where(eq(schema.obligationInstance.sourceType, LICENCE_SOURCE));
+      const stale = await tx.select({ sourceId: schema.obligationInstance.sourceId }).from(schema.obligationInstance).where(eq(schema.obligationInstance.sourceType, LICENCE_SOURCE));
       const toCancel = stale.map((row) => row.sourceId).filter((id): id is string => !!id && inactive.includes(id.split(":")[0]));
       if (toCancel.length) cancelled += await cancelForSources(tx, LICENCE_SOURCE, toCancel);
     }
@@ -227,8 +271,24 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     const owner = named ?? (await candidates(template.ownerRule, template.ownerPersonId, plan.entityId)).find((id) => id !== plan.subjectPersonId) ?? null;
     const reviewer = (await candidates(template.reviewerRule, template.reviewerPersonId, plan.entityId)).find((id) => id !== owner && id !== plan.subjectPersonId) ?? null;
     const dueDate = shiftDueDate(plan.nominal, template.shift as Shift, await daysOffOf(plan.entityId));
-    const [task] = await createTasks(tx, [{ kind: OBLIGATION_KIND, title: plan.title, assigneePersonId: owner, dueDate, entityId: plan.entityId, subjectPersonId: plan.subjectPersonId, context: { type: "obligation_template", id: template.id } }], options.actorId ?? null, { notify: false });
-    await tx.insert(schema.obligationInstance).values({ taskId: task.id, templateId: template.id, entityId: plan.entityId, periodKey: plan.periodKey, periodStart: plan.period?.start ?? null, periodEnd: plan.period?.end ?? null, nominalDueDate: plan.nominal, sourceType: plan.source?.type ?? null, sourceId: plan.source?.id ?? null, reviewerPersonId: reviewer });
+    const [task] = await createTasks(
+      tx,
+      [{ kind: OBLIGATION_KIND, title: plan.title, assigneePersonId: owner, dueDate, entityId: plan.entityId, subjectPersonId: plan.subjectPersonId, context: { type: "obligation_template", id: template.id } }],
+      options.actorId ?? null,
+      { notify: false },
+    );
+    await tx.insert(schema.obligationInstance).values({
+      taskId: task.id,
+      templateId: template.id,
+      entityId: plan.entityId,
+      periodKey: plan.periodKey,
+      periodStart: plan.period?.start ?? null,
+      periodEnd: plan.period?.end ?? null,
+      nominalDueDate: plan.nominal,
+      sourceType: plan.source?.type ?? null,
+      sourceId: plan.source?.id ?? null,
+      reviewerPersonId: reviewer,
+    });
     if (!owner) unassigned++;
     else if (owner !== options.actorId) told.set(owner, { count: (told.get(owner)?.count ?? 0) + 1, title: told.get(owner)?.title ?? plan.title });
   }
@@ -247,7 +307,15 @@ async function cancelForSources(tx: Executor, sourceType: string, sourceIds: str
     .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
     .where(and(eq(schema.obligationInstance.sourceType, sourceType), inArray(schema.obligationInstance.sourceId, sourceIds), inArray(schema.task.status, [...OPEN]), isNull(schema.task.deletedAt)));
   if (open.length === 0) return 0;
-  await tx.update(schema.task).set({ status: "cancelled", updatedAt: new Date() }).where(inArray(schema.task.id, open.map((row) => row.taskId)));
+  await tx
+    .update(schema.task)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(
+      inArray(
+        schema.task.id,
+        open.map((row) => row.taskId),
+      ),
+    );
   return open.length;
 }
 
@@ -265,7 +333,16 @@ async function closePayrollMilestones(tx: Executor, templates: ObligationTemplat
     .select({ instance: schema.obligationInstance })
     .from(schema.obligationInstance)
     .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
-    .where(and(inArray(schema.obligationInstance.templateId, wanted.map((milestone) => milestone.template!.id)), inArray(schema.task.status, [...OPEN]), isNull(schema.task.deletedAt)));
+    .where(
+      and(
+        inArray(
+          schema.obligationInstance.templateId,
+          wanted.map((milestone) => milestone.template!.id),
+        ),
+        inArray(schema.task.status, [...OPEN]),
+        isNull(schema.task.deletedAt),
+      ),
+    );
   if (open.length === 0) return 0;
 
   // One read for every month in question; payroll answers with statuses and dates only.
@@ -279,7 +356,10 @@ async function closePayrollMilestones(tx: Executor, templates: ObligationTemplat
     const run = byKey.get(`${instance.entityId}|${instance.periodKey}`);
     if (!wants || !run || !milestoneMet(wants, run)) continue;
     await tx.update(schema.task).set({ status: "done", completedAt: new Date(), completedByPersonId: null, updatedAt: new Date() }).where(eq(schema.task.id, instance.taskId));
-    await tx.update(schema.obligationInstance).set({ note: `system:payroll_${wants.published ? "payslips_published" : wants.reached}`, completedLate: false, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, instance.id));
+    await tx
+      .update(schema.obligationInstance)
+      .set({ note: `system:payroll_${wants.published ? "payslips_published" : wants.reached}`, completedLate: false, updatedAt: new Date() })
+      .where(eq(schema.obligationInstance.id, instance.id));
     closed++;
   }
   return closed;

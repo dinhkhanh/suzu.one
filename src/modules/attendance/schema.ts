@@ -194,8 +194,12 @@ export const punch = pgTable(
     index("punch_person_at_idx").on(t.personId, t.at),
     index("punch_entity_at_idx").on(t.entityId, t.at),
     index("punch_review_idx").on(t.reviewStatus),
-    uniqueIndex("punch_device_key").on(t.deviceId, t.deviceUserId, t.at).where(sql`${t.deviceId} is not null`),
-    index("punch_kiosk_session_idx").on(t.kioskSessionId, t.at).where(sql`${t.kioskSessionId} is not null`),
+    uniqueIndex("punch_device_key")
+      .on(t.deviceId, t.deviceUserId, t.at)
+      .where(sql`${t.deviceId} is not null`),
+    index("punch_kiosk_session_idx")
+      .on(t.kioskSessionId, t.at)
+      .where(sql`${t.kioskSessionId} is not null`),
   ],
 ).enableRLS();
 
@@ -246,7 +250,12 @@ export const attendanceDevice = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("attendance_device_entity_name_key").on(t.entityId, t.name), uniqueIndex("attendance_device_push_token_key").on(t.pushTokenHash).where(sql`${t.pushTokenHash} is not null`)],
+  (t) => [
+    unique("attendance_device_entity_name_key").on(t.entityId, t.name),
+    uniqueIndex("attendance_device_push_token_key")
+      .on(t.pushTokenHash)
+      .where(sql`${t.pushTokenHash} is not null`),
+  ],
 ).enableRLS();
 
 // The other entities a clock serves: one office shared by several entities has one kiosk at its
@@ -589,7 +598,24 @@ export const timesheetPeriod = pgTable(
 export const timesheetAdjustmentStatus = pgEnum("timesheet_adjustment_status", ["active", "voided"]);
 
 /** Signed minutes per timesheet column an adjustment corrects. */
-export type AdjustmentDeltas = Partial<Record<"workedMinutes" | "leavePaidMinutes" | "leaveUnpaidMinutes" | "absenceMinutes" | "lateMinutes" | "earlyMinutes" | "otWeekdayMinutes" | "otWeekdayNightMinutes" | "otRestDayMinutes" | "otRestDayNightMinutes" | "otHolidayMinutes" | "otHolidayNightMinutes" | "nightMinutes", number>> & { paidDaysCenti?: number };
+export type AdjustmentDeltas = Partial<
+  Record<
+    | "workedMinutes"
+    | "leavePaidMinutes"
+    | "leaveUnpaidMinutes"
+    | "absenceMinutes"
+    | "lateMinutes"
+    | "earlyMinutes"
+    | "otWeekdayMinutes"
+    | "otWeekdayNightMinutes"
+    | "otRestDayMinutes"
+    | "otRestDayNightMinutes"
+    | "otHolidayMinutes"
+    | "otHolidayNightMinutes"
+    | "nightMinutes",
+    number
+  >
+> & { paidDaysCenti?: number };
 
 // A correction to a month that is already locked (FR-ATT-14). The locked days are never edited:
 // the difference is written here and payroll picks it up as a retro item in its next open month.

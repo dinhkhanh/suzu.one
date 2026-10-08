@@ -26,7 +26,18 @@ export type ShellCounts = {
  */
 export function loadShellCounts(personId: string): Promise<ShellCounts> {
   return cachedLive(personId, "shell", async () => {
-    const [row] = rowsOf<{ unread: number; inbox: number; open_tasks: number; reviews: number; handoffs: number; blockers: number; on_hiring_team: boolean; interviewer: boolean }>(await db().execute(sql`select * from app.shell_counts(${personId}::uuid)`));
-    return { unread: row?.unread ?? 0, inbox: row?.inbox ?? 0, openTasks: row?.open_tasks ?? 0, reviews: row?.reviews ?? 0, handoffs: row?.handoffs ?? 0, blockers: row?.blockers ?? 0, onHiringTeam: !!row?.on_hiring_team, interviewer: !!row?.interviewer };
+    const [row] = rowsOf<{ unread: number; inbox: number; open_tasks: number; reviews: number; handoffs: number; blockers: number; on_hiring_team: boolean; interviewer: boolean }>(
+      await db().execute(sql`select * from app.shell_counts(${personId}::uuid)`),
+    );
+    return {
+      unread: row?.unread ?? 0,
+      inbox: row?.inbox ?? 0,
+      openTasks: row?.open_tasks ?? 0,
+      reviews: row?.reviews ?? 0,
+      handoffs: row?.handoffs ?? 0,
+      blockers: row?.blockers ?? 0,
+      onHiringTeam: !!row?.on_hiring_team,
+      interviewer: !!row?.interviewer,
+    };
   });
 }

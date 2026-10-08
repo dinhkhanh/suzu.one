@@ -33,6 +33,6 @@ Read `docs/SRS.md` (requirements, decisions D1–D18) and `docs/DEVELOPMENT_PLAN
 
 ## Before finishing a change
 
-Run `pnpm check`. New permissions or roles need cases in `policy.test.ts`. New sign-in rules need cases in `sign-in-policy.test.ts`.
+Run `pnpm check` — it starts with the Prettier check; `pnpm format` fixes what it finds. New permissions or roles need cases in `policy.test.ts`. New sign-in rules need cases in `sign-in-policy.test.ts`.
 
 Then read back every read the change added, against the two questions above: reference data through `cached()` with its writers invalidating, and counting, grouping and per-id lookups in SQL rather than in JS. A feature built with bare queries is unfinished work, not a follow-up.

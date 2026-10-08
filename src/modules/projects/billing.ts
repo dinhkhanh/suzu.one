@@ -70,7 +70,11 @@ export type NewBillingItem = {
  * Returns the item either way; `created` says whether this call made it.
  */
 export async function ensureBillingItem(tx: Tx, input: NewBillingItem): Promise<{ item: BillingItemRow; created: boolean }> {
-  const [project] = await tx.select({ id: schema.workProject.id, name: schema.workProject.name, entityId: schema.workProject.entityId, clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, input.projectId)).limit(1);
+  const [project] = await tx
+    .select({ id: schema.workProject.id, name: schema.workProject.name, entityId: schema.workProject.entityId, clientId: schema.workProject.clientId })
+    .from(schema.workProject)
+    .where(eq(schema.workProject.id, input.projectId))
+    .limit(1);
   if (!project) throw new ActionError("project_not_found");
   const plan = await ensurePlan(input.projectId, tx);
   const [created] = await tx
@@ -111,7 +115,10 @@ export async function ensureBillingItem(tx: Tx, input: NewBillingItem): Promise<
 
 /** A signed acceptance attached to the item it signs off (a milestone's or a month's), unless it already carries one. */
 export async function attachAcceptance(tx: Tx, itemId: string, acceptanceId: string): Promise<void> {
-  await tx.update(schema.projectBillingItem).set({ acceptanceId, updatedAt: new Date() }).where(and(eq(schema.projectBillingItem.id, itemId), isNull(schema.projectBillingItem.acceptanceId)));
+  await tx
+    .update(schema.projectBillingItem)
+    .set({ acceptanceId, updatedAt: new Date() })
+    .where(and(eq(schema.projectBillingItem.id, itemId), isNull(schema.projectBillingItem.acceptanceId)));
 }
 
 /**
@@ -149,7 +156,11 @@ async function wholeProjectBilled(tx: Tx, projectId: string): Promise<boolean> {
 export async function billMilestone(tx: Tx, milestone: typeof schema.projectMilestone.$inferSelect, actorPersonId: string | null): Promise<{ item: BillingItemRow; created: boolean } | null> {
   if (!milestone.isBilling) return null;
   await lockFee(tx, milestone.projectId);
-  const [existing] = await tx.select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestone.id), eq(schema.projectBillingItem.source, "milestone"))).limit(1);
+  const [existing] = await tx
+    .select()
+    .from(schema.projectBillingItem)
+    .where(and(eq(schema.projectBillingItem.milestoneId, milestone.id), eq(schema.projectBillingItem.source, "milestone")))
+    .limit(1);
   if (existing) return { item: existing, created: false };
   const [project] = await tx.select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, milestone.projectId)).limit(1);
   if (project?.clientId && !(await acceptedForBilling(tx, milestone.projectId, { milestoneId: milestone.id }))) return null;
@@ -169,13 +180,25 @@ export type MilestoneBilling = { state: MilestoneBillingState; amountSet: boolea
  */
 export async function milestoneBilling(projectId: string): Promise<Map<string, MilestoneBilling>> {
   const [milestones, items, signed, [project]] = await Promise.all([
-    db().select({ id: schema.projectMilestone.id, doneAt: schema.projectMilestone.doneAt, amountVnd: schema.projectMilestone.billingAmountVnd }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), eq(schema.projectMilestone.isBilling, true))),
     db()
-      .select({ milestoneId: schema.projectBillingItem.milestoneId, source: schema.projectBillingItem.source, status: schema.projectBillingItem.status, amountVnd: schema.projectBillingItem.amountVnd, acceptanceScope: schema.projectAcceptance.scope })
+      .select({ id: schema.projectMilestone.id, doneAt: schema.projectMilestone.doneAt, amountVnd: schema.projectMilestone.billingAmountVnd })
+      .from(schema.projectMilestone)
+      .where(and(eq(schema.projectMilestone.projectId, projectId), eq(schema.projectMilestone.isBilling, true))),
+    db()
+      .select({
+        milestoneId: schema.projectBillingItem.milestoneId,
+        source: schema.projectBillingItem.source,
+        status: schema.projectBillingItem.status,
+        amountVnd: schema.projectBillingItem.amountVnd,
+        acceptanceScope: schema.projectAcceptance.scope,
+      })
       .from(schema.projectBillingItem)
       .leftJoin(schema.projectAcceptance, eq(schema.projectAcceptance.id, schema.projectBillingItem.acceptanceId))
       .where(eq(schema.projectBillingItem.projectId, projectId)),
-    db().select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
+    db()
+      .select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId })
+      .from(schema.projectAcceptance)
+      .where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
     db().select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1),
   ]);
   const itemOf = new Map(items.flatMap((item) => (item.source === "milestone" && item.milestoneId ? [[item.milestoneId, item] as const] : [])));
@@ -185,7 +208,13 @@ export async function milestoneBilling(projectId: string): Promise<Map<string, M
   return new Map(
     milestones.map((milestone) => {
       const item = itemOf.get(milestone.id) ?? null;
-      const state = milestoneBillingState({ item: item ? { status: item.status as BillingStatus } : null, clientWork: !!project?.clientId, accepted: wholeProjectSigned || signedMilestones.has(milestone.id), wholeProjectBilled, done: !!milestone.doneAt });
+      const state = milestoneBillingState({
+        item: item ? { status: item.status as BillingStatus } : null,
+        clientWork: !!project?.clientId,
+        accepted: wholeProjectSigned || signedMilestones.has(milestone.id),
+        wholeProjectBilled,
+        done: !!milestone.doneAt,
+      });
       return [milestone.id, { state, amountSet: (item ? item.amountVnd : milestone.amountVnd) !== null }];
     }),
   );
@@ -309,7 +338,12 @@ export async function decideBillingItem(itemId: string, decision: BillingDecisio
       .where(eq(schema.projectBillingItem.id, itemId))
       .returning();
     if (decision.action === "invoice") {
-      const [project] = await tx.select({ name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(eq(schema.workProject.id, after.projectId)).limit(1);
+      const [project] = await tx
+        .select({ name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId })
+        .from(schema.workProject)
+        .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id))
+        .where(eq(schema.workProject.id, after.projectId))
+        .limit(1);
       if (project?.manager) await notify({ recipients: [project.manager], kind: "projects.billing_invoiced", params: { project: project.name, job: after.jobNumber ?? "—" }, link: `/projects/${after.projectId}/acceptance` }, tx);
     }
     return { before, after };
@@ -350,7 +384,10 @@ export async function projectByJobNumber(jobNumber: string): Promise<string | nu
 
 /** Items still waiting for finance on a project — the close-out checklist asks. */
 export async function countOpenBilling(executor: Executor, projectId: string): Promise<number> {
-  const [row] = await executor.select({ value: count() }).from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.projectId, projectId), eq(schema.projectBillingItem.status, "ready")));
+  const [row] = await executor
+    .select({ value: count() })
+    .from(schema.projectBillingItem)
+    .where(and(eq(schema.projectBillingItem.projectId, projectId), eq(schema.projectBillingItem.status, "ready")));
   return row?.value ?? 0;
 }
 
@@ -362,7 +399,11 @@ export async function countOpenBilling(executor: Executor, projectId: string): P
  */
 export async function invoiceItemsIn(tx: Tx, itemIds: readonly string[], invoice: { number: string; date: IsoDate }, amounts: ReadonlyMap<string, number>, actorPersonId: string): Promise<BillingItemRow[]> {
   if (itemIds.length === 0) return [];
-  const rows = await tx.select().from(schema.projectBillingItem).where(inArray(schema.projectBillingItem.id, [...itemIds])).for("update");
+  const rows = await tx
+    .select()
+    .from(schema.projectBillingItem)
+    .where(inArray(schema.projectBillingItem.id, [...itemIds]))
+    .for("update");
   if (rows.length !== new Set(itemIds).size) throw new ActionError("billing_not_found");
   if (rows.some((row) => !billingDecidable(row.status as BillingStatus))) throw new ActionError("billing_decided");
   const now = new Date();
@@ -378,7 +419,11 @@ export async function invoiceItemsIn(tx: Tx, itemIds: readonly string[], invoice
     after.push(updated);
   }
   const projectIds = [...new Set(after.map((row) => row.projectId))];
-  const projects = await tx.select({ id: schema.workProject.id, name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(inArray(schema.workProject.id, projectIds));
+  const projects = await tx
+    .select({ id: schema.workProject.id, name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId })
+    .from(schema.workProject)
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id))
+    .where(inArray(schema.workProject.id, projectIds));
   for (const project of projects) {
     const job = after.find((row) => row.projectId === project.id)?.jobNumber ?? "—";
     if (project.manager) await notify({ recipients: [project.manager], kind: "projects.billing_invoiced", params: { project: project.name, job }, link: `/projects/${project.id}/acceptance` }, tx);
@@ -404,5 +449,8 @@ export async function releaseInvoicedItemsIn(tx: Tx, itemIds: readonly string[],
 /** Ready items by id, for finance's invoice form (the CRM checks the reader's reach first). */
 export async function billingItemsByIds(itemIds: readonly string[], executor: Executor = db()): Promise<BillingItemRow[]> {
   if (itemIds.length === 0) return [];
-  return executor.select().from(schema.projectBillingItem).where(inArray(schema.projectBillingItem.id, [...itemIds]));
+  return executor
+    .select()
+    .from(schema.projectBillingItem)
+    .where(inArray(schema.projectBillingItem.id, [...itemIds]));
 }

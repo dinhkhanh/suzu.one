@@ -25,7 +25,13 @@ function required(name: string, value: string | undefined): string {
 const encodePath = (objectPath: string) => objectPath.split("/").map(encodeURIComponent).join("/");
 
 function attachmentDisposition(fileName: string): string {
-  const ascii = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const ascii = fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\]/g, "_");
   const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
@@ -37,7 +43,9 @@ async function main() {
   const sourceBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "suzu-private";
   const targetBucket = process.env.STORAGE_BUCKET ?? "suzu-private";
   // As the app reads it (src/lib/env.ts `r2EndpointFor`): a pasted bucket URL loses its bucket.
-  const endpoint = process.env.R2_ENDPOINT ? process.env.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${targetBucket}$`), "") : `https://${required("CLOUDFLARE_ACCOUNT_ID", process.env.CLOUDFLARE_ACCOUNT_ID)}.r2.cloudflarestorage.com`;
+  const endpoint = process.env.R2_ENDPOINT
+    ? process.env.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${targetBucket}$`), "")
+    : `https://${required("CLOUDFLARE_ACCOUNT_ID", process.env.CLOUDFLARE_ACCOUNT_ID)}.r2.cloudflarestorage.com`;
   const r2 = new AwsClient({ accessKeyId: required("R2_ACCESS_KEY_ID", process.env.R2_ACCESS_KEY_ID), secretAccessKey: required("R2_SECRET_ACCESS_KEY", process.env.R2_SECRET_ACCESS_KEY), service: "s3", region: "auto" });
   const target = (objectPath: string) => `${endpoint.replace(/\/$/, "")}/${targetBucket}/${encodePath(objectPath)}`;
 

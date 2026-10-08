@@ -11,7 +11,20 @@ import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, Ta
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
-import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, bonusHandoffState, getBonusRun, getBonusScheme, listBonusHandoffs, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
+import {
+  availableBonusSteps,
+  canAdjustBonusLine,
+  canManageBonusRun,
+  canReadBonusRun,
+  bonusCostOf,
+  bonusHandoffState,
+  getBonusRun,
+  getBonusScheme,
+  listBonusHandoffs,
+  listBonusLines,
+  listBonusRunEvents,
+  schemeDateOf,
+} from "@/modules/payroll/service";
 import { BonusStepForm, PayBonusRunButton, SimulateButton, WhatIfForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { pageTitle } from "@/i18n/page-title";
@@ -50,7 +63,14 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
   // Where each entity stands with payroll once the run has been handed over: an entity whose
   // off-cycle run was cancelled there is "not handed over" again, and can be handed over alone.
   const entityNameOf = new Map(cost.byEntity.map((entity) => [entity.entityId, entity.entityName]));
-  const handoff = run.status === "paid" ? bonusHandoffState(run, lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })), handoffs).filter((entity) => entity.payable > 0) : [];
+  const handoff =
+    run.status === "paid"
+      ? bonusHandoffState(
+          run,
+          lines.map((line) => ({ entityId: line.row.entityId, finalAmountVnd: line.trace.finalAmountVnd })),
+          handoffs,
+        ).filter((entity) => entity.payable > 0)
+      : [];
   const notHandedOver = handoff.filter((entity) => !entity.payrollRunId);
 
   return (
@@ -62,7 +82,9 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
               ← {t("title")}
             </Link>
             <span className="text-faint">·</span>
-            <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
+            <Badge dot variant={statusTone(run.status)}>
+              {t(`status.${run.status}`)}
+            </Badge>
           </span>
         }
         title={run.name}
@@ -79,7 +101,10 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
             {cost.byEntity.map((entity) => (
               <TableRow key={entity.entityId}>
                 <TableCell className="text-muted-foreground">
-                  <RecordLink kind="entity" id={entity.entityId}>{entity.entityName}</RecordLink> · {t("headcount", { count: entity.totals.headcount, eligible: entity.totals.eligible })}
+                  <RecordLink kind="entity" id={entity.entityId}>
+                    {entity.entityName}
+                  </RecordLink>{" "}
+                  · {t("headcount", { count: entity.totals.headcount, eligible: entity.totals.eligible })}
                 </TableCell>
                 <TableCell kind="money">{formatVnd(entity.totals.totalVnd)}</TableCell>
               </TableRow>
@@ -87,14 +112,18 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
             {cost.totals.overridden > 0 ? (
               <TableRow>
                 <TableCell className="text-muted-foreground">{t("cost.beforeOverrides")}</TableCell>
-                <TableCell kind="money" className="text-muted-foreground">{formatVnd(cost.totals.computedTotalVnd)}</TableCell>
+                <TableCell kind="money" className="text-muted-foreground">
+                  {formatVnd(cost.totals.computedTotalVnd)}
+                </TableCell>
               </TableRow>
             ) : null}
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell className="font-semibold">{t("cost.total")}</TableCell>
-              <TableCell kind="money" className="font-semibold">{formatVnd(cost.totals.totalVnd)}</TableCell>
+              <TableCell kind="money" className="font-semibold">
+                {formatVnd(cost.totals.totalVnd)}
+              </TableCell>
             </TableRow>
           </TableFooter>
         </Table>
@@ -127,11 +156,15 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
                 {handoff.map((entity) => (
                   <TableRow key={entity.entityId}>
                     <TableCell>
-                      <RecordLink kind="entity" id={entity.entityId}>{entityNameOf.get(entity.entityId) ?? "—"}</RecordLink>
+                      <RecordLink kind="entity" id={entity.entityId}>
+                        {entityNameOf.get(entity.entityId) ?? "—"}
+                      </RecordLink>
                     </TableCell>
                     <TableCell kind="number">{entity.payable}</TableCell>
                     <TableCell>
-                      <Badge dot variant={entity.payrollRunId ? "success" : "warning"}>{t(entity.payrollRunId ? "handoff.handedOver" : "handoff.notHandedOver")}</Badge>
+                      <Badge dot variant={entity.payrollRunId ? "success" : "warning"}>
+                        {t(entity.payrollRunId ? "handoff.handedOver" : "handoff.notHandedOver")}
+                      </Badge>
                       {entity.cancelledPayrollRunId ? <span className="ml-2 text-xs text-muted-foreground">{t("handoff.cancelled")}</span> : null}
                     </TableCell>
                     <TableCell className="whitespace-normal">
@@ -185,8 +218,12 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
                   </TableCell>
                   <TableCell>{line.row.eligible ? (line.trace.performance.bandLabel ?? "—") : <span className="text-muted-foreground">{t(`trace.exclusion.${line.trace.exclusion ?? "no_result"}`)}</span>}</TableCell>
                   <TableCell kind="number">{factor(line.trace.combinedMultiplierBp)}</TableCell>
-                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(line.trace.computedAmountVnd)}</TableCell>
-                  <TableCell kind="money" className="font-medium">{formatVnd(line.trace.finalAmountVnd)}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">
+                    {formatVnd(line.trace.computedAmountVnd)}
+                  </TableCell>
+                  <TableCell kind="money" className="font-medium">
+                    {formatVnd(line.trace.finalAmountVnd)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

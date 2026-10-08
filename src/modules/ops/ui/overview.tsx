@@ -46,7 +46,17 @@ export function overviewParams(query: OverviewQuery, extra: Record<string, strin
   return search.size ? `?${search}` : "";
 }
 
-export async function OverviewFilters({ action, query, owners, hidden = {} }: { action: string; query: OverviewQuery; owners: { id: string; name: string }[]; /** Params of the page that must survive applying a filter (month, entity…). */ hidden?: Record<string, string | null | undefined> }) {
+export async function OverviewFilters({
+  action,
+  query,
+  owners,
+  hidden = {},
+}: {
+  action: string;
+  query: OverviewQuery;
+  owners: { id: string; name: string }[];
+  /** Params of the page that must survive applying a filter (month, entity…). */ hidden?: Record<string, string | null | undefined>;
+}) {
   const t = await getTranslations("ops");
   const dirty = !!(query.authority || query.category || query.ownerId);
   return (

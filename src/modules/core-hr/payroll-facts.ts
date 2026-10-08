@@ -45,9 +45,16 @@ export async function listPayrollFacts(filter: { personIds?: readonly string[]; 
   // Everything in one round trip: each read names the same people by the same condition.
   const [facts, dependents, sensitive, contracts] = await Promise.all([
     listEmploymentFacts(filter, executor),
-    executor.select({ personId: schema.dependent.personId, deductionFrom: schema.dependent.deductionFrom, deductionTo: schema.dependent.deductionTo }).from(schema.dependent).where(and(scope(schema.dependent.personId), isNull(schema.dependent.deletedAt))),
+    executor
+      .select({ personId: schema.dependent.personId, deductionFrom: schema.dependent.deductionFrom, deductionTo: schema.dependent.deductionTo })
+      .from(schema.dependent)
+      .where(and(scope(schema.dependent.personId), isNull(schema.dependent.deletedAt))),
     executor.select().from(schema.personSensitive).where(scope(schema.personSensitive.personId)),
-    executor.select().from(schema.contract).where(and(scope(schema.contract.personId), isNull(schema.contract.deletedAt), inArray(schema.contract.type, ["probation", "fixed_term", "indefinite", "service", "internship"]))).orderBy(desc(schema.contract.startDate)),
+    executor
+      .select()
+      .from(schema.contract)
+      .where(and(scope(schema.contract.personId), isNull(schema.contract.deletedAt), inArray(schema.contract.type, ["probation", "fixed_term", "indefinite", "service", "internship"])))
+      .orderBy(desc(schema.contract.startDate)),
   ]);
   if (facts.length === 0) return [];
   const cipher = sensitive.some((row) => row.taxCode || row.bankAccounts || row.socialInsuranceNumber || row.nationalId) ? fieldCipher() : null;
@@ -115,7 +122,11 @@ export async function listPayrollNames(personIds: readonly string[], executor: E
  * profiles. Never an amount — `details` says only what kind of change it was (the ops tracker
  * reads `salary_change` to open the insurance-adjustment obligation).
  */
-export async function recordPayEvent(tx: Tx, event: { type: "salary_change" | "pay_profile_change"; personId: string; employmentId: string; entityId: string; effectiveDate: IsoDate; reason: string | null; details: Record<string, string | null>; approvalRequestId?: string | null }, actorPersonId: string | null) {
+export async function recordPayEvent(
+  tx: Tx,
+  event: { type: "salary_change" | "pay_profile_change"; personId: string; employmentId: string; entityId: string; effectiveDate: IsoDate; reason: string | null; details: Record<string, string | null>; approvalRequestId?: string | null },
+  actorPersonId: string | null,
+) {
   return recordLifecycleEvent(tx, { ...event, status: "applied" }, actorPersonId);
 }
 
@@ -143,7 +154,11 @@ export async function listDependantRegistrations(filter: { entityIds?: readonly 
   const facts = await listPayrollFacts(filter, month, executor);
   if (facts.length === 0) return [];
   const ids = facts.map((fact) => fact.personId);
-  const rows = await executor.select().from(schema.dependent).where(and(inArray(schema.dependent.personId, ids), isNull(schema.dependent.deletedAt))).orderBy(schema.dependent.deductionFrom);
+  const rows = await executor
+    .select()
+    .from(schema.dependent)
+    .where(and(inArray(schema.dependent.personId, ids), isNull(schema.dependent.deletedAt)))
+    .orderBy(schema.dependent.deductionFrom);
   if (rows.length === 0) return [];
   const cipher = fieldCipher();
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));

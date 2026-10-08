@@ -197,7 +197,11 @@ describe("what makes the two formats different", () => {
     const rows = [row({ amount: 1_000_000 }), row({ amount: 2_000_000 })];
     const acb = body(acbFormat.build(input(rows)).content);
     expect(acb.at(-1)).toBe("TONG CONG,2,,,3000000,,,");
-    expect(body(vcbFormat.build(input(rows)).content).at(-1)!.startsWith("2,")).toBe(true);
+    expect(
+      body(vcbFormat.build(input(rows)).content)
+        .at(-1)!
+        .startsWith("2,"),
+    ).toBe(true);
   });
 
   it("a comma in a name is quoted, not left to split the row", () => {

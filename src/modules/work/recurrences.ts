@@ -58,8 +58,21 @@ export async function listRecurrences(scope: RecurrenceScope, today: IsoDate): P
   const assigneeIds = rows.map((row) => row.recurrence.draft.assigneePersonId).filter((id): id is string => !!id);
   const [people, made, offOf] = await Promise.all([
     assigneeIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, assigneeIds)) : [],
-    db().select({ recurrenceId: schema.workTask.recurrenceId, count: sql<number>`count(*)::int` }).from(schema.workTask).where(inArray(schema.workTask.recurrenceId, rows.map((row) => row.recurrence.id))).groupBy(schema.workTask.recurrenceId),
-    dayOffChecks(rows.map((row) => row.projectEntityId ?? row.teamEntityId), today, addDays(today, NEXT_HORIZON_DAYS + SHIFT_ROOM_DAYS)),
+    db()
+      .select({ recurrenceId: schema.workTask.recurrenceId, count: sql<number>`count(*)::int` })
+      .from(schema.workTask)
+      .where(
+        inArray(
+          schema.workTask.recurrenceId,
+          rows.map((row) => row.recurrence.id),
+        ),
+      )
+      .groupBy(schema.workTask.recurrenceId),
+    dayOffChecks(
+      rows.map((row) => row.projectEntityId ?? row.teamEntityId),
+      today,
+      addDays(today, NEXT_HORIZON_DAYS + SHIFT_ROOM_DAYS),
+    ),
   ]);
   const names = new Map(people.map((person) => [person.id, person.name]));
   const madeBy = new Map(made.map((row) => [row.recurrenceId, row.count]));
@@ -90,7 +103,10 @@ export async function createRecurrence(input: RecurrenceInput, actorPersonId: st
     if (!team || !team.isActive) throw new ActionError("team_not_found");
     teamId = team.id;
   }
-  const [recurrence] = await db().insert(schema.workRecurrence).values({ ...values, teamId, createdByPersonId: actorPersonId }).returning();
+  const [recurrence] = await db()
+    .insert(schema.workRecurrence)
+    .values({ ...values, teamId, createdByPersonId: actorPersonId })
+    .returning();
   // The first occurrences appear at once, not tomorrow morning.
   const { made } = await generateOccurrences(today, recurrence.id);
   return { recurrence, made };
@@ -132,7 +148,11 @@ export async function updateRecurrence(recurrenceId: string, patch: RecurrencePa
 export async function changeRecurrence(recurrenceId: string, change: { isActive: boolean } | { endDate: IsoDate }): Promise<{ before: RecurrenceRow; after: RecurrenceRow }> {
   const before = await findRecurrence(recurrenceId);
   if (!before) throw new ActionError("recurrence_not_found");
-  const [after] = await db().update(schema.workRecurrence).set({ ...("endDate" in change ? { endDate: change.endDate, isActive: false } : { isActive: change.isActive }), updatedAt: new Date() }).where(eq(schema.workRecurrence.id, recurrenceId)).returning();
+  const [after] = await db()
+    .update(schema.workRecurrence)
+    .set({ ...("endDate" in change ? { endDate: change.endDate, isActive: false } : { isActive: change.isActive }), updatedAt: new Date() })
+    .where(eq(schema.workRecurrence.id, recurrenceId))
+    .returning();
   return { before, after };
 }
 
@@ -164,33 +184,67 @@ export async function generateOccurrences(today: IsoDate, onlyRecurrenceId?: str
   });
   if (due.length === 0) return { recurrences: rows.length, made: 0, skipped: 0 };
   const earliest = due.map((row) => row.from).sort()[0];
-  const latest = due.map((row) => row.to).sort().at(-1)!;
-  const offOf = await dayOffChecks(due.map((row) => row.entityId), earliest, addDays(latest, SHIFT_ROOM_DAYS));
+  const latest = due
+    .map((row) => row.to)
+    .sort()
+    .at(-1)!;
+  const offOf = await dayOffChecks(
+    due.map((row) => row.entityId),
+    earliest,
+    addDays(latest, SHIFT_ROOM_DAYS),
+  );
 
   let made = 0;
   let skipped = 0;
   for (const { recurrence, from, to, entityId } of due) {
     const placed = placeOccurrences(recurrence.rule, recurrence.startDate, occurrencesBetween(recurrence.rule, recurrence.startDate, from, to, 120), recurrence.onDayOff as DayOffMode, offOf.get(entityId)!);
     for (const { occurrence: occurrenceDate, due: dueDate } of placed) {
-      const created = await db().transaction(async (tx) => {
-        const [existing] = await tx.select({ taskId: schema.workTask.taskId }).from(schema.workTask).where(and(eq(schema.workTask.recurrenceId, recurrence.id), eq(schema.workTask.occurrenceDate, occurrenceDate))).limit(1);
-        if (existing) return false;
-        const draft = recurrence.draft;
-        // People leave and labels are deleted; the task is still made, without them.
-        const [assignee] = draft.assigneePersonId ? await tx.select({ id: schema.person.id }).from(schema.person).where(and(eq(schema.person.id, draft.assigneePersonId), ne(schema.person.status, "offboarded"))).limit(1) : [];
-        const labels = draft.labelIds?.length ? await tx.select({ id: schema.workLabel.id }).from(schema.workLabel).where(inArray(schema.workLabel.id, draft.labelIds)) : [];
-        const [client] = draft.clientId ? await tx.select({ id: schema.workClient.id }).from(schema.workClient).where(eq(schema.workClient.id, draft.clientId)).limit(1) : [];
-        await createWorkTaskIn(
-          tx,
-          { teamId: recurrence.teamId, projectId: recurrence.projectId, title: recurrence.title, description: draft.description ?? null, assigneePersonId: assignee?.id ?? null, requesterPersonId: recurrence.createdByPersonId, priority: draft.priority ?? null, estimateMinutes: draft.estimateMinutes ?? null, clientId: client?.id, channel: draft.channel ?? null, contentFormat: draft.contentFormat ?? null, labelIds: labels.map((label) => label.id), dueDate, recurrence: { id: recurrence.id, occurrenceDate } },
-          recurrence.createdByPersonId,
-        );
-        return true;
-      }).catch((error: unknown) => {
-        // One rule that cannot make its task (a retired workflow, a vanished project) must not stop the others.
-        if (error instanceof ActionError) return null;
-        throw error;
-      });
+      const created = await db()
+        .transaction(async (tx) => {
+          const [existing] = await tx
+            .select({ taskId: schema.workTask.taskId })
+            .from(schema.workTask)
+            .where(and(eq(schema.workTask.recurrenceId, recurrence.id), eq(schema.workTask.occurrenceDate, occurrenceDate)))
+            .limit(1);
+          if (existing) return false;
+          const draft = recurrence.draft;
+          // People leave and labels are deleted; the task is still made, without them.
+          const [assignee] = draft.assigneePersonId
+            ? await tx
+                .select({ id: schema.person.id })
+                .from(schema.person)
+                .where(and(eq(schema.person.id, draft.assigneePersonId), ne(schema.person.status, "offboarded")))
+                .limit(1)
+            : [];
+          const labels = draft.labelIds?.length ? await tx.select({ id: schema.workLabel.id }).from(schema.workLabel).where(inArray(schema.workLabel.id, draft.labelIds)) : [];
+          const [client] = draft.clientId ? await tx.select({ id: schema.workClient.id }).from(schema.workClient).where(eq(schema.workClient.id, draft.clientId)).limit(1) : [];
+          await createWorkTaskIn(
+            tx,
+            {
+              teamId: recurrence.teamId,
+              projectId: recurrence.projectId,
+              title: recurrence.title,
+              description: draft.description ?? null,
+              assigneePersonId: assignee?.id ?? null,
+              requesterPersonId: recurrence.createdByPersonId,
+              priority: draft.priority ?? null,
+              estimateMinutes: draft.estimateMinutes ?? null,
+              clientId: client?.id,
+              channel: draft.channel ?? null,
+              contentFormat: draft.contentFormat ?? null,
+              labelIds: labels.map((label) => label.id),
+              dueDate,
+              recurrence: { id: recurrence.id, occurrenceDate },
+            },
+            recurrence.createdByPersonId,
+          );
+          return true;
+        })
+        .catch((error: unknown) => {
+          // One rule that cannot make its task (a retired workflow, a vanished project) must not stop the others.
+          if (error instanceof ActionError) return null;
+          throw error;
+        });
       if (created) made++;
       else if (created === null) skipped++;
     }

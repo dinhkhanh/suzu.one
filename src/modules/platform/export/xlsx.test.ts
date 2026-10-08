@@ -41,7 +41,12 @@ describe("xlsx", () => {
   });
 
   it("stores files a ZIP reader can list and check", () => {
-    const files = unzip(zipStored([{ name: "a.txt", data: new TextEncoder().encode("hello") }, { name: "thư mục/b.xml", data: new Uint8Array() }]));
+    const files = unzip(
+      zipStored([
+        { name: "a.txt", data: new TextEncoder().encode("hello") },
+        { name: "thư mục/b.xml", data: new Uint8Array() },
+      ]),
+    );
     expect([...files.entries()]).toEqual([
       ["a.txt", "hello"],
       ["thư mục/b.xml", ""],
@@ -76,7 +81,11 @@ describe("xlsx", () => {
   });
 
   it("cuts a long list to one export's worth and says so", () => {
-    const file = exportFile("people", [{ header: "n", value: (row: number) => row }], Array.from({ length: 5001 }, (_, index) => index));
+    const file = exportFile(
+      "people",
+      [{ header: "n", value: (row: number) => row }],
+      Array.from({ length: 5001 }, (_, index) => index),
+    );
     expect(file.rowCount).toBe(5000);
     expect(file.truncated).toBe(true);
     expect(file.table.rows.at(-1)).toEqual([4999]);

@@ -47,14 +47,28 @@ const generatePipeline = createAction({
     // One of the entity's own paying accounts (FR-PLT-11)…
     payingAccountId: z.preprocess(blankToNull, z.uuid().nullable().default(null)),
     // …or, only for an entity with none configured at this bank, an account typed by hand.
-    accountNumber: z.preprocess(blankToNull, z.string().trim().regex(/^[\d\s-]{6,32}$/).nullable().default(null)),
+    accountNumber: z.preprocess(
+      blankToNull,
+      z
+        .string()
+        .trim()
+        .regex(/^[\d\s-]{6,32}$/)
+        .nullable()
+        .default(null),
+    ),
     accountName: optionalText(160),
     branch: optionalText(160),
   }),
   authorize: (user, input) => paysRun(user, input.runId),
   run: async ({ user, input }) => {
     const { file, record } = await generateBankFile(
-      { runId: input.runId, bank: input.bank, valueDate: input.valueDate, payingAccountId: input.payingAccountId, payingAccount: input.accountNumber && input.accountName ? { accountNumber: input.accountNumber, accountName: input.accountName, branch: input.branch } : null },
+      {
+        runId: input.runId,
+        bank: input.bank,
+        valueDate: input.valueDate,
+        payingAccountId: input.payingAccountId,
+        payingAccount: input.accountNumber && input.accountName ? { accountNumber: input.accountNumber, accountName: input.accountName, branch: input.branch } : null,
+      },
       user.person.id,
     );
     refresh(input.runId);
@@ -84,7 +98,14 @@ const otherPaymentPipeline = createAction({
     const row = await recordOtherPayment(input, user.person.id);
     refresh(input.runId);
     // The day, the reference and the reason are the record; what the person was paid is not written here.
-    return { data: { id: row.id }, audit: { resource: { type: "payroll_other_payment", id: row.id, entityId: row.entityId }, summary: `paid another way on ${row.paidOn}`, after: { personId: row.personId, paidOn: row.paidOn, reference: row.reference, reason: row.reason } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "payroll_other_payment", id: row.id, entityId: row.entityId },
+        summary: `paid another way on ${row.paidOn}`,
+        after: { personId: row.personId, paidOn: row.paidOn, reference: row.reference, reason: row.reason },
+      },
+    };
   },
 });
 export async function recordOtherPaymentAction(input: unknown) {
@@ -99,7 +120,14 @@ const removeOtherPaymentPipeline = createAction({
   run: async ({ input }) => {
     const row = await removeOtherPayment(input.runId, input.personId);
     refresh(input.runId);
-    return { data: { id: row.id }, audit: { resource: { type: "payroll_other_payment", id: row.id, entityId: row.entityId }, summary: "paid-another-way mark taken back", before: { personId: row.personId, paidOn: row.paidOn, reference: row.reference, reason: row.reason } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "payroll_other_payment", id: row.id, entityId: row.entityId },
+        summary: "paid-another-way mark taken back",
+        before: { personId: row.personId, paidOn: row.paidOn, reference: row.reference, reason: row.reason },
+      },
+    };
   },
 });
 export async function removeOtherPaymentAction(input: unknown) {
@@ -118,7 +146,10 @@ const openSheetPipeline = createAction({
     const outcome = await openCashSheet(input.runId, user.person.id);
     const run = await getRun(input.runId);
     refresh(input.runId);
-    return { data: { created: outcome.created, rows: outcome.rows.length }, audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `cash sheet opened for ${run?.month ?? ""}`, after: { rows: outcome.rows.length } } };
+    return {
+      data: { created: outcome.created, rows: outcome.rows.length },
+      audit: { resource: { type: "payroll_run", id: input.runId, entityId: run?.entityId ?? null }, summary: `cash sheet opened for ${run?.month ?? ""}`, after: { rows: outcome.rows.length } },
+    };
   },
 });
 export async function openCashSheetAction(input: unknown) {
@@ -135,7 +166,14 @@ const disbursePipeline = createAction({
     const row = await recordCashDisbursement(input, user.person.id);
     refresh(input.runId);
     // Whether it was in full is worth keeping; how much it was is not written to the log.
-    return { data: { id: row.id }, audit: { resource: { type: "payroll_cash_payment", id: row.id, entityId: row.entityId }, summary: `cash handed over on ${input.disbursedOn}`, after: { personId: input.personId, disbursedOn: input.disbursedOn, inFull: openCashDisbursed(row) === openCashAmount(row), note: row.disbursementNote } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "payroll_cash_payment", id: row.id, entityId: row.entityId },
+        summary: `cash handed over on ${input.disbursedOn}`,
+        after: { personId: input.personId, disbursedOn: input.disbursedOn, inFull: openCashDisbursed(row) === openCashAmount(row), note: row.disbursementNote },
+      },
+    };
   },
 });
 export async function recordCashDisbursementAction(input: unknown) {

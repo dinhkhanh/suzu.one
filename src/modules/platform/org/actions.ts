@@ -16,7 +16,12 @@ const text = (max: number) => optional(z.string().trim().max(max));
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
 
 const entityInput = z.object({
-  code: z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9_-]+$/),
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(12)
+    .regex(/^[A-Za-z0-9_-]+$/),
   legalName: z.string().trim().min(2).max(200),
   shortName: z.string().trim().min(1).max(60),
   taxCode: z.string().trim().max(20).optional(),
@@ -108,7 +113,10 @@ export async function updateBranchAction(input: unknown) {
 // company's own accounts, not a person's, so the audit row keeps them in full.
 const mayKeepBankAccounts = (user: CurrentUser, entityId: string) => canKeepEntityBankAccounts(user.principal, entityId);
 const bankAccountFields = {
-  accountNumber: z.string().trim().regex(/^[\d\s-]{6,40}$/),
+  accountNumber: z
+    .string()
+    .trim()
+    .regex(/^[\d\s-]{6,40}$/),
   accountName: z.string().trim().min(1).max(160),
   branch: text(160),
   isDefault: checkbox,
@@ -163,7 +171,14 @@ const unitTarget = (unit: { entityId: string | null; path?: readonly string[] })
 const createOrgUnitPipeline = createAction({
   name: "org_unit.create",
   input: z.object({
-    code: optional(z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9_-]+$/)),
+    code: optional(
+      z
+        .string()
+        .trim()
+        .min(2)
+        .max(12)
+        .regex(/^[A-Za-z0-9_-]+$/),
+    ),
     name: z.string().trim().min(1).max(120),
     kind: z.enum(ORG_UNIT_KINDS).default("team"),
     parentId: optional(z.uuid()),

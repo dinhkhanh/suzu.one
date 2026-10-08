@@ -49,10 +49,18 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
         </Link>
         <h1 className="flex flex-wrap items-center gap-2">
           {format.dateTime(new Date(`${meeting.meetingOn}T00:00:00+07:00`), { dateStyle: "long" })}
-          <Badge dot variant={statusTone(meeting.status)}>{t(`status.${meeting.status}`)}</Badge>
+          <Badge dot variant={statusTone(meeting.status)}>
+            {t(`status.${meeting.status}`)}
+          </Badge>
         </h1>
         <p className="text-sm text-muted-foreground">
-          <RecordLink kind="person" id={meeting.managerPersonId}>{meeting.managerName}</RecordLink> · <RecordLink kind="person" id={meeting.personId}>{meeting.personName}</RecordLink>
+          <RecordLink kind="person" id={meeting.managerPersonId}>
+            {meeting.managerName}
+          </RecordLink>{" "}
+          ·{" "}
+          <RecordLink kind="person" id={meeting.personId}>
+            {meeting.personName}
+          </RecordLink>
         </p>
       </header>
 

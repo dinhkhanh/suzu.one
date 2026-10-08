@@ -80,7 +80,10 @@ export async function saveReviewChain(scope: { teamId: string; projectId: string
   const values = { name: input.name.trim(), contentFormat: input.contentFormat, stages, isActive: input.isActive, updatedAt: new Date() };
   const saved = await db().transaction(async (tx) => {
     if (!chainId) {
-      const [after] = await tx.insert(schema.workReviewChain).values({ teamId: scope.teamId, projectId: scope.projectId, createdByPersonId: actorPersonId, ...values }).returning();
+      const [after] = await tx
+        .insert(schema.workReviewChain)
+        .values({ teamId: scope.teamId, projectId: scope.projectId, createdByPersonId: actorPersonId, ...values })
+        .returning();
       return { before: null, after };
     }
     const before = await findReviewChain(chainId, tx);

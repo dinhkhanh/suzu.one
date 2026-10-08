@@ -40,7 +40,8 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const link = (next: Record<string, string | null>) => {
     const query = new URLSearchParams({ from: period.from, to: period.to, ...(teamId ? { team: teamId } : {}) });
-    for (const [key, value] of Object.entries(next)) if (value === null) query.delete(key);
+    for (const [key, value] of Object.entries(next))
+      if (value === null) query.delete(key);
       else query.set(key, value);
     return `/work/analytics?${query.toString()}`;
   };
@@ -55,7 +56,15 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
         }
         title={t("title")}
         description={t("description")}
-        actions={<ExportButton action={exportReportAction} input={{ reportKey: "work_analytics", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+        actions={
+          <ExportButton
+            action={exportReportAction}
+            input={{ reportKey: "work_analytics", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }}
+            label={tExports("button")}
+            failedLabel={tExports("failed")}
+            truncatedLabel={tExports("truncated")}
+          />
+        }
       />
 
       <form className="flex flex-wrap items-end gap-3 text-sm">
@@ -81,7 +90,21 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   );
 }
 
-async function AnalyticsTable({ viewer, period, teamId, today, link, tab }: { viewer: WorkViewer; period: { from: IsoDate; to: IsoDate }; teamId: string | null; today: IsoDate; link: (next: Record<string, string | null>) => string; tab: (active: boolean) => string }) {
+async function AnalyticsTable({
+  viewer,
+  period,
+  teamId,
+  today,
+  link,
+  tab,
+}: {
+  viewer: WorkViewer;
+  period: { from: IsoDate; to: IsoDate };
+  teamId: string | null;
+  today: IsoDate;
+  link: (next: Record<string, string | null>) => string;
+  tab: (active: boolean) => string;
+}) {
   const [analytics, t, format] = await Promise.all([getWorkAnalytics(viewer, { ...period, teamId }, today), getTranslations("reports.analytics"), getFormatter()]);
   const percent = (rate: number | null) => (rate === null ? "—" : format.number(rate, { style: "percent", maximumFractionDigits: 0 }));
   const revisions = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
@@ -146,7 +169,9 @@ async function AnalyticsTable({ viewer, period, teamId, today, link, tab }: { vi
                     <TableRow key={`${label}-${group.id}`}>
                       <TableCell className="text-muted-foreground">{label}</TableCell>
                       <TableCell>
-                        <RecordLink kind={kind} id={group.id}>{group.name}</RecordLink>
+                        <RecordLink kind={kind} id={group.id}>
+                          {group.name}
+                        </RecordLink>
                       </TableCell>
                       <TableCell kind="number">{group.cell.completed}</TableCell>
                       <TableCell kind="number">{group.cell.onTime}</TableCell>

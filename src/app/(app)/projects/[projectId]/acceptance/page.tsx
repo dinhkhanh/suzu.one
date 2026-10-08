@@ -9,7 +9,19 @@ import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, T
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { awaitingAcceptance, billingCorrectors, type BillingStatus, canDecideBilling, canManageAcceptance, listAcceptances, listPeriodOptions, listProjectBilling, listStructure, openProject, signedCorrectable } from "@/modules/projects/service";
+import {
+  awaitingAcceptance,
+  billingCorrectors,
+  type BillingStatus,
+  canDecideBilling,
+  canManageAcceptance,
+  listAcceptances,
+  listPeriodOptions,
+  listProjectBilling,
+  listStructure,
+  openProject,
+  signedCorrectable,
+} from "@/modules/projects/service";
 import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { AcceptanceButtons, BillingAmountForm, CorrectSignedForm, ManualBillingForm, NewAcceptanceForm, SignAcceptanceForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
@@ -17,7 +29,6 @@ import { pageTitle } from "@/i18n/page-title";
 import { contactChoicesFor } from "@/modules/crm/service";
 
 export const generateMetadata = pageTitle("acceptance");
-
 
 /**
  * Acceptance — biên bản nghiệm thu (FR-PJM-55) — and what it hands finance (FR-PJM-56): per
@@ -55,8 +66,15 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
   // billing milestone nobody marked client-facing must be acceptable too, or it could never bill.
   const acceptable = structure.milestones.filter((milestone) => milestone.isClientFacing || milestone.isBilling).map(({ id, name }) => ({ id, name }));
   // A signed record is corrected until what it earned is invoiced.
-  const billingOf = Map.groupBy(billing.filter((item) => item.acceptanceId), (item) => item.acceptanceId!);
-  const correctable = (acceptanceId: string, status: string) => signedCorrectable(status as "signed", (billingOf.get(acceptanceId) ?? []).map((item) => item.status as BillingStatus));
+  const billingOf = Map.groupBy(
+    billing.filter((item) => item.acceptanceId),
+    (item) => item.acceptanceId!,
+  );
+  const correctable = (acceptanceId: string, status: string) =>
+    signedCorrectable(
+      status as "signed",
+      (billingOf.get(acceptanceId) ?? []).map((item) => item.status as BillingStatus),
+    );
   const correctorOf = can.seeFees ? await billingCorrectors(billing.map((item) => ({ corrections: item.corrections }))) : new Map<string, string>();
   const billingColumns = can.seeFees ? 5 : 4;
 
@@ -74,7 +92,9 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
             <ListItem key={acceptance.id} className="flex-col items-stretch gap-3 py-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-sm">{acceptance.code}</span>
-                <Badge dot variant={statusTone(acceptance.status)}>{t(`status.${acceptance.status as "draft"}`)}</Badge>
+                <Badge dot variant={statusTone(acceptance.status)}>
+                  {t(`status.${acceptance.status as "draft"}`)}
+                </Badge>
                 <span className="text-sm text-muted-foreground">{[t(`scopes.${acceptance.scope as "project"}`), acceptance.targetName].filter(Boolean).join(" — ")}</span>
               </div>
               {acceptance.description ? <p className="text-sm whitespace-pre-wrap">{acceptance.description}</p> : null}
@@ -141,7 +161,11 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
                     {acceptance.history.map((correction) => (
                       <li key={correction.at} className="flex flex-wrap items-center gap-x-2">
                         <span>
-                          {format.dateTime(new Date(correction.at), { dateStyle: "medium" })} · <RecordLink kind="person" id={correction.byPersonId}>{correction.byName ?? "—"}</RecordLink>: {correction.reason}
+                          {format.dateTime(new Date(correction.at), { dateStyle: "medium" })} ·{" "}
+                          <RecordLink kind="person" id={correction.byPersonId}>
+                            {correction.byName ?? "—"}
+                          </RecordLink>
+                          : {correction.reason}
                         </span>
                         <span>{t("historyBefore", { name: correction.before.signedByClient ?? "—", date: date(correction.before.signedOn) })}</span>
                         {correction.before.signedFileId && correction.before.signedFileId !== acceptance.signedFileId ? <SignedScanLink acceptanceId={acceptance.id} fileId={correction.before.signedFileId} label={t("earlierScan")} /> : null}
@@ -194,13 +218,19 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
                   <TableRow>
                     <TableCell className="font-medium whitespace-normal">{item.description}</TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(item.status)}>{tBilling(`status.${item.status as "ready"}`)}</Badge>
+                      <Badge dot variant={statusTone(item.status)}>
+                        {tBilling(`status.${item.status as "ready"}`)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{tBilling(`sources.${item.source as "manual"}`)}</Badge>
                     </TableCell>
                     {can.seeFees ? <TableCell kind="money">{"amountVnd" in item ? money(item.amountVnd) : "—"}</TableCell> : null}
-                    <TableCell className="text-xs text-muted-foreground">{[item.invoiceNumber ? tBilling("invoicedAs", { number: item.invoiceNumber, date: date(item.invoiceDate) }) : null, item.waivedReason ? tBilling("waivedBecause", { reason: item.waivedReason }) : null].filter(Boolean).join(" · ") || "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {[item.invoiceNumber ? tBilling("invoicedAs", { number: item.invoiceNumber, date: date(item.invoiceDate) }) : null, item.waivedReason ? tBilling("waivedBecause", { reason: item.waivedReason }) : null]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </TableCell>
                   </TableRow>
                   {corrects || item.corrections.length ? (
                     <TableRow data-unnumbered="" className="hover:bg-transparent">
@@ -208,7 +238,13 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
                         <div className="flex flex-col gap-2 py-2">
                           {item.corrections.map((correction) => (
                             <p key={correction.at} className="text-xs text-muted-foreground">
-                              {tBilling("corrected", { date: format.dateTime(new Date(correction.at), { dateStyle: "medium" }), name: correctorOf.get(correction.byPersonId) ?? "—", before: money(correction.beforeVnd), after: money(correction.afterVnd), reason: correction.reason })}
+                              {tBilling("corrected", {
+                                date: format.dateTime(new Date(correction.at), { dateStyle: "medium" }),
+                                name: correctorOf.get(correction.byPersonId) ?? "—",
+                                before: money(correction.beforeVnd),
+                                after: money(correction.afterVnd),
+                                reason: correction.reason,
+                              })}
                             </p>
                           ))}
                           {corrects ? <BillingAmountForm itemId={item.id} amountVnd={item.amountVnd ?? null} /> : null}

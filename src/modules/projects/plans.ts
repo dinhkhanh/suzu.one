@@ -65,10 +65,17 @@ export async function ensurePlan(projectId: string, executor?: Tx): Promise<Plan
     if (!project) throw new ActionError("project_not_found");
     const again = await planOf(tx, projectId);
     if (again) return again;
-    const [manager] = await tx.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.role, "account_manager"))).limit(1);
+    const [manager] = await tx
+      .select({ personId: schema.workProjectMember.personId })
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.role, "account_manager")))
+      .limit(1);
     const jobNumber = await nextJobNumber(tx, jobPrefix(project.entityCode), jobYear(todayInVietnam()));
     const kind: ProjectKind = project.clientId ? "client" : "internal";
-    const [plan] = await tx.insert(schema.projectPlan).values({ projectId, kind, jobNumber, accountManagerPersonId: manager?.personId ?? null }).returning();
+    const [plan] = await tx
+      .insert(schema.projectPlan)
+      .values({ projectId, kind, jobNumber, accountManagerPersonId: manager?.personId ?? null })
+      .returning();
     return plan;
   });
 }
@@ -126,7 +133,10 @@ export async function readPlans(projectIds: readonly string[], executor: Executo
   if (missing.length === 0) return result;
   const [projects, managers] = await Promise.all([
     executor.select({ id: schema.workProject.id, clientId: schema.workProject.clientId, createdAt: schema.workProject.createdAt }).from(schema.workProject).where(inArray(schema.workProject.id, missing)),
-    executor.select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(inArray(schema.workProjectMember.projectId, missing), eq(schema.workProjectMember.role, "account_manager"))),
+    executor
+      .select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId })
+      .from(schema.workProjectMember)
+      .where(and(inArray(schema.workProjectMember.projectId, missing), eq(schema.workProjectMember.role, "account_manager"))),
   ]);
   const managerOf = new Map(managers.map((row) => [row.projectId, row.personId]));
   for (const project of projects) result.set(project.id, defaultPlan(project, managerOf.get(project.id) ?? null));
@@ -158,7 +168,10 @@ export async function backfillPlans(): Promise<{ created: number }> {
 
 /** The account manager the member roles name, when the plan's column disagrees; undefined = it agrees. */
 async function managerNow(executor: Executor, plan: PlanRow): Promise<string | null | undefined> {
-  const managers = await executor.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, plan.projectId), eq(schema.workProjectMember.role, "account_manager")));
+  const managers = await executor
+    .select({ personId: schema.workProjectMember.personId })
+    .from(schema.workProjectMember)
+    .where(and(eq(schema.workProjectMember.projectId, plan.projectId), eq(schema.workProjectMember.role, "account_manager")));
   const ids = managers.map((row) => row.personId);
   if (plan.accountManagerPersonId ? ids.includes(plan.accountManagerPersonId) : ids.length === 0) return undefined;
   return ids[0] ?? null;
@@ -179,7 +192,10 @@ export async function syncAccountManager(executor: Executor, plan: PlanRow): Pro
  */
 export async function planAsItStands(plan: PlanRow, executor: Executor = db()): Promise<PlanRow> {
   const manager = await managerNow(executor, plan);
-  const [request] = plan.briefStatus === "submitted" && plan.briefApprovalRequestId ? await executor.select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, plan.briefApprovalRequestId)).limit(1) : [];
+  const [request] =
+    plan.briefStatus === "submitted" && plan.briefApprovalRequestId
+      ? await executor.select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, plan.briefApprovalRequestId)).limit(1)
+      : [];
   const brief = request ? briefNow(plan, request.status) : null;
   return { ...plan, ...(manager === undefined ? {} : { accountManagerPersonId: manager }), ...(brief ?? {}) };
 }
@@ -199,7 +215,11 @@ export async function reconcileBrief(tx: Tx, plan: PlanRow): Promise<PlanRow> {
   const [request] = await tx.select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, plan.briefApprovalRequestId)).limit(1);
   const next = briefNow(plan, request?.status ?? null);
   if (!next) return plan;
-  const [after] = await tx.update(schema.projectPlan).set({ ...next, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, plan.projectId)).returning();
+  const [after] = await tx
+    .update(schema.projectPlan)
+    .set({ ...next, updatedAt: new Date() })
+    .where(eq(schema.projectPlan.projectId, plan.projectId))
+    .returning();
   return after;
 }
 
@@ -222,11 +242,18 @@ export async function setAccountManager(projectId: string, personId: string | nu
       const [person] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
       if (!person || person.status === "offboarded") throw new ActionError("person_not_found");
     }
-    const current = await tx.select().from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.role, "account_manager")));
+    const current = await tx
+      .select()
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.role, "account_manager")));
     for (const row of current) if (row.personId !== personId) await tx.update(schema.workProjectMember).set({ role: "member" }).where(eq(schema.workProjectMember.id, row.id));
     if (personId) {
       // The project's lead stays its lead; the account manager is a second hat only for somebody else.
-      const [existing] = await tx.select().from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId))).limit(1);
+      const [existing] = await tx
+        .select()
+        .from(schema.workProjectMember)
+        .where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId)))
+        .limit(1);
       if (existing?.role === "lead") throw new ActionError("account_manager_is_lead");
       if (existing) await tx.update(schema.workProjectMember).set({ role: "account_manager" }).where(eq(schema.workProjectMember.id, existing.id));
       else await tx.insert(schema.workProjectMember).values({ projectId, personId, role: "account_manager" });
@@ -258,7 +285,11 @@ export async function updatePlanSettings(projectId: string, input: PlanSettingsI
     if (scopeLocked(before) && (budgetMinutes ?? 0) !== (before.budgetMinutes ?? 0)) throw scopeLockedError("budget");
     // A budget raised back under a threshold can warn again when it is crossed again.
     const budgetAlerted = budgetMinutes === before.budgetMinutes ? before.budgetAlerted : [];
-    const [after] = await tx.update(schema.projectPlan).set({ kind: input.kind, budgetMinutes, budgetByRole: roles, budgetAlerted, updateCadenceDays: input.updateCadenceDays, driveUrl: input.driveUrl, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId)).returning();
+    const [after] = await tx
+      .update(schema.projectPlan)
+      .set({ kind: input.kind, budgetMinutes, budgetByRole: roles, budgetAlerted, updateCadenceDays: input.updateCadenceDays, driveUrl: input.driveUrl, updatedAt: new Date() })
+      .where(eq(schema.projectPlan.projectId, projectId))
+      .returning();
     return { before, after };
   });
 }
@@ -334,7 +365,17 @@ export async function reconcilePlans(): Promise<{ managers: number; briefs: numb
   const managers = await db().select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(eq(schema.workProjectMember.role, "account_manager"));
   const managersOf = Map.groupBy(managers, (row) => row.projectId);
   const submitted = plans.filter((plan) => plan.briefStatus === "submitted" && plan.briefApprovalRequestId);
-  const requests = submitted.length ? await db().select({ id: schema.approvalRequest.id, status: schema.approvalRequest.status }).from(schema.approvalRequest).where(inArray(schema.approvalRequest.id, submitted.map((plan) => plan.briefApprovalRequestId!))) : [];
+  const requests = submitted.length
+    ? await db()
+        .select({ id: schema.approvalRequest.id, status: schema.approvalRequest.status })
+        .from(schema.approvalRequest)
+        .where(
+          inArray(
+            schema.approvalRequest.id,
+            submitted.map((plan) => plan.briefApprovalRequestId!),
+          ),
+        )
+    : [];
   const statusOf = new Map(requests.map((row) => [row.id, row.status]));
   const result = { managers: 0, briefs: 0 };
   for (const plan of plans) {

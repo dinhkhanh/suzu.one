@@ -47,7 +47,11 @@ export async function saveTemplatePlan(templateId: string, input: TemplatePlanIn
   const saved = await db().transaction(async (tx) => {
     const [before] = await tx.select().from(schema.projectTemplatePlan).where(eq(schema.projectTemplatePlan.templateId, templateId)).limit(1).for("update");
     const values = { ...input, updatedAt: new Date() };
-    const [after] = await tx.insert(schema.projectTemplatePlan).values({ templateId, ...values }).onConflictDoUpdate({ target: schema.projectTemplatePlan.templateId, set: values }).returning();
+    const [after] = await tx
+      .insert(schema.projectTemplatePlan)
+      .values({ templateId, ...values })
+      .onConflictDoUpdate({ target: schema.projectTemplatePlan.templateId, set: values })
+      .returning();
     return { before: before ?? null, after };
   });
   await invalidate(PLANS_KEY);
@@ -69,13 +73,19 @@ export const applyTemplatePlanIn: ProjectCreatedHook = async (tx: Tx, made) => {
   const dated = datePlan(parts, made.use.anchor, made.lastStepDay);
   const phaseIds: string[] = [];
   for (const phase of dated.phases) {
-    const [row] = await tx.insert(schema.projectPhase).values({ projectId: made.project.id, ...phase }).returning({ id: schema.projectPhase.id });
+    const [row] = await tx
+      .insert(schema.projectPhase)
+      .values({ projectId: made.project.id, ...phase })
+      .returning({ id: schema.projectPhase.id });
     phaseIds.push(row.id);
   }
   const milestoneIds: string[] = [];
   for (const milestone of dated.milestones) {
     const { phase, ...rest } = milestone;
-    const [row] = await tx.insert(schema.projectMilestone).values({ projectId: made.project.id, phaseId: phase === null ? null : phaseIds[phase], ownerPersonId: made.project.leadPersonId, ...rest }).returning({ id: schema.projectMilestone.id });
+    const [row] = await tx
+      .insert(schema.projectMilestone)
+      .values({ projectId: made.project.id, phaseId: phase === null ? null : phaseIds[phase], ownerPersonId: made.project.leadPersonId, ...rest })
+      .returning({ id: schema.projectMilestone.id });
     milestoneIds.push(row.id);
   }
   for (const line of dated.lines) {

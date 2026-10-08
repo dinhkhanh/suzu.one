@@ -75,7 +75,12 @@ export async function assignSeat(input: SeatInput, actorPersonId: string, execut
 }
 
 export async function findSeat(seatId: string, executor: Executor = db()): Promise<{ seat: LicenceSeatRow; licence: LicenceRow } | undefined> {
-  const [row] = await executor.select({ seat: schema.licenceSeat, licence: schema.licence }).from(schema.licenceSeat).innerJoin(schema.licence, eq(schema.licence.id, schema.licenceSeat.licenceId)).where(eq(schema.licenceSeat.id, seatId)).limit(1);
+  const [row] = await executor
+    .select({ seat: schema.licenceSeat, licence: schema.licence })
+    .from(schema.licenceSeat)
+    .innerJoin(schema.licence, eq(schema.licence.id, schema.licenceSeat.licenceId))
+    .where(eq(schema.licenceSeat.id, seatId))
+    .limit(1);
   return row;
 }
 
@@ -85,7 +90,11 @@ export async function releaseSeat(seatId: string, note: string | null, actorPers
     const found = await findSeat(seatId, tx);
     if (!found) throw new ActionError("seat_not_found");
     if (found.seat.releasedAt) throw new ActionError("seat_already_released");
-    const [seat] = await tx.update(schema.licenceSeat).set({ releasedAt: now(), releasedByPersonId: actorPersonId, releaseNote: note?.trim() || null, updatedAt: now() }).where(and(eq(schema.licenceSeat.id, seatId), open)).returning();
+    const [seat] = await tx
+      .update(schema.licenceSeat)
+      .set({ releasedAt: now(), releasedByPersonId: actorPersonId, releaseNote: note?.trim() || null, updatedAt: now() })
+      .where(and(eq(schema.licenceSeat.id, seatId), open))
+      .returning();
     if (!seat) throw new ActionError("seat_already_released");
     await cancelOpenTasksOfContext(tx, { type: SEAT_CONTEXT, id: seatId });
     return { seat, licence: found.licence };
@@ -100,7 +109,16 @@ async function releaseWhere(tx: Tx, condition: ReturnType<typeof eq>, note: stri
   await tx
     .update(schema.task)
     .set({ status: "cancelled", updatedAt: now() })
-    .where(and(eq(schema.task.contextType, SEAT_CONTEXT), inArray(schema.task.contextId, released.map((row) => row.id)), inArray(schema.task.status, ["todo", "in_progress"])));
+    .where(
+      and(
+        eq(schema.task.contextType, SEAT_CONTEXT),
+        inArray(
+          schema.task.contextId,
+          released.map((row) => row.id),
+        ),
+        inArray(schema.task.status, ["todo", "in_progress"]),
+      ),
+    );
   return released.length;
 }
 
@@ -112,7 +130,10 @@ export const releaseSeatsOfLicence = (tx: Tx, licenceId: string, actorPersonId: 
 
 /** How many seats of one licence are in use, inside the caller's transaction. */
 export async function countOpenSeats(executor: Executor, licenceId: string): Promise<number> {
-  const [row] = await executor.select({ value: sql<number>`count(*)::int` }).from(schema.licenceSeat).where(and(eq(schema.licenceSeat.licenceId, licenceId), open));
+  const [row] = await executor
+    .select({ value: sql<number>`count(*)::int` })
+    .from(schema.licenceSeat)
+    .where(and(eq(schema.licenceSeat.licenceId, licenceId), open));
   return Number(row?.value ?? 0);
 }
 
@@ -167,11 +188,29 @@ export async function listSeatsOfLicence(licenceId: string, executor: Executor =
     // Seats in use first, by who or what holds them; then the most recently released.
     .orderBy(sql`${schema.licenceSeat.releasedAt} is not null`, desc(schema.licenceSeat.releasedAt), asc(seatPerson.fullName), asc(schema.asset.code))
     .limit(300);
-  const views = rows.map(({ seat, ...names }) => ({ id: seat.id, personId: seat.personId, assetId: seat.assetId, assignedAt: seat.assignedAt, assignedByPersonId: seat.assignedByPersonId, note: seat.note, releasedAt: seat.releasedAt, releasedByPersonId: seat.releasedByPersonId, releaseNote: seat.releaseNote, ...names }));
+  const views = rows.map(({ seat, ...names }) => ({
+    id: seat.id,
+    personId: seat.personId,
+    assetId: seat.assetId,
+    assignedAt: seat.assignedAt,
+    assignedByPersonId: seat.assignedByPersonId,
+    note: seat.note,
+    releasedAt: seat.releasedAt,
+    releasedByPersonId: seat.releasedByPersonId,
+    releaseNote: seat.releaseNote,
+    ...names,
+  }));
   return { open: views.filter((seat) => !seat.releasedAt), released: views.filter((seat) => seat.releasedAt).slice(0, 30) };
 }
 
-export type HeldSeat = { seatId: string; licenceId: string; name: string; vendor: string | null; assignedAt: Date; /** Set when the seat is on a device the person holds, not on the person. */ viaAsset: { id: string; code: string; name: string } | null };
+export type HeldSeat = {
+  seatId: string;
+  licenceId: string;
+  name: string;
+  vendor: string | null;
+  assignedAt: Date;
+  /** Set when the seat is on a device the person holds, not on the person. */ viaAsset: { id: string; code: string; name: string } | null;
+};
 
 /**
  * The software one person uses: seats in their own name, and seats on the devices they are holding.
@@ -183,14 +222,16 @@ export async function listSeatsOfPerson(personId: string, executor: Executor = d
     .from(schema.licenceSeat)
     .innerJoin(schema.licence, eq(schema.licence.id, schema.licenceSeat.licenceId))
     .leftJoin(schema.asset, eq(schema.asset.id, schema.licenceSeat.assetId))
-    .where(
-      and(
-        open,
-        sql`(${schema.licenceSeat.personId} = ${personId} or ${schema.licenceSeat.assetId} in (select a.asset_id from asset_assignment a where a.holder_person_id = ${personId} and a.returned_at is null))`,
-      ),
-    )
+    .where(and(open, sql`(${schema.licenceSeat.personId} = ${personId} or ${schema.licenceSeat.assetId} in (select a.asset_id from asset_assignment a where a.holder_person_id = ${personId} and a.returned_at is null))`))
     .orderBy(asc(schema.licence.name), asc(schema.licenceSeat.assignedAt));
-  return rows.map(({ seat, name, vendor, assetCode, assetName }) => ({ seatId: seat.id, licenceId: seat.licenceId, name, vendor, assignedAt: seat.assignedAt, viaAsset: seat.assetId && assetCode && assetName ? { id: seat.assetId, code: assetCode, name: assetName } : null }));
+  return rows.map(({ seat, name, vendor, assetCode, assetName }) => ({
+    seatId: seat.id,
+    licenceId: seat.licenceId,
+    name,
+    vendor,
+    assignedAt: seat.assignedAt,
+    viaAsset: seat.assetId && assetCode && assetName ? { id: seat.assetId, code: assetCode, name: assetName } : null,
+  }));
 }
 
 /** What is installed on one device. */
@@ -220,7 +261,16 @@ export async function openSeatReleaseTasks(tx: Tx, leaver: { personId: string; l
   const existing = await tx
     .select({ contextId: schema.task.contextId })
     .from(schema.task)
-    .where(and(eq(schema.task.contextType, SEAT_CONTEXT), inArray(schema.task.contextId, seats.map((seat) => seat.id)), inArray(schema.task.status, ["todo", "in_progress"])));
+    .where(
+      and(
+        eq(schema.task.contextType, SEAT_CONTEXT),
+        inArray(
+          schema.task.contextId,
+          seats.map((seat) => seat.id),
+        ),
+        inArray(schema.task.status, ["todo", "in_progress"]),
+      ),
+    );
   const alreadyOpen = new Set(existing.map((row) => row.contextId));
   const wanted = seats.filter((seat) => !alreadyOpen.has(seat.id));
   if (wanted.length === 0) return 0;

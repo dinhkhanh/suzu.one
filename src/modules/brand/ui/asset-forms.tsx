@@ -26,7 +26,13 @@ const ACCEPT = acceptAttributeFor(BRAND_OWNER_TYPE);
 function useKindOptions(withAuto: boolean) {
   const t = useTranslations("brands");
   return [
-    ...(withAuto ? [<option key="auto" value="auto">{t("kindAuto")}</option>] : []),
+    ...(withAuto
+      ? [
+          <option key="auto" value="auto">
+            {t("kindAuto")}
+          </option>,
+        ]
+      : []),
     ...BRAND_ASSET_KINDS.map((kind) => (
       <option key={kind} value={kind}>
         {t(`assetKinds.${kind}`)}
@@ -37,7 +43,16 @@ function useKindOptions(withAuto: boolean) {
 
 function useSectionOptions(sections: readonly SectionOption[]) {
   const t = useTranslations("brands");
-  return [<option key="" value="">{t("inDownloads")}</option>, ...sections.map((section) => <option key={section.id} value={section.id}>{section.title}</option>)];
+  return [
+    <option key="" value="">
+      {t("inDownloads")}
+    </option>,
+    ...sections.map((section) => (
+      <option key={section.id} value={section.id}>
+        {section.title}
+      </option>
+    )),
+  ];
 }
 
 /** The public checkbox; posts `isPublic=on` when ticked, like a native checkbox. */

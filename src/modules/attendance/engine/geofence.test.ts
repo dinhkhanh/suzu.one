@@ -5,7 +5,16 @@ import { allowlistHostnames, evaluatePunch, expandAllowlist, haversineM, ipAllow
 const OFFICE = { latitude: 10.771595, longitude: 106.704758 };
 const north = (metres: number) => ({ latitude: OFFICE.latitude + metres / 111_195, longitude: OFFICE.longitude });
 
-const office = (overrides: Partial<WorkLocationRule> = {}): WorkLocationRule => ({ id: "office", ...OFFICE, radiusM: 150, accuracyLimitM: 100, ipAllowlist: ["203.0.113.0/24", "2001:db8:42::/48"], rule: "gps_or_ip", mode: "flag", ...overrides });
+const office = (overrides: Partial<WorkLocationRule> = {}): WorkLocationRule => ({
+  id: "office",
+  ...OFFICE,
+  radiusM: 150,
+  accuracyLimitM: 100,
+  ipAllowlist: ["203.0.113.0/24", "2001:db8:42::/48"],
+  rule: "gps_or_ip",
+  mode: "flag",
+  ...overrides,
+});
 
 describe("haversineM", () => {
   it("measures known distances", () => {
@@ -52,7 +61,8 @@ describe("IP matching", () => {
 describe("networks named by DNS", () => {
   it("tells a name from an address", () => {
     for (const name of ["wan1.office.example.com", "Office.DuckDNS.org.", " suzu-hq.ddns.net ", "a.b"]) expect(isHostname(name)).toBe(true);
-    for (const bad of ["office", "203.0.113.5", "203.0.113", "-wan.example.com", "wan-.example.com", "wan_1.example.com", "wan..example.com", "https://wan.example.com", "*.example.com", `${"a".repeat(64)}.example.com`]) expect(isHostname(bad)).toBe(false);
+    for (const bad of ["office", "203.0.113.5", "203.0.113", "-wan.example.com", "wan-.example.com", "wan_1.example.com", "wan..example.com", "https://wan.example.com", "*.example.com", `${"a".repeat(64)}.example.com`])
+      expect(isHostname(bad)).toBe(false);
     expect(normaliseNetwork(" Office.DuckDNS.org. ")).toBe("office.duckdns.org");
   });
 

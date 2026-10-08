@@ -51,7 +51,12 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
             />
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-xs">
               {entity.months.map((item) => (
-                <Link key={item.month} href={`/performance/overview?month=${item.month}`} className={`rounded-md px-2 py-0.5 tabular-nums ${item.status === "closed" ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : "border border-dashed text-muted-foreground"}`} title={t(`kpi.state.${item.status}`)}>
+                <Link
+                  key={item.month}
+                  href={`/performance/overview?month=${item.month}`}
+                  className={`rounded-md px-2 py-0.5 tabular-nums ${item.status === "closed" ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : "border border-dashed text-muted-foreground"}`}
+                  title={t(`kpi.state.${item.status}`)}
+                >
                   {monthLabel(item.month)}
                   {item.overridden ? " *" : ""}
                 </Link>
@@ -71,12 +76,22 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
                 {entity.departments.length === 0 ? <TableEmpty>{t("overview.nobody")}</TableEmpty> : null}
                 {entity.departments.map((department) => (
                   <TableRow key={department.departmentId ?? "none"}>
-                    <TableCell>{department.name ? <RecordLink kind="unit" id={department.departmentId}>{department.name}</RecordLink> : t("overview.noDepartment")}</TableCell>
+                    <TableCell>
+                      {department.name ? (
+                        <RecordLink kind="unit" id={department.departmentId}>
+                          {department.name}
+                        </RecordLink>
+                      ) : (
+                        t("overview.noDepartment")
+                      )}
+                    </TableCell>
                     <TableCell kind="number">{department.spread.people}</TableCell>
                     <TableCell kind="percent">
                       <ScoreFigure bp={department.spread.averageBp} text={bpText(format, department.spread.averageBp)} />
                     </TableCell>
-                    <TableCell kind="percent" className="text-xs text-muted-foreground">{spread(department.spread)}</TableCell>
+                    <TableCell kind="percent" className="text-xs text-muted-foreground">
+                      {spread(department.spread)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -96,7 +111,9 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
               <TableHead kind="org">{t("overview.unit")}</TableHead>
               <TableHead kind="date">{t("form.period")}</TableHead>
               <TableHead kind="status">{t("checkIn.confidence")}</TableHead>
-              <TableHead kind="percent" className="text-left">{t("trace.progress")}</TableHead>
+              <TableHead kind="percent" className="text-left">
+                {t("trace.progress")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,7 +126,15 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
                   </RecordLink>
                 </TableCell>
                 <TableCell>{t(`enums.level.${goal.level}`)}</TableCell>
-                <TableCell className="text-muted-foreground">{goal.unitName ? <RecordLink kind="entity" id={goal.entityId}>{goal.unitName}</RecordLink> : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {goal.unitName ? (
+                    <RecordLink kind="entity" id={goal.entityId}>
+                      {goal.unitName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{goal.periodKey}</TableCell>
                 <TableCell>
                   <ConfidenceBadge confidence={goal.confidence} label={goal.confidence ? t(`enums.confidence.${goal.confidence}`) : ""} />

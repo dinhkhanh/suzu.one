@@ -26,7 +26,14 @@ function EditButton({ href, label, small }: { href: string; label: string; small
     const params = new URLSearchParams(href.slice(PALETTE_CREATE.length));
     return (
       // `data-sheet-close`: opened from the assistant's sheet, the sheet steps aside for the palette.
-      <Button type="button" data-sheet-close="" variant="outline" size={small ? "sm" : "default"} className={small ? "self-start" : undefined} onClick={() => openQuickCreate({ title: params.get("title") ?? undefined, dueDate: params.get("dueDate") ?? undefined, place: params.get("place") ?? undefined, mine: params.get("mine") === "1" })}>
+      <Button
+        type="button"
+        data-sheet-close=""
+        variant="outline"
+        size={small ? "sm" : "default"}
+        className={small ? "self-start" : undefined}
+        onClick={() => openQuickCreate({ title: params.get("title") ?? undefined, dueDate: params.get("dueDate") ?? undefined, place: params.get("place") ?? undefined, mine: params.get("mine") === "1" })}
+      >
         {label}
       </Button>
     );

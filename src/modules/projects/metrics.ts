@@ -56,7 +56,10 @@ export async function loadLineUnits(lineIds: readonly string[]): Promise<Map<str
     // A request for changes stands on the version it was made on: a newer version answers it.
     const standing = last && (last.decision !== "changes_required" || last.version === delivery?.currentVersion) ? last.decision : null;
     const clientDecision = (last ? standing : delivery?.clientApproved ? "approved" : null) as UnitFacts["clientDecision"];
-    result.set(deliverableId, [...(result.get(deliverableId) ?? []), { category: category as StateCategory, review, clientDecision, sentToClient: !!delivery?.withClient, noClient: !isClientWork(kind), delivered: !!delivery?.delivered, published: !!delivery?.published }]);
+    result.set(deliverableId, [
+      ...(result.get(deliverableId) ?? []),
+      { category: category as StateCategory, review, clientDecision, sentToClient: !!delivery?.withClient, noClient: !isClientWork(kind), delivered: !!delivery?.delivered, published: !!delivery?.published },
+    ]);
   }
   return result;
 }
@@ -71,7 +74,11 @@ export async function withLineStatus(lines: readonly DeliverableRow[]): Promise<
 export async function loadRegisters(projectIds: readonly string[]): Promise<Map<string, Register>> {
   const result = new Map<string, Register>(projectIds.map((id) => [id, { lines: [], promised: 0, accepted: 0, awaitingClient: 0, percent: null }]));
   if (projectIds.length === 0) return result;
-  const lines = await db().select().from(schema.projectDeliverable).where(and(inArray(schema.projectDeliverable.projectId, [...projectIds]), isNull(schema.projectDeliverable.retainerPeriodId))).orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
+  const lines = await db()
+    .select()
+    .from(schema.projectDeliverable)
+    .where(and(inArray(schema.projectDeliverable.projectId, [...projectIds]), isNull(schema.projectDeliverable.retainerPeriodId)))
+    .orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
   for (const line of await withLineStatus(lines)) result.get(line.projectId)?.lines.push(line);
   for (const register of result.values()) Object.assign(register, registerProgress(register.lines));
   return result;
@@ -112,7 +119,11 @@ export async function loadBurns(projectIds: readonly string[], budgets: Readonly
 /** The facts a status update is prefilled with (FR-PJM-27), as of today. */
 export async function loadStatusFacts(projectId: string, plan: { budgetMinutes: number | null; baseline: ProjectBaseline | null }, today: IsoDate): Promise<StatusFacts> {
   const [tasks, blocked, milestones, registers, burns, raid] = await Promise.all([
-    db().select({ status: schema.task.status, dueDate: schema.task.dueDate }).from(schema.workTask).innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId)).where(and(eq(schema.workTask.projectId, projectId), liveTask)),
+    db()
+      .select({ status: schema.task.status, dueDate: schema.task.dueDate })
+      .from(schema.workTask)
+      .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+      .where(and(eq(schema.workTask.projectId, projectId), liveTask)),
     db()
       .select({ value: sql<number>`count(*)::int` })
       .from(schema.workBlocker)
@@ -122,7 +133,10 @@ export async function loadStatusFacts(projectId: string, plan: { budgetMinutes: 
     db().select().from(schema.projectMilestone).where(eq(schema.projectMilestone.projectId, projectId)),
     loadRegisters([projectId]),
     loadBurns([projectId], new Map([[projectId, plan.budgetMinutes]])),
-    db().select({ kind: schema.projectRaidItem.kind, severity: schema.projectRaidItem.severity, status: schema.projectRaidItem.status }).from(schema.projectRaidItem).where(and(eq(schema.projectRaidItem.projectId, projectId), eq(schema.projectRaidItem.status, "open"))),
+    db()
+      .select({ kind: schema.projectRaidItem.kind, severity: schema.projectRaidItem.severity, status: schema.projectRaidItem.status })
+      .from(schema.projectRaidItem)
+      .where(and(eq(schema.projectRaidItem.projectId, projectId), eq(schema.projectRaidItem.status, "open"))),
   ]);
   const planned = new Map((plan.baseline?.milestones ?? []).map((milestone) => [milestone.id, milestone.dueDate]));
   const register = registers.get(projectId)!;

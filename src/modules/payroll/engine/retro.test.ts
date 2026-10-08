@@ -19,7 +19,15 @@ function personInput(overrides: Partial<PersonPayInput> = {}): PersonPayInput {
     employment: { startDate: null, endDate: null, dependents: 0, serviceMonths: 12, kpiScoreBp: 0 },
     profile: { profile: "statutory", taxResidency: "resident", pitMethod: "progressive", pitCommitment: false, insuranceExemption: null, unionMember: false },
     segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 30_000_000, insuranceSalary: 30_000_000, allowances: [] } }],
-    timesheet: { standardDays: 22, standardMinutes: 10_560, paidDaysCenti: 2200, unpaidDaysCenti: 0, workedMinutes: 10_560, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
+    timesheet: {
+      standardDays: 22,
+      standardMinutes: 10_560,
+      paidDaysCenti: 2200,
+      unpaidDaysCenti: 0,
+      workedMinutes: 10_560,
+      nightMinutes: 0,
+      overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } },
+    },
     insuranceLeaveDays: 0,
     unpaidWorkingDays: 0,
     components: COMPONENTS,
@@ -98,7 +106,9 @@ describe("retro lines", () => {
 
   it("is the difference of two calculations of the same month", () => {
     const before = calculatePerson(personInput());
-    const after = calculatePerson(personInput({ segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 33_000_000, insuranceSalary: 33_000_000, allowances: [] } }] }));
+    const after = calculatePerson(
+      personInput({ segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 33_000_000, insuranceSalary: 33_000_000, allowances: [] } }] }),
+    );
     const difference = differenceBetween(before, after);
     expect(difference.amount).toBe(3_000_000);
     expect(difference.byCode).toEqual([{ code: "BASE", amount: 3_000_000 }]);
@@ -111,7 +121,15 @@ describe("retro lines", () => {
   it("turns a timesheet correction into money by recalculating the month it belongs to", () => {
     // The month as it was paid: two days of unpaid absence.
     const paid = personInput({
-      timesheet: { standardDays: 22, standardMinutes: 10_560, paidDaysCenti: 2000, unpaidDaysCenti: 200, workedMinutes: 9_600, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
+      timesheet: {
+        standardDays: 22,
+        standardMinutes: 10_560,
+        paidDaysCenti: 2000,
+        unpaidDaysCenti: 200,
+        workedMinutes: 9_600,
+        nightMinutes: 0,
+        overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } },
+      },
       segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2000, unpaidDaysCenti: 200, terms: { baseSalary: 30_000_000, insuranceSalary: 30_000_000, allowances: [] } }],
     });
     const before = calculatePerson(paid);
@@ -251,7 +269,15 @@ describe("a month that earns less than its own insurance", () => {
   const barelyPaid = personInput({
     period: payPeriodOf("2026-08", 18),
     segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 18, paidDaysCenti: 401, unpaidDaysCenti: 1399, terms: { baseSalary: 5_000_000, insuranceSalary: 5_000_000, allowances: [] } }],
-    timesheet: { standardDays: 18, standardMinutes: 8_640, paidDaysCenti: 401, unpaidDaysCenti: 1399, workedMinutes: 1_920, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
+    timesheet: {
+      standardDays: 18,
+      standardMinutes: 8_640,
+      paidDaysCenti: 401,
+      unpaidDaysCenti: 1399,
+      workedMinutes: 1_920,
+      nightMinutes: 0,
+      overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } },
+    },
   });
 
   it("still contributes in full, and the shortfall is flagged, not swallowed", () => {

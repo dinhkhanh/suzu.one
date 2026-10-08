@@ -13,7 +13,15 @@ export const generateMetadata = pageTitle("statusSets");
 export default async function StatusSetsPage() {
   const user = await requireUser();
   const viewer = await loadViewer(user);
-  const [t, tWork, teams, stateSets, projectSets, projectStatuses, usage] = await Promise.all([getTranslations("work.statusSets"), getTranslations("work"), listTeams(), listStateSets(), listProjectStatusSets(), listProjectStatuses(), projectStatusUsage()]);
+  const [t, tWork, teams, stateSets, projectSets, projectStatuses, usage] = await Promise.all([
+    getTranslations("work.statusSets"),
+    getTranslations("work"),
+    listTeams(),
+    listStateSets(),
+    listProjectStatusSets(),
+    listProjectStatuses(),
+    projectStatusUsage(),
+  ]);
   const teamOf = new Map(teams.map((team) => [team.id, team]));
   const runs = (teamId: string) => {
     const team = teamOf.get(teamId);
@@ -25,7 +33,10 @@ export default async function StatusSetsPage() {
     const team = owner ? teamOf.get(owner) : null;
     return canManageTemplate(viewer, team ? teamFacts(team) : null);
   };
-  const owners: OwnerChoice[] = [...(canManageTemplate(viewer, null) ? [{ value: "", name: t("shared") }] : []), ...teams.filter((team) => team.isActive && canAdminTeam(viewer, teamFacts(team))).map((team) => ({ value: team.id, name: team.name }))];
+  const owners: OwnerChoice[] = [
+    ...(canManageTemplate(viewer, null) ? [{ value: "", name: t("shared") }] : []),
+    ...teams.filter((team) => team.isActive && canAdminTeam(viewer, teamFacts(team))).map((team) => ({ value: team.id, name: team.name })),
+  ];
   const card = (set: { id: string; name: string; description: string | null; ownerTeamId: string | null; isActive: boolean }) => ({
     id: set.id,
     name: set.name,

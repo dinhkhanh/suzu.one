@@ -5,7 +5,24 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, calendarDay, contract, employment, leaveLedgerEntry, leavePolicy, leaveRequest, leaveRequestDay, leaveType, lifecycleEvent, person, statutoryParameter, teamStaffingRule } from "../src/lib/db/schema";
+import {
+  approvalAssignee,
+  approvalEvent,
+  approvalRequest,
+  approvalStep,
+  calendarDay,
+  contract,
+  employment,
+  leaveLedgerEntry,
+  leavePolicy,
+  leaveRequest,
+  leaveRequestDay,
+  leaveType,
+  lifecycleEvent,
+  person,
+  statutoryParameter,
+  teamStaffingRule,
+} from "../src/lib/db/schema";
 import { accrualPostings, type PolicyRules, terminationPayout } from "../src/modules/leave/engine/entitlement";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 
@@ -23,7 +40,23 @@ const eachDate = (from: string, to: string) => {
 };
 
 // Carried over from 2025, as an HR spreadsheet would have it (people who were on the books then).
-const CARRIED: Record<string, number> = { "Trần Đình Khánh": 500, "Nguyễn Thu Hà": 350, "Lê Thị Mai": 200, "Võ Minh Tuấn": 0, "Đặng Hoàng Long": 450, "Bùi Thanh Tâm": 100, "Hồ Gia Huy": 300, "Trần Quỳnh Như": 150, "Vũ Hải Nam": 50, "Phạm Quốc Bảo": 250, "Dương Thùy Chi": 500, "Lý Minh Khôi": 0, "Phan Văn Đức": 400, "Huỳnh Mỹ Duyên": 100, "Vũ Hải Đăng": 200 };
+const CARRIED: Record<string, number> = {
+  "Trần Đình Khánh": 500,
+  "Nguyễn Thu Hà": 350,
+  "Lê Thị Mai": 200,
+  "Võ Minh Tuấn": 0,
+  "Đặng Hoàng Long": 450,
+  "Bùi Thanh Tâm": 100,
+  "Hồ Gia Huy": 300,
+  "Trần Quỳnh Như": 150,
+  "Vũ Hải Nam": 50,
+  "Phạm Quốc Bảo": 250,
+  "Dương Thùy Chi": 500,
+  "Lý Minh Khôi": 0,
+  "Phan Văn Đức": 400,
+  "Huỳnh Mỹ Duyên": 100,
+  "Vũ Hải Đăng": 200,
+};
 
 const REQUESTS: Demo[] = [
   { who: "Lê Thị Mai", type: "ANNUAL", from: "2026-08-05", to: "2026-08-05", startPortion: "am", reason: "Họp phụ huynh", status: "approved", filed: "2026-07-30", decided: "2026-07-31" },
@@ -54,7 +87,11 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
 
   const types = new Map((await db.select().from(leaveType).where(isNull(leaveType.entityId))).map((row) => [row.code, row]));
   const policies = await db.select().from(leavePolicy).where(isNull(leavePolicy.entityId));
-  const [parameter] = await db.select().from(statutoryParameter).where(and(eq(statutoryParameter.key, "leave.annual"), eq(statutoryParameter.status, "approved"))).limit(1);
+  const [parameter] = await db
+    .select()
+    .from(statutoryParameter)
+    .where(and(eq(statutoryParameter.key, "leave.annual"), eq(statutoryParameter.status, "approved")))
+    .limit(1);
   const annual = types.get("ANNUAL");
   if (!annual || !parameter) return "leave: leave types or the leave.annual parameter missing (run pnpm db:seed), skipped";
   const statutory = parameter.value as { baseDays: number; yearsOfServicePerExtraDay: number };
@@ -70,8 +107,15 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
   for (const row of people) {
     const latest = employments.filter((candidate) => candidate.personId === row.id).sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
     if (!latest || latest.startDate > today) continue;
-    const onContract = probations.filter((candidate) => candidate.personId === row.id && candidate.employmentId === latest.id && !candidate.deletedAt).map((candidate) => ({ start: candidate.startDate, end: candidate.terminatedOn ?? candidate.endDate }));
-    const facts = { startDate: latest.startDate, seniorityDate: latest.seniorityDate, endDate: latest.endDate, probation: onContract.length === 0 && row.workforceType === "probation" ? [{ start: latest.startDate, end: null }] : onContract };
+    const onContract = probations
+      .filter((candidate) => candidate.personId === row.id && candidate.employmentId === latest.id && !candidate.deletedAt)
+      .map((candidate) => ({ start: candidate.startDate, end: candidate.terminatedOn ?? candidate.endDate }));
+    const facts = {
+      startDate: latest.startDate,
+      seniorityDate: latest.seniorityDate,
+      endDate: latest.endDate,
+      probation: onContract.length === 0 && row.workforceType === "probation" ? [{ start: latest.startDate, end: null }] : onContract,
+    };
 
     for (const type of types.values()) {
       if (!type.tracksBalance || (type.eligibleWorkforceTypes && !type.eligibleWorkforceTypes.includes(row.workforceType))) continue;
@@ -82,19 +126,25 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
       let balance = 0;
       const carried = type.code === "ANNUAL" ? (CARRIED[row.fullName] ?? 0) : 0;
       if (carried > 0 && latest.startDate < `${YEAR}-01-01`) {
-        await db.insert(leaveLedgerEntry).values({ ...base, kind: "opening", amountCenti: carried, effectiveDate: `${YEAR}-01-01`, sourceKey: `opening:${row.id}:${type.id}:${YEAR}`, reason: "Số dư chuyển từ năm 2025 (bảng theo dõi phép)" });
+        await db
+          .insert(leaveLedgerEntry)
+          .values({ ...base, kind: "opening", amountCenti: carried, effectiveDate: `${YEAR}-01-01`, sourceKey: `opening:${row.id}:${type.id}:${YEAR}`, reason: "Số dư chuyển từ năm 2025 (bảng theo dõi phép)" });
         balance += carried;
         ledgerRows++;
       }
       for (const posting of accrualPostings({ year: YEAR, asOf: today, statutory, employment: facts, openingDate: carried > 0 ? `${YEAR}-01-01` : null, policyAt: (date) => (date >= policy.validFrom ? rules : null), given: [] })) {
-        await db.insert(leaveLedgerEntry).values({ ...base, kind: posting.kind, amountCenti: posting.amountCenti, effectiveDate: posting.effectiveDate, sourceKey: [posting.kind, row.id, type.id, YEAR, posting.effectiveDate].join(":"), reason: posting.trace.join("; ") });
+        await db
+          .insert(leaveLedgerEntry)
+          .values({ ...base, kind: posting.kind, amountCenti: posting.amountCenti, effectiveDate: posting.effectiveDate, sourceKey: [posting.kind, row.id, type.id, YEAR, posting.effectiveDate].join(":"), reason: posting.trace.join("; ") });
         balance += posting.amountCenti;
         ledgerRows++;
       }
       // Someone who has left is paid their unused days (the former employee of the demo).
       const payout = latest.endDate && latest.endDate < today ? terminationPayout(balance, rules) : 0;
       if (payout > 0) {
-        await db.insert(leaveLedgerEntry).values({ ...base, kind: "payout", amountCenti: -payout, effectiveDate: latest.endDate!, sourceKey: ["payout", row.id, type.id, latest.id].join(":"), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" });
+        await db
+          .insert(leaveLedgerEntry)
+          .values({ ...base, kind: "payout", amountCenti: -payout, effectiveDate: latest.endDate!, sourceKey: ["payout", row.id, type.id, latest.id].join(":"), reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc" });
         ledgerRows++;
       }
     }
@@ -125,7 +175,12 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
     // skipped when that is the same person, as the engine does.
     const head = requester.fullName === "Vũ Hải Nam" ? byName.get("Đặng Hoàng Long") : undefined;
     const twoSteps = totalCenti > 300 && !!head && head.id !== manager.id;
-    const flow = { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }, { key: "department_head", mode: "any", approvers: [{ rule: "department_head" }], condition: { field: "days", op: "gt", value: 3 } }] };
+    const flow = {
+      steps: [
+        { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+        { key: "department_head", mode: "any", approvers: [{ rule: "department_head" }], condition: { field: "days", op: "gt", value: 3 } },
+      ],
+    };
     const leaveRequestId = randomUUID();
     const approvalId = randomUUID();
     const range = single ? formatDay(demo.from) : `${formatDay(demo.from)} – ${formatDay(demo.to)}`;
@@ -135,7 +190,20 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
     if (type.isLongTerm && demo.status === "approved") {
       const latest = employments.filter((candidate) => candidate.personId === requester.id).sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
       if (latest) {
-        const [event] = await db.insert(lifecycleEvent).values({ personId: requester.id, employmentId: latest.id, entityId: latest.entityId, type: "long_leave", effectiveDate: demo.from, status: "applied", reason: type.name, details: { from: demo.from, to: demo.to, source: "leave_request" }, createdByPersonId: manager.id }).returning();
+        const [event] = await db
+          .insert(lifecycleEvent)
+          .values({
+            personId: requester.id,
+            employmentId: latest.id,
+            entityId: latest.entityId,
+            type: "long_leave",
+            effectiveDate: demo.from,
+            status: "applied",
+            reason: type.name,
+            details: { from: demo.from, to: demo.to, source: "leave_request" },
+            createdByPersonId: manager.id,
+          })
+          .returning();
         lifecycleEventId = event.id;
       }
     }
@@ -152,7 +220,14 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
       payload: { leaveRequestId, typeCode: type.code, typeName: type.name, startDate: demo.from, endDate: demo.to, days: totalCenti / 100 },
       status: demo.status,
       currentStep: 0,
-      flowSnapshot: { definition: flow, source: "default", resolved: [{ key: "manager", mode: "any", applies: true, approverIds: [manager.id] }, { key: "department_head", mode: "any", applies: twoSteps, approverIds: twoSteps ? [head!.id] : [] }] },
+      flowSnapshot: {
+        definition: flow,
+        source: "default",
+        resolved: [
+          { key: "manager", mode: "any", applies: true, approverIds: [manager.id] },
+          { key: "department_head", mode: "any", applies: twoSteps, approverIds: twoSteps ? [head!.id] : [] },
+        ],
+      },
       link: `/approvals/leave/${approvalId}`,
       decidedAt,
       createdAt: new Date(`${demo.filed}T02:00:00Z`),
@@ -160,19 +235,51 @@ export async function seedLeave(db: Db, today: string): Promise<string> {
     const answered = demo.status === "approved" ? "approved" : demo.status === "rejected" ? "rejected" : "pending";
     const [first] = await db.insert(approvalStep).values({ requestId: approvalId, stepIndex: 0, key: "manager", mode: "any", status: answered }).returning();
     await db.insert(approvalAssignee).values({ stepId: first.id, requestId: approvalId, approverPersonId: manager.id, status: answered, comment: demo.comment ?? null, decidedAt });
-    const [second] = await db.insert(approvalStep).values({ requestId: approvalId, stepIndex: 1, key: "department_head", mode: "any", status: twoSteps ? "waiting" : "skipped" }).returning();
+    const [second] = await db
+      .insert(approvalStep)
+      .values({ requestId: approvalId, stepIndex: 1, key: "department_head", mode: "any", status: twoSteps ? "waiting" : "skipped" })
+      .returning();
     if (twoSteps) await db.insert(approvalAssignee).values({ stepId: second.id, requestId: approvalId, approverPersonId: head!.id });
     await db.insert(approvalEvent).values({ requestId: approvalId, type: "submitted", actorPersonId: requester.id, stepIndex: 0, at: new Date(`${demo.filed}T02:00:00Z`) });
     if (decidedAt) await db.insert(approvalEvent).values({ requestId: approvalId, type: demo.status === "approved" ? "approved" : "rejected", actorPersonId: manager.id, stepIndex: 0, comment: demo.comment ?? null, at: decidedAt });
 
-    await db.insert(leaveRequest).values({ id: leaveRequestId, personId: requester.id, entityId: requester.primaryEntityId, leaveTypeId: type.id, startDate: demo.from, endDate: demo.to, startPortion: demo.startPortion ?? "full", endPortion: single ? (demo.startPortion ?? "full") : (demo.endPortion ?? "full"), totalCenti, reason: demo.reason, status: demo.status, approvalRequestId: approvalId, filedByPersonId: requester.id, lifecycleEventId, decidedAt, createdAt: new Date(`${demo.filed}T02:00:00Z`) });
+    await db.insert(leaveRequest).values({
+      id: leaveRequestId,
+      personId: requester.id,
+      entityId: requester.primaryEntityId,
+      leaveTypeId: type.id,
+      startDate: demo.from,
+      endDate: demo.to,
+      startPortion: demo.startPortion ?? "full",
+      endPortion: single ? (demo.startPortion ?? "full") : (demo.endPortion ?? "full"),
+      totalCenti,
+      reason: demo.reason,
+      status: demo.status,
+      approvalRequestId: approvalId,
+      filedByPersonId: requester.id,
+      lifecycleEventId,
+      decidedAt,
+      createdAt: new Date(`${demo.filed}T02:00:00Z`),
+    });
     await db.insert(leaveRequestDay).values(days.map((row) => ({ requestId: leaveRequestId, personId: requester.id, date: row.date, portion: row.portion, amountCenti: row.amountCenti })));
 
     if (demo.status === "approved" && type.tracksBalance) {
       const byYear = new Map<number, typeof days>();
       for (const row of days) byYear.set(Number(row.date.slice(0, 4)), [...(byYear.get(Number(row.date.slice(0, 4))) ?? []), row]);
       for (const [year, rows] of byYear) {
-        await db.insert(leaveLedgerEntry).values({ personId: requester.id, entityId: requester.primaryEntityId, leaveTypeId: type.id, leaveYear: year, kind: "use", amountCenti: -rows.reduce((sum, row) => sum + row.amountCenti, 0), effectiveDate: rows[0].date, sourceKey: `use:${leaveRequestId}:${year}`, requestId: leaveRequestId, reason: `${formatDay(demo.from)} – ${formatDay(demo.to)}`, createdByPersonId: manager.id });
+        await db.insert(leaveLedgerEntry).values({
+          personId: requester.id,
+          entityId: requester.primaryEntityId,
+          leaveTypeId: type.id,
+          leaveYear: year,
+          kind: "use",
+          amountCenti: -rows.reduce((sum, row) => sum + row.amountCenti, 0),
+          effectiveDate: rows[0].date,
+          sourceKey: `use:${leaveRequestId}:${year}`,
+          requestId: leaveRequestId,
+          reason: `${formatDay(demo.from)} – ${formatDay(demo.to)}`,
+          createdByPersonId: manager.id,
+        });
         ledgerRows++;
       }
     }

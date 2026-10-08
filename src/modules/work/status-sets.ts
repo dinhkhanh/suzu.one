@@ -105,8 +105,16 @@ export async function resolveProjectStatus(executor: Executor, teamId: string, v
 /** How many teams use each project status set, and how many projects sit in each status. */
 export async function projectStatusUsage(): Promise<{ teamsBySet: Map<string, number>; projectsByStatus: Map<string, number> }> {
   const [teams, projects] = await Promise.all([
-    db().select({ setId: schema.workTeam.projectStatusSetId, value: count() }).from(schema.workTeam).where(sql`${schema.workTeam.projectStatusSetId} IS NOT NULL`).groupBy(schema.workTeam.projectStatusSetId),
-    db().select({ statusId: schema.workProject.statusId, value: count() }).from(schema.workProject).where(sql`${schema.workProject.statusId} IS NOT NULL`).groupBy(schema.workProject.statusId),
+    db()
+      .select({ setId: schema.workTeam.projectStatusSetId, value: count() })
+      .from(schema.workTeam)
+      .where(sql`${schema.workTeam.projectStatusSetId} IS NOT NULL`)
+      .groupBy(schema.workTeam.projectStatusSetId),
+    db()
+      .select({ statusId: schema.workProject.statusId, value: count() })
+      .from(schema.workProject)
+      .where(sql`${schema.workProject.statusId} IS NOT NULL`)
+      .groupBy(schema.workProject.statusId),
   ]);
   return { teamsBySet: new Map(teams.map((row) => [row.setId!, row.value])), projectsByStatus: new Map(projects.map((row) => [row.statusId!, row.value])) };
 }
@@ -127,12 +135,19 @@ export async function saveStateSet(setId: string | null, input: StateSetInput, a
   const values = { ...input, states: checkStates(input.states) };
   const saved = await db().transaction(async (tx) => {
     if (!setId) {
-      const [after] = await tx.insert(schema.workStateSet).values({ ...values, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.workStateSet)
+        .values({ ...values, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after };
     }
     const [before] = await tx.select().from(schema.workStateSet).where(eq(schema.workStateSet.id, setId)).limit(1).for("update");
     if (!before) throw new ActionError("status_set_not_found");
-    const [after] = await tx.update(schema.workStateSet).set({ ...values, updatedAt: new Date() }).where(eq(schema.workStateSet.id, setId)).returning();
+    const [after] = await tx
+      .update(schema.workStateSet)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.workStateSet.id, setId))
+      .returning();
     return { before, after };
   });
   await invalidateStateSets();
@@ -149,7 +164,11 @@ export async function deleteStateSet(setId: string): Promise<StateSetRow> {
 
 /** A team's workflow as it stands (its active states, in order), saved to the library as the team's own. */
 export async function stateSetFromTeam(teamId: string, name: string, actorPersonId: string): Promise<StateSetRow> {
-  const states = await db().select({ name: schema.workState.name, category: schema.workState.category }).from(schema.workState).where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true))).orderBy(asc(schema.workState.sortOrder), asc(schema.workState.createdAt));
+  const states = await db()
+    .select({ name: schema.workState.name, category: schema.workState.category })
+    .from(schema.workState)
+    .where(and(eq(schema.workState.teamId, teamId), eq(schema.workState.isActive, true)))
+    .orderBy(asc(schema.workState.sortOrder), asc(schema.workState.createdAt));
   const { after } = await saveStateSet(null, { name, description: null, ownerTeamId: teamId, states, isActive: true }, actorPersonId);
   return after;
 }
@@ -182,9 +201,16 @@ export async function saveProjectStatusSet(setId: string | null, input: ProjectS
       const [row] = await tx.select().from(schema.workProjectStatusSet).where(eq(schema.workProjectStatusSet.id, setId)).limit(1).for("update");
       if (!row) throw new ActionError("status_set_not_found");
       before = { ...row, statuses: await statusesOfSet(setId, { executor: tx }) };
-      [set] = await tx.update(schema.workProjectStatusSet).set({ ...setValues, updatedAt: new Date() }).where(eq(schema.workProjectStatusSet.id, setId)).returning();
+      [set] = await tx
+        .update(schema.workProjectStatusSet)
+        .set({ ...setValues, updatedAt: new Date() })
+        .where(eq(schema.workProjectStatusSet.id, setId))
+        .returning();
     } else {
-      [set] = await tx.insert(schema.workProjectStatusSet).values({ ...setValues, createdByPersonId: actorPersonId }).returning();
+      [set] = await tx
+        .insert(schema.workProjectStatusSet)
+        .values({ ...setValues, createdByPersonId: actorPersonId })
+        .returning();
     }
 
     const existing = new Map((before?.statuses ?? []).map((status) => [status.id, status]));
@@ -201,13 +227,21 @@ export async function saveProjectStatusSet(setId: string | null, input: ProjectS
     const now = new Date();
     for (const [index, status] of statuses.entries()) {
       const values = { name: status.name, category: status.category, isActive: status.isActive, sortOrder: (index + 1) * 10 };
-      if (status.id) await tx.update(schema.workProjectStatus).set({ ...values, updatedAt: now }).where(eq(schema.workProjectStatus.id, status.id));
+      if (status.id)
+        await tx
+          .update(schema.workProjectStatus)
+          .set({ ...values, updatedAt: now })
+          .where(eq(schema.workProjectStatus.id, status.id));
       else await tx.insert(schema.workProjectStatus).values({ ...values, setId: set.id });
     }
     // Writing `status_id` wakes the trigger, which picks each project's status from the set again.
     // Projects in a status of this set keep it; the others take the set's first of their category.
     const teams = tx.select({ id: schema.workTeam.id }).from(schema.workTeam).where(eq(schema.workTeam.projectStatusSetId, set.id));
-    const resolved = await tx.update(schema.workProject).set({ statusId: null }).where(and(inArray(schema.workProject.teamId, teams), isNull(schema.workProject.statusId))).returning({ id: schema.workProject.id });
+    const resolved = await tx
+      .update(schema.workProject)
+      .set({ statusId: null })
+      .where(and(inArray(schema.workProject.teamId, teams), isNull(schema.workProject.statusId)))
+      .returning({ id: schema.workProject.id });
     return { before, after: { ...set, statuses: await statusesOfSet(set.id, { executor: tx }) }, resolved: resolved.length };
   });
   await Promise.all([invalidateProjectStatusSets(), saved.resolved > 0 ? invalidateWorkDirectory() : null]);
@@ -245,4 +279,3 @@ export async function checkTeamProjectStatusSet(executor: Executor, teamId: stri
   const set = await findProjectStatusSet(setId, executor);
   if (!set || !set.isActive || !usableByTeam(set, teamId)) throw new ActionError("status_set_not_found");
 }
-

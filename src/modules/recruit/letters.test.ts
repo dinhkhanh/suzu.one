@@ -99,7 +99,9 @@ const slot = (offsetDays: number, startHourUtc: number) => {
 beforeAll(async () => {
   await migrateTestDb();
   // The legal floor of probation pay an offer is held to (`probation.limits`), as `pnpm db:seed` ships it.
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });
@@ -188,7 +190,20 @@ describe("the acknowledgement", () => {
 
   it("joined to a record by its number, greets the name typed — and carries no link to that record's page", async () => {
     await createCandidate(
-      { fullName: "Người Thật", email: "real.person@example.com", phone: "0911222333", currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null },
+      {
+        fullName: "Người Thật",
+        email: "real.person@example.com",
+        phone: "0911222333",
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
       ids.recruiterPerson,
       { confirmedNotDuplicate: true },
     );
@@ -213,7 +228,18 @@ describe("the interview letter", () => {
   it("states the time in Vietnam's zone and the place, and attaches an .ics naming the candidate alone", async () => {
     const { applicationId } = await freshApplication("Lê Minh Châu", "chau@example.com");
     const { interview, letter } = await scheduleInterview(
-      { applicationId, stageId: null, kind: "panel", title: "Phỏng vấn vòng 1", ...slot(5, 2), mode: "onsite", location: "Tầng 4, 12 Lý Thường Kiệt", meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerPerson] },
+      {
+        applicationId,
+        stageId: null,
+        kind: "panel",
+        title: "Phỏng vấn vòng 1",
+        ...slot(5, 2),
+        mode: "onsite",
+        location: "Tầng 4, 12 Lý Thường Kiệt",
+        meetingUrl: null,
+        notesForCandidate: null,
+        interviewerPersonIds: [ids.interviewerPerson],
+      },
       ids.recruiterPerson,
       { senderName: "Người Tuyển Dụng" },
     );
@@ -240,7 +266,10 @@ describe("the interview letter", () => {
   });
 
   it("tells the interviewers which job, not which candidate", async () => {
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.kind, "recruit.interview_scheduled"), eq(schema.notification.recipientPersonId, ids.interviewerPerson)));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.kind, "recruit.interview_scheduled"), eq(schema.notification.recipientPersonId, ids.interviewerPerson)));
     expect(notices.length).toBeGreaterThan(0);
     for (const notice of notices) {
       expect(notice.params).toMatchObject({ title: "Phỏng vấn vòng 1", job: "Biên tập video" });
@@ -251,7 +280,18 @@ describe("the interview letter", () => {
   it("on a cancellation says it is off and removes it from their calendar — never why", async () => {
     const { applicationId } = await freshApplication("Đỗ Hải Yến", "yen@example.com", "en");
     const { interview } = await scheduleInterview(
-      { applicationId, stageId: null, kind: "technical", title: "Technical round", ...slot(6, 3), mode: "video", location: null, meetingUrl: "https://meet.example.com/abc", notesForCandidate: "Bring your reel", interviewerPersonIds: [ids.interviewerPerson] },
+      {
+        applicationId,
+        stageId: null,
+        kind: "technical",
+        title: "Technical round",
+        ...slot(6, 3),
+        mode: "video",
+        location: null,
+        meetingUrl: "https://meet.example.com/abc",
+        notesForCandidate: "Bring your reel",
+        interviewerPersonIds: [ids.interviewerPerson],
+      },
       ids.recruiterPerson,
       { senderName: "Người Tuyển Dụng" },
     );
@@ -438,27 +478,50 @@ describe("a purged candidate", () => {
     const token = tokenFrom((await outboxTo("ngoc@example.com")).find((row) => row.bodyText.includes("/careers/privacy/"))!.bodyText);
     expect(await findPublicPrivacyView(token)).toEqual({ inTalentPool: false });
     // A notice written the old way, with the name in it, about this candidate's application.
-    await db().insert(schema.notification).values({ recipientPersonId: ids.recruiterPerson, kind: "recruit.assignment_received", params: { title: "Bài test", candidate: "Tô Bích Ngọc" }, link: `/recruit/applications/${applicationId}` });
+    await db()
+      .insert(schema.notification)
+      .values({ recipientPersonId: ids.recruiterPerson, kind: "recruit.assignment_received", params: { title: "Bài test", candidate: "Tô Bích Ngọc" }, link: `/recruit/applications/${applicationId}` });
     // And the same notice as it went to phones and chat before R4-D, the name in its words — one
     // still waiting on each channel that can wait, one long sent.
     const link = `/recruit/applications/${applicationId}`;
     const words = { kind: "recruit.assignment_received", title: "Tô Bích Ngọc đã nộp bài", body: "Bài test của Tô Bích Ngọc đã về." };
     const [messenger] = await db().insert(schema.messengerLink).values({ personId: ids.recruiterPerson, psid: "psid-ngoc-test" }).returning();
     const [telegram] = await db().insert(schema.telegramLink).values({ personId: ids.recruiterPerson, chatId: "chat-ngoc-test" }).returning();
-    await db().insert(schema.pushDelivery).values([{ personId: ids.recruiterPerson, ...words, link }, { personId: ids.recruiterPerson, ...words, link, status: "sent" }]);
-    await db().insert(schema.chatDelivery).values({ personId: ids.recruiterPerson, ...words, link: `https://suzu.one${link}`, status: "sent" });
-    await db().insert(schema.messengerDelivery).values({ linkId: messenger.id, personId: ids.recruiterPerson, ...words, link });
-    await db().insert(schema.telegramDelivery).values({ linkId: telegram.id, personId: ids.recruiterPerson, ...words, link, status: "sent" });
+    await db()
+      .insert(schema.pushDelivery)
+      .values([
+        { personId: ids.recruiterPerson, ...words, link },
+        { personId: ids.recruiterPerson, ...words, link, status: "sent" },
+      ]);
+    await db()
+      .insert(schema.chatDelivery)
+      .values({ personId: ids.recruiterPerson, ...words, link: `https://suzu.one${link}`, status: "sent" });
+    await db()
+      .insert(schema.messengerDelivery)
+      .values({ linkId: messenger.id, personId: ids.recruiterPerson, ...words, link });
+    await db()
+      .insert(schema.telegramDelivery)
+      .values({ linkId: telegram.id, personId: ids.recruiterPerson, ...words, link, status: "sent" });
     // Another kind on the same link is not recruitment's to touch.
     await db().insert(schema.pushDelivery).values({ personId: ids.recruiterPerson, kind: "approvals.request_paid", title: "Không liên quan", body: "Giữ nguyên", link });
 
     await anonymiseCandidate(candidateId, { reason: "erasure", actorPersonId: ids.hrAdmin });
 
     const named = (rows: { title: string; body: string }[]) => rows.filter((row) => `${row.title} ${row.body}`.includes("Ngọc"));
-    const [pushes, chats, messages, telegrams] = await Promise.all([db().select().from(schema.pushDelivery), db().select().from(schema.chatDelivery), db().select().from(schema.messengerDelivery), db().select().from(schema.telegramDelivery)]);
+    const [pushes, chats, messages, telegrams] = await Promise.all([
+      db().select().from(schema.pushDelivery),
+      db().select().from(schema.chatDelivery),
+      db().select().from(schema.messengerDelivery),
+      db().select().from(schema.telegramDelivery),
+    ]);
     expect([...named(pushes), ...named(chats), ...named(messages), ...named(telegrams)]).toEqual([]);
     // What was waiting is never sent; what was sent stays a record of it.
-    expect(pushes.filter((row) => row.kind === words.kind).map((row) => row.status).sort()).toEqual(["failed", "sent"]);
+    expect(
+      pushes
+        .filter((row) => row.kind === words.kind)
+        .map((row) => row.status)
+        .sort(),
+    ).toEqual(["failed", "sent"]);
     expect(messages.map((row) => row.status)).toEqual(["dropped"]);
     expect(telegrams.map((row) => row.status)).toEqual(["sent"]);
     expect(pushes.find((row) => row.kind === "approvals.request_paid")).toMatchObject({ status: "pending", body: "Giữ nguyên" });

@@ -29,7 +29,9 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
   const ownTeams = teams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)) && (tasks.some((task) => task.teamId === team.id) || content.posts.some((post) => post.teamId === team.id)));
   const labels = await listLabels(ownTeams.map((team) => team.id));
   // People to filter by: whoever holds a task on this calendar.
-  const people = [...new Map(tasks.flatMap((task) => (task.assigneePersonId && task.assigneeName ? [[task.assigneePersonId, { id: task.assigneePersonId, fullName: task.assigneeName }] as const] : []))).values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const people = [...new Map(tasks.flatMap((task) => (task.assigneePersonId && task.assigneeName ? [[task.assigneePersonId, { id: task.assigneePersonId, fullName: task.assigneeName }] as const] : []))).values()].sort((a, b) =>
+    a.fullName.localeCompare(b.fullName),
+  );
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
 
   return (

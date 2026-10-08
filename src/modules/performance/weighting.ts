@@ -49,7 +49,17 @@ export async function getWeighting(entityId: string | null, date: IsoDate, execu
 export async function getWeightings(entityIds: readonly (string | null)[], date: IsoDate, executor?: Executor): Promise<Map<string | null, ResolvedWeighting>> {
   const approved = (await listWeightingVersions(executor)).filter((row) => row.status === "approved");
   const resolve = (entityId: string | null): ResolvedWeighting => {
-    const version = (entityId ? versionOn(approved.filter((row) => row.entityId === entityId), date) : undefined) ?? versionOn(approved.filter((row) => row.entityId === null), date);
+    const version =
+      (entityId
+        ? versionOn(
+            approved.filter((row) => row.entityId === entityId),
+            date,
+          )
+        : undefined) ??
+      versionOn(
+        approved.filter((row) => row.entityId === null),
+        date,
+      );
     if (!version) throw new ActionError("weighting_missing");
     return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: performanceWeightingSchema.parse(version.value) };
   };
@@ -95,14 +105,26 @@ export async function decideWeighting(id: string, decision: "approve" | "reject"
     if (!before || before.status !== "proposed") throw new ActionError("weighting_proposal_not_found");
     const decided = { decidedByPersonId: actorPersonId, decidedAt: new Date(), updatedAt: new Date() };
     if (decision === "reject") {
-      const [after] = await tx.update(table).set({ status: "rejected", ...decided }).where(eq(table.id, id)).returning();
+      const [after] = await tx
+        .update(table)
+        .set({ status: "rejected", ...decided })
+        .where(eq(table.id, id))
+        .returning();
       return { before, after };
     }
-    const approved = await tx.select().from(table).where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved")))
+      .for("update");
     const plan = planApproval(approved, before.validFrom);
     if (plan.kind === "rejected") throw new ActionError(`weighting_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
-    const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    const [after] = await tx
+      .update(table)
+      .set({ status: "approved", ...decided })
+      .where(eq(table.id, id))
+      .returning();
     return { before, after };
   });
   await invalidate(WEIGHTING_CACHE);

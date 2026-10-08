@@ -40,10 +40,7 @@ const fails = (promise: Promise<unknown>) =>
 const principal = (personId: string | null, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 const viewerOf = (p: Principal) => ({ principal: p, personId: p.personId });
 
-const ids = {} as Record<
-  "szm" | "vid" | "pipeline" | "openingId" | "applicationId" | "recruiterPerson" | "headPerson" | "interviewerA" | "interviewerB" | "strangerPerson" | "interviewId",
-  string
->;
+const ids = {} as Record<"szm" | "vid" | "pipeline" | "openingId" | "applicationId" | "recruiterPerson" | "headPerson" | "interviewerA" | "interviewerB" | "strangerPerson" | "interviewId", string>;
 let recruiter: Principal;
 let head: Principal;
 let alice: Principal;
@@ -72,10 +69,7 @@ beforeAll(async () => {
     ["interviewerB", "Trần Văn Bảo", "bao@suzu.group"],
     ["strangerPerson", "Nhân viên thường", "nv@suzu.group"],
   ] as const) {
-    const [row] = await db()
-      .insert(schema.person)
-      .values({ fullName, searchName: key, workEmail: email, primaryEntityId: szm.id, departmentId: vid.id, status: "active" })
-      .returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, workEmail: email, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
 
@@ -97,7 +91,8 @@ beforeAll(async () => {
       departmentId: vid.id,
       teamId: null,
       positionName: null,
-      seniorityLevel: null, positionLevel: null,
+      seniorityLevel: null,
+      positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: "Hà Nội",
@@ -183,7 +178,10 @@ describe("scheduling", () => {
     const [row] = await db().select().from(schema.interview).where(eq(schema.interview.id, ids.interviewId));
     expect(row.criteria.map((criterion) => criterion.key)).toEqual(DEFAULT_INTERVIEW_KIT.map((criterion) => criterion.key));
 
-    await db().update(schema.jobOpening).set({ interviewKit: [{ key: "later", label: "Thêm sau", labelEn: null, hint: null }] }).where(eq(schema.jobOpening.id, ids.openingId));
+    await db()
+      .update(schema.jobOpening)
+      .set({ interviewKit: [{ key: "later", label: "Thêm sau", labelEn: null, hint: null }] })
+      .where(eq(schema.jobOpening.id, ids.openingId));
     const [again] = await db().select().from(schema.interview).where(eq(schema.interview.id, ids.interviewId));
     expect(again.criteria.map((criterion) => criterion.key)).toEqual(DEFAULT_INTERVIEW_KIT.map((criterion) => criterion.key));
     await db().update(schema.jobOpening).set({ interviewKit: [] }).where(eq(schema.jobOpening.id, ids.openingId));
@@ -297,19 +295,13 @@ describe("blind feedback (FR-REC-06)", () => {
   });
 
   it("refuses to change a submitted card, so nobody scores after reading the panel", async () => {
-    expect(await fails(saveScorecard(ids.interviewId, ids.interviewerA, { ratings: { craft: 1 }, recommendation: "no", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe(
-      "recruit_scorecard_submitted",
-    );
+    expect(await fails(saveScorecard(ids.interviewId, ids.interviewerA, { ratings: { craft: 1 }, recommendation: "no", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe("recruit_scorecard_submitted");
   });
 
   it("refuses a card from somebody who was not in the room", async () => {
-    expect(await fails(saveScorecard(ids.interviewId, ids.strangerPerson, { ratings: {}, recommendation: "yes", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe(
-      "recruit_not_an_interviewer",
-    );
+    expect(await fails(saveScorecard(ids.interviewId, ids.strangerPerson, { ratings: {}, recommendation: "yes", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe("recruit_not_an_interviewer");
     // Including the recruiter who booked it: a scorecard is testimony, not an opinion.
-    expect(await fails(saveScorecard(ids.interviewId, ids.recruiterPerson, { ratings: {}, recommendation: "yes", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe(
-      "recruit_not_an_interviewer",
-    );
+    expect(await fails(saveScorecard(ids.interviewId, ids.recruiterPerson, { ratings: {}, recommendation: "yes", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe("recruit_not_an_interviewer");
   });
 
   it("refuses a submission with no recommendation, but keeps a half-finished draft", async () => {
@@ -317,9 +309,7 @@ describe("blind feedback (FR-REC-06)", () => {
       { applicationId: ids.applicationId, stageId: null, kind: "technical", title: "Vòng kỹ thuật", ...slot(7, 2), mode: "video", location: null, meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerA] },
       ids.recruiterPerson,
     );
-    expect(await fails(saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 3 }, recommendation: null, strengths: null, concerns: null, notes: null }, { submit: true }))).toBe(
-      "recruit_scorecard_needs_recommendation",
-    );
+    expect(await fails(saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 3 }, recommendation: null, strengths: null, concerns: null, notes: null }, { submit: true }))).toBe("recruit_scorecard_needs_recommendation");
     const draft = await saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 3 }, recommendation: null, strengths: null, concerns: null, notes: null }, { submit: false });
     expect(draft.submittedAt).toBeNull();
   });
@@ -367,7 +357,18 @@ describe("oversight of the panel (recruit:oversee)", () => {
 
   it("shows the owner every card, drafts included, and lets them score nothing", async () => {
     const { interview } = await scheduleInterview(
-      { applicationId: ids.applicationId, stageId: null, kind: "technical", title: "Vòng giám sát", ...slot(60, 2), mode: "video", location: null, meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] },
+      {
+        applicationId: ids.applicationId,
+        stageId: null,
+        kind: "technical",
+        title: "Vòng giám sát",
+        ...slot(60, 2),
+        mode: "video",
+        location: null,
+        meetingUrl: null,
+        notesForCandidate: null,
+        interviewerPersonIds: [ids.interviewerA, ids.interviewerB],
+      },
       ids.recruiterPerson,
     );
     await saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 2 }, recommendation: null, strengths: null, concerns: null, notes: "nháp của Hà" }, { submit: false });
@@ -384,7 +385,18 @@ describe("oversight of the panel (recruit:oversee)", () => {
 
   it("keeps the blind rule for an owner who is interviewing: an interviewer first", async () => {
     const { interview } = await scheduleInterview(
-      { applicationId: ids.applicationId, stageId: null, kind: "culture", title: "Vòng chủ sở hữu", ...slot(61, 2), mode: "video", location: null, meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] },
+      {
+        applicationId: ids.applicationId,
+        stageId: null,
+        kind: "culture",
+        title: "Vòng chủ sở hữu",
+        ...slot(61, 2),
+        mode: "video",
+        location: null,
+        meetingUrl: null,
+        notesForCandidate: null,
+        interviewerPersonIds: [ids.interviewerA, ids.interviewerB],
+      },
       ids.recruiterPerson,
     );
     await saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 4 }, recommendation: "yes", strengths: "Chắc tay", concerns: null, notes: null }, { submit: true });
@@ -429,11 +441,7 @@ function slotWindow() {
 
 describe("rescheduling and cancelling", () => {
   it("moves an interview, keeping its identity", async () => {
-    const { interview } = await rescheduleInterview(
-      ids.interviewId,
-      { ...slot(5, 3), location: "Tầng 5", meetingUrl: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] },
-      ids.recruiterPerson,
-    );
+    const { interview } = await rescheduleInterview(ids.interviewId, { ...slot(5, 3), location: "Tầng 5", meetingUrl: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] }, ids.recruiterPerson);
     expect(interview.id).toBe(ids.interviewId);
     expect(interview.location).toBe("Tầng 5");
   });

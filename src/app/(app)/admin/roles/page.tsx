@@ -96,15 +96,30 @@ export default async function RolesPage() {
                     {grant.scopeType === "group" ? null : (
                       <span className="text-muted-foreground">
                         {" "}
-                        · <RecordLink kind={grant.scopeType === "entity" ? "entity" : "unit"} id={grant.scopeName ? grant.scopeId : null}>{grant.scopeName ?? "?"}</RecordLink>
+                        ·{" "}
+                        <RecordLink kind={grant.scopeType === "entity" ? "entity" : "unit"} id={grant.scopeName ? grant.scopeId : null}>
+                          {grant.scopeName ?? "?"}
+                        </RecordLink>
                       </span>
                     )}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
                     {day(grant.validFrom)} → {grant.validTo ? day(grant.validTo) : "…"}
-                    {grant.validFrom > today ? <Badge variant="warning" className="ml-2 font-sans">{t("notYet")}</Badge> : null}
+                    {grant.validFrom > today ? (
+                      <Badge variant="warning" className="ml-2 font-sans">
+                        {t("notYet")}
+                      </Badge>
+                    ) : null}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{grant.grantedByName ? <RecordLink kind="person" id={grant.grantedByPersonId}>{grant.grantedByName}</RecordLink> : t("system")}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {grant.grantedByName ? (
+                      <RecordLink kind="person" id={grant.grantedByPersonId}>
+                        {grant.grantedByName}
+                      </RecordLink>
+                    ) : (
+                      t("system")
+                    )}
+                  </TableCell>
                   <TableCell kind="actions">
                     <RevokeRoleButton id={grant.id} />
                   </TableCell>
@@ -130,7 +145,9 @@ export default async function RolesPage() {
           <Table numbered={false} className="min-w-[64rem]">
             <TableHeader>
               <TableRow>
-                <TableHead kind="id" className="sticky left-0 z-10 bg-canvas">{t("matrix.permission")}</TableHead>
+                <TableHead kind="id" className="sticky left-0 z-10 bg-canvas">
+                  {t("matrix.permission")}
+                </TableHead>
                 {ROLES.map((role) => (
                   <TableHead key={role} className="px-2 text-center align-bottom whitespace-normal">
                     <span className="flex flex-col items-center gap-0.5">

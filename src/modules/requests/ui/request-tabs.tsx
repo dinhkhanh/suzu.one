@@ -13,7 +13,19 @@ export type RequestTab = "mine" | "inbox" | "claims" | "pay" | "all";
 
 const OPEN = new Set(["pending", "returned"]);
 
-export async function RequestTabs({ active, personId, principal, claimsWaiting, payWaiting }: { active: RequestTab; personId: string; principal: Principal; /** Claims approved and not yet paid — known only to the desk that pays them. */ claimsWaiting?: number; /** Approved requests finance has still to pay (REQ-01), the same. */ payWaiting?: number }) {
+export async function RequestTabs({
+  active,
+  personId,
+  principal,
+  claimsWaiting,
+  payWaiting,
+}: {
+  active: RequestTab;
+  personId: string;
+  principal: Principal;
+  /** Claims approved and not yet paid — known only to the desk that pays them. */ claimsWaiting?: number;
+  /** Approved requests finance has still to pay (REQ-01), the same. */ payWaiting?: number;
+}) {
   const [t, { inbox, mine }] = await Promise.all([getTranslations("requests.tabs"), loadApprovalsPage(personId)]);
   const tabs: { key: RequestTab; href: string; label: string; count: number | null }[] = [
     { key: "mine", href: "/requests", label: t("mine"), count: mine.filter((row) => OPEN.has(row.status)).length || null },

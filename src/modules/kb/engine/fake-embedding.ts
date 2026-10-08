@@ -20,7 +20,9 @@ function hash(value: string): number {
 
 export function fakeEmbedding(text: string): number[] {
   const vector = new Array<number>(FAKE_EMBEDDING_DIMS).fill(0);
-  const tokens = toSearchKey(text).split(/[^a-z0-9]+/).filter((token) => token.length > 1);
+  const tokens = toSearchKey(text)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 1);
   const add = (feature: string, weight: number) => {
     const h = hash(feature);
     vector[h % FAKE_EMBEDDING_DIMS] += (h & 0x80000000 ? -1 : 1) * weight;

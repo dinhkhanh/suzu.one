@@ -23,17 +23,7 @@ import { decideHiringRequest, submitHiringRequest } from "./hiring";
 import { eraseCandidate } from "./jobs";
 import { rejectApplicationAndTell } from "./letters";
 import { setTalentPool } from "./privacy";
-import {
-  canActOnApplication,
-  canEditOpening,
-  canEraseCandidate,
-  canFileHiringRequest,
-  canManageCandidates,
-  canManagePipelines,
-  canOpenFromHiringRequest,
-  canRunRecruitment,
-  canSetRecruitMoney,
-} from "./policy";
+import { canActOnApplication, canEditOpening, canEraseCandidate, canFileHiringRequest, canManageCandidates, canManagePipelines, canOpenFromHiringRequest, canRunRecruitment, canSetRecruitMoney } from "./policy";
 import {
   candidateOpeningTargets,
   canReachCandidate,
@@ -62,7 +52,15 @@ const integer = z.coerce.number().int();
 /** Whole đồng, typed as Vietnam types it ("18.000.000") or as anywhere else does ("18,000,000"). */
 const money = z.preprocess((value) => (typeof value === "string" ? value.replace(/[.,\s]/g, "") : value), z.coerce.number().int().min(0).max(10_000_000_000));
 const lines = z.preprocess(
-  (value) => (typeof value === "string" ? value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean) : Array.isArray(value) ? value : []),
+  (value) =>
+    typeof value === "string"
+      ? value
+          .split(/[\n,]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : Array.isArray(value)
+        ? value
+        : [],
   z.array(z.string().max(500)).max(25),
 );
 
@@ -170,7 +168,11 @@ const createOpeningPipeline = createAction({
     revalidatePath("/recruit");
     return {
       data: { id: opening.id, code: opening.code },
-      audit: { resource: { type: "job_opening", id: opening.id, entityId: opening.entityId }, summary: `${opening.code} ${opening.title}`, after: { status: opening.status, headcount: opening.headcount, fromHiringRequest: hiringRequestId } },
+      audit: {
+        resource: { type: "job_opening", id: opening.id, entityId: opening.entityId },
+        summary: `${opening.code} ${opening.title}`,
+        after: { status: opening.status, headcount: opening.headcount, fromHiringRequest: hiringRequestId },
+      },
     };
   },
 });
@@ -193,7 +195,12 @@ const updateOpeningPipeline = createAction({
     revalidatePath("/recruit");
     return {
       data: { id: after.id },
-      audit: { resource: { type: "job_opening", id: after.id, entityId: after.entityId }, summary: `${after.code} ${after.title}`, before: { title: before.title, headcount: before.headcount }, after: { title: after.title, headcount: after.headcount, bandChanged: money !== null } },
+      audit: {
+        resource: { type: "job_opening", id: after.id, entityId: after.entityId },
+        summary: `${after.code} ${after.title}`,
+        before: { title: before.title, headcount: before.headcount },
+        after: { title: after.title, headcount: after.headcount, bandChanged: money !== null },
+      },
     };
   },
 });
@@ -220,7 +227,10 @@ const setOpeningTeamPipeline = createAction({
   name: "recruit.opening.team",
   input: z.object({
     openingId: z.uuid(),
-    members: z.array(z.object({ personId: z.uuid(), role: z.enum(OPENING_MEMBER_ROLES) })).max(30).default([]),
+    members: z
+      .array(z.object({ personId: z.uuid(), role: z.enum(OPENING_MEMBER_ROLES) }))
+      .max(30)
+      .default([]),
   }),
   authorize: async (user, input) => {
     const opening = await findOpening(input.openingId);
@@ -276,7 +286,12 @@ const saveOpeningQuestionsPipeline = createAction({
     revalidatePath(`/recruit/${input.openingId}/edit`);
     return {
       data: { count: after.length },
-      audit: { resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null }, summary: `${opening?.code ?? ""} — application questions`, before: { questions: before.length }, after: { questions: after.length, keys: after.map((row) => row.key) } },
+      audit: {
+        resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null },
+        summary: `${opening?.code ?? ""} — application questions`,
+        before: { questions: before.length },
+        after: { questions: after.length, keys: after.map((row) => row.key) },
+      },
     };
   },
 });
@@ -306,7 +321,12 @@ const saveOpeningKitPipeline = createAction({
     revalidatePath(`/recruit/${input.openingId}/edit`);
     return {
       data: { count: after.length },
-      audit: { resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null }, summary: `${opening?.code ?? ""} — interview kit`, before: { criteria: before.length }, after: { criteria: after.length, keys: after.map((row) => row.key) } },
+      audit: {
+        resource: { type: "job_opening", id: input.openingId, entityId: opening?.entityId ?? null },
+        summary: `${opening?.code ?? ""} — interview kit`,
+        before: { criteria: before.length },
+        after: { criteria: after.length, keys: after.map((row) => row.key) },
+      },
     };
   },
 });
@@ -317,7 +337,11 @@ const savePipelinePipeline = createAction({
   name: "recruit.pipeline.save",
   input: z.object({
     pipelineId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,23}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9_-]{1,23}$/),
     name: z.string().trim().min(2).max(120),
     nameEn: optional(z.string().trim().max(120)),
     description: optional(z.string().trim().max(500)),
@@ -326,7 +350,10 @@ const savePipelinePipeline = createAction({
     stages: z
       .array(
         z.object({
-          key: z.string().trim().regex(/^[a-z0-9][a-z0-9_]{1,31}$/),
+          key: z
+            .string()
+            .trim()
+            .regex(/^[a-z0-9][a-z0-9_]{1,31}$/),
           name: z.string().trim().min(1).max(80),
           nameEn: optional(z.string().trim().max(80)),
           category: z.enum(STAGE_CATEGORIES),
@@ -571,7 +598,11 @@ const saveEmailTemplatePipeline = createAction({
   name: "recruit.email_template.save",
   input: z.object({
     templateId: optional(z.uuid()),
-    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,31}$/),
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9][A-Z0-9_-]{1,31}$/),
     name: z.string().trim().min(2).max(120),
     kind: z.enum(RECRUIT_EMAIL_KINDS),
     subject: z.string().trim().min(1).max(200),
@@ -588,7 +619,12 @@ const saveEmailTemplatePipeline = createAction({
     revalidatePath("/recruit/emails");
     return {
       data: { id: after.id },
-      audit: { resource: { type: "recruit_email_template", id: after.id, entityId: null }, summary: `${after.code} ${after.name}`, before: before && { name: before.name, isActive: before.isActive }, after: { name: after.name, isActive: after.isActive } },
+      audit: {
+        resource: { type: "recruit_email_template", id: after.id, entityId: null },
+        summary: `${after.code} ${after.name}`,
+        before: before && { name: before.name, isActive: before.isActive },
+        after: { name: after.name, isActive: after.isActive },
+      },
     };
   },
 });

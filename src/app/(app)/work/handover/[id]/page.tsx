@@ -36,10 +36,18 @@ export default async function ExitHandoverPage({ params }: PageProps<"/work/hand
         title={
           <span className="flex flex-wrap items-center gap-2">
             {t("exit.title", { name: handover.personName })}
-            <Badge dot variant={statusTone(handover.status)}>{t(`exit.statuses.${handover.status}`)}</Badge>
+            <Badge dot variant={statusTone(handover.status)}>
+              {t(`exit.statuses.${handover.status}`)}
+            </Badge>
           </span>
         }
-        description={[t(`exit.reasons.${handover.reason}`), handover.lastDay ? t("exit.lastDay", { date: format.dateTime(new Date(`${handover.lastDay}T00:00:00`), { dateStyle: "medium" }) }) : null, handover.step ? t("exit.step", { name: handover.step.assigneeName ?? "—" }) : null].filter(Boolean).join(" · ")}
+        description={[
+          t(`exit.reasons.${handover.reason}`),
+          handover.lastDay ? t("exit.lastDay", { date: format.dateTime(new Date(`${handover.lastDay}T00:00:00`), { dateStyle: "medium" }) }) : null,
+          handover.step ? t("exit.step", { name: handover.step.assigneeName ?? "—" }) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       >
         {handover.summary.total ? <p className="text-sm">{t("exit.remaining", { count: handover.summary.total })}</p> : null}
       </PageHeader>

@@ -42,13 +42,7 @@ export async function contractsToWatch(today: IsoDate): Promise<{ id: string; ty
             .select({ one: sql`1` })
             .from(renewal)
             .where(
-              and(
-                eq(renewal.employmentId, schema.contract.employmentId),
-                ne(renewal.id, schema.contract.id),
-                isNull(renewal.deletedAt),
-                inArray(renewal.type, [...LABOUR_CONTRACT_TYPES]),
-                gt(renewal.startDate, schema.contract.endDate),
-              ),
+              and(eq(renewal.employmentId, schema.contract.employmentId), ne(renewal.id, schema.contract.id), isNull(renewal.deletedAt), inArray(renewal.type, [...LABOUR_CONTRACT_TYPES]), gt(renewal.startDate, schema.contract.endDate)),
             ),
         ),
       ),
@@ -60,7 +54,10 @@ export async function sendHrAlerts(today: IsoDate): Promise<{ contractAlerts: nu
   const thresholds = await getParameter("hr.alert_thresholds", today);
   const [contracts, documents] = await Promise.all([
     contractsToWatch(today),
-    db().select().from(schema.personDocument).where(and(isNull(schema.personDocument.deletedAt), isNotNull(schema.personDocument.expiresOn), gte(schema.personDocument.expiresOn, today))),
+    db()
+      .select()
+      .from(schema.personDocument)
+      .where(and(isNull(schema.personDocument.deletedAt), isNotNull(schema.personDocument.expiresOn), gte(schema.personDocument.expiresOn, today))),
   ]);
 
   const subjects: Subject[] = [
@@ -81,7 +78,11 @@ export async function sendHrAlerts(today: IsoDate): Promise<{ contractAlerts: nu
   ]);
   const placed = personIds.filter((personId) => targets.has(personId));
   // HR, not the owners: a countdown is routine work, and owners who want it can follow the person's page.
-  const holders = await listPeopleHoldingEach("person:manage", placed.map((personId) => targets.get(personId)!), { today, includeWildcard: false });
+  const holders = await listPeopleHoldingEach(
+    "person:manage",
+    placed.map((personId) => targets.get(personId)!),
+    { today, includeWildcard: false },
+  );
   const hrOf = new Map(placed.map((personId, index) => [personId, holders[index]]));
   const personOf = new Map(people.map((row) => [row.id, row]));
 

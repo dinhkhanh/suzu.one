@@ -104,7 +104,11 @@ function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | nu
  *    because a unit grant carries its subtree.
  */
 /** A space row as `canManageSpace` reads it. */
-export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string | null; ownerProjectId?: string | null }) => ({ entityId: space.entityId, ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null, ownerProjectId: space.ownerProjectId ?? null });
+export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string | null; ownerProjectId?: string | null }) => ({
+  entityId: space.entityId,
+  ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null,
+  ownerProjectId: space.ownerProjectId ?? null,
+});
 
 // A project's document space is managed by nobody through a role: it opens to the project's people
 // by its access row, and `kb:manage` stops at its door (FR-PJM-31; see kb_space.owner_project_id).

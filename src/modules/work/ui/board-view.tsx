@@ -29,7 +29,23 @@ export type BoardTask = ListTask & { boardRank: number; updatedAt: string };
  * state on the card, tap the state it goes to (FR-PJM-37: two taps), and the arrows reorder it
  * within its column. With `scope`, each column ends with a quick-create that files into that state.
  */
-export function BoardView({ tasks, options, initialFilters, selfId, today, canContribute, scope }: { tasks: BoardTask[]; options: ListOptions; initialFilters: TaskFilters; selfId: string; today: string; canContribute: boolean; /** Where a column's quick-create files a new task; without it the board only shows. */ scope?: TaskScope }) {
+export function BoardView({
+  tasks,
+  options,
+  initialFilters,
+  selfId,
+  today,
+  canContribute,
+  scope,
+}: {
+  tasks: BoardTask[];
+  options: ListOptions;
+  initialFilters: TaskFilters;
+  selfId: string;
+  today: string;
+  canContribute: boolean;
+  /** Where a column's quick-create files a new task; without it the board only shows. */ scope?: TaskScope;
+}) {
   const t = useTranslations("work.board");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -40,7 +56,9 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
   const [, startTransition] = useTransition();
   // A column that needs a hand-off package (FR-PJM-40): the card snaps back, the reason shows, the sheet opens.
   const gate = useHandoffGate();
-  const [shown, applyOptimistic] = useOptimistic(tasks, (current: BoardTask[], move: { id: string; stateId: string; boardRank: number; status: BoardTask["status"] }) => current.map((task) => (task.id === move.id ? { ...task, ...move } : task)));
+  const [shown, applyOptimistic] = useOptimistic(tasks, (current: BoardTask[], move: { id: string; stateId: string; boardRank: number; status: BoardTask["status"] }) =>
+    current.map((task) => (task.id === move.id ? { ...task, ...move } : task)),
+  );
 
   const fields = useMemo(() => (options.fields ?? []).filter((field) => field.isActive), [options.fields]);
   const cardFields = fields.filter((field) => field.showOnCard);
@@ -49,7 +67,10 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
     const since = new Date(Date.parse(`${today}T00:00:00Z`) - BOARD_RECENT_DAYS * 86_400_000).toISOString();
     // The board always has its "done" columns; without "show closed" they hold the last two weeks only.
     const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today, fields }).filter((task) => filters.closed === "1" || task.status === "todo" || task.status === "in_progress" || task.updatedAt >= since);
-    return boardColumns(visible, states.map((state) => state.id));
+    return boardColumns(
+      visible,
+      states.map((state) => state.id),
+    );
   }, [shown, filters, selfId, today, states, fields]);
 
   const statusOf = (stateId: string): BoardTask["status"] => {
@@ -96,7 +117,11 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
             <section
               key={state.id}
               aria-label={state.name}
-              className={cn("flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border p-2 transition-shadow duration-100 md:w-72", stateColumnClass(state.category), dragging && target?.stateId === state.id && "ring-2 ring-ring/40")}
+              className={cn(
+                "flex w-[min(18rem,calc(100vw-3rem))] shrink-0 snap-start flex-col gap-2 rounded-[14px] border border-border p-2 transition-shadow duration-100 md:w-72",
+                stateColumnClass(state.category),
+                dragging && target?.stateId === state.id && "ring-2 ring-ring/40",
+              )}
               onDragOver={(event) => {
                 if (!dragging) return;
                 event.preventDefault();
@@ -135,7 +160,12 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         const index = event.clientY < box.top + box.height / 2 ? own : own + 1;
                         if (target?.stateId !== state.id || target.index !== index) setTarget({ stateId: state.id, index });
                       }}
-                      className={cn("flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-2.5 text-sm shadow-[0_1px_2px_oklch(0_0_0/4%)] transition-[margin,opacity] duration-200 ease-(--ease-settle)", dragging === task.id && "opacity-40", showGap && "mt-8", editable(task) && "cursor-grab active:cursor-grabbing")}
+                      className={cn(
+                        "flex flex-col gap-1.5 rounded-[10px] border border-border bg-background p-2.5 text-sm shadow-[0_1px_2px_oklch(0_0_0/4%)] transition-[margin,opacity] duration-200 ease-(--ease-settle)",
+                        dragging === task.id && "opacity-40",
+                        showGap && "mt-8",
+                        editable(task) && "cursor-grab active:cursor-grabbing",
+                      )}
                     >
                       <div className="flex items-center gap-2 text-xs">
                         <TaskKey>{task.key}</TaskKey>
@@ -151,11 +181,13 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
                               <DropdownMenuRadioGroup value={task.stateId} onValueChange={(next) => move(task, String(next), (columns.get(String(next)) ?? []).filter((card) => card.id !== task.id).length)}>
-                                {states.filter((row) => row.isActive || row.id === task.stateId).map((row) => (
-                                  <DropdownMenuRadioItem key={row.id} value={row.id}>
-                                    {row.name}
-                                  </DropdownMenuRadioItem>
-                                ))}
+                                {states
+                                  .filter((row) => row.isActive || row.id === task.stateId)
+                                  .map((row) => (
+                                    <DropdownMenuRadioItem key={row.id} value={row.id}>
+                                      {row.name}
+                                    </DropdownMenuRadioItem>
+                                  ))}
                               </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -213,7 +245,11 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
               </ul>
               {/* A new task starts in the column it was typed under, inside the filters in force — so it does not vanish on arrival. */}
               {scope && canContribute && state.isActive && state.category !== "done" && state.category !== "cancelled" ? (
-                <QuickCreate compact scope={scope} defaults={{ stateId: state.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+                <QuickCreate
+                  compact
+                  scope={scope}
+                  defaults={{ stateId: state.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }}
+                />
               ) : null}
             </section>
           );

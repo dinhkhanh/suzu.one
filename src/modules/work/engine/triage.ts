@@ -31,7 +31,10 @@ export function ruleMatches(match: TriageMatchDef, arrival: TriageArrival): bool
   if (match.intakeFormId && match.intakeFormId !== arrival.intakeFormId) return false;
   if (match.keyword?.trim()) {
     const haystack = toSearchKey(`${arrival.title} ${arrival.description ?? ""}`);
-    const alternatives = match.keyword.split(",").map((alternative) => toSearchKey(alternative).split(" ").filter(Boolean)).filter((words) => words.length > 0);
+    const alternatives = match.keyword
+      .split(",")
+      .map((alternative) => toSearchKey(alternative).split(" ").filter(Boolean))
+      .filter((words) => words.length > 0);
     if (alternatives.length > 0 && !alternatives.some((words) => words.every((word) => haystack.includes(word)))) return false;
   }
   return true;

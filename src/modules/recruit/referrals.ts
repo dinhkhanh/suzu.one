@@ -90,9 +90,7 @@ export async function submitReferral(input: ReferralInput, referrerPersonId: str
   // unpublished opening is simply not something they can refer into.
   if (!opening || !OPENING_PUBLIC_STATUSES.includes(opening.status) || !opening.publishedAt) throw new ActionError("recruit_opening_not_open");
 
-  const stored = input.cv
-    ? await storeIncomingFile({ ownerType: "job_application", ownerId: `pending:${opening.id}`, entityId: opening.entityId, tier: "personal" }, input.cv, { maxBytes: MAX_REFERRAL_CV_BYTES })
-    : null;
+  const stored = input.cv ? await storeIncomingFile({ ownerType: "job_application", ownerId: `pending:${opening.id}`, entityId: opening.entityId, tier: "personal" }, input.cv, { maxBytes: MAX_REFERRAL_CV_BYTES }) : null;
 
   try {
     const applicationId = await inTransaction(async (tx) => {
@@ -365,7 +363,10 @@ export async function listMyReferrals(personId: string, today: IsoDate = todayIn
 /** Every referral in the reader's recruitment scope — the list HR settles bonuses from. */
 export async function listReferrals(principal: Principal, today: IsoDate = todayInVietnam()): Promise<ReferralListRow[]> {
   if (!canRunRecruitment(principal)) return [];
-  const rows = await baseQuery().where(recruitReach(principal, schema.jobOpening) ?? sql`false`).orderBy(desc(schema.referral.createdAt)).limit(500);
+  const rows = await baseQuery()
+    .where(recruitReach(principal, schema.jobOpening) ?? sql`false`)
+    .orderBy(desc(schema.referral.createdAt))
+    .limit(500);
   return rows.map((row) => toListRow(row, today));
 }
 

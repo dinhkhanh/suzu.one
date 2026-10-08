@@ -14,7 +14,20 @@ import type { AttendanceRequestDetails } from "../src/modules/attendance/schema"
 
 type Db = ReturnType<typeof drizzle>;
 type Status = "pending" | "approved" | "rejected";
-type Demo = { who: string; from: string; to?: string; details: AttendanceRequestDetails; reason: string; status: Status; filed: string; decided?: string; comment?: string; compensation?: "pay" | "time_off"; confirmedMinutes?: number; /** WFH without punches: the clock rows of those days are removed. */ clearPunches?: boolean };
+type Demo = {
+  who: string;
+  from: string;
+  to?: string;
+  details: AttendanceRequestDetails;
+  reason: string;
+  status: Status;
+  filed: string;
+  decided?: string;
+  comment?: string;
+  compensation?: "pay" | "time_off";
+  confirmedMinutes?: number;
+  /** WFH without punches: the clock rows of those days are removed. */ clearPunches?: boolean;
+};
 
 const correction = (inTime: string | null, outTime: string | null, cause: "forgot" | "device_error" = "forgot"): AttendanceRequestDetails => ({ type: "attendance_correction", cause, inTime, outTime, outNextDay: false });
 const formatDay = (date: string) => date.split("-").reverse().join("/");
@@ -24,17 +37,81 @@ const REQUESTS: Demo[] = [
   { who: "Hồ Gia Huy", from: "2026-08-20", details: correction(null, "17:35"), reason: "Quên chấm công khi về, có họp với khách đến 17:30", status: "approved", filed: "2026-08-21", decided: "2026-08-21" },
   { who: "Đỗ Khánh Linh", from: "2026-08-31", details: correction("08:28", null, "device_error"), reason: "Máy chấm công không nhận vân tay buổi sáng", status: "approved", filed: "2026-09-01", decided: "2026-09-01" },
   { who: "Lý Minh Khôi", from: "2026-08-12", details: correction(null, "18:05"), reason: "Quên chấm công khi về", status: "pending", filed: "2026-09-03" },
-  { who: "Phan Văn Đức", from: "2026-08-24", details: correction("08:30", "17:30"), reason: "Đi gặp khách cả ngày, không về văn phòng", status: "rejected", filed: "2026-08-25", decided: "2026-08-26", comment: "Không có lịch gặp khách ngày này. Nếu nghỉ, vui lòng tạo đơn nghỉ phép." },
+  {
+    who: "Phan Văn Đức",
+    from: "2026-08-24",
+    details: correction("08:30", "17:30"),
+    reason: "Đi gặp khách cả ngày, không về văn phòng",
+    status: "rejected",
+    filed: "2026-08-25",
+    decided: "2026-08-26",
+    comment: "Không có lịch gặp khách ngày này. Nếu nghỉ, vui lòng tạo đơn nghỉ phép.",
+  },
   { who: "Hồ Gia Huy", from: "2026-08-27", details: { type: "overtime", from: "17:30", to: "19:45" }, reason: "Dựng phim kịp hạn giao khách", status: "approved", filed: "2026-08-27", decided: "2026-08-27", compensation: "pay" },
-  { who: "Đặng Hoàng Long", from: "2026-08-13", details: { type: "overtime", from: "17:30", to: "20:15" }, reason: "Duyệt bản dựng cuối cùng với khách", status: "approved", filed: "2026-08-12", decided: "2026-08-12", compensation: "time_off" },
-  { who: "Võ Minh Tuấn", from: "2026-08-16", details: { type: "holiday_work", from: "09:00", to: "13:00" }, reason: "Hỗ trợ sự kiện ra mắt sản phẩm ngày Chủ nhật", status: "approved", filed: "2026-08-14", decided: "2026-08-14", compensation: "pay", confirmedMinutes: 240 },
-  { who: "Trần Quỳnh Như", from: "2026-08-07", details: { type: "remote_work", kind: "wfh", portion: "full", locationName: null, latitude: null, longitude: null, radiusM: null }, reason: "Sửa điện nước tại nhà, làm việc trực tuyến", status: "approved", filed: "2026-08-05", decided: "2026-08-05", clearPunches: true },
-  { who: "Nguyễn Văn Đạt", from: "2026-08-10", to: "2026-08-11", details: { type: "remote_work", kind: "off_site", portion: "full", locationName: "Phim trường Thủ Đức", latitude: 10.8494, longitude: 106.7717, radiusM: 400 }, reason: "Quay TVC cho khách hàng", status: "approved", filed: "2026-08-07", decided: "2026-08-07" },
+  {
+    who: "Đặng Hoàng Long",
+    from: "2026-08-13",
+    details: { type: "overtime", from: "17:30", to: "20:15" },
+    reason: "Duyệt bản dựng cuối cùng với khách",
+    status: "approved",
+    filed: "2026-08-12",
+    decided: "2026-08-12",
+    compensation: "time_off",
+  },
+  {
+    who: "Võ Minh Tuấn",
+    from: "2026-08-16",
+    details: { type: "holiday_work", from: "09:00", to: "13:00" },
+    reason: "Hỗ trợ sự kiện ra mắt sản phẩm ngày Chủ nhật",
+    status: "approved",
+    filed: "2026-08-14",
+    decided: "2026-08-14",
+    compensation: "pay",
+    confirmedMinutes: 240,
+  },
+  {
+    who: "Trần Quỳnh Như",
+    from: "2026-08-07",
+    details: { type: "remote_work", kind: "wfh", portion: "full", locationName: null, latitude: null, longitude: null, radiusM: null },
+    reason: "Sửa điện nước tại nhà, làm việc trực tuyến",
+    status: "approved",
+    filed: "2026-08-05",
+    decided: "2026-08-05",
+    clearPunches: true,
+  },
+  {
+    who: "Nguyễn Văn Đạt",
+    from: "2026-08-10",
+    to: "2026-08-11",
+    details: { type: "remote_work", kind: "off_site", portion: "full", locationName: "Phim trường Thủ Đức", latitude: 10.8494, longitude: 106.7717, radiusM: 400 },
+    reason: "Quay TVC cho khách hàng",
+    status: "approved",
+    filed: "2026-08-07",
+    decided: "2026-08-07",
+  },
   // September — still moving.
-  { who: "Đặng Hoàng Long", from: "2026-09-02", details: { type: "holiday_work", from: "09:00", to: "15:00" }, reason: "Trực sự kiện Quốc khánh của khách hàng", status: "approved", filed: "2026-08-31", decided: "2026-08-31", compensation: "pay" },
+  {
+    who: "Đặng Hoàng Long",
+    from: "2026-09-02",
+    details: { type: "holiday_work", from: "09:00", to: "15:00" },
+    reason: "Trực sự kiện Quốc khánh của khách hàng",
+    status: "approved",
+    filed: "2026-08-31",
+    decided: "2026-08-31",
+    compensation: "pay",
+  },
   { who: "Bùi Thanh Tâm", from: "2026-09-02", details: { type: "holiday_work", from: "07:00", to: "15:30" }, reason: "Ca quay ngày lễ theo lịch phân ca", status: "pending", filed: "2026-09-01", compensation: "time_off" },
   { who: "Vũ Hải Nam", from: "2026-09-09", details: { type: "overtime", from: "17:30", to: "19:30" }, reason: "Hoàn thiện hậu kỳ", status: "pending", filed: "2026-09-10", compensation: "pay" },
-  { who: "Hồ Gia Huy", from: "2026-09-22", to: "2026-09-23", details: { type: "remote_work", kind: "off_site", portion: "full", locationName: "Khách hàng — Quận 7", latitude: 10.7321, longitude: 106.7218, radiusM: 300 }, reason: "Quay phỏng vấn tại văn phòng khách hàng", status: "approved", filed: "2026-09-17", decided: "2026-09-18" },
+  {
+    who: "Hồ Gia Huy",
+    from: "2026-09-22",
+    to: "2026-09-23",
+    details: { type: "remote_work", kind: "off_site", portion: "full", locationName: "Khách hàng — Quận 7", latitude: 10.7321, longitude: 106.7218, radiusM: 300 },
+    reason: "Quay phỏng vấn tại văn phòng khách hàng",
+    status: "approved",
+    filed: "2026-09-17",
+    decided: "2026-09-18",
+  },
 ];
 
 function summaryOf(demo: Demo): string {
@@ -56,14 +133,24 @@ const minutesOf = (details: AttendanceRequestDetails): number => {
 const MONTH = "2026-08";
 const MONTHS: Record<string, { status: "confirmed" | "approved"; byHr?: boolean }> = {
   // SZM — all approved: ready to lock.
-  "Bùi Thanh Tâm": { status: "approved" }, "Đặng Hoàng Long": { status: "approved" }, "Đỗ Khánh Linh": { status: "approved" }, "Hồ Gia Huy": { status: "approved" }, "Nguyễn Văn Đạt": { status: "approved" },
-  "Phạm Quốc Bảo": { status: "approved" }, "Trần Quỳnh Như": { status: "approved" }, "Vũ Hải Nam": { status: "approved" },
+  "Bùi Thanh Tâm": { status: "approved" },
+  "Đặng Hoàng Long": { status: "approved" },
+  "Đỗ Khánh Linh": { status: "approved" },
+  "Hồ Gia Huy": { status: "approved" },
+  "Nguyễn Văn Đạt": { status: "approved" },
+  "Phạm Quốc Bảo": { status: "approved" },
+  "Trần Quỳnh Như": { status: "approved" },
+  "Vũ Hải Nam": { status: "approved" },
   // No app access: HR approved the month without the person's confirmation.
   "Ngô Bảo Anh": { status: "approved", byHr: true },
   // SZC — blockers remain (Khôi open with a pending correction, Đức not approved yet).
-  "Dương Thùy Chi": { status: "approved" }, "Huỳnh Mỹ Duyên": { status: "approved" }, "Trịnh Ngọc Ánh": { status: "approved" }, "Phan Văn Đức": { status: "confirmed" },
+  "Dương Thùy Chi": { status: "approved" },
+  "Huỳnh Mỹ Duyên": { status: "approved" },
+  "Trịnh Ngọc Ánh": { status: "approved" },
+  "Phan Văn Đức": { status: "confirmed" },
   // SZG — half-way.
-  "Lê Thị Mai": { status: "approved" }, "Võ Minh Tuấn": { status: "confirmed" },
+  "Lê Thị Mai": { status: "approved" },
+  "Võ Minh Tuấn": { status: "confirmed" },
 };
 
 export async function seedAttendanceRequests(db: Db): Promise<string> {
@@ -95,7 +182,15 @@ export async function seedAttendanceRequests(db: Db): Promise<string> {
       subjectType: "attendance_request",
       subjectId: requestId,
       summary: summaryOf(demo),
-      payload: { attendanceRequestId: requestId, startDate: demo.from, endDate: to, hasEvidence: false, minutes: minutesOf(demo.details), days, kind: demo.details.type === "remote_work" ? demo.details.kind : demo.details.type === "attendance_correction" ? demo.details.cause : demo.details.type },
+      payload: {
+        attendanceRequestId: requestId,
+        startDate: demo.from,
+        endDate: to,
+        hasEvidence: false,
+        minutes: minutesOf(demo.details),
+        days,
+        kind: demo.details.type === "remote_work" ? demo.details.kind : demo.details.type === "attendance_correction" ? demo.details.cause : demo.details.type,
+      },
       status: demo.status,
       currentStep: 0,
       flowSnapshot: { definition: flow, source: "default", resolved: [{ key: "manager", mode: "any", applies: true, approverIds: [manager.id] }] },
@@ -130,7 +225,18 @@ export async function seedAttendanceRequests(db: Db): Promise<string> {
     // The effect of an approved correction, as the app writes it: punches with source "request".
     if (demo.status === "approved" && demo.details.type === "attendance_correction") {
       const rows = [demo.details.inTime ? { direction: "in" as const, time: demo.details.inTime } : null, demo.details.outTime ? { direction: "out" as const, time: demo.details.outTime } : null].filter((row) => row !== null);
-      await db.insert(punch).values(rows.map((row) => ({ personId: requester.id, entityId: requester.primaryEntityId, at: new Date(`${demo.from}T${row.time}:00+07:00`), direction: row.direction, source: "request" as const, flags: [], note: "Đơn bổ sung công", deviceInfo: { requestId } })));
+      await db.insert(punch).values(
+        rows.map((row) => ({
+          personId: requester.id,
+          entityId: requester.primaryEntityId,
+          at: new Date(`${demo.from}T${row.time}:00+07:00`),
+          direction: row.direction,
+          source: "request" as const,
+          flags: [],
+          note: "Đơn bổ sung công",
+          deviceInfo: { requestId },
+        })),
+      );
     }
     if (demo.status === "approved" && demo.clearPunches) {
       await db.delete(punch).where(and(eq(punch.personId, requester.id), gte(punch.at, new Date(`${demo.from}T00:00:00+07:00`)), lt(punch.at, new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86_400_000))));
@@ -146,7 +252,16 @@ export async function seedAttendanceRequests(db: Db): Promise<string> {
     const confirmedAt = plan.byHr ? null : new Date("2026-09-02T02:30:00Z");
     await db
       .insert(timesheetMonth)
-      .values({ personId: row.id, entityId: row.primaryEntityId, month: MONTH, status: plan.status, confirmedAt, confirmedByPersonId: plan.byHr ? null : row.id, approvedAt: plan.status === "approved" ? new Date("2026-09-04T03:00:00Z") : null, approvedByPersonId: plan.status === "approved" ? (approver?.id ?? null) : null })
+      .values({
+        personId: row.id,
+        entityId: row.primaryEntityId,
+        month: MONTH,
+        status: plan.status,
+        confirmedAt,
+        confirmedByPersonId: plan.byHr ? null : row.id,
+        approvedAt: plan.status === "approved" ? new Date("2026-09-04T03:00:00Z") : null,
+        approvedByPersonId: plan.status === "approved" ? (approver?.id ?? null) : null,
+      })
       .onConflictDoNothing();
     months++;
   }

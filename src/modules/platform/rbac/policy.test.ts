@@ -241,12 +241,7 @@ describe("readableTier", () => {
 describe("tierReach", () => {
   it("agrees with canReadTier for every role, scope, tier and target", () => {
     const TEAM = "team-ui";
-    const scopes = [
-      { type: "group" },
-      { type: "entity", id: ENTITY_A },
-      { type: "unit", id: DESIGN },
-      { type: "unit", id: TEAM },
-    ] as const;
+    const scopes = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "unit", id: DESIGN }, { type: "unit", id: TEAM }] as const;
     const principals = [
       principal([]),
       principal([], { personId: "manager-1" }),
@@ -254,12 +249,7 @@ describe("tierReach", () => {
       principal([], { personId: "manager-1", workforceType: "collaborator" }),
       ...ROLES.flatMap((role) => scopes.map((scope) => principal([{ role, scope }]))),
     ];
-    const targets = [
-      lan,
-      { ...lan, unitPath: [DESIGN, TEAM] },
-      { ...lan, entityId: ENTITY_B, unitPath: ["dept-video"], managerId: null },
-      { personId: "loose", entityId: null, unitPath: [], managerId: null },
-    ];
+    const targets = [lan, { ...lan, unitPath: [DESIGN, TEAM] }, { ...lan, entityId: ENTITY_B, unitPath: ["dept-video"], managerId: null }, { personId: "loose", entityId: null, unitPath: [], managerId: null }];
     for (const who of principals) {
       for (const tier of TIERS) {
         const reach = tierReach(who, tier);
@@ -388,7 +378,15 @@ describe("canImpersonate", () => {
     const support = principal([{ role: "support", scope: { type: "group" } }]);
     expect(canImpersonate(support, hrLan)).toBe(false);
     // An owner grant on another entity is not "*" over Lan.
-    expect(canImpersonate(principal([{ role: "owner", scope: { type: "entity", id: ENTITY_B } }, { role: "support", scope: { type: "group" } }]), hrLan)).toBe(false);
+    expect(
+      canImpersonate(
+        principal([
+          { role: "owner", scope: { type: "entity", id: ENTITY_B } },
+          { role: "support", scope: { type: "group" } },
+        ]),
+        hrLan,
+      ),
+    ).toBe(false);
   });
 
   it("is held by no role but support, and by the owner", () => {

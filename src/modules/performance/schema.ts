@@ -259,7 +259,9 @@ export const kpiScore = pgTable(
   (t) => [
     unique("kpi_score_unique").on(t.personId, t.month, t.revision),
     // One current score per person and month, whatever the code does.
-    uniqueIndex("kpi_score_current_idx").on(t.personId, t.month).where(sql`${t.supersededAt} IS NULL`),
+    uniqueIndex("kpi_score_current_idx")
+      .on(t.personId, t.month)
+      .where(sql`${t.supersededAt} IS NULL`),
     index("kpi_score_entity_month_idx").on(t.entityId, t.month),
   ],
 ).enableRLS();

@@ -104,7 +104,13 @@ const personOverview = defineTool({
       shown.push("tasks");
     }
     if (record?.utilisation) {
-      model.utilisation = { weeks: record.utilisation.weeks, availableHours: HOURS(record.utilisation.available), loggedHours: HOURS(record.utilisation.logged), ratio: record.utilisation.ratio, billableRatio: record.utilisation.billableRatio };
+      model.utilisation = {
+        weeks: record.utilisation.weeks,
+        availableHours: HOURS(record.utilisation.available),
+        loggedHours: HOURS(record.utilisation.logged),
+        ratio: record.utilisation.ratio,
+        billableRatio: record.utilisation.billableRatio,
+      };
       shown.push("utilisation");
     }
     if (record?.reports) {
@@ -113,7 +119,15 @@ const personOverview = defineTool({
     }
     // Allowed and empty is a fact ("nothing recorded yet"), not a refusal: the section is there.
     if (attendance) {
-      model.attendanceThisMonth = { month: today.slice(0, 7), daysRecorded: attendance.days, lateCount: attendance.lateCount, lateMinutes: attendance.lateMinutes, absentDays: attendance.absentDays, missingPunchDays: attendance.missingPunchDays, overtimeHours: HOURS(attendance.otTotalMinutes) };
+      model.attendanceThisMonth = {
+        month: today.slice(0, 7),
+        daysRecorded: attendance.days,
+        lateCount: attendance.lateCount,
+        lateMinutes: attendance.lateMinutes,
+        absentDays: attendance.absentDays,
+        missingPunchDays: attendance.missingPunchDays,
+        overtimeHours: HOURS(attendance.otTotalMinutes),
+      };
       shown.push("attendance");
     }
     if (leave) {
@@ -133,7 +147,12 @@ const personOverview = defineTool({
     return {
       outcome: "answered",
       model,
-      card: { tool: "person_overview", href: link, items: [{ label: view.fullName, href: link, meta: view.current?.positionName ? { key: "text", params: { text: [view.current.positionName, view.current.departmentName].filter(Boolean).join(" · ") } } : null }], more: 0 },
+      card: {
+        tool: "person_overview",
+        href: link,
+        items: [{ label: view.fullName, href: link, meta: view.current?.positionName ? { key: "text", params: { text: [view.current.positionName, view.current.departmentName].filter(Boolean).join(" · ") } } : null }],
+        more: 0,
+      },
       subject: { type: "person", id },
     };
   },

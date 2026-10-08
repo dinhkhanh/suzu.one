@@ -36,7 +36,10 @@ export function tracesSampleRate(value: string | undefined): number | undefined 
 
 /** A machine on the desk or on the office network: loopback, a private range, a `.local` name. */
 export function isLocalHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  const host = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
   if (host === "" || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host === "::1" || host === "0.0.0.0") return true;
   const octets = /^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(host);
   if (!octets) return false;

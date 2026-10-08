@@ -25,7 +25,13 @@ export async function sumLoggedMinutesByProject(projectIds: readonly string[], r
     })
     .from(schema.timeEntry)
     .leftJoin(schema.workTask, eq(schema.workTask.taskId, schema.timeEntry.taskId))
-    .where(and(isNull(schema.timeEntry.deletedAt), or(inArray(schema.timeEntry.projectId, ids), and(isNull(schema.timeEntry.projectId), inArray(schema.workTask.projectId, ids))), range ? and(gte(schema.timeEntry.date, range.from), lte(schema.timeEntry.date, range.to)) : undefined))
+    .where(
+      and(
+        isNull(schema.timeEntry.deletedAt),
+        or(inArray(schema.timeEntry.projectId, ids), and(isNull(schema.timeEntry.projectId), inArray(schema.workTask.projectId, ids))),
+        range ? and(gte(schema.timeEntry.date, range.from), lte(schema.timeEntry.date, range.to)) : undefined,
+      ),
+    )
     .groupBy(onProject);
   return new Map(rows.map((row) => [row.projectId, { minutes: Number(row.minutes), billable: Number(row.billable) }]));
 }
@@ -69,7 +75,14 @@ export async function loggedMinutesByPersonWeek(personIds: readonly string[], we
   return result;
 }
 
-export type LoggedGroup = { id: string | null; /** The project's name, the task's title, or the week's Monday. */ label: string | null; /** The task's key ("VID-12"), for tasks. */ key: string | null; minutes: number; billable: number; /** Every group's minutes together — the same on each row. */ totalMinutes: number };
+export type LoggedGroup = {
+  id: string | null;
+  /** The project's name, the task's title, or the week's Monday. */ label: string | null;
+  /** The task's key ("VID-12"), for tasks. */ key: string | null;
+  minutes: number;
+  billable: number;
+  /** Every group's minutes together — the same on each row. */ totalMinutes: number;
+};
 
 /**
  * One person's logged time between two dates (inclusive), summed per project, task or week, most
@@ -83,7 +96,12 @@ export async function loggedMinutesOfPerson(personId: string, range: { from: Iso
   const own = and(eq(schema.timeEntry.personId, personId), isNull(schema.timeEntry.deletedAt), gte(schema.timeEntry.date, range.from), lte(schema.timeEntry.date, range.to));
   const shape = (rows: Omit<LoggedGroup, never>[]): LoggedGroup[] => rows.map((row) => ({ ...row, minutes: Number(row.minutes), billable: Number(row.billable), totalMinutes: Number(row.totalMinutes) }));
   if (by === "week") {
-    const rows = await db().select({ id: sql<string | null>`null`, label: sql<string>`${schema.timeEntry.weekStart}::text`, key: sql<string | null>`null`, minutes, billable, totalMinutes }).from(schema.timeEntry).where(own).groupBy(schema.timeEntry.weekStart).orderBy(sql`${schema.timeEntry.weekStart} desc`);
+    const rows = await db()
+      .select({ id: sql<string | null>`null`, label: sql<string>`${schema.timeEntry.weekStart}::text`, key: sql<string | null>`null`, minutes, billable, totalMinutes })
+      .from(schema.timeEntry)
+      .where(own)
+      .groupBy(schema.timeEntry.weekStart)
+      .orderBy(sql`${schema.timeEntry.weekStart} desc`);
     return shape(rows);
   }
   if (by === "task") {

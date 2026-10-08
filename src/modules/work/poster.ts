@@ -23,7 +23,9 @@ export async function isPendingPoster(fileId: string, projectId: string, actorPe
   const [row] = await db()
     .select({ id: schema.storedFile.id })
     .from(schema.storedFile)
-    .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, POSTER_OWNER_TYPE), eq(schema.storedFile.ownerId, projectId), eq(schema.storedFile.uploadedByPersonId, actorPersonId), eq(schema.storedFile.status, "pending")))
+    .where(
+      and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, POSTER_OWNER_TYPE), eq(schema.storedFile.ownerId, projectId), eq(schema.storedFile.uploadedByPersonId, actorPersonId), eq(schema.storedFile.status, "pending")),
+    )
     .limit(1);
   return !!row;
 }

@@ -43,7 +43,9 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
 
   const net = formatVnd(view.result.totals.net);
   const paidDays = view.result.proration.paidDaysCenti / 100;
-  const eyebrow = [t("publishedOn", { date: format.dateTime(view.payslip.publishedAt, { day: "2-digit", month: "2-digit" }) }), view.entity.code, t("paidDaysShort", { days: format.number(paidDays, { maximumFractionDigits: 2 }) })].join(" · ");
+  const eyebrow = [t("publishedOn", { date: format.dateTime(view.payslip.publishedAt, { day: "2-digit", month: "2-digit" }) }), view.entity.code, t("paidDaysShort", { days: format.number(paidDays, { maximumFractionDigits: 2 }) })].join(
+    " · ",
+  );
   const pdf = (
     <a href={`/payslips/${payslipId}/pdf`} className={buttonVariants()} download>
       {t("downloadPdf")}
@@ -80,7 +82,14 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
         <span className="text-xs opacity-70">{view.person.fullName}</span>
       </div>
 
-      <PayslipDetail result={view.result} componentNames={view.componentNames} person={{ ...view.person, id: view.payslip.personId }} entity={view.entity} month={view.run.month} runName={view.run.kind === "off_cycle" ? view.run.name : null} />
+      <PayslipDetail
+        result={view.result}
+        componentNames={view.componentNames}
+        person={{ ...view.person, id: view.payslip.personId }}
+        entity={view.entity}
+        month={view.run.month}
+        runName={view.run.kind === "off_cycle" ? view.run.name : null}
+      />
 
       <Card size="sm">
         <CardContent className="flex flex-col gap-1 text-sm">
@@ -99,7 +108,9 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
             {view.queries.map(({ query, messages }) => (
               <ListItem key={query.id} className="flex-col items-stretch gap-3 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge dot variant={statusTone(query.status)}>{t(`queries.statuses.${query.status}`)}</Badge>
+                  <Badge dot variant={statusTone(query.status)}>
+                    {t(`queries.statuses.${query.status}`)}
+                  </Badge>
                   <span className="font-mono text-xs text-faint tabular-nums">{format.dateTime(query.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
                 </div>
                 <ol className="flex flex-col gap-3">
@@ -141,7 +152,12 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
       <nav aria-label={t("mine")} className="hidden w-52 shrink-0 flex-col gap-0.5 md:sticky md:top-[4.5rem] md:flex">
         <span className="section-label px-2 pb-1.5">{t("mine")}</span>
         {months.map((row) => (
-          <Link key={row.id} href={`/payslips/${row.id}`} aria-current={row.id === payslipId ? "page" : undefined} className={cn("press flex h-9 items-center justify-between gap-2 rounded-[0.625rem] px-2.5 text-sm transition-colors hover:bg-canvas", row.id === payslipId ? "bg-canvas font-medium" : "text-muted-foreground")}>
+          <Link
+            key={row.id}
+            href={`/payslips/${row.id}`}
+            aria-current={row.id === payslipId ? "page" : undefined}
+            className={cn("press flex h-9 items-center justify-between gap-2 rounded-[0.625rem] px-2.5 text-sm transition-colors hover:bg-canvas", row.id === payslipId ? "bg-canvas font-medium" : "text-muted-foreground")}
+          >
             <span className="font-mono tabular-nums">{monthLabel(row.month)}</span>
             {row.firstViewedAt ? null : <span aria-hidden className="size-1.5 rounded-full bg-primary" />}
           </Link>

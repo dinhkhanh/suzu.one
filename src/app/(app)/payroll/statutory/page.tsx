@@ -80,7 +80,9 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
             {(insurance?.rows ?? []).map((row) => (
               <TableRow key={`${row.employeeCode}-${row.reason}`}>
                 <TableCell>
-                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.fullName}
+                  </RecordLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                 </TableCell>
                 <TableCell>{t(`d02lt.reasons.${row.reason}`)}</TableCell>
@@ -97,9 +99,7 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium">{t("pitMonthly.title")}</h2>
-            <p className="text-sm text-muted-foreground">
-              {pit ? t("pitMonthly.summary", { count: pit.rows.length, tax: formatVnd(pit.rows.reduce((total, row) => total + row.tax, 0)) }) : t("noData")}
-            </p>
+            <p className="text-sm text-muted-foreground">{pit ? t("pitMonthly.summary", { count: pit.rows.length, tax: formatVnd(pit.rows.reduce((total, row) => total + row.tax, 0)) }) : t("noData")}</p>
           </div>
           {pit ? (
             <div className="flex flex-wrap gap-2">
@@ -148,7 +148,9 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
             {(finalization?.rows ?? []).map((row) => (
               <TableRow key={row.personId}>
                 <TableCell>
-                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.fullName}
+                  </RecordLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                   {row.hasImportedPeriod ? <span className="ml-2 text-xs text-muted-foreground">{t("finalization.importedMark")}</span> : null}
                 </TableCell>

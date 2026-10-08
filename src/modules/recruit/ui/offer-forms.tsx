@@ -43,21 +43,7 @@ type Option = { id: string; name: string };
  * The draft form. Used both to make the first offer on an application and to correct one before it
  * goes for approval — the same fields either way, so there is one place where an offer is described.
  */
-export function OfferForm({
-  applicationId,
-  offerId,
-  values,
-  managers,
-  templates,
-  canSetMoney,
-}: {
-  applicationId?: string;
-  offerId?: string;
-  values?: OfferFormValues;
-  managers: Option[];
-  templates: Option[];
-  canSetMoney: boolean;
-}) {
+export function OfferForm({ applicationId, offerId, values, managers, templates, canSetMoney }: { applicationId?: string; offerId?: string; values?: OfferFormValues; managers: Option[]; templates: Option[]; canSetMoney: boolean }) {
   const t = useTranslations("recruit.offer");
   const tType = useTranslations("recruit.employmentType");
   const tp = useTranslations("people");

@@ -67,7 +67,15 @@ const loadPeopleOnce = cache(async (entityId: string, monthList: string): Promis
     .from(schema.payrollRun)
     .where(and(eq(schema.payrollRun.entityId, entityId), inArray(schema.payrollRun.month, [...months]), inArray(schema.payrollRun.status, [...FILED_RUN_STATUSES])));
   if (runs.length === 0) return [];
-  const rows = await db().select().from(schema.payrollRunPerson).where(inArray(schema.payrollRunPerson.runId, runs.map((run) => run.id)));
+  const rows = await db()
+    .select()
+    .from(schema.payrollRunPerson)
+    .where(
+      inArray(
+        schema.payrollRunPerson.runId,
+        runs.map((run) => run.id),
+      ),
+    );
   const runOf = new Map(runs.map((run) => [run.id, run]));
   return rows.flatMap((row) => {
     const run = runOf.get(row.runId);
@@ -79,7 +87,9 @@ const loadPeopleOnce = cache(async (entityId: string, monthList: string): Promis
 function pitByPerson(people: readonly LoadedPerson[]): Map<string, MonthPit> {
   const runsOf = new Map<string, LoadedPerson[]>();
   for (const person of people) runsOf.set(person.personId, [...(runsOf.get(person.personId) ?? []), person]);
-  return new Map([...runsOf].map(([personId, mine]) => [personId, pitOfPeriod(mine.map((person) => ({ pit: person.result.pit, kind: person.run.kind, calculatedAt: person.run.calculatedAt, createdAt: person.run.createdAt, month: person.run.month })))]));
+  return new Map(
+    [...runsOf].map(([personId, mine]) => [personId, pitOfPeriod(mine.map((person) => ({ pit: person.result.pit, kind: person.run.kind, calculatedAt: person.run.calculatedAt, createdAt: person.run.createdAt, month: person.run.month })))]),
+  );
 }
 
 /** The entity, from the shared cache of entities. */
@@ -195,7 +205,10 @@ export async function pitPeriodRows(principal: Principal, entityId: string, peri
   const [entity, people] = await Promise.all([entityOf(entityId), loadPeople(entityId, monthsOfPeriod(period))]);
   if (!entity) return null;
   if (people.length === 0) return null;
-  const facts = await payrollFactsOf(people.map((person) => person.personId), lastMonthOf(period));
+  const facts = await payrollFactsOf(
+    people.map((person) => person.personId),
+    lastMonthOf(period),
+  );
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   const rows = [...pitByPerson(people)].map(([personId, pit]): PitPersonRow => {
@@ -241,7 +254,10 @@ async function buildFinalizationRows(entityId: string, year: number): Promise<{ 
   const [entity, people, imported] = await Promise.all([
     entityOf(entityId),
     loadPeople(entityId, months),
-    db().select({ personId: schema.payrollYtd.personId }).from(schema.payrollYtd).where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year))),
+    db()
+      .select({ personId: schema.payrollYtd.personId })
+      .from(schema.payrollYtd)
+      .where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year))),
   ]);
   if (!entity) return null;
   const personIds = [...new Set([...people.map((person) => person.personId), ...imported.map((row) => row.personId)])];
@@ -284,7 +300,13 @@ async function buildFinalizationRows(entityId: string, year: number): Promise<{ 
       assessableIncome,
       taxWithheld,
       // The year's brackets are the monthly ones times twelve; a flat-rate person owes what was withheld.
-      taxDue: method === "progressive" ? progressiveTax(assessableIncome, statutory.params.pitBrackets.map((bracket) => ({ upTo: bracket.upTo === null ? null : bracket.upTo * 12, rate: bracket.rate }))).tax : taxWithheld,
+      taxDue:
+        method === "progressive"
+          ? progressiveTax(
+              assessableIncome,
+              statutory.params.pitBrackets.map((bracket) => ({ upTo: bracket.upTo === null ? null : bracket.upTo * 12, rate: bracket.rate })),
+            ).tax
+          : taxWithheld,
     };
   });
 
@@ -318,11 +340,11 @@ export async function withholdingCertificate(principal: Principal, input: { pers
     buildFinalizationRows(input.entityId, input.year),
     listPayrollFacts({ personIds: [input.personId] }, `${input.year}-12`),
     db()
-    .selectDistinct({ month: schema.payrollRun.month })
-    .from(schema.payrollRunPerson)
-    .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
-    // The months the certificate names are the months its figures come from: signed runs only.
-    .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), inArray(schema.payrollRun.status, [...FILED_RUN_STATUSES]))),
+      .selectDistinct({ month: schema.payrollRun.month })
+      .from(schema.payrollRunPerson)
+      .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
+      // The months the certificate names are the months its figures come from: signed runs only.
+      .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), inArray(schema.payrollRun.status, [...FILED_RUN_STATUSES]))),
   ]);
   if (!entity) return null;
   const person = all?.rows.find((row) => row.personId === input.personId);
@@ -334,7 +356,10 @@ export async function withholdingCertificate(principal: Principal, input: { pers
     entityAddress: entity.address,
     year: input.year,
     person: { ...person, dateOfBirth: facts[0]?.dateOfBirth ?? null },
-    months: months.map((row) => row.month).filter((month) => month.startsWith(String(input.year))).sort(),
+    months: months
+      .map((row) => row.month)
+      .filter((month) => month.startsWith(String(input.year)))
+      .sort(),
     issuedOn: today,
   };
 }

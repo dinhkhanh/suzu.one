@@ -76,7 +76,9 @@ export default async function ShiftsSettingsPage() {
               <TableRow key={row.id}>
                 <TableCell>{format.dateTime(new Date(`${row.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
                 <TableCell className="font-medium">
-                  <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.personName}
+                  </RecordLink>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{row.shiftCode ? `${row.shiftCode} · ${row.shiftName}` : t("roster.off")}</TableCell>
               </TableRow>

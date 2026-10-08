@@ -71,7 +71,15 @@ export function EditCompetencyButton({ entry }: { entry: Entry }) {
             <Button type="submit" disabled={pending || removing}>
               {pending ? t("saving") : t("save")}
             </Button>
-            <ConfirmButton variant="ghost" className="text-destructive" destructive disabled={pending || removing} label={t("competencies.delete")} question={t("competencies.deleteConfirm", { name: entry.name, count: entry.holders })} onConfirm={remove} />
+            <ConfirmButton
+              variant="ghost"
+              className="text-destructive"
+              destructive
+              disabled={pending || removing}
+              label={t("competencies.delete")}
+              question={t("competencies.deleteConfirm", { name: entry.name, count: entry.holders })}
+              onConfirm={remove}
+            />
           </div>
         </form>
       </DialogContent>

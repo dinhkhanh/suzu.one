@@ -40,14 +40,28 @@ export async function seedAi(db: Db): Promise<string> {
   const [existing] = await db.select({ id: aiConversation.id }).from(aiConversation).limit(1);
   if (existing) return "0 assistant conversations (already there)";
 
-  const people = await db.select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, orgUnitId: person.orgUnitId, orgUnitPath: person.orgUnitPath, workforceType: person.workforceType, managerId: person.managerId }).from(person);
+  const people = await db
+    .select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, orgUnitId: person.orgUnitId, orgUnitPath: person.orgUnitPath, workforceType: person.workforceType, managerId: person.managerId })
+    .from(person);
   const byName = new Map(people.map((row) => [row.name, row]));
   const grants = await db.select({ personId: roleAssignment.personId, role: roleAssignment.role }).from(roleAssignment);
   const rolesOf = new Map<string, string[]>();
   for (const grant of grants) rolesOf.set(grant.personId, [...(rolesOf.get(grant.personId) ?? []), grant.role]);
 
   // The subject keys `viewerKeys()` builds, repeated here because tsx cannot import it.
-  const keysOf = (who: NonNullable<ReturnType<typeof byName.get>>) => (who.workforceType === "collaborator" ? [`person:${who.id}`] : [...new Set(["all", ...(who.entityId ? [`entity:${who.entityId}`] : []), ...who.orgUnitPath.map((unitId) => `unit:${unitId}`), ...(who.orgUnitId ? [`unit_only:${who.orgUnitId}`] : []), ...(rolesOf.get(who.id) ?? []).map((role) => `role:${role}`), `person:${who.id}`])]);
+  const keysOf = (who: NonNullable<ReturnType<typeof byName.get>>) =>
+    who.workforceType === "collaborator"
+      ? [`person:${who.id}`]
+      : [
+          ...new Set([
+            "all",
+            ...(who.entityId ? [`entity:${who.entityId}`] : []),
+            ...who.orgUnitPath.map((unitId) => `unit:${unitId}`),
+            ...(who.orgUnitId ? [`unit_only:${who.orgUnitId}`] : []),
+            ...(rolesOf.get(who.id) ?? []).map((role) => `role:${role}`),
+            `person:${who.id}`,
+          ]),
+        ];
 
   // Every published chunk with what decides whether a given person may read it: the access rows of
   // its space, and those of its page's access root when the page sits in a restricted subtree.
@@ -97,14 +111,27 @@ export async function seedAi(db: Db): Promise<string> {
     for (const [turn, question] of chat.questions.entries()) {
       const at = minutesAgo((CHATS.length - index) * 90 - turn * 4);
       const query = fakeEmbedding(retrievalQuery(question));
-      const passages: Passage[] = visible.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle ?? "", spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, anchor: chunk.anchor, content: chunk.content, vectorScore: chunk.embedding ? cosine(query, chunk.embedding) : 0 }));
+      const passages: Passage[] = visible.map((chunk) => ({
+        chunkId: chunk.chunkId,
+        pageId: chunk.pageId,
+        pageTitle: chunk.pageTitle ?? "",
+        spaceKey: chunk.spaceKey,
+        spaceName: chunk.spaceName,
+        headingPath: chunk.headingPath,
+        anchor: chunk.anchor,
+        content: chunk.content,
+        vectorScore: chunk.embedding ? cosine(query, chunk.embedding) : 0,
+      }));
       const ranked = rankPassages(question, passages);
       const extracted = extractAnswer(question, ranked);
       const body = renderExtractedAnswer(extracted);
       const citations = extracted.passages.map((passage) => passage.citation);
 
       if (!conversationId) {
-        const [row] = await db.insert(aiConversation).values({ personId: who.id, title: question.slice(0, 120), locale: chat.locale, createdAt: at, updatedAt: at }).returning();
+        const [row] = await db
+          .insert(aiConversation)
+          .values({ personId: who.id, title: question.slice(0, 120), locale: chat.locale, createdAt: at, updatedAt: at })
+          .returning();
         conversationId = row.id;
       } else {
         await db.update(aiConversation).set({ updatedAt: at }).where(eq(aiConversation.id, conversationId));
@@ -112,7 +139,18 @@ export async function seedAi(db: Db): Promise<string> {
       await db.insert(aiMessage).values({ conversationId, personId: who.id, role: "user", body: question, createdAt: at });
       const [stored] = await db
         .insert(aiMessage)
-        .values({ conversationId, personId: who.id, role: "assistant", body, outcome: citations.length > 0 ? "answered" : "unanswered", citations, driver: "local-extractive", model: "local-extractive", score: ranked[0]?.score ?? 0, createdAt: new Date(at.getTime() + 2000) })
+        .values({
+          conversationId,
+          personId: who.id,
+          role: "assistant",
+          body,
+          outcome: citations.length > 0 ? "answered" : "unanswered",
+          citations,
+          driver: "local-extractive",
+          model: "local-extractive",
+          score: ranked[0]?.score ?? 0,
+          createdAt: new Date(at.getTime() + 2000),
+        })
         .returning();
       if (citations.length === 0) await db.insert(aiUnansweredQuestion).values({ personId: who.id, messageId: stored.id, question, locale: chat.locale, bestScore: ranked[0]?.score ?? 0, createdAt: at });
       answered++;
@@ -135,9 +173,25 @@ export async function seedAi(db: Db): Promise<string> {
     const who = byName.get(whoName);
     if (!who) return;
     const at = minutesAgo(minutes);
-    const [row] = await db.insert(aiConversation).values({ personId: who.id, title: question.slice(0, 120), locale: "vi", createdAt: at, updatedAt: at }).returning();
+    const [row] = await db
+      .insert(aiConversation)
+      .values({ personId: who.id, title: question.slice(0, 120), locale: "vi", createdAt: at, updatedAt: at })
+      .returning();
     await db.insert(aiMessage).values({ conversationId: row.id, personId: who.id, role: "user", body: question, createdAt: at });
-    await db.insert(aiMessage).values({ conversationId: row.id, personId: who.id, role: "assistant", body: "", outcome: "answered", citations: [], tool, toolResult: { status: "answered", tool, ...result }, driver: "tool", model: tool, score: 0, createdAt: new Date(at.getTime() + 1500) });
+    await db.insert(aiMessage).values({
+      conversationId: row.id,
+      personId: who.id,
+      role: "assistant",
+      body: "",
+      outcome: "answered",
+      citations: [],
+      tool,
+      toolResult: { status: "answered", tool, ...result },
+      driver: "tool",
+      model: tool,
+      score: 0,
+      createdAt: new Date(at.getTime() + 1500),
+    });
     answered++;
   };
 
@@ -146,22 +200,34 @@ export async function seedAi(db: Db): Promise<string> {
   if (huyBalances.length > 0) {
     const annual = huyBalances.find((row) => row.code === "ANNUAL") ?? huyBalances[0];
     const days = (centi: number) => Math.round(centi) / 100;
-    await toolTurn("Hồ Gia Huy", "Tôi còn bao nhiêu ngày phép?", "leave_balance", {
-      key: "summary",
-      params: { year: String(now.getFullYear()), code: annual.code, available: days(annual.balance), used: 0, pending: 0 },
-      lines: huyBalances.map((row) => ({ key: "type", params: { name: row.name, nameEn: row.nameEn ?? row.name, available: days(row.balance), used: 0, pending: 0 } })),
-      link: "/leave",
-    }, 38);
+    await toolTurn(
+      "Hồ Gia Huy",
+      "Tôi còn bao nhiêu ngày phép?",
+      "leave_balance",
+      {
+        key: "summary",
+        params: { year: String(now.getFullYear()), code: annual.code, available: days(annual.balance), used: 0, pending: 0 },
+        lines: huyBalances.map((row) => ({ key: "type", params: { name: row.name, nameEn: row.nameEn ?? row.name, available: days(row.balance), used: 0, pending: 0 } })),
+        link: "/leave",
+      },
+      38,
+    );
   }
 
   const manager = huy?.managerId ? people.find((row) => row.id === huy.managerId) : undefined;
   if (manager) {
-    await toolTurn("Hồ Gia Huy", "Ai duyệt đơn nghỉ phép của tôi?", "approver_lookup", {
-      key: "summary",
-      params: { kind: "leave", first: manager.name },
-      lines: [{ key: "step", params: { step: "manager", names: manager.name } }],
-      link: "/leave/new",
-    }, 34);
+    await toolTurn(
+      "Hồ Gia Huy",
+      "Ai duyệt đơn nghỉ phép của tôi?",
+      "approver_lookup",
+      {
+        key: "summary",
+        params: { kind: "leave", first: manager.name },
+        lines: [{ key: "step", params: { step: "manager", names: manager.name } }],
+        link: "/leave/new",
+      },
+      34,
+    );
   }
 
   // The backlog. The same question from several people is several rows — the log groups them.
@@ -177,8 +243,14 @@ export async function seedAi(db: Db): Promise<string> {
   // One already dealt with, so the "All" tab is not a copy of the "Open" one.
   const hr = byName.get("Lê Thị Mai");
   if (hr) {
-    const [done] = await db.insert(aiUnansweredQuestion).values({ personId: askers[0].id, question: "Quy định về trang phục khi đi gặp khách hàng?", locale: "vi", bestScore: 0.2, createdAt: minutesAgo(60 * 24 * 9) }).returning();
-    await db.update(aiUnansweredQuestion).set({ resolvedAt: minutesAgo(60 * 24 * 2), resolvedByPersonId: hr.id, resolutionNote: "Đã bổ sung mục Trang phục vào trang Quy tắc ứng xử." }).where(inArray(aiUnansweredQuestion.id, [done.id]));
+    const [done] = await db
+      .insert(aiUnansweredQuestion)
+      .values({ personId: askers[0].id, question: "Quy định về trang phục khi đi gặp khách hàng?", locale: "vi", bestScore: 0.2, createdAt: minutesAgo(60 * 24 * 9) })
+      .returning();
+    await db
+      .update(aiUnansweredQuestion)
+      .set({ resolvedAt: minutesAgo(60 * 24 * 2), resolvedByPersonId: hr.id, resolutionNote: "Đã bổ sung mục Trang phục vào trang Quy tắc ứng xử." })
+      .where(inArray(aiUnansweredQuestion.id, [done.id]));
     logged++;
   }
 

@@ -82,7 +82,10 @@ export async function saveRaidItem(projectId: string, itemId: string | null, inp
     await tellNewOwner(after, before.ownerPersonId, actorPersonId);
     return { before, after };
   }
-  const [after] = await db().insert(schema.projectRaidItem).values({ projectId, ...values, createdByPersonId: actorPersonId }).returning();
+  const [after] = await db()
+    .insert(schema.projectRaidItem)
+    .values({ projectId, ...values, createdByPersonId: actorPersonId })
+    .returning();
   await tellNewOwner(after, null, actorPersonId);
   return { before: null, after };
 }
@@ -108,7 +111,11 @@ export async function issueToTask(itemId: string, input: { assigneePersonId: str
     if (input.assigneePersonId && !(await isProjectPerson(tx, item.projectId, input.assigneePersonId))) throw new ActionError("raid_owner_not_member");
     const [project] = await tx.select({ teamId: schema.workProject.teamId }).from(schema.workProject).where(eq(schema.workProject.id, item.projectId)).limit(1);
     if (!project) throw new ActionError("project_not_found");
-    const { task, key } = await createWorkTaskIn(tx, { teamId: project.teamId, projectId: item.projectId, title: item.title, description: item.description, assigneePersonId: input.assigneePersonId ?? item.ownerPersonId, dueDate: input.dueDate ?? item.dueDate }, actorPersonId);
+    const { task, key } = await createWorkTaskIn(
+      tx,
+      { teamId: project.teamId, projectId: item.projectId, title: item.title, description: item.description, assigneePersonId: input.assigneePersonId ?? item.ownerPersonId, dueDate: input.dueDate ?? item.dueDate },
+      actorPersonId,
+    );
     const [after] = await tx.update(schema.projectRaidItem).set({ taskId: task.id, updatedAt: new Date() }).where(eq(schema.projectRaidItem.id, item.id)).returning();
     return { item: after, taskId: task.id, key };
   });
@@ -151,17 +158,15 @@ export async function listRaid(projectId: string, options: { kind?: RaidKind; me
     .leftJoin(schema.storedFile, eq(schema.storedFile.id, schema.projectRaidItem.evidenceFileId))
     .where(and(eq(schema.projectRaidItem.projectId, projectId), options.kind ? eq(schema.projectRaidItem.kind, options.kind) : undefined, options.meetingId ? eq(schema.projectRaidItem.meetingId, options.meetingId) : undefined))
     .orderBy(desc(schema.projectRaidItem.createdAt), asc(schema.projectRaidItem.id));
-  const views = rows.map(
-    (row): RaidView => ({
-      ...row.item,
-      ownerName: row.ownerName,
-      authorName: row.authorName,
-      // A deleted task is not a link anyone can follow.
-      task: row.item.taskId && row.taskTitle && !row.taskDeletedAt && row.teamKey && row.taskNumber !== null ? { id: row.item.taskId, key: taskKey(row.teamKey, row.taskNumber), title: row.taskTitle, status: row.taskStatus ?? "todo" } : null,
-      meeting: row.item.meetingId && row.meetingTitle && row.meetingHeldOn ? { id: row.item.meetingId, title: row.meetingTitle, heldOn: row.meetingHeldOn } : null,
-      evidenceFile: row.item.evidenceFileId && row.fileName && !row.fileDeletedAt ? { id: row.item.evidenceFileId, fileName: row.fileName } : null,
-    }),
-  );
+  const views = rows.map((row): RaidView => ({
+    ...row.item,
+    ownerName: row.ownerName,
+    authorName: row.authorName,
+    // A deleted task is not a link anyone can follow.
+    task: row.item.taskId && row.taskTitle && !row.taskDeletedAt && row.teamKey && row.taskNumber !== null ? { id: row.item.taskId, key: taskKey(row.teamKey, row.taskNumber), title: row.taskTitle, status: row.taskStatus ?? "todo" } : null,
+    meeting: row.item.meetingId && row.meetingTitle && row.meetingHeldOn ? { id: row.item.meetingId, title: row.meetingTitle, heldOn: row.meetingHeldOn } : null,
+    evidenceFile: row.item.evidenceFileId && row.fileName && !row.fileDeletedAt ? { id: row.item.evidenceFileId, fileName: row.fileName } : null,
+  }));
   return sortRaid(views);
 }
 

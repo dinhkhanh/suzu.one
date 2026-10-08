@@ -44,7 +44,12 @@ it("exports what the list shows, without the snapshots, and no more to a narrowe
   const all = await buildAuditExport({ all: true }, {}, "en");
   expect(all.total).toBe(4);
   expect(all.file.table.header).toEqual(["When", "Who", "Action", "Resource type", "Resource ID", "Entity", "Summary"]);
-  expect(all.file.table.rows.map((row) => [row[1], row[2], row[4]])).toEqual([["owner@suzu.vn", "role.grant", "r1"], ["huy_100%@suzu.group", "person.update.denied", null], ["bao@suzu.group", "person.hire", "p2"], ["mai@suzu.group", "person.hire", "p1"]]);
+  expect(all.file.table.rows.map((row) => [row[1], row[2], row[4]])).toEqual([
+    ["owner@suzu.vn", "role.grant", "r1"],
+    ["huy_100%@suzu.group", "person.update.denied", null],
+    ["bao@suzu.group", "person.hire", "p2"],
+    ["mai@suzu.group", "person.hire", "p1"],
+  ]);
   expect(all.file.table.rows[0][0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
   expect(tableToCsv(all.file.table)).not.toContain("before");
   const system = await buildAuditExport({ all: true }, { action: ".denied", actor: "" }, "vi");

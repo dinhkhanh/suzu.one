@@ -2,14 +2,7 @@
 import { type AnyPgColumn, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { entity, orgUnit } from "../org/schema";
 
-export const workforceType = pgEnum("workforce_type", [
-  "employee",
-  "probation",
-  "intern",
-  "part_time",
-  "collaborator",
-  "advisor",
-]);
+export const workforceType = pgEnum("workforce_type", ["employee", "probation", "intern", "part_time", "collaborator", "advisor"]);
 
 export const personStatus = pgEnum("person_status", ["preboarding", "active", "suspended", "offboarded"]);
 

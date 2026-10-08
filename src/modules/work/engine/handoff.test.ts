@@ -2,7 +2,18 @@ import { describe, expect, it } from "vitest";
 import { defaultReceiver, fieldValueValid, keptValues, missingItems, noteIsEmpty, normalizeNote, packageFor, packageProblem, stageOutcome } from "./handoff";
 
 // The Video team's workflow: Script → Design → Edit → Client review.
-const pkg = (id: string, fromStateId: string | null, toStateId: string, extra: object = {}) => ({ id, fromStateId, toStateId, fields: [], checklist: [], requireLink: false, requireFile: false, requireAccept: true, isActive: true, ...extra });
+const pkg = (id: string, fromStateId: string | null, toStateId: string, extra: object = {}) => ({
+  id,
+  fromStateId,
+  toStateId,
+  fields: [],
+  checklist: [],
+  requireLink: false,
+  requireFile: false,
+  requireAccept: true,
+  isActive: true,
+  ...extra,
+});
 const scriptToDesign = pkg("script-design", "script", "design", {
   fields: [
     { key: "version", label: "Bản kịch bản đã duyệt", type: "text", required: true },
@@ -12,7 +23,12 @@ const scriptToDesign = pkg("script-design", "script", "design", {
   ],
   checklist: [{ id: "tone", text: "Đã chốt tone màu với khách" }],
 });
-const anyToReview = pkg("any-review", null, "client_review", { fields: [{ key: "duration", label: "Thời lượng (giây)", type: "number", required: true }], checklist: [{ id: "subs", text: "Đã kiểm tra phụ đề" }], requireLink: true, requireFile: true });
+const anyToReview = pkg("any-review", null, "client_review", {
+  fields: [{ key: "duration", label: "Thời lượng (giây)", type: "number", required: true }],
+  checklist: [{ id: "subs", text: "Đã kiểm tra phụ đề" }],
+  requireLink: true,
+  requireFile: true,
+});
 const editToReview = pkg("edit-review", "edit", "client_review", { requireLink: true });
 const empty = { values: {}, checked: [], links: [], fileId: null };
 
@@ -66,7 +82,16 @@ describe("package definitions", () => {
     expect(packageProblem(pkg("x", null, "edit", { requireAccept: false }))).toBe("handoff_package_empty");
     expect(packageProblem(pkg("x", null, "edit"))).toBeNull();
     expect(packageProblem(pkg("x", null, "edit", { fields: [{ key: "a", label: " ", type: "text", required: true }] }))).toBe("handoff_package_field_label");
-    expect(packageProblem(pkg("x", null, "edit", { fields: [{ key: "a", label: "Link", type: "url", required: true }, { key: "b", label: "link", type: "text", required: false }] }))).toBe("handoff_package_field_duplicate");
+    expect(
+      packageProblem(
+        pkg("x", null, "edit", {
+          fields: [
+            { key: "a", label: "Link", type: "url", required: true },
+            { key: "b", label: "link", type: "text", required: false },
+          ],
+        }),
+      ),
+    ).toBe("handoff_package_field_duplicate");
     expect(packageProblem(pkg("x", null, "edit", { checklist: [{ id: "a", text: "" }] }))).toBe("handoff_package_check_text");
     expect(packageProblem(scriptToDesign)).toBeNull();
   });
@@ -74,7 +99,11 @@ describe("package definitions", () => {
 
 describe("the hand-off note (FR-PJM-43)", () => {
   it("is trimmed, keeps web links only, once each", () => {
-    expect(normalizeNote({ context: "  Clip 20/10 cho Vinamilk ", done: "", next: "Dựng bản 2", links: ["https://drive.google.com/a", "https://drive.google.com/a", "ftp://x", "javascript:alert(1)"] })).toEqual({ context: "Clip 20/10 cho Vinamilk", next: "Dựng bản 2", links: ["https://drive.google.com/a"] });
+    expect(normalizeNote({ context: "  Clip 20/10 cho Vinamilk ", done: "", next: "Dựng bản 2", links: ["https://drive.google.com/a", "https://drive.google.com/a", "ftp://x", "javascript:alert(1)"] })).toEqual({
+      context: "Clip 20/10 cho Vinamilk",
+      next: "Dựng bản 2",
+      links: ["https://drive.google.com/a"],
+    });
     expect(noteIsEmpty({ context: " ", links: ["nope"] })).toBe(true);
     expect(noteIsEmpty({ questions: "Khách có duyệt nhạc chưa?" })).toBe(false);
   });

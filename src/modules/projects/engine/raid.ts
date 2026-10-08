@@ -82,11 +82,7 @@ export function raidCounts(items: readonly RaidFacts[]): RaidCounts {
 export function sortRaid<Item extends RaidFacts & { dueDate: IsoDate | null; createdAt: Date }>(items: readonly Item[]): Item[] {
   const rank = (severity: string | null) => (severity === "high" ? 0 : severity === "medium" ? 1 : severity === "low" ? 2 : 3);
   return [...items].sort(
-    (a, b) =>
-      Number(a.status !== "open") - Number(b.status !== "open") ||
-      rank(a.severity) - rank(b.severity) ||
-      (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31") ||
-      b.createdAt.getTime() - a.createdAt.getTime(),
+    (a, b) => Number(a.status !== "open") - Number(b.status !== "open") || rank(a.severity) - rank(b.severity) || (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31") || b.createdAt.getTime() - a.createdAt.getTime(),
   );
 }
 

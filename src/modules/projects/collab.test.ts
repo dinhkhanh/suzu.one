@@ -44,7 +44,11 @@ import { workflow } from "../../../tests/helpers/workflows";
 type Who = "long" | "tam" | "huy" | "lan" | "khoi" | "other";
 const ids = {} as Record<Who | "szm" | "team" | "otherTeam" | "project", string>;
 const viewers = {} as Record<Who, KbViewer>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const today = "2026-10-20";
 const blank = { description: null, ownerPersonId: null, dueDate: null, severity: null, decidedOn: null, evidenceUrl: null, evidenceFileId: null };
 
@@ -54,7 +58,10 @@ beforeAll(async () => {
   ids.szm = szm.id;
   const [unit] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   for (const key of ["long", "tam", "huy", "lan", "khoi", "other"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: unit.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: unit.id })
+      .returning();
     ids[key] = row.id;
     const principal: Principal = { personId: row.id, workforceType: "employee", grants: [] };
     viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId: szm.id, unitId: unit.id, unitPath: [unit.id] }) };
@@ -142,7 +149,11 @@ describe("the RAID log (FR-PJM-29)", () => {
     const { item, taskId, key } = await issueToTask(issue.id, { assigneePersonId: null, dueDate: null }, ids.tam);
     expect(item.taskId).toBe(taskId);
     expect(key).toMatch(/^SOC-\d+$/);
-    const [work] = await db().select({ projectId: schema.workTask.projectId, assignee: schema.task.assigneePersonId, dueDate: schema.task.dueDate, title: schema.task.title }).from(schema.workTask).innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId)).where(eq(schema.workTask.taskId, taskId));
+    const [work] = await db()
+      .select({ projectId: schema.workTask.projectId, assignee: schema.task.assigneePersonId, dueDate: schema.task.dueDate, title: schema.task.title })
+      .from(schema.workTask)
+      .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+      .where(eq(schema.workTask.taskId, taskId));
     // To the item's owner, by the item's due date, in the project.
     expect(work).toEqual({ projectId: ids.project, assignee: ids.huy, dueDate: "2026-10-25", title: "Diễn viên huỷ lịch quay" });
     expect(await fails(issueToTask(issue.id, { assigneePersonId: null, dueDate: null }, ids.tam))).toBe("raid_not_convertible");
@@ -154,7 +165,11 @@ describe("the RAID log (FR-PJM-29)", () => {
   });
 
   it("tells whoever an item is given to — once, and never the person doing the giving", async () => {
-    const notices = async (personId: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.raid_assigned")));
+    const notices = async (personId: string) =>
+      db()
+        .select()
+        .from(schema.notification)
+        .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.raid_assigned")));
     // An earlier item of this log already went to Huy, so it is the change that is counted here.
     const before = (await notices(ids.huy)).length;
     const { after } = await saveRaidItem(ids.project, null, { ...blank, kind: "risk", title: "Thiếu bối cảnh dự phòng", severity: "medium", ownerPersonId: ids.huy }, ids.tam, today);
@@ -182,7 +197,19 @@ describe("the RAID log (FR-PJM-29)", () => {
 });
 
 describe("meetings (FR-PJM-30)", () => {
-  const meeting = { kind: "client" as const, title: "Họp khách hàng tuần 42", heldOn: "2026-10-19", startTime: null as string | null, durationMinutes: null as number | null, attendeeIds: [] as string[], externalAttendees: "Chị Mai (Bibo)", agenda: "Duyệt kịch bản", notes: "Khách chọn KV B.", decisions: [] as { title: string; description: string | null }[], actionItems: [] as { title: string; assigneePersonId: string | null; dueDate: string | null }[] };
+  const meeting = {
+    kind: "client" as const,
+    title: "Họp khách hàng tuần 42",
+    heldOn: "2026-10-19",
+    startTime: null as string | null,
+    durationMinutes: null as number | null,
+    attendeeIds: [] as string[],
+    externalAttendees: "Chị Mai (Bibo)",
+    agenda: "Duyệt kịch bản",
+    notes: "Khách chọn KV B.",
+    decisions: [] as { title: string; description: string | null }[],
+    actionItems: [] as { title: string; assigneePersonId: string | null; dueDate: string | null }[],
+  };
 
   it("takes attendees and assignees from the project's people only", async () => {
     expect(await fails(saveMeeting(ids.project, null, { ...meeting, attendeeIds: [ids.tam, ids.khoi] }, ids.tam, today))).toBe("meeting_attendee_not_member");
@@ -220,7 +247,10 @@ describe("meetings (FR-PJM-30)", () => {
     );
     const links = await db().select().from(schema.projectMeetingTask).where(eq(schema.projectMeetingTask.meetingId, after.id));
     expect(links.map((row) => row.taskId).sort()).toEqual([...taskIds].sort());
-    const tasks = await db().select({ projectId: schema.workTask.projectId }).from(schema.workTask).where(and(eq(schema.workTask.projectId, ids.project)));
+    const tasks = await db()
+      .select({ projectId: schema.workTask.projectId })
+      .from(schema.workTask)
+      .where(and(eq(schema.workTask.projectId, ids.project)));
     expect(tasks.length).toBeGreaterThanOrEqual(3);
     const view = (await getMeeting(ids.project, after.id))!;
     expect(view.attendees.map((person) => person.fullName).sort()).toEqual(["huy", "lan", "tam"]);
@@ -230,7 +260,10 @@ describe("meetings (FR-PJM-30)", () => {
     ]);
     expect(view.decisions).toHaveLength(2);
     // Each assignee heard about their task.
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "tasks.work_assigned")));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "tasks.work_assigned")));
     expect(notices.length).toBeGreaterThanOrEqual(1);
 
     // Adding to the meeting later adds, and never touches what it already made.
@@ -288,7 +321,21 @@ describe("the project's document space (FR-PJM-31)", () => {
     pageId = tree[0].id;
     await saveDraft(pageId, { title: "Brief TVC Tết", content: doc(heading(1, "Brief"), paragraph("Bối cảnh quay tại Ngũ Hành Sơn, tông màu đỏ vàng.")) }, { personId: ids.tam });
     await publishPage(pageId, { personId: ids.tam });
-    await db().insert(schema.storedFile).values({ bucket: "test", objectPath: `kb_page/${pageId}/kv.pdf`, fileName: "kv-option-b.pdf", contentType: "application/pdf", sizeBytes: 2048, ownerType: "kb_page", ownerId: pageId, entityId: ids.szm, tier: "public_internal", status: "ready", uploadedByPersonId: ids.tam });
+    await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "test",
+        objectPath: `kb_page/${pageId}/kv.pdf`,
+        fileName: "kv-option-b.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 2048,
+        ownerType: "kb_page",
+        ownerId: pageId,
+        entityId: ids.szm,
+        tier: "public_internal",
+        status: "ready",
+        uploadedByPersonId: ids.tam,
+      });
   });
 
   it("makes the starter pages as drafts for the team", async () => {
@@ -303,14 +350,26 @@ describe("the project's document space (FR-PJM-31)", () => {
       const viewer = viewers[who];
       expect((await listSpaces(viewer)).find((space) => space.id === spaceId)?.level, who).toBe("edit");
       expect(levelOf(viewer, (await loadPage(pageId))!), who).toBe("edit");
-      expect((await listSpaceFiles(viewer, spaceId)).map((file) => file.fileName), who).toEqual(["kv-option-b.pdf"]);
-      expect((await searchKb(viewer, { query: "Ngũ Hành Sơn" })).hits.map((hit) => hit.pageId), who).toEqual([pageId]);
-      expect((await retrieveKbChunks(viewer, { query: "Ngũ Hành Sơn" })).map((chunk) => chunk.pageId), who).toContain(pageId);
+      expect(
+        (await listSpaceFiles(viewer, spaceId)).map((file) => file.fileName),
+        who,
+      ).toEqual(["kv-option-b.pdf"]);
+      expect(
+        (await searchKb(viewer, { query: "Ngũ Hành Sơn" })).hits.map((hit) => hit.pageId),
+        who,
+      ).toEqual([pageId]);
+      expect(
+        (await retrieveKbChunks(viewer, { query: "Ngũ Hành Sơn" })).map((chunk) => chunk.pageId),
+        who,
+      ).toContain(pageId);
       expect((await getProjectDocuments(viewer, spaceId))?.files, who).toHaveLength(1);
     }
     for (const who of strangers) {
       const viewer = viewers[who];
-      expect((await listSpaces(viewer)).some((space) => space.id === spaceId), who).toBe(false);
+      expect(
+        (await listSpaces(viewer)).some((space) => space.id === spaceId),
+        who,
+      ).toBe(false);
       expect(levelOf(viewer, (await loadPage(pageId))!), who).toBeNull();
       expect(await listSpaceFiles(viewer, spaceId), who).toEqual([]);
       expect((await searchKb(viewer, { query: "Ngũ Hành Sơn" })).hits, who).toEqual([]);

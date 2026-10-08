@@ -20,8 +20,7 @@ const escapeInline = (text: string, inTable: boolean): string => {
 };
 
 /** A line that would start a heading, quote or list when it is only text. */
-const escapeLineStart = (line: string): string =>
-  line.replace(/^(\s*)(#{1,6}\s|>|[-+]\s)/, "$1\\$2").replace(/^(\s*\d+)([.)]\s)/, "$1\\$2");
+const escapeLineStart = (line: string): string => line.replace(/^(\s*)(#{1,6}\s|>|[-+]\s)/, "$1\\$2").replace(/^(\s*\d+)([.)]\s)/, "$1\\$2");
 
 function wrap(text: string, marks: DocMark[] | undefined): string {
   if (!marks?.length || !text.trim()) return text;
@@ -74,7 +73,15 @@ function listLines(node: DocNode): string[] {
 }
 
 function tableLines(node: DocNode): string[] {
-  const rows = (node.content ?? []).map((row) => (row.content ?? []).map((cell) => (cell.content ?? []).map((block) => inline(block, true)).join(" ").replace(/\s+/g, " ").trim()));
+  const rows = (node.content ?? []).map((row) =>
+    (row.content ?? []).map((cell) =>
+      (cell.content ?? [])
+        .map((block) => inline(block, true))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    ),
+  );
   if (rows.length === 0) return [];
   const width = Math.max(...rows.map((row) => row.length));
   const line = (cells: string[]) => `| ${Array.from({ length: width }, (_, index) => cells[index] ?? "").join(" | ")} |`;
@@ -88,7 +95,10 @@ export function blockMarkdown(node: DocNode): string[] {
   switch (node.type) {
     case "paragraph":
     case "heading":
-      return inline(node).split("\n").map((line) => escapeLineStart(line.trim())).filter(Boolean);
+      return inline(node)
+        .split("\n")
+        .map((line) => escapeLineStart(line.trim()))
+        .filter(Boolean);
     case "bulletList":
     case "orderedList":
     case "taskList":

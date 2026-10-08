@@ -64,7 +64,21 @@ beforeAll(async () => {
 let serial = 0;
 const newCamera = (categoryId = ids.camera) =>
   registerAsset(
-    { categoryId, entityId: ids.szm, name: "Sony FX6", brand: "Sony", model: "FX6", serial: `CAM-${++serial}`, purchaseDate: "2025-01-10", purchasePrice: 180_000_000, supplier: "Sony VN", warrantyUntil: "2027-01-10", condition: "good", location: "Kho tầng 3", notes: null },
+    {
+      categoryId,
+      entityId: ids.szm,
+      name: "Sony FX6",
+      brand: "Sony",
+      model: "FX6",
+      serial: `CAM-${++serial}`,
+      purchaseDate: "2025-01-10",
+      purchasePrice: 180_000_000,
+      supplier: "Sony VN",
+      warrantyUntil: "2027-01-10",
+      condition: "good",
+      location: "Kho tầng 3",
+      notes: null,
+    },
     ids.keeper,
   );
 

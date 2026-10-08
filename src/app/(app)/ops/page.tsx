@@ -45,7 +45,13 @@ export default async function OpsDashboardPage({ searchParams }: PageProps<"/ops
 
       {/* The three figures the dashboard counts in SQL; each opens the list cut to that colour. */}
       <TileGrid>
-        <Tile label={t("dashboard.tiles.overdue")} value={dashboard.totals.overdue} tone={dashboard.totals.overdue > 0 ? "destructive" : undefined} href={`/ops/list${overviewParams(query, { colour: "overdue" })}`} hint={dashboard.totals.overdue > 0 ? t("dashboard.seeOverdue") : undefined} />
+        <Tile
+          label={t("dashboard.tiles.overdue")}
+          value={dashboard.totals.overdue}
+          tone={dashboard.totals.overdue > 0 ? "destructive" : undefined}
+          href={`/ops/list${overviewParams(query, { colour: "overdue" })}`}
+          hint={dashboard.totals.overdue > 0 ? t("dashboard.seeOverdue") : undefined}
+        />
         <Tile label={t("dashboard.tiles.dueSoon")} value={dashboard.totals.dueSoon} tone={dashboard.totals.dueSoon > 0 ? "warning" : undefined} href={`/ops/list${overviewParams(query, { colour: "due_soon" })}`} />
         <Tile label={t("dashboard.tiles.escalated")} value={dashboard.totals.escalated} tone={dashboard.totals.escalated > 0 ? "destructive" : undefined} />
       </TileGrid>
@@ -76,7 +82,9 @@ export default async function OpsDashboardPage({ searchParams }: PageProps<"/ops
                     {row.entity.code}
                   </Link>
                   <p className="text-xs font-normal text-faint">
-                    <RecordLink kind="entity" id={row.entity.id}>{row.entity.shortName}</RecordLink>
+                    <RecordLink kind="entity" id={row.entity.id}>
+                      {row.entity.shortName}
+                    </RecordLink>
                   </p>
                 </th>
                 {row.cells.map((cell) => {

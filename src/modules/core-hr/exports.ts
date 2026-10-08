@@ -48,7 +48,9 @@ export async function buildHeadcountExport(principal: Principal, filters: Headco
   // One long table — section, group, count — which pivots cleanly in a spreadsheet.
   const lines: { section: string; key: string; count: number | string }[] = [
     { section: t("reports.headcount.total"), key: snapshot.asOf, count: snapshot.total },
-    ...(["byEntity", "byDepartment", "byWorkforceType", "byGender", "byAge", "bySeniority"] as const).flatMap((group) => snapshot[group].map((row) => ({ section: t(`reports.headcount.groups.${group}`), key: label(group, row.key), count: row.count }))),
+    ...(["byEntity", "byDepartment", "byWorkforceType", "byGender", "byAge", "bySeniority"] as const).flatMap((group) =>
+      snapshot[group].map((row) => ({ section: t(`reports.headcount.groups.${group}`), key: label(group, row.key), count: row.count })),
+    ),
     { section: t("reports.headcount.movement"), key: t("reports.headcount.opening"), count: movement.opening },
     { section: t("reports.headcount.movement"), key: t("reports.headcount.joiners"), count: movement.joiners },
     { section: t("reports.headcount.movement"), key: t("reports.headcount.leavers"), count: movement.leavers },

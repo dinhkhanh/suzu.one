@@ -63,9 +63,18 @@ const actor = (key: Key) => ({ personId: ids[key], fullName: key });
 const viewer = async (key: Key) => (await viewerOfPerson(db(), ids[key]))!;
 /** A fresh visitor per test, so one test's requests never spend another's allowance. */
 const visitor = (name: string) => ({ ipHash: `visitor-${name}`, userAgent: "a phone" });
-const noticesOf = async (key: Key, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = async (key: Key, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 /** The views of a task's links as the audit log holds them, oldest first. */
-const viewAuditsOf = async (taskId: string) => db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "work.preview.view"), eq(schema.auditLog.resourceId, taskId))).orderBy(schema.auditLog.id);
+const viewAuditsOf = async (taskId: string) =>
+  db()
+    .select()
+    .from(schema.auditLog)
+    .where(and(eq(schema.auditLog.action, "work.preview.view"), eq(schema.auditLog.resourceId, taskId)))
+    .orderBy(schema.auditLog.id);
 /** An audit row as text, to look for what must not be in it (its id is a bigint, which JSON will not print). */
 const printed = (row: { id: bigint }) => JSON.stringify({ ...row, id: String(row.id) });
 
@@ -80,7 +89,22 @@ async function taskWithVersion(title: string, projectId = ids.project) {
 async function taskWithFile(title: string, fileName: string) {
   const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title, stateId: ids.edit, assigneePersonId: ids.huy }, ids.long);
   const extension = fileName.split(".").pop();
-  const [file] = await db().insert(schema.storedFile).values({ bucket: "test-bucket", objectPath: `work_task/2026/${task.id}.${extension}`, fileName, contentType: "application/octet-stream", sizeBytes: 10, ownerType: "work_task", ownerId: task.id, entityId: ids.szm, tier: "public_internal", status: "ready", uploadedByPersonId: ids.huy }).returning();
+  const [file] = await db()
+    .insert(schema.storedFile)
+    .values({
+      bucket: "test-bucket",
+      objectPath: `work_task/2026/${task.id}.${extension}`,
+      fileName,
+      contentType: "application/octet-stream",
+      sizeBytes: 10,
+      ownerType: "work_task",
+      ownerId: task.id,
+      entityId: ids.szm,
+      tier: "public_internal",
+      status: "ready",
+      uploadedByPersonId: ids.huy,
+    })
+    .returning();
   const { deliverable } = await submitDeliverable(task.id, { kind: "file", fileId: file.id, note: null }, actor("huy"));
   return { taskId: task.id, deliverableId: deliverable.id, fileId: file.id, objectPath: file.objectPath };
 }
@@ -97,7 +121,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam", "huy", "an", "khoi"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
@@ -174,12 +201,19 @@ describe("opening a link", () => {
   it("says the same thing for a token nobody issued, an expired link and a revoked one", async () => {
     const { taskId } = await taskWithVersion("Mọi cách đóng đều giống nhau");
     const expired = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
     const revoked = await linkOn(taskId);
     await revokePreviewLink(revoked.link.id, ids.long);
 
     const answers = [await openPreviewLink("Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g", visitor("probe")), await openPreviewLink(expired.token, visitor("probe")), await openPreviewLink(revoked.token, visitor("probe"))];
-    expect(answers).toEqual([{ ok: false, reason: "closed" }, { ok: false, reason: "closed" }, { ok: false, reason: "closed" }]);
+    expect(answers).toEqual([
+      { ok: false, reason: "closed" },
+      { ok: false, reason: "closed" },
+      { ok: false, reason: "closed" },
+    ]);
     // A revoked link is never counted as viewed, so the state stays readable inside the company.
     expect((await listPreviewLinks(taskId)).map((row) => row.state).sort()).toEqual(["expired", "revoked"]);
   });
@@ -256,7 +290,10 @@ describe("the client's decision", () => {
     const revoked = await linkOn(taskId);
     await revokePreviewLink(revoked.link.id, ids.long);
     const expired = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
 
     // A view-only link shows the work and offers nothing; posting to it anyway is refused.
     const page = await openPreviewLink(viewOnly.token, visitor("view-only"));
@@ -312,7 +349,15 @@ describe("the version a link is for (FR-PJM-51a)", () => {
     await saveReviewChain(
       { teamId: ids.video, projectId },
       null,
-      { name: "Nội bộ rồi tới khách", contentFormat: null, stages: [{ name: "Trưởng nhóm duyệt", reviewer: `person:${ids.tam}`, dueHours: null }, { name: "Khách duyệt", reviewer: "client", dueHours: null }], isActive: true },
+      {
+        name: "Nội bộ rồi tới khách",
+        contentFormat: null,
+        stages: [
+          { name: "Trưởng nhóm duyệt", reviewer: `person:${ids.tam}`, dueHours: null },
+          { name: "Khách duyệt", reviewer: "client", dueHours: null },
+        ],
+        isActive: true,
+      },
       ids.long,
     );
     const { taskId } = await taskWithVersion("Chưa qua duyệt nội bộ", projectId);
@@ -383,7 +428,10 @@ describe("the file behind a link (PJM-06)", () => {
   it("is refused, the same way and with nothing signed, on a token nobody issued and on a link that expired, was revoked or was decided", async () => {
     const { taskId } = await taskWithFile("Mọi cách đóng đều giống nhau, cả với tệp", "storyboard.pdf");
     const expired = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
     const revoked = await linkOn(taskId);
     const decided = await linkOn(taskId);
     // Each opened while it could be…
@@ -462,7 +510,10 @@ describe("the claim a decision takes on a link", () => {
   it("is refused on a link that ran out while the request was reading", async () => {
     const { taskId } = await taskWithVersion("Hết hạn giữa chừng");
     const { link } = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, link.id));
     expect(await claimLink(link.id, new Date())).toBe(false);
   });
 
@@ -519,7 +570,10 @@ describe("abuse resistance", () => {
     expect(answers[PREVIEW_LIMITS.view.max]).toEqual({ ok: false, reason: "rate_limited" });
     // Unknown tokens cost one row per visitor, not one per token: the table cannot be filled by
     // invention. The row is keyed by the day's key, never by anything that outlives the day.
-    const rows = await db().select().from(schema.workPreviewHit).where(eq(schema.workPreviewHit.keyHash, previewVisitorKey(walker.ipHash, new Date())));
+    const rows = await db()
+      .select()
+      .from(schema.workPreviewHit)
+      .where(eq(schema.workPreviewHit.keyHash, previewVisitorKey(walker.ipHash, new Date())));
     expect(rows).toHaveLength(1);
     expect(await purgePreviewHits(new Date(Date.now() + 60_000))).toBeGreaterThan(0);
   });
@@ -612,7 +666,12 @@ describe("the audit trail of a link (R14)", () => {
     await openPreviewLink(token, who);
     await openPreviewFile(token, who);
     expect(await viewAuditsOf(taskId)).toHaveLength(1);
-    expect(await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "file.read"), eq(schema.auditLog.resourceId, taskId)))).toHaveLength(0);
+    expect(
+      await db()
+        .select()
+        .from(schema.auditLog)
+        .where(and(eq(schema.auditLog.action, "file.read"), eq(schema.auditLog.resourceId, taskId))),
+    ).toHaveLength(0);
 
     await revokePreviewLink(link.id, ids.long);
     expect(await openPreviewLink(token, visitor("audit-late"))).toEqual({ ok: false, reason: "closed" });
@@ -626,7 +685,10 @@ describe("the audit trail of a link (R14)", () => {
     const who = visitor("audit-restricted");
     expect((await openPreviewFile(token, who)).ok).toBe(true);
 
-    const reads = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "file.read"), eq(schema.auditLog.resourceId, taskId)));
+    const reads = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(and(eq(schema.auditLog.action, "file.read"), eq(schema.auditLog.resourceId, taskId)));
     // Still audited, exactly as inside the company — and it does not say the sender opened it.
     expect(reads).toHaveLength(1);
     expect(reads[0]).toMatchObject({ actorPersonId: null, resourceType: "work_task", summary: "contract-scan.pdf", ipAddress: previewVisitorKey(who.ipHash, new Date()), userAgent: null });
@@ -640,7 +702,9 @@ describe("closed beats busy", () => {
   const exhaust = async (bucket: "token_view" | "token_file" | "token_decide", tokenHash: string) => {
     const window = PREVIEW_LIMITS[bucket].windowSeconds * 1000;
     const start = Math.floor(Date.now() / window) * window;
-    await db().insert(schema.workPreviewHit).values([start, start + window].map((at) => ({ bucket, keyHash: tokenHash, windowStart: new Date(at), hits: PREVIEW_LIMITS[bucket].max, lastAt: new Date() })));
+    await db()
+      .insert(schema.workPreviewHit)
+      .values([start, start + window].map((at) => ({ bucket, keyHash: tokenHash, windowStart: new Date(at), hits: PREVIEW_LIMITS[bucket].max, lastAt: new Date() })));
   };
 
   it("says busy of a hammered link only while it is open: expired, revoked, decided or taken back, it is closed", async () => {
@@ -653,7 +717,10 @@ describe("closed beats busy", () => {
     expect(await openPreviewFile(links.open.token, visitor("busy-1"))).toEqual({ ok: false, reason: "rate_limited" });
     expect(await decide(links.open.token, {}, "busy-1")).toMatchObject({ ok: false, message: "rate_limited" });
 
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, links.expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, links.expired.link.id));
     await revokePreviewLink(links.revoked.link.id, ids.long);
     await db().update(schema.workPreviewLink).set({ decidedAt: new Date() }).where(eq(schema.workPreviewLink.id, links.decided.link.id));
     // The same answer as a token nobody issued, however hard each was hammered: no way to tell
@@ -677,7 +744,10 @@ describe("closed beats busy", () => {
   it("still counts the visitor first, whatever the token is", async () => {
     const { taskId } = await taskWithVersion("Giới hạn theo người xem vẫn áp trước");
     const expired = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
     const walker = visitor("busy-walker");
     const answers = [];
     for (let attempt = 0; attempt < PREVIEW_LIMITS.view.max + 1; attempt++) answers.push(await openPreviewLink(expired.token, walker));
@@ -745,7 +815,10 @@ describe("the project's live links in one place (R14)", () => {
     await openPreviewLink(live.token, visitor("project-list"));
     expect(await decide(answered.token, { decision: "approved_with_changes", comment: "Đổi màu chữ" }, "project-list")).toEqual({ ok: true, data: { recorded: true } });
     await revokePreviewLink(revoked.link.id, ids.an);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
 
     const rows = await listProjectPreviewLinks(projectId);
     const row = (id: string) => rows.find((candidate) => candidate.id === id)!;
@@ -800,7 +873,10 @@ describe("links that have outlived their reason (R14)", () => {
 
     // The audit entry is on the task, names the link, and gives the reason.
     const reasonOf = async (taskId: string) => {
-      const rows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "work.preview_link.revoke"), eq(schema.auditLog.resourceId, taskId)));
+      const rows = await db()
+        .select()
+        .from(schema.auditLog)
+        .where(and(eq(schema.auditLog.action, "work.preview_link.revoke"), eq(schema.auditLog.resourceId, taskId)));
       return rows.map((row) => ({ after: row.after as { linkId: string; reason: string }, summary: row.summary, entityId: row.entityId, actorPersonId: row.actorPersonId }));
     };
     const closedAudit = await reasonOf(closing.taskId);
@@ -849,7 +925,21 @@ describe("the public page", () => {
       // everything this page must not have. The language and theme switches are the two pieces it shares.
       const shellImports = [...source.matchAll(/from "@\/components\/shell\/([a-z-]+)"/g)].map((match) => match[1]);
       expect(shellImports, path).toEqual(shellImports.filter((name) => name === "locale-switch" || name === "theme-switch"));
-      for (const forbidden of ["requireUser", "getCurrentUser", "loadViewer", "listPeople", "listTeams", "listAssignable", "listComments", "listActivity", "Sidebar", "NavLinks", "@/modules/core-hr", "@/modules/payroll", "@/modules/daily"]) {
+      for (const forbidden of [
+        "requireUser",
+        "getCurrentUser",
+        "loadViewer",
+        "listPeople",
+        "listTeams",
+        "listAssignable",
+        "listComments",
+        "listActivity",
+        "Sidebar",
+        "NavLinks",
+        "@/modules/core-hr",
+        "@/modules/payroll",
+        "@/modules/daily",
+      ]) {
         expect(source, `${path} must not reach for ${forbidden}`).not.toContain(forbidden);
       }
       // Everything it reads of work management comes through the module's one entry point.
@@ -989,7 +1079,10 @@ describe("the route the file is fetched from (PJM-06)", () => {
   it("sends a wrong token, an expired link and a revoked one to the page's one sentence — never to storage", async () => {
     const { taskId } = await taskWithFile("Route từ chối", "kv-refused.png");
     const expired = await linkOn(taskId);
-    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, expired.link.id));
+    await db()
+      .update(schema.workPreviewLink)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.workPreviewLink.id, expired.link.id));
     const revoked = await linkOn(taskId);
     await revokePreviewLink(revoked.link.id, ids.long);
 
@@ -1010,7 +1103,12 @@ describe("the route the file is fetched from (PJM-06)", () => {
     const { taskId } = await taskWithFile("Route: máy lấy xem trước", "kv-unfurl.png");
     const { token } = await linkOn(taskId);
     const before = storage.signed.length;
-    for (const [asked, agent] of [[token, "facebookexternalhit/1.1"], [token, "TelegramBot (like TwitterBot)"], [token, null], ["Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g", "Slackbot-LinkExpanding 1.0"]] as const) {
+    for (const [asked, agent] of [
+      [token, "facebookexternalhit/1.1"],
+      [token, "TelegramBot (like TwitterBot)"],
+      [token, null],
+      ["Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g", "Slackbot-LinkExpanding 1.0"],
+    ] as const) {
       const response = await get(asked, agent);
       // No redirect to storage and none to the page: nothing to follow, nothing to learn.
       expect([response.status, response.headers.get("location"), await response.text()], String(agent)).toEqual([204, null, ""]);

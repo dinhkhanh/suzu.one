@@ -19,11 +19,7 @@ export default async function NewHiringRequestPage({ searchParams }: PageProps<"
   const query = await searchParams;
   const start = param(query.start, 10);
   const prefill = { positionTitle: param(query.title, 200), targetStartDate: start && /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : undefined, reason: param(query.reason, 2000) };
-  const [entities, departments, people] = await Promise.all([
-    listEntities(),
-    listOrgUnits().then((units) => units.map((unit) => ({ id: unit.id, name: unit.name }))),
-    listPeople(user.principal, {}, { pageSize: 500 }),
-  ]);
+  const [entities, departments, people] = await Promise.all([listEntities(), listOrgUnits().then((units) => units.map((unit) => ({ id: unit.id, name: unit.name }))), listPeople(user.principal, {}, { pageSize: 500 })]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">

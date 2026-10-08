@@ -53,7 +53,10 @@ export async function saveChecklist(checklistId: string | null, input: Checklist
   if (checklistId && !before) throw new ActionError("checklist_not_found");
   // Items keep their ids across edits: a hand-off sheet open while the checklist changes still matches its boxes.
   const known = new Set((before?.items ?? []).map((item) => item.id));
-  const items = normalizeItems(input.items.map((item) => ({ ...item, id: item.id && known.has(item.id) ? item.id : null })), newChecklistItemId);
+  const items = normalizeItems(
+    input.items.map((item) => ({ ...item, id: item.id && known.has(item.id) ? item.id : null })),
+    newChecklistItemId,
+  );
   const values = { name: input.name.trim(), description: input.description?.trim() || null, ownerUnitId: input.ownerUnitId, ownerTeamId: input.ownerTeamId, items, isActive: input.isActive };
   const problem = checklistProblem(values);
   if (problem) throw new ActionError(problem);
@@ -61,8 +64,19 @@ export async function saveChecklist(checklistId: string | null, input: Checklist
   if (input.ownerTeamId && !(await listTeams()).some((team) => team.id === input.ownerTeamId && team.isActive)) throw new ActionError("checklist_owner_invalid");
 
   const after = before
-    ? (await db().update(schema.workChecklist).set({ ...values, updatedAt: new Date() }).where(eq(schema.workChecklist.id, before.id)).returning())[0]
-    : (await db().insert(schema.workChecklist).values({ ...values, createdByPersonId: actorPersonId }).returning())[0];
+    ? (
+        await db()
+          .update(schema.workChecklist)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(schema.workChecklist.id, before.id))
+          .returning()
+      )[0]
+    : (
+        await db()
+          .insert(schema.workChecklist)
+          .values({ ...values, createdByPersonId: actorPersonId })
+          .returning()
+      )[0];
   await invalidateChecklists();
   return { before: before ?? null, after };
 }
@@ -116,7 +130,11 @@ export async function setStateChecklists(stateId: string, hooks: readonly StageH
   const wanted = [...new Map(hooks.map((hook) => [hook.checklistId, hook])).values()];
   const before = await db().transaction(async (tx) => {
     const stored = await tx.select({ checklistId: schema.workStateChecklist.checklistId, required: schema.workStateChecklist.required }).from(schema.workStateChecklist).where(eq(schema.workStateChecklist.stateId, stateId));
-    await assertUsable(wanted.map((hook) => hook.checklistId), stored.map((hook) => hook.checklistId), tx);
+    await assertUsable(
+      wanted.map((hook) => hook.checklistId),
+      stored.map((hook) => hook.checklistId),
+      tx,
+    );
     const keep = wanted.map((hook) => hook.checklistId);
     await tx.delete(schema.workStateChecklist).where(and(eq(schema.workStateChecklist.stateId, stateId), keep.length ? notInArray(schema.workStateChecklist.checklistId, keep) : undefined));
     if (wanted.length) {

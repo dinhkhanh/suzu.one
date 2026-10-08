@@ -55,7 +55,9 @@ const tasksAbout = (personId: string) => db().select().from(schema.task).where(e
 async function signIn(email: string) {
   const userId = `user-${email}`;
   await db().insert(schema.user).values({ id: userId, name: email, email, emailVerified: true }).onConflictDoNothing();
-  await db().insert(schema.session).values({ id: `session-${email}-${Math.random()}`, userId, token: `token-${email}-${Math.random()}`, expiresAt: new Date(Date.now() + 86_400_000) });
+  await db()
+    .insert(schema.session)
+    .values({ id: `session-${email}-${Math.random()}`, userId, token: `token-${email}-${Math.random()}`, expiresAt: new Date(Date.now() + 86_400_000) });
   return () => db().select().from(schema.session).where(eq(schema.session.userId, userId));
 }
 
@@ -69,19 +71,25 @@ beforeAll(async () => {
   ids.manager = (await hire("Line Manager", {}, null)).person.id;
   ids.hr = (await hire("Hr Staff", {}, null)).person.id;
   ids.owner = (await hire("The Owner", {}, null)).person.id;
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
-    { personId: ids.owner, role: "owner", scopeType: "group" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
+      { personId: ids.owner, role: "owner", scopeType: "group" },
+    ]);
 
   const [template] = await db().insert(schema.taskTemplate).values({ purpose: "onboarding", name: "Default onboarding" }).returning();
-  await db().insert(schema.taskTemplateItem).values([
-    { templateId: template.id, title: "Create account", assigneeRule: "permission:person:manage", dueOffsetDays: -3, sortOrder: 0 },
-    { templateId: template.id, title: "First-week plan", assigneeRule: "line_manager", dueOffsetDays: 0, sortOrder: 1 },
-    { templateId: template.id, title: "Read the handbook", assigneeRule: "subject", dueOffsetDays: 5, sortOrder: 2 },
-  ]);
+  await db()
+    .insert(schema.taskTemplateItem)
+    .values([
+      { templateId: template.id, title: "Create account", assigneeRule: "permission:person:manage", dueOffsetDays: -3, sortOrder: 0 },
+      { templateId: template.id, title: "First-week plan", assigneeRule: "line_manager", dueOffsetDays: 0, sortOrder: 1 },
+      { templateId: template.id, title: "Read the handbook", assigneeRule: "subject", dueOffsetDays: 5, sortOrder: 2 },
+    ]);
   const [offboarding] = await db().insert(schema.taskTemplate).values({ purpose: "offboarding", name: "Default offboarding" }).returning();
-  await db().insert(schema.taskTemplateItem).values([{ templateId: offboarding.id, title: "Return equipment", assigneeRule: "permission:person:manage", dueOffsetDays: 0, sortOrder: 0 }]);
+  await db()
+    .insert(schema.taskTemplateItem)
+    .values([{ templateId: offboarding.id, title: "Return equipment", assigneeRule: "permission:person:manage", dueOffsetDays: 0, sortOrder: 0 }]);
 });
 
 describe("hire", () => {
@@ -101,13 +109,25 @@ describe("hire", () => {
     // HR was told once, not once per task; the owner's "*" is not who routine work goes to.
     expect((await listMyTasks(ids.hr)).open.some((task) => task.subjectPersonId === person.id)).toBe(true);
     expect((await listMyTasks(ids.owner)).open).toHaveLength(0);
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.manager), eq(schema.notification.kind, "tasks.assigned")));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.manager), eq(schema.notification.kind, "tasks.assigned")));
     expect(notices.length).toBeGreaterThan(0);
   });
 
   it("starts no checklist when told not to (bulk import of long-standing staff)", async () => {
     const { person, event } = await hirePerson(
-      { fullName: "Old Hand", workEmail: null, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2020-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: "Old Hand",
+        workEmail: null,
+        profile: NO_PROFILE,
+        entityId: ids.media,
+        employeeCode: null,
+        startDate: "2020-01-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: ids.video, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       ids.actor,
       { onboarding: false },
     );
@@ -119,7 +139,17 @@ describe("hire", () => {
 describe("transfer and promotion", () => {
   it("records an event with a from → to snapshot; a correction records none", async () => {
     const { person } = await hire("Moving Person");
-    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName: "Senior Editor", seniorityLevel: "senior" as const, positionLevel: "executive" as const, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const placement = {
+      workforceType: "employee" as const,
+      branchId: null,
+      orgUnitId: ids.video,
+      positionName: "Senior Editor",
+      seniorityLevel: "senior" as const,
+      positionLevel: "executive" as const,
+      managerId: ids.manager,
+      dottedManagerId: null,
+      workLocation: null,
+    };
     const { event } = await changeAssignment(person.id, { validFrom: "2025-01-01", changeReason: "Good year", placement, kind: "promotion" }, ids.actor);
     expect(event).toMatchObject({ type: "promotion", effectiveDate: "2025-01-01", reason: "Good year" });
     expect(event!.details).toMatchObject({ from: { position: "Editor" }, to: { position: "Senior Editor", seniorityLevel: "senior", positionLevel: "executive" } });
@@ -232,7 +262,13 @@ describe("termination", () => {
     const dayOff = defineRequestType({ type: "test_day_off", flow: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
     const file = (personId: string) => db().transaction((tx) => submitRequest(tx, dayOff, { entityId: ids.media, requesterPersonId: personId, subjectPersonId: personId, summary: "a day off" }));
     const waitingFor = async (requestId: string) => (await db().select().from(schema.approvalAssignee).where(eq(schema.approvalAssignee.requestId, requestId))).map((row) => row.approverPersonId);
-    const moves = async (requestId: string) => (await db().select().from(schema.approvalEvent).where(and(eq(schema.approvalEvent.requestId, requestId), eq(schema.approvalEvent.type, "reassigned")))).map((event) => [event.actorPersonId, event.meta?.reason]);
+    const moves = async (requestId: string) =>
+      (
+        await db()
+          .select()
+          .from(schema.approvalEvent)
+          .where(and(eq(schema.approvalEvent.requestId, requestId), eq(schema.approvalEvent.type, "reassigned")))
+      ).map((event) => [event.actorPersonId, event.meta?.reason]);
 
     // A future last day: the manager keeps working, and keeps the turn, until the day has passed.
     const staying = (await hire("Boss Leaving Later")).person;
@@ -255,7 +291,10 @@ describe("termination", () => {
     await terminateEmployment(gone.id, { lastDay: addDays(today, -1), reason: "contract_end", note: null }, ids.actor);
     expect(await waitingFor(now.request.id)).toEqual([ids.owner]);
     expect(await moves(now.request.id)).toEqual([[ids.actor, "offboarded"]]);
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.kind, "approvals.requested"), eq(schema.notification.recipientPersonId, ids.owner)));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.kind, "approvals.requested"), eq(schema.notification.recipientPersonId, ids.owner)));
     expect(notices.length).toBe(2);
   });
 
@@ -310,7 +349,14 @@ describe("resignation request", () => {
     expect(event).toMatchObject({ type: "resignation", status: "pending", effectiveDate: lastWorkingDay, approvalRequestId: request.id });
     // Approval alone ends nothing.
     expect((await db().select().from(schema.employment).where(eq(schema.employment.personId, person.id)))[0].endDate).toBeNull();
-    expect((await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.hr), eq(schema.notification.kind, "hr.resignation_approved")))).length).toBe(1);
+    expect(
+      (
+        await db()
+          .select()
+          .from(schema.notification)
+          .where(and(eq(schema.notification.recipientPersonId, ids.hr), eq(schema.notification.kind, "hr.resignation_approved")))
+      ).length,
+    ).toBe(1);
 
     await terminateEmployment(person.id, { lastDay: lastWorkingDay, reason: "resignation", note: null, resignationEventId: event.id }, ids.hr);
     expect((await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, event.id)))[0].status).toBe("applied");

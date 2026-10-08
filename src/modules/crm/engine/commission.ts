@@ -85,7 +85,16 @@ export function commissionStatements(scheme: { id: string; name: string; rule: C
     const netVnd = netOf(collection);
     if (netVnd === 0) continue;
     for (const share of earnerShares(scheme.rule, collection)) {
-      const line: CommissionLine = { paymentId: collection.paymentId, invoiceNumber: collection.invoiceNumber, accountName: collection.accountName, receivedOn: collection.receivedOn, netVnd, shareBp: share.shareBp, baseVnd: Math.round((netVnd * share.shareBp) / BP), as: share.as };
+      const line: CommissionLine = {
+        paymentId: collection.paymentId,
+        invoiceNumber: collection.invoiceNumber,
+        accountName: collection.accountName,
+        receivedOn: collection.receivedOn,
+        netVnd,
+        shareBp: share.shareBp,
+        baseVnd: Math.round((netVnd * share.shareBp) / BP),
+        as: share.as,
+      };
       lines.set(share.personId, [...(lines.get(share.personId) ?? []), line]);
     }
   }

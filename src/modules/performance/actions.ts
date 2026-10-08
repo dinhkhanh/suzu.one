@@ -14,7 +14,16 @@ const periodKey = z.string().regex(PERIOD_KEY);
 
 const auditGoal = (goal: Pick<GoalRow, "id" | "entityId">) => ({ type: "goal", id: goal.id, entityId: goal.entityId });
 // What the audit log keeps of a goal: enough to see what changed, none of the prose.
-const goalFacts = (goal: GoalRow) => ({ title: goal.title, level: goal.level, periodKey: goal.periodKey, status: goal.status, weight: goal.weight, ownerPersonId: goal.ownerPersonId, parentGoalId: goal.parentGoalId, finalProgressBp: goal.finalProgressBp });
+const goalFacts = (goal: GoalRow) => ({
+  title: goal.title,
+  level: goal.level,
+  periodKey: goal.periodKey,
+  status: goal.status,
+  weight: goal.weight,
+  ownerPersonId: goal.ownerPersonId,
+  parentGoalId: goal.parentGoalId,
+  finalProgressBp: goal.finalProgressBp,
+});
 function refresh(goalId?: string) {
   revalidatePath("/performance", "layout");
   if (goalId) revalidatePath(`/performance/goals/${goalId}`);
@@ -88,7 +97,10 @@ const statusPipeline = createAction({
     if (input.move === "reopen" && !input.reason) throw new ActionError("reason_required");
     const { before, after } = await moveGoal({ principal: user.principal, personId: user.person.id }, input.goalId, input.move);
     refresh(input.goalId);
-    return { data: { id: after.id, status: after.status, finalProgressBp: after.finalProgressBp }, audit: { resource: auditGoal(after), summary: `${after.title}: ${before.status} → ${after.status}${input.reason ? ` — ${input.reason}` : ""}`, before: goalFacts(before), after: goalFacts(after) } };
+    return {
+      data: { id: after.id, status: after.status, finalProgressBp: after.finalProgressBp },
+      audit: { resource: auditGoal(after), summary: `${after.title}: ${before.status} → ${after.status}${input.reason ? ` — ${input.reason}` : ""}`, before: goalFacts(before), after: goalFacts(after) },
+    };
   },
 });
 export async function moveGoalAction(input: unknown) {
@@ -109,7 +121,11 @@ export async function reparentGoalAction(input: unknown) {
   return reparentPipeline(input);
 }
 
-const lines = (value: string | null) => (value ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
+const lines = (value: string | null) =>
+  (value ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
 const saveKeyResultPipeline = createAction({
   name: "performance.kr.save",
@@ -126,7 +142,14 @@ const saveKeyResultPipeline = createAction({
   }),
   authorize: (user, input) => canEdit(user, input.goalId),
   run: async ({ input }) => {
-    const { before, after } = await saveKeyResult(input.goalId, input.keyResultId, { title: input.title, metricType: input.metricType, startValue: input.startValue, targetValue: input.targetValue, milestones: lines(input.milestones).slice(0, 30), weight: input.weight });
+    const { before, after } = await saveKeyResult(input.goalId, input.keyResultId, {
+      title: input.title,
+      metricType: input.metricType,
+      startValue: input.startValue,
+      targetValue: input.targetValue,
+      milestones: lines(input.milestones).slice(0, 30),
+      weight: input.weight,
+    });
     const found = (await findGoalParties(input.goalId))!;
     refresh(input.goalId);
     const facts = (row: typeof after) => ({ title: row.title, metricType: row.metricType, startValue: row.startValue, targetValue: row.targetValue, currentValue: row.currentValue, weight: row.weight, milestones: row.milestones });
@@ -171,9 +194,22 @@ const checkInPipeline = createAction({
   },
   run: async ({ user, input }) => {
     const found = (await findKeyResult(input.keyResultId))!;
-    const { checkIn, before, after } = await createCheckIn({ principal: user.principal, personId: user.person.id }, input.keyResultId, { value: input.value, doneMilestones: input.doneMilestones, confidence: input.confidence, note: input.note });
+    const { checkIn, before, after } = await createCheckIn({ principal: user.principal, personId: user.person.id }, input.keyResultId, {
+      value: input.value,
+      doneMilestones: input.doneMilestones,
+      confidence: input.confidence,
+      note: input.note,
+    });
     refresh(found.goal.id);
-    return { data: { id: checkIn.id }, audit: { resource: auditGoal(found.goal), summary: `${found.goal.title} — ${after.title}`, before: { currentValue: before.currentValue, confidence: before.confidence }, after: { currentValue: after.currentValue, confidence: after.confidence, checkInId: checkIn.id } } };
+    return {
+      data: { id: checkIn.id },
+      audit: {
+        resource: auditGoal(found.goal),
+        summary: `${found.goal.title} — ${after.title}`,
+        before: { currentValue: before.currentValue, confidence: before.confidence },
+        after: { currentValue: after.currentValue, confidence: after.confidence, checkInId: checkIn.id },
+      },
+    };
   },
 });
 export async function createCheckInAction(input: unknown) {

@@ -33,7 +33,10 @@ import {
 } from "./service";
 
 // A checkbox posts "on" when ticked and nothing when not; JSON callers may send a boolean.
-const checkbox = z.union([z.boolean(), z.literal("on"), z.literal("")]).optional().transform((value) => value === true || value === "on");
+const checkbox = z
+  .union([z.boolean(), z.literal("on"), z.literal("")])
+  .optional()
+  .transform((value) => value === true || value === "on");
 /** Blank and absent are both "no value". */
 const optionalText = (max: number) =>
   z
@@ -42,7 +45,10 @@ const optionalText = (max: number) =>
     .max(max)
     .nullish()
     .transform((value) => (value ? value : null));
-const optionalId = z.union([z.uuid(), z.literal("")]).nullish().transform((value) => (value ? value : null));
+const optionalId = z
+  .union([z.uuid(), z.literal("")])
+  .nullish()
+  .transform((value) => (value ? value : null));
 const webUrl = optionalText(BRAND_LIMITS.url).refine((value) => value === null || isWebUrl(value), { message: "invalid_url" });
 
 const keeps = async (user: CurrentUser, kitId: string) => {

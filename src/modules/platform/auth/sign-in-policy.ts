@@ -9,12 +9,7 @@ export type SignInIdentity = {
 
 export type PersonAccessState = "active" | "preboarding" | "suspended" | "offboarded" | "none";
 
-export type SignInRejection =
-  | "email_not_verified"
-  | "not_a_workspace_account"
-  | "domain_not_allowed"
-  | "not_provisioned"
-  | "access_revoked";
+export type SignInRejection = "email_not_verified" | "not_a_workspace_account" | "domain_not_allowed" | "not_provisioned" | "access_revoked";
 
 export type SignInDecision = { allowed: true; bootstrapOwner: boolean } | { allowed: false; reason: SignInRejection };
 
@@ -27,12 +22,7 @@ export function emailDomain(email: string): string {
   return at === -1 ? "" : email.slice(at + 1).toLowerCase();
 }
 
-export function decideSignIn(input: {
-  identity: SignInIdentity;
-  allowedDomains: readonly string[];
-  bootstrapOwnerEmails: readonly string[];
-  personState: PersonAccessState;
-}): SignInDecision {
+export function decideSignIn(input: { identity: SignInIdentity; allowedDomains: readonly string[]; bootstrapOwnerEmails: readonly string[]; personState: PersonAccessState }): SignInDecision {
   const { identity, allowedDomains, bootstrapOwnerEmails, personState } = input;
   const email = normalizeEmail(identity.email);
 

@@ -25,7 +25,15 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
   const teamId = typeof params.team === "string" && params.team ? params.team : null;
   const today = todayInVietnam();
   const settings = await crmSettings(today);
-  const [t, f, locale, teams, dashboard, outlook, aging] = await Promise.all([getTranslations("crm"), formatters(), getLocale(), listTeams(), salesDashboard(shell.viewer, { teamId }, today, 6, settings.staleDealDays), revenueOutlook(shell.viewer, today), shell.show.invoices ? agingSummary(shell.viewer, {}, today) : Promise.resolve(null)]);
+  const [t, f, locale, teams, dashboard, outlook, aging] = await Promise.all([
+    getTranslations("crm"),
+    formatters(),
+    getLocale(),
+    listTeams(),
+    salesDashboard(shell.viewer, { teamId }, today, 6, settings.staleDealDays),
+    revenueOutlook(shell.viewer, today),
+    shell.show.invoices ? agingSummary(shell.viewer, {}, today) : Promise.resolve(null),
+  ]);
 
   return (
     <Page width="wide">
@@ -42,19 +50,19 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
       />
       <CrmTabs current="reports" show={shell.show} />
       <form method="get" className="toolbar">
-          <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")} className="w-full sm:w-48">
-            <option value="">{t("deals.anyTeam")}</option>
-            {teams
-              .filter((team) => team.isActive)
-              .map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-          </Select>
-          <Button type="submit" variant="outline">
-            {t("filter")}
-          </Button>
+        <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")} className="w-full sm:w-48">
+          <option value="">{t("deals.anyTeam")}</option>
+          {teams
+            .filter((team) => team.isActive)
+            .map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+        </Select>
+        <Button type="submit" variant="outline">
+          {t("filter")}
+        </Button>
       </form>
 
       {dashboard ? (
@@ -114,7 +122,9 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
                 </TableBody>
               </Table>
             </TableCard>
-            {dashboard.lostReasons.length ? <p className="text-sm text-muted-foreground">{t("reports.lostReasons", { reasons: dashboard.lostReasons.map((row) => `${t(`enums.lostReason.${row.reason as "price"}`)} ${row.count}`).join(" · ") })}</p> : null}
+            {dashboard.lostReasons.length ? (
+              <p className="text-sm text-muted-foreground">{t("reports.lostReasons", { reasons: dashboard.lostReasons.map((row) => `${t(`enums.lostReason.${row.reason as "price"}`)} ${row.count}`).join(" · ") })}</p>
+            ) : null}
           </section>
         </>
       ) : (

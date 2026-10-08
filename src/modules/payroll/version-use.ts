@@ -44,7 +44,10 @@ export async function ruleVersionRefusal(kind: RuleVersionKind, versionId: strin
       : kind === "component"
         ? sql`jsonb_exists(${run.context} -> 'componentVersionIds', ${versionId})`
         : sql`exists (select 1 from jsonb_each_text(${run.context} -> 'parameterVersions') as used where used.value = ${versionId})`;
-  const rows = await executor.selectDistinct({ status: run.status }).from(run).where(and(inArray(run.status, BLOCKING), named));
+  const rows = await executor
+    .selectDistinct({ status: run.status })
+    .from(run)
+    .where(and(inArray(run.status, BLOCKING), named));
   return refusalOf(rows.map((row) => row.status));
 }
 

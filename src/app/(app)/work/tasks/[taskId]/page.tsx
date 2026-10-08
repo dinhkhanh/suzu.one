@@ -5,7 +5,35 @@ import { Page } from "@/components/ui/page";
 import { RecordLink } from "@/components/ui/record-link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { acceptAttributeFor } from "@/modules/platform/files/rules";
-import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canRaiseBlocker, canResolveBlocker, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listCustomFields, listMentionable, listMoveTargets, listTaskBlockers, listTaskFiles, listAssignable, listClients, listLabels, listLinkableTasks, listProjectOptions, listStates, loadViewer, resolveTaskKey, toFieldViews } from "@/modules/work/service";
+import {
+  canDecideReview,
+  canDeleteTask,
+  canEditTask,
+  canModerateTask,
+  canRaiseBlocker,
+  canResolveBlocker,
+  canSubmitDeliverable,
+  listDeliverables,
+  followersOf,
+  followStateOf,
+  getTaskDetail,
+  listActivity,
+  listComments,
+  listCustomFields,
+  listMentionable,
+  listMoveTargets,
+  listTaskBlockers,
+  listTaskFiles,
+  listAssignable,
+  listClients,
+  listLabels,
+  listLinkableTasks,
+  listProjectOptions,
+  listStates,
+  loadViewer,
+  resolveTaskKey,
+  toFieldViews,
+} from "@/modules/work/service";
 import { TaskCustomFields } from "@/modules/work/ui/custom-fields";
 import { BlockerPanel, MovePanel, TriageBanner } from "@/modules/work/ui/task-foundation";
 import { TaskDetailView } from "@/modules/work/ui/task-detail";
@@ -14,7 +42,21 @@ import { TaskReview } from "@/modules/work/ui/task-review";
 import { canRespondToHandoff, canSendToTeam, listOpenCycles, listTaskHandoffs, listTeamCycles, listTeams, projectFacts, TASK_FILE_OWNER, teamFacts } from "@/modules/work/service";
 import { HandoffPanel } from "@/modules/work/ui/handoff";
 import { todayInVietnam } from "@/lib/dates";
-import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, canRevokePreviewLink, clientOfTask, listDeliveriesByTask, listPreviewLinks, listPublishesByTask, listTaskPins } from "@/modules/work/service";
+import {
+  canDecideStage,
+  canManagePublish,
+  canManagePreviewLinks,
+  canPinFeedback,
+  canRecordClientDecision,
+  canRecordDelivery,
+  canResolvePin,
+  canRevokePreviewLink,
+  clientOfTask,
+  listDeliveriesByTask,
+  listPreviewLinks,
+  listPublishesByTask,
+  listTaskPins,
+} from "@/modules/work/service";
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
 import { auditPrivateTaskRead, getTaskLine, jobNumbersOf } from "@/modules/projects/service";
@@ -97,10 +139,17 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
   const [linkable, ofProject, accessPairs] = await Promise.all([
     listLinkableDigitalAssets(),
     work.projectId ? digitalAssetsByProject([work.projectId]).then((byProject) => byProject.get(work.projectId!) ?? []) : [],
-    task.assigneePersonId ? activeAccessPairs(detail.digitalAssets.map((asset) => asset.id), [task.assigneePersonId]) : new Set<string>(),
+    task.assigneePersonId
+      ? activeAccessPairs(
+          detail.digitalAssets.map((asset) => asset.id),
+          [task.assigneePersonId],
+        )
+      : new Set<string>(),
   ]);
   const firstIds = new Set(ofProject.map((asset) => asset.id));
-  const digitalOptions = [...ofProject.filter((asset) => asset.status !== "retired"), ...linkable.filter((asset) => !firstIds.has(asset.id)), ...detail.digitalAssets.filter((asset) => asset.status === "retired")].map(({ id, name, platform }) => ({ id, name, platform }));
+  const digitalOptions = [...ofProject.filter((asset) => asset.status !== "retired"), ...linkable.filter((asset) => !firstIds.has(asset.id)), ...detail.digitalAssets.filter((asset) => asset.status === "retired")].map(
+    ({ id, name, platform }) => ({ id, name, platform }),
+  );
   const recordsClient = canRecordClientDecision(viewer, detail.facts, client);
   const clientContacts = recordsClient ? await contactChoicesFor(client.id) : [];
   const stageChecklists = stageHooks.flatMap((hook) => {
@@ -115,14 +164,18 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
   // Review chains (FR-PJM-50): the waiting version's stage decides who may decide it.
   const waiting = deliverables.find((item) => item.decision === "pending");
   const stageIsClient = !!waiting?.chainId && waiting.clientStageIndex !== null && Math.min(waiting.stageIndex, waiting.stages.length - 1) === waiting.clientStageIndex;
-  const canDecide = waiting?.chainId && waiting.stages.length > 0 ? canDecideStage(viewer, detail.facts, { isClient: stageIsClient, reviewerPersonId: waiting.stageReviewerPersonId, submittedByPersonId: waiting.submittedByPersonId }, client) : canDecideReview(viewer, detail.facts, { reviewerPersonId: work.reviewerPersonId, submittedByPersonId: waiting?.submittedByPersonId ?? null });
+  const canDecide =
+    waiting?.chainId && waiting.stages.length > 0
+      ? canDecideStage(viewer, detail.facts, { isClient: stageIsClient, reviewerPersonId: waiting.stageReviewerPersonId, submittedByPersonId: waiting.submittedByPersonId }, client)
+      : canDecideReview(viewer, detail.facts, { reviewerPersonId: work.reviewerPersonId, submittedByPersonId: waiting?.submittedByPersonId ?? null });
   const openBlocker = blockers.find((blocker) => !blocker.resolvedAt);
   const inTriage = work.triageStatus === "pending" || work.triageStatus === "snoozed";
   const linkedIds = new Set([task.id, ...detail.linked.map((link) => link.id)]);
   // Work goes to other teams through their triage (FR-PJM-42); the task's own closed cycle stays in the picker.
   const sendTeams = allTeams.filter((row) => row.isActive && canSendToTeam(viewer, detail.facts, teamFacts(row))).map(({ id, name }) => ({ id, name }));
   const closedCycle = teamCycles.find((cycle) => cycle.id === work.cycleId && cycle.closedAt);
-  const cycleLabel = (cycle: { number: number; startDate: string; endDate: string }) => t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") });
+  const cycleLabel = (cycle: { number: number; startDate: string; endDate: string }) =>
+    t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") });
   const cycles = [...(closedCycle ? [closedCycle] : []), ...openCycles].map((cycle) => ({ id: cycle.id, label: cycleLabel(cycle) }));
   const people = [...assignable];
   // Someone who left the team may still be on the task: keep their name in the pickers.
@@ -199,7 +252,13 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
           // "Parent task": any open task of the same list but this one and what sits under it — and the
           // parent it has now, which stays in the picker even when closed, so saving does not drop it.
           // Not offered where the parent is one the viewer cannot see: the picker could not hold it.
-          parents: task.parentTaskId && !detail.parent ? undefined : [...(detail.parent && !siblings.some((row) => row.id === detail.parent!.id) ? [{ id: detail.parent.id, key: detail.parent.key, title: detail.parent.title }] : []), ...siblings.filter((row) => !row.under).map(({ id, key, title }) => ({ id, key, title }))],
+          parents:
+            task.parentTaskId && !detail.parent
+              ? undefined
+              : [
+                  ...(detail.parent && !siblings.some((row) => row.id === detail.parent!.id) ? [{ id: detail.parent.id, key: detail.parent.key, title: detail.parent.title }] : []),
+                  ...siblings.filter((row) => !row.under).map(({ id, key, title }) => ({ id, key, title })),
+                ],
           cycles,
           checklists,
           stageChecklists,
@@ -224,7 +283,15 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
         />
         <TaskFiles
           taskId={task.id}
-          files={files.map((file) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, uploadedByPersonId: file.uploadedByPersonId, uploadedByName: file.uploadedByName, createdAt: file.createdAt.toISOString(), canRemove: moderate || (canEdit && file.uploadedByPersonId === user.person.id) }))}
+          files={files.map((file) => ({
+            id: file.id,
+            fileName: file.fileName,
+            sizeBytes: file.sizeBytes,
+            uploadedByPersonId: file.uploadedByPersonId,
+            uploadedByName: file.uploadedByName,
+            createdAt: file.createdAt.toISOString(),
+            canRemove: moderate || (canEdit && file.uploadedByPersonId === user.person.id),
+          }))}
           canAdd={canEdit}
           accept={acceptAttributeFor(TASK_FILE_OWNER)}
         />
@@ -240,7 +307,20 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
             stageDueAt: stageDueAt?.toISOString() ?? null,
             frozenAt: frozenAt?.toISOString() ?? null,
             decisions: decisions.map(({ createdAt, ...decision }) => ({ ...decision, createdAt: createdAt.toISOString() })),
-            pins: pins.filter((pin) => pin.deliverableId === item.id).map((pin) => ({ id: pin.id, x: pin.x, y: pin.y, timecodeMs: pin.timecodeMs, body: pin.body, authorPersonId: pin.authorPersonId, authorName: pin.authorName, resolved: !!pin.resolvedAt, createdAt: pin.createdAt.toISOString(), canResolve: canResolvePin(viewer, detail.facts, pin) })),
+            pins: pins
+              .filter((pin) => pin.deliverableId === item.id)
+              .map((pin) => ({
+                id: pin.id,
+                x: pin.x,
+                y: pin.y,
+                timecodeMs: pin.timecodeMs,
+                body: pin.body,
+                authorPersonId: pin.authorPersonId,
+                authorName: pin.authorName,
+                resolved: !!pin.resolvedAt,
+                createdAt: pin.createdAt.toISOString(),
+                canResolve: canResolvePin(viewer, detail.facts, pin),
+              })),
           }))}
           files={files.map(({ id, fileName }) => ({ id, fileName }))}
           people={people}
@@ -268,22 +348,44 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/wor
         />
         <DeliveryPanel
           taskId={task.id}
-          deliveries={deliveries.map((item) => ({ id: item.id, version: item.version, deliveredOn: item.deliveredOn, recipient: item.recipient, links: item.links, note: item.note, deliveredByPersonId: item.deliveredByPersonId, deliveredByName: item.deliveredByName, canRemove: (item.deliveredByPersonId === user.person.id && canRecordDelivery(viewer, detail.facts)) || moderate }))}
+          deliveries={deliveries.map((item) => ({
+            id: item.id,
+            version: item.version,
+            deliveredOn: item.deliveredOn,
+            recipient: item.recipient,
+            links: item.links,
+            note: item.note,
+            deliveredByPersonId: item.deliveredByPersonId,
+            deliveredByName: item.deliveredByName,
+            canRemove: (item.deliveredByPersonId === user.person.id && canRecordDelivery(viewer, detail.facts)) || moderate,
+          }))}
           versions={deliverables.filter((item) => item.decision !== "superseded").map((item) => ({ id: item.id, version: item.version, approved: item.decision === "approved", frozen: !!item.frozenAt }))}
           canRecord={canRecordDelivery(viewer, detail.facts)}
           today={today}
         />
-        <TaskDigitalAssets
-          assets={detail.digitalAssets.map((asset) => ({ ...asset, assigneeHasAccess: task.assigneePersonId ? accessPairs.has(`${asset.id}:${task.assigneePersonId}`) : null }))}
-          assigneeName={detail.assigneeName}
-        />
+        <TaskDigitalAssets assets={detail.digitalAssets.map((asset) => ({ ...asset, assigneeHasAccess: task.assigneePersonId ? accessPairs.has(`${asset.id}:${task.assigneePersonId}`) : null }))} assigneeName={detail.assigneeName} />
         {work.channel || publishes.length || detail.digitalAssets.length ? (
           <PublishPanel
             taskId={task.id}
             channel={work.channel}
             accounts={digitalOptions}
             defaultAccountId={detail.digitalAssets.length === 1 && detail.digitalAssets[0].status !== "retired" ? detail.digitalAssets[0].id : null}
-            publishes={publishes.map((item) => ({ id: item.id, platform: item.platform, page: item.page, digitalAssetId: item.digitalAssetId, status: item.status, plannedAt: item.plannedAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null, url: item.url, boosted: item.boosted, adAccount: item.adAccount, publishedByPersonId: item.publishedByPersonId, publishedByName: item.publishedByName, latest: item.latest, results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })) }))}
+            publishes={publishes.map((item) => ({
+              id: item.id,
+              platform: item.platform,
+              page: item.page,
+              digitalAssetId: item.digitalAssetId,
+              status: item.status,
+              plannedAt: item.plannedAt?.toISOString() ?? null,
+              publishedAt: item.publishedAt?.toISOString() ?? null,
+              url: item.url,
+              boosted: item.boosted,
+              adAccount: item.adAccount,
+              publishedByPersonId: item.publishedByPersonId,
+              publishedByName: item.publishedByName,
+              latest: item.latest,
+              results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })),
+            }))}
             canManage={canManagePublish(viewer, detail.facts) && task.status !== "cancelled"}
             today={today}
             now={new Date().toISOString()}

@@ -80,17 +80,36 @@ export async function listOpenIntakeForms(viewer: WorkViewer): Promise<IntakeFor
 }
 
 export async function findIntakeForm(formId: string, executor: Executor = db()): Promise<{ form: IntakeFormRow; team: TeamRow } | undefined> {
-  const [row] = await executor.select({ form: schema.workIntakeForm, team: schema.workTeam }).from(schema.workIntakeForm).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId)).where(eq(schema.workIntakeForm.id, formId)).limit(1);
+  const [row] = await executor
+    .select({ form: schema.workIntakeForm, team: schema.workTeam })
+    .from(schema.workIntakeForm)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId))
+    .where(eq(schema.workIntakeForm.id, formId))
+    .limit(1);
   return row;
 }
 
-export type IntakeFormInput = { name: string; description: string | null; projectId: string | null; audience: IntakeAudience; fields: Omit<IntakeField, "key">[]; /** Library checklists every request starts with. */ checklistIds?: string[]; isActive: boolean };
+export type IntakeFormInput = {
+  name: string;
+  description: string | null;
+  projectId: string | null;
+  audience: IntakeAudience;
+  fields: Omit<IntakeField, "key">[];
+  /** Library checklists every request starts with. */ checklistIds?: string[];
+  isActive: boolean;
+};
 
 export async function saveIntakeForm(teamId: string, formId: string | null, input: IntakeFormInput, actorPersonId: string): Promise<{ before: IntakeFormRow | null; after: IntakeFormRow }> {
   const team = await findTeam(teamId);
   if (!team) throw new ActionError("team_not_found");
   // Keys follow the position; an edit that reorders fields only affects future submissions (answers are stored as text in the task).
-  const fields: IntakeField[] = input.fields.map((field, index) => ({ key: fieldKey(index), label: field.label.trim(), type: field.type, required: field.required, ...(field.type === "select" ? { options: (field.options ?? []).map((option) => option.trim()).filter(Boolean) } : {}) }));
+  const fields: IntakeField[] = input.fields.map((field, index) => ({
+    key: fieldKey(index),
+    label: field.label.trim(),
+    type: field.type,
+    required: field.required,
+    ...(field.type === "select" ? { options: (field.options ?? []).map((option) => option.trim()).filter(Boolean) } : {}),
+  }));
   const problem = formProblem(fields);
   if (problem) throw new ActionError(problem);
   if (input.projectId) {
@@ -98,14 +117,29 @@ export async function saveIntakeForm(teamId: string, formId: string | null, inpu
     if (!project || project.teamId !== teamId || project.status === "archived") throw new ActionError("project_not_found");
   }
   const found = formId ? await findIntakeForm(formId) : null;
-  const values = { name: input.name, description: input.description, projectId: input.projectId, audience: input.audience, fields, checklistIds: await assertUsable(input.checklistIds ?? [], found?.form.checklistIds ?? []), isActive: input.isActive };
+  const values = {
+    name: input.name,
+    description: input.description,
+    projectId: input.projectId,
+    audience: input.audience,
+    fields,
+    checklistIds: await assertUsable(input.checklistIds ?? [], found?.form.checklistIds ?? []),
+    isActive: input.isActive,
+  };
   if (!formId) {
-    const [after] = await db().insert(schema.workIntakeForm).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = await db()
+      .insert(schema.workIntakeForm)
+      .values({ teamId, ...values, createdByPersonId: actorPersonId })
+      .returning();
     await invalidateIntakeForms();
     return { before: null, after };
   }
   if (!found || found.form.teamId !== teamId) throw new ActionError("intake_form_not_found");
-  const [after] = await db().update(schema.workIntakeForm).set({ ...values, updatedAt: new Date() }).where(eq(schema.workIntakeForm.id, formId)).returning();
+  const [after] = await db()
+    .update(schema.workIntakeForm)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(schema.workIntakeForm.id, formId))
+    .returning();
   await invalidateIntakeForms();
   return { before: found.form, after };
 }
@@ -125,13 +159,35 @@ export async function submitIntake(formId: string, input: { title: string; answe
     const { answers, problems } = checkAnswers(form.fields, input.answers);
     if (problems.length > 0) throw new ActionError("intake_answers_invalid", { problems });
     const state = entryState(await listStates([team.id], tx), true);
-    const created = await createWorkTaskIn(tx, { teamId: team.id, projectId: form.projectId, title: input.title, description: describeAnswers(form.name, form.fields, answers), stateId: state?.id ?? null, requesterPersonId: actor.personId, dueDate: dueDateFrom(form.fields, answers), checklistIds: form.checklistIds }, actor.personId, { notify: false });
+    const created = await createWorkTaskIn(
+      tx,
+      {
+        teamId: team.id,
+        projectId: form.projectId,
+        title: input.title,
+        description: describeAnswers(form.name, form.fields, answers),
+        stateId: state?.id ?? null,
+        requesterPersonId: actor.personId,
+        dueDate: dueDateFrom(form.fields, answers),
+        checklistIds: form.checklistIds,
+      },
+      actor.personId,
+      { notify: false },
+    );
     await tx.update(schema.workTask).set({ intakeFormId: form.id }).where(eq(schema.workTask.taskId, created.task.id));
     // Into the team's triage (FR-PJM-32): its rules pre-fill, a lead decides. The leads hear of it
     // below, in words that say who asked and through which form.
     await sendToTriage(tx, created.task.id, "intake", { notify: false, actorPersonId: actor.personId });
-    const leads = (await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, team.id), eq(schema.workTeamMember.role, "lead")))).map((row) => row.personId).filter((id) => id !== actor.personId);
-    if (leads.length > 0) await notify({ recipients: leads, kind: "tasks.intake_submitted", params: { name: actor.fullName, form: form.name, key: taskKey(team.key, created.work.number), title: created.task.title }, link: triageLink(team.id) }, tx);
+    const leads = (
+      await tx
+        .select({ personId: schema.workTeamMember.personId })
+        .from(schema.workTeamMember)
+        .where(and(eq(schema.workTeamMember.teamId, team.id), eq(schema.workTeamMember.role, "lead")))
+    )
+      .map((row) => row.personId)
+      .filter((id) => id !== actor.personId);
+    if (leads.length > 0)
+      await notify({ recipients: leads, kind: "tasks.intake_submitted", params: { name: actor.fullName, form: form.name, key: taskKey(team.key, created.work.number), title: created.task.title }, link: triageLink(team.id) }, tx);
     return { taskId: created.task.id, key: taskKey(team.key, created.work.number), title: created.task.title };
   });
 }
@@ -139,7 +195,16 @@ export async function submitIntake(formId: string, input: { title: string; answe
 /** What the viewer has asked for through forms, newest first — so a request is not a black hole. */
 export async function listMyIntakeRequests(personId: string, limit = 20): Promise<{ taskId: string; key: string; title: string; stateName: string; status: string; formName: string | null; createdAt: Date }[]> {
   const rows = await db()
-    .select({ taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, stateName: schema.workState.name, status: schema.task.status, formName: schema.workIntakeForm.name, createdAt: schema.task.createdAt })
+    .select({
+      taskId: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      stateName: schema.workState.name,
+      status: schema.task.status,
+      formName: schema.workIntakeForm.name,
+      createdAt: schema.task.createdAt,
+    })
     .from(schema.workTask)
     .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))

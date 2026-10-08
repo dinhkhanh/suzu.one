@@ -42,8 +42,20 @@ async function hire(name: string, entityId: string, orgUnitId: string, managerId
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
-  const [video, design] = await db().insert(schema.orgUnit).values([{ code: "VID", name: "Video" }, { code: "DES", name: "Design" }]).returning();
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
+  const [video, design] = await db()
+    .insert(schema.orgUnit)
+    .values([
+      { code: "VID", name: "Video" },
+      { code: "DES", name: "Design" },
+    ])
+    .returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, design: design.id, actor: actor.id });
 
@@ -67,8 +79,14 @@ describe("headcount report", () => {
     const report = (await getHeadcountReport(principal("x", [{ role: "hr_admin", scope: { type: "group" } }]), period))!;
     expect(report.scoped).toBe(false);
     expect(report.snapshot.total).toBe(6);
-    expect(report.snapshot.byEntity).toEqual([{ key: "Creative", count: 3 }, { key: "Media", count: 3 }]);
-    expect(report.snapshot.byGender).toEqual([{ key: "female", count: 4 }, { key: "male", count: 2 }]);
+    expect(report.snapshot.byEntity).toEqual([
+      { key: "Creative", count: 3 },
+      { key: "Media", count: 3 },
+    ]);
+    expect(report.snapshot.byGender).toEqual([
+      { key: "female", count: 4 },
+      { key: "male", count: 2 },
+    ]);
     expect(report.movement).toMatchObject({ joiners: 1, leavers: 1, opening: 6, closing: 6 });
   });
 
@@ -90,10 +108,12 @@ describe("headcount report", () => {
   it("gives the dashboard the report's headline figures, counted in SQL, for every slice", async () => {
     const [{ employmentId, entityId }] = await db().select({ employmentId: schema.employment.id, entityId: schema.employment.entityId }).from(schema.employment).where(eq(schema.employment.personId, ids.khoi)).limit(1);
     // A fixed-term contract running out within the window, and one already terminated (not counted).
-    await db().insert(schema.contract).values([
-      { employmentId, personId: ids.khoi, entityId, number: "FT-1", type: "fixed_term", startDate: "2024-01-01", endDate: addDays(today, 20) },
-      { employmentId, personId: ids.khoi, entityId, number: "FT-0", type: "fixed_term", startDate: "2023-01-01", endDate: addDays(today, 10), terminatedOn: addDays(today, -100) },
-    ]);
+    await db()
+      .insert(schema.contract)
+      .values([
+        { employmentId, personId: ids.khoi, entityId, number: "FT-1", type: "fixed_term", startDate: "2024-01-01", endDate: addDays(today, 20) },
+        { employmentId, personId: ids.khoi, entityId, number: "FT-0", type: "fixed_term", startDate: "2023-01-01", endDate: addDays(today, 10), terminatedOn: addDays(today, -100) },
+      ]);
     const readers = [
       principal("x", [{ role: "hr_admin", scope: { type: "group" } }]),
       principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]),
@@ -102,7 +122,14 @@ describe("headcount report", () => {
     for (const reader of readers) {
       for (const filters of [period, { ...period, entityId: ids.media }, { asOf: addDays(today, -60), from: addDays(today, -90), to: addDays(today, -60) }]) {
         const report = (await getHeadcountReport(reader, filters))!;
-        expect(await getHeadcountTotals(reader, filters)).toEqual({ total: report.snapshot.total, joiners: report.movement.joiners, leavers: report.movement.leavers, contractsExpiring: report.contractsExpiring.length, probations: report.probations.length, scoped: report.scoped });
+        expect(await getHeadcountTotals(reader, filters)).toEqual({
+          total: report.snapshot.total,
+          joiners: report.movement.joiners,
+          leavers: report.movement.leavers,
+          contractsExpiring: report.contractsExpiring.length,
+          probations: report.probations.length,
+          scoped: report.scoped,
+        });
       }
     }
     expect(await getHeadcountTotals(readers[0], period)).toMatchObject({ total: 6, joiners: 1, leavers: 1, contractsExpiring: 1 });

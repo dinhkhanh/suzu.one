@@ -88,7 +88,16 @@ async function main() {
   }
 
   const existing = await db()
-    .select({ id: schema.kbPage.id, title: schema.kbPage.title, slug: schema.kbPage.slug, parentId: schema.kbPage.parentId, status: schema.kbPage.status, content: schema.kbPage.content, publishedVersionId: schema.kbPage.publishedVersionId, hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges })
+    .select({
+      id: schema.kbPage.id,
+      title: schema.kbPage.title,
+      slug: schema.kbPage.slug,
+      parentId: schema.kbPage.parentId,
+      status: schema.kbPage.status,
+      content: schema.kbPage.content,
+      publishedVersionId: schema.kbPage.publishedVersionId,
+      hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges,
+    })
     .from(schema.kbPage)
     .where(and(eq(schema.kbPage.spaceId, space.id), isNull(schema.kbPage.deletedAt)));
   const claimed = new Set<string>();

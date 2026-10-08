@@ -33,11 +33,22 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
   const { project, team, can, plan } = context;
   // After the kick-off the register is the agreed scope: lines and quantities move through change requests.
   const locked = scopeLocked(plan);
-  const [t, tWork, format, registers, structure, links, people] = await Promise.all([getTranslations("projects"), getTranslations("work"), getFormatter(), loadRegisters([project.id]), listStructure(project.id), listTaskLinks(project.id), can.editPlan ? listAssignable(team.id, project.id) : Promise.resolve([])]);
+  const [t, tWork, format, registers, structure, links, people] = await Promise.all([
+    getTranslations("projects"),
+    getTranslations("work"),
+    getFormatter(),
+    loadRegisters([project.id]),
+    listStructure(project.id),
+    listTaskLinks(project.id),
+    can.editPlan ? listAssignable(team.id, project.id) : Promise.resolve([]),
+  ]);
   const register = registers.get(project.id)!;
   const milestoneName = new Map(structure.milestones.map((milestone) => [milestone.id, milestone.name]));
   const milestones = structure.milestones.map(({ id, name }) => ({ id, name }));
-  const tasksOf = Map.groupBy(links.filter((link) => link.deliverableId), (link) => link.deliverableId!);
+  const tasksOf = Map.groupBy(
+    links.filter((link) => link.deliverableId),
+    (link) => link.deliverableId!,
+  );
   const today = todayInVietnam();
   const soon = addDays(today, 7);
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
@@ -48,7 +59,17 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
       <ProjectHeader context={context} current="deliverables" />
 
       <TableCard>
-        <TableCardHeader title={t("register.title")} count={register.lines.length || null} description={register.promised ? [t("register.progress", { accepted: register.accepted, promised: register.promised, percent: register.percent ?? 0 }), register.awaitingClient ? t("register.awaitingClient", { count: register.awaitingClient }) : null].filter(Boolean).join(" · ") : t("register.empty")} />
+        <TableCardHeader
+          title={t("register.title")}
+          count={register.lines.length || null}
+          description={
+            register.promised
+              ? [t("register.progress", { accepted: register.accepted, promised: register.promised, percent: register.percent ?? 0 }), register.awaitingClient ? t("register.awaitingClient", { count: register.awaitingClient }) : null]
+                  .filter(Boolean)
+                  .join(" · ")
+              : t("register.empty")
+          }
+        />
         {register.promised ? (
           <div className="border-b px-4 py-3">
             <ProgressBar percent={register.percent} pending={Math.floor((register.awaitingClient / register.promised) * 100)} tone="success" label={t("register.title")} />
@@ -72,7 +93,8 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
               const own = tasksOf.get(line.id) ?? [];
               const missing = Math.max(0, line.quantity - line.linked);
               const cancelled = line.status === "cancelled";
-              const dueTone = cancelled || !line.dueDate || line.status === "accepted" || line.status === "delivered" || line.status === "published" ? "" : line.dueDate < today ? "text-destructive" : line.dueDate <= soon ? "text-warning" : "";
+              const dueTone =
+                cancelled || !line.dueDate || line.status === "accepted" || line.status === "delivered" || line.status === "published" ? "" : line.dueDate < today ? "text-destructive" : line.dueDate <= soon ? "text-warning" : "";
               const percent = cancelled ? null : line.promised ? Math.floor((line.accepted / line.promised) * 100) : 0;
               const detail = own.length > 0 || can.editPlan;
               return (
@@ -147,7 +169,12 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
                             {can.editPlan ? (
                               <>
                                 {!cancelled ? <LineTasksForm deliverableId={line.id} missing={missing} people={people} /> : null}
-                                <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={milestones} scopeLocked={locked} />
+                                <DeliverableForm
+                                  projectId={project.id}
+                                  line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }}
+                                  milestones={milestones}
+                                  scopeLocked={locked}
+                                />
                                 {locked ? null : (
                                   <div>
                                     <CancelLineButton deliverableId={line.id} cancelled={cancelled} />

@@ -30,9 +30,7 @@ import { type AuditEntry, recordAudit } from "@/modules/platform/audit/service";
  *   · nothing that the run produced leaks unless the action says so in `data`.
  */
 
-export type PublicActionResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: "invalid" | "rate_limited" | "rejected" | "failed"; message?: string };
+export type PublicActionResult<T> = { ok: true; data: T } | { ok: false; error: "invalid" | "rate_limited" | "rejected" | "failed"; message?: string };
 
 /** Everything known about the caller. Never their address: see `visitorOf`. */
 export type Visitor = { ipHash: string; userAgent: string | null };
@@ -102,7 +100,15 @@ export function createPublicAction<Schema extends z.ZodType, Output>(definition:
       // Field-level codes stay on the server: a public form is told *that* it was wrong, and its
       // own client-side validation says where. Telling a stranger which of fifteen fields a probe
       // tripped is a map of the schema.
-      await recordAudit({ action: `${definition.name}.invalid`, actor: anonymous, request, summary: parsed.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).slice(0, 10).join(" ") });
+      await recordAudit({
+        action: `${definition.name}.invalid`,
+        actor: anonymous,
+        request,
+        summary: parsed.error.issues
+          .map((issue) => `${issue.path.join(".")}:${issue.code}`)
+          .slice(0, 10)
+          .join(" "),
+      });
       return { ok: false, error: "invalid" };
     }
 

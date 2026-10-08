@@ -40,7 +40,11 @@ export const projectBriefRequest = defineRequestType({
  */
 const briefFlowFor = (leadIds: readonly string[], isPrivate: boolean): RequestTypeDefinition => ({
   ...projectBriefRequest,
-  flow: leadIds.length ? { steps: [{ key: "team_lead", mode: "any", approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) }] } : isPrivate ? { steps: [{ key: "team_lead", mode: "any", approvers: [] }] } : projectBriefRequest.flow,
+  flow: leadIds.length
+    ? { steps: [{ key: "team_lead", mode: "any", approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) }] }
+    : isPrivate
+      ? { steps: [{ key: "team_lead", mode: "any", approvers: [] }] }
+      : projectBriefRequest.flow,
 });
 
 async function lockPlan(tx: Tx, projectId: string): Promise<PlanRow> {
@@ -62,25 +66,42 @@ export async function submitBrief(projectId: string, actorPersonId: string): Pro
     const payload: BriefRequestPayload = { projectId, jobNumber: plan.jobNumber, projectName: project.name };
     const summary = [plan.jobNumber, project.name].filter(Boolean).join(" · ").slice(0, 300);
 
-    const [returned] = plan.briefApprovalRequestId ? await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, plan.briefApprovalRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actorPersonId))).limit(1) : [];
+    const [returned] = plan.briefApprovalRequestId
+      ? await tx
+          .select()
+          .from(schema.approvalRequest)
+          .where(and(eq(schema.approvalRequest.id, plan.briefApprovalRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actorPersonId)))
+          .limit(1)
+      : [];
     if (returned) {
       await resubmitRequest(tx, projectBriefRequest, returned.id, actorPersonId, { summary, payload });
       const [after] = await tx.update(schema.projectPlan).set({ briefStatus: "submitted", updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId)).returning();
       return { plan: after, requestId: returned.id, resubmitted: true };
     }
 
-    const leads = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"))).orderBy(asc(schema.workTeamMember.createdAt));
-    const { request, outcome } = await submitRequest(tx, briefFlowFor(leads.map((row) => row.personId), project.visibility === "private"), {
-      entityId: project.entityId,
-      requesterPersonId: actorPersonId,
-      subjectPersonId: null,
-      subjectType: "work_project",
-      subjectId: projectId,
-      summary,
-      payload,
-      link: `/projects/${projectId}`,
-      target: { entityId: project.entityId },
-    });
+    const leads = await tx
+      .select({ personId: schema.workTeamMember.personId })
+      .from(schema.workTeamMember)
+      .where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead")))
+      .orderBy(asc(schema.workTeamMember.createdAt));
+    const { request, outcome } = await submitRequest(
+      tx,
+      briefFlowFor(
+        leads.map((row) => row.personId),
+        project.visibility === "private",
+      ),
+      {
+        entityId: project.entityId,
+        requesterPersonId: actorPersonId,
+        subjectPersonId: null,
+        subjectType: "work_project",
+        subjectId: projectId,
+        summary,
+        payload,
+        link: `/projects/${projectId}`,
+        target: { entityId: project.entityId },
+      },
+    );
     await tx.update(schema.projectPlan).set({ briefStatus: "submitted", briefApprovalRequestId: request.id, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
     // A configured flow with no step that applies approves at once.
     const after = outcome === "approved" ? await applyKickoff(tx, projectId, new Date()) : await lockPlan(tx, projectId);
@@ -134,6 +155,10 @@ export async function getBriefRequest(viewer: { personId: string; principal: Pri
 
 /** The project a kick-off request is about — for the decide action's authorization. */
 export async function briefRequestProject(requestId: string): Promise<string | null> {
-  const [row] = await db().select({ payload: schema.approvalRequest.payload }).from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), inArray(schema.approvalRequest.type, [projectBriefRequest.type]))).limit(1);
+  const [row] = await db()
+    .select({ payload: schema.approvalRequest.payload })
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.id, requestId), inArray(schema.approvalRequest.type, [projectBriefRequest.type])))
+    .limit(1);
   return (row?.payload as BriefRequestPayload | undefined)?.projectId ?? null;
 }

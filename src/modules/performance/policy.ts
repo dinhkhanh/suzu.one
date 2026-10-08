@@ -54,7 +54,8 @@ const isAbove = (principal: Principal, person: PersonContext) => !!principal.per
 export const canManagePerformanceOf = (principal: Principal, person: PersonContext): boolean => can(principal, "performance:manage", person);
 
 /** Personal-tier performance data of one person: their goals, check-ins and KPI scores. */
-export const canReadPerformanceOf = (principal: Principal, person: PersonContext): boolean => isSelf(principal, person) || isAbove(principal, person) || can(principal, "performance:read", person) || canManagePerformanceOf(principal, person);
+export const canReadPerformanceOf = (principal: Principal, person: PersonContext): boolean =>
+  isSelf(principal, person) || isAbove(principal, person) || can(principal, "performance:read", person) || canManagePerformanceOf(principal, person);
 
 export function canSeeGoal(principal: Principal, goal: GoalParties): boolean {
   if (goal.level === "individual") return !!goal.person && canReadPerformanceOf(principal, goal.person);
@@ -186,7 +187,8 @@ export const canHoldOneOnOneWith = (principal: Principal, person: PersonContext)
  * Who may write an existing meeting: the manager whose meeting it is (they keep it even if the
  * reporting line moves under them afterwards), or HR over the person. The subject never writes it.
  */
-export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => (!!principal.personId && principal.personId === meeting.managerPersonId && !isSelf(principal, meeting.person)) || canManagePerformanceOf(principal, meeting.person);
+export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean =>
+  (!!principal.personId && principal.personId === meeting.managerPersonId && !isSelf(principal, meeting.person)) || canManagePerformanceOf(principal, meeting.person);
 
 /**
  * Reading the shared half: the manager whose meeting it is, anyone above the subject in the
@@ -210,8 +212,7 @@ export const canWriteOneOnOnePrivate = (principal: Principal, meeting: MeetingPa
  * the manager, only oversight (`performance:oversee`, the owner's — decision of 2026-09-28) reads
  * them, and never about oneself.
  */
-export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean =>
-  canWriteOneOnOnePrivate(principal, meeting) || (!isSelf(principal, meeting.person) && can(principal, "performance:oversee", meeting.person));
+export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean => canWriteOneOnOnePrivate(principal, meeting) || (!isSelf(principal, meeting.person) && can(principal, "performance:oversee", meeting.person));
 
 /** Raising a promotion, a development plan or a PIP off a settled result: the chain above, or HR — never about oneself. */
 export const canRaiseOutcome = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && (isAbove(principal, person) || canManagePerformanceOf(principal, person));

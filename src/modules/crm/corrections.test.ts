@@ -38,9 +38,21 @@ import { firstStageOf, listStages } from "./stages";
 const ids = {} as Record<"szm" | "seller" | "lead" | "finance" | "cb" | "team" | "account" | "deal" | "project", string>;
 const today = todayInVietnam();
 const month = today.slice(0, 7);
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const failure = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const failure = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const grantsOf: Record<string, Grant[]> = {};
 const principalOf = (personId: string): Principal => ({ personId, workforceType: "employee", grants: grantsOf[personId] ?? [] });
 const finance = (): CrmViewer => ({ principal: principalOf(ids.finance), ties: new Map() });
@@ -53,25 +65,70 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["seller", "lead", "finance", "cb"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.seller, role: "sales", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-    { personId: ids.finance, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.seller, role: "sales", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+      { personId: ids.finance, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+    ]);
   grantsOf[ids.finance] = [{ role: "finance", scope: { type: "entity", id: szm.id } }];
   grantsOf[ids.cb] = [{ role: "payroll", scope: { type: "entity", id: szm.id } }];
-  await db().insert(schema.statutoryParameter).values([
-    { key: "crm.settings", validFrom: "2021-01-01", value: { staleDealDays: 14, renewalLeadDays: 45, receivableReminderDays: [1, 15, 30], defaultPaymentTermsDays: 30, quoteValidityDays: 30, quoteDiscountApprovalBp: 1000, quoteMarginFloorBp: 3000 }, status: "approved", isVerified: false, legalReference: "test" },
-    { key: "tax.vat", validFrom: "2021-01-01", value: { defaultBp: 1000, allowedBp: [0, 800, 1000] }, status: "approved", isVerified: false, legalReference: "test" },
-  ]);
+  await db()
+    .insert(schema.statutoryParameter)
+    .values([
+      {
+        key: "crm.settings",
+        validFrom: "2021-01-01",
+        value: { staleDealDays: 14, renewalLeadDays: 45, receivableReminderDays: [1, 15, 30], defaultPaymentTermsDays: 30, quoteValidityDays: 30, quoteDiscountApprovalBp: 1000, quoteMarginFloorBp: 3000 },
+        status: "approved",
+        isVerified: false,
+        legalReference: "test",
+      },
+      { key: "tax.vat", validFrom: "2021-01-01", value: { defaultBp: 1000, allowedBp: [0, 800, 1000] }, status: "approved", isVerified: false, legalReference: "test" },
+    ]);
   await seedStages(db() as never);
   const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.team = team.id;
-  const { client } = await createAccount({ code: "VNM", name: "Vinamilk", entityId: szm.id, note: null, profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: szm.id }, salesOwnerPersonId: ids.seller, accountManagerPersonId: null, confirmDuplicate: false });
+  const { client } = await createAccount({
+    code: "VNM",
+    name: "Vinamilk",
+    entityId: szm.id,
+    note: null,
+    profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: szm.id },
+    salesOwnerPersonId: ids.seller,
+    accountManagerPersonId: null,
+    confirmDuplicate: false,
+  });
   ids.account = client.id;
-  const deal = await createDeal({ clientId: client.id, title: "Tết 2027", brandId: null, serviceLines: ["video"], oneOffVnd: 100_000_000, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: team.id, entityId: szm.id, source: null, competitors: null, nextStep: null, ownerPersonId: ids.seller, stageId: null, leadId: null, contacts: [] }, ids.seller);
+  const deal = await createDeal(
+    {
+      clientId: client.id,
+      title: "Tết 2027",
+      brandId: null,
+      serviceLines: ["video"],
+      oneOffVnd: 100_000_000,
+      monthlyVnd: null,
+      months: null,
+      probability: null,
+      expectedCloseOn: null,
+      teamId: team.id,
+      entityId: szm.id,
+      source: null,
+      competitors: null,
+      nextStep: null,
+      ownerPersonId: ids.seller,
+      stageId: null,
+      leadId: null,
+      contacts: [],
+    },
+    ids.seller,
+  );
   ids.deal = deal.id;
   // Won, as the pipeline would leave it: setting up delivery asks only that.
   const won = firstStageOf(await listStages(), "won")!;
@@ -80,7 +137,12 @@ beforeAll(async () => {
 
 describe("setting a won deal up for delivery (CRM-04)", () => {
   const setup = (name: string) => setUpDelivery(ids.deal, { teamId: ids.team, leadPersonId: ids.lead, name, templateId: null, startDate: today, dueDate: null, visibility: "team", contractId: null, note: { context: "Won" } }, ids.seller);
-  const projectsOfDeal = () => db().select({ projectId: schema.crmDealProject.projectId, name: schema.workProject.name }).from(schema.crmDealProject).innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId)).where(eq(schema.crmDealProject.dealId, ids.deal));
+  const projectsOfDeal = () =>
+    db()
+      .select({ projectId: schema.crmDealProject.projectId, name: schema.workProject.name })
+      .from(schema.crmDealProject)
+      .innerJoin(schema.workProject, eq(schema.workProject.id, schema.crmDealProject.projectId))
+      .where(eq(schema.crmDealProject.dealId, ids.deal));
 
   it("makes one project when the same set-up is sent twice at once", async () => {
     const results = await Promise.allSettled([setup("Vinamilk — Tết 2027"), setup("Vinamilk — Tết 2027")]);

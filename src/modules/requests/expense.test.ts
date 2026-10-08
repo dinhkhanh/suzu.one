@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 
 import { and, eq, inArray } from "drizzle-orm";
@@ -104,7 +110,9 @@ beforeAll(async () => {
   // tests are about the money rather than about who signs.
   const seed = REQUEST_TYPE_SEED.find((type) => type.code === EXPENSE_CLAIM_CODE)!;
   await db().insert(schema.requestType).values({ code: seed.code, nameVi: seed.nameVi, nameEn: seed.nameEn, category: seed.category, form: seed.form, sortOrder: seed.sortOrder });
-  await db().insert(schema.approvalFlow).values({ requestType: `request:${EXPENSE_CLAIM_CODE}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+  await db()
+    .insert(schema.approvalFlow)
+    .values({ requestType: `request:${EXPENSE_CLAIM_CODE}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
 });
 
 describe("filing a claim", () => {
@@ -121,17 +129,36 @@ describe("filing a claim", () => {
   });
 
   it("records a receipt as an attachment of the request, so the attachment rule guards it", async () => {
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "suzu-private", ownerType: "request_attachment", ownerId: ids.huy, entityId: ids.entity, tier: "personal", fileName: "hoadon.pdf", objectPath: "x/1", contentType: "application/pdf", sizeBytes: 10, status: "ready" }).returning();
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({ bucket: "suzu-private", ownerType: "request_attachment", ownerId: ids.huy, entityId: ids.entity, tier: "personal", fileName: "hoadon.pdf", objectPath: "x/1", contentType: "application/pdf", sizeBytes: 10, status: "ready" })
+      .returning();
     const filed = await fileExpenseClaim({ values: { title: "Khách sạn", project_tag: null, note: null }, lines: [line({ amount: 2_000_000, category: "accommodation", receiptFileId: file.id })] }, await requester(ids.huy), money);
     const [submission] = await db().select().from(schema.requestSubmission).where(eq(schema.requestSubmission.id, filed.submissionId));
     expect(submission.attachmentFileIds).toContain(file.id);
   });
 
   it("refuses a receipt that is somebody else's upload, or not a finished one", async () => {
-    const stored = (ownerId: string, status: "ready" | "pending", objectPath: string) => ({ bucket: "suzu-private", ownerType: "request_attachment", ownerId, entityId: ids.entity, tier: "personal" as const, fileName: "hoadon.pdf", objectPath, contentType: "application/pdf", sizeBytes: 10, status });
-    const [lans, pending] = await db().insert(schema.storedFile).values([stored(ids.lan, "ready", "x/lan"), stored(ids.huy, "pending", "x/pending")]).returning();
+    const stored = (ownerId: string, status: "ready" | "pending", objectPath: string) => ({
+      bucket: "suzu-private",
+      ownerType: "request_attachment",
+      ownerId,
+      entityId: ids.entity,
+      tier: "personal" as const,
+      fileName: "hoadon.pdf",
+      objectPath,
+      contentType: "application/pdf",
+      sizeBytes: 10,
+      status,
+    });
+    const [lans, pending] = await db()
+      .insert(schema.storedFile)
+      .values([stored(ids.lan, "ready", "x/lan"), stored(ids.huy, "pending", "x/pending")])
+      .returning();
     for (const receiptFileId of [lans.id, pending.id]) {
-      await expect(fileExpenseClaim({ values: { title: "Hoá đơn của người khác", project_tag: null, note: null }, lines: [line({ amount: 100_000, receiptFileId })] }, await requester(ids.huy), money)).rejects.toThrow("form_value_not_a_file");
+      await expect(fileExpenseClaim({ values: { title: "Hoá đơn của người khác", project_tag: null, note: null }, lines: [line({ amount: 100_000, receiptFileId })] }, await requester(ids.huy), money)).rejects.toThrow(
+        "form_value_not_a_file",
+      );
     }
   });
 });
@@ -158,7 +185,10 @@ describe("approving one", () => {
     // One line in the run, holding both claims — `payroll_run_input` is keyed by
     // (run, person, component), so a per-claim line would have overwritten the first.
     expect((await reimbursementOf(run.id, ids.lan))?.amount).toBe(345_000);
-    const postings = await db().select().from(schema.expenseClaimPosting).where(and(eq(schema.expenseClaimPosting.runId, run.id), eq(schema.expenseClaimPosting.personId, ids.lan)));
+    const postings = await db()
+      .select()
+      .from(schema.expenseClaimPosting)
+      .where(and(eq(schema.expenseClaimPosting.runId, run.id), eq(schema.expenseClaimPosting.personId, ids.lan)));
     expect(postings).toHaveLength(2);
   });
 
@@ -247,9 +277,17 @@ describe("one sweep over many claims", () => {
   // posts must be what offering the claims one by one did: one line per person, the sum of theirs.
   it("posts them all in one transaction, one summed line per person, and counts what moved", async () => {
     const [entity] = await db().insert(schema.entity).values({ code: "SZW", legalName: "SuZu W", shortName: "SZW", taxCode: "0106", wageRegion: 1 }).returning();
-    await db().update(schema.person).set({ primaryEntityId: entity.id }).where(inArray(schema.person.id, [ids.huy, ids.lan]));
+    await db()
+      .update(schema.person)
+      .set({ primaryEntityId: entity.id })
+      .where(inArray(schema.person.id, [ids.huy, ids.lan]));
     // Filed while the entity has no open run: they wait.
-    for (const [person, amount] of [[ids.huy, 10_000], [ids.huy, 20_000], [ids.lan, 40_000]] as const) await fileAndApprove(person, [line({ amount })], [ids.boss]);
+    for (const [person, amount] of [
+      [ids.huy, 10_000],
+      [ids.huy, 20_000],
+      [ids.lan, 40_000],
+    ] as const)
+      await fileAndApprove(person, [line({ amount })], [ids.boss]);
     // And one freed from a cancelled run.
     const cancelled = await openRun(entity.id, "2027-05");
     await fileAndApprove(ids.lan, [line({ amount: 5_000 })], [ids.boss]);
@@ -308,7 +346,11 @@ describe("what is owed", () => {
 });
 
 describe("the claims export", () => {
-  const finance = (entityIds: string[] | null): Principal => ({ personId: ids.boss, workforceType: "employee", grants: entityIds ? entityIds.map((id) => ({ role: "finance" as const, scope: { type: "entity" as const, id } })) : [{ role: "finance" as const, scope: { type: "group" as const } }] });
+  const finance = (entityIds: string[] | null): Principal => ({
+    personId: ids.boss,
+    workforceType: "employee",
+    grants: entityIds ? entityIds.map((id) => ({ role: "finance" as const, scope: { type: "entity" as const, id } })) : [{ role: "finance" as const, scope: { type: "group" as const } }],
+  });
 
   it("holds the claims the desk lists for the entities the reader pays", async () => {
     const all = await listExpenseClaims({ reach: { all: true } }, 100_000);

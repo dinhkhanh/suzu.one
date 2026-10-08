@@ -16,7 +16,23 @@ import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff } from "@/modules/attendance/service";
 import { notify } from "../platform/notifications/service";
 import { listCustomFields } from "./custom-fields";
-import { type AutomationEvent, type AutomationPreset, automationsMayRun, conditionsHold, DUE_CATCH_UP_DAYS, matchesTrigger, officeDayOff, type PlannedAction, planActions, type PlanFacts, presetRule, ruleCovers, type RuleInput, ruleProblem, runOutcome } from "./engine/automation";
+import {
+  type AutomationEvent,
+  type AutomationPreset,
+  automationsMayRun,
+  conditionsHold,
+  DUE_CATCH_UP_DAYS,
+  matchesTrigger,
+  officeDayOff,
+  type PlannedAction,
+  planActions,
+  type PlanFacts,
+  presetRule,
+  ruleCovers,
+  type RuleInput,
+  ruleProblem,
+  runOutcome,
+} from "./engine/automation";
 import { stateOnSubmit } from "./engine/review";
 import { planTree } from "./engine/templates";
 import type { StateCategory } from "./enums";
@@ -85,7 +101,12 @@ export async function listTaskTemplates(teamId: string, executor?: Executor): Pr
 
 /** What a rule of this scope may name, read in the saving transaction. */
 async function ruleContext(tx: Executor, scope: AutomationScope) {
-  const [states, labels, fields, templates] = await Promise.all([listStates([scope.teamId], tx), listLabels([scope.teamId], tx), listCustomFields({ teamId: scope.teamId, projectId: scope.projectId }, { executor: tx }), listTaskTemplates(scope.teamId, tx)]);
+  const [states, labels, fields, templates] = await Promise.all([
+    listStates([scope.teamId], tx),
+    listLabels([scope.teamId], tx),
+    listCustomFields({ teamId: scope.teamId, projectId: scope.projectId }, { executor: tx }),
+    listTaskTemplates(scope.teamId, tx),
+  ]);
   return {
     stateIds: new Set(states.filter((state) => state.isActive).map((state) => state.id)),
     labelIds: new Set(labels.map((label) => label.id)),
@@ -110,7 +131,10 @@ export async function saveAutomation(scope: AutomationScope, automationId: strin
     if (problem) throw new ActionError(problem);
     const values = { name: rule.name, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: input.isActive, updatedAt: new Date() };
     if (!automationId) {
-      const [after] = await tx.insert(schema.workAutomation).values({ ...scope, ...values, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.workAutomation)
+        .values({ ...scope, ...values, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after };
     }
     const before = await findAutomation(automationId, tx);
@@ -141,7 +165,11 @@ export async function removeAutomation(automationId: string): Promise<Automation
 /** One of the starter rules, fitted to the team's workflow; the texts are in the lead's language. */
 export async function addPresetAutomation(scope: AutomationScope, preset: AutomationPreset, texts: { name: string; text: string }, actorPersonId: string): Promise<AutomationRow> {
   const states = await listStates([scope.teamId], db());
-  const rule = presetRule(preset, states.map((state) => ({ id: state.id, category: state.category as StateCategory, sortOrder: state.sortOrder, isActive: state.isActive })), texts);
+  const rule = presetRule(
+    preset,
+    states.map((state) => ({ id: state.id, category: state.category as StateCategory, sortOrder: state.sortOrder, isActive: state.isActive })),
+    texts,
+  );
   if (!rule) throw new ActionError("automation_preset_unavailable");
   return (await saveAutomation(scope, null, { ...rule, isActive: true }, actorPersonId)).after;
 }
@@ -160,17 +188,35 @@ export async function listAutomationRuns(automationIds: readonly string[], limit
     .where(inArray(schema.workAutomationRun.automationId, [...automationIds]))
     .orderBy(sql`${schema.workAutomationRun.createdAt} desc`)
     .limit(limit);
-  return rows.map(({ run, title, number, teamKey }) => ({ id: run.id, automationId: run.automationId, taskId: run.taskId, taskKey: teamKey && number ? taskKey(teamKey, number) : null, taskTitle: title, trigger: run.trigger, outcome: run.outcome, detail: run.detail, createdAt: run.createdAt }));
+  return rows.map(({ run, title, number, teamKey }) => ({
+    id: run.id,
+    automationId: run.automationId,
+    taskId: run.taskId,
+    taskKey: teamKey && number ? taskKey(teamKey, number) : null,
+    taskTitle: title,
+    trigger: run.trigger,
+    outcome: run.outcome,
+    detail: run.detail,
+    createdAt: run.createdAt,
+  }));
 }
 
 // ── Running rules ───────────────────────────────────────────────────────────────────────────
 
 async function activeRules(tx: Executor, teamId: string): Promise<AutomationRow[]> {
-  return tx.select().from(schema.workAutomation).where(and(eq(schema.workAutomation.teamId, teamId), eq(schema.workAutomation.isActive, true))).orderBy(asc(schema.workAutomation.createdAt), asc(schema.workAutomation.id));
+  return tx
+    .select()
+    .from(schema.workAutomation)
+    .where(and(eq(schema.workAutomation.teamId, teamId), eq(schema.workAutomation.isActive, true)))
+    .orderBy(asc(schema.workAutomation.createdAt), asc(schema.workAutomation.id));
 }
 
 async function leadsOf(tx: Executor, teamId: string, projectLeadId: string | null): Promise<string[]> {
-  const rows = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead"))).orderBy(asc(schema.workTeamMember.personId));
+  const rows = await tx
+    .select({ personId: schema.workTeamMember.personId })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead")))
+    .orderBy(asc(schema.workTeamMember.personId));
   return [...new Set([projectLeadId, ...rows.map((row) => row.personId)].filter((id): id is string => !!id))];
 }
 
@@ -180,9 +226,25 @@ async function dayOffCheck(tx: Executor, entityId: string | null, today: IsoDate
   return officeDayOff(new Set(days.map((day) => day.date)));
 }
 
-type Target = { loaded: LoadedTask | null; teamId: string; projectId: string | null; entityId: string | null; projectLeadId: string | null; label: string; /** The project as the policy sees it, for a rule with no task (a quota alert). */ project: ProjectFacts | null };
+type Target = {
+  loaded: LoadedTask | null;
+  teamId: string;
+  projectId: string | null;
+  entityId: string | null;
+  projectLeadId: string | null;
+  label: string;
+  /** The project as the policy sees it, for a rule with no task (a quota alert). */ project: ProjectFacts | null;
+};
 
-const targetOfTask = (loaded: LoadedTask): Target => ({ loaded, teamId: loaded.team.id, projectId: loaded.work.projectId, entityId: loaded.task.entityId, projectLeadId: loaded.project?.leadPersonId ?? null, label: `${taskKey(loaded.team.key, loaded.work.number)} ${loaded.task.title}`, project: loaded.facts.project });
+const targetOfTask = (loaded: LoadedTask): Target => ({
+  loaded,
+  teamId: loaded.team.id,
+  projectId: loaded.work.projectId,
+  entityId: loaded.task.entityId,
+  projectLeadId: loaded.project?.leadPersonId ?? null,
+  label: `${taskKey(loaded.team.key, loaded.work.number)} ${loaded.task.title}`,
+  project: loaded.facts.project,
+});
 
 async function planFactsFor(tx: Executor, rule: AutomationRow, target: Target, event: AutomationEvent): Promise<PlanFacts> {
   const today = todayInVietnam();
@@ -222,21 +284,49 @@ async function planFactsFor(tx: Executor, rule: AutomationRow, target: Target, e
  * on working days, every role played by the task's assignee, the top steps linked to the task.
  */
 async function createFromTemplate(tx: Tx, templateId: string, target: Target, facts: PlanFacts): Promise<string[]> {
-  const [template] = await tx.select().from(schema.taskTemplate).where(and(eq(schema.taskTemplate.id, templateId), eq(schema.taskTemplate.purpose, TASK_TEMPLATE_PURPOSE), eq(schema.taskTemplate.isActive, true))).limit(1);
+  const [template] = await tx
+    .select()
+    .from(schema.taskTemplate)
+    .where(and(eq(schema.taskTemplate.id, templateId), eq(schema.taskTemplate.purpose, TASK_TEMPLATE_PURPOSE), eq(schema.taskTemplate.isActive, true)))
+    .limit(1);
   if (!template || (template.ownerId && template.ownerId !== target.teamId)) throw new ActionError("template_not_found");
   const items = await tx.select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, template.id));
   if (items.length === 0) throw new ActionError("template_empty");
   const assignee = facts.task?.assigneePersonId ?? null;
   const roles = new Proxy({} as Record<string, string | null>, { get: () => assignee });
   const plan = planTree(
-    items.map((item) => ({ id: item.id, parentItemId: item.parentItemId, title: item.title, description: item.description, assigneeRule: item.assigneeRule, assigneePersonId: item.assigneePersonId, dueOffsetDays: item.dueOffsetDays, sortOrder: item.sortOrder, estimateMinutes: item.estimateMinutes })),
+    items.map((item) => ({
+      id: item.id,
+      parentItemId: item.parentItemId,
+      title: item.title,
+      description: item.description,
+      assigneeRule: item.assigneeRule,
+      assigneePersonId: item.assigneePersonId,
+      dueOffsetDays: item.dueOffsetDays,
+      sortOrder: item.sortOrder,
+      estimateMinutes: item.estimateMinutes,
+    })),
     { mode: "start", date: facts.today },
     roles,
     facts.isDayOff,
   );
   const made = new Map<string, string>();
   for (const node of plan) {
-    const { task } = await createWorkTaskIn(tx, { teamId: target.teamId, projectId: target.projectId, title: node.title, description: node.description, assigneePersonId: node.assigneePersonId, dueDate: node.dueDate, estimateMinutes: node.estimateMinutes, parentTaskId: node.parentItemId ? (made.get(node.parentItemId) ?? null) : null, templateItemId: node.templateItemId }, null);
+    const { task } = await createWorkTaskIn(
+      tx,
+      {
+        teamId: target.teamId,
+        projectId: target.projectId,
+        title: node.title,
+        description: node.description,
+        assigneePersonId: node.assigneePersonId,
+        dueDate: node.dueDate,
+        estimateMinutes: node.estimateMinutes,
+        parentTaskId: node.parentItemId ? (made.get(node.parentItemId) ?? null) : null,
+        templateItemId: node.templateItemId,
+      },
+      null,
+    );
     made.set(node.templateItemId, task.id);
     if (!node.parentItemId && target.loaded) await tx.insert(schema.workTaskDependency).values({ blockerTaskId: target.loaded.task.id, blockedTaskId: task.id, type: "relates", createdByPersonId: null });
   }
@@ -270,14 +360,25 @@ async function applyStep(sp: Tx, step: Exclude<PlannedAction, { type: "skip" }>,
     case "request_review": {
       // The reviewer is named, and the task moves into the team's review state when it is not in one yet.
       const states = await listStates([target.teamId], sp);
-      const into = stateOnSubmit(states.map((state) => ({ id: state.id, category: state.category as StateCategory, sortOrder: state.sortOrder, isActive: state.isActive })), target.loaded!.work.stateId);
+      const into = stateOnSubmit(
+        states.map((state) => ({ id: state.id, category: state.category as StateCategory, sortOrder: state.sortOrder, isActive: state.isActive })),
+        target.loaded!.work.stateId,
+      );
       await change({ reviewerPersonId: step.reviewerPersonId, ...(into ? { stateId: into } : {}) });
       await autoFollow(sp, taskId!, [step.reviewerPersonId]);
       await notify({ recipients: [step.reviewerPersonId], kind: "tasks.automation", params: { rule: rule.name, task: target.label, text: step.text ?? rule.name }, link: taskLink(taskId!) }, sp);
       return {};
     }
     case "notify":
-      await notify({ recipients: step.recipients, kind: "tasks.automation", params: { rule: rule.name, task: target.label, text: step.text }, link: taskId ? taskLink(taskId) : target.projectId ? `/work/projects/${target.projectId}` : `/work/teams/${target.teamId}` }, sp);
+      await notify(
+        {
+          recipients: step.recipients,
+          kind: "tasks.automation",
+          params: { rule: rule.name, task: target.label, text: step.text },
+          link: taskId ? taskLink(taskId) : target.projectId ? `/work/projects/${target.projectId}` : `/work/teams/${target.teamId}`,
+        },
+        sp,
+      );
       return {};
     case "comment":
       await sp.insert(schema.workComment).values({ taskId: taskId!, authorPersonId: null, automationId: rule.id, body: step.text.slice(0, 5000) });
@@ -288,7 +389,10 @@ async function applyStep(sp: Tx, step: Exclude<PlannedAction, { type: "skip" }>,
 async function recordRun(tx: Executor, rule: AutomationRow, target: Target, event: AutomationEvent, outcome: "ok" | "skipped" | "failed", detail: Record<string, unknown>): Promise<void> {
   const taskId = target.loaded?.task.id ?? null;
   await tx.insert(schema.workAutomationRun).values({ automationId: rule.id, taskId, trigger: event.type, outcome, detail });
-  await tx.update(schema.workAutomation).set({ runCount: sql`${schema.workAutomation.runCount} + 1`, lastRunAt: new Date() }).where(eq(schema.workAutomation.id, rule.id));
+  await tx
+    .update(schema.workAutomation)
+    .set({ runCount: sql`${schema.workAutomation.runCount} + 1`, lastRunAt: new Date() })
+    .where(eq(schema.workAutomation.id, rule.id));
   if (taskId) await logActivity(tx, taskId, null, [{ type: outcome === "failed" ? "automation_failed" : "automation_ran", to: { id: rule.id, name: rule.name, outcome } }]);
 }
 
@@ -415,7 +519,14 @@ export async function runTaskAutomations(tx: Executor, taskId: string, event: Au
     const loaded = index === 0 ? first : await loadTask(taskId, tx);
     if (!loaded) break;
     const labels = await tx.select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, taskId));
-    const snapshot = { priority: loaded.task.priority, assigneePersonId: loaded.task.assigneePersonId, labelIds: labels.map((label) => label.labelId), channel: loaded.work.channel, contentFormat: loaded.work.contentFormat, customValues: loaded.work.customValues };
+    const snapshot = {
+      priority: loaded.task.priority,
+      assigneePersonId: loaded.task.assigneePersonId,
+      labelIds: labels.map((label) => label.labelId),
+      channel: loaded.work.channel,
+      contentFormat: loaded.work.contentFormat,
+      customValues: loaded.work.customValues,
+    };
     if (!conditionsHold(rule.conditions, snapshot)) continue;
     if (await executeRule(tx as Tx, rule, targetOfTask(loaded), event, depth)) ran += 1;
   }
@@ -429,7 +540,12 @@ export async function runTaskAutomations(tx: Executor, taskId: string, event: Au
  * alert raised twice sets nothing off twice.
  */
 export async function fireProjectAutomations(tx: Tx, projectId: string, trigger: { type: "quota_threshold"; percent: number; key?: string | null }): Promise<number> {
-  const [found] = await tx.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProject.id, projectId)).limit(1);
+  const [found] = await tx
+    .select({ project: schema.workProject, team: schema.workTeam })
+    .from(schema.workProject)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
+    .where(eq(schema.workProject.id, projectId))
+    .limit(1);
   if (!found) return 0;
   const event: AutomationEvent = { type: "quota_threshold", percent: trigger.percent, key: trigger.key ?? null };
   const rules = (await activeRules(tx, found.team.id)).filter((rule) => ruleCovers(rule, { teamId: found.team.id, projectId }) && matchesTrigger(rule.trigger, event) && conditionsHold(rule.conditions, null));
@@ -443,7 +559,14 @@ export async function fireProjectAutomations(tx: Tx, projectId: string, trigger:
       const [seen] = await tx
         .select({ id: schema.workAutomationRun.id })
         .from(schema.workAutomationRun)
-        .where(and(eq(schema.workAutomationRun.automationId, rule.id), eq(schema.workAutomationRun.trigger, "quota_threshold"), sql`${schema.workAutomationRun.detail} ->> 'key' = ${trigger.key}`, sql`${schema.workAutomationRun.detail} ->> 'projectId' = ${projectId}`))
+        .where(
+          and(
+            eq(schema.workAutomationRun.automationId, rule.id),
+            eq(schema.workAutomationRun.trigger, "quota_threshold"),
+            sql`${schema.workAutomationRun.detail} ->> 'key' = ${trigger.key}`,
+            sql`${schema.workAutomationRun.detail} ->> 'projectId' = ${projectId}`,
+          ),
+        )
         .limit(1);
       if (seen) continue;
     }
@@ -487,14 +610,31 @@ export async function runDueDateAutomations(today: IsoDate): Promise<{ dueRuns: 
         const [seen] = await tx
           .select({ id: schema.workAutomationRun.id })
           .from(schema.workAutomationRun)
-          .where(and(eq(schema.workAutomationRun.automationId, rule.id), eq(schema.workAutomationRun.taskId, task.id), eq(schema.workAutomationRun.trigger, "due_date_reached"), sql`${schema.workAutomationRun.detail} ->> 'dueDate' = ${task.dueDate}`))
+          .where(
+            and(
+              eq(schema.workAutomationRun.automationId, rule.id),
+              eq(schema.workAutomationRun.taskId, task.id),
+              eq(schema.workAutomationRun.trigger, "due_date_reached"),
+              sql`${schema.workAutomationRun.detail} ->> 'dueDate' = ${task.dueDate}`,
+            ),
+          )
           .limit(1);
         if (seen) return false;
         const [current] = await tx.select({ isActive: schema.workAutomation.isActive }).from(schema.workAutomation).where(eq(schema.workAutomation.id, rule.id)).limit(1);
         const loaded = await loadTask(task.id, tx);
         if (!current?.isActive || !loaded) return false;
         const labels = await tx.select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, task.id));
-        if (!conditionsHold(rule.conditions, { priority: loaded.task.priority, assigneePersonId: loaded.task.assigneePersonId, labelIds: labels.map((label) => label.labelId), channel: loaded.work.channel, contentFormat: loaded.work.contentFormat, customValues: loaded.work.customValues })) return false;
+        if (
+          !conditionsHold(rule.conditions, {
+            priority: loaded.task.priority,
+            assigneePersonId: loaded.task.assigneePersonId,
+            labelIds: labels.map((label) => label.labelId),
+            channel: loaded.work.channel,
+            contentFormat: loaded.work.contentFormat,
+            customValues: loaded.work.customValues,
+          })
+        )
+          return false;
         return !!(await executeRule(tx, rule, targetOfTask(loaded), { type: "due_date_reached", dueDate: task.dueDate! }, 0));
       });
       if (ran) dueRuns += 1;
@@ -509,7 +649,13 @@ export async function runDueDateAutomations(today: IsoDate): Promise<{ dueRuns: 
 
 export type AutomationPanel = {
   rules: (Pick<AutomationRow, "id" | "name" | "projectId" | "trigger" | "conditions" | "actions" | "isActive" | "runCount"> & { projectName: string | null; lastRunAt: string | null })[];
-  options: { states: { id: string; name: string }[]; labels: { id: string; name: string }[]; people: { id: string; fullName: string }[]; fields: { id: string; name: string; options: { id: string; label: string }[] }[]; templates: { id: string; name: string }[] };
+  options: {
+    states: { id: string; name: string }[];
+    labels: { id: string; name: string }[];
+    people: { id: string; fullName: string }[];
+    fields: { id: string; name: string; options: { id: string; label: string }[] }[];
+    templates: { id: string; name: string }[];
+  };
   runs: { id: string; ruleName: string; taskId: string | null; taskKey: string | null; taskTitle: string | null; outcome: string; createdAt: string; failure: string | null }[];
 };
 
@@ -536,8 +682,21 @@ export async function automationPanel(scope: { teamId: string; projectId: string
   // `recordRun` bumps it inside the transaction of whatever set the rule off, which this file
   // cannot invalidate after. So the two tallies the panel shows are read as they stand.
   const [runs, tallies] = await Promise.all([
-    listAutomationRuns(rules.map((rule) => rule.id), scope.projectId ? 100 : 30).then((rows) => rows.filter((run) => !scope.projectId || run.detail.projectId === scope.projectId).slice(0, 30)),
-    rules.length ? db().select({ id: schema.workAutomation.id, runCount: schema.workAutomation.runCount, lastRunAt: schema.workAutomation.lastRunAt }).from(schema.workAutomation).where(inArray(schema.workAutomation.id, rules.map((rule) => rule.id))) : [],
+    listAutomationRuns(
+      rules.map((rule) => rule.id),
+      scope.projectId ? 100 : 30,
+    ).then((rows) => rows.filter((run) => !scope.projectId || run.detail.projectId === scope.projectId).slice(0, 30)),
+    rules.length
+      ? db()
+          .select({ id: schema.workAutomation.id, runCount: schema.workAutomation.runCount, lastRunAt: schema.workAutomation.lastRunAt })
+          .from(schema.workAutomation)
+          .where(
+            inArray(
+              schema.workAutomation.id,
+              rules.map((rule) => rule.id),
+            ),
+          )
+      : [],
   ]);
   const tallyOf = new Map(tallies.map((row) => [row.id, row]));
   const tasks = await loadTasks(runs.flatMap((run) => (run.taskId ? [run.taskId] : [])));
@@ -548,7 +707,18 @@ export async function automationPanel(scope: { teamId: string; projectId: string
     return results.find((result) => result.status === "failed")?.error ?? null;
   };
   return {
-    rules: rules.map((rule) => ({ id: rule.id, name: rule.name, projectId: rule.projectId, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: rule.isActive, runCount: tallyOf.get(rule.id)?.runCount ?? rule.runCount, projectName: rule.projectId && !scope.projectId ? (projects.find(({ project }) => project.id === rule.projectId)?.project.name ?? null) : null, lastRunAt: (tallyOf.get(rule.id)?.lastRunAt ?? rule.lastRunAt)?.toISOString() ?? null })),
+    rules: rules.map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      projectId: rule.projectId,
+      trigger: rule.trigger,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      isActive: rule.isActive,
+      runCount: tallyOf.get(rule.id)?.runCount ?? rule.runCount,
+      projectName: rule.projectId && !scope.projectId ? (projects.find(({ project }) => project.id === rule.projectId)?.project.name ?? null) : null,
+      lastRunAt: (tallyOf.get(rule.id)?.lastRunAt ?? rule.lastRunAt)?.toISOString() ?? null,
+    })),
     options: {
       states: states.filter((state) => state.isActive).map((state) => ({ id: state.id, name: state.name })),
       labels: labels.map((label) => ({ id: label.id, name: label.name })),
@@ -558,7 +728,16 @@ export async function automationPanel(scope: { teamId: string; projectId: string
     },
     runs: runs.map((run) => {
       const shown = visible(run.taskId);
-      return { id: run.id, ruleName: ruleName.get(run.automationId) ?? "", taskId: shown ? run.taskId : null, taskKey: shown ? run.taskKey : null, taskTitle: shown ? run.taskTitle : null, outcome: run.outcome, createdAt: run.createdAt.toISOString(), failure: failureOf(run.detail) };
+      return {
+        id: run.id,
+        ruleName: ruleName.get(run.automationId) ?? "",
+        taskId: shown ? run.taskId : null,
+        taskKey: shown ? run.taskKey : null,
+        taskTitle: shown ? run.taskTitle : null,
+        outcome: run.outcome,
+        createdAt: run.createdAt.toISOString(),
+        failure: failureOf(run.detail),
+      };
     }),
   };
 }

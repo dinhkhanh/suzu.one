@@ -59,7 +59,10 @@ const templatePipeline = createAction({
   name: "task_template.save",
   input: z.object({
     templateId: optional(z.uuid()),
-    purpose: z.string().trim().regex(/^[a-z_]{2,40}$/),
+    purpose: z
+      .string()
+      .trim()
+      .regex(/^[a-z_]{2,40}$/),
     name: z.string().trim().min(1).max(120),
     entityId: optional(z.uuid()),
     departmentId: optional(z.uuid()),
@@ -94,7 +97,12 @@ const addItemPipeline = createAction({
     description: optional(z.string().trim().max(1000)),
     linkUrl: optional(z.string().trim().max(500).refine(isSafeTaskLink)),
     rule: z.enum(ASSIGNEE_RULES),
-    permission: optional(z.string().trim().regex(/^[a-z_]+:[a-z_]+$/)),
+    permission: optional(
+      z
+        .string()
+        .trim()
+        .regex(/^[a-z_]+:[a-z_]+$/),
+    ),
     assigneePersonId: optional(z.uuid()),
     dueOffsetDays: z.coerce.number().int().min(-365).max(365),
     sortOrder: z.coerce.number().int().min(0).max(1000).default(0),

@@ -22,12 +22,7 @@ export function ThemeSwitch({ theme, compact = false }: { theme: Theme; compact?
   const [current, setCurrent] = useOptimistic(theme);
 
   return (
-    <div
-      role="group"
-      aria-label={t("label")}
-      aria-busy={pending}
-      className={cn("flex rounded-lg border border-border p-0.5 text-xs", !compact && "gap-1")}
-    >
+    <div role="group" aria-label={t("label")} aria-busy={pending} className={cn("flex rounded-lg border border-border p-0.5 text-xs", !compact && "gap-1")}>
       {THEMES.map((option) => {
         const Icon = ICONS[option];
         return (
@@ -37,11 +32,7 @@ export function ThemeSwitch({ theme, compact = false }: { theme: Theme; compact?
             aria-pressed={option === current}
             aria-label={t(option)}
             title={t(option)}
-            className={cn(
-              "flex items-center justify-center rounded-md pill-off",
-              compact ? "size-6" : "size-7",
-              option === current && "pill-on",
-            )}
+            className={cn("flex items-center justify-center rounded-md pill-off", compact ? "size-6" : "size-7", option === current && "pill-on")}
             onClick={() =>
               startTransition(async () => {
                 setCurrent(option);

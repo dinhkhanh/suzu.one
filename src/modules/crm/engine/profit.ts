@@ -3,7 +3,19 @@
 // report's own basis (invoiced first); a pitch earns nothing, so its cost is what winning cost.
 
 export type ProfitLine = { accountId: string | null; accountName: string | null; pitch: boolean; feeVnd: number | null; costVnd: number; hours: number; estimated: boolean };
-export type AccountProfit = { accountId: string | null; accountName: string | null; projects: number; pitches: number; revenueVnd: number; deliveryCostVnd: number; costOfSaleVnd: number; marginVnd: number; marginRate: number | null; hours: number; estimated: boolean };
+export type AccountProfit = {
+  accountId: string | null;
+  accountName: string | null;
+  projects: number;
+  pitches: number;
+  revenueVnd: number;
+  deliveryCostVnd: number;
+  costOfSaleVnd: number;
+  marginVnd: number;
+  marginRate: number | null;
+  hours: number;
+  estimated: boolean;
+};
 
 export function accountProfitability(lines: readonly ProfitLine[]): { accounts: AccountProfit[]; total: Omit<AccountProfit, "accountId" | "accountName"> } {
   const groups = new Map<string, AccountProfit>();
@@ -31,6 +43,16 @@ export function accountProfitability(lines: readonly ProfitLine[]): { accounts: 
   const marginVnd = sum((row) => row.marginVnd);
   return {
     accounts: accounts.sort((a, b) => b.marginVnd - a.marginVnd || (a.accountName ?? "").localeCompare(b.accountName ?? "")),
-    total: { projects: sum((row) => row.projects), pitches: sum((row) => row.pitches), revenueVnd, deliveryCostVnd: sum((row) => row.deliveryCostVnd), costOfSaleVnd: sum((row) => row.costOfSaleVnd), marginVnd, marginRate: revenueVnd ? marginVnd / revenueVnd : null, hours: Math.round(sum((row) => row.hours) * 10) / 10, estimated: accounts.some((row) => row.estimated) },
+    total: {
+      projects: sum((row) => row.projects),
+      pitches: sum((row) => row.pitches),
+      revenueVnd,
+      deliveryCostVnd: sum((row) => row.deliveryCostVnd),
+      costOfSaleVnd: sum((row) => row.costOfSaleVnd),
+      marginVnd,
+      marginRate: revenueVnd ? marginVnd / revenueVnd : null,
+      hours: Math.round(sum((row) => row.hours) * 10) / 10,
+      estimated: accounts.some((row) => row.estimated),
+    },
   };
 }

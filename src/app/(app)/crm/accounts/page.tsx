@@ -37,7 +37,15 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
   const tier = (ACCOUNT_TIERS as readonly string[]).includes(one(params.tier) ?? "") ? (one(params.tier) as "a") : "all";
   const mine = one(params.mine) === "1";
   const today = todayInVietnam();
-  const [t, f, te, locale, accounts, entities, people] = await Promise.all([getTranslations("crm"), formatters(), getTranslations("exports"), getLocale(), listAccounts(shell.viewer, { q, lifecycle, tier, mine }, today), listEntities(), listPersonNames()]);
+  const [t, f, te, locale, accounts, entities, people] = await Promise.all([
+    getTranslations("crm"),
+    formatters(),
+    getTranslations("exports"),
+    getLocale(),
+    listAccounts(shell.viewer, { q, lifecycle, tier, mine }, today),
+    listEntities(),
+    listPersonNames(),
+  ]);
   const activeEntities = entities.filter((entity) => entity.isActive);
   const creatable = activeEntities.filter((entity) => canCreateAccount(shell.viewer, entity.id));
   const canCreate = creatable.length > 0 || canCreateAccount(shell.viewer, null);
@@ -46,7 +54,11 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
 
   return (
     <Page width="wide">
-      <PageHeader title={t("accounts.title")} description={t("accounts.intro")} actions={<ExportButton action={exportAccountsAction} input={{ q, lifecycle, tier, mine, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
+      <PageHeader
+        title={t("accounts.title")}
+        description={t("accounts.intro")}
+        actions={<ExportButton action={exportAccountsAction} input={{ q, lifecycle, tier, mine, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />}
+      />
       <CrmTabs current="accounts" show={shell.show} />
       <form method="get" className="toolbar">
         <Input name="q" defaultValue={q} placeholder={t("accounts.search")} aria-label={t("accounts.search")} className="w-full sm:w-56" />
@@ -98,8 +110,16 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                     {row.client.name}
                   </RecordLink>
                   <span className="ml-2 font-mono text-xs text-faint">{row.client.code}</span>
-                  {row.profile?.tier ? <Badge variant="outline" className="ml-2">{t(`enums.tier.${row.profile.tier as "a"}`)}</Badge> : null}
-                  {row.profile?.creditHold ? <Badge variant="destructive" className="ml-2">{t("account.creditHold")}</Badge> : null}
+                  {row.profile?.tier ? (
+                    <Badge variant="outline" className="ml-2">
+                      {t(`enums.tier.${row.profile.tier as "a"}`)}
+                    </Badge>
+                  ) : null}
+                  {row.profile?.creditHold ? (
+                    <Badge variant="destructive" className="ml-2">
+                      {t("account.creditHold")}
+                    </Badge>
+                  ) : null}
                   {row.brands.length ? <p className="text-xs text-faint">{row.brands.map((brand) => brand.name).join(", ")}</p> : null}
                 </TableCell>
                 <TableCell>
@@ -107,13 +127,27 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                     {t(`enums.lifecycle.${(row.profile?.lifecycle ?? "prospect") as Lifecycle}`)}
                   </Badge>
                 </TableCell>
-                <TableCell>{row.managerName ? <RecordLink kind="person" id={row.client.accountManagerPersonId}>{row.managerName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {row.managerName ? (
+                    <RecordLink kind="person" id={row.client.accountManagerPersonId}>
+                      {row.managerName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell kind="number">{row.signals.openProjects}</TableCell>
                 <TableCell kind="number">{row.signals.openDeals}</TableCell>
                 {showMoney ? <TableCell kind="money">{row.seesMoney ? f.money(row.signals.pipelineVnd) : "—"}</TableCell> : null}
-                {showReceivables ? <TableCell kind="money" className={row.signals.overdueVnd > 0 ? "text-destructive" : undefined}>{row.seesReceivables ? f.money(row.signals.overdueVnd) : "—"}</TableCell> : null}
+                {showReceivables ? (
+                  <TableCell kind="money" className={row.signals.overdueVnd > 0 ? "text-destructive" : undefined}>
+                    {row.seesReceivables ? f.money(row.signals.overdueVnd) : "—"}
+                  </TableCell>
+                ) : null}
                 <TableCell kind="date">{f.date(row.signals.lastActivityOn)}</TableCell>
-                <TableCell kind="date" className={row.signals.nextFollowUpOn && row.signals.nextFollowUpOn < today ? "text-destructive" : undefined}>{f.date(row.signals.nextFollowUpOn)}</TableCell>
+                <TableCell kind="date" className={row.signals.nextFollowUpOn && row.signals.nextFollowUpOn < today ? "text-destructive" : undefined}>
+                  {f.date(row.signals.nextFollowUpOn)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -33,7 +33,13 @@ import { draftDriver } from "./model";
 type Locale = "vi" | "en";
 /** The caller: a signed-in person, or the agent's asker (a proposed end-of-day report or status update, R4). */
 type DraftUser = AgentUser;
-export type DraftResult<Draft> = { draft: Draft; driver: string; model: string; /** True when the local extractive draft is what came back. */ extractive: boolean; /** What the model call cost — zero on the local driver. Kept in the audit entry; a draft is not stored. */ usage: TokenUsage };
+export type DraftResult<Draft> = {
+  draft: Draft;
+  driver: string;
+  model: string;
+  /** True when the local extractive draft is what came back. */ extractive: boolean;
+  /** What the model call cost — zero on the local driver. Kept in the audit entry; a draft is not stored. */ usage: TokenUsage;
+};
 
 const translator = (locale: Locale) => createTranslator({ locale, messages: locale === "vi" ? vi : en, namespace: "assistant.drafts.lines" });
 const render = (lines: readonly DraftLine[], locale: Locale) => {
@@ -47,7 +53,9 @@ async function viaDriver(extractive: string, request: { asker: DraftUser; purpos
   // The driver redacts what it sends (rule 2); a fallback after a failed call still cost its tokens.
   const answer = driver.isLocal ? null : await driver.draft(request);
   const usage = answer?.usage ?? NO_USAGE;
-  return answer?.text ? { draft: answer.text, driver: driver.name, model: driver.model, extractive: false, usage } : { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true, usage };
+  return answer?.text
+    ? { draft: answer.text, driver: driver.name, model: driver.model, extractive: false, usage }
+    : { draft: extractive, driver: driver.isLocal ? driver.name : `${driver.name}:fallback`, model: driver.model, extractive: true, usage };
 }
 
 // ── 1. EOD report notes ─────────────────────────────────────────────────────────────────────
@@ -126,12 +134,25 @@ export async function draftHandoffNote(user: DraftUser, taskId: string, locale: 
   // The draft reads the task's thread as the task page does, so a private project's read leaves the same trail (Q25).
   if (loaded.facts.project) await notePrivateProjectRead(viewer, loaded.facts.project);
   const [comments, state] = await Promise.all([listComments(taskId), findState(loaded.work.stateId)]);
-  const facts = { title: loaded.task.title, description: loaded.task.description, stateName: state?.name ?? null, comments: comments.filter((comment) => !comment.deleted).map((comment) => ({ author: comment.authorName, body: comment.body })) };
+  const facts = {
+    title: loaded.task.title,
+    description: loaded.task.description,
+    stateName: state?.name ?? null,
+    comments: comments.filter((comment) => !comment.deleted).map((comment) => ({ author: comment.authorName, body: comment.body })),
+  };
   const extractive = handoffDraft(facts);
   const driver = draftDriver();
   const answer = driver.isLocal
     ? null
-    : await driver.draft({ asker: user, purpose: "draft.handoff", instruction: "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions and links. Leave a part empty when the thread does not say. Do not write anybody's contact details.", facts: threadText(facts), locale, schema: NOTE_SCHEMA });
+    : await driver.draft({
+        asker: user,
+        purpose: "draft.handoff",
+        instruction:
+          "Summarise this task's thread into a hand-off note for the next person: context, current state, what is done, next steps, open questions and links. Leave a part empty when the thread does not say. Do not write anybody's contact details.",
+        facts: threadText(facts),
+        locale,
+        schema: NOTE_SCHEMA,
+      });
   const written = asNote(answer?.text ?? null);
   const usage = answer?.usage ?? NO_USAGE;
   // The links are the thread's own: a model may drop one, never add one.

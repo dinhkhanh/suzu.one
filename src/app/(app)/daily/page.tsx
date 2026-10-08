@@ -53,7 +53,9 @@ export default async function DailyIndexPage() {
             {missing.map((date, index) => (
               <ListItem key={date} href={reportLink(date)} className="rise press" style={{ "--i": index } as CSSProperties}>
                 <span className="min-w-0 flex-1 font-medium">{dayName(date)}</span>
-                <Badge dot variant="destructive">{t("board.missing")}</Badge>
+                <Badge dot variant="destructive">
+                  {t("board.missing")}
+                </Badge>
                 <span className="text-xs text-muted-foreground">{t("index.write")}</span>
                 <ChevronRight aria-hidden className="size-4 shrink-0 text-faint" />
               </ListItem>
@@ -82,8 +84,18 @@ export default async function DailyIndexPage() {
                     {dayName(report.date)}
                   </RecordLink>
                 </TableCell>
-                <TableCell>{report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}</TableCell>
-                <TableCell kind="time" className="text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</TableCell>
+                <TableCell>
+                  {report.status === "submitted" ? (
+                    <Badge dot variant={report.late ? "warning" : "success"}>
+                      {report.late ? t("late") : t("submitted")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">{t("draft")}</Badge>
+                  )}
+                </TableCell>
+                <TableCell kind="time" className="text-muted-foreground">
+                  {t("hours", { value: hoursOf(report.minutesLogged) })}
+                </TableCell>
                 <TableCell>{report.blockers?.trim() ? <Badge variant="destructive">{t("index.hasBlockers")}</Badge> : null}</TableCell>
               </TableRow>
             ))}

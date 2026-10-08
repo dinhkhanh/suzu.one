@@ -87,10 +87,7 @@ export const brandAsset = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("brand_asset_brand_idx").on(t.brandId, t.sortOrder),
-    check("brand_asset_kind_check", sql`${t.kind} in ('logo', 'guideline', 'brochure', 'image', 'video', 'pack', 'other', 'example')`),
-  ],
+  (t) => [index("brand_asset_brand_idx").on(t.brandId, t.sortOrder), check("brand_asset_kind_check", sql`${t.kind} in ('logo', 'guideline', 'brochure', 'image', 'video', 'pack', 'other', 'example')`)],
 ).enableRLS();
 
 // A do or a don't of a section, with the picture that shows it when there is one.

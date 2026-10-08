@@ -46,7 +46,11 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
 
   const facts: { label: string; value: string; long?: boolean }[] = [{ label: t("fields.dates"), value: row.startDate === row.endDate ? date(row.startDate) : `${date(row.startDate)} – ${date(row.endDate)}` }];
   if (details.type === "attendance_correction") {
-    facts.push({ label: t("fields.cause"), value: t(`causes.${details.cause}`) }, { label: t("fields.inTime"), value: details.inTime ?? "—" }, { label: t("fields.outTime"), value: details.outTime ? `${details.outTime}${details.outNextDay ? ` (${t("fields.nextDay")})` : ""}` : "—" });
+    facts.push(
+      { label: t("fields.cause"), value: t(`causes.${details.cause}`) },
+      { label: t("fields.inTime"), value: details.inTime ?? "—" },
+      { label: t("fields.outTime"), value: details.outTime ? `${details.outTime}${details.outNextDay ? ` (${t("fields.nextDay")})` : ""}` : "—" },
+    );
     if (view.correctionCap) facts.push({ label: t("fields.capUsed"), value: t("capStatus", { used: view.correctionsUsed ?? 0, cap: view.correctionCap }) });
   } else if (details.type === "remote_work") {
     facts.push({ label: t("fields.kind"), value: t(`kinds.${details.kind}`) }, { label: t("fields.portion"), value: t(`portions.${details.portion}`) });
@@ -72,7 +76,14 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
             {view.requesterName !== view.subjectName ? (
               <>
                 {" · "}
-                {t.rich("filedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={request.requesterPersonId}>{chunks}</RecordLink> })}
+                {t.rich("filedBy", {
+                  name: view.requesterName,
+                  person: (chunks) => (
+                    <RecordLink kind="person" id={request.requesterPersonId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })}
               </>
             ) : null}
           </>
@@ -96,7 +107,15 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
         <Card size="sm">
           <CardHeader>
             <CardTitle>{t("dayNow")}</CardTitle>
-            <CardDescription>{t("dayNowLine", { first: clock(day.firstIn), last: clock(day.lastOut), worked: hours(day.workedMinutes), overtime: hours(day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes), unapproved: hours(day.otUnapprovedMinutes) })}</CardDescription>
+            <CardDescription>
+              {t("dayNowLine", {
+                first: clock(day.firstIn),
+                last: clock(day.lastOut),
+                worked: hours(day.workedMinutes),
+                overtime: hours(day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes),
+                unapproved: hours(day.otUnapprovedMinutes),
+              })}
+            </CardDescription>
           </CardHeader>
           {day.lockedAt ? <CardContent className="text-xs text-faint">{t("dayLocked")}</CardContent> : null}
         </Card>

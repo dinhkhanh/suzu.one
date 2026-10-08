@@ -38,16 +38,46 @@ const principal = (personId: string, grants: Grant[] = []): Principal => ({ pers
 
 async function addPerson(name: string, options: { entityId?: string; managerId?: string | null; start?: string; end?: string | null; workforceType?: "employee" | "probation"; gender?: "male" | "female"; code: string }) {
   const entityId = options.entityId ?? ids.media;
-  const [person] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${options.code.toLowerCase()}@suzu.group`, workforceType: options.workforceType ?? "employee", status: "active", primaryEntityId: entityId, orgUnitId: ids.video, managerId: options.managerId ?? null }).returning();
-  await db().insert(schema.employment).values({ personId: person.id, entityId, employeeCode: options.code, startDate: options.start ?? "2024-01-15", seniorityDate: options.start ?? "2024-01-15", endDate: options.end ?? null });
-  await db().insert(schema.personProfile).values({ personId: person.id, gender: options.gender ?? "male" });
+  const [person] = await db()
+    .insert(schema.person)
+    .values({
+      fullName: name,
+      searchName: name.toLowerCase(),
+      workEmail: `${options.code.toLowerCase()}@suzu.group`,
+      workforceType: options.workforceType ?? "employee",
+      status: "active",
+      primaryEntityId: entityId,
+      orgUnitId: ids.video,
+      managerId: options.managerId ?? null,
+    })
+    .returning();
+  await db()
+    .insert(schema.employment)
+    .values({ personId: person.id, entityId, employeeCode: options.code, startDate: options.start ?? "2024-01-15", seniorityDate: options.start ?? "2024-01-15", endDate: options.end ?? null });
+  await db()
+    .insert(schema.personProfile)
+    .values({ personId: person.id, gender: options.gender ?? "male" });
   return person.id;
 }
 
-const request = (overrides: Partial<LeaveInput> = {}): LeaveInput => ({ leaveTypeId: types.ANNUAL, startDate: "2026-10-05", endDate: "2026-10-06", startPortion: "full", endPortion: "full", minutes: null, reason: null, attachmentFileId: null, ...overrides });
+const request = (overrides: Partial<LeaveInput> = {}): LeaveInput => ({
+  leaveTypeId: types.ANNUAL,
+  startDate: "2026-10-05",
+  endDate: "2026-10-06",
+  startPortion: "full",
+  endPortion: "full",
+  minutes: null,
+  reason: null,
+  attachmentFileId: null,
+  ...overrides,
+});
 const self = (personId: string) => ({ personId, isHr: false });
 const balance = async (personId: string, code = "ANNUAL", year = 2026) => (await getBalances([personId], year)).get(personId)!.find((row) => row.code === code)!;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 beforeAll(async () => {
   // Saturday 19 September 2026, 10:00 in Vietnam. Only the clock is faked; timers stay real for PGlite.
@@ -69,21 +99,30 @@ beforeAll(async () => {
   ids.mai = await addPerson("Mai", { code: "SZM-0007", start: "2021-03-01", managerId: ids.head, gender: "female" });
   ids.hr = await addPerson("Hr Staff", { code: "SZM-0008", managerId: ids.owner });
   ids.leaver = await addPerson("Leaver", { code: "SZM-0009", start: "2022-01-01", end: "2026-08-31", managerId: ids.head });
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.owner, role: "owner", scopeType: "group" },
-    { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: video.id },
-    { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.owner, role: "owner", scopeType: "group" },
+      { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: video.id },
+      { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
+    ]);
 
-  await db().insert(schema.statutoryParameter).values({ key: "leave.annual", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, validFrom: "2021-01-01", status: "approved" });
+  await db()
+    .insert(schema.statutoryParameter)
+    .values({ key: "leave.annual", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, validFrom: "2021-01-01", status: "approved" });
   // The default week of SRS D15: office Monday–Friday, Saturday a work-from-home day without punches.
   const office = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
-  await db().insert(schema.workSchedule).values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } }, entityId: null, isDefault: true });
+  await db()
+    .insert(schema.workSchedule)
+    .values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } }, entityId: null, isDefault: true });
   await db().insert(schema.calendarDay).values({ date: "2026-10-08", kind: "company_off", name: "Company day" });
   for (const seed of leaveSeedRows()) {
     const [created] = await db().insert(schema.leaveType).values(seed.type).returning();
     types[created.code] = created.id;
-    if (seed.policy) await db().insert(schema.leavePolicy).values({ ...seed.policy, leaveTypeId: created.id });
+    if (seed.policy)
+      await db()
+        .insert(schema.leavePolicy)
+        .values({ ...seed.policy, leaveTypeId: created.id });
   }
 });
 
@@ -212,7 +251,14 @@ describe("the ledger job", () => {
     expect(huy).toMatchObject({ personId: ids.huy, amountCenti: 75, sourceKey: "toil:ot-4" });
     expect([(await balance(ids.nam, "COMP")).balanceCenti, (await balance(ids.mai, "COMP")).balanceCenti, (await balance(ids.huy, "COMP")).balanceCenti]).toEqual([50, 25, 75]);
     // One unknown person refuses the lot, inside the caller's transaction.
-    await expect(db().transaction((tx) => postCompensatoryLeaves(tx, [{ personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-5", reason: "OT", actorPersonId: null }, { personId: "00000000-0000-4000-8000-000000000000", amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-6", reason: "OT", actorPersonId: null }]))).rejects.toThrow("person_not_found");
+    await expect(
+      db().transaction((tx) =>
+        postCompensatoryLeaves(tx, [
+          { personId: ids.mai, amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-5", reason: "OT", actorPersonId: null },
+          { personId: "00000000-0000-4000-8000-000000000000", amountCenti: 25, effectiveDate: "2026-09-30", sourceKey: "ot-6", reason: "OT", actorPersonId: null },
+        ]),
+      ),
+    ).rejects.toThrow("person_not_found");
     expect((await balance(ids.mai, "COMP")).balanceCenti).toBe(25);
   });
 });
@@ -228,7 +274,10 @@ describe("requests", () => {
     expect((await previewLeave(ids.huy, request({ leaveTypeId: types.UNPAID, startDate: "2026-10-05", endDate: "2026-10-12" }))).counted.totalCenti).toBe(600);
     expect((await previewLeave(ids.huy, request({ startDate: "2026-09-21", endDate: "2026-10-06" }))).problems.sort()).toEqual(["leave_balance_insufficient", "leave_notice_too_short"]);
     expect((await previewLeave(ids.linh, request())).problems).toEqual(["leave_on_probation"]);
-    expect((await previewLeave(ids.huy, request({ leaveTypeId: types.MATERNITY, startDate: "2026-11-02", endDate: "2026-11-30", attachmentFileId: null }))).problems.sort()).toEqual(["leave_attachment_required", "leave_not_eligible_gender"]);
+    expect((await previewLeave(ids.huy, request({ leaveTypeId: types.MATERNITY, startDate: "2026-11-02", endDate: "2026-11-30", attachmentFileId: null }))).problems.sort()).toEqual([
+      "leave_attachment_required",
+      "leave_not_eligible_gender",
+    ]);
   });
 
   it("files with the line manager, holds the days, and books them on approval", async () => {
@@ -293,11 +342,31 @@ describe("requests", () => {
     const { after } = await cancelLeave(nam.id, self(ids.nam), "Đổi kế hoạch");
     expect(after.status).toBe("cancelled");
     expect(await balance(ids.nam)).toMatchObject({ balanceCenti: 550, usedCenti: 500 });
-    expect((await getLedger(ids.nam, { leaveTypeId: types.ANNUAL })).filter((row) => row.requestId === nam.id).map((row) => row.kind).sort()).toEqual(["refund", "use"]);
+    expect(
+      (await getLedger(ids.nam, { leaveTypeId: types.ANNUAL }))
+        .filter((row) => row.requestId === nam.id)
+        .map((row) => row.kind)
+        .sort(),
+    ).toEqual(["refund", "use"]);
     expect(await getLeaveOnDays([ids.nam], "2026-10-05", "2026-10-06")).toEqual([]);
 
     // Sick leave may be filed after the fact; once it has started only HR cancels it.
-    const [file] = await db().insert(schema.storedFile).values({ ownerType: "leave_attachment", ownerId: ids.huy, entityId: ids.media, tier: "personal", fileName: "giay-kham.pdf", contentType: "application/pdf", sizeBytes: 1000, bucket: "private", objectPath: "k/giay-kham.pdf", status: "ready", uploadedByPersonId: ids.huy }).returning();
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        ownerType: "leave_attachment",
+        ownerId: ids.huy,
+        entityId: ids.media,
+        tier: "personal",
+        fileName: "giay-kham.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1000,
+        bucket: "private",
+        objectPath: "k/giay-kham.pdf",
+        status: "ready",
+        uploadedByPersonId: ids.huy,
+      })
+      .returning();
     const sick = await submitLeave(ids.huy, request({ leaveTypeId: types.SICK, startDate: "2026-09-16", endDate: "2026-09-17", attachmentFileId: file.id }), self(ids.huy));
     await decideLeave(ids.head, sick.approvalRequestId, { action: "approve", comment: null });
     expect(await fails(cancelLeave(sick.leaveRequest.id, self(ids.huy), null))).toBe("leave_cancel_started");
@@ -306,7 +375,10 @@ describe("requests", () => {
     expect(await fails(cancelLeave(sick.leaveRequest.id, { personId: ids.hr, isHr: true }, "Nhập nhầm ngày"))).toBe("leave_period_locked");
     await db().delete(schema.timesheetPeriod).where(eq(schema.timesheetPeriod.id, period.id));
     expect((await cancelLeave(sick.leaveRequest.id, { personId: ids.hr, isHr: true }, "Nhập nhầm ngày")).after.status).toBe("cancelled");
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.leave_cancelled")));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.leave_cancelled")));
     expect(notices).toHaveLength(1);
     // Someone else's doctor's note is not an attachment of mine.
     expect(await fails(submitLeave(ids.mai, request({ leaveTypeId: types.SICK, startDate: "2026-09-16", endDate: "2026-09-16", attachmentFileId: file.id }), self(ids.mai)))).toBe("file_not_found");
@@ -324,7 +396,22 @@ describe("requests", () => {
   });
 
   it("puts a long absence on the timeline and calls it off with the leave", async () => {
-    const [file] = await db().insert(schema.storedFile).values({ ownerType: "leave_attachment", ownerId: ids.mai, entityId: ids.media, tier: "personal", fileName: "giay-hen-sinh.pdf", contentType: "application/pdf", sizeBytes: 1000, bucket: "private", objectPath: "k/giay-hen-sinh.pdf", status: "ready", uploadedByPersonId: ids.mai }).returning();
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        ownerType: "leave_attachment",
+        ownerId: ids.mai,
+        entityId: ids.media,
+        tier: "personal",
+        fileName: "giay-hen-sinh.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1000,
+        bucket: "private",
+        objectPath: "k/giay-hen-sinh.pdf",
+        status: "ready",
+        uploadedByPersonId: ids.mai,
+      })
+      .returning();
     const filed = await submitLeave(ids.mai, request({ leaveTypeId: types.MATERNITY, startDate: "2026-11-02", endDate: "2027-05-01", attachmentFileId: file.id }), self(ids.mai));
     const { leaveRequest } = await decideLeave(ids.head, filed.approvalRequestId, { action: "approve", comment: null });
     const [event] = await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.id, leaveRequest.lifecycleEventId!));
@@ -345,10 +432,54 @@ describe("requests", () => {
   });
 
   it("follows an entity's own policy from its start date", async () => {
-    const { before, after } = await saveLeavePolicy({ leaveTypeId: types.ANNUAL, entityId: ids.media, validFrom: "2026-10-01", accrualMethod: "monthly_accrual", baseSource: "statutory_annual", fixedDaysCenti: 0, extraDaysCenti: 200, seniorityBonus: true, prorate: true, rounding: "half_day", probationRule: "accrue_and_use", carryOverCapCenti: 500, carryOverExpiry: "03-31", payoutOnTermination: true, allowNegativeCenti: 0, note: null }, ids.hr);
+    const { before, after } = await saveLeavePolicy(
+      {
+        leaveTypeId: types.ANNUAL,
+        entityId: ids.media,
+        validFrom: "2026-10-01",
+        accrualMethod: "monthly_accrual",
+        baseSource: "statutory_annual",
+        fixedDaysCenti: 0,
+        extraDaysCenti: 200,
+        seniorityBonus: true,
+        prorate: true,
+        rounding: "half_day",
+        probationRule: "accrue_and_use",
+        carryOverCapCenti: 500,
+        carryOverExpiry: "03-31",
+        payoutOnTermination: true,
+        allowNegativeCenti: 0,
+        note: null,
+      },
+      ids.hr,
+    );
     expect(before).toBeNull();
     expect(after.validTo).toBeNull();
-    expect(await fails(saveLeavePolicy({ leaveTypeId: types.ANNUAL, entityId: ids.media, validFrom: "2026-09-01", accrualMethod: "none", baseSource: "fixed", fixedDaysCenti: 0, extraDaysCenti: 0, seniorityBonus: false, prorate: true, rounding: "none", probationRule: "accrue_and_use", carryOverCapCenti: null, carryOverExpiry: null, payoutOnTermination: false, allowNegativeCenti: 0, note: null }, ids.hr))).toBe("leave_policy_later_version");
+    expect(
+      await fails(
+        saveLeavePolicy(
+          {
+            leaveTypeId: types.ANNUAL,
+            entityId: ids.media,
+            validFrom: "2026-09-01",
+            accrualMethod: "none",
+            baseSource: "fixed",
+            fixedDaysCenti: 0,
+            extraDaysCenti: 0,
+            seniorityBonus: false,
+            prorate: true,
+            rounding: "none",
+            probationRule: "accrue_and_use",
+            carryOverCapCenti: null,
+            carryOverExpiry: null,
+            payoutOnTermination: false,
+            allowNegativeCenti: 0,
+            note: null,
+          },
+          ids.hr,
+        ),
+      ),
+    ).toBe("leave_policy_later_version");
     // Probation may use leave under Media's policy from October on.
     expect((await previewLeave(ids.linh, request({ startDate: "2026-10-05", endDate: "2026-10-05" }))).problems).toEqual([]);
   });

@@ -35,11 +35,21 @@ type Who = "owner" | "mai" | "bao" | "long" | "tam" | "huy" | "linh" | "chi" | "
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des" | "editor" | "designer", string>;
 const viewers = {} as Record<Who, Viewer>;
 const kpis = {} as Record<"onTime" | "output" | "rounds" | "csat", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error & { details?: unknown }) => error.message,
+  );
 const TODAY = "2027-05-10";
 const actor = (who: Who) => ({ principal: viewers[who].principal, personId: ids[who] });
 const assignmentOf = async (who: Who, code: string) => (await listAssignments({ personIds: [ids[who]] })).find((row) => row.kpi.code === code && row.fromPeriod === "2027-01")!;
-const entry = (assignmentId: string, periodKey: string, actual: string | null, extra: { notApplicable?: boolean; note?: string } = {}) => ({ assignmentId, periodKey, actual, notApplicable: extra.notApplicable ?? false, note: extra.note ?? null });
+const entry = (assignmentId: string, periodKey: string, actual: string | null, extra: { notApplicable?: boolean; note?: string } = {}) => ({
+  assignmentId,
+  periodKey,
+  actual,
+  notApplicable: extra.notApplicable ?? false,
+  note: extra.note ?? null,
+});
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -66,12 +76,20 @@ beforeAll(async () => {
   ];
   let number = 0;
   for (const [key, entityId, departmentId, manager, role, scope, positionId] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, orgUnitId: departmentId, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, orgUnitId: departmentId, managerId: manager ? ids[manager] : null })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     viewers[key] = { principal: { personId: row.id, workforceType: "employee", grants } satisfies Principal, personId: row.id };
-    const [employment] = await db().insert(schema.employment).values({ personId: row.id, entityId, employeeCode: `${entityId === szm.id ? "SZM" : "SZC"}-${String(++number).padStart(4, "0")}`, startDate: "2025-01-01", seniorityDate: "2025-01-01" }).returning();
-    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType: "employee", orgUnitId: departmentId, departmentId, positionId, managerId: manager ? ids[manager] : null, validFrom: "2025-01-01" });
+    const [employment] = await db()
+      .insert(schema.employment)
+      .values({ personId: row.id, entityId, employeeCode: `${entityId === szm.id ? "SZM" : "SZC"}-${String(++number).padStart(4, "0")}`, startDate: "2025-01-01", seniorityDate: "2025-01-01" })
+      .returning();
+    await db()
+      .insert(schema.assignment)
+      .values({ employmentId: employment.id, workforceType: "employee", orgUnitId: departmentId, departmentId, positionId, managerId: manager ? ids[manager] : null, validFrom: "2025-01-01" });
   }
 
   const library = [
@@ -193,7 +211,12 @@ describe("closing a month", () => {
     expect((refused as { details: { blockers: unknown[] } }).details.blockers).toHaveLength(4);
 
     // Linh gets her figures; Huy's OUTPUT stays missing and is overridden.
-    for (const [code, value] of [["ON_TIME", "76"], ["OUTPUT", "20"], ["ROUNDS", "0"]] as const) await saveActuals(ids.long, [entry((await assignmentOf("linh", code)).id, "2027-01", value)], "manual");
+    for (const [code, value] of [
+      ["ON_TIME", "76"],
+      ["OUTPUT", "20"],
+      ["ROUNDS", "0"],
+    ] as const)
+      await saveActuals(ids.long, [entry((await assignmentOf("linh", code)).id, "2027-01", value)], "manual");
     const closed = await closeMonth(ids.bao, { entityId: ids.szm, month: "2027-01", overrideReason: "Chưa có số liệu sản lượng của Huy, chốt để kịp xét thưởng" }, TODAY);
     expect(closed).toMatchObject({ people: 2, scored: 2 });
     expect(closed.exceptions.map((item) => item.kpiCode)).toEqual(["OUTPUT"]);
@@ -246,8 +269,15 @@ describe("closing a month", () => {
     expect(card).toMatchObject({ state: "closed", stored: { revision: 2 } });
     expect(card.trace.scoreBp).toBe(9375);
     expect(card.superseded.map((row) => [row.revision, row.scoreBp])).toEqual([[1, 6000]]);
-    const rows = await db().select().from(schema.kpiScore).where(and(eq(schema.kpiScore.personId, ids.huy), eq(schema.kpiScore.month, "2027-01"))).orderBy(schema.kpiScore.revision);
-    expect(rows.map((row) => [row.revision, row.scoreBp, row.supersededAt !== null])).toEqual([[1, 6000, true], [2, 9375, false]]);
+    const rows = await db()
+      .select()
+      .from(schema.kpiScore)
+      .where(and(eq(schema.kpiScore.personId, ids.huy), eq(schema.kpiScore.month, "2027-01")))
+      .orderBy(schema.kpiScore.revision);
+    expect(rows.map((row) => [row.revision, row.scoreBp, row.supersededAt !== null])).toEqual([
+      [1, 6000, true],
+      [2, 9375, false],
+    ]);
   });
 });
 
@@ -259,7 +289,16 @@ describe("the year, for Phase 8", () => {
     expect(await closeBlockers(ids.szm, "2027-02")).toEqual([]);
     await closeMonth(ids.bao, { entityId: ids.szm, month: "2027-02", overrideReason: null }, TODAY);
     // March carries the quarter: ON_TIME 95 → 100 %, OUTPUT n/a, ROUNDS 4 → 50 %, CSAT 4.05 of 4.5 → 90 %: (40 × 10000 + 10 × 5000 + 20 × 9000) / 70 = 9000
-    await saveActuals(ids.tam, [entry((await assignmentOf("huy", "ON_TIME")).id, "2027-03", "95"), entry((await assignmentOf("huy", "OUTPUT")).id, "2027-03", null, { notApplicable: true, note: "Nghỉ phép nửa tháng" }), entry((await assignmentOf("huy", "ROUNDS")).id, "2027-03", "4"), entry((await assignmentOf("huy", "CSAT")).id, "2027-Q1", "4,05")], "manual");
+    await saveActuals(
+      ids.tam,
+      [
+        entry((await assignmentOf("huy", "ON_TIME")).id, "2027-03", "95"),
+        entry((await assignmentOf("huy", "OUTPUT")).id, "2027-03", null, { notApplicable: true, note: "Nghỉ phép nửa tháng" }),
+        entry((await assignmentOf("huy", "ROUNDS")).id, "2027-03", "4"),
+        entry((await assignmentOf("huy", "CSAT")).id, "2027-Q1", "4,05"),
+      ],
+      "manual",
+    );
     expect((await getScorecard(ids.huy, "2027-03")).trace.scoreBp).toBe(9000);
 
     // March is still open: the year is January and February.
@@ -267,7 +306,10 @@ describe("the year, for Phase 8", () => {
     const year = await getKpiResults({ personId: ids.huy, year: 2027 });
     expect(year).toMatchObject({ scoreBp: 9250, closedMonths: ["2027-01", "2027-02"], final: false });
     expect(year.openMonths).toEqual(["2027-03", "2027-04", "2027-05", "2027-06", "2027-07", "2027-08", "2027-09", "2027-10", "2027-11", "2027-12"]);
-    expect(year.months.map((month) => [month.month, month.scoreBp, month.revision])).toEqual([["2027-01", 9375, 2], ["2027-02", 9125, 1]]);
+    expect(year.months.map((month) => [month.month, month.scoreBp, month.revision])).toEqual([
+      ["2027-01", 9375, 2],
+      ["2027-02", 9125, 1],
+    ]);
 
     // Changing the library afterwards changes nothing that is stored.
     await db().update(schema.kpiDefinition).set({ capBp: 10000, name: "Renamed" }).where(eq(schema.kpiDefinition.id, kpis.rounds));
@@ -276,7 +318,7 @@ describe("the year, for Phase 8", () => {
     const both = await getPerformanceResults({ personId: ids.huy, year: 2027 });
     expect(both.kpi.scoreBp).toBe(9250);
     expect(both.okr.individual).toEqual({ progressBp: null, goals: [] });
-    expect((await getKpiResults({ personId: ids.tam, year: 2027 }))).toMatchObject({ scoreBp: null, closedMonths: [], openMonths: [], final: false });
+    expect(await getKpiResults({ personId: ids.tam, year: 2027 })).toMatchObject({ scoreBp: null, closedMonths: [], openMonths: [], final: false });
 
     // Read for several people at once (the year's results): each gets their own figure, nobody else's.
     const many = await getKpiResultsOfPeople({ personIds: [ids.huy, ids.tam, ids.huy], year: 2027 });
@@ -289,16 +331,33 @@ describe("the year, for Phase 8", () => {
 describe("dashboards", () => {
   it("the manager sees the line below; the overview only whole entities in reach", async () => {
     const team = await getTeamDashboard(viewers.long, "2027-01");
-    expect(team.map((row) => [row.fullName, row.kpi?.state ?? null, row.kpi?.scoreBp ?? null, row.canEnter])).toEqual([["huy", "closed", 9375, true], ["linh", "closed", 9250, true], ["tam", null, null, true]]);
-    expect((await getTeamDashboard(viewers.huy, "2027-01"))).toEqual([]);
+    expect(team.map((row) => [row.fullName, row.kpi?.state ?? null, row.kpi?.scoreBp ?? null, row.canEnter])).toEqual([
+      ["huy", "closed", 9375, true],
+      ["linh", "closed", 9250, true],
+      ["tam", null, null, true],
+    ]);
+    expect(await getTeamDashboard(viewers.huy, "2027-01")).toEqual([]);
     expect((await getTeamDashboard(viewers.chi, "2027-01")).map((row) => row.fullName)).toEqual(["khoi"]);
 
     expect(await getOverview(viewers.long, "2027-01", ["2027-01", "2027-02"])).toBeNull();
     const szm = await getOverview(viewers.bao, "2027-01", ["2027-01", "2027-02", "2027-03"]);
     expect(szm!.entities.map((entity) => entity.code)).toEqual(["SZM"]);
-    expect(szm!.entities[0]).toMatchObject({ state: "closed", spread: { people: 2, averageBp: 9313, minBp: 9250, maxBp: 9375 }, months: [{ month: "2027-01", status: "closed", overridden: false }, { month: "2027-02", status: "closed" }, { month: "2027-03", status: "open" }] });
+    expect(szm!.entities[0]).toMatchObject({
+      state: "closed",
+      spread: { people: 2, averageBp: 9313, minBp: 9250, maxBp: 9375 },
+      months: [
+        { month: "2027-01", status: "closed", overridden: false },
+        { month: "2027-02", status: "closed" },
+        { month: "2027-03", status: "open" },
+      ],
+    });
     const all = await getOverview(viewers.owner, "2027-03", ["2027-03"]);
-    expect(all!.entities.map((entity) => [entity.code, entity.state])).toEqual([["SZC", "open"], ["SZM", "open"]].sort());
+    expect(all!.entities.map((entity) => [entity.code, entity.state])).toEqual(
+      [
+        ["SZC", "open"],
+        ["SZM", "open"],
+      ].sort(),
+    );
     expect(spreadOf([1000, null, 3000, 2000, 4000])).toEqual({ people: 4, averageBp: 2500, minBp: 1000, medianBp: 2500, maxBp: 4000 });
   });
 });
@@ -311,7 +370,18 @@ describe("import", () => {
     const [huy, khoi, bao] = [await codeOf("huy"), await codeOf("khoi"), await codeOf("bao")];
     const user = { principal: viewers.bao.principal, person: { id: ids.bao } };
     const { problems } = await resolveKpiActualRows(
-      [row(2, huy, "ON_TIME", "2027-04", "91,5"), row(3, khoi, "ON_TIME", "2027-04", "90"), row(4, "SZM-9999", "ON_TIME", "2027-04", "90"), row(5, huy, "NOPE", "2027-04", "1"), row(6, huy, "CSAT", "2027-04", "4"), row(7, huy, "ON_TIME", "2027-Q2", "90"), row(8, huy, "ON_TIME", "2027-01", "90"), row(9, huy, "ON_TIME", "2027-04", "92"), row(10, huy, "ROUNDS", "2027-04", "1"), row(11, bao, "ON_TIME", "2027-04", "90")],
+      [
+        row(2, huy, "ON_TIME", "2027-04", "91,5"),
+        row(3, khoi, "ON_TIME", "2027-04", "90"),
+        row(4, "SZM-9999", "ON_TIME", "2027-04", "90"),
+        row(5, huy, "NOPE", "2027-04", "1"),
+        row(6, huy, "CSAT", "2027-04", "4"),
+        row(7, huy, "ON_TIME", "2027-Q2", "90"),
+        row(8, huy, "ON_TIME", "2027-01", "90"),
+        row(9, huy, "ON_TIME", "2027-04", "92"),
+        row(10, huy, "ROUNDS", "2027-04", "1"),
+        row(11, bao, "ON_TIME", "2027-04", "90"),
+      ],
       user,
     );
     expect(problems.map((problem) => [problem.row, problem.code])).toEqual([
@@ -334,7 +404,10 @@ describe("import", () => {
     expect(first).toEqual({ saved: 2, unchanged: 0, people: 1 });
     const again = await db().transaction((tx) => commitKpiActualRows([row(2, huy, "ON_TIME", "2027-04", "93"), row(3, huy, "CSAT", "2027-Q2", "4,2")], tx as never, user));
     expect(again).toEqual({ saved: 1, unchanged: 1, people: 1 });
-    const [actual] = await db().select().from(schema.kpiActual).where(and(eq(schema.kpiActual.personId, ids.huy), eq(schema.kpiActual.periodKey, "2027-04"), eq(schema.kpiActual.kpiId, kpis.onTime)));
+    const [actual] = await db()
+      .select()
+      .from(schema.kpiActual)
+      .where(and(eq(schema.kpiActual.personId, ids.huy), eq(schema.kpiActual.periodKey, "2027-04"), eq(schema.kpiActual.kpiId, kpis.onTime)));
     expect(actual).toMatchObject({ actualValue: 9300, source: "import", enteredByPersonId: ids.bao });
     expect(await db().select().from(schema.kpiActual).where(eq(schema.kpiActual.periodKey, "2027-Q2"))).toHaveLength(1);
   });

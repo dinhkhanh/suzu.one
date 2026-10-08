@@ -105,7 +105,18 @@ export function RequestForm({
       <FieldErrors value={touched ? problems : {}}>
         {shown.map((field) => (
           <Field key={field.key} name={field.key} label={`${label(field)}${field.required ? " *" : ""}`}>
-            <FieldInput field={field} value={values[field.key]} set={(value) => set(field.key, value)} locale={locale} people={people} entities={entities} fileNames={fileNames} upload={(file) => upload(field, file)} uploading={uploading === field.key} t={t} />
+            <FieldInput
+              field={field}
+              value={values[field.key]}
+              set={(value) => set(field.key, value)}
+              locale={locale}
+              people={people}
+              entities={entities}
+              fileNames={fileNames}
+              upload={(file) => upload(field, file)}
+              uploading={uploading === field.key}
+              t={t}
+            />
             {hint(field) ? <p className="text-xs text-muted-foreground">{hint(field)}</p> : null}
           </Field>
         ))}

@@ -35,7 +35,17 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
     { key: "email", label: t("form.email"), value: candidate.email ?? "—", kind: "email" },
     { key: "phone", label: t("form.phone"), value: candidate.phone ?? "—", kind: "phone" },
     { key: "source", label: t("columns.source"), value: t(`source.${candidate.source}`) },
-    { key: "referredBy", label: t("form.referredBy"), value: view.referredByName ? <RecordLink kind="person" id={candidate.referredByPersonId}>{view.referredByName}</RecordLink> : "—" },
+    {
+      key: "referredBy",
+      label: t("form.referredBy"),
+      value: view.referredByName ? (
+        <RecordLink kind="person" id={candidate.referredByPersonId}>
+          {view.referredByName}
+        </RecordLink>
+      ) : (
+        "—"
+      ),
+    },
     { key: "tags", label: t("columns.tags"), value: candidate.tags.length > 0 ? candidate.tags.join(", ") : "—" },
     // The language their letters are written in, and whether they asked to be kept (FR-REC-13).
     { key: "locale", label: t("email.language"), value: candidate.locale === "en" ? "English" : "Tiếng Việt" },
@@ -135,7 +145,9 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
                   <TableCell>{row.stageName}</TableCell>
                   <TableCell>{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(row.status)}>{t(`applicationStatus.${row.status}`)}</Badge>
+                    <Badge dot variant={statusTone(row.status)}>
+                      {t(`applicationStatus.${row.status}`)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

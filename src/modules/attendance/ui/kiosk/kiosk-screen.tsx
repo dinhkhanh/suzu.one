@@ -117,7 +117,11 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   useEffect(() => {
     let lock: WakeLockSentinel | null = null;
     const keepAwake = () => {
-      if (document.visibilityState === "visible" && "wakeLock" in navigator) navigator.wakeLock.request("screen").then((sentinel) => (lock = sentinel), () => undefined);
+      if (document.visibilityState === "visible" && "wakeLock" in navigator)
+        navigator.wakeLock.request("screen").then(
+          (sentinel) => (lock = sentinel),
+          () => undefined,
+        );
     };
     keepAwake();
     document.addEventListener("visibilitychange", keepAwake);

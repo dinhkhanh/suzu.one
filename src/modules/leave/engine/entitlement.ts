@@ -183,7 +183,11 @@ export type AccrualPosting = { effectiveDate: IsoDate; amountCenti: number; kind
  */
 export function accrualPostings(input: Omit<TargetInput, "policy"> & { policyAt: (date: IsoDate) => PolicyRules | null; given: readonly { effectiveDate: IsoDate; amountCenti: number }[] }): AccrualPosting[] {
   const { year, asOf, employment } = input;
-  const lastGiven = input.given.map((row) => row.effectiveDate).sort().at(-1) ?? "";
+  const lastGiven =
+    input.given
+      .map((row) => row.effectiveDate)
+      .sort()
+      .at(-1) ?? "";
   const checkpoints = [...new Set([...Array.from({ length: 12 }, (_, index) => monthStart(year, index + 1)), employment.startDate, asOf])].filter((date) => date <= asOf && date > lastGiven && date.startsWith(`${year}-`)).sort();
   let given = input.given.reduce((sum, row) => sum + row.amountCenti, 0);
   const postings: AccrualPosting[] = [];

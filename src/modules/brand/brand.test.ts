@@ -56,7 +56,11 @@ import {
   type BrandKitRow,
 } from "./service";
 
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const starter = STARTER_SECTIONS.map((section) => ({ kind: section.kind, title: section.key, titleEn: section.key }));
 const svg = new TextEncoder().encode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>');
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
@@ -66,7 +70,18 @@ const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ne
 let actor: { personId: string };
 let kit: BrandKitRow;
 
-const details = (over: Partial<BrandKitDetails> = {}): BrandKitDetails => ({ name: kit.name, slug: kit.slug, tagline: null, description: null, descriptionEn: null, websiteUrl: null, contactEmail: null, visibility: kit.visibility, entityId: kit.entityId, ...over });
+const details = (over: Partial<BrandKitDetails> = {}): BrandKitDetails => ({
+  name: kit.name,
+  slug: kit.slug,
+  tagline: null,
+  description: null,
+  descriptionEn: null,
+  websiteUrl: null,
+  contactEmail: null,
+  visibility: kit.visibility,
+  entityId: kit.entityId,
+  ...over,
+});
 
 /** The whole upload, as the browser would do it: announce, "PUT" the bytes, complete. */
 async function upload(fileName: string, bytes: Uint8Array, extra: Partial<{ kind: "logo" | "example" | "brochure"; isPublic: boolean; sectionId: string | null }> = {}) {

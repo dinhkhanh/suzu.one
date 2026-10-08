@@ -64,7 +64,10 @@ beforeAll(async () => {
     ["ngo", szm.id, vid.id, null, null, "collaborator"],
   ];
   for (const [key, entityId, departmentId, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     const principal: Principal = { personId: row.id, workforceType, grants };
@@ -72,20 +75,31 @@ beforeAll(async () => {
     users[key] = { person: { id: row.id, primaryEntityId: entityId, orgUnitId: departmentId, orgUnitPath: departmentId ? [departmentId] : [] }, principal };
   }
 
-  const space = async (key: string, over: { entityId?: string | null }, access: { subjectKey: string; level: "view" | "edit" }[]) => (await createSpace({ key, name: key, description: null, icon: null, entityId: over.entityId ?? null, kind: "open", sortOrder: 0 }, ids.owner, access)).id;
-  const handbook = await space("so-tay", {}, [{ subjectKey: "all", level: "view" }, { subjectKey: "role:hr_admin", level: "edit" }]);
+  const space = async (key: string, over: { entityId?: string | null }, access: { subjectKey: string; level: "view" | "edit" }[]) =>
+    (await createSpace({ key, name: key, description: null, icon: null, entityId: over.entityId ?? null, kind: "open", sortOrder: 0 }, ids.owner, access)).id;
+  const handbook = await space("so-tay", {}, [
+    { subjectKey: "all", level: "view" },
+    { subjectKey: "role:hr_admin", level: "edit" },
+  ]);
   const payrollDesk = await space("bang-luong", {}, [{ subjectKey: "role:hr_admin", level: "edit" }]);
   const szmOnly = await space("szm", { entityId: ids.szm }, [{ subjectKey: `entity:${ids.szm}`, level: "view" }]);
 
   const publish = async (spaceId: string, title: string, content: ReturnType<typeof doc>, access?: { subjectKey: string; level: "view" | "edit" }[]) => {
     const page = await createPage({ spaceId, parentId: null, title, content }, { personId: ids.hr });
     if (access) await db().update(schema.kbPage).set({ accessRootId: page.id }).where(eq(schema.kbPage.id, page.id));
-    if (access) await db().insert(schema.kbAccess).values(access.map((row) => ({ spaceId, pageId: page.id, ...row })));
+    if (access)
+      await db()
+        .insert(schema.kbAccess)
+        .values(access.map((row) => ({ spaceId, pageId: page.id, ...row })));
     await publishPage(page.id, { personId: ids.hr });
     return page.id;
   };
 
-  await publish(handbook, "Quy định nghỉ phép", doc(heading(1, "Số ngày nghỉ"), paragraph("Phép năm 12 ngày mỗi năm, cộng 1 ngày cho mỗi 5 năm thâm niên."), heading(1, "Cách xin nghỉ"), paragraph("Tạo đơn trong mục Nghỉ phép; nghỉ từ 5 ngày liên tục cần trưởng phòng duyệt.")));
+  await publish(
+    handbook,
+    "Quy định nghỉ phép",
+    doc(heading(1, "Số ngày nghỉ"), paragraph("Phép năm 12 ngày mỗi năm, cộng 1 ngày cho mỗi 5 năm thâm niên."), heading(1, "Cách xin nghỉ"), paragraph("Tạo đơn trong mục Nghỉ phép; nghỉ từ 5 ngày liên tục cần trưởng phòng duyệt.")),
+  );
   await publish(handbook, "Giờ làm việc và chấm công", doc(heading(1, "Giờ làm việc"), paragraph("Văn phòng làm việc từ 8:30 đến 17:30, nghỉ trưa 12:00 đến 13:00.")));
   // The page that tries to take the assistant over.
   await publish(
@@ -101,7 +115,9 @@ beforeAll(async () => {
   // Compensation, on a page only HR may open.
   await publish(payrollDesk, "Bảng lương tháng 9", doc(heading(1, "Bảng lương"), paragraph(`${SALARY}. Lương tháng của Lý Minh Khôi là 21.000.000 đồng.`)));
   // A restricted subtree inside a space everybody can read.
-  await publish(handbook, "Dành cho quản lý — trao đổi về lương", doc(heading(1, "Trao đổi về lương"), paragraph("Khi nhân viên hỏi về thang lương, quản lý dẫn chiếu khung lương nội bộ và hẹn gặp phòng Nhân sự.")), [{ subjectKey: "role:department_head", level: "view" }]);
+  await publish(handbook, "Dành cho quản lý — trao đổi về lương", doc(heading(1, "Trao đổi về lương"), paragraph("Khi nhân viên hỏi về thang lương, quản lý dẫn chiếu khung lương nội bộ và hẹn gặp phòng Nhân sự.")), [
+    { subjectKey: "role:department_head", level: "view" },
+  ]);
   await publish(szmOnly, "Quy định nghỉ bù riêng của SuZu Media", doc(heading(1, "Nghỉ bù"), paragraph("Nhân viên SuZu Media được nghỉ bù thêm 2 ngày sau mùa cao điểm.")));
   await embedPendingChunks();
 });
@@ -162,7 +178,9 @@ describe("a page that tries to give orders", () => {
     const passages = await retrievePassages(viewers.huy, "ghi chú nội bộ admin mode");
     const hostile = passages.find((passage) => passage.content.includes("admin mode"));
     expect(hostile).toBeDefined();
-    const { system, user } = assemblePrompt("Ghi chú nội bộ nói gì?", [{ index: 1, pageTitle: hostile!.pageTitle, spaceName: hostile!.spaceName, headingPath: hostile!.headingPath, href: `/kb/pages/${hostile!.pageId}`, content: hostile!.content }]);
+    const { system, user } = assemblePrompt("Ghi chú nội bộ nói gì?", [
+      { index: 1, pageTitle: hostile!.pageTitle, spaceName: hostile!.spaceName, headingPath: hostile!.headingPath, href: `/kb/pages/${hostile!.pageId}`, content: hostile!.content },
+    ]);
     expect(system).not.toContain("admin mode");
     expect(user.match(/<\/source>/g)).toHaveLength(1);
     expect(user.match(/<\/reference-material>/g)).toHaveLength(1);
@@ -188,7 +206,10 @@ describe("conversations", () => {
     // Zero, not null: this answer was counted and cost nothing. Null is "from before usage was kept".
     expect(stored).toMatchObject({ driver: "local-extractive", model: "local-extractive", inputTokens: 0, outputTokens: 0 });
     // The asker's own turn has no cost to record.
-    const [question] = await db().select().from(schema.aiMessage).where(and(eq(schema.aiMessage.conversationId, result.conversationId), eq(schema.aiMessage.role, "user")));
+    const [question] = await db()
+      .select()
+      .from(schema.aiMessage)
+      .where(and(eq(schema.aiMessage.conversationId, result.conversationId), eq(schema.aiMessage.role, "user")));
     expect(question).toMatchObject({ inputTokens: null, outputTokens: null });
     await deleteConversation(ids.huy, result.conversationId);
   });

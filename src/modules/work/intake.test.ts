@@ -28,7 +28,11 @@ import { viewerOfPerson } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "huy" | "duc" | "khoi" | "freelancer" | "video" | "project" | "form", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => ({ message: error.message, details: error.details }));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error & { details?: unknown }) => ({ message: error.message, details: error.details }),
+  );
 const fields = [
   { label: "Nội dung cần quay", type: "long_text" as const, required: true },
   { label: "Định dạng", type: "select" as const, required: true, options: ["Reels", "TVC"] },
@@ -40,9 +44,18 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id });
-  const people = [["long", szm.id, "employee"], ["huy", szm.id, "employee"], ["duc", szm.id, "employee"], ["khoi", szc.id, "employee"], ["freelancer", szm.id, "collaborator"]] as const;
+  const people = [
+    ["long", szm.id, "employee"],
+    ["huy", szm.id, "employee"],
+    ["duc", szm.id, "employee"],
+    ["khoi", szc.id, "employee"],
+    ["freelancer", szm.id, "collaborator"],
+  ] as const;
   for (const [key, entityId, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, workforceType }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, workforceType })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
@@ -54,8 +67,12 @@ beforeAll(async () => {
 describe("intake forms", () => {
   it("a form needs sound questions and a project of its own team", async () => {
     expect(await fails(saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: null, projectId: null, audience: "entity", fields: [], isActive: true }, ids.long))).toMatchObject({ message: "intake_fields_required" });
-    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: null, audience: "entity", fields: [{ label: "Chọn", type: "select", required: true, options: ["một"] }], isActive: true }, ids.long))).toMatchObject({ message: "intake_select_needs_options" });
-    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: "00000000-0000-4000-8000-000000000000", audience: "entity", fields, isActive: true }, ids.long))).toMatchObject({ message: "project_not_found" });
+    expect(
+      await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: null, audience: "entity", fields: [{ label: "Chọn", type: "select", required: true, options: ["một"] }], isActive: true }, ids.long)),
+    ).toMatchObject({ message: "intake_select_needs_options" });
+    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: "00000000-0000-4000-8000-000000000000", audience: "entity", fields, isActive: true }, ids.long))).toMatchObject({
+      message: "project_not_found",
+    });
     const { after } = await saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: "Gửi trước ít nhất 5 ngày", projectId: ids.project, audience: "entity", fields, isActive: true }, ids.long);
     ids.form = after.id;
     expect(after.fields.map((field) => field.key)).toEqual(["f1", "f2", "f3"]);
@@ -64,23 +81,50 @@ describe("intake forms", () => {
   it("is open to the team's entity and its members — not to other entities, not to collaborators", async () => {
     const team = teamFacts((await findIntakeForm(ids.form))!.team);
     const viewers = Object.fromEntries(await Promise.all((["long", "huy", "duc", "khoi", "freelancer"] as const).map(async (key) => [key, (await viewerOfPerson(db(), ids[key]))!] as const)));
-    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "entity")])).toEqual([["long", true], ["huy", true], ["duc", true], ["khoi", false], ["freelancer", false]]);
+    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "entity")])).toEqual([
+      ["long", true],
+      ["huy", true],
+      ["duc", true],
+      ["khoi", false],
+      ["freelancer", false],
+    ]);
     // A form opened to the group lets the sister company in — still not the collaborator.
-    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "group")])).toEqual([["long", true], ["huy", true], ["duc", true], ["khoi", true], ["freelancer", false]]);
+    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "group")])).toEqual([
+      ["long", true],
+      ["huy", true],
+      ["duc", true],
+      ["khoi", true],
+      ["freelancer", false],
+    ]);
     expect((await listOpenIntakeForms(viewers.duc)).map((form) => form.name)).toEqual(["Yêu cầu quay dựng"]);
     expect(await listOpenIntakeForms(viewers.khoi)).toEqual([]);
     expect(await listOpenIntakeForms(viewers.freelancer)).toEqual([]);
   });
 
   it("refuses bad answers with every problem at once", async () => {
-    expect(await fails(submitIntake(ids.form, { title: "Clip 20/10", answers: { f2: "Poster", f3: "20/10" } }, { personId: ids.duc, fullName: "Duc" }))).toEqual({ message: "intake_answers_invalid", details: { problems: [{ key: "f1", problem: "required" }, { key: "f2", problem: "not_an_option" }, { key: "f3", problem: "not_a_date" }] } });
+    expect(await fails(submitIntake(ids.form, { title: "Clip 20/10", answers: { f2: "Poster", f3: "20/10" } }, { personId: ids.duc, fullName: "Duc" }))).toEqual({
+      message: "intake_answers_invalid",
+      details: {
+        problems: [
+          { key: "f1", problem: "required" },
+          { key: "f2", problem: "not_an_option" },
+          { key: "f3", problem: "not_a_date" },
+        ],
+      },
+    });
   });
 
   it("a request lands in the backlog with the requester set; the requester sees and follows it, another outsider does not; the leads are told", async () => {
     const sent = await submitIntake(ids.form, { title: "Clip 20/10", answers: { f1: "Clip chúc mừng 20/10", f2: "Reels", f3: "2026-10-15" } }, { personId: ids.duc, fullName: "Duc" });
     expect(sent.key).toBe("VID-1");
     const loaded = (await loadTask(sent.taskId))!;
-    expect(loaded.task).toMatchObject({ requesterPersonId: ids.duc, assigneePersonId: null, dueDate: "2026-10-15", status: "todo", description: "[Yêu cầu quay dựng]\n\nNội dung cần quay:\nClip chúc mừng 20/10\n\nĐịnh dạng: Reels\n\nCần trước ngày: 15/10/2026" });
+    expect(loaded.task).toMatchObject({
+      requesterPersonId: ids.duc,
+      assigneePersonId: null,
+      dueDate: "2026-10-15",
+      status: "todo",
+      description: "[Yêu cầu quay dựng]\n\nNội dung cần quay:\nClip chúc mừng 20/10\n\nĐịnh dạng: Reels\n\nCần trước ngày: 15/10/2026",
+    });
     expect(loaded.work).toMatchObject({ projectId: ids.project, intakeFormId: ids.form });
     expect((await listStates([ids.video])).find((state) => state.id === loaded.work.stateId)!.category).toBe("backlog");
 
@@ -91,7 +135,10 @@ describe("intake forms", () => {
     expect(canViewTask(huy!, loaded.facts)).toBe(false);
     expect(followersOf(loaded)).toEqual([ids.duc]);
 
-    const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.kind, "tasks.intake_submitted")));
+    const notices = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.kind, "tasks.intake_submitted")));
     expect(notices.map((row) => row.recipientPersonId)).toEqual([ids.long]);
     expect((await listMyIntakeRequests(ids.duc)).map((row) => [row.key, row.formName])).toEqual([["VID-1", "Yêu cầu quay dựng"]]);
     expect((await listTeamIntakeForms(ids.video)).map((form) => form.submissions)).toEqual([1]);

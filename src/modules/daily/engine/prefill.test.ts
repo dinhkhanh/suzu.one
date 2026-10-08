@@ -57,7 +57,15 @@ describe("the prefilled end-of-day report", () => {
 
   it("an empty day: the plan is all not done", () => {
     const draft = prefillReport({ date: "2026-09-21", planned: [planned("1"), planned("2", "todo")], events: [], time: [] });
-    expect(draft).toEqual({ done: [], notDone: [{ taskId: "1", title: "Task 1", ref: "VID-1" }, { taskId: "2", title: "Task 2", ref: "VID-2" }], activity: [], minutesLogged: 0 });
+    expect(draft).toEqual({
+      done: [],
+      notDone: [
+        { taskId: "1", title: "Task 1", ref: "VID-1" },
+        { taskId: "2", title: "Task 2", ref: "VID-2" },
+      ],
+      activity: [],
+      minutesLogged: 0,
+    });
   });
 
   it("a planned task done on an earlier day is neither done today nor not done", () => {

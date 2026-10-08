@@ -192,9 +192,7 @@ describe("getPersonView", () => {
 
 describe("changeAssignment", () => {
   const change = (personId: string, validFrom: string, overrides: Partial<HireInput["placement"]>) =>
-    changeAssignment(personId, { validFrom, changeReason: "test", placement: placement({ orgUnitId: ids.video, ...overrides }) }, actorId).catch((error: Error) =>
-      Promise.reject(new Error(error.message)),
-    );
+    changeAssignment(personId, { validFrom, changeReason: "test", placement: placement({ orgUnitId: ids.video, ...overrides }) }, actorId).catch((error: Error) => Promise.reject(new Error(error.message)));
 
   it("applies a change dated today to the person at once, and leaves a future one for later", async () => {
     await change(ids.huy, today, { managerId: ids.long, workforceType: "employee" });
@@ -272,6 +270,10 @@ describe("job title and position", () => {
 
     // Neither level is required: a person with none has no title, and the database refuses a level off the ladder.
     expect((await getPersonView(principal(ids.long), ids.tam))?.current).toMatchObject({ seniorityLevel: null, positionLevel: null });
-    await expect(db().update(schema.assignment).set({ seniorityLevel: "principal" as never })).rejects.toThrow();
+    await expect(
+      db()
+        .update(schema.assignment)
+        .set({ seniorityLevel: "principal" as never }),
+    ).rejects.toThrow();
   });
 });

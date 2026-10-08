@@ -45,7 +45,11 @@ const as = (who: Who) => {
 };
 const proposalId = (result: Awaited<ReturnType<typeof run>>) => result.card?.proposal?.id ?? "";
 const tasksTitled = (title: string) => db().select().from(schema.task).where(eq(schema.task.title, title));
-const auditOf = (action: string, resourceId: string) => db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, action), eq(schema.auditLog.resourceId, resourceId)));
+const auditOf = (action: string, resourceId: string) =>
+  db()
+    .select()
+    .from(schema.auditLog)
+    .where(and(eq(schema.auditLog.action, action), eq(schema.auditLog.resourceId, resourceId)));
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -57,9 +61,22 @@ beforeAll(async () => {
       .values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: szm.id })
       .returning();
     ids[who] = row.id;
-    users[who] = { userId: `user-${who}`, sessionId: `session-${who}`, reauthAt: null, preferences: { locale: null, theme: null, navPins: [] }, email: `${who}@suzu.group`, name: NAMES[who], image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: GRANTS[who] ?? [] }, request: { ipAddress: null, userAgent: null } } as CurrentUser;
+    users[who] = {
+      userId: `user-${who}`,
+      sessionId: `session-${who}`,
+      reauthAt: null,
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${who}@suzu.group`,
+      name: NAMES[who],
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: GRANTS[who] ?? [] },
+      request: { ipAddress: null, userAgent: null },
+    } as CurrentUser;
   }
-  for (const [who, grants] of Object.entries(GRANTS) as [Who, Grant[]][]) for (const grant of grants) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: null, validFrom: "2024-01-01" });
+  for (const [who, grants] of Object.entries(GRANTS) as [Who, Grant[]][])
+    for (const grant of grants) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: null, validFrom: "2024-01-01" });
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const who of ["huy", "tam"] as const) await setTeamMember(video.id, ids[who], "member");
@@ -72,7 +89,20 @@ beforeAll(async () => {
 describe("what may be proposed (FR-AGT-21, 23)", () => {
   it("lists exactly the v1 actions, and nothing that approves, decides, pays, grants or deletes", () => {
     expect([...PROPOSABLE_ACTIONS].sort()).toEqual(
-      ["attendance.request.submit", "daily.plan.add", "daily.report.submit", "daily.time.log", "leave.request.submit", "projects.status.post", "request.file", "work.blocker.raise", "work.blocker.resolve", "work.comment.add", "work.task.create", "work.task.update"].sort(),
+      [
+        "attendance.request.submit",
+        "daily.plan.add",
+        "daily.report.submit",
+        "daily.time.log",
+        "leave.request.submit",
+        "projects.status.post",
+        "request.file",
+        "work.blocker.raise",
+        "work.blocker.resolve",
+        "work.comment.add",
+        "work.task.create",
+        "work.task.update",
+      ].sort(),
     );
     for (const action of PROPOSABLE_ACTIONS) expect(action).not.toMatch(/approv|reject|decide|decision|delete|remove|payroll|role|permission|grant|person\./u);
   });
@@ -123,7 +153,10 @@ describe("a proposal changes nothing until its own person confirms it, once (FR-
 
   it("expires after thirty minutes", async () => {
     const id = proposalId(await run("huy", "propose_task", { title: "Hết hạn" }));
-    await db().update(schema.aiProposal).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.aiProposal.id, id));
+    await db()
+      .update(schema.aiProposal)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.aiProposal.id, id));
     as("huy");
     expect(await confirmProposalAction({ id })).toMatchObject({ ok: false, message: "ai_proposal_expired" });
     expect(await tasksTitled("Hết hạn")).toHaveLength(0);
@@ -143,7 +176,10 @@ describe("a proposal changes nothing until its own person confirms it, once (FR-
     // The stored input is tampered with between the card and the click — a team Huy does not work
     // in: the module's own pipeline, not the card, has the last word.
     const [other] = await db().insert(schema.workTeam).values({ key: "OTH", name: "Other", defaultVisibility: "team" }).returning();
-    await db().update(schema.aiProposal).set({ input: { teamId: other.id, title: "Bị chặn sau" } }).where(eq(schema.aiProposal.id, id));
+    await db()
+      .update(schema.aiProposal)
+      .set({ input: { teamId: other.id, title: "Bị chặn sau" } })
+      .where(eq(schema.aiProposal.id, id));
     as("huy");
     const result = await confirmProposalAction({ id });
     expect(result).toMatchObject({ ok: true, data: { state: "failed", error: "forbidden" } });

@@ -30,8 +30,7 @@ beforeAll(async () => {
   await db().insert(schema.roleAssignment).values({ personId: people.owner, role: "owner", scopeType: "group" });
 });
 
-const grant = (overrides: Partial<Parameters<typeof grantRole>[0]> = {}) =>
-  grantRole({ personId: people.mai, role: "hr_admin", scopeType: "entity", scopeId: entityId, validFrom: today, validTo: null, ...overrides }, people.owner);
+const grant = (overrides: Partial<Parameters<typeof grantRole>[0]> = {}) => grantRole({ personId: people.mai, role: "hr_admin", scopeType: "entity", scopeId: entityId, validFrom: today, validTo: null, ...overrides }, people.owner);
 
 describe("grantRole", () => {
   it("takes effect at once and shows up with its scope named", async () => {
@@ -86,7 +85,13 @@ describe("who holds a role over a unit", () => {
 
   beforeAll(async () => {
     // Marketing › Social › Video Editing, with Brand beside Social and Design beside Marketing.
-    const unit = async (name: string, parentId: string | null) => (await db().insert(schema.orgUnit).values({ name, parentId, kind: parentId ? "team" : "department" }).returning())[0].id;
+    const unit = async (name: string, parentId: string | null) =>
+      (
+        await db()
+          .insert(schema.orgUnit)
+          .values({ name, parentId, kind: parentId ? "team" : "department" })
+          .returning()
+      )[0].id;
     units.marketing = await unit("Marketing", null);
     units.social = await unit("Social", units.marketing);
     units.video = await unit("Video Editing", units.social);
@@ -103,9 +108,14 @@ describe("who holds a role over a unit", () => {
       ["hrSocial", "hr_staff", units.social, {}],
     ];
     for (const [key, role, scopeId, dates] of grants) {
-      const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key.toLowerCase(), workEmail: `${key.toLowerCase()}@suzu.group`, status: "active" }).returning();
+      const [row] = await db()
+        .insert(schema.person)
+        .values({ fullName: key, searchName: key.toLowerCase(), workEmail: `${key.toLowerCase()}@suzu.group`, status: "active" })
+        .returning();
       who[key] = row.id;
-      await db().insert(schema.roleAssignment).values({ personId: row.id, role, scopeType: "unit", scopeId, validFrom: "2024-01-01", ...dates });
+      await db()
+        .insert(schema.roleAssignment)
+        .values({ personId: row.id, role, scopeType: "unit", scopeId, validFrom: "2024-01-01", ...dates });
     }
   });
 

@@ -14,4 +14,16 @@ import { REPORT_TOOLS } from "./reports";
 import { SELF_TOOLS } from "./self";
 import { WORK_TOOLS } from "./work";
 
-export const AGENT_TOOLS: readonly AnyAgentTool[] = [...KB_TOOLS, ...SELF_TOOLS, ...LOOKUP_TOOLS, ...WORK_TOOLS, ...PEOPLE_TOOLS, ...HR_TOOLS, ...MONEY_TOOLS, ...REPORT_TOOLS, ...PROPOSE_WORK_TOOLS, ...PROPOSE_DAILY_TOOLS, ...PROPOSE_REQUEST_TOOLS];
+export const AGENT_TOOLS: readonly AnyAgentTool[] = [
+  ...KB_TOOLS,
+  ...SELF_TOOLS,
+  ...LOOKUP_TOOLS,
+  ...WORK_TOOLS,
+  ...PEOPLE_TOOLS,
+  ...HR_TOOLS,
+  ...MONEY_TOOLS,
+  ...REPORT_TOOLS,
+  ...PROPOSE_WORK_TOOLS,
+  ...PROPOSE_DAILY_TOOLS,
+  ...PROPOSE_REQUEST_TOOLS,
+];

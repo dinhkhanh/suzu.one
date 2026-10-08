@@ -11,7 +11,8 @@ import { planKindOf } from "../plans";
 export const PROJECT_TABS = ["overview", "tasks", "board", "plan", "timeline", "deliverables", "budget", "team", "updates", "risks", "meetings", "documents", "retainer", "changes", "acceptance", "reports", "close"] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number];
 
-const hrefOf = (projectId: string, tab: ProjectTab) => (tab === "tasks" ? `/work/projects/${projectId}` : tab === "board" ? `/work/projects/${projectId}?view=board` : tab === "overview" ? `/projects/${projectId}` : `/projects/${projectId}/${tab}`);
+const hrefOf = (projectId: string, tab: ProjectTab) =>
+  tab === "tasks" ? `/work/projects/${projectId}` : tab === "board" ? `/work/projects/${projectId}?view=board` : tab === "overview" ? `/projects/${projectId}` : `/projects/${projectId}/${tab}`;
 
 export async function ProjectTabs({ projectId, current, kind }: { projectId: string; current: ProjectTab; kind?: string }) {
   const t = await getTranslations("projects.tabs");

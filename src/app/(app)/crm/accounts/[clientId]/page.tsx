@@ -69,21 +69,45 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
 
   return (
     <Page width="wide">
-      <PageHeader eyebrow={<><Link href="/crm/accounts" className="underline">
-            {t("accounts.title")}
-          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{account.client.name}
-          <span className="font-mono text-sm text-muted-foreground">{account.client.code}</span>
-          <Badge dot variant={statusTone(lifecycle === "churned" ? "closed" : lifecycle === "dormant" ? "pending" : lifecycle)}>
-            {t(`enums.lifecycle.${lifecycle}`)}
-          </Badge>
-          {profile?.tier ? <Badge variant="outline">{t(`enums.tier.${profile.tier as "a"}`)}</Badge> : null}
-          {profile?.creditHold ? <Badge variant="destructive">{t("account.creditHold")}</Badge> : null}</span>}>
-        <p className="text-sm text-muted-foreground">
-          {[profile?.legalName, profile?.taxCode ? t("account.taxCodeIs", { code: profile.taxCode }) : null, profile?.industry].filter(Boolean).join(" · ")}
-        </p>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/crm/accounts" className="underline">
+              {t("accounts.title")}
+            </Link>
+          </>
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {account.client.name}
+            <span className="font-mono text-sm text-muted-foreground">{account.client.code}</span>
+            <Badge dot variant={statusTone(lifecycle === "churned" ? "closed" : lifecycle === "dormant" ? "pending" : lifecycle)}>
+              {t(`enums.lifecycle.${lifecycle}`)}
+            </Badge>
+            {profile?.tier ? <Badge variant="outline">{t(`enums.tier.${profile.tier as "a"}`)}</Badge> : null}
+            {profile?.creditHold ? <Badge variant="destructive">{t("account.creditHold")}</Badge> : null}
+          </span>
+        }
+      >
+        <p className="text-sm text-muted-foreground">{[profile?.legalName, profile?.taxCode ? t("account.taxCodeIs", { code: profile.taxCode }) : null, profile?.industry].filter(Boolean).join(" · ")}</p>
         <p className="text-sm">
-          {t.rich("account.managerIs", { name: page.managerName ?? "—", person: (chunks) => <RecordLink kind="person" id={account.client.accountManagerPersonId}>{chunks}</RecordLink> })} ·{" "}
-          {t.rich("account.salesOwnerIs", { name: page.salesOwnerName ?? "—", person: (chunks) => <RecordLink kind="person" id={profile?.salesOwnerPersonId}>{chunks}</RecordLink> })}
+          {t.rich("account.managerIs", {
+            name: page.managerName ?? "—",
+            person: (chunks) => (
+              <RecordLink kind="person" id={account.client.accountManagerPersonId}>
+                {chunks}
+              </RecordLink>
+            ),
+          })}{" "}
+          ·{" "}
+          {t.rich("account.salesOwnerIs", {
+            name: page.salesOwnerName ?? "—",
+            person: (chunks) => (
+              <RecordLink kind="person" id={profile?.salesOwnerPersonId}>
+                {chunks}
+              </RecordLink>
+            ),
+          })}
           {brands.length ? ` · ${t("account.brands", { names: brands.map((brand) => brand.name).join(", ") })}` : ""}
         </p>
         {profile?.creditHold && profile.creditHoldReason ? <p className="text-sm text-destructive">{profile.creditHoldReason}</p> : null}
@@ -132,8 +156,24 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                       <TableCell>
                         <Badge variant="outline">{tProjects(`kinds.${project.kind as "client"}`)}</Badge>
                       </TableCell>
-                      <TableCell>{project.health ? <Badge dot variant={project.health === "on_track" ? "success" : project.health === "at_risk" ? "warning" : "destructive"}>{tProjects(`health.${project.health as "on_track"}`)}</Badge> : "—"}</TableCell>
-                      <TableCell>{project.leadName ? <RecordLink kind="person" id={project.leadPersonId}>{project.leadName}</RecordLink> : "—"}</TableCell>
+                      <TableCell>
+                        {project.health ? (
+                          <Badge dot variant={project.health === "on_track" ? "success" : project.health === "at_risk" ? "warning" : "destructive"}>
+                            {tProjects(`health.${project.health as "on_track"}`)}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {project.leadName ? (
+                          <RecordLink kind="person" id={project.leadPersonId}>
+                            {project.leadName}
+                          </RecordLink>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell>{project.phaseName ?? "—"}</TableCell>
                       <TableCell>{project.nextMilestone ? `${project.nextMilestone.name} · ${f.date(project.nextMilestone.dueDate)}` : "—"}</TableCell>
                       <TableCell kind="number">{t("account.registerProgress", { accepted: project.register.accepted, promised: project.register.promised })}</TableCell>
@@ -146,7 +186,9 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
               <ul className="flex flex-col gap-1 text-sm">
                 {page.retainers.map((row) => (
                   <li key={`${row.projectId}-${row.month}`} className="flex flex-wrap gap-2">
-                    <RecordLink kind="project" id={row.projectId}>{row.projectName}</RecordLink>
+                    <RecordLink kind="project" id={row.projectId}>
+                      {row.projectName}
+                    </RecordLink>
                     <span className="text-muted-foreground">{t("account.retainerMonth", { month: row.month, delivered: row.delivered, contracted: row.contracted, hours: f.hours(row.minutesLogged) })}</span>
                     {row.contracted > 0 && row.delivered > row.contracted ? <Badge variant="warning">{t("account.overservicing")}</Badge> : null}
                   </li>
@@ -191,7 +233,15 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                         {stageName(deal.stage, locale)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{deal.ownerName ? <RecordLink kind="person" id={deal.ownerPersonId}>{deal.ownerName}</RecordLink> : "—"}</TableCell>
+                    <TableCell>
+                      {deal.ownerName ? (
+                        <RecordLink kind="person" id={deal.ownerPersonId}>
+                          {deal.ownerName}
+                        </RecordLink>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
                   </TableRow>
                 ))}
@@ -199,7 +249,16 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             </Table>
             {can.createDeal ? (
               <TableAddRow label={t("deals.new")}>
-                <NewDealForm clientId={account.client.id} brands={brands} teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))} entities={entityOptions} contacts={contactOptions} stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))} sellers={people} meId={user.person.id} />
+                <NewDealForm
+                  clientId={account.client.id}
+                  brands={brands}
+                  teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))}
+                  entities={entityOptions}
+                  contacts={contactOptions}
+                  stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))}
+                  sellers={people}
+                  meId={user.person.id}
+                />
               </TableAddRow>
             ) : null}
           </TableCard>
@@ -242,7 +301,13 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
               </Table>
               {can.editContracts ? (
                 <TableAddRow label={t("contract.new")}>
-                  <ContractForm clientId={account.client.id} entities={entityOptions} parents={contracts.filter((contract) => contract.kind !== "appendix").map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))} seesValue={can.seeMoney} />
+                  <ContractForm
+                    clientId={account.client.id}
+                    entities={entityOptions}
+                    parents={contracts.filter((contract) => contract.kind !== "appendix").map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))}
+                    deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))}
+                    seesValue={can.seeMoney}
+                  />
                 </TableAddRow>
               ) : null}
             </TableCard>
@@ -315,8 +380,16 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   <details>
                     <summary className="cursor-pointer">
                       <span className="font-medium">{contact.fullName}</span>
-                      {contact.isPrimary ? <Badge variant="info" className="ml-2">{t("contacts.primary")}</Badge> : null}
-                      {contact.status === "left" ? <Badge variant="secondary" className="ml-2">{t("enums.contactStatus.left")}</Badge> : null}
+                      {contact.isPrimary ? (
+                        <Badge variant="info" className="ml-2">
+                          {t("contacts.primary")}
+                        </Badge>
+                      ) : null}
+                      {contact.status === "left" ? (
+                        <Badge variant="secondary" className="ml-2">
+                          {t("enums.contactStatus.left")}
+                        </Badge>
+                      ) : null}
                       <p className="text-xs text-muted-foreground">{[contact.title, contact.decisionRole ? t(`enums.decisionRole.${contact.decisionRole as "approver"}`) : null].filter(Boolean).join(" · ")}</p>
                       {contact.details ? <p className="text-xs">{[contact.details.email, contact.details.phone, contact.details.zalo ? `Zalo ${contact.details.zalo}` : null].filter(Boolean).join(" · ")}</p> : null}
                     </summary>
@@ -342,7 +415,9 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             <List>
               {page.team.map((member) => (
                 <ListItem key={member.personId} className="flex-wrap gap-2">
-                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
+                  <RecordLink kind="person" id={member.personId}>
+                    {member.fullName}
+                  </RecordLink>
                   <span className="text-xs text-muted-foreground">{member.ties.map((tie) => t(`enums.tie.${tie as "member"}`)).join(", ")}</span>
                   {can.manageTeam && member.ties.includes("member") ? <RemoveMemberButton clientId={account.client.id} personId={member.personId} /> : null}
                 </ListItem>
@@ -356,7 +431,18 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             ) : null}
             {leftBehind.map(([personId, work]) => (
               <div key={personId} className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 p-2 text-sm">
-                <span>{t.rich("account.leftBehind", { name: nameOf(personId) ?? "—", deals: work.deals, followUps: work.followUps, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> })}</span>
+                <span>
+                  {t.rich("account.leftBehind", {
+                    name: nameOf(personId) ?? "—",
+                    deals: work.deals,
+                    followUps: work.followUps,
+                    person: (chunks) => (
+                      <RecordLink kind="person" id={personId}>
+                        {chunks}
+                      </RecordLink>
+                    ),
+                  })}
+                </span>
                 <MoveAccountWorkButton clientId={account.client.id} fromPersonId={personId} label={t("account.moveWork", { name: page.managerName ?? "—" })} />
               </div>
             ))}
@@ -367,7 +453,23 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                   <AccountHandoverForm clientId={account.client.id} currentName={nameOf(account.client.accountManagerPersonId)} people={people.filter((person) => person.id !== account.client.accountManagerPersonId)} />
                   {(handoffs.get(account.client.id) ?? []).map((handoff) => (
                     <div key={handoff.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 p-2">
-                      <p className="text-xs text-muted-foreground">{t.rich("account.handedOver", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", date: f.when(handoff.createdAt), giver: (chunks) => <RecordLink kind="person" id={handoff.fromPersonId}>{chunks}</RecordLink>, taker: (chunks) => <RecordLink kind="person" id={handoff.toPersonId}>{chunks}</RecordLink> })}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.rich("account.handedOver", {
+                          from: handoff.fromName ?? "—",
+                          to: handoff.toName ?? "—",
+                          date: f.when(handoff.createdAt),
+                          giver: (chunks) => (
+                            <RecordLink kind="person" id={handoff.fromPersonId}>
+                              {chunks}
+                            </RecordLink>
+                          ),
+                          taker: (chunks) => (
+                            <RecordLink kind="person" id={handoff.toPersonId}>
+                              {chunks}
+                            </RecordLink>
+                          ),
+                        })}
+                      </p>
                       <HandoffNoteView note={handoff.note} />
                     </div>
                   ))}
@@ -394,7 +496,10 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                 <details className="rounded-xl border p-3">
                   <summary className="cursor-pointer text-sm">{t("account.editTerms")}</summary>
                   <div className="pt-3">
-                    <TermsForm clientId={account.client.id} terms={{ paymentTermsDays: profile?.paymentTermsDays ?? null, creditHold: profile?.creditHold ?? false, creditHoldReason: profile?.creditHoldReason ?? null, creditLimitVnd: profile?.creditLimitVnd ?? null }} />
+                    <TermsForm
+                      clientId={account.client.id}
+                      terms={{ paymentTermsDays: profile?.paymentTermsDays ?? null, creditHold: profile?.creditHold ?? false, creditHoldReason: profile?.creditHoldReason ?? null, creditLimitVnd: profile?.creditLimitVnd ?? null }}
+                    />
                   </div>
                 </details>
               ) : (

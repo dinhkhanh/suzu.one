@@ -59,7 +59,11 @@ async function lookups(executor: Tx | ReturnType<typeof db>): Promise<Lookups> {
   const [categories, entities, people, assets] = await Promise.all([
     executor.select({ id: schema.assetCategory.id, code: schema.assetCategory.code, requiresSerial: schema.assetCategory.requiresSerial }).from(schema.assetCategory).where(eq(schema.assetCategory.isActive, true)),
     executor.select({ id: schema.entity.id, code: schema.entity.code }).from(schema.entity),
-    executor.select({ id: schema.person.id, workEmail: schema.person.workEmail, employeeCode: schema.employment.employeeCode }).from(schema.person).leftJoin(schema.employment, and(eq(schema.employment.personId, schema.person.id), isNull(schema.employment.endDate))).where(eq(schema.person.status, "active")),
+    executor
+      .select({ id: schema.person.id, workEmail: schema.person.workEmail, employeeCode: schema.employment.employeeCode })
+      .from(schema.person)
+      .leftJoin(schema.employment, and(eq(schema.employment.personId, schema.person.id), isNull(schema.employment.endDate)))
+      .where(eq(schema.person.status, "active")),
     executor.select({ code: schema.asset.code, serial: schema.asset.serial }).from(schema.asset),
   ]);
   const byPerson = new Map<string, string>();
@@ -171,10 +175,7 @@ export const assetImport = defineImport({
       if (values.holder) {
         const key = looksLikeEmail(values.holder) ? values.holder.toLowerCase() : values.holder.toUpperCase();
         const holderPersonId = reference.people.get(key)!;
-        const [assignment] = await tx
-          .insert(schema.assetAssignment)
-          .values({ assetId: asset.id, holderType: "person", holderPersonId, assignedByPersonId: user.person.id, conditionOut: asset.condition, accessories: [] })
-          .returning();
+        const [assignment] = await tx.insert(schema.assetAssignment).values({ assetId: asset.id, holderType: "person", holderPersonId, assignedByPersonId: user.person.id, conditionOut: asset.condition, accessories: [] }).returning();
         await tx.update(schema.asset).set({ status: "assigned" }).where(eq(schema.asset.id, asset.id));
         // Imported history: the thing was already out before the register existed. The holder is
         // still asked to confirm, which is how the register catches what the spreadsheet had wrong.
@@ -193,7 +194,10 @@ export const assetImport = defineImport({
 /** Used by the register's screens to say which codes an import would refuse. */
 export const takenAssetCodes = async (codes: readonly string[]): Promise<string[]> => {
   if (codes.length === 0) return [];
-  const rows = await db().select({ code: schema.asset.code }).from(schema.asset).where(inArray(schema.asset.code, [...codes]));
+  const rows = await db()
+    .select({ code: schema.asset.code })
+    .from(schema.asset)
+    .where(inArray(schema.asset.code, [...codes]));
   return rows.map((row) => row.code);
 };
 

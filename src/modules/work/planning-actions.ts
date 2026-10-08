@@ -31,7 +31,14 @@ async function ownerFacts(ownerId: string | null) {
 
 const saveTemplatePipeline = createAction({
   name: "work.template.save",
-  input: z.object({ templateId: optional(z.uuid()), purpose: z.enum(WORK_TEMPLATE_PURPOSES), name: z.string().trim().min(1).max(120), description: optional(z.string().trim().max(1000)), ownerId: optional(z.uuid()), isActive: checkbox.default(true) }),
+  input: z.object({
+    templateId: optional(z.uuid()),
+    purpose: z.enum(WORK_TEMPLATE_PURPOSES),
+    name: z.string().trim().min(1).max(120),
+    description: optional(z.string().trim().max(1000)),
+    ownerId: optional(z.uuid()),
+    isActive: checkbox.default(true),
+  }),
   authorize: async (user, input) => {
     const viewer = await loadViewer(user);
     const existing = input.templateId ? await findWorkTemplate(input.templateId) : null;
@@ -102,7 +109,11 @@ const updateItemPipeline = createAction({
   },
   run: async ({ input }) => {
     const { itemId, estimateHours, checklistId, ...rest } = input;
-    const { before, after } = await updateWorkTemplateItem(itemId, { ...rest, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60), ...(checklistId === undefined ? {} : { checklistIds: checklistId ? [checklistId] : [] }) });
+    const { before, after } = await updateWorkTemplateItem(itemId, {
+      ...rest,
+      estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60),
+      ...(checklistId === undefined ? {} : { checklistIds: checklistId ? [checklistId] : [] }),
+    });
     revalidatePath("/work/templates");
     return { data: { id: after.id }, audit: { resource: { type: "work_template", id: after.templateId }, summary: after.title, before, after } };
   },
@@ -131,20 +142,39 @@ export async function removeWorkTemplateItemAction(input: unknown) {
 }
 
 const templateUseFields = { templateId: z.uuid(), anchorMode: z.enum(["start", "end"]), anchorDate: isoDate, roles: z.record(z.string().regex(ROLE_KEY), optional(z.uuid())).default({}) };
-const templateUseOf = (input: { templateId: string; anchorMode: "start" | "end"; anchorDate: string; roles: Record<string, string | null> }) => ({ templateId: input.templateId, anchor: { mode: input.anchorMode, date: input.anchorDate }, roles: input.roles });
+const templateUseOf = (input: { templateId: string; anchorMode: "start" | "end"; anchorDate: string; roles: Record<string, string | null> }) => ({
+  templateId: input.templateId,
+  anchor: { mode: input.anchorMode, date: input.anchorDate },
+  roles: input.roles,
+});
 
 const projectFromTemplatePipeline = createAction({
   name: "work.project.create_from_template",
-  input: z.object({ ...templateUseFields, teamId: z.uuid(), name: z.string().trim().min(1).max(120), description: optional(z.string().trim().max(2000)), clientId: optional(z.uuid()), visibility: z.enum(VISIBILITIES), leadPersonId: optional(z.uuid()) }),
+  input: z.object({
+    ...templateUseFields,
+    teamId: z.uuid(),
+    name: z.string().trim().min(1).max(120),
+    description: optional(z.string().trim().max(2000)),
+    clientId: optional(z.uuid()),
+    visibility: z.enum(VISIBILITIES),
+    leadPersonId: optional(z.uuid()),
+  }),
   authorize: async (user, input) => {
     const team = await findTeam(input.teamId);
     return !!team && canCreateProject(await loadViewer(user), teamFacts(team));
   },
   run: async ({ user, input }) => {
     const anchored = input.anchorMode === "start" ? { startDate: input.anchorDate, dueDate: null } : { startDate: null, dueDate: input.anchorDate };
-    const { project, template, taskIds } = await createProjectFromTemplate({ teamId: input.teamId, name: input.name, description: input.description, clientId: input.clientId, status: "active", visibility: input.visibility, leadPersonId: input.leadPersonId, ...anchored }, templateUseOf(input), user.person.id);
+    const { project, template, taskIds } = await createProjectFromTemplate(
+      { teamId: input.teamId, name: input.name, description: input.description, clientId: input.clientId, status: "active", visibility: input.visibility, leadPersonId: input.leadPersonId, ...anchored },
+      templateUseOf(input),
+      user.person.id,
+    );
     revalidatePath("/work");
-    return { data: { id: project.id, tasks: taskIds.length }, audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { project, templateId: template.id, tasks: taskIds.length } } };
+    return {
+      data: { id: project.id, tasks: taskIds.length },
+      audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { project, templateId: template.id, tasks: taskIds.length } },
+    };
   },
 });
 export async function createProjectFromTemplateAction(input: unknown) {
@@ -161,7 +191,10 @@ const applyTemplatePipeline = createAction({
   run: async ({ user, input }) => {
     const { project, template, taskIds } = await applyTemplate(templateUseOf(input), input.projectId, user.person.id);
     revalidatePath(`/work/projects/${project.id}`);
-    return { data: { tasks: taskIds.length }, audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { templateId: template.id, tasks: taskIds.length } } };
+    return {
+      data: { tasks: taskIds.length },
+      audit: { resource: { type: "work_project", id: project.id, entityId: project.entityId }, summary: `${project.name} ← ${template.name} (${taskIds.length})`, after: { templateId: template.id, tasks: taskIds.length } },
+    };
   },
 });
 export async function applyTemplateAction(input: unknown) {
@@ -244,7 +277,15 @@ const updateRecurrencePipeline = createAction({
     const { recurrenceId, estimateHours, ...patch } = input;
     const { before, after, made } = await updateRecurrence(recurrenceId, { ...patch, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60) }, todayInVietnam());
     revalidatePath(recurrencePath(after));
-    const shown = (row: typeof after) => ({ title: row.title, rule: row.rule, endDate: row.endDate, leadDays: row.leadDays, onDayOff: row.onDayOff, assigneePersonId: row.draft.assigneePersonId ?? null, estimateMinutes: row.draft.estimateMinutes ?? null });
+    const shown = (row: typeof after) => ({
+      title: row.title,
+      rule: row.rule,
+      endDate: row.endDate,
+      leadDays: row.leadDays,
+      onDayOff: row.onDayOff,
+      assigneePersonId: row.draft.assigneePersonId ?? null,
+      estimateMinutes: row.draft.estimateMinutes ?? null,
+    });
     return { data: { id: after.id, made }, audit: { resource: { type: "work_recurrence", id: after.id }, summary: `${after.title} (${after.rule.freq})`, before: shown(before), after: { ...shown(after), made } } };
   },
 });
@@ -259,7 +300,10 @@ const changeRecurrencePipeline = createAction({
   run: async ({ input }) => {
     const { before, after } = await changeRecurrence(input.recurrenceId, input.change === "end" ? { endDate: todayInVietnam() } : { isActive: input.change === "resume" });
     revalidatePath(recurrencePath(after));
-    return { data: { id: after.id }, audit: { resource: { type: "work_recurrence", id: after.id }, summary: `${after.title}: ${input.change}`, before: { isActive: before.isActive, endDate: before.endDate }, after: { isActive: after.isActive, endDate: after.endDate } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "work_recurrence", id: after.id }, summary: `${after.title}: ${input.change}`, before: { isActive: before.isActive, endDate: before.endDate }, after: { isActive: after.isActive, endDate: after.endDate } },
+    };
   },
 });
 export async function changeRecurrenceAction(input: unknown) {

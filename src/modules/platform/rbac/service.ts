@@ -48,10 +48,18 @@ type RoleAssignmentRowCached = typeof schema.roleAssignment.$inferSelect;
 async function grantRowsOf(personId: string, today: IsoDate, executor: Executor | undefined): Promise<RoleAssignmentRowCached[]> {
   const inForce = (row: RoleAssignmentRowCached) => row.validFrom <= today && (row.validTo === null || row.validTo >= today);
   if (executor || today !== todayInVietnam()) {
-    return (executor ?? db()).select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+    return (executor ?? db())
+      .select()
+      .from(schema.roleAssignment)
+      .where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
   }
   // Cached: every grant not yet ended, so one that starts later today is still in the entry.
-  const rows = await cached(grantsKey(personId), GRANTS_TTL, () => db().select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), notEnded(today))));
+  const rows = await cached(grantsKey(personId), GRANTS_TTL, () =>
+    db()
+      .select()
+      .from(schema.roleAssignment)
+      .where(and(eq(schema.roleAssignment.personId, personId), notEnded(today))),
+  );
   return rows.filter(inForce);
 }
 
@@ -67,7 +75,11 @@ export async function loadGrants(personId: string, today: IsoDate = todayInVietn
   const covers = new Map<string, string[]>();
   if (unitIds.length) {
     const units = executor ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds)) : await listOrgUnits();
-    for (const granted of unitIds) covers.set(granted, units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])));
+    for (const granted of unitIds)
+      covers.set(
+        granted,
+        units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])),
+      );
   }
   return rows.flatMap((row) => {
     const scope = toScope(row.scopeType, row.scopeId, covers);
@@ -94,7 +106,11 @@ export async function loadGrantsOfPeople(personIds: readonly string[], today: Is
   const covers = new Map<string, string[]>();
   if (unitIds.length) {
     const units = executor ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds)) : await listOrgUnits();
-    for (const granted of unitIds) covers.set(granted, units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])));
+    for (const granted of unitIds)
+      covers.set(
+        granted,
+        units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])),
+      );
   }
   for (const row of rows) {
     const scope = toScope(row.scopeType, row.scopeId, covers);
@@ -317,11 +333,17 @@ export async function roleHolders(options: { today?: IsoDate; executor?: Executo
     },
     withRole(role, target) {
       const at = where(target);
-      return [...new Set(rows.filter((row) => {
-        if (row.role !== role) return false;
-        const scope = toScope(row.scopeType, row.scopeId);
-        return !!scope && scopeCovers(scope, at);
-      }).map((row) => row.personId))];
+      return [
+        ...new Set(
+          rows
+            .filter((row) => {
+              if (row.role !== role) return false;
+              const scope = toScope(row.scopeType, row.scopeId);
+              return !!scope && scopeCovers(scope, at);
+            })
+            .map((row) => row.personId),
+        ),
+      ];
     },
   };
 }
@@ -374,14 +396,23 @@ export async function listPeopleWithRole(role: Role, target: Target, executor?: 
  * so a cancelled termination can put it back. Refuses to remove the last group owner.
  */
 export async function endRoleGrantsOf(tx: Executor, personId: string, lastDay: IsoDate): Promise<{ ended: { id: string; validTo: IsoDate | null }[] }> {
-  const grants = await tx.select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), notEnded(addDays(lastDay, 1))));
+  const grants = await tx
+    .select()
+    .from(schema.roleAssignment)
+    .where(and(eq(schema.roleAssignment.personId, personId), notEnded(addDays(lastDay, 1))));
   if (grants.some((grant) => grant.role === "owner" && grant.scopeType === "group")) {
-    const owners = await tx.selectDistinct({ personId: schema.roleAssignment.personId }).from(schema.roleAssignment).where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), notEnded(addDays(lastDay, 1))));
+    const owners = await tx
+      .selectDistinct({ personId: schema.roleAssignment.personId })
+      .from(schema.roleAssignment)
+      .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), notEnded(addDays(lastDay, 1))));
     if (owners.every((owner) => owner.personId === personId)) throw new ActionError("last_owner");
   }
   for (const grant of grants) {
     // A grant that has not started yet is closed the day before it would: never in force, history kept.
-    await tx.update(schema.roleAssignment).set({ validTo: grant.validFrom > lastDay ? addDays(grant.validFrom, -1) : lastDay }).where(eq(schema.roleAssignment.id, grant.id));
+    await tx
+      .update(schema.roleAssignment)
+      .set({ validTo: grant.validFrom > lastDay ? addDays(grant.validFrom, -1) : lastDay })
+      .where(eq(schema.roleAssignment.id, grant.id));
   }
   return { ended: grants.map((grant) => ({ id: grant.id, validTo: grant.validTo })) };
 }

@@ -110,7 +110,10 @@ export function TaskTableView({
           icon={<ArrowUpDownIcon data-icon="inline-start" />}
           label={tList("sort")}
           value={sort}
-          choices={sortChoices(fields).map((choice) => ({ value: choice.value, label: choice.field ? tList(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : tList(`sorts.${choice.value as "rank"}`) }))}
+          choices={sortChoices(fields).map((choice) => ({
+            value: choice.value,
+            label: choice.field ? tList(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : tList(`sorts.${choice.value as "rank"}`),
+          }))}
           onChange={(value) => {
             const next = readSort(value);
             setSort(next);
@@ -175,133 +178,166 @@ export function TaskTableView({
       {logged === null ? <p className="text-xs text-muted-foreground">{t("loggedHidden")}</p> : null}
 
       <TableCard>
-      <Table className="min-w-[64rem]">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-px">
-              <Checkbox aria-label={t("selectAll")} checked={allChosen} onCheckedChange={(checked) => setSelected(checked ? new Set(visible.filter(editable).map((task) => task.id)) : new Set())} />
-            </TableHead>
-            <TableHead kind="id">{t("key")}</TableHead>
-            <TableHead kind="text">{t("title")}</TableHead>
-            <TableHead kind="status">{t("state")}</TableHead>
-            <TableHead kind="person">{t("assignee")}</TableHead>
-            <TableHead kind="date">{t("startDate")}</TableHead>
-            <TableHead kind="date">{t("dueDate")}</TableHead>
-            <TableHead kind="select">{t("priority")}</TableHead>
-            <TableHead kind="time">{t("estimate")}</TableHead>
-            {logged ? <TableHead kind="time">{t("logged")}</TableHead> : null}
-            <TableHead kind="tags">{t("labels")}</TableHead>
-            {fields.map((field) => (
-              <TableHead key={field.id} kind={FIELD_KIND[field.type]}>
-                {field.name}
+        <Table className="min-w-[64rem]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-px">
+                <Checkbox aria-label={t("selectAll")} checked={allChosen} onCheckedChange={(checked) => setSelected(checked ? new Set(visible.filter(editable).map((task) => task.id)) : new Set())} />
               </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {visible.length === 0 ? <TableEmpty>{shown.length === 0 ? tList("empty") : tList("noMatch")}</TableEmpty> : null}
-          {visible.map((task) => {
-            const can = editable(task) && !pending;
-            const open = task.status === "todo" || task.status === "in_progress";
-            const overdue = open && task.dueDate !== null && task.dueDate < today;
-            const own = fieldsOf(task);
-            const state = stateById.get(task.stateId);
-            return (
-              <TableRow key={task.id} data-state={selected.has(task.id) ? "selected" : undefined}>
-                <TableCell>
-                  <Checkbox aria-label={t("select", { key: task.key })} checked={selected.has(task.id)} disabled={!editable(task)} onCheckedChange={(checked) => toggle(task.id, checked)} />
-                </TableCell>
-                <TableCell kind="id">{task.key}</TableCell>
-                <TableCell className="max-w-72">
-                  <span className="flex items-center gap-1.5">
-                    <RecordLink kind="task" id={task.id} className={`truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
-                      {task.title}
-                    </RecordLink>
-                    {task.blocker ? (
-                      <Badge variant="destructive" title={task.blocker.reason}>
-                        {tWork("blockers.badge")}
-                      </Badge>
-                    ) : null}
-                  </span>
-                </TableCell>
-                <TableCell className="max-w-44">{state ? <StateBadge category={state.category} name={state.name} /> : null}</TableCell>
-                <TableCell>
-                  <Select aria-label={t("assignee")} value={task.assigneePersonId ?? ""} disabled={!can} onChange={(event) => edit(task, { assigneePersonId: event.target.value || null }, { assigneePersonId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
-                    <option value="">{tList("unassigned")}</option>
-                    {task.assigneePersonId && !options.people.some((person) => person.id === task.assigneePersonId) ? <option value={task.assigneePersonId}>{task.assigneeName ?? "…"}</option> : null}
-                    {options.people.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.fullName}
-                      </option>
-                    ))}
-                  </Select>
-                </TableCell>
-                {(["startDate", "dueDate"] as const).map((key) => (
-                  <TableCell key={key}>
-                    <DatePicker
-                      aria-label={t(key)}
-                      key={task[key] ?? ""}
-                      defaultValue={task[key] ?? ""}
+              <TableHead kind="id">{t("key")}</TableHead>
+              <TableHead kind="text">{t("title")}</TableHead>
+              <TableHead kind="status">{t("state")}</TableHead>
+              <TableHead kind="person">{t("assignee")}</TableHead>
+              <TableHead kind="date">{t("startDate")}</TableHead>
+              <TableHead kind="date">{t("dueDate")}</TableHead>
+              <TableHead kind="select">{t("priority")}</TableHead>
+              <TableHead kind="time">{t("estimate")}</TableHead>
+              {logged ? <TableHead kind="time">{t("logged")}</TableHead> : null}
+              <TableHead kind="tags">{t("labels")}</TableHead>
+              {fields.map((field) => (
+                <TableHead key={field.id} kind={FIELD_KIND[field.type]}>
+                  {field.name}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.length === 0 ? <TableEmpty>{shown.length === 0 ? tList("empty") : tList("noMatch")}</TableEmpty> : null}
+            {visible.map((task) => {
+              const can = editable(task) && !pending;
+              const open = task.status === "todo" || task.status === "in_progress";
+              const overdue = open && task.dueDate !== null && task.dueDate < today;
+              const own = fieldsOf(task);
+              const state = stateById.get(task.stateId);
+              return (
+                <TableRow key={task.id} data-state={selected.has(task.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox aria-label={t("select", { key: task.key })} checked={selected.has(task.id)} disabled={!editable(task)} onCheckedChange={(checked) => toggle(task.id, checked)} />
+                  </TableCell>
+                  <TableCell kind="id">{task.key}</TableCell>
+                  <TableCell className="max-w-72">
+                    <span className="flex items-center gap-1.5">
+                      <RecordLink kind="task" id={task.id} className={`truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                        {task.title}
+                      </RecordLink>
+                      {task.blocker ? (
+                        <Badge variant="destructive" title={task.blocker.reason}>
+                          {tWork("blockers.badge")}
+                        </Badge>
+                      ) : null}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-44">{state ? <StateBadge category={state.category} name={state.name} /> : null}</TableCell>
+                  <TableCell>
+                    <Select
+                      aria-label={t("assignee")}
+                      value={task.assigneePersonId ?? ""}
                       disabled={!can}
-                      onChange={(event) => edit(task, { [key]: event.target.value || null }, { [key]: event.target.value })}
-                      className={`h-7 w-36 text-xs md:text-xs ${key === "dueDate" && overdue ? "text-destructive" : ""}`}
+                      onChange={(event) => edit(task, { assigneePersonId: event.target.value || null }, { assigneePersonId: event.target.value })}
+                      className="h-7 w-36 text-xs md:text-xs"
+                    >
+                      <option value="">{tList("unassigned")}</option>
+                      {task.assigneePersonId && !options.people.some((person) => person.id === task.assigneePersonId) ? <option value={task.assigneePersonId}>{task.assigneeName ?? "…"}</option> : null}
+                      {options.people.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.fullName}
+                        </option>
+                      ))}
+                    </Select>
+                  </TableCell>
+                  {(["startDate", "dueDate"] as const).map((key) => (
+                    <TableCell key={key}>
+                      <DatePicker
+                        aria-label={t(key)}
+                        key={task[key] ?? ""}
+                        defaultValue={task[key] ?? ""}
+                        disabled={!can}
+                        onChange={(event) => edit(task, { [key]: event.target.value || null }, { [key]: event.target.value })}
+                        className={`h-7 w-36 text-xs md:text-xs ${key === "dueDate" && overdue ? "text-destructive" : ""}`}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <Select
+                      aria-label={t("priority")}
+                      value={task.priority ?? ""}
+                      disabled={!can}
+                      searchable={false}
+                      onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })}
+                      className="h-7 w-28 text-xs md:text-xs"
+                    >
+                      <option value="">{tWork("priority.none")}</option>
+                      {PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {tWork(`priority.${priority}`)}
+                        </option>
+                      ))}
+                    </Select>
+                  </TableCell>
+                  <TableCell kind="time">
+                    <Input
+                      type="number"
+                      min={0.25}
+                      max={1000}
+                      step={0.25}
+                      aria-label={t("estimate")}
+                      key={task.estimateMinutes ?? ""}
+                      defaultValue={task.estimateMinutes ? hours(task.estimateMinutes) : ""}
+                      disabled={!can}
+                      onBlur={(event) => {
+                        const minutes = event.target.value ? Math.round(Number(event.target.value) * 60) : null;
+                        if (minutes !== (task.estimateMinutes ?? null)) edit(task, { estimateMinutes: minutes }, { estimateMinutes: minutes ?? "" });
+                      }}
+                      onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+                      className="ml-auto h-7 w-20 text-right text-xs md:text-xs"
                     />
                   </TableCell>
-                ))}
-                <TableCell>
-                  <Select aria-label={t("priority")} value={task.priority ?? ""} disabled={!can} searchable={false} onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })} className="h-7 w-28 text-xs md:text-xs">
-                    <option value="">{tWork("priority.none")}</option>
-                    {PRIORITIES.map((priority) => (
-                      <option key={priority} value={priority}>
-                        {tWork(`priority.${priority}`)}
-                      </option>
-                    ))}
-                  </Select>
-                </TableCell>
-                <TableCell kind="time">
-                  <Input
-                    type="number"
-                    min={0.25}
-                    max={1000}
-                    step={0.25}
-                    aria-label={t("estimate")}
-                    key={task.estimateMinutes ?? ""}
-                    defaultValue={task.estimateMinutes ? hours(task.estimateMinutes) : ""}
-                    disabled={!can}
-                    onBlur={(event) => {
-                      const minutes = event.target.value ? Math.round(Number(event.target.value) * 60) : null;
-                      if (minutes !== (task.estimateMinutes ?? null)) edit(task, { estimateMinutes: minutes }, { estimateMinutes: minutes ?? "" });
-                    }}
-                    onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
-                    className="ml-auto h-7 w-20 text-right text-xs md:text-xs"
-                  />
-                </TableCell>
-                {logged ? <TableCell kind="time" className="text-xs text-muted-foreground">{logged[task.id] ? hours(logged[task.id]) : ""}</TableCell> : null}
-                <TableCell>
-                  <LabelCell task={task} options={options} disabled={!can} onChange={(labelIds) => edit(task, { labelIds }, { labelIds })} />
-                </TableCell>
-                {fields.map((field) => (
-                  <TableCell key={field.id}>
-                    {own.includes(field) ? <CustomValueInput compact field={field} value={task.customValues?.[field.id]} people={options.people} disabled={!can} onCommit={(value) => edit(task, { customValues: { [field.id]: value } }, { customValues: { [field.id]: value } })} /> : null}
+                  {logged ? (
+                    <TableCell kind="time" className="text-xs text-muted-foreground">
+                      {logged[task.id] ? hours(logged[task.id]) : ""}
+                    </TableCell>
+                  ) : null}
+                  <TableCell>
+                    <LabelCell task={task} options={options} disabled={!can} onChange={(labelIds) => edit(task, { labelIds }, { labelIds })} />
                   </TableCell>
-                ))}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-        <TableFooter className="text-xs">
-          <TableRow>
-            <TableCell colSpan={8}>{t("totals", { count: visible.length })}</TableCell>
-            <TableCell kind="time">{t("hours", { value: hours(totals.estimate) })}</TableCell>
-            {logged ? <TableCell kind="time">{t("hours", { value: hours(totals.logged) })}</TableCell> : null}
-            <TableCell colSpan={1 + fields.length} />
-          </TableRow>
-        </TableFooter>
-      </Table>
+                  {fields.map((field) => (
+                    <TableCell key={field.id}>
+                      {own.includes(field) ? (
+                        <CustomValueInput
+                          compact
+                          field={field}
+                          value={task.customValues?.[field.id]}
+                          people={options.people}
+                          disabled={!can}
+                          onCommit={(value) => edit(task, { customValues: { [field.id]: value } }, { customValues: { [field.id]: value } })}
+                        />
+                      ) : null}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter className="text-xs">
+            <TableRow>
+              <TableCell colSpan={8}>{t("totals", { count: visible.length })}</TableCell>
+              <TableCell kind="time">{t("hours", { value: hours(totals.estimate) })}</TableCell>
+              {logged ? <TableCell kind="time">{t("hours", { value: hours(totals.logged) })}</TableCell> : null}
+              <TableCell colSpan={1 + fields.length} />
+            </TableRow>
+          </TableFooter>
+        </Table>
         {scope && canContribute ? (
           // Created inside the filters in force, as on the list, so the new row does not vanish on arrival.
           <TableAddRow label={tList("newTask")} bodyClassName="border-t bg-background px-3 py-2 md:pl-[calc(var(--table-gutter)+0.75rem)]">
-            <QuickCreate scope={scope} defaults={{ stateId: options.states.find((row) => row.id === filters.state && row.isActive)?.id, assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null, labelIds: filters.label ? [filters.label] : [] }} />
+            <QuickCreate
+              scope={scope}
+              defaults={{
+                stateId: options.states.find((row) => row.id === filters.state && row.isActive)?.id,
+                assigneePersonId: filters.assignee === "me" ? selfId : filters.assignee && filters.assignee !== "none" ? filters.assignee : null,
+                labelIds: filters.label ? [filters.label] : [],
+              }}
+            />
           </TableAddRow>
         ) : null}
       </TableCard>
@@ -379,9 +415,9 @@ function BulkBar({ ids, options, fields, pending, onClear, onApply }: { ids: str
           ? options.people.map((person) => ({ id: person.id, label: person.fullName }))
           : what === "cycle"
             ? (options.cycles ?? [])
-          : what === "priority"
-            ? PRIORITIES.map((priority) => ({ id: String(priority), label: tWork(`priority.${priority}`) }))
-            : options.labels.map((label) => ({ id: label.id, label: label.name }));
+            : what === "priority"
+              ? PRIORITIES.map((priority) => ({ id: String(priority), label: tWork(`priority.${priority}`) }))
+              : options.labels.map((label) => ({ id: label.id, label: label.name }));
     return (
       <Select aria-label={t("value")} value={value} onChange={(event) => setValue(event.target.value)} className="h-8 w-48">
         <option value="">{what === "state" || what === "addLabel" || what === "removeLabel" ? "—" : t("clearValue")}</option>

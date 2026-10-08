@@ -49,9 +49,13 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
         <TableHeader>
           <TableRow>
             <TableHead kind="person">{t("team.person")}</TableHead>
-            <TableHead kind="percent" className="text-left">{t("team.kpiScore")}</TableHead>
+            <TableHead kind="percent" className="text-left">
+              {t("team.kpiScore")}
+            </TableHead>
             <TableHead kind="number">{t("team.missing")}</TableHead>
-            <TableHead kind="percent" className="text-left">{t("team.goals")}</TableHead>
+            <TableHead kind="percent" className="text-left">
+              {t("team.goals")}
+            </TableHead>
             <TableHead kind="number">{t("team.stale")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -73,7 +77,9 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
                   <span className="text-xs text-muted-foreground">{t("team.noKpis")}</span>
                 )}
               </TableCell>
-              <TableCell kind="number" className={row.kpi && row.kpi.missing > 0 ? "text-warning" : "text-muted-foreground"}>{row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}</TableCell>
+              <TableCell kind="number" className={row.kpi && row.kpi.missing > 0 ? "text-warning" : "text-muted-foreground"}>
+                {row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}
+              </TableCell>
               <TableCell>
                 {row.okr ? (
                   <span className="flex flex-wrap items-center gap-2">
@@ -85,7 +91,9 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
                   <span className="text-xs text-muted-foreground">{t("team.noGoals")}</span>
                 )}
               </TableCell>
-              <TableCell kind="number" className={row.okr && row.okr.stale > 0 ? "text-warning" : "text-muted-foreground"}>{row.okr ? row.okr.stale : "—"}</TableCell>
+              <TableCell kind="number" className={row.okr && row.okr.stale > 0 ? "text-warning" : "text-muted-foreground"}>
+                {row.okr ? row.okr.stale : "—"}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

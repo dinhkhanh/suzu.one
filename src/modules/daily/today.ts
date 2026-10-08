@@ -93,7 +93,18 @@ async function loadToday(personId: string, date: IsoDate): Promise<TodayView> {
     // A blocker the person raised on their own task and named themselves in is listed once.
     blockersWaiting: waiting
       .filter((blocker) => blocker.raisedByPersonId !== personId)
-      .map((blocker) => ({ blockerId: blocker.id, taskId: blocker.taskId, key: blocker.key, title: blocker.title, reason: blocker.reason, raisedByPersonId: blocker.raisedByPersonId, raisedByName: blocker.raisedByName, neededPersonId: blocker.neededPersonId, neededName: blocker.neededName, raisedAt: blocker.raisedAt })),
+      .map((blocker) => ({
+        blockerId: blocker.id,
+        taskId: blocker.taskId,
+        key: blocker.key,
+        title: blocker.title,
+        reason: blocker.reason,
+        raisedByPersonId: blocker.raisedByPersonId,
+        raisedByName: blocker.raisedByName,
+        neededPersonId: blocker.neededPersonId,
+        neededName: blocker.neededName,
+        raisedAt: blocker.raisedAt,
+      })),
     bookings,
     report,
     time,

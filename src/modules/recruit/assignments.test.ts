@@ -55,7 +55,8 @@ beforeAll(async () => {
       departmentId: null,
       teamId: null,
       positionName: null,
-      seniorityLevel: null, positionLevel: null,
+      seniorityLevel: null,
+      positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: null,
@@ -74,7 +75,20 @@ beforeAll(async () => {
   await setOpeningStatus(opening.id, "open", null);
 
   const candidate = await createCandidate(
-    { fullName: "Phạm Minh Anh", email: "minhanh@example.test", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "careers_page", sourceDetail: null, referredByPersonId: null, tags: [], notes: null },
+    {
+      fullName: "Phạm Minh Anh",
+      email: "minhanh@example.test",
+      phone: null,
+      currentTitle: null,
+      currentEmployer: null,
+      location: null,
+      links: [],
+      source: "careers_page",
+      sourceDetail: null,
+      referredByPersonId: null,
+      tags: [],
+      notes: null,
+    },
     ids.recruiterPerson,
     { confirmedNotDuplicate: true },
   );
@@ -132,7 +146,10 @@ describe("what the candidate can open", () => {
     expect(await findPublicAssignment(cancelled.token)).toBeNull();
 
     const expired = await send();
-    await db().update(schema.recruitAssignment).set({ tokenExpiresAt: inDays(-1) }).where(eq(schema.recruitAssignment.id, expired.assignment.id));
+    await db()
+      .update(schema.recruitAssignment)
+      .set({ tokenExpiresAt: inDays(-1) })
+      .where(eq(schema.recruitAssignment.id, expired.assignment.id));
     expect(await findPublicAssignment(expired.token)).toBeNull();
   });
 });
@@ -184,7 +201,10 @@ describe("receiving one", () => {
     expect(await submitAssignment({ ...body, token: cancelled.token }, nextVisitor())).toEqual(closed);
 
     const expired = await send();
-    await db().update(schema.recruitAssignment).set({ tokenExpiresAt: inDays(-1) }).where(eq(schema.recruitAssignment.id, expired.assignment.id));
+    await db()
+      .update(schema.recruitAssignment)
+      .set({ tokenExpiresAt: inDays(-1) })
+      .where(eq(schema.recruitAssignment.id, expired.assignment.id));
     expect(await submitAssignment({ ...body, token: expired.token }, nextVisitor())).toEqual(closed);
   });
 

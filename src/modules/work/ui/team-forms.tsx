@@ -17,11 +17,39 @@ import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, 
 import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, teamStatusOf, VISIBILITIES } from "../enums";
 
 type Option = { id: string; name: string };
-type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; archivedAt: Date | string | null; color: string | null; projectStatusSetId: string | null };
+type Team = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  entityId: string | null;
+  departmentId: string | null;
+  defaultVisibility: string;
+  isActive: boolean;
+  archivedAt: Date | string | null;
+  color: string | null;
+  projectStatusSetId: string | null;
+};
 /** A workflow from the library a new team may start from. */
 export type WorkflowChoice = Option & { states: { name: string; category: string }[] };
 
-export function TeamForm({ team, entities, departments, allowGroup, workflows, statusSets, onSaved }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean; /** Workflows a new team may start from (create only). */ workflows?: WorkflowChoice[]; /** Project status sets the team may use. */ statusSets: Option[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
+export function TeamForm({
+  team,
+  entities,
+  departments,
+  allowGroup,
+  workflows,
+  statusSets,
+  onSaved,
+}: {
+  team?: Team;
+  entities: Option[];
+  departments: Option[];
+  /** May the viewer file the team under the whole group? */ allowGroup: boolean;
+  /** Workflows a new team may start from (create only). */ workflows?: WorkflowChoice[];
+  /** Project status sets the team may use. */ statusSets: Option[];
+  /** After an edit is saved — the dialog closes. */ onSaved?: () => void;
+}) {
   const t = useTranslations("work.teams");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -121,7 +149,10 @@ export function TeamForm({ team, entities, departments, allowGroup, workflows, s
             </Field>
           ) : (
             <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-              {preview.join(" → ")} · <Link href="/work/statuses" className="text-link hover:underline">{t("manageLibrary")}</Link>
+              {preview.join(" → ")} ·{" "}
+              <Link href="/work/statuses" className="text-link hover:underline">
+                {t("manageLibrary")}
+              </Link>
             </p>
           )}
         </div>
@@ -196,7 +227,9 @@ export function MemberManager({ members, people, canManage, target }: { members:
             {members.map((member) => (
               <TableRow key={member.personId}>
                 <TableCell className="font-medium">
-                  <RecordLink kind="person" id={member.personId}>{member.fullName}</RecordLink>
+                  <RecordLink kind="person" id={member.personId}>
+                    {member.fullName}
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
                   {canManage ? (
@@ -271,7 +304,9 @@ export function StateManager({ teamId, states, canManage }: { teamId: string; st
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    run(saveStateAction, { teamId, stateId: stateId ?? "", name: data.get("name"), category: data.get("category"), sortOrder: data.get("sortOrder"), isActive: stateId ? data.get("isActive") === "on" : true }, () => (reset ? form.reset() : undefined));
+    run(saveStateAction, { teamId, stateId: stateId ?? "", name: data.get("name"), category: data.get("category"), sortOrder: data.get("sortOrder"), isActive: stateId ? data.get("isActive") === "on" : true }, () =>
+      reset ? form.reset() : undefined,
+    );
   };
   const fields = (state?: StateItem) => (
     <>

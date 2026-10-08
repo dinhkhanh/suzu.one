@@ -58,11 +58,7 @@ export default async function MyInterviewsPage() {
               <TableCell className="max-w-48 truncate">{row.location || "—"}</TableCell>
               <TableCell className="font-mono text-[0.8125rem] tabular-nums">{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
               <TableCell>
-                {row.status === "scheduled" ? (
-                  <Badge variant={row.scorecardSubmitted ? "outline" : "secondary"}>{row.scorecardSubmitted ? t("cardIn") : t("cardDue")}</Badge>
-                ) : (
-                  <Badge variant="outline">{t(`statuses.${row.status}`)}</Badge>
-                )}
+                {row.status === "scheduled" ? <Badge variant={row.scorecardSubmitted ? "outline" : "secondary"}>{row.scorecardSubmitted ? t("cardIn") : t("cardDue")}</Badge> : <Badge variant="outline">{t(`statuses.${row.status}`)}</Badge>}
               </TableCell>
             </TableRow>
           ))}

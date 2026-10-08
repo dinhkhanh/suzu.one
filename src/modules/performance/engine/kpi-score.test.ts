@@ -147,7 +147,12 @@ describe("month score", () => {
 });
 
 describe("year score from the stored months", () => {
-  const month = (key: string, lines: KpiLineInput[]) => kpiMonthScore(key, lines.map((item) => ({ ...item, periodKey: item.frequency === "quarterly" ? item.periodKey : key })), { missingAs: "zero" });
+  const month = (key: string, lines: KpiLineInput[]) =>
+    kpiMonthScore(
+      key,
+      lines.map((item) => ({ ...item, periodKey: item.frequency === "quarterly" ? item.periodKey : key })),
+      { missingAs: "zero" },
+    );
 
   it("gives a quarterly KPI three months of weight", () => {
     // Monthly M (w 70): 80 %, 90 %, 100 %. Quarterly Q (w 30) in March: 50 %.

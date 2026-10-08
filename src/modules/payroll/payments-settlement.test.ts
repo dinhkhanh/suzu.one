@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 // A negative net is refused at proposal (`run-readiness.ts`, PAY-03, tested there). Payment still
 // has to treat one safely if it ever arrives — an older run, a later engine — so this file lets
@@ -67,11 +73,33 @@ const ids = {} as Record<"entity" | "actor" | Who, string>;
 let runId = "";
 
 const summary = () => ({
-  days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
-  leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-  lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0,
-  otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-  otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 2200, unpaidDaysCenti: 0, anomalyDays: 0,
+  days: 31,
+  standardDays: 22,
+  standardMinutes: 10_560,
+  workedMinutes: 10_560,
+  creditedMinutes: 0,
+  leavePaidMinutes: 0,
+  leaveUnpaidMinutes: 0,
+  holidayMinutes: 0,
+  absenceMinutes: 0,
+  lateMinutes: 0,
+  earlyMinutes: 0,
+  lateCount: 0,
+  earlyCount: 0,
+  missingPunchDays: 0,
+  absentDays: 0,
+  wfhMinutes: 0,
+  tripMinutes: 0,
+  nightMinutes: 0,
+  otWeekday: { day: 0, night: 0 },
+  otRestDay: { day: 0, night: 0 },
+  otHoliday: { day: 0, night: 0 },
+  otTotalMinutes: 0,
+  otUnapprovedMinutes: 0,
+  otTimeOffMinutes: 0,
+  paidDaysCenti: 2200,
+  unpaidDaysCenti: 0,
+  anomalyDays: 0,
 });
 
 const bankAccountsContext = (personId: string) => `person_sensitive.bank_accounts:${personId}`;
@@ -101,14 +129,25 @@ beforeAll(async () => {
   ];
   for (const [who, name] of people) {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${who.toLowerCase()}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate: "2024-03-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${who.toLowerCase()}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate: "2024-03-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
     ids[who] = person.id;
   }
 
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
 
@@ -116,7 +155,17 @@ beforeAll(async () => {
   const employmentOf = (personId: string) => employments.find((row) => row.personId === personId)!.id;
   await db()
     .insert(schema.payProfile)
-    .values(people.map(([who, , profile]) => ({ personId: ids[who], employmentId: employmentOf(ids[who]), entityId: entity.id, profile, simpleBasis: profile === "simple" ? ("service_contract" as const) : null, validFrom: "2024-03-01", status: "approved" as const })));
+    .values(
+      people.map(([who, , profile]) => ({
+        personId: ids[who],
+        employmentId: employmentOf(ids[who]),
+        entityId: entity.id,
+        profile,
+        simpleBasis: profile === "simple" ? ("service_contract" as const) : null,
+        validFrom: "2024-03-01",
+        status: "approved" as const,
+      })),
+    );
 
   // Vietcombank; a bank we have no file format for; nothing at all; an account that is not a number.
   const accounts: [Who, string, string][] = [
@@ -126,16 +175,31 @@ beforeAll(async () => {
     ["zeroNet", "Vietcombank", "0444555666"],
     ["negative", "Vietcombank", "0777888999"],
   ];
-  for (const [who, bankName, accountNumber] of accounts) await db().insert(schema.personSensitive).values({ personId: ids[who], bankAccounts: sealAccount(ids[who], bankName, accountNumber) });
+  for (const [who, bankName, accountNumber] of accounts)
+    await db()
+      .insert(schema.personSensitive)
+      .values({ personId: ids[who], bankAccounts: sealAccount(ids[who], bankName, accountNumber) });
 
   for (const [who] of people) {
     const id = crypto.randomUUID();
-    await db().insert(schema.salaryStructure).values({ id, personId: ids[who], employmentId: employmentOf(ids[who]), entityId: entity.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [] }), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({
+        id,
+        personId: ids[who],
+        employmentId: employmentOf(ids[who]),
+        entityId: entity.id,
+        validFrom: "2026-01-01",
+        reason: "initial",
+        termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [] }), salaryTermsContext(id)),
+      });
   }
 
   const lockedAt = new Date("2026-08-28T03:00:00Z");
   await db().insert(schema.timesheetPeriod).values({ entityId: entity.id, month: "2026-08", status: "locked", lockedAt, lockedByPersonId: actor.id });
-  await db().insert(schema.timesheetMonth).values(people.map(([who]) => ({ personId: ids[who], entityId: entity.id, month: "2026-08", status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
+  await db()
+    .insert(schema.timesheetMonth)
+    .values(people.map(([who]) => ({ personId: ids[who], entityId: entity.id, month: "2026-08", status: "locked" as const, summary: summary(), lockedAt, lockedByPersonId: actor.id })));
 
   const created = await createRegularRun({ entityId: entity.id, month: "2026-08" }, actor.id);
   runId = created.id;
@@ -213,7 +277,10 @@ describe("only the latest file of a bank counts (PAY-05)", () => {
 
   it("a regenerated file supersedes the one before it — the old file's skip no longer blocks", async () => {
     // HR corrects the account; the accountant builds the ACB batch again.
-    await db().update(schema.personSensitive).set({ bankAccounts: sealAccount(ids.badAccount, "ACB", "9876543210") }).where(eq(schema.personSensitive.personId, ids.badAccount));
+    await db()
+      .update(schema.personSensitive)
+      .set({ bankAccounts: sealAccount(ids.badAccount, "ACB", "9876543210") })
+      .where(eq(schema.personSensitive.personId, ids.badAccount));
     // Until then she is waiting for a batch: the one that exists does not hold her.
     expect(await stateOf("badAccount")).toBe("awaiting_file");
 
@@ -308,7 +375,13 @@ describe("the entity's paying accounts (FR-PLT-11, FR-PAY-33)", () => {
 });
 
 describe("the cash sheet records what was actually handed over (FR-PAY-39)", () => {
-  const cashRow = async (who: Who) => (await db().select().from(schema.payrollCashPayment).where(and(eq(schema.payrollCashPayment.runId, runId), eq(schema.payrollCashPayment.personId, ids[who]))))[0];
+  const cashRow = async (who: Who) =>
+    (
+      await db()
+        .select()
+        .from(schema.payrollCashPayment)
+        .where(and(eq(schema.payrollCashPayment.runId, runId), eq(schema.payrollCashPayment.personId, ids[who])))
+    )[0];
 
   it("opens with the two people on the Simple profile and blocks until they are paid", async () => {
     expect((await settlement()).blockers).toEqual(["cash_not_disbursed"]);
@@ -359,7 +432,9 @@ describe("the cash sheet records what was actually handed over (FR-PAY-39)", () 
   it("holds the signed sheet's scan against the run, at the compensation tier", async () => {
     const owner = cashSheetScanOwner(await run());
     expect(owner).toEqual({ ownerType: CASH_SHEET_SCAN, ownerId: runId, entityId: ids.entity, tier: "compensation" });
-    await db().insert(schema.storedFile).values({ bucket: "suzu-private", objectPath: `${CASH_SHEET_SCAN}/2026/sheet.pdf`, fileName: "bang-chi-thang-8.pdf", contentType: "application/pdf", sizeBytes: 1000, status: "ready", uploadedByPersonId: ids.actor, ...owner });
+    await db()
+      .insert(schema.storedFile)
+      .values({ bucket: "suzu-private", objectPath: `${CASH_SHEET_SCAN}/2026/sheet.pdf`, fileName: "bang-chi-thang-8.pdf", contentType: "application/pdf", sizeBytes: 1000, status: "ready", uploadedByPersonId: ids.actor, ...owner });
     const scans = await listCashSheetScans(runId);
     expect(scans.map((file) => [file.fileName, file.tier])).toEqual([["bang-chi-thang-8.pdf", "compensation"]]);
   });

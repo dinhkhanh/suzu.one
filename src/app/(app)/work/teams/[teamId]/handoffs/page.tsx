@@ -24,22 +24,48 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
   const [team, viewer, t] = await Promise.all([/^[0-9a-f-]{36}$/.test(teamId) ? findTeam(teamId) : undefined, loadViewer(user), getTranslations("work")]);
   if (!team || !canViewTeam(viewer, teamFacts(team))) notFound();
   const manage = canManageHandoffPackages(viewer, teamFacts(team));
-  const [packages, states, checklists, stats] = await Promise.all([listPackages(team.id), listStates([team.id]), checklistChoices(), manage ? handoffStatsByStage([team.id], new Date(`${addDays(todayInVietnam(), -STATS_DAYS)}T00:00:00+07:00`)) : []]);
-  const duration = (minutes: number | null) => (minutes === null ? "—" : minutes < 60 ? t("handoff.waitedMinutes", { minutes }) : minutes < 60 * 48 ? t("handoff.waitedHours", { hours: Math.round(minutes / 60) }) : t("handoff.waitedDays", { days: Math.round(minutes / 1440) }));
+  const [packages, states, checklists, stats] = await Promise.all([
+    listPackages(team.id),
+    listStates([team.id]),
+    checklistChoices(),
+    manage ? handoffStatsByStage([team.id], new Date(`${addDays(todayInVietnam(), -STATS_DAYS)}T00:00:00+07:00`)) : [],
+  ]);
+  const duration = (minutes: number | null) =>
+    minutes === null ? "—" : minutes < 60 ? t("handoff.waitedMinutes", { minutes }) : minutes < 60 * 48 ? t("handoff.waitedHours", { hours: Math.round(minutes / 60) }) : t("handoff.waitedDays", { days: Math.round(minutes / 1440) });
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
-            {t("title")}
-          </Link>
-          <span className="text-faint">/</span>
-          <RecordLink kind="team" id={team.id}>
-            {team.name}
-          </RecordLink></span>} title={t("handoff.packages.title")} description={t("handoff.packages.description")} />
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <RecordLink kind="team" id={team.id}>
+              {team.name}
+            </RecordLink>
+          </span>
+        }
+        title={t("handoff.packages.title")}
+        description={t("handoff.packages.description")}
+      />
 
       <HandoffPackageManager
         teamId={team.id}
-        packages={packages.map(({ id, name, fromStateId, toStateId, fields, checklist, checklistIds, requireLink, requireFile, requireAccept, isActive }) => ({ id, name, fromStateId, toStateId, fields, checklist, checklistIds, requireLink, requireFile, requireAccept, isActive }))}
+        packages={packages.map(({ id, name, fromStateId, toStateId, fields, checklist, checklistIds, requireLink, requireFile, requireAccept, isActive }) => ({
+          id,
+          name,
+          fromStateId,
+          toStateId,
+          fields,
+          checklist,
+          checklistIds,
+          requireLink,
+          requireFile,
+          requireAccept,
+          isActive,
+        }))}
         states={states.filter((state) => state.isActive).map(({ id, name }) => ({ id, name }))}
         checklists={checklists}
         canManage={manage}
@@ -65,7 +91,9 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
                 <TableRow key={row.toStateId ?? "none"}>
                   <TableCell>{row.stateName ?? "—"}</TableCell>
                   <TableCell kind="number">{row.total}</TableCell>
-                  <TableCell kind="number" className={row.returned ? "text-destructive" : undefined}>{row.returned}</TableCell>
+                  <TableCell kind="number" className={row.returned ? "text-destructive" : undefined}>
+                    {row.returned}
+                  </TableCell>
                   <TableCell kind="number">{row.pending}</TableCell>
                   <TableCell kind="time">{duration(row.avgWaitMinutes)}</TableCell>
                   <TableCell kind="time">{duration(row.oldestPendingMinutes)}</TableCell>

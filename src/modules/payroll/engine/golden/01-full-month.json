@@ -41,7 +41,19 @@
   ],
   "timesheet": { "standardDays": 22, "paidDaysCenti": 2200, "workedMinutes": 10560 },
   "expect": {
-    "lines": { "BASE": 30000000, "ALW_MEAL": 730000, "ALW_PHONE": 500000, "ALW_TRANSPORT": 1000000, "INS_BHXH_EE": 2400000, "INS_BHYT_EE": 450000, "INS_BHTN_EE": 300000, "PIT": 735000, "INS_BHXH_ER": 5250000, "INS_BHYT_ER": 900000, "INS_BHTN_ER": 300000 },
+    "lines": {
+      "BASE": 30000000,
+      "ALW_MEAL": 730000,
+      "ALW_PHONE": 500000,
+      "ALW_TRANSPORT": 1000000,
+      "INS_BHXH_EE": 2400000,
+      "INS_BHYT_EE": 450000,
+      "INS_BHTN_EE": 300000,
+      "PIT": 735000,
+      "INS_BHXH_ER": 5250000,
+      "INS_BHYT_ER": 900000,
+      "INS_BHTN_ER": 300000
+    },
     "totals": { "grossEarnings": 32230000, "taxableIncome": 31000000, "employeeInsurance": 3150000, "employerInsurance": 6450000, "pit": 735000, "net": 28345000, "employerCost": 38680000 },
     "insurance": { "covered": true, "reason": null, "bhxhBhytBase": 30000000, "bhtnBase": 30000000 },
     "pit": { "method": "progressive", "assessableIncome": 12350000, "tax": 735000 },

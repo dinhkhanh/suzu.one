@@ -60,7 +60,14 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
   const groups = heldKinds(owned).map((kind) => ({ kind, items: owned.filter((item) => item.kind === kind) }));
   const toggle = (key: string, on: boolean) => setChosen((current) => new Set(on ? [...current, key] : [...current].filter((row) => row !== key)));
   // Work of a place this runner does not run has no name here: they are told whom to ask.
-  const label = (item: OwnedItemView) => (item.label === null ? (item.ownerName ? t("privateItemAsk", { name: item.ownerName }) : t("privateItem")) : item.kind === "time_week" ? t("week", { date: format.dateTime(new Date(`${item.label}T00:00:00`), { dateStyle: "medium" }) }) : item.label);
+  const label = (item: OwnedItemView) =>
+    item.label === null
+      ? item.ownerName
+        ? t("privateItemAsk", { name: item.ownerName })
+        : t("privateItem")
+      : item.kind === "time_week"
+        ? t("week", { date: format.dateTime(new Date(`${item.label}T00:00:00`), { dateStyle: "medium" }) })
+        : item.label;
 
   return (
     <div className="flex flex-col gap-4">
@@ -72,7 +79,10 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
           const data = new FormData(event.currentTarget);
           const items = reassignable.filter((item) => chosen.has(keyOf(item))).map(({ kind, id }) => ({ kind, id }));
           const input = { handoverId, toPersonId: data.get("toPersonId"), items, note: readNote(data) };
-          run(() => reassignOwnershipAction(input), () => setChosen(new Set()));
+          run(
+            () => reassignOwnershipAction(input),
+            () => setChosen(new Set()),
+          );
         }}
       >
         {groups.map((group) => (
@@ -94,7 +104,13 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
                   {canRun && open && item.canReassign ? <Checkbox aria-label={label(item)} checked={chosen.has(keyOf(item))} onCheckedChange={(checked) => toggle(keyOf(item), checked)} /> : null}
                   <span className="min-w-0 flex-1 truncate">
                     {/* Named only where this runner runs the place, which is also where they may open it. */}
-                    {item.label !== null && recordKindOf(item.kind) ? <RecordLink kind={recordKindOf(item.kind)!} id={item.id}>{label(item)}</RecordLink> : label(item)}
+                    {item.label !== null && recordKindOf(item.kind) ? (
+                      <RecordLink kind={recordKindOf(item.kind)!} id={item.id}>
+                        {label(item)}
+                      </RecordLink>
+                    ) : (
+                      label(item)
+                    )}
                   </span>
                   {item.context ? <span className="text-xs text-muted-foreground">{item.context}</span> : null}
                   {item.kind === "time_week" ? <span className="text-xs text-muted-foreground">{t("submitWeek")}</span> : null}

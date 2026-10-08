@@ -163,12 +163,7 @@ export async function listPayouts(reach: Reach, options: { paidSince: IsoDate; l
 export async function payoutTotals(reach: Reach): Promise<{ waiting: number; owed: number }> {
   if (!reach.all && reach.entityIds.length === 0) return { waiting: 0, owed: 0 };
   const settles = and(eq(schema.requestType.payout, "payment"), isNotNull(schema.requestSubmission.parentSubmissionId));
-  const waiting = and(
-    ne(schema.requestType.payout, "none"),
-    eq(schema.approvalRequest.status, "approved"),
-    reach.all ? undefined : inArray(schema.approvalRequest.entityId, reach.entityIds),
-    isNull(schema.requestSubmission.paidOn),
-  );
+  const waiting = and(ne(schema.requestType.payout, "none"), eq(schema.approvalRequest.status, "approved"), reach.all ? undefined : inArray(schema.approvalRequest.entityId, reach.entityIds), isNull(schema.requestSubmission.paidOn));
   const [[plain], settling] = await Promise.all([
     db()
       .select({
@@ -193,7 +188,9 @@ export async function payoutTotals(reach: Reach): Promise<{ waiting: number; owe
 
 /** Where one request stands with finance, for its own page. null = not a payable type, or not approved. */
 export async function payoutOf(requestId: string, executor: Executor = db()): Promise<PayoutRow | null> {
-  const rows = await payoutFrom(executor).where(and(eq(schema.approvalRequest.id, requestId), ne(schema.requestType.payout, "none"), eq(schema.approvalRequest.status, "approved"))).limit(1);
+  const rows = await payoutFrom(executor)
+    .where(and(eq(schema.approvalRequest.id, requestId), ne(schema.requestType.payout, "none"), eq(schema.approvalRequest.status, "approved")))
+    .limit(1);
   return (await withSettlements(executor, rows))[0] ?? null;
 }
 

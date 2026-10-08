@@ -32,15 +32,42 @@ describe("status updates (FR-PJM-27)", () => {
         { kind: "assumption", severity: null, status: "open" },
       ],
     });
-    expect(facts).toEqual({ tasksDone: 1, tasksOpen: 3, overdue: 1, blocked: 1, milestoneSlipDays: 3, nextMilestone: { name: "Quay", dueDate: "2026-10-28" }, minutesLogged: 1200, budgetMinutes: 6000, deliverablesAccepted: 3, deliverablesPromised: 12, deliverablesAwaitingClient: 0, highRisks: 1, openIssues: 2 });
+    expect(facts).toEqual({
+      tasksDone: 1,
+      tasksOpen: 3,
+      overdue: 1,
+      blocked: 1,
+      milestoneSlipDays: 3,
+      nextMilestone: { name: "Quay", dueDate: "2026-10-28" },
+      minutesLogged: 1200,
+      budgetMinutes: 6000,
+      deliverablesAccepted: 3,
+      deliverablesPromised: 12,
+      deliverablesAwaitingClient: 0,
+      highRisks: 1,
+      openIssues: 2,
+    });
   });
   it("counts no risks and issues when the log is empty or all closed", () => {
     const base = { today: "2026-10-20", tasks: [], blocked: 0, milestones: [], minutesLogged: 0, budgetMinutes: null, register: { accepted: 0, promised: 0 } };
     expect(statusFacts({ ...base, raid: [] })).toMatchObject({ highRisks: 0, openIssues: 0 });
-    expect(statusFacts({ ...base, raid: [{ kind: "issue", severity: "high", status: "closed" }, { kind: "risk", severity: "high", status: "closed" }] })).toMatchObject({ highRisks: 0, openIssues: 0 });
+    expect(
+      statusFacts({
+        ...base,
+        raid: [
+          { kind: "issue", severity: "high", status: "closed" },
+          { kind: "risk", severity: "high", status: "closed" },
+        ],
+      }),
+    ).toMatchObject({ highRisks: 0, openIssues: 0 });
   });
   it("picks the next open milestone, undated ones last", () => {
-    expect(nextMilestone([{ id: "a", name: "A", dueDate: null, doneOn: null, baselineDue: null }, { id: "b", name: "B", dueDate: "2026-11-01", doneOn: null, baselineDue: null }])?.id).toBe("b");
+    expect(
+      nextMilestone([
+        { id: "a", name: "A", dueDate: null, doneOn: null, baselineDue: null },
+        { id: "b", name: "B", dueDate: "2026-11-01", doneOn: null, baselineDue: null },
+      ])?.id,
+    ).toBe("b");
     expect(nextMilestone([{ id: "a", name: "A", dueDate: "2026-11-01", doneOn: "2026-10-30", baselineDue: null }])).toBeNull();
   });
   it("is due a cadence after the last update, only while the project runs; stale once overdue", () => {

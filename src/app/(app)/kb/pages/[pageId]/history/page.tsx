@@ -69,7 +69,15 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
                   </span>
                 </TableCell>
                 <TableCell className="max-w-80 truncate">{version.changeNote ?? version.title}</TableCell>
-                <TableCell>{version.authorName ? <RecordLink kind="person" id={version.authorPersonId}>{version.authorName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {version.authorName ? (
+                    <RecordLink kind="person" id={version.authorPersonId}>
+                      {version.authorName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{format.dateTime(version.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
                 <TableCell kind="actions">
                   <span className="flex items-center justify-end gap-3">

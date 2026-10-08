@@ -62,7 +62,15 @@ async function headcountScope(principal: Principal, filters: HeadcountFilters) {
     c,
     scope,
     spansWindow: and(scope, lte(e.startDate, latest), or(isNull(e.endDate), gte(e.endDate, earliest))),
-    contractsDue: and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])),
+    contractsDue: and(
+      scope,
+      isNull(c.deletedAt),
+      isNull(c.terminatedOn),
+      isNull(e.endDate),
+      gte(c.endDate, filters.asOf),
+      or(eq(c.type, "probation"), lte(c.endDate, until)),
+      inArray(c.type, ["probation", "fixed_term", "service", "internship"]),
+    ),
   };
 }
 
@@ -110,7 +118,17 @@ export async function listContractsDue(principal: Principal, asOf: IsoDate): Pro
 /** The contracts due in a scope, split into the two lists the report shows. */
 async function contractLists({ e, a, c, contractsDue }: NonNullable<Awaited<ReturnType<typeof headcountScope>>>): Promise<{ contractsExpiring: ContractDue[]; probations: ContractDue[] }> {
   const due = await db()
-    .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entityId: e.entityId, entity: schema.entity.shortName, departmentId: a.departmentId, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
+    .select({
+      personId: e.personId,
+      fullName: schema.person.fullName,
+      employeeCode: e.employeeCode,
+      entityId: e.entityId,
+      entity: schema.entity.shortName,
+      departmentId: a.departmentId,
+      department: schema.orgUnit.name,
+      type: c.type,
+      endDate: c.endDate,
+    })
     .from(c)
     .innerJoin(e, eq(e.id, c.employmentId))
     .innerJoin(schema.person, eq(schema.person.id, e.personId))

@@ -174,7 +174,10 @@ export const PROJECT_TEMPLATE_PLAN_SEED: Record<string, SeedPlan> = {
  */
 export async function seedProjectTemplatePlans(db: PostgresJsDatabase): Promise<{ seeded: number }> {
   const names = Object.keys(PROJECT_TEMPLATE_PLAN_SEED);
-  const templates = await db.select({ id: taskTemplate.id, name: taskTemplate.name }).from(taskTemplate).where(and(eq(taskTemplate.purpose, "work_project"), inArray(taskTemplate.name, names)));
+  const templates = await db
+    .select({ id: taskTemplate.id, name: taskTemplate.name })
+    .from(taskTemplate)
+    .where(and(eq(taskTemplate.purpose, "work_project"), inArray(taskTemplate.name, names)));
   if (templates.length === 0) return { seeded: 0 };
   const rows = templates.map((template) => ({ templateId: template.id, ...PROJECT_TEMPLATE_PLAN_SEED[template.name] }));
   const inserted = await db.insert(projectTemplatePlan).values(rows).onConflictDoNothing({ target: projectTemplatePlan.templateId }).returning({ templateId: projectTemplatePlan.templateId });

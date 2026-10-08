@@ -40,7 +40,10 @@ export async function queueTestMessenger(personId: string, message: { title: str
     .select({ id: schema.messengerLink.id })
     .from(schema.messengerLink)
     .where(and(eq(schema.messengerLink.personId, personId), isNull(schema.messengerLink.revokedAt)));
-  if (links.length) await db().insert(schema.messengerDelivery).values(links.map((link) => ({ linkId: link.id, personId, kind: "test", ...message })));
+  if (links.length)
+    await db()
+      .insert(schema.messengerDelivery)
+      .values(links.map((link) => ({ linkId: link.id, personId, kind: "test", ...message })));
   return links.length;
 }
 
@@ -70,7 +73,15 @@ export async function deliverPendingMessengers(limit = 100, now: () => Date = ()
     if (!claimed) continue;
 
     // The guard. Each reason is recorded; none of them sends anything.
-    const refusal = !link ? "link missing" : link.revokedAt ? `link revoked (${link.revokedReason ?? "?"})` : link.personId !== delivery.personId ? "link belongs to someone else" : !mayReceive(personStatus) ? `person is ${personStatus}` : null;
+    const refusal = !link
+      ? "link missing"
+      : link.revokedAt
+        ? `link revoked (${link.revokedReason ?? "?"})`
+        : link.personId !== delivery.personId
+          ? "link belongs to someone else"
+          : !mayReceive(personStatus)
+            ? `person is ${personStatus}`
+            : null;
     if (refusal || !link) {
       await db().update(outbox).set({ status: "dropped", lastError: refusal }).where(eq(outbox.id, delivery.id));
       tally.dropped++;
@@ -98,12 +109,18 @@ export async function deliverPendingMessengers(limit = 100, now: () => Date = ()
       tally.dropped++;
     } else {
       const givenUp = delivery.attempts + 1 >= MAX_ATTEMPTS;
-      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", via, lastError: result.error }).where(eq(outbox.id, delivery.id));
+      await db()
+        .update(outbox)
+        .set({ status: givenUp ? "failed" : "pending", via, lastError: result.error })
+        .where(eq(outbox.id, delivery.id));
       tally.failed++;
     }
   }
   if (delivered.size) {
-    await db().update(schema.messengerLink).set({ lastSuccessAt: now() }).where(inArray(schema.messengerLink.id, [...delivered.keys()]));
+    await db()
+      .update(schema.messengerLink)
+      .set({ lastSuccessAt: now() })
+      .where(inArray(schema.messengerLink.id, [...delivered.keys()]));
     await invalidateMessengerStatus(...delivered.values());
   }
   return tally;

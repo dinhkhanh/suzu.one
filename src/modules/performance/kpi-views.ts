@@ -32,7 +32,14 @@ export async function getEntryGrid(viewer: Viewer, month: string): Promise<Entry
     .sort(byName)
     .map((person) => {
       const own = [...lines.get(person.personId)!].sort((a, b) => a.kpiCode.localeCompare(b.kpiCode));
-      return { personId: person.personId, fullName: person.fullName, entityId: person.entityId ?? null, closed: !!person.entityId && closed.has(person.entityId), lines: own, proposals: Object.fromEntries(own.flatMap((line) => (proposals.has(line.assignmentId) ? [[line.assignmentId, proposals.get(line.assignmentId)!]] : []))) };
+      return {
+        personId: person.personId,
+        fullName: person.fullName,
+        entityId: person.entityId ?? null,
+        closed: !!person.entityId && closed.has(person.entityId),
+        lines: own,
+        proposals: Object.fromEntries(own.flatMap((line) => (proposals.has(line.assignmentId) ? [[line.assignmentId, proposals.get(line.assignmentId)!]] : []))),
+      };
     });
 }
 
@@ -63,8 +70,20 @@ export async function getTeamDashboard(viewer: Viewer, month: string, now: Date 
       personId: person.personId,
       fullName: person.fullName,
       canEnter: canEnterActualsFor(viewer.principal, person),
-      kpi: score ? { state: "closed", scoreBp: score.scoreBp, lines: items.length, missing: 0 } : items.length > 0 ? { state: "open", scoreBp: kpiMonthScore(month, items, { missingAs: "excluded" }).scoreBp, lines: items.length, missing: items.filter(isMissing).length } : null,
-      okr: own.length > 0 ? { goals: own.length, progressBp: weightedAverageBp(own.map((goal) => ({ weight: goal.weight, progressBp: goal.progress.progressBp }))), confidence: worst(own.map((goal) => goal.progress.confidence)), stale: own.reduce((sum, goal) => sum + (goal.status === "active" ? goal.keyResults.filter((keyResult) => keyResult.stale).length : 0), 0) } : null,
+      kpi: score
+        ? { state: "closed", scoreBp: score.scoreBp, lines: items.length, missing: 0 }
+        : items.length > 0
+          ? { state: "open", scoreBp: kpiMonthScore(month, items, { missingAs: "excluded" }).scoreBp, lines: items.length, missing: items.filter(isMissing).length }
+          : null,
+      okr:
+        own.length > 0
+          ? {
+              goals: own.length,
+              progressBp: weightedAverageBp(own.map((goal) => ({ weight: goal.weight, progressBp: goal.progress.progressBp }))),
+              confidence: worst(own.map((goal) => goal.progress.confidence)),
+              stale: own.reduce((sum, goal) => sum + (goal.status === "active" ? goal.keyResults.filter((keyResult) => keyResult.stale).length : 0), 0),
+            }
+          : null,
     };
   });
 }
@@ -83,13 +102,23 @@ export type OverviewEntity = {
   spread: Spread;
   departments: { departmentId: string | null; name: string | null; spread: Spread }[];
 };
-export type Overview = { month: string; entities: OverviewEntity[]; goals: { id: string; level: "group" | "entity"; entityId: string | null; unitName: string | null; title: string; periodKey: string; progressBp: number | null; confidence: Confidence | null }[] };
+export type Overview = {
+  month: string;
+  entities: OverviewEntity[];
+  goals: { id: string; level: "group" | "entity"; entityId: string | null; unitName: string | null; title: string; periodKey: string; progressBp: number | null; confidence: Confidence | null }[];
+};
 
 export function spreadOf(scores: readonly (number | null)[]): Spread {
   const values = scores.filter((score): score is number => score !== null).sort((a, b) => a - b);
   if (values.length === 0) return { people: 0, averageBp: null, minBp: null, medianBp: null, maxBp: null };
   const middle = values.length / 2;
-  return { people: values.length, averageBp: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length), minBp: values[0], medianBp: values.length % 2 === 1 ? values[Math.floor(middle)] : Math.round((values[middle - 1] + values[middle]) / 2), maxBp: values[values.length - 1] };
+  return {
+    people: values.length,
+    averageBp: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
+    minBp: values[0],
+    medianBp: values.length % 2 === 1 ? values[Math.floor(middle)] : Math.round((values[middle - 1] + values[middle]) / 2),
+    maxBp: values[values.length - 1],
+  };
 }
 
 /** Per entity and department in the viewer's reach: who is scored, how the scores spread, which months are closed. Null: no reach. */
@@ -107,7 +136,10 @@ export async function getOverview(viewer: Viewer, month: string, months: readonl
   const departmentName = new Map(departments.map((department) => [department.id, department.name]));
   const isClosed = (entityId: string) => periods.some((period) => period.entityId === entityId && period.month === month && period.status === "closed");
   // The open entities' lines, all at once rather than one entity after another.
-  const openLines = await loadMonthLinesByEntity(visible.filter((entity) => !isClosed(entity.id)).map((entity) => entity.id), month);
+  const openLines = await loadMonthLinesByEntity(
+    visible.filter((entity) => !isClosed(entity.id)).map((entity) => entity.id),
+    month,
+  );
 
   const result: OverviewEntity[] = [];
   for (const entity of visible) {
@@ -139,9 +171,24 @@ export async function getOverview(viewer: Viewer, month: string, months: readonl
       state: closed ? "closed" : "open",
       missing,
       spread: spreadOf([...scores.values()]),
-      departments: [...byDepartment.entries()].map(([departmentId, values]) => ({ departmentId, name: departmentId ? (departmentName.get(departmentId) ?? null) : null, spread: spreadOf(values) })).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "vi")),
+      departments: [...byDepartment.entries()]
+        .map(([departmentId, values]) => ({ departmentId, name: departmentId ? (departmentName.get(departmentId) ?? null) : null, spread: spreadOf(values) }))
+        .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "vi")),
     });
   }
   const top = goals.filter((goal) => (goal.status === "active" || goal.status === "closed") && (goal.level === "group" || (goal.level === "entity" && !!goal.entityId && entityIds.includes(goal.entityId))));
-  return { month, entities: result, goals: top.map((goal) => ({ id: goal.id, level: goal.level as "group" | "entity", entityId: goal.entityId, unitName: goal.unitName, title: goal.title, periodKey: goal.periodKey, progressBp: goal.progress.progressBp, confidence: goal.progress.confidence })) };
+  return {
+    month,
+    entities: result,
+    goals: top.map((goal) => ({
+      id: goal.id,
+      level: goal.level as "group" | "entity",
+      entityId: goal.entityId,
+      unitName: goal.unitName,
+      title: goal.title,
+      periodKey: goal.periodKey,
+      progressBp: goal.progress.progressBp,
+      confidence: goal.progress.confidence,
+    })),
+  };
 }

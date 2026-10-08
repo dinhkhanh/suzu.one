@@ -29,7 +29,8 @@ export async function LifecycleSection({ principal, personId, canManage, employe
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const today = todayInVietnam();
   const people = canManage ? await listPersonNames() : undefined;
-  const words = (placement: NonNullable<(typeof events)[number]["to"]>) => [placement.entity, placement.position, jobTitle(tp, placement) ?? placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
+  const words = (placement: NonNullable<(typeof events)[number]["to"]>) =>
+    [placement.entity, placement.position, jobTitle(tp, placement) ?? placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
   const resignation = events.find((event) => event.type === "resignation" && event.status === "pending");
   // A probation pass or a renewal comes with its contract and, when a template is chosen, its decision
   // paper: the templates offered are the decisions and contracts this viewer may issue for this person.
@@ -43,7 +44,11 @@ export async function LifecycleSection({ principal, personId, canManage, employe
           {events.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
           {events.map((event) => {
             const progress = summarize(event.tasks, today);
-            const cancellable = canManage && event.status !== "cancelled" && !event.hasEffects && ((event.type === "termination" && event.status === "pending") || event.type === "resignation" || (RECORD_ONLY_EVENT_TYPES as readonly string[]).includes(event.type));
+            const cancellable =
+              canManage &&
+              event.status !== "cancelled" &&
+              !event.hasEffects &&
+              ((event.type === "termination" && event.status === "pending") || event.type === "resignation" || (RECORD_ONLY_EVENT_TYPES as readonly string[]).includes(event.type));
             return (
               <ListItem key={event.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-2">

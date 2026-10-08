@@ -1,7 +1,20 @@
 // Golden figures of the delivery dashboards (FR-PJM-60): rates over many projects are the sum of
 // the parts divided once, "no data" is null rather than 0 %, and compliance counts only what was due.
 import { describe, expect, it } from "vitest";
-import { addCompliance, blockedMinutesWithin, EMPTY_BLOCKED, EMPTY_HANDOFFS, EMPTY_MILESTONES, EMPTY_ON_TIME, EMPTY_REVISIONS, type ProjectDeliveryFacts, reportCompliance, summariseDelivery, summariseRetainers, timesheetCompliance } from "./delivery";
+import {
+  addCompliance,
+  blockedMinutesWithin,
+  EMPTY_BLOCKED,
+  EMPTY_HANDOFFS,
+  EMPTY_MILESTONES,
+  EMPTY_ON_TIME,
+  EMPTY_REVISIONS,
+  type ProjectDeliveryFacts,
+  reportCompliance,
+  summariseDelivery,
+  summariseRetainers,
+  timesheetCompliance,
+} from "./delivery";
 
 const project = (overrides: Partial<ProjectDeliveryFacts> & { projectId: string }): ProjectDeliveryFacts => ({
   teamId: "video",
@@ -62,7 +75,16 @@ describe("summariseDelivery", () => {
 
   it("says nothing rather than 0 % where there is nothing to divide by", () => {
     const summary = summariseDelivery([internal]);
-    expect([summary.onTime.rate, summary.register.rate, summary.burn.rate, summary.milestones.slipRate, summary.handoffs.returnRate, summary.handoffs.averageWaitMinutes, summary.revisions.internalPerTask, summary.blocked.averageHoursPerBlocker]).toEqual([null, null, null, null, null, null, null, null]);
+    expect([
+      summary.onTime.rate,
+      summary.register.rate,
+      summary.burn.rate,
+      summary.milestones.slipRate,
+      summary.handoffs.returnRate,
+      summary.handoffs.averageWaitMinutes,
+      summary.revisions.internalPerTask,
+      summary.blocked.averageHoursPerBlocker,
+    ]).toEqual([null, null, null, null, null, null, null, null]);
     expect(summariseDelivery([]).projects).toBe(0);
   });
 });
@@ -81,12 +103,23 @@ describe("compliance", () => {
   });
 
   it("counts timesheet weeks that were due", () => {
-    expect(timesheetCompliance([{ due: true, submitted: true }, { due: false, submitted: false }, { due: true, submitted: false }])).toEqual({ due: 2, met: 1, rate: 0.5 });
+    expect(
+      timesheetCompliance([
+        { due: true, submitted: true },
+        { due: false, submitted: false },
+        { due: true, submitted: false },
+      ]),
+    ).toEqual({ due: 2, met: 1, rate: 0.5 });
     expect(timesheetCompliance([{ due: false, submitted: false }])).toEqual({ due: 0, met: 0, rate: null });
   });
 
   it("adds teams by their counts", () => {
-    expect(addCompliance([{ due: 10, met: 9, rate: 0.9 }, { due: 30, met: 15, rate: 0.5 }])).toEqual({ due: 40, met: 24, rate: 0.6 });
+    expect(
+      addCompliance([
+        { due: 10, met: 9, rate: 0.9 },
+        { due: 30, met: 15, rate: 0.5 },
+      ]),
+    ).toEqual({ due: 40, met: 24, rate: 0.6 });
   });
 });
 

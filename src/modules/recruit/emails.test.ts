@@ -15,7 +15,11 @@ import { EMAIL_TEMPLATE_SEED } from "./seed-email-templates";
 import { PIPELINE_SEED } from "./seed-pipelines";
 import { createApplication, createCandidate, createOpening, savePipeline, setOpeningStatus } from "./service";
 
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 const ids = {} as Record<"szm" | "pipeline" | "recruiterPerson" | "openingId" | "applicationId" | "silentApplicationId" | "inviteTemplateId", string>;
 const sender = { personId: "", fullName: "Người tuyển dụng" };
@@ -39,7 +43,8 @@ beforeAll(async () => {
       departmentId: null,
       teamId: null,
       positionName: null,
-      seniorityLevel: null, positionLevel: null,
+      seniorityLevel: null,
+      positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: null,

@@ -67,14 +67,26 @@ export default async function MyPayslipsPage() {
                 {payslip.kind === "off_cycle" ? <span className="ml-2 text-xs text-muted-foreground">{payslip.runName}</span> : null}
               </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">
-                <RecordLink kind="entity" id={payslip.entityId}>{payslip.entityCode}</RecordLink>
+                <RecordLink kind="entity" id={payslip.entityId}>
+                  {payslip.entityCode}
+                </RecordLink>
               </TableCell>
-              <TableCell kind="money" className="font-medium">{formatVnd(payslip.net)}</TableCell>
+              <TableCell kind="money" className="font-medium">
+                {formatVnd(payslip.net)}
+              </TableCell>
               <TableCell className="text-muted-foreground">{format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}</TableCell>
               <TableCell>
                 <span className="flex gap-1.5">
-                  {payslip.firstViewedAt ? null : <Badge dot variant="info">{t("new")}</Badge>}
-                  {payslip.openQueries > 0 ? <Badge dot variant="warning">{t("queryOpen")}</Badge> : null}
+                  {payslip.firstViewedAt ? null : (
+                    <Badge dot variant="info">
+                      {t("new")}
+                    </Badge>
+                  )}
+                  {payslip.openQueries > 0 ? (
+                    <Badge dot variant="warning">
+                      {t("queryOpen")}
+                    </Badge>
+                  ) : null}
                 </span>
               </TableCell>
             </TableRow>
@@ -88,8 +100,16 @@ export default async function MyPayslipsPage() {
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="flex items-center gap-2">
                 <span className="font-mono font-medium tabular-nums">{monthLabel(payslip.month)}</span>
-                {payslip.firstViewedAt ? null : <Badge dot variant="info">{t("new")}</Badge>}
-                {payslip.openQueries > 0 ? <Badge dot variant="warning">{t("queryOpen")}</Badge> : null}
+                {payslip.firstViewedAt ? null : (
+                  <Badge dot variant="info">
+                    {t("new")}
+                  </Badge>
+                )}
+                {payslip.openQueries > 0 ? (
+                  <Badge dot variant="warning">
+                    {t("queryOpen")}
+                  </Badge>
+                ) : null}
               </span>
               <span className="text-xs text-muted-foreground">
                 {payslip.entityCode} · {format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}

@@ -61,7 +61,12 @@ export async function enrolFaces(input: EnrolmentInput): Promise<{ added: number
     if (!existing && !input.consent) throw new ActionError("face_consent_required");
 
     // One face, not a mix: each photo must look like the person's existing templates and the others in the batch.
-    const own = (await tx.select({ embedding: schema.faceTemplate.embedding }).from(schema.faceTemplate).where(and(eq(schema.faceTemplate.personId, input.personId), eq(schema.faceTemplate.model, FACE_MODEL)))).map((row) => row.embedding);
+    const own = (
+      await tx
+        .select({ embedding: schema.faceTemplate.embedding })
+        .from(schema.faceTemplate)
+        .where(and(eq(schema.faceTemplate.personId, input.personId), eq(schema.faceTemplate.model, FACE_MODEL)))
+    ).map((row) => row.embedding);
     const all = [...own, ...embeddings];
     if (embeddings.some((vector) => all.some((other) => other !== vector && cosine(vector, other) < MATCH.keepThreshold))) throw new ActionError("face_photos_differ");
 
@@ -74,7 +79,11 @@ export async function enrolFaces(input: EnrolmentInput): Promise<{ added: number
     if (nearest?.score !== null && nearest?.score !== undefined && Number(nearest.score) >= MATCH.enrolConflict) throw new ActionError("face_looks_like_someone_else");
 
     const now = new Date();
-    if (existing) await tx.update(schema.faceEnrolment).set({ entityId: input.entityId, updatedAt: now, ...(input.consent ? { consentAt: now, consentRecordedByPersonId: input.actorPersonId } : {}) }).where(eq(schema.faceEnrolment.personId, input.personId));
+    if (existing)
+      await tx
+        .update(schema.faceEnrolment)
+        .set({ entityId: input.entityId, updatedAt: now, ...(input.consent ? { consentAt: now, consentRecordedByPersonId: input.actorPersonId } : {}) })
+        .where(eq(schema.faceEnrolment.personId, input.personId));
     else await tx.insert(schema.faceEnrolment).values({ personId: input.personId, entityId: input.entityId, consentAt: now, consentRecordedByPersonId: input.actorPersonId });
     await tx.insert(schema.faceTemplate).values(embeddings.map((embedding) => ({ personId: input.personId, entityId: input.entityId, model: FACE_MODEL, embedding, createdByPersonId: input.actorPersonId })));
     // The newest few stay; older angles make room. Another model's templates go with them: they are never read again.
@@ -101,7 +110,12 @@ export type FaceStatus = { personId: string; templates: number; consentAt: Date;
 export async function faceStatusOf(personIds: readonly string[]): Promise<Map<string, FaceStatus>> {
   if (personIds.length === 0) return new Map();
   const rows = await db()
-    .select({ personId: schema.faceEnrolment.personId, consentAt: schema.faceEnrolment.consentAt, updatedAt: schema.faceEnrolment.updatedAt, templates: sql<number>`count(${schema.faceTemplate.id}) filter (where ${schema.faceTemplate.model} = ${FACE_MODEL})::int` })
+    .select({
+      personId: schema.faceEnrolment.personId,
+      consentAt: schema.faceEnrolment.consentAt,
+      updatedAt: schema.faceEnrolment.updatedAt,
+      templates: sql<number>`count(${schema.faceTemplate.id}) filter (where ${schema.faceTemplate.model} = ${FACE_MODEL})::int`,
+    })
     .from(schema.faceEnrolment)
     .leftJoin(schema.faceTemplate, eq(schema.faceTemplate.personId, schema.faceEnrolment.personId))
     .where(inArray(schema.faceEnrolment.personId, [...personIds]))

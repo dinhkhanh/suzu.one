@@ -44,7 +44,10 @@ export default async function ApprovalFlowsPage(props: PageProps<"/admin/approva
   };
   const describe = (flow: FlowDefinition) =>
     flow.steps
-      .map((step, index) => `${index === 0 ? "" : step.parallel ? " ‖ " : " → "}${step.approvers.map((rule) => t(`flows.rules.${rule.rule}` as "flows.rules.line_manager")).join(" + ")}${step.condition ? ` (${step.condition.field} ${t(`flows.ops.${step.condition.op}` as "flows.ops.eq")} ${String(step.condition.value)})` : ""}`)
+      .map(
+        (step, index) =>
+          `${index === 0 ? "" : step.parallel ? " ‖ " : " → "}${step.approvers.map((rule) => t(`flows.rules.${rule.rule}` as "flows.rules.line_manager")).join(" + ")}${step.condition ? ` (${step.condition.field} ${t(`flows.ops.${step.condition.op}` as "flows.ops.eq")} ${String(step.condition.value)})` : ""}`,
+      )
       .join("");
 
   return (
@@ -74,13 +77,23 @@ export default async function ApprovalFlowsPage(props: PageProps<"/admin/approva
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={flow.entityId ? "info" : "secondary"}>{flow.entityName ? <RecordLink kind="entity" id={flow.entityId}>{flow.entityName}</RecordLink> : t("flows.group")}</Badge>
+                      <Badge variant={flow.entityId ? "info" : "secondary"}>
+                        {flow.entityName ? (
+                          <RecordLink kind="entity" id={flow.entityId}>
+                            {flow.entityName}
+                          </RecordLink>
+                        ) : (
+                          t("flows.group")
+                        )}
+                      </Badge>
                     </TableCell>
                     <TableCell className="max-w-md truncate text-muted-foreground" title={describe(flow.definition as FlowDefinition)}>
                       {describe(flow.definition as FlowDefinition)}
                     </TableCell>
                     <TableCell>
-                      <Badge dot variant={flow.active ? "success" : "outline"}>{flow.active ? t("flows.active") : t("flows.off")}</Badge>
+                      <Badge dot variant={flow.active ? "success" : "outline"}>
+                        {flow.active ? t("flows.active") : t("flows.off")}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 );
@@ -98,7 +111,15 @@ export default async function ApprovalFlowsPage(props: PageProps<"/admin/approva
           <Card>
             <CardHeader>
               <CardTitle>{label(selected.requestType)}</CardTitle>
-              <CardDescription>{selected.entityName ? <RecordLink kind="entity" id={selected.entityId}>{selected.entityName}</RecordLink> : t("flows.group")}</CardDescription>
+              <CardDescription>
+                {selected.entityName ? (
+                  <RecordLink kind="entity" id={selected.entityId}>
+                    {selected.entityName}
+                  </RecordLink>
+                ) : (
+                  t("flows.group")
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <FlowEditor key={selected.id} options={options} flow={{ id: selected.id, requestType: selected.requestType, entityId: selected.entityId, active: selected.active, definition: selected.definition as FlowDefinition }} />

@@ -42,9 +42,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
   ]);
 
   // Booking on somebody's behalf is the keeper's privilege; nobody else is offered the list.
-  const people = canDecideBookings(user.principal)
-    ? await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName))
-    : [];
+  const people = canDecideBookings(user.principal) ? await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)) : [];
 
   const link = (weeks: number) => {
     const params = new URLSearchParams();

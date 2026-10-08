@@ -135,7 +135,10 @@ export async function getCapacity(user: Pick<CurrentUser, "person" | "principal"
     const readable = canViewProject(viewer, facts);
     if (readable) read.set(project.id, facts);
     const key = `${booking.personId}:${booking.weekStart}`;
-    bookings.set(key, [...(bookings.get(key) ?? []), { projectId: readable ? project.id : null, projectName: readable ? project.name : null, weekStart: booking.weekStart, minutes: booking.minutes, status: booking.status as BookingStatus }]);
+    bookings.set(key, [
+      ...(bookings.get(key) ?? []),
+      { projectId: readable ? project.id : null, projectName: readable ? project.name : null, weekStart: booking.weekStart, minutes: booking.minutes, status: booking.status as BookingStatus },
+    ]);
   }
   await notePrivateProjectReads(viewer, read.values());
   const free = filters.freeMinutes ?? null;

@@ -64,7 +64,19 @@ function SubmitRow({ pending, errorKey }: { pending: boolean; errorKey: string |
 }
 
 /** A one-click action with a confirm step for destructive ones. Reports failure inline. */
-export function RowAction({ action, input, label, confirm, variant = "ghost" }: { action: (input: unknown) => Promise<ActionResult<unknown>>; input: Record<string, unknown>; label: string; confirm?: string; variant?: "ghost" | "outline" }) {
+export function RowAction({
+  action,
+  input,
+  label,
+  confirm,
+  variant = "ghost",
+}: {
+  action: (input: unknown) => Promise<ActionResult<unknown>>;
+  input: Record<string, unknown>;
+  label: string;
+  confirm?: string;
+  variant?: "ghost" | "outline";
+}) {
   const t = useTranslations(ERRORS);
   const tr = useTranslations("records");
   const [pending, startTransition] = useTransition();
@@ -83,7 +95,11 @@ export function RowAction({ action, input, label, confirm, variant = "ghost" }: 
           {label}
         </Button>
       )}
-      {errorKey ? <span role="alert" className="text-xs text-destructive">{t.has(errorKey) ? t(errorKey) : t("generic")}</span> : null}
+      {errorKey ? (
+        <span role="alert" className="text-xs text-destructive">
+          {t.has(errorKey) ? t(errorKey) : t("generic")}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -324,7 +340,11 @@ export function AttachmentUpload({ ownerType, ownerId, label }: { ownerType: "co
           event.target.value = "";
           if (!file) return;
           startTransition(async () => {
-            const result = await uploadThroughSignedUrl(file, (meta) => beginAttachmentUploadAction({ ownerType, ownerId, ...meta }), (fileId) => completeAttachmentUploadAction({ fileId }));
+            const result = await uploadThroughSignedUrl(
+              file,
+              (meta) => beginAttachmentUploadAction({ ownerType, ownerId, ...meta }),
+              (fileId) => completeAttachmentUploadAction({ fileId }),
+            );
             setErrorKey(result.ok ? null : result.errorKey);
           });
         }}

@@ -24,7 +24,10 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
   const [periods, consumed, t, format] = await Promise.all([listPeriods({ month, entityIds }), consumedMonths(entityIds), getTranslations("performance"), getFormatter()]);
   const over = month < today.slice(0, 7);
   const periodOf = (entityId: string) => periods.find((row) => row.entityId === entityId) ?? null;
-  const blockersOf = await closeBlockersOf(entities.filter((entity) => periodOf(entity.id)?.status !== "closed").map((entity) => entity.id), month);
+  const blockersOf = await closeBlockersOf(
+    entities.filter((entity) => periodOf(entity.id)?.status !== "closed").map((entity) => entity.id),
+    month,
+  );
   const rows = entities.map((entity) => ({ entity, period: periodOf(entity.id), blockers: blockersOf.get(entity.id) ?? [] }));
 
   return (
@@ -48,7 +51,17 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
               {closed && period?.overrideReason ? <p className="text-xs text-warning">{t("periods.overridden", { count: period.exceptions?.length ?? 0, reason: period.overrideReason })}</p> : null}
               {!closed && period?.reopenReason ? <p className="text-xs text-muted-foreground">{t("periods.reopened", { reason: period.reopenReason })}</p> : null}
               {closed && frozen ? <p className="text-xs text-warning">{`${t("periods.consumed")} — ${t("errors.kpi_month_consumed")}`}</p> : null}
-              {closed ? frozen ? null : canReopenKpiMonth(user.principal) ? <ReopenMonthForm entityId={entity.id} month={month} /> : <p className="text-xs text-muted-foreground">{t("periods.reopenGroupOnly")}</p> : over ? <CloseMonthForm entityId={entity.id} month={month} blockers={blockers} /> : blockers.length > 0 ? <p className="text-xs text-muted-foreground">{t("periods.blocked", { count: blockers.length })}</p> : null}
+              {closed ? (
+                frozen ? null : canReopenKpiMonth(user.principal) ? (
+                  <ReopenMonthForm entityId={entity.id} month={month} />
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t("periods.reopenGroupOnly")}</p>
+                )
+              ) : over ? (
+                <CloseMonthForm entityId={entity.id} month={month} blockers={blockers} />
+              ) : blockers.length > 0 ? (
+                <p className="text-xs text-muted-foreground">{t("periods.blocked", { count: blockers.length })}</p>
+              ) : null}
             </ListItem>
           );
         })}

@@ -101,16 +101,18 @@ function cellXml(value: string | number | null, ref: string, bold: boolean): str
 }
 
 /** A sheet name Excel accepts: at most 31 characters, none of []:*?/\ . */
-const sheetName = (name: string) => name.replace(/[[\]:*?/\\]/g, " ").trim().slice(0, 31) || "Sheet1";
+const sheetName = (name: string) =>
+  name
+    .replace(/[[\]:*?/\\]/g, " ")
+    .trim()
+    .slice(0, 31) || "Sheet1";
 
 const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 const MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 export function tableToXlsx(table: ExportTable, name = "Sheet1"): Uint8Array {
-  const rows = [table.header, ...table.rows]
-    .map((cells, rowIndex) => `<row r="${rowIndex + 1}">${cells.map((cell, column) => cellXml(cell, `${columnName(column)}${rowIndex + 1}`, rowIndex === 0)).join("")}</row>`)
-    .join("");
+  const rows = [table.header, ...table.rows].map((cells, rowIndex) => `<row r="${rowIndex + 1}">${cells.map((cell, column) => cellXml(cell, `${columnName(column)}${rowIndex + 1}`, rowIndex === 0)).join("")}</row>`).join("");
   const sheet = `${XML}<worksheet xmlns="${MAIN}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${rows}</sheetData></worksheet>`;
   const parts: Record<string, string> = {
     "[Content_Types].xml": `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,

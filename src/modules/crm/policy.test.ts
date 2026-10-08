@@ -44,7 +44,10 @@ const SZC = "entity-szc";
 const ACCOUNT = "client-vinamilk";
 
 const principal = (personId: string, grants: Grant[] = [], workforceType: Principal["workforceType"] = "employee"): Principal => ({ personId, workforceType, grants });
-const viewer = (personId: string, grants: Grant[] = [], ties: [string, AccountTie[]][] = [], workforceType: Principal["workforceType"] = "employee"): CrmViewer => ({ principal: principal(personId, grants, workforceType), ties: new Map(ties) });
+const viewer = (personId: string, grants: Grant[] = [], ties: [string, AccountTie[]][] = [], workforceType: Principal["workforceType"] = "employee"): CrmViewer => ({
+  principal: principal(personId, grants, workforceType),
+  ties: new Map(ties),
+});
 const entityGrant = (role: Grant["role"], entityId: string): Grant => ({ role, scope: { type: "entity", id: entityId } });
 const groupGrant = (role: Grant["role"]): Grant => ({ role, scope: { type: "group" } });
 

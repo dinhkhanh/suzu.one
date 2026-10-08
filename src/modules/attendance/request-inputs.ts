@@ -22,7 +22,15 @@ export async function approvedRequestsFor(personIds: readonly string[], from: Is
   const rows = await executor
     .select()
     .from(schema.attendanceRequest)
-    .where(and(inArray(schema.attendanceRequest.personId, [...new Set(personIds)]), eq(schema.attendanceRequest.status, "approved"), inArray(schema.attendanceRequest.type, ["remote_work", "overtime", "holiday_work"]), lte(schema.attendanceRequest.startDate, to), gte(schema.attendanceRequest.endDate, from)))
+    .where(
+      and(
+        inArray(schema.attendanceRequest.personId, [...new Set(personIds)]),
+        eq(schema.attendanceRequest.status, "approved"),
+        inArray(schema.attendanceRequest.type, ["remote_work", "overtime", "holiday_work"]),
+        lte(schema.attendanceRequest.startDate, to),
+        gte(schema.attendanceRequest.endDate, from),
+      ),
+    )
     .orderBy(schema.attendanceRequest.createdAt);
   const entry = (personId: string, date: string): ApprovedRequests => {
     const key = `${personId}:${date}`;
@@ -54,10 +62,30 @@ export async function declaredOffSiteLocations(executor: Executor, personId: str
   const rows = await executor
     .select()
     .from(schema.attendanceRequest)
-    .where(and(eq(schema.attendanceRequest.personId, personId), eq(schema.attendanceRequest.type, "remote_work"), eq(schema.attendanceRequest.status, "approved"), lte(schema.attendanceRequest.startDate, date), gte(schema.attendanceRequest.endDate, date)));
+    .where(
+      and(
+        eq(schema.attendanceRequest.personId, personId),
+        eq(schema.attendanceRequest.type, "remote_work"),
+        eq(schema.attendanceRequest.status, "approved"),
+        lte(schema.attendanceRequest.startDate, date),
+        gte(schema.attendanceRequest.endDate, date),
+      ),
+    );
   return rows.flatMap((row) => {
     const { details } = row;
     if (details.type !== "remote_work" || details.latitude === null || details.longitude === null) return [];
-    return [{ id: `request:${row.id}`, latitude: details.latitude, longitude: details.longitude, radiusM: details.radiusM ?? DEFAULT_OFF_SITE_RADIUS_M, accuracyLimitM: 200, ipAllowlist: [], rule: "gps" as const, mode: "flag" as const, offSite: true }];
+    return [
+      {
+        id: `request:${row.id}`,
+        latitude: details.latitude,
+        longitude: details.longitude,
+        radiusM: details.radiusM ?? DEFAULT_OFF_SITE_RADIUS_M,
+        accuracyLimitM: 200,
+        ipAllowlist: [],
+        rule: "gps" as const,
+        mode: "flag" as const,
+        offSite: true,
+      },
+    ];
   });
 }

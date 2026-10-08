@@ -138,7 +138,15 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
               <ListItem key={scheme.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{scheme.name}</span>
-                  <span className="text-xs text-muted-foreground">{scheme.entityId ? <RecordLink kind="entity" id={scheme.entityId}>{entityName.get(scheme.entityId)}</RecordLink> : t("group")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {scheme.entityId ? (
+                      <RecordLink kind="entity" id={scheme.entityId}>
+                        {entityName.get(scheme.entityId)}
+                      </RecordLink>
+                    ) : (
+                      t("group")
+                    )}
+                  </span>
                   <Badge variant={statusTone(scheme.status)}>{tStatus(scheme.status as "draft")}</Badge>
                   <span className="text-xs text-muted-foreground">{t("validity", { from: f.date(scheme.validFrom), to: scheme.validTo ? f.date(scheme.validTo) : "…" })}</span>
                 </div>

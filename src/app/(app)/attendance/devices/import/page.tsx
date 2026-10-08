@@ -66,9 +66,13 @@ export default async function DeviceImportPage() {
                 <TableCell className="font-medium">{row.fileName}</TableCell>
                 <TableCell className="text-muted-foreground">{row.deviceId ? nameOf.get(row.deviceId) : ""}</TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{t(`import.statuses.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`import.statuses.${row.status}`)}
+                  </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{row.result ? t("import.result", { punches: row.result.punches ?? 0, skipped: row.result.skipped ?? 0, unmapped: row.result.unmapped ?? 0 }) : t("import.rows", { count: row.rowCount })}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.result ? t("import.result", { punches: row.result.punches ?? 0, skipped: row.result.skipped ?? 0, unmapped: row.result.unmapped ?? 0 }) : t("import.rows", { count: row.rowCount })}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{row.byName}</TableCell>
               </TableRow>
             ))}

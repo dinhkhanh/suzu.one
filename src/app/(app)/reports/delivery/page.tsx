@@ -77,7 +77,15 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
         eyebrow={<Link href="/reports">{t("back")}</Link>}
         title={t("title")}
         description={t("description")}
-        actions={<ExportButton action={exportReportAction} input={{ reportKey: "delivery", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+        actions={
+          <ExportButton
+            action={exportReportAction}
+            input={{ reportKey: "delivery", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }}
+            label={tExports("button")}
+            failedLabel={tExports("failed")}
+            truncatedLabel={tExports("truncated")}
+          />
+        }
       />
 
       {view.teams.length > 1 ? (
@@ -176,16 +184,24 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                     </RecordLink>
                   </TableCell>
                   <TableCell>
-                    <RecordLink kind="team" id={project.teamId}>{project.teamName}</RecordLink>
+                    <RecordLink kind="team" id={project.teamId}>
+                      {project.teamName}
+                    </RecordLink>
                   </TableCell>
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
-                      {project.health ? <Badge dot variant={project.health === "off_track" ? "destructive" : project.health === "at_risk" ? "warning" : "success"}>{t(`health.${project.health}`)}</Badge> : null}
+                      {project.health ? (
+                        <Badge dot variant={project.health === "off_track" ? "destructive" : project.health === "at_risk" ? "warning" : "success"}>
+                          {t(`health.${project.health}`)}
+                        </Badge>
+                      ) : null}
                       {project.stale ? <Badge variant="outline">{t("health.stale")}</Badge> : null}
                       {!project.health && !project.stale ? "—" : null}
                     </span>
                   </TableCell>
-                  <TableCell kind="number" className={project.overdueMilestones > 0 ? "text-destructive" : undefined}>{project.overdueMilestones}</TableCell>
+                  <TableCell kind="number" className={project.overdueMilestones > 0 ? "text-destructive" : undefined}>
+                    {project.overdueMilestones}
+                  </TableCell>
                   <TableCell kind="number">{project.slippedMilestones}</TableCell>
                 </TableRow>
               ))}
@@ -268,7 +284,9 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                   <TableRow key={team.teamId}>
                     <TableCell>
                       {/* "other" is the small teams added together: a row, not a team. */}
-                      <RecordLink kind="team" id={team.teamId === "other" ? null : team.teamId}>{team.name}</RecordLink>
+                      <RecordLink kind="team" id={team.teamId === "other" ? null : team.teamId}>
+                        {team.name}
+                      </RecordLink>
                     </TableCell>
                     <TableCell kind="number">{team.people}</TableCell>
                     <TableCell kind="percent">

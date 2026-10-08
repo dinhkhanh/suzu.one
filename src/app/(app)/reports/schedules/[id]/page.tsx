@@ -64,7 +64,9 @@ export default async function SchedulePage({ params }: PageProps<"/reports/sched
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">{t("lastRun")}</h2>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge dot variant={statusTone(schedule.lastRun.status)}>{t(`runStatus.${schedule.lastRun.status}`)}</Badge>
+            <Badge dot variant={statusTone(schedule.lastRun.status)}>
+              {t(`runStatus.${schedule.lastRun.status}`)}
+            </Badge>
             <span className="text-muted-foreground">
               {day(schedule.lastRun.runOn)} · {t("delivered", { count: schedule.lastRun.delivered })}
               {schedule.lastRun.withheld > 0 ? ` · ${t("withheld", { count: schedule.lastRun.withheld })}` : ""}

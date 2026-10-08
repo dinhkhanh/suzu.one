@@ -2,7 +2,22 @@
 // anything: `ask` takes the asking user and retrieves with that person's own knowledge-base viewer.
 import "server-only";
 
-export { type AiMessageRow, answerQuestion, ask, type AskInput, type AskResult, type ConversationTurn, deleteConversation, getConversation, listConversations, listUnanswered, type Resolved, resolveAnswer, resolveUnanswered, type UnansweredRow } from "./conversations";
+export {
+  type AiMessageRow,
+  answerQuestion,
+  ask,
+  type AskInput,
+  type AskResult,
+  type ConversationTurn,
+  deleteConversation,
+  getConversation,
+  listConversations,
+  listUnanswered,
+  type Resolved,
+  resolveAnswer,
+  resolveUnanswered,
+  type UnansweredRow,
+} from "./conversations";
 export { type ChatTurn, QUESTION_MAX, type ToolAnswer, type ToolOutcome, type ToolRefusal } from "./enums";
 export { ANSWER_THRESHOLD, type Citation, type Passage, type RankedPassage } from "./engine/answer";
 export { GLOSSARY, languageOf, questionVariants, translateWords } from "./engine/glossary";

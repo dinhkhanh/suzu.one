@@ -76,7 +76,8 @@ export async function listPayables(run: PayrollRunRow, executor: Executor = db()
     .sort(byCodeThenName);
 }
 
-const byCodeThenName = (left: { employeeCode: string | null; fullName: string }, right: { employeeCode: string | null; fullName: string }) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "") || left.fullName.localeCompare(right.fullName);
+const byCodeThenName = (left: { employeeCode: string | null; fullName: string }, right: { employeeCode: string | null; fullName: string }) =>
+  (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "") || left.fullName.localeCompare(right.fullName);
 
 /**
  * The bank a person's own pay account is with, when it is one we have a file format for. The name
@@ -210,7 +211,10 @@ export async function generateBankFile(input: { runId: string; bank: string; val
   const paidAnotherWay = new Set(others.map((row) => row.personId));
   const bankPeople = (planPayment(payables).banks.find((group) => group.key === input.bank)?.people ?? []).filter((person) => !paidAnotherWay.has(person.personId));
   if (bankPeople.length === 0) throw new ActionError("bank_has_nobody");
-  const paying = payingAccountFor(accounts.filter((row) => row.bank === format.key), input);
+  const paying = payingAccountFor(
+    accounts.filter((row) => row.bank === format.key),
+    input,
+  );
 
   const narrative = narrativeFor(run.month, entityCode);
   const file = format.build({ rows: bankPeople.map((person) => transferRowOf(person, narrative)), payingAccount: paying.account, month: run.month, valueDate: input.valueDate, entityCode });
@@ -286,7 +290,11 @@ export async function recordOtherPayment(input: { runId: string; personId: strin
     if (!hasReached(run, "approved")) throw new ActionError("run_not_approved", { status: run.status });
     if (!isBeingPaid(run)) throw new ActionError("run_already_paid");
 
-    const [line] = await tx.select().from(schema.payrollRunPerson).where(and(eq(schema.payrollRunPerson.runId, run.id), eq(schema.payrollRunPerson.personId, input.personId))).limit(1);
+    const [line] = await tx
+      .select()
+      .from(schema.payrollRunPerson)
+      .where(and(eq(schema.payrollRunPerson.runId, run.id), eq(schema.payrollRunPerson.personId, input.personId)))
+      .limit(1);
     // Only somebody the bank channel owes money: cash has its own sheet, and a net of zero or below is not a payment.
     if (!line || line.profile !== "statutory" || openResult(line).totals.net <= 0) throw new ActionError("other_payment_not_applicable");
 
@@ -306,7 +314,10 @@ export async function removeOtherPayment(runId: string, personId: string): Promi
     const [run] = await tx.select().from(schema.payrollRun).where(eq(schema.payrollRun.id, runId)).limit(1).for("update");
     if (!run) throw new ActionError("run_not_found");
     if (!isBeingPaid(run)) throw new ActionError("run_already_paid");
-    const [row] = await tx.delete(schema.payrollOtherPayment).where(and(eq(schema.payrollOtherPayment.runId, runId), eq(schema.payrollOtherPayment.personId, personId))).returning();
+    const [row] = await tx
+      .delete(schema.payrollOtherPayment)
+      .where(and(eq(schema.payrollOtherPayment.runId, runId), eq(schema.payrollOtherPayment.personId, personId)))
+      .returning();
     if (!row) throw new ActionError("other_payment_not_found");
     return row;
   });
@@ -428,7 +439,11 @@ export async function confirmCashReceipt(runId: string, personId: string): Promi
 
 /** One person's cash row in a run, for an action deciding whether it is theirs to confirm. */
 export async function getCashPayment(runId: string, personId: string): Promise<CashPaymentRow | null> {
-  const [row] = await db().select().from(schema.payrollCashPayment).where(and(eq(schema.payrollCashPayment.runId, runId), eq(schema.payrollCashPayment.personId, personId))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.payrollCashPayment)
+    .where(and(eq(schema.payrollCashPayment.runId, runId), eq(schema.payrollCashPayment.personId, personId)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -556,7 +571,13 @@ export function settle(plan: PaymentPlan, files: readonly PaymentFileRow[], cash
     const row = cashOf.get(person.personId);
     return { ...base(person), route: { channel: "cash" }, state: row && cashRowSettled(row) ? "cash_disbursed" : "cash_pending", problem: null, other: null };
   });
-  const owedNothing = [...plan.nothingOwed.map((person) => ({ person, state: "nothing_owed" as const })), ...plan.negative.map((person) => ({ person, state: "negative_net" as const }))].map(({ person, state }): PersonPayment => ({ ...base(person), route: routeOf(person), state, problem: null, other: null }));
+  const owedNothing = [...plan.nothingOwed.map((person) => ({ person, state: "nothing_owed" as const })), ...plan.negative.map((person) => ({ person, state: "negative_net" as const }))].map(({ person, state }): PersonPayment => ({
+    ...base(person),
+    route: routeOf(person),
+    state,
+    problem: null,
+    other: null,
+  }));
 
   const bank = [...banked, ...unroutable];
   const waiting = banked.filter((person) => person.state === "awaiting_file");

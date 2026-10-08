@@ -19,7 +19,13 @@ export async function deliverableMedia(deliverableId: string): Promise<{ deliver
   if (!deliverable) return undefined;
   const loaded = await loadTask(deliverable.taskId);
   if (!loaded) return undefined;
-  const [file] = deliverable.fileId ? await db().select({ contentType: schema.storedFile.contentType }).from(schema.storedFile).where(and(eq(schema.storedFile.id, deliverable.fileId), isNull(schema.storedFile.deletedAt))).limit(1) : [];
+  const [file] = deliverable.fileId
+    ? await db()
+        .select({ contentType: schema.storedFile.contentType })
+        .from(schema.storedFile)
+        .where(and(eq(schema.storedFile.id, deliverable.fileId), isNull(schema.storedFile.deletedAt)))
+        .limit(1)
+    : [];
   return { deliverable, loaded, media: mediaKindOf(file?.contentType) };
 }
 
@@ -62,7 +68,18 @@ export async function listTaskPins(taskId: string): Promise<PinView[]> {
   const versions = await db().select({ id: schema.workDeliverable.id }).from(schema.workDeliverable).where(eq(schema.workDeliverable.taskId, taskId));
   if (versions.length === 0) return [];
   return db()
-    .select({ id: schema.workDeliverablePin.id, deliverableId: schema.workDeliverablePin.deliverableId, x: schema.workDeliverablePin.x, y: schema.workDeliverablePin.y, timecodeMs: schema.workDeliverablePin.timecodeMs, body: schema.workDeliverablePin.body, authorPersonId: schema.workDeliverablePin.authorPersonId, resolvedAt: schema.workDeliverablePin.resolvedAt, createdAt: schema.workDeliverablePin.createdAt, authorName: schema.person.fullName })
+    .select({
+      id: schema.workDeliverablePin.id,
+      deliverableId: schema.workDeliverablePin.deliverableId,
+      x: schema.workDeliverablePin.x,
+      y: schema.workDeliverablePin.y,
+      timecodeMs: schema.workDeliverablePin.timecodeMs,
+      body: schema.workDeliverablePin.body,
+      authorPersonId: schema.workDeliverablePin.authorPersonId,
+      resolvedAt: schema.workDeliverablePin.resolvedAt,
+      createdAt: schema.workDeliverablePin.createdAt,
+      authorName: schema.person.fullName,
+    })
     .from(schema.workDeliverablePin)
     .leftJoin(schema.person, eq(schema.person.id, schema.workDeliverablePin.authorPersonId))
     .where(

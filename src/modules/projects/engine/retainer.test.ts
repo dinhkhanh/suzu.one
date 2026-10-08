@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, carryFrom, HOURS_ALERT, lineLabel, MAX_MONTHS_AHEAD, missedMonths, monthBounds, monthsToMake, hoursUsage, lastDayOf, monthsBetween, monthsDue, monthShare, monthsToClose, openLinesFirst, planPeriod, quotaAlertsDue, type RetainerTerms, totalUsage, usage } from "./retainer";
+import {
+  addMonths,
+  carryFrom,
+  HOURS_ALERT,
+  lineLabel,
+  MAX_MONTHS_AHEAD,
+  missedMonths,
+  monthBounds,
+  monthsToMake,
+  hoursUsage,
+  lastDayOf,
+  monthsBetween,
+  monthsDue,
+  monthShare,
+  monthsToClose,
+  openLinesFirst,
+  planPeriod,
+  quotaAlertsDue,
+  type RetainerTerms,
+  totalUsage,
+  usage,
+} from "./retainer";
 
 const lines = [
   { title: "Bài đăng Facebook", quantity: 12, format: "post", channel: "facebook" },
@@ -37,7 +58,16 @@ describe("months (FR-PJM-06)", () => {
   });
 
   it("closes the open months that are over", () => {
-    expect(monthsToClose([{ month: "2026-10", status: "closed" }, { month: "2026-11", status: "open" }, { month: "2026-12", status: "open" }], "2026-12-01")).toEqual(["2026-11"]);
+    expect(
+      monthsToClose(
+        [
+          { month: "2026-10", status: "closed" },
+          { month: "2026-11", status: "open" },
+          { month: "2026-12", status: "open" },
+        ],
+        "2026-12-01",
+      ),
+    ).toEqual(["2026-11"]);
   });
 });
 
@@ -64,7 +94,13 @@ describe("part months", () => {
 });
 
 describe("rollover", () => {
-  const october = { lines: [{ title: "Bài đăng Facebook", quantity: 12, consumed: 9 }, { title: "Video ngắn TikTok", quantity: 4, consumed: 5 }, { title: "Dropped line", quantity: 3, consumed: 0 }] };
+  const october = {
+    lines: [
+      { title: "Bài đăng Facebook", quantity: 12, consumed: 9 },
+      { title: "Video ngắn TikTok", quantity: 4, consumed: 5 },
+      { title: "Dropped line", quantity: 3, consumed: 0 },
+    ],
+  };
 
   it("carries unused units forward and over-delivery back, by title", () => {
     expect(carryFrom("rollover", october, ["Bài đăng Facebook", "Video ngắn TikTok"])).toEqual({ "Bài đăng Facebook": 3, "Video ngắn TikTok": -1 });
@@ -107,7 +143,12 @@ describe("overservicing and quota alerts", () => {
   });
 
   it("adds a month's lines up", () => {
-    expect(totalUsage([{ contracted: 12, consumed: 15 }, { contracted: 4, consumed: 1 }])).toMatchObject({ contracted: 16, consumed: 16, percent: 100, level: "full" });
+    expect(
+      totalUsage([
+        { contracted: 12, consumed: 15 },
+        { contracted: 4, consumed: 1 },
+      ]),
+    ).toMatchObject({ contracted: 16, consumed: 16, percent: 100, level: "full" });
   });
 
   it("alerts at 80% and 100% of a line, once each", () => {
@@ -154,7 +195,15 @@ describe("a month worked by hand (PJM-07)", () => {
     ];
     expect(openLinesFirst(picker, "2026-10").map((line) => line.id)).toEqual(["oct-a", "oct-b", "nov-a", "sep-a", "own"]);
     // A project without retainer months keeps its register order.
-    expect(openLinesFirst([{ id: "b", month: null }, { id: "a", month: null }], "2026-10").map((line) => line.id)).toEqual(["b", "a"]);
+    expect(
+      openLinesFirst(
+        [
+          { id: "b", month: null },
+          { id: "a", month: null },
+        ],
+        "2026-10",
+      ).map((line) => line.id),
+    ).toEqual(["b", "a"]);
   });
 
   it("alerts on the hours allowance at 80% and 100%, each once, under its own key", () => {

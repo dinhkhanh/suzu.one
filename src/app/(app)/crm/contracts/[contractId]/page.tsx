@@ -44,16 +44,27 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<><Link href="/crm/contracts" className="underline">
-            {t("contracts.title")}
-          </Link>{" "}
-          ·{" "}
-          <RecordLink kind="account" id={account.client.id} className="underline">
-            {account.client.name}
-          </RecordLink></>} title={<span className="inline-flex flex-wrap items-center gap-2">{contract.number}
-          <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
-            {t(`enums.contractState.${contract.state}`)}
-          </Badge></span>}>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/crm/contracts" className="underline">
+              {t("contracts.title")}
+            </Link>{" "}
+            ·{" "}
+            <RecordLink kind="account" id={account.client.id} className="underline">
+              {account.client.name}
+            </RecordLink>
+          </>
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {contract.number}
+            <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
+              {t(`enums.contractState.${contract.state}`)}
+            </Badge>
+          </span>
+        }
+      >
         <p className="text-sm">{contract.title}</p>
         <p className="text-sm text-muted-foreground">
           {[
@@ -116,7 +127,14 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
         <details className="rounded-xl border p-4">
           <summary className="cursor-pointer text-sm font-medium">{t("contract.edit")}</summary>
           <div className="pt-3">
-            <ContractForm clientId={account.client.id} contract={contract} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} parents={all.filter((item) => item.kind !== "appendix" && item.id !== contract.id).map((item) => ({ id: item.id, name: `${item.number} · ${item.title}` }))} deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))} seesValue={seesValue} />
+            <ContractForm
+              clientId={account.client.id}
+              contract={contract}
+              entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))}
+              parents={all.filter((item) => item.kind !== "appendix" && item.id !== contract.id).map((item) => ({ id: item.id, name: `${item.number} · ${item.title}` }))}
+              deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))}
+              seesValue={seesValue}
+            />
           </div>
         </details>
       ) : null}

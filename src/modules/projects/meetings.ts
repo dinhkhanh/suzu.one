@@ -55,7 +55,13 @@ export async function meetingPeople(projectId: string): Promise<{ id: string; fu
  * Records a meeting, or adds to one of this project's: the fields are replaced, the decisions and
  * action items given are added (the ones made before live on in the log and on the board).
  */
-export async function saveMeeting(projectId: string, meetingId: string | null, input: MeetingInput, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<{ before: MeetingRow | null; after: MeetingRow; decisionIds: string[]; taskIds: string[] }> {
+export async function saveMeeting(
+  projectId: string,
+  meetingId: string | null,
+  input: MeetingInput,
+  actorPersonId: string,
+  today: IsoDate = todayInVietnam(),
+): Promise<{ before: MeetingRow | null; after: MeetingRow; decisionIds: string[]; taskIds: string[] }> {
   const before = meetingId ? ((await findMeeting(meetingId)) ?? null) : null;
   if (meetingId && (!before || before.projectId !== projectId || before.kind === "retro")) throw new ActionError("meeting_not_found");
   const people = await meetingPeople(projectId);
@@ -71,11 +77,28 @@ export async function saveMeeting(projectId: string, meetingId: string | null, i
   const [project] = await db().select({ teamId: schema.workProject.teamId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project) throw new ActionError("project_not_found");
 
-  const fields = { kind: input.kind, title: input.title.trim(), heldOn: input.heldOn, startTime: values.startTime, durationMinutes: values.durationMinutes, attendeeIds, externalAttendees: input.externalAttendees, agenda: input.agenda, notes: input.notes };
+  const fields = {
+    kind: input.kind,
+    title: input.title.trim(),
+    heldOn: input.heldOn,
+    startTime: values.startTime,
+    durationMinutes: values.durationMinutes,
+    attendeeIds,
+    externalAttendees: input.externalAttendees,
+    agenda: input.agenda,
+    notes: input.notes,
+  };
   return db().transaction(async (tx) => {
     const [after] = before
-      ? await tx.update(schema.projectMeeting).set({ ...fields, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, before.id)).returning()
-      : await tx.insert(schema.projectMeeting).values({ projectId, ...fields, createdByPersonId: actorPersonId }).returning();
+      ? await tx
+          .update(schema.projectMeeting)
+          .set({ ...fields, updatedAt: new Date() })
+          .where(eq(schema.projectMeeting.id, before.id))
+          .returning()
+      : await tx
+          .insert(schema.projectMeeting)
+          .values({ projectId, ...fields, createdByPersonId: actorPersonId })
+          .returning();
     const decisions = input.decisions.length
       ? await tx
           .insert(schema.projectRaidItem)
@@ -168,7 +191,11 @@ export async function removeMeetingFromCalendar(projectId: string, meetingId: st
   if (!meeting.calendarEventId) throw new ActionError("meeting_not_in_calendar");
   const delivery = await removeFromCalendar(meeting.calendarEventId);
   // The Meet link belonged to the event that has just been called off.
-  const [after] = await db().update(schema.projectMeeting).set({ calendarEventId: null, calendarDriver: delivery.driver, calendarStatus: delivery.status, calendarError: delivery.error, meetingUrl: null, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, meeting.id)).returning();
+  const [after] = await db()
+    .update(schema.projectMeeting)
+    .set({ calendarEventId: null, calendarDriver: delivery.driver, calendarStatus: delivery.status, calendarError: delivery.error, meetingUrl: null, updatedAt: new Date() })
+    .where(eq(schema.projectMeeting.id, meeting.id))
+    .returning();
   return { meeting: after, delivery };
 }
 
@@ -205,7 +232,16 @@ export async function getMeeting(projectId: string, meetingId: string): Promise<
     meeting.createdByPersonId ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, meeting.createdByPersonId)).limit(1) : Promise.resolve([]),
     listRaid(projectId, { meetingId }),
     db()
-      .select({ taskId: schema.task.id, title: schema.task.title, status: schema.task.status, dueDate: schema.task.dueDate, number: schema.workTask.number, teamKey: schema.workTeam.key, assigneePersonId: schema.task.assigneePersonId, assigneeName: assignee.fullName })
+      .select({
+        taskId: schema.task.id,
+        title: schema.task.title,
+        status: schema.task.status,
+        dueDate: schema.task.dueDate,
+        number: schema.workTask.number,
+        teamKey: schema.workTeam.key,
+        assigneePersonId: schema.task.assigneePersonId,
+        assigneeName: assignee.fullName,
+      })
       .from(schema.projectMeetingTask)
       .innerJoin(schema.task, eq(schema.task.id, schema.projectMeetingTask.taskId))
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))

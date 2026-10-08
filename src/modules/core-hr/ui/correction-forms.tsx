@@ -21,7 +21,23 @@ import { updateContractAction, updateDependentAction, updateDocumentAction, upda
 import type { ContractView, DependentView, DocumentView, EmergencyContactRow } from "../records";
 
 /** The "Edit" key and its dialog. The form inside closes it when the save went through. */
-function EditDialog<T>({ title, description, action, extra, errors = "records.errors", wide, children }: { title: string; description?: string; action: (input: unknown) => Promise<ActionResult<T>>; extra: Record<string, unknown>; errors?: string; wide?: boolean; children: ReactNode }) {
+function EditDialog<T>({
+  title,
+  description,
+  action,
+  extra,
+  errors = "records.errors",
+  wide,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action: (input: unknown) => Promise<ActionResult<T>>;
+  extra: Record<string, unknown>;
+  errors?: string;
+  wide?: boolean;
+  children: ReactNode;
+}) {
   const t = useTranslations("records");
   const router = useRouter();
   const [open, setOpen] = useState(false);

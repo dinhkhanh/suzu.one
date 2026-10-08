@@ -69,7 +69,9 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
                   </TableCell>
                   <TableCell className="text-muted-foreground">{weekOf(week.weekStart)}</TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(week.status)}>{t(`time.status.${week.status}`)}</Badge>
+                    <Badge dot variant={statusTone(week.status)}>
+                      {t(`time.status.${week.status}`)}
+                    </Badge>
                   </TableCell>
                   <TableCell kind="time">{hours(week.minutes)}</TableCell>
                 </TableRow>
@@ -116,9 +118,13 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.jobNumber ? <span className="mr-1.5 font-mono text-xs text-faint">{row.jobNumber}</span> : null}
-                    <RecordLink kind="project" id={row.projectId}>{row.projectName}</RecordLink>
+                    <RecordLink kind="project" id={row.projectId}>
+                      {row.projectName}
+                    </RecordLink>
                   </TableCell>
-                  <TableCell kind="time" className="text-muted-foreground">{row.billable > 0 ? hours(row.billable) : ""}</TableCell>
+                  <TableCell kind="time" className="text-muted-foreground">
+                    {row.billable > 0 ? hours(row.billable) : ""}
+                  </TableCell>
                   <TableCell kind="time">{hours(row.minutes)}</TableCell>
                 </TableRow>
               ))}

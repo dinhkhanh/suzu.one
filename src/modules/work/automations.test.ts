@@ -41,7 +41,11 @@ type Key = "long" | "tam" | "huy" | "bao";
 const ids = {} as Record<Key | "szm", string>;
 const actor = (key: Key) => ({ personId: ids[key], fullName: key });
 const TODAY = todayInVietnam();
-const noticesOf = async (key: Key, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = async (key: Key, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 const runsOf = async (automationId: string) => db().select().from(schema.workAutomationRun).where(eq(schema.workAutomationRun.automationId, automationId));
 
 /** A team of its own for each case, so one case's rules never fire in another's. Content workflow, led by long. */
@@ -58,7 +62,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam", "huy", "bao"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
 });
@@ -66,7 +73,15 @@ beforeAll(async () => {
 describe("rules run in the transaction of the change", () => {
   it("state entered → assign and a due date two working days out, logged with no actor and the rule's name", async () => {
     const team = await newTeam("AUA");
-    const automation = await rule(team.id, { name: "Khách duyệt", trigger: { type: "state_entered", stateId: team.states.client_review }, conditions: [], actions: [{ type: "assign", personId: ids.bao }, { type: "set_due", days: 2 }] });
+    const automation = await rule(team.id, {
+      name: "Khách duyệt",
+      trigger: { type: "state_entered", stateId: team.states.client_review },
+      conditions: [],
+      actions: [
+        { type: "assign", personId: ids.bao },
+        { type: "set_due", days: 2 },
+      ],
+    });
     const { task } = await createWorkTask({ teamId: team.id, title: "Clip 20/10", stateId: team.states.edit, assigneePersonId: ids.huy }, ids.tam);
 
     // The same transaction: when the change is rolled back, so is everything the rule did.
@@ -96,7 +111,15 @@ describe("rules run in the transaction of the change", () => {
   it("a failing action is recorded and rolled back alone; the person's change and the other actions stand", async () => {
     const team = await newTeam("AUB");
     const [label] = await db().insert(schema.workLabel).values({ teamId: team.id, name: "Gấp", color: "red" }).returning();
-    const automation = await rule(team.id, { name: "Vào thiết kế", trigger: { type: "state_entered", stateId: team.states.design }, conditions: [], actions: [{ type: "set_due", days: 1 }, { type: "add_label", labelId: label.id }] });
+    const automation = await rule(team.id, {
+      name: "Vào thiết kế",
+      trigger: { type: "state_entered", stateId: team.states.design },
+      conditions: [],
+      actions: [
+        { type: "set_due", days: 1 },
+        { type: "add_label", labelId: label.id },
+      ],
+    });
     // Starts in two months: a due date tomorrow would end before it starts, and the update refuses it.
     const { task } = await createWorkTask({ teamId: team.id, title: "Key visual", stateId: team.states.script, startDate: addDays(TODAY, 60) }, ids.tam);
     await updateWorkTask(task.id, { stateId: team.states.design }, ids.tam);
@@ -136,7 +159,12 @@ describe("rules run in the transaction of the change", () => {
   it("conditions decide, and a project's rule covers its project only", async () => {
     const team = await newTeam("AUD");
     const project = await createProject({ teamId: team.id, name: "Tết", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.tam, startDate: null, dueDate: null }, ids.long);
-    const urgent = await rule(team.id, { name: "Gấp thì báo", trigger: { type: "field_changed", field: "priority" }, conditions: [{ field: "priority", op: "eq", value: 1 }], actions: [{ type: "notify", to: "role:lead", text: "Việc gấp" }] });
+    const urgent = await rule(team.id, {
+      name: "Gấp thì báo",
+      trigger: { type: "field_changed", field: "priority" },
+      conditions: [{ field: "priority", op: "eq", value: 1 }],
+      actions: [{ type: "notify", to: "role:lead", text: "Việc gấp" }],
+    });
     const own = await rule(team.id, { name: "Của dự án", trigger: { type: "field_changed", field: "priority" }, conditions: [], actions: [{ type: "comment", text: "Đã đổi ưu tiên" }] }, project.id);
     const { task: loose } = await createWorkTask({ teamId: team.id, title: "Ngoài dự án" }, ids.tam);
     const { task: inProject } = await createWorkTask({ teamId: team.id, projectId: project.id, title: "Trong dự án" }, ids.tam);
@@ -201,7 +229,10 @@ describe("jobs and project events", () => {
     const team = await newTeam("AUG");
     const project = await createProject({ teamId: team.id, name: "Retainer Vinamilk", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.tam, startDate: null, dueDate: null }, ids.long);
     const automation = await rule(team.id, { name: "Hạn mức 80%", trigger: { type: "quota_threshold", percent: 80 }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "Retainer đã dùng 80%" }] }, project.id);
-    const fired = await db().transaction(async (tx) => [await fireProjectAutomations(tx, project.id, { type: "quota_threshold", percent: 100, key: "line-1:100" }), await fireProjectAutomations(tx, project.id, { type: "quota_threshold", percent: 100, key: "line-1:100" })]);
+    const fired = await db().transaction(async (tx) => [
+      await fireProjectAutomations(tx, project.id, { type: "quota_threshold", percent: 100, key: "line-1:100" }),
+      await fireProjectAutomations(tx, project.id, { type: "quota_threshold", percent: 100, key: "line-1:100" }),
+    ]);
     expect(fired).toEqual([1, 0]);
     const [run] = await runsOf(automation.id);
     expect(run).toMatchObject({ taskId: null, trigger: "quota_threshold", outcome: "ok", detail: { projectId: project.id, key: "line-1:100" } });
@@ -215,7 +246,10 @@ describe("starter rules", () => {
     const texts = { name: "Khách yêu cầu sửa", text: "Khách yêu cầu chỉnh sửa." };
     await addPresetAutomation({ teamId: team.id, projectId: null }, "client_review_due", { name: "Hẹn khách 2 ngày", text: "" }, ids.long);
     const reopen = await addPresetAutomation({ teamId: team.id, projectId: null }, "client_changes_reopen", texts, ids.long);
-    expect(reopen.actions).toEqual([{ type: "move_state", stateId: team.states.edit }, { type: "notify", to: "role:assignee", text: texts.text }]);
+    expect(reopen.actions).toEqual([
+      { type: "move_state", stateId: team.states.edit },
+      { type: "notify", to: "role:assignee", text: texts.text },
+    ]);
 
     const { task } = await createWorkTask({ teamId: team.id, title: "TVC", stateId: team.states.internal_review }, ids.tam);
     await updateWorkTask(task.id, { stateId: team.states.client_review }, ids.tam);
@@ -223,7 +257,11 @@ describe("starter rules", () => {
 
     const { task: clip } = await createWorkTask({ teamId: team.id, title: "Clip", stateId: team.states.edit, assigneePersonId: ids.huy }, ids.tam);
     const { deliverable } = await submitDeliverable(clip.id, { kind: "link", url: "https://drive.google.com/clip", note: null }, actor("huy"));
-    await recordClientDecision(deliverable.id, { decision: "changes_required", comment: "Đổi nhạc", client: { channel: "zalo", decidedByName: "Chị Mai", decidedOn: TODAY, evidenceFileId: null, evidenceUrl: "https://zalo.me/evidence" } }, actor("tam"));
+    await recordClientDecision(
+      deliverable.id,
+      { decision: "changes_required", comment: "Đổi nhạc", client: { channel: "zalo", decidedByName: "Chị Mai", decidedOn: TODAY, evidenceFileId: null, evidenceUrl: "https://zalo.me/evidence" } },
+      actor("tam"),
+    );
 
     expect((await loadTask(clip.id))!.work.stateId).toBe(team.states.edit);
     const [run] = await runsOf(reopen.id);
@@ -241,7 +279,10 @@ describe("starter rules", () => {
     const plain = await createTeam({ key: "AUI", name: "AUI", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
     await expect(addPresetAutomation({ teamId: plain.id, projectId: null }, "client_changes_reopen", { name: "x", text: "y" }, ids.long)).resolves.toBeTruthy();
     const noReview = await createTeam({ key: "AUJ", name: "AUJ", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
-    await db().update(schema.workState).set({ isActive: false }).where(and(eq(schema.workState.teamId, noReview.id), eq(schema.workState.category, "in_review")));
+    await db()
+      .update(schema.workState)
+      .set({ isActive: false })
+      .where(and(eq(schema.workState.teamId, noReview.id), eq(schema.workState.category, "in_review")));
     await expect(addPresetAutomation({ teamId: noReview.id, projectId: null }, "client_review_due", { name: "x", text: "y" }, ids.long)).rejects.toThrow("automation_preset_unavailable");
   });
 
@@ -258,7 +299,12 @@ describe("the app frame's counts (app.shell_counts)", () => {
     const { task: reviewed } = await createWorkTask({ teamId: team.id, title: "Có chuỗi duyệt", stateId: team.states.edit, assigneePersonId: ids.huy }, ids.tam);
     await submitDeliverable(reviewed.id, { kind: "link", url: "https://drive.google.com/v1", note: null }, actor("huy"));
 
-    await savePackage(team.id, null, { name: "Kịch bản → Thiết kế", fromStateId: team.states.script, toStateId: team.states.design, fields: [], checklist: [], requireLink: false, requireFile: false, requireAccept: true, isActive: true }, ids.long);
+    await savePackage(
+      team.id,
+      null,
+      { name: "Kịch bản → Thiết kế", fromStateId: team.states.script, toStateId: team.states.design, fields: [], checklist: [], requireLink: false, requireFile: false, requireAccept: true, isActive: true },
+      ids.long,
+    );
     const { task: handed } = await createWorkTask({ teamId: team.id, title: "Bàn giao", stateId: team.states.script, assigneePersonId: ids.huy }, ids.tam);
     await handOffStage(handed.id, { toStateId: team.states.design, values: {}, checked: [], links: [], fileId: null, toPersonId: ids.bao, note: { context: "Kịch bản đã chốt" } }, actor("huy"));
 

@@ -37,7 +37,15 @@ export default async function DelegationPage({ searchParams }: PageProps<"/appro
   if (forId && !canDelegateFor(user.principal, await placeOfPerson(forId))) notFound();
   const personId = forId ?? user.person.id;
 
-  const [t, format, locale, { given, received }, people, registered, turns] = await Promise.all([getTranslations("approvals"), getFormatter(), getLocale(), listDelegations(personId), listPersonNames(), allRequestTypes(), forId ? listTurnsOf(forId) : []]);
+  const [t, format, locale, { given, received }, people, registered, turns] = await Promise.all([
+    getTranslations("approvals"),
+    getFormatter(),
+    getLocale(),
+    listDelegations(personId),
+    listPersonNames(),
+    allRequestTypes(),
+    forId ? listTurnsOf(forId) : [],
+  ]);
   // The directory leaves out people who have left; so does this screen — their turns moved when they did.
   const absent = forId ? people.find((person) => person.id === forId) : null;
   if (forId && !absent) notFound();
@@ -54,7 +62,18 @@ export default async function DelegationPage({ searchParams }: PageProps<"/appro
       <PageHeader
         eyebrow={t("title")}
         title={absent ? t("delegation.onBehalf.title") : t("delegation.title")}
-        description={absent ? t.rich("delegation.onBehalf.description", { name: absent.fullName, person: (chunks) => <RecordLink kind="person" id={absent.id}>{chunks}</RecordLink> }) : t("delegation.description")}
+        description={
+          absent
+            ? t.rich("delegation.onBehalf.description", {
+                name: absent.fullName,
+                person: (chunks) => (
+                  <RecordLink kind="person" id={absent.id}>
+                    {chunks}
+                  </RecordLink>
+                ),
+              })
+            : t("delegation.description")
+        }
         actions={
           <Link href={absent ? `/people/${absent.id}` : "/approvals"} className={buttonVariants({ variant: "outline" })}>
             {absent ? absent.fullName : t("oversight.back")}
@@ -131,7 +150,9 @@ export default async function DelegationPage({ searchParams }: PageProps<"/appro
                     <TableCell className="max-w-64 truncate">{types(row)}</TableCell>
                     <TableCell className="max-w-64 truncate text-muted-foreground">{row.reason ?? "—"}</TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(state)}>{t(`delegation.state.${state}` as "delegation.state.active")}</Badge>
+                      <Badge dot variant={statusTone(state)}>
+                        {t(`delegation.state.${state}` as "delegation.state.active")}
+                      </Badge>
                     </TableCell>
                     <TableCell kind="actions">{state === "active" || state === "upcoming" ? <RevokeDelegationButton id={row.id} onBehalf={!!absent} /> : null}</TableCell>
                   </TableRow>

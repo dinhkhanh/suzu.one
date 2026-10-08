@@ -51,7 +51,11 @@ import {
 
 type Who = "mai" | "tam" | "huy" | "linh" | "an" | "ngo";
 const ids = {} as Record<Who | "szm" | "vid" | "annual" | "probation", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 const SCALE: RatingPoint[] = [
   { value: 1, label: "Chưa đạt", labelEn: null, scoreBp: 5000 },
@@ -87,8 +91,13 @@ const callsOf = (kind: string) => notify.mock.calls.map(([input]) => input).filt
 /** A probation contract on a fresh employment; `next` adds the labour contract that follows it. */
 async function probation(personId: string, code: string, start: string, end: string, next = false) {
   const [employment] = await db().insert(schema.employment).values({ personId, entityId: ids.szm, employeeCode: code, startDate: start, seniorityDate: start }).returning();
-  await db().insert(schema.contract).values({ employmentId: employment.id, personId, entityId: ids.szm, number: `${code}/TV`, type: "probation", startDate: start, endDate: end });
-  if (next) await db().insert(schema.contract).values({ employmentId: employment.id, personId, entityId: ids.szm, number: `${code}/HĐ`, type: "indefinite", startDate: addDays(end, 1) });
+  await db()
+    .insert(schema.contract)
+    .values({ employmentId: employment.id, personId, entityId: ids.szm, number: `${code}/TV`, type: "probation", startDate: start, endDate: end });
+  if (next)
+    await db()
+      .insert(schema.contract)
+      .values({ employmentId: employment.id, personId, entityId: ids.szm, number: `${code}/HĐ`, type: "indefinite", startDate: addDays(end, 1) });
 }
 
 beforeAll(async () => {
@@ -106,11 +115,16 @@ beforeAll(async () => {
     ["ngo", "tam", "collaborator"],
   ];
   for (const [key, manager, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: szm.id, orgUnitId: vid.id, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: szm.id, orgUnitId: vid.id, managerId: manager ? ids[manager] : null })
+      .returning();
     ids[key] = row.id;
   }
   // The company's probation countdown (company practice, HR's alert): 10 and 3 days before the end.
-  await db().insert(schema.statutoryParameter).values({ key: "hr.alert_thresholds", validFrom: "2021-01-01", value: { contractExpiryDays: [30], probationEndDays: [10, 3], documentExpiryDays: [30] }, status: "approved", isVerified: false, legalReference: "test" });
+  await db()
+    .insert(schema.statutoryParameter)
+    .values({ key: "hr.alert_thresholds", validFrom: "2021-01-01", value: { contractExpiryDays: [30], probationEndDays: [10, 3], documentExpiryDays: [30] }, status: "approved", isVerified: false, legalReference: "test" });
   ids.annual = (await saveReviewTemplate(null, template(), ids.mai)).after.id;
   ids.probation = (await saveReviewTemplate(null, template({ name: "Hết thử việc", kinds: ["probation"] }), ids.mai)).after.id;
 });
@@ -343,14 +357,20 @@ describe("the morning reminders", () => {
     // The person is not asked to acknowledge before the conversation has been held.
     expect(callsOf("performance.ack_waiting")).toEqual([]);
 
-    await db().update(schema.reviewParticipant).set({ signOffOn: addDays(today, -4), signOffRecordedAt: fiveDaysAgo, signOffByPersonId: ids.tam }).where(eq(schema.reviewParticipant.id, an.participantId));
+    await db()
+      .update(schema.reviewParticipant)
+      .set({ signOffOn: addDays(today, -4), signOffRecordedAt: fiveDaysAgo, signOffByPersonId: ids.tam })
+      .where(eq(schema.reviewParticipant.id, an.participantId));
     notify.mockClear();
     await sendReviewReminders(today);
     expect(callsOf("performance.ack_waiting")).toEqual([expect.objectContaining({ recipients: [ids.an] })]);
     notify.mockClear();
     await sendReviewReminders(today);
     expect(notify).not.toHaveBeenCalled();
-    const rows = await db().select().from(schema.performanceReminderSent).where(and(eq(schema.performanceReminderSent.personId, ids.an), eq(schema.performanceReminderSent.kind, "ack_waiting")));
+    const rows = await db()
+      .select()
+      .from(schema.performanceReminderSent)
+      .where(and(eq(schema.performanceReminderSent.personId, ids.an), eq(schema.performanceReminderSent.kind, "ack_waiting")));
     expect(rows).toHaveLength(1);
   });
 });

@@ -52,7 +52,9 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{t(`contracts.types.${contract.type}`)}</span>
                     <span className="font-mono text-xs text-muted-foreground">{contract.number}</span>
-                    <Badge dot variant={statusTone(state)}>{t(`contracts.state.${state}`)}</Badge>
+                    <Badge dot variant={statusTone(state)}>
+                      {t(`contracts.state.${state}`)}
+                    </Badge>
                     {contract.terminatedOn ? <Badge variant="outline">{t("contracts.terminated", { date: day(contract.terminatedOn) ?? "" })}</Badge> : null}
                   </div>
                   <p className="text-muted-foreground">

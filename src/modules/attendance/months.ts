@@ -27,15 +27,28 @@ export type TimesheetAdjustmentRow = typeof schema.timesheetAdjustment.$inferSel
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 export const isMonth = (value: string): boolean => MONTH.test(value);
 const monthIsOver = (month: string, today: IsoDate = todayInVietnam()) => monthEnd(month) < today;
-const targetOf = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+const targetOf = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }): Target & { personId: string } => ({
+  personId: person.id,
+  entityId: person.primaryEntityId,
+  unitPath: person.orgUnitPath,
+  managerId: person.managerId,
+});
 
 export async function getMonthRow(personId: string, month: string, executor: Executor = db()): Promise<TimesheetMonthRow | null> {
-  const [row] = await executor.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.timesheetMonth)
+    .where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month)))
+    .limit(1);
   return row ?? null;
 }
 
 export async function isPeriodLocked(entityId: string, month: string, executor: Executor = db()): Promise<boolean> {
-  const [row] = await executor.select({ id: schema.timesheetPeriod.id }).from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked"))).limit(1);
+  const [row] = await executor
+    .select({ id: schema.timesheetPeriod.id })
+    .from(schema.timesheetPeriod)
+    .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked")))
+    .limit(1);
   return !!row;
 }
 
@@ -44,7 +57,12 @@ async function lockedForUpdate(tx: Tx, personId: string, month: string) {
   if (!person) throw new ActionError("person_not_found");
   // The row is the lock two people pressing at once queue on.
   await tx.insert(schema.timesheetMonth).values({ personId, entityId: person.primaryEntityId, month }).onConflictDoNothing();
-  const [row] = await tx.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month))).limit(1).for("update");
+  const [row] = await tx
+    .select()
+    .from(schema.timesheetMonth)
+    .where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month)))
+    .limit(1)
+    .for("update");
   return { person, row };
 }
 
@@ -109,19 +127,37 @@ export async function getPeriodOverview(entityId: string, month: string, executo
   const from = monthStart(month);
   const to = monthEnd(month);
   const [days, [period]] = await Promise.all([
-    executor.select(cellColumns).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to))).orderBy(asc(schema.timesheetDay.date)),
-    executor.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month))).limit(1),
+    executor
+      .select(cellColumns)
+      .from(schema.timesheetDay)
+      .where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to)))
+      .orderBy(asc(schema.timesheetDay.date)),
+    executor
+      .select()
+      .from(schema.timesheetPeriod)
+      .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month)))
+      .limit(1),
   ]);
   const personIds = [...new Set(days.map((day) => day.personId))];
   if (personIds.length === 0) return { entityId, month, period: period ?? null, isOver: monthIsOver(month), people: [], issues: [], counts: { open: 0, confirmed: 0, approved: 0, locked: 0 } };
 
   const [people, months, reviews, requests] = await Promise.all([
     executor.select({ id: schema.person.id, fullName: schema.person.fullName, managerId: schema.person.managerId, employeeCode: latestEmployeeCode() }).from(schema.person).where(inArray(schema.person.id, personIds)),
-    executor.select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, personIds), eq(schema.timesheetMonth.month, month))),
+    executor
+      .select()
+      .from(schema.timesheetMonth)
+      .where(and(inArray(schema.timesheetMonth.personId, personIds), eq(schema.timesheetMonth.month, month))),
     executor
       .select({ personId: schema.punch.personId, value: sql<number>`count(*)::int` })
       .from(schema.punch)
-      .where(and(inArray(schema.punch.personId, personIds), eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, new Date(`${from}T00:00:00+07:00`)), lt(schema.punch.at, new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86_400_000))))
+      .where(
+        and(
+          inArray(schema.punch.personId, personIds),
+          eq(schema.punch.reviewStatus, "pending"),
+          gte(schema.punch.at, new Date(`${from}T00:00:00+07:00`)),
+          lt(schema.punch.at, new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86_400_000)),
+        ),
+      )
       .groupBy(schema.punch.personId),
     executor
       .select({ row: schema.attendanceRequest, approvalStatus: schema.approvalRequest.status })
@@ -149,7 +185,16 @@ export async function getPeriodOverview(entityId: string, month: string, executo
       const day = own.find((candidate) => candidate.date === row.startDate);
       return !day || day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes === 0;
     }).length;
-    inputs.push({ personId: person.id, monthStatus: status, missingPunchDays: summary.missingPunchDays, punchesToReview: reviewsOf.get(person.id) ?? 0, pendingRequests, unconfirmedHolidayWork, absentDays: summary.absentDays, unapprovedOvertimeDays: own.filter((day) => day.otUnapprovedMinutes > 0).length });
+    inputs.push({
+      personId: person.id,
+      monthStatus: status,
+      missingPunchDays: summary.missingPunchDays,
+      punchesToReview: reviewsOf.get(person.id) ?? 0,
+      pendingRequests,
+      unconfirmedHolidayWork,
+      absentDays: summary.absentDays,
+      unapprovedOvertimeDays: own.filter((day) => day.otUnapprovedMinutes > 0).length,
+    });
     rows.push({ personId: person.id, fullName: person.fullName, employeeCode: person.employeeCode, managerId: person.managerId, status, summary, issues: [] });
   }
   const issues = lockIssues(inputs);
@@ -184,12 +229,23 @@ function lockInTransaction(entityId: string, month: string, actorPersonId: strin
   return db().transaction(async (tx) => {
     if (!monthIsOver(month)) throw new ActionError("timesheet_month_not_over");
     await tx.insert(schema.timesheetPeriod).values({ entityId, month }).onConflictDoNothing();
-    const [period] = await tx.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month))).limit(1).for("update");
+    const [period] = await tx
+      .select()
+      .from(schema.timesheetPeriod)
+      .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month)))
+      .limit(1)
+      .for("update");
     if (period.status === "locked") throw new ActionError("timesheet_period_locked");
 
     // Everyone's rows exist and are current before they freeze.
-    const employed = await tx.selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month))));
-    const current = await tx.select({ id: schema.person.id }).from(schema.person).where(and(eq(schema.person.primaryEntityId, entityId), inArray(schema.person.status, ["active", "suspended"])));
+    const employed = await tx
+      .selectDistinct({ personId: schema.timesheetDay.personId })
+      .from(schema.timesheetDay)
+      .where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month))));
+    const current = await tx
+      .select({ id: schema.person.id })
+      .from(schema.person)
+      .where(and(eq(schema.person.primaryEntityId, entityId), inArray(schema.person.status, ["active", "suspended"])));
     const everyone = [...new Set([...employed.map((row) => row.personId), ...current.map((row) => row.id)])];
     for (let index = 0; index < everyone.length; index += 40) await recomputeDays(everyone.slice(index, index + 40), monthStart(month), monthEnd(month), tx);
 
@@ -220,14 +276,35 @@ function lockInTransaction(entityId: string, month: string, actorPersonId: strin
     if (toilPosted.length > 0) {
       await postCompensatoryLeaves(
         tx,
-        toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, amountCenti, effectiveDate: monthEnd(month), sourceKey: `${personId}:${month}`, reason: storedMessage("toilGrant", { month: `${month.slice(5)}/${month.slice(0, 4)}`, minutes }), actorPersonId })),
+        toilPosted.map(({ personId, minutes, amountCenti }) => ({
+          personId,
+          amountCenti,
+          effectiveDate: monthEnd(month),
+          sourceKey: `${personId}:${month}`,
+          reason: storedMessage("toilGrant", { month: `${month.slice(5)}/${month.slice(0, 4)}`, minutes }),
+          actorPersonId,
+        })),
       );
-      await tx.insert(schema.attendanceToilPosting).values(toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, month, minutes, amountCenti }))).onConflictDoNothing();
+      await tx
+        .insert(schema.attendanceToilPosting)
+        .values(toilPosted.map(({ personId, minutes, amountCenti }) => ({ personId, month, minutes, amountCenti })))
+        .onConflictDoNothing();
     }
-    const locked = await tx.update(schema.timesheetDay).set({ lockedAt: now }).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), isNull(schema.timesheetDay.lockedAt))).returning({ id: schema.timesheetDay.id });
+    const locked = await tx
+      .update(schema.timesheetDay)
+      .set({ lockedAt: now })
+      .where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), isNull(schema.timesheetDay.lockedAt)))
+      .returning({ id: schema.timesheetDay.id });
     const [after] = await tx
       .update(schema.timesheetPeriod)
-      .set({ status: "locked", lockedAt: now, lockedByPersonId: actorPersonId, overrideReason: override ? options.overrideReason!.trim() : null, exceptions: exceptions.map(({ personId, code, count }) => ({ personId, code, count })), updatedAt: now })
+      .set({
+        status: "locked",
+        lockedAt: now,
+        lockedByPersonId: actorPersonId,
+        overrideReason: override ? options.overrideReason!.trim() : null,
+        exceptions: exceptions.map(({ personId, code, count }) => ({ personId, code, count })),
+        updatedAt: now,
+      })
       .where(eq(schema.timesheetPeriod.id, period.id))
       .returning();
     // Everyone whose month this was hears that it is final: from now on a change is HR's adjustment, not a request.
@@ -238,7 +315,22 @@ function lockInTransaction(entityId: string, month: string, actorPersonId: strin
 
 // ── Adjustments after the lock ──────────────────────────────────────────────────────────────
 
-export const ADJUSTMENT_FIELDS = ["workedMinutes", "leavePaidMinutes", "leaveUnpaidMinutes", "absenceMinutes", "lateMinutes", "earlyMinutes", "nightMinutes", "otWeekdayMinutes", "otWeekdayNightMinutes", "otRestDayMinutes", "otRestDayNightMinutes", "otHolidayMinutes", "otHolidayNightMinutes", "paidDaysCenti"] as const;
+export const ADJUSTMENT_FIELDS = [
+  "workedMinutes",
+  "leavePaidMinutes",
+  "leaveUnpaidMinutes",
+  "absenceMinutes",
+  "lateMinutes",
+  "earlyMinutes",
+  "nightMinutes",
+  "otWeekdayMinutes",
+  "otWeekdayNightMinutes",
+  "otRestDayMinutes",
+  "otRestDayNightMinutes",
+  "otHolidayMinutes",
+  "otHolidayNightMinutes",
+  "paidDaysCenti",
+] as const;
 
 /** HR's correction to a locked month. The locked rows stay as they are; the difference waits here for payroll. */
 export async function createAdjustment(input: { personId: string; month: string; date: IsoDate | null; deltas: AdjustmentDeltas; reason: string }, actorPersonId: string): Promise<TimesheetAdjustmentRow> {
@@ -276,7 +368,13 @@ export async function listAdjustments(scope: { entityId?: string; personId?: str
     .select({ row: schema.timesheetAdjustment, fullName: schema.person.fullName })
     .from(schema.timesheetAdjustment)
     .innerJoin(schema.person, eq(schema.person.id, schema.timesheetAdjustment.personId))
-    .where(and(scope.entityId ? eq(schema.timesheetAdjustment.entityId, scope.entityId) : undefined, scope.personId ? eq(schema.timesheetAdjustment.personId, scope.personId) : undefined, scope.month ? eq(schema.timesheetAdjustment.month, scope.month) : undefined))
+    .where(
+      and(
+        scope.entityId ? eq(schema.timesheetAdjustment.entityId, scope.entityId) : undefined,
+        scope.personId ? eq(schema.timesheetAdjustment.personId, scope.personId) : undefined,
+        scope.month ? eq(schema.timesheetAdjustment.month, scope.month) : undefined,
+      ),
+    )
     .orderBy(desc(schema.timesheetAdjustment.createdAt));
   return rows.map(({ row, fullName }) => ({ ...row, fullName }));
 }
@@ -318,10 +416,30 @@ export type LockedPeriod = { entityId: string; month: string; lockedAt: Date; lo
  * `getLeaveUsage` gives the split of `leavePaidMinutes` by leave type and payroll treatment).
  */
 export async function getLockedTimesheets(entityId: string, month: string, executor: Executor = db()): Promise<LockedPeriod | null> {
-  const [period] = await executor.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked"))).limit(1);
+  const [period] = await executor
+    .select()
+    .from(schema.timesheetPeriod)
+    .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked")))
+    .limit(1);
   if (!period?.lockedAt) return null;
-  const months = await executor.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.entityId, entityId), eq(schema.timesheetMonth.month, month), eq(schema.timesheetMonth.status, "locked")));
-  const codes = new Map((months.length ? await executor.select({ personId: schema.person.id, employeeCode: latestEmployeeCode() }).from(schema.person).where(inArray(schema.person.id, months.map((row) => row.personId))) : []).map((row) => [row.personId, row.employeeCode]));
+  const months = await executor
+    .select()
+    .from(schema.timesheetMonth)
+    .where(and(eq(schema.timesheetMonth.entityId, entityId), eq(schema.timesheetMonth.month, month), eq(schema.timesheetMonth.status, "locked")));
+  const codes = new Map(
+    (months.length
+      ? await executor
+          .select({ personId: schema.person.id, employeeCode: latestEmployeeCode() })
+          .from(schema.person)
+          .where(
+            inArray(
+              schema.person.id,
+              months.map((row) => row.personId),
+            ),
+          )
+      : []
+    ).map((row) => [row.personId, row.employeeCode]),
+  );
   const people = months.map((row): LockedTimesheet => {
     const summary = row.summary as unknown as MonthSummary;
     return {
@@ -341,7 +459,14 @@ export async function getLockedTimesheets(entityId: string, month: string, execu
       lateMinutes: summary.lateMinutes,
       earlyMinutes: summary.earlyMinutes,
       nightMinutes: summary.nightMinutes,
-      overtime: { weekday: summary.otWeekday, restDay: summary.otRestDay, holiday: summary.otHoliday, totalMinutes: summary.otTotalMinutes, timeOffMinutes: summary.otTimeOffMinutes, payableMinutes: Math.max(0, summary.otTotalMinutes - summary.otTimeOffMinutes) },
+      overtime: {
+        weekday: summary.otWeekday,
+        restDay: summary.otRestDay,
+        holiday: summary.otHoliday,
+        totalMinutes: summary.otTotalMinutes,
+        timeOffMinutes: summary.otTimeOffMinutes,
+        payableMinutes: Math.max(0, summary.otTotalMinutes - summary.otTimeOffMinutes),
+      },
       lockedAt: row.lockedAt ?? period.lockedAt!,
       lockedByPersonId: row.lockedByPersonId,
     };
@@ -359,14 +484,25 @@ export async function listAdjustmentsForPayroll(entityId: string, payrollMonth: 
   return executor
     .select()
     .from(schema.timesheetAdjustment)
-    .where(and(eq(schema.timesheetAdjustment.entityId, entityId), eq(schema.timesheetAdjustment.status, "active"), lt(schema.timesheetAdjustment.month, payrollMonth), or(isNull(schema.timesheetAdjustment.payrollMonth), eq(schema.timesheetAdjustment.payrollMonth, payrollMonth))))
+    .where(
+      and(
+        eq(schema.timesheetAdjustment.entityId, entityId),
+        eq(schema.timesheetAdjustment.status, "active"),
+        lt(schema.timesheetAdjustment.month, payrollMonth),
+        or(isNull(schema.timesheetAdjustment.payrollMonth), eq(schema.timesheetAdjustment.payrollMonth, payrollMonth)),
+      ),
+    )
     .orderBy(asc(schema.timesheetAdjustment.month), asc(schema.timesheetAdjustment.createdAt));
 }
 
 /** Payroll's receipt: these adjustments went into `payrollMonth` and can no longer be voided. */
 export async function markAdjustmentsTaken(tx: Tx, adjustmentIds: readonly string[], payrollMonth: string): Promise<number> {
   if (adjustmentIds.length === 0) return 0;
-  const rows = await tx.update(schema.timesheetAdjustment).set({ payrollMonth }).where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.status, "active"), isNull(schema.timesheetAdjustment.payrollMonth))).returning({ id: schema.timesheetAdjustment.id });
+  const rows = await tx
+    .update(schema.timesheetAdjustment)
+    .set({ payrollMonth })
+    .where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.status, "active"), isNull(schema.timesheetAdjustment.payrollMonth)))
+    .returning({ id: schema.timesheetAdjustment.id });
   return rows.length;
 }
 
@@ -376,14 +512,21 @@ export async function markAdjustmentsTaken(tx: Tx, adjustmentIds: readonly strin
  */
 export async function releaseAdjustments(tx: Tx, adjustmentIds: readonly string[], payrollMonth: string): Promise<number> {
   if (adjustmentIds.length === 0) return 0;
-  const rows = await tx.update(schema.timesheetAdjustment).set({ payrollMonth: null }).where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.payrollMonth, payrollMonth))).returning({ id: schema.timesheetAdjustment.id });
+  const rows = await tx
+    .update(schema.timesheetAdjustment)
+    .set({ payrollMonth: null })
+    .where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.payrollMonth, payrollMonth)))
+    .returning({ id: schema.timesheetAdjustment.id });
   return rows.length;
 }
 
 /** Which of these adjustments were taken back after payroll priced them — their retro items must go too. */
 export async function listVoidedAdjustmentIds(adjustmentIds: readonly string[], executor: Executor = db()): Promise<string[]> {
   if (adjustmentIds.length === 0) return [];
-  const rows = await executor.select({ id: schema.timesheetAdjustment.id }).from(schema.timesheetAdjustment).where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.status, "voided")));
+  const rows = await executor
+    .select({ id: schema.timesheetAdjustment.id })
+    .from(schema.timesheetAdjustment)
+    .where(and(inArray(schema.timesheetAdjustment.id, [...adjustmentIds]), eq(schema.timesheetAdjustment.status, "voided")));
   return rows.map((row) => row.id);
 }
 
@@ -401,14 +544,27 @@ export async function listMonthsToApprove(viewer: { personId: string; principal:
   const mine = candidates.filter((person) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, targetOf(person))) && (!options.entityId || person.primaryEntityId === options.entityId));
   if (mine.length === 0) return [];
   const ids = mine.map((person) => person.id);
-  const [days, months] = await Promise.all([getTimesheetDayCells(ids, monthStart(month), monthEnd(month)), db().select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month)))]);
+  const [days, months] = await Promise.all([
+    getTimesheetDayCells(ids, monthStart(month), monthEnd(month)),
+    db()
+      .select()
+      .from(schema.timesheetMonth)
+      .where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month))),
+  ]);
   const daysOf = daysByPerson(days);
   const rowOf = new Map(months.map((row) => [row.personId, row]));
   return mine
     .filter((person) => daysOf.has(person.id))
     .map((person) => {
       const row = rowOf.get(person.id);
-      return { personId: person.id, fullName: person.fullName, status: (row?.status ?? "open") as MonthStatus, summary: summariseRows(daysOf.get(person.id) ?? []), confirmedAt: row?.confirmedAt ?? null, canApprove: canApproveMonthOf(viewer.principal, targetOf(person)) };
+      return {
+        personId: person.id,
+        fullName: person.fullName,
+        status: (row?.status ?? "open") as MonthStatus,
+        summary: summariseRows(daysOf.get(person.id) ?? []),
+        confirmedAt: row?.confirmedAt ?? null,
+        canApprove: canApproveMonthOf(viewer.principal, targetOf(person)),
+      };
     })
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
@@ -423,7 +579,12 @@ export async function remindToConfirm(entityId: string, month: string): Promise<
   const overview = await getPeriodOverview(entityId, month);
   if (overview.period?.status === "locked") throw new ActionError("timesheet_period_locked");
   const open = overview.people.filter((person) => person.status === "open").map((person) => person.personId);
-  const active = open.length ? await db().select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, open), eq(schema.person.status, "active"))) : [];
+  const active = open.length
+    ? await db()
+        .select({ id: schema.person.id })
+        .from(schema.person)
+        .where(and(inArray(schema.person.id, open), eq(schema.person.status, "active")))
+    : [];
   if (active.length) await notify({ recipients: active.map((row) => row.id), kind: "attendance.month_ready", params: { month }, link: `/attendance?month=${month}` });
   const reviewers = overview.issues.some((issue) => issue.code === "punch_to_review") ? await remindPunchReviewsBeforeLock(entityId, month) : 0;
   return { told: active.length, reviewers };
@@ -436,8 +597,15 @@ export async function remindToConfirm(entityId: string, month: string): Promise<
 export async function remindMonthReady(today: IsoDate): Promise<{ told: number }> {
   if (today.slice(8) !== "01") return { told: 0 };
   const month = monthOfPrevious(today);
-  const people = await db().selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).innerJoin(schema.person, eq(schema.person.id, schema.timesheetDay.personId)).where(and(gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), eq(schema.person.status, "active")));
-  const done = await db().select({ personId: schema.timesheetMonth.personId }).from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.month, month), inArray(schema.timesheetMonth.status, ["confirmed", "approved", "locked"])));
+  const people = await db()
+    .selectDistinct({ personId: schema.timesheetDay.personId })
+    .from(schema.timesheetDay)
+    .innerJoin(schema.person, eq(schema.person.id, schema.timesheetDay.personId))
+    .where(and(gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), eq(schema.person.status, "active")));
+  const done = await db()
+    .select({ personId: schema.timesheetMonth.personId })
+    .from(schema.timesheetMonth)
+    .where(and(eq(schema.timesheetMonth.month, month), inArray(schema.timesheetMonth.status, ["confirmed", "approved", "locked"])));
   const skip = new Set(done.map((row) => row.personId));
   const recipients = people.map((row) => row.personId).filter((personId) => !skip.has(personId));
   if (recipients.length) await notify({ recipients, kind: "attendance.month_ready", params: { month }, link: `/attendance?month=${month}` });

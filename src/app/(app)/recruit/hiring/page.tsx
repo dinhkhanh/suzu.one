@@ -54,12 +54,38 @@ export default async function HiringRequestsPage() {
                   </RecordLink>
                 </TableCell>
                 <TableCell kind="number">{row.headcount}</TableCell>
-                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
-                <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
-                <TableCell>{row.requesterName ? <RecordLink kind="person" id={row.requesterPersonId}>{row.requesterName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {row.entityName ? (
+                    <RecordLink kind="entity" id={row.entityId}>
+                      {row.entityName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.departmentName ? (
+                    <RecordLink kind="unit" id={row.departmentId}>
+                      {row.departmentName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.requesterName ? (
+                    <RecordLink kind="person" id={row.requesterPersonId}>
+                      {row.requesterName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{t(`hiringStatus.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`hiringStatus.${row.status}`)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -83,8 +109,24 @@ export default async function HiringRequestsPage() {
             <TableBody>
               {plan.map((row) => (
                 <TableRow key={`${row.entityId}-${row.departmentId}`}>
-                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
-                  <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {row.entityName ? (
+                      <RecordLink kind="entity" id={row.entityId}>
+                        {row.entityName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {row.departmentName ? (
+                      <RecordLink kind="unit" id={row.departmentId}>
+                        {row.departmentName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell kind="number">{row.approvedHeads}</TableCell>
                   <TableCell kind="number">{row.openHeads}</TableCell>
                 </TableRow>

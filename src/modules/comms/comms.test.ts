@@ -20,7 +20,26 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { acknowledgeAnnouncement, type AnnouncementInput, audienceNames, audiencePeople, commsViewerOf, countUnreadAnnouncements, createAnnouncement, getAnnouncementView, getReadReport, listAnnouncementsFor, listManagedAnnouncements, loadAnnouncement, markAnnouncementRead, mayPostTo, mayRead, notifyDueAnnouncements, publishAnnouncement, setAnnouncementState } from "./announcements";
+import {
+  acknowledgeAnnouncement,
+  type AnnouncementInput,
+  audienceNames,
+  audiencePeople,
+  commsViewerOf,
+  countUnreadAnnouncements,
+  createAnnouncement,
+  getAnnouncementView,
+  getReadReport,
+  listAnnouncementsFor,
+  listManagedAnnouncements,
+  loadAnnouncement,
+  markAnnouncementRead,
+  mayPostTo,
+  mayRead,
+  notifyDueAnnouncements,
+  publishAnnouncement,
+  setAnnouncementState,
+} from "./announcements";
 import { audienceKey } from "./enums";
 import { getHomeFeed } from "./feed";
 import { findKudos, giveKudos, kudosReceived, listKudos, mayRemoveKudos, removeKudos } from "./kudos";
@@ -28,7 +47,11 @@ import { findKudos, giveKudos, kudosReceived, listKudos, mayRemoveKudos, removeK
 type Who = "owner" | "hrGroup" | "hrSzm" | "long" | "huy" | "linh" | "khoi" | "ngo" | "gone";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des" | "hcm" | "hn", string>;
 const users = {} as Record<Who, { person: { id: string; fullName: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: string[] }; principal: Principal }>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const TODAY = "2026-09-20";
 const draft = (over: Partial<AnnouncementInput>): AnnouncementInput => ({ title: "Thông báo", body: "Nội dung", kbPageId: null, pinned: false, mustAcknowledge: false, expiresAt: null, audience: ["all"], ...over });
 
@@ -55,13 +78,21 @@ beforeAll(async () => {
     ["gone", szm.id, vid.id, hcm.id, null, null, "employee", "offboarded", "1991-09-21", "2020-01-01"],
   ];
   for (const [key, entityId, departmentId, branchId, role, scope, workforceType, status, dateOfBirth, startDate] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, orgUnitId: departmentId, workforceType, status }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, orgUnitId: departmentId, workforceType, status })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     users[key] = { person: row, principal: { personId: row.id, workforceType, grants } };
     await db().insert(schema.personProfile).values({ personId: row.id, dateOfBirth });
-    const [employment] = await db().insert(schema.employment).values({ personId: row.id, entityId, employeeCode: key, startDate, seniorityDate: startDate, endDate: status === "offboarded" ? "2026-01-31" : null }).returning();
-    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType, branchId, orgUnitId: departmentId, departmentId, validFrom: startDate, validTo: status === "offboarded" ? "2026-01-31" : null });
+    const [employment] = await db()
+      .insert(schema.employment)
+      .values({ personId: row.id, entityId, employeeCode: key, startDate, seniorityDate: startDate, endDate: status === "offboarded" ? "2026-01-31" : null })
+      .returning();
+    await db()
+      .insert(schema.assignment)
+      .values({ employmentId: employment.id, workforceType, branchId, orgUnitId: departmentId, departmentId, validFrom: startDate, validTo: status === "offboarded" ? "2026-01-31" : null });
   }
   await db().insert(schema.companyValue).values({ key: "teamwork", nameVi: "Đồng đội", nameEn: "Teamwork" });
 });
@@ -100,7 +131,10 @@ describe("announcements", () => {
     await create("later", "hrGroup", {}, new Date(Date.now() + 7 * 86_400_000));
     await create("draft", "hrGroup", {}, "no");
     await create("expired", "hrGroup", { expiresAt: new Date(Date.now() + 1500) }, null);
-    await db().update(schema.announcement).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.announcement.id, made.expired));
+    await db()
+      .update(schema.announcement)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.announcement.id, made.expired));
 
     expect(await titlesFor("huy")).toEqual(["all", "hn", "szm", "vid"]);
     expect(await titlesFor("long")).toEqual(["all", "szm", "vid"]);
@@ -142,12 +176,21 @@ describe("announcements", () => {
   });
 
   it("told the audience at publication, and tells a scheduled one once when its hour has come", async () => {
-    const told = async (id: string) => (await db().select().from(schema.notification).where(eq(schema.notification.link, `/announcements/${id}`))).length;
+    const told = async (id: string) =>
+      (
+        await db()
+          .select()
+          .from(schema.notification)
+          .where(eq(schema.notification.link, `/announcements/${id}`))
+      ).length;
     // Everyone on staff but the author.
     expect(await told(made.all)).toBe(6);
     expect(await told(made.later)).toBe(0);
     expect(await notifyDueAnnouncements()).toEqual({ announcements: 0, notified: 0 });
-    await db().update(schema.announcement).set({ publishAt: new Date(Date.now() - 60_000) }).where(eq(schema.announcement.id, made.later));
+    await db()
+      .update(schema.announcement)
+      .set({ publishAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.announcement.id, made.later));
     expect(await notifyDueAnnouncements()).toEqual({ announcements: 1, notified: 6 });
     expect(await notifyDueAnnouncements()).toEqual({ announcements: 0, notified: 0 });
     expect(await told(made.later)).toBe(6);
@@ -248,7 +291,13 @@ describe("kudos received", () => {
   it("counts every card in SQL and keeps the newest, as the old page of fifty did below its cap", async () => {
     const at = (iso: string) => new Date(iso);
     // 55 cards to Linh across two years, one of them removed: more than the page the panel used to count.
-    const rows = Array.from({ length: 55 }, (_, index) => ({ fromPersonId: ids.huy, toPersonId: ids.linh, valueKey: "teamwork", message: `#${index}`, createdAt: at(`${index < 40 ? "2025" : "2026"}-0${(index % 9) + 1}-1${index % 10}T0${index % 10}:00:00Z`) }));
+    const rows = Array.from({ length: 55 }, (_, index) => ({
+      fromPersonId: ids.huy,
+      toPersonId: ids.linh,
+      valueKey: "teamwork",
+      message: `#${index}`,
+      createdAt: at(`${index < 40 ? "2025" : "2026"}-0${(index % 9) + 1}-1${index % 10}T0${index % 10}:00:00Z`),
+    }));
     const inserted = await db().insert(schema.kudos).values(rows).returning();
     await db().update(schema.kudos).set({ deletedAt: new Date() }).where(eq(schema.kudos.id, inserted[0].id));
     const live = inserted.slice(1).sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());

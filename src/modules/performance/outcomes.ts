@@ -29,7 +29,9 @@ export async function listOutcomes(filter: { personId?: string; year?: number; s
     .select({ row: schema.reviewOutcome, personName: schema.person.fullName })
     .from(schema.reviewOutcome)
     .innerJoin(schema.person, eq(schema.person.id, schema.reviewOutcome.personId))
-    .where(and(filter.personId ? eq(schema.reviewOutcome.personId, filter.personId) : undefined, filter.year ? eq(schema.reviewOutcome.year, filter.year) : undefined, filter.status ? eq(schema.reviewOutcome.status, filter.status) : undefined))
+    .where(
+      and(filter.personId ? eq(schema.reviewOutcome.personId, filter.personId) : undefined, filter.year ? eq(schema.reviewOutcome.year, filter.year) : undefined, filter.status ? eq(schema.reviewOutcome.status, filter.status) : undefined),
+    )
     .orderBy(desc(schema.reviewOutcome.createdAt));
   return rows;
 }
@@ -70,7 +72,17 @@ export async function raiseOutcome(input: OutcomeInput, actorPersonId: string, e
     });
     const [created] = await executor
       .insert(schema.reviewOutcome)
-      .values({ personId: result.personId, entityId: result.entityId, year: result.year, resultId: result.id, participantId: result.participantId, type: input.type, note: input.note, raisedByPersonId: actorPersonId, salaryRequestId: request.id })
+      .values({
+        personId: result.personId,
+        entityId: result.entityId,
+        year: result.year,
+        resultId: result.id,
+        participantId: result.participantId,
+        type: input.type,
+        note: input.note,
+        raisedByPersonId: actorPersonId,
+        salaryRequestId: request.id,
+      })
       .returning();
     return created;
   }

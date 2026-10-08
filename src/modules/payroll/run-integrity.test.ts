@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 4).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 6).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 4).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 6).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -94,11 +100,23 @@ async function addStructure(entityId: string, personId: string, validFrom: strin
  * what one leaves behind (a retro item, a late salary decision) never reaches another.
  */
 async function company(code: string, names: string[]): Promise<{ entityId: string; people: string[] }> {
-  const [entity] = await db().insert(schema.entity).values({ code, legalName: `SuZu ${code}`, shortName: code, wageRegion: 1 }).returning();
+  const [entity] = await db()
+    .insert(schema.entity)
+    .values({ code, legalName: `SuZu ${code}`, shortName: code, wageRegion: 1 })
+    .returning();
   const people: string[] = [];
   for (const [index, name] of names.entries()) {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${code}.${name}`.toLowerCase().replace(/\s+/g, ".") + "@suzu.group", profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate: "2024-03-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: shared.department, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${code}.${name}`.toLowerCase().replace(/\s+/g, ".") + "@suzu.group",
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate: "2024-03-01",
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: shared.department, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       shared.actor,
       { onboarding: false },
     );
@@ -106,7 +124,11 @@ async function company(code: string, names: string[]): Promise<{ entityId: strin
     await db().insert(schema.payProfile).values({ personId: person.id, employmentId: employment.id, entityId: entity.id, profile: "statutory", validFrom: "2024-03-01", status: "approved" });
     await db()
       .insert(schema.personSensitive)
-      .values({ personId: person.id, taxCode: fieldCipher().encrypt("8412345678", sensitiveContext("taxCode", person.id)), bankAccounts: fieldCipher().encrypt(JSON.stringify([{ bankName: "VCB", accountNumber: "0123456789", accountHolder: "NV", branch: null }]), sensitiveContext("bankAccounts", person.id)) });
+      .values({
+        personId: person.id,
+        taxCode: fieldCipher().encrypt("8412345678", sensitiveContext("taxCode", person.id)),
+        bankAccounts: fieldCipher().encrypt(JSON.stringify([{ bankName: "VCB", accountNumber: "0123456789", accountHolder: "NV", branch: null }]), sensitiveContext("bankAccounts", person.id)),
+      });
     await addStructure(entity.id, person.id, "2024-03-01", index === names.length - 1 && names.length > 1 ? 20_000_000 : 30_000_000);
     people.push(person.id);
   }
@@ -128,16 +150,27 @@ async function calculated(entityId: string, month: string) {
 }
 
 /** The month went all the way: it was calculated on the 3rd of the next month and the money is out. */
-const markPaid = (runId: string, calculatedAt: string) => db().update(schema.payrollRun).set({ status: "paid", calculatedAt: new Date(calculatedAt) }).where(eq(schema.payrollRun.id, runId));
+const markPaid = (runId: string, calculatedAt: string) =>
+  db()
+    .update(schema.payrollRun)
+    .set({ status: "paid", calculatedAt: new Date(calculatedAt) })
+    .where(eq(schema.payrollRun.id, runId));
 
 const getRun = async (runId: string) => (await loadRun(runId))!;
 const linesOf = async (runId: string, personId: string) => {
-  const [row] = await db().select().from(schema.payrollRunPerson).where(and(eq(schema.payrollRunPerson.runId, runId), eq(schema.payrollRunPerson.personId, personId)));
+  const [row] = await db()
+    .select()
+    .from(schema.payrollRunPerson)
+    .where(and(eq(schema.payrollRunPerson.runId, runId), eq(schema.payrollRunPerson.personId, personId)));
   return row;
 };
 
 /** A principal holding one role over one entity — how the screens are guarded. */
-const grantee = (role: "payroll" | "c_level" | "finance" | "department_head", entityId: string, personId: string = crypto.randomUUID()): Principal => ({ personId, workforceType: "employee", grants: [{ role, scope: { type: "entity", id: entityId } }] });
+const grantee = (role: "payroll" | "c_level" | "finance" | "department_head", entityId: string, personId: string = crypto.randomUUID()): Principal => ({
+  personId,
+  workforceType: "employee",
+  grants: [{ role, scope: { type: "entity", id: entityId } }],
+});
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -197,7 +230,20 @@ describe("typed-in figures are never changed or dropped in silence (PAY-04)", ()
   it("leaves no run behind when an off-cycle run names a line payroll cannot take", async () => {
     const countRuns = async () => (await db().select({ id: schema.payrollRun.id }).from(schema.payrollRun).where(eq(schema.payrollRun.entityId, entityId))).length;
     const before = await countRuns();
-    await expect(createOffCycleRun({ entityId, month: "2026-07", name: "Thưởng", lines: [{ personId: huy, code: "BONUS", amount: 1_000_000 }, { personId: lan, code: "BONUS", amount: -1 }] }, shared.actor)).rejects.toThrow("run_input_negative_earning");
+    await expect(
+      createOffCycleRun(
+        {
+          entityId,
+          month: "2026-07",
+          name: "Thưởng",
+          lines: [
+            { personId: huy, code: "BONUS", amount: 1_000_000 },
+            { personId: lan, code: "BONUS", amount: -1 },
+          ],
+        },
+        shared.actor,
+      ),
+    ).rejects.toThrow("run_input_negative_earning");
     expect(await countRuns()).toBe(before);
   });
 
@@ -219,7 +265,9 @@ describe("typed-in figures are never changed or dropped in silence (PAY-04)", ()
   it("turns a figure the engine will not pay into a warning on the person and a blocker on the run", async () => {
     // A row from before the rule, or written past it: −500,000 of commission.
     const id = crypto.randomUUID();
-    await db().insert(schema.payrollRunInput).values({ id, runId, personId: lan, code: "COMMISSION", amountEnc: fieldCipher().encrypt("-500000", runEntryContext(id)) });
+    await db()
+      .insert(schema.payrollRunInput)
+      .values({ id, runId, personId: lan, code: "COMMISSION", amountEnc: fieldCipher().encrypt("-500000", runEntryContext(id)) });
     const { run, people } = await calculateRun(runId);
     const result = people.find((person) => person.result.personId === lan)!.result;
     // Not paid as +500,000, not paid at all — and said out loud.
@@ -277,7 +325,10 @@ describe("a stale run cannot be proposed (PAY-03)", () => {
   });
 
   it("does not reopen the run for the same figure typed again, and does when it is taken out", async () => {
-    const [run] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-07")));
+    const [run] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-07")));
     // A sweep in another module re-posting what is already there changes nothing.
     expect(await setRunInput({ runId: run.id, personId: huy, code: "BONUS", amount: 5_000_000 }, shared.actor)).toEqual({ reopened: false });
     expect((await getRun(run.id)).status).toBe("calculated");
@@ -297,7 +348,9 @@ describe("a stale run cannot be proposed (PAY-03)", () => {
     const run = await calculated(entityId, "2026-08");
     // Written straight into the table by something that does not go through `setRunInput`.
     const id = crypto.randomUUID();
-    await db().insert(schema.payrollRunInput).values({ id, runId: run.id, personId: lan, code: "BONUS", amountEnc: fieldCipher().encrypt("1000000", runEntryContext(id)), updatedAt: new Date(Date.now() + 60_000) });
+    await db()
+      .insert(schema.payrollRunInput)
+      .values({ id, runId: run.id, personId: lan, code: "BONUS", amountEnc: fieldCipher().encrypt("1000000", runEntryContext(id)), updatedAt: new Date(Date.now() + 60_000) });
     expect((await getRun(run.id)).status).toBe("calculated");
     expect((await getRunReadiness(await getRun(run.id))).stale).toEqual(["inputs_changed"]);
     await expect(stepRun(run.id, "propose", { personId: shared.actor })).rejects.toThrow("run_stale");
@@ -325,7 +378,10 @@ describe("a stale run cannot be proposed (PAY-03)", () => {
     const run = await calculated(entityId, "2026-10");
     expect((await getRunReadiness(run)).stale).toEqual([]);
     // HR reopened the period and locked it again: the run was worked out from the earlier lock.
-    await db().update(schema.timesheetPeriod).set({ lockedAt: new Date("2026-11-02T03:00:00Z") }).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, "2026-10")));
+    await db()
+      .update(schema.timesheetPeriod)
+      .set({ lockedAt: new Date("2026-11-02T03:00:00Z") })
+      .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, "2026-10")));
     expect((await getRunReadiness(run)).stale).toEqual(["timesheet_changed"]);
     await expect(stepRun(run.id, "propose", { personId: shared.actor })).rejects.toThrow("run_stale");
     expect((await getRunReadiness((await calculateRun(run.id)).run)).stale).toEqual([]);
@@ -371,7 +427,10 @@ describe("retro pay exists, and a recalculation keeps what the run took (PAY-01,
   let adjustmentId = "";
 
   const adjust = async (personId: string, month: string, reason: string) => {
-    const [row] = await db().insert(schema.timesheetAdjustment).values({ personId, entityId, month, date: null, deltas: { paidDaysCenti: -100 }, reason, createdByPersonId: shared.actor }).returning();
+    const [row] = await db()
+      .insert(schema.timesheetAdjustment)
+      .values({ personId, entityId, month, date: null, deltas: { paidDaysCenti: -100 }, reason, createdByPersonId: shared.actor })
+      .returning();
     return row.id;
   };
   const adjustmentOf = async (id: string) => (await db().select().from(schema.timesheetAdjustment).where(eq(schema.timesheetAdjustment.id, id)))[0];
@@ -412,7 +471,10 @@ describe("retro pay exists, and a recalculation keeps what the run took (PAY-01,
   });
 
   it("gives everything back when the run is cancelled, and the next run takes it", async () => {
-    const [august] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08")));
+    const [august] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08")));
     await cancelRun(august.id);
     const [item] = await listRetroItems({ entityIds: [entityId], personId: huy });
     expect(item).toMatchObject({ status: "open", runId: null, payrollMonth: null });
@@ -425,7 +487,10 @@ describe("retro pay exists, and a recalculation keeps what the run took (PAY-01,
   });
 
   it("lets C&B cancel an item the open run has taken: the run goes back to draft and the line is gone", async () => {
-    const [august] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
+    const [august] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
     const [item] = await listRetroItems({ entityIds: [entityId], personId: huy });
     await expect(withdrawRetroItem(item.id, "  ", shared.actor)).rejects.toThrow("retro_reason_required");
     const { reopenedRunId } = await withdrawRetroItem(item.id, "Đã trừ bằng tiền mặt", shared.actor);
@@ -444,7 +509,10 @@ describe("retro pay exists, and a recalculation keeps what the run took (PAY-01,
   it("leaves an item waiting when its person is not in the run, instead of marking it paid", async () => {
     // July's leaver is owed something, and is on no later timesheet.
     const item = await addRetroItem({ entityId, personId: leaver, sourceMonth: "2026-07", amount: 900_000, kind: "manual", reason: "Phép năm chưa thanh toán" }, shared.actor);
-    const [august] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
+    const [august] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
     const again = await calculateRun(august.id);
     expect(again.retroTaken).toBe(0);
     expect((await getRetroItem(item.id))!.status).toBe("open");
@@ -456,7 +524,10 @@ describe("retro pay exists, and a recalculation keeps what the run took (PAY-01,
   });
 
   it("refuses to cancel an item once the run that took it has been proposed", async () => {
-    const [august] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
+    const [august] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-08"), eq(schema.payrollRun.status, "calculated")));
     const entered = await enterRetroItem({ entityId, personId: lan, sourceMonth: "2026-07", amount: 400_000, reason: "Thưởng tháng 7 trả thiếu" }, shared.actor);
     expect(entered.reopenedRunIds).toEqual([august.id]);
     expect((await calculateRun(august.id)).retroTaken).toBe(1);
@@ -709,7 +780,9 @@ describe("C&B read a calculation before proposing it (PAY-12)", () => {
   it("shows on the run who took each step, each person's warnings, and what is in the way", async () => {
     await db().update(schema.personSensitive).set({ bankAccounts: null }).where(eq(schema.personSensitive.personId, lan));
     const [stranger] = await db().insert(schema.person).values({ fullName: "Chua Co Ho So", searchName: "chua co ho so", primaryEntityId: entityId, status: "active" }).returning();
-    await db().insert(schema.timesheetMonth).values({ personId: stranger.id, entityId, month: "2026-07", status: "locked", summary: summary(), lockedAt: new Date("2026-07-28T03:00:00Z"), lockedByPersonId: shared.actor });
+    await db()
+      .insert(schema.timesheetMonth)
+      .values({ personId: stranger.id, entityId, month: "2026-07", status: "locked", summary: summary(), lockedAt: new Date("2026-07-28T03:00:00Z"), lockedByPersonId: shared.actor });
     await setRunInput({ runId, personId: huy, code: "BONUS", amount: 500_000 }, shared.actor);
 
     const view = (await getRunView(grantee("payroll", entityId), runId))!;
@@ -740,7 +813,17 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
   const postPayout = async (daysCenti: number, createdAt?: Date) =>
     db()
       .insert(schema.leaveLedgerEntry)
-      .values({ personId: khoa, entityId, leaveTypeId: annualLeave, leaveYear: 2026, kind: "payout", amountCenti: -daysCenti, effectiveDate: "2026-09-18", reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc", ...(createdAt ? { createdAt } : {}) });
+      .values({
+        personId: khoa,
+        entityId,
+        leaveTypeId: annualLeave,
+        leaveYear: 2026,
+        kind: "payout",
+        amountCenti: -daysCenti,
+        effectiveDate: "2026-09-18",
+        reason: "Thanh toán ngày phép chưa nghỉ khi nghỉ việc",
+        ...(createdAt ? { createdAt } : {}),
+      });
 
   beforeAll(async () => {
     ({
@@ -750,7 +833,9 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
     await db().update(schema.employment).set({ endDate: "2026-09-18" }).where(eq(schema.employment.personId, khoa));
     // The default week of SRS D15: office Monday–Friday, Saturday a working day from home. August 2026 asks 26 days of it.
     const office = { type: "working" as const, segments: [{ start: "08:30", end: "17:30" }], breakMinutes: 60 };
-    await db().insert(schema.workSchedule).values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } }, entityId: null, isDefault: true });
+    await db()
+      .insert(schema.workSchedule)
+      .values({ name: "Office week", kind: "fixed", pattern: { days: { 1: office, 2: office, 3: office, 4: office, 5: office, 6: { type: "untracked", creditMinutes: 480 }, 7: { type: "off" } } }, entityId: null, isDefault: true });
     const [type] = await db().insert(schema.leaveType).values({ entityId: null, code: "ANNUAL", name: "Phép năm", category: "annual", isPaid: true, payrollTreatment: "paid_company", tracksBalance: true }).returning();
     annualLeave = type.id;
     await lockMonth(entityId, "2026-09", [khoa]);
@@ -766,7 +851,10 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
   });
 
   it("goes stale when the leave job pays out after the calculation, and pays the days at the month-before day rate once recalculated", async () => {
-    const [run] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09")));
+    const [run] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09")));
     // Posted just after the calculation, as the morning job would.
     await postPayout(250, new Date(run.calculatedAt!.getTime() + 1));
     expect((await getRunReadiness(run)).stale).toEqual(["leave_payout_posted"]);
@@ -788,7 +876,10 @@ describe("a leaver's month is their final settlement (PAY-07, FR-PAY-18)", () =>
   // of the same month: it takes the leaver without a typed line, pays only what no run of the month
   // pays, and is refused while the regular run could still take them itself.
   it("pays days posted after the regular run was signed in an off-cycle run of the month, once", async () => {
-    const [run] = await db().select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09"), eq(schema.payrollRun.kind, "regular")));
+    const [run] = await db()
+      .select()
+      .from(schema.payrollRun)
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, "2026-09"), eq(schema.payrollRun.kind, "regular")));
     const payoutOnly = { entityId, month: "2026-09", name: "Thanh toán phép", lines: [] };
     // The regular run is still open: it pays its leavers itself, so there is nothing for an off-cycle run.
     expect(await leavePayoutsAwaitingRun(entityId, "2026-09")).toEqual([]);
@@ -866,7 +957,9 @@ describe("probation pay (FR-PAY-05)", () => {
     await db().update(schema.salaryStructure).set({ validTo: "2026-06-30" }).where(eq(schema.salaryStructure.personId, an));
     const id = crypto.randomUUID();
     const terms = { baseSalary: 20_000_000, insuranceSalary: 20_000_000, allowances: [], probationPercent: 85 };
-    await db().insert(schema.salaryStructure).values({ id, personId: an, employmentId: employment.id, entityId, validFrom: "2026-07-01", reason: "raise", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({ id, personId: an, employmentId: employment.id, entityId, validFrom: "2026-07-01", reason: "raise", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
     await db().insert(schema.contract).values({ employmentId: employment.id, personId: an, entityId, number: "HDTV-001", type: "probation", startDate: "2026-07-01", endDate: "2026-07-14" });
     await lockMonth(entityId, "2026-07", [an]);
 

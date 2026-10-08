@@ -1,8 +1,8 @@
-import * as React from "react"
-import Link from "next/link"
-import { cn } from "cn"
-import { LinkPending } from "@/components/shell/link-pending"
-import { InsideLink } from "./record-link"
+import * as React from "react";
+import Link from "next/link";
+import { cn } from "cn";
+import { LinkPending } from "@/components/shell/link-pending";
+import { InsideLink } from "./record-link";
 
 // The grid's look for what is not a table: a feed, a thread, rows that each hold a small form,
 // a tree. Same frame, same hairlines, same roomy rows and hover wash as <Table>, so a page that
@@ -15,7 +15,7 @@ function List({
   ...props
 }: React.ComponentProps<"ul"> & {
   /** Draw the grid's gutter of row numbers. Off by default: a feed is not a register. */
-  numbered?: boolean
+  numbered?: boolean;
 }) {
   return (
     <ul
@@ -23,14 +23,14 @@ function List({
       data-numbered={numbered ? "" : undefined}
       className={cn(
         "list-grid flex flex-col divide-y divide-border/70 overflow-hidden rounded-[14px] border border-border bg-background text-sm empty:hidden in-data-[slot=table-card]:rounded-none in-data-[slot=table-card]:border-0",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-const ROW = "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 px-4 py-2.5 md:min-h-12 md:px-3.5"
+const ROW = "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 px-4 py-2.5 md:min-h-12 md:px-3.5";
 
 /**
  * One row. Given `href`, the whole row is the link (with the hover wash) and the names inside
@@ -45,20 +45,13 @@ function ListItem({
   children,
   ...props
 }: Omit<React.ComponentProps<"li">, "children"> & {
-  href?: string
-  children?: React.ReactNode
+  href?: string;
+  children?: React.ReactNode;
 }) {
   return (
     <li data-slot="list-item" className="flex items-stretch data-[state=selected]:bg-primary/5" {...props}>
       {href ? (
-        <Link
-          href={href}
-          className={cn(
-            ROW,
-            "transition-colors duration-100 hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none active:bg-muted has-[[data-link-pending]]:bg-muted",
-            className
-          )}
-        >
+        <Link href={href} className={cn(ROW, "transition-colors duration-100 hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none active:bg-muted has-[[data-link-pending]]:bg-muted", className)}>
           <InsideLink>{children}</InsideLink>
           <LinkPending />
         </Link>
@@ -66,21 +59,12 @@ function ListItem({
         <div className={cn(ROW, className)}>{children}</div>
       )}
     </li>
-  )
+  );
 }
 
 /** The empty state, as a row of the list. */
 function ListEmpty({ className, ...props }: React.ComponentProps<"li">) {
-  return (
-    <li
-      data-slot="list-empty"
-      className={cn(
-        "flex min-h-20 items-center justify-center px-4 py-5 text-center text-sm text-muted-foreground",
-        className
-      )}
-      {...props}
-    />
-  )
+  return <li data-slot="list-empty" className={cn("flex min-h-20 items-center justify-center px-4 py-5 text-center text-sm text-muted-foreground", className)} {...props} />;
 }
 
-export { List, ListItem, ListEmpty }
+export { List, ListItem, ListEmpty };

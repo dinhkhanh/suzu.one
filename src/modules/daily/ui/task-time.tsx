@@ -10,7 +10,23 @@ import { TimerButton } from "./timer";
 
 type Total = { minutes: number; billable: number };
 
-export function TaskTime({ taskId, today, earliest, billable, running, mine, total }: { taskId: string; today: string; /** The earliest day the log still takes. */ earliest: string; /** The task's project is billed by default. */ billable: boolean; running: boolean; mine: Total; /** Everyone's time, where the reader may see it. */ total: Total | null }) {
+export function TaskTime({
+  taskId,
+  today,
+  earliest,
+  billable,
+  running,
+  mine,
+  total,
+}: {
+  taskId: string;
+  today: string;
+  /** The earliest day the log still takes. */ earliest: string;
+  /** The task's project is billed by default. */ billable: boolean;
+  running: boolean;
+  mine: Total;
+  /** Everyone's time, where the reader may see it. */ total: Total | null;
+}) {
   const t = useTranslations("daily.time");
   const shown = total ?? mine;
   // "Nobody has logged" is said only by a total the reader may see; otherwise the line is their own hours.

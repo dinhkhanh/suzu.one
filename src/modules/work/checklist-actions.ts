@@ -20,7 +20,13 @@ const checkbox = z.preprocess((value) => value === "on" || value === true, z.boo
 // "unit:<id>" | "team:<id>" | "" (company-wide), as the owner picker posts it.
 const owner = z.preprocess(
   (value) => (typeof value === "string" ? value : ""),
-  z.union([z.literal("").transform(() => ({ ownerUnitId: null, ownerTeamId: null })), z.string().regex(/^(unit|team):[0-9a-f-]{36}$/).transform((value) => (value.startsWith("unit:") ? { ownerUnitId: value.slice(5), ownerTeamId: null } : { ownerUnitId: null, ownerTeamId: value.slice(5) }))]),
+  z.union([
+    z.literal("").transform(() => ({ ownerUnitId: null, ownerTeamId: null })),
+    z
+      .string()
+      .regex(/^(unit|team):[0-9a-f-]{36}$/)
+      .transform((value) => (value.startsWith("unit:") ? { ownerUnitId: value.slice(5), ownerTeamId: null } : { ownerUnitId: null, ownerTeamId: value.slice(5) })),
+  ]),
 );
 
 const item = z.object({ id: optional(z.string().regex(/^[a-z0-9_]{1,20}$/)), text: z.string().trim().max(200), linkUrl: optional(z.string().trim().max(500).refine(isSafeTaskLink)) });

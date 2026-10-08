@@ -85,12 +85,18 @@ export default async function SalaryImportReviewPage({ params }: PageProps<"/pay
                       </Link>
                       {line.proposed.probationPercent ? <span className="ml-1.5 text-xs text-muted-foreground">({t("salaries.probationShort", { percent: line.proposed.probationPercent })})</span> : null}
                     </TableCell>
-                    <TableCell kind="money" className="text-muted-foreground">{line.current ? formatVnd(line.current.baseSalary) : "—"}</TableCell>
-                    <TableCell kind="money" className="font-medium">{formatVnd(line.proposed.baseSalary)}</TableCell>
+                    <TableCell kind="money" className="text-muted-foreground">
+                      {line.current ? formatVnd(line.current.baseSalary) : "—"}
+                    </TableCell>
+                    <TableCell kind="money" className="font-medium">
+                      {formatVnd(line.proposed.baseSalary)}
+                    </TableCell>
                     <TableCell kind="money">{formatVnd(line.proposed.insuranceSalary)}</TableCell>
                     <TableCell kind="money">{formatVnd(total(line.proposed))}</TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(line.status)}>{t(`salaries.requestStatus.${line.status}` as "salaries.requestStatus.pending")}</Badge>
+                      <Badge dot variant={statusTone(line.status)}>
+                        {t(`salaries.requestStatus.${line.status}` as "salaries.requestStatus.pending")}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -131,7 +137,9 @@ export default async function SalaryImportReviewPage({ params }: PageProps<"/pay
                     <TableCell className="text-muted-foreground">{day(profile.validFrom)}</TableCell>
                     <TableCell className="text-muted-foreground">{t(`profiles.pitMethods.${profile.pitMethod}`)}</TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(profile.status)}>{t(`rules.status.${profile.status}`)}</Badge>
+                      <Badge dot variant={statusTone(profile.status)}>
+                        {t(`rules.status.${profile.status}`)}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

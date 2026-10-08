@@ -9,7 +9,32 @@ import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { readFilters, readGrouping, readSort, taskSliceFor } from "@/modules/work/engine/filter";
-import { addableMembers, canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listDeletedTasks, listRecurrences, listSavedViews, listTeamIntakeForms, listLabels, listStates, listTaskSlice, listTeamMembers, loadViewer, RESTORE_WINDOW_DAYS, teamFacts, visibleProjects, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import {
+  addableMembers,
+  canAdminTeam,
+  canContributeToTeam,
+  canManageWorkspace,
+  canViewTeam,
+  canViewTeamBacklog,
+  findTeam,
+  listAssignable,
+  listClients,
+  listDeletedTasks,
+  listRecurrences,
+  listSavedViews,
+  listTeamIntakeForms,
+  listLabels,
+  listStates,
+  listTaskSlice,
+  listTeamMembers,
+  loadViewer,
+  RESTORE_WINDOW_DAYS,
+  teamFacts,
+  visibleProjects,
+  withEditable,
+  WORK_VIEWS,
+  type WorkView,
+} from "@/modules/work/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { BoardView } from "@/modules/work/ui/board-view";
@@ -63,7 +88,9 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     listAssignable(team.id, null),
     listTeamIntakeForms(team.id),
     // The picker offers only the people this viewer may actually add (`canAddTeamMember`).
-    admin ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()]) : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
+    admin
+      ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()])
+      : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
   const contribute = canContributeToTeam(viewer, facts) && team.isActive;
   const [fieldRows, triageCounts, checklists, stageHooks, statusNames, statusSets, views, recurrences, deleted] = await Promise.all([
@@ -81,14 +108,24 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   ]);
   const fields = toFieldViews(fieldRows);
   // FR-PJM-10: the team's open cycles, for the filter and bulk edit.
-  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
+  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({
+    id: cycle.id,
+    label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }),
+  }));
   const logged = seesBacklog && backlogView === "table" && canSeeLoggedTime(viewer, { team: facts, project: null }) ? Object.fromEntries(await loggedMinutesByTask(backlog.map((task) => task.id))) : null;
   const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
   const teamProjects = projects.filter((project) => project.teamId === team.id);
 
-  const listOptions = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles };
+  const listOptions = {
+    states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })),
+    people: assignable,
+    labels: labels.map(({ id, name, color }) => ({ id, name, color })),
+    clients: clients.map(({ id, name }) => ({ id, name })),
+    fields: fields.filter((field) => field.projectId === null),
+    cycles,
+  };
   const scope = { teamId: team.id, projectId: null };
   // The backlog's calendar: its dated tasks on the team's own working calendar (no content posts — those belong to projects).
   const [calendarTasks, daysOff] = seesBacklog && backlogView === "calendar" ? await Promise.all([withEditable(viewer, backlog), getDaysOff(team.entityId, grid.from, grid.to)]) : [[], []];
@@ -112,7 +149,13 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
         actions={
           admin ? (
             <>
-              <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} statusSets={statusSets} />
+              <EditTeamButton
+                team={team}
+                entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))}
+                departments={departments}
+                allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })}
+                statusSets={statusSets}
+              />
               <ArchiveButton target={{ teamId: team.id }} name={team.name} archived={status === "archived"} />
             </>
           ) : undefined
@@ -135,41 +178,41 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       </nav>
 
       <Section title={t("projects.title")} count={teamProjects.length || undefined}>
-      <TableCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="text">{t("projects.fields.name")}</TableHead>
-              <TableHead kind="status">{t("projects.fields.status")}</TableHead>
-              <TableHead kind="number">{t("projects.openTasks")}</TableHead>
-              <TableHead kind="select">{t("projects.fields.visibility")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {teamProjects.map((project) => (
-              <TableRow key={project.id} data-accent={accentOf(project.color, team.color)}>
-                <TableCell className="max-w-96">
-                  <span className="flex items-center gap-3">
-                    <ProjectPoster project={project} size="sm" />
-                    <ColorSquare color={accentOf(project.color, team.color)} />
-                    <Link href={`/work/projects/${project.id}`} className="min-w-0 truncate font-medium hover:underline">
-                      {project.name}
-                    </Link>
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <ProjectStatusBadge status={project.status} name={(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)} />
-                </TableCell>
-                <TableCell kind="number">{project.openTasks}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-                </TableCell>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("projects.fields.name")}</TableHead>
+                <TableHead kind="status">{t("projects.fields.status")}</TableHead>
+                <TableHead kind="number">{t("projects.openTasks")}</TableHead>
+                <TableHead kind="select">{t("projects.fields.visibility")}</TableHead>
               </TableRow>
-            ))}
-            {teamProjects.length === 0 ? <TableEmpty>{t("projects.empty")}</TableEmpty> : null}
-          </TableBody>
-        </Table>
-      </TableCard>
+            </TableHeader>
+            <TableBody>
+              {teamProjects.map((project) => (
+                <TableRow key={project.id} data-accent={accentOf(project.color, team.color)}>
+                  <TableCell className="max-w-96">
+                    <span className="flex items-center gap-3">
+                      <ProjectPoster project={project} size="sm" />
+                      <ColorSquare color={accentOf(project.color, team.color)} />
+                      <Link href={`/work/projects/${project.id}`} className="min-w-0 truncate font-medium hover:underline">
+                        {project.name}
+                      </Link>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <ProjectStatusBadge status={project.status} name={(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)} />
+                  </TableCell>
+                  <TableCell kind="number">{project.openTasks}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {teamProjects.length === 0 ? <TableEmpty>{t("projects.empty")}</TableEmpty> : null}
+            </TableBody>
+          </Table>
+        </TableCard>
       </Section>
 
       {seesBacklog ? (
@@ -203,7 +246,15 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
               today={today}
               canContribute={contribute}
               // One's own view is one's own to change; a shared one of somebody else's, the team's leads'.
-              savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canEdit: view.ownerPersonId === user.person.id || admin, canDelete: view.ownerPersonId === user.person.id || admin, filters: view.filters }))}
+              savedViews={views.map((view) => ({
+                id: view.id,
+                name: view.name,
+                isShared: view.isShared,
+                mine: view.ownerPersonId === user.person.id,
+                canEdit: view.ownerPersonId === user.person.id || admin,
+                canDelete: view.ownerPersonId === user.person.id || admin,
+                filters: view.filters,
+              }))}
             />
           )}
         </Section>
@@ -213,7 +264,21 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
         <Section title={t("recurrence.heading")} count={recurrences.filter((row) => row.isActive).length || undefined}>
           <RecurrenceManager
             target={{ teamId: team.id }}
-            recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, assigneePersonId: draft.assigneePersonId ?? null, estimateMinutes: draft.estimateMinutes ?? null, assigneeName, nextDate, made }))}
+            recurrences={recurrences.map(({ id, title, rule, startDate, endDate, leadDays, onDayOff, isActive, draft, assigneeName, nextDate, made }) => ({
+              id,
+              title,
+              rule,
+              startDate,
+              endDate,
+              leadDays,
+              onDayOff,
+              isActive,
+              assigneePersonId: draft.assigneePersonId ?? null,
+              estimateMinutes: draft.estimateMinutes ?? null,
+              assigneeName,
+              nextDate,
+              made,
+            }))}
             people={assignable}
             canManage={contribute}
             today={today}
@@ -223,7 +288,10 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       {deleted.length ? (
         <Section title={t("deleted.title", { count: deleted.length })}>
-          <DeletedTasks tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))} days={RESTORE_WINDOW_DAYS} />
+          <DeletedTasks
+            tasks={deleted.map(({ id, key, title, deletedAt, deletedByPersonId, deletedByName, subtasks }) => ({ id, key, title, deletedAt: deletedAt.toISOString(), deletedByPersonId, deletedByName, subtasks }))}
+            days={RESTORE_WINDOW_DAYS}
+          />
         </Section>
       ) : null}
 
@@ -241,7 +309,12 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       <Section title={tChecklists("title")}>
         <p className="text-xs text-muted-foreground">{tChecklists("description")}</p>
-        <StageChecklists states={states.filter((state) => state.isActive).map(({ id, name }) => ({ id, name }))} hooks={stageHooks.map(({ stateId, checklistId, required }) => ({ stateId, checklistId, required }))} choices={checklists} canManage={admin} />
+        <StageChecklists
+          states={states.filter((state) => state.isActive).map(({ id, name }) => ({ id, name }))}
+          hooks={stageHooks.map(({ stateId, checklistId, required }) => ({ stateId, checklistId, required }))}
+          choices={checklists}
+          canManage={admin}
+        />
       </Section>
 
       <Section title={t("labels.title")}>
@@ -253,7 +326,13 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       </Section>
 
       <Section title={t("intake.title")}>
-        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }))} projects={intakeProjects} checklists={checklists} canManage={admin} />
+        <IntakeFormManager
+          teamId={team.id}
+          forms={intakeForms.map(({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }))}
+          projects={intakeProjects}
+          checklists={checklists}
+          canManage={admin}
+        />
       </Section>
 
       <DailyRulesSection teamId={team.id} canManage={admin} />

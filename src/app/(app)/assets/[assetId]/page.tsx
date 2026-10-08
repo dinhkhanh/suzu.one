@@ -62,7 +62,10 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
       <PageHeader eyebrow={<span className="font-mono">{view.asset.code}</span>} title={view.asset.name} actions={<AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${view.qrToken}`} />}>
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <StatusBadge status={view.asset.status} />
-          {view.asset.categoryName} · <RecordLink kind="entity" id={view.asset.entityId}>{view.asset.entityName}</RecordLink>
+          {view.asset.categoryName} ·{" "}
+          <RecordLink kind="entity" id={view.asset.entityId}>
+            {view.asset.entityName}
+          </RecordLink>
         </p>
       </PageHeader>
 
@@ -86,7 +89,10 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
               holder: open.holderName ?? "—",
               link: (chunks) => (
                 // A holder whose name was not resolved shows a dash, which is not a way anywhere.
-                <RecordLink kind={open.holderType === "person" ? "person" : open.holderType === "team" ? "unit" : "entity"} id={!open.holderName ? null : open.holderType === "person" ? open.holderPersonId : open.holderType === "team" ? open.holderTeamId : open.holderEntityId}>
+                <RecordLink
+                  kind={open.holderType === "person" ? "person" : open.holderType === "team" ? "unit" : "entity"}
+                  id={!open.holderName ? null : open.holderType === "person" ? open.holderPersonId : open.holderType === "team" ? open.holderTeamId : open.holderEntityId}
+                >
                   {chunks}
                 </RecordLink>
               ),

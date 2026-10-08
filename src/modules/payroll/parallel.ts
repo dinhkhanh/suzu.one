@@ -82,9 +82,7 @@ export async function saveReference(tx: Tx, input: ReferenceInput, actorPersonId
 }
 
 export async function removeReference(entityId: string, month: string, personId: string, executor: Executor = db()): Promise<void> {
-  await executor
-    .delete(schema.payrollParallelReference)
-    .where(and(eq(schema.payrollParallelReference.entityId, entityId), eq(schema.payrollParallelReference.month, month), eq(schema.payrollParallelReference.personId, personId)));
+  await executor.delete(schema.payrollParallelReference).where(and(eq(schema.payrollParallelReference.entityId, entityId), eq(schema.payrollParallelReference.month, month), eq(schema.payrollParallelReference.personId, personId)));
 }
 
 // ── Explaining a difference ─────────────────────────────────────────────────────────────────
@@ -217,8 +215,14 @@ export async function reconcile(entityId: string, month: string, executor: Execu
       .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
       .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, month), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")))
       .then((rows) => rows.map(({ row }) => row)),
-    executor.select().from(schema.payrollParallelReference).where(and(eq(schema.payrollParallelReference.entityId, entityId), eq(schema.payrollParallelReference.month, month))),
-    executor.select().from(schema.payrollParallelFinding).where(and(eq(schema.payrollParallelFinding.entityId, entityId), eq(schema.payrollParallelFinding.month, month))),
+    executor
+      .select()
+      .from(schema.payrollParallelReference)
+      .where(and(eq(schema.payrollParallelReference.entityId, entityId), eq(schema.payrollParallelReference.month, month))),
+    executor
+      .select()
+      .from(schema.payrollParallelFinding)
+      .where(and(eq(schema.payrollParallelFinding.entityId, entityId), eq(schema.payrollParallelFinding.month, month))),
   ]);
 
   const systemByPerson = new Map<string, ReferenceFigures>();
@@ -337,15 +341,19 @@ export async function listParallelSignoffs(entityId: string, month: string, summ
   const inMonth = (table: { entityId: AnyPgColumn; month: AnyPgColumn }) => and(eq(table.entityId, entityId), eq(table.month, month));
   // The last moment anything the reconciliation is made of changed: three aggregates beside the rows.
   const [rows, [references], [findings], [runs]] = await Promise.all([
+    executor.select({ row: signoff, signedByName: schema.person.fullName }).from(signoff).leftJoin(schema.person, eq(schema.person.id, signoff.signedByPersonId)).where(inMonth(signoff)).orderBy(desc(signoff.signedAt)),
     executor
-      .select({ row: signoff, signedByName: schema.person.fullName })
-      .from(signoff)
-      .leftJoin(schema.person, eq(schema.person.id, signoff.signedByPersonId))
-      .where(inMonth(signoff))
-      .orderBy(desc(signoff.signedAt)),
-    executor.select({ at: max(reference.updatedAt) }).from(reference).where(inMonth(reference)),
-    executor.select({ at: max(finding.updatedAt) }).from(finding).where(inMonth(finding)),
-    executor.select({ at: max(run.calculatedAt) }).from(run).where(inMonth(run)),
+      .select({ at: max(reference.updatedAt) })
+      .from(reference)
+      .where(inMonth(reference)),
+    executor
+      .select({ at: max(finding.updatedAt) })
+      .from(finding)
+      .where(inMonth(finding)),
+    executor
+      .select({ at: max(run.calculatedAt) })
+      .from(run)
+      .where(inMonth(run)),
   ]);
   const lastChange = Math.max(0, ...[references?.at, findings?.at, runs?.at].map((at) => (at ? new Date(at).getTime() : 0)));
   return rows.map(({ row, signedByName }) => ({
@@ -372,12 +380,27 @@ export async function signOffParallel(input: { entityId: string; month: string; 
   if (!report.summary.zeroUnexplained) throw new ActionError("parallel_not_clean");
   const [created] = await executor
     .insert(schema.payrollParallelSignoff)
-    .values({ entityId: input.entityId, month: input.month, people: report.summary.people, matching: report.summary.matching, explainedLines: report.summary.explainedLines, checkedWith: input.checkedWith, note: input.note, signedByPersonId: actorPersonId })
+    .values({
+      entityId: input.entityId,
+      month: input.month,
+      people: report.summary.people,
+      matching: report.summary.matching,
+      explainedLines: report.summary.explainedLines,
+      checkedWith: input.checkedWith,
+      note: input.note,
+      signedByPersonId: actorPersonId,
+    })
     .returning();
   return created;
 }
 
 /** The report as a spreadsheet: one row per person, each figure on both sides and the difference. */
 export function parallelCsvRows(report: Reconciliation) {
-  return report.rows.map((row) => ({ row, explained: row.differences.filter((line) => line.classification).map((line) => `${line.field}: ${line.classification}${line.note ? ` (${line.note})` : ""}`).join("; ") }));
+  return report.rows.map((row) => ({
+    row,
+    explained: row.differences
+      .filter((line) => line.classification)
+      .map((line) => `${line.field}: ${line.classification}${line.note ? ` (${line.note})` : ""}`)
+      .join("; "),
+  }));
 }

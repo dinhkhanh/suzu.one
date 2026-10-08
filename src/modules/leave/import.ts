@@ -96,7 +96,18 @@ export async function commitOpeningRows(rows: Row[], tx: Tx, user: { principal: 
     for (const item of resolved) {
       const { year, note } = item.row.values;
       const amount = Math.round(Number(item.row.values.days) * 100);
-      const entry = await postEntry(tx, { personId: item.personId, entityId: item.entityId, leaveTypeId: item.leaveTypeId, leaveYear: year!, kind: "opening", amountCenti: amount, effectiveDate: item.asOf, sourceKey: `opening:${item.personId}:${item.leaveTypeId}:${year}`, reason: note ?? "Số dư đầu kỳ (nhập từ tệp)", createdByPersonId: user.person.id });
+      const entry = await postEntry(tx, {
+        personId: item.personId,
+        entityId: item.entityId,
+        leaveTypeId: item.leaveTypeId,
+        leaveYear: year!,
+        kind: "opening",
+        amountCenti: amount,
+        effectiveDate: item.asOf,
+        sourceKey: `opening:${item.personId}:${item.leaveTypeId}:${year}`,
+        reason: note ?? "Số dư đầu kỳ (nhập từ tệp)",
+        createdByPersonId: user.person.id,
+      });
       if (entry) {
         posted++;
         totalCenti += amount;

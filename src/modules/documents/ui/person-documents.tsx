@@ -46,7 +46,15 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
                 <span className="ml-1 text-xs text-muted-foreground">({kinds(row.kind)})</span>
               </TableCell>
               <TableCell>{tiers(row.tier)}</TableCell>
-              <TableCell>{row.generatedByName ? <RecordLink kind="person" id={row.generatedByPersonId}>{row.generatedByName}</RecordLink> : "—"}</TableCell>
+              <TableCell>
+                {row.generatedByName ? (
+                  <RecordLink kind="person" id={row.generatedByPersonId}>
+                    {row.generatedByName}
+                  </RecordLink>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell>{row.createdAt.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</TableCell>
               <TableCell kind="actions">
                 <a href={`/documents/${row.id}/pdf`} className="text-sm underline">
