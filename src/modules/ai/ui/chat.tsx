@@ -318,14 +318,13 @@ export function AssistantChat({
               {/* The question is on screen the moment it is sent, before any answer (NFR-AGT-01). */}
               {form.pending && asking ? <Bubble turn={{ id: "pending", role: "user", body: asking, outcome: null, citations: [], tool: null }} feedback={false} /> : null}
             </ol>
+            {/* The suggestions open an empty conversation only: once a question is asked they are gone. */}
             {form.pending ? (
               <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
                 <Spark />
                 <span className="animate-pulse">{t("thinking")}</span>
               </div>
-            ) : (
-              <div className="pl-10">{chips}</div>
-            )}
+            ) : null}
           </>
         )}
       </div>
