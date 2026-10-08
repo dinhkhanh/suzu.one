@@ -3,7 +3,7 @@
 **Góp ý** là kênh để bạn nói với đội vận hành SuZu One điều gì đang bị lỗi, khó hiểu, điều gì nên có thêm, hay điều gì đang chạy tốt. Mọi người đăng nhập được vào SuZu One đều gửi được góp ý, kể cả cộng tác viên. Mọi góp ý đều được đọc.
 
 > [!NOTE]
-> Góp ý ở đây là góp ý **về ứng dụng SuZu One**. Nếu bạn cần gửi một đề nghị công việc (mua sắm, tạm ứng, xin giấy xác nhận…), hãy dùng chương **Tài sản & đề nghị**; nếu cần hỏi về chính sách, hãy xem kho **Tri thức** hoặc **Hỏi SuZu**.
+> Góp ý ở đây là góp ý **về ứng dụng SuZu One**. Nếu bạn cần gửi một đề nghị công việc (mua sắm, tạm ứng, xin giấy xác nhận…), hãy dùng chương **Tài sản & đề nghị**; nếu cần hỏi về chính sách, hãy xem kho **Tri thức** hoặc **Hỏi SuZu AI**.
 
 ## Góp ý của bạn có ẩn danh không?
 

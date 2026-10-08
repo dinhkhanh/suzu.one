@@ -39,7 +39,7 @@ Mỗi người chỉ thấy những mục và dữ liệu mà vai trò của mì
 | Tài sản và đề nghị | Thiết bị được giao, đặt thiết bị, đề nghị mua sắm / thanh toán / tạm ứng | **Tài sản & đề nghị** |
 | Tuyển dụng | Nhu cầu tuyển dụng, ứng viên, lịch phỏng vấn, giới thiệu ứng viên | **Tuyển dụng** |
 | Khách hàng và kinh doanh | Khách hàng, cơ hội, hợp đồng, công nợ | **Khách hàng & kinh doanh** |
-| Hỏi SuZu và báo cáo | Trợ lý trả lời từ tài liệu công ty; báo cáo tổng hợp | **Hỏi SuZu & báo cáo** |
+| Hỏi SuZu AI và báo cáo | Trợ lý trả lời từ tài liệu công ty; báo cáo tổng hợp | **Hỏi SuZu AI & báo cáo** |
 | Quản trị | Pháp nhân, cơ cấu tổ chức, phân quyền, luồng phê duyệt, tham số pháp định | **Quản trị hệ thống** |
 
 ## Bạn muốn… → Vào đâu
@@ -58,7 +58,7 @@ Mỗi người chỉ thấy những mục và dữ liệu mà vai trò của mì
 | Xem phiếu lương | [Phiếu lương](/payslips) |
 | Xem tin tức, sinh nhật, thành viên mới | [Trang chủ](/home) |
 | Tra quy định, quy trình | [Tri thức](/kb) |
-| Hỏi nhanh một câu về chính sách | [Hỏi SuZu](/assistant) |
+| Hỏi nhanh một câu về chính sách | [Hỏi SuZu AI](/assistant) |
 | Góp ý về SuZu One | Nút **Góp ý** ở góc trên bên phải, hoặc [Góp ý](/feedback) |
 
 ## Thanh bên: các nhóm mục
@@ -69,7 +69,7 @@ Menu bên trái chia thành các nhóm, mỗi nhóm có thể gập / mở:
 - **Của tôi** — **Hồ sơ của tôi**, **Vào / ra ca**, **Chấm công**, **Nghỉ phép**, **Đề nghị**, **Phiếu lương**, **Mục tiêu & KPI**, **Tài sản**.
 - **Công việc** — **Công việc**, **Dự án**, **Báo cáo của tôi**, **Bảng giờ**, **Checklist**, **Khách hàng & kinh doanh**, **Lịch đặt thiết bị**, **Lịch phỏng vấn** (nếu bạn có lịch phỏng vấn).
 - **Quản lý** — **Báo cáo**, và tuỳ vai trò: **Năng lực nhân sự**, **Chờ xuất hoá đơn**, **Công nợ**, **Tuyển dụng**, **Lương**, **Lịch nghĩa vụ**.
-- **Công ty** — **Trang chủ**, **Thông báo**, **Ghi nhận**, **Nhân sự**, **Tri thức**, **Hỏi SuZu**, **Giới thiệu ứng viên**, **Góp ý**.
+- **Công ty** — **Trang chủ**, **Thông báo**, **Ghi nhận**, **Nhân sự**, **Tri thức**, **Hỏi SuZu AI**, **Giới thiệu ứng viên**, **Góp ý**.
 - **Tuỳ chỉnh** — **Cài đặt thông báo**, **Ngôn ngữ**, **Giao diện**.
 - **Quản trị** — chỉ hiện với người có quyền quản trị: **Pháp nhân**, **Cơ cấu tổ chức**, **Phân quyền**, **Luồng phê duyệt**, **Tham số pháp định**, **Nhật ký hệ thống**…
 

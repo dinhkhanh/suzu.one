@@ -110,7 +110,7 @@
     "recruit": "Recruitment",
     "interviews": "Interviews",
     "referrals": "Refer a candidate",
-    "assistant": "Ask SuZu",
+    "assistant": "Ask SuZu AI",
     "quickActions": "Quick actions",
     "close": "Close",
     "collapse": "Toggle sidebar",
@@ -11626,9 +11626,9 @@
     }
   },
   "assistantSheet": {
-    "button": "Ask SuZu",
+    "button": "Ask SuZu AI",
     "hint": "Ask the assistant about this page, or have it do something for you",
-    "title": "Ask SuZu",
+    "title": "Ask SuZu AI",
     "loading": "Opening the assistant…",
     "failed": "The assistant could not open. Reload the page and try again."
   },
@@ -11667,7 +11667,7 @@
         }
       }
     },
-    "title": "Ask SuZu",
+    "title": "Ask SuZu AI",
     "intro": "Answers from the knowledge-base pages you may read, with a link to the source. Only pages you can open are ever used.",
     "askLabel": "Your question",
     "placeholder": "For example: How many days of annual leave do I get?",
@@ -11957,7 +11957,7 @@
         "notShared": "The asker did not share the question and the answer."
       },
       "link": "Unanswered questions",
-      "back": "Ask SuZu",
+      "back": "Ask SuZu AI",
       "title": "Unanswered questions",
       "intro": "What people asked that the knowledge base does not cover. Most-asked first — this is the list of pages still to write.",
       "open": "Open",
@@ -14054,7 +14054,7 @@
     "approvalFlows": "Approval flows",
     "approvals": "Approvals",
     "approvalsAll": "All requests",
-    "askSuZu": "Ask SuZu",
+    "askSuZu": "Ask SuZu AI",
     "assetCategories": "Asset categories",
     "assets": "Assets",
     "attendance": "Attendance",
@@ -14449,7 +14449,7 @@
             "to run the company's HR processes: employee records, attendance, leave, payroll, statutory social insurance and personal income tax, recruitment and performance;",
             "to organise and track work: tasks, projects, requests and approvals;",
             "to share internal knowledge and announcements;",
-            "the Ask SuZu assistant: to answer questions from the company knowledge base and from the data in the Service that the person asking may see themselves — which can include employees' personal data, pay included where the person asking may see it — and to prepare changes that are made only when the person asking presses Confirm;",
+            "the Ask SuZu AI assistant: to answer questions from the company knowledge base and from the data in the Service that the person asking may see themselves — which can include employees' personal data, pay included where the person asking may see it — and to prepare changes that are made only when the person asking presses Confirm;",
             "to send you notifications about your work, by email, browser notification or Google Chat;",
             "to keep the Service secure: authentication, access control, audit logging and preventing misuse;",
             "to keep the Service working: monitoring errors and fixing faults;",
@@ -14490,7 +14490,7 @@
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
             "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them;",
-            "Anthropic PBC — the Ask SuZu assistant, where the company has enabled it. It receives the question asked, the knowledge base content and the part of the data in the Service needed to answer it that the person asking may see — which can include employees' personal data, pay included where the person asking may see it and has just re-confirmed their identity. Phone numbers, email addresses, identity document numbers and bank accounts are not sent. Anthropic processes the data under its commercial terms and keeps it for its standard retention period — the company does not use zero data retention — and does not use it to train models."
+            "Anthropic PBC — the Ask SuZu AI assistant, where the company has enabled it. It receives the question asked, the knowledge base content and the part of the data in the Service needed to answer it that the person asking may see — which can include employees' personal data, pay included where the person asking may see it and has just re-confirmed their identity. Phone numbers, email addresses, identity document numbers and bank accounts are not sent. Anthropic processes the data under its commercial terms and keeps it for its standard retention period — the company does not use zero data retention — and does not use it to train models."
           ],
           "after": [
             "We also disclose personal data where the law requires it — for example to the tax authority, the social insurance agency, or banks paying salaries — and, if SuZu Group or a group company is reorganised, merged or sold, to the successor, under the same protections."
@@ -14510,7 +14510,7 @@
             "Payroll, tax and accounting records: for the periods required by Vietnamese tax and accounting law (up to ten years).",
             "Audit logs: for as long as needed for security and to demonstrate compliance.",
             "Sessions: seven days from the last activity. Error reports: a limited period, after which they are deleted automatically.",
-            "Conversations with the Ask SuZu assistant, with the right / wrong feedback you give: 180 days from the conversation's last use, or until you delete it. An answer that holds pay figures is shown once and not kept."
+            "Conversations with the Ask SuZu AI assistant, with the right / wrong feedback you give: 180 days from the conversation's last use, or until you delete it. An answer that holds pay figures is shown once and not kept."
           ],
           "after": [
             "When a retention period ends, we delete the data or make it anonymous."
@@ -14726,8 +14726,8 @@
         "tip": "To protect pay information, you'll be asked to confirm your Google account again before a payslip opens."
       },
       "kb": {
-        "title": "Knowledge base & Ask SuZu",
-        "body": "Company policies, procedures and how-tos live in the Knowledge base. Got a question like “How many days of leave do I get a year?” — ask SuZu, which answers from the documents you're allowed to read.",
+        "title": "Knowledge base & Ask SuZu AI",
+        "body": "Company policies, procedures and how-tos live in the Knowledge base. Got a question like “How many days of leave do I get a year?” — ask SuZu AI, which answers from the documents you're allowed to read.",
         "tip": "Required reading is sent to you with a request to confirm you've read it."
       },
       "finish": {

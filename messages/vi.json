@@ -110,7 +110,7 @@
     "recruit": "Tuyển dụng",
     "interviews": "Lịch phỏng vấn",
     "referrals": "Giới thiệu ứng viên",
-    "assistant": "Hỏi SuZu",
+    "assistant": "Hỏi SuZu AI",
     "quickActions": "Thao tác nhanh",
     "close": "Đóng",
     "collapse": "Thu gọn thanh bên",
@@ -11626,9 +11626,9 @@
     }
   },
   "assistantSheet": {
-    "button": "Hỏi SuZu",
+    "button": "Hỏi SuZu AI",
     "hint": "Hỏi trợ lý về trang này hoặc nhờ làm giúp",
-    "title": "Hỏi SuZu",
+    "title": "Hỏi SuZu AI",
     "loading": "Đang mở trợ lý…",
     "failed": "Không mở được trợ lý. Tải lại trang rồi thử lại nhé."
   },
@@ -11667,7 +11667,7 @@
         }
       }
     },
-    "title": "Hỏi SuZu",
+    "title": "Hỏi SuZu AI",
     "intro": "Trả lời từ các trang Tri thức bạn được xem, kèm liên kết tới trang gốc. Chỉ những trang bạn mở được mới được dùng.",
     "askLabel": "Câu hỏi của bạn",
     "placeholder": "Ví dụ: Một năm được bao nhiêu ngày phép năm?",
@@ -11957,7 +11957,7 @@
         "notShared": "Người hỏi không chia sẻ câu hỏi và câu trả lời."
       },
       "link": "Câu hỏi chưa trả lời được",
-      "back": "Hỏi SuZu",
+      "back": "Hỏi SuZu AI",
       "title": "Câu hỏi chưa trả lời được",
       "intro": "Những gì mọi người hỏi mà Tri thức chưa có. Hỏi nhiều nhất xếp trước — đây là danh sách trang cần viết.",
       "open": "Chưa xử lý",
@@ -14054,7 +14054,7 @@
     "approvalFlows": "Luồng phê duyệt",
     "approvals": "Phê duyệt",
     "approvalsAll": "Tất cả đề nghị",
-    "askSuZu": "Hỏi SuZu",
+    "askSuZu": "Hỏi SuZu AI",
     "assetCategories": "Nhóm tài sản",
     "assets": "Tài sản",
     "attendance": "Chấm công",
@@ -14449,7 +14449,7 @@
             "vận hành các quy trình nhân sự của công ty: hồ sơ nhân viên, chấm công, nghỉ phép, tiền lương, bảo hiểm xã hội bắt buộc và thuế thu nhập cá nhân, tuyển dụng và đánh giá hiệu suất;",
             "tổ chức và theo dõi công việc: nhiệm vụ, dự án, đề xuất và phê duyệt;",
             "chia sẻ tri thức và thông báo nội bộ;",
-            "trợ lý Hỏi SuZu: trả lời câu hỏi từ kho tri thức và từ dữ liệu trong Dịch vụ mà chính người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem — và soạn sẵn những thay đổi chỉ được thực hiện khi người hỏi bấm Xác nhận;",
+            "trợ lý Hỏi SuZu AI: trả lời câu hỏi từ kho tri thức và từ dữ liệu trong Dịch vụ mà chính người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem — và soạn sẵn những thay đổi chỉ được thực hiện khi người hỏi bấm Xác nhận;",
             "gửi thông báo về công việc của bạn qua email, thông báo trình duyệt hoặc Google Chat;",
             "bảo mật Dịch vụ: xác thực, kiểm soát truy cập, ghi nhật ký kiểm toán và ngăn chặn lạm dụng;",
             "duy trì Dịch vụ hoạt động: theo dõi lỗi và khắc phục sự cố;",
@@ -14490,7 +14490,7 @@
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",
             "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này;",
-            "Anthropic PBC — trợ lý Hỏi SuZu, khi công ty bật tính năng này. Họ nhận câu hỏi được đặt ra, nội dung kho tri thức và phần dữ liệu trong Dịch vụ cần để trả lời mà người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem và vừa xác nhận lại danh tính. Số điện thoại, email, số giấy tờ tùy thân và tài khoản ngân hàng không được gửi đi. Anthropic xử lý dữ liệu theo điều khoản thương mại của họ và lưu giữ theo thời hạn tiêu chuẩn của họ — công ty không dùng chế độ không lưu giữ dữ liệu (zero data retention) — và không dùng dữ liệu này để huấn luyện mô hình."
+            "Anthropic PBC — trợ lý Hỏi SuZu AI, khi công ty bật tính năng này. Họ nhận câu hỏi được đặt ra, nội dung kho tri thức và phần dữ liệu trong Dịch vụ cần để trả lời mà người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem và vừa xác nhận lại danh tính. Số điện thoại, email, số giấy tờ tùy thân và tài khoản ngân hàng không được gửi đi. Anthropic xử lý dữ liệu theo điều khoản thương mại của họ và lưu giữ theo thời hạn tiêu chuẩn của họ — công ty không dùng chế độ không lưu giữ dữ liệu (zero data retention) — và không dùng dữ liệu này để huấn luyện mô hình."
           ],
           "after": [
             "Chúng tôi cũng cung cấp dữ liệu cá nhân khi pháp luật yêu cầu — ví dụ cho cơ quan thuế, cơ quan bảo hiểm xã hội hoặc ngân hàng chi trả lương — và, nếu SuZu Group hoặc một công ty trong nhóm được tổ chức lại, sáp nhập hay chuyển nhượng, cho bên kế thừa với cùng mức bảo vệ."
@@ -14510,7 +14510,7 @@
             "Hồ sơ tiền lương, thuế và kế toán: trong thời hạn pháp luật thuế và kế toán Việt Nam yêu cầu (tối đa mười năm).",
             "Nhật ký kiểm toán: trong thời gian cần thiết cho bảo mật và để chứng minh việc tuân thủ.",
             "Phiên đăng nhập: bảy ngày kể từ lần hoạt động cuối. Báo cáo lỗi: một thời hạn giới hạn, sau đó tự động bị xoá.",
-            "Cuộc trò chuyện với trợ lý Hỏi SuZu, kèm phản hồi đúng / sai bạn gửi: 180 ngày kể từ lần cuối cuộc trò chuyện được dùng, hoặc đến khi bạn xoá. Câu trả lời có số liệu tiền lương chỉ hiện một lần và không được lưu."
+            "Cuộc trò chuyện với trợ lý Hỏi SuZu AI, kèm phản hồi đúng / sai bạn gửi: 180 ngày kể từ lần cuối cuộc trò chuyện được dùng, hoặc đến khi bạn xoá. Câu trả lời có số liệu tiền lương chỉ hiện một lần và không được lưu."
           ],
           "after": [
             "Khi hết thời hạn lưu trữ, chúng tôi xoá dữ liệu hoặc ẩn danh hoá dữ liệu."
@@ -14726,8 +14726,8 @@
         "tip": "Để bảo vệ thông tin lương, hệ thống sẽ yêu cầu bạn xác minh lại bằng tài khoản Google trước khi mở phiếu."
       },
       "kb": {
-        "title": "Tri thức & Hỏi SuZu",
-        "body": "Quy định, quy trình và hướng dẫn của công ty nằm trong mục Tri thức. Có thắc mắc như “Tôi được bao nhiêu ngày phép một năm?” — hãy hỏi SuZu, trợ lý trả lời từ những tài liệu bạn được phép xem.",
+        "title": "Tri thức & Hỏi SuZu AI",
+        "body": "Quy định, quy trình và hướng dẫn của công ty nằm trong mục Tri thức. Có thắc mắc như “Tôi được bao nhiêu ngày phép một năm?” — hãy hỏi SuZu AI, trợ lý trả lời từ những tài liệu bạn được phép xem.",
         "tip": "Tài liệu bắt buộc đọc sẽ được gửi tới bạn kèm yêu cầu xác nhận đã đọc."
       },
       "finish": {

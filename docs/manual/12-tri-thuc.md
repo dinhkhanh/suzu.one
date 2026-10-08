@@ -90,4 +90,4 @@ Ngoài ra, trên cây trang người biên tập có thể thấy nhãn **Có th
 - **Xác nhận đã đọc** — chính sách bắt buộc đọc, nhắc hạn, báo cáo xác nhận.
 
 > [!TIP]
-> Menu **Hỏi SuZu** trả lời câu hỏi dựa trên chính các trang tri thức mà bạn được phép đọc (xem trang **Hỏi SuZu**). Viết trang rõ ràng, có tiêu đề mục tốt cũng giúp trợ lý trả lời chính xác hơn.
+> Menu **Hỏi SuZu AI** trả lời câu hỏi dựa trên chính các trang tri thức mà bạn được phép đọc (xem trang **Hỏi SuZu AI**). Viết trang rõ ràng, có tiêu đề mục tốt cũng giúp trợ lý trả lời chính xác hơn.

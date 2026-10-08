@@ -670,7 +670,7 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-AI-01 | **Ask SuZu**: chat that answers policy and how-to questions from the KB with **citations**, in Vietnamese or English. Retrieval respects the asker's KB permissions. | S |
+| FR-AI-01 | **Ask SuZu AI**: chat that answers policy and how-to questions from the KB with **citations**, in Vietnamese or English. Retrieval respects the asker's KB permissions. | S |
 | FR-AI-02 | Personal HR answers using the user's own data via permission-checked tools: "how many leave days do I have?", "explain my payslip this month", "who approves my OT?". | S |
 | FR-AI-03 | Action shortcuts with confirmation: "request leave next Friday", "create a task for Lan to design the Tết banner, due Wednesday". The assistant drafts; the user confirms; normal approval flows apply. | C |
 | FR-AI-04 | Drafting help: job descriptions, announcements, KB pages, review summaries, task briefs from a rough note. | C |
@@ -682,7 +682,7 @@ FR-AI-02, 03, 05 and 06 are widened by §4.13b once the owner confirms D33–D38
 
 ---
 
-### 4.13b The agent — Ask SuZu, version 2 (AGT)
+### 4.13b The agent — Ask SuZu AI, version 2 (AGT)
 
 > **Decided 2026-10-07** (§1.3, D33–D38). Planned as Phase 13 (DEVELOPMENT_PLAN §3). It builds on the Phase 9 module `src/modules/ai/` — retrieval, citations, the four personal tools, the per-person ceiling, redaction, token accounting, the guardrail suite — and replaces none of it. Phase 9's assistant has never called a model: there is no key, so every answer today is a quoted handbook passage or a personal tool's figure.
 
