@@ -40,7 +40,9 @@ export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[
         title={
           <span className="flex flex-wrap items-center gap-2">
             {t("cover.title")}
-            <Badge dot variant={statusTone(plan.status)}>{t(`cover.statuses.${plan.status}`)}</Badge>
+            <Badge dot variant={statusTone(plan.status)}>
+              {t(`cover.statuses.${plan.status}`)}
+            </Badge>
           </span>
         }
         description={t("cover.description")}

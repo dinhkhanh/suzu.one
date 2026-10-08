@@ -20,21 +20,45 @@ const blankToNull = (value: unknown) => (typeof value === "string" && value.trim
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
 // The editor posts the document as an object; a plain form posts it as JSON text.
-const content = z.preprocess((value) => {
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return undefined;
-  }
-}, z.record(z.string(), z.unknown()));
-const accessRows = z.array(z.object({ subjectKey: z.string().max(80).refine((key) => parseSubjectKey(key) !== null), level: z.enum(ACCESS_LEVELS) })).max(100).default([]);
+const content = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  },
+  z.record(z.string(), z.unknown()),
+);
+const accessRows = z
+  .array(
+    z.object({
+      subjectKey: z
+        .string()
+        .max(80)
+        .refine((key) => parseSubjectKey(key) !== null),
+      level: z.enum(ACCESS_LEVELS),
+    }),
+  )
+  .max(100)
+  .default([]);
 
 const auditSpace = (space: Pick<SpaceRow, "id" | "entityId">) => ({ type: "kb_space", id: space.id, entityId: space.entityId });
 const auditPage = (loaded: { page: Pick<PageRow, "id">; space: Pick<SpaceRow, "entityId"> }) => ({ type: "kb_page", id: loaded.page.id, entityId: loaded.space.entityId });
 const spaceFactsForAudit = (space: SpaceRow) => ({ key: space.key, name: space.name, kind: space.kind, entityId: space.entityId, sortOrder: space.sortOrder, archivedAt: space.archivedAt });
 // What the audit log keeps of a page: what happened to it, none of the prose.
-const pageFactsForAudit = (page: PageRow) => ({ title: page.title, slug: page.slug, status: page.status, parentId: page.parentId, sortOrder: page.sortOrder, publishedVersionId: page.publishedVersionId, hasUnpublishedChanges: page.hasUnpublishedChanges, ownerPersonId: page.ownerPersonId, reviewBy: page.reviewBy });
+const pageFactsForAudit = (page: PageRow) => ({
+  title: page.title,
+  slug: page.slug,
+  status: page.status,
+  parentId: page.parentId,
+  sortOrder: page.sortOrder,
+  publishedVersionId: page.publishedVersionId,
+  hasUnpublishedChanges: page.hasUnpublishedChanges,
+  ownerPersonId: page.ownerPersonId,
+  reviewBy: page.reviewBy,
+});
 
 /**
  * A freshly published page is ready for the assistant at once. With the local fake there is no
@@ -197,7 +221,10 @@ const saveDraftPipeline = createAction({
     const loaded = await must(user, input.pageId);
     const { before, after } = await saveDraft(input.pageId, input, { personId: user.person.id });
     refresh(loaded.space.key, after.id);
-    return { data: { id: after.id, updatedAt: after.updatedAt.toISOString() }, audit: { resource: auditPage(loaded), summary: after.title, before: { title: before.title, characters: before.contentText.length }, after: { title: after.title, characters: after.contentText.length } } };
+    return {
+      data: { id: after.id, updatedAt: after.updatedAt.toISOString() },
+      audit: { resource: auditPage(loaded), summary: after.title, before: { title: before.title, characters: before.contentText.length }, after: { title: after.title, characters: after.contentText.length } },
+    };
   },
 });
 export async function savePageDraftAction(input: unknown) {
@@ -219,7 +246,15 @@ const publishPipeline = createAction({
     const { page, version, before } = await publishPage(input.pageId, actor, { changeNote: input.changeNote, isMajor: input.isMajor });
     await embedAfterPublish(page.id);
     refresh(loaded.space.key, page.id);
-    return { data: { id: page.id, versionNo: version.versionNo }, audit: { resource: auditPage(loaded), summary: `${page.title}: v${version.versionNo}`, before: pageFactsForAudit(before), after: { ...pageFactsForAudit(page), versionNo: version.versionNo, isMajor: version.isMajor, changeNote: version.changeNote } } };
+    return {
+      data: { id: page.id, versionNo: version.versionNo },
+      audit: {
+        resource: auditPage(loaded),
+        summary: `${page.title}: v${version.versionNo}`,
+        before: pageFactsForAudit(before),
+        after: { ...pageFactsForAudit(page), versionNo: version.versionNo, isMajor: version.isMajor, changeNote: version.changeNote },
+      },
+    };
   },
 });
 export async function publishPageAction(input: unknown) {
@@ -244,7 +279,15 @@ const submitReviewPipeline = createAction({
     if (page.status === "published") await embedAfterPublish(page.id);
     refresh(loaded.space.key, page.id);
     revalidatePath("/approvals");
-    return { data: { id: page.id, requestId }, audit: { resource: auditPage(loaded), summary: `${page.title}: ${resubmitted ? "resubmitted for review" : "submitted for review"}`, before: { status: loaded.page.status }, after: { status: page.status, requestId, isMajor: input.isMajor, changeNote: input.changeNote } } };
+    return {
+      data: { id: page.id, requestId },
+      audit: {
+        resource: auditPage(loaded),
+        summary: `${page.title}: ${resubmitted ? "resubmitted for review" : "submitted for review"}`,
+        before: { status: loaded.page.status },
+        after: { status: page.status, requestId, isMajor: input.isMajor, changeNote: input.changeNote },
+      },
+    };
   },
 });
 export async function submitPageReviewAction(input: unknown) {
@@ -262,7 +305,15 @@ const decideReviewPipeline = createAction({
     refresh(undefined, payload.pageId);
     revalidatePath("/approvals");
     revalidatePath(`/approvals/kb-publish/${request.id}`);
-    return { data: { outcome }, audit: { resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId }, summary: `${input.decision}: ${payload.title}`, before: { status: before.status }, after: { status: request.status, requestId: request.id, pageStatus: page?.status ?? null, versionNo: version?.versionNo ?? null } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId },
+        summary: `${input.decision}: ${payload.title}`,
+        before: { status: before.status },
+        after: { status: request.status, requestId: request.id, pageStatus: page?.status ?? null, versionNo: version?.versionNo ?? null },
+      },
+    };
   },
 });
 export async function decidePageReviewAction(input: unknown) {
@@ -281,7 +332,10 @@ const withdrawReviewPipeline = createAction({
     refresh(undefined, payload.pageId);
     revalidatePath("/approvals");
     revalidatePath(`/approvals/kb-publish/${request.id}`);
-    return { data: { id: request.id }, audit: { resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId }, summary: `withdrawn: ${payload.title}`, before: { status: before.status }, after: { status: request.status, requestId: request.id } } };
+    return {
+      data: { id: request.id },
+      audit: { resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId }, summary: `withdrawn: ${payload.title}`, before: { status: before.status }, after: { status: request.status, requestId: request.id } },
+    };
   },
 });
 export async function withdrawPageReviewAction(input: unknown) {
@@ -354,7 +408,15 @@ const movePagePipeline = createAction({
     const loaded = await must(user, input.pageId);
     const { before, after } = await movePage(input.pageId, { parentId: input.parentId, position: input.position === null ? null : input.position - 1 });
     refresh(loaded.space.key, after.id);
-    return { data: { id: after.id }, audit: { resource: auditPage(loaded), summary: `${after.title}: moved`, before: { parentId: before.parentId, sortOrder: before.sortOrder, accessRootId: before.accessRootId }, after: { parentId: after.parentId, sortOrder: after.sortOrder, accessRootId: after.accessRootId } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: auditPage(loaded),
+        summary: `${after.title}: moved`,
+        before: { parentId: before.parentId, sortOrder: before.sortOrder, accessRootId: before.accessRootId },
+        after: { parentId: after.parentId, sortOrder: after.sortOrder, accessRootId: after.accessRootId },
+      },
+    };
   },
 });
 export async function movePageAction(input: unknown) {
@@ -414,7 +476,10 @@ const restorePipeline = createAction({
     const loaded = await must(user, input.pageId);
     const { before, after } = await restoreVersion(input.pageId, input.versionNo, { personId: user.person.id });
     refresh(loaded.space.key, after.id);
-    return { data: { id: after.id }, audit: { resource: auditPage(loaded), summary: `${after.title}: v${input.versionNo} restored to the working copy`, before: { title: before.title }, after: { title: after.title, restoredVersionNo: input.versionNo } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: auditPage(loaded), summary: `${after.title}: v${input.versionNo} restored to the working copy`, before: { title: before.title }, after: { title: after.title, restoredVersionNo: input.versionNo } },
+    };
   },
 });
 export async function restoreVersionAction(input: unknown) {
@@ -450,7 +515,10 @@ const completeUploadPipeline = createAction({
     const found = await findPageFile(input.fileId, { pending: true });
     if (!found) throw new ActionError("file_not_found");
     const file = await completePageUpload(input.fileId, actorOf(user));
-    return { data: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType }, audit: { resource: auditPage(found.loaded), summary: file.fileName, after: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes } } };
+    return {
+      data: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType },
+      audit: { resource: auditPage(found.loaded), summary: file.fileName, after: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes } },
+    };
   },
 });
 export async function completePageUploadAction(input: unknown) {
@@ -494,14 +562,35 @@ const managesPageSpace = async (user: CurrentUser, pageId: string) => {
 
 const ackSettingsPipeline = createAction({
   name: "kb.page.ack_settings",
-  input: z.object({ pageId: z.uuid(), required: checkbox, dueDays: z.coerce.number().int().min(1).max(365).default(14), audience: z.array(z.string().max(80).refine((key) => parseSubjectKey(key) !== null)).max(100).default([]) }),
+  input: z.object({
+    pageId: z.uuid(),
+    required: checkbox,
+    dueDays: z.coerce.number().int().min(1).max(365).default(14),
+    audience: z
+      .array(
+        z
+          .string()
+          .max(80)
+          .refine((key) => parseSubjectKey(key) !== null),
+      )
+      .max(100)
+      .default([]),
+  }),
   // Who must read what is the space's managers' call, not an editor's.
   authorize: (user, input) => managesPageSpace(user, input.pageId),
   run: async ({ user, input }) => {
     const loaded = await must(user, input.pageId);
     const { before, after, audienceBefore, audience, notified } = await setAckRequirement(input.pageId, input);
     refresh(loaded.space.key, after.id);
-    return { data: { id: after.id, notified }, audit: { resource: auditPage(loaded), summary: `${after.title}: must read ${after.ackRequired ? "on" : "off"}`, before: { ackRequired: before.ackRequired, ackDueDays: before.ackDueDays, audience: audienceBefore }, after: { ackRequired: after.ackRequired, ackDueDays: after.ackDueDays, ackVersionId: after.ackVersionId, audience, notified } } };
+    return {
+      data: { id: after.id, notified },
+      audit: {
+        resource: auditPage(loaded),
+        summary: `${after.title}: must read ${after.ackRequired ? "on" : "off"}`,
+        before: { ackRequired: before.ackRequired, ackDueDays: before.ackDueDays, audience: audienceBefore },
+        after: { ackRequired: after.ackRequired, ackDueDays: after.ackDueDays, ackVersionId: after.ackVersionId, audience, notified },
+      },
+    };
   },
 });
 export async function setAckRequirementAction(input: unknown) {
@@ -521,7 +610,14 @@ const acknowledgePipeline = createAction({
     const { versionId, acknowledgedAt, already } = await acknowledgePage(input.pageId, user.person.id);
     refresh(loaded.space.key, input.pageId);
     revalidatePath("/home");
-    return { data: { acknowledgedAt: acknowledgedAt.toISOString(), already }, audit: { resource: auditPage(loaded), summary: `${loaded.page.publishedTitle ?? loaded.page.title}: acknowledged${already ? " (again)" : ""}`, after: { versionId, personId: user.person.id, acknowledgedAt: acknowledgedAt.toISOString() } } };
+    return {
+      data: { acknowledgedAt: acknowledgedAt.toISOString(), already },
+      audit: {
+        resource: auditPage(loaded),
+        summary: `${loaded.page.publishedTitle ?? loaded.page.title}: acknowledged${already ? " (again)" : ""}`,
+        after: { versionId, personId: user.person.id, acknowledgedAt: acknowledgedAt.toISOString() },
+      },
+    };
   },
 });
 export async function acknowledgePageAction(input: unknown) {
@@ -563,7 +659,10 @@ const exportAckPipeline = createAction({
       ],
       report.rows,
     );
-    return { data: { fileName: `xac-nhan-${loaded.page.id.slice(0, 8)}.csv`, csv, rowCount: report.rows.length }, audit: { resource: auditPage(loaded), summary: `${loaded.page.title}: acknowledgement export, ${report.rows.length} rows`, after: { rows: report.rows.length, versionNo: report.versionNo } } };
+    return {
+      data: { fileName: `xac-nhan-${loaded.page.id.slice(0, 8)}.csv`, csv, rowCount: report.rows.length },
+      audit: { resource: auditPage(loaded), summary: `${loaded.page.title}: acknowledgement export, ${report.rows.length} rows`, after: { rows: report.rows.length, versionNo: report.versionNo } },
+    };
   },
 });
 export async function exportAckReportAction(input: unknown) {
@@ -588,7 +687,14 @@ const importMarkdownPipeline = createAction({
     const space = (await loadSpace({ id: input.spaceId }))!;
     const { page, titleFrom } = await importMarkdownPage(input, { personId: user.person.id });
     refresh(space.space.key);
-    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: `${page.title}: imported from Markdown`, after: { ...pageFactsForAudit(page), source: "markdown", fileName: input.fileName, titleFrom, characters: page.contentText.length } } };
+    return {
+      data: { id: page.id },
+      audit: {
+        resource: auditPage({ page, space: space.space }),
+        summary: `${page.title}: imported from Markdown`,
+        after: { ...pageFactsForAudit(page), source: "markdown", fileName: input.fileName, titleFrom, characters: page.contentText.length },
+      },
+    };
   },
 });
 export async function importMarkdownAction(input: unknown) {
@@ -622,7 +728,10 @@ const importDocxPipeline = createAction({
     const space = (await loadSpace({ id: input.spaceId }))!;
     const { page, titleFrom } = await importMarkdownPage({ spaceId: input.spaceId, parentId: input.parentId, title: input.title, markdown, fileName: file.name }, { personId: user.person.id });
     refresh(space.space.key);
-    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: `${page.title}: imported from Word`, after: { ...pageFactsForAudit(page), source: "docx", fileName: file.name, titleFrom, characters: page.contentText.length } } };
+    return {
+      data: { id: page.id },
+      audit: { resource: auditPage({ page, space: space.space }), summary: `${page.title}: imported from Word`, after: { ...pageFactsForAudit(page), source: "docx", fileName: file.name, titleFrom, characters: page.contentText.length } },
+    };
   },
 });
 export async function importDocxAction(input: unknown) {
@@ -650,7 +759,10 @@ const templateActivePipeline = createAction({
   authorize: (user) => canManageSpace(user.principal, { entityId: null }),
   run: async ({ input }) => {
     const { before, after } = await setTemplateActive(input.templateId, input.isActive);
-    return { data: { id: after.id }, audit: { resource: { type: "kb_template", id: after.id, entityId: null }, summary: `${after.name}: ${after.isActive ? "on" : "off"}`, before: { isActive: before.isActive }, after: { isActive: after.isActive } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "kb_template", id: after.id, entityId: null }, summary: `${after.name}: ${after.isActive ? "on" : "off"}`, before: { isActive: before.isActive }, after: { isActive: after.isActive } },
+    };
   },
 });
 export async function setTemplateActiveAction(input: unknown) {

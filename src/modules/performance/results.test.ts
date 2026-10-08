@@ -51,11 +51,18 @@ import { decideWeighting, getWeighting, proposeWeighting } from "./weighting";
 
 type Who = "owner" | "mai" | "long" | "tam" | "huy" | "linh";
 const ids = {} as Record<Who | "szm", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const detailsOf = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error.details);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const detailsOf = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error.details,
+  );
 
-const principal = (who: Who | null, grants: { role: string; scope: { type: string; id?: string } }[] = []) =>
-  ({ personId: who ? ids[who] : null, workforceType: "employee" as const, grants: grants as never });
+const principal = (who: Who | null, grants: { role: string; scope: { type: string; id?: string } }[] = []) => ({ personId: who ? ids[who] : null, workforceType: "employee" as const, grants: grants as never });
 const GROUP_HR = [{ role: "hr_admin", scope: { type: "group" } }];
 
 const SCALE: RatingPoint[] = [
@@ -93,7 +100,10 @@ const cycleInput = (templateId: string, over: Partial<CycleInput> = {}): CycleIn
 let cycleId = "";
 let participantOf: Map<string, string> = new Map();
 const partiesFor = async (personId: string) => {
-  const [participant] = await db().select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantOf.get(personId)!));
+  const [participant] = await db()
+    .select()
+    .from(schema.reviewParticipant)
+    .where(eq(schema.reviewParticipant.id, participantOf.get(personId)!));
   const [cycle] = await db().select().from(schema.reviewCycle).where(eq(schema.reviewCycle.id, cycleId));
   return partiesOfParticipant(participant, cycle, await loadDirectory())!;
 };
@@ -275,7 +285,9 @@ describe("the weighting is configuration the owner approves", () => {
 
   it("refuses weights that do not add up", async () => {
     expect(await fails(proposeWeighting({ entityId: null, value: { ...DEFAULT_PERFORMANCE_WEIGHTING, reviewBp: 9000 }, validFrom: "2028-01-01", note: null }, ids.mai))).toBe("weighting_weights_not_full");
-    expect(await fails(proposeWeighting({ entityId: null, value: { ...DEFAULT_PERFORMANCE_WEIGHTING, okrMix: { ...DEFAULT_PERFORMANCE_WEIGHTING.okrMix, groupBp: 9000 } }, validFrom: "2028-01-01", note: null }, ids.mai))).toBe("weighting_okr_mix_not_full");
+    expect(await fails(proposeWeighting({ entityId: null, value: { ...DEFAULT_PERFORMANCE_WEIGHTING, okrMix: { ...DEFAULT_PERFORMANCE_WEIGHTING.okrMix, groupBp: 9000 } }, validFrom: "2028-01-01", note: null }, ids.mai))).toBe(
+      "weighting_okr_mix_not_full",
+    );
   });
 });
 
@@ -352,7 +364,15 @@ describe("a KPI month a bonus run has been approved from cannot be reopened", ()
     await db().insert(schema.kpiPeriod).values({ entityId: ids.szm, month: "2026-11", status: "closed", closedByPersonId: ids.mai, closedAt: new Date() });
     const [score] = await db()
       .insert(schema.kpiScore)
-      .values({ personId: ids.huy, entityId: ids.szm, month: "2026-11", revision: 1, scoreBp: 10_500, trace: { version: 1, month: "2026-11", lines: [], missingAs: "excluded", countedWeight: 0, scoreBp: 10_500, notes: [] } as never, inputsHash: "hash" })
+      .values({
+        personId: ids.huy,
+        entityId: ids.szm,
+        month: "2026-11",
+        revision: 1,
+        scoreBp: 10_500,
+        trace: { version: 1, month: "2026-11", lines: [], missingAs: "excluded", countedWeight: 0, scoreBp: 10_500, notes: [] } as never,
+        inputsHash: "hash",
+      })
       .returning();
 
     // Nothing has been paid from it yet, so HR may still take it back.
@@ -361,10 +381,7 @@ describe("a KPI month a bonus run has been approved from cannot be reopened", ()
 
     // Close it again: a stored score is never rewritten (a trigger refuses it), so the re-close
     // writes revision 2 beside the superseded one — exactly what Phase 3.5's `closeMonth` does.
-    const [revision2] = await db()
-      .insert(schema.kpiScore)
-      .values({ personId: ids.huy, entityId: ids.szm, month: "2026-11", revision: 2, scoreBp: 10_800, trace: score.trace, inputsHash: "hash2" })
-      .returning();
+    const [revision2] = await db().insert(schema.kpiScore).values({ personId: ids.huy, entityId: ids.szm, month: "2026-11", revision: 2, scoreBp: 10_800, trace: score.trace, inputsHash: "hash2" }).returning();
     await db().update(schema.kpiPeriod).set({ status: "closed" }).where(eq(schema.kpiPeriod.entityId, ids.szm));
     const runId = "00000000-0000-4000-8000-0000000000aa";
     const use = [{ scoreId: revision2.id, personId: ids.huy, entityId: ids.szm, month: "2026-11" }];

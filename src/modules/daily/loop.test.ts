@@ -42,8 +42,16 @@ const PEOPLE = ["khanh", "vu", "chi", "nam", "tam", "dung", "old", "lan", "cong"
 type Key = (typeof PEOPLE)[number];
 const ids = {} as Record<Key | "szm" | "dept" | "studio" | "project" | "t1" | "t2", string>;
 const names: Record<Key, string> = { khanh: "Khanh Tran", vu: "Vu Le", chi: "Chi Vo", nam: "Nam Ngo", tam: "Tam Bui", dung: "Dung Ha", old: "Old Boss", lan: "Lan Do", cong: "Cong Ly", cuu: "Cuu Chu" };
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const vn = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
 const blank = { blockers: null, notes: null, tomorrow: [], secondsToSubmit: 30 };
 
@@ -57,31 +65,40 @@ beforeAll(async () => {
   // collaborator; Old Boss has left.
   const extra: Partial<Record<Key, Partial<typeof schema.person.$inferInsert>>> = { khanh: { orgUnitId: null }, cong: { workforceType: "collaborator" }, old: { status: "offboarded" } };
   for (const key of PEOPLE) {
-    const [row] = await db().insert(schema.person).values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: dept.id, ...extra[key] }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: dept.id, ...extra[key] })
+      .returning();
     ids[key] = row.id;
   }
   // Tam, Lan and Cong report to Vu; Dung to a manager who has left. Vu, Chi, Nam and Khanh report to nobody.
   for (const key of ["tam", "lan", "cong"] as const) await db().update(schema.person).set({ managerId: ids.vu }).where(eq(schema.person.id, ids[key]));
   await db().update(schema.person).set({ managerId: ids.old }).where(eq(schema.person.id, ids.dung));
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.khanh, role: "owner", scopeType: "group", validFrom: "2026-01-01" },
-    // Chi heads Marketing: `work:manage` over everyone who sits there, herself included.
-    { personId: ids.chi, role: "department_head", scopeType: "unit", scopeId: dept.id, validFrom: "2026-01-01" },
-    // Cuu was an owner once; the grant ended last year.
-    { personId: ids.cuu, role: "owner", scopeType: "group", validFrom: "2025-01-01", validTo: "2025-12-31" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.khanh, role: "owner", scopeType: "group", validFrom: "2026-01-01" },
+      // Chi heads Marketing: `work:manage` over everyone who sits there, herself included.
+      { personId: ids.chi, role: "department_head", scopeType: "unit", scopeId: dept.id, validFrom: "2026-01-01" },
+      // Cuu was an owner once; the grant ended last year.
+      { personId: ids.cuu, role: "owner", scopeType: "group", validFrom: "2025-01-01", validTo: "2025-12-31" },
+    ]);
 
   // Studio: Vu leads it — and so has no lead himself — with Nam as its member.
   const [studio] = await db().insert(schema.workTeam).values({ key: "STU", name: "Studio", entityId: szm.id, departmentId: dept.id }).returning();
   ids.studio = studio.id;
-  await db().insert(schema.workState).values([
-    { teamId: studio.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
-    { teamId: studio.id, name: "Đã xong", category: "done", sortOrder: 2 },
-  ]);
-  await db().insert(schema.workTeamMember).values([
-    { teamId: studio.id, personId: ids.vu, role: "lead" },
-    { teamId: studio.id, personId: ids.nam, role: "member" },
-  ]);
+  await db()
+    .insert(schema.workState)
+    .values([
+      { teamId: studio.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
+      { teamId: studio.id, name: "Đã xong", category: "done", sortOrder: 2 },
+    ]);
+  await db()
+    .insert(schema.workTeamMember)
+    .values([
+      { teamId: studio.id, personId: ids.vu, role: "lead" },
+      { teamId: studio.id, personId: ids.nam, role: "member" },
+    ]);
   // A client project of the Studio, led by Dung — who is in none of its people's teams or chains.
   ids.project = (await db().insert(schema.workProject).values({ teamId: studio.id, entityId: szm.id, name: "TVC Tết", leadPersonId: ids.dung }).returning())[0].id;
   await db().insert(schema.projectPlan).values({ projectId: ids.project, kind: "client" });
@@ -292,7 +309,11 @@ describe("a missed end-of-day report", () => {
     await submitReport(ids.nam, YESTERDAY, blank, vn(TODAY, "06:30"));
     // Active and asked: Vu, Chi, Tam, Dung, Cuu. Not Nam (filed), Lan (leave), Cong, Khanh (not asked), Old (left).
     expect(await sendMissedReportReminders(TODAY)).toEqual({ date: YESTERDAY, reminded: 5 });
-    for (const key of ["vu", "chi", "tam", "dung", "cuu"] as const) expect((await noticesOf(ids[key], "daily.report_missed")).map((row) => [row.params, row.link]), key).toEqual([[{ date: "22/09/2026" }, `/daily/report?date=${YESTERDAY}`]]);
+    for (const key of ["vu", "chi", "tam", "dung", "cuu"] as const)
+      expect(
+        (await noticesOf(ids[key], "daily.report_missed")).map((row) => [row.params, row.link]),
+        key,
+      ).toEqual([[{ date: "22/09/2026" }, `/daily/report?date=${YESTERDAY}`]]);
     for (const key of ["nam", "lan", "cong", "khanh", "old"] as const) expect(await noticesOf(ids[key], "daily.report_missed"), key).toHaveLength(0);
     // Sent once, however often the job runs that morning.
     expect(await sendMissedReportReminders(TODAY)).toEqual({ date: YESTERDAY, reminded: 0 });

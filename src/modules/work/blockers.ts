@@ -20,12 +20,19 @@ const label = (loaded: LoadedTask) => `${taskKey(loaded.team.key, loaded.work.nu
 const blockedMinutesSql = sql<number>`(extract(epoch from (coalesce(${schema.workBlocker.resolvedAt}, now()) - ${schema.workBlocker.raisedAt})) / 60)::int`;
 
 async function teamLeads(tx: Executor, teamId: string): Promise<string[]> {
-  const rows = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead")));
+  const rows = await tx
+    .select({ personId: schema.workTeamMember.personId })
+    .from(schema.workTeamMember)
+    .where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.role, "lead")));
   return rows.map((row) => row.personId);
 }
 
 export async function findOpenBlocker(taskId: string, executor: Executor = db()): Promise<BlockerRow | undefined> {
-  const [row] = await executor.select().from(schema.workBlocker).where(and(eq(schema.workBlocker.taskId, taskId), isNull(schema.workBlocker.resolvedAt))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.workBlocker)
+    .where(and(eq(schema.workBlocker.taskId, taskId), isNull(schema.workBlocker.resolvedAt)))
+    .limit(1);
   return row;
 }
 
@@ -72,7 +79,21 @@ export async function resolveBlocker(taskId: string, resolution: string | null, 
   });
 }
 
-export type BlockerView = { id: string; taskId: string; reason: string; neededPersonId: string | null; neededName: string | null; raisedByPersonId: string; raisedByName: string | null; raisedAt: Date; resolvedAt: Date | null; resolvedByPersonId: string | null; resolvedByName: string | null; resolution: string | null; minutes: number };
+export type BlockerView = {
+  id: string;
+  taskId: string;
+  reason: string;
+  neededPersonId: string | null;
+  neededName: string | null;
+  raisedByPersonId: string;
+  raisedByName: string | null;
+  raisedAt: Date;
+  resolvedAt: Date | null;
+  resolvedByPersonId: string | null;
+  resolvedByName: string | null;
+  resolution: string | null;
+  minutes: number;
+};
 
 function blockerQuery(executor: Executor) {
   const needed = alias(schema.person, "needed");
@@ -125,7 +146,22 @@ function withTask(executor: Executor) {
   const needed = alias(schema.person, "needed");
   const raiser = alias(schema.person, "raiser");
   return executor
-    .select({ id: schema.workBlocker.id, taskId: schema.workBlocker.taskId, reason: schema.workBlocker.reason, neededPersonId: schema.workBlocker.neededPersonId, neededName: needed.fullName, raisedByPersonId: schema.workBlocker.raisedByPersonId, raisedByName: raiser.fullName, raisedAt: schema.workBlocker.raisedAt, resolvedAt: schema.workBlocker.resolvedAt, resolution: schema.workBlocker.resolution, minutes: blockedMinutesSql, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title })
+    .select({
+      id: schema.workBlocker.id,
+      taskId: schema.workBlocker.taskId,
+      reason: schema.workBlocker.reason,
+      neededPersonId: schema.workBlocker.neededPersonId,
+      neededName: needed.fullName,
+      raisedByPersonId: schema.workBlocker.raisedByPersonId,
+      raisedByName: raiser.fullName,
+      raisedAt: schema.workBlocker.raisedAt,
+      resolvedAt: schema.workBlocker.resolvedAt,
+      resolution: schema.workBlocker.resolution,
+      minutes: blockedMinutesSql,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+    })
     .from(schema.workBlocker)
     .innerJoin(schema.task, and(eq(schema.task.id, schema.workBlocker.taskId), isNull(schema.task.deletedAt)))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.workBlocker.taskId))

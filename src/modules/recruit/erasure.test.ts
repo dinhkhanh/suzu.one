@@ -117,7 +117,17 @@ const MARKERS = [NAME, TYPED_NAME, "Cần Xoá", "can-xoa", EMAIL, "can.xoa", PH
  */
 async function personOnFile() {
   await submitReferral(
-    { openingId: ids.opening, fullName: NAME, email: EMAIL, phone: PHONE, currentTitle: "Editor", currentEmployer: "Studio khác", links: ["https://example.com/can-xoa"], note: `${NAME} làm chung với tôi năm ngoái.`, cv: { fileName: "cv-pham-thi-can-xoa.pdf", bytes: pdfBytes } },
+    {
+      openingId: ids.opening,
+      fullName: NAME,
+      email: EMAIL,
+      phone: PHONE,
+      currentTitle: "Editor",
+      currentEmployer: "Studio khác",
+      links: ["https://example.com/can-xoa"],
+      note: `${NAME} làm chung với tôi năm ngoái.`,
+      cv: { fileName: "cv-pham-thi-can-xoa.pdf", bytes: pdfBytes },
+    },
     ids.referrerPerson,
   );
   const applied = await applyToOpening(
@@ -156,39 +166,58 @@ async function personOnFile() {
   // A take-home, sent back with a note and a file.
   const [assignment] = await db()
     .insert(schema.recruitAssignment)
-    .values({ applicationId: referred.id, openingId: ids.opening, title: "Dựng thử 30 giây", brief: "Dựng một đoạn 30 giây.", dueAt: new Date(), tokenHash: "hash-of-a-token", tokenExpiresAt: new Date(), sentByPersonId: ids.hrPerson, status: "received", submissionNote: `Bài của ${NAME}`, submissionLinks: ["https://example.com/can-xoa/bai"] })
+    .values({
+      applicationId: referred.id,
+      openingId: ids.opening,
+      title: "Dựng thử 30 giây",
+      brief: "Dựng một đoạn 30 giây.",
+      dueAt: new Date(),
+      tokenHash: "hash-of-a-token",
+      tokenExpiresAt: new Date(),
+      sentByPersonId: ids.hrPerson,
+      status: "received",
+      submissionNote: `Bài của ${NAME}`,
+      submissionLinks: ["https://example.com/can-xoa/bai"],
+    })
     .returning();
   const submission = await storeIncomingFile({ ownerType: "recruit_assignment", ownerId: assignment.id, entityId: ids.szm, tier: "personal" }, { fileName: "bai-lam-can-xoa.pdf", bytes: pdfBytes });
   await db().update(schema.recruitAssignment).set({ submissionFileId: submission.id }).where(eq(schema.recruitAssignment.id, assignment.id));
 
   // An offer that was declined, with what was said about it.
-  await db().insert(schema.jobOffer).values({
-    applicationId: referred.id,
-    openingId: ids.opening,
-    candidateId: candidate.id,
-    entityId: ids.szm,
-    number: `SZM-TM-2026-${String(++counter).padStart(4, "0")}`,
-    positionName: "Video Editor",
-    startDate: "2026-11-01",
-    baseSalaryVnd: 20_000_000,
-    expiresOn: "2026-10-20",
-    status: "declined",
-    note: `${NAME} muốn bắt đầu sớm hơn.`,
-    declineNote: `${NAME} nhận lời nơi khác.`,
-    createdByPersonId: ids.hrPerson,
-  });
+  await db()
+    .insert(schema.jobOffer)
+    .values({
+      applicationId: referred.id,
+      openingId: ids.opening,
+      candidateId: candidate.id,
+      entityId: ids.szm,
+      number: `SZM-TM-2026-${String(++counter).padStart(4, "0")}`,
+      positionName: "Video Editor",
+      startDate: "2026-11-01",
+      baseSalaryVnd: 20_000_000,
+      expiresOn: "2026-10-20",
+      status: "declined",
+      note: `${NAME} muốn bắt đầu sớm hơn.`,
+      declineNote: `${NAME} nhận lời nơi khác.`,
+      createdByPersonId: ids.hrPerson,
+    });
 
   await rejectApplication(referred.id, { reason: "salary", note: `${NAME} từ chối mức đề nghị.` }, ids.hrPerson);
   await withdrawApplication(applicant.id, ids.hrPerson, `${TYPED_NAME} báo rút hồ sơ qua điện thoại.`);
 
   // Letters: one that went out, one still waiting — and a colleague's, which is nobody's business here.
-  await db().insert(schema.emailOutbox).values([
-    { toEmail: EMAIL, subject: `Mời phỏng vấn — ${NAME}`, bodyText: `Chào ${NAME},\nMời bạn đến phỏng vấn.`, status: "sent", sentAt: new Date() },
-    { toEmail: EMAIL, subject: "Kết quả ứng tuyển", bodyText: `Chào ${NAME},\nRất tiếc…`, status: "pending" },
-    { toEmail: "nguoi.gioi.thieu@suzu.vn", subject: "Việc của đồng nghiệp", bodyText: "Không liên quan.", status: "pending" },
-  ]);
+  await db()
+    .insert(schema.emailOutbox)
+    .values([
+      { toEmail: EMAIL, subject: `Mời phỏng vấn — ${NAME}`, bodyText: `Chào ${NAME},\nMời bạn đến phỏng vấn.`, status: "sent", sentAt: new Date() },
+      { toEmail: EMAIL, subject: "Kết quả ứng tuyển", bodyText: `Chào ${NAME},\nRất tiếc…`, status: "pending" },
+      { toEmail: "nguoi.gioi.thieu@suzu.vn", subject: "Việc của đồng nghiệp", bodyText: "Không liên quan.", status: "pending" },
+    ]);
 
-  const files = await db().select().from(schema.storedFile).where(inArray(schema.storedFile.ownerId, [referred.id, applicant.id, assignment.id]));
+  const files = await db()
+    .select()
+    .from(schema.storedFile)
+    .where(inArray(schema.storedFile.ownerId, [referred.id, applicant.id, assignment.id]));
   expect(files).toHaveLength(3);
   for (const file of files) expect(objects.has(file.objectPath)).toBe(true);
   return { candidate, referred, applicant, assignment, files };
@@ -218,7 +247,10 @@ describe("erasing a candidate on request", () => {
     // The scan is worth something only if it finds the person before: every table holds them now.
     const before = await everythingOnFile();
     for (const table of ["candidate", "job_application", "application_event", "referral", "job_offer", "recruit_assignment", "email_outbox", "stored_file"]) {
-      expect(MARKERS.some((marker) => before[table].includes(marker)), `${table} should hold the person before the erasure`).toBe(true);
+      expect(
+        MARKERS.some((marker) => before[table].includes(marker)),
+        `${table} should hold the person before the erasure`,
+      ).toBe(true);
     }
 
     const erased = await eraseCandidate(candidate.id, ids.hrPerson);
@@ -231,7 +263,15 @@ describe("erasing a candidate on request", () => {
 
     // The bytes went with the rows, at once — not a grace period later.
     for (const file of files) expect(objects.has(file.objectPath)).toBe(false);
-    const stored = await db().select().from(schema.storedFile).where(inArray(schema.storedFile.id, files.map((file) => file.id)));
+    const stored = await db()
+      .select()
+      .from(schema.storedFile)
+      .where(
+        inArray(
+          schema.storedFile.id,
+          files.map((file) => file.id),
+        ),
+      );
     for (const file of stored) {
       expect(file.deletedAt).not.toBeNull();
       expect(file.purgedAt).not.toBeNull();
@@ -246,7 +286,10 @@ describe("erasing a candidate on request", () => {
     expect(applications.find((application) => application.id === referred.id)?.rejectionReason).toBe("salary");
 
     // The history says what happened, who did it and why — and the earlier entries kept their kind.
-    const events = await db().select().from(schema.applicationEvent).where(inArray(schema.applicationEvent.applicationId, [referred.id, applicant.id]));
+    const events = await db()
+      .select()
+      .from(schema.applicationEvent)
+      .where(inArray(schema.applicationEvent.applicationId, [referred.id, applicant.id]));
     const closing = events.filter((event) => event.type === "anonymised");
     expect(closing).toHaveLength(2);
     for (const event of closing) expect(event).toMatchObject({ actorPersonId: ids.hrPerson, detail: { reason: "erasure" } });
@@ -258,7 +301,12 @@ describe("erasing a candidate on request", () => {
 
     // The letter that was waiting is never sent; the colleague's is untouched.
     const outbox = await db().select().from(schema.emailOutbox);
-    expect(outbox.filter((email) => email.toEmail === "").map((email) => email.status).sort()).toEqual(["sent", "skipped"]);
+    expect(
+      outbox
+        .filter((email) => email.toEmail === "")
+        .map((email) => email.status)
+        .sort(),
+    ).toEqual(["sent", "skipped"]);
     expect(outbox.find((email) => email.toEmail === "nguoi.gioi.thieu@suzu.vn")).toMatchObject({ status: "pending", bodyText: "Không liên quan." });
 
     // The referrer's own list no longer shows the name they typed.
@@ -268,8 +316,28 @@ describe("erasing a candidate on request", () => {
   });
 
   it("is refused while an application is still open, and for somebody who became a colleague", async () => {
-    const open = await createCandidate({ fullName: "Ứng viên đang xét", email: "dang.xet@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson, { confirmedNotDuplicate: true });
-    const application = await createApplication({ candidateId: open.id, openingId: ids.opening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.hrPerson);
+    const open = await createCandidate(
+      {
+        fullName: "Ứng viên đang xét",
+        email: "dang.xet@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+      { confirmedNotDuplicate: true },
+    );
+    const application = await createApplication(
+      { candidateId: open.id, openingId: ids.opening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null },
+      ids.hrPerson,
+    );
     expect(await fails(eraseCandidate(open.id, ids.hrPerson))).toBe("recruit_candidate_in_progress");
 
     const [person] = await db().insert(schema.person).values({ fullName: "Đồng nghiệp mới", searchName: "dong nghiep moi", primaryEntityId: ids.szm, status: "preboarding" }).returning();
@@ -283,14 +351,48 @@ describe("erasing a candidate on request", () => {
 
   it("is refused for nobody, and a second time", async () => {
     expect(await fails(eraseCandidate("00000000-0000-4000-8000-000000000000", ids.hrPerson))).toBe("recruit_candidate_not_found");
-    const lead = await createCandidate({ fullName: "Ứng viên xoá hai lần", email: "hai.lan@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson, { confirmedNotDuplicate: true });
+    const lead = await createCandidate(
+      {
+        fullName: "Ứng viên xoá hai lần",
+        email: "hai.lan@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+      { confirmedNotDuplicate: true },
+    );
     expect(await eraseCandidate(lead.id, ids.hrPerson)).toEqual({ applications: 0, files: 0 });
     expect(await fails(eraseCandidate(lead.id, ids.hrPerson))).toBe("recruit_candidate_anonymised");
   });
 
   it("does not take a colleague's notifications for a candidate's letters", async () => {
     // An internal applicant: the address on the candidate record is a mailbox on the books.
-    const internal = await createCandidate({ fullName: "Người giới thiệu", email: "nguoi.gioi.thieu@suzu.vn", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson, { confirmedNotDuplicate: true });
+    const internal = await createCandidate(
+      {
+        fullName: "Người giới thiệu",
+        email: "nguoi.gioi.thieu@suzu.vn",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+      { confirmedNotDuplicate: true },
+    );
     await anonymiseCandidate(internal.id);
     const mail = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.toEmail, "nguoi.gioi.thieu@suzu.vn"));
     expect(mail).toHaveLength(1);
@@ -300,11 +402,34 @@ describe("erasing a candidate on request", () => {
 
 describe("the nightly job", () => {
   it("removes a lapsed candidate's CV from storage the same night, and writes the history once", async () => {
-    const candidate = await createCandidate({ fullName: "Ứng viên hết hạn có CV", email: "het.han@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "careers_page", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, null, { confirmedNotDuplicate: true });
-    const application = await createApplication({ candidateId: candidate.id, openingId: ids.opening, source: "careers_page", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, null);
+    const candidate = await createCandidate(
+      {
+        fullName: "Ứng viên hết hạn có CV",
+        email: "het.han@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "careers_page",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      null,
+      { confirmedNotDuplicate: true },
+    );
+    const application = await createApplication(
+      { candidateId: candidate.id, openingId: ids.opening, source: "careers_page", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null },
+      null,
+    );
     const cv = await storeIncomingFile({ ownerType: "job_application", ownerId: application.id, entityId: ids.szm, tier: "personal" }, { fileName: "cv.pdf", bytes: pdfBytes });
     await rejectApplication(application.id, { reason: "not_qualified", note: null }, ids.hrPerson);
-    await db().update(schema.jobApplication).set({ closedAt: new Date("2020-06-01T03:00:00Z") }).where(eq(schema.jobApplication.id, application.id));
+    await db()
+      .update(schema.jobApplication)
+      .set({ closedAt: new Date("2020-06-01T03:00:00Z") })
+      .where(eq(schema.jobApplication.id, application.id));
     await db().update(schema.candidate).set({ retainUntil: "2020-01-01" }).where(eq(schema.candidate.id, candidate.id));
     expect(objects.has(cv.objectPath)).toBe(true);
 
@@ -344,9 +469,29 @@ describe("who is offered the erase action, and what the audit log is told", () =
 
   it("offers it to whoever runs recruitment over every opening the candidate applied to, and refuses anybody else", async () => {
     // Applied in two companies; turned down in both.
-    const candidate = await createCandidate({ fullName: "Ứng viên hai công ty", email: "hai.cong.ty@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson, { confirmedNotDuplicate: true });
+    const candidate = await createCandidate(
+      {
+        fullName: "Ứng viên hai công ty",
+        email: "hai.cong.ty@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+      { confirmedNotDuplicate: true },
+    );
     for (const openingId of [ids.opening, ids.szcOpening]) {
-      const application = await createApplication({ candidateId: candidate.id, openingId, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.hrPerson);
+      const application = await createApplication(
+        { candidateId: candidate.id, openingId, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null },
+        ids.hrPerson,
+      );
       await rejectApplication(application.id, { reason: "other", note: null }, ids.hrPerson);
     }
 

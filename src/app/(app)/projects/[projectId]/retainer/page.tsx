@@ -10,7 +10,23 @@ import { RecordLink } from "@/components/ui/record-link";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { awaitingAcceptance, canEditRetainer, getRetainer, lineLabel, listMissedMonths, listPeriods, listTaskLinks, openLinesFirst, openProject, type PeriodView, REGISTER_STATUSES, RETAINER_ROLLOVERS, shapeRetainer, type Usage, type UsageLevel } from "@/modules/projects/service";
+import {
+  awaitingAcceptance,
+  canEditRetainer,
+  getRetainer,
+  lineLabel,
+  listMissedMonths,
+  listPeriods,
+  listTaskLinks,
+  openLinesFirst,
+  openProject,
+  type PeriodView,
+  REGISTER_STATUSES,
+  RETAINER_ROLLOVERS,
+  shapeRetainer,
+  type Usage,
+  type UsageLevel,
+} from "@/modules/projects/service";
 import { LineUnlinkButton, LinkToLineForm, MissedMonthForm, RetainerForm } from "@/modules/projects/ui/commercial-forms";
 import { CancelLineButton, DeliverableForm, LineTasksForm } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
@@ -37,7 +53,15 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, team, plan, can, viewer, facts } = context;
-  const [t, tProjects, tWork, tAcceptance, format, row, waiting] = await Promise.all([getTranslations("projects.retainer"), getTranslations("projects"), getTranslations("work"), getTranslations("projects.acceptance"), getFormatter(), getRetainer(project.id), awaitingAcceptance(project.id)]);
+  const [t, tProjects, tWork, tAcceptance, format, row, waiting] = await Promise.all([
+    getTranslations("projects.retainer"),
+    getTranslations("projects"),
+    getTranslations("work"),
+    getTranslations("projects.acceptance"),
+    getFormatter(),
+    getRetainer(project.id),
+    awaitingAcceptance(project.id),
+  ]);
   // Months closed but not yet billed because the client has not signed their biên bản (Q22).
   const waitingPeriods = new Set((waiting ?? []).flatMap((item) => (item.retainerPeriodId ? [item.retainerPeriodId] : [])));
   const retainer = row ? shapeRetainer(row, can.seeFees) : null;
@@ -45,14 +69,25 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
   const today = todayInVietnam();
   // The project's tasks with the line each fills, the people a line's new tasks may go to, and the
   // earlier months still to be made: each read once for the page, whatever the number of months.
-  const [periods, links, people, missed] = await Promise.all([row ? listPeriods(row, can.seeFees) : [], row ? listTaskLinks(project.id) : [], row && can.editPlan ? listAssignable(team.id, project.id) : [], row && editable ? listMissedMonths(row, today) : []]);
+  const [periods, links, people, missed] = await Promise.all([
+    row ? listPeriods(row, can.seeFees) : [],
+    row ? listTaskLinks(project.id) : [],
+    row && can.editPlan ? listAssignable(team.id, project.id) : [],
+    row && editable ? listMissedMonths(row, today) : [],
+  ]);
   const current = periods.find((period) => period.period.status === "open" && period.period.month === today.slice(0, 7)) ?? null;
   const past = periods.filter((period) => period !== current);
-  const tasksOf = Map.groupBy(links.filter((link) => link.deliverableId), (link) => link.deliverableId!);
+  const tasksOf = Map.groupBy(
+    links.filter((link) => link.deliverableId),
+    (link) => link.deliverableId!,
+  );
   // What the link form offers: tasks on no line yet — done ones too, the work is often finished
   // before anyone records which promise it filled — and every live line, this month's first.
   const linkable = links.filter((link) => !link.deliverableId && link.status !== "cancelled").map((link) => ({ id: link.taskId, key: link.key, title: link.title }));
-  const lineChoices = openLinesFirst(periods.flatMap((view) => view.lines.filter((line) => !line.cancelledAt).map((line) => ({ id: line.id, title: line.title, quantity: line.quantity, month: view.period.month as string | null }))), today.slice(0, 7)).map((line) => ({ id: line.id, label: lineLabel(line) }));
+  const lineChoices = openLinesFirst(
+    periods.flatMap((view) => view.lines.filter((line) => !line.cancelledAt).map((line) => ({ id: line.id, title: line.title, quantity: line.quantity, month: view.period.month as string | null }))),
+    today.slice(0, 7),
+  ).map((line) => ({ id: line.id, label: lineLabel(line) }));
   const columns = 8;
   const money = (value: number | null | undefined) => (value === null || value === undefined ? "—" : format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 }));
   const hours = (minutes: number) => format.number(minutes / 60, { maximumFractionDigits: 1 });
@@ -128,7 +163,11 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
                           {can.editPlan ? (
                             <>
                               {!cancelled ? <LineTasksForm deliverableId={line.id} missing={Math.max(0, line.quantity - line.linked)} people={people} /> : null}
-                              <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={[]} />
+                              <DeliverableForm
+                                projectId={project.id}
+                                line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }}
+                                milestones={[]}
+                              />
                               <div>
                                 <CancelLineButton deliverableId={line.id} cancelled={cancelled} />
                               </div>
@@ -151,7 +190,9 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">{t("hours")}</dt>
-          <dd className="font-medium">{view.hours ? t("hoursValue", { logged: hours(view.loggedMinutes), allowance: hours(view.hours.contracted), percent: percent(view.hours) }) : t("hoursLogged", { logged: hours(view.loggedMinutes) })}</dd>
+          <dd className="font-medium">
+            {view.hours ? t("hoursValue", { logged: hours(view.loggedMinutes), allowance: hours(view.hours.contracted), percent: percent(view.hours) }) : t("hoursLogged", { logged: hours(view.loggedMinutes) })}
+          </dd>
         </div>
         {"feeVnd" in view ? (
           <div>
@@ -161,7 +202,9 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
         ) : null}
         <div>
           <dt className="text-xs text-muted-foreground">{t("billing")}</dt>
-          <dd className="font-medium">{view.billing ? `${t(`billingStatus.${view.billing.status as "ready"}`)}${view.billing.invoiceNumber ? ` · ${view.billing.invoiceNumber}` : ""}` : view.period.status === "open" ? t("billingAtMonthEnd") : "—"}</dd>
+          <dd className="font-medium">
+            {view.billing ? `${t(`billingStatus.${view.billing.status as "ready"}`)}${view.billing.invoiceNumber ? ` · ${view.billing.invoiceNumber}` : ""}` : view.period.status === "open" ? t("billingAtMonthEnd") : "—"}
+          </dd>
           {!view.billing && view.period.status === "closed" && waitingPeriods.has(view.period.id) ? <dd className="text-xs text-muted-foreground">{tAcceptance("monthNotBilled")}</dd> : null}
         </div>
       </dl>
@@ -179,7 +222,9 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
           <CardContent className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2>{t("terms")}</h2>
-              <Badge dot variant={retainer.isActive ? "success" : "outline"}>{retainer.isActive ? t("active") : t("inactive")}</Badge>
+              <Badge dot variant={retainer.isActive ? "success" : "outline"}>
+                {retainer.isActive ? t("active") : t("inactive")}
+              </Badge>
             </div>
             <p className="text-sm">{t("termsLine", { start: retainer.startMonth, end: retainer.endMonth ?? t("noEnd"), rollover: t(`rollovers.${retainer.rollover as "reset"}`) })}</p>
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -245,7 +290,19 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
           <h2>{retainer ? t("edit") : t("setUp")}</h2>
           <RetainerForm
             projectId={project.id}
-            values={retainer ? { startMonth: retainer.startMonth, endMonth: retainer.endMonth, lines: retainer.lines, minutesPerMonth: retainer.minutesPerMonth, ...("feePerMonthVnd" in retainer ? { feePerMonthVnd: retainer.feePerMonthVnd } : {}), rollover: retainer.rollover, isActive: retainer.isActive } : null}
+            values={
+              retainer
+                ? {
+                    startMonth: retainer.startMonth,
+                    endMonth: retainer.endMonth,
+                    lines: retainer.lines,
+                    minutesPerMonth: retainer.minutesPerMonth,
+                    ...("feePerMonthVnd" in retainer ? { feePerMonthVnd: retainer.feePerMonthVnd } : {}),
+                    rollover: retainer.rollover,
+                    isActive: retainer.isActive,
+                  }
+                : null
+            }
             rollovers={RETAINER_ROLLOVERS}
             editFee={can.editFees}
             defaultMonth={today.slice(0, 7)}

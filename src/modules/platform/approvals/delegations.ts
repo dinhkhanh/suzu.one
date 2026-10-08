@@ -83,9 +83,17 @@ export async function createDelegation(fromPersonId: string, input: DelegationIn
   if (input.validTo < input.validFrom) throw new ActionError("delegation_dates");
   if (input.validTo < todayInVietnam()) throw new ActionError("delegation_past");
   return db().transaction(async (tx) => {
-    const [to] = await tx.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.id, input.toPersonId), eq(schema.person.status, "active"), ne(schema.person.workforceType, "collaborator"))).limit(1);
+    const [to] = await tx
+      .select({ id: schema.person.id, fullName: schema.person.fullName })
+      .from(schema.person)
+      .where(and(eq(schema.person.id, input.toPersonId), eq(schema.person.status, "active"), ne(schema.person.workforceType, "collaborator")))
+      .limit(1);
     if (!to) throw new ActionError("delegation_person_unknown");
-    const [from] = await tx.select({ fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.id, fromPersonId), ne(schema.person.status, "offboarded"))).limit(1);
+    const [from] = await tx
+      .select({ fullName: schema.person.fullName })
+      .from(schema.person)
+      .where(and(eq(schema.person.id, fromPersonId), ne(schema.person.status, "offboarded")))
+      .limit(1);
     // Someone who has left has no approvals to hand over: their turns moved when they did.
     if (setByPersonId && !from) throw new ActionError("delegation_person_unknown");
     const [row] = await tx

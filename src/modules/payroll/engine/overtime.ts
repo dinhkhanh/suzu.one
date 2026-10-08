@@ -83,7 +83,11 @@ export function calculateOvertime(input: PersonPayInput, monthlyPayRate: number)
       roundingRule: component.roundingRule,
       inputs: { hourlyRate: rate, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, nightMultiplierPercent: nightMultiplier, dayPay, nightPay },
     });
-    trace.push({ stage: "overtime", rule: inclusiveHoliday ? "overtime_multiplier_holiday_inclusive" : "overtime_multiplier", detail: { category, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, amount } });
+    trace.push({
+      stage: "overtime",
+      rule: inclusiveHoliday ? "overtime_multiplier_holiday_inclusive" : "overtime_multiplier",
+      detail: { category, dayMinutes: minutes.day, nightMinutes: minutes.night, multiplierPercent: multiplier, amount },
+    });
   }
 
   // Ordinary hours worked inside the statutory night window earn the night premium on top of the

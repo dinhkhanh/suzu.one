@@ -41,7 +41,11 @@ export default async function PersonTimesheetPage({ params, searchParams }: Page
             {t("timesheets.title")}
           </Link>
         }
-        title={<RecordLink kind="person" id={view.personId}>{view.fullName}</RecordLink>}
+        title={
+          <RecordLink kind="person" id={view.personId}>
+            {view.fullName}
+          </RecordLink>
+        }
         description={view.partial ? t("timesheets.partial") : undefined}
         actions={
           <>

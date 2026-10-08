@@ -73,66 +73,66 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
         <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-      {!configured ? <p className="text-sm text-muted-foreground">{t("notConfigured")}</p> : null}
+        {!configured ? <p className="text-sm text-muted-foreground">{t("notConfigured")}</p> : null}
 
-      {configured && status.link ? (
-        <>
-          <p className="text-sm">{t("linked", { date: format.dateTime(new Date(status.link.linkedAt), { dateStyle: "medium" }) })}</p>
-          {status.link.lastSuccessAt ? <p className="text-xs text-muted-foreground">{t("lastSuccess", { date: format.dateTime(new Date(status.link.lastSuccessAt), { dateStyle: "medium", timeStyle: "short" }) })}</p> : null}
-          <p className="text-xs text-muted-foreground">
-            {t("rule")} {t("stopHint")}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" onClick={test} disabled={pending}>
-              {t("test")}
-            </Button>
-            <Button type="button" variant="outline" onClick={unlink} disabled={pending}>
-              {t("unlink")}
-            </Button>
-          </div>
-        </>
-      ) : null}
-
-      {configured && !status.link ? (
-        <>
-          <p className="text-sm text-muted-foreground">{t("off")}</p>
-          <p className="text-xs text-muted-foreground">{t("rule")}</p>
-          {waiting ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm">{t("step1")}</p>
-              {waiting.url ? (
-                <a href={waiting.url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")}>
-                  {t("openLink")}
-                </a>
-              ) : null}
-              {waiting.sendText && !status.pending?.codeSent ? (
-                <p className="text-xs text-muted-foreground">
-                  {t("sendText")} <span className="font-mono text-sm font-medium tracking-wider text-foreground select-all">{waiting.sendText}</span>
-                </p>
-              ) : null}
-              <p className="text-sm">{status.pending?.codeSent ? t("waitingCode") : t("step2")}</p>
-              <form onSubmit={confirm.onSubmit} className="flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-1 text-sm">
-                  {t("codeLabel")}
-                  <Input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required className="w-32 font-mono tracking-widest" />
-                </label>
-                <Button type="submit" disabled={confirm.pending}>
-                  {t("confirm")}
-                </Button>
-              </form>
-              <FormError namespace="notifications.errors" errorKey={confirm.errorKey} />
-              <p className="text-xs text-muted-foreground">{t("expires", { time: format.dateTime(new Date(waiting.expiresAt), { timeStyle: "short" }) })}</p>
+        {configured && status.link ? (
+          <>
+            <p className="text-sm">{t("linked", { date: format.dateTime(new Date(status.link.linkedAt), { dateStyle: "medium" }) })}</p>
+            {status.link.lastSuccessAt ? <p className="text-xs text-muted-foreground">{t("lastSuccess", { date: format.dateTime(new Date(status.link.lastSuccessAt), { dateStyle: "medium", timeStyle: "short" }) })}</p> : null}
+            <p className="text-xs text-muted-foreground">
+              {t("rule")} {t("stopHint")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" onClick={test} disabled={pending}>
+                {t("test")}
+              </Button>
+              <Button type="button" variant="outline" onClick={unlink} disabled={pending}>
+                {t("unlink")}
+              </Button>
             </div>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant={waiting ? "outline" : "default"} onClick={connect} disabled={pending}>
-              {t("connect")}
-            </Button>
-          </div>
-        </>
-      ) : null}
+          </>
+        ) : null}
 
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+        {configured && !status.link ? (
+          <>
+            <p className="text-sm text-muted-foreground">{t("off")}</p>
+            <p className="text-xs text-muted-foreground">{t("rule")}</p>
+            {waiting ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm">{t("step1")}</p>
+                {waiting.url ? (
+                  <a href={waiting.url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")}>
+                    {t("openLink")}
+                  </a>
+                ) : null}
+                {waiting.sendText && !status.pending?.codeSent ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("sendText")} <span className="font-mono text-sm font-medium tracking-wider text-foreground select-all">{waiting.sendText}</span>
+                  </p>
+                ) : null}
+                <p className="text-sm">{status.pending?.codeSent ? t("waitingCode") : t("step2")}</p>
+                <form onSubmit={confirm.onSubmit} className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-sm">
+                    {t("codeLabel")}
+                    <Input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required className="w-32 font-mono tracking-widest" />
+                  </label>
+                  <Button type="submit" disabled={confirm.pending}>
+                    {t("confirm")}
+                  </Button>
+                </form>
+                <FormError namespace="notifications.errors" errorKey={confirm.errorKey} />
+                <p className="text-xs text-muted-foreground">{t("expires", { time: format.dateTime(new Date(waiting.expiresAt), { timeStyle: "short" }) })}</p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant={waiting ? "outline" : "default"} onClick={connect} disabled={pending}>
+                {t("connect")}
+              </Button>
+            </div>
+          </>
+        ) : null}
+
+        {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       </CardContent>
     </Card>
   );

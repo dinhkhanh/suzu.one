@@ -49,7 +49,9 @@ export default async function EntitiesPage() {
                 <TableCell kind="id">{entity.taxCode ?? "—"}</TableCell>
                 <TableCell>{entity.wageRegion ? t("wageRegionValue", { region: entity.wageRegion }) : <span className="text-faint">—</span>}</TableCell>
                 <TableCell>
-                  <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
+                  <Badge dot variant={entity.isActive ? "success" : "outline"}>
+                    {entity.isActive ? t("active") : t("inactive")}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

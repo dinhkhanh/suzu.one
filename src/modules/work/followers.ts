@@ -33,7 +33,11 @@ export function followStateOf(loaded: LoadedTask, personId: string): FollowState
 
 /** Never turns a collaborator into a follower, and never un-mutes: a row that exists stays as it is. */
 export async function autoFollow(tx: Executor, taskId: string, personIds: readonly string[]): Promise<void> {
-  if (personIds.length) await tx.insert(schema.workTaskPerson).values(personIds.map((personId) => ({ taskId, personId, role: "follower" }))).onConflictDoNothing();
+  if (personIds.length)
+    await tx
+      .insert(schema.workTaskPerson)
+      .values(personIds.map((personId) => ({ taskId, personId, role: "follower" })))
+      .onConflictDoNothing();
 }
 
 export async function setFollowing(taskId: string, personId: string, follow: boolean): Promise<{ before: FollowState; after: FollowState }> {
@@ -45,7 +49,11 @@ export async function setFollowing(taskId: string, personId: string, follow: boo
     const role = follow ? "follower" : "muted";
     // The requester hears by default, so their "unfollow" has to be remembered; anyone else just stops following.
     if (!follow && loaded.task.requesterPersonId !== personId) await tx.delete(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, taskId), eq(schema.workTaskPerson.personId, personId)));
-    else await tx.insert(schema.workTaskPerson).values({ taskId, personId, role }).onConflictDoUpdate({ target: [schema.workTaskPerson.taskId, schema.workTaskPerson.personId], set: { role } });
+    else
+      await tx
+        .insert(schema.workTaskPerson)
+        .values({ taskId, personId, role })
+        .onConflictDoUpdate({ target: [schema.workTaskPerson.taskId, schema.workTaskPerson.personId], set: { role } });
     const after = followStateOf((await loadTask(taskId, tx))!, personId);
     return { before, after };
   });
@@ -58,7 +66,10 @@ export async function setFollowing(taskId: string, personId: string, follow: boo
  */
 export async function notifyFollowers(tx: Executor, loaded: LoadedTask, actorPersonId: string | null, kind: Kind, params: Record<string, string | number>, skip: readonly string[] = []): Promise<string[]> {
   const candidates = followersOf(loaded).filter((personId) => personId !== actorPersonId && !skip.includes(personId));
-  const viewers = await viewersOfPeople(candidates.filter((personId) => loaded.followerIds.includes(personId)), tx);
+  const viewers = await viewersOfPeople(
+    candidates.filter((personId) => loaded.followerIds.includes(personId)),
+    tx,
+  );
   const recipients = candidates.filter((personId) => {
     if (!loaded.followerIds.includes(personId)) return true;
     const viewer = viewers.get(personId);

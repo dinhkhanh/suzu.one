@@ -43,7 +43,20 @@ describe("chunkDoc", () => {
   });
 
   it("writes marks and links as Markdown and escapes what would change the structure", () => {
-    const marked = doc({ type: "paragraph", content: [{ type: "text", text: "Nộp " }, { type: "text", text: "trước ngày 5", marks: [{ type: "bold" }] }, { type: "text", text: " tại " }, { type: "text", text: "mục Nghỉ phép", marks: [{ type: "link", attrs: { href: "/leave" } }] }, { type: "text", text: " (a*b_c)." }] }, paragraph("1. Không phải danh sách"), paragraph("# Không phải tiêu đề"));
+    const marked = doc(
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Nộp " },
+          { type: "text", text: "trước ngày 5", marks: [{ type: "bold" }] },
+          { type: "text", text: " tại " },
+          { type: "text", text: "mục Nghỉ phép", marks: [{ type: "link", attrs: { href: "/leave" } }] },
+          { type: "text", text: " (a*b_c)." },
+        ],
+      },
+      paragraph("1. Không phải danh sách"),
+      paragraph("# Không phải tiêu đề"),
+    );
     expect(chunkDoc(marked, "T")[0].content).toBe("Nộp **trước ngày 5** tại [mục Nghỉ phép](/leave) (a\\*b_c).\n\n1\\. Không phải danh sách\n\n\\# Không phải tiêu đề");
   });
 
@@ -53,7 +66,18 @@ describe("chunkDoc", () => {
     const chunks = chunkDoc(long, "Chính sách", { maxChars: 300 });
     expect(chunks.every((chunk) => chunk.content.length <= 300)).toBe(true);
     expect(chunks.length).toBeGreaterThan(4);
-    expect(chunks.map((chunk) => chunk.content).join("\n").replace(/\\(.)/g, "$1").replace(/\s+/g, " ")).toBe(long.content.slice(1).map((node) => node.content![0].text).join(" "));
+    expect(
+      chunks
+        .map((chunk) => chunk.content)
+        .join("\n")
+        .replace(/\\(.)/g, "$1")
+        .replace(/\s+/g, " "),
+    ).toBe(
+      long.content
+        .slice(1)
+        .map((node) => node.content![0].text)
+        .join(" "),
+    );
     expect(chunks.every((chunk) => chunk.headingPath === "Chính sách › Bảo mật")).toBe(true);
     expect(chunkDoc(long, "Chính sách", { maxChars: 300 })).toEqual(chunks);
     expect(chunks[0].tokenEstimate).toBe(Math.ceil(chunkEmbeddingText(chunks[0]).length / 3));

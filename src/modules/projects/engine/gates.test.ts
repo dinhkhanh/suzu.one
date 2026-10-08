@@ -78,7 +78,14 @@ describe("the scope lock after the kick-off (FR-PJM-11)", () => {
   });
 
   it("counts a retainer's quota lines, its hours allowance and its monthly fee as its scope", () => {
-    const quota = { lines: [{ title: "Bài đăng Facebook", quantity: 12, format: "post", channel: "facebook" }, { title: "Video TikTok", quantity: 2, format: "short_video", channel: "tiktok" }], minutesPerMonth: 1200, feePerMonthVnd: 30_000_000 };
+    const quota = {
+      lines: [
+        { title: "Bài đăng Facebook", quantity: 12, format: "post", channel: "facebook" },
+        { title: "Video TikTok", quantity: 2, format: "short_video", channel: "tiktok" },
+      ],
+      minutesPerMonth: 1200,
+      feePerMonthVnd: 30_000_000,
+    };
     expect(monthlyQuotaChanged(quota, { ...quota, lines: quota.lines.map((line) => ({ ...line, title: ` ${line.title} ` })) })).toBe(false);
     expect(monthlyQuotaChanged(quota, { ...quota, lines: [{ ...quota.lines[0], quantity: 16 }, quota.lines[1]] })).toBe(true);
     expect(monthlyQuotaChanged(quota, { ...quota, lines: [quota.lines[0]] })).toBe(true);

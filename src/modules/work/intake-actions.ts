@@ -20,7 +20,16 @@ const field = z.object({
   type: z.enum(INTAKE_FIELD_TYPES),
   required: checkbox,
   // One option per line in the form.
-  options: z.preprocess((value) => (typeof value === "string" ? value.split("\n").map((line) => line.trim()).filter(Boolean) : value), z.array(z.string().max(120)).max(30).optional()),
+  options: z.preprocess(
+    (value) =>
+      typeof value === "string"
+        ? value
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+        : value,
+    z.array(z.string().max(120)).max(30).optional(),
+  ),
 });
 
 const savePipeline = createAction({
@@ -36,7 +45,10 @@ const savePipeline = createAction({
     checklistIds: z.array(z.uuid()).max(MAX_LINKED_CHECKLISTS).default([]),
     isActive: checkbox,
     // The form posts fields as "fields.0.label" …: an object keyed by index. Rows without a label are blank rows of the editor.
-    fields: z.preprocess((value) => (value && typeof value === "object" && !Array.isArray(value) ? Object.values(value as Record<string, unknown>) : value), z.array(z.unknown()).max(MAX_INTAKE_FIELDS * 2)).transform((rows) => rows.filter((row) => typeof (row as { label?: unknown })?.label === "string" && (row as { label: string }).label.trim() !== "")).pipe(z.array(field).max(MAX_INTAKE_FIELDS)),
+    fields: z
+      .preprocess((value) => (value && typeof value === "object" && !Array.isArray(value) ? Object.values(value as Record<string, unknown>) : value), z.array(z.unknown()).max(MAX_INTAKE_FIELDS * 2))
+      .transform((rows) => rows.filter((row) => typeof (row as { label?: unknown })?.label === "string" && (row as { label: string }).label.trim() !== ""))
+      .pipe(z.array(field).max(MAX_INTAKE_FIELDS)),
   }),
   authorize: async (user, input) => {
     const team = await findTeam(input.teamId);

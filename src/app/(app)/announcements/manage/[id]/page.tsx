@@ -49,21 +49,37 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
         }
       >
         <div className="pt-1">
-          <Badge dot variant={statusTone(view.phase)}>{t(`phase.${view.phase}`)}</Badge>
+          <Badge dot variant={statusTone(view.phase)}>
+            {t(`phase.${view.phase}`)}
+          </Badge>
         </div>
       </PageHeader>
 
       {row.status === "archived" ? null : (
         <AnnouncementForm
           choices={choices}
-          draft={{ id: row.id, title: row.title, body: row.body, kbPageId: row.kbPageId, pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, expiresAt: toLocalInput(row.expiresAt), publishAt: toLocalInput(row.publishAt), audience: view.audience.map((key) => ({ key, label: audienceLabel(key, names, t) })), published: row.status === "published" }}
+          draft={{
+            id: row.id,
+            title: row.title,
+            body: row.body,
+            kbPageId: row.kbPageId,
+            pinned: row.pinned,
+            mustAcknowledge: row.mustAcknowledge,
+            expiresAt: toLocalInput(row.expiresAt),
+            publishAt: toLocalInput(row.publishAt),
+            audience: view.audience.map((key) => ({ key, label: audienceLabel(key, names, t) })),
+            published: row.status === "published",
+          }}
         />
       )}
 
       {report ? (
         <Section title={t("report.title")} className="max-w-3xl">
           <TableCard>
-            <TableCardHeader title={t("report.title")} description={row.mustAcknowledge ? t("report.summaryAck", { total: report.total, read: report.read, acknowledged: report.acknowledged }) : t("report.summary", { total: report.total, read: report.read })} />
+            <TableCardHeader
+              title={t("report.title")}
+              description={row.mustAcknowledge ? t("report.summaryAck", { total: report.total, read: report.read, acknowledged: report.acknowledged }) : t("report.summary", { total: report.total, read: report.read })}
+            />
             <Table numbered={false}>
               <TableHeader>
                 <TableRow>
@@ -76,7 +92,15 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
               <TableBody>
                 {report.byDepartment.map((line) => (
                   <TableRow key={line.departmentName ?? "-"}>
-                    <TableCell>{line.departmentName ? <RecordLink kind="unit" id={line.departmentId}>{line.departmentName}</RecordLink> : "—"}</TableCell>
+                    <TableCell>
+                      {line.departmentName ? (
+                        <RecordLink kind="unit" id={line.departmentId}>
+                          {line.departmentName}
+                        </RecordLink>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell kind="number">{line.total}</TableCell>
                     <TableCell kind="number">{line.read}</TableCell>
                     {row.mustAcknowledge ? <TableCell kind="number">{line.acknowledged}</TableCell> : null}
@@ -102,7 +126,15 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
                       {member.fullName}
                     </RecordLink>
                   </TableCell>
-                  <TableCell>{member.departmentName ? <RecordLink kind="unit" id={member.departmentId}>{member.departmentName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {member.departmentName ? (
+                      <RecordLink kind="unit" id={member.departmentId}>
+                        {member.departmentName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>{when(member.readAt)}</TableCell>
                   {row.mustAcknowledge ? <TableCell>{when(member.acknowledgedAt)}</TableCell> : null}
                 </TableRow>

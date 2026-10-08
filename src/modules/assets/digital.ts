@@ -44,7 +44,18 @@ export const digitalAssetLink = (assetId: string) => `/assets/digital/${assetId}
 // ── The directory ───────────────────────────────────────────────────────────────────────────
 
 /** What everybody may know about a `staff` asset: enough to name it as where a piece of work goes. */
-export type DigitalDirectoryEntry = { id: string; kind: DigitalKind; platform: DigitalPlatform; name: string; handle: string | null; url: string | null; entityId: string; clientId: string | null; ownerPersonId: string | null; status: DigitalStatus };
+export type DigitalDirectoryEntry = {
+  id: string;
+  kind: DigitalKind;
+  platform: DigitalPlatform;
+  name: string;
+  handle: string | null;
+  url: string | null;
+  entityId: string;
+  clientId: string | null;
+  ownerPersonId: string | null;
+  status: DigitalStatus;
+};
 
 const DIRECTORY_KEY = "assets:digital-directory";
 
@@ -143,7 +154,12 @@ export async function saveDigitalAsset(assetId: string | null, input: DigitalAss
     if (input.ownerPersonId && ownerChanged && (await personNamed(tx, input.ownerPersonId)).status === "offboarded") throw new ActionError("digital_person_inactive");
 
     const values = { ...input, updatedAt: now() };
-    const [after] = before ? await tx.update(schema.digitalAsset).set(values).where(eq(schema.digitalAsset.id, before.id)).returning() : await tx.insert(schema.digitalAsset).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = before
+      ? await tx.update(schema.digitalAsset).set(values).where(eq(schema.digitalAsset.id, before.id)).returning()
+      : await tx
+          .insert(schema.digitalAsset)
+          .values({ ...values, createdByPersonId: actorPersonId })
+          .returning();
 
     if (before && ownerChanged) await cancelOpenTasksOfContext(tx, { type: OWNER_CONTEXT, id: before.id });
     if (after.ownerPersonId && ownerChanged && after.ownerPersonId !== actorPersonId) {
@@ -160,7 +176,16 @@ export async function saveDigitalAsset(assetId: string | null, input: DigitalAss
         await tx
           .update(schema.task)
           .set({ status: "cancelled", updatedAt: now() })
-          .where(and(eq(schema.task.contextType, ACCESS_CONTEXT), inArray(schema.task.contextId, ended.map((row) => row.id)), inArray(schema.task.status, [...OPEN_TASK])));
+          .where(
+            and(
+              eq(schema.task.contextType, ACCESS_CONTEXT),
+              inArray(
+                schema.task.contextId,
+                ended.map((row) => row.id),
+              ),
+              inArray(schema.task.status, [...OPEN_TASK]),
+            ),
+          );
       }
     }
     return { before, after };
@@ -216,16 +241,35 @@ export async function grantDigitalAccess(input: GrantInput, actorPersonId: strin
     const granted = { level: input.level, method: input.method, expiresOn: input.expiresOn, status: "active" as AccessStatus, decidedByPersonId: actorPersonId, decidedAt: now(), updatedAt: now() };
 
     if (open?.status === "active") {
-      const [access] = await tx.update(schema.digitalAssetAccess).set({ ...granted, note: input.note ?? open.note }).where(eq(schema.digitalAssetAccess.id, open.id)).returning();
+      const [access] = await tx
+        .update(schema.digitalAssetAccess)
+        .set({ ...granted, note: input.note ?? open.note })
+        .where(eq(schema.digitalAssetAccess.id, open.id))
+        .returning();
       if (open.method === "shared_login" && input.method !== "shared_login") await flagRotation(tx, asset);
       return { access, asset, outcome: "changed" as const };
     }
     try {
       const [access] = open
-        ? await tx.update(schema.digitalAssetAccess).set({ ...granted, grantedAt: now() }).where(eq(schema.digitalAssetAccess.id, open.id)).returning()
-        : await tx.insert(schema.digitalAssetAccess).values({ digitalAssetId: input.assetId, personId: input.personId, ...granted, note: input.note, grantedAt: now() }).returning();
+        ? await tx
+            .update(schema.digitalAssetAccess)
+            .set({ ...granted, grantedAt: now() })
+            .where(eq(schema.digitalAssetAccess.id, open.id))
+            .returning()
+        : await tx
+            .insert(schema.digitalAssetAccess)
+            .values({ digitalAssetId: input.assetId, personId: input.personId, ...granted, note: input.note, grantedAt: now() })
+            .returning();
       if (input.personId !== actorPersonId) {
-        await notify({ recipients: [input.personId], kind: open ? "approvals.digital_access_decided" : "approvals.digital_access_granted", params: open ? { asset: asset.name, outcome: "approved" } : { asset: asset.name }, link: digitalAssetLink(asset.id) }, tx);
+        await notify(
+          {
+            recipients: [input.personId],
+            kind: open ? "approvals.digital_access_decided" : "approvals.digital_access_granted",
+            params: open ? { asset: asset.name, outcome: "approved" } : { asset: asset.name },
+            link: digitalAssetLink(asset.id),
+          },
+          tx,
+        );
       }
       return { access, asset, outcome: open ? ("approved" as const) : ("granted" as const) };
     } catch (error) {
@@ -568,7 +612,16 @@ export async function getDigitalAssetView(viewer: Principal, assetId: string): P
       waiting: canRun ? requested.length : 0,
       rotationDue: canRun && !!asset.rotationDueSince,
     },
-    secrets: canReadDigitalSecrets(viewer, asset) ? { loginIdentity: asset.loginIdentity, recoveryContact: asset.recoveryContact, credentialLocation: asset.credentialLocation, notes: asset.notes, rotationDueSince: asset.rotationDueSince, credentialsRotatedAt: asset.credentialsRotatedAt } : null,
+    secrets: canReadDigitalSecrets(viewer, asset)
+      ? {
+          loginIdentity: asset.loginIdentity,
+          recoveryContact: asset.recoveryContact,
+          credentialLocation: asset.credentialLocation,
+          notes: asset.notes,
+          rotationDueSince: asset.rotationDueSince,
+          credentialsRotatedAt: asset.credentialsRotatedAt,
+        }
+      : null,
     clientId: asset.clientId,
     access: active.map(view),
     requests: requested.filter((row) => canRun || row.access.personId === me).map(view),
@@ -583,7 +636,21 @@ export async function getDigitalAssetView(viewer: Principal, assetId: string): P
   };
 }
 
-export type PersonDigitalAccess = { accessId: string; assetId: string; name: string; platform: DigitalPlatform; kind: DigitalKind; handle: string | null; url: string | null; level: AccessLevel; method: AccessMethod; status: AccessStatus; grantedAt: Date | null; requestedAt: Date | null; expiresOn: string | null };
+export type PersonDigitalAccess = {
+  accessId: string;
+  assetId: string;
+  name: string;
+  platform: DigitalPlatform;
+  kind: DigitalKind;
+  handle: string | null;
+  url: string | null;
+  level: AccessLevel;
+  method: AccessMethod;
+  status: AccessStatus;
+  grantedAt: Date | null;
+  requestedAt: Date | null;
+  expiresOn: string | null;
+};
 
 /**
  * What one person can get into, and what they have asked for. Their own list, and their record
@@ -596,7 +663,21 @@ export async function listDigitalAccessOfPerson(personId: string, executor: Exec
     .innerJoin(schema.digitalAsset, eq(schema.digitalAsset.id, schema.digitalAssetAccess.digitalAssetId))
     .where(and(eq(schema.digitalAssetAccess.personId, personId), inArray(schema.digitalAssetAccess.status, [...ACCESS_OPEN])))
     .orderBy(asc(schema.digitalAsset.platform), asc(schema.digitalAsset.name));
-  return rows.map(({ access, asset }) => ({ accessId: access.id, assetId: asset.id, name: asset.name, platform: asset.platform, kind: asset.kind, handle: asset.handle, url: asset.url, level: access.level, method: access.method, status: access.status, grantedAt: access.grantedAt, requestedAt: access.requestedAt, expiresOn: access.expiresOn }));
+  return rows.map(({ access, asset }) => ({
+    accessId: access.id,
+    assetId: asset.id,
+    name: asset.name,
+    platform: asset.platform,
+    kind: asset.kind,
+    handle: asset.handle,
+    url: asset.url,
+    level: access.level,
+    method: access.method,
+    status: access.status,
+    grantedAt: access.grantedAt,
+    requestedAt: access.requestedAt,
+    expiresOn: access.expiresOn,
+  }));
 }
 
 /** The assets a person answers for, that are still running. */

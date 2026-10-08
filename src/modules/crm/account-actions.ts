@@ -51,7 +51,16 @@ const profileFields = {
 
 const createAccountPipeline = createAction({
   name: "crm.account.create",
-  input: z.object({ code: accountCode, name: z.string().trim().min(1).max(120), entityId: optional(z.uuid()), note: text(1000), ...profileFields, salesOwnerPersonId: optional(z.uuid()), accountManagerPersonId: optional(z.uuid()), confirmDuplicate: checkbox.default(false) }),
+  input: z.object({
+    code: accountCode,
+    name: z.string().trim().min(1).max(120),
+    entityId: optional(z.uuid()),
+    note: text(1000),
+    ...profileFields,
+    salesOwnerPersonId: optional(z.uuid()),
+    accountManagerPersonId: optional(z.uuid()),
+    confirmDuplicate: checkbox.default(false),
+  }),
   authorize: async (user, input) => canCreateAccount((await loadCrm(user)).viewer, input.entityId),
   run: async ({ user, input }) => {
     const { code, name, entityId, note, salesOwnerPersonId, accountManagerPersonId, confirmDuplicate, ...profile } = input;
@@ -101,7 +110,10 @@ const lifecyclePipeline = createAction({
   run: async ({ input }) => {
     const { before, after } = await setLifecycle(input.clientId, input.lifecycle === "auto" ? null : input.lifecycle);
     refresh(input.clientId);
-    return { data: { lifecycle: after.lifecycle }, audit: { resource: auditAccount(input.clientId), before: { lifecycle: before?.lifecycle, manual: before?.lifecycleManual }, after: { lifecycle: after.lifecycle, manual: after.lifecycleManual } } };
+    return {
+      data: { lifecycle: after.lifecycle },
+      audit: { resource: auditAccount(input.clientId), before: { lifecycle: before?.lifecycle, manual: before?.lifecycleManual }, after: { lifecycle: after.lifecycle, manual: after.lifecycleManual } },
+    };
   },
 });
 export async function setLifecycleAction(input: unknown) {

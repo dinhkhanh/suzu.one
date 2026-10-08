@@ -9,7 +9,21 @@ import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { baselineSlip, canRebaseline, lineLabel, linkedProgress, listPeriodOptions, listStructure, listTaskLinks, loadTaskSlips, type MilestoneBillingState, milestoneBilling, openLinesFirst, openProject, slipWords } from "@/modules/projects/service";
+import {
+  baselineSlip,
+  canRebaseline,
+  lineLabel,
+  linkedProgress,
+  listPeriodOptions,
+  listStructure,
+  listTaskLinks,
+  loadTaskSlips,
+  type MilestoneBillingState,
+  milestoneBilling,
+  openLinesFirst,
+  openProject,
+  slipWords,
+} from "@/modules/projects/service";
 import { LinkTaskForm, MilestoneForm, MilestoneTools, PhaseForm, RebaselineForm, RemovePhaseButton, UnlinkButton } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listAssignable } from "@/modules/work/service";
@@ -29,22 +43,46 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
   if (!context) notFound();
   const { project, team, plan, can } = context;
   const today = todayInVietnam();
-  const [t, format, structure, links, people, taskSlips, periods, billing] = await Promise.all([getTranslations("projects"), getFormatter(), listStructure(project.id), listTaskLinks(project.id), listAssignable(team.id, project.id), loadTaskSlips(project.id, today), listPeriodOptions(project.id), milestoneBilling(project.id)]);
+  const [t, format, structure, links, people, taskSlips, periods, billing] = await Promise.all([
+    getTranslations("projects"),
+    getFormatter(),
+    listStructure(project.id),
+    listTaskLinks(project.id),
+    listAssignable(team.id, project.id),
+    loadTaskSlips(project.id, today),
+    listPeriodOptions(project.id),
+    milestoneBilling(project.id),
+  ]);
   // A retainer promises the same lines every month: the month names which one a label means.
   const monthOf = new Map(periods.map((period) => [period.id, period.month]));
-  const lineChoices = openLinesFirst(structure.deliverables.filter((line) => !line.cancelledAt).map((line) => ({ id: line.id, title: line.title, quantity: line.quantity, month: line.retainerPeriodId ? (monthOf.get(line.retainerPeriodId) ?? null) : null })), today.slice(0, 7)).map((line) => ({ id: line.id, name: lineLabel(line) }));
+  const lineChoices = openLinesFirst(
+    structure.deliverables.filter((line) => !line.cancelledAt).map((line) => ({ id: line.id, title: line.title, quantity: line.quantity, month: line.retainerPeriodId ? (monthOf.get(line.retainerPeriodId) ?? null) : null })),
+    today.slice(0, 7),
+  ).map((line) => ({ id: line.id, name: lineLabel(line) }));
   // Where a billing milestone stands with finance — said, so that one which bills nothing yet does not look forgotten.
   const billingTone = (state: MilestoneBillingState) => (state === "invoiced" ? "success" : state === "ready" ? "info" : state === "waived" || state === "covered_by_project" ? "outline" : "warning");
   const mayRebaseline = canRebaseline(context.viewer, context.facts);
   const worstTask = taskSlips.summary.worst ? links.find((link) => link.taskId === taskSlips.summary.worst!.taskId) : null;
   const { phases, milestones, deliverables } = structure;
-  const slip = baselineSlip(plan.baseline, { startDate: project.startDate, dueDate: project.dueDate, budgetMinutes: plan.budgetMinutes, milestones: milestones.map((milestone) => ({ id: milestone.id, dueDate: milestone.dueDate, doneOn: milestone.doneAt ? todayInVietnam(milestone.doneAt) : null })) }, today);
+  const slip = baselineSlip(
+    plan.baseline,
+    {
+      startDate: project.startDate,
+      dueDate: project.dueDate,
+      budgetMinutes: plan.budgetMinutes,
+      milestones: milestones.map((milestone) => ({ id: milestone.id, dueDate: milestone.dueDate, doneOn: milestone.doneAt ? todayInVietnam(milestone.doneAt) : null })),
+    },
+    today,
+  );
   const slipOf = new Map(slip?.milestones.map((milestone) => [milestone.id, milestone.slipDays]) ?? []);
   const date = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
   const days = (value: number | null | undefined) => (value === null || value === undefined ? null : t("plan.slip", slipWords(value)));
   const phaseName = new Map(phases.map((phase) => [phase.id, phase.name]));
   const ownerName = new Map(people.map((person) => [person.id, person.fullName]));
-  const tasksOf = Map.groupBy(links.filter((link) => link.milestoneId), (link) => link.milestoneId!);
+  const tasksOf = Map.groupBy(
+    links.filter((link) => link.milestoneId),
+    (link) => link.milestoneId!,
+  );
   const unlinked = links.filter((link) => !link.milestoneId && !link.deliverableId && !link.phaseId);
 
   return (
@@ -59,19 +97,22 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
               <div>
                 <dt className="text-xs text-muted-foreground">{t("fields.startDate")}</dt>
                 <dd>
-                  {date(project.startDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.startDate) })})</span> {days(slip?.startSlipDays) ? <SlipBadge days={slip!.startSlipDays!} label={days(slip!.startSlipDays)!} /> : null}
+                  {date(project.startDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.startDate) })})</span>{" "}
+                  {days(slip?.startSlipDays) ? <SlipBadge days={slip!.startSlipDays!} label={days(slip!.startSlipDays)!} /> : null}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
                 <dd>
-                  {date(project.dueDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.dueDate) })})</span> {days(slip?.dueSlipDays) ? <SlipBadge days={slip!.dueSlipDays!} label={days(slip!.dueSlipDays)!} /> : null}
+                  {date(project.dueDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.dueDate) })})</span>{" "}
+                  {days(slip?.dueSlipDays) ? <SlipBadge days={slip!.dueSlipDays!} label={days(slip!.dueSlipDays)!} /> : null}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">{t("fields.budgetHours")}</dt>
                 <dd>
-                  {plan.budgetMinutes === null ? "—" : format.number(plan.budgetMinutes / 60, { maximumFractionDigits: 1 })} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: plan.baseline.budgetMinutes === null ? "—" : format.number(plan.baseline.budgetMinutes / 60, { maximumFractionDigits: 1 }) })})</span>
+                  {plan.budgetMinutes === null ? "—" : format.number(plan.budgetMinutes / 60, { maximumFractionDigits: 1 })}{" "}
+                  <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: plan.baseline.budgetMinutes === null ? "—" : format.number(plan.baseline.budgetMinutes / 60, { maximumFractionDigits: 1 }) })})</span>
                 </dd>
               </div>
             </dl>
@@ -80,9 +121,7 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
           )}
           {taskSlips.summary.compared > 0 ? (
             <div className="flex flex-col gap-1 border-t pt-2 text-sm">
-              <p>
-                {t("baseline.taskSummary", { compared: taskSlips.summary.compared, late: taskSlips.summary.late, early: taskSlips.summary.early, onTime: taskSlips.summary.onTime })}
-              </p>
+              <p>{t("baseline.taskSummary", { compared: taskSlips.summary.compared, late: taskSlips.summary.late, early: taskSlips.summary.early, onTime: taskSlips.summary.onTime })}</p>
               {taskSlips.summary.worst && worstTask ? (
                 <p className="text-xs text-muted-foreground">
                   {t("baseline.worst", { days: taskSlips.summary.worst.slipDays })}{" "}
@@ -150,7 +189,9 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                   {milestone.isClientFacing ? <Badge variant="outline">{t("fields.isClientFacing")}</Badge> : null}
                   {milestone.isBilling ? <Badge variant="outline">{t("fields.isBilling")}</Badge> : null}
                   {slipDays ? <SlipBadge days={slipDays} label={days(slipDays)!} /> : null}
-                  {can.seeFees && milestone.isBilling && milestone.billingAmountVnd !== null ? <span className="text-sm">{format.number(milestone.billingAmountVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span> : null}
+                  {can.seeFees && milestone.isBilling && milestone.billingAmountVnd !== null ? (
+                    <span className="text-sm">{format.number(milestone.billingAmountVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</span>
+                  ) : null}
                 </div>
                 {billing.get(milestone.id) ? (
                   <p className="flex flex-wrap items-center gap-2 text-xs">
@@ -167,11 +208,15 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                   {milestone.phaseId && phaseName.get(milestone.phaseId) ? `${phaseName.get(milestone.phaseId)} · ` : null}
                   {milestone.ownerPersonId && ownerName.get(milestone.ownerPersonId) ? (
                     <>
-                      <RecordLink kind="person" id={milestone.ownerPersonId}>{ownerName.get(milestone.ownerPersonId)}</RecordLink>
+                      <RecordLink kind="person" id={milestone.ownerPersonId}>
+                        {ownerName.get(milestone.ownerPersonId)}
+                      </RecordLink>
                       {" · "}
                     </>
                   ) : null}
-                  {[progress.total ? t("plan.progress", { done: progress.done, total: progress.total, percent: progress.percent ?? 0 }) : t("plan.noLinkedTasks"), lines.length ? t("plan.linesCount", { count: lines.length }) : null].filter(Boolean).join(" · ")}
+                  {[progress.total ? t("plan.progress", { done: progress.done, total: progress.total, percent: progress.percent ?? 0 }) : t("plan.noLinkedTasks"), lines.length ? t("plan.linesCount", { count: lines.length }) : null]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {own.length ? (
                   <ul className="flex flex-col gap-1 text-sm">
@@ -190,7 +235,23 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                   <details>
                     <summary className="cursor-pointer text-sm text-muted-foreground">{t("plan.edit")}</summary>
                     <div className="flex flex-col gap-2 pt-2">
-                      <MilestoneForm projectId={project.id} milestone={{ id: milestone.id, name: milestone.name, dueDate: milestone.dueDate, phaseId: milestone.phaseId, ownerPersonId: milestone.ownerPersonId, isClientFacing: milestone.isClientFacing, isBilling: milestone.isBilling, sortOrder: milestone.sortOrder, ...(can.seeFees ? { billingAmountVnd: milestone.billingAmountVnd } : {}) }} phases={phases.map(({ id, name }) => ({ id, name }))} people={people} showAmount={can.seeFees} />
+                      <MilestoneForm
+                        projectId={project.id}
+                        milestone={{
+                          id: milestone.id,
+                          name: milestone.name,
+                          dueDate: milestone.dueDate,
+                          phaseId: milestone.phaseId,
+                          ownerPersonId: milestone.ownerPersonId,
+                          isClientFacing: milestone.isClientFacing,
+                          isBilling: milestone.isBilling,
+                          sortOrder: milestone.sortOrder,
+                          ...(can.seeFees ? { billingAmountVnd: milestone.billingAmountVnd } : {}),
+                        }}
+                        phases={phases.map(({ id, name }) => ({ id, name }))}
+                        people={people}
+                        showAmount={can.seeFees}
+                      />
                       <MilestoneTools milestoneId={milestone.id} done={!!milestone.doneAt} />
                     </div>
                   </details>

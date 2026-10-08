@@ -75,14 +75,7 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
       {followUp && !followUp.gate.open ? (
         <FollowUpGateNote gate={followUp.gate} />
       ) : type.code === EXPENSE_CLAIM_CODE ? (
-        <ExpenseClaimForm
-          form={type.form}
-          today={todayInVietnam()}
-          submit={fileExpenseClaimAction}
-          extra={{ parentRequestId: parentRequestId ?? "" }}
-          initialValues={followUp?.values}
-          submitLabel={t("form.submit")}
-        />
+        <ExpenseClaimForm form={type.form} today={todayInVietnam()} submit={fileExpenseClaimAction} extra={{ parentRequestId: parentRequestId ?? "" }} initialValues={followUp?.values} submitLabel={t("form.submit")} />
       ) : (
         <RequestForm
           form={type.form}

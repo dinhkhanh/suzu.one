@@ -231,7 +231,10 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <Label htmlFor={`type-${index}`}>{t("fieldType")}</Label>
-                  <Select id={`type-${index}`} value={field.type} onChange={(event) => {
+                  <Select
+                    id={`type-${index}`}
+                    value={field.type}
+                    onChange={(event) => {
                       const next = event.target.value as FieldType;
                       patch(index, { type: next, multiple: allowsMultiple(next) ? field.multiple : undefined });
                     }}
@@ -326,9 +329,21 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                   </div>
                   {field.options.map((option, optionIndex) => (
                     <div key={optionIndex} className="grid gap-2 sm:grid-cols-4">
-                      <Input aria-label={t("optionValue")} value={option.value} onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, value: event.target.value } : entry)) })} />
-                      <Input aria-label={t("optionLabelVi")} value={option.labelVi} onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, labelVi: event.target.value } : entry)) })} />
-                      <Input aria-label={t("optionLabelEn")} value={option.labelEn} onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, labelEn: event.target.value } : entry)) })} />
+                      <Input
+                        aria-label={t("optionValue")}
+                        value={option.value}
+                        onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, value: event.target.value } : entry)) })}
+                      />
+                      <Input
+                        aria-label={t("optionLabelVi")}
+                        value={option.labelVi}
+                        onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, labelVi: event.target.value } : entry)) })}
+                      />
+                      <Input
+                        aria-label={t("optionLabelEn")}
+                        value={option.labelEn}
+                        onChange={(event) => patch(index, { options: field.options.map((entry, position) => (position === optionIndex ? { ...entry, labelEn: event.target.value } : entry)) })}
+                      />
                       <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => patch(index, { options: field.options.filter((_, position) => position !== optionIndex) })}>
                         {t("removeOption")}
                       </Button>

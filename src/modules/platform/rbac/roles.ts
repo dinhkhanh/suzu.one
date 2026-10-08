@@ -4,22 +4,7 @@
 export const TIERS = ["public_internal", "personal", "restricted", "compensation"] as const;
 export type Tier = (typeof TIERS)[number];
 
-export const ROLES = [
-  "owner",
-  "c_level",
-  "entity_director",
-  "hr_admin",
-  "hr_staff",
-  "payroll",
-  "finance",
-  "department_head",
-  "recruiter",
-  "asset_admin",
-  "auditor",
-  "support",
-  "sales",
-  "marketing",
-] as const;
+export const ROLES = ["owner", "c_level", "entity_director", "hr_admin", "hr_staff", "payroll", "finance", "department_head", "recruiter", "asset_admin", "auditor", "support", "sales", "marketing"] as const;
 export type Role = (typeof ROLES)[number];
 
 export type Permission =
@@ -132,10 +117,70 @@ type RoleDefinition = {
 
 export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   owner: { permissions: ["*"], maxTier: "compensation" },
-  c_level: { permissions: ["org:read", "person:read", "attendance:kiosk", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "compensation" },
-  entity_director: { permissions: ["org:read", "person:read", "attendance:kiosk", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "restricted" },
+  c_level: {
+    permissions: [
+      "org:read",
+      "person:read",
+      "attendance:kiosk",
+      "report:read",
+      "payroll:read",
+      "payroll:approve",
+      "work:manage",
+      "ops:read",
+      "performance:goals",
+      "performance:read",
+      "comms:manage",
+      "kb:manage_unit",
+      "pjm:commercial",
+      "pjm:cost",
+      "pjm:portfolio",
+      "crm:sell",
+      "crm:manage",
+      "feedback:read",
+    ],
+    maxTier: "compensation",
+  },
+  entity_director: {
+    permissions: [
+      "org:read",
+      "person:read",
+      "attendance:kiosk",
+      "report:read",
+      "work:manage",
+      "ops:read",
+      "performance:goals",
+      "performance:read",
+      "comms:manage",
+      "kb:manage_unit",
+      "pjm:commercial",
+      "pjm:portfolio",
+      "crm:sell",
+      "crm:manage",
+      "feedback:read",
+    ],
+    maxTier: "restricted",
+  },
   hr_admin: {
-    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "attendance:kiosk", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage", "feedback:manage"],
+    permissions: [
+      "org:read",
+      "org:manage",
+      "person:read",
+      "person:manage",
+      "attendance:manage",
+      "attendance:kiosk",
+      "leave:manage",
+      "payroll:read",
+      "payroll:propose",
+      "rules:propose",
+      "recruit:manage",
+      "report:read",
+      "audit:read",
+      "ops:manage",
+      "performance:manage",
+      "kb:manage",
+      "comms:manage",
+      "feedback:manage",
+    ],
     maxTier: "compensation",
   },
   hr_staff: {

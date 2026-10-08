@@ -70,7 +70,19 @@ export type InstanceListItem = {
   instanceId: string;
 };
 
-export type InstanceFilter = { open?: boolean; entityId?: string | null; dueFrom?: IsoDate; dueTo?: IsoDate; templateId?: string; authority?: string | null; category?: string | null; ownerId?: string | null; limit?: number; /** Only these entities (the viewer's reach still applies). */ entityIds?: readonly string[]; /** Closed, or due before this day — the archive. */ pastOrClosedOn?: IsoDate };
+export type InstanceFilter = {
+  open?: boolean;
+  entityId?: string | null;
+  dueFrom?: IsoDate;
+  dueTo?: IsoDate;
+  templateId?: string;
+  authority?: string | null;
+  category?: string | null;
+  ownerId?: string | null;
+  limit?: number;
+  /** Only these entities (the viewer's reach still applies). */ entityIds?: readonly string[];
+  /** Closed, or due before this day — the archive. */ pastOrClosedOn?: IsoDate;
+};
 
 /** The SQL list form of `canViewInstance`: the entities the viewer reads, plus what is theirs to do or review. */
 function visibleTo(viewer: { principal: Principal; personId: string }): SQL | undefined {
@@ -101,7 +113,13 @@ export async function listInstances(viewer: { principal: Principal; personId: st
 }
 
 /** One page of the register (PERF-03), in its order, and how many instances the filter names in all. */
-export function listInstancePage(viewer: { principal: Principal; personId: string }, filter: Omit<InstanceFilter, "limit">, page: number, pageSize: number, today: IsoDate = todayInVietnam()): Promise<{ items: InstanceListItem[]; total: number }> {
+export function listInstancePage(
+  viewer: { principal: Principal; personId: string },
+  filter: Omit<InstanceFilter, "limit">,
+  page: number,
+  pageSize: number,
+  today: IsoDate = todayInVietnam(),
+): Promise<{ items: InstanceListItem[]; total: number }> {
   return readInstances(viewer, { ...filter, limit: pageSize }, today, (Math.max(1, page) - 1) * pageSize);
 }
 
@@ -110,7 +128,16 @@ async function readInstances(viewer: { principal: Principal; personId: string },
   const subject = alias(schema.person, "subject");
   const completer = alias(schema.person, "completer");
   const rows = await db()
-    .select({ instance: schema.obligationInstance, task: schema.task, template: schema.obligationTemplate, entityCode: schema.entity.code, assigneeName: assignee.fullName, subjectName: subject.fullName, completedByName: completer.fullName, total: sql<number>`count(*) over ()`.mapWith(Number) })
+    .select({
+      instance: schema.obligationInstance,
+      task: schema.task,
+      template: schema.obligationTemplate,
+      entityCode: schema.entity.code,
+      assigneeName: assignee.fullName,
+      subjectName: subject.fullName,
+      completedByName: completer.fullName,
+      total: sql<number>`count(*) over ()`.mapWith(Number),
+    })
     .from(schema.obligationInstance)
     .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
     .innerJoin(schema.obligationTemplate, eq(schema.obligationTemplate.id, schema.obligationInstance.templateId))
@@ -124,36 +151,39 @@ async function readInstances(viewer: { principal: Principal; personId: string },
     .limit(filter.limit ?? 500)
     .offset(offset);
   const sentKeys = await sentKeysOf(rows.filter((row) => row.task.status === "todo" || row.task.status === "in_progress").map((row) => row.instance.id));
-  return { total: rows[0]?.total ?? 0, items: rows.map(({ instance, task, template, entityCode, assigneeName, subjectName, completedByName }) => ({
-    taskId: task.id,
-    title: task.title,
-    templateId: template.id,
-    templateCode: template.code,
-    templateName: template.name,
-    category: template.category,
-    authority: template.authority,
-    unreviewed: template.reviewStatus !== "reviewed",
-    entityId: instance.entityId,
-    entityCode,
-    periodKey: instance.periodKey,
-    dueDate: task.dueDate,
-    nominalDueDate: instance.nominalDueDate,
-    status: task.status,
-    colour: statusColour({ status: task.status, dueDate: task.dueDate, completedLate: instance.completedLate }, today),
-    assigneePersonId: task.assigneePersonId,
-    assigneeName,
-    subjectPersonId: task.subjectPersonId,
-    subjectName,
-    completedAt: task.completedAt,
-    completedLate: instance.completedLate,
-    completedByPersonId: task.completedByPersonId,
-    completedByName,
-    referenceNumber: instance.referenceNumber,
-    submittedDate: instance.submittedDate,
-    amountPaid: instance.amountPaid,
-    escalationLevel: escalationLevel(sentKeys.get(instance.id) ?? []),
-    instanceId: instance.id,
-  })) };
+  return {
+    total: rows[0]?.total ?? 0,
+    items: rows.map(({ instance, task, template, entityCode, assigneeName, subjectName, completedByName }) => ({
+      taskId: task.id,
+      title: task.title,
+      templateId: template.id,
+      templateCode: template.code,
+      templateName: template.name,
+      category: template.category,
+      authority: template.authority,
+      unreviewed: template.reviewStatus !== "reviewed",
+      entityId: instance.entityId,
+      entityCode,
+      periodKey: instance.periodKey,
+      dueDate: task.dueDate,
+      nominalDueDate: instance.nominalDueDate,
+      status: task.status,
+      colour: statusColour({ status: task.status, dueDate: task.dueDate, completedLate: instance.completedLate }, today),
+      assigneePersonId: task.assigneePersonId,
+      assigneeName,
+      subjectPersonId: task.subjectPersonId,
+      subjectName,
+      completedAt: task.completedAt,
+      completedLate: instance.completedLate,
+      completedByPersonId: task.completedByPersonId,
+      completedByName,
+      referenceNumber: instance.referenceNumber,
+      submittedDate: instance.submittedDate,
+      amountPaid: instance.amountPaid,
+      escalationLevel: escalationLevel(sentKeys.get(instance.id) ?? []),
+      instanceId: instance.id,
+    })),
+  };
 }
 
 export type DueFigures = { overdue: number; dueSoon: number; worst: { entityCode: string; templateName: string; dueDate: IsoDate; assigneeName: string | null }[] };
@@ -209,7 +239,11 @@ export async function saveProgress(taskId: string, input: EvidenceInput, today: 
     if (input.submittedDate && input.submittedDate > today) throw new ActionError("obligation_submitted_in_future");
     // Only the template's own steps: a stale form cannot invent one.
     const checklistState = Object.fromEntries(loaded.template.checklist.map((_, index) => [String(index), !!input.checklistState[String(index)]]));
-    const [after] = await tx.update(schema.obligationInstance).set({ referenceNumber: input.referenceNumber, submittedDate: input.submittedDate, amountPaid: input.amountPaid, note: input.note, checklistState, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, loaded.instance.id)).returning();
+    const [after] = await tx
+      .update(schema.obligationInstance)
+      .set({ referenceNumber: input.referenceNumber, submittedDate: input.submittedDate, amountPaid: input.amountPaid, note: input.note, checklistState, updatedAt: new Date() })
+      .where(eq(schema.obligationInstance.id, loaded.instance.id))
+      .returning();
     if (loaded.task.status === "todo") await tx.update(schema.task).set({ status: "in_progress", updatedAt: new Date() }).where(eq(schema.task.id, taskId));
     return { before: evidenceOf(loaded.instance), after };
   });
@@ -235,7 +269,11 @@ export async function completeInstance(taskId: string, actorPersonId: string, to
   if (missing.evidence.length || missing.checklist.length) throw new ActionError("obligation_evidence_missing", missing);
   const completedLate = isCompletedLate(loaded.task.dueDate, today, loaded.instance.submittedDate);
   await db().transaction(async (tx) => {
-    const [moved] = await tx.update(schema.task).set({ status: "done", completedAt: new Date(), completedByPersonId: actorPersonId, updatedAt: new Date() }).where(and(eq(schema.task.id, taskId), inArray(schema.task.status, ["todo", "in_progress"]))).returning({ id: schema.task.id });
+    const [moved] = await tx
+      .update(schema.task)
+      .set({ status: "done", completedAt: new Date(), completedByPersonId: actorPersonId, updatedAt: new Date() })
+      .where(and(eq(schema.task.id, taskId), inArray(schema.task.status, ["todo", "in_progress"])))
+      .returning({ id: schema.task.id });
     if (!moved) throw new ActionError("obligation_closed");
     await tx.update(schema.obligationInstance).set({ completedLate, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, loaded.instance.id));
   });
@@ -260,7 +298,10 @@ export async function cancelInstance(taskId: string, reason: string): Promise<Lo
     if (!loaded) throw new ActionError("obligation_not_found");
     requireOpen(loaded);
     await tx.update(schema.task).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.task.id, taskId));
-    await tx.update(schema.obligationInstance).set({ note: [loaded.instance.note, reason].filter(Boolean).join("\n\n"), updatedAt: new Date() }).where(eq(schema.obligationInstance.id, loaded.instance.id));
+    await tx
+      .update(schema.obligationInstance)
+      .set({ note: [loaded.instance.note, reason].filter(Boolean).join("\n\n"), updatedAt: new Date() })
+      .where(eq(schema.obligationInstance.id, loaded.instance.id));
     return loaded;
   });
 }
@@ -296,10 +337,19 @@ export async function personNamesOf(personIds: readonly (string | null | undefin
 export const listEvidenceFiles = (instanceId: string) => listFilesOf(OBLIGATION_FILE_OWNER, instanceId);
 
 /** Receipts and filed returns are company papers, not personal data: the ops policy, not a sensitivity tier, decides who opens them. */
-export const beginEvidenceUpload = (loaded: LoadedInstance, file: { fileName: string; sizeBytes: number }, actor: Actor) => beginUpload({ ownerType: OBLIGATION_FILE_OWNER, ownerId: loaded.instance.id, entityId: loaded.instance.entityId, tier: "public_internal" }, file, actor);
+export const beginEvidenceUpload = (loaded: LoadedInstance, file: { fileName: string; sizeBytes: number }, actor: Actor) =>
+  beginUpload({ ownerType: OBLIGATION_FILE_OWNER, ownerId: loaded.instance.id, entityId: loaded.instance.entityId, tier: "public_internal" }, file, actor);
 
 export async function findEvidenceFile(fileId: string, options: { pending?: boolean } = {}): Promise<{ file: StoredFileRow; loaded: LoadedInstance } | undefined> {
-  const file = options.pending ? (await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending"))).limit(1))[0] : await findFile(fileId);
+  const file = options.pending
+    ? (
+        await db()
+          .select()
+          .from(schema.storedFile)
+          .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending")))
+          .limit(1)
+      )[0]
+    : await findFile(fileId);
   if (!file || file.ownerType !== OBLIGATION_FILE_OWNER) return undefined;
   const [instance] = await db().select({ taskId: schema.obligationInstance.taskId }).from(schema.obligationInstance).where(eq(schema.obligationInstance.id, file.ownerId)).limit(1);
   const loaded = instance ? await loadInstance(instance.taskId) : undefined;

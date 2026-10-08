@@ -99,13 +99,17 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
                   {row.name ? <span className="ml-2 text-xs text-muted-foreground">{row.name}</span> : null}
                 </TableCell>
                 <TableCell>
-                  <RecordLink kind="entity" id={row.entityId}>{row.entityCode}</RecordLink>
+                  <RecordLink kind="entity" id={row.entityId}>
+                    {row.entityCode}
+                  </RecordLink>
                 </TableCell>
                 <TableCell>
                   <Badge variant={row.kind === "off_cycle" ? "outline" : "secondary"}>{t(`runs.kinds.${row.kind}`)}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{t(`runs.statuses.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`runs.statuses.${row.status}`)}
+                  </Badge>
                   {row.calcState === "running" || row.calcState === "queued" ? <span className="ml-2 text-xs text-muted-foreground">{t("runs.calculating")}</span> : null}
                   {row.calcState === "failed" ? <span className="ml-2 text-xs text-destructive">{t("runs.calcFailed")}</span> : null}
                 </TableCell>

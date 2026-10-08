@@ -15,7 +15,10 @@ describe("change requests (FR-PJM-11)", () => {
   it("asks for the commercial step only when the fee moves", () => {
     expect(hasFeeChange({ minutesDelta: 600 })).toBe(false);
     expect(hasFeeChange({ feeDeltaVnd: 5_000_000 })).toBe(true);
-    expect(withoutFee({ feeDeltaVnd: 5_000_000, minutesDelta: 60, applied: { budgetMinutesBefore: 10, feeVndBefore: 90, dueDateBefore: null } })).toEqual({ minutesDelta: 60, applied: { budgetMinutesBefore: 10, feeVndBefore: null, dueDateBefore: null } });
+    expect(withoutFee({ feeDeltaVnd: 5_000_000, minutesDelta: 60, applied: { budgetMinutesBefore: 10, feeVndBefore: 90, dueDateBefore: null } })).toEqual({
+      minutesDelta: 60,
+      applied: { budgetMinutesBefore: 10, feeVndBefore: null, dueDateBefore: null },
+    });
   });
 
   it("counts a retainer's monthly scope as an impact, and its monthly fee as a fee change", () => {
@@ -26,10 +29,12 @@ describe("change requests (FR-PJM-11)", () => {
     expect(hasFeeChange({ retainer: { lines } })).toBe(false);
     expect(hasFeeChange({ retainer: { feePerMonthVnd: 40_000_000 } })).toBe(true);
     // A reader without `pjm:commercial` sees the quota move, never the fee — the one asked for or the one replaced.
-    expect(withoutFee({ retainer: { lines, feePerMonthVnd: 40_000_000 }, applied: { budgetMinutesBefore: null, feeVndBefore: null, dueDateBefore: null, retainer: { lines: [], minutesPerMonth: 600, feePerMonthVnd: 30_000_000 } } })).toEqual({
-      retainer: { lines },
-      applied: { budgetMinutesBefore: null, feeVndBefore: null, dueDateBefore: null, retainer: { lines: [], minutesPerMonth: 600, feePerMonthVnd: null } },
-    });
+    expect(withoutFee({ retainer: { lines, feePerMonthVnd: 40_000_000 }, applied: { budgetMinutesBefore: null, feeVndBefore: null, dueDateBefore: null, retainer: { lines: [], minutesPerMonth: 600, feePerMonthVnd: 30_000_000 } } })).toEqual(
+      {
+        retainer: { lines },
+        applied: { budgetMinutesBefore: null, feeVndBefore: null, dueDateBefore: null, retainer: { lines: [], minutesPerMonth: 600, feePerMonthVnd: null } },
+      },
+    );
   });
 
   it("applies hours, fee and date, never below zero", () => {
@@ -64,7 +69,10 @@ describe("change requests (FR-PJM-11)", () => {
       { number: 2, title: "Lùi ngày", impact: { minutesDelta: 600, feeDeltaVnd: 5_000_000, dueDateTo: "2026-12-20", applied: { budgetMinutesBefore: 7200, feeVndBefore: 120_000_000, dueDateBefore: "2026-11-30" } } },
     ]);
     expect(ledger.original).toEqual(original);
-    expect(ledger.steps.map((step) => [step.kind, step.after])).toEqual([["change", afterFirst], ["change", current]]);
+    expect(ledger.steps.map((step) => [step.kind, step.after])).toEqual([
+      ["change", afterFirst],
+      ["change", current],
+    ]);
     expect(ledger.balanced).toBe(true);
   });
 

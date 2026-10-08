@@ -84,13 +84,22 @@ export default async function SchedulesSettingsPage() {
             {assignments.length === 0 ? <TableEmpty>{t("assignments.empty")}</TableEmpty> : null}
             {assignments.map((row) => {
               const state = row.validTo && row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
-              const entity = <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>;
+              const entity = (
+                <RecordLink kind="entity" id={row.entityId}>
+                  {row.entityName}
+                </RecordLink>
+              );
               const who =
                 row.scope === "person" ? (
-                  <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.personName}
+                  </RecordLink>
                 ) : row.scope === "department" ? (
                   <>
-                    <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> · {row.entityName ? entity : t("everyEntity")}
+                    <RecordLink kind="unit" id={row.departmentId}>
+                      {row.departmentName}
+                    </RecordLink>{" "}
+                    · {row.entityName ? entity : t("everyEntity")}
                   </>
                 ) : (
                   entity
@@ -110,7 +119,11 @@ export default async function SchedulesSettingsPage() {
                   <TableCell>
                     <Badge variant="outline">{t(`assignments.state.${state}`)}</Badge>
                   </TableCell>
-                  <TableCell kind="actions">{canAssignSchedule(user.principal, { ...row, unitPath: (row.departmentId ? unitPaths.get(row.departmentId) : null) ?? [] }, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}</TableCell>
+                  <TableCell kind="actions">
+                    {canAssignSchedule(user.principal, { ...row, unitPath: (row.departmentId ? unitPaths.get(row.departmentId) : null) ?? [] }, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? (
+                      <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} />
+                    ) : null}
+                  </TableCell>
                 </TableRow>
               );
             })}

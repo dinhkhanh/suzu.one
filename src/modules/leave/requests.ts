@@ -80,9 +80,24 @@ async function teamConflicts(executor: Executor, person: EmploymentFacts, dates:
   const group = await executor
     .select({ id: schema.person.id, fullName: schema.person.fullName })
     .from(schema.person)
-    .where(and(eq(schema.person.status, "active"), ne(schema.person.id, person.personId), person.teamId ? eq(schema.person.teamId, person.teamId) : and(eq(schema.person.departmentId, person.departmentId!), person.entityId ? eq(schema.person.primaryEntityId, person.entityId) : undefined)));
+    .where(
+      and(
+        eq(schema.person.status, "active"),
+        ne(schema.person.id, person.personId),
+        person.teamId ? eq(schema.person.teamId, person.teamId) : and(eq(schema.person.departmentId, person.departmentId!), person.entityId ? eq(schema.person.primaryEntityId, person.entityId) : undefined),
+      ),
+    );
   if (group.length === 0) return { colleaguesAway: [], shortfalls: [] };
-  const [away, rules] = await Promise.all([leaveDayRows(executor, group.map((row) => row.id), dates[0], dates.at(-1)!, { includePending: true }), staffingRuleRows(options.configFrom)]);
+  const [away, rules] = await Promise.all([
+    leaveDayRows(
+      executor,
+      group.map((row) => row.id),
+      dates[0],
+      dates.at(-1)!,
+      { includePending: true },
+    ),
+    staffingRuleRows(options.configFrom),
+  ]);
   const wanted = new Set(dates);
   const onDates = away.filter((row) => wanted.has(row.date) && row.portion !== "hours");
   const datesOf = new Map<string, IsoDate[]>();
@@ -114,7 +129,11 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
     datesValid ? Promise.all(years.map((year) => getBalances([personId], year, configFrom))) : null,
     datesValid ? leaveDayRows(executor, [personId], input.startDate, input.endDate, { includePending: true }) : null,
     datesValid && options.ignoreRequestId
-      ? executor.select().from(schema.leaveRequestDay).innerJoin(schema.leaveRequest, eq(schema.leaveRequest.id, schema.leaveRequestDay.requestId)).where(and(eq(schema.leaveRequestDay.requestId, options.ignoreRequestId), eq(schema.leaveRequest.leaveTypeId, input.leaveTypeId)))
+      ? executor
+          .select()
+          .from(schema.leaveRequestDay)
+          .innerJoin(schema.leaveRequest, eq(schema.leaveRequest.id, schema.leaveRequestDay.requestId))
+          .where(and(eq(schema.leaveRequestDay.requestId, options.ignoreRequestId), eq(schema.leaveRequest.leaveTypeId, input.leaveTypeId)))
       : null,
     datesValid ? listPolicies([input.leaveTypeId], configFrom) : null,
   ]);
@@ -139,7 +158,12 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
   // this year's months still to come, next year's grant and what this year will carry into it (LVE-01).
   const [ahead, conflicts] = await Promise.all([
     bookingAheadFor(executor, person, type, { ignoreRequestId: options.ignoreRequestId, configFrom }),
-    teamConflicts(executor, person, counted.days.map((day) => day.date), { namePending: !!options.filedByHr, configFrom }),
+    teamConflicts(
+      executor,
+      person,
+      counted.days.map((day) => day.date),
+      { namePending: !!options.filedByHr, configFrom },
+    ),
   ]);
   for (const [year, asOf] of lastDayByYear(counted.days)) if (year in availableByYear) availableByYear[year] += ahead(year, asOf);
 
@@ -152,7 +176,9 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
       seniorityDate: person.seniorityDate,
       employmentStart: person.startDate,
       employmentEnd: person.endDate,
-      onProbationAtStart: person.workforceType === "probation" || (!!person.startDate && isOnProbation({ startDate: person.startDate, seniorityDate: person.seniorityDate ?? person.startDate, endDate: person.endDate, probation: person.probation }, input.startDate)),
+      onProbationAtStart:
+        person.workforceType === "probation" ||
+        (!!person.startDate && isOnProbation({ startDate: person.startDate, seniorityDate: person.seniorityDate ?? person.startDate, endDate: person.endDate, probation: person.probation }, input.startDate)),
     },
     filedOn: todayInVietnam(),
     filedByHr: !!options.filedByHr,
@@ -186,11 +212,21 @@ async function checkAttachment(executor: Executor, fileId: string | null, person
 
 /** The uploader's own leave attachment that still waits for its check — what the "complete" action may touch. */
 export async function isPendingLeaveAttachment(fileId: string, uploaderPersonId: string): Promise<boolean> {
-  const [file] = await db().select({ id: schema.storedFile.id }).from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, "leave_attachment"), eq(schema.storedFile.uploadedByPersonId, uploaderPersonId), eq(schema.storedFile.status, "pending"))).limit(1);
+  const [file] = await db()
+    .select({ id: schema.storedFile.id })
+    .from(schema.storedFile)
+    .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, "leave_attachment"), eq(schema.storedFile.uploadedByPersonId, uploaderPersonId), eq(schema.storedFile.status, "pending")))
+    .limit(1);
   return !!file;
 }
 
-async function submitInTransaction(tx: Tx, personId: string, input: LeaveInput, actor: { personId: string; isHr: boolean }, amendsRequestId: string | null): Promise<{ leaveRequest: LeaveRequestRow; approvalRequestId: string; outcome: string; conflicts: TeamConflicts }> {
+async function submitInTransaction(
+  tx: Tx,
+  personId: string,
+  input: LeaveInput,
+  actor: { personId: string; isHr: boolean },
+  amendsRequestId: string | null,
+): Promise<{ leaveRequest: LeaveRequestRow; approvalRequestId: string; outcome: string; conflicts: TeamConflicts }> {
   await syncWithdrawn(tx, personId);
   const person = await facts(tx, personId);
   if (!person.entityId) throw new ActionError("no_employment");
@@ -201,7 +237,21 @@ async function submitInTransaction(tx: Tx, personId: string, input: LeaveInput, 
 
   const [leaveRequest] = await tx
     .insert(schema.leaveRequest)
-    .values({ personId, entityId: person.entityId, leaveTypeId: type.id, startDate: input.startDate, endDate: input.endDate, startPortion: input.startPortion, endPortion: counted.days.length === 1 || input.startDate === input.endDate ? input.startPortion : input.endPortion, minutes: input.startPortion === "hours" ? input.minutes : null, totalCenti: counted.totalCenti, reason: input.reason, attachmentFileId: input.attachmentFileId, amendsRequestId, filedByPersonId: actor.personId })
+    .values({
+      personId,
+      entityId: person.entityId,
+      leaveTypeId: type.id,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      startPortion: input.startPortion,
+      endPortion: counted.days.length === 1 || input.startDate === input.endDate ? input.startPortion : input.endPortion,
+      minutes: input.startPortion === "hours" ? input.minutes : null,
+      totalCenti: counted.totalCenti,
+      reason: input.reason,
+      attachmentFileId: input.attachmentFileId,
+      amendsRequestId,
+      filedByPersonId: actor.personId,
+    })
     .returning();
   await tx.insert(schema.leaveRequestDay).values(counted.days.map((day) => ({ requestId: leaveRequest.id, personId, date: day.date, portion: day.portion, amountCenti: day.amountCenti, minutes: day.minutes })));
 
@@ -258,11 +308,24 @@ async function applyApproval(tx: Tx, request: LeaveRequestRow, actorPersonId: st
     for (const [year, amount] of byYear) {
       // The balance may have moved since the request was filed.
       if ((await balanceOf(tx, request.personId, type.id, year)) + ahead(year, lastDays.get(year)!) + (policy?.allowNegativeCenti ?? 0) < amount) throw new ActionError("leave_balance_insufficient");
-      await postEntry(tx, { personId: request.personId, entityId: request.entityId, leaveTypeId: type.id, leaveYear: year, kind: "use", amountCenti: -amount, effectiveDate: days.filter((day) => day.date.startsWith(String(year)))[0].date, sourceKey: `use:${request.id}:${year}`, requestId: request.id, reason: `${formatDay(request.startDate)} – ${formatDay(request.endDate)}`, createdByPersonId: actorPersonId });
+      await postEntry(tx, {
+        personId: request.personId,
+        entityId: request.entityId,
+        leaveTypeId: type.id,
+        leaveYear: year,
+        kind: "use",
+        amountCenti: -amount,
+        effectiveDate: days.filter((day) => day.date.startsWith(String(year)))[0].date,
+        sourceKey: `use:${request.id}:${year}`,
+        requestId: request.id,
+        reason: `${formatDay(request.startDate)} – ${formatDay(request.endDate)}`,
+        createdByPersonId: actorPersonId,
+      });
     }
   }
   let lifecycleEventId: string | null = null;
-  if (type.isLongTerm) lifecycleEventId = (await recordLongLeave(tx, { personId: request.personId, from: request.startDate, to: request.endDate, leaveTypeName: type.name, approvalRequestId: request.approvalRequestId }, actorPersonId))?.eventId ?? null;
+  if (type.isLongTerm)
+    lifecycleEventId = (await recordLongLeave(tx, { personId: request.personId, from: request.startDate, to: request.endDate, leaveTypeName: type.name, approvalRequestId: request.approvalRequestId }, actorPersonId))?.eventId ?? null;
   const [after] = await tx.update(schema.leaveRequest).set({ status: "approved", decidedAt: new Date(), lifecycleEventId, updatedAt: new Date() }).where(eq(schema.leaveRequest.id, request.id)).returning();
   await requestTimesheetRecompute([request.personId], request.startDate, request.endDate, tx);
   return after;
@@ -301,10 +364,17 @@ async function cancelInTransaction(tx: Tx, leaveRequestId: string, actor: { pers
     // The engine lets only the requester withdraw; HR ends someone else's pending request by cancelling it outright.
     if (approval.requesterPersonId === actor.personId) await withdrawRequest(tx, before.approvalRequestId, actor.personId);
     else if (actor.isHr) {
-      await tx.update(schema.approvalRequest).set({ status: "cancelled", decidedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.approvalRequest.id, before.approvalRequestId), inArray(schema.approvalRequest.status, ["pending", "returned"])));
+      await tx
+        .update(schema.approvalRequest)
+        .set({ status: "cancelled", decidedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(schema.approvalRequest.id, before.approvalRequestId), inArray(schema.approvalRequest.status, ["pending", "returned"])));
       await tx.insert(schema.approvalEvent).values({ requestId: before.approvalRequestId, type: "cancelled", actorPersonId: actor.personId, stepIndex: approval.currentStep, comment: reason });
     } else throw new ActionError("leave_cancel_not_allowed");
-    const [after] = await tx.update(schema.leaveRequest).set({ status: approval.requesterPersonId === actor.personId ? "withdrawn" : "cancelled", cancelledByPersonId: actor.personId, cancelReason: reason, updatedAt: new Date() }).where(eq(schema.leaveRequest.id, before.id)).returning();
+    const [after] = await tx
+      .update(schema.leaveRequest)
+      .set({ status: approval.requesterPersonId === actor.personId ? "withdrawn" : "cancelled", cancelledByPersonId: actor.personId, cancelReason: reason, updatedAt: new Date() })
+      .where(eq(schema.leaveRequest.id, before.id))
+      .returning();
     return { before, after };
   }
 
@@ -312,9 +382,24 @@ async function cancelInTransaction(tx: Tx, leaveRequestId: string, actor: { pers
   await refuseLockedMonths(tx, before.entityId, before.id);
   const started = before.startDate <= todayInVietnam();
   if (!actor.isHr && (!own || started)) throw new ActionError(started ? "leave_cancel_started" : "leave_cancel_not_allowed");
-  const uses = await tx.select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.requestId, before.id), eq(schema.leaveLedgerEntry.kind, "use")));
+  const uses = await tx
+    .select()
+    .from(schema.leaveLedgerEntry)
+    .where(and(eq(schema.leaveLedgerEntry.requestId, before.id), eq(schema.leaveLedgerEntry.kind, "use")));
   for (const use of uses) {
-    await postEntry(tx, { personId: use.personId, entityId: use.entityId, leaveTypeId: use.leaveTypeId, leaveYear: use.leaveYear, kind: "refund", amountCenti: -use.amountCenti, effectiveDate: use.effectiveDate, sourceKey: `refund:${before.id}:${use.leaveYear}`, requestId: before.id, reason: reason ?? "Huỷ đơn nghỉ phép", createdByPersonId: actor.personId });
+    await postEntry(tx, {
+      personId: use.personId,
+      entityId: use.entityId,
+      leaveTypeId: use.leaveTypeId,
+      leaveYear: use.leaveYear,
+      kind: "refund",
+      amountCenti: -use.amountCenti,
+      effectiveDate: use.effectiveDate,
+      sourceKey: `refund:${before.id}:${use.leaveYear}`,
+      requestId: before.id,
+      reason: reason ?? "Huỷ đơn nghỉ phép",
+      createdByPersonId: actor.personId,
+    });
   }
   if (before.lifecycleEventId) await cancelLongLeave(tx, before.lifecycleEventId);
   const [after] = await tx.update(schema.leaveRequest).set({ status: "cancelled", cancelledByPersonId: actor.personId, cancelReason: reason, updatedAt: new Date() }).where(eq(schema.leaveRequest.id, before.id)).returning();
@@ -350,23 +435,70 @@ async function leaveDayRows(executor: Executor, personIds: readonly string[], fr
     .from(schema.leaveRequestDay)
     .innerJoin(schema.leaveRequest, eq(schema.leaveRequest.id, schema.leaveRequestDay.requestId))
     .leftJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.leaveRequest.approvalRequestId))
-    .where(and(inArray(schema.leaveRequestDay.personId, [...personIds]), gte(schema.leaveRequestDay.date, from), lte(schema.leaveRequestDay.date, to), inArray(schema.leaveRequest.status, options.includePending ? ["approved", "pending"] : ["approved"])));
+    .where(
+      and(
+        inArray(schema.leaveRequestDay.personId, [...personIds]),
+        gte(schema.leaveRequestDay.date, from),
+        lte(schema.leaveRequestDay.date, to),
+        inArray(schema.leaveRequest.status, options.includePending ? ["approved", "pending"] : ["approved"]),
+      ),
+    );
   return rows
     .filter((row) => row.status === "approved" || row.approvalStatus === "pending" || row.approvalStatus === "returned")
-    .map((row) => ({ requestId: row.day.requestId, personId: row.day.personId, date: row.day.date, portion: row.day.portion, amountCenti: row.day.amountCenti, minutes: row.day.minutes, leaveTypeId: row.leaveTypeId, status: row.status as "pending" | "approved" }));
+    .map((row) => ({
+      requestId: row.day.requestId,
+      personId: row.day.personId,
+      date: row.day.date,
+      portion: row.day.portion,
+      amountCenti: row.day.amountCenti,
+      minutes: row.day.minutes,
+      leaveTypeId: row.leaveTypeId,
+      status: row.status as "pending" | "approved",
+    }));
 }
 
-export type LeaveOnDay = { personId: string; date: IsoDate; portion: Portion; amountCenti: number; minutes: number | null; leaveTypeId: string; typeCode: string; category: LeaveTypeRow["category"]; isPaid: boolean; payrollTreatment: LeaveTypeRow["payrollTreatment"]; requestId: string };
+export type LeaveOnDay = {
+  personId: string;
+  date: IsoDate;
+  portion: Portion;
+  amountCenti: number;
+  minutes: number | null;
+  leaveTypeId: string;
+  typeCode: string;
+  category: LeaveTypeRow["category"];
+  isPaid: boolean;
+  payrollTreatment: LeaveTypeRow["payrollTreatment"];
+  requestId: string;
+};
 
 /** Approved leave on the given days — what the timesheet engine and payroll read. */
 export async function getLeaveOnDays(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<LeaveOnDay[]> {
   const rows = await leaveDayRows(executor, personIds, from, to, { includePending: false });
   if (rows.length === 0) return [];
-  const types = new Map((await executor.select().from(schema.leaveType).where(inArray(schema.leaveType.id, [...new Set(rows.map((row) => row.leaveTypeId))]))).map((type) => [type.id, type]));
+  const types = new Map(
+    (
+      await executor
+        .select()
+        .from(schema.leaveType)
+        .where(inArray(schema.leaveType.id, [...new Set(rows.map((row) => row.leaveTypeId))]))
+    ).map((type) => [type.id, type]),
+  );
   return rows
     .map((row) => {
       const type = types.get(row.leaveTypeId)!;
-      return { personId: row.personId, date: row.date, portion: row.portion, amountCenti: row.amountCenti, minutes: row.minutes, leaveTypeId: type.id, typeCode: type.code, category: type.category, isPaid: type.isPaid, payrollTreatment: type.payrollTreatment, requestId: row.requestId };
+      return {
+        personId: row.personId,
+        date: row.date,
+        portion: row.portion,
+        amountCenti: row.amountCenti,
+        minutes: row.minutes,
+        leaveTypeId: type.id,
+        typeCode: type.code,
+        category: type.category,
+        isPaid: type.isPaid,
+        payrollTreatment: type.payrollTreatment,
+        requestId: row.requestId,
+      };
     })
     .sort((a, b) => (a.date === b.date ? a.personId.localeCompare(b.personId) : a.date.localeCompare(b.date)));
 }
@@ -375,7 +507,15 @@ export type LeaveUsage = { personId: string; leaveTypeId: string; typeCode: stri
 
 /** Approved leave taken in a period, per person and type, with how payroll treats it. Scope: some people, or a whole entity. */
 export async function getLeaveUsage(scope: { personIds: readonly string[] } | { entityId: string }, from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<LeaveUsage[]> {
-  const personIds = "personIds" in scope ? scope.personIds : (await executor.selectDistinct({ personId: schema.leaveRequest.personId }).from(schema.leaveRequest).where(and(eq(schema.leaveRequest.entityId, scope.entityId), eq(schema.leaveRequest.status, "approved"), lte(schema.leaveRequest.startDate, to), gte(schema.leaveRequest.endDate, from)))).map((row) => row.personId);
+  const personIds =
+    "personIds" in scope
+      ? scope.personIds
+      : (
+          await executor
+            .selectDistinct({ personId: schema.leaveRequest.personId })
+            .from(schema.leaveRequest)
+            .where(and(eq(schema.leaveRequest.entityId, scope.entityId), eq(schema.leaveRequest.status, "approved"), lte(schema.leaveRequest.startDate, to), gte(schema.leaveRequest.endDate, from)))
+        ).map((row) => row.personId);
   const usage = new Map<string, LeaveUsage>();
   for (const day of await getLeaveOnDays(personIds, from, to, executor)) {
     const key = `${day.personId}:${day.leaveTypeId}`;
@@ -412,7 +552,13 @@ export async function findLeaveRequest(id: string): Promise<LeaveRequestRow | un
   return row;
 }
 
-export type LeaveRequestView = RequestView & { leaveRequest: LeaveRequestRow; type: LeaveTypeRow; days: { date: IsoDate; portion: Portion; amountCenti: number }[]; balance: { balanceCenti: number; pendingCenti: number } | null; conflicts: TeamConflicts };
+export type LeaveRequestView = RequestView & {
+  leaveRequest: LeaveRequestRow;
+  type: LeaveTypeRow;
+  days: { date: IsoDate; portion: Portion; amountCenti: number }[];
+  balance: { balanceCenti: number; pendingCenti: number } | null;
+  conflicts: TeamConflicts;
+};
 
 /** The request page: the engine's view plus the leave itself, the balance it draws on and who else is away. null = not the viewer's business. */
 export async function getLeaveRequestView(viewer: { personId: string; principal: Principal }, approvalRequestId: string): Promise<LeaveRequestView | null> {
@@ -427,8 +573,20 @@ export async function getLeaveRequestView(viewer: { personId: string; principal:
   ]);
   const [balances, conflicts] = await Promise.all([
     type.tracksBalance ? getBalances([leaveRequest.personId], Number(leaveRequest.startDate.slice(0, 4))).then((map) => map.get(leaveRequest.personId)) : undefined,
-    teamConflicts(db(), person, days.map((day) => day.date), { namePending: !view.isRequester || view.canDecide }),
+    teamConflicts(
+      db(),
+      person,
+      days.map((day) => day.date),
+      { namePending: !view.isRequester || view.canDecide },
+    ),
   ]);
   const balance = balances?.find((row) => row.leaveTypeId === type.id) ?? null;
-  return { ...view, leaveRequest, type, days: days.map((day) => ({ date: day.date, portion: day.portion, amountCenti: day.amountCenti })), balance: balance ? { balanceCenti: balance.balanceCenti, pendingCenti: balance.pendingCenti } : null, conflicts };
+  return {
+    ...view,
+    leaveRequest,
+    type,
+    days: days.map((day) => ({ date: day.date, portion: day.portion, amountCenti: day.amountCenti })),
+    balance: balance ? { balanceCenti: balance.balanceCenti, pendingCenti: balance.pendingCenti } : null,
+    conflicts,
+  };
 }

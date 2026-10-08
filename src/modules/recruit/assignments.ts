@@ -65,8 +65,7 @@ async function assignmentForToken(token: string, executor: Executor = db()): Pro
 }
 
 /** Is this brief still open to the candidate? Every "no" below is the same answer to them. */
-const stillOpen = (assignment: AssignmentRow, at: Date): boolean =>
-  !ASSIGNMENT_CLOSED.includes(assignment.status) && assignment.submittedAt === null && assignment.tokenExpiresAt > at;
+const stillOpen = (assignment: AssignmentRow, at: Date): boolean => !ASSIGNMENT_CLOSED.includes(assignment.status) && assignment.submittedAt === null && assignment.tokenExpiresAt > at;
 
 // ── Sending one ─────────────────────────────────────────────────────────────────────────────
 
@@ -212,7 +211,10 @@ const submissionSchema = z.object({
   website: z.string().max(200).default(""),
   note: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), trimmed(ASSIGNMENT_LIMITS.note).nullable().default(null)),
   links: z.array(z.url().max(ASSIGNMENT_LIMITS.link)).max(ASSIGNMENT_LIMITS.links).default([]),
-  file: z.object({ fileName: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array) }).nullable().default(null),
+  file: z
+    .object({ fileName: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array) })
+    .nullable()
+    .default(null),
 });
 
 export type SubmissionInput = z.input<typeof submissionSchema>;
@@ -233,13 +235,7 @@ const submitPipeline = createPublicAction({
     if (!input.file && input.links.length === 0) throw new ActionError("assignment_nothing_submitted");
 
     const opening = await findOpening(assignment.openingId);
-    const stored = input.file
-      ? await storeIncomingFile(
-          { ownerType: "recruit_assignment", ownerId: assignment.id, entityId: opening?.entityId ?? null, tier: "personal" },
-          input.file,
-          { maxBytes: MAX_SUBMISSION_BYTES },
-        )
-      : null;
+    const stored = input.file ? await storeIncomingFile({ ownerType: "recruit_assignment", ownerId: assignment.id, entityId: opening?.entityId ?? null, tier: "personal" }, input.file, { maxBytes: MAX_SUBMISSION_BYTES }) : null;
 
     try {
       const saved = await db().transaction(async (tx) => {

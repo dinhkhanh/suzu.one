@@ -42,7 +42,13 @@ async function fail(response: Response, what: string): Promise<never> {
  * plain-ASCII `filename` stands in for a client that reads only that.
  */
 export function attachmentDisposition(fileName: string): string {
-  const ascii = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const ascii = fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\]/g, "_");
   const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }

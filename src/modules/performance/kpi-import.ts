@@ -40,7 +40,11 @@ export async function resolveKpiActualRows(rows: Row[], user: Importer, executor
   const problems: Problem[] = [];
   const resolved: Resolved[] = [];
   const headers = { code: kpiActualColumns.employeeCode.headers[0], kpi: kpiActualColumns.kpiCode.headers[0], period: kpiActualColumns.period.headers[0], actual: kpiActualColumns.actual.headers[0] };
-  const [people, directory, kpis] = await Promise.all([listEmploymentFacts({ employeeCodes: rows.flatMap((row) => (row.values.employeeCode ? [row.values.employeeCode] : [])) }, executor), loadDirectory(executor), executor.select().from(schema.kpiDefinition)]);
+  const [people, directory, kpis] = await Promise.all([
+    listEmploymentFacts({ employeeCodes: rows.flatMap((row) => (row.values.employeeCode ? [row.values.employeeCode] : [])) }, executor),
+    loadDirectory(executor),
+    executor.select().from(schema.kpiDefinition),
+  ]);
   const byCode = new Map(people.flatMap((person) => (person.employeeCode ? [[person.employeeCode.toUpperCase(), person] as const] : [])));
   const kpiByCode = new Map(kpis.map((kpi) => [kpi.code.toUpperCase(), kpi]));
   const personIds = [...new Set(people.map((person) => person.personId))];
@@ -87,7 +91,12 @@ export async function resolveKpiActualRows(rows: Row[], user: Importer, executor
 
 export async function commitKpiActualRows(rows: Row[], tx: Tx, user: Importer & { person: { id: string } }): Promise<{ saved: number; unchanged: number; people: number }> {
   const { resolved } = await resolveKpiActualRows(rows, user, tx);
-  const result = await saveActuals(user.person.id, resolved.map((item) => ({ assignmentId: item.assignmentId, periodKey: item.periodKey, actual: item.actual, notApplicable: false, note: item.note })), "import", tx);
+  const result = await saveActuals(
+    user.person.id,
+    resolved.map((item) => ({ assignmentId: item.assignmentId, periodKey: item.periodKey, actual: item.actual, notApplicable: false, note: item.note })),
+    "import",
+    tx,
+  );
   return { saved: result.saved, unchanged: result.unchanged, people: result.personIds.length };
 }
 

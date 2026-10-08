@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -37,11 +43,33 @@ const ids = {} as Record<"entity" | "actor" | "huy", string>;
 const owner = (): Principal => ({ personId: crypto.randomUUID(), workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] });
 
 const summary = () => ({
-  days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
-  leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-  lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0,
-  otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-  otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 2200, unpaidDaysCenti: 0, anomalyDays: 0,
+  days: 31,
+  standardDays: 22,
+  standardMinutes: 10_560,
+  workedMinutes: 10_560,
+  creditedMinutes: 0,
+  leavePaidMinutes: 0,
+  leaveUnpaidMinutes: 0,
+  holidayMinutes: 0,
+  absenceMinutes: 0,
+  lateMinutes: 0,
+  earlyMinutes: 0,
+  lateCount: 0,
+  earlyCount: 0,
+  missingPunchDays: 0,
+  absentDays: 0,
+  wfhMinutes: 0,
+  tripMinutes: 0,
+  nightMinutes: 0,
+  otWeekday: { day: 0, night: 0 },
+  otRestDay: { day: 0, night: 0 },
+  otHoliday: { day: 0, night: 0 },
+  otTotalMinutes: 0,
+  otUnapprovedMinutes: 0,
+  otTimeOffMinutes: 0,
+  paidDaysCenti: 2200,
+  unpaidDaysCenti: 0,
+  anomalyDays: 0,
 });
 
 // One ordinary month of a 30,000,000 salary with no dependants (golden case 16's regular run):
@@ -60,20 +88,41 @@ beforeAll(async () => {
   ids.actor = actor.id;
 
   const { person } = await hirePerson(
-    { fullName: "Ho Gia Huy", workEmail: "huy.ho@suzu.group", profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+    {
+      fullName: "Ho Gia Huy",
+      workEmail: "huy.ho@suzu.group",
+      profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+      entityId: entity.id,
+      employeeCode: null,
+      startDate: "2025-01-01",
+      seniorityDate: null,
+      placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+    },
     actor.id,
     { onboarding: false },
   );
   ids.huy = person.id;
 
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
 
   const [employment] = await db().select().from(schema.employment);
   await db().insert(schema.payProfile).values({ personId: ids.huy, employmentId: employment.id, entityId: entity.id, profile: "statutory", validFrom: "2025-01-01", status: "approved" });
   const structureId = crypto.randomUUID();
-  await db().insert(schema.salaryStructure).values({ id: structureId, personId: ids.huy, employmentId: employment.id, entityId: entity.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 30_000_000, insuranceSalary: 30_000_000, allowances: [] }), salaryTermsContext(structureId)) });
+  await db()
+    .insert(schema.salaryStructure)
+    .values({
+      id: structureId,
+      personId: ids.huy,
+      employmentId: employment.id,
+      entityId: entity.id,
+      validFrom: "2026-01-01",
+      reason: "initial",
+      termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 30_000_000, insuranceSalary: 30_000_000, allowances: [] }), salaryTermsContext(structureId)),
+    });
 
   const sign = async (runId: string) => {
     for (const step of ["propose", "approve"] as const) await stepRun(runId, step, { personId: actor.id });

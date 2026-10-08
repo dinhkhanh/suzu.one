@@ -23,7 +23,24 @@ export default async function NewDigitalAssetPage() {
     <Page width="narrow">
       <PageHeader title={t("new")} description={t("form.intro")} />
       <DigitalAssetForm
-        value={{ id: null, kind: "social_channel", platform: "facebook", name: "", handle: null, url: null, entityId: offered[0]?.id ?? "", ownership: "company", clientId: null, ownerPersonId: user.person.id, visibility: "staff", status: "active", loginIdentity: null, recoveryContact: null, credentialLocation: null, notes: null }}
+        value={{
+          id: null,
+          kind: "social_channel",
+          platform: "facebook",
+          name: "",
+          handle: null,
+          url: null,
+          entityId: offered[0]?.id ?? "",
+          ownership: "company",
+          clientId: null,
+          ownerPersonId: user.person.id,
+          visibility: "staff",
+          status: "active",
+          loginIdentity: null,
+          recoveryContact: null,
+          credentialLocation: null,
+          notes: null,
+        }}
         entities={offered.map(({ id, code, shortName }) => ({ id, code, shortName }))}
         clients={clients.map(({ id, name }) => ({ id, name }))}
         people={people}

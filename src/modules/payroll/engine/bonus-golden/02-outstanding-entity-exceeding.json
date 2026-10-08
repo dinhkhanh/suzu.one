@@ -14,7 +14,18 @@
     "workforceType": "employee",
     "activeOnReferenceDay": true,
     "unitOkrProgressBp": 10500,
-    "result": { "resultId": "r2", "finalScoreBp": 11500, "bandKey": "outstanding", "bandMultiplierBp": 15000, "bandLabel": "Xuất sắc", "reviewScoreBp": 11000, "kpiScoreBp": 12000, "okrScoreBp": 11000, "overridden": false, "overrideReason": null }
+    "result": {
+      "resultId": "r2",
+      "finalScoreBp": 11500,
+      "bandKey": "outstanding",
+      "bandMultiplierBp": 15000,
+      "bandLabel": "Xuất sắc",
+      "reviewScoreBp": 11000,
+      "kpiScoreBp": 12000,
+      "okrScoreBp": 11000,
+      "overridden": false,
+      "overrideReason": null
+    }
   },
   "expect": { "eligible": true, "serviceFactorBp": 10000, "performanceMultiplierBp": 15000, "unitOkrMultiplierBp": 12000, "combinedMultiplierBp": 18000, "capApplied": false, "computedAmountVnd": 54000000, "finalAmountVnd": 54000000 }
 }

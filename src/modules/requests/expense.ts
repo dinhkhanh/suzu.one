@@ -175,7 +175,10 @@ export async function claimsOwed(reach: { all: true } | { all: false; entityIds:
 /** The receipts of one claim, so the vault's owner look-up can let an approver open them. */
 export async function receiptsOfClaims(submissionIds: readonly string[]): Promise<Map<string, string[]>> {
   if (submissionIds.length === 0) return new Map();
-  const rows = await db().select({ submissionId: schema.expenseClaimLine.submissionId, receiptFileId: schema.expenseClaimLine.receiptFileId }).from(schema.expenseClaimLine).where(inArray(schema.expenseClaimLine.submissionId, [...submissionIds]));
+  const rows = await db()
+    .select({ submissionId: schema.expenseClaimLine.submissionId, receiptFileId: schema.expenseClaimLine.receiptFileId })
+    .from(schema.expenseClaimLine)
+    .where(inArray(schema.expenseClaimLine.submissionId, [...submissionIds]));
   const byClaim = new Map<string, string[]>();
   for (const row of rows) if (row.receiptFileId) byClaim.set(row.submissionId, [...(byClaim.get(row.submissionId) ?? []), row.receiptFileId]);
   return byClaim;

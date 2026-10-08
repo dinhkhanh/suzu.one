@@ -46,7 +46,8 @@ let stranger: Principal;
 const offerInput = (over: Partial<Parameters<typeof makeOffer>[0]> = {}) => ({
   applicationId: ids.applicationId,
   positionName: "Video Editor",
-  seniorityLevel: "mid" as const, positionLevel: "executive" as const,
+  seniorityLevel: "mid" as const,
+  positionLevel: "executive" as const,
   employmentType: "employee" as const,
   workLocation: "Hà Nội",
   managerPersonId: ids.headPerson,
@@ -77,7 +78,9 @@ async function freshApplication(name: string, email: string): Promise<string> {
 beforeAll(async () => {
   await migrateTestDb();
   // The legal floor of probation pay an offer is held to (`probation.limits`), as `pnpm db:seed` ships it.
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
@@ -97,11 +100,13 @@ beforeAll(async () => {
   // The approval flow resolves its approvers from `role_assignment`, not from the in-memory
   // principals: the department head signs off on the person, whoever may approve payroll on the
   // money. Without these rows a submitted offer has nobody to go to.
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.headPerson, role: "department_head", scopeType: "unit", scopeId: vid.id },
-    { personId: ids.hrAdmin, role: "hr_admin", scopeType: "entity", scopeId: szm.id },
-    { personId: ids.strangerPerson, role: "c_level", scopeType: "group", scopeId: null },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.headPerson, role: "department_head", scopeType: "unit", scopeId: vid.id },
+      { personId: ids.hrAdmin, role: "hr_admin", scopeType: "entity", scopeId: szm.id },
+      { personId: ids.strangerPerson, role: "c_level", scopeType: "group", scopeId: null },
+    ]);
 
   owner = principal(ids.hrAdmin, [{ role: "owner", scope: { type: "group" } }]);
   hrAdmin = principal(ids.hrAdmin, [{ role: "hr_admin", scope: { type: "entity", id: szm.id } }]);
@@ -121,7 +126,8 @@ beforeAll(async () => {
       departmentId: vid.id,
       teamId: null,
       positionName: "Video Editor",
-      seniorityLevel: null, positionLevel: null,
+      seniorityLevel: null,
+      positionLevel: null,
       employmentType: "employee",
       workMode: "onsite",
       workLocation: "Hà Nội",
@@ -144,7 +150,14 @@ beforeAll(async () => {
   // refuses by tier rather than by which page asked for it.
   const [template] = await db()
     .insert(schema.documentTemplate)
-    .values({ code: "TM-TEST", name: "Thư mời nhận việc", kind: "offer", tier: "compensation", body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}", letterhead: { companyName: "SuZu Media" } })
+    .values({
+      code: "TM-TEST",
+      name: "Thư mời nhận việc",
+      kind: "offer",
+      tier: "compensation",
+      body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}",
+      letterhead: { companyName: "SuZu Media" },
+    })
     .returning();
   ids.templateId = template.id;
   const [plain] = await db()
@@ -190,7 +203,10 @@ describe("making an offer", () => {
   // payroll checks the salary against — not a figure written into recruitment.
   it("holds probation pay to the legal floor in force on the day the job starts", async () => {
     const seeded = STATUTORY_SEED.find((seed) => seed.key === "probation.limits")!;
-    await db().update(schema.statutoryParameter).set({ validTo: isoDay(59) }).where(eq(schema.statutoryParameter.key, "probation.limits"));
+    await db()
+      .update(schema.statutoryParameter)
+      .set({ validTo: isoDay(59) })
+      .where(eq(schema.statutoryParameter.key, "probation.limits"));
     await db()
       .insert(schema.statutoryParameter)
       .values({ ...seeded, validFrom: isoDay(60), value: { ...(seeded.value as object), minimumPayPercent: 90 }, status: "approved" });
@@ -281,7 +297,10 @@ describe("the letter", () => {
     // "[salary.total]" on a letter somebody signs, and `missing` is the only thing that says so.
     const seeded = DOCUMENT_TEMPLATE_SEED.find((template) => template.kind === "offer");
     expect(seeded).toBeTruthy();
-    const [row] = await db().insert(schema.documentTemplate).values({ ...seeded!, code: "TM-SEEDED-TEST" }).returning();
+    const [row] = await db()
+      .insert(schema.documentTemplate)
+      .values({ ...seeded!, code: "TM-SEEDED-TEST" })
+      .returning();
     const offer = await makeOffer(offerInput({ letterTemplateId: row.id }), ids.hrAdmin);
     const letter = await offerLetter(viewerOf(hrAdmin), offer.id);
     expect(letter?.missing).toEqual([]);
@@ -331,7 +350,10 @@ describe("the offer's life, enforced in the service", () => {
   it("is not answerable once its last day has gone by", async () => {
     const applicationId = await freshApplication("Thư đã hết hạn", "hethan@example.test");
     const offer = await makeOffer(offerInput({ applicationId }), ids.hrAdmin);
-    await db().update(schema.jobOffer).set({ status: "sent", expiresOn: isoDay(-1) }).where(eq(schema.jobOffer.id, offer.id));
+    await db()
+      .update(schema.jobOffer)
+      .set({ status: "sent", expiresOn: isoDay(-1) })
+      .where(eq(schema.jobOffer.id, offer.id));
     expect(await fails(recordOfferResponse(offer.id, { answer: "accept", reason: null, note: null }, ids.recruiterPerson))).toBe("offer_expired");
     // And it reads as expired without anything having been written to say so.
     expect((await getOfferView(viewerOf(hrAdmin), offer.id))?.status).toBe("expired");

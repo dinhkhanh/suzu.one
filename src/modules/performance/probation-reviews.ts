@@ -40,7 +40,21 @@ export async function enrolProbationReviews(today: IsoDate, executor: ReturnType
     const cycle = cycles.find((row) => row.entityId === ending.entityId && covers(row, ending.endDate)) ?? cycles.find((row) => row.entityId === null && covers(row, ending.endDate));
     if (!cycle) return [];
     const dates = probationReviewDates(ending.endDate, probationEndDays, today);
-    return [{ contractId: ending.contractId, cycle, row: { cycleId: cycle.id, personId: person.personId, entityId: person.entityId ?? ending.entityId, departmentId: person.departmentId, managerPersonId: person.managerId ?? null, selfDueOn: dates.selfDueOn, managerDueOn: dates.managerDueOn } }];
+    return [
+      {
+        contractId: ending.contractId,
+        cycle,
+        row: {
+          cycleId: cycle.id,
+          personId: person.personId,
+          entityId: person.entityId ?? ending.entityId,
+          departmentId: person.departmentId,
+          managerPersonId: person.managerId ?? null,
+          selfDueOn: dates.selfDueOn,
+          managerDueOn: dates.managerDueOn,
+        },
+      },
+    ];
   });
   if (planned.length === 0) return [];
 
@@ -55,6 +69,11 @@ export async function enrolProbationReviews(today: IsoDate, executor: ReturnType
     if (rows.length === 0) return [];
     // Somebody HR already put in by hand keeps the deadlines HR gave them.
     const inserted = await tx.insert(schema.reviewParticipant).values(rows).onConflictDoNothing().returning();
-    return inserted.map((participant) => enrolledOf(participant, cycles.find((cycle) => cycle.id === participant.cycleId)!));
+    return inserted.map((participant) =>
+      enrolledOf(
+        participant,
+        cycles.find((cycle) => cycle.id === participant.cycleId)!,
+      ),
+    );
   });
 }

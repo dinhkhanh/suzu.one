@@ -19,7 +19,23 @@ import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonRow } from "@/modules/platform/people/service";
 import { listPortfolio, type PortfolioRow } from "@/modules/projects/service";
 import { listTeams, loadViewer } from "@/modules/work/service";
-import { addCompliance, type Compliance, type DeliverySummary, EMPTY_BLOCKED, EMPTY_HANDOFFS, EMPTY_MILESTONES, EMPTY_ON_TIME, EMPTY_REVISIONS, type Health, type ProjectDeliveryFacts, reportCompliance, type RetainerSummary, summariseDelivery, summariseRetainers, timesheetCompliance } from "./engine/delivery";
+import {
+  addCompliance,
+  type Compliance,
+  type DeliverySummary,
+  EMPTY_BLOCKED,
+  EMPTY_HANDOFFS,
+  EMPTY_MILESTONES,
+  EMPTY_ON_TIME,
+  EMPTY_REVISIONS,
+  type Health,
+  type ProjectDeliveryFacts,
+  reportCompliance,
+  type RetainerSummary,
+  summariseDelivery,
+  summariseRetainers,
+  timesheetCompliance,
+} from "./engine/delivery";
 import { activeMembersByTeam, blockedCountsByProject, handoffCountsByProject, milestoneCountsByProject, onTimeCountsByProject, revisionCountsByProject, submittedReportDates, submittedTimesheetWeeks } from "./pjm-queries";
 import { complianceTeamIds } from "./pjm-policy";
 import { loadRetainerFacts } from "./retainer-source";
@@ -68,7 +84,10 @@ export async function getDeliveryDashboard(reader: DeliveryReader, filter: Deliv
     revisionCountsByProject(ids, period),
     handoffCountsByProject(ids, period),
     blockedCountsByProject(ids, period),
-    loadRetainerFacts(rows.filter((row) => row.kind === "retainer").map((row) => row.id), period),
+    loadRetainerFacts(
+      rows.filter((row) => row.kind === "retainer").map((row) => row.id),
+      period,
+    ),
     getCompliance(reader, filter, today),
   ]);
 
@@ -96,7 +115,16 @@ export async function getDeliveryDashboard(reader: DeliveryReader, filter: Deliv
 
   const attention = rows
     .filter(isLive)
-    .map((row) => ({ id: row.id, name: row.name, teamId: row.teamId, teamName: row.teamName, health: row.health, stale: row.stale, overdueMilestones: milestones.get(row.id)?.overdue ?? 0, slippedMilestones: milestones.get(row.id)?.slipped ?? 0 }))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      teamId: row.teamId,
+      teamName: row.teamName,
+      health: row.health,
+      stale: row.stale,
+      overdueMilestones: milestones.get(row.id)?.overdue ?? 0,
+      slippedMilestones: milestones.get(row.id)?.slipped ?? 0,
+    }))
     .filter((row) => row.stale || row.health === "off_track" || row.health === "at_risk" || row.overdueMilestones > 0)
     .sort((a, b) => Number(b.health === "off_track") - Number(a.health === "off_track") || b.overdueMilestones - a.overdueMilestones || Number(b.stale) - Number(a.stale) || a.name.localeCompare(b.name, "vi"))
     .slice(0, 12);
@@ -131,7 +159,10 @@ async function getCompliance(reader: DeliveryReader, filter: DeliveryFilter, tod
   const earliest = addDays(until, -(COMPLIANCE_MAX_DAYS - 1));
   const from = filter.from > earliest ? filter.from : earliest;
   const all = await activeMembersByTeam(teamIds);
-  const folded = foldSmallGroups(teamIds.map((teamId) => ({ key: teamId, personIds: all.get(teamId) ?? [] })), readerTeams.ledTeamIds);
+  const folded = foldSmallGroups(
+    teamIds.map((teamId) => ({ key: teamId, personIds: all.get(teamId) ?? [] })),
+    readerTeams.ledTeamIds,
+  );
   const members = new Map<string, string[]>([...folded.kept.map((teamId): [string, string[]] => [teamId, all.get(teamId) ?? []]), ...(folded.other ? ([["other", folded.other.personIds]] as [string, string[]][]) : [])]);
   const shownTeams = [...members.keys()];
   if (shownTeams.length === 0) return null;
@@ -184,7 +215,10 @@ export async function getDeliveryTile(reader: DeliveryReader, today: IsoDate = t
   const viewer = await loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal });
   const rows = (await listPortfolio(viewer, { today })).filter(isLive);
   if (rows.length === 0) return null;
-  const milestones = await milestoneCountsByProject(rows.map((row) => row.id), today);
+  const milestones = await milestoneCountsByProject(
+    rows.map((row) => row.id),
+    today,
+  );
   const health = { on_track: 0, at_risk: 0, off_track: 0, none: 0 };
   for (const row of rows) health[row.health ?? "none"] += 1;
   return { projects: rows.length, health, stale: rows.filter((row) => row.stale).length, overdueMilestones: [...milestones.values()].reduce((sum, row) => sum + row.overdue, 0) };

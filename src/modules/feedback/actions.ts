@@ -11,7 +11,10 @@ import { canTriageFeedback } from "./policy";
 import { getFeedback, submitFeedback, triageFeedback } from "./service";
 
 // A checkbox posts "on" when ticked and nothing when not; JSON callers may send a boolean.
-const checkbox = z.union([z.boolean(), z.literal("on"), z.literal("")]).optional().transform((value) => value === true || value === "on");
+const checkbox = z
+  .union([z.boolean(), z.literal("on"), z.literal("")])
+  .optional()
+  .transform((value) => value === true || value === "on");
 // The form sends the page it was opened on as null when there is none (the /feedback page itself),
 // so "absent" is undefined, null or blank alike.
 const optionalText = (max: number) =>
@@ -29,7 +32,10 @@ const submitPipeline = createAction({
     message: z.string().trim().min(5).max(FEEDBACK_MESSAGE_MAX),
     blocking: checkbox,
     pagePath: optionalText(300),
-    screenshotFileId: z.union([z.uuid(), z.literal("")]).optional().transform((value) => (value ? value : null)),
+    screenshotFileId: z
+      .union([z.uuid(), z.literal("")])
+      .optional()
+      .transform((value) => (value ? value : null)),
   }),
   // Everybody who can sign in uses the app, so everybody may say what is wrong with it.
   authorize: () => true,
@@ -144,4 +150,3 @@ const triagePipeline = createAction({
 export async function triageFeedbackAction(input: unknown) {
   return triagePipeline(input);
 }
-

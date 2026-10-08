@@ -68,14 +68,29 @@ export type TimeWeekView = {
   partial: boolean;
 };
 
-const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({ key: rowKeyOf(entry), taskId: entry.taskId, category: entry.category, taskKey: entry.key, title: entry.title, projectId: entry.projectId, projectName: entry.projectName, jobNumber: entry.jobNumber, ...(entry.hidden ? { hidden: true as const } : {}) });
+const labelOf = (entry: TimeEntryView & { hidden?: true }): RowLabel => ({
+  key: rowKeyOf(entry),
+  taskId: entry.taskId,
+  category: entry.category,
+  taskKey: entry.key,
+  title: entry.title,
+  projectId: entry.projectId,
+  projectName: entry.projectName,
+  jobNumber: entry.jobNumber,
+  ...(entry.hidden ? { hidden: true as const } : {}),
+});
 
 /**
  * `readerPersonId` is who reads it: for anyone but the person, each task and project is named only
  * where the reader may open it (engine/redact.ts) — a manager reads the hours of a private project's
  * task, not its title.
  */
-async function buildWeekView(subject: Subject, weekStart: IsoDate, today: IsoDate, options: { readerPersonId: string; ledProjectIds?: ReadonlySet<string>; keep: (entry: TimeEntryView) => boolean; hints: boolean; own: boolean; canApprove: boolean; partial: boolean }): Promise<TimeWeekView> {
+async function buildWeekView(
+  subject: Subject,
+  weekStart: IsoDate,
+  today: IsoDate,
+  options: { readerPersonId: string; ledProjectIds?: ReadonlySet<string>; keep: (entry: TimeEntryView) => boolean; hints: boolean; own: boolean; canApprove: boolean; partial: boolean },
+): Promise<TimeWeekView> {
   const personId = subject.personId;
   const weekEnd = addDays(weekStart, 6);
   const [all, week, days, rules, attendance] = await Promise.all([
@@ -141,7 +156,15 @@ export async function getTimesheetView(reader: TimeReader, personId: string, wee
   const full = canViewTimesheet(reader, subject);
   const canApprove = canApproveTimesheet(reader, subject);
   if (!full && reader.ledProjectIds.size === 0) return null;
-  const view = await buildWeekView(subject, weekStart, today, { readerPersonId: reader.personId, ledProjectIds: reader.ledProjectIds, keep: (entry) => full || canViewTimeEntry(reader, subject, entry), hints: full && canViewAttendanceHint(reader, subject), own: false, canApprove, partial: !full });
+  const view = await buildWeekView(subject, weekStart, today, {
+    readerPersonId: reader.personId,
+    ledProjectIds: reader.ledProjectIds,
+    keep: (entry) => full || canViewTimeEntry(reader, subject, entry),
+    hints: full && canViewAttendanceHint(reader, subject),
+    own: false,
+    canApprove,
+    partial: !full,
+  });
   // A project's lead with no row of this person on their projects has nothing to see here.
   if (!full && view.entries.length === 0) return null;
   // Nothing of the person's days or of their timesheet's status: only the hours on the project.
@@ -311,10 +334,23 @@ export async function listApprovals(reader: ReportReader, today: IsoDate, days =
     .from(schema.timesheetWeek)
     .where(and(inArray(schema.timesheetWeek.personId, mine), inArray(schema.timesheetWeek.status, ["submitted", "approved", "returned"]), gte(schema.timesheetWeek.weekStart, addDays(weekStartOf(today), -7 * 26))))
     .orderBy(desc(schema.timesheetWeek.weekStart));
-  const view = (row: TimesheetWeekRow): WaitingWeek => ({ id: row.id, personId: row.personId, name: subjects.get(row.personId)!.fullName, weekStart: row.weekStart, status: row.status as TimesheetStatus, minutes: row.minutes, submittedAt: row.submittedAt, decidedAt: row.decidedAt, comment: row.comment });
+  const view = (row: TimesheetWeekRow): WaitingWeek => ({
+    id: row.id,
+    personId: row.personId,
+    name: subjects.get(row.personId)!.fullName,
+    weekStart: row.weekStart,
+    status: row.status as TimesheetStatus,
+    minutes: row.minutes,
+    submittedAt: row.submittedAt,
+    decidedAt: row.decidedAt,
+    comment: row.comment,
+  });
   const since = addDays(today, -days);
   return {
-    waiting: rows.filter((row) => row.status === "submitted").map(view).sort((a, b) => a.weekStart.localeCompare(b.weekStart) || a.name.localeCompare(b.name, "vi")),
+    waiting: rows
+      .filter((row) => row.status === "submitted")
+      .map(view)
+      .sort((a, b) => a.weekStart.localeCompare(b.weekStart) || a.name.localeCompare(b.name, "vi")),
     recent: rows.filter((row) => row.status !== "submitted" && !!row.decidedAt && row.decidedAt.toISOString().slice(0, 10) >= since).map(view),
   };
 }

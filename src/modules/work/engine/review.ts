@@ -34,5 +34,10 @@ export function stateOnChangesRequested(states: readonly ReviewState[], currentS
   const list = ordered(states);
   const index = list.findIndex((state) => state.id === currentStateId);
   if (index < 0 || list[index].category !== "in_review") return null;
-  return list.slice(0, index).reverse().find((state) => state.category === "in_progress")?.id ?? null;
+  return (
+    list
+      .slice(0, index)
+      .reverse()
+      .find((state) => state.category === "in_progress")?.id ?? null
+  );
 }

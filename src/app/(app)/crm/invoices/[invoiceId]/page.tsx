@@ -32,7 +32,14 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
   const livePayments = payments.filter((payment) => !payment.reversedAt);
   const [t, tProjects, f] = await Promise.all([getTranslations("crm"), getTranslations("projects"), formatters()]);
   // A draft is changed against the account's ready items of its entity that no other invoice holds.
-  const editing = draft && records ? await draftChoices(user.principal, invoice, items.map((item) => item.id)) : null;
+  const editing =
+    draft && records
+      ? await draftChoices(
+          user.principal,
+          invoice,
+          items.map((item) => item.id),
+        )
+      : null;
 
   return (
     <Page width="default">
@@ -72,7 +79,16 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
             .filter(Boolean)
             .flatMap((part, index) => (index ? [" · ", part] : [part]))}
         </p>
-        <p className="text-sm">{t("invoice.figures", { subtotal: f.money(invoice.subtotalVnd), vat: f.money(invoice.vatVnd), rate: invoice.vatRateBp / 100, total: f.money(invoice.totalVnd), paid: f.money(invoice.paidVnd), outstanding: f.money(invoice.outstandingVnd) })}</p>
+        <p className="text-sm">
+          {t("invoice.figures", {
+            subtotal: f.money(invoice.subtotalVnd),
+            vat: f.money(invoice.vatVnd),
+            rate: invoice.vatRateBp / 100,
+            total: f.money(invoice.totalVnd),
+            paid: f.money(invoice.paidVnd),
+            outstanding: f.money(invoice.outstandingVnd),
+          })}
+        </p>
         {invoice.writtenOffReason ? <p className="text-sm text-muted-foreground">{t("invoice.writtenOffBecause", { reason: invoice.writtenOffReason })}</p> : null}
         {invoice.status === "void" ? <p className="text-sm text-muted-foreground">{t("invoice.voidedBecause", { name: invoice.voidedByName ?? "—", date: f.when(invoice.voidedAt), reason: invoice.voidedReason ?? "" })}</p> : null}
         {draft ? <p className="text-sm text-muted-foreground">{t("invoice.draftIntro")}</p> : null}
@@ -87,7 +103,15 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
               vatRates={editing.vat.allowedBp}
               defaultVat={invoice.vatRateBp}
               today={today}
-              draft={{ id: invoice.id, number: invoice.number, issuedOn: invoice.issuedOn, vatRateBp: invoice.vatRateBp, note: invoice.note, itemIds: items.map((item) => item.id), amounts: Object.fromEntries(items.flatMap((item) => (item.ownVnd === null && item.amountVnd !== null ? [[item.id, item.amountVnd]] : []))) }}
+              draft={{
+                id: invoice.id,
+                number: invoice.number,
+                issuedOn: invoice.issuedOn,
+                vatRateBp: invoice.vatRateBp,
+                note: invoice.note,
+                itemIds: items.map((item) => item.id),
+                amounts: Object.fromEntries(items.flatMap((item) => (item.ownVnd === null && item.amountVnd !== null ? [[item.id, item.amountVnd]] : []))),
+              }}
             />
           </Section>
           <Section title={t("invoice.issueTitle")} description={t("invoice.issueIntro")}>
@@ -150,7 +174,15 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
                     <Badge variant="outline">{t(`invoice.methods.${payment.method as "transfer"}`)}</Badge>
                   </TableCell>
                   <TableCell kind="id">{payment.reference ?? "—"}</TableCell>
-                  <TableCell>{payment.recordedByName ? <RecordLink kind="person" id={payment.recordedByPersonId}>{payment.recordedByName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {payment.recordedByName ? (
+                      <RecordLink kind="person" id={payment.recordedByPersonId}>
+                        {payment.recordedByName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell kind="money" className={payment.reversedAt ? "line-through" : undefined}>
                     {f.money(payment.amountVnd)}
                   </TableCell>
@@ -199,6 +231,14 @@ async function draftChoices(principal: Parameters<typeof listBillingQueue>[0], i
   const [held, references] = await Promise.all([heldBillingItemIds(sameAccount.map((item) => item.id)), contractNumbersOfProjects([...new Set(sameAccount.map((item) => item.projectId))])]);
   const items = sameAccount
     .filter((item) => mine.has(item.id) || !held.has(item.id))
-    .map((item) => ({ id: item.id, projectId: item.projectId, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }));
+    .map((item) => ({
+      id: item.id,
+      projectId: item.projectId,
+      projectName: item.projectName,
+      jobNumber: item.jobNumber,
+      description: item.description,
+      amountVnd: item.amountVnd ?? null,
+      reference: item.reference ?? references.get(item.projectId) ?? null,
+    }));
   return { items, vat };
 }

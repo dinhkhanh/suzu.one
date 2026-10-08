@@ -84,10 +84,29 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
                 </TableCell>
                 <TableCell className="max-w-xs truncate text-faint">{lead.need ? noteToPlainText(lead.need) : "—"}</TableCell>
                 <TableCell>
-                  {lead.ownerName ? <RecordLink kind="person" id={lead.ownerPersonId}>{lead.ownerName}</RecordLink> : t("leads.unassigned")}
-                  {lead.referrerName ? <p className="text-xs text-faint">{t.rich("leads.referredBy", { name: lead.referrerName, person: (chunks) => <RecordLink kind="person" id={lead.referrerPersonId}>{chunks}</RecordLink> })}</p> : null}
+                  {lead.ownerName ? (
+                    <RecordLink kind="person" id={lead.ownerPersonId}>
+                      {lead.ownerName}
+                    </RecordLink>
+                  ) : (
+                    t("leads.unassigned")
+                  )}
+                  {lead.referrerName ? (
+                    <p className="text-xs text-faint">
+                      {t.rich("leads.referredBy", {
+                        name: lead.referrerName,
+                        person: (chunks) => (
+                          <RecordLink kind="person" id={lead.referrerPersonId}>
+                            {chunks}
+                          </RecordLink>
+                        ),
+                      })}
+                    </p>
+                  ) : null}
                 </TableCell>
-                <TableCell kind="date" className="text-muted-foreground">{f.when(lead.createdAt)}</TableCell>
+                <TableCell kind="date" className="text-muted-foreground">
+                  {f.when(lead.createdAt)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

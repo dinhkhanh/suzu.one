@@ -127,7 +127,23 @@ describe("which surface a path is", () => {
   it("is looked for on every path a page can be served at", () => {
     // Next's matcher is a plain pattern over the pathname here, with no parameters in it.
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/preview/abc/file", "/preview/anything.png/file", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/brands/suzu-coffee", "/brands/suzu-coffee/files/0a1b", "/api/cronies"]) {
+    for (const path of [
+      "/",
+      "/today",
+      "/preview/abc",
+      "/preview/anything.png",
+      "/preview/abc/file",
+      "/preview/anything.png/file",
+      "/careers",
+      "/careers/video-editor",
+      "/sign-in",
+      "/privacy",
+      "/terms",
+      "/portfolio",
+      "/brands/suzu-coffee",
+      "/brands/suzu-coffee/files/0a1b",
+      "/api/cronies",
+    ]) {
       expect(matcher.test(path), path).toBe(true);
     }
     // The installable app's files and the two routes that authenticate for themselves come through

@@ -89,7 +89,19 @@ export async function createQuote(dealId: string, actorPersonId: string, today: 
   });
 }
 
-export type QuoteLineInput = { serviceId: string | null; title: string; description: string | null; quantity: number; unit: string | null; unitPriceVnd: number; discountBp: number; months: number | null; format: string | null; channel: string | null; roleMinutes: RoleMinutes[] };
+export type QuoteLineInput = {
+  serviceId: string | null;
+  title: string;
+  description: string | null;
+  quantity: number;
+  unit: string | null;
+  unitPriceVnd: number;
+  discountBp: number;
+  months: number | null;
+  format: string | null;
+  channel: string | null;
+  roleMinutes: RoleMinutes[];
+};
 export type QuoteInput = { title: string; validUntil: IsoDate | null; vatRateBp: number; intro: string | null; terms: string | null; lines: QuoteLineInput[] };
 
 /** Rewrites a draft: its header, its lines, and the totals computed from them. */
@@ -101,10 +113,23 @@ export async function saveQuote(quoteId: string, input: QuoteInput, today: IsoDa
     if (before.status !== "draft") throw new ActionError("quote_locked");
     const totals = quoteTotals(input.lines, input.vatRateBp);
     await tx.delete(schema.crmQuoteLine).where(eq(schema.crmQuoteLine.quoteId, quoteId));
-    if (input.lines.length) await tx.insert(schema.crmQuoteLine).values(input.lines.map((line, index) => ({ ...line, quoteId, roleMinutes: line.roleMinutes.filter((entry) => entry.role.trim() && entry.minutes > 0), sortOrder: (index + 1) * 10 })));
+    if (input.lines.length)
+      await tx.insert(schema.crmQuoteLine).values(input.lines.map((line, index) => ({ ...line, quoteId, roleMinutes: line.roleMinutes.filter((entry) => entry.role.trim() && entry.minutes > 0), sortOrder: (index + 1) * 10 })));
     const [after] = await tx
       .update(schema.crmQuote)
-      .set({ title: input.title, validUntil: input.validUntil, vatRateBp: input.vatRateBp, intro: input.intro, terms: input.terms, subtotalVnd: totals.subtotalVnd, discountVnd: totals.discountVnd, vatVnd: totals.vatVnd, totalVnd: totals.totalVnd, maxDiscountBp: totals.maxDiscountBp, updatedAt: new Date() })
+      .set({
+        title: input.title,
+        validUntil: input.validUntil,
+        vatRateBp: input.vatRateBp,
+        intro: input.intro,
+        terms: input.terms,
+        subtotalVnd: totals.subtotalVnd,
+        discountVnd: totals.discountVnd,
+        vatVnd: totals.vatVnd,
+        totalVnd: totals.totalVnd,
+        maxDiscountBp: totals.maxDiscountBp,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.crmQuote.id, quoteId))
       .returning();
     return { before, after };
@@ -271,7 +296,11 @@ export async function answerQuote(quoteId: string, accepted: boolean, note: stri
   return db().transaction(async (tx) => {
     const before = await lockQuote(tx, quoteId);
     if (before.status !== "sent") throw new ActionError("quote_not_sent");
-    const [after] = await tx.update(schema.crmQuote).set({ status: accepted ? "accepted" : "rejected", decidedAt: new Date(), decisionNote: note, updatedAt: new Date() }).where(eq(schema.crmQuote.id, quoteId)).returning();
+    const [after] = await tx
+      .update(schema.crmQuote)
+      .set({ status: accepted ? "accepted" : "rejected", decidedAt: new Date(), decisionNote: note, updatedAt: new Date() })
+      .where(eq(schema.crmQuote.id, quoteId))
+      .returning();
     if (accepted) {
       const lines = await tx.select().from(schema.crmQuoteLine).where(eq(schema.crmQuoteLine.quoteId, quoteId));
       const totals = quoteTotals(lines, before.vatRateBp);
@@ -299,10 +328,43 @@ export async function reviseQuote(quoteId: string, actorPersonId: string, today:
     const [latest] = await tx.select({ version: schema.crmQuote.version }).from(schema.crmQuote).where(eq(schema.crmQuote.number, source.number)).orderBy(desc(schema.crmQuote.version)).limit(1);
     const [quote] = await tx
       .insert(schema.crmQuote)
-      .values({ dealId: source.dealId, number: source.number, version: (latest?.version ?? source.version) + 1, title: source.title, status: "draft", validUntil: addDays(today, settings.quoteValidityDays), vatRateBp: source.vatRateBp, subtotalVnd: source.subtotalVnd, discountVnd: source.discountVnd, vatVnd: source.vatVnd, totalVnd: source.totalVnd, maxDiscountBp: source.maxDiscountBp, intro: source.intro, terms: source.terms, createdByPersonId: actorPersonId })
+      .values({
+        dealId: source.dealId,
+        number: source.number,
+        version: (latest?.version ?? source.version) + 1,
+        title: source.title,
+        status: "draft",
+        validUntil: addDays(today, settings.quoteValidityDays),
+        vatRateBp: source.vatRateBp,
+        subtotalVnd: source.subtotalVnd,
+        discountVnd: source.discountVnd,
+        vatVnd: source.vatVnd,
+        totalVnd: source.totalVnd,
+        maxDiscountBp: source.maxDiscountBp,
+        intro: source.intro,
+        terms: source.terms,
+        createdByPersonId: actorPersonId,
+      })
       .returning();
     const lines = await tx.select().from(schema.crmQuoteLine).where(eq(schema.crmQuoteLine.quoteId, quoteId));
-    if (lines.length) await tx.insert(schema.crmQuoteLine).values(lines.map((line) => ({ serviceId: line.serviceId, title: line.title, description: line.description, quantity: line.quantity, unit: line.unit, unitPriceVnd: line.unitPriceVnd, discountBp: line.discountBp, months: line.months, format: line.format, channel: line.channel, roleMinutes: line.roleMinutes, sortOrder: line.sortOrder, quoteId: quote.id })));
+    if (lines.length)
+      await tx.insert(schema.crmQuoteLine).values(
+        lines.map((line) => ({
+          serviceId: line.serviceId,
+          title: line.title,
+          description: line.description,
+          quantity: line.quantity,
+          unit: line.unit,
+          unitPriceVnd: line.unitPriceVnd,
+          discountBp: line.discountBp,
+          months: line.months,
+          format: line.format,
+          channel: line.channel,
+          roleMinutes: line.roleMinutes,
+          sortOrder: line.sortOrder,
+          quoteId: quote.id,
+        })),
+      );
     return quote;
   });
 }

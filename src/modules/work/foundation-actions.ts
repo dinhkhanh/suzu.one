@@ -54,7 +54,10 @@ const saveFieldPipeline = createAction({
     projectId: optional(z.uuid()),
     name: z.string().trim().min(1).max(60),
     type: z.enum(CUSTOM_FIELD_TYPES),
-    options: z.array(z.object({ id: optional(z.string().min(1).max(40)), label: z.string().trim().max(60), color: optional(z.string().max(20)) })).max(50).default([]),
+    options: z
+      .array(z.object({ id: optional(z.string().min(1).max(40)), label: z.string().trim().max(60), color: optional(z.string().max(20)) }))
+      .max(50)
+      .default([]),
     showOnCard: checkbox.default(false),
     sortOrder: z.coerce.number().int().min(0).max(10000).default(0),
     isActive: checkbox.default(true),
@@ -108,7 +111,12 @@ const bulkPipeline = createAction({
     const summary = `${outcome.updated.length} updated, ${outcome.refused.length} refused`;
     return {
       data: { updated: outcome.updated.map(({ id, key }) => ({ id, key })), refused: outcome.refused },
-      audit: { resource: { type: "task:work", id: taskIds[0] }, summary, before: { taskIds }, after: { patch, updated: outcome.updated.map((task) => ({ id: task.id, changed: task.changes.map((change) => change.field ?? change.type) })), refused: outcome.refused } },
+      audit: {
+        resource: { type: "task:work", id: taskIds[0] },
+        summary,
+        before: { taskIds },
+        after: { patch, updated: outcome.updated.map((task) => ({ id: task.id, changed: task.changes.map((change) => change.field ?? change.type) })), refused: outcome.refused },
+      },
     };
   },
 });
@@ -131,7 +139,15 @@ const movePipeline = createAction({
     refreshTask(input.taskId, result.loaded.work.projectId, result.loaded.team.id);
     refreshTask(input.taskId, result.targetProjectId, result.targetTeamId);
     const root = result.moved[0];
-    return { data: { key: root.toKey, moved: result.moved.length }, audit: { resource: auditTask(input.taskId, result.loaded.task.entityId), summary: `${root.fromKey} → ${root.toKey} (+${result.moved.length - 1} sub-tasks)`, before: { teamId: result.loaded.team.id, projectId: result.loaded.work.projectId }, after: { teamId: result.targetTeamId, projectId: result.targetProjectId, moved: result.moved } } };
+    return {
+      data: { key: root.toKey, moved: result.moved.length },
+      audit: {
+        resource: auditTask(input.taskId, result.loaded.task.entityId),
+        summary: `${root.fromKey} → ${root.toKey} (+${result.moved.length - 1} sub-tasks)`,
+        before: { teamId: result.loaded.team.id, projectId: result.loaded.work.projectId },
+        after: { teamId: result.targetTeamId, projectId: result.targetProjectId, moved: result.moved },
+      },
+    };
   },
 });
 export async function moveTaskAction(input: unknown) {
@@ -249,7 +265,8 @@ const saveRulePipeline = createAction({
     return decidesTriageForTeam(user, input.teamId);
   },
   run: async ({ user, input }) => {
-    const drop = <T extends object>(value: T) => Object.fromEntries(Object.entries(value).filter(([, item]) => item !== null && item !== undefined && !(Array.isArray(item) && item.length === 0))) as { [Key in keyof T]?: NonNullable<T[Key]> };
+    const drop = <T extends object>(value: T) =>
+      Object.fromEntries(Object.entries(value).filter(([, item]) => item !== null && item !== undefined && !(Array.isArray(item) && item.length === 0))) as { [Key in keyof T]?: NonNullable<T[Key]> };
     const match = drop({ source: input.source ?? undefined, intakeFormId: input.intakeFormId ?? undefined, keyword: input.keyword ?? undefined });
     const set = drop({ assigneePersonId: input.assigneePersonId ?? undefined, projectId: input.projectId ?? undefined, labelIds: input.labelIds, priority: input.priority ?? undefined });
     const { before, after } = await saveTriageRule(input.teamId, input.ruleId, { name: input.name, match, set, sortOrder: input.sortOrder, isActive: input.isActive }, user.person.id);
@@ -293,7 +310,10 @@ const raisePipeline = createAction({
     const { blocker, loaded, notified } = await raiseBlocker(input.taskId, { reason: input.reason, neededPersonId: input.neededPersonId }, actorOf(user));
     refreshTask(input.taskId, loaded.work.projectId, loaded.team.id);
     revalidatePath("/work/leader");
-    return { data: { id: blocker.id }, audit: { resource: auditTask(input.taskId, loaded.task.entityId), summary: `blocked: ${input.reason}`, after: { blockerId: blocker.id, neededPersonId: input.neededPersonId, notified: notified.length } } };
+    return {
+      data: { id: blocker.id },
+      audit: { resource: auditTask(input.taskId, loaded.task.entityId), summary: `blocked: ${input.reason}`, after: { blockerId: blocker.id, neededPersonId: input.neededPersonId, notified: notified.length } },
+    };
   },
 });
 export async function raiseBlockerAction(input: unknown) {

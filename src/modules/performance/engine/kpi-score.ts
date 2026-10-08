@@ -133,15 +133,22 @@ export function annualKpiScore(traces: readonly Pick<KpiTrace, "month" | "lines"
     scoreBp: weightMonths === 0 ? null : roundHalfUp(weighted, BigInt(weightMonths)),
     months: [...new Set(traces.map((trace) => trace.month))].sort(),
     weightMonths,
-    byKpi: [...byKpi.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([kpiCode, entry]) => ({ kpiCode, kpiName: entry.kpiName, periods: entry.periods, weightMonths: entry.weightMonths, averageBp: roundHalfUp(entry.weighted, BigInt(entry.weightMonths)) })),
+    byKpi: [...byKpi.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([kpiCode, entry]) => ({ kpiCode, kpiName: entry.kpiName, periods: entry.periods, weightMonths: entry.weightMonths, averageBp: roundHalfUp(entry.weighted, BigInt(entry.weightMonths)) })),
   };
 }
 
 /** What a snapshot's hash is taken over: every input of every line, in the engine's order. */
 export function canonicalInputs(month: string, lines: readonly KpiLineInput[], missingAs: KpiTrace["missingAs"]): string {
   const ordered = [...lines].sort((a, b) => a.kpiCode.localeCompare(b.kpiCode) || a.assignmentId.localeCompare(b.assignmentId));
-  return JSON.stringify([month, missingAs, ordered.map((line) => [line.assignmentId, line.kpiCode, line.unit, line.direction, line.frequency, line.periodKey, line.weight, line.targetValue, line.capBp, line.floorBp, line.actualValue, line.notApplicable])]);
+  return JSON.stringify([
+    month,
+    missingAs,
+    ordered.map((line) => [line.assignmentId, line.kpiCode, line.unit, line.direction, line.frequency, line.periodKey, line.weight, line.targetValue, line.capBp, line.floorBp, line.actualValue, line.notApplicable]),
+  ]);
 }
 
 /** Can this target be scored at all? Checked when a KPI is assigned, so that an invalid line never reaches a close. */
-export const targetProblem = (direction: KpiDirection, targetValue: number): "target_must_be_positive" | "target_must_not_be_negative" | null => (direction === "higher_better" ? (targetValue <= 0 ? "target_must_be_positive" : null) : targetValue < 0 ? "target_must_not_be_negative" : null);
+export const targetProblem = (direction: KpiDirection, targetValue: number): "target_must_be_positive" | "target_must_not_be_negative" | null =>
+  direction === "higher_better" ? (targetValue <= 0 ? "target_must_be_positive" : null) : targetValue < 0 ? "target_must_not_be_negative" : null;

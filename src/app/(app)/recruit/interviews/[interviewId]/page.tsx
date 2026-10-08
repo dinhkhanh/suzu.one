@@ -44,7 +44,13 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
     getFormatter(),
     scorecardsFor(viewer, interviewId),
     view.canSchedule ? interviewerOptions(view.openingId) : [],
-    view.canSchedule ? clashesFor(view.interviewers.map((row) => row.personId), { from: interview.startAt, to: interview.endAt }, interview.id) : [],
+    view.canSchedule
+      ? clashesFor(
+          view.interviewers.map((row) => row.personId),
+          { from: interview.startAt, to: interview.endAt },
+          interview.id,
+        )
+      : [],
   ]);
   const parts = officeParts(interview.startAt);
 
@@ -55,7 +61,10 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
         description={
           <>
             {/* An interviewer who is on no hiring team opens neither: the names stay text for them. */}
-            <RecordLink kind="candidate" id={view.canSchedule ? view.candidateId : null}>{view.candidateName}</RecordLink> ·{" "}
+            <RecordLink kind="candidate" id={view.canSchedule ? view.candidateId : null}>
+              {view.candidateName}
+            </RecordLink>{" "}
+            ·{" "}
             <RecordLink kind="application" id={view.canSchedule ? view.applicationId : null} className={view.canSchedule ? "underline" : undefined}>
               {view.openingTitle}
             </RecordLink>
@@ -63,7 +72,9 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
         }
       >
         <div className="mt-1">
-          <Badge dot variant={statusTone(interview.status)}>{t(`statuses.${interview.status}`)}</Badge>
+          <Badge dot variant={statusTone(interview.status)}>
+            {t(`statuses.${interview.status}`)}
+          </Badge>
         </div>
       </PageHeader>
 
@@ -106,7 +117,9 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
             {view.interviewers.map((row, index) => (
               <Fragment key={row.personId}>
                 {index ? ", " : ""}
-                <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                <RecordLink kind="person" id={row.personId}>
+                  {row.fullName}
+                </RecordLink>
               </Fragment>
             ))}
           </dd>
@@ -141,9 +154,7 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
 
       {view.canSchedule ? (
         <>
-          {clashes.length > 0 ? (
-            <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{t("clash", { names: clashes.map((row) => row.fullName).join(", ") })}</p>
-          ) : null}
+          {clashes.length > 0 ? <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{t("clash", { names: clashes.map((row) => row.fullName).join(", ") })}</p> : null}
           <InterviewStatusActions interviewId={interviewId} status={interview.status} />
           {interview.status === "scheduled" ? (
             <RescheduleInterview

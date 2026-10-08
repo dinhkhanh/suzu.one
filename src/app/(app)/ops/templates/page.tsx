@@ -17,9 +17,55 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("obligationLibrary");
 
-const BLANK: TemplateFormValue = { id: null, code: "", name: "", category: "internal", authority: "internal", recurrence: "monthly", dueRule: { type: "after_period", monthsAfter: 1, day: 20 }, shift: "next_working_day", eventType: null, entityIds: null, ownerRule: "permission:ops:manage", ownerPersonId: null, reviewerRule: "none", reviewerPersonId: null, checklist: [], guidance: null, links: [], reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS, escalation: DEFAULT_ESCALATION, evidence: NO_EVIDENCE, penaltyNote: null, isActive: true };
+const BLANK: TemplateFormValue = {
+  id: null,
+  code: "",
+  name: "",
+  category: "internal",
+  authority: "internal",
+  recurrence: "monthly",
+  dueRule: { type: "after_period", monthsAfter: 1, day: 20 },
+  shift: "next_working_day",
+  eventType: null,
+  entityIds: null,
+  ownerRule: "permission:ops:manage",
+  ownerPersonId: null,
+  reviewerRule: "none",
+  reviewerPersonId: null,
+  checklist: [],
+  guidance: null,
+  links: [],
+  reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
+  escalation: DEFAULT_ESCALATION,
+  evidence: NO_EVIDENCE,
+  penaltyNote: null,
+  isActive: true,
+};
 
-const toValue = (row: ObligationTemplateRow): TemplateFormValue => ({ id: row.id, code: row.code, name: row.name, category: row.category, authority: row.authority, recurrence: row.recurrence, dueRule: row.dueRule, shift: row.shift, eventType: row.eventType, entityIds: row.entityIds, ownerRule: row.ownerRule, ownerPersonId: row.ownerPersonId, reviewerRule: row.reviewerRule, reviewerPersonId: row.reviewerPersonId, checklist: row.checklist, guidance: row.guidance, links: row.links, reminderLeadDays: row.reminderLeadDays, escalation: row.escalation, evidence: row.evidence, penaltyNote: row.penaltyNote, isActive: row.isActive });
+const toValue = (row: ObligationTemplateRow): TemplateFormValue => ({
+  id: row.id,
+  code: row.code,
+  name: row.name,
+  category: row.category,
+  authority: row.authority,
+  recurrence: row.recurrence,
+  dueRule: row.dueRule,
+  shift: row.shift,
+  eventType: row.eventType,
+  entityIds: row.entityIds,
+  ownerRule: row.ownerRule,
+  ownerPersonId: row.ownerPersonId,
+  reviewerRule: row.reviewerRule,
+  reviewerPersonId: row.reviewerPersonId,
+  checklist: row.checklist,
+  guidance: row.guidance,
+  links: row.links,
+  reminderLeadDays: row.reminderLeadDays,
+  escalation: row.escalation,
+  evidence: row.evidence,
+  penaltyNote: row.penaltyNote,
+  isActive: row.isActive,
+});
 
 // The obligation library (FR-OPS-01, 03). Anyone who reads compliance may read it; only a group-wide
 // ops manager changes it or marks a template reviewed.
@@ -30,7 +76,12 @@ export default async function ObligationLibraryPage() {
   const format = await getFormatter();
   const canEdit = canManageLibrary(user.principal);
   const [templates, entities, people] = await Promise.all([listTemplates(), listEntities(), canEdit ? listPersonNames() : []]);
-  const options = { entities: entities.filter((entity) => entity.isActive).map(({ id, code }) => ({ id, code })), people, roles: [...ROLES], permissions: [...new Set(ROLES.flatMap((role) => ROLE_DEFINITIONS[role].permissions.filter((permission) => permission !== "*")))].sort() };
+  const options = {
+    entities: entities.filter((entity) => entity.isActive).map(({ id, code }) => ({ id, code })),
+    people,
+    roles: [...ROLES],
+    permissions: [...new Set(ROLES.flatMap((role) => ROLE_DEFINITIONS[role].permissions.filter((permission) => permission !== "*")))].sort(),
+  };
   const unreviewed = templates.filter((row) => row.reviewStatus !== "reviewed").length;
 
   const describeRule = (row: ObligationTemplateRow) => {
@@ -64,12 +115,14 @@ export default async function ObligationLibraryPage() {
                       <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-canvas">
                         <span className="min-w-0 flex-1">
                           <span className={row.isActive ? "font-medium" : "font-medium text-muted-foreground line-through"}>{row.name}</span>
-                          <span className="block text-xs text-faint">
-                            {[row.code, t(`enums.recurrence.${row.recurrence}`), describeRule(row), t(`enums.authority.${row.authority}`)].join(" · ")}
-                          </span>
+                          <span className="block text-xs text-faint">{[row.code, t(`enums.recurrence.${row.recurrence}`), describeRule(row), t(`enums.authority.${row.authority}`)].join(" · ")}</span>
                         </span>
                         {!row.isActive ? <Badge variant="outline">{t("library.inactive")}</Badge> : null}
-                        {row.reviewStatus === "reviewed" ? <Badge variant="secondary">{t("library.reviewedOn", { date: row.reviewedAt ? format.dateTime(row.reviewedAt, { dateStyle: "medium" }) : "" })}</Badge> : <Badge variant="outline">{t("unreviewed")}</Badge>}
+                        {row.reviewStatus === "reviewed" ? (
+                          <Badge variant="secondary">{t("library.reviewedOn", { date: row.reviewedAt ? format.dateTime(row.reviewedAt, { dateStyle: "medium" }) : "" })}</Badge>
+                        ) : (
+                          <Badge variant="outline">{t("unreviewed")}</Badge>
+                        )}
                       </summary>
                       <div className="border-t bg-canvas">
                         {canEdit ? (

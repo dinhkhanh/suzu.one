@@ -18,14 +18,7 @@ function Tabs({ tabs }: { tabs: { href: string; label: string; exact?: boolean }
 }
 
 export function SettingsTabs({ labels }: { labels: Record<"calendar" | "schedules" | "shifts" | "locations" | "policy" | "devices", string> }) {
-  return (
-    <Tabs
-      tabs={[
-        ...(["calendar", "schedules", "shifts", "locations", "policy"] as const).map((tab) => ({ href: `/attendance/settings/${tab}`, label: labels[tab] })),
-        { href: "/attendance/devices", label: labels.devices },
-      ]}
-    />
-  );
+  return <Tabs tabs={[...(["calendar", "schedules", "shifts", "locations", "policy"] as const).map((tab) => ({ href: `/attendance/settings/${tab}`, label: labels[tab] })), { href: "/attendance/devices", label: labels.devices }]} />;
 }
 
 export function DevicesTabs({ labels }: { labels: Record<"devices" | "import" | "profiles", string> }) {

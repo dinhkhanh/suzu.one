@@ -10,7 +10,15 @@
 // The budget's door (`spend.ts`) is stubbed: its own sums are tested against Postgres in `spend.test.ts`.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const settings = vi.hoisted(() => ({ values: { ANTHROPIC_API_KEY: "not-a-key-the-network-is-stubbed", ANTHROPIC_MODEL_SIMPLE: "claude-haiku-4-5", ANTHROPIC_MODEL: "claude-sonnet-5-5", ANTHROPIC_MODEL_COMPLEX: "claude-opus-5-5", ANTHROPIC_WORKSPACE_ID: undefined as string | undefined } }));
+const settings = vi.hoisted(() => ({
+  values: {
+    ANTHROPIC_API_KEY: "not-a-key-the-network-is-stubbed",
+    ANTHROPIC_MODEL_SIMPLE: "claude-haiku-4-5",
+    ANTHROPIC_MODEL: "claude-sonnet-5-5",
+    ANTHROPIC_MODEL_COMPLEX: "claude-opus-5-5",
+    ANTHROPIC_WORKSPACE_ID: undefined as string | undefined,
+  },
+}));
 vi.mock("@/lib/env", () => ({ env: () => settings.values }));
 vi.mock("@/lib/observability/report", () => ({ logError: vi.fn() }));
 const door = vi.hoisted(() => ({ admission: { ok: true } as { ok: true } | { ok: false; notice: string }, recorded: [] as unknown[] }));
@@ -27,7 +35,11 @@ import { chatDriver, draftDriver } from "./model";
 
 const asker = { person: { id: "00000000-0000-4000-8000-000000000001", primaryEntityId: null }, principal: { personId: "00000000-0000-4000-8000-000000000001", workforceType: "employee" as const, grants: [] } };
 
-type Sent = { url: string; headers: Headers; body: { model: string; system: string; messages: { role: string; content: string }[]; output_config?: { effort?: string; format?: { schema?: { properties?: Record<string, unknown>; required?: string[] } } } } };
+type Sent = {
+  url: string;
+  headers: Headers;
+  body: { model: string; system: string; messages: { role: string; content: string }[]; output_config?: { effort?: string; format?: { schema?: { properties?: Record<string, unknown>; required?: string[] } } } };
+};
 const sent: Sent[] = [];
 let reply: { status?: number; body: unknown } = { body: {} };
 
@@ -36,7 +48,17 @@ beforeEach(() => {
   door.admission = { ok: true };
   door.recorded.length = 0;
   settings.values.ANTHROPIC_WORKSPACE_ID = undefined;
-  reply = { body: { id: "msg_1", type: "message", role: "assistant", model: "claude-haiku-4-5", stop_reason: "end_turn", content: [{ type: "text", text: "Gọi phòng Nhân sự theo số trên trang [1]." }], usage: { input_tokens: 4321, output_tokens: 87 } } };
+  reply = {
+    body: {
+      id: "msg_1",
+      type: "message",
+      role: "assistant",
+      model: "claude-haiku-4-5",
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Gọi phòng Nhân sự theo số trên trang [1]." }],
+      usage: { input_tokens: 4321, output_tokens: 87 },
+    },
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string | URL | Request, init: { body: string; headers?: HeadersInit }) => {
@@ -87,7 +109,9 @@ describe("the chat driver's request", () => {
   it("is written down with every kind of token the provider reported", async () => {
     reply = { body: { ...(reply.body as object), usage: { input_tokens: 1000, output_tokens: 50, cache_read_input_tokens: 300, cache_creation_input_tokens: 200 } } };
     const answer = await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
-    expect(door.recorded).toEqual([{ personId: asker.person.id, turnId: null, purpose: "ask", tier: "simple", model: "claude-haiku-4-5", usage: { inputTokens: 1000, outputTokens: 50, cacheReadTokens: 300, cacheWriteTokens: 200 }, stopReason: "end_turn" }]);
+    expect(door.recorded).toEqual([
+      { personId: asker.person.id, turnId: null, purpose: "ask", tier: "simple", model: "claude-haiku-4-5", usage: { inputTokens: 1000, outputTokens: 50, cacheReadTokens: 300, cacheWriteTokens: 200 }, stopReason: "end_turn" },
+    ]);
     expect(answer.usage).toEqual({ inputTokens: 1500, outputTokens: 50 });
   });
 

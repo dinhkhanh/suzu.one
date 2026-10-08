@@ -143,8 +143,18 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
                   {(
                     [
-                      ["required", day.requiredMinutes], ["worked", day.workedMinutes], ["credited", day.creditedMinutes], ["late", day.lateMinutes], ["early", day.earlyMinutes], ["absence", day.absenceMinutes],
-                      ["leavePaid", day.leavePaidMinutes], ["leaveUnpaid", day.leaveUnpaidMinutes], ["holiday", day.holidayMinutes], ["night", day.nightMinutes], ["overtime", overtime], ["otUnapproved", day.otUnapprovedMinutes],
+                      ["required", day.requiredMinutes],
+                      ["worked", day.workedMinutes],
+                      ["credited", day.creditedMinutes],
+                      ["late", day.lateMinutes],
+                      ["early", day.earlyMinutes],
+                      ["absence", day.absenceMinutes],
+                      ["leavePaid", day.leavePaidMinutes],
+                      ["leaveUnpaid", day.leaveUnpaidMinutes],
+                      ["holiday", day.holidayMinutes],
+                      ["night", day.nightMinutes],
+                      ["overtime", overtime],
+                      ["otUnapproved", day.otUnapprovedMinutes],
                     ] as const
                   )
                     .filter(([, minutes]) => minutes > 0)
@@ -214,7 +224,10 @@ export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: 
                   return (
                     <TableCell key={date} className="h-auto p-0.5 text-center">
                       {day ? (
-                        <span title={`${t(`statuses.${day.status}`)}${day.anomalies.length ? ` — ${day.anomalies.map((anomaly) => t(`anomalies.${anomaly}`)).join(", ")}` : ""}`} className={cn("block rounded-[4px] px-0.5 py-1 font-mono", CELL_TINT[day.status], day.anomalies.length && "ring-1 ring-destructive/60")}>
+                        <span
+                          title={`${t(`statuses.${day.status}`)}${day.anomalies.length ? ` — ${day.anomalies.map((anomaly) => t(`anomalies.${anomaly}`)).join(", ")}` : ""}`}
+                          className={cn("block rounded-[4px] px-0.5 py-1 font-mono", CELL_TINT[day.status], day.anomalies.length && "ring-1 ring-destructive/60")}
+                        >
                           {CODE[day.status] || " "}
                         </span>
                       ) : null}
@@ -224,10 +237,18 @@ export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: 
                 <TableCell kind="number" className="h-auto py-1.5 text-xs">
                   {(row.summary.paidDaysCenti / 100).toFixed(2)} / {row.summary.standardDays}
                 </TableCell>
-                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.lateCount || ""}</TableCell>
-                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.missingPunchDays || ""}</TableCell>
-                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.absentDays || ""}</TableCell>
-                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.otTotalMinutes ? hoursText(row.summary.otTotalMinutes) : ""}</TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">
+                  {row.summary.lateCount || ""}
+                </TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">
+                  {row.summary.missingPunchDays || ""}
+                </TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">
+                  {row.summary.absentDays || ""}
+                </TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">
+                  {row.summary.otTotalMinutes ? hoursText(row.summary.otTotalMinutes) : ""}
+                </TableCell>
               </TableRow>
             );
           })}

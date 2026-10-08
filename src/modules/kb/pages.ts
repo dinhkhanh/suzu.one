@@ -21,15 +21,25 @@ export type Actor = { personId: string };
 
 export type LoadedPage = LoadedSpace & { page: PageRow; rootAccess: AccessRow[] | null; pageFacts: PageFacts };
 
-export const pageFacts = (page: Pick<PageRow, "publishedVersionId" | "status" | "deletedAt">, rootAccess: readonly AccessRow[] | null): PageFacts => ({ readable: !!page.publishedVersionId && page.status !== "archived", deleted: !!page.deletedAt, rootAccess });
+export const pageFacts = (page: Pick<PageRow, "publishedVersionId" | "status" | "deletedAt">, rootAccess: readonly AccessRow[] | null): PageFacts => ({
+  readable: !!page.publishedVersionId && page.status !== "archived",
+  deleted: !!page.deletedAt,
+  rootAccess,
+});
 
 async function pageAccessRows(executor: Executor, pageId: string): Promise<AccessRow[]> {
-  return executor.select({ subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql(), project: projectPlaceSql() }).from(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId)).orderBy(asc(schema.kbAccess.createdAt));
+  return executor
+    .select({ subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql(), project: projectPlaceSql() })
+    .from(schema.kbAccess)
+    .where(eq(schema.kbAccess.pageId, pageId))
+    .orderBy(asc(schema.kbAccess.createdAt));
 }
 
 /** An access list as one JSON column, in the order the rows were written; a project row with its people. */
 const accessJson = (where: SQL) =>
-  sql<AccessRow[]>`coalesce((select json_agg(json_build_object('subjectKey', ${schema.kbAccess.subjectKey}, 'level', ${schema.kbAccess.level}, 'people', ${projectPeopleSql()}, 'project', ${projectPlaceSql()}) order by ${schema.kbAccess.createdAt}) from ${schema.kbAccess} where ${where}), '[]'::json)`;
+  sql<
+    AccessRow[]
+  >`coalesce((select json_agg(json_build_object('subjectKey', ${schema.kbAccess.subjectKey}, 'level', ${schema.kbAccess.level}, 'people', ${projectPeopleSql()}, 'project', ${projectPlaceSql()}) order by ${schema.kbAccess.createdAt}) from ${schema.kbAccess} where ${where}), '[]'::json)`;
 
 /**
  * A page with everything the policy asks about it — the page, its space, the space's access rows
@@ -110,7 +120,18 @@ export type TreeNode = { id: string; slug: string | null; parentId: string | nul
 export async function listTree(viewer: KbViewer, space: LoadedSpace): Promise<TreeNode[]> {
   const editor = atLeast(spaceLevel(viewer, space.facts), "edit");
   const rows = await db()
-    .select({ id: schema.kbPage.id, slug: schema.kbPage.slug, parentId: schema.kbPage.parentId, title: schema.kbPage.title, publishedTitle: schema.kbPage.publishedTitle, status: schema.kbPage.status, publishedVersionId: schema.kbPage.publishedVersionId, hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges, accessRootId: schema.kbPage.accessRootId, sortOrder: schema.kbPage.sortOrder })
+    .select({
+      id: schema.kbPage.id,
+      slug: schema.kbPage.slug,
+      parentId: schema.kbPage.parentId,
+      title: schema.kbPage.title,
+      publishedTitle: schema.kbPage.publishedTitle,
+      status: schema.kbPage.status,
+      publishedVersionId: schema.kbPage.publishedVersionId,
+      hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges,
+      accessRootId: schema.kbPage.accessRootId,
+      sortOrder: schema.kbPage.sortOrder,
+    })
     .from(schema.kbPage)
     .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
     .where(and(eq(schema.kbPage.spaceId, space.space.id), pageVisibleSql(viewer)))
@@ -121,7 +142,18 @@ export async function listTree(viewer: KbViewer, space: LoadedSpace): Promise<Tr
   const walk = (parentKey: string, depth: number) => {
     for (const row of children.get(parentKey) ?? []) {
       // Readers know a page by its published title; a draft title is the editors' business.
-      ordered.push({ id: row.id, slug: row.slug, parentId: parentKey || null, title: editor ? row.title : (row.publishedTitle ?? row.title), status: row.status, published: !!row.publishedVersionId, hasUnpublishedChanges: row.hasUnpublishedChanges, restricted: row.accessRootId === row.id, sortOrder: row.sortOrder, depth });
+      ordered.push({
+        id: row.id,
+        slug: row.slug,
+        parentId: parentKey || null,
+        title: editor ? row.title : (row.publishedTitle ?? row.title),
+        status: row.status,
+        published: !!row.publishedVersionId,
+        hasUnpublishedChanges: row.hasUnpublishedChanges,
+        restricted: row.accessRootId === row.id,
+        sortOrder: row.sortOrder,
+        depth,
+      });
       if (depth < 30) walk(row.id, depth + 1);
     }
   };
@@ -147,7 +179,14 @@ export function breadcrumbOf(tree: readonly TreeNode[], pageId: string): TreeNod
  */
 async function recomputeAccessRoots(tx: Tx, spaceId: string): Promise<void> {
   const pages = await tx.select({ id: schema.kbPage.id, parentId: schema.kbPage.parentId, accessRootId: schema.kbPage.accessRootId }).from(schema.kbPage).where(eq(schema.kbPage.spaceId, spaceId));
-  const restricted = new Set((await tx.selectDistinct({ pageId: schema.kbAccess.pageId }).from(schema.kbAccess).where(and(eq(schema.kbAccess.spaceId, spaceId), isNotNull(schema.kbAccess.pageId)))).map((row) => row.pageId!));
+  const restricted = new Set(
+    (
+      await tx
+        .selectDistinct({ pageId: schema.kbAccess.pageId })
+        .from(schema.kbAccess)
+        .where(and(eq(schema.kbAccess.spaceId, spaceId), isNotNull(schema.kbAccess.pageId)))
+    ).map((row) => row.pageId!),
+  );
   const byId = new Map(pages.map((page) => [page.id, page]));
   const rootOf = (pageId: string): string | null => {
     const seen = new Set<string>();
@@ -164,7 +203,10 @@ async function recomputeAccessRoots(tx: Tx, spaceId: string): Promise<void> {
 }
 
 async function nextSortOrder(executor: Executor, spaceId: string, parentId: string | null): Promise<number> {
-  const [row] = await executor.select({ last: max(schema.kbPage.sortOrder) }).from(schema.kbPage).where(and(eq(schema.kbPage.spaceId, spaceId), parentId ? eq(schema.kbPage.parentId, parentId) : isNull(schema.kbPage.parentId), isNull(schema.kbPage.deletedAt)));
+  const [row] = await executor
+    .select({ last: max(schema.kbPage.sortOrder) })
+    .from(schema.kbPage)
+    .where(and(eq(schema.kbPage.spaceId, spaceId), parentId ? eq(schema.kbPage.parentId, parentId) : isNull(schema.kbPage.parentId), isNull(schema.kbPage.deletedAt)));
   return (row?.last ?? -1) + 1;
 }
 
@@ -232,7 +274,19 @@ export async function createPage(input: NewPage, actor: Actor, executor?: Tx): P
     const slug = input.slug ? await checkedSlug(tx, input.spaceId, input.slug) : await freePageSlug(tx, input.spaceId, title);
     const [page] = await tx
       .insert(schema.kbPage)
-      .values({ spaceId: input.spaceId, parentId: input.parentId, title, slug, content, contentText: docToPlainText(content), sortOrder: await nextSortOrder(tx, input.spaceId, input.parentId), accessRootId, ownerPersonId: input.ownerPersonId ?? actor.personId, createdByPersonId: actor.personId, updatedByPersonId: actor.personId })
+      .values({
+        spaceId: input.spaceId,
+        parentId: input.parentId,
+        title,
+        slug,
+        content,
+        contentText: docToPlainText(content),
+        sortOrder: await nextSortOrder(tx, input.spaceId, input.parentId),
+        accessRootId,
+        ownerPersonId: input.ownerPersonId ?? actor.personId,
+        createdByPersonId: actor.personId,
+        updatedByPersonId: actor.personId,
+      })
       .returning();
     return page;
   };
@@ -243,7 +297,12 @@ export async function createPage(input: NewPage, actor: Actor, executor?: Tx): P
 export async function saveDraft(pageId: string, input: { title: string; content: unknown }, actor: Actor): Promise<{ before: PageRow; after: PageRow }> {
   const content = checkedDoc(input.content);
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     // What reviewers are reading must not change under them (the review flow sets this status).
     if (before.status === "in_review") throw new ActionError("kb_page_in_review");
@@ -256,7 +315,12 @@ export async function saveDraft(pageId: string, input: { title: string; content:
   });
 }
 
-export type PublishOptions = { changeNote?: string | null; isMajor?: boolean; /** The review that let it through (controlled spaces). */ approvalRequestId?: string | null; /** Whose revision it is, when the publisher is the approver. */ authorPersonId?: string | null };
+export type PublishOptions = {
+  changeNote?: string | null;
+  isMajor?: boolean;
+  /** The review that let it through (controlled spaces). */ approvalRequestId?: string | null;
+  /** Whose revision it is, when the publisher is the approver. */ authorPersonId?: string | null;
+};
 
 /**
  * THE PUBLISH SEAM. Turns the working copy into version n + 1 and makes it what readers see and
@@ -266,20 +330,47 @@ export type PublishOptions = { changeNote?: string | null; isMajor?: boolean; /*
  */
 export async function publishPage(pageId: string, actor: Actor, options: PublishOptions = {}, executor?: Tx): Promise<{ page: PageRow; version: PageVersionRow; before: PageRow }> {
   const run = async (tx: Tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     if (before.publishedVersionId && !before.hasUnpublishedChanges && before.status === "published") throw new ActionError("kb_nothing_to_publish");
     // A revision that waits for its reviewers is published by their answer, not around it.
     if (before.status === "in_review" && !options.approvalRequestId) throw new ActionError("kb_page_in_review");
     const content = checkedDoc(before.content);
-    const [last] = await tx.select({ versionNo: max(schema.kbPageVersion.versionNo) }).from(schema.kbPageVersion).where(eq(schema.kbPageVersion.pageId, pageId));
+    const [last] = await tx
+      .select({ versionNo: max(schema.kbPageVersion.versionNo) })
+      .from(schema.kbPageVersion)
+      .where(eq(schema.kbPageVersion.pageId, pageId));
     const [version] = await tx
       .insert(schema.kbPageVersion)
-      .values({ pageId, versionNo: (last?.versionNo ?? 0) + 1, title: before.title, content, contentText: before.contentText, authorPersonId: options.authorPersonId ?? actor.personId, changeNote: options.changeNote?.trim() || null, isMajor: !!options.isMajor, approvalRequestId: options.approvalRequestId ?? null })
+      .values({
+        pageId,
+        versionNo: (last?.versionNo ?? 0) + 1,
+        title: before.title,
+        content,
+        contentText: before.contentText,
+        authorPersonId: options.authorPersonId ?? actor.personId,
+        changeNote: options.changeNote?.trim() || null,
+        isMajor: !!options.isMajor,
+        approvalRequestId: options.approvalRequestId ?? null,
+      })
       .returning();
     const [page] = await tx
       .update(schema.kbPage)
-      .set({ status: "published", publishedVersionId: version.id, publishedTitle: version.title, publishedAt: new Date(), hasUnpublishedChanges: false, searchTitle: toSearchKey(version.title), searchBody: toSearchKey(version.contentText), updatedAt: new Date() })
+      .set({
+        status: "published",
+        publishedVersionId: version.id,
+        publishedTitle: version.title,
+        publishedAt: new Date(),
+        hasUnpublishedChanges: false,
+        searchTitle: toSearchKey(version.title),
+        searchBody: toSearchKey(version.contentText),
+        updatedAt: new Date(),
+      })
       .where(eq(schema.kbPage.id, pageId))
       .returning();
     // The assistant quotes what readers read: the passages follow the published version.
@@ -293,10 +384,19 @@ export async function publishPage(pageId: string, actor: Actor, options: Publish
 /** Takes a page away from readers (and from search) without losing its history. */
 export async function unpublishPage(pageId: string): Promise<{ before: PageRow; after: PageRow }> {
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     if (!before.publishedVersionId) throw new ActionError("kb_not_published");
-    const [after] = await tx.update(schema.kbPage).set({ status: "draft", publishedVersionId: null, publishedTitle: null, publishedAt: null, hasUnpublishedChanges: true, searchTitle: "", searchBody: "", updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+    const [after] = await tx
+      .update(schema.kbPage)
+      .set({ status: "draft", publishedVersionId: null, publishedTitle: null, publishedAt: null, hasUnpublishedChanges: true, searchTitle: "", searchBody: "", updatedAt: new Date() })
+      .where(eq(schema.kbPage.id, pageId))
+      .returning();
     await removeChunks(tx, pageId);
     return { before, after };
   });
@@ -305,7 +405,12 @@ export async function unpublishPage(pageId: string): Promise<{ before: PageRow; 
 /** Archived: kept, with its history, but out of the readers' tree and search. */
 export async function setPageArchived(pageId: string, archived: boolean): Promise<{ before: PageRow; after: PageRow }> {
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     if (before.status === "in_review") throw new ActionError("kb_page_in_review");
     const status = archived ? "archived" : before.publishedVersionId ? "published" : "draft";
@@ -322,10 +427,18 @@ export async function setPageArchived(pageId: string, archived: boolean): Promis
 /** Soft delete. A page with pages under it stays: move or delete those first. */
 export async function deletePage(pageId: string): Promise<PageRow> {
   return db().transaction(async (tx) => {
-    const [page] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [page] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!page) throw new ActionError("kb_page_not_found");
     if (page.status === "in_review") throw new ActionError("kb_page_in_review");
-    const [children] = await tx.select({ n: count() }).from(schema.kbPage).where(and(eq(schema.kbPage.parentId, pageId), isNull(schema.kbPage.deletedAt)));
+    const [children] = await tx
+      .select({ n: count() })
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.parentId, pageId), isNull(schema.kbPage.deletedAt)));
     if (children.n > 0) throw new ActionError("kb_page_has_children");
     await tx.delete(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId));
     await removeChunks(tx, pageId);
@@ -337,9 +450,17 @@ export async function deletePage(pageId: string): Promise<PageRow> {
 /** Moves a page (with everything under it) to another parent of the same space, or reorders it: `position` is its index among the new siblings. */
 export async function movePage(pageId: string, target: { parentId: string | null; position: number | null }): Promise<{ before: PageRow; after: PageRow }> {
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
-    const pages = await tx.select({ id: schema.kbPage.id, parentId: schema.kbPage.parentId, sortOrder: schema.kbPage.sortOrder, createdAt: schema.kbPage.createdAt }).from(schema.kbPage).where(and(eq(schema.kbPage.spaceId, before.spaceId), isNull(schema.kbPage.deletedAt)));
+    const pages = await tx
+      .select({ id: schema.kbPage.id, parentId: schema.kbPage.parentId, sortOrder: schema.kbPage.sortOrder, createdAt: schema.kbPage.createdAt })
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.spaceId, before.spaceId), isNull(schema.kbPage.deletedAt)));
     const byId = new Map(pages.map((page) => [page.id, page]));
     if (target.parentId) {
       if (!byId.has(target.parentId)) throw new ActionError("kb_parent_not_found");
@@ -367,7 +488,12 @@ export async function movePage(pageId: string, target: { parentId: string | null
 /** The page's own access rows: with any, the page and everything under it is for the people they name (plus the space's editors). None = follow the space again. */
 export async function setPageAccess(pageId: string, rows: readonly AccessRow[]): Promise<{ before: AccessRow[]; after: AccessRow[]; page: PageRow }> {
   return db().transaction(async (tx) => {
-    const [page] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [page] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!page) throw new ActionError("kb_page_not_found");
     const before = await pageAccessRows(tx, pageId);
     const after = await replaceAccess(tx, page.spaceId, pageId, rows);
@@ -379,10 +505,18 @@ export async function setPageAccess(pageId: string, rows: readonly AccessRow[]):
 export const listPageAccess = (pageId: string): Promise<AccessRow[]> => pageAccessRows(db(), pageId);
 
 export async function setPageMeta(pageId: string, values: { ownerPersonId: string | null; reviewBy: IsoDate | null }): Promise<{ before: PageRow; after: PageRow }> {
-  const [before] = await db().select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1);
+  const [before] = await db()
+    .select()
+    .from(schema.kbPage)
+    .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+    .limit(1);
   if (!before) throw new ActionError("kb_page_not_found");
   // A new review date is a new promise: the owner is reminded again when it passes.
-  const [after] = await db().update(schema.kbPage).set({ ...values, ...(values.reviewBy !== before.reviewBy ? { reviewRemindedOn: null } : {}), updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+  const [after] = await db()
+    .update(schema.kbPage)
+    .set({ ...values, ...(values.reviewBy !== before.reviewBy ? { reviewRemindedOn: null } : {}), updatedAt: new Date() })
+    .where(eq(schema.kbPage.id, pageId))
+    .returning();
   return { before, after };
 }
 
@@ -392,7 +526,16 @@ export type VersionListRow = { id: string; versionNo: number; title: string; cha
 
 export async function listVersions(page: Pick<PageRow, "id" | "publishedVersionId">): Promise<VersionListRow[]> {
   const rows = await db()
-    .select({ id: schema.kbPageVersion.id, versionNo: schema.kbPageVersion.versionNo, title: schema.kbPageVersion.title, changeNote: schema.kbPageVersion.changeNote, isMajor: schema.kbPageVersion.isMajor, authorPersonId: schema.kbPageVersion.authorPersonId, authorName: schema.person.fullName, createdAt: schema.kbPageVersion.createdAt })
+    .select({
+      id: schema.kbPageVersion.id,
+      versionNo: schema.kbPageVersion.versionNo,
+      title: schema.kbPageVersion.title,
+      changeNote: schema.kbPageVersion.changeNote,
+      isMajor: schema.kbPageVersion.isMajor,
+      authorPersonId: schema.kbPageVersion.authorPersonId,
+      authorName: schema.person.fullName,
+      createdAt: schema.kbPageVersion.createdAt,
+    })
     .from(schema.kbPageVersion)
     .leftJoin(schema.person, eq(schema.person.id, schema.kbPageVersion.authorPersonId))
     .where(eq(schema.kbPageVersion.pageId, page.id))
@@ -401,7 +544,11 @@ export async function listVersions(page: Pick<PageRow, "id" | "publishedVersionI
 }
 
 export async function getVersion(pageId: string, where: { versionNo: number } | { id: string }, executor: Executor = db()): Promise<PageVersionRow | null> {
-  const [row] = await executor.select().from(schema.kbPageVersion).where(and(eq(schema.kbPageVersion.pageId, pageId), "id" in where ? eq(schema.kbPageVersion.id, where.id) : eq(schema.kbPageVersion.versionNo, where.versionNo))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.kbPageVersion)
+    .where(and(eq(schema.kbPageVersion.pageId, pageId), "id" in where ? eq(schema.kbPageVersion.id, where.id) : eq(schema.kbPageVersion.versionNo, where.versionNo)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -418,12 +565,21 @@ export async function compareVersions(page: PageRow, fromNo: number, toNo: numbe
 /** Copies a version back into the working copy. History is never rewritten: publishing it makes a new version. */
 export async function restoreVersion(pageId: string, versionNo: number, actor: Actor): Promise<{ before: PageRow; after: PageRow }> {
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     if (before.status === "in_review") throw new ActionError("kb_page_in_review");
     const version = await getVersion(pageId, { versionNo }, tx);
     if (!version) throw new ActionError("kb_version_not_found");
-    const [after] = await tx.update(schema.kbPage).set({ title: version.title, content: version.content, contentText: version.contentText, hasUnpublishedChanges: true, updatedByPersonId: actor.personId, updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+    const [after] = await tx
+      .update(schema.kbPage)
+      .set({ title: version.title, content: version.content, contentText: version.contentText, hasUnpublishedChanges: true, updatedByPersonId: actor.personId, updatedAt: new Date() })
+      .where(eq(schema.kbPage.id, pageId))
+      .returning();
     return { before, after };
   });
 }
@@ -466,6 +622,11 @@ export function moveTargets(tree: readonly TreeNode[], pageId: string): TreeNode
 }
 
 export async function pagesExist(pageIds: readonly string[]): Promise<Set<string>> {
-  const rows = pageIds.length ? await db().select({ id: schema.kbPage.id }).from(schema.kbPage).where(and(inArray(schema.kbPage.id, [...pageIds]), isNull(schema.kbPage.deletedAt))) : [];
+  const rows = pageIds.length
+    ? await db()
+        .select({ id: schema.kbPage.id })
+        .from(schema.kbPage)
+        .where(and(inArray(schema.kbPage.id, [...pageIds]), isNull(schema.kbPage.deletedAt)))
+    : [];
   return new Set(rows.map((row) => row.id));
 }

@@ -73,9 +73,7 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
       </nav>
 
       {goals.length === 0 ? <p className="text-sm text-muted-foreground">{t("alignment.empty", { year })}</p> : null}
-      {roots.length > 0 ? (
-        <GoalTree goals={goals} rootIds={roots.map((goal) => goal.id)} />
-      ) : null}
+      {roots.length > 0 ? <GoalTree goals={goals} rootIds={roots.map((goal) => goal.id)} /> : null}
       {unaligned.length > 0 ? (
         <TableCard>
           <TableCardHeader title={t("alignment.unaligned")} count={unaligned.length} description={t("alignment.unalignedHint")} />

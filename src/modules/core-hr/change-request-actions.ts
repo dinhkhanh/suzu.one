@@ -18,13 +18,15 @@ const changeInput = {
     currentAddress: text(300),
     maritalStatus: optional(z.enum(MARITAL_STATUSES)),
   }),
-  restricted: z.object({
-    nationalId: text(40),
-    nationalIdIssuedOn: optional(z.iso.date()),
-    nationalIdIssuedAt: text(200),
-    taxCode: text(40),
-    socialInsuranceNumber: text(40),
-  }).prefault({}),
+  restricted: z
+    .object({
+      nationalId: text(40),
+      nationalIdIssuedOn: optional(z.iso.date()),
+      nationalIdIssuedAt: text(200),
+      taxCode: text(40),
+      socialInsuranceNumber: text(40),
+    })
+    .prefault({}),
   bankAccount: z.object({ bankName: text(120), accountNumber: text(40), accountHolder: text(120), branch: text(120) }).prefault({}),
 };
 

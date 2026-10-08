@@ -177,19 +177,25 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
                     {!link.allowDecision ? <span className="ml-2 text-xs text-muted-foreground">{t("viewOnly")}</span> : null}
                   </TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(link.state)}>{t(`states.${link.state}`)}</Badge>
+                    <Badge dot variant={statusTone(link.state)}>
+                      {t(`states.${link.state}`)}
+                    </Badge>
                   </TableCell>
                   <TableCell kind="id">{link.version ? `v${link.version}` : t("currentVersion")}</TableCell>
-                  <TableCell>{link.createdByName ? <RecordLink kind="person" id={link.createdByPersonId}>{link.createdByName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {link.createdByName ? (
+                      <RecordLink kind="person" id={link.createdByPersonId}>
+                        {link.createdByName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>{day(link.createdAt)}</TableCell>
                   <TableCell>{day(link.expiresAt)}</TableCell>
                   <TableCell kind="number">{link.viewCount}</TableCell>
                   <TableCell className="text-muted-foreground">{link.viewCount ? (link.lastViewedAt ? when(link.lastViewedAt) : "—") : t("noViews")}</TableCell>
-                  {revocable ? (
-                    <TableCell kind="actions">
-                      {isLive(link.state) && link.canRevoke ? <RevokeButton disabled={pending} onConfirm={() => run(() => revokePreviewLinkAction({ linkId: link.id }))} /> : null}
-                    </TableCell>
-                  ) : null}
+                  {revocable ? <TableCell kind="actions">{isLive(link.state) && link.canRevoke ? <RevokeButton disabled={pending} onConfirm={() => run(() => revokePreviewLinkAction({ linkId: link.id }))} /> : null}</TableCell> : null}
                 </TableRow>
                 {link.decision ? (
                   <TableRow data-unnumbered>
@@ -351,7 +357,15 @@ export function ProjectPreviewLinks({ links }: { links: ProjectPreviewLinkItem[]
                     {link.decision && t.has(`decisions.${link.decision}`) ? t(`decisions.${link.decision}` as "decisions.approved") : t(`states.${link.state}`)}
                   </Badge>
                 </TableCell>
-                <TableCell>{link.createdByName ? <RecordLink kind="person" id={link.createdByPersonId}>{link.createdByName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {link.createdByName ? (
+                    <RecordLink kind="person" id={link.createdByPersonId}>
+                      {link.createdByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{day(link.createdAt)}</TableCell>
                 <TableCell>{day(link.expiresAt)}</TableCell>
                 <TableCell kind="number">{link.viewCount}</TableCell>

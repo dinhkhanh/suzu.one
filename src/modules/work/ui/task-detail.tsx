@@ -13,13 +13,7 @@ import { RecordLink } from "@/components/ui/record-link";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { MultiSelect, Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  addDependencyAction,
-  createTaskAction,
-  deleteTaskAction,
-  removeDependencyAction,
-  updateTaskAction,
-} from "../actions";
+import { addDependencyAction, createTaskAction, deleteTaskAction, removeDependencyAction, updateTaskAction } from "../actions";
 import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -120,14 +114,7 @@ export type DetailActivity = {
 const newId = () => Math.random().toString(36).slice(2, 10);
 
 /** `intercept`: a refusal the screen answers itself (the hand-off gate opens its sheet, FR-PJM-40). */
-function useRun(
-  intercept?: (result: {
-    ok: boolean;
-    error?: string;
-    message?: string;
-    details?: unknown;
-  }) => boolean,
-) {
+function useRun(intercept?: (result: { ok: boolean; error?: string; message?: string; details?: unknown }) => boolean) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -147,12 +134,7 @@ function useRun(
         setErrorKey(null);
         return;
       }
-      setErrorKey(
-        result.ok
-          ? null
-          : ((result.error === "failed" ? result.message : result.error) ??
-              "generic"),
-      );
+      setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
       if (result.ok) {
         after?.();
         router.refresh();
@@ -190,8 +172,7 @@ export function TaskDetailView({
   const { run, pending, errorKey } = useRun(gate.intercept);
   const [saved, setSaved] = useState(false);
   const subtaskInput = useRef<HTMLInputElement>(null);
-  const update = (patch: Record<string, unknown>, after?: () => void) =>
-    run(updateTaskAction, { taskId: task.id, ...patch }, after);
+  const update = (patch: Record<string, unknown>, after?: () => void) => run(updateTaskAction, { taskId: task.id, ...patch }, after);
 
   function saveFields(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -360,7 +341,18 @@ export function TaskDetailView({
           {prop(t("fields.dueDate"), <DatePicker id="dueDate" name="dueDate" form="task-fields" defaultValue={task.dueDate ?? ""} disabled={!canEdit} className={compact} />, "dueDate")}
           {prop(
             t("fields.estimateMinutes"),
-            <Input id="estimateHours" name="estimateHours" type="number" min={0.25} max={1000} step={0.25} form="task-fields" defaultValue={task.estimateMinutes ? task.estimateMinutes / 60 : ""} disabled={!canEdit} className={`${compact} font-mono tabular-nums`} />,
+            <Input
+              id="estimateHours"
+              name="estimateHours"
+              type="number"
+              min={0.25}
+              max={1000}
+              step={0.25}
+              form="task-fields"
+              defaultValue={task.estimateMinutes ? task.estimateMinutes / 60 : ""}
+              disabled={!canEdit}
+              className={`${compact} font-mono tabular-nums`}
+            />,
             "estimateHours",
           )}
           {select(
@@ -453,12 +445,29 @@ export function TaskDetailView({
             requester: task.requesterName ?? "—",
             creator: task.createdByName ?? "—",
             date: format.dateTime(new Date(task.createdAt), { dateStyle: "medium" }),
-            r: (chunks) => <RecordLink kind="person" id={task.requesterPersonId}>{chunks}</RecordLink>,
-            c: (chunks) => <RecordLink kind="person" id={task.createdByPersonId}>{chunks}</RecordLink>,
+            r: (chunks) => (
+              <RecordLink kind="person" id={task.requesterPersonId}>
+                {chunks}
+              </RecordLink>
+            ),
+            c: (chunks) => (
+              <RecordLink kind="person" id={task.createdByPersonId}>
+                {chunks}
+              </RecordLink>
+            ),
           })}
         </p>
         {canDelete ? (
-          <ConfirmButton size="sm" variant="ghost" className="self-start text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(deleteTaskAction, { taskId: task.id }, () => router.push(task.projectId ? `/work/projects/${task.projectId}` : "/work"))} />
+          <ConfirmButton
+            size="sm"
+            variant="ghost"
+            className="self-start text-destructive"
+            disabled={pending}
+            destructive
+            label={t("delete")}
+            question={t("deleteConfirm")}
+            onConfirm={() => run(deleteTaskAction, { taskId: task.id }, () => router.push(task.projectId ? `/work/projects/${task.projectId}` : "/work"))}
+          />
         ) : null}
       </aside>
 
@@ -466,7 +475,11 @@ export function TaskDetailView({
       <div className="order-3 flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-2">
         <form id="task-fields" onSubmit={saveFields} className="flex flex-col gap-2">
           <h2 className="section-label">{t("fields.description")}</h2>
-          {canEdit ? <NoteEditor name="description" maxLength={10000} rows={5} defaultValue={task.description ?? ""} aria-label={t("fields.description")} placeholder={t("descriptionPlaceholder")} /> : <RichText text={task.description} className="text-sm" />}
+          {canEdit ? (
+            <NoteEditor name="description" maxLength={10000} rows={5} defaultValue={task.description ?? ""} aria-label={t("fields.description")} placeholder={t("descriptionPlaceholder")} />
+          ) : (
+            <RichText text={task.description} className="text-sm" />
+          )}
           {!canEdit && !task.description?.trim() ? <p className="text-sm text-faint">—</p> : null}
         </form>
 
@@ -485,8 +498,12 @@ export function TaskDetailView({
                   <TableHead kind="id">{tWork("table.key")}</TableHead>
                   <TableHead kind="text">{tWork("table.title")}</TableHead>
                   <TableHead kind="person">{t("fields.assignee")}</TableHead>
-                  <TableHead kind="date" className="hidden md:table-cell">{t("fields.dueDate")}</TableHead>
-                  <TableHead kind="status" className="hidden md:table-cell">{t("fields.state")}</TableHead>
+                  <TableHead kind="date" className="hidden md:table-cell">
+                    {t("fields.dueDate")}
+                  </TableHead>
+                  <TableHead kind="status" className="hidden md:table-cell">
+                    {t("fields.state")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -507,7 +524,15 @@ export function TaskDetailView({
                       <TableCell>
                         <span className="flex items-center gap-2 text-muted-foreground">
                           <PersonAvatar name={subtask.assigneeName} />
-                          <span className="hidden truncate md:inline">{subtask.assigneeName ? <RecordLink kind="person" id={subtask.assigneePersonId}>{subtask.assigneeName}</RecordLink> : t("unassigned")}</span>
+                          <span className="hidden truncate md:inline">
+                            {subtask.assigneeName ? (
+                              <RecordLink kind="person" id={subtask.assigneePersonId}>
+                                {subtask.assigneeName}
+                              </RecordLink>
+                            ) : (
+                              t("unassigned")
+                            )}
+                          </span>
                         </span>
                       </TableCell>
                       <TableCell kind="date" className="hidden md:table-cell">
@@ -689,52 +714,25 @@ function TaskChecklist({
   const t = useTranslations("work.task");
   const [adding, setAdding] = useState("");
   const own = items.filter((item) => !item.checklistId);
-  const groups = [
-    ...new Set(
-      items.flatMap((item) => (item.checklistId ? [item.checklistId] : [])),
-    ),
-  ].map((id) => ({
+  const groups = [...new Set(items.flatMap((item) => (item.checklistId ? [item.checklistId] : [])))].map((id) => ({
     id,
     items: items.filter((item) => item.checklistId === id),
   }));
   const carried = new Set(groups.map((group) => group.id));
-  const required = new Set(
-    stage.filter((hook) => hook.required).map((hook) => hook.id),
-  );
+  const required = new Set(stage.filter((hook) => hook.required).map((hook) => hook.id));
   // A required checklist hooked to the stage after the task arrived: it still has to be added and ticked.
-  const missing = stage.filter(
-    (hook) => hook.required && !carried.has(hook.id),
-  );
+  const missing = stage.filter((hook) => hook.required && !carried.has(hook.id));
   const addable = library.filter((list) => !carried.has(list.id));
-  const send = (next: ChecklistItem[], after?: () => void) =>
-    update(
-      { checklist: next.map(({ id, text, done }) => ({ id, text, done })) },
-      after,
-    );
-  const toggle = (id: string) =>
-    send(
-      items.map((row) => (row.id === id ? { ...row, done: !row.done } : row)),
-    );
+  const send = (next: ChecklistItem[], after?: () => void) => update({ checklist: next.map(({ id, text, done }) => ({ id, text, done })) }, after);
+  const toggle = (id: string) => send(items.map((row) => (row.id === id ? { ...row, done: !row.done } : row)));
 
   const box = (item: ChecklistItem, removable: boolean) => (
     <ListItem key={item.id} className="gap-2">
-      <Checkbox
-        checked={item.done}
-        disabled={!canEdit || pending}
-        onCheckedChange={() => toggle(item.id)}
-        aria-label={item.text}
-      />
-      <span
-        className={
-          item.done ? "flex-1 text-muted-foreground line-through" : "flex-1"
-        }
-      >
+      <Checkbox checked={item.done} disabled={!canEdit || pending} onCheckedChange={() => toggle(item.id)} aria-label={item.text} />
+      <span className={item.done ? "flex-1 text-muted-foreground line-through" : "flex-1"}>
         {item.text}
         {item.linkUrl ? (
-          <a
-            href={item.linkUrl}
-            className="ml-2 text-xs text-muted-foreground underline underline-offset-2"
-          >
+          <a href={item.linkUrl} className="ml-2 text-xs text-muted-foreground underline underline-offset-2">
             {t("checklistGuide")}
           </a>
         ) : null}
@@ -752,10 +750,7 @@ function TaskChecklist({
       <h2 className="section-label">{t("checklist")}</h2>
       {own.length ? <List>{own.map((item) => box(item, true))}</List> : null}
       {groups.map((group) => {
-        const name =
-          group.items[0].checklistName ??
-          library.find((list) => list.id === group.id)?.name ??
-          t("checklistFallback");
+        const name = group.items[0].checklistName ?? library.find((list) => list.id === group.id)?.name ?? t("checklistFallback");
         const done = group.items.filter((item) => item.done).length;
         return (
           <TableCard key={group.id}>
@@ -765,26 +760,9 @@ function TaskChecklist({
               actions={
                 required.has(group.id) || canEdit ? (
                   <>
-                    {required.has(group.id) ? (
-                      <Badge
-                        variant={
-                          done === group.items.length ? "secondary" : "outline"
-                        }
-                      >
-                        {t("checklistRequired")}
-                      </Badge>
-                    ) : null}
+                    {required.has(group.id) ? <Badge variant={done === group.items.length ? "secondary" : "outline"}>{t("checklistRequired")}</Badge> : null}
                     {canEdit && !required.has(group.id) ? (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                        disabled={pending}
-                        onClick={() =>
-                          send(
-                            items.filter((row) => row.checklistId !== group.id),
-                          )
-                        }
-                      >
+                      <button type="button" className="text-xs text-muted-foreground hover:text-destructive" disabled={pending} onClick={() => send(items.filter((row) => row.checklistId !== group.id))}>
                         {t("checklistRemove")}
                       </button>
                     ) : null}
@@ -797,21 +775,10 @@ function TaskChecklist({
         );
       })}
       {missing.map((hook) => (
-        <div
-          key={hook.id}
-          className="flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-border px-3 py-2 text-sm"
-        >
-          <span className="flex-1">
-            {t("checklistMissing", { name: hook.name })}
-          </span>
+        <div key={hook.id} className="flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-border px-3 py-2 text-sm">
+          <span className="flex-1">{t("checklistMissing", { name: hook.name })}</span>
           {canEdit ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => update({ addChecklistIds: [hook.id] })}
-            >
+            <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => update({ addChecklistIds: [hook.id] })}>
               {t("checklistAddThis")}
             </Button>
           ) : null}
@@ -825,24 +792,11 @@ function TaskChecklist({
               event.preventDefault();
               const form = event.currentTarget;
               const text = String(new FormData(form).get("text") ?? "").trim();
-              if (text)
-                send([...items, { id: newId(), text, done: false }], () =>
-                  form.reset(),
-                );
+              if (text) send([...items, { id: newId(), text, done: false }], () => form.reset());
             }}
           >
-            <Input
-              name="text"
-              maxLength={200}
-              placeholder={t("checklistAdd")}
-              aria-label={t("checklistAdd")}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-            >
+            <Input name="text" maxLength={200} placeholder={t("checklistAdd")} aria-label={t("checklistAdd")} />
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>
               {t("add")}
             </Button>
           </form>
@@ -851,16 +805,10 @@ function TaskChecklist({
               className="flex gap-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (adding)
-                  update({ addChecklistIds: [adding] }, () => setAdding(""));
+                if (adding) update({ addChecklistIds: [adding] }, () => setAdding(""));
               }}
             >
-              <Select
-                value={adding}
-                onChange={(event) => setAdding(event.target.value)}
-                aria-label={t("checklistFromLibrary")}
-                className="w-full sm:w-56"
-              >
+              <Select value={adding} onChange={(event) => setAdding(event.target.value)} aria-label={t("checklistFromLibrary")} className="w-full sm:w-56">
                 <option value="">{t("checklistFromLibrary")}</option>
                 {addable.map((list) => (
                   <option key={list.id} value={list.id}>
@@ -868,12 +816,7 @@ function TaskChecklist({
                   </option>
                 ))}
               </Select>
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={pending || !adding}
-              >
+              <Button type="submit" size="sm" variant="outline" disabled={pending || !adding}>
                 {t("add")}
               </Button>
             </form>

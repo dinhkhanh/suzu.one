@@ -48,8 +48,23 @@ beforeAll(async () => {
       .values({ fullName: NAMES[who], searchName: NAMES[who].toLowerCase(), workEmail: `${who}@suzu.group`, status: "active", primaryEntityId: who === "kim" ? szc.id : szm.id })
       .returning();
     ids[who] = row.id;
-    for (const grant of grants[who] ?? []) await db().insert(schema.roleAssignment).values({ personId: row.id, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "entity" ? grant.scope.id : null, validFrom: "2024-01-01" });
-    users[who] = { userId: `user-${who}`, sessionId: `session-${who}`, reauthAt: new Date(), preferences: { locale: null, theme: null, navPins: [] }, email: `${who}@suzu.group`, name: NAMES[who], image: null, person: row, impersonator: null, principal: { personId: row.id, workforceType: "employee", grants: grants[who] ?? [] }, request: { ipAddress: null, userAgent: null } } as CurrentUser;
+    for (const grant of grants[who] ?? [])
+      await db()
+        .insert(schema.roleAssignment)
+        .values({ personId: row.id, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "entity" ? grant.scope.id : null, validFrom: "2024-01-01" });
+    users[who] = {
+      userId: `user-${who}`,
+      sessionId: `session-${who}`,
+      reauthAt: new Date(),
+      preferences: { locale: null, theme: null, navPins: [] },
+      email: `${who}@suzu.group`,
+      name: NAMES[who],
+      image: null,
+      person: row,
+      impersonator: null,
+      principal: { personId: row.id, workforceType: "employee", grants: grants[who] ?? [] },
+      request: { ipAddress: null, userAgent: null },
+    } as CurrentUser;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   for (const who of ["huy", "tam"] as const) await setTeamMember(video.id, ids[who], "member");

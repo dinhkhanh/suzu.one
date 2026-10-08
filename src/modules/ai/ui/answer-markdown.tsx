@@ -98,7 +98,9 @@ function blocks(tokens: readonly Token[], context: Context, key: string): ReactN
         return <p key={id}>{inline((token as Tokens.Text).tokens ?? [token], context, id)}</p>;
       case "list": {
         const list = token as Tokens.List;
-        const items = list.items.map((item, itemIndex) => <li key={`${id}-${itemIndex}`}>{item.tokens.some((child) => child.type !== "text") ? blocks(item.tokens, context, `${id}-${itemIndex}`) : inline(item.tokens, context, `${id}-${itemIndex}`)}</li>);
+        const items = list.items.map((item, itemIndex) => (
+          <li key={`${id}-${itemIndex}`}>{item.tokens.some((child) => child.type !== "text") ? blocks(item.tokens, context, `${id}-${itemIndex}`) : inline(item.tokens, context, `${id}-${itemIndex}`)}</li>
+        ));
         return list.ordered ? (
           <ol key={id} start={typeof list.start === "number" ? list.start : undefined} className="flex list-decimal flex-col gap-0.5 pl-5">
             {items}

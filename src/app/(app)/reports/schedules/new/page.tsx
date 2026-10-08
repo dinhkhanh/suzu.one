@@ -14,21 +14,22 @@ export const generateMetadata = pageTitle("newSchedule");
 export default async function NewSchedulePage() {
   const user = await requireUser();
   if (!canManageSchedules(user.principal)) notFound();
-  const [reports, people, t, tCatalogue, locale] = await Promise.all([
-    listReportsFor(user, { forScheduling: true }),
-    listPersonNames(),
-    getTranslations("reports.schedules"),
-    getTranslations("reports.catalogue"),
-    getLocale(),
-  ]);
+  const [reports, people, t, tCatalogue, locale] = await Promise.all([listReportsFor(user, { forScheduling: true }), listPersonNames(), getTranslations("reports.schedules"), getTranslations("reports.catalogue"), getLocale()]);
   if (reports.length === 0) notFound();
   const options = reports.map((report) => ({ key: report.key, label: tCatalogue.has(`${report.key}.name` as never) ? tCatalogue(`${report.key}.name` as never) : report.key }));
 
   return (
     <Page width="narrow">
-      <PageHeader eyebrow={<><Link href="/reports/schedules" className="underline underline-offset-4">
-            {t("title")}
-          </Link></>} title={t("new")}></PageHeader>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/reports/schedules" className="underline underline-offset-4">
+              {t("title")}
+            </Link>
+          </>
+        }
+        title={t("new")}
+      ></PageHeader>
       <ScheduleForm
         draft={{ id: null, reportKey: options[0].key, name: options[0].label, cadence: "weekly", dayOfWeek: 1, dayOfMonth: 1, locale, recipientPersonIds: [user.person.id] }}
         reports={options}

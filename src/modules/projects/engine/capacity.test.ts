@@ -46,7 +46,18 @@ describe("available hours (FR-PJM-13)", () => {
     expect(leaveMinutes(240, { date: "2026-09-01", days: 1, minutes: null })).toBe(240);
     expect(leaveMinutes(240, { date: "2026-09-01", days: 1, minutes: 600 })).toBe(240);
     // Two half days on one date take the day once.
-    expect(capacityWeek({ week, days: fullTime, leave: [{ date: "2026-08-31", days: 0.5, minutes: null }, { date: "2026-08-31", days: 1, minutes: null }], bookings: [], daysOff: none }).awayMinutes).toBe(480);
+    expect(
+      capacityWeek({
+        week,
+        days: fullTime,
+        leave: [
+          { date: "2026-08-31", days: 0.5, minutes: null },
+          { date: "2026-08-31", days: 1, minutes: null },
+        ],
+        bookings: [],
+        daysOff: none,
+      }).awayMinutes,
+    ).toBe(480);
   });
   it("fall back to 8 hours Monday–Friday for someone with no schedule, days off still off", () => {
     const unscheduled: PlannedDay[] = dates.map((date) => ({ date, kind: "unscheduled", requiredMinutes: 0 }));
@@ -58,13 +69,32 @@ describe("available hours (FR-PJM-13)", () => {
 
 describe("bookings against capacity (FR-PJM-13)", () => {
   it("count confirmed hours as load; tentative hours are shown, never counted", () => {
-    const cell = capacityWeek({ week, days: partTime, leave: [], bookings: [{ weekStart: week.start, minutes: 600, status: "confirmed" }, { weekStart: week.start, minutes: 300, status: "tentative" }, { weekStart: "2026-09-07", minutes: 2400, status: "confirmed" }], daysOff: none });
+    const cell = capacityWeek({
+      week,
+      days: partTime,
+      leave: [],
+      bookings: [
+        { weekStart: week.start, minutes: 600, status: "confirmed" },
+        { weekStart: week.start, minutes: 300, status: "tentative" },
+        { weekStart: "2026-09-07", minutes: 2400, status: "confirmed" },
+      ],
+      daysOff: none,
+    });
     expect(cell).toMatchObject({ availableMinutes: 960, confirmedMinutes: 600, tentativeMinutes: 300, freeMinutes: 360, over: false, atRisk: false });
   });
   it("warn when confirmed hours exceed what is available, and when tentative ones would", () => {
     const over = capacityWeek({ week, days: partTime, leave: [{ date: "2026-08-31", days: 1, minutes: null }], bookings: [{ weekStart: week.start, minutes: 900, status: "confirmed" }], daysOff: none });
     expect(over).toMatchObject({ availableMinutes: 720, freeMinutes: -180, over: true, atRisk: false });
-    const risk = capacityWeek({ week, days: partTime, leave: [], bookings: [{ weekStart: week.start, minutes: 900, status: "confirmed" }, { weekStart: week.start, minutes: 120, status: "tentative" }], daysOff: none });
+    const risk = capacityWeek({
+      week,
+      days: partTime,
+      leave: [],
+      bookings: [
+        { weekStart: week.start, minutes: 900, status: "confirmed" },
+        { weekStart: week.start, minutes: 120, status: "tentative" },
+      ],
+      daysOff: none,
+    });
     expect(risk).toMatchObject({ over: false, atRisk: true });
   });
   it("lays people × weeks out and counts the weeks over", () => {

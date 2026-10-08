@@ -175,15 +175,15 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
               <legend className="mb-2 text-sm font-medium">{t("decide.choice")}</legend>
               {/* None is checked: the client picks, and `required` holds the form until they have. */}
               <RadioGroup name="decision" required>
-              {PREVIEW_DECISIONS.map((decision) => (
-                <label key={decision} className="flex items-start gap-2 rounded-lg border p-3 text-sm">
-                  <RadioGroupItem value={decision} className="mt-0.5" />
-                  <span>
-                    <span className="font-medium">{t(`decide.decisions.${decision}`)}</span>
-                    <span className="block text-xs text-muted-foreground">{t(`decide.hints.${decision}`)}</span>
-                  </span>
-                </label>
-              ))}
+                {PREVIEW_DECISIONS.map((decision) => (
+                  <label key={decision} className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+                    <RadioGroupItem value={decision} className="mt-0.5" />
+                    <span>
+                      <span className="font-medium">{t(`decide.decisions.${decision}`)}</span>
+                      <span className="block text-xs text-muted-foreground">{t(`decide.hints.${decision}`)}</span>
+                    </span>
+                  </label>
+                ))}
               </RadioGroup>
             </fieldset>
 

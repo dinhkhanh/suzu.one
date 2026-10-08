@@ -27,9 +27,17 @@ import { countFeedbackByStatus, getFeedback, listFeedbackAreas, listFeedbackInbo
 type Who = "hrA" | "ceo" | "lan" | "khoi";
 const ids = {} as Record<Who | "a" | "b" | "design" | "video", string>;
 const principals = {} as Record<Who, Principal>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const submitter = (who: "lan" | "khoi") => ({ personId: ids[who], entityId: who === "lan" ? ids.a : ids.b, unitPath: [who === "lan" ? ids.design : ids.video] });
-const noticesOf = async (who: Who, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[who]), eq(schema.notification.kind, kind)));
+const noticesOf = async (who: Who, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[who]), eq(schema.notification.kind, kind)));
 const base = { blocking: false, pagePath: null, screenshotFileId: null } as const;
 
 beforeAll(async () => {
@@ -47,11 +55,17 @@ beforeAll(async () => {
     ["khoi", b.id, video.id, null, null],
   ];
   for (const [key, entityId, unitId, role, scope] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, orgUnitId: unitId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, orgUnitId: unitId })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : { type: "entity", id: entityId } }] : [];
     principals[key] = { personId: row.id, workforceType: "employee", grants };
-    if (role) await db().insert(schema.roleAssignment).values({ personId: row.id, role, scopeType: scope!, scopeId: scope === "group" ? null : entityId, validFrom: "2020-01-01" });
+    if (role)
+      await db()
+        .insert(schema.roleAssignment)
+        .values({ personId: row.id, role, scopeType: scope!, scopeId: scope === "group" ? null : entityId, validFrom: "2020-01-01" });
   }
 });
 

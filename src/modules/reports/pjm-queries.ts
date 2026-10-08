@@ -35,7 +35,11 @@ export async function taskCountsByAssignee(personIds: readonly string[], range: 
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .where(and(inArray(schema.task.assigneePersonId, [...personIds]), eq(schema.task.status, "done"), isNull(schema.task.deletedAt), sql`${completedOn} between ${range.from}::date and ${range.to}::date`))
     .groupBy(schema.task.assigneePersonId);
-  return new Map(rows.flatMap((row) => (row.personId ? [[row.personId, { completedTasks: Number(row.completedTasks), completedDated: Number(row.completedDated), completedOnTime: Number(row.completedOnTime), revisionRounds: Number(row.revisionRounds) }] as const] : [])));
+  return new Map(
+    rows.flatMap((row) =>
+      row.personId ? [[row.personId, { completedTasks: Number(row.completedTasks), completedDated: Number(row.completedDated), completedOnTime: Number(row.completedOnTime), revisionRounds: Number(row.revisionRounds) }] as const] : [],
+    ),
+  );
 }
 
 /**
@@ -86,7 +90,11 @@ export async function submittedReportDates(personIds: readonly string[], range: 
 
 // ── Delivery dashboards (FR-PJM-60): per project, for projects the reader may open ─────────
 
-const inProjects = (projectIds: readonly string[]) => sql.join(projectIds.map((id) => sql`${id}::uuid`), sql`, `);
+const inProjects = (projectIds: readonly string[]) =>
+  sql.join(
+    projectIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
 /** An instant range for timestamps: the period's first day 00:00 to the day after its last, Vietnam time. */
 const instants = (range: Range) => ({ from: sql`(${range.from}::date)::timestamp at time zone 'Asia/Ho_Chi_Minh'`, to: sql`((${range.to}::date + 1)::timestamp at time zone 'Asia/Ho_Chi_Minh')` });
 
@@ -187,7 +195,9 @@ export async function handoffCountsByProject(projectIds: readonly string[], rang
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.workHandoff.taskId))
     .where(and(inArray(schema.workTask.projectId, [...projectIds]), inArray(schema.workHandoff.kind, ["stage", "cross_team"]), sql`${schema.workHandoff.createdAt} >= ${from} and ${schema.workHandoff.createdAt} < ${to}`))
     .groupBy(schema.workTask.projectId);
-  return new Map(rows.flatMap((row) => (row.projectId ? [[row.projectId, { total: Number(row.total), returned: Number(row.returned), pending: Number(row.pending), answered: Number(row.answered), waitMinutes: Number(row.waitMinutes) }] as const] : [])));
+  return new Map(
+    rows.flatMap((row) => (row.projectId ? [[row.projectId, { total: Number(row.total), returned: Number(row.returned), pending: Number(row.pending), answered: Number(row.answered), waitMinutes: Number(row.waitMinutes) }] as const] : [])),
+  );
 }
 
 /**
@@ -264,8 +274,14 @@ export type ProjectFeeRow = { projectId: string; feeVnd: number | null; retainer
 export async function feesByProject(projectIds: readonly string[], range: Range): Promise<Map<string, ProjectFeeRow>> {
   if (projectIds.length === 0) return new Map();
   const [plans, retainers, invoiced] = await Promise.all([
-    db().select({ projectId: schema.projectPlan.projectId, feeVnd: schema.projectPlan.feeVnd }).from(schema.projectPlan).where(inArray(schema.projectPlan.projectId, [...projectIds])),
-    db().select({ projectId: schema.projectRetainer.projectId, feePerMonthVnd: schema.projectRetainer.feePerMonthVnd, startMonth: schema.projectRetainer.startMonth, endMonth: schema.projectRetainer.endMonth }).from(schema.projectRetainer).where(inArray(schema.projectRetainer.projectId, [...projectIds])),
+    db()
+      .select({ projectId: schema.projectPlan.projectId, feeVnd: schema.projectPlan.feeVnd })
+      .from(schema.projectPlan)
+      .where(inArray(schema.projectPlan.projectId, [...projectIds])),
+    db()
+      .select({ projectId: schema.projectRetainer.projectId, feePerMonthVnd: schema.projectRetainer.feePerMonthVnd, startMonth: schema.projectRetainer.startMonth, endMonth: schema.projectRetainer.endMonth })
+      .from(schema.projectRetainer)
+      .where(inArray(schema.projectRetainer.projectId, [...projectIds])),
     db()
       .select({ projectId: schema.projectBillingItem.projectId, amount: sql<number>`coalesce(sum(${schema.projectBillingItem.amountVnd}), 0)::bigint` })
       .from(schema.projectBillingItem)
@@ -278,7 +294,10 @@ export async function feesByProject(projectIds: readonly string[], range: Range)
   return new Map(
     projectIds.map((projectId) => {
       const retainer = retainerOf.get(projectId);
-      return [projectId, { projectId, feeVnd: feeOf.get(projectId) ?? null, retainer: retainer ? { feePerMonthVnd: retainer.feePerMonthVnd, startMonth: retainer.startMonth, endMonth: retainer.endMonth } : null, invoicedVnd: invoicedOf.get(projectId) ?? 0 }];
+      return [
+        projectId,
+        { projectId, feeVnd: feeOf.get(projectId) ?? null, retainer: retainer ? { feePerMonthVnd: retainer.feePerMonthVnd, startMonth: retainer.startMonth, endMonth: retainer.endMonth } : null, invoicedVnd: invoicedOf.get(projectId) ?? 0 },
+      ];
     }),
   );
 }
@@ -288,10 +307,40 @@ export async function feesByProject(projectIds: readonly string[], range: Range)
  * privacy. The owning team's own place comes with it, so that a caller can ask the work policy
  * whether this reader may open the project (`canViewProject`) without a second query.
  */
-export async function projectsOfEntities(reach: { all: true } | { all: false; entityIds: string[] }): Promise<{ id: string; name: string; teamId: string; teamName: string; teamEntityId: string | null; teamDepartmentId: string | null; teamDefaultVisibility: string; entityId: string | null; clientId: string | null; clientName: string | null; visibility: string; status: string; jobNumber: string | null }[]> {
+export async function projectsOfEntities(reach: { all: true } | { all: false; entityIds: string[] }): Promise<
+  {
+    id: string;
+    name: string;
+    teamId: string;
+    teamName: string;
+    teamEntityId: string | null;
+    teamDepartmentId: string | null;
+    teamDefaultVisibility: string;
+    entityId: string | null;
+    clientId: string | null;
+    clientName: string | null;
+    visibility: string;
+    status: string;
+    jobNumber: string | null;
+  }[]
+> {
   if (!reach.all && reach.entityIds.length === 0) return [];
   return db()
-    .select({ id: schema.workProject.id, name: schema.workProject.name, teamId: schema.workProject.teamId, teamName: schema.workTeam.name, teamEntityId: schema.workTeam.entityId, teamDepartmentId: schema.workTeam.departmentId, teamDefaultVisibility: schema.workTeam.defaultVisibility, entityId: schema.workProject.entityId, clientId: schema.workProject.clientId, clientName: schema.workClient.name, visibility: schema.workProject.visibility, status: schema.workProject.status, jobNumber: schema.projectPlan.jobNumber })
+    .select({
+      id: schema.workProject.id,
+      name: schema.workProject.name,
+      teamId: schema.workProject.teamId,
+      teamName: schema.workTeam.name,
+      teamEntityId: schema.workTeam.entityId,
+      teamDepartmentId: schema.workTeam.departmentId,
+      teamDefaultVisibility: schema.workTeam.defaultVisibility,
+      entityId: schema.workProject.entityId,
+      clientId: schema.workProject.clientId,
+      clientName: schema.workClient.name,
+      visibility: schema.workProject.visibility,
+      status: schema.workProject.status,
+      jobNumber: schema.projectPlan.jobNumber,
+    })
     .from(schema.workProject)
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
     .leftJoin(schema.workClient, eq(schema.workClient.id, schema.workProject.clientId))

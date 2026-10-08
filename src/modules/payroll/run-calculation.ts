@@ -152,12 +152,7 @@ async function pending(now: Date): Promise<string[]> {
   const rows = await db()
     .select({ id: schema.payrollRun.id })
     .from(schema.payrollRun)
-    .where(
-      and(
-        inArray(schema.payrollRun.status, ["draft", "calculated"]),
-        or(eq(schema.payrollRun.calcState, "queued"), and(eq(schema.payrollRun.calcState, "running"), lt(schema.payrollRun.calcHeartbeatAt, staleBefore))),
-      ),
-    )
+    .where(and(inArray(schema.payrollRun.status, ["draft", "calculated"]), or(eq(schema.payrollRun.calcState, "queued"), and(eq(schema.payrollRun.calcState, "running"), lt(schema.payrollRun.calcHeartbeatAt, staleBefore)))))
     .orderBy(sql`${schema.payrollRun.calcStartedAt} NULLS FIRST`)
     .limit(20);
   return rows.map((row) => row.id);

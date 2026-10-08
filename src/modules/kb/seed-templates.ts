@@ -329,4 +329,5 @@ _Ghi lại góp ý của khách hàng theo từng vòng; phiên bản trang đư
 /** The templates a project's document space starts with, in the order they are made (FR-PJM-31). */
 export const PROJECT_STARTER_TEMPLATES = ["project_brief", "video_script", "shot_list", "meeting_notes"] as const;
 
-export const kbTemplateSeedRows = () => TEMPLATES.map((template, index) => ({ key: template.key, name: template.name, description: template.description, content: markdownToDoc(template.markdown, { liftTitle: false }).doc, isSystem: true, sortOrder: (index + 1) * 10 }));
+export const kbTemplateSeedRows = () =>
+  TEMPLATES.map((template, index) => ({ key: template.key, name: template.name, description: template.description, content: markdownToDoc(template.markdown, { liftTitle: false }).doc, isSystem: true, sortOrder: (index + 1) * 10 }));

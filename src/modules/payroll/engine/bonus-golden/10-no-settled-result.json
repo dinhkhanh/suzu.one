@@ -1,10 +1,7 @@
 {
   "name": "No settled performance result: nothing to compute a multiplier from",
   "source": "synthetic",
-  "derivation": [
-    "The scheme requires a locked or published result (FR-PRF-09) and there is none.",
-    "Amount 0 ₫, reason 'no_result' — HR's cue to settle the year before proposing the run."
-  ],
+  "derivation": ["The scheme requires a locked or published result (FR-PRF-09) and there is none.", "Amount 0 ₫, reason 'no_result' — HR's cue to settle the year before proposing the run."],
   "person": {
     "baseSalaryVnd": 18000000,
     "serviceMonths": 20,

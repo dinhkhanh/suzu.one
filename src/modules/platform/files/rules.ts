@@ -115,7 +115,10 @@ const typesFor = (ownerType?: string): readonly FileType[] =>
         : ALLOWED_FILE_TYPES;
 
 /** The `accept` attribute of a file input for this owner's files. */
-export const acceptAttributeFor = (ownerType?: string): string => typesFor(ownerType).flatMap((type) => type.extensions.map((extension) => `.${extension}`)).join(",");
+export const acceptAttributeFor = (ownerType?: string): string =>
+  typesFor(ownerType)
+    .flatMap((type) => type.extensions.map((extension) => `.${extension}`))
+    .join(",");
 
 export const ACCEPT_ATTRIBUTE = acceptAttributeFor();
 
@@ -124,7 +127,11 @@ export type UploadProblem = "file_empty" | "file_too_large" | "file_type_not_all
 /** Keeps the name readable (Vietnamese included) but drops paths and control characters. */
 export function cleanFileName(name: string): string {
   const base = name.normalize("NFC").split(/[\\/]/).pop() ?? "";
-  return base.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, "").replace(/\s+/g, " ").trim().slice(0, 150);
+  return base
+    .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 150);
 }
 
 function typeOf(fileName: string, ownerType?: string): FileType | undefined {

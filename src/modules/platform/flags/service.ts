@@ -28,7 +28,11 @@ export async function setRollout(key: string, rollout: Rollout, actorPersonId: s
   if (!(FLAGS as readonly string[]).includes(key)) throw new ActionError("flag_unknown");
   const [existing] = await db().select().from(schema.featureFlag).where(eq(schema.featureFlag.key, key)).limit(1);
   const values = { enabledForAll: rollout.enabledForAll, entityIds: [...rollout.entityIds], departmentIds: [...rollout.departmentIds], personIds: [...rollout.personIds], updatedAt: new Date(), updatedByPersonId: actorPersonId };
-  const [after] = await db().insert(schema.featureFlag).values({ key, ...values }).onConflictDoUpdate({ target: schema.featureFlag.key, set: values }).returning();
+  const [after] = await db()
+    .insert(schema.featureFlag)
+    .values({ key, ...values })
+    .onConflictDoUpdate({ target: schema.featureFlag.key, set: values })
+    .returning();
   await invalidate(FLAGS_CACHE);
   return { before: existing ?? OFF, after };
 }

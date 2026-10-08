@@ -254,7 +254,15 @@ export type RunningTimer = { id: string; taskId: string | null; key: string | nu
 /** The person's running timer, if any — at most one (a unique index holds it). */
 export async function getRunningTimer(personId: string): Promise<RunningTimer | null> {
   const [row] = await db()
-    .select({ id: schema.timeEntry.id, taskId: schema.timeEntry.taskId, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, category: schema.timeEntry.category, startedAt: schema.timeEntry.timerStartedAt })
+    .select({
+      id: schema.timeEntry.id,
+      taskId: schema.timeEntry.taskId,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      category: schema.timeEntry.category,
+      startedAt: schema.timeEntry.timerStartedAt,
+    })
     .from(schema.timeEntry)
     .leftJoin(schema.task, eq(schema.task.id, schema.timeEntry.taskId))
     .leftJoin(schema.workTask, eq(schema.workTask.taskId, schema.timeEntry.taskId))
@@ -288,7 +296,11 @@ async function stopIn(tx: Tx, personId: string, now: Date): Promise<StoppedTimer
   const weekLocked = stopped.minutes > 0 && !isWeekEditable(await lockTimesheetWeek(tx, personId, weekStartOf(stopped.date)));
   const [row] = await tx
     .update(schema.timeEntry)
-    .set(stopped.minutes > 0 && !weekLocked ? { date: stopped.date, weekStart: weekStartOf(stopped.date), minutes: stopped.minutes, capped: stopped.capped, timerStartedAt: null, updatedAt: now } : { minutes: 0, timerStartedAt: null, deletedAt: now, updatedAt: now })
+    .set(
+      stopped.minutes > 0 && !weekLocked
+        ? { date: stopped.date, weekStart: weekStartOf(stopped.date), minutes: stopped.minutes, capped: stopped.capped, timerStartedAt: null, updatedAt: now }
+        : { minutes: 0, timerStartedAt: null, deletedAt: now, updatedAt: now },
+    )
     .where(eq(schema.timeEntry.id, running.id))
     .returning();
   return { ...row, weekLocked };
@@ -318,7 +330,23 @@ export async function startTimer(personId: string, target: Target, now: Date = n
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type TimeEntryView = { id: string; date: IsoDate; taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; /** The project's job number (FR-PJM-02): what accounting ties the hours to. */ jobNumber: string | null; category: string | null; minutes: number; billable: boolean; note: string | null; source: string; capped: boolean; createdAt: Date };
+export type TimeEntryView = {
+  id: string;
+  date: IsoDate;
+  taskId: string | null;
+  key: string | null;
+  title: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  /** The project's job number (FR-PJM-02): what accounting ties the hours to. */ jobNumber: string | null;
+  category: string | null;
+  minutes: number;
+  billable: boolean;
+  note: string | null;
+  source: string;
+  capped: boolean;
+  createdAt: Date;
+};
 
 /**
  * Entries between two dates, newest first. No authorization: callers pass people they may read —

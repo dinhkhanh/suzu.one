@@ -94,10 +94,7 @@ export function NewBonusRunForm({ entities, year, payrollMonth }: { entities: En
           <div className="flex flex-wrap gap-3">
             {entities.map((entity) => (
               <label key={entity.id} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={chosen.includes(entity.id)}
-                  onCheckedChange={(checked) => setChosen((current) => (checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))}
-                />
+                <Checkbox checked={chosen.includes(entity.id)} onCheckedChange={(checked) => setChosen((current) => (checked ? [...current, entity.id] : current.filter((id) => id !== entity.id)))} />
                 {entity.code} — {entity.shortName}
               </label>
             ))}
@@ -292,7 +289,10 @@ export function WhatIfForm({ runId, current }: { runId: string; current: unknown
   const t = useTranslations("payroll.bonus");
   const { text, setText, parsed, broken } = useJsonValue(current);
   const [result, setResult] = useState<{ totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] } | null>(null);
-  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(bonusWhatIfAction, { extra: { runId, value: parsed }, onSuccess: (data) => setResult(data as { totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] }) });
+  const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(bonusWhatIfAction, {
+    extra: { runId, value: parsed },
+    onSuccess: (data) => setResult(data as { totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] }),
+  });
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">

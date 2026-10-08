@@ -82,7 +82,15 @@ export function ImportWizard({ title, template, accept = ".xlsx,.csv", children,
         </form>
 
         {errorKey ? <Alert variant="destructive">{t.has(`errors.${errorKey}`) ? t(`errors.${errorKey}`) : t("errors.generic")}</Alert> : null}
-        {done ? <Alert variant="success">{t("done", { summary: Object.entries(done).map(([key, value]) => `${t.has(`counts.${key}`) ? t(`counts.${key}`) : key}: ${value}`).join(" · ") })}</Alert> : null}
+        {done ? (
+          <Alert variant="success">
+            {t("done", {
+              summary: Object.entries(done)
+                .map(([key, value]) => `${t.has(`counts.${key}`) ? t(`counts.${key}`) : key}: ${value}`)
+                .join(" · "),
+            })}
+          </Alert>
+        ) : null}
 
         {staged ? (
           <div className="flex flex-col gap-4">
@@ -125,7 +133,9 @@ export function ImportWizard({ title, template, accept = ".xlsx,.csv", children,
                 <TableBody>
                   {staged.preview.map((row) => (
                     <TableRow key={row.row}>
-                      <TableCell kind="number" className="text-faint">{row.row}</TableCell>
+                      <TableCell kind="number" className="text-faint">
+                        {row.row}
+                      </TableCell>
                       {row.cells.map((cell, index) => (
                         <TableCell key={index}>{cell || <span className="text-faint">—</span>}</TableCell>
                       ))}

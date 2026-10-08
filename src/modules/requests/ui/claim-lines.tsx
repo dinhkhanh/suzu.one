@@ -52,7 +52,9 @@ export async function ClaimLines({
                 </TableCell>
                 <TableCell className="min-w-48 whitespace-normal">{line.description}</TableCell>
                 <TableCell className="text-muted-foreground">{line.projectTag ?? "—"}</TableCell>
-                <TableCell>{line.receiptFileId ? <AttachmentLink requestId={requestId} fileId={line.receiptFileId} fileName={fileNames.get(line.receiptFileId) ?? t("receipt")} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell>
+                  {line.receiptFileId ? <AttachmentLink requestId={requestId} fileId={line.receiptFileId} fileName={fileNames.get(line.receiptFileId) ?? t("receipt")} /> : <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell kind="money">{money(line.amount)}</TableCell>
               </TableRow>
             ))}
@@ -66,11 +68,7 @@ export async function ClaimLines({
         </Table>
       </TableCard>
 
-      {byCategory.length > 1 ? (
-        <p className="text-xs text-muted-foreground">
-          {byCategory.map((row) => `${t(`categories.${row.category}` as "categories.other")} ${money(row.amount)}`).join(" · ")}
-        </p>
-      ) : null}
+      {byCategory.length > 1 ? <p className="text-xs text-muted-foreground">{byCategory.map((row) => `${t(`categories.${row.category}` as "categories.other")} ${money(row.amount)}`).join(" · ")}</p> : null}
     </section>
   );
 }

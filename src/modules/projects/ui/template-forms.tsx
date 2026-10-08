@@ -19,7 +19,17 @@ import type { ProjectBrief, RoleBudget, TemplateLine, TemplateMilestone, Templat
 type Person = { id: string; fullName: string };
 
 /** A new project from a template: team, name, who plays each role, and day 0. The project starts at the kick-off gate. */
-export function TemplateProjectForm({ templates, teams, peopleByTeam, today }: { templates: { id: string; name: string; ownerId: string | null; roleKeys: string[] }[]; teams: { id: string; name: string; defaultVisibility: string }[]; peopleByTeam: Record<string, Person[]>; today: string }) {
+export function TemplateProjectForm({
+  templates,
+  teams,
+  peopleByTeam,
+  today,
+}: {
+  templates: { id: string; name: string; ownerId: string | null; roleKeys: string[] }[];
+  teams: { id: string; name: string; defaultVisibility: string }[];
+  peopleByTeam: Record<string, Person[]>;
+  today: string;
+}) {
   const t = useTranslations("work.templates");
   const tWork = useTranslations("work");
   const tProjects = useTranslations("projects.templates");
@@ -41,7 +51,18 @@ export function TemplateProjectForm({ templates, teams, peopleByTeam, today }: {
         const data = new FormData(event.currentTarget);
         const roles = Object.fromEntries((template?.roleKeys ?? []).map((key) => [key, String(data.get(`role.${key}`) ?? "")]));
         startTransition(async () => {
-          const result = await createProjectFromTemplatePlanAction({ templateId: template?.id, anchorMode: data.get("anchorMode"), anchorDate: data.get("anchorDate"), roles, teamId, name: data.get("name"), visibility: data.get("visibility"), description: "", clientId: data.get("clientId") ?? "", leadPersonId: data.get("leadPersonId") ?? "" });
+          const result = await createProjectFromTemplatePlanAction({
+            templateId: template?.id,
+            anchorMode: data.get("anchorMode"),
+            anchorDate: data.get("anchorDate"),
+            roles,
+            teamId,
+            name: data.get("name"),
+            visibility: data.get("visibility"),
+            description: "",
+            clientId: data.get("clientId") ?? "",
+            leadPersonId: data.get("leadPersonId") ?? "",
+          });
           setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
           if (result.ok) router.push(`/projects/${result.data.id}`);
         });

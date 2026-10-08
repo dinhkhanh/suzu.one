@@ -38,14 +38,25 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
           </Link>
         }
         title={t("ack.reportTitle")}
-        description={page.ackRequired && report.versionNo ? t("ack.reportLine", { n: report.versionNo, done: report.done, total: report.total, percent: percent(report.done, report.total), overdue: report.overdue, days: report.dueDays }) : page.ackRequired ? t("ack.notPublishedYet") : t("ack.notRequired")}
+        description={
+          page.ackRequired && report.versionNo
+            ? t("ack.reportLine", { n: report.versionNo, done: report.done, total: report.total, percent: percent(report.done, report.total), overdue: report.overdue, days: report.dueDays })
+            : page.ackRequired
+              ? t("ack.notPublishedYet")
+              : t("ack.notRequired")
+        }
       />
 
       {report.versionNo ? (
         <>
           <AckReportTools pageId={page.id} pending={report.total - report.done} />
           <div className="grid gap-6 sm:grid-cols-2">
-            {([["byEntity", report.byEntity], ["byDepartment", report.byDepartment]] as const).map(([key, groups]) => (
+            {(
+              [
+                ["byEntity", report.byEntity],
+                ["byDepartment", report.byDepartment],
+              ] as const
+            ).map(([key, groups]) => (
               <TableCard key={key}>
                 <TableCardHeader title={t(`ack.${key}`)} />
                 <Table numbered={false}>
@@ -83,15 +94,35 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
               {report.rows.map((row) => (
                 <TableRow key={row.personId}>
                   <TableCell>
-                    <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                    <RecordLink kind="person" id={row.personId}>
+                      {row.fullName}
+                    </RecordLink>
                   </TableCell>
-                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
-                  <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {row.entityName ? (
+                      <RecordLink kind="entity" id={row.entityId}>
+                        {row.entityName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {row.departmentName ? (
+                      <RecordLink kind="unit" id={row.departmentId}>
+                        {row.departmentName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     {row.acknowledgedAt ? (
                       <Badge variant="secondary">{t("ack.confirmedOn", { date: format.dateTime(row.acknowledgedAt, { dateStyle: "medium" }) })}</Badge>
                     ) : (
-                      <Badge dot variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
+                      <Badge dot variant={row.overdue ? "destructive" : "outline"}>
+                        {row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{row.lastNoticeOn ? `${day(row.lastNoticeOn)} (${row.notices})` : "—"}</TableCell>

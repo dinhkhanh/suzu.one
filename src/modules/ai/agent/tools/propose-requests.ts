@@ -51,7 +51,7 @@ const proposeLeave = defineTool({
   name: "propose_leave",
   module: "leave",
   description:
-    "Proposes a leave request of the asker's own for them to confirm (nothing is filed until they do). Give the leave type as the asker said it (its name or code, e.g. \"phép năm\", \"không lương\"), the first day and the last day (YYYY-MM-DD; one day: leave endDate out), and half days: startPortion am/pm for the first day, endPortion am for the last. The card shows the working days it counts, the balance and who on the asker's team is away then. If the type is unclear the result lists the types to ask about; if the request breaks a rule (notice, balance, eligibility) the result names the problems — explain them, nothing is proposed.",
+    'Proposes a leave request of the asker\'s own for them to confirm (nothing is filed until they do). Give the leave type as the asker said it (its name or code, e.g. "phép năm", "không lương"), the first day and the last day (YYYY-MM-DD; one day: leave endDate out), and half days: startPortion am/pm for the first day, endPortion am for the last. The card shows the working days it counts, the balance and who on the asker\'s team is away then. If the type is unclear the result lists the types to ask about; if the request breaks a rule (notice, balance, eligibility) the result names the problems — explain them, nothing is proposed.',
   input: z.strictObject({
     leaveType: z.string().min(2).max(80).optional().describe("The leave type's name or code, as the asker said it."),
     startDate: DATE.describe("YYYY-MM-DD"),
@@ -164,7 +164,10 @@ const proposeAttendanceRequest = defineTool({
     const reason = input.reason?.trim() ?? "";
     if (reason.length < 3) return notProposed("reason_required", { next: "Ask the asker why." });
     const { type, date } = input;
-    const fields: ProposalField[] = [{ key: "attendanceType", valueKey: `attendance_${type}` }, { key: "date", text: date }];
+    const fields: ProposalField[] = [
+      { key: "attendanceType", valueKey: `attendance_${type}` },
+      { key: "date", text: date },
+    ];
     const action: Record<string, unknown> = { personId: null, type, startDate: date, endDate: null, reason, evidenceFileId: null };
     const summary: Record<string, string | number | boolean | null> = { type, date, reason };
     const editParams = new URLSearchParams({ type, date });
@@ -312,7 +315,10 @@ const proposeRequest = defineTool({
     "Proposes one of the company's requests (purchase, payment, advance, business trip, IT support, a confirmation letter… as the company designed them) of the asker's own, for them to confirm (nothing is filed until they do). Give the request type by name or code as the asker said it. The first call without values returns the form's fields (key, label, type, required, options): ask the asker for what is required, then call again with values keyed by field key — a choice by its value or label, a person by name, a date as YYYY-MM-DD, money as whole đồng. Attachments cannot be added here: when the form needs one, give the asker the link instead.",
   input: z.strictObject({
     type: z.string().min(2).max(80).describe("The request type's name or code, as the asker said it."),
-    values: z.record(z.string().max(40), z.union([z.string().max(4000), z.number(), z.boolean(), z.array(z.string().max(200)).max(50), z.null()])).optional().describe("Answers keyed by the form's field keys."),
+    values: z
+      .record(z.string().max(40), z.union([z.string().max(4000), z.number(), z.boolean(), z.array(z.string().max(200)).max(50), z.null()]))
+      .optional()
+      .describe("Answers keyed by the form's field keys."),
   }),
   offeredTo: (principal) => canFileRequests(principal),
   tier: "personal",

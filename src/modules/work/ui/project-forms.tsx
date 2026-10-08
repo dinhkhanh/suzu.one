@@ -14,7 +14,20 @@ import { ColorSelect } from "./team-forms";
 import { CLIENT_KINDS, PROJECT_STATUSES, VISIBILITIES } from "../enums";
 
 type Option = { id: string; name: string };
-type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; statusId: string | null; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null; color: string | null };
+type Project = {
+  id: string;
+  teamId: string;
+  name: string;
+  description: string | null;
+  clientId: string | null;
+  status: string;
+  statusId: string | null;
+  visibility: string;
+  leadPersonId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  color: string | null;
+};
 
 export function ProjectForm({
   project,

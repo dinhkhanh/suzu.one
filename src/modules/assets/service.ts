@@ -163,7 +163,11 @@ export async function updateAsset(assetId: string, input: Partial<AssetInput>, a
     const before = await findAsset(assetId, tx);
     if (!before) throw new ActionError("asset_not_found");
     if (input.purchasePrice !== undefined && input.purchasePrice !== null && (!Number.isSafeInteger(input.purchasePrice) || input.purchasePrice < 0)) throw new ActionError("asset_price_invalid");
-    const [after] = await tx.update(schema.asset).set({ ...input, updatedAt: now() }).where(eq(schema.asset.id, assetId)).returning();
+    const [after] = await tx
+      .update(schema.asset)
+      .set({ ...input, updatedAt: now() })
+      .where(eq(schema.asset.id, assetId))
+      .returning();
     const changed = Object.keys(input).filter((field) => JSON.stringify(before[field as keyof AssetRow]) !== JSON.stringify(after[field as keyof AssetRow]));
     // The history is read more widely than the money, so it names the field and never the figure.
     if (changed.length) await tx.insert(schema.assetEvent).values({ assetId, type: "edited", actorPersonId, detail: { fields: changed } });
@@ -275,11 +279,7 @@ export async function confirmHandover(assignmentId: string, actorPersonId: strin
     if (!assignment) throw new ActionError("asset_assignment_not_found");
     if (assignment.returnedAt) throw new ActionError("asset_assignment_closed");
     if (assignment.handoverConfirmedAt) throw new ActionError("asset_handover_already_confirmed");
-    const [after] = await tx
-      .update(schema.assetAssignment)
-      .set({ handoverConfirmedAt: now(), handoverNote: note, updatedAt: now() })
-      .where(eq(schema.assetAssignment.id, assignmentId))
-      .returning();
+    const [after] = await tx.update(schema.assetAssignment).set({ handoverConfirmedAt: now(), handoverNote: note, updatedAt: now() }).where(eq(schema.assetAssignment.id, assignmentId)).returning();
     await tx.insert(schema.assetEvent).values({ assetId: assignment.assetId, assignmentId, type: "handover_confirmed", actorPersonId, note });
     return after;
   });
@@ -397,37 +397,40 @@ async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: strin
     .limit(limit)
     .offset(offset);
 
-  return { total: rows[0]?.total ?? 0, rows: rows.map(({ asset, entityName, categoryName, categoryKind, assignment, holderPersonName, holderTeamName }) => {
-    const money = canReadAssetMoney(viewer, asset.entityId);
-    return {
-      id: asset.id,
-      code: asset.code,
-      name: asset.name,
-      brand: asset.brand,
-      model: asset.model,
-      serial: asset.serial,
-      status: asset.status,
-      condition: asset.condition,
-      location: asset.location,
-      entityId: asset.entityId,
-      entityName,
-      categoryId: asset.categoryId,
-      categoryName,
-      categoryKind,
-      holderType: assignment?.holderType ?? null,
-      holderPersonId: assignment?.holderPersonId ?? null,
-      holderTeamId: assignment?.holderTeamId ?? null,
-      holderEntityId: assignment?.holderEntityId ?? null,
-      holderName: assignment ? (assignment.holderType === "person" ? holderPersonName : assignment.holderType === "team" ? holderTeamName : entityName) : null,
-      assignmentId: assignment?.id ?? null,
-      handoverConfirmedAt: assignment?.handoverConfirmedAt ?? null,
-      dueBack: assignment?.dueBack ?? null,
-      purchasePrice: money ? asset.purchasePrice : null,
-      purchaseDate: money ? asset.purchaseDate : null,
-      warrantyUntil: asset.warrantyUntil,
-      supplier: money ? asset.supplier : null,
-    };
-  }) };
+  return {
+    total: rows[0]?.total ?? 0,
+    rows: rows.map(({ asset, entityName, categoryName, categoryKind, assignment, holderPersonName, holderTeamName }) => {
+      const money = canReadAssetMoney(viewer, asset.entityId);
+      return {
+        id: asset.id,
+        code: asset.code,
+        name: asset.name,
+        brand: asset.brand,
+        model: asset.model,
+        serial: asset.serial,
+        status: asset.status,
+        condition: asset.condition,
+        location: asset.location,
+        entityId: asset.entityId,
+        entityName,
+        categoryId: asset.categoryId,
+        categoryName,
+        categoryKind,
+        holderType: assignment?.holderType ?? null,
+        holderPersonId: assignment?.holderPersonId ?? null,
+        holderTeamId: assignment?.holderTeamId ?? null,
+        holderEntityId: assignment?.holderEntityId ?? null,
+        holderName: assignment ? (assignment.holderType === "person" ? holderPersonName : assignment.holderType === "team" ? holderTeamName : entityName) : null,
+        assignmentId: assignment?.id ?? null,
+        handoverConfirmedAt: assignment?.handoverConfirmedAt ?? null,
+        dueBack: assignment?.dueBack ?? null,
+        purchasePrice: money ? asset.purchasePrice : null,
+        purchaseDate: money ? asset.purchaseDate : null,
+        warrantyUntil: asset.warrantyUntil,
+        supplier: money ? asset.supplier : null,
+      };
+    }),
+  };
 }
 
 /**
@@ -457,7 +460,14 @@ export async function listLabelRows(viewer: Principal, filter: { entityId?: stri
 
 export type AssetHistoryEntry = { id: number; type: string; at: Date; actorPersonId: string | null; actorName: string | null; note: string | null; detail: Record<string, unknown> | null };
 export type AssetSpell = AssetAssignmentRow & { holderName: string | null; assignedByName: string | null; returnedToName: string | null };
-export type AssetView = { asset: AssetListRow; history: AssetHistoryEntry[]; spells: AssetSpell[]; canSeeMoney: boolean; /** For the asset's own QR label. */ qrToken: string; /** Shared production gear: the page shows its bookings. */ bookable: boolean };
+export type AssetView = {
+  asset: AssetListRow;
+  history: AssetHistoryEntry[];
+  spells: AssetSpell[];
+  canSeeMoney: boolean;
+  /** For the asset's own QR label. */ qrToken: string;
+  /** Shared production gear: the page shows its bookings. */ bookable: boolean;
+};
 
 /** One asset with everything that ever happened to it. null = not found, or none of the viewer's business. */
 export async function getAssetView(viewer: Principal, assetId: string): Promise<AssetView | null> {
@@ -544,7 +554,18 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
   };
 }
 
-export type HeldAsset = { assignmentId: string; assetId: string; code: string; name: string; categoryName: string | null; assignedAt: Date; dueBack: string | null; conditionOut: AssetCondition; accessories: string[]; handoverConfirmedAt: Date | null };
+export type HeldAsset = {
+  assignmentId: string;
+  assetId: string;
+  code: string;
+  name: string;
+  categoryName: string | null;
+  assignedAt: Date;
+  dueBack: string | null;
+  conditionOut: AssetCondition;
+  accessories: string[];
+  handoverConfirmedAt: Date | null;
+};
 
 /** What one person is holding right now. The person's own list, and their record keeper's. */
 export async function listAssetsOfPerson(personId: string, executor: Executor = db()): Promise<HeldAsset[]> {
@@ -750,7 +771,9 @@ export async function bookAsset(input: BookingInput, actor: { personId: string; 
           ...(status === "confirmed" ? { decidedByPersonId: actor.personId, decidedAt: now() } : {}),
         })
         .returning();
-      await tx.insert(schema.assetEvent).values({ assetId: input.assetId, type: "booked", actorPersonId: actor.personId, note: input.purpose, detail: { bookingId: booking.id, status, from: input.startAt.toISOString(), to: input.endAt.toISOString() } });
+      await tx
+        .insert(schema.assetEvent)
+        .values({ assetId: input.assetId, type: "booked", actorPersonId: actor.personId, note: input.purpose, detail: { bookingId: booking.id, status, from: input.startAt.toISOString(), to: input.endAt.toISOString() } });
       return booking;
     } catch (error) {
       // Two people pressed the button at the same instant; the database picked one.
@@ -974,7 +997,10 @@ export async function saveLicence(licenceId: string | null, input: LicenceInput,
   if (CYCLE_MONTHS[input.billingCycle] !== null && !input.renewalDate) throw new ActionError("licence_renewal_date_required");
   const values = { ...input, updatedAt: now() };
   if (!licenceId) {
-    const [after] = await db().insert(schema.licence).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = await db()
+      .insert(schema.licence)
+      .values({ ...values, createdByPersonId: actorPersonId })
+      .returning();
     return { before: null, after, released: 0 };
   }
   return db().transaction(async (tx) => {
@@ -1022,7 +1048,14 @@ export async function listLicences(viewer: Principal, filter: { entityId?: strin
   return rows.map((row) => ({ ...row.licence, entityName: row.entityName, ownerName: row.ownerName, seatsUsed: Number(row.seatsUsed), canSeeMoney: canReadAssetMoney(viewer, row.licence.entityId) }));
 }
 
-export type LicenceTotals = { active: number; seats: number; seatsUsed: number; seatsUnused: number; /** Integer VND per month, every cycle brought to a month; null when the reader may not see money. */ costPerMonth: number | null; /** What the unused seats cost per month. */ unusedPerMonth: number | null };
+export type LicenceTotals = {
+  active: number;
+  seats: number;
+  seatsUsed: number;
+  seatsUnused: number;
+  /** Integer VND per month, every cycle brought to a month; null when the reader may not see money. */ costPerMonth: number | null;
+  /** What the unused seats cost per month. */ unusedPerMonth: number | null;
+};
 
 /**
  * The page's figures over every running subscription in reach: seats paid for against seats in

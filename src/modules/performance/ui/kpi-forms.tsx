@@ -39,7 +39,14 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
     <form onSubmit={form.onSubmit} className="flex flex-col gap-4">
       {people.map((person) => (
         <TableCard key={person.personId}>
-          <TableCardHeader title={<RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>} actions={person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null} />
+          <TableCardHeader
+            title={
+              <RecordLink kind="person" id={person.personId}>
+                {person.fullName}
+              </RecordLink>
+            }
+            actions={person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null}
+          />
           <List>
             {person.lines.map((line) => {
               const name = `entries.${rowOf.get(line.assignmentId) ?? 0}`;
@@ -57,7 +64,15 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
                       <input type="hidden" name={`${name}.assignmentId`} value={line.assignmentId} />
                       <input type="hidden" name={`${name}.periodKey`} value={line.periodKey} />
                       <div className="flex flex-col gap-1">
-                        <MetricValueInput unit={line.unit} id={`actual-${line.assignmentId}`} name={`${name}.actual`} defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)} maxLength={30} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`} placeholder={t("entry.actual")} />
+                        <MetricValueInput
+                          unit={line.unit}
+                          id={`actual-${line.assignmentId}`}
+                          name={`${name}.actual`}
+                          defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)}
+                          maxLength={30}
+                          aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`}
+                          placeholder={t("entry.actual")}
+                        />
                         {person.proposals?.[line.assignmentId] !== undefined ? <ProposalHint inputId={`actual-${line.assignmentId}`} value={person.proposals[line.assignmentId]} /> : null}
                       </div>
                     </>
@@ -70,7 +85,11 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
                       {t("entry.notApplicable")}
                     </label>
                   )}
-                  {person.closed ? <div className="text-xs text-muted-foreground">{line.note ?? ""}</div> : <Input name={`${name}.note`} defaultValue={line.note ?? ""} maxLength={500} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.note")}`} placeholder={t("entry.note")} />}
+                  {person.closed ? (
+                    <div className="text-xs text-muted-foreground">{line.note ?? ""}</div>
+                  ) : (
+                    <Input name={`${name}.note`} defaultValue={line.note ?? ""} maxLength={500} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.note")}`} placeholder={t("entry.note")} />
+                  )}
                 </ListItem>
               );
             })}
@@ -118,7 +137,19 @@ function ProposalHint({ inputId, value }: { inputId: string; value: string }) {
 
 // ── Library ─────────────────────────────────────────────────────────────────────────────────
 
-export type KpiFormValue = { id: string | null; code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean; workMetric?: WorkMetric | null };
+export type KpiFormValue = {
+  id: string | null;
+  code: string;
+  name: string;
+  description: string | null;
+  unit: KpiUnit;
+  direction: KpiDirection;
+  frequency: KpiFrequency;
+  capBp: number;
+  floorBp: number;
+  isActive: boolean;
+  workMetric?: WorkMetric | null;
+};
 
 export function KpiForm({ value }: { value: KpiFormValue }) {
   const t = useTranslations("performance");
@@ -398,7 +429,9 @@ export function CloseMonthForm({ entityId, month, blockers }: { entityId: string
           <ul className="list-disc pl-5 text-xs text-muted-foreground">
             {listed.slice(0, 30).map((item) => (
               <li key={`${item.personId}:${item.kpiCode}:${item.periodKey}`}>
-                <RecordLink kind="person" id={item.personId}>{item.personName}</RecordLink>
+                <RecordLink kind="person" id={item.personId}>
+                  {item.personName}
+                </RecordLink>
                 {` — ${item.kpiName} (${item.periodKey})`}
               </li>
             ))}
@@ -407,7 +440,13 @@ export function CloseMonthForm({ entityId, month, blockers }: { entityId: string
         </>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <ConfirmButton size="sm" disabled={pending || (listed.length > 0 && reason.trim().length < 5)} label={listed.length > 0 ? t("periods.closeOverride") : t("periods.close")} question={t("periods.closeConfirm")} onConfirm={() => run(() => closeKpiMonthAction({ entityId, month, overrideReason: listed.length > 0 ? reason : "" }))} />
+        <ConfirmButton
+          size="sm"
+          disabled={pending || (listed.length > 0 && reason.trim().length < 5)}
+          label={listed.length > 0 ? t("periods.closeOverride") : t("periods.close")}
+          question={t("periods.closeConfirm")}
+          onConfirm={() => run(() => closeKpiMonthAction({ entityId, month, overrideReason: listed.length > 0 ? reason : "" }))}
+        />
         <FormError namespace={ERRORS} errorKey={errorKey} />
       </div>
     </div>
@@ -421,7 +460,14 @@ export function ReopenMonthForm({ entityId, month }: { entityId: string; month: 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("periods.reopenReason")} maxLength={1000} className="max-w-xs" aria-label={t("periods.reopenReason")} />
-      <ConfirmButton size="sm" variant="outline" disabled={pending || reason.trim().length < 5} label={t("periods.reopen")} question={t("periods.reopenConfirm")} onConfirm={() => run(() => reopenKpiMonthAction({ entityId, month, reason }))} />
+      <ConfirmButton
+        size="sm"
+        variant="outline"
+        disabled={pending || reason.trim().length < 5}
+        label={t("periods.reopen")}
+        question={t("periods.reopenConfirm")}
+        onConfirm={() => run(() => reopenKpiMonthAction({ entityId, month, reason }))}
+      />
       <FormError namespace={ERRORS} errorKey={errorKey} />
     </div>
   );

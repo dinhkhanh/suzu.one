@@ -24,8 +24,16 @@ describe("the policy, directive by directive", () => {
     // Next reads the first `'nonce-…'` of script-src off the request header (get-script-nonce-from-header).
     const nonce = newNonce();
     const sent = contentSecurityPolicy("report-only", input({ nonce }))!.value;
-    const scripts = sent.split(";").map((directive) => directive.trim()).find((directive) => directive.startsWith("script-src"))!;
-    expect(scripts.split(/\s+/).map((source) => /^'nonce-([A-Za-z0-9+/_-]+={0,2})'$/.exec(source)?.[1]).find(Boolean)).toBe(nonce);
+    const scripts = sent
+      .split(";")
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith("script-src"))!;
+    expect(
+      scripts
+        .split(/\s+/)
+        .map((source) => /^'nonce-([A-Za-z0-9+/_-]+={0,2})'$/.exec(source)?.[1])
+        .find(Boolean),
+    ).toBe(nonce);
     expect(newNonce()).not.toBe(nonce);
   });
 
@@ -147,7 +155,8 @@ describe("reading Sentry's endpoints off the DSN", () => {
   });
 
   it("is null for no DSN, an empty one, or anything that is not one", () => {
-    for (const value of [undefined, null, "", "not a url", "https://o4507.ingest.sentry.io/4508", "https://key@o4507.ingest.sentry.io/", "https://key@o4507.ingest.sentry.io/project", "http://key@o4507.ingest.sentry.io/4508"]) expect(sentryCsp(value), String(value)).toBeNull();
+    for (const value of [undefined, null, "", "not a url", "https://o4507.ingest.sentry.io/4508", "https://key@o4507.ingest.sentry.io/", "https://key@o4507.ingest.sentry.io/project", "http://key@o4507.ingest.sentry.io/4508"])
+      expect(sentryCsp(value), String(value)).toBeNull();
   });
 });
 

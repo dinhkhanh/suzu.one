@@ -20,20 +20,73 @@ type Db = ReturnType<typeof drizzle>;
 type Line = [string, number, number];
 
 const TEMPLATES: Record<string, Line[]> = {
-  "Chủ tịch": [["GROUP_REVENUE", 60, 12_000_000_000], ["GROUP_PROFIT_MARGIN", 40, 15]],
-  "Tổng Giám đốc": [["TEAM_KPI_AVERAGE", 30, 90], ["GROUP_REVENUE", 40, 12_000_000_000], ["GROUP_PROFIT_MARGIN", 30, 15]],
-  "Trưởng phòng Nhân sự": [["HR_PAYROLL_ACCURACY", 40, 99], ["HR_RECORDS_ON_TIME", 30, 95], ["HR_TIME_TO_HIRE", 30, 30]],
-  "Chuyên viên Nhân sự": [["HR_RECORDS_ON_TIME", 50, 95], ["HR_PAYROLL_ACCURACY", 50, 99]],
-  "Kế toán trưởng": [["FIN_CLOSE_DAYS", 40, 5], ["FIN_FILING_ON_TIME", 40, 100], ["FIN_RECEIVABLE_DAYS", 20, 45]],
-  "Trưởng phòng Sản xuất Video": [["ON_TIME_DELIVERY", 40, 95], ["TEAM_KPI_AVERAGE", 30, 90], ["CLIENT_SATISFACTION", 30, 4.5]],
-  "Đạo diễn": [["ON_TIME_DELIVERY", 40, 95], ["REVISION_ROUNDS", 30, 2], ["CLIENT_SATISFACTION", 30, 4.5]],
-  "Dựng phim": [["ON_TIME_DELIVERY", 40, 95], ["CONTENT_OUTPUT", 40, 12], ["REVISION_ROUNDS", 20, 2]],
-  "Quay phim": [["ON_TIME_DELIVERY", 50, 95], ["CONTENT_OUTPUT", 50, 8]],
-  "Trưởng nhóm Thiết kế": [["ON_TIME_DELIVERY", 40, 95], ["TEAM_KPI_AVERAGE", 30, 90], ["CLIENT_SATISFACTION", 30, 4.5]],
-  "Thiết kế đồ họa": [["ON_TIME_DELIVERY", 40, 95], ["CONTENT_OUTPUT", 40, 30], ["REVISION_ROUNDS", 20, 2]],
-  "Social Media Executive": [["CONTENT_OUTPUT", 30, 40], ["ENGAGEMENT_RATE", 40, 4], ["CAMPAIGN_ROAS", 30, 3]],
-  "Content Writer": [["CONTENT_OUTPUT", 50, 20], ["ON_TIME_DELIVERY", 30, 95], ["ENGAGEMENT_RATE", 20, 4]],
-  "Account Executive": [["ACC_REVENUE", 50, 500_000_000], ["ACC_RETENTION", 25, 90], ["CLIENT_SATISFACTION", 25, 4.5]],
+  "Chủ tịch": [
+    ["GROUP_REVENUE", 60, 12_000_000_000],
+    ["GROUP_PROFIT_MARGIN", 40, 15],
+  ],
+  "Tổng Giám đốc": [
+    ["TEAM_KPI_AVERAGE", 30, 90],
+    ["GROUP_REVENUE", 40, 12_000_000_000],
+    ["GROUP_PROFIT_MARGIN", 30, 15],
+  ],
+  "Trưởng phòng Nhân sự": [
+    ["HR_PAYROLL_ACCURACY", 40, 99],
+    ["HR_RECORDS_ON_TIME", 30, 95],
+    ["HR_TIME_TO_HIRE", 30, 30],
+  ],
+  "Chuyên viên Nhân sự": [
+    ["HR_RECORDS_ON_TIME", 50, 95],
+    ["HR_PAYROLL_ACCURACY", 50, 99],
+  ],
+  "Kế toán trưởng": [
+    ["FIN_CLOSE_DAYS", 40, 5],
+    ["FIN_FILING_ON_TIME", 40, 100],
+    ["FIN_RECEIVABLE_DAYS", 20, 45],
+  ],
+  "Trưởng phòng Sản xuất Video": [
+    ["ON_TIME_DELIVERY", 40, 95],
+    ["TEAM_KPI_AVERAGE", 30, 90],
+    ["CLIENT_SATISFACTION", 30, 4.5],
+  ],
+  "Đạo diễn": [
+    ["ON_TIME_DELIVERY", 40, 95],
+    ["REVISION_ROUNDS", 30, 2],
+    ["CLIENT_SATISFACTION", 30, 4.5],
+  ],
+  "Dựng phim": [
+    ["ON_TIME_DELIVERY", 40, 95],
+    ["CONTENT_OUTPUT", 40, 12],
+    ["REVISION_ROUNDS", 20, 2],
+  ],
+  "Quay phim": [
+    ["ON_TIME_DELIVERY", 50, 95],
+    ["CONTENT_OUTPUT", 50, 8],
+  ],
+  "Trưởng nhóm Thiết kế": [
+    ["ON_TIME_DELIVERY", 40, 95],
+    ["TEAM_KPI_AVERAGE", 30, 90],
+    ["CLIENT_SATISFACTION", 30, 4.5],
+  ],
+  "Thiết kế đồ họa": [
+    ["ON_TIME_DELIVERY", 40, 95],
+    ["CONTENT_OUTPUT", 40, 30],
+    ["REVISION_ROUNDS", 20, 2],
+  ],
+  "Social Media Executive": [
+    ["CONTENT_OUTPUT", 30, 40],
+    ["ENGAGEMENT_RATE", 40, 4],
+    ["CAMPAIGN_ROAS", 30, 3],
+  ],
+  "Content Writer": [
+    ["CONTENT_OUTPUT", 50, 20],
+    ["ON_TIME_DELIVERY", 30, 95],
+    ["ENGAGEMENT_RATE", 20, 4],
+  ],
+  "Account Executive": [
+    ["ACC_REVENUE", 50, 500_000_000],
+    ["ACC_RETENTION", 25, 90],
+    ["CLIENT_SATISFACTION", 25, 4.5],
+  ],
 };
 
 const FIRST_MONTH = "2026-07";
@@ -68,7 +121,11 @@ export async function seedKpis(db: Db): Promise<string> {
   const kpis = new Map((await db.select().from(kpiDefinition)).map((row) => [row.code, row]));
   const positions = new Map((await db.select().from(position)).map((row) => [row.searchName, row]));
   const entities = new Map((await db.select().from(entity)).map((row) => [row.id, row.code]));
-  const holders = await db.select({ personId: employment.personId, entityId: employment.entityId, startDate: employment.startDate, positionId: assignment.positionId }).from(assignment).innerJoin(employment, eq(employment.id, assignment.employmentId)).orderBy(desc(assignment.validFrom));
+  const holders = await db
+    .select({ personId: employment.personId, entityId: employment.entityId, startDate: employment.startDate, positionId: assignment.positionId })
+    .from(assignment)
+    .innerJoin(employment, eq(employment.id, assignment.employmentId))
+    .orderBy(desc(assignment.validFrom));
   const hrLead = byName.get("Lê Thị Mai")!;
   const hrSzm = byName.get("Phạm Quốc Bảo") ?? hrLead;
 
@@ -80,7 +137,10 @@ export async function seedKpis(db: Db): Promise<string> {
       if (!job) continue;
       for (const [index, [code, weight, target]] of lines.entries()) {
         const kpi = kpis.get(code)!;
-        await tx.insert(positionKpi).values({ positionId: job.id, entityId: null, kpiId: kpi.id, weight, targetValue: Math.round(target * scaleOf(kpi.unit as KpiUnit)), sortOrder: index + 1 }).onConflictDoNothing();
+        await tx
+          .insert(positionKpi)
+          .values({ positionId: job.id, entityId: null, kpiId: kpi.id, weight, targetValue: Math.round(target * scaleOf(kpi.unit as KpiUnit)), sortOrder: index + 1 })
+          .onConflictDoNothing();
         counts.templates++;
       }
     }
@@ -100,7 +160,10 @@ export async function seedKpis(db: Db): Promise<string> {
       for (const [code, weight, target] of lines) {
         const kpi = kpis.get(code)!;
         const targetValue = Math.round(target * scaleOf(kpi.unit as KpiUnit));
-        const [row] = await tx.insert(kpiAssignment).values({ personId: holder.personId, entityId: holder.entityId, kpiId: kpi.id, weight, targetValue, fromPeriod, toPeriod: null, sourcePositionId: job.id, createdByPersonId: hrLead.id, createdAt: new Date("2026-06-25T03:00:00Z") }).returning();
+        const [row] = await tx
+          .insert(kpiAssignment)
+          .values({ personId: holder.personId, entityId: holder.entityId, kpiId: kpi.id, weight, targetValue, fromPeriod, toPeriod: null, sourcePositionId: job.id, createdByPersonId: hrLead.id, createdAt: new Date("2026-06-25T03:00:00Z") })
+          .returning();
         assigned.push({ id: row.id, personId: holder.personId, entityId: holder.entityId, code, weight, targetValue, fromPeriod });
         counts.assignments++;
       }
@@ -120,7 +183,22 @@ export async function seedKpis(db: Db): Promise<string> {
         if (!periodKey || item.fromPeriod > month) continue;
         const name = nameOf.get(item.personId)!;
         const who = people.find((row) => row.id === item.personId)!;
-        const line: KpiLineInput = { assignmentId: item.id, kpiCode: kpi.code, kpiName: kpi.name, unit: kpi.unit as KpiUnit, direction: kpi.direction as KpiDirection, frequency: kpi.frequency as KpiFrequency, periodKey, weight: item.weight, targetValue: item.targetValue, capBp: kpi.capBp, floorBp: kpi.floorBp, actualValue: null, notApplicable: false, note: null };
+        const line: KpiLineInput = {
+          assignmentId: item.id,
+          kpiCode: kpi.code,
+          kpiName: kpi.name,
+          unit: kpi.unit as KpiUnit,
+          direction: kpi.direction as KpiDirection,
+          frequency: kpi.frequency as KpiFrequency,
+          periodKey,
+          weight: item.weight,
+          targetValue: item.targetValue,
+          capBp: kpi.capBp,
+          floorBp: kpi.floorBp,
+          actualValue: null,
+          notApplicable: false,
+          note: null,
+        };
         // September is still running: every other monthly figure is in, the quarter's are not.
         const september = month === "2026-09" && (kpi.frequency === "quarterly" || factor(`${name}:${item.code}:sep`) < 0.97);
         if (!skip(name, item.code, periodKey) && !september) {
@@ -129,7 +207,19 @@ export async function seedKpis(db: Db): Promise<string> {
           line.notApplicable = na;
           line.note = na ? "Tháng 7 không chạy chiến dịch trả phí" : null;
           const enteredAt = new Date(`${month === "2026-07" ? "2026-08-03" : month === "2026-08" ? "2026-09-02" : "2026-09-18"}T03:30:00Z`);
-          await tx.insert(kpiActual).values({ assignmentId: item.id, personId: item.personId, kpiId: kpi.id, periodKey, actualValue: line.actualValue, notApplicable: na, note: line.note, source: "manual", enteredByPersonId: who.managerId ?? hrLead.id, createdAt: enteredAt, updatedAt: enteredAt });
+          await tx.insert(kpiActual).values({
+            assignmentId: item.id,
+            personId: item.personId,
+            kpiId: kpi.id,
+            periodKey,
+            actualValue: line.actualValue,
+            notApplicable: na,
+            note: line.note,
+            source: "manual",
+            enteredByPersonId: who.managerId ?? hrLead.id,
+            createdAt: enteredAt,
+            updatedAt: enteredAt,
+          });
           counts.actuals++;
         }
         const key = `${item.entityId}:${month}:${item.personId}`;
@@ -155,10 +245,29 @@ export async function seedKpis(db: Db): Promise<string> {
         if (lineEntity !== entityId || month !== close.month) continue;
         for (const line of lines) if (line.actualValue === null && !line.notApplicable) exceptions.push({ personId, kpiCode: line.kpiCode, periodKey: line.periodKey });
         const trace = kpiMonthScore(month, lines, { missingAs: "zero" });
-        await tx.insert(kpiScore).values({ personId, entityId, month, revision: 1, scoreBp: trace.scoreBp, trace, inputsHash: createHash("sha256").update(canonicalInputs(month, lines, "zero")).digest("hex"), computedAt: at });
+        await tx.insert(kpiScore).values({
+          personId,
+          entityId,
+          month,
+          revision: 1,
+          scoreBp: trace.scoreBp,
+          trace,
+          inputsHash: createHash("sha256")
+            .update(canonicalInputs(month, lines, "zero"))
+            .digest("hex"),
+          computedAt: at,
+        });
         counts.scores++;
       }
-      await tx.insert(kpiPeriod).values({ entityId, month: close.month, status: "closed", closedByPersonId: close.by, closedAt: at, overrideReason: exceptions.length > 0 ? (close.reason ?? "Chốt khi còn thiếu số liệu") : null, exceptions: exceptions.length > 0 ? exceptions : null });
+      await tx.insert(kpiPeriod).values({
+        entityId,
+        month: close.month,
+        status: "closed",
+        closedByPersonId: close.by,
+        closedAt: at,
+        overrideReason: exceptions.length > 0 ? (close.reason ?? "Chốt khi còn thiếu số liệu") : null,
+        exceptions: exceptions.length > 0 ? exceptions : null,
+      });
       counts.periods++;
     }
   });

@@ -12,7 +12,25 @@ export const PIT_METHODS = ["progressive", "flat_without_contract", "flat_non_re
 export const INSURANCE_EXEMPTIONS = ["probation", "retiree", "insured_elsewhere", "foreigner", "other"] as const;
 
 export const COMPONENT_KINDS = ["earning", "deduction", "employer_cost"] as const;
-export const COMPONENT_CATEGORIES = ["salary", "allowance", "overtime", "bonus", "commission", "thirteenth_month", "holiday_bonus", "leave_payout", "retro", "insurance", "pit", "union", "advance", "penalty", "asset_compensation", "loan", "other"] as const;
+export const COMPONENT_CATEGORIES = [
+  "salary",
+  "allowance",
+  "overtime",
+  "bonus",
+  "commission",
+  "thirteenth_month",
+  "holiday_bonus",
+  "leave_payout",
+  "retro",
+  "insurance",
+  "pit",
+  "union",
+  "advance",
+  "penalty",
+  "asset_compensation",
+  "loan",
+  "other",
+] as const;
 export const COMPONENT_SOURCES = ["structure", "formula", "engine", "input"] as const;
 export const TAX_TREATMENTS = ["taxable", "exempt", "exempt_up_to_cap"] as const;
 export const PRORATIONS = ["fixed", "attendance"] as const;
@@ -94,7 +112,15 @@ export const serviceBandSchema = z.object({ minMonths: z.number().int().min(0).m
 export type ServiceBand = z.output<typeof serviceBandSchema>;
 
 /** A score → a multiplier. The scheme's own table, used when `source` is `scheme_bands`. */
-export const bonusScoreBandSchema = z.object({ key: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/), label: bandLabel, minScoreBp: bonusBp(1_000_000), multiplierBp: bonusBp(1_000_000) });
+export const bonusScoreBandSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
+  label: bandLabel,
+  minScoreBp: bonusBp(1_000_000),
+  multiplierBp: bonusBp(1_000_000),
+});
 export type BonusScoreBand = z.output<typeof bonusScoreBandSchema>;
 
 /** Unit OKR attainment → a multiplier: everyone's bonus moves with the unit's year. */

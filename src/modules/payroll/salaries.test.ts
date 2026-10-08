@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -39,17 +45,38 @@ const who = {} as Record<"owner" | "ceo" | "cnb" | "cnbCreative" | "manager" | "
 const HUY_BASE = 23_456_789;
 const HUY_RAISE = 27_654_321;
 const terms = (baseSalary: number, meal = 730_000) => ({ baseSalary, insuranceSalary: baseSalary, allowances: [{ code: "ALW_MEAL", amount: meal }] });
-const change = (personId: string, validFrom: string, baseSalary: number, reason: SalaryChangeInput["reason"] = "raise"): SalaryChangeInput => ({ personId, validFrom, reason, terms: terms(baseSalary), note: "theo đề xuất của trưởng bộ phận" });
+const change = (personId: string, validFrom: string, baseSalary: number, reason: SalaryChangeInput["reason"] = "raise"): SalaryChangeInput => ({
+  personId,
+  validFrom,
+  reason,
+  terms: terms(baseSalary),
+  note: "theo đề xuất của trưởng bộ phận",
+});
 const approve = { action: "approve" as const, comment: null };
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db()
+    .insert(schema.entity)
+    .values([
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
+    ])
+    .returning();
   const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (name: string, entityId: string, managerId: string | null = null, workforceType: "employee" | "collaborator" = "employee") => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType, branchId: null, orgUnitId: video.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId,
+        employeeCode: null,
+        startDate: "2025-01-01",
+        seniorityDate: null,
+        placement: { workforceType, branchId: null, orgUnitId: video.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -73,17 +100,25 @@ beforeAll(async () => {
     [cnb]: [{ role: "payroll", scope: { type: "entity", id: media.id } }],
     [cnbCreative]: [{ role: "payroll", scope: { type: "entity", id: creative.id } }],
     // The line manager is also the department head and — worst case — holds it over the whole entity.
-    [manager]: [{ role: "department_head", scope: { type: "unit", id: video.id } }, { role: "department_head", scope: { type: "entity", id: media.id } }],
+    [manager]: [
+      { role: "department_head", scope: { type: "unit", id: video.id } },
+      { role: "department_head", scope: { type: "entity", id: media.id } },
+    ],
     [hrStaff]: [{ role: "hr_staff", scope: { type: "entity", id: media.id } }],
     [director]: [{ role: "entity_director", scope: { type: "entity", id: media.id } }],
   };
-  for (const [personId, list] of Object.entries(grants)) await db().insert(schema.roleAssignment).values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
+  for (const [personId, list] of Object.entries(grants))
+    await db()
+      .insert(schema.roleAssignment)
+      .values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
   const viewer = (personId: string): Viewer => ({ personId, principal: { personId, workforceType: "employee", grants: grants[personId] ?? [] } });
   Object.assign(who, { owner: viewer(owner), ceo: viewer(ceo), cnb: viewer(cnb), cnbCreative: viewer(cnbCreative), manager: viewer(manager), hrStaff: viewer(hrStaff), director: viewer(director), huy: viewer(huy), lan: viewer(lan) });
 
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
-  await db().insert(schema.statutoryParameter).values({ key: "probation.limits", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, validFrom: "2021-01-01", status: "approved" });
+  await db()
+    .insert(schema.statutoryParameter)
+    .values({ key: "probation.limits", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, validFrom: "2021-01-01", status: "approved" });
 });
 
 describe("salary change flow", () => {
@@ -99,7 +134,9 @@ describe("salary change flow", () => {
   });
 
   it("refuses unknown allowances, a date before the employment and negative or fractional money", async () => {
-    await expect(submitSalaryChange(who.cnb.personId, { ...change(ids.lan, "2025-01-01", 10_000_000), terms: { baseSalary: 10_000_000, insuranceSalary: 10_000_000, allowances: [{ code: "PIT", amount: 1 }] } })).rejects.toThrow("salary_allowance_unknown");
+    await expect(submitSalaryChange(who.cnb.personId, { ...change(ids.lan, "2025-01-01", 10_000_000), terms: { baseSalary: 10_000_000, insuranceSalary: 10_000_000, allowances: [{ code: "PIT", amount: 1 }] } })).rejects.toThrow(
+      "salary_allowance_unknown",
+    );
     await expect(submitSalaryChange(who.cnb.personId, change(ids.lan, "2024-12-31", 10_000_000))).rejects.toThrow("salary_before_employment");
     await expect(submitSalaryChange(who.cnb.personId, change(ids.lan, "2025-01-01", 10_000_000.5))).rejects.toThrow("salary_terms_invalid");
     await expect(submitSalaryChange(who.cnb.personId, change(ids.lan, "2025-01-01", -1))).rejects.toThrow("salary_terms_invalid");
@@ -152,14 +189,21 @@ describe("salary change flow", () => {
     expect((await getStructureOn(ids.huy, "2026-08-15"))?.terms.baseSalary).toBe(HUY_BASE);
     expect((await getStructureOn(ids.huy, "2026-08-16"))?.terms.baseSalary).toBe(HUY_RAISE);
     const august = await listStructuresBetween(ids.media, "2026-08-01", "2026-08-31");
-    expect(august.filter((row) => row.personId === ids.huy).map((row) => [row.validFrom, row.validTo])).toEqual([["2025-01-01", "2026-08-15"], ["2026-08-16", null]]);
+    expect(august.filter((row) => row.personId === ids.huy).map((row) => [row.validFrom, row.validTo])).toEqual([
+      ["2025-01-01", "2026-08-15"],
+      ["2026-08-16", null],
+    ]);
     const events = await db().select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.type, "salary_change"));
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ personId: ids.huy, effectiveDate: "2026-08-16", reason: "raise", details: {}, approvalRequestId: request.id });
   });
 
   it("the database refuses overlapping structures whatever the code does", async () => {
-    await expect(db().insert(schema.salaryStructure).values({ personId: ids.huy, employmentId: (await getStructureOn(ids.huy, "2026-09-01"))!.employmentId, entityId: ids.media, validFrom: "2026-09-01", termsEnc: "x", reason: "raise" })).rejects.toThrow();
+    await expect(
+      db()
+        .insert(schema.salaryStructure)
+        .values({ personId: ids.huy, employmentId: (await getStructureOn(ids.huy, "2026-09-01"))!.employmentId, entityId: ids.media, validFrom: "2026-09-01", termsEnc: "x", reason: "raise" }),
+    ).rejects.toThrow();
   });
 
   it("a rejection leaves everything as it was and needs a reason", async () => {
@@ -200,7 +244,10 @@ describe("no amount in clear text", () => {
     // Put it right again for the tests below.
     const { fieldCipher } = await import("@/lib/crypto");
     const { salaryTermsContext } = await import("./field-contexts");
-    await db().update(schema.salaryStructure).set({ termsEnc: fieldCipher().encrypt(JSON.stringify(terms(9_000_000)), salaryTermsContext(lan.id)) }).where(eq(schema.salaryStructure.id, lan.id));
+    await db()
+      .update(schema.salaryStructure)
+      .set({ termsEnc: fieldCipher().encrypt(JSON.stringify(terms(9_000_000)), salaryTermsContext(lan.id)) })
+      .where(eq(schema.salaryStructure.id, lan.id));
   });
 });
 
@@ -276,7 +323,24 @@ describe("pay profiles (SRS D18)", () => {
 });
 
 describe("rule governance (FR-PLT-39)", () => {
-  const draft = { entityId: null, code: "ALW_SENIORITY", name: "Phụ cấp thâm niên", nameEn: null, kind: "earning" as const, category: "allowance" as const, source: "formula" as const, taxTreatment: "taxable" as const, exemptCap: null, subjectToInsurance: false, proration: "fixed" as const, roundingRule: "half_up", formula: "min(div_down(service_months, 12), 10) * pct(base_salary, 100)", sortOrder: 25, note: null, validFrom: "2026-10-01" };
+  const draft = {
+    entityId: null,
+    code: "ALW_SENIORITY",
+    name: "Phụ cấp thâm niên",
+    nameEn: null,
+    kind: "earning" as const,
+    category: "allowance" as const,
+    source: "formula" as const,
+    taxTreatment: "taxable" as const,
+    exemptCap: null,
+    subjectToInsurance: false,
+    proration: "fixed" as const,
+    roundingRule: "half_up",
+    formula: "min(div_down(service_months, 12), 10) * pct(base_salary, 100)",
+    sortOrder: 25,
+    note: null,
+    validFrom: "2026-10-01",
+  };
 
   it("a proposed component is not in the catalogue until the owner approves it", async () => {
     const proposed = await proposeComponent(draft, ids.cnb);
@@ -298,7 +362,10 @@ describe("rule governance (FR-PLT-39)", () => {
     const next = await proposeComponent({ ...draft, formula: "min(div_down(service_months, 12), 15) * pct(base_salary, 100)", validFrom: "2027-01-01" }, ids.cnb);
     await decideComponent(next.id, "approve", ids.owner);
     const versions = (await db().select().from(schema.payComponent).where(eq(schema.payComponent.code, "ALW_SENIORITY"))).map((row) => [row.validFrom, row.validTo]).sort();
-    expect(versions).toEqual([["2026-10-01", "2026-12-31"], ["2027-01-01", null]]);
+    expect(versions).toEqual([
+      ["2026-10-01", "2026-12-31"],
+      ["2027-01-01", null],
+    ]);
     const own = await proposeComponent({ ...draft, entityId: ids.creative, formula: "pct(base_salary, 200)", validFrom: "2026-10-01" }, ids.cnb);
     await decideComponent(own.id, "approve", ids.owner);
     expect((await resolveCatalogue(ids.creative, "2026-11-01")).find((row) => row.code === "ALW_SENIORITY")?.formula).toBe("pct(base_salary, 200)");

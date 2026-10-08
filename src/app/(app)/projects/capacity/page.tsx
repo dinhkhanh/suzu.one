@@ -44,7 +44,8 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
   };
   const thisMonday = mondayOf(today);
   // The cell's tint: fine up to 90% of what the person can work, a warning up to full, wrong over it.
-  const tint = (percent: number | null, confirmed: number) => (percent === null ? "bg-muted text-faint" : confirmed === 0 ? "bg-canvas text-faint" : percent > 100 ? "bg-destructive/10 text-destructive" : percent > 90 ? "bg-warning/12 text-warning" : "bg-success/10 text-success");
+  const tint = (percent: number | null, confirmed: number) =>
+    percent === null ? "bg-muted text-faint" : confirmed === 0 ? "bg-canvas text-faint" : percent > 100 ? "bg-destructive/10 text-destructive" : percent > 90 ? "bg-warning/12 text-warning" : "bg-success/10 text-success";
 
   return (
     <Page width="wide">

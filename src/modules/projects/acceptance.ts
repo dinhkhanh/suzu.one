@@ -25,7 +25,22 @@ import { findFile, softDeleteFile, type StoredFileRow, storeIncomingFile } from 
 import { notify } from "../platform/notifications/service";
 import { attachAcceptance, billMilestone, ensureBillingItem, financeOf, lockFee } from "./billing";
 import { adapterLineLinks } from "./delivery-adapter";
-import { type AcceptanceAction, acceptanceBody, acceptanceHasScope, acceptanceItems, acceptanceNext, acceptanceNumber, acceptanceRefreshable, type AcceptanceScope, type AcceptanceStatus, acceptanceTotals, linesInScope, projectFeeLeft, type ScopedLine, signedCorrectable } from "./engine/acceptance";
+import {
+  type AcceptanceAction,
+  acceptanceBody,
+  acceptanceHasScope,
+  acceptanceItems,
+  acceptanceNext,
+  acceptanceNumber,
+  acceptanceRefreshable,
+  type AcceptanceScope,
+  type AcceptanceStatus,
+  acceptanceTotals,
+  linesInScope,
+  projectFeeLeft,
+  type ScopedLine,
+  signedCorrectable,
+} from "./engine/acceptance";
 import type { BillingStatus } from "./engine/acceptance";
 import { monthOf } from "./engine/retainer";
 import { withLineStatus } from "./metrics";
@@ -49,7 +64,16 @@ async function lockAcceptance(tx: Tx, acceptanceId: string): Promise<AcceptanceR
 /** Every register line of the project, retainer months included, as the scope rule reads them. */
 async function scopedLines(projectId: string): Promise<ScopedLine[]> {
   const lines = await db().select().from(schema.projectDeliverable).where(eq(schema.projectDeliverable.projectId, projectId)).orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
-  return (await withLineStatus(lines)).map((line) => ({ id: line.id, title: line.title, milestoneId: line.milestoneId, retainerPeriodId: line.retainerPeriodId, cancelled: line.status === "cancelled", promised: line.promised, counts: line.counts, accepted: line.accepted }));
+  return (await withLineStatus(lines)).map((line) => ({
+    id: line.id,
+    title: line.title,
+    milestoneId: line.milestoneId,
+    retainerPeriodId: line.retainerPeriodId,
+    cancelled: line.status === "cancelled",
+    promised: line.promised,
+    counts: line.counts,
+    accepted: line.accepted,
+  }));
 }
 
 export type AcceptanceTarget = { scope: AcceptanceScope; milestoneId: string | null; retainerPeriodId: string | null };
@@ -66,7 +90,12 @@ async function checkTarget(tx: Tx | ReturnType<typeof db>, projectId: string, ta
   }
   if (target.scope === "retainer_period") {
     const [period] = target.retainerPeriodId
-      ? await tx.select({ id: schema.projectRetainerPeriod.id, projectId: schema.projectRetainer.projectId }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainerPeriod.id, target.retainerPeriodId)).limit(1)
+      ? await tx
+          .select({ id: schema.projectRetainerPeriod.id, projectId: schema.projectRetainer.projectId })
+          .from(schema.projectRetainerPeriod)
+          .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
+          .where(eq(schema.projectRetainerPeriod.id, target.retainerPeriodId))
+          .limit(1)
       : [];
     if (period?.projectId !== projectId) throw new ActionError("retainer_period_not_found");
     return { scope: "retainer_period", milestoneId: null, retainerPeriodId: period.id };
@@ -100,10 +129,17 @@ export async function createAcceptance(projectId: string, input: NewAcceptance, 
     // One whole-project record at a time (void it to start again): two of them would each bill
     // "the fee not yet billed", and the client would be invoiced the remainder twice.
     if (target.scope === "project") {
-      const [open] = await tx.select({ id: schema.projectAcceptance.id }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.scope, "project"), ne(schema.projectAcceptance.status, "void"))).limit(1);
+      const [open] = await tx
+        .select({ id: schema.projectAcceptance.id })
+        .from(schema.projectAcceptance)
+        .where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.scope, "project"), ne(schema.projectAcceptance.status, "void")))
+        .limit(1);
       if (open) throw new ActionError("acceptance_project_exists");
     }
-    const [top] = await tx.select({ value: max(schema.projectAcceptance.number) }).from(schema.projectAcceptance).where(eq(schema.projectAcceptance.projectId, projectId));
+    const [top] = await tx
+      .select({ value: max(schema.projectAcceptance.number) })
+      .from(schema.projectAcceptance)
+      .where(eq(schema.projectAcceptance.projectId, projectId));
     const [row] = await tx
       .insert(schema.projectAcceptance)
       .values({ projectId, number: (top?.value ?? 0) + 1, ...target, items, description, createdByPersonId: actorPersonId })
@@ -196,11 +232,29 @@ async function billSigned(tx: Tx, row: AcceptanceRow, number: string, actorPerso
     }
     // A client-facing milestone that is not a billing one still ends in a signature finance should
     // know about: an item without an amount, which finance prices at invoicing or waives.
-    return (await ensureBillingItem(tx, { projectId: row.projectId, source: "acceptance", acceptanceId: row.id, milestoneId: milestone?.id ?? null, description: `${number} · ${milestone?.name ?? ""}`, reference: number, amountVnd: null, createdByPersonId: actorPersonId })).item.id;
+    return (
+      await ensureBillingItem(tx, {
+        projectId: row.projectId,
+        source: "acceptance",
+        acceptanceId: row.id,
+        milestoneId: milestone?.id ?? null,
+        description: `${number} · ${milestone?.name ?? ""}`,
+        reference: number,
+        amountVnd: null,
+        createdByPersonId: actorPersonId,
+      })
+    ).item.id;
   }
   if (row.scope === "retainer_period" && row.retainerPeriodId) {
     const period = await feeOfPeriod(tx, row.retainerPeriodId);
-    const { item } = await ensureBillingItem(tx, { projectId: row.projectId, source: "retainer", retainerPeriodId: row.retainerPeriodId, description: retainerMonthLabel(period?.month ?? ""), amountVnd: period?.feeVnd ?? null, createdByPersonId: actorPersonId });
+    const { item } = await ensureBillingItem(tx, {
+      projectId: row.projectId,
+      source: "retainer",
+      retainerPeriodId: row.retainerPeriodId,
+      description: retainerMonthLabel(period?.month ?? ""),
+      amountVnd: period?.feeVnd ?? null,
+      createdByPersonId: actorPersonId,
+    });
     await attachAcceptance(tx, item.id, row.id);
     return item.id;
   }
@@ -208,7 +262,10 @@ async function billSigned(tx: Tx, row: AcceptanceRow, number: string, actorPerso
   await lockFee(tx, row.projectId);
   const [plan] = await tx.select({ feeVnd: schema.projectPlan.feeVnd }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, row.projectId)).limit(1);
   const billed = await tx.select({ amountVnd: schema.projectBillingItem.amountVnd, status: schema.projectBillingItem.status }).from(schema.projectBillingItem).where(eq(schema.projectBillingItem.projectId, row.projectId));
-  const amountVnd = projectFeeLeft(plan?.feeVnd ?? null, billed.map((item) => ({ amountVnd: item.amountVnd, status: item.status as BillingStatus })));
+  const amountVnd = projectFeeLeft(
+    plan?.feeVnd ?? null,
+    billed.map((item) => ({ amountVnd: item.amountVnd, status: item.status as BillingStatus })),
+  );
   return (await ensureBillingItem(tx, { projectId: row.projectId, source: "acceptance", acceptanceId: row.id, description: number, reference: number, amountVnd, createdByPersonId: actorPersonId })).item.id;
 }
 
@@ -236,7 +293,10 @@ function signIn(acceptanceId: string, signature: Signature, actorPersonId: strin
     const plan = await ensurePlan(after.projectId, tx);
     const number = acceptanceNumber(plan.jobNumber, after.number);
     const billingItemId = await billSigned(tx, after, number, actorPersonId);
-    const leads = await tx.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, after.projectId), eq(schema.workProjectMember.role, "lead")));
+    const leads = await tx
+      .select({ personId: schema.workProjectMember.personId })
+      .from(schema.workProjectMember)
+      .where(and(eq(schema.workProjectMember.projectId, after.projectId), eq(schema.workProjectMember.role, "lead")));
     const recipients = [...new Set([...leads.map((row) => row.personId), plan.accountManagerPersonId, ...(await financeOf(tx, project?.entityId ?? null))].filter((id): id is string => !!id && id !== actorPersonId))];
     await notify({ recipients, kind: "projects.acceptance_signed", params: { number, project: project?.name ?? "" }, link: `/projects/${after.projectId}/acceptance` }, tx);
     return { before, after, billingItemId };
@@ -259,10 +319,19 @@ export async function correctSignedAcceptance(acceptanceId: string, correction: 
     const before = await lockAcceptance(tx, acceptanceId);
     const billing = await tx.select({ status: schema.projectBillingItem.status }).from(schema.projectBillingItem).where(eq(schema.projectBillingItem.acceptanceId, acceptanceId));
     if (before.status !== "signed") throw new ActionError("acceptance_wrong_status");
-    if (!signedCorrectable(before.status, billing.map((item) => item.status as BillingStatus))) throw new ActionError("acceptance_invoiced");
+    if (
+      !signedCorrectable(
+        before.status,
+        billing.map((item) => item.status as BillingStatus),
+      )
+    )
+      throw new ActionError("acceptance_invoiced");
     const values = { signedFileId: correction.signedFileId ?? before.signedFileId, signedOn: correction.signedOn, signedByClient: correction.signedByClient };
     if (values.signedFileId === before.signedFileId && values.signedOn === before.signedOn && values.signedByClient === before.signedByClient) throw new ActionError("acceptance_correction_empty");
-    const corrections = [...before.corrections, { at: new Date().toISOString(), byPersonId: actorPersonId, reason: correction.reason, before: { signedFileId: before.signedFileId, signedOn: before.signedOn, signedByClient: before.signedByClient } }];
+    const corrections = [
+      ...before.corrections,
+      { at: new Date().toISOString(), byPersonId: actorPersonId, reason: correction.reason, before: { signedFileId: before.signedFileId, signedOn: before.signedOn, signedByClient: before.signedByClient } },
+    ];
     const [after] = await tx
       .update(schema.projectAcceptance)
       .set({ ...values, corrections, updatedAt: new Date() })
@@ -273,11 +342,18 @@ export async function correctSignedAcceptance(acceptanceId: string, correction: 
 }
 
 /** Is this file one of the record's scans — the one on record, or one a correction replaced? */
-export const isScanOf = (acceptance: Pick<AcceptanceRow, "signedFileId" | "corrections">, fileId: string): boolean => acceptance.signedFileId === fileId || acceptance.corrections.some((correction) => correction.before.signedFileId === fileId);
+export const isScanOf = (acceptance: Pick<AcceptanceRow, "signedFileId" | "corrections">, fileId: string): boolean =>
+  acceptance.signedFileId === fileId || acceptance.corrections.some((correction) => correction.before.signedFileId === fileId);
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
-export type AcceptanceView = AcceptanceRow & { code: string; targetName: string | null; totals: ReturnType<typeof acceptanceTotals>; authorName: string | null; /** The corrections of the signed record, oldest first, each with who made it. */ history: (AcceptanceCorrection & { byName: string | null })[] };
+export type AcceptanceView = AcceptanceRow & {
+  code: string;
+  targetName: string | null;
+  totals: ReturnType<typeof acceptanceTotals>;
+  authorName: string | null;
+  /** The corrections of the signed record, oldest first, each with who made it. */ history: (AcceptanceCorrection & { byName: string | null })[];
+};
 
 /** A project's acceptance records, newest first. Nothing on them is money. */
 export async function listAcceptances(projectId: string): Promise<AcceptanceView[]> {
@@ -323,9 +399,21 @@ export async function awaitingAcceptance(projectId: string, today: IsoDate = tod
   const [project] = await db().select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project?.clientId) return null;
   const [signed, milestones, periods] = await Promise.all([
-    db().select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
-    db().select({ id: schema.projectMilestone.id, name: schema.projectMilestone.name }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), or(eq(schema.projectMilestone.isClientFacing, true), eq(schema.projectMilestone.isBilling, true)))).orderBy(asc(schema.projectMilestone.dueDate)),
-    db().select({ id: schema.projectRetainerPeriod.id, month: schema.projectRetainerPeriod.month, status: schema.projectRetainerPeriod.status }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainer.projectId, projectId)).orderBy(asc(schema.projectRetainerPeriod.month)),
+    db()
+      .select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId })
+      .from(schema.projectAcceptance)
+      .where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
+    db()
+      .select({ id: schema.projectMilestone.id, name: schema.projectMilestone.name })
+      .from(schema.projectMilestone)
+      .where(and(eq(schema.projectMilestone.projectId, projectId), or(eq(schema.projectMilestone.isClientFacing, true), eq(schema.projectMilestone.isBilling, true))))
+      .orderBy(asc(schema.projectMilestone.dueDate)),
+    db()
+      .select({ id: schema.projectRetainerPeriod.id, month: schema.projectRetainerPeriod.month, status: schema.projectRetainerPeriod.status })
+      .from(schema.projectRetainerPeriod)
+      .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
+      .where(eq(schema.projectRetainer.projectId, projectId))
+      .orderBy(asc(schema.projectRetainerPeriod.month)),
   ]);
   if (signed.some((row) => row.scope === "project")) return [];
   const milestoneIds = new Set(signed.flatMap((row) => (row.milestoneId ? [row.milestoneId] : [])));
@@ -334,7 +422,9 @@ export async function awaitingAcceptance(projectId: string, today: IsoDate = tod
   const waiting: AcceptanceWaiting[] = [
     ...milestones.filter((milestone) => !milestoneIds.has(milestone.id)).map((milestone) => ({ scope: "milestone" as const, milestoneId: milestone.id, retainerPeriodId: null, name: milestone.name })),
     // A month still running is not late: it is accepted once it is over and its work is delivered.
-    ...periods.filter((period) => !periodIds.has(period.id) && (period.status === "closed" || period.month < month)).map((period) => ({ scope: "retainer_period" as const, milestoneId: null, retainerPeriodId: period.id, name: period.month })),
+    ...periods
+      .filter((period) => !periodIds.has(period.id) && (period.status === "closed" || period.month < month))
+      .map((period) => ({ scope: "retainer_period" as const, milestoneId: null, retainerPeriodId: period.id, name: period.month })),
   ];
   if (waiting.length === 0 && milestones.length === 0 && periods.length === 0) return [{ scope: "project", milestoneId: null, retainerPeriodId: null, name: null }];
   return waiting;
@@ -342,13 +432,24 @@ export async function awaitingAcceptance(projectId: string, today: IsoDate = tod
 
 /** Signed milestones and months, for the page to say what is left to accept. */
 export async function signedTargets(projectId: string): Promise<{ milestoneIds: Set<string>; periodIds: Set<string> }> {
-  const rows = await db().select({ milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), ne(schema.projectAcceptance.status, "void")));
+  const rows = await db()
+    .select({ milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId })
+    .from(schema.projectAcceptance)
+    .where(and(eq(schema.projectAcceptance.projectId, projectId), ne(schema.projectAcceptance.status, "void")));
   return { milestoneIds: new Set(rows.flatMap((row) => (row.milestoneId ? [row.milestoneId] : []))), periodIds: new Set(rows.flatMap((row) => (row.retainerPeriodId ? [row.retainerPeriodId] : []))) };
 }
 
 // ── The paper ───────────────────────────────────────────────────────────────────────────────
 
-export type AcceptanceWords = { /** What to call the paper when the template library has no name for it. */ title: string; scope: Record<AcceptanceScope, string>; promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string; /** The summary line of a record made of words alone. */ described: string };
+export type AcceptanceWords = {
+  /** What to call the paper when the template library has no name for it. */ title: string;
+  scope: Record<AcceptanceScope, string>;
+  promised: string;
+  delivered: string;
+  accepted: string;
+  totals: (totals: { promised: number; delivered: number; accepted: number }) => string;
+  /** The summary line of a record made of words alone. */ described: string;
+};
 export type AcceptanceDocument = { title: string; number: string; text: string; missing: string[]; letterhead: LetterheadFields; /** The project's entity: whose files the stored paper belongs to. */ entityId: string | null };
 
 const formatDay = (date: IsoDate) => date.split("-").reverse().join("/");
@@ -454,7 +555,11 @@ export async function issuedPaper(acceptance: AcceptanceRow): Promise<StoredFile
   if (acceptance.status !== "sent" && acceptance.status !== "signed") return null;
   if (acceptance.generatedFileId) return (await findFile(acceptance.generatedFileId)) ?? null;
   const paper = await storePaper(acceptance);
-  const [kept] = await db().update(schema.projectAcceptance).set({ generatedFileId: paper }).where(and(eq(schema.projectAcceptance.id, acceptance.id), isNull(schema.projectAcceptance.generatedFileId))).returning({ id: schema.projectAcceptance.id });
+  const [kept] = await db()
+    .update(schema.projectAcceptance)
+    .set({ generatedFileId: paper })
+    .where(and(eq(schema.projectAcceptance.id, acceptance.id), isNull(schema.projectAcceptance.generatedFileId)))
+    .returning({ id: schema.projectAcceptance.id });
   if (kept) return (await findFile(paper)) ?? null;
   await softDeleteFile(paper);
   const again = await findAcceptance(acceptance.id);

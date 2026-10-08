@@ -56,7 +56,12 @@ export function ScoreFigure({ bp, text }: { bp: number | null; text: string }) {
 /** The state of one KPI line this month: met, short of the target, or not scored yet. */
 export function LineState({ bp, counted, labels }: { bp: number | null; counted: boolean; labels: { met: string; short: string; pending: string; excluded: string } }) {
   if (!counted) return <Badge variant="outline">{labels.excluded}</Badge>;
-  if (bp === null) return <Badge dot variant="warning">{labels.pending}</Badge>;
+  if (bp === null)
+    return (
+      <Badge dot variant="warning">
+        {labels.pending}
+      </Badge>
+    );
   return (
     <Badge dot variant={bp >= 10_000 ? "success" : "warning"}>
       {bp >= 10_000 ? labels.met : labels.short}

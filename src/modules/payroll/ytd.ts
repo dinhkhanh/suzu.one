@@ -36,13 +36,19 @@ export const EMPTY_YTD: YtdFigures = { taxableIncome: 0, insuranceDeduction: 0, 
 export const openYtd = (row: YtdRow): YtdFigures => JSON.parse(fieldCipher().decrypt(row.figuresEnc, ytdFiguresContext(row.id))) as YtdFigures;
 
 export async function listYtd(entityId: string, year: number, executor: Executor = db()): Promise<{ row: YtdRow; figures: YtdFigures }[]> {
-  const rows = await executor.select().from(schema.payrollYtd).where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year)));
+  const rows = await executor
+    .select()
+    .from(schema.payrollYtd)
+    .where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year)));
   return rows.map((row) => ({ row, figures: openYtd(row) }));
 }
 
 export async function listYtdForPeople(personIds: readonly string[], year: number, executor: Executor = db()): Promise<Map<string, { row: YtdRow; figures: YtdFigures }>> {
   if (personIds.length === 0) return new Map();
-  const rows = await executor.select().from(schema.payrollYtd).where(and(inArray(schema.payrollYtd.personId, [...personIds]), eq(schema.payrollYtd.year, year)));
+  const rows = await executor
+    .select()
+    .from(schema.payrollYtd)
+    .where(and(inArray(schema.payrollYtd.personId, [...personIds]), eq(schema.payrollYtd.year, year)));
   return new Map(rows.map((row) => [row.personId, { row, figures: openYtd(row) }]));
 }
 
@@ -55,7 +61,11 @@ export type YtdInput = { personId: string; entityId: string; year: number; month
 export async function saveYtd(tx: Tx, input: YtdInput, actorPersonId: string | null): Promise<YtdRow> {
   const id = crypto.randomUUID();
   const figuresEnc = fieldCipher().encrypt(JSON.stringify(input.figures), ytdFiguresContext(id));
-  const [existing] = await tx.select({ id: schema.payrollYtd.id }).from(schema.payrollYtd).where(and(eq(schema.payrollYtd.personId, input.personId), eq(schema.payrollYtd.year, input.year))).limit(1);
+  const [existing] = await tx
+    .select({ id: schema.payrollYtd.id })
+    .from(schema.payrollYtd)
+    .where(and(eq(schema.payrollYtd.personId, input.personId), eq(schema.payrollYtd.year, input.year)))
+    .limit(1);
 
   if (existing) {
     // The ciphertext is bound to the row it lives in, so a replacement is re-encrypted for that row.
@@ -67,9 +77,6 @@ export async function saveYtd(tx: Tx, input: YtdInput, actorPersonId: string | n
     return updated;
   }
 
-  const [created] = await tx
-    .insert(schema.payrollYtd)
-    .values({ id, entityId: input.entityId, personId: input.personId, year: input.year, months: input.months, figuresEnc, note: input.note, createdByPersonId: actorPersonId })
-    .returning();
+  const [created] = await tx.insert(schema.payrollYtd).values({ id, entityId: input.entityId, personId: input.personId, year: input.year, months: input.months, figuresEnc, note: input.note, createdByPersonId: actorPersonId }).returning();
   return created;
 }

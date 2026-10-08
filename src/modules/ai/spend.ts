@@ -36,16 +36,18 @@ export async function spentSoFar(personId: string, at: Date = new Date()): Promi
 export function spentSoFarQuery(personId: string, at: Date) {
   const month = vietnamMonthStart(at);
   const day = vietnamDayStart(at);
-  return db()
-    .select({
-      monthMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}), 0)::float8`,
-      // The filter is built with the column's own operators: a raw `${day}` would go to Postgres as
-      // a JavaScript Date written as text, which PGlite reads and Postgres refuses.
-      dayMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}) filter (where ${and(eq(aiModelCall.personId, personId), gte(aiModelCall.createdAt, day))}), 0)::float8`,
-    })
-    .from(aiModelCall)
-    // A day can begin before the month does only on the 1st, at the same instant: the month is the lower bound.
-    .where(gte(aiModelCall.createdAt, month < day ? month : day));
+  return (
+    db()
+      .select({
+        monthMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}), 0)::float8`,
+        // The filter is built with the column's own operators: a raw `${day}` would go to Postgres as
+        // a JavaScript Date written as text, which PGlite reads and Postgres refuses.
+        dayMicroUsd: sql<number>`coalesce(sum(${aiModelCall.costMicroUsd}) filter (where ${and(eq(aiModelCall.personId, personId), gte(aiModelCall.createdAt, day))}), 0)::float8`,
+      })
+      .from(aiModelCall)
+      // A day can begin before the month does only on the 1st, at the same instant: the month is the lower bound.
+      .where(gte(aiModelCall.createdAt, month < day ? month : day))
+  );
 }
 
 /** The month's spend up to `at` — the statement the 80 % warning reads, unrun. */
@@ -142,4 +144,3 @@ export async function costByDaySince(since: Date): Promise<Map<string, number>> 
     .groupBy(day);
   return new Map(rows.map((row) => [row.day, Number(row.costMicroUsd)]));
 }
-

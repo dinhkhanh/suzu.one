@@ -102,7 +102,29 @@ function Item({ icon: Icon, label, onClick, active, destructive }: { icon: Lucid
 }
 
 /** A box that asks for one address: the embed and the picture-from-the-web. */
-function AddressBox({ icon: Icon, label, placeholder, applyLabel, refusedLabel, accept, onApply, open, onOpenChange, children }: { icon: LucideIcon; label: string; placeholder: string; applyLabel: string; refusedLabel: string; accept: (value: string) => boolean; onApply: (value: string) => void; open: boolean; onOpenChange: (open: boolean) => void; children?: ReactNode }) {
+function AddressBox({
+  icon: Icon,
+  label,
+  placeholder,
+  applyLabel,
+  refusedLabel,
+  accept,
+  onApply,
+  open,
+  onOpenChange,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  placeholder: string;
+  applyLabel: string;
+  refusedLabel: string;
+  accept: (value: string) => boolean;
+  onApply: (value: string) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children?: ReactNode;
+}) {
   const [value, setValue] = useState("");
   const [refused, setRefused] = useState(false);
   function apply() {
@@ -274,7 +296,11 @@ export function PageToolbar({ editor, panels, setPanel, onPickFile, uploading }:
         applyLabel={tk("embedApply")}
         refusedLabel={tk("embedRefused")}
         accept={(value) => normalizeEmbed(value) !== null}
-        onApply={(url) => chain().insertContent({ type: "embed", attrs: { url, provider: normalizeEmbed(url)!.provider } }).run()}
+        onApply={(url) =>
+          chain()
+            .insertContent({ type: "embed", attrs: { url, provider: normalizeEmbed(url)!.provider } })
+            .run()
+        }
         open={panels.embed}
         onOpenChange={(open) => setPanel("embed", open)}
       >

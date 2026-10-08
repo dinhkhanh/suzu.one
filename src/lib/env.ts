@@ -30,7 +30,10 @@ const schema = z.object({
   DATA_ENCRYPTION_KEYS: z.string().min(1).optional(),
   DATA_BLIND_INDEX_KEY: z.string().min(1).optional(),
   // The Cloudflare account that holds the file bucket (R2) and runs the embeddings (Workers AI).
-  CLOUDFLARE_ACCOUNT_ID: z.string().regex(/^[0-9a-f]{32}$/, "the 32-character account ID from the Cloudflare dashboard").optional(),
+  CLOUDFLARE_ACCOUNT_ID: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/, "the 32-character account ID from the Cloudflare dashboard")
+    .optional(),
   // Private file storage (Cloudflare R2, over its S3-compatible API). An R2 API token's access key
   // pair, scoped to the one bucket with Object Read & Write; server-only. `R2_ENDPOINT` overrides
   // the account's endpoint (https://<account>.r2.cloudflarestorage.com) for another S3-compatible
@@ -38,7 +41,10 @@ const schema = z.object({
   R2_ACCESS_KEY_ID: z.string().min(1).optional(),
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   R2_ENDPOINT: z.url().optional(),
-  STORAGE_BUCKET: z.string().regex(/^[a-z0-9-]+$/).default("suzu-private"),
+  STORAGE_BUCKET: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .default("suzu-private"),
   // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
   RESEND_API_KEY: z.string().min(1).optional(),
   EMAIL_FROM: z.string().default("SuZu One <no-reply@suzu.one>"),
@@ -106,8 +112,14 @@ const schema = z.object({
   MESSENGER_PAGE_ACCESS_TOKEN: z.string().min(1).optional(),
   MESSENGER_APP_SECRET: z.string().min(16).optional(),
   MESSENGER_VERIFY_TOKEN: z.string().min(16).optional(),
-  MESSENGER_PAGE_USERNAME: z.string().regex(/^[A-Za-z0-9.]+$/).optional(),
-  MESSENGER_UTILITY_TEMPLATE: z.string().regex(/^[a-z0-9_]+$/).optional(),
+  MESSENGER_PAGE_USERNAME: z
+    .string()
+    .regex(/^[A-Za-z0-9.]+$/)
+    .optional(),
+  MESSENGER_UTILITY_TEMPLATE: z
+    .string()
+    .regex(/^[a-z0-9_]+$/)
+    .optional(),
   MESSENGER_TEMPLATE_LANGUAGE: z.string().default("vi"),
   // Telegram (docs/TELEGRAM.md): a bot that delivers each person's own notifications to the
   // Telegram account they linked, beside Messenger. All three are needed together — with any
@@ -115,9 +127,18 @@ const schema = z.object({
   // The token comes from @BotFather; the username is what the "connect" link opens
   // (t.me/<username>); the webhook secret is any random string, which Telegram sends back on
   // every webhook call.
-  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:\S+$/, "the token @BotFather gave, e.g. 123456:ABC…").optional(),
-  TELEGRAM_BOT_USERNAME: z.string().regex(/^[A-Za-z0-9_]{5,32}$/).optional(),
-  TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[A-Za-z0-9_-]{32,256}$/, "generate with: openssl rand -hex 32").optional(),
+  TELEGRAM_BOT_TOKEN: z
+    .string()
+    .regex(/^\d+:\S+$/, "the token @BotFather gave, e.g. 123456:ABC…")
+    .optional(),
+  TELEGRAM_BOT_USERNAME: z
+    .string()
+    .regex(/^[A-Za-z0-9_]{5,32}$/)
+    .optional(),
+  TELEGRAM_WEBHOOK_SECRET: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{32,256}$/, "generate with: openssl rand -hex 32")
+    .optional(),
   // Google Calendar for interview scheduling (FR-REC-06). A service account with domain-wide
   // delegation; `IMPERSONATE` is the mailbox the events are created as, which is what Google
   // requires before it will mint a Meet link. All four are needed together — with any of them

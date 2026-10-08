@@ -298,7 +298,9 @@ export const payrollRun = pgTable(
   (t) => [
     index("payroll_run_entity_month_idx").on(t.entityId, t.month),
     // One live regular run per entity and month; off-cycle runs are as many as the month needs.
-    uniqueIndex("payroll_run_regular_key").on(t.entityId, t.month).where(sql`${t.kind} = 'regular' AND ${t.status} <> 'cancelled'`),
+    uniqueIndex("payroll_run_regular_key")
+      .on(t.entityId, t.month)
+      .where(sql`${t.kind} = 'regular' AND ${t.status} <> 'cancelled'`),
     check("payroll_run_month_check", sql`${t.month} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
   ],
 ).enableRLS();
@@ -346,7 +348,10 @@ export const payrollRunPerson = pgTable(
     resultEnc: text("result_enc").notNull(),
     inputEnc: text("input_enc").notNull(),
     /** Names of the engine's warnings — `negative_net` and the like. Never an amount. */
-    warnings: text("warnings").array().notNull().default(sql`ARRAY[]::text[]`),
+    warnings: text("warnings")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("payroll_run_person_key").on(t.runId, t.personId), index("payroll_run_person_person_idx").on(t.personId)],
@@ -495,7 +500,10 @@ export const payrollPaymentFile = pgTable(
      * inside a batch?" be answered person by person from the **latest** file of each bank, so a
      * regenerated file supersedes the one before it instead of adding to it.
      */
-    coveredPersonIds: uuid("covered_person_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    coveredPersonIds: uuid("covered_person_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     /** The entity's paying account the batch debits (FR-PLT-11); null when it was typed by hand. */
     payingAccountId: uuid("paying_account_id").references(() => entityBankAccount.id),
     /** The batch total, encrypted: context "payroll_payment_file.total:<id>". */
@@ -616,7 +624,9 @@ export const payrollRetroItem = pgTable(
     index("payroll_retro_item_person_idx").on(t.personId, t.sourceMonth),
     // One item per source of a difference and month it belongs to: re-deriving a correction never
     // doubles it, and a raise back-dated over three paid months leaves three items, not one.
-    uniqueIndex("payroll_retro_item_source_month_key").on(t.personId, t.kind, t.sourceRef, t.sourceMonth).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
+    uniqueIndex("payroll_retro_item_source_month_key")
+      .on(t.personId, t.kind, t.sourceRef, t.sourceMonth)
+      .where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
   ],
 ).enableRLS();
 
@@ -794,7 +804,9 @@ export const bonusRun = pgTable(
     index("bonus_run_year_idx").on(t.year, t.status),
     // A year may pay more than one bonus (a Tết bonus beside the year-end one, PAY-11); two live
     // runs of one year are told apart by their names. A run that went wrong is cancelled.
-    uniqueIndex("bonus_run_year_name_key").on(t.year, t.name).where(sql`${t.status} <> 'cancelled'`),
+    uniqueIndex("bonus_run_year_name_key")
+      .on(t.year, t.name)
+      .where(sql`${t.status} <> 'cancelled'`),
     check("bonus_run_month_check", sql`${t.payrollMonth} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
   ],
 ).enableRLS();

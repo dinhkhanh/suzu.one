@@ -11,9 +11,7 @@
   "monthStandardDays": 22,
   "profile": { "profile": "simple", "pitCommitment": true },
   "policy": { "simplePitTreatment": "flat_withholding" },
-  "segments": [
-    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 15000000, "insuranceSalary": 0, "allowances": [] } }
-  ],
+  "segments": [{ "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 15000000, "insuranceSalary": 0, "allowances": [] } }],
   "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
   "expect": {
     "lines": { "BASE": 15000000 },

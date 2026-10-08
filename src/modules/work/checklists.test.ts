@@ -35,8 +35,16 @@ import { createTeam, listStates, setTeamMember } from "./teams";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "video" | "project" | "backlog" | "brief" | "ideation" | "script" | "design" | "briefList" | "handoffList", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const failure = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const failure = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error,
+  );
 const boxes = async (taskId: string) => (await loadTask(taskId))!.work.checklist;
 const briefItems = [{ text: "Đủ deadline và kênh đăng" }, { text: "Có brand guideline", linkUrl: "/kb/pages/brand" }];
 
@@ -45,7 +53,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
@@ -65,7 +76,11 @@ describe("keeping the library", () => {
     expect(await fails(saveChecklist(null, { name: "Hai chủ", description: null, ownerUnitId: crypto.randomUUID(), ownerTeamId: ids.video, items: briefItems, isActive: true }, ids.long))).toBe("checklist_owner_invalid");
     expect(await fails(saveChecklist(null, { name: "Đơn vị lạ", description: null, ownerUnitId: crypto.randomUUID(), ownerTeamId: null, items: briefItems, isActive: true }, ids.long))).toBe("checklist_owner_invalid");
     const before = (await findChecklist(ids.briefList))!;
-    const { after } = await saveChecklist(ids.briefList, { name: "Nhận brief", description: "Khi brief về", ownerUnitId: null, ownerTeamId: ids.video, items: [...before.items, { id: "forged_id", text: "Có ngân sách" }], isActive: true }, ids.long);
+    const { after } = await saveChecklist(
+      ids.briefList,
+      { name: "Nhận brief", description: "Khi brief về", ownerUnitId: null, ownerTeamId: ids.video, items: [...before.items, { id: "forged_id", text: "Có ngân sách" }], isActive: true },
+      ids.long,
+    );
     expect(after.items.slice(0, 2)).toEqual(before.items);
     // An id the checklist never had is not taken from the form.
     expect(after.items[2]).toMatchObject({ text: "Có ngân sách" });
@@ -87,7 +102,10 @@ describe("a checklist hooked to a stage", () => {
       { text: "Đủ deadline và kênh đăng", done: false, checklistId: ids.briefList, checklistName: "Nhận brief", linkUrl: undefined },
       { text: "Có brand guideline", done: false, checklistId: ids.briefList, checklistName: "Nhận brief", linkUrl: "/kb/pages/brand" },
     ]);
-    const activity = await db().select().from(schema.workActivity).where(and(eq(schema.workActivity.taskId, task.id), eq(schema.workActivity.type, "checklist_added")));
+    const activity = await db()
+      .select()
+      .from(schema.workActivity)
+      .where(and(eq(schema.workActivity.taskId, task.id), eq(schema.workActivity.type, "checklist_added")));
     expect(activity.map((row) => row.toValue)).toEqual([{ id: ids.briefList, name: "Nhận brief" }]);
 
     // Moving on is refused with what is missing — on every path that moves a task.
@@ -97,7 +115,17 @@ describe("a checklist hooked to a stage", () => {
 
     // A required checklist's box cannot be taken out, nor reworded.
     expect(await fails(updateWorkTask(task.id, { checklist: [{ id: added[0].id, text: added[0].text, done: false }] }, ids.tam))).toBe("checklist_item_locked");
-    await updateWorkTask(task.id, { checklist: [{ id: added[0].id, text: "Không cần deadline", done: true }, { id: added[1].id, text: added[1].text, done: false }, { id: "own1", text: "Hỏi lại khách về nhạc", done: false }] }, ids.tam);
+    await updateWorkTask(
+      task.id,
+      {
+        checklist: [
+          { id: added[0].id, text: "Không cần deadline", done: true },
+          { id: added[1].id, text: added[1].text, done: false },
+          { id: "own1", text: "Hỏi lại khách về nhạc", done: false },
+        ],
+      },
+      ids.tam,
+    );
     const ticked = await boxes(task.id);
     expect(ticked.map(({ text, done }) => [text, done])).toEqual([
       ["Đủ deadline và kênh đăng", true],
@@ -164,11 +192,23 @@ describe("a checklist hooked to a stage", () => {
     await updateWorkTask(task.id, { stateId: ids.ideation }, ids.long);
     expect(await fails(setStateChecklists(ids.design, [{ checklistId: ids.briefList, required: false }]))).toBe("checklist_not_found");
     // A stage that already names it can still be edited around it.
-    await setStateChecklists(ids.script, [{ checklistId: ids.handoffList, required: false }, { checklistId: ids.briefList, required: false }].slice(0, 1));
+    await setStateChecklists(
+      ids.script,
+      [
+        { checklistId: ids.handoffList, required: false },
+        { checklistId: ids.briefList, required: false },
+      ].slice(0, 1),
+    );
     await saveChecklist(ids.briefList, { name: "Nhận brief", description: null, ownerUnitId: null, ownerTeamId: ids.video, items: briefItems, isActive: true }, ids.long);
-    await setStateChecklists(ids.script, [{ checklistId: ids.handoffList, required: false }, { checklistId: ids.briefList, required: false }]);
+    await setStateChecklists(ids.script, [
+      { checklistId: ids.handoffList, required: false },
+      { checklistId: ids.briefList, required: false },
+    ]);
     await saveChecklist(ids.briefList, { name: "Nhận brief", description: null, ownerUnitId: null, ownerTeamId: ids.video, items: briefItems, isActive: false }, ids.long);
-    await setStateChecklists(ids.script, [{ checklistId: ids.handoffList, required: true }, { checklistId: ids.briefList, required: false }]);
+    await setStateChecklists(ids.script, [
+      { checklistId: ids.handoffList, required: true },
+      { checklistId: ids.briefList, required: false },
+    ]);
     await setStateChecklists(ids.script, []);
     await saveChecklist(ids.briefList, { name: "Nhận brief", description: null, ownerUnitId: null, ownerTeamId: ids.video, items: briefItems, isActive: true }, ids.long);
   });
@@ -188,7 +228,23 @@ describe("adding a checklist by hand", () => {
 
 describe("the other hook points", () => {
   it("a hand-off package asks for its library checklists as they stand, and records them ticked", async () => {
-    await savePackage(ids.video, null, { name: "Script → Design", fromStateId: ids.script, toStateId: ids.design, fields: [], checklist: [{ text: "Đã chốt tone màu" }], checklistIds: [ids.handoffList], requireLink: false, requireFile: false, requireAccept: false, isActive: true }, ids.long);
+    await savePackage(
+      ids.video,
+      null,
+      {
+        name: "Script → Design",
+        fromStateId: ids.script,
+        toStateId: ids.design,
+        fields: [],
+        checklist: [{ text: "Đã chốt tone màu" }],
+        checklistIds: [ids.handoffList],
+        requireLink: false,
+        requireFile: false,
+        requireAccept: false,
+        isActive: true,
+      },
+      ids.long,
+    );
     const { task } = await createWorkTask({ teamId: ids.video, title: "Clip 2/9", stateId: ids.script, assigneePersonId: ids.tam }, ids.long);
     const requirement = ((await failure(updateWorkTask(task.id, { stateId: ids.design }, ids.tam))) as Error & { details: { handoff: HandoffRequirement } }).details.handoff;
     expect(requirement.package.checklist.map((check) => check.text)).toEqual(["Đã chốt tone màu", "Đã xuất file gốc"]);
@@ -200,11 +256,21 @@ describe("the other hook points", () => {
       ["Đã xuất file gốc", true],
     ]);
     // A package that asks only for a library checklist is a package.
-    await savePackage(ids.video, null, { name: "Design → Edit", fromStateId: ids.design, toStateId: ids.script, fields: [], checklist: [], checklistIds: [ids.handoffList], requireLink: false, requireFile: false, requireAccept: false, isActive: true }, ids.long);
+    await savePackage(
+      ids.video,
+      null,
+      { name: "Design → Edit", fromStateId: ids.design, toStateId: ids.script, fields: [], checklist: [], checklistIds: [ids.handoffList], requireLink: false, requireFile: false, requireAccept: false, isActive: true },
+      ids.long,
+    );
   });
 
   it("an intake form's requests start with its checklists", async () => {
-    const { after: form } = await saveIntakeForm(ids.video, null, { name: "Yêu cầu video", description: null, projectId: null, audience: "entity", fields: [{ label: "Mục tiêu", type: "text", required: true }], checklistIds: [ids.briefList], isActive: true }, ids.long);
+    const { after: form } = await saveIntakeForm(
+      ids.video,
+      null,
+      { name: "Yêu cầu video", description: null, projectId: null, audience: "entity", fields: [{ label: "Mục tiêu", type: "text", required: true }], checklistIds: [ids.briefList], isActive: true },
+      ids.long,
+    );
     expect(form.checklistIds).toEqual([ids.briefList]);
     const submitted = await submitIntake(form.id, { title: "Video tuyển dụng", answers: { f1: "Tuyển editor" } }, { personId: ids.tam, fullName: "tam" });
     expect((await boxes(submitted.taskId)).map((item) => item.checklistName)).toEqual(["Nhận brief", "Nhận brief"]);

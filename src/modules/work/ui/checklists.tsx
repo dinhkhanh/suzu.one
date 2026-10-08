@@ -115,7 +115,17 @@ export function ChecklistLibrary({ checklists, owners, canCreate }: { checklists
                       </Badge>
                     </TableCell>
                     <TableCell kind="actions">
-                      <Button type="button" variant="ghost" size="icon-xs" aria-expanded={open} aria-label={open ? t("collapse") : t("expand")} onClick={(event) => { event.stopPropagation(); toggle(); }}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-expanded={open}
+                        aria-label={open ? t("collapse") : t("expand")}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggle();
+                        }}
+                      >
                         <ChevronDownIcon className={`transition-transform duration-200 ease-(--ease-settle) ${open ? "rotate-180" : ""}`} />
                       </Button>
                     </TableCell>
@@ -271,7 +281,16 @@ function ChecklistEditor({ checklist, owners }: { checklist?: ChecklistCard; own
           {checklist ? t("save") : t("create")}
         </Button>
         {checklist ? (
-          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteChecklistAction({ checklistId: checklist.id }))} />
+          <ConfirmButton
+            size="sm"
+            variant="ghost"
+            className="text-destructive"
+            disabled={pending}
+            destructive
+            label={t("delete")}
+            question={t("deleteConfirm")}
+            onConfirm={() => run(() => deleteChecklistAction({ checklistId: checklist.id }))}
+          />
         ) : null}
       </div>
     </form>
@@ -339,10 +358,30 @@ export function StageChecklists({ states, hooks, choices, canManage }: { states:
                     {canManage ? (
                       <>
                         <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Checkbox checked={hook.required} disabled={pending} onCheckedChange={() => save(state.id, own.map((row) => (row.checklistId === hook.checklistId ? { ...row, required: !row.required } : row)))} />
+                          <Checkbox
+                            checked={hook.required}
+                            disabled={pending}
+                            onCheckedChange={() =>
+                              save(
+                                state.id,
+                                own.map((row) => (row.checklistId === hook.checklistId ? { ...row, required: !row.required } : row)),
+                              )
+                            }
+                          />
                           {t("required")}
                         </label>
-                        <button type="button" className="text-xs text-muted-foreground hover:text-destructive" aria-label={t("remove")} disabled={pending} onClick={() => save(state.id, own.filter((row) => row.checklistId !== hook.checklistId))}>
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                          aria-label={t("remove")}
+                          disabled={pending}
+                          onClick={() =>
+                            save(
+                              state.id,
+                              own.filter((row) => row.checklistId !== hook.checklistId),
+                            )
+                          }
+                        >
                           ×
                         </button>
                       </>

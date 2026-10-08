@@ -27,7 +27,11 @@ const driver: TelegramDriver = {
 };
 
 const tokenOf = (url: string) => new URL(url).searchParams.get("start")!;
-const codeSentTo = (chatId: string) => sent.filter((row) => row.chatId === chatId).at(-1)?.message.title.match(/\b(\d{6})\b/)?.[1];
+const codeSentTo = (chatId: string) =>
+  sent
+    .filter((row) => row.chatId === chatId)
+    .at(-1)
+    ?.message.title.match(/\b(\d{6})\b/)?.[1];
 const minutes = (base: Date, count: number) => new Date(base.getTime() + count * 60_000);
 const start = (chatId: string, payload: string, at = new Date()) => handleTelegramEvent({ type: "start", chatId, payload }, at, driver);
 

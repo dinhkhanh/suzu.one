@@ -49,7 +49,19 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
         <TableBody>
           {week.hoursByProject.map((group) => (
             <TableRow key={group.projectId ?? group.category ?? "none"}>
-              <TableCell className="whitespace-normal">{group.hidden ? <span className="text-muted-foreground italic">{t("privateWork")}</span> : group.name ? <RecordLink kind="project" id={group.projectId}>{group.name}</RecordLink> : group.category ? t(`time.categories.${group.category as "admin"}`) : "—"}</TableCell>
+              <TableCell className="whitespace-normal">
+                {group.hidden ? (
+                  <span className="text-muted-foreground italic">{t("privateWork")}</span>
+                ) : group.name ? (
+                  <RecordLink kind="project" id={group.projectId}>
+                    {group.name}
+                  </RecordLink>
+                ) : group.category ? (
+                  t(`time.categories.${group.category as "admin"}`)
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell kind="time">{t("hours", { value: hoursOf(group.minutes) })}</TableCell>
             </TableRow>
           ))}
@@ -66,7 +78,10 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
               <li key={`${blocker.name ?? ""}:${blocker.date}:${index}`}>
                 {blocker.name ? (
                   <>
-                    <RecordLink kind="person" id={blocker.personId}>{blocker.name}</RecordLink> ·{" "}
+                    <RecordLink kind="person" id={blocker.personId}>
+                      {blocker.name}
+                    </RecordLink>{" "}
+                    ·{" "}
                   </>
                 ) : null}
                 {[day(blocker.date), noteToPlainText(blocker.text)].filter(Boolean).join(" · ")}
@@ -103,8 +118,20 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
       ) : null}
 
       {teamWeeks.map(({ row, team, content }) => (
-        <Section key={row.id} id={`team-${team.id}`} title={<RecordLink kind="team" id={team.id}>{team.name}</RecordLink>} action={<GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.refresh")} />} className={cn(focus === team.id && "rounded-[14px] ring-2 ring-primary/30 ring-offset-4 ring-offset-background")}>
-          <p className="px-0.5 text-sm text-muted-foreground">{t("weekly.teamFacts", { done: content.done, slipped: content.slipped, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required, late: content.late })}</p>
+        <Section
+          key={row.id}
+          id={`team-${team.id}`}
+          title={
+            <RecordLink kind="team" id={team.id}>
+              {team.name}
+            </RecordLink>
+          }
+          action={<GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.refresh")} />}
+          className={cn(focus === team.id && "rounded-[14px] ring-2 ring-primary/30 ring-offset-4 ring-offset-background")}
+        >
+          <p className="px-0.5 text-sm text-muted-foreground">
+            {t("weekly.teamFacts", { done: content.done, slipped: content.slipped, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required, late: content.late })}
+          </p>
           {blockersAlert(content.blockers)}
           <Table>
             <TableHeader>
@@ -145,7 +172,9 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
             {notGenerated.map((team, index) => (
               <ListItem key={team.id} className="rise" style={{ "--i": index } as CSSProperties}>
                 <span className="min-w-0 flex-1 font-medium">
-                  <RecordLink kind="team" id={team.id}>{team.name}</RecordLink>
+                  <RecordLink kind="team" id={team.id}>
+                    {team.name}
+                  </RecordLink>
                 </span>
                 <GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.generate")} />
               </ListItem>
@@ -165,7 +194,9 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
                     <summary className="flex min-h-[3.25rem] cursor-pointer list-none items-center gap-3 px-4 py-2.5 select-none hover:bg-canvas md:min-h-12 md:px-3.5 [&::-webkit-details-marker]:hidden">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{personId === user.person.id ? t("weekly.myWeek") : name}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}
+                        </span>
                       </span>
                       <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/week:rotate-180" />
                     </summary>

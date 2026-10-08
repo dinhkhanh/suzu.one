@@ -170,7 +170,13 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
   return (
     // On a phone the palette is a sheet a finger opened, and rises like one. On a desk it answers ⌘K
     // and "C", dozens of times a day, so it is simply there: an animation would only be a wait.
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 animate-fade sm:animate-none sm:items-start sm:p-4 sm:pt-[14vh]" role="dialog" aria-modal="true" aria-label={t("title")} onClick={(event) => (event.target === event.currentTarget ? close() : undefined)}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 animate-fade sm:animate-none sm:items-start sm:p-4 sm:pt-[14vh]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("title")}
+      onClick={(event) => (event.target === event.currentTarget ? close() : undefined)}
+    >
       <div className="flex max-h-[80dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-popover shadow-(--float-shadow) animate-rise-up sm:max-w-xl sm:animate-none sm:rounded-[14px]">
         {mode === "search" ? (
           <>

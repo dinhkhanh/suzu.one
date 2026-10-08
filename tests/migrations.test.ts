@@ -41,14 +41,10 @@ describe("migrations", () => {
     const [person] = await db.insert(schema.person).values({ fullName: "Lê Minh", searchName: "le minh" }).returning();
     const base = { personId: person.id, entityId: entity.id, seniorityDate: "2024-01-01" };
     await db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0001", startDate: "2024-01-01", endDate: "2024-12-31" });
-    await expect(
-      db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0002", startDate: "2024-12-31" }),
-    ).rejects.toThrow();
+    await expect(db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0002", startDate: "2024-12-31" })).rejects.toThrow();
     await db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0002", startDate: "2025-01-01" });
     // The open-ended period blocks anything after it.
-    await expect(
-      db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0003", startDate: "2026-01-01" }),
-    ).rejects.toThrow();
+    await expect(db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0003", startDate: "2026-01-01" })).rejects.toThrow();
   });
 
   it("numbers employees per entity: a code is unique within an entity, reusable across entities", async () => {
@@ -100,9 +96,7 @@ describe("migrations", () => {
   });
 
   it("keeps read functions in the private `app` schema, callable by the owner only", async () => {
-    const functions = await client.query<{ name: string; acl: string | null }>(
-      `SELECT p.proname AS name, array_to_string(p.proacl, ',') AS acl FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'app'`,
-    );
+    const functions = await client.query<{ name: string; acl: string | null }>(`SELECT p.proname AS name, array_to_string(p.proacl, ',') AS acl FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'app'`);
     expect(functions.rows.length).toBeGreaterThan(0);
     // No ACL means the default, which lets PUBLIC execute; "=X/" is an explicit grant to PUBLIC.
     expect(functions.rows.filter((row) => row.acl === null || /(^|,)=X\//.test(row.acl)).map((row) => row.name)).toEqual([]);
@@ -123,8 +117,7 @@ describe("migrations", () => {
   // The org-unit tree (FR-PLT-16): the database, not the application, keeps `path` and the two
   // derived placement columns true — including when a unit is moved to a different parent.
   describe("the org-unit tree", () => {
-    const unit = async (name: string, parentId: string | null, kind: "department" | "team" = "team") =>
-      (await db.insert(schema.orgUnit).values({ name, kind, parentId }).returning())[0];
+    const unit = async (name: string, parentId: string | null, kind: "department" | "team" = "team") => (await db.insert(schema.orgUnit).values({ name, kind, parentId }).returning())[0];
 
     it("writes the path from the parent, and refuses a unit inside itself", async () => {
       const marketing = await unit("Marketing", null, "department");
@@ -132,7 +125,11 @@ describe("migrations", () => {
       const editing = await unit("Video editing", social.id);
       expect(editing.path).toEqual([marketing.id, social.id, editing.id]);
       // The database refuses it; drizzle wraps the message, so the reason is on the cause.
-      const loop = await db.update(schema.orgUnit).set({ parentId: editing.id }).where(eq(schema.orgUnit.id, marketing.id)).catch((error: Error) => error);
+      const loop = await db
+        .update(schema.orgUnit)
+        .set({ parentId: editing.id })
+        .where(eq(schema.orgUnit.id, marketing.id))
+        .catch((error: Error) => error);
       expect(String((loop as Error & { cause?: Error }).cause ?? loop)).toMatch(/inside itself/);
     });
 
@@ -188,7 +185,14 @@ describe("migrations", () => {
     expect(added).toHaveLength(2);
     for (const row of added) {
       const seed = STATUTORY_SEED.find((entry) => entry.key === row.key)!;
-      expect({ value: row.value, validFrom: row.validFrom, legalReference: row.legalReference, note: row.note, status: row.status, isVerified: row.isVerified }).toEqual({ value: seed.value, validFrom: seed.validFrom, legalReference: seed.legalReference, note: seed.note, status: "approved", isVerified: false });
+      expect({ value: row.value, validFrom: row.validFrom, legalReference: row.legalReference, note: row.note, status: row.status, isVerified: row.isVerified }).toEqual({
+        value: seed.value,
+        validFrom: seed.validFrom,
+        legalReference: seed.legalReference,
+        note: seed.note,
+        status: "approved",
+        isVerified: false,
+      });
     }
   });
 
@@ -209,7 +213,15 @@ describe("migrations", () => {
     expect(added).toHaveLength(3);
     for (const row of added) {
       const seed = EMAIL_TEMPLATE_SEED.find((entry) => entry.code === row.code)!;
-      expect({ name: row.name, kind: row.kind, subject: row.subject, body: row.body, subjectEn: row.subjectEn, bodyEn: row.bodyEn, isActive: row.isActive }).toEqual({ name: seed.name, kind: seed.kind, subject: seed.subject, body: seed.body, subjectEn: seed.subjectEn, bodyEn: seed.bodyEn, isActive: true });
+      expect({ name: row.name, kind: row.kind, subject: row.subject, body: row.body, subjectEn: row.subjectEn, bodyEn: row.bodyEn, isActive: row.isActive }).toEqual({
+        name: seed.name,
+        kind: seed.kind,
+        subject: seed.subject,
+        body: seed.body,
+        subjectEn: seed.subjectEn,
+        bodyEn: seed.bodyEn,
+        isActive: true,
+      });
     }
   });
 });

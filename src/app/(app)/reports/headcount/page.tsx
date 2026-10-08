@@ -99,8 +99,12 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
               <TableHeader>
                 <TableRow>
                   <TableHead kind={group === "byEntity" || group === "byDepartment" ? "org" : "select"}>{t("columns.group")}</TableHead>
-                  <TableHead kind="number" className="w-24">{t("count")}</TableHead>
-                  <TableHead kind="percent" className="w-24">{t("share")}</TableHead>
+                  <TableHead kind="number" className="w-24">
+                    {t("count")}
+                  </TableHead>
+                  <TableHead kind="percent" className="w-24">
+                    {t("share")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -125,7 +129,9 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
               <TableHeader>
                 <TableRow>
                   <TableHead kind="org">{t("department")}</TableHead>
-                  <TableHead kind="number" className="w-24">{t("count")}</TableHead>
+                  <TableHead kind="number" className="w-24">
+                    {t("count")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -167,10 +173,15 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
                   <TableCell>
                     {row.department ? (
                       <>
-                        <RecordLink kind="unit" id={row.departmentId}>{row.department}</RecordLink> ·{" "}
+                        <RecordLink kind="unit" id={row.departmentId}>
+                          {row.department}
+                        </RecordLink>{" "}
+                        ·{" "}
                       </>
                     ) : null}
-                    <RecordLink kind="entity" id={row.entityId}>{row.entity}</RecordLink>
+                    <RecordLink kind="entity" id={row.entityId}>
+                      {row.entity}
+                    </RecordLink>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{tc(row.type as "probation")}</Badge>

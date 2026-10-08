@@ -49,15 +49,26 @@ export async function resolveResultRows(rows: Row[], user: Importer, executor: T
   const viewer = await loadViewerWith(executor, user);
 
   // Every line's task number in one lookup: a file of hundreds of posts is not hundreds of queries.
-  const taskByKey = await resolveTaskKeys(rows.flatMap((row) => (row.values.taskNumber ? [row.values.taskNumber] : [])), executor);
+  const taskByKey = await resolveTaskKeys(
+    rows.flatMap((row) => (row.values.taskNumber ? [row.values.taskNumber] : [])),
+    executor,
+  );
   const urls = rows.flatMap((row) => (row.values.url ? [normalize(row.values.url)] : []));
   const taskIds = [...taskByKey.values()];
-  const byUrl = urls.length ? sql`lower(rtrim(trim(${schema.workPublish.url}), '/')) IN (${sql.join(
-    urls.map((value) => sql`${value}`),
-    sql`, `,
-  )})` : undefined;
+  const byUrl = urls.length
+    ? sql`lower(rtrim(trim(${schema.workPublish.url}), '/')) IN (${sql.join(
+        urls.map((value) => sql`${value}`),
+        sql`, `,
+      )})`
+    : undefined;
   const byTask = taskIds.length ? inArray(schema.workPublish.taskId, taskIds) : undefined;
-  const candidates = byUrl || byTask ? await executor.select({ id: schema.workPublish.id, taskId: schema.workPublish.taskId, url: schema.workPublish.url }).from(schema.workPublish).where(and(eq(schema.workPublish.status, "published"), or(byUrl, byTask))) : [];
+  const candidates =
+    byUrl || byTask
+      ? await executor
+          .select({ id: schema.workPublish.id, taskId: schema.workPublish.taskId, url: schema.workPublish.url })
+          .from(schema.workPublish)
+          .where(and(eq(schema.workPublish.status, "published"), or(byUrl, byTask)))
+      : [];
   const tasks = await loadTasks([...new Set(candidates.map((publish) => publish.taskId))], executor);
   const mine = candidates.filter((publish) => {
     const task = tasks.get(publish.taskId);
@@ -100,7 +111,13 @@ export async function commitResultRows(rows: Row[], tx: Tx, user: Importer): Pro
   let saved = 0;
   let updated = 0;
   for (const { row, publishId } of resolved) {
-    const { replaced } = await saveResult(tx, publishId, { recordedOn: row.values.recordedOn!, reach: row.values.reach, views: row.values.views, engagement: row.values.engagement, clicks: row.values.clicks, spendVnd: row.values.spendVnd }, "csv", user.person.id);
+    const { replaced } = await saveResult(
+      tx,
+      publishId,
+      { recordedOn: row.values.recordedOn!, reach: row.values.reach, views: row.values.views, engagement: row.values.engagement, clicks: row.values.clicks, spendVnd: row.values.spendVnd },
+      "csv",
+      user.person.id,
+    );
     if (replaced) updated += 1;
     else saved += 1;
   }
@@ -116,4 +133,3 @@ export const resultImport = defineImport({
   commit: (rows, tx, user) => commitResultRows(rows, tx, user),
   onCommitted: () => revalidatePath("/work", "layout"),
 });
-

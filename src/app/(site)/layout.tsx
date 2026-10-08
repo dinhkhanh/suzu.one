@@ -40,10 +40,18 @@ export default async function SiteLayout({ children }: LayoutProps<"/">) {
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>{t("site.footer")}</span>
             <nav className="flex flex-wrap gap-x-4 gap-y-1">
-              <Link href="/" className="hover:text-foreground">{t("site.home")}</Link>
-              <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
-              <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>
-              <a href="mailto:privacy@suzu.one" className="hover:text-foreground">privacy@suzu.one</a>
+              <Link href="/" className="hover:text-foreground">
+                {t("site.home")}
+              </Link>
+              <Link href="/privacy" className="hover:text-foreground">
+                {t("app.privacy")}
+              </Link>
+              <Link href="/terms" className="hover:text-foreground">
+                {t("app.terms")}
+              </Link>
+              <a href="mailto:privacy@suzu.one" className="hover:text-foreground">
+                privacy@suzu.one
+              </a>
             </nav>
           </div>
         </footer>

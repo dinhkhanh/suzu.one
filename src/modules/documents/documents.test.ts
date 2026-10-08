@@ -46,10 +46,7 @@ beforeAll(async () => {
 
   const [boss1] = await db().insert(schema.person).values({ fullName: "Đặng Hoàng Long", searchName: "long", primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
   ids.boss = boss1.id;
-  const [huy] = await db()
-    .insert(schema.person)
-    .values({ fullName: "Hồ Gia Huy", searchName: "huy", primaryEntityId: szm.id, departmentId: vid.id, status: "active", managerId: boss1.id, workEmail: "huy.ho@suzu.group" })
-    .returning();
+  const [huy] = await db().insert(schema.person).values({ fullName: "Hồ Gia Huy", searchName: "huy", primaryEntityId: szm.id, departmentId: vid.id, status: "active", managerId: boss1.id, workEmail: "huy.ho@suzu.group" }).returning();
   ids.huy = huy.id;
   for (const [key, fullName] of [
     ["lead", "Lê Thị Mai"],
@@ -168,13 +165,27 @@ describe("generating a personal letter", () => {
     const { after } = await saveTemplate(null, template(), ids.lead);
     const [legacy] = await db()
       .insert(schema.generatedDocument)
-      .values({ templateId: after.id, templateCode: after.code, templateVersion: 1, kind: "confirmation_letter", tier: "personal", subjectPersonId: ids.huy, entityId: ids.szm, number: "SZM-XN-2025-0099", generatedByPersonId: ids.officer, createdAt: new Date("2025-03-04T03:00:00Z") })
+      .values({
+        templateId: after.id,
+        templateCode: after.code,
+        templateVersion: 1,
+        kind: "confirmation_letter",
+        tier: "personal",
+        subjectPersonId: ids.huy,
+        entityId: ids.szm,
+        number: "SZM-XN-2025-0099",
+        generatedByPersonId: ids.officer,
+        createdAt: new Date("2025-03-04T03:00:00Z"),
+      })
       .returning();
     const [first, second] = await Promise.all([openDocument(officer, legacy.id), openDocument(officer, legacy.id)]);
     expect(first?.file.id).toBeTruthy();
     expect(second?.file.id).toBe(first?.file.id);
     expect((await openDocument(officer, legacy.id))?.file.id).toBe(first?.file.id);
-    const kept = await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.ownerId, legacy.id), isNull(schema.storedFile.deletedAt)));
+    const kept = await db()
+      .select()
+      .from(schema.storedFile)
+      .where(and(eq(schema.storedFile.ownerId, legacy.id), isNull(schema.storedFile.deletedAt)));
     expect(kept).toHaveLength(1);
   });
 
@@ -190,7 +201,15 @@ describe("generating a personal letter", () => {
     const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, ids.huy)).limit(1);
     const [event] = await db()
       .insert(schema.lifecycleEvent)
-      .values({ personId: ids.huy, employmentId: employment.id, entityId: ids.szm, type: "promotion", effectiveDate: "2026-02-01", reason: "Hoàn thành xuất sắc", details: { from: { position: "Dựng phim", department: "Sản xuất Video" }, to: { position: "Trưởng nhóm dựng", department: "Sản xuất Video" } } })
+      .values({
+        personId: ids.huy,
+        employmentId: employment.id,
+        entityId: ids.szm,
+        type: "promotion",
+        effectiveDate: "2026-02-01",
+        reason: "Hoàn thành xuất sắc",
+        details: { from: { position: "Dựng phim", department: "Sản xuất Video" }, to: { position: "Trưởng nhóm dựng", department: "Sản xuất Video" } },
+      })
       .returning();
     const { after } = await saveTemplate(null, template({ kind: "decision", body: "{{event.type}} từ {{event.effectiveDate}} ({{event.reason}}): {{event.from}} → {{event.to}}." }), ids.lead);
     const { document, rendered } = await generateDocument(officer, after.id, ids.huy, { eventId: event.id });
@@ -205,7 +224,13 @@ describe("generating a personal letter", () => {
     await db().update(schema.entity).set({ legalName: "CÔNG TY TNHH SUZU MEDIA VIỆT NAM", address: "45 Lê Lợi, Quận 1", taxCode: "0399999999", legalRepresentative: "Trần Văn Đại" }).where(eq(schema.entity.id, ids.szm));
     const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, ids.huy)).limit(1);
     await db().insert(schema.contract).values({ employmentId: employment.id, personId: ids.huy, entityId: ids.szm, number: "HĐ-08/2024", type: "indefinite", startDate: "2024-07-17" });
-    const { after } = await saveTemplate(null, template({ body: "{{company.name}} · {{company.address}} · {{company.representative}} ({{company.representativeTitle}}) — {{person.fullName}}, {{employment.type}}, {{employment.status}}, hợp đồng {{contract.number}} ({{contract.type}}) từ {{contract.startDate}}." }), ids.lead);
+    const { after } = await saveTemplate(
+      null,
+      template({
+        body: "{{company.name}} · {{company.address}} · {{company.representative}} ({{company.representativeTitle}}) — {{person.fullName}}, {{employment.type}}, {{employment.status}}, hợp đồng {{contract.number}} ({{contract.type}}) từ {{contract.startDate}}.",
+      }),
+      ids.lead,
+    );
     const rendered = await previewDocument(officer, after.id, ids.huy);
     expect(rendered?.text).toBe("CÔNG TY TNHH SUZU MEDIA VIỆT NAM · 45 Lê Lợi, Quận 1 · Trần Văn Đại (Tổng Giám đốc) — Hồ Gia Huy, Chính thức, Đang làm việc, hợp đồng HĐ-08/2024 (HĐLĐ không xác định thời hạn) từ 17/07/2024.");
     expect(rendered?.letterhead).toMatchObject({ companyName: "CÔNG TY TNHH SUZU MEDIA VIỆT NAM", taxCode: "0399999999", representativeTitle: "Tổng Giám đốc", place: "TP. Hồ Chí Minh" });

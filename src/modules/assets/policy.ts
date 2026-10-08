@@ -76,8 +76,7 @@ export const canDecideBookings = (principal: Principal, entityId?: string): bool
  * Calling a booking off, taking the gear out and bringing it back: the person whose booking it is,
  * or whoever keeps the gear. A colleague cannot cancel your Friday shoot.
  */
-export const canActOnBooking = (principal: Principal, booking: BookingTarget): boolean =>
-  (!!principal.personId && principal.personId === booking.personId) || canManageAssets(principal, booking.entityId);
+export const canActOnBooking = (principal: Principal, booking: BookingTarget): boolean => (!!principal.personId && principal.personId === booking.personId) || canManageAssets(principal, booking.entityId);
 
 /**
  * Only the person a thing was handed to confirms they received it (FR-AST-02). Not the storekeeper
@@ -126,8 +125,7 @@ export const canManageDigitalAssets = (principal: Principal, entityId?: string):
 export const canRunDigitalAsset = (principal: Principal, asset: DigitalTarget): boolean => canManageDigitalAssets(principal, asset.entityId) || (!!principal.personId && asset.ownerPersonId === principal.personId);
 
 /** Whether the asset exists for this reader at all. `holdsAccess`: they have an open grant on it. */
-export const canViewDigitalAsset = (principal: Principal, asset: DigitalTarget, holdsAccess: boolean): boolean =>
-  canRunDigitalAsset(principal, asset) || (!!principal.personId && (asset.visibility === "staff" || holdsAccess));
+export const canViewDigitalAsset = (principal: Principal, asset: DigitalTarget, holdsAccess: boolean): boolean => canRunDigitalAsset(principal, asset) || (!!principal.personId && (asset.visibility === "staff" || holdsAccess));
 
 /** What it is registered under and where the password is kept. Never wider than running it. */
 export const canReadDigitalSecrets = (principal: Principal, asset: DigitalTarget): boolean => canRunDigitalAsset(principal, asset);
@@ -136,5 +134,4 @@ export const canReadDigitalSecrets = (principal: Principal, asset: DigitalTarget
 export const canRequestDigitalAccess = (principal: Principal, asset: DigitalTarget): boolean => !!principal.personId && asset.visibility === "staff";
 
 /** Ending a grant or a request: whoever runs the asset, or the person it belongs to giving it up. */
-export const canEndDigitalAccess = (principal: Principal, asset: DigitalTarget, accessPersonId: string): boolean =>
-  canRunDigitalAsset(principal, asset) || (!!principal.personId && principal.personId === accessPersonId);
+export const canEndDigitalAccess = (principal: Principal, asset: DigitalTarget, accessPersonId: string): boolean => canRunDigitalAsset(principal, asset) || (!!principal.personId && principal.personId === accessPersonId);

@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { brandSlugFrom, cleanFonts, cleanPalette, coverAssetOf, guessAssetKind, isDownloadable, isIllustration, isValidBrandSlug, localized, normalizeHex, placeAssets, prefersLightText, resolveBrandSlug, rgbOf, sectionAnchors, titleFromFileName } from "./kit";
+import {
+  brandSlugFrom,
+  cleanFonts,
+  cleanPalette,
+  coverAssetOf,
+  guessAssetKind,
+  isDownloadable,
+  isIllustration,
+  isValidBrandSlug,
+  localized,
+  normalizeHex,
+  placeAssets,
+  prefersLightText,
+  resolveBrandSlug,
+  rgbOf,
+  sectionAnchors,
+  titleFromFileName,
+} from "./kit";
 
 const asset = (over: Partial<{ id: string; kind: "logo" | "image" | "example" | "brochure" | "pack"; sortOrder: number; title: string; isPublic: boolean; fileName: string; sectionId: string | null }>) => ({
   id: "a",

@@ -41,7 +41,17 @@ export async function IssuedDocumentsTable({ rows, title, empty, showSubject = f
                 </TableCell>
               ) : null}
               <TableCell>{tiers(row.tier)}</TableCell>
-              {showSubject ? <TableCell>{row.generatedByName ? <RecordLink kind="person" id={row.generatedByPersonId}>{row.generatedByName}</RecordLink> : "—"}</TableCell> : null}
+              {showSubject ? (
+                <TableCell>
+                  {row.generatedByName ? (
+                    <RecordLink kind="person" id={row.generatedByPersonId}>
+                      {row.generatedByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+              ) : null}
               <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" })}</TableCell>
               <TableCell kind="actions">
                 <a href={`/documents/${row.id}/pdf`} className="text-sm underline">

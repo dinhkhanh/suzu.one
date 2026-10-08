@@ -46,7 +46,11 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
   const lines = [...Map.groupBy(bookings, lineKey).entries()].sort(([a], [b]) => (a[0] === b[0] ? 0 : a[0] === "p" ? -1 : 1));
   const openRoles = [...new Set(bookings.filter((booking) => !booking.personId && booking.placeholderRole).map((booking) => booking.placeholderRole!))];
   const bookingWeeks = Array.from({ length: 26 }, (_, index) => addDays(mondayOf(today), index * 7)).map((start) => ({ start, label: t("weekOf", { date: day(start) }) }));
-  const totals = weeks.map((week) => bookings.filter((booking) => booking.weekStart === week.start).reduce((sum, booking) => ({ confirmed: sum.confirmed + (booking.status === "confirmed" ? booking.minutes : 0), tentative: sum.tentative + (booking.status === "tentative" ? booking.minutes : 0) }), { confirmed: 0, tentative: 0 }));
+  const totals = weeks.map((week) =>
+    bookings
+      .filter((booking) => booking.weekStart === week.start)
+      .reduce((sum, booking) => ({ confirmed: sum.confirmed + (booking.status === "confirmed" ? booking.minutes : 0), tentative: sum.tentative + (booking.status === "tentative" ? booking.minutes : 0) }), { confirmed: 0, tentative: 0 }),
+  );
   const nav = (start: string) => `/projects/${project.id}/team?from=${start}`;
 
   return (
@@ -114,7 +118,9 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
                     const tentative = cell.every((booking) => booking.status === "tentative");
                     return (
                       <TableCell key={week.start} kind="number" className="h-auto p-1">
-                        <div className={`flex min-h-11 flex-col items-end justify-center rounded-md px-2 py-1 font-sans ${capacityCell?.over ? "bg-destructive/10" : cell.length === 0 ? "text-muted-foreground" : tentative ? "border border-dashed border-border" : "bg-muted"}`}>
+                        <div
+                          className={`flex min-h-11 flex-col items-end justify-center rounded-md px-2 py-1 font-sans ${capacityCell?.over ? "bg-destructive/10" : cell.length === 0 ? "text-muted-foreground" : tentative ? "border border-dashed border-border" : "bg-muted"}`}
+                        >
                           <p className="font-mono font-medium">
                             {cell.length ? t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) }) : "—"}
                             {cell.length && tentative ? <span className="ml-1 font-sans text-xs font-normal text-muted-foreground">{t("statuses.tentative")}</span> : null}

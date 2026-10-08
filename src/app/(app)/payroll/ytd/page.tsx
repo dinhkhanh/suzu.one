@@ -69,7 +69,9 @@ export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd"
           {rows.map(({ row, figures }) => (
             <TableRow key={row.id}>
               <TableCell>
-                <RecordLink kind="person" id={row.personId}>{factOf.get(row.personId)?.fullName ?? "—"}</RecordLink>
+                <RecordLink kind="person" id={row.personId}>
+                  {factOf.get(row.personId)?.fullName ?? "—"}
+                </RecordLink>
                 <span className="ml-2 font-mono text-xs text-muted-foreground">{factOf.get(row.personId)?.employeeCode}</span>
               </TableCell>
               <TableCell kind="number">{row.months}</TableCell>

@@ -89,7 +89,10 @@ async function cleanIdentity(tx: Tx, input: PersonIdentity, exceptPersonId?: str
 
 export async function createPerson(tx: Tx, input: PersonIdentity & { status: PersonRow["status"] }): Promise<PersonRow> {
   const identity = await cleanIdentity(tx, input);
-  const [created] = await tx.insert(schema.person).values({ ...identity, status: input.status }).returning();
+  const [created] = await tx
+    .insert(schema.person)
+    .values({ ...identity, status: input.status })
+    .returning();
   await invalidatePeople([created]);
   return created;
 }
@@ -97,7 +100,11 @@ export async function createPerson(tx: Tx, input: PersonIdentity & { status: Per
 export async function updatePersonIdentity(tx: Tx, personId: string, input: PersonIdentity): Promise<PersonRow> {
   const identity = await cleanIdentity(tx, input, personId);
   const [before] = await tx.select({ id: schema.person.id, workEmail: schema.person.workEmail }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  const [updated] = await tx.update(schema.person).set({ ...identity, updatedAt: new Date() }).where(eq(schema.person.id, personId)).returning();
+  const [updated] = await tx
+    .update(schema.person)
+    .set({ ...identity, updatedAt: new Date() })
+    .where(eq(schema.person.id, personId))
+    .returning();
   await invalidatePeople(before ? [before, updated] : [updated]);
   return updated;
 }
@@ -111,13 +118,21 @@ export type PersonPlacement = Pick<PersonRow, "workforceType" | "primaryEntityId
 const identity = () => ({ id: schema.person.id, workEmail: schema.person.workEmail });
 
 export async function setPersonPlacement(tx: Tx, personId: string, placement: PersonPlacement): Promise<void> {
-  const rows = await tx.update(schema.person).set({ ...placement, updatedAt: new Date() }).where(eq(schema.person.id, personId)).returning(identity());
+  const rows = await tx
+    .update(schema.person)
+    .set({ ...placement, updatedAt: new Date() })
+    .where(eq(schema.person.id, personId))
+    .returning(identity());
   await invalidatePeople(rows);
 }
 
 /** Pre-boarding people become active on their start date; only the daily roll-over calls this. */
 export async function activatePerson(tx: Tx, personId: string): Promise<void> {
-  const rows = await tx.update(schema.person).set({ status: "active", updatedAt: new Date() }).where(and(eq(schema.person.id, personId), eq(schema.person.status, "preboarding"))).returning(identity());
+  const rows = await tx
+    .update(schema.person)
+    .set({ status: "active", updatedAt: new Date() })
+    .where(and(eq(schema.person.id, personId), eq(schema.person.status, "preboarding")))
+    .returning(identity());
   await invalidatePeople(rows);
 }
 
@@ -146,13 +161,7 @@ export async function findPersonById(personId: string): Promise<PersonRow | unde
 
 /** Names only (public_internal), for manager pickers. One entry for the whole directory. */
 export async function listPersonNames(): Promise<{ id: string; fullName: string }[]> {
-  return cached(NAMES_KEY, TTL.reference, () =>
-    db()
-      .select({ id: schema.person.id, fullName: schema.person.fullName })
-      .from(schema.person)
-      .where(ne(schema.person.status, "offboarded"))
-      .orderBy(asc(schema.person.searchName)),
-  );
+  return cached(NAMES_KEY, TTL.reference, () => db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(ne(schema.person.status, "offboarded")).orderBy(asc(schema.person.searchName)));
 }
 
 /** Would making `managerId` the manager of `personId` close a loop in the reporting line? */

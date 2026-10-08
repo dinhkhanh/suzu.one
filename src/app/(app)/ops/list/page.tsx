@@ -80,7 +80,15 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
       <TableCell>
         <Badge variant="outline">{t(`enums.authority.${item.authority}`)}</Badge>
       </TableCell>
-      <TableCell className={item.assigneeName ? undefined : "text-faint"}>{item.assigneeName ? <RecordLink kind="person" id={item.assigneePersonId}>{item.assigneeName}</RecordLink> : t("unassigned")}</TableCell>
+      <TableCell className={item.assigneeName ? undefined : "text-faint"}>
+        {item.assigneeName ? (
+          <RecordLink kind="person" id={item.assigneePersonId}>
+            {item.assigneeName}
+          </RecordLink>
+        ) : (
+          t("unassigned")
+        )}
+      </TableCell>
       <TableCell kind="date" className={item.colour === "overdue" ? "text-destructive" : undefined}>
         {item.dueDate ? format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
         {item.dueDate && item.dueDate !== item.nominalDueDate ? <span className="ps-1.5 text-xs text-faint">({t("shifted")})</span> : null}
@@ -114,7 +122,10 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
           <Segmented
             aria-label={t("dashboard.entity")}
             value={entityId ?? ""}
-            options={[{ value: "", label: t("allEntities"), href: href({ entity: null }) }, ...visibleEntities.map((entity) => ({ value: entity.id, label: <span className="font-mono">{entity.code}</span>, href: href({ entity: entity.id }) }))]}
+            options={[
+              { value: "", label: t("allEntities"), href: href({ entity: null }) },
+              ...visibleEntities.map((entity) => ({ value: entity.id, label: <span className="font-mono">{entity.code}</span>, href: href({ entity: entity.id }) })),
+            ]}
           />
         ) : null}
       </div>

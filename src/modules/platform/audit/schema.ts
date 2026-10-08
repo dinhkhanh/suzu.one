@@ -20,9 +20,5 @@ export const auditLog = pgTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
   },
-  (t) => [
-    index("audit_log_occurred_at_idx").on(t.occurredAt),
-    index("audit_log_actor_idx").on(t.actorPersonId),
-    index("audit_log_resource_idx").on(t.resourceType, t.resourceId),
-  ],
+  (t) => [index("audit_log_occurred_at_idx").on(t.occurredAt), index("audit_log_actor_idx").on(t.actorPersonId), index("audit_log_resource_idx").on(t.resourceType, t.resourceId)],
 ).enableRLS();

@@ -30,9 +30,7 @@ function markOn(side: number, pad: number, fill: string): string {
 }
 
 function tile(side: number, { pad, radius, background }: { pad: number; radius: number; background: string | null }): string {
-  const rect = background
-    ? `<rect width="${side}" height="${side}" rx="${(side * radius).toFixed(2)}" fill="${background}"/>`
-    : "";
+  const rect = background ? `<rect width="${side}" height="${side}" rx="${(side * radius).toFixed(2)}" fill="${background}"/>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}">${rect}${markOn(side, pad, "#fff")}</svg>`;
 }
 
@@ -68,10 +66,7 @@ async function main() {
   const icons = join(ROOT, "public", "icons");
   await mkdir(icons, { recursive: true });
 
-  await writeFile(
-    join(ROOT, "public", "logo.svg"),
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEW_BOX}" fill="currentColor"><path d="${LOGO_PATH}"/></svg>\n`,
-  );
+  await writeFile(join(ROOT, "public", "logo.svg"), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEW_BOX}" fill="currentColor"><path d="${LOGO_PATH}"/></svg>\n`);
 
   const rounded = { pad: 0.18, radius: 0.2, background: BRAND };
   const bleed = { pad: 0.2, radius: 0, background: BRAND };

@@ -37,7 +37,12 @@ export const reportSchedule = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [index("report_schedule_due_idx").on(t.nextRunOn).where(sql`${t.isActive} AND ${t.deletedAt} IS NULL`), index("report_schedule_owner_idx").on(t.createdByPersonId)],
+  (t) => [
+    index("report_schedule_due_idx")
+      .on(t.nextRunOn)
+      .where(sql`${t.isActive} AND ${t.deletedAt} IS NULL`),
+    index("report_schedule_owner_idx").on(t.createdByPersonId),
+  ],
 ).enableRLS();
 
 /** Who a schedule sends to. A person, never a bare address: delivery re-checks their permissions. */

@@ -45,8 +45,18 @@ export const invalidateHandoffPackages = () => invalidate(PACKAGES_KEY);
  */
 export async function listPackages(teamId: string, executor?: Executor): Promise<HandoffPackageRow[]> {
   const order = [asc(schema.workHandoffPackage.createdAt), asc(schema.workHandoffPackage.id)];
-  if (executor) return executor.select().from(schema.workHandoffPackage).where(eq(schema.workHandoffPackage.teamId, teamId)).orderBy(...order);
-  const all = await cached(PACKAGES_KEY, PACKAGES_TTL, () => db().select().from(schema.workHandoffPackage).orderBy(...order));
+  if (executor)
+    return executor
+      .select()
+      .from(schema.workHandoffPackage)
+      .where(eq(schema.workHandoffPackage.teamId, teamId))
+      .orderBy(...order);
+  const all = await cached(PACKAGES_KEY, PACKAGES_TTL, () =>
+    db()
+      .select()
+      .from(schema.workHandoffPackage)
+      .orderBy(...order),
+  );
   return all.filter((row) => row.teamId === teamId);
 }
 
@@ -65,7 +75,11 @@ export async function findPackageFor(executor: Executor, teamId: string, fromSta
  * The first active one wins; none = the sheet asks.
  */
 async function stageAssignee(executor: Executor, teamId: string, toStateId: string): Promise<string | null> {
-  const rules = await executor.select({ trigger: schema.workAutomation.trigger, actions: schema.workAutomation.actions }).from(schema.workAutomation).where(and(eq(schema.workAutomation.teamId, teamId), eq(schema.workAutomation.isActive, true))).orderBy(asc(schema.workAutomation.createdAt));
+  const rules = await executor
+    .select({ trigger: schema.workAutomation.trigger, actions: schema.workAutomation.actions })
+    .from(schema.workAutomation)
+    .where(and(eq(schema.workAutomation.teamId, teamId), eq(schema.workAutomation.isActive, true)))
+    .orderBy(asc(schema.workAutomation.createdAt));
   for (const rule of rules) {
     if (rule.trigger.type !== "state_entered" || rule.trigger.stateId !== toStateId) continue;
     const assign = rule.actions.find((action) => action.type === "assign" && action.personId);

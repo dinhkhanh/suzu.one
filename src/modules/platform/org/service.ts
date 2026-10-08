@@ -42,7 +42,10 @@ export async function orgUnitTree(executor?: Executor): Promise<TreeNode[]> {
 }
 
 /** Units in tree order, for a `<select>`: each row knows its depth so the label can be indented. */
-export async function orgUnitOptions(options: { activeOnly?: boolean } = {}, executor?: Executor): Promise<{ id: string; name: string; kind: OrgUnitKind; depth: number; entityId: string | null; path: readonly string[]; isActive: boolean }[]> {
+export async function orgUnitOptions(
+  options: { activeOnly?: boolean } = {},
+  executor?: Executor,
+): Promise<{ id: string; name: string; kind: OrgUnitKind; depth: number; entityId: string | null; path: readonly string[]; isActive: boolean }[]> {
   const units = await listOrgUnits(executor);
   return flattenTree(buildTree(options.activeOnly ? units.filter((unit) => unit.isActive) : units)).map(({ id, name, kind, depth, entityId, path, isActive }) => ({ id, name, kind, depth, entityId, path, isActive }));
 }
@@ -146,7 +149,11 @@ export async function updateEntity(id: string, details: EntityDetails): Promise<
   const before = await findEntity(id);
   if (!before) throw new ActionError("not_found");
   if (before.isActive && !details.isActive && (await hasCurrentPeople(schema.person.primaryEntityId, id))) throw new ActionError("entity_in_use");
-  const [after] = await db().update(schema.entity).set({ ...details, updatedAt: new Date() }).where(eq(schema.entity.id, id)).returning();
+  const [after] = await db()
+    .update(schema.entity)
+    .set({ ...details, updatedAt: new Date() })
+    .where(eq(schema.entity.id, id))
+    .returning();
   await invalidate(ORG_CACHE.entities);
   return { before, after };
 }
@@ -161,7 +168,11 @@ export async function createBranch(input: { entityId: string; name: string; addr
 export async function updateBranch(id: string, details: Pick<BranchRow, "name" | "address" | "isActive">): Promise<Change<BranchRow>> {
   const before = await findBranch(id);
   if (!before) throw new ActionError("not_found");
-  const [after] = await db().update(schema.branch).set({ ...details, updatedAt: new Date() }).where(eq(schema.branch.id, id)).returning();
+  const [after] = await db()
+    .update(schema.branch)
+    .set({ ...details, updatedAt: new Date() })
+    .where(eq(schema.branch.id, id))
+    .returning();
   await invalidate(ORG_CACHE.branches);
   return { before, after };
 }
@@ -176,7 +187,8 @@ export type EntityBankAccountInput = Pick<EntityBankAccountRow, "bank" | "accoun
  * cached key, in a fixed order. Inside a transaction pass it: the rows come from there.
  */
 async function allBankAccounts(executor?: Executor): Promise<EntityBankAccountRow[]> {
-  const load = (from: Executor) => from.select().from(schema.entityBankAccount).orderBy(asc(schema.entityBankAccount.entityId), asc(schema.entityBankAccount.bank), asc(schema.entityBankAccount.accountNumber), asc(schema.entityBankAccount.id));
+  const load = (from: Executor) =>
+    from.select().from(schema.entityBankAccount).orderBy(asc(schema.entityBankAccount.entityId), asc(schema.entityBankAccount.bank), asc(schema.entityBankAccount.accountNumber), asc(schema.entityBankAccount.id));
   return executor ? load(executor) : cached(ORG_CACHE.bankAccounts, ORG_TTL, () => load(db()));
 }
 
@@ -219,7 +231,16 @@ export async function saveEntityBankAccount(entityId: string, accountId: string 
     const demoted = isDefault ? others.filter((row) => row.isDefault).map((row) => row.id) : [];
     if (demoted.length > 0) await tx.update(table).set({ isDefault: false, updatedAt: new Date() }).where(inArray(table.id, demoted));
     const values = { bank: input.bank, accountNumber, accountName: input.accountName.trim(), branch: input.branch?.trim() || null, isDefault, isActive: input.isActive };
-    const [after] = before ? await tx.update(table).set({ ...values, updatedAt: new Date() }).where(eq(table.id, before.id)).returning() : await tx.insert(table).values({ entityId, ...values }).returning();
+    const [after] = before
+      ? await tx
+          .update(table)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(table.id, before.id))
+          .returning()
+      : await tx
+          .insert(table)
+          .values({ entityId, ...values })
+          .returning();
     // The default itself was switched off: the mark passes to another account still in use.
     if (!isDefault && others.length > 0 && !others.some((row) => row.isDefault)) await tx.update(table).set({ isDefault: true, updatedAt: new Date() }).where(eq(table.id, others[0].id));
     return { before, after };
@@ -249,7 +270,10 @@ export async function createOrgUnit(input: { code: string | null; name: string; 
   // A unit created inside another starts in its parent's entity unless the form says otherwise —
   // a shared unit may still hold an entity-specific one (HR › HR Creative).
   const parent = input.parentId ? await findOrgUnit(input.parentId) : undefined;
-  const [created] = await db().insert(schema.orgUnit).values({ ...input, code, entityId: input.entityId ?? parent?.entityId ?? null }).returning();
+  const [created] = await db()
+    .insert(schema.orgUnit)
+    .values({ ...input, code, entityId: input.entityId ?? parent?.entityId ?? null })
+    .returning();
   await invalidate(ORG_CACHE.units);
   return created;
 }
@@ -259,12 +283,19 @@ export async function updateOrgUnit(id: string, details: OrgUnitDetails): Promis
   if (!before) throw new ActionError("not_found");
   await assertParentAllowed(id, details.parentId);
   if (before.isActive && !details.isActive && (await hasPeopleInSubtree(id))) throw new ActionError("unit_in_use");
-  const [after] = await db().update(schema.orgUnit).set({ ...details, updatedAt: new Date() }).where(eq(schema.orgUnit.id, id)).returning();
+  const [after] = await db()
+    .update(schema.orgUnit)
+    .set({ ...details, updatedAt: new Date() })
+    .where(eq(schema.orgUnit.id, id))
+    .returning();
   // A move rewrites the path of every unit below, so the whole tree entry goes — and with it the
   // cached rows of everyone in the subtree, whose `org_unit_path` the database trigger rewrote.
   await invalidate(ORG_CACHE.units);
   if (before.parentId !== after.parentId) {
-    const people = await db().select({ id: schema.person.id, workEmail: schema.person.workEmail }).from(schema.person).where(arrayContains(schema.person.orgUnitPath, [id]));
+    const people = await db()
+      .select({ id: schema.person.id, workEmail: schema.person.workEmail })
+      .from(schema.person)
+      .where(arrayContains(schema.person.orgUnitPath, [id]));
     await invalidatePeople(people);
   }
   return { before, after };

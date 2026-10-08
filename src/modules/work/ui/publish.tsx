@@ -45,7 +45,25 @@ export type PublishAccount = { id: string; name: string; platform: string };
 
 const FLAG_VARIANT = { published: "success", late: "destructive", planned: "secondary", unscheduled: "outline", cancelled: "outline" } as const;
 
-export function PublishPanel({ taskId, channel, publishes, canManage, today, now, accounts = [], defaultAccountId = null }: { taskId: string; channel: string | null; publishes: PublishItem[]; canManage: boolean; today: string; /** The server's clock, so a post is late on the server and the screen alike. */ now: string; accounts?: PublishAccount[]; /** The task's own page or channel, when it names exactly one. */ defaultAccountId?: string | null }) {
+export function PublishPanel({
+  taskId,
+  channel,
+  publishes,
+  canManage,
+  today,
+  now,
+  accounts = [],
+  defaultAccountId = null,
+}: {
+  taskId: string;
+  channel: string | null;
+  publishes: PublishItem[];
+  canManage: boolean;
+  today: string;
+  /** The server's clock, so a post is late on the server and the screen alike. */ now: string;
+  accounts?: PublishAccount[];
+  /** The task's own page or channel, when it names exactly one. */ defaultAccountId?: string | null;
+}) {
   const t = useTranslations("work.publish");
   const tWork = useTranslations("work");
   const format = useFormatter();
@@ -88,7 +106,17 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
               <p className="text-xs text-muted-foreground">
                 {publish.plannedAt ? t("plannedAt", { when: when(publish.plannedAt) }) : null}
                 {publish.plannedAt && publish.publishedAt ? " · " : null}
-                {publish.publishedAt ? t.rich("publishedAt", { when: when(publish.publishedAt), name: publish.publishedByName ?? "—", who: (chunks) => <RecordLink kind="person" id={publish.publishedByName ? publish.publishedByPersonId : null}>{chunks}</RecordLink> }) : null}
+                {publish.publishedAt
+                  ? t.rich("publishedAt", {
+                      when: when(publish.publishedAt),
+                      name: publish.publishedByName ?? "—",
+                      who: (chunks) => (
+                        <RecordLink kind="person" id={publish.publishedByName ? publish.publishedByPersonId : null}>
+                          {chunks}
+                        </RecordLink>
+                      ),
+                    })
+                  : null}
               </p>
               {publish.url ? (
                 <a href={publish.url} target="_blank" rel="noopener noreferrer nofollow" className="truncate underline">
@@ -126,7 +154,21 @@ function useRunner() {
   return { run, pending, errorKey };
 }
 
-function PlanForm({ taskId, publish, defaultPlatform, accounts, defaultAccountId, onDone }: { taskId: string; publish?: PublishItem; defaultPlatform: string | null; accounts: PublishAccount[]; defaultAccountId?: string | null; onDone: () => void }) {
+function PlanForm({
+  taskId,
+  publish,
+  defaultPlatform,
+  accounts,
+  defaultAccountId,
+  onDone,
+}: {
+  taskId: string;
+  publish?: PublishItem;
+  defaultPlatform: string | null;
+  accounts: PublishAccount[];
+  defaultAccountId?: string | null;
+  onDone: () => void;
+}) {
   const t = useTranslations("work.publish");
   const tWork = useTranslations("work");
   const tPlatform = useTranslations("assets.digital.platform");
@@ -207,7 +249,10 @@ function PublishActions({ publish, accounts }: { publish: PublishItem; accounts:
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
-          run(() => markPublishedAction({ publishId: publish.id, url: data.get("url"), publishedAt: data.get("publishedAt"), boosted, adAccount: data.get("adAccount") }), () => setMode("none"));
+          run(
+            () => markPublishedAction({ publishId: publish.id, url: data.get("url"), publishedAt: data.get("publishedAt"), boosted, adAccount: data.get("adAccount") }),
+            () => setMode("none"),
+          );
         }}
       >
         <Input name="url" type="url" required pattern="https://.*" placeholder="https://www.facebook.com/…" aria-label={t("url")} autoFocus />
@@ -269,7 +314,11 @@ function Results({ publish, canManage, today }: { publish: PublishItem; canManag
             {publish.results.map((row) => (
               <li key={row.id} className="flex flex-wrap items-center gap-2 py-1">
                 <span className="font-medium">{row.recordedOn.split("-").reverse().join("/")}</span>
-                <span className="text-muted-foreground">{RESULT_METRICS.filter((key) => row.metrics[key] !== undefined).map((key) => `${t(`metrics.${key}`)} ${figure(key, row.metrics[key])}`).join(" · ")}</span>
+                <span className="text-muted-foreground">
+                  {RESULT_METRICS.filter((key) => row.metrics[key] !== undefined)
+                    .map((key) => `${t(`metrics.${key}`)} ${figure(key, row.metrics[key])}`)
+                    .join(" · ")}
+                </span>
                 {row.source === "csv" ? <Badge variant="outline">CSV</Badge> : null}
                 {canManage ? (
                   <Button type="button" size="xs" variant="ghost" className="ml-auto" disabled={pending} onClick={() => run(() => removeResultAction({ resultId: row.id }))}>
@@ -288,7 +337,10 @@ function Results({ publish, canManage, today }: { publish: PublishItem; canManag
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
-              run(() => recordResultAction({ publishId: publish.id, recordedOn: data.get("recordedOn"), ...Object.fromEntries(RESULT_METRICS.map((key) => [key, String(data.get(key) ?? "").replace(/[.,\s]/g, "")])) }), () => setAdding(false));
+              run(
+                () => recordResultAction({ publishId: publish.id, recordedOn: data.get("recordedOn"), ...Object.fromEntries(RESULT_METRICS.map((key) => [key, String(data.get(key) ?? "").replace(/[.,\s]/g, "")])) }),
+                () => setAdding(false),
+              );
             }}
           >
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">

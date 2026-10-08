@@ -22,7 +22,16 @@ describe("formProblems — what a designer may save", () => {
   it("wants options on a choice and nowhere else", () => {
     expect(formProblems(form(field({ key: "a", type: "select" })))).toContain("options_required");
     expect(formProblems(form(field({ key: "a", type: "text", options: [{ value: "x", labelVi: "X", labelEn: "X" }] })))).toContain("options_not_allowed");
-    const duplicated = form(field({ key: "a", type: "select", options: [{ value: "x", labelVi: "X", labelEn: "X" }, { value: "x", labelVi: "Y", labelEn: "Y" }] }));
+    const duplicated = form(
+      field({
+        key: "a",
+        type: "select",
+        options: [
+          { value: "x", labelVi: "X", labelEn: "X" },
+          { value: "x", labelVi: "Y", labelEn: "Y" },
+        ],
+      }),
+    );
     expect(formProblems(duplicated)).toContain("duplicate_option");
   });
 
@@ -54,7 +63,14 @@ describe("formProblems — what a designer may save", () => {
 
 describe("visibleFields — conditional fields", () => {
   const advance = form(
-    field({ key: "kind", type: "select", options: [{ value: "travel", labelVi: "Công tác", labelEn: "Travel" }, { value: "other", labelVi: "Khác", labelEn: "Other" }] }),
+    field({
+      key: "kind",
+      type: "select",
+      options: [
+        { value: "travel", labelVi: "Công tác", labelEn: "Travel" },
+        { value: "other", labelVi: "Khác", labelEn: "Other" },
+      ],
+    }),
     field({ key: "destination", type: "text", required: true, visibleWhen: { field: "kind", op: "eq", value: "travel" } }),
     field({ key: "nights", type: "number", required: true, visibleWhen: { field: "destination", op: "ne", value: "" } }),
   );
@@ -79,7 +95,14 @@ describe("visibleFields — conditional fields", () => {
 describe("validateSubmission", () => {
   it("keeps only the visible fields, so a hidden answer is never stored", () => {
     const definition = form(
-      field({ key: "kind", type: "select", options: [{ value: "a", labelVi: "A", labelEn: "A" }, { value: "b", labelVi: "B", labelEn: "B" }] }),
+      field({
+        key: "kind",
+        type: "select",
+        options: [
+          { value: "a", labelVi: "A", labelEn: "A" },
+          { value: "b", labelVi: "B", labelEn: "B" },
+        ],
+      }),
       field({ key: "note", type: "text", visibleWhen: { field: "kind", op: "eq", value: "b" } }),
     );
     const { values, problems } = validateSubmission(definition, { kind: "a", note: "secret" });
@@ -138,7 +161,18 @@ describe("validateSubmission", () => {
   });
 
   it("stores a multi-select as the chosen values and holds them to the options", () => {
-    const definition = form(field({ key: "m", type: "multi_select", max: 2, options: [{ value: "a", labelVi: "A", labelEn: "A" }, { value: "b", labelVi: "B", labelEn: "B" }, { value: "c", labelVi: "C", labelEn: "C" }] }));
+    const definition = form(
+      field({
+        key: "m",
+        type: "multi_select",
+        max: 2,
+        options: [
+          { value: "a", labelVi: "A", labelEn: "A" },
+          { value: "b", labelVi: "B", labelEn: "B" },
+          { value: "c", labelVi: "C", labelEn: "C" },
+        ],
+      }),
+    );
     expect(validateSubmission(definition, { m: ["a", "b"] }).values.m).toEqual(["a", "b"]);
     expect(validateSubmission(definition, { m: ["a", "b", "c"] }).problems).toEqual([{ field: "m", problem: "above_max" }]);
     expect(validateSubmission(definition, { m: ["z"] }).problems).toEqual([{ field: "m", problem: "not_an_option" }]);

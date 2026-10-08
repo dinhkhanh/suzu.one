@@ -28,7 +28,16 @@ export default async function ExpenseClaimsPage() {
 
   const reach = entityReach(user.principal, "payroll:pay");
   // What is owed is counted by Postgres over every claim, not over the newest the list shows.
-  const [t, tApprovals, tRequests, te, locale, format, claims, owed] = await Promise.all([getTranslations("requests.expense"), getTranslations("approvals"), getTranslations("requests"), getTranslations("exports"), getLocale(), getFormatter(), listExpenseClaims({ reach }), claimsOwed(reach)]);
+  const [t, tApprovals, tRequests, te, locale, format, claims, owed] = await Promise.all([
+    getTranslations("requests.expense"),
+    getTranslations("approvals"),
+    getTranslations("requests"),
+    getTranslations("exports"),
+    getLocale(),
+    getFormatter(),
+    listExpenseClaims({ reach }),
+    claimsOwed(reach),
+  ]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
   // The desk's order: what is owed first, what is still being decided, then what is done with.
@@ -50,7 +59,9 @@ export default async function ExpenseClaimsPage() {
       </TableCell>
       <TableCell kind="money">{money(claim.total)}</TableCell>
       <TableCell>
-        <Badge dot variant={statusTone(claim.status)}>{t(`status.${claim.status}` as "status.approved")}</Badge>
+        <Badge dot variant={statusTone(claim.status)}>
+          {t(`status.${claim.status}` as "status.approved")}
+        </Badge>
       </TableCell>
       <TableCell>{paymentBadge(claim)}</TableCell>
       <TableCell kind="time">
@@ -61,7 +72,10 @@ export default async function ExpenseClaimsPage() {
 
   return (
     <Page>
-      <PageHeader title={tRequests("hub")} description={t("financeDescription", { count: owed.count, amount: money(owed.amount) })} actions={
+      <PageHeader
+        title={tRequests("hub")}
+        description={t("financeDescription", { count: owed.count, amount: money(owed.amount) })}
+        actions={
           <>
             <ExportButton action={exportExpenseClaimsAction} input={{ locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
             {canSettleExpenseClaims(user.principal, null) ? <SweepClaimsButton label={t("sweep")} /> : null}
@@ -110,7 +124,9 @@ export default async function ExpenseClaimsPage() {
               </span>
               <span className="line-clamp-2 text-sm font-medium">{claim.summary}</span>
               <span className="flex flex-wrap items-center gap-2">
-                <Badge dot variant={statusTone(claim.status)}>{t(`status.${claim.status}` as "status.approved")}</Badge>
+                <Badge dot variant={statusTone(claim.status)}>
+                  {t(`status.${claim.status}` as "status.approved")}
+                </Badge>
                 {paymentBadge(claim)}
               </span>
             </ListItem>

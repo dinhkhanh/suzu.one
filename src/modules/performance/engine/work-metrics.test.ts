@@ -17,7 +17,19 @@ describe("workMetricValue", () => {
 
   it("proposes nothing where the period gives no basis — except a count, whose zero is real", () => {
     const values = Object.fromEntries(WORK_METRICS.map((metric) => [metric, workMetricValue(metric, EMPTY_WORK_FACTS)]));
-    expect(values).toEqual({ on_time_rate: null, deliverables_accepted: 0, utilisation: null, revision_rounds_avg: null, eod_compliance: null, sales_won_value: 0, sales_invoiced: 0, sales_collected: 0, sales_new_accounts: 0, sales_win_rate: null, followups_on_time: null });
+    expect(values).toEqual({
+      on_time_rate: null,
+      deliverables_accepted: 0,
+      utilisation: null,
+      revision_rounds_avg: null,
+      eod_compliance: null,
+      sales_won_value: 0,
+      sales_invoiced: 0,
+      sales_collected: 0,
+      sales_new_accounts: 0,
+      sales_win_rate: null,
+      followups_on_time: null,
+    });
   });
 
   it("never reports more than every required report", () => {

@@ -44,7 +44,14 @@ beforeAll(async () => {
 it("keeps sensitive cells encrypted while the batch waits, masks them in the preview, and commits the real values", async () => {
   const staged = await sample.stage(upload("Name,Citizen ID\nAn,079201001234\nBinh,\n"));
   if (!staged.ok) throw new Error(staged.message ?? staged.error);
-  expect(staged.data).toMatchObject({ status: "ready", rowCount: 2, preview: [{ row: 2, cells: ["An", "••••••"] }, { row: 3, cells: ["Binh", ""] }] });
+  expect(staged.data).toMatchObject({
+    status: "ready",
+    rowCount: 2,
+    preview: [
+      { row: 2, cells: ["An", "••••••"] },
+      { row: 3, cells: ["Binh", ""] },
+    ],
+  });
 
   const [batch] = await db().select().from(schema.importBatch).where(eq(schema.importBatch.id, staged.data.batchId));
   expect(JSON.stringify(batch)).not.toContain("079201001234");
@@ -52,7 +59,10 @@ it("keeps sensitive cells encrypted while the batch waits, masks them in the pre
 
   const result = await sample.commit({ batchId: staged.data.batchId });
   expect(result).toEqual({ ok: true, data: { created: 2 } });
-  expect(committed).toEqual([{ name: "An", nationalId: "079201001234" }, { name: "Binh", nationalId: null }]);
+  expect(committed).toEqual([
+    { name: "An", nationalId: "079201001234" },
+    { name: "Binh", nationalId: null },
+  ]);
   // Nothing sensitive reached the audit log either.
   expect(JSON.stringify(await db().select({ summary: schema.auditLog.summary, before: schema.auditLog.before, after: schema.auditLog.after }).from(schema.auditLog))).not.toContain("079201001234");
 });
@@ -90,10 +100,16 @@ it("deletes a batch nobody committed once a day has passed, and empties a commit
   const abandoned = await stage("Name,Citizen ID\nGiang,079201001111\n");
   const refused = await stage("Name,Citizen ID\nHoa,000\n");
   const waiting = await stage("Name,Citizen ID\nKhanh,079201002222\n");
-  await db().update(schema.importBatch).set({ createdAt: twoDaysAgo }).where(inArray(schema.importBatch.id, [abandoned, refused]));
+  await db()
+    .update(schema.importBatch)
+    .set({ createdAt: twoDaysAgo })
+    .where(inArray(schema.importBatch.id, [abandoned, refused]));
   // A batch committed before a commit emptied its own rows: old, done, and still holding them.
   const old = await stage("Name,Citizen ID\nLan,079201003333\n");
-  await db().update(schema.importBatch).set({ status: "committed", committedAt: twoDaysAgo, createdAt: twoDaysAgo, result: { created: 1 } }).where(eq(schema.importBatch.id, old));
+  await db()
+    .update(schema.importBatch)
+    .set({ status: "committed", committedAt: twoDaysAgo, createdAt: twoDaysAgo, result: { created: 1 } })
+    .where(eq(schema.importBatch.id, old));
 
   expect(await purgeImportBatches()).toEqual({ importBatchesDeleted: 2, importBatchesEmptied: 1 });
 

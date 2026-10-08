@@ -20,6 +20,18 @@ export async function listBalancesForAdmin(principal: Principal, year: number, f
     .orderBy(asc(schema.person.searchName));
   // The WHERE already applies the reach; the policy check stays as a guard.
   const visible = rows.filter(({ person }) => matchesReach(reach, { personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId }));
-  const balances = await getBalances(visible.map((row) => row.person.id), year);
-  return visible.map(({ person, entityName, departmentName }) => ({ personId: person.id, fullName: person.fullName, entityId: person.primaryEntityId, entityName, departmentId: person.departmentId, departmentName, status: person.status, balances: balances.get(person.id) ?? [] }));
+  const balances = await getBalances(
+    visible.map((row) => row.person.id),
+    year,
+  );
+  return visible.map(({ person, entityName, departmentName }) => ({
+    personId: person.id,
+    fullName: person.fullName,
+    entityId: person.primaryEntityId,
+    entityName,
+    departmentId: person.departmentId,
+    departmentName,
+    status: person.status,
+    balances: balances.get(person.id) ?? [],
+  }));
 }

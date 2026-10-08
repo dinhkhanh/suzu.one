@@ -12,7 +12,19 @@ export type AccessChoices = { entities: Option[]; units: Option[]; people: Optio
 export type AccessRowView = { subjectKey: string; level: AccessLevel; label: string };
 
 /** Who a space, or a page and everything under it, is open to. Saves the whole list at once. */
-export function AccessForm({ target, rows, choices, action, levels = ACCESS_LEVELS }: { target: { spaceId: string } | { pageId: string }; rows: AccessRowView[]; choices: AccessChoices; action: (input: unknown) => Promise<ActionResult<{ rows: number }>>; levels?: readonly AccessLevel[] }) {
+export function AccessForm({
+  target,
+  rows,
+  choices,
+  action,
+  levels = ACCESS_LEVELS,
+}: {
+  target: { spaceId: string } | { pageId: string };
+  rows: AccessRowView[];
+  choices: AccessChoices;
+  action: (input: unknown) => Promise<ActionResult<{ rows: number }>>;
+  levels?: readonly AccessLevel[];
+}) {
   const t = useTranslations("kb");
   const tRoles = useTranslations("roles");
   const router = useRouter();
@@ -24,14 +36,25 @@ export function AccessForm({ target, rows, choices, action, levels = ACCESS_LEVE
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const options: Option[] = type === "entity" ? choices.entities : type === "unit" || type === "unit_only" ? choices.units : type === "person" ? choices.people : type === "role" ? choices.roles.map((role) => ({ id: role, name: tRoles(role as "owner") })) : [];
+  const options: Option[] =
+    type === "entity" ? choices.entities : type === "unit" || type === "unit_only" ? choices.units : type === "person" ? choices.people : type === "role" ? choices.roles.map((role) => ({ id: role, name: tRoles(role as "owner") })) : [];
   const labelOf = (subjectType: SubjectType, option: Option | undefined) => (subjectType === "all" ? t("access.subject.all") : `${t(`access.subject.${subjectType}`)}: ${option?.name ?? ""}`);
 
   function add() {
     if (type !== "all" && !id) return;
     const key = subjectKey(type, id);
     setSaved(false);
-    setList((current) => [...current.filter((row) => row.subjectKey !== key), { subjectKey: key, level, label: labelOf(type, options.find((option) => option.id === id)) }]);
+    setList((current) => [
+      ...current.filter((row) => row.subjectKey !== key),
+      {
+        subjectKey: key,
+        level,
+        label: labelOf(
+          type,
+          options.find((option) => option.id === id),
+        ),
+      },
+    ]);
   }
 
   function save() {

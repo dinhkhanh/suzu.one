@@ -121,7 +121,10 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
             <li className="font-medium">{t("unroutableTitle")}</li>
             {settlement.unpaidBank.map((person) => (
               <li key={person.personId}>
-                <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink> — {t(`bank.skipReasons.${person.reason}` as "bank.skipReasons.no_account")}
+                <RecordLink kind="person" id={person.personId}>
+                  {person.fullName}
+                </RecordLink>{" "}
+                — {t(`bank.skipReasons.${person.reason}` as "bank.skipReasons.no_account")}
               </li>
             ))}
             <li className="text-xs">{t("unroutableHint")}</li>
@@ -133,7 +136,12 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
       <Section
         title={t("routing.title")}
         count={settlement.people.length || undefined}
-        description={t("routing.rule", { ownBanks: Object.values(BANK_FORMATS).map((bankFormat) => bankFormat.name).join(", "), interbank: interbankFormat()?.name ?? t("routing.noInterbank") })}
+        description={t("routing.rule", {
+          ownBanks: Object.values(BANK_FORMATS)
+            .map((bankFormat) => bankFormat.name)
+            .join(", "),
+          interbank: interbankFormat()?.name ?? t("routing.noInterbank"),
+        })}
       >
         <TableCard>
           <Table>
@@ -151,14 +159,20 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
               {settlement.people.map((person) => (
                 <TableRow key={person.personId}>
                   <TableCell>
-                    <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
+                    <RecordLink kind="person" id={person.personId}>
+                      {person.fullName}
+                    </RecordLink>
                     <span className="ml-2 font-mono text-xs text-faint">{person.employeeCode}</span>
                   </TableCell>
                   <TableCell kind="money">{formatVnd(person.net)}</TableCell>
                   <TableCell className="whitespace-normal text-muted-foreground">{routeOf(person)}</TableCell>
                   <TableCell className="whitespace-normal">
-                    <Badge dot variant={STATE_TONE[person.state]}>{t(`routing.states.${person.state}` as "routing.states.in_file")}</Badge>
-                    {person.state === "cannot_transfer" && person.problem && person.route.channel === "bank" ? <span className="ml-2 text-xs text-destructive">{t(`bank.skipReasons.${person.problem}` as "bank.skipReasons.no_account")}</span> : null}
+                    <Badge dot variant={STATE_TONE[person.state]}>
+                      {t(`routing.states.${person.state}` as "routing.states.in_file")}
+                    </Badge>
+                    {person.state === "cannot_transfer" && person.problem && person.route.channel === "bank" ? (
+                      <span className="ml-2 text-xs text-destructive">{t(`bank.skipReasons.${person.problem}` as "bank.skipReasons.no_account")}</span>
+                    ) : null}
                     {person.other ? (
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         <span className="font-mono tabular-nums">{person.other.paidOn}</span> · {person.other.reference} · {person.other.reason}
@@ -203,7 +217,9 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
               const account = file.payingAccountId ? accountOf.get(file.payingAccountId) : undefined;
               return (
                 <TableRow key={file.id} className={current ? undefined : "text-muted-foreground"}>
-                  <TableCell kind="id" className={current ? "text-foreground" : undefined}>{file.fileName}</TableCell>
+                  <TableCell kind="id" className={current ? "text-foreground" : undefined}>
+                    {file.fileName}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={current ? "success" : "outline"}>{t(current ? "bank.current" : "bank.superseded")}</Badge>
                   </TableCell>
@@ -226,7 +242,9 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
               runId={runId}
               entityId={run.entityId}
               banks={plan.banks.map((group) => ({ key: group.key, name: group.name, people: group.people.length, interbank: group.interbank }))}
-              accounts={accounts.filter((account) => account.isActive).map((account) => ({ id: account.id, bank: account.bank, accountNumber: account.accountNumber, accountName: account.accountName, branch: account.branch, isDefault: account.isDefault }))}
+              accounts={accounts
+                .filter((account) => account.isActive)
+                .map((account) => ({ id: account.id, bank: account.bank, accountNumber: account.accountNumber, accountName: account.accountName, branch: account.branch, isDefault: account.isDefault }))}
               defaultValueDate={today}
             />
           </TableAddRow>
@@ -270,7 +288,9 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                   return (
                     <TableRow key={row.personId}>
                       <TableCell>
-                        <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                        <RecordLink kind="person" id={row.personId}>
+                          {row.fullName}
+                        </RecordLink>
                         <span className="ml-2 font-mono text-xs text-faint">{row.employeeCode}</span>
                       </TableCell>
                       <TableCell kind="money">{formatVnd(row.amount)}</TableCell>
@@ -284,7 +304,9 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                         {pays && !locked ? <DisbursementForm runId={runId} personId={row.personId} net={row.amount} defaultDate={today} recorded={recorded} /> : recorded ? null : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge dot variant={row.receiptConfirmed ? "success" : "warning"}>{t(row.receiptConfirmed ? "cash.confirmed" : "cash.awaitingReceipt")}</Badge>
+                        <Badge dot variant={row.receiptConfirmed ? "success" : "warning"}>
+                          {t(row.receiptConfirmed ? "cash.confirmed" : "cash.awaitingReceipt")}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -294,8 +316,12 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                 <TableFooter>
                   <TableRow>
                     <TableCell className="font-semibold">{t("cash.reconciliation")}</TableCell>
-                    <TableCell kind="money" className="font-semibold">{formatVnd(settlement.cashNet)}</TableCell>
-                    <TableCell kind="money" className="font-semibold">{formatVnd(settlement.cashDisbursedTotal)}</TableCell>
+                    <TableCell kind="money" className="font-semibold">
+                      {formatVnd(settlement.cashNet)}
+                    </TableCell>
+                    <TableCell kind="money" className="font-semibold">
+                      {formatVnd(settlement.cashDisbursedTotal)}
+                    </TableCell>
                     <TableCell colSpan={2} className={settlement.cashNet === settlement.cashDisbursedTotal ? "text-muted-foreground" : "text-warning"}>
                       {settlement.cashNet === settlement.cashDisbursedTotal ? t("cash.reconciled") : t("cash.notYetHandedOver", { amount: formatVnd(settlement.cashNet - settlement.cashDisbursedTotal) })}
                     </TableCell>

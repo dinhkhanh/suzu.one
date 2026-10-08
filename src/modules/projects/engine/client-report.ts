@@ -84,9 +84,18 @@ export function reportText(report: { periodFrom: IsoDate; periodTo: IsoDate; sum
     "",
     ...section(words.summary, summary ? [summary] : []),
     ...section(words.register, [words.registerTotal(figures.register), ...figures.lines.map((line) => `- ${words.registerLine(line)}`)]),
-    ...section(words.publishing, figures.publishing.count ? [words.publishingTotal(figures.publishing), ...figures.publishes.map((row) => `- ${words.date(row.publishedOn)} · ${words.platform(row.platform)} · ${row.title}${row.url ? ` · ${row.url}` : ""}`)] : []),
-    ...section(words.milestones, figures.milestones.map((row) => `- ${words.date(row.doneOn)} · ${row.name}`)),
-    ...section(words.updates, figures.updates.map((row) => `- ${words.date(row.on)} · ${words.health(row.health)}: ${noteToPlainText(row.summary).replace(/\n/g, " ")}`)),
+    ...section(
+      words.publishing,
+      figures.publishing.count ? [words.publishingTotal(figures.publishing), ...figures.publishes.map((row) => `- ${words.date(row.publishedOn)} · ${words.platform(row.platform)} · ${row.title}${row.url ? ` · ${row.url}` : ""}`)] : [],
+    ),
+    ...section(
+      words.milestones,
+      figures.milestones.map((row) => `- ${words.date(row.doneOn)} · ${row.name}`),
+    ),
+    ...section(
+      words.updates,
+      figures.updates.map((row) => `- ${words.date(row.on)} · ${words.health(row.health)}: ${noteToPlainText(row.summary).replace(/\n/g, " ")}`),
+    ),
     ...(figures.hours ? [words.hours(figures.hours), ""] : []),
     ...section(words.nextPlan, nextPlan ? [nextPlan] : []),
   ]

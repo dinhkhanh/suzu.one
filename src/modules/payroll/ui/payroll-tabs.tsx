@@ -17,7 +17,12 @@ export async function PayrollTabs({ active, principal }: { active: PayrollTab; p
   const tabs: { key: PayrollTab; href: string; label: string }[] = [
     ...(readsRuns ? [{ key: "runs" as const, href: "/payroll/runs", label: t("runs") }] : []),
     ...(managesSomewhere ? [{ key: "salaries" as const, href: "/payroll/salaries", label: t("salaries") }] : []),
-    ...(readsRuns ? [{ key: "bonus" as const, href: "/payroll/bonus", label: t("bonus") }, { key: "reports" as const, href: "/payroll/reports", label: t("reports") }] : []),
+    ...(readsRuns
+      ? [
+          { key: "bonus" as const, href: "/payroll/bonus", label: t("bonus") },
+          { key: "reports" as const, href: "/payroll/reports", label: t("reports") },
+        ]
+      : []),
   ];
   if (tabs.length < 2) return null;
   return (

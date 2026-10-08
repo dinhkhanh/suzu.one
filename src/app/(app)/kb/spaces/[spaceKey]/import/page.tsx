@@ -34,7 +34,9 @@ export default async function ImportPagePage(props: PageProps<"/kb/spaces/[space
     <Page>
       <PageHeader
         eyebrow={
-          <RecordLink kind="kbSpace" id={loaded.space.key}>{loaded.space.name}</RecordLink>
+          <RecordLink kind="kbSpace" id={loaded.space.key}>
+            {loaded.space.name}
+          </RecordLink>
         }
         title={t("import.title")}
         description={t("import.help")}

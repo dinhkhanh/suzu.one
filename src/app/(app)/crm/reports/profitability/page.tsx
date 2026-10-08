@@ -43,9 +43,17 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
 
   return (
     <Page width="wide">
-      <PageHeader eyebrow={<><Link href="/crm/reports" className="underline">
-            {t("reports.title")}
-          </Link></>} title={t("profitability.title")} description={t("profitability.intro")} />
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/crm/reports" className="underline">
+              {t("reports.title")}
+            </Link>
+          </>
+        }
+        title={t("profitability.title")}
+        description={t("profitability.intro")}
+      />
       <CrmTabs current="reports" show={shell.show} />
       <form method="get" className="flex flex-wrap items-end gap-2">
         <DatePicker name="from" defaultValue={period.from} aria-label={t("profitability.from")} />
@@ -71,7 +79,9 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
             <TableRow key={row.accountId ?? "none"}>
               <TableCell>
                 {row.accountId ? (
-                  <RecordLink kind="account" id={row.accountId}>{row.accountName}</RecordLink>
+                  <RecordLink kind="account" id={row.accountId}>
+                    {row.accountName}
+                  </RecordLink>
                 ) : (
                   <span className="text-muted-foreground">{t("profitability.noClient")}</span>
                 )}
@@ -83,7 +93,9 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
               <TableCell kind="money">{f.money(row.revenueVnd)}</TableCell>
               <TableCell kind="money">{f.money(row.deliveryCostVnd)}</TableCell>
               <TableCell kind="money">{f.money(row.costOfSaleVnd)}</TableCell>
-              <TableCell kind="money" className={row.marginVnd < 0 ? "text-destructive" : undefined}>{f.money(row.marginVnd)}</TableCell>
+              <TableCell kind="money" className={row.marginVnd < 0 ? "text-destructive" : undefined}>
+                {f.money(row.marginVnd)}
+              </TableCell>
               <TableCell kind="percent">{percent(row.marginRate)}</TableCell>
               <TableCell kind="time">{row.hours}</TableCell>
             </TableRow>

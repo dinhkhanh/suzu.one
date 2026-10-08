@@ -12,7 +12,20 @@ import { saveLocationAction } from "../checkin-actions";
 import { PositionPicker } from "./position-picker";
 
 type Option = { id: string; name: string };
-export type LocationFormValue = { id: string; entityId: string; name: string; address: string | null; latitude: number | null; longitude: number | null; radiusM: number | null; accuracyLimitM: number; ipAllowlist: string[]; rule: string; mode: string; isActive: boolean };
+export type LocationFormValue = {
+  id: string;
+  entityId: string;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radiusM: number | null;
+  accuracyLimitM: number;
+  ipAllowlist: string[];
+  rule: string;
+  mode: string;
+  isActive: boolean;
+};
 
 export function LocationForm({ location, entities }: { location?: LocationFormValue; entities: Option[] }) {
   const t = useTranslations("attendance.settings");

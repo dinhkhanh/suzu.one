@@ -39,11 +39,23 @@ import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "bao" | "lan" | "khoi";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "project" | "client" | "script" | "design" | "edit" | "leaveType", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const failure = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const failure = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error,
+  );
 const actor = (key: Key) => ({ personId: ids[key], fullName: key });
 const viewer = async (key: Key) => (await viewerOfPerson(db(), ids[key]))!;
-const noticesOf = async (key: Key, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = async (key: Key, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 const TODAY = todayInVietnam();
 
 beforeAll(async () => {
@@ -51,7 +63,10 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["long", "tam", "huy", "bao", "lan", "khoi"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   await db().update(schema.person).set({ managerId: ids.long }).where(eq(schema.person.id, ids.huy));
@@ -73,8 +88,28 @@ beforeAll(async () => {
 
 describe("stage hand-off packages (FR-PJM-40, 41, 43)", () => {
   it("refuses the move with what the sheet needs, then hands off, and the receiver accepts", async () => {
-    await savePackage(ids.video, null, { name: "Script → Design", fromStateId: ids.script, toStateId: ids.design, fields: [{ label: "Bản kịch bản đã duyệt", type: "text", required: true }, { label: "Link brand assets", type: "url", required: true }], checklist: [{ text: "Đã chốt tone màu" }], requireLink: false, requireFile: false, requireAccept: true, isActive: true }, ids.long);
-    expect(await fails(savePackage(ids.video, null, { name: "Vòng lặp", fromStateId: ids.edit, toStateId: ids.edit, fields: [], checklist: [], requireLink: false, requireFile: false, requireAccept: true, isActive: true }, ids.long))).toBe("handoff_package_same_state");
+    await savePackage(
+      ids.video,
+      null,
+      {
+        name: "Script → Design",
+        fromStateId: ids.script,
+        toStateId: ids.design,
+        fields: [
+          { label: "Bản kịch bản đã duyệt", type: "text", required: true },
+          { label: "Link brand assets", type: "url", required: true },
+        ],
+        checklist: [{ text: "Đã chốt tone màu" }],
+        requireLink: false,
+        requireFile: false,
+        requireAccept: true,
+        isActive: true,
+      },
+      ids.long,
+    );
+    expect(await fails(savePackage(ids.video, null, { name: "Vòng lặp", fromStateId: ids.edit, toStateId: ids.edit, fields: [], checklist: [], requireLink: false, requireFile: false, requireAccept: true, isActive: true }, ids.long))).toBe(
+      "handoff_package_same_state",
+    );
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Clip 20/10", stateId: ids.script, assigneePersonId: ids.tam }, ids.long);
 
     // Every path that changes the state meets the gate: the task page, the board, bulk edit.
@@ -88,12 +123,31 @@ describe("stage hand-off packages (FR-PJM-40, 41, 43)", () => {
 
     const [versionKey, assetsKey] = refused.details.handoff.package.fields.map((field) => field.key);
     const checkId = refused.details.handoff.package.checklist[0].id;
-    const incomplete = (await failure(handOffStage(task.id, { toStateId: ids.design, values: { [versionKey]: "v3" }, checked: [], links: [], fileId: null, toPersonId: ids.huy, note: {} }, actor("tam")))) as Error & { details: { missing: unknown[] } };
+    const incomplete = (await failure(handOffStage(task.id, { toStateId: ids.design, values: { [versionKey]: "v3" }, checked: [], links: [], fileId: null, toPersonId: ids.huy, note: {} }, actor("tam")))) as Error & {
+      details: { missing: unknown[] };
+    };
     expect(incomplete.message).toBe("handoff_incomplete");
-    expect(incomplete.details.missing).toEqual([{ kind: "field", key: assetsKey, label: "Link brand assets" }, { kind: "check", id: checkId, text: "Đã chốt tone màu" }]);
-    expect(await fails(handOffStage(task.id, { toStateId: ids.design, values: { [versionKey]: "v3", [assetsKey]: "https://drive.google.com/brand" }, checked: [checkId], links: [], fileId: null, toPersonId: null, note: {} }, actor("tam")))).toBe("handoff_receiver_required");
+    expect(incomplete.details.missing).toEqual([
+      { kind: "field", key: assetsKey, label: "Link brand assets" },
+      { kind: "check", id: checkId, text: "Đã chốt tone màu" },
+    ]);
+    expect(
+      await fails(handOffStage(task.id, { toStateId: ids.design, values: { [versionKey]: "v3", [assetsKey]: "https://drive.google.com/brand" }, checked: [checkId], links: [], fileId: null, toPersonId: null, note: {} }, actor("tam"))),
+    ).toBe("handoff_receiver_required");
 
-    const { handoff } = await handOffStage(task.id, { toStateId: ids.design, values: { [versionKey]: "v3", [assetsKey]: "https://drive.google.com/brand", smuggled: "x" }, checked: [checkId], links: [], fileId: null, toPersonId: ids.huy, note: { context: "Clip chúc mừng 20/10", next: "Thiết kế key visual", links: ["https://drive.google.com/brief"] } }, actor("tam"));
+    const { handoff } = await handOffStage(
+      task.id,
+      {
+        toStateId: ids.design,
+        values: { [versionKey]: "v3", [assetsKey]: "https://drive.google.com/brand", smuggled: "x" },
+        checked: [checkId],
+        links: [],
+        fileId: null,
+        toPersonId: ids.huy,
+        note: { context: "Clip chúc mừng 20/10", next: "Thiết kế key visual", links: ["https://drive.google.com/brief"] },
+      },
+      actor("tam"),
+    );
     expect(handoff).toMatchObject({ status: "pending", kind: "stage", toPersonId: ids.huy, packageValues: { [versionKey]: "v3", [assetsKey]: "https://drive.google.com/brand" } });
     // Moved on; still the sender's until the receiver takes it.
     const moved = (await loadTask(task.id))!;
@@ -105,7 +159,14 @@ describe("stage hand-off packages (FR-PJM-40, 41, 43)", () => {
     expect((await loadTask(task.id))!.task.assigneePersonId).toBe(ids.huy);
     expect(await noticesOf("tam", "tasks.handoff_accepted")).toHaveLength(1);
     const [view] = await listTaskHandoffs(task.id, await viewer("long"));
-    expect(view).toMatchObject({ status: "accepted", fromName: "tam", toName: "huy", fromStateName: expect.any(String), packageName: "Script → Design", note: { context: "Clip chúc mừng 20/10", next: "Thiết kế key visual", links: ["https://drive.google.com/brief"] } });
+    expect(view).toMatchObject({
+      status: "accepted",
+      fromName: "tam",
+      toName: "huy",
+      fromStateName: expect.any(String),
+      packageName: "Script → Design",
+      note: { context: "Clip chúc mừng 20/10", next: "Thiết kế key visual", links: ["https://drive.google.com/brief"] },
+    });
     expect(await fails(acceptHandoff(handoff!.id, actor("huy")))).toBe("handoff_not_pending");
   });
 
@@ -113,7 +174,11 @@ describe("stage hand-off packages (FR-PJM-40, 41, 43)", () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Clip 8/3", stateId: ids.script, assigneePersonId: ids.tam }, ids.long);
     const requirement = ((await failure(updateWorkTask(task.id, { stateId: ids.design }, ids.tam))) as Error & { details: { handoff: HandoffRequirement } }).details.handoff;
     const values = Object.fromEntries(requirement.package.fields.map((field) => [field.key, field.type === "url" ? "https://drive.google.com/x" : "v1"]));
-    const { handoff } = await handOffStage(task.id, { toStateId: ids.design, values, checked: requirement.package.checklist.map((check) => check.id), links: [], fileId: null, toPersonId: ids.bao, note: { context: "Clip 8/3" } }, actor("tam"));
+    const { handoff } = await handOffStage(
+      task.id,
+      { toStateId: ids.design, values, checked: requirement.package.checklist.map((check) => check.id), links: [], fileId: null, toPersonId: ids.bao, note: { context: "Clip 8/3" } },
+      actor("tam"),
+    );
     await returnHandoff(handoff!.id, "Thiếu logo mới của khách", actor("bao"));
     const back = (await loadTask(task.id))!;
     expect([back.work.stateId, back.task.assigneePersonId]).toEqual([ids.script, ids.tam]);
@@ -131,7 +196,11 @@ describe("cross-team hand-off (FR-PJM-42)", () => {
   it("a linked follow-on task waits in the other team's triage; the lead's accept completes the hand-off, a decline returns it", async () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Video Tết", assigneePersonId: ids.tam }, ids.long);
     expect(await fails(sendToTeam(task.id, { teamId: ids.social, title: "Đăng video Tết", dueDate: null, note: {} }, actor("tam")))).toBe("handoff_note_required");
-    const { handoff, target } = await sendToTeam(task.id, { teamId: ids.social, title: "Đăng video Tết", dueDate: "2027-01-20", note: { context: "Video đã duyệt", next: "Lên lịch đăng", links: ["https://drive.google.com/final"] } }, actor("tam"));
+    const { handoff, target } = await sendToTeam(
+      task.id,
+      { teamId: ids.social, title: "Đăng video Tết", dueDate: "2027-01-20", note: { context: "Video đã duyệt", next: "Lên lịch đăng", links: ["https://drive.google.com/final"] } },
+      actor("tam"),
+    );
     const receiving = (await loadTask(target.id))!;
     expect(receiving.work).toMatchObject({ teamId: ids.social, triageStatus: "pending", triageSource: "handoff", clientId: ids.client });
     expect(receiving.task.description).toContain("Lên lịch đăng");
@@ -160,8 +229,13 @@ describe("leave cover (FR-PJM-44)", () => {
   const from = addDays(TODAY, 10);
   const to = addDays(TODAY, 14);
   const leave = async (key: Key, start: string, end: string, status: "approved" | "pending", days: number) => {
-    const [request] = await db().insert(schema.leaveRequest).values({ personId: ids[key], entityId: ids.szm, leaveTypeId: ids.leaveType, startDate: start, endDate: end, totalCenti: days * 100, status }).returning();
-    await db().insert(schema.leaveRequestDay).values(Array.from({ length: days }, (_, index) => ({ requestId: request.id, personId: ids[key], date: addDays(start, index), portion: "full" as const, amountCenti: 100 })));
+    const [request] = await db()
+      .insert(schema.leaveRequest)
+      .values({ personId: ids[key], entityId: ids.szm, leaveTypeId: ids.leaveType, startDate: start, endDate: end, totalCenti: days * 100, status })
+      .returning();
+    await db()
+      .insert(schema.leaveRequestDay)
+      .values(Array.from({ length: days }, (_, index) => ({ requestId: request.id, personId: ids[key], date: addDays(start, index), portion: "full" as const, amountCenti: 100 })));
     return request.id;
   };
 
@@ -217,7 +291,10 @@ describe("leave cover (FR-PJM-44)", () => {
 
   it("lists stay readable with an absence under way, and show who covers", async () => {
     const requestId = await leave("khoi", TODAY, addDays(TODAY, 3), "approved", 4);
-    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.khoi, leaveRequestId: requestId, fromDate: TODAY, toDate: addDays(TODAY, 3), status: "submitted", defaultCoverPersonId: ids.tam, appliedAt: new Date() }).returning();
+    const [plan] = await db()
+      .insert(schema.workCoverPlan)
+      .values({ personId: ids.khoi, leaveRequestId: requestId, fromDate: TODAY, toDate: addDays(TODAY, 3), status: "submitted", defaultCoverPersonId: ids.tam, appliedAt: new Date() })
+      .returning();
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Việc của Khôi", assigneePersonId: ids.khoi }, ids.long);
     const row = (await listProjectTasks(ids.project)).find((item) => item.id === task.id)!;
     expect(row.away).toEqual({ until: addDays(TODAY, 3), coverName: "tam" });
@@ -234,7 +311,10 @@ describe("exit handover (FR-PJM-45)", () => {
     await updateWorkTask(reviewTask.id, { reviewerPersonId: leaver }, ids.long);
     await setTeamMember(ids.video, leaver, "lead");
     const [employment] = await db().insert(schema.employment).values({ personId: leaver, entityId: ids.szm, employeeCode: "SZM-001", startDate: "2024-01-01", seniorityDate: "2024-01-01" }).returning();
-    const [event] = await db().insert(schema.lifecycleEvent).values({ personId: leaver, employmentId: employment.id, entityId: ids.szm, type: "termination", effectiveDate: addDays(TODAY, 14), status: "pending" }).returning();
+    const [event] = await db()
+      .insert(schema.lifecycleEvent)
+      .values({ personId: leaver, employmentId: employment.id, entityId: ids.szm, type: "termination", effectiveDate: addDays(TODAY, 14), status: "pending" })
+      .returning();
 
     expect(await syncExitHandovers(new Date(), TODAY)).toMatchObject({ opened: 1 });
     expect(await syncExitHandovers(new Date(), TODAY)).toMatchObject({ opened: 0 });
@@ -255,7 +335,10 @@ describe("exit handover (FR-PJM-45)", () => {
     expect(result.remaining).toBe(0);
     expect(await listOwnership(leaver)).toEqual([]);
     expect((await loadTask(reviewTask.id))!.work.reviewerPersonId).toBe(ids.bao);
-    const [lead] = await db().select().from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.bao)));
+    const [lead] = await db()
+      .select()
+      .from(schema.workTeamMember)
+      .where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.bao)));
     expect(lead.role).toBe("lead");
     expect((await listTaskHandoffs(reviewTask.id, await viewer("long")))[0]).toMatchObject({ kind: "exit", toName: "bao", note: { context: "Huy nghỉ việc" } });
 
@@ -295,7 +378,10 @@ describe("cycles (FR-PJM-10)", () => {
     await db().insert(schema.dailyTeamPolicy).values({ teamId: ids.social, cycleWeeks: 1, cycleStart: "2026-09-07" });
     expect(await runCycles("2026-09-09")).toMatchObject({ made: 2, closed: 0 });
     expect(await runCycles("2026-09-09")).toMatchObject({ made: 0, closed: 0 });
-    const [first] = await db().select().from(schema.workCycle).where(and(eq(schema.workCycle.teamId, ids.social), eq(schema.workCycle.number, 1)));
+    const [first] = await db()
+      .select()
+      .from(schema.workCycle)
+      .where(and(eq(schema.workCycle.teamId, ids.social), eq(schema.workCycle.number, 1)));
     const open = (await createWorkTask({ teamId: ids.social, title: "Lịch đăng tuần" }, ids.khoi)).task;
     const finished = (await createWorkTask({ teamId: ids.social, title: "Báo cáo tuần" }, ids.khoi)).task;
     await updateWorkTask(open.id, { cycleId: first.id }, ids.khoi);

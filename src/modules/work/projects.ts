@@ -18,16 +18,35 @@ import { teamFacts, type TeamRow } from "./teams";
 type Executor = Tx | ReturnType<typeof db>;
 export type ProjectRow = typeof schema.workProject.$inferSelect;
 
-export const projectFacts = (project: Pick<ProjectRow, "id" | "entityId" | "visibility">, team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): ProjectFacts => ({ id: project.id, entityId: project.entityId, visibility: project.visibility as Visibility, team: teamFacts(team) });
+export const projectFacts = (project: Pick<ProjectRow, "id" | "entityId" | "visibility">, team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): ProjectFacts => ({
+  id: project.id,
+  entityId: project.entityId,
+  visibility: project.visibility as Visibility,
+  team: teamFacts(team),
+});
 
 export type ProjectWithTeam = { project: ProjectRow; team: TeamRow };
 
 export async function findProject(projectId: string, executor: Executor = db()): Promise<ProjectWithTeam | undefined> {
-  const [row] = await executor.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProject.id, projectId)).limit(1);
+  const [row] = await executor
+    .select({ project: schema.workProject, team: schema.workTeam })
+    .from(schema.workProject)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
+    .where(eq(schema.workProject.id, projectId))
+    .limit(1);
   return row;
 }
 
-export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; /** The team's colour, which a project without its own wears. */ teamColor: string | null; clientName: string | null; leadName: string | null; openTasks: number; doneTasks: number; overdueTasks: number };
+export type ProjectSummary = ProjectRow & {
+  teamKey: string;
+  teamName: string;
+  /** The team's colour, which a project without its own wears. */ teamColor: string | null;
+  clientName: string | null;
+  leadName: string | null;
+  openTasks: number;
+  doneTasks: number;
+  overdueTasks: number;
+};
 
 /** Every project the viewer may open, with task counts. */
 export async function visibleProjects(viewer: WorkViewer, options: { today: string; includeArchived?: boolean; executor?: Executor } = { today: "9999-12-31" }): Promise<ProjectSummary[]> {
@@ -127,8 +146,14 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     await checkProjectInput(tx, input);
     const leadPersonId = input.leadPersonId ?? actorPersonId;
     const status = await resolveProjectStatus(tx, team.id, input.status);
-    const [project] = await tx.insert(schema.workProject).values({ ...input, ...status, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId }).returning();
-    const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
+    const [project] = await tx
+      .insert(schema.workProject)
+      .values({ ...input, ...status, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId })
+      .returning();
+    const members = new Map<string, ProjectRole>([
+      [actorPersonId, "member"],
+      [leadPersonId, "lead"],
+    ]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     await invalidateMemberships(...members.keys());
     await runProjectCreationHooks(tx, { id: project.id });
@@ -155,9 +180,16 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
       const { refusal } = await checkProjectStatusChange(tx, { projectId, from: found.project.status, to: status.status, restoring: false });
       if (refusal) throw new ActionError(refusal.reason, refusal.details);
     }
-    const [after] = await tx.update(schema.workProject).set({ ...input, ...status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
+    const [after] = await tx
+      .update(schema.workProject)
+      .set({ ...input, ...status, updatedAt: new Date() })
+      .where(eq(schema.workProject.id, projectId))
+      .returning();
     if (input.leadPersonId && input.leadPersonId !== found.project.leadPersonId) {
-      await tx.insert(schema.workProjectMember).values({ projectId, personId: input.leadPersonId, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
+      await tx
+        .insert(schema.workProjectMember)
+        .values({ projectId, personId: input.leadPersonId, role: "lead" })
+        .onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
       await invalidateMemberships(input.leadPersonId);
     }
     return { before: found.project, after };
@@ -222,13 +254,20 @@ export async function projectAppointmentsOf(viewer: WorkViewer, personId: string
     return posts.length && canViewProject(viewer, facts) ? [{ project, facts, posts }] : [];
   });
   // A leader who is none of a private project's people has just been told its name.
-  await notePrivateProjectReads(viewer, shown.map((row) => row.facts));
+  await notePrivateProjectReads(
+    viewer,
+    shown.map((row) => row.facts),
+  );
   return shown.flatMap(({ project, posts }) => posts.map((role) => ({ projectId: project.id, projectName: project.name, role })));
 }
 
 /** The person's role in the project, or null when they are not one of its members. */
 export async function projectRoleOf(projectId: string, personId: string, executor: Executor = db()): Promise<ProjectRole | null> {
-  const [row] = await executor.select({ role: schema.workProjectMember.role }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId))).limit(1);
+  const [row] = await executor
+    .select({ role: schema.workProjectMember.role })
+    .from(schema.workProjectMember)
+    .where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId)))
+    .limit(1);
   return (row?.role as ProjectRole | undefined) ?? null;
 }
 
@@ -277,7 +316,11 @@ export async function listAssignable(teamId: string, projectId: string | null, e
   const columns = { id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status };
   const [visibility, team, project] = await Promise.all([
     projectId ? visibilityOf(projectId, executor) : Promise.resolve(null),
-    executor.select({ ...columns, teamRole: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
+    executor
+      .select({ ...columns, teamRole: schema.workTeamMember.role })
+      .from(schema.workTeamMember)
+      .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
+      .where(eq(schema.workTeamMember.teamId, teamId)),
     projectId ? executor.select(columns).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
   ]);
   const fromTeam = visibility === "private" ? team.filter((person) => person.teamRole === "lead") : team;

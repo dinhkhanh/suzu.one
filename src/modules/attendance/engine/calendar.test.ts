@@ -47,7 +47,15 @@ describe("weekly pattern", () => {
 describe("shifts", () => {
   it("runs an overnight segment into the next day and keeps a split shift in two parts", () => {
     expect(planSegments([{ start: "22:00", end: "06:00" }])).toEqual([{ start: 1320, end: 1800 }]);
-    expect(planSegments([{ start: "06:00", end: "10:00" }, { start: "16:00", end: "20:00" }])).toEqual([{ start: 360, end: 600 }, { start: 960, end: 1200 }]);
+    expect(
+      planSegments([
+        { start: "06:00", end: "10:00" },
+        { start: "16:00", end: "20:00" },
+      ]),
+    ).toEqual([
+      { start: 360, end: 600 },
+      { start: 960, end: 1200 },
+    ]);
   });
 
   it("lets the roster decide the day, over the pattern", () => {
@@ -120,7 +128,16 @@ describe("patternProblems", () => {
     const withDay = (rule: DayRule) => patternProblems({ days: { ...OFFICE.days, 1: rule } }, "fixed");
     expect(withDay({ type: "working", segments: [], breakMinutes: 0 })).toEqual(["no_segments"]);
     expect(withDay({ type: "working", segments: [{ start: "8:30", end: "17:30" }], breakMinutes: 0 })).toEqual(["bad_time"]);
-    expect(withDay({ type: "working", segments: [{ start: "08:00", end: "12:00" }, { start: "11:00", end: "15:00" }], breakMinutes: 0 })).toEqual(["segments_overlap"]);
+    expect(
+      withDay({
+        type: "working",
+        segments: [
+          { start: "08:00", end: "12:00" },
+          { start: "11:00", end: "15:00" },
+        ],
+        breakMinutes: 0,
+      }),
+    ).toEqual(["segments_overlap"]);
     expect(withDay({ type: "working", segments: [{ start: "08:00", end: "09:00" }], breakMinutes: 60 })).toEqual(["break_too_long"]);
     expect(withDay({ type: "working", segments: [{ start: "10:00", end: "16:00" }], breakMinutes: 0, flexible: true })).toEqual(["bad_required"]);
     expect(withDay({ type: "untracked", creditMinutes: -1 })).toEqual(["bad_credit"]);

@@ -183,7 +183,15 @@ export function CustomFieldFilters({ fields, filters, setFilter, people }: { fie
           </option>,
         ];
         if (field.type === "select" || field.type === "multi_select" || field.type === "person" || field.type === "checkbox") {
-          const choices = field.type === "person" ? [{ id: "me", label: tList("me") }, ...people.map((person) => ({ id: person.id, label: person.fullName }))] : field.type === "checkbox" ? [{ id: "1", label: t("yes") }, { id: "0", label: t("no") }] : field.options;
+          const choices =
+            field.type === "person"
+              ? [{ id: "me", label: tList("me") }, ...people.map((person) => ({ id: person.id, label: person.fullName }))]
+              : field.type === "checkbox"
+                ? [
+                    { id: "1", label: t("yes") },
+                    { id: "0", label: t("no") },
+                  ]
+                : field.options;
           return (
             <Select key={field.id} aria-label={field.name} value={value} onChange={(event) => setFilter(key, event.target.value)} className="w-40">
               {special}
@@ -195,7 +203,18 @@ export function CustomFieldFilters({ fields, filters, setFilter, people }: { fie
             </Select>
           );
         }
-        return <Input key={field.id} type="search" aria-label={field.name} title={t("filterHint")} placeholder={t("filterPlaceholder", { name: field.name })} value={value} onChange={(event) => setFilter(key, event.target.value)} className="w-40" />;
+        return (
+          <Input
+            key={field.id}
+            type="search"
+            aria-label={field.name}
+            title={t("filterHint")}
+            placeholder={t("filterPlaceholder", { name: field.name })}
+            value={value}
+            onChange={(event) => setFilter(key, event.target.value)}
+            className="w-40"
+          />
+        );
       })}
     </>
   );
@@ -293,7 +312,17 @@ function CustomFieldForm({ teamId, projectId, field, onDone }: { teamId: string;
       .filter(Boolean);
     const options = lines.map((label) => ({ id: field?.options.find((option) => option.label === label)?.id ?? null, label }));
     startTransition(async () => {
-      const result = await saveCustomFieldAction({ fieldId: field?.id ?? null, teamId, projectId, name: data.get("name"), type, options, showOnCard: data.get("showOnCard") === "on", sortOrder: data.get("sortOrder"), isActive: data.get("isActive") === "on" });
+      const result = await saveCustomFieldAction({
+        fieldId: field?.id ?? null,
+        teamId,
+        projectId,
+        name: data.get("name"),
+        type,
+        options,
+        showOnCard: data.get("showOnCard") === "on",
+        sortOrder: data.get("sortOrder"),
+        isActive: data.get("isActive") === "on",
+      });
       if (!result.ok) {
         setErrorKey((result.error === "failed" ? result.message : result.error) ?? "generic");
         return;

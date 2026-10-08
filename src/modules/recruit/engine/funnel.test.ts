@@ -29,14 +29,7 @@ describe("furthestIndex", () => {
 });
 
 describe("funnelSteps", () => {
-  const applications = [
-    app("applied"),
-    app("applied", "rejected"),
-    app("screening"),
-    app("interview", "rejected"),
-    app("offer"),
-    app("hired", "hired", { daysToHire: 30 }),
-  ];
+  const applications = [app("applied"), app("applied", "rejected"), app("screening"), app("interview", "rejected"), app("offer"), app("hired", "hired", { daysToHire: 30 })];
 
   it("counts everybody who got at least that far", () => {
     const steps = funnelSteps(applications);
@@ -93,12 +86,7 @@ describe("sourceEffectiveness", () => {
   const source = (name: CandidateSource, status: FunnelApplication["status"], category: StageCategory, daysToHire: number | null = null) => app(category, status, { source: name, daysToHire });
 
   it("counts applications, interviews and hires per source", () => {
-    const rows = sourceEffectiveness([
-      source("referral", "hired", "hired", 25),
-      source("referral", "rejected", "interview"),
-      source("careers_page", "rejected", "applied"),
-      source("careers_page", "active", "screening"),
-    ]);
+    const rows = sourceEffectiveness([source("referral", "hired", "hired", 25), source("referral", "rejected", "interview"), source("careers_page", "rejected", "applied"), source("careers_page", "active", "screening")]);
     const referral = rows.find((row) => row.source === "referral")!;
     expect(referral).toMatchObject({ applications: 2, interviewed: 2, hires: 1, hireRate: 50, medianDaysToHire: 25 });
     const careers = rows.find((row) => row.source === "careers_page")!;

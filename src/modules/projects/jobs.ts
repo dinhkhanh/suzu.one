@@ -19,7 +19,10 @@ const formatDate = (date: IsoDate) => date.split("-").reverse().join("/");
 
 async function leadsOf(projectIds: readonly string[], roles: readonly string[] = ["lead"]): Promise<Map<string, string[]>> {
   if (projectIds.length === 0) return new Map();
-  const rows = await db().select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(inArray(schema.workProjectMember.projectId, [...projectIds]), inArray(schema.workProjectMember.role, [...roles])));
+  const rows = await db()
+    .select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId })
+    .from(schema.workProjectMember)
+    .where(and(inArray(schema.workProjectMember.projectId, [...projectIds]), inArray(schema.workProjectMember.role, [...roles])));
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.projectId, [...(result.get(row.projectId) ?? []), row.personId]);
   return result;
@@ -49,7 +52,11 @@ async function answerableFor(projectIds: readonly string[]): Promise<Map<string,
     .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
     .where(and(inArray(schema.workTeamMember.teamId, [...new Set(orphans.map((project) => project.teamId))]), eq(schema.workTeamMember.role, "lead"), ne(schema.person.status, "offboarded")));
   const leadsOfTeam = Map.groupBy(teamLeads, (row) => row.teamId);
-  for (const project of orphans) result.set(project.id, (leadsOfTeam.get(project.teamId) ?? []).map((row) => row.personId));
+  for (const project of orphans)
+    result.set(
+      project.id,
+      (leadsOfTeam.get(project.teamId) ?? []).map((row) => row.personId),
+    );
   return result;
 }
 
@@ -71,9 +78,20 @@ export async function sendMilestoneReminders(today: IsoDate): Promise<{ dueSoon:
       // Marked under the row's lock: a second run finds the mark and sends nothing.
       const [fresh] = await tx.select({ notified: schema.projectMilestone.notified }).from(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestone.id)).limit(1).for("update");
       if (!fresh || fresh.notified.includes(kind)) return;
-      await tx.update(schema.projectMilestone).set({ notified: [...fresh.notified, kind] }).where(eq(schema.projectMilestone.id, milestone.id));
+      await tx
+        .update(schema.projectMilestone)
+        .set({ notified: [...fresh.notified, kind] })
+        .where(eq(schema.projectMilestone.id, milestone.id));
       const recipients = [...new Set([milestone.ownerPersonId, ...(leads.get(milestone.projectId) ?? [])].filter((id): id is string => !!id))];
-      await notify({ recipients, kind: kind === "due_soon" ? "projects.milestone_due" : "projects.milestone_missed", params: { milestone: milestone.name, project: projectName, date: formatDate(milestone.dueDate!) }, link: `/projects/${milestone.projectId}/plan` }, tx);
+      await notify(
+        {
+          recipients,
+          kind: kind === "due_soon" ? "projects.milestone_due" : "projects.milestone_missed",
+          params: { milestone: milestone.name, project: projectName, date: formatDate(milestone.dueDate!) },
+          link: `/projects/${milestone.projectId}/plan`,
+        },
+        tx,
+      );
       sent[kind] += 1;
     });
   }
@@ -88,8 +106,14 @@ export async function sendBudgetAlerts(): Promise<{ alerts: number }> {
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectPlan.projectId))
     .where(inArray(schema.workProject.status, RUNNING));
   const budgeted = rows.filter((row) => row.plan.budgetMinutes && row.plan.budgetMinutes > 0);
-  const burns = await loadBurns(budgeted.map((row) => row.plan.projectId), new Map(budgeted.map((row) => [row.plan.projectId, row.plan.budgetMinutes])));
-  const leads = await leadsOf(budgeted.map((row) => row.plan.projectId), ["lead", "account_manager"]);
+  const burns = await loadBurns(
+    budgeted.map((row) => row.plan.projectId),
+    new Map(budgeted.map((row) => [row.plan.projectId, row.plan.budgetMinutes])),
+  );
+  const leads = await leadsOf(
+    budgeted.map((row) => row.plan.projectId),
+    ["lead", "account_manager"],
+  );
   let alerts = 0;
   for (const { plan, projectName } of budgeted) {
     const burn = burns.get(plan.projectId);
@@ -98,7 +122,10 @@ export async function sendBudgetAlerts(): Promise<{ alerts: number }> {
       const [fresh] = await tx.select({ alerted: schema.projectPlan.budgetAlerted }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, plan.projectId)).limit(1).for("update");
       const crossed = alertsDue(burn?.percent ?? null, fresh?.alerted ?? []);
       if (crossed.length === 0) return;
-      await tx.update(schema.projectPlan).set({ budgetAlerted: [...(fresh?.alerted ?? []), ...crossed].sort((a, b) => a - b) }).where(eq(schema.projectPlan.projectId, plan.projectId));
+      await tx
+        .update(schema.projectPlan)
+        .set({ budgetAlerted: [...(fresh?.alerted ?? []), ...crossed].sort((a, b) => a - b) })
+        .where(eq(schema.projectPlan.projectId, plan.projectId));
       await notify({ recipients: leads.get(plan.projectId) ?? [], kind: "projects.budget_alert", params: { project: projectName, percent: burn!.percent! }, link: `/projects/${plan.projectId}/budget` }, tx);
       alerts += 1;
     });
@@ -119,20 +146,39 @@ export async function sendStatusReminders(today: IsoDate): Promise<{ reminded: n
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectPlan.projectId))
     .where(eq(schema.workProject.status, "active"));
   const due = rows.flatMap((row) => {
-    const dueOn = updateDueOn({ projectStatus: row.status, lastUpdateOn: row.plan.healthUpdatedAt ? todayInVietnam(row.plan.healthUpdatedAt) : null, since: todayInVietnam(row.plan.briefApprovedAt ?? row.plan.createdAt), cadenceDays: row.plan.updateCadenceDays });
+    const dueOn = updateDueOn({
+      projectStatus: row.status,
+      lastUpdateOn: row.plan.healthUpdatedAt ? todayInVietnam(row.plan.healthUpdatedAt) : null,
+      since: todayInVietnam(row.plan.briefApprovedAt ?? row.plan.createdAt),
+      cadenceDays: row.plan.updateCadenceDays,
+    });
     return dueOn && dueOn <= today ? [{ ...row, dueOn }] : [];
   });
   if (due.length === 0) return { reminded: 0 };
   const linkOf = (projectId: string) => `/projects/${projectId}/updates`;
   // When each project was last reminded, for every overdue project in one query — read from the
   // earliest threshold of the run, then each project is weighed against its own below.
-  const since = new Date(`${addDays(due.reduce((earliest, row) => (row.dueOn < earliest ? row.dueOn : earliest), due[0].dueOn), -1)}T00:00:00Z`);
+  const since = new Date(
+    `${addDays(
+      due.reduce((earliest, row) => (row.dueOn < earliest ? row.dueOn : earliest), due[0].dueOn),
+      -1,
+    )}T00:00:00Z`,
+  );
   const [leads, sent] = await Promise.all([
     answerableFor(due.map((row) => row.plan.projectId)),
     db()
       .select({ link: schema.notification.link, at: sql<Date>`max(${schema.notification.createdAt})` })
       .from(schema.notification)
-      .where(and(eq(schema.notification.kind, "projects.status_due"), inArray(schema.notification.link, due.map((row) => linkOf(row.plan.projectId))), gte(schema.notification.createdAt, since)))
+      .where(
+        and(
+          eq(schema.notification.kind, "projects.status_due"),
+          inArray(
+            schema.notification.link,
+            due.map((row) => linkOf(row.plan.projectId)),
+          ),
+          gte(schema.notification.createdAt, since),
+        ),
+      )
       .groupBy(schema.notification.link),
   ]);
   const lastRemindedOf = new Map(sent.flatMap((row) => (row.link ? [[row.link, new Date(row.at)] as const] : [])));

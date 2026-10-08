@@ -47,7 +47,19 @@ export function PlanTodayButton({ taskId }: { taskId: string }) {
  * On the task's own page (`range`) the day can be another one inside the range — it starts on
  * `date` — and a note goes with the log; a tap on a length still logs at once.
  */
-export function QuickLog({ date, taskId, billable = false, tasks, range }: { date: string; taskId?: string; /** The task's project is billed by default (the single-task form). */ billable?: boolean; tasks?: { id: string; label: string; billable: boolean }[]; /** The days the log may be for; with it the form shows the day and a note. */ range?: { min: string; max: string } }) {
+export function QuickLog({
+  date,
+  taskId,
+  billable = false,
+  tasks,
+  range,
+}: {
+  date: string;
+  taskId?: string;
+  /** The task's project is billed by default (the single-task form). */ billable?: boolean;
+  tasks?: { id: string; label: string; billable: boolean }[];
+  /** The days the log may be for; with it the form shows the day and a note. */ range?: { min: string; max: string };
+}) {
   const t = useTranslations("daily");
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(taskId ? `task:${taskId}` : tasks?.[0] ? `task:${tasks[0].id}` : `category:${TIME_CATEGORIES[0]}`);
@@ -146,7 +158,10 @@ type Targets = { teams: { id: string; key: string; name: string; canFileInBacklo
 export function QuickAdd({ targets, createTask, selfId, today }: { targets: Targets; createTask: Action; selfId: string; today: string }) {
   const t = useTranslations("daily");
   const router = useRouter();
-  const places = [...targets.projects.map((project) => ({ value: `project:${project.id}`, label: project.name, teamId: project.teamId, projectId: project.id as string | null })), ...targets.teams.filter((team) => team.canFileInBacklog).map((team) => ({ value: `team:${team.id}`, label: t("today.backlogOf", { team: team.name }), teamId: team.id, projectId: null }))];
+  const places = [
+    ...targets.projects.map((project) => ({ value: `project:${project.id}`, label: project.name, teamId: project.teamId, projectId: project.id as string | null })),
+    ...targets.teams.filter((team) => team.canFileInBacklog).map((team) => ({ value: `team:${team.id}`, label: t("today.backlogOf", { team: team.name }), teamId: team.id, projectId: null })),
+  ];
   const [place, setPlace] = useState(places[0]?.value ?? "");
   const [title, setTitle] = useState("");
   const [planIt, setPlanIt] = useState(true);

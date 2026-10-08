@@ -41,12 +41,19 @@ const MAX_OCTETS = 75;
 
 /** `20260921T093000Z`. Always UTC: see the note at the top. */
 export function icsInstant(at: Date): string {
-  return `${at.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`;
+  return `${at
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "")}`;
 }
 
 /** RFC 5545 §3.3.11. Order matters: the backslash has to be doubled before anything else adds one. */
 export function escapeText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n/g, "\\n");
 }
 
 /**
@@ -109,11 +116,7 @@ export function renderIcs(event: IcsEvent): string {
   if (event.url) lines.push(property("URL", event.url));
   if (event.organizer) lines.push(foldLine(`ORGANIZER;CN=${parameterValue(event.organizer.name)}:mailto:${event.organizer.email}`));
   for (const attendee of event.attendees ?? []) {
-    lines.push(
-      foldLine(
-        `ATTENDEE;CN=${parameterValue(attendee.name)};ROLE=${attendee.optional ? "OPT-PARTICIPANT" : "REQ-PARTICIPANT"};PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${attendee.email}`,
-      ),
-    );
+    lines.push(foldLine(`ATTENDEE;CN=${parameterValue(attendee.name)};ROLE=${attendee.optional ? "OPT-PARTICIPANT" : "REQ-PARTICIPANT"};PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${attendee.email}`));
   }
   lines.push(property("STATUS", event.cancelled ? "CANCELLED" : "CONFIRMED"));
   // Fifteen minutes' warning. Deliberately the only alarm: more than one is noise nobody asked for.

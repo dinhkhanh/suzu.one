@@ -37,8 +37,15 @@ const spend = (personId: string, usd: number, at: Date = NOW) => recordModelCall
 beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
-  for (const [key, grants] of [["huy", []], ["lan", []], ["owner", [{ role: "owner", scope: { type: "group" } }]]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity.id }).returning();
+  for (const [key, grants] of [
+    ["huy", []],
+    ["lan", []],
+    ["owner", [{ role: "owner", scope: { type: "group" } }]],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entity.id })
+      .returning();
     people[key] = { person: { id: row.id, primaryEntityId: entity.id }, principal: { personId: row.id, workforceType: "employee", grants: [...grants] as Grant[] } };
   }
   await db().insert(schema.roleAssignment).values({ personId: people.owner.person.id, role: "owner", scopeType: "group", validFrom: "2026-01-01" });
@@ -111,7 +118,10 @@ describe("what reaches Postgres", () => {
   it("sends no raw Date — every instant goes through the column's encoder", () => {
     for (const query of [spentSoFarQuery(people.huy.person.id, NOW), monthToDateQuery(NOW)]) {
       const { params } = query.toSQL();
-      expect(params.some((param) => param instanceof Date), JSON.stringify(params)).toBe(false);
+      expect(
+        params.some((param) => param instanceof Date),
+        JSON.stringify(params),
+      ).toBe(false);
     }
   });
 });

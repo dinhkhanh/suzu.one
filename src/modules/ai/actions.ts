@@ -30,7 +30,10 @@ const askPipeline = createAction({
     locale: z.enum(["vi", "en"]).default("vi"),
     // The record on screen when asked from the sheet (FR-AGT-02): a kind and an id, nothing the
     // model reads as an instruction. The tool given the id checks it like any other.
-    page: z.object({ kind: z.enum(PAGE_KINDS), id: z.uuid() }).nullable().default(null),
+    page: z
+      .object({ kind: z.enum(PAGE_KINDS), id: z.uuid() })
+      .nullable()
+      .default(null),
   }),
   authorize: (user) => canAskAssistant(user.principal),
   run: async ({ user, input }) => {
@@ -80,7 +83,18 @@ const askPipeline = createAction({
       audit: {
         resource: { type: "ai_message", id: result.messageId },
         summary: input.question.slice(0, 300),
-        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, agentTools: agentCalls.map((call) => call.tool), citedPageIds: result.citations.map((citation) => citation.pageId), page: input.page },
+        after: {
+          outcome: result.outcome,
+          score: result.score,
+          driver: result.driver,
+          model: result.model,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          tool: toolCall?.tool ?? null,
+          agentTools: agentCalls.map((call) => call.tool),
+          citedPageIds: result.citations.map((citation) => citation.pageId),
+          page: input.page,
+        },
       },
     };
   },

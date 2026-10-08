@@ -100,7 +100,15 @@ export default async function ComponentsPage() {
                     {version.name}
                     {version.formula ? <code className="mt-1 block rounded bg-muted px-2 py-1 text-xs">{version.formula}</code> : null}
                   </TableCell>
-                  <TableCell>{version.entityId ? <RecordLink kind="entity" id={version.entityId}>{entityCode.get(version.entityId)}</RecordLink> : t("components.groupWide")}</TableCell>
+                  <TableCell>
+                    {version.entityId ? (
+                      <RecordLink kind="entity" id={version.entityId}>
+                        {entityCode.get(version.entityId)}
+                      </RecordLink>
+                    ) : (
+                      t("components.groupWide")
+                    )}
+                  </TableCell>
                   <TableCell>{t(`components.kinds.${version.kind}`)}</TableCell>
                   <TableCell>{t(`components.sources.${version.source}`)}</TableCell>
                   <TableCell>
@@ -144,7 +152,9 @@ export default async function ComponentsPage() {
                   <span className="font-mono text-xs">{version.code}</span>
                   <span className="font-medium">{version.name}</span>
                   <span className="text-muted-foreground line-through">{day(version.validFrom)}</span>
-                  <Badge dot variant={statusTone(version.status)}>{t("rules.status.voided")}</Badge>
+                  <Badge dot variant={statusTone(version.status)}>
+                    {t("rules.status.voided")}
+                  </Badge>
                 </span>
                 <span className="text-sm text-muted-foreground">{t("rules.voided.because", { reason: version.voidReason ?? "—" })}</span>
               </ListItem>

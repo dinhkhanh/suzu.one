@@ -9,6 +9,12 @@ it("seeds every parameter in the catalogue with a value of the right shape", () 
 
 it("rejects brackets that do not ascend or do not end open", () => {
   expect(PARAMETERS["pit.brackets"].safeParse([{ upTo: 10, rate: 500 }]).success).toBe(false);
-  expect(PARAMETERS["pit.brackets"].safeParse([{ upTo: 30, rate: 500 }, { upTo: 10, rate: 1000 }, { upTo: null, rate: 2000 }]).success).toBe(false);
+  expect(
+    PARAMETERS["pit.brackets"].safeParse([
+      { upTo: 30, rate: 500 },
+      { upTo: 10, rate: 1000 },
+      { upTo: null, rate: 2000 },
+    ]).success,
+  ).toBe(false);
   expect(PARAMETERS["insurance.employee_rates"].safeParse({ bhxh: 8.5, bhyt: 150, bhtn: 100 }).success).toBe(false);
 });

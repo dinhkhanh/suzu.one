@@ -76,11 +76,7 @@ export const employment = pgTable(
     endDate: date("end_date"),
     ...timestamps,
   },
-  (t) => [
-    unique("employment_entity_code_key").on(t.entityId, t.employeeCode),
-    index("employment_person_idx").on(t.personId),
-    check("employment_dates_check", sql`${t.endDate} IS NULL OR ${t.endDate} >= ${t.startDate}`),
-  ],
+  (t) => [unique("employment_entity_code_key").on(t.entityId, t.employeeCode), index("employment_person_idx").on(t.personId), check("employment_dates_check", sql`${t.endDate} IS NULL OR ${t.endDate} >= ${t.startDate}`)],
 ).enableRLS();
 
 export const assignmentKind = pgEnum("assignment_kind", ["primary", "secondary"]);
@@ -245,7 +241,9 @@ export const contract = pgTable(
   },
   (t) => [
     // Among live rows only: a contract deleted as a mistake frees its number for the right one.
-    uniqueIndex("contract_entity_number_key").on(t.entityId, t.number).where(sql`${t.deletedAt} IS NULL`),
+    uniqueIndex("contract_entity_number_key")
+      .on(t.entityId, t.number)
+      .where(sql`${t.deletedAt} IS NULL`),
     index("contract_person_idx").on(t.personId),
     index("contract_end_date_idx").on(t.endDate),
     check("contract_dates_check", sql`${t.endDate} IS NULL OR ${t.endDate} >= ${t.startDate}`),

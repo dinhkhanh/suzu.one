@@ -173,27 +173,24 @@ export const projectMilestone = pgTable(
 
 // Retainers (FR-PJM-06): a recurring monthly scope on a project of kind "retainer".
 export type RetainerLineTemplate = { title: string; quantity: number; format: string | null; channel: string | null };
-export const projectRetainer = pgTable(
-  "project_retainer",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    projectId: uuid("project_id")
-      .notNull()
-      .unique()
-      .references(() => workProject.id, { onDelete: "cascade" }),
-    clientId: uuid("client_id").references(() => workClient.id),
-    // "2026-10"
-    startMonth: text("start_month").notNull(),
-    endMonth: text("end_month"),
-    lines: jsonb("lines").$type<RetainerLineTemplate[]>().notNull().default([]),
-    minutesPerMonth: integer("minutes_per_month"),
-    feePerMonthVnd: bigint("fee_per_month_vnd", { mode: "number" }),
-    // reset | rollover
-    rollover: text("rollover").notNull().default("reset"),
-    isActive: boolean("is_active").notNull().default(true),
-    ...timestamps,
-  },
-).enableRLS();
+export const projectRetainer = pgTable("project_retainer", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .unique()
+    .references(() => workProject.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").references(() => workClient.id),
+  // "2026-10"
+  startMonth: text("start_month").notNull(),
+  endMonth: text("end_month"),
+  lines: jsonb("lines").$type<RetainerLineTemplate[]>().notNull().default([]),
+  minutesPerMonth: integer("minutes_per_month"),
+  feePerMonthVnd: bigint("fee_per_month_vnd", { mode: "number" }),
+  // reset | rollover
+  rollover: text("rollover").notNull().default("reset"),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps,
+}).enableRLS();
 
 export const projectRetainerPeriod = pgTable(
   "project_retainer_period",
@@ -271,7 +268,12 @@ export type ChangeImpact = {
    */
   retainer?: { lines?: RetainerLineTemplate[]; minutesPerMonth?: number | null; feePerMonthVnd?: number | null };
   /** What the plan said just before the change was applied — the history reads "original + changes = current" from it. */
-  applied?: { budgetMinutesBefore: number | null; feeVndBefore: number | null; dueDateBefore: string | null; /** The retainer's terms the change replaced. */ retainer?: { lines: RetainerLineTemplate[]; minutesPerMonth: number | null; feePerMonthVnd: number | null } };
+  applied?: {
+    budgetMinutesBefore: number | null;
+    feeVndBefore: number | null;
+    dueDateBefore: string | null;
+    /** The retainer's terms the change replaced. */ retainer?: { lines: RetainerLineTemplate[]; minutesPerMonth: number | null; feePerMonthVnd: number | null };
+  };
 };
 /** The project's figures a change request moves: hours budget, fee, due date. */
 export type ChangeFigures = { budgetMinutes: number | null; feeVnd: number | null; dueDate: string | null };
@@ -313,7 +315,21 @@ export const projectChangeRequest = pgTable(
 // `deliverablesAccepted` is what the client accepted; `deliverablesAwaitingClient` what is finished
 // on our side and not yet answered. Updates posted before the two were told apart lack the second,
 // and their "accepted" counted every finished task.
-export type StatusFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number; deliverablesAwaitingClient?: number; highRisks?: number; openIssues?: number };
+export type StatusFacts = {
+  tasksDone: number;
+  tasksOpen: number;
+  overdue: number;
+  blocked: number;
+  milestoneSlipDays: number | null;
+  nextMilestone: { name: string; dueDate: string | null } | null;
+  minutesLogged: number;
+  budgetMinutes: number | null;
+  deliverablesAccepted: number;
+  deliverablesPromised: number;
+  deliverablesAwaitingClient?: number;
+  highRisks?: number;
+  openIssues?: number;
+};
 export const projectStatusUpdate = pgTable(
   "project_status_update",
   {
@@ -508,10 +524,16 @@ export const projectBillingItem = pgTable(
   },
   (t) => [
     index("project_billing_item_entity_idx").on(t.entityId, t.status),
-    uniqueIndex("project_billing_item_acceptance_unique").on(t.acceptanceId).where(sql`${t.acceptanceId} IS NOT NULL`),
-    uniqueIndex("project_billing_item_milestone_unique").on(t.milestoneId).where(sql`${t.milestoneId} IS NOT NULL AND ${t.source} = 'milestone'`),
+    uniqueIndex("project_billing_item_acceptance_unique")
+      .on(t.acceptanceId)
+      .where(sql`${t.acceptanceId} IS NOT NULL`),
+    uniqueIndex("project_billing_item_milestone_unique")
+      .on(t.milestoneId)
+      .where(sql`${t.milestoneId} IS NOT NULL AND ${t.source} = 'milestone'`),
     // One fee item per retainer month, however often the month-end job runs.
-    uniqueIndex("project_billing_item_retainer_unique").on(t.retainerPeriodId).where(sql`${t.retainerPeriodId} IS NOT NULL AND ${t.source} = 'retainer'`),
+    uniqueIndex("project_billing_item_retainer_unique")
+      .on(t.retainerPeriodId)
+      .where(sql`${t.retainerPeriodId} IS NOT NULL AND ${t.source} = 'retainer'`),
   ],
 ).enableRLS();
 

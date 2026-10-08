@@ -34,24 +34,14 @@ const OPEN_WHILE: Record<FollowUpOpens, readonly string[]> = { submitted: ["pend
 
 // ── What a designer may save ────────────────────────────────────────────────────────────────
 
-export type FollowUpProblem =
-  | "too_many_follow_ups"
-  | "follow_up_unknown_type"
-  | "follow_up_self"
-  | "follow_up_duplicate"
-  | "follow_up_cycle"
-  | "follow_up_bad_date_field"
-  | "follow_up_bad_max";
+export type FollowUpProblem = "too_many_follow_ups" | "follow_up_unknown_type" | "follow_up_self" | "follow_up_duplicate" | "follow_up_cycle" | "follow_up_bad_date_field" | "follow_up_bad_max";
 
 /**
  * Everything wrong with a type's follow-up rules, against the rest of the catalogue. A type may not
  * be its own descendant — a trip under an advance under the same trip would never end — so the new
  * rules are checked together with every other type's.
  */
-export function followUpProblems(
-  type: { code: string; form: FormDefinition; followUps: readonly FollowUpRule[] },
-  catalogue: readonly { code: string; followUps: readonly FollowUpRule[] }[],
-): FollowUpProblem[] {
+export function followUpProblems(type: { code: string; form: FormDefinition; followUps: readonly FollowUpRule[] }, catalogue: readonly { code: string; followUps: readonly FollowUpRule[] }[]): FollowUpProblem[] {
   const problems = new Set<FollowUpProblem>();
   if (type.followUps.length > MAX_FOLLOW_UPS) problems.add("too_many_follow_ups");
   const known = new Set(catalogue.map((row) => row.code));
@@ -71,7 +61,10 @@ export function followUpProblems(
 
 function reachesItself(type: { code: string; followUps: readonly FollowUpRule[] }, catalogue: readonly { code: string; followUps: readonly FollowUpRule[] }[]): boolean {
   const children = new Map(catalogue.map((row) => [row.code, row.followUps.map((rule) => rule.code)]));
-  children.set(type.code, type.followUps.map((rule) => rule.code));
+  children.set(
+    type.code,
+    type.followUps.map((rule) => rule.code),
+  );
   const visited = new Set<string>();
   const stack = [...(children.get(type.code) ?? [])];
   while (stack.length > 0) {
@@ -87,11 +80,7 @@ function reachesItself(type: { code: string; followUps: readonly FollowUpRule[] 
 // ── Whether a child may be filed now ────────────────────────────────────────────────────────
 
 export type FollowUpGate =
-  | { open: true }
-  | { open: false; reason: "parent_closed" }
-  | { open: false; reason: "parent_not_approved" }
-  | { open: false; reason: "not_yet"; opensOn: string }
-  | { open: false; reason: "limit_reached"; max: number };
+  { open: true } | { open: false; reason: "parent_closed" } | { open: false; reason: "parent_not_approved" } | { open: false; reason: "not_yet"; opensOn: string } | { open: false; reason: "limit_reached"; max: number };
 
 /**
  * May one more child of this rule's type be filed under this parent today? `live` is how many the

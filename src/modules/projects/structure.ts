@@ -57,12 +57,23 @@ export async function savePhase(projectId: string, phaseId: string | null, input
   return db().transaction(async (tx) => {
     await ensurePlan(projectId, tx);
     if (!phaseId) {
-      const [after] = await tx.insert(schema.projectPhase).values({ projectId, ...input }).returning();
+      const [after] = await tx
+        .insert(schema.projectPhase)
+        .values({ projectId, ...input })
+        .returning();
       return { before: null, after };
     }
-    const [before] = await tx.select().from(schema.projectPhase).where(and(eq(schema.projectPhase.id, phaseId), eq(schema.projectPhase.projectId, projectId))).limit(1);
+    const [before] = await tx
+      .select()
+      .from(schema.projectPhase)
+      .where(and(eq(schema.projectPhase.id, phaseId), eq(schema.projectPhase.projectId, projectId)))
+      .limit(1);
     if (!before) throw new ActionError("phase_not_found");
-    const [after] = await tx.update(schema.projectPhase).set({ ...input, updatedAt: new Date() }).where(eq(schema.projectPhase.id, phaseId)).returning();
+    const [after] = await tx
+      .update(schema.projectPhase)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.projectPhase.id, phaseId))
+      .returning();
     return { before, after };
   });
 }
@@ -76,7 +87,16 @@ export async function deletePhase(phaseId: string): Promise<PhaseRow> {
 
 // ── Milestones ──────────────────────────────────────────────────────────────────────────────
 
-export type MilestoneInput = { name: string; dueDate: string | null; phaseId: string | null; ownerPersonId: string | null; isClientFacing: boolean; isBilling: boolean; sortOrder: number; /** Only written when given: the amount is `pjm:commercial`, and a reader without it never sends one. */ billingAmountVnd?: number | null };
+export type MilestoneInput = {
+  name: string;
+  dueDate: string | null;
+  phaseId: string | null;
+  ownerPersonId: string | null;
+  isClientFacing: boolean;
+  isBilling: boolean;
+  sortOrder: number;
+  /** Only written when given: the amount is `pjm:commercial`, and a reader without it never sends one. */ billingAmountVnd?: number | null;
+};
 
 export async function saveMilestone(projectId: string, milestoneId: string | null, input: MilestoneInput): Promise<{ before: MilestoneRow | null; after: MilestoneRow }> {
   return db().transaction(async (tx) => {
@@ -87,13 +107,20 @@ export async function saveMilestone(projectId: string, milestoneId: string | nul
     const { billingAmountVnd, ...rest } = input;
     const values = { ...rest, ...(billingAmountVnd === undefined ? {} : { billingAmountVnd: rest.isBilling ? billingAmountVnd : null }) };
     if (!milestoneId) {
-      const [after] = await tx.insert(schema.projectMilestone).values({ projectId, ...values }).returning();
+      const [after] = await tx
+        .insert(schema.projectMilestone)
+        .values({ projectId, ...values })
+        .returning();
       return { before: null, after };
     }
     const before = await milestoneOf(tx, projectId, milestoneId);
     // A new date earns new reminders.
     const notified = before!.dueDate === input.dueDate ? before!.notified : [];
-    const [after] = await tx.update(schema.projectMilestone).set({ ...values, notified, updatedAt: new Date() }).where(eq(schema.projectMilestone.id, milestoneId)).returning();
+    const [after] = await tx
+      .update(schema.projectMilestone)
+      .set({ ...values, notified, updatedAt: new Date() })
+      .where(eq(schema.projectMilestone.id, milestoneId))
+      .returning();
     return { before, after };
   });
 }
@@ -129,9 +156,17 @@ export async function deleteMilestone(milestoneId: string): Promise<MilestoneRow
   return db().transaction(async (tx) => {
     const [row] = await tx.select().from(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId)).limit(1).for("update");
     if (!row) throw new ActionError("milestone_not_found");
-    const [acceptance] = await tx.select({ id: schema.projectAcceptance.id }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.milestoneId, milestoneId), ne(schema.projectAcceptance.status, "void"))).limit(1);
+    const [acceptance] = await tx
+      .select({ id: schema.projectAcceptance.id })
+      .from(schema.projectAcceptance)
+      .where(and(eq(schema.projectAcceptance.milestoneId, milestoneId), ne(schema.projectAcceptance.status, "void")))
+      .limit(1);
     if (acceptance) throw new ActionError("milestone_has_acceptance");
-    const [item] = await tx.select({ id: schema.projectBillingItem.id }).from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestoneId), ne(schema.projectBillingItem.status, "waived"))).limit(1);
+    const [item] = await tx
+      .select({ id: schema.projectBillingItem.id })
+      .from(schema.projectBillingItem)
+      .where(and(eq(schema.projectBillingItem.milestoneId, milestoneId), ne(schema.projectBillingItem.status, "waived")))
+      .limit(1);
     if (item) throw new ActionError("milestone_has_billing");
     await tx.delete(schema.projectMilestone).where(eq(schema.projectMilestone.id, milestoneId));
     return row;
@@ -156,12 +191,19 @@ export async function saveDeliverable(projectId: string, deliverableId: string |
     await milestoneOf(tx, projectId, input.milestoneId);
     if (!deliverableId) {
       if (locked) throw scopeLockedError("register");
-      const [after] = await tx.insert(schema.projectDeliverable).values({ projectId, ...input }).returning();
+      const [after] = await tx
+        .insert(schema.projectDeliverable)
+        .values({ projectId, ...input })
+        .returning();
       return { before: null, after };
     }
     const before = await deliverableOf(tx, projectId, deliverableId);
     if (locked && !before!.retainerPeriodId && lineScopeChanged(before!, input)) throw scopeLockedError("register");
-    const [after] = await tx.update(schema.projectDeliverable).set({ ...input, updatedAt: new Date() }).where(eq(schema.projectDeliverable.id, deliverableId)).returning();
+    const [after] = await tx
+      .update(schema.projectDeliverable)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.projectDeliverable.id, deliverableId))
+      .returning();
     return { before, after };
   });
 }
@@ -177,7 +219,11 @@ export async function cancelDeliverable(deliverableId: string, cancelled: boolea
     const [before] = await tx.select().from(schema.projectDeliverable).where(eq(schema.projectDeliverable.id, deliverableId)).limit(1).for("update");
     if (!before) throw new ActionError("deliverable_not_found");
     if (!before.retainerPeriodId && !!before.cancelledAt !== cancelled && scopeLocked(await ensurePlan(before.projectId, tx))) throw scopeLockedError("register");
-    const [after] = await tx.update(schema.projectDeliverable).set({ cancelledAt: cancelled ? new Date() : null, updatedAt: new Date() }).where(eq(schema.projectDeliverable.id, deliverableId)).returning();
+    const [after] = await tx
+      .update(schema.projectDeliverable)
+      .set({ cancelledAt: cancelled ? new Date() : null, updatedAt: new Date() })
+      .where(eq(schema.projectDeliverable.id, deliverableId))
+      .returning();
     return { before, after };
   });
 }
@@ -210,7 +256,10 @@ export async function linkTask(projectId: string, taskId: string, input: LinkInp
       if (existing) await clearLink(tx, existing);
     } else {
       const baseline = existing ? { baselineStart: existing.baselineStart, baselineDue: existing.baselineDue } : plan.briefStatus === "approved" ? { baselineStart: task.task.startDate, baselineDue: task.task.dueDate } : {};
-      await tx.insert(schema.projectTaskLink).values({ taskId, ...after, ...baseline }).onConflictDoUpdate({ target: schema.projectTaskLink.taskId, set: after });
+      await tx
+        .insert(schema.projectTaskLink)
+        .values({ taskId, ...after, ...baseline })
+        .onConflictDoUpdate({ target: schema.projectTaskLink.taskId, set: after });
     }
     return { before: existing ? { milestoneId: existing.milestoneId, deliverableId: existing.deliverableId, phaseId: existing.phaseId } : null, after };
   });
@@ -254,12 +303,17 @@ export async function createTasksForLine(deliverableId: string, input: LineTasks
     const taskIds: string[] = [];
     for (let index = 0; index < input.count; index++) {
       const number = (linked?.value ?? 0) + index + 1;
-      const { task } = await createWorkTaskIn(tx, { teamId: project.teamId, projectId: project.id, title: `${line.title} #${number}`, assigneePersonId: input.assigneePersonId, dueDate, contentFormat: format, channel }, actorPersonId, { notify: false });
-      await tx.insert(schema.projectTaskLink).values({ taskId: task.id, deliverableId: line.id, milestoneId: milestone?.id ?? null, phaseId: milestone?.phaseId ?? null, ...(plan.briefStatus === "approved" ? { baselineDue: dueDate } : {}) });
+      const { task } = await createWorkTaskIn(tx, { teamId: project.teamId, projectId: project.id, title: `${line.title} #${number}`, assigneePersonId: input.assigneePersonId, dueDate, contentFormat: format, channel }, actorPersonId, {
+        notify: false,
+      });
+      await tx
+        .insert(schema.projectTaskLink)
+        .values({ taskId: task.id, deliverableId: line.id, milestoneId: milestone?.id ?? null, phaseId: milestone?.phaseId ?? null, ...(plan.briefStatus === "approved" ? { baselineDue: dueDate } : {}) });
       taskIds.push(task.id);
     }
     // Twelve posts are one notice, not twelve.
-    if (input.assigneePersonId && input.assigneePersonId !== actorPersonId && taskIds.length) await notify({ recipients: [input.assigneePersonId], kind: "tasks.assigned", params: { count: taskIds.length, title: `${line.title} #${(linked?.value ?? 0) + 1}` }, link: `/work/projects/${project.id}` }, tx);
+    if (input.assigneePersonId && input.assigneePersonId !== actorPersonId && taskIds.length)
+      await notify({ recipients: [input.assigneePersonId], kind: "tasks.assigned", params: { count: taskIds.length, title: `${line.title} #${(linked?.value ?? 0) + 1}` }, link: `/work/projects/${project.id}` }, tx);
     return { line, taskIds };
   });
 }

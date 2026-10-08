@@ -25,7 +25,15 @@ function personInput(overrides: Partial<PersonPayInput> = {}): PersonPayInput {
     employment: { startDate: null, endDate: null, dependents: 0, serviceMonths: 12, kpiScoreBp: 0 },
     profile: { profile: "statutory", taxResidency: "resident", pitMethod: "progressive", pitCommitment: false, insuranceExemption: null, unionMember: false },
     segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 30_000_000, insuranceSalary: 30_000_000, allowances: [] } }],
-    timesheet: { standardDays: 22, standardMinutes: 10_560, paidDaysCenti: 2200, unpaidDaysCenti: 0, workedMinutes: 10_560, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
+    timesheet: {
+      standardDays: 22,
+      standardMinutes: 10_560,
+      paidDaysCenti: 2200,
+      unpaidDaysCenti: 0,
+      workedMinutes: 10_560,
+      nightMinutes: 0,
+      overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } },
+    },
     insuranceLeaveDays: 0,
     unpaidWorkingDays: 0,
     components: COMPONENTS,
@@ -270,7 +278,9 @@ describe("overtime rate", () => {
 
   it("multiplies the allowances that count as salary when the policy says so", () => {
     const withAllowance = personInput({
-      segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 22_000_000, insuranceSalary: 22_000_000, allowances: [{ code: "ALW_RESPONSIBILITY", amount: 4_400_000 }] } }],
+      segments: [
+        { from: "2026-08-01", to: "2026-08-31", standardDays: 22, paidDaysCenti: 2200, unpaidDaysCenti: 0, terms: { baseSalary: 22_000_000, insuranceSalary: 22_000_000, allowances: [{ code: "ALW_RESPONSIBILITY", amount: 4_400_000 }] } },
+      ],
       timesheet: { ...personInput().timesheet, overtime: { weekday: { day: 600, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
     });
     const onBase = calculatePerson(withAllowance).lines.find((line) => line.code === "OT_WEEKDAY")!.amount;
@@ -310,7 +320,14 @@ describe("the whole calculation", () => {
 
   it("does not pay a typed-in figure for a component the catalogue does not have as an input — and says so", () => {
     // BASE comes from the structure; a run may not overwrite it by typing a number in.
-    const result = calculatePerson(personInput({ inputs: [{ code: "BASE", amount: 999_000_000 }, { code: "NOT_A_CODE", amount: 1_000 }] }));
+    const result = calculatePerson(
+      personInput({
+        inputs: [
+          { code: "BASE", amount: 999_000_000 },
+          { code: "NOT_A_CODE", amount: 1_000 },
+        ],
+      }),
+    );
     expect(result.totals.grossEarnings).toBe(30_000_000);
     // Left out is never the same as nothing: the result carries a warning, once, and the trace names each code.
     expect(result.warnings).toEqual(["input_code_unknown"]);
@@ -337,7 +354,14 @@ describe("the whole calculation", () => {
 
   it("subtracts a deduction entered as a positive amount, and warns about nothing", () => {
     const plain = calculatePerson(personInput());
-    const result = calculatePerson(personInput({ inputs: [{ code: "PENALTY", amount: 300_000 }, { code: "BONUS", amount: 0 }] }));
+    const result = calculatePerson(
+      personInput({
+        inputs: [
+          { code: "PENALTY", amount: 300_000 },
+          { code: "BONUS", amount: 0 },
+        ],
+      }),
+    );
     expect(result.lines.find((line) => line.code === "PENALTY")).toMatchObject({ kind: "deduction", amount: 300_000 });
     expect(plain.totals.net - result.totals.net).toBe(300_000);
     // A zero is nothing entered: no line, and nothing lost to warn about.
@@ -368,7 +392,14 @@ describe("the whole calculation", () => {
 
 describe("unused leave paid out on leaving (FR-LVE-03, FR-PAY-18)", () => {
   // July's terms: base 26,000,000, an insurable responsibility allowance and an uninsured meal allowance.
-  const terms = { baseSalary: 26_000_000, insuranceSalary: 26_000_000, allowances: [{ code: "ALW_RESPONSIBILITY", amount: 2_600_000 }, { code: "ALW_MEAL", amount: 1_300_000 }] };
+  const terms = {
+    baseSalary: 26_000_000,
+    insuranceSalary: 26_000_000,
+    allowances: [
+      { code: "ALW_RESPONSIBILITY", amount: 2_600_000 },
+      { code: "ALW_MEAL", amount: 1_300_000 },
+    ],
+  };
   const leaver = (overrides: Partial<PersonPayInput> = {}) =>
     personInput({ employment: { startDate: null, endDate: "2026-08-14", dependents: 0, serviceMonths: 40, kpiScoreBp: 0 }, leavePayout: { daysCenti: 200, basisMonth: "2026-07", terms, workingDays: 26 }, ...overrides });
   const payoutOf = (result: ReturnType<typeof calculatePerson>) => result.lines.find((line) => line.code === "LEAVE_PAYOUT");
@@ -409,7 +440,9 @@ describe("unused leave paid out on leaving (FR-LVE-03, FR-PAY-18)", () => {
 
 describe("holiday work and SRS Q13 (`overtime.holiday_pay`)", () => {
   const holiday = (mode: "in_addition" | "inclusive") =>
-    calculatePerson(personInput({ timesheet: { ...personInput().timesheet, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 480, night: 0 }, holiday: { day: 480, night: 0 } } }, statutory: { ...STATUTORY, overtimeHolidayPay: { mode } } }));
+    calculatePerson(
+      personInput({ timesheet: { ...personInput().timesheet, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 480, night: 0 }, holiday: { day: 480, night: 0 } } }, statutory: { ...STATUTORY, overtimeHolidayPay: { mode } } }),
+    );
   const line = (result: ReturnType<typeof calculatePerson>, code: string) => result.lines.find((candidate) => candidate.code === code)!;
 
   it("pays the holiday multiplier on top of the salary by default, and the multiplier less 100% when it is read as inclusive", () => {

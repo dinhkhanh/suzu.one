@@ -1,27 +1,27 @@
 <!doctype html>
 <html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="robots" content="noindex">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>SuZu check-in</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <main class="kiosk" id="kiosk" data-state="idle">
-    <video id="video" autoplay playsinline muted></video>
-    <div class="banner" id="banner"></div>
-    <div class="clock"><span id="time">--:--</span><span class="date" id="date"></span></div>
-    <div class="frame"></div>
-    <section class="panel" id="panel" aria-live="polite">
-      <div class="title" id="title"></div>
-      <div class="sub" id="sub"></div>
-      <button class="undo" id="undo" hidden></button>
-    </section>
-    <div class="setup" id="setup" hidden><div id="setup-text"></div></div>
-  </main>
-  <script src="/static/kiosk.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>SuZu check-in</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="kiosk" id="kiosk" data-state="idle">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="banner" id="banner"></div>
+      <div class="clock"><span id="time">--:--</span><span class="date" id="date"></span></div>
+      <div class="frame"></div>
+      <section class="panel" id="panel" aria-live="polite">
+        <div class="title" id="title"></div>
+        <div class="sub" id="sub"></div>
+        <button class="undo" id="undo" hidden></button>
+      </section>
+      <div class="setup" id="setup" hidden><div id="setup-text"></div></div>
+    </main>
+    <script src="/static/kiosk.js"></script>
+  </body>
 </html>

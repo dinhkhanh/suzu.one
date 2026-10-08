@@ -21,7 +21,11 @@ import { receivePunches, sendRoster } from "./device-push";
 
 const TOKEN = `szd_${"a".repeat(43)}`;
 const post = (body: unknown, token: string | null = TOKEN) =>
-  new Request("https://suzu.one/api/attendance/device/punches", { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: typeof body === "string" ? body : JSON.stringify(body) });
+  new Request("https://suzu.one/api/attendance/device/punches", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
 
 beforeEach(() => {
   presenting.mockReset().mockImplementation(async (token: string) => (token === TOKEN ? device : null));
@@ -60,7 +64,14 @@ describe("POST /api/attendance/device/punches", () => {
   it("commits the punches, refuses the ones from the future, and audits the batch", async () => {
     const soon = new Date(Date.now() + 5 * 60_000).toISOString();
     const later = new Date(Date.now() + 3 * 3_600_000).toISOString();
-    const response = await receivePunches(post({ punches: [{ userId: "SZM-0004", at: soon }, { userId: "SZM-0004", at: later }] }));
+    const response = await receivePunches(
+      post({
+        punches: [
+          { userId: "SZM-0004", at: soon },
+          { userId: "SZM-0004", at: later },
+        ],
+      }),
+    );
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ punches: 1, skipped: 0, unmapped: 0, people: 1, refused: [2] });
     expect(commit.mock.calls[0][0]).toBe("d1");

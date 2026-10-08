@@ -14,4 +14,8 @@ export const probability = z.preprocess(blankToNull, z.coerce.number().int().min
 /** Hours on screen, minutes in the database. */
 export const hoursToMinutes = z.preprocess(blankToNull, z.coerce.number().min(0).max(100_000).nullable().default(null)).transform((value) => (value === null ? 0 : Math.round(value * 60)));
 /** An account code: upper-case letters, digits, "-" and "_" (the work module's client code). */
-export const accountCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,19}$/);
+export const accountCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9][A-Z0-9_-]{1,19}$/);

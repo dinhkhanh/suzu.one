@@ -58,7 +58,9 @@ const MASK = "••••••";
 const cellContext = (batchId: string, field: string) => `import_batch.rows:${batchId}:${field}`;
 
 function transformSensitive<C extends Columns>(columns: C, rows: ParsedRow<C>[], transform: (value: string, field: string) => string): ParsedRow<C>[] {
-  const fields = Object.entries(columns).filter(([, column]) => column.sensitive).map(([field]) => field);
+  const fields = Object.entries(columns)
+    .filter(([, column]) => column.sensitive)
+    .map(([field]) => field);
   if (fields.length === 0) return rows;
   return rows.map((row) => {
     const values: Record<string, unknown> = { ...row.values };
@@ -99,8 +101,15 @@ export async function readSpreadsheet(file: UploadedFile): Promise<Cell[][]> {
 export async function purgeImportBatches(now: Date = new Date()): Promise<{ importBatchesDeleted: number; importBatchesEmptied: number }> {
   const batches = schema.importBatch;
   const cutoff = new Date(now.getTime() - STAGED_BATCH_MS);
-  const deleted = await db().delete(batches).where(and(ne(batches.status, "committed"), lt(batches.createdAt, cutoff))).returning({ id: batches.id });
-  const emptied = await db().update(batches).set({ rows: [] }).where(and(eq(batches.status, "committed"), sql`${batches.rows} <> '[]'::jsonb`)).returning({ id: batches.id });
+  const deleted = await db()
+    .delete(batches)
+    .where(and(ne(batches.status, "committed"), lt(batches.createdAt, cutoff)))
+    .returning({ id: batches.id });
+  const emptied = await db()
+    .update(batches)
+    .set({ rows: [] })
+    .where(and(eq(batches.status, "committed"), sql`${batches.rows} <> '[]'::jsonb`))
+    .returning({ id: batches.id });
   return { importBatchesDeleted: deleted.length, importBatchesEmptied: emptied.length };
 }
 
@@ -154,10 +163,13 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
         warningCount: problems.filter((problem) => problem.severity === "warning").length,
         problems: problems.slice(0, SHOWN_PROBLEMS),
         headers,
-        preview: rows.slice(0, PREVIEW_ROWS).map(({ row, values }) => ({ row, cells: Object.entries(definition.columns).map(([field, column]) => {
-          const value = (values as Record<string, unknown>)[field] ?? "";
-          return column.sensitive && value !== "" ? MASK : String(value);
-        }) })),
+        preview: rows.slice(0, PREVIEW_ROWS).map(({ row, values }) => ({
+          row,
+          cells: Object.entries(definition.columns).map(([field, column]) => {
+            const value = (values as Record<string, unknown>)[field] ?? "";
+            return column.sensitive && value !== "" ? MASK : String(value);
+          }),
+        })),
       };
       return { data, audit: { resource: { type: `import:${definition.kind}`, id: batch.id }, summary: `${upload.name}: ${rows.length} rows, ${blocking.length} problems` } };
     },

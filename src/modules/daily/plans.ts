@@ -14,7 +14,11 @@ import type { PlannedItem } from "./schema";
 export type PlanRow = typeof schema.dailyPlan.$inferSelect;
 
 export async function findPlan(personId: string, date: IsoDate): Promise<PlanRow | null> {
-  const [row] = await db().select().from(schema.dailyPlan).where(and(eq(schema.dailyPlan.personId, personId), eq(schema.dailyPlan.date, date))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.dailyPlan)
+    .where(and(eq(schema.dailyPlan.personId, personId), eq(schema.dailyPlan.date, date)))
+    .limit(1);
   return row ?? null;
 }
 

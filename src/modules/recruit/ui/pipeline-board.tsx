@@ -160,7 +160,7 @@ export function PipelineBoard({ stages, cards, className }: { stages: BoardStage
                     className={cn(
                       "rise flex flex-col gap-1.5 rounded-[0.625rem] border border-border bg-background p-3 shadow-[0_1px_2px_oklch(0_0_0/4%)] transition-[opacity,box-shadow] duration-100",
                       dragging === card.id && "opacity-50",
-                      selected.has(card.id) && "border-primary/40 bg-primary/5"
+                      selected.has(card.id) && "border-primary/40 bg-primary/5",
                     )}
                   >
                     <div className="flex items-start gap-2.5">

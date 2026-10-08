@@ -33,7 +33,11 @@ const driver: MessengerDriver = {
 };
 
 const tokenOf = (url: string) => decodeURIComponent(new URL(url).searchParams.get("ref")!);
-const codeSentTo = (psid: string) => sent.filter((row) => row.psid === psid).at(-1)?.message.title.match(/\b(\d{6})\b/)?.[1];
+const codeSentTo = (psid: string) =>
+  sent
+    .filter((row) => row.psid === psid)
+    .at(-1)
+    ?.message.title.match(/\b(\d{6})\b/)?.[1];
 const minutes = (base: Date, count: number) => new Date(base.getTime() + count * 60_000);
 
 /** The whole happy path: start, open the link from `psid`, type the code. */

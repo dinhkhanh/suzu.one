@@ -59,7 +59,12 @@ export const hasChecklist = (items: readonly TaskChecklistItem[], checklistId: s
  * already carries is not added again. `added` names what was added, for the task's activity. With
  * `max`, a checklist that does not fit is left out whole rather than cut short.
  */
-export function appendChecklists(current: readonly TaskChecklistItem[], lists: readonly LibraryChecklist[], newId: () => string, options: { /** Leave out a whole checklist that would take the task past this many boxes. */ max?: number } = {}): { items: TaskChecklistItem[]; added: { id: string; name: string }[] } {
+export function appendChecklists(
+  current: readonly TaskChecklistItem[],
+  lists: readonly LibraryChecklist[],
+  newId: () => string,
+  options: { /** Leave out a whole checklist that would take the task past this many boxes. */ max?: number } = {},
+): { items: TaskChecklistItem[]; added: { id: string; name: string }[] } {
   const items = [...current];
   const added: { id: string; name: string }[] = [];
   for (const list of lists) {

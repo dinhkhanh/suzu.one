@@ -64,7 +64,11 @@ export async function loadCloseFacts(projectId: string, plan: Pick<PlanRow, "dri
     awaitingAcceptance(projectId),
     unapprovedWeeks(projectId),
     countOpenBilling(db(), projectId),
-    db().select({ id: schema.projectMeeting.id }).from(schema.projectMeeting).where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro"))).limit(1),
+    db()
+      .select({ id: schema.projectMeeting.id })
+      .from(schema.projectMeeting)
+      .where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro")))
+      .limit(1),
   ]);
   return {
     openTasks: tasks[0]?.value ?? 0,
@@ -182,13 +186,22 @@ export async function reopenProject(projectId: string, input: { reason: string }
 /** The close-outs of a project that were re-opened, oldest first, with the names of who closed and who re-opened. */
 export async function listCloseHistory(plan: Pick<PlanRow, "closeHistory">): Promise<(CloseHistoryEntry & { closedByName: string | null; reopenedByName: string | null })[]> {
   const ids = [...new Set(plan.closeHistory.flatMap((entry) => [entry.closedByPersonId, entry.reopenedByPersonId]).filter((id): id is string => !!id))];
-  const names = ids.length ? new Map((await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids))).map((row) => [row.id, row.fullName])) : new Map<string, string>();
+  const names = ids.length
+    ? new Map((await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids))).map((row) => [row.id, row.fullName]))
+    : new Map<string, string>();
   return plan.closeHistory.map((entry) => ({ ...entry, closedByName: entry.closedByPersonId ? (names.get(entry.closedByPersonId) ?? null) : null, reopenedByName: names.get(entry.reopenedByPersonId) ?? null }));
 }
 
 // ── The retrospective ───────────────────────────────────────────────────────────────────────
 
-export const getRetro = async (projectId: string): Promise<MeetingRow | undefined> => (await db().select().from(schema.projectMeeting).where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro"))).limit(1))[0];
+export const getRetro = async (projectId: string): Promise<MeetingRow | undefined> =>
+  (
+    await db()
+      .select()
+      .from(schema.projectMeeting)
+      .where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro")))
+      .limit(1)
+  )[0];
 
 export type RetroInput = { heldOn: IsoDate; attendeeIds: string[]; retro: MeetingRetro };
 
@@ -206,7 +219,11 @@ export async function saveRetro(projectId: string, input: RetroInput, actorPerso
   if (attendeeIds.some((personId) => !known.has(personId))) throw new ActionError("person_not_in_project");
   const values = { title: label("title"), heldOn: input.heldOn, attendeeIds, retro: input.retro };
   if (before) {
-    const [after] = await db().update(schema.projectMeeting).set({ ...values, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, before.id)).returning();
+    const [after] = await db()
+      .update(schema.projectMeeting)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.projectMeeting.id, before.id))
+      .returning();
     return { before, after };
   }
   const [after] = await db()

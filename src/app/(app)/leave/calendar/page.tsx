@@ -103,7 +103,9 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
               return (
                 <TableRow key={person.personId}>
                   <TableCell className="sticky left-0 z-10 h-9 bg-background py-1 text-[0.8125rem]">
-                    <RecordLink kind="person" id={person.personId} className={cn("block max-w-44 truncate", person.isSelf && "font-medium")}>{person.fullName}</RecordLink>
+                    <RecordLink kind="person" id={person.personId} className={cn("block max-w-44 truncate", person.isSelf && "font-medium")}>
+                      {person.fullName}
+                    </RecordLink>
                   </TableCell>
                   {calendar.dates.map((day) => {
                     const cell = byDate.get(day.date);
@@ -148,7 +150,9 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
               {awayPeople.map((person) => (
                 <TableRow key={person.personId}>
                   <TableCell className="font-medium">
-                    <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
+                    <RecordLink kind="person" id={person.personId}>
+                      {person.fullName}
+                    </RecordLink>
                   </TableCell>
                   <TableCell className="whitespace-normal">
                     {[...person.cells]

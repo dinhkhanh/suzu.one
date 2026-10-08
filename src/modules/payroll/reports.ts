@@ -67,7 +67,12 @@ const loadRunsOnce = cache(async (principal: Principal, entityId: string | null,
   const people = await db()
     .select()
     .from(schema.payrollRunPerson)
-    .where(inArray(schema.payrollRunPerson.runId, wanted.map((row) => row.run.id)));
+    .where(
+      inArray(
+        schema.payrollRunPerson.runId,
+        wanted.map((row) => row.run.id),
+      ),
+    );
   const peopleOf = new Map<string, LoadedRun["people"]>();
   for (const person of people) peopleOf.set(person.runId, [...(peopleOf.get(person.runId) ?? []), { personId: person.personId, profile: person.profile, result: openResult(person) }]);
 
@@ -84,7 +89,11 @@ const loadRunsOnce = cache(async (principal: Principal, entityId: string | null,
 const signedOnly = (runs: readonly LoadedRun[]): LoadedRun[] => runs.filter((loaded) => isFiledRunStatus(loaded.run.status));
 
 /** Everyone paid in the runs, and the facts about them — one read shared by the reports of a month. */
-const factsOfRuns = (runs: readonly LoadedRun[], month: string) => payrollFactsOf(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)), month);
+const factsOfRuns = (runs: readonly LoadedRun[], month: string) =>
+  payrollFactsOf(
+    runs.flatMap((loaded) => loaded.people.map((person) => person.personId)),
+    month,
+  );
 
 /** Unit id → name, from the shared cache of the unit tree. */
 const departmentNames = async () => new Map((await listOrgUnits()).map((row) => [row.id, row.name]));
@@ -225,7 +234,17 @@ export async function costReport(principal: Principal, filter: ReportFilter): Pr
 
 // ── Insurance contribution summary (FR-PAY-34: reconciled with the BHXH monthly notice) ─────
 
-export type InsuranceLine = { personId: string; fullName: string; employeeCode: string | null; socialInsuranceNumber: string | null; base: number; employee: { bhxh: number; bhyt: number; bhtn: number }; employer: { bhxh: number; bhyt: number; bhtn: number }; covered: boolean; reason: string | null };
+export type InsuranceLine = {
+  personId: string;
+  fullName: string;
+  employeeCode: string | null;
+  socialInsuranceNumber: string | null;
+  base: number;
+  employee: { bhxh: number; bhyt: number; bhtn: number };
+  employer: { bhxh: number; bhyt: number; bhtn: number };
+  covered: boolean;
+  reason: string | null;
+};
 export type InsuranceSummary = { month: string; entityCode: string; lines: InsuranceLine[]; totals: { base: number; employee: number; employer: number; grandTotal: number }; notCovered: number };
 
 /**
@@ -278,7 +297,18 @@ export async function insuranceSummary(principal: Principal, entityId: string, m
 
 // ── PIT withholding summary (FR-PAY-34) ─────────────────────────────────────────────────────
 
-export type PitLine = { personId: string; fullName: string; employeeCode: string | null; taxCode: string | null; hasTaxCode: boolean; method: PersonPayResult["pit"]["method"]; taxableIncome: number; assessableIncome: number; dependents: number; tax: number };
+export type PitLine = {
+  personId: string;
+  fullName: string;
+  employeeCode: string | null;
+  taxCode: string | null;
+  hasTaxCode: boolean;
+  method: PersonPayResult["pit"]["method"];
+  taxableIncome: number;
+  assessableIncome: number;
+  dependents: number;
+  tax: number;
+};
 export type PitSummary = { month: string; entityCode: string; lines: PitLine[]; totals: { taxableIncome: number; tax: number }; byMethod: { method: string; people: number; tax: number }[]; missingTaxCodes: number };
 
 /** What was withheld from whom — the working paper behind the monthly 05/KK-TNCN declaration. */
@@ -301,7 +331,18 @@ export async function pitSummary(principal: Principal, entityId: string, month: 
     .map(([personId, mine]): PitLine => {
       const pit = pitOfMonth(mine);
       const fact = factOf.get(personId);
-      return { personId, fullName: fact?.fullName ?? "—", employeeCode: fact?.employeeCode ?? null, taxCode: fact?.taxCode ?? null, hasTaxCode: !!fact?.hasTaxCode, method: pit.method, taxableIncome: pit.taxableIncome, assessableIncome: pit.assessableIncome, dependents: pit.dependents, tax: pit.tax };
+      return {
+        personId,
+        fullName: fact?.fullName ?? "—",
+        employeeCode: fact?.employeeCode ?? null,
+        taxCode: fact?.taxCode ?? null,
+        hasTaxCode: !!fact?.hasTaxCode,
+        method: pit.method,
+        taxableIncome: pit.taxableIncome,
+        assessableIncome: pit.assessableIncome,
+        dependents: pit.dependents,
+        tax: pit.tax,
+      };
     })
     .sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? ""));
   const methods = new Map<string, { method: string; people: number; tax: number }>();
@@ -386,7 +427,11 @@ export async function reportOptions(principal: Principal): Promise<{ entities: {
   if (!reach.all && reach.entityIds.length === 0) return { entities: [], months: [] };
   const [all, months] = await Promise.all([
     listEntities(),
-    db().selectDistinct({ month: schema.payrollRun.month }).from(schema.payrollRun).where(and(withinReach(schema.payrollRun.entityId, reach), ne(schema.payrollRun.status, "cancelled"))).orderBy(desc(schema.payrollRun.month)),
+    db()
+      .selectDistinct({ month: schema.payrollRun.month })
+      .from(schema.payrollRun)
+      .where(and(withinReach(schema.payrollRun.entityId, reach), ne(schema.payrollRun.status, "cancelled")))
+      .orderBy(desc(schema.payrollRun.month)),
   ]);
   // The entities come from the shared cache (ordered by code), narrowed to the reach here.
   const entities = all.filter((row) => reach.all || reach.entityIds.includes(row.id)).map((row) => ({ id: row.id, code: row.code, shortName: row.shortName }));

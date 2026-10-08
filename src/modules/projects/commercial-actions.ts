@@ -83,12 +83,21 @@ const retainerPipeline = createAction({
     const months = editsFees ? { startMonth: input.startMonth, endMonth: input.endMonth, isActive: input.isActive } : stored ? { startMonth: stored.startMonth, endMonth: stored.endMonth, isActive: stored.isActive } : null;
     if (!months) throw new ActionError("retainer_terms_need_commercial");
     if (!editsFees && (input.startMonth !== months.startMonth || input.endMonth !== months.endMonth || input.isActive !== months.isActive)) throw new ActionError("retainer_terms_need_commercial");
-    const { before, after } = await saveRetainer(input.projectId, { ...months, lines: input.lines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.hoursPerMonth, rollover: input.rollover, ...fee });
+    const { before, after } = await saveRetainer(input.projectId, {
+      ...months,
+      lines: input.lines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })),
+      minutesPerMonth: input.hoursPerMonth,
+      rollover: input.rollover,
+      ...fee,
+    });
     // This month is made now rather than at midnight: the account manager sees it at once.
     const made = after.isActive ? await ensureCurrentPeriods(after.id) : { periods: 0, closed: 0, billed: 0, awaiting: 0 };
     refresh(input.projectId);
     const shape = (row: typeof after | null) => (row ? { startMonth: row.startMonth, endMonth: row.endMonth, lines: row.lines, minutesPerMonth: row.minutesPerMonth, rollover: row.rollover, isActive: row.isActive } : null);
-    return { data: { id: after.id, periods: made.periods }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `retainer ${after.startMonth}–${after.endMonth ?? "…"}`, before: shape(before), after: { ...shape(after), feeChanged: "feePerMonthVnd" in fee } } };
+    return {
+      data: { id: after.id, periods: made.periods },
+      audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `retainer ${after.startMonth}–${after.endMonth ?? "…"}`, before: shape(before), after: { ...shape(after), feeChanged: "feePerMonthVnd" in fee } },
+    };
   },
 });
 export async function saveRetainerAction(input: unknown) {
@@ -105,7 +114,14 @@ const missedMonthPipeline = createAction({
     const found = (await planProjectFor(user, input.projectId))!;
     const period = await makeMissedPeriod(input.projectId, input.month);
     refresh(input.projectId);
-    return { data: { id: period.id, month: period.month }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `retainer month made by hand: ${period.month}`, after: { periodId: period.id, month: period.month, minutesAllowance: period.minutesAllowance, carried: period.carried } } };
+    return {
+      data: { id: period.id, month: period.month },
+      audit: {
+        resource: auditProject(input.projectId, found.project.entityId),
+        summary: `retainer month made by hand: ${period.month}`,
+        after: { periodId: period.id, month: period.month, minutesAllowance: period.minutesAllowance, carried: period.carried },
+      },
+    };
   },
 });
 export async function makeRetainerMonthAction(input: unknown) {
@@ -154,14 +170,43 @@ const saveChangePipeline = createAction({
       ...(input.dueDateTo ? { dueDateTo: input.dueDateTo } : {}),
       // Posted whole; `saveChange` keeps only the terms that differ from the retainer as it stands.
       ...(input.retainerScope
-        ? { retainer: { lines: input.retainerLines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.retainerHours, ...(withFee && input.retainerFeeVnd !== undefined ? { feePerMonthVnd: input.retainerFeeVnd } : {}) } }
+        ? {
+            retainer: {
+              lines: input.retainerLines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })),
+              minutesPerMonth: input.retainerHours,
+              ...(withFee && input.retainerFeeVnd !== undefined ? { feePerMonthVnd: input.retainerFeeVnd } : {}),
+            },
+          }
         : {}),
     };
-    const { before, after } = await saveChange(input.projectId, input.changeId, { title: input.title, description: input.description, requestedBy: input.requestedBy, impact, evidenceFileId: input.evidenceFileId, evidenceUrl: input.evidenceUrl }, user.person.id, { withFee });
+    const { before, after } = await saveChange(
+      input.projectId,
+      input.changeId,
+      { title: input.title, description: input.description, requestedBy: input.requestedBy, impact, evidenceFileId: input.evidenceFileId, evidenceUrl: input.evidenceUrl },
+      user.person.id,
+      { withFee },
+    );
     refresh(input.projectId);
     // The fee delta is money: the log says that it changed, never how much, like the fee itself.
-    const shape = (row: typeof after | null) => (row ? { title: row.title, requestedBy: row.requestedBy, status: row.status, minutesDelta: row.impact.minutesDelta ?? null, dueDateTo: row.impact.dueDateTo ?? null, lines: row.impact.deliverables?.length ?? 0, cancelled: row.impact.cancelDeliverableIds?.length ?? 0, feeChange: hasFeeChange(row.impact), retainerLines: row.impact.retainer?.lines?.length ?? null, retainerMinutesPerMonth: row.impact.retainer?.minutesPerMonth } : null);
-    return { data: { id: after.id, number: after.number }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `CR-${after.number}: ${after.title}`.slice(0, 300), before: shape(before), after: shape(after) } };
+    const shape = (row: typeof after | null) =>
+      row
+        ? {
+            title: row.title,
+            requestedBy: row.requestedBy,
+            status: row.status,
+            minutesDelta: row.impact.minutesDelta ?? null,
+            dueDateTo: row.impact.dueDateTo ?? null,
+            lines: row.impact.deliverables?.length ?? 0,
+            cancelled: row.impact.cancelDeliverableIds?.length ?? 0,
+            feeChange: hasFeeChange(row.impact),
+            retainerLines: row.impact.retainer?.lines?.length ?? null,
+            retainerMinutesPerMonth: row.impact.retainer?.minutesPerMonth,
+          }
+        : null;
+    return {
+      data: { id: after.id, number: after.number },
+      audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `CR-${after.number}: ${after.title}`.slice(0, 300), before: shape(before), after: shape(after) },
+    };
   },
 });
 export async function saveChangeAction(input: unknown) {
@@ -209,7 +254,15 @@ const decideChangePipeline = createAction({
     if (outcome === "approved") await invalidateWorkDirectory();
     refresh(change.projectId);
     revalidatePath("/approvals");
-    return { data: { outcome }, audit: { resource: auditProject(change.projectId, entityId), summary: `CR-${change.number} ${input.decision}`, before, after: { outcome, status: change.status, applied: change.impact.applied ? { budgetMinutesBefore: change.impact.applied.budgetMinutesBefore, dueDateBefore: change.impact.applied.dueDateBefore } : null } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: auditProject(change.projectId, entityId),
+        summary: `CR-${change.number} ${input.decision}`,
+        before,
+        after: { outcome, status: change.status, applied: change.impact.applied ? { budgetMinutesBefore: change.impact.applied.budgetMinutesBefore, dueDateBefore: change.impact.applied.dueDateBefore } : null },
+      },
+    };
   },
 });
 export async function decideChangeAction(input: unknown) {
@@ -271,7 +324,14 @@ const createAcceptancePipeline = createAction({
   run: async ({ user, input }) => {
     const row = await createAcceptance(input.projectId, { scope: input.scope, milestoneId: input.milestoneId, retainerPeriodId: input.retainerPeriodId, description: input.description }, user.person.id);
     refresh(input.projectId);
-    return { data: { id: row.id, number: row.number }, audit: { resource: auditProject(input.projectId), summary: `acceptance ${row.number}: ${row.scope}`, after: { id: row.id, scope: row.scope, milestoneId: row.milestoneId, retainerPeriodId: row.retainerPeriodId, items: row.items.length, description: row.description } } };
+    return {
+      data: { id: row.id, number: row.number },
+      audit: {
+        resource: auditProject(input.projectId),
+        summary: `acceptance ${row.number}: ${row.scope}`,
+        after: { id: row.id, scope: row.scope, milestoneId: row.milestoneId, retainerPeriodId: row.retainerPeriodId, items: row.items.length, description: row.description },
+      },
+    };
   },
 });
 export async function createAcceptanceAction(input: unknown) {
@@ -286,7 +346,10 @@ const acceptanceStep = (name: string, step: (acceptanceId: string) => Promise<{ 
     run: async ({ input }) => {
       const { before, after } = await step(input.acceptanceId);
       refresh(after.projectId);
-      return { data: { status: after.status }, audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number}: ${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status } } };
+      return {
+        data: { status: after.status },
+        audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number}: ${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status } },
+      };
     },
   });
 const sendPipeline = acceptanceStep("projects.acceptance.send", sendAcceptance);
@@ -312,7 +375,15 @@ const signPipeline = createAction({
     if (!file || file.ownerType !== SIGNED_SCAN || file.ownerId !== input.acceptanceId) throw new ActionError("file_not_found");
     const { before, after, billingItemId } = await signAcceptance(input.acceptanceId, { signedFileId: input.signedFileId, signedOn: input.signedOn, signedByClient: input.signedByClient }, user.person.id);
     refresh(after.projectId);
-    return { data: { status: after.status, billingItemId }, audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number} signed ${after.signedOn}`, before: { status: before.status }, after: { status: after.status, signedOn: after.signedOn, signedByClient: after.signedByClient, signedFileId: after.signedFileId, billingItemId } } };
+    return {
+      data: { status: after.status, billingItemId },
+      audit: {
+        resource: auditProject(after.projectId),
+        summary: `acceptance ${after.number} signed ${after.signedOn}`,
+        before: { status: before.status },
+        after: { status: after.status, signedOn: after.signedOn, signedByClient: after.signedByClient, signedFileId: after.signedFileId, billingItemId },
+      },
+    };
   },
 });
 export async function signAcceptanceAction(input: unknown) {
@@ -332,7 +403,10 @@ const correctSignedPipeline = createAction({
     const { before, after } = await correctSignedAcceptance(input.acceptanceId, { signedFileId: input.signedFileId, signedOn: input.signedOn, signedByClient: input.signedByClient, reason: input.reason }, user.person.id);
     refresh(after.projectId);
     const shape = (row: typeof after) => ({ signedOn: row.signedOn, signedByClient: row.signedByClient, signedFileId: row.signedFileId });
-    return { data: { id: after.id }, audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number} signature corrected: ${input.reason}`.slice(0, 300), before: shape(before), after: { ...shape(after), reason: input.reason } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: auditProject(after.projectId), summary: `acceptance ${after.number} signature corrected: ${input.reason}`.slice(0, 300), before: shape(before), after: { ...shape(after), reason: input.reason } },
+    };
   },
 });
 export async function correctSignedAcceptanceAction(input: unknown) {
@@ -346,7 +420,11 @@ const beginScanPipeline = createAction({
   run: async ({ user, input }) => {
     const acceptance = (await findAcceptance(input.acceptanceId))!;
     const found = (await planProjectFor(user, acceptance.projectId))!;
-    const upload = await beginUpload({ ownerType: SIGNED_SCAN, ownerId: acceptance.id, entityId: found.project.entityId, tier: FILE_TIER }, { fileName: input.fileName, sizeBytes: input.sizeBytes }, { personId: user.person.id, email: user.email });
+    const upload = await beginUpload(
+      { ownerType: SIGNED_SCAN, ownerId: acceptance.id, entityId: found.project.entityId, tier: FILE_TIER },
+      { fileName: input.fileName, sizeBytes: input.sizeBytes },
+      { personId: user.person.id, email: user.email },
+    );
     return { data: upload, audit: { resource: { type: "stored_file", id: upload.fileId, entityId: found.project.entityId }, summary: input.fileName } };
   },
 });
@@ -406,7 +484,15 @@ const decideBillingPipeline = createAction({
     const decision = input.action === "invoice" ? { action: "invoice" as const, invoiceNumber: input.invoiceNumber, invoiceDate: input.invoiceDate, amountVnd: input.amountVnd } : { action: "waive" as const, reason: input.reason };
     const { before, after } = await decideBillingItem(input.itemId, decision, user.person.id);
     refresh(after.projectId);
-    return { data: { status: after.status }, audit: { resource: { type: "project_billing_item", id: after.id, entityId: after.entityId }, summary: `${after.jobNumber ?? ""} ${after.status}${after.invoiceNumber ? ` ${after.invoiceNumber}` : ""}`.trim(), before: { status: before.status }, after: { status: after.status, invoiceNumber: after.invoiceNumber, invoiceDate: after.invoiceDate, waivedReason: after.waivedReason } } };
+    return {
+      data: { status: after.status },
+      audit: {
+        resource: { type: "project_billing_item", id: after.id, entityId: after.entityId },
+        summary: `${after.jobNumber ?? ""} ${after.status}${after.invoiceNumber ? ` ${after.invoiceNumber}` : ""}`.trim(),
+        before: { status: before.status },
+        after: { status: after.status, invoiceNumber: after.invoiceNumber, invoiceDate: after.invoiceDate, waivedReason: after.waivedReason },
+      },
+    };
   },
 });
 export async function decideBillingAction(input: unknown) {
@@ -425,7 +511,15 @@ const correctAmountPipeline = createAction({
     refresh(after.projectId);
     // The log says the amount changed and why, never what it was or is: an audit reader is not a
     // `pjm:commercial` holder. The figures before and after are kept on the item (`corrections`).
-    return { data: { id: after.id }, audit: { resource: { type: "project_billing_item", id: after.id, entityId: after.entityId }, summary: `${after.jobNumber ?? ""} amount corrected: ${input.reason}`.trim().slice(0, 300), before: { amountSet: before.amountVnd !== null }, after: { amountSet: after.amountVnd !== null, amountChanged: true, reason: input.reason, corrections: after.corrections.length } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "project_billing_item", id: after.id, entityId: after.entityId },
+        summary: `${after.jobNumber ?? ""} amount corrected: ${input.reason}`.trim().slice(0, 300),
+        before: { amountSet: before.amountVnd !== null },
+        after: { amountSet: after.amountVnd !== null, amountChanged: true, reason: input.reason, corrections: after.corrections.length },
+      },
+    };
   },
 });
 export async function correctBillingAmountAction(input: unknown) {
@@ -448,7 +542,14 @@ const manualBillingPipeline = createAction({
     const projectId = (await projectOfManualItem(input))!;
     const item = await createManualBillingItem(projectId, { description: input.description, reference: input.reference, amountVnd: input.amountVnd }, user.person.id);
     refresh(projectId);
-    return { data: { id: item.id }, audit: { resource: { type: "project_billing_item", id: item.id, entityId: item.entityId }, summary: `${item.jobNumber ?? ""} manual: ${item.description}`.slice(0, 300), after: { projectId, description: item.description, reference: item.reference, amountSet: item.amountVnd !== null } } };
+    return {
+      data: { id: item.id },
+      audit: {
+        resource: { type: "project_billing_item", id: item.id, entityId: item.entityId },
+        summary: `${item.jobNumber ?? ""} manual: ${item.description}`.slice(0, 300),
+        after: { projectId, description: item.description, reference: item.reference, amountSet: item.amountVnd !== null },
+      },
+    };
   },
 });
 export async function createManualBillingAction(input: unknown) {
@@ -486,7 +587,10 @@ const retroPipeline = createAction({
     const retro = Object.fromEntries(Object.entries({ wentWell: input.wentWell, improve: input.improve, actions: input.actions }).filter(([, value]) => value !== null)) as Record<string, string>;
     const { before, after } = await saveRetro(input.projectId, { heldOn: input.heldOn, attendeeIds: input.attendeeIds, retro }, user.person.id);
     refresh(input.projectId);
-    return { data: { id: after.id }, audit: { resource: auditProject(input.projectId), summary: `retrospective ${after.heldOn}`, before: before ? { heldOn: before.heldOn } : null, after: { heldOn: after.heldOn, parts: Object.keys(retro) } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: auditProject(input.projectId), summary: `retrospective ${after.heldOn}`, before: before ? { heldOn: before.heldOn } : null, after: { heldOn: after.heldOn, parts: Object.keys(retro) } },
+    };
   },
 });
 export async function saveRetroAction(input: unknown) {
@@ -503,7 +607,15 @@ const closePipeline = createAction({
     await invalidateWorkDirectory();
     refresh(input.projectId);
     // An override is the point of this record: what was unmet and why the lead closed anyway.
-    return { data: { closedAt: plan.closedAt }, audit: { resource: auditProject(input.projectId), summary: report.unmet.length ? `closed with ${report.unmet.join(", ")} unmet: ${report.overrideReason}`.slice(0, 300) : "closed", before: { status: projectStatusBefore }, after: { status: "done", unmet: report.unmet, overrideReason: report.overrideReason } } };
+    return {
+      data: { closedAt: plan.closedAt },
+      audit: {
+        resource: auditProject(input.projectId),
+        summary: report.unmet.length ? `closed with ${report.unmet.join(", ")} unmet: ${report.overrideReason}`.slice(0, 300) : "closed",
+        before: { status: projectStatusBefore },
+        after: { status: "done", unmet: report.unmet, overrideReason: report.overrideReason },
+      },
+    };
   },
 });
 export async function closeProjectAction(input: unknown) {

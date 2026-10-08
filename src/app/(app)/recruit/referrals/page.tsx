@@ -29,7 +29,6 @@ export default async function ReferralsPage() {
   const manages = canManageReferrals(user.principal);
   const [openings, mine, book] = await Promise.all([listOpeningsForReferral(), listMyReferrals(user.person.id), manages ? listReferrals(user.principal) : Promise.resolve([])]);
 
-
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header>
@@ -59,7 +58,15 @@ export default async function ReferralsPage() {
                 <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                 {/* A referrer sees what they typed and whether a bonus is due — never the stage, the
                     status or the name on file, any of which would say the person was already known. */}
-                <TableCell>{row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge dot variant={statusTone(row.state)}>{t(`bonus.${row.state}`)}</Badge>}</TableCell>
+                <TableCell>
+                  {row.state === "received" ? (
+                    <Badge variant="outline">{t("received")}</Badge>
+                  ) : (
+                    <Badge dot variant={statusTone(row.state)}>
+                      {t(`bonus.${row.state}`)}
+                    </Badge>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -105,10 +112,14 @@ export default async function ReferralsPage() {
                     </RecordLink>
                   </TableCell>
                   <TableCell>
-                    <RecordLink kind="person" id={row.referredByPersonId}>{row.referredByName}</RecordLink>
+                    <RecordLink kind="person" id={row.referredByPersonId}>
+                      {row.referredByName}
+                    </RecordLink>
                   </TableCell>
                   <TableCell className="max-w-56 truncate">
-                    <RecordLink kind="opening" id={row.openingId}>{row.openingTitle}</RecordLink>
+                    <RecordLink kind="opening" id={row.openingId}>
+                      {row.openingTitle}
+                    </RecordLink>
                   </TableCell>
                   <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                   <TableCell>{row.stageName}</TableCell>
@@ -116,7 +127,9 @@ export default async function ReferralsPage() {
                     <Badge variant="outline">{tStatus(row.applicationStatus)}</Badge>
                   </TableCell>
                   <TableCell className="max-w-64">
-                    <Badge dot variant={statusTone(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
+                    <Badge dot variant={statusTone(row.bonus)}>
+                      {t(`bonus.${row.bonus}` as "bonus.pending")}
+                    </Badge>
                     {row.bonusNote ? <p className="truncate text-xs text-muted-foreground">{row.bonusNote}</p> : null}
                   </TableCell>
                   <TableCell kind="actions">{row.bonus === "earned" ? <SettleBonusButton referralId={row.id} /> : null}</TableCell>

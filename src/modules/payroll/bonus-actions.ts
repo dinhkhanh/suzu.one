@@ -17,7 +17,10 @@ const wholeNumber = z.preprocess((value) => (typeof value === "string" && value.
 const year = z.coerce.number().int().min(2000).max(2100);
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const bp = z.coerce.number().int().min(0).max(1_000_000);
-const bandKey = z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/);
+const bandKey = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/);
 const label = z.string().trim().min(1).max(120);
 
 const refresh = (runId?: string) => {
@@ -32,9 +35,24 @@ const schemeValue = z.object({
   referenceDay: z.string().trim(),
   roundingVnd: wholeNumber,
   capMultiplierBp: bp,
-  serviceBands: z.array(z.object({ minMonths: z.coerce.number().int().min(0).max(600), label, factorBp: bp })).min(1).max(12),
-  performanceMultiplier: z.object({ source: z.enum(BONUS_MULTIPLIER_SOURCES), bands: z.array(z.object({ key: bandKey, label, minScoreBp: bp, multiplierBp: bp })).min(1).max(12) }),
-  unitOkr: z.object({ level: z.enum(BONUS_OKR_LEVELS), bands: z.array(z.object({ label, minProgressBp: bp, multiplierBp: bp })).min(1).max(12) }),
+  serviceBands: z
+    .array(z.object({ minMonths: z.coerce.number().int().min(0).max(600), label, factorBp: bp }))
+    .min(1)
+    .max(12),
+  performanceMultiplier: z.object({
+    source: z.enum(BONUS_MULTIPLIER_SOURCES),
+    bands: z
+      .array(z.object({ key: bandKey, label, minScoreBp: bp, multiplierBp: bp }))
+      .min(1)
+      .max(12),
+  }),
+  unitOkr: z.object({
+    level: z.enum(BONUS_OKR_LEVELS),
+    bands: z
+      .array(z.object({ label, minProgressBp: bp, multiplierBp: bp }))
+      .min(1)
+      .max(12),
+  }),
   eligibility: z.object({
     minServiceMonths: z.coerce.number().int().min(0).max(600),
     excludeWorkforceTypes: z.array(z.string().trim().max(40)).max(10).default([]),
@@ -86,7 +104,14 @@ const createRunPipeline = createAction({
   run: async ({ user, input }) => {
     const created = await createBonusRun(input, user.person.id);
     refresh();
-    return { data: { id: created.id }, audit: { resource: { type: "bonus_run", id: created.id, entityId: null }, summary: `${created.name} (${created.year})`, after: { year: created.year, name: created.name, entityIds: created.entityIds, payrollMonth: created.payrollMonth } } };
+    return {
+      data: { id: created.id },
+      audit: {
+        resource: { type: "bonus_run", id: created.id, entityId: null },
+        summary: `${created.name} (${created.year})`,
+        after: { year: created.year, name: created.name, entityIds: created.entityIds, payrollMonth: created.payrollMonth },
+      },
+    };
   },
 });
 export async function createBonusRunAction(input: unknown) {
@@ -109,7 +134,10 @@ const simulatePipeline = createAction({
     const { run, cost } = await simulateBonusRun(input.runId, user.person.id);
     refresh(run.id);
     // Counts only: how many people and how many of them get nothing. No đồng in the log.
-    return { data: { headcount: cost.totals.headcount, eligible: cost.totals.eligible }, audit: { resource: { type: "bonus_run", id: run.id, entityId: null }, summary: `mô phỏng ${run.year}`, after: { headcount: run.headcount, eligibleCount: run.eligibleCount, overriddenCount: run.overriddenCount } } };
+    return {
+      data: { headcount: cost.totals.headcount, eligible: cost.totals.eligible },
+      audit: { resource: { type: "bonus_run", id: run.id, entityId: null }, summary: `mô phỏng ${run.year}`, after: { headcount: run.headcount, eligibleCount: run.eligibleCount, overriddenCount: run.overriddenCount } },
+    };
   },
 });
 export async function simulateBonusRunAction(input: unknown) {
@@ -127,7 +155,10 @@ const whatIfPipeline = createAction({
   authorize: async (user, input) => canManageBonusRun(user.principal, (await overRun(input.runId)).entityIds),
   run: async ({ input }) => {
     const simulation = await simulateWhatIf(input.runId, checkBonusSchemeValue(input.value));
-    return { data: { totals: simulation.cost.totals, byEntity: simulation.cost.byEntity }, audit: { resource: { type: "bonus_run", id: input.runId, entityId: null }, summary: "mô phỏng thử bảng hệ số khác", after: { headcount: simulation.cost.totals.headcount } } };
+    return {
+      data: { totals: simulation.cost.totals, byEntity: simulation.cost.byEntity },
+      audit: { resource: { type: "bonus_run", id: input.runId, entityId: null }, summary: "mô phỏng thử bảng hệ số khác", after: { headcount: simulation.cost.totals.headcount } },
+    };
   },
 });
 export async function bonusWhatIfAction(input: unknown) {
@@ -146,7 +177,12 @@ const overridePipeline = createAction({
     // The reason is the point of the record and is kept; the two amounts are not.
     return {
       data: { overridden: after.override !== null },
-      audit: { resource: { type: "bonus_run_line", id: `${input.runId}:${input.personId}`, entityId: null }, summary: after.override ? `điều chỉnh: ${after.override.reason}` : "bỏ điều chỉnh", before: { overridden: before.override !== null }, after: { personId: input.personId, overridden: after.override !== null, reason: after.override?.reason ?? null } },
+      audit: {
+        resource: { type: "bonus_run_line", id: `${input.runId}:${input.personId}`, entityId: null },
+        summary: after.override ? `điều chỉnh: ${after.override.reason}` : "bỏ điều chỉnh",
+        before: { overridden: before.override !== null },
+        after: { personId: input.personId, overridden: after.override !== null, reason: after.override?.reason ?? null },
+      },
     };
   },
 });
@@ -168,7 +204,10 @@ const stepPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await stepBonusRun(input.runId, input.step, user.person.id, { comment: input.comment });
     refresh(input.runId);
-    return { data: { status: after.status }, audit: { resource: { type: "bonus_run", id: after.id, entityId: null }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, comment: input.comment } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "bonus_run", id: after.id, entityId: null }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, comment: input.comment } },
+    };
   },
 });
 export async function stepBonusRunAction(input: unknown) {
@@ -188,7 +227,14 @@ const payPipeline = createAction({
     refresh(input.runId);
     revalidatePath("/payroll/runs");
     const created = result.payrollRuns.filter((run) => run.created);
-    return { data: result, audit: { resource: { type: "bonus_run", id: input.runId, entityId: null }, summary: `chi qua ${created.length} kỳ lương ngoài kỳ`, after: { payrollRuns: result.payrollRuns.map((run) => ({ entityId: run.entityId, payrollRunId: run.payrollRunId, headcount: run.headcount, created: run.created })) } } };
+    return {
+      data: result,
+      audit: {
+        resource: { type: "bonus_run", id: input.runId, entityId: null },
+        summary: `chi qua ${created.length} kỳ lương ngoài kỳ`,
+        after: { payrollRuns: result.payrollRuns.map((run) => ({ entityId: run.entityId, payrollRunId: run.payrollRunId, headcount: run.headcount, created: run.created })) },
+      },
+    };
   },
 });
 export async function payBonusRunAction(input: unknown) {

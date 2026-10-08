@@ -12,11 +12,7 @@ export type AssignmentPlan =
   | { kind: "succeed"; closeId: string; closeOn: IsoDate }
   | { kind: "rejected"; reason: "before_employment_start" | "after_employment_end" | "before_current_assignment" };
 
-export function planAssignmentChange(
-  employment: { startDate: IsoDate; endDate: IsoDate | null },
-  existing: readonly Period[],
-  validFrom: IsoDate,
-): AssignmentPlan {
+export function planAssignmentChange(employment: { startDate: IsoDate; endDate: IsoDate | null }, existing: readonly Period[], validFrom: IsoDate): AssignmentPlan {
   if (validFrom < employment.startDate) return { kind: "rejected", reason: "before_employment_start" };
   if (employment.endDate && validFrom > employment.endDate) return { kind: "rejected", reason: "after_employment_end" };
 

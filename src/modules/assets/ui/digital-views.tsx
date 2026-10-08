@@ -13,7 +13,19 @@ import type { DigitalAssetListRow } from "../digital";
 import { RecordLink } from "@/components/ui/record-link";
 
 // A hue per platform, to tell them apart at a glance. It means nothing (docs/UI.md: tones).
-const PLATFORM_TONE: Record<DigitalPlatform, BadgeVariant> = { facebook: "indigo", instagram: "pink", tiktok: "teal", youtube: "orange", zalo: "info", linkedin: "indigo", threads: "violet", x: "secondary", google: "orange", website: "teal", other: "outline" };
+const PLATFORM_TONE: Record<DigitalPlatform, BadgeVariant> = {
+  facebook: "indigo",
+  instagram: "pink",
+  tiktok: "teal",
+  youtube: "orange",
+  zalo: "info",
+  linkedin: "indigo",
+  threads: "violet",
+  x: "secondary",
+  google: "orange",
+  website: "teal",
+  other: "outline",
+};
 
 export async function PlatformBadge({ platform }: { platform: DigitalPlatform }) {
   const t = await getTranslations("assets.digital.platform");
@@ -114,10 +126,28 @@ export async function DigitalTable({ rows }: { rows: readonly DigitalAssetListRo
               <PlatformBadge platform={row.platform} />
             </TableCell>
             <TableCell>
-              {row.ownership === "client" && row.clientName ? <RecordLink kind="account" id={row.clientId}>{row.clientName}</RecordLink> : row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}
+              {row.ownership === "client" && row.clientName ? (
+                <RecordLink kind="account" id={row.clientId}>
+                  {row.clientName}
+                </RecordLink>
+              ) : row.entityName ? (
+                <RecordLink kind="entity" id={row.entityId}>
+                  {row.entityName}
+                </RecordLink>
+              ) : (
+                "—"
+              )}
               {row.ownership === "client" ? <p className="text-xs text-faint">{t("ownership.client")}</p> : null}
             </TableCell>
-            <TableCell>{row.ownerName ? <RecordLink kind="person" id={row.ownerPersonId}>{row.ownerName}</RecordLink> : <span className="text-warning">{t("noOwner")}</span>}</TableCell>
+            <TableCell>
+              {row.ownerName ? (
+                <RecordLink kind="person" id={row.ownerPersonId}>
+                  {row.ownerName}
+                </RecordLink>
+              ) : (
+                <span className="text-warning">{t("noOwner")}</span>
+              )}
+            </TableCell>
             <TableCell kind="number">{row.people}</TableCell>
             <TableCell>{row.mine ? <AccessBadge status={row.mine.status} level={row.mine.level} /> : row.runs ? <span className="text-xs text-muted-foreground">{t("youRun")}</span> : <span className="text-faint">—</span>}</TableCell>
           </TableRow>

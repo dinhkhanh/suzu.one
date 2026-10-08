@@ -49,11 +49,7 @@ describe("summarise", () => {
   });
 
   it("counts open work and the part of it that is overdue", () => {
-    const rows = [
-      task({ status: "todo", completedOn: null, dueDate: "2027-01-10" }),
-      task({ status: "in_progress", completedOn: null, dueDate: "2027-03-10" }),
-      task({ status: "todo", completedOn: null, dueDate: null }),
-    ];
+    const rows = [task({ status: "todo", completedOn: null, dueDate: "2027-01-10" }), task({ status: "in_progress", completedOn: null, dueDate: "2027-03-10" }), task({ status: "todo", completedOn: null, dueDate: null })];
     expect(summarise(rows, PERIOD, TODAY)).toMatchObject({ open: 3, overdue: 1, completed: 0 });
   });
 
@@ -85,11 +81,7 @@ describe("summarise", () => {
 
 describe("analyse", () => {
   it("groups by team and by client, and leaves clientless work out of the client table", () => {
-    const rows = [
-      task({ teamId: "video", clientId: "acme" }),
-      task({ teamId: "video", clientId: null }),
-      task({ teamId: "design", clientId: "acme", completedOn: "2027-01-28", dueDate: "2027-01-20" }),
-    ];
+    const rows = [task({ teamId: "video", clientId: "acme" }), task({ teamId: "video", clientId: null }), task({ teamId: "design", clientId: "acme", completedOn: "2027-01-28", dueDate: "2027-01-20" })];
     const result = analyse(rows, PERIOD, TODAY);
     expect(result.total.completed).toBe(3);
     expect(result.byTeam.map((group) => [group.key, group.cell.completed])).toEqual(

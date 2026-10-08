@@ -53,7 +53,11 @@ export type RunPersonResult = { row: PayrollRunPersonRow; result: PersonPayResul
 
 /** One person's calculated payslip, decrypted. The caller decides who may see it. */
 export async function getRunPerson(runId: string, personId: string, executor: Executor = db()): Promise<RunPersonResult | null> {
-  const [row] = await executor.select().from(schema.payrollRunPerson).where(and(eq(schema.payrollRunPerson.runId, runId), eq(schema.payrollRunPerson.personId, personId))).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.payrollRunPerson)
+    .where(and(eq(schema.payrollRunPerson.runId, runId), eq(schema.payrollRunPerson.personId, personId)))
+    .limit(1);
   return row ? { row, result: openResult(row) } : null;
 }
 
@@ -66,7 +70,13 @@ export async function listRunPeople(runId: string, executor: Executor = db()): P
 
 /** The figures typed into a run, by person — of everyone in it, or of the one person asked about. */
 export async function listRunInputs(runId: string, executor: Executor = db(), personId?: string): Promise<Map<string, PayInput[]>> {
-  return openRunInputs(await executor.select().from(schema.payrollRunInput).where(and(eq(schema.payrollRunInput.runId, runId), personId ? eq(schema.payrollRunInput.personId, personId) : undefined)).orderBy(schema.payrollRunInput.code));
+  return openRunInputs(
+    await executor
+      .select()
+      .from(schema.payrollRunInput)
+      .where(and(eq(schema.payrollRunInput.runId, runId), personId ? eq(schema.payrollRunInput.personId, personId) : undefined))
+      .orderBy(schema.payrollRunInput.code),
+  );
 }
 
 function openRunInputs(rows: readonly (typeof schema.payrollRunInput.$inferSelect)[]): Map<string, PayInput[]> {
@@ -134,7 +144,14 @@ async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunIn
   }
 
   const keyOf = (line: { personId: string; code: string }) => `${line.personId}:${line.code}`;
-  const stored = new Map((await tx.select().from(schema.payrollRunInput).where(and(eq(schema.payrollRunInput.runId, runId), inArray(schema.payrollRunInput.personId, [...new Set(lines.map((line) => line.personId))])))).map((row) => [keyOf(row), row]));
+  const stored = new Map(
+    (
+      await tx
+        .select()
+        .from(schema.payrollRunInput)
+        .where(and(eq(schema.payrollRunInput.runId, runId), inArray(schema.payrollRunInput.personId, [...new Set(lines.map((line) => line.personId))])))
+    ).map((row) => [keyOf(row), row]),
+  );
   const cipher = fieldCipher();
   // The same clock as `calculatedAt`, so "typed after the calculation" can be told from the rows.
   const now = new Date();
@@ -161,7 +178,10 @@ async function writeRunInputs(tx: Executor, runId: string, lines: readonly RunIn
     if (Number(cipher.decrypt(existing.amountEnc, runEntryContext(existing.id))) === line.amount && existing.note === note) continue;
     // A second entry for the same code replaces the first; the id (and so the binding) stays.
     // One statement per replaced figure: a figure is replaced one at a time, by hand.
-    await tx.update(schema.payrollRunInput).set({ amountEnc: cipher.encrypt(String(line.amount), runEntryContext(existing.id)), note, updatedAt: now }).where(eq(schema.payrollRunInput.id, existing.id));
+    await tx
+      .update(schema.payrollRunInput)
+      .set({ amountEnc: cipher.encrypt(String(line.amount), runEntryContext(existing.id)), note, updatedAt: now })
+      .where(eq(schema.payrollRunInput.id, existing.id));
     changed = true;
   }
   if (created.size > 0) {
@@ -177,7 +197,10 @@ export async function removeRunInput(runId: string, personId: string, code: stri
   return inTransaction(executor, async (tx) => {
     const [run] = await tx.select().from(schema.payrollRun).where(eq(schema.payrollRun.id, runId)).limit(1).for("update");
     if (!run || !isOpenForEditing(run)) throw new ActionError("run_not_editable");
-    const removed = await tx.delete(schema.payrollRunInput).where(and(eq(schema.payrollRunInput.runId, runId), eq(schema.payrollRunInput.personId, personId), eq(schema.payrollRunInput.code, code))).returning({ id: schema.payrollRunInput.id });
+    const removed = await tx
+      .delete(schema.payrollRunInput)
+      .where(and(eq(schema.payrollRunInput.runId, runId), eq(schema.payrollRunInput.personId, personId), eq(schema.payrollRunInput.code, code)))
+      .returning({ id: schema.payrollRunInput.id });
     return { reopened: removed.length > 0 ? await reopenCalculatedRun(tx, runId, actorPersonId) : false };
   });
 }
@@ -235,9 +258,16 @@ export async function getRunHandle(runId: string, executor: Executor = db()): Pr
  */
 export async function createRegularRun(input: { entityId: string; month: string; note?: string | null }, actorPersonId: string, executor: Executor = db()): Promise<PayrollRunRow> {
   await assertPeriodOpen(input.entityId, input.month, executor);
-  const [existing] = await executor.select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, input.entityId), eq(schema.payrollRun.month, input.month), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled"))).limit(1);
+  const [existing] = await executor
+    .select()
+    .from(schema.payrollRun)
+    .where(and(eq(schema.payrollRun.entityId, input.entityId), eq(schema.payrollRun.month, input.month), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled")))
+    .limit(1);
   if (existing) throw new ActionError("run_exists", { runId: existing.id });
-  const [created] = await executor.insert(schema.payrollRun).values({ entityId: input.entityId, month: input.month, kind: "regular", note: input.note ?? null, createdByPersonId: actorPersonId }).returning();
+  const [created] = await executor
+    .insert(schema.payrollRun)
+    .values({ entityId: input.entityId, month: input.month, kind: "regular", note: input.note ?? null, createdByPersonId: actorPersonId })
+    .returning();
   return created;
 }
 
@@ -247,12 +277,19 @@ export async function createRegularRun(input: { entityId: string; month: string;
  * scheme works out an amount per person and hands it over as `lines`; everything after that
  * (aggregating the month's tax, the payslip, the bank file) is payroll's, not the scheme's.
  */
-export async function createOffCycleRun(input: { entityId: string; month: string; name: string; note?: string | null; lines: readonly { personId: string; code: string; amount: number; note?: string | null }[] }, actorPersonId: string, executor: Executor = db()): Promise<PayrollRunRow> {
+export async function createOffCycleRun(
+  input: { entityId: string; month: string; name: string; note?: string | null; lines: readonly { personId: string; code: string; amount: number; note?: string | null }[] },
+  actorPersonId: string,
+  executor: Executor = db(),
+): Promise<PayrollRunRow> {
   // One transaction: a line payroll refuses (an unknown code, a negative amount) leaves no run behind.
   return inTransaction(executor, async (tx) => {
     // A closed month takes nothing more, not even a bonus: it would change a filed month's tax.
     await assertPeriodOpen(input.entityId, input.month, tx);
-    const [created] = await tx.insert(schema.payrollRun).values({ entityId: input.entityId, month: input.month, kind: "off_cycle", name: input.name, note: input.note ?? null, createdByPersonId: actorPersonId }).returning();
+    const [created] = await tx
+      .insert(schema.payrollRun)
+      .values({ entityId: input.entityId, month: input.month, kind: "off_cycle", name: input.name, note: input.note ?? null, createdByPersonId: actorPersonId })
+      .returning();
     if (input.lines.length > 0) await writeRunInputs(tx, created.id, input.lines, actorPersonId);
     // A run with no typed line is one that pays leavers' unused leave the signed regular run did
     // not (`calculateOffCycle`) — and is refused when there is none of that to pay either.
@@ -349,15 +386,36 @@ export async function calculateRun(runId: string, options: { executor?: Executor
     if (regular) {
       // What an earlier calculation of this run took and this one no longer carries goes back to
       // waiting; what this one carries must never be taken again by the next run.
-      await releaseRetroItems(tx, run, carried.map((item) => item.id));
-      await markRetroItemsTaken(tx, carried.filter((item) => item.status === "open").map((item) => item.id), run.month, runId);
+      await releaseRetroItems(
+        tx,
+        run,
+        carried.map((item) => item.id),
+      );
+      await markRetroItemsTaken(
+        tx,
+        carried.filter((item) => item.status === "open").map((item) => item.id),
+        run.month,
+        runId,
+      );
       const adjustmentIds = [...new Set(carried.filter((item) => item.kind === "timesheet_adjustment" && item.sourceRef).map((item) => item.sourceRef!))];
       if (adjustmentIds.length > 0) await markAdjustmentsTaken(tx as Tx, adjustmentIds, run.month);
       // An item cancelled while the month was being worked out is in the figures but no longer
       // this run's to carry: like a figure typed in meanwhile, it leaves the run to be calculated again.
       if (carried.length > 0) {
         const table = schema.payrollRetroItem;
-        const [held] = await tx.select({ count: sql<number>`count(*)::int` }).from(table).where(and(inArray(table.id, carried.map((item) => item.id)), eq(table.status, "taken"), eq(table.runId, runId)));
+        const [held] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(table)
+          .where(
+            and(
+              inArray(
+                table.id,
+                carried.map((item) => item.id),
+              ),
+              eq(table.status, "taken"),
+              eq(table.runId, runId),
+            ),
+          );
         upToDate &&= held.count === carried.length;
       }
     }
@@ -386,7 +444,15 @@ export async function priorInMonth(run: PayrollRunRow, executor: Executor = db()
   const prior = new Map<string, PriorInMonth>();
   if (others.length === 0) return prior;
 
-  const rows = await executor.select().from(schema.payrollRunPerson).where(inArray(schema.payrollRunPerson.runId, others.map((row) => row.id)));
+  const rows = await executor
+    .select()
+    .from(schema.payrollRunPerson)
+    .where(
+      inArray(
+        schema.payrollRunPerson.runId,
+        others.map((row) => row.id),
+      ),
+    );
   for (const row of rows) {
     const result = openResult(row);
     const before = prior.get(row.personId);

@@ -18,7 +18,19 @@ import { deleteHandoffPackageAction, saveHandoffPackageAction } from "../handoff
 import { type ChecklistChoice, ChecklistPicker } from "./checklists";
 
 type Result = { ok: boolean; error?: string; message?: string };
-export type PackageView = { id: string; name: string; fromStateId: string | null; toStateId: string; fields: { key: string; label: string; type: HandoffFieldType; required: boolean }[]; checklist: { id: string; text: string }[]; checklistIds: string[]; requireLink: boolean; requireFile: boolean; requireAccept: boolean; isActive: boolean };
+export type PackageView = {
+  id: string;
+  name: string;
+  fromStateId: string | null;
+  toStateId: string;
+  fields: { key: string; label: string; type: HandoffFieldType; required: boolean }[];
+  checklist: { id: string; text: string }[];
+  checklistIds: string[];
+  requireLink: boolean;
+  requireFile: boolean;
+  requireAccept: boolean;
+  isActive: boolean;
+};
 type State = { id: string; name: string };
 
 export function HandoffPackageManager({ teamId, packages, states, checklists, canManage }: { teamId: string; packages: PackageView[]; states: State[]; checklists: ChecklistChoice[]; canManage: boolean }) {
@@ -235,7 +247,16 @@ function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; stat
           {tWork("save")}
         </Button>
         {pkg ? (
-          <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteHandoffPackageAction({ packageId: pkg.id }))} />
+          <ConfirmButton
+            size="sm"
+            variant="ghost"
+            className="text-destructive"
+            disabled={pending}
+            destructive
+            label={t("delete")}
+            question={t("deleteConfirm")}
+            onConfirm={() => run(() => deleteHandoffPackageAction({ packageId: pkg.id }))}
+          />
         ) : null}
       </div>
     </form>

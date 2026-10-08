@@ -44,7 +44,11 @@ export async function captureTaskBaselines(tx: Tx, projectId: string): Promise<{
 export async function captureProjectBaseline(tx: Tx, projectId: string, now: Date): Promise<ProjectBaseline> {
   const plan = await ensurePlan(projectId, tx);
   const [project] = await tx.select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
-  const milestones = await tx.select({ id: schema.projectMilestone.id, dueDate: schema.projectMilestone.dueDate }).from(schema.projectMilestone).where(eq(schema.projectMilestone.projectId, projectId)).orderBy(asc(schema.projectMilestone.sortOrder));
+  const milestones = await tx
+    .select({ id: schema.projectMilestone.id, dueDate: schema.projectMilestone.dueDate })
+    .from(schema.projectMilestone)
+    .where(eq(schema.projectMilestone.projectId, projectId))
+    .orderBy(asc(schema.projectMilestone.sortOrder));
   return takeBaseline({ startDate: project.startDate, dueDate: project.dueDate, budgetMinutes: plan.budgetMinutes, milestones }, now);
 }
 

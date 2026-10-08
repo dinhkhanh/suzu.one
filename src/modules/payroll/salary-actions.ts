@@ -29,7 +29,10 @@ const changeInput = z.object({
   }),
 });
 
-const toInput = (input: z.output<typeof changeInput>) => ({ ...input, terms: { baseSalary: input.terms.baseSalary, insuranceSalary: input.terms.insuranceSalary, allowances: Object.entries(input.terms.allowances).map(([code, amount]) => ({ code, amount })), probationPercent: input.terms.probationPercent } });
+const toInput = (input: z.output<typeof changeInput>) => ({
+  ...input,
+  terms: { baseSalary: input.terms.baseSalary, insuranceSalary: input.terms.insuranceSalary, allowances: Object.entries(input.terms.allowances).map(([code, amount]) => ({ code, amount })), probationPercent: input.terms.probationPercent },
+});
 
 const refresh = (personId: string | null, requestId?: string) => {
   revalidatePath("/payroll/salaries");
@@ -51,7 +54,10 @@ const submitPipeline = createAction({
   run: async ({ user, input }) => {
     const { request, payload } = await submitSalaryChange(user.person.id, toInput(input));
     refresh(input.personId, request.id);
-    return { data: { id: request.id }, audit: { resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId }, summary: request.summary, after: { personId: input.personId, reason: payload.reason, validFrom: payload.validFrom } } };
+    return {
+      data: { id: request.id },
+      audit: { resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId }, summary: request.summary, after: { personId: input.personId, reason: payload.reason, validFrom: payload.validFrom } },
+    };
   },
 });
 export async function submitSalaryChangeAction(input: unknown) {
@@ -66,7 +72,10 @@ const resubmitPipeline = createAction({
   run: async ({ user, input }) => {
     const { request, payload } = await resubmitSalaryChange(user.person.id, input.requestId, toInput(input));
     refresh(input.personId, request.id);
-    return { data: { id: request.id }, audit: { resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId }, summary: request.summary, after: { personId: input.personId, reason: payload.reason, validFrom: payload.validFrom } } };
+    return {
+      data: { id: request.id },
+      audit: { resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId }, summary: request.summary, after: { personId: input.personId, reason: payload.reason, validFrom: payload.validFrom } },
+    };
   },
 });
 export async function resubmitSalaryChangeAction(input: unknown) {
@@ -102,7 +111,11 @@ const decidePipeline = createAction({
     refresh(subjectPersonId, request.id);
     return {
       data: { id: request.id, outcome, structureId },
-      audit: { resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId }, summary: `${input.decision} → ${outcome}`, after: { personId: subjectPersonId, reason: payload.reason, validFrom: payload.validFrom, structureId } },
+      audit: {
+        resource: { type: "approval:salary_change", id: request.id, entityId: request.entityId },
+        summary: `${input.decision} → ${outcome}`,
+        after: { personId: subjectPersonId, reason: payload.reason, validFrom: payload.validFrom, structureId },
+      },
     };
   },
 });
@@ -126,7 +139,15 @@ const voidStructurePipeline = createAction({
     const { after } = await voidSalaryStructure(input.id, input.reason, user.person.id);
     refresh(after.personId);
     // Dates and the reason — never the terms.
-    return { data: { id: after.id }, audit: { resource: { type: "salary_structure", id: after.id, entityId: after.entityId }, summary: `void structure from ${after.validFrom}: ${input.reason}`, before: { validFrom: after.validFrom, validTo: after.validTo, reason: after.reason }, after: { personId: after.personId, voidedAt: after.voidedAt, voidReason: after.voidReason } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "salary_structure", id: after.id, entityId: after.entityId },
+        summary: `void structure from ${after.validFrom}: ${input.reason}`,
+        before: { validFrom: after.validFrom, validTo: after.validTo, reason: after.reason },
+        after: { personId: after.personId, voidedAt: after.voidedAt, voidReason: after.voidReason },
+      },
+    };
   },
 });
 export async function voidSalaryStructureAction(input: unknown) {

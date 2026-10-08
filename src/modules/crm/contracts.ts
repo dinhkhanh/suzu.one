@@ -95,13 +95,20 @@ export async function saveContract(clientId: string, contractId: string | null, 
     if (!account || account.client.id !== clientId) throw new ActionError("account_not_found");
     await checkContract(tx, clientId, input, contractId);
     if (!contractId) {
-      const [after] = await tx.insert(schema.crmContract).values({ ...input, clientId, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.crmContract)
+        .values({ ...input, clientId, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after };
     }
     const [before] = await tx.select().from(schema.crmContract).where(eq(schema.crmContract.id, contractId)).limit(1).for("update");
     if (!before || before.clientId !== clientId) throw new ActionError("contract_not_found");
     if (before.status === "terminated") throw new ActionError("contract_terminated");
-    const [after] = await tx.update(schema.crmContract).set({ ...input, updatedAt: new Date() }).where(eq(schema.crmContract.id, contractId)).returning();
+    const [after] = await tx
+      .update(schema.crmContract)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.crmContract.id, contractId))
+      .returning();
     return { before, after };
   });
 }
@@ -123,7 +130,11 @@ export async function terminateContract(contractId: string, input: { terminatedO
     const [before] = await tx.select().from(schema.crmContract).where(eq(schema.crmContract.id, contractId)).limit(1).for("update");
     if (!before) throw new ActionError("contract_not_found");
     if (before.status !== "signed") throw new ActionError("contract_not_signed");
-    const [after] = await tx.update(schema.crmContract).set({ status: "terminated", terminatedOn: input.terminatedOn, note: [before.note, input.note].filter(Boolean).join("\n"), updatedAt: new Date() }).where(eq(schema.crmContract.id, contractId)).returning();
+    const [after] = await tx
+      .update(schema.crmContract)
+      .set({ status: "terminated", terminatedOn: input.terminatedOn, note: [before.note, input.note].filter(Boolean).join("\n"), updatedAt: new Date() })
+      .where(eq(schema.crmContract.id, contractId))
+      .returning();
     return { before, after };
   });
 }
@@ -154,7 +165,11 @@ export async function contractNumbersOfProjects(projectIds: readonly string[]): 
 
 /** Contracts a project could be linked to: the signed and draft ones of its account. */
 export async function contractChoices(clientId: string): Promise<Pick<ContractRow, "id" | "number" | "title" | "status">[]> {
-  return db().select({ id: schema.crmContract.id, number: schema.crmContract.number, title: schema.crmContract.title, status: schema.crmContract.status }).from(schema.crmContract).where(and(eq(schema.crmContract.clientId, clientId), inArray(schema.crmContract.status, ["draft", "signed"]))).orderBy(desc(schema.crmContract.startDate));
+  return db()
+    .select({ id: schema.crmContract.id, number: schema.crmContract.number, title: schema.crmContract.title, status: schema.crmContract.status })
+    .from(schema.crmContract)
+    .where(and(eq(schema.crmContract.clientId, clientId), inArray(schema.crmContract.status, ["draft", "signed"])))
+    .orderBy(desc(schema.crmContract.startDate));
 }
 
 // ── Renewals (FR-CRM-26) ────────────────────────────────────────────────────────────────────
@@ -173,13 +188,32 @@ export async function openRenewals(today: IsoDate = todayInVietnam()): Promise<{
     db()
       .select({ contract: schema.crmContract, owner: sql<string | null>`(select ${schema.crmDeal.ownerPersonId} from ${schema.crmDeal} where ${schema.crmDeal.id} = ${schema.crmContract.dealId})` })
       .from(schema.crmContract)
-      .where(and(eq(schema.crmContract.status, "signed"), gte(schema.crmContract.endDate, today), lte(schema.crmContract.endDate, horizon), sql`not exists (select 1 from ${schema.crmDeal} where ${schema.crmDeal.renewsContractId} = ${schema.crmContract.id})`)),
+      .where(
+        and(
+          eq(schema.crmContract.status, "signed"),
+          gte(schema.crmContract.endDate, today),
+          lte(schema.crmContract.endDate, horizon),
+          sql`not exists (select 1 from ${schema.crmDeal} where ${schema.crmDeal.renewsContractId} = ${schema.crmContract.id})`,
+        ),
+      ),
     db()
-      .select({ projectId: schema.projectRetainer.projectId, endMonth: schema.projectRetainer.endMonth, clientId: schema.workProject.clientId, name: schema.workProject.name, entityId: schema.workProject.entityId, teamId: schema.workProject.teamId, manager: schema.projectPlan.accountManagerPersonId, lead: schema.workProject.leadPersonId, feePerMonthVnd: schema.projectRetainer.feePerMonthVnd })
+      .select({
+        projectId: schema.projectRetainer.projectId,
+        endMonth: schema.projectRetainer.endMonth,
+        clientId: schema.workProject.clientId,
+        name: schema.workProject.name,
+        entityId: schema.workProject.entityId,
+        teamId: schema.workProject.teamId,
+        manager: schema.projectPlan.accountManagerPersonId,
+        lead: schema.workProject.leadPersonId,
+        feePerMonthVnd: schema.projectRetainer.feePerMonthVnd,
+      })
       .from(schema.projectRetainer)
       .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectRetainer.projectId))
       .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id))
-      .where(and(eq(schema.projectRetainer.isActive, true), sql`${schema.projectRetainer.endMonth} is not null`, sql`not exists (select 1 from ${schema.crmDeal} where ${schema.crmDeal.renewsProjectId} = ${schema.projectRetainer.projectId})`)),
+      .where(
+        and(eq(schema.projectRetainer.isActive, true), sql`${schema.projectRetainer.endMonth} is not null`, sql`not exists (select 1 from ${schema.crmDeal} where ${schema.crmDeal.renewsProjectId} = ${schema.projectRetainer.projectId})`),
+      ),
   ]);
   const accounts = await accountsById();
   let opened = 0;
@@ -188,7 +222,23 @@ export async function openRenewals(today: IsoDate = todayInVietnam()): Promise<{
     const account = accounts.get(contract.clientId);
     const ownerId = account?.client.accountManagerPersonId ?? owner ?? contract.createdByPersonId;
     if (!account || !ownerId) continue;
-    await openRenewal({ clientId: account.client.id, accountName: account.client.name, ownerId, entityId: contract.entityId, title: contract.title, endDate: contract.endDate!, contractNumber: contract.number, renewsContractId: contract.id, renewsProjectId: null, monthlyVnd: null, teamId: null, stageId: stage.id }, today);
+    await openRenewal(
+      {
+        clientId: account.client.id,
+        accountName: account.client.name,
+        ownerId,
+        entityId: contract.entityId,
+        title: contract.title,
+        endDate: contract.endDate!,
+        contractNumber: contract.number,
+        renewsContractId: contract.id,
+        renewsProjectId: null,
+        monthlyVnd: null,
+        teamId: null,
+        stageId: stage.id,
+      },
+      today,
+    );
     opened += 1;
   }
   for (const retainer of retainers) {
@@ -197,24 +247,74 @@ export async function openRenewals(today: IsoDate = todayInVietnam()): Promise<{
     const account = accounts.get(retainer.clientId);
     const ownerId = account?.client.accountManagerPersonId ?? retainer.manager ?? retainer.lead;
     if (!account || !ownerId) continue;
-    await openRenewal({ clientId: account.client.id, accountName: account.client.name, ownerId, entityId: retainer.entityId, title: retainer.name, endDate, contractNumber: retainer.name, renewsContractId: null, renewsProjectId: retainer.projectId, monthlyVnd: retainer.feePerMonthVnd, teamId: retainer.teamId, stageId: stage.id }, today);
+    await openRenewal(
+      {
+        clientId: account.client.id,
+        accountName: account.client.name,
+        ownerId,
+        entityId: retainer.entityId,
+        title: retainer.name,
+        endDate,
+        contractNumber: retainer.name,
+        renewsContractId: null,
+        renewsProjectId: retainer.projectId,
+        monthlyVnd: retainer.feePerMonthVnd,
+        teamId: retainer.teamId,
+        stageId: stage.id,
+      },
+      today,
+    );
     opened += 1;
   }
   return { renewalsOpened: opened };
 }
 
-type Renewal = { clientId: string; accountName: string; ownerId: string; entityId: string | null; title: string; endDate: IsoDate; contractNumber: string; renewsContractId: string | null; renewsProjectId: string | null; monthlyVnd: number | null; teamId: string | null; stageId: string };
+type Renewal = {
+  clientId: string;
+  accountName: string;
+  ownerId: string;
+  entityId: string | null;
+  title: string;
+  endDate: IsoDate;
+  contractNumber: string;
+  renewsContractId: string | null;
+  renewsProjectId: string | null;
+  monthlyVnd: number | null;
+  teamId: string | null;
+  stageId: string;
+};
 
 async function openRenewal(renewal: Renewal, today: IsoDate): Promise<void> {
   await db().transaction(async (tx) => {
     const deal = await createDeal(
-      { clientId: renewal.clientId, title: `Gia hạn / Renewal: ${renewal.title}`.slice(0, 200), brandId: null, serviceLines: [], oneOffVnd: null, monthlyVnd: renewal.monthlyVnd, months: renewal.monthlyVnd ? 12 : null, probability: null, expectedCloseOn: renewal.endDate, teamId: renewal.teamId, entityId: renewal.entityId, source: "existing", competitors: null, nextStep: null, ownerPersonId: renewal.ownerId, stageId: renewal.stageId, leadId: null, contacts: [] },
+      {
+        clientId: renewal.clientId,
+        title: `Gia hạn / Renewal: ${renewal.title}`.slice(0, 200),
+        brandId: null,
+        serviceLines: [],
+        oneOffVnd: null,
+        monthlyVnd: renewal.monthlyVnd,
+        months: renewal.monthlyVnd ? 12 : null,
+        probability: null,
+        expectedCloseOn: renewal.endDate,
+        teamId: renewal.teamId,
+        entityId: renewal.entityId,
+        source: "existing",
+        competitors: null,
+        nextStep: null,
+        ownerPersonId: renewal.ownerId,
+        stageId: renewal.stageId,
+        leadId: null,
+        contacts: [],
+      },
       renewal.ownerId,
       tx,
       today,
     );
     await tx.update(schema.crmDeal).set({ renewsContractId: renewal.renewsContractId, renewsProjectId: renewal.renewsProjectId }).where(eq(schema.crmDeal.id, deal.id));
-    await tx.insert(schema.crmActivity).values({ kind: "task", subject: `Gia hạn / Renewal: ${renewal.contractNumber}`.slice(0, 200), clientId: renewal.clientId, dealId: deal.id, ownerPersonId: renewal.ownerId, dueOn: today, createdByPersonId: null });
+    await tx
+      .insert(schema.crmActivity)
+      .values({ kind: "task", subject: `Gia hạn / Renewal: ${renewal.contractNumber}`.slice(0, 200), clientId: renewal.clientId, dealId: deal.id, ownerPersonId: renewal.ownerId, dueOn: today, createdByPersonId: null });
     await notify({ recipients: [renewal.ownerId], kind: "crm.renewal_opened", params: { contract: renewal.contractNumber, account: renewal.accountName, endDate: renewal.endDate }, link: `/crm/deals/${deal.id}` }, tx);
   });
 }

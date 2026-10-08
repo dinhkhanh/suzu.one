@@ -28,7 +28,11 @@ export function proposeLifecycle(facts: LifecycleFacts, today: IsoDate): Lifecyc
   if (facts.openProjects > 0) return "active";
   if (facts.lastWonOn && facts.lastWonOn >= addDays(today, -ACTIVE_AFTER_WIN_DAYS)) return "active";
   if (!facts.everBought) return "prospect";
-  const last = [facts.lastWorkOn, facts.lastWonOn].filter((day): day is IsoDate => !!day).sort().at(-1) ?? null;
+  const last =
+    [facts.lastWorkOn, facts.lastWonOn]
+      .filter((day): day is IsoDate => !!day)
+      .sort()
+      .at(-1) ?? null;
   if (!last) return "dormant";
   if (last < addDays(today, -CHURNED_AFTER_DAYS)) return "churned";
   if (last < addDays(today, -DORMANT_AFTER_DAYS)) return "dormant";
@@ -45,7 +49,35 @@ export function normalizeTaxCode(value: string): string | null {
 }
 
 // Words that say what kind of company a name is, not which one: "Công ty TNHH ABC" is ABC.
-const COMPANY_WORDS = new Set(["cong", "ty", "tnhh", "co", "phan", "cp", "jsc", "ltd", "llc", "company", "corp", "corporation", "group", "tap", "doan", "mtv", "thuong", "mai", "dich", "vu", "tm", "dv", "vietnam", "viet", "nam", "inc", "the"]);
+const COMPANY_WORDS = new Set([
+  "cong",
+  "ty",
+  "tnhh",
+  "co",
+  "phan",
+  "cp",
+  "jsc",
+  "ltd",
+  "llc",
+  "company",
+  "corp",
+  "corporation",
+  "group",
+  "tap",
+  "doan",
+  "mtv",
+  "thuong",
+  "mai",
+  "dich",
+  "vu",
+  "tm",
+  "dv",
+  "vietnam",
+  "viet",
+  "nam",
+  "inc",
+  "the",
+]);
 
 /** A company name reduced to what tells it apart, for comparison only. */
 export function companyKey(name: string): string {
@@ -63,7 +95,12 @@ export type DuplicateReason = "tax_code" | "name";
 /** Accounts a new one probably duplicates: the same tax code, or the same distinguishing name. */
 export function likelyDuplicateAccounts(candidate: AccountCandidate, existing: readonly ExistingAccount[]): { clientId: string; reason: DuplicateReason }[] {
   const taxCode = candidate.taxCode ? normalizeTaxCode(candidate.taxCode) : null;
-  const keys = new Set([candidate.name, candidate.legalName].filter((value): value is string => !!value).map(companyKey).filter((key) => key.length >= 2));
+  const keys = new Set(
+    [candidate.name, candidate.legalName]
+      .filter((value): value is string => !!value)
+      .map(companyKey)
+      .filter((key) => key.length >= 2),
+  );
   const found: { clientId: string; reason: DuplicateReason }[] = [];
   for (const account of existing) {
     if (taxCode && account.taxCode && normalizeTaxCode(account.taxCode) === taxCode) found.push({ clientId: account.clientId, reason: "tax_code" });

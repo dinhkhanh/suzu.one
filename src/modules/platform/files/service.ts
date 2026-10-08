@@ -27,16 +27,18 @@ export async function beginUpload(owner: FileOwner, file: { fileName: string; si
   // Nothing the uploader typed ends up in the path.
   const objectPath = `${owner.ownerType}/${new Date().getUTCFullYear()}/${fileId}.${extension}`;
   const uploadUrl = await createSignedUploadUrl(objectPath, checked.contentType);
-  await db().insert(schema.storedFile).values({
-    id: fileId,
-    bucket: currentBucket(),
-    objectPath,
-    fileName: checked.fileName,
-    contentType: checked.contentType,
-    sizeBytes: file.sizeBytes,
-    ...owner,
-    uploadedByPersonId: actor.personId,
-  });
+  await db()
+    .insert(schema.storedFile)
+    .values({
+      id: fileId,
+      bucket: currentBucket(),
+      objectPath,
+      fileName: checked.fileName,
+      contentType: checked.contentType,
+      sizeBytes: file.sizeBytes,
+      ...owner,
+      uploadedByPersonId: actor.personId,
+    });
   return { fileId, uploadUrl, contentType: checked.contentType };
 }
 
@@ -134,7 +136,11 @@ export async function listFileNames(fileIds: readonly string[]): Promise<Map<str
 }
 
 export async function findFile(fileId: string): Promise<StoredFileRow | undefined> {
-  const [file] = await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt))).limit(1);
+  const [file] = await db()
+    .select()
+    .from(schema.storedFile)
+    .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt)))
+    .limit(1);
   return file;
 }
 
@@ -205,7 +211,11 @@ export async function createPublicDownloadLink(file: StoredFileRow, expiresInSec
 
 /** Hides the file at once; the bytes go `DELETED_FILE_GRACE_DAYS` later, with the cleanup job (DR-03). */
 export async function softDeleteFile(fileId: string): Promise<StoredFileRow | undefined> {
-  const [file] = await db().update(schema.storedFile).set({ deletedAt: new Date() }).where(and(eq(schema.storedFile.id, fileId), isNull(schema.storedFile.deletedAt))).returning();
+  const [file] = await db()
+    .update(schema.storedFile)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(schema.storedFile.id, fileId), isNull(schema.storedFile.deletedAt)))
+    .returning();
   return file;
 }
 
@@ -267,8 +277,14 @@ export const ERASED_FILE_NAME = "erased";
  */
 export async function eraseFiles(fileIds: readonly string[], now: Date = new Date()): Promise<number> {
   if (fileIds.length === 0) return 0;
-  await db().update(schema.storedFile).set({ deletedAt: now }).where(and(inArray(schema.storedFile.id, [...fileIds]), isNull(schema.storedFile.deletedAt)));
-  await db().update(schema.storedFile).set({ fileName: ERASED_FILE_NAME }).where(inArray(schema.storedFile.id, [...fileIds]));
+  await db()
+    .update(schema.storedFile)
+    .set({ deletedAt: now })
+    .where(and(inArray(schema.storedFile.id, [...fileIds]), isNull(schema.storedFile.deletedAt)));
+  await db()
+    .update(schema.storedFile)
+    .set({ fileName: ERASED_FILE_NAME })
+    .where(inArray(schema.storedFile.id, [...fileIds]));
   const files = await db()
     .select({ id: schema.storedFile.id, objectPath: schema.storedFile.objectPath })
     .from(schema.storedFile)
@@ -281,7 +297,10 @@ export async function eraseFiles(fileIds: readonly string[], now: Date = new Dat
 /** Uploads that were allowed but never finished: remove whatever arrived, a day later. */
 export async function purgeAbandonedUploads(now: Date = new Date()): Promise<{ abandonedUploads: number }> {
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const abandoned = await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.status, "pending"), lt(schema.storedFile.createdAt, cutoff)));
+  const abandoned = await db()
+    .select()
+    .from(schema.storedFile)
+    .where(and(eq(schema.storedFile.status, "pending"), lt(schema.storedFile.createdAt, cutoff)));
   for (const file of abandoned) {
     await removeObject(file.objectPath);
     await db().update(schema.storedFile).set({ status: "rejected" }).where(eq(schema.storedFile.id, file.id));

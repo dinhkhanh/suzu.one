@@ -155,7 +155,9 @@ export async function BookingList({ rows, empty, showAsset = true }: { rows: Boo
         <TableRow>
           {showAsset ? <TableHead kind="text">{t("columns.asset")}</TableHead> : null}
           <TableHead kind="person">{t("columns.person")}</TableHead>
-          <TableHead kind="time" className="text-left">{t("columns.window")}</TableHead>
+          <TableHead kind="time" className="text-left">
+            {t("columns.window")}
+          </TableHead>
           <TableHead kind="text">{t("columns.purpose")}</TableHead>
           <TableHead kind="status">{t("columns.status")}</TableHead>
         </TableRow>
@@ -170,12 +172,16 @@ export async function BookingList({ rows, empty, showAsset = true }: { rows: Boo
                   {row.assetCode}
                 </RecordLink>
                 <p className="truncate text-xs text-faint">
-                  <RecordLink kind="asset" id={row.assetId}>{row.assetName}</RecordLink>
+                  <RecordLink kind="asset" id={row.assetId}>
+                    {row.assetName}
+                  </RecordLink>
                 </p>
               </TableCell>
             ) : null}
             <TableCell>
-              <RecordLink kind="person" id={row.personId}>{row.personName}</RecordLink>
+              <RecordLink kind="person" id={row.personId}>
+                {row.personName}
+              </RecordLink>
             </TableCell>
             <TableCell className="font-mono text-xs tabular-nums">{formatWindow(row.startAt, row.endAt)}</TableCell>
             <TableCell className="max-w-80 truncate text-xs text-muted-foreground">

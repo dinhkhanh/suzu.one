@@ -34,7 +34,7 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   const returned = resubmitId ? await getAttendanceRequestView(viewer, resubmitId) : null;
   if (resubmitId && (!returned || !returned.isRequester || returned.request.status !== "returned")) notFound();
 
-  const type: AttendanceRequestType = returned?.attendanceRequest.type ?? (ATTENDANCE_REQUEST_TYPES.find((value) => value === query.type) ?? "attendance_correction");
+  const type: AttendanceRequestType = returned?.attendanceRequest.type ?? ATTENDANCE_REQUEST_TYPES.find((value) => value === query.type) ?? "attendance_correction";
   const personId = returned?.attendanceRequest.personId ?? (typeof query.person === "string" && UUID.test(query.person) ? query.person : user.person.id);
   const target = await getPersonTarget(personId);
   if (!target || !canFileAttendanceRequestFor(user.principal, target)) notFound();
@@ -54,25 +54,42 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   const proposalId = !returned && !onBehalf && typeof query.proposal === "string" ? query.proposal : null;
   const proposed = proposalId ? await proposalDraft(user.person.id, proposalId, ["attendance.request.submit"]) : null;
   const details = row?.details;
-  const defaults: RequestDefaults = row && details
-    ? {
-        startDate: row.startDate,
-        endDate: row.endDate,
-        reason: row.reason ?? "",
-        compensation: row.compensation ?? undefined,
-        ...(details.type === "attendance_correction" ? { cause: details.cause, inTime: details.inTime ?? undefined, outTime: details.outTime ?? undefined, outNextDay: details.outNextDay } : {}),
-        ...(details.type === "remote_work" ? { kind: details.kind, portion: details.portion, locationName: details.locationName ?? undefined, latitude: details.latitude?.toString(), longitude: details.longitude?.toString(), radiusM: details.radiusM?.toString() } : {}),
-        ...(details.type === "overtime" || details.type === "holiday_work" ? { from: details.from ?? undefined, to: details.to ?? undefined } : {}),
-      }
-    : proposed && proposed.type === type
-      ? proposedDefaults(proposed, date)
-      : { startDate: date };
+  const defaults: RequestDefaults =
+    row && details
+      ? {
+          startDate: row.startDate,
+          endDate: row.endDate,
+          reason: row.reason ?? "",
+          compensation: row.compensation ?? undefined,
+          ...(details.type === "attendance_correction" ? { cause: details.cause, inTime: details.inTime ?? undefined, outTime: details.outTime ?? undefined, outNextDay: details.outNextDay } : {}),
+          ...(details.type === "remote_work"
+            ? { kind: details.kind, portion: details.portion, locationName: details.locationName ?? undefined, latitude: details.latitude?.toString(), longitude: details.longitude?.toString(), radiusM: details.radiusM?.toString() }
+            : {}),
+          ...(details.type === "overtime" || details.type === "holiday_work" ? { from: details.from ?? undefined, to: details.to ?? undefined } : {}),
+        }
+      : proposed && proposed.type === type
+        ? proposedDefaults(proposed, date)
+        : { startDate: date };
 
   const href = (value: string) => `/attendance/requests/new?type=${value}&date=${date}${onBehalf ? `&person=${personId}` : ""}`;
 
   return (
     <Page width="narrow">
-      <PageHeader title={returned ? t("resubmitTitle") : t("newTitle")} description={onBehalf && subject ? t.rich("onBehalf", { name: subject.fullName, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> }) : t("newDescription")} />
+      <PageHeader
+        title={returned ? t("resubmitTitle") : t("newTitle")}
+        description={
+          onBehalf && subject
+            ? t.rich("onBehalf", {
+                name: subject.fullName,
+                person: (chunks) => (
+                  <RecordLink kind="person" id={personId}>
+                    {chunks}
+                  </RecordLink>
+                ),
+              })
+            : t("newDescription")
+        }
+      />
       {returned ? null : (
         <nav className="tab-row">
           {ATTENDANCE_REQUEST_TYPES.map((value) => (

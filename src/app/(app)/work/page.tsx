@@ -137,7 +137,9 @@ export default async function WorkPage() {
     <Page width="wide">
       <PageHeader title={t("title")} description={t("description")} />
       <nav className="tab-row" aria-label={t("title")}>
-        <Link href="/work" aria-current="page">{t("projects.title")}</Link>
+        <Link href="/work" aria-current="page">
+          {t("projects.title")}
+        </Link>
         <Link href="/today?view=work">{t("myWork")}</Link>
         <Link href="/work/calendar">{t("calendar.title")}</Link>
         <Link href="/work/leader">{t("leader.title")}</Link>
@@ -151,7 +153,11 @@ export default async function WorkPage() {
       <Section
         title={t("projects.title")}
         count={projectsOn("current").length || undefined}
-        action={projectTeams.length ? <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : undefined}
+        action={
+          projectTeams.length ? (
+            <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} />
+          ) : undefined
+        }
       >
         {projectsOn("current").length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : <ul className={grid}>{projectsOn("current").map(projectCard)}</ul>}
         {inactiveProjects.length ? (
@@ -160,13 +166,27 @@ export default async function WorkPage() {
             <ul className={grid}>{inactiveProjects.map(projectCard)}</ul>
           </>
         ) : null}
-        {archivedProjects.length ? <ArchivedShelf label={t("shelves.archivedProjects", { count: archivedProjects.length })}><ul className={grid}>{archivedProjects.map(projectCard)}</ul></ArchivedShelf> : null}
+        {archivedProjects.length ? (
+          <ArchivedShelf label={t("shelves.archivedProjects", { count: archivedProjects.length })}>
+            <ul className={grid}>{archivedProjects.map(projectCard)}</ul>
+          </ArchivedShelf>
+        ) : null}
       </Section>
 
       <Section
         title={t("teams.mine")}
         count={mine.length || undefined}
-        action={canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} workflows={workflows} statusSets={statusSets} /> : undefined}
+        action={
+          canCreateTeam ? (
+            <CreateTeamButton
+              entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))}
+              departments={departments}
+              allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })}
+              workflows={workflows}
+              statusSets={statusSets}
+            />
+          ) : undefined
+        }
       >
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className={grid}>{mine.map(teamCard)}</ul>}
         {others.length ? (
@@ -181,7 +201,11 @@ export default async function WorkPage() {
             <ul className={grid}>{inactiveTeams.map(teamCard)}</ul>
           </>
         ) : null}
-        {archivedTeams.length ? <ArchivedShelf label={t("shelves.archivedTeams", { count: archivedTeams.length })}><ul className={grid}>{archivedTeams.map(teamCard)}</ul></ArchivedShelf> : null}
+        {archivedTeams.length ? (
+          <ArchivedShelf label={t("shelves.archivedTeams", { count: archivedTeams.length })}>
+            <ul className={grid}>{archivedTeams.map(teamCard)}</ul>
+          </ArchivedShelf>
+        ) : null}
       </Section>
     </Page>
   );

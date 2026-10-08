@@ -43,7 +43,11 @@ export async function salesFactsOf(personIds: readonly string[], range: { from: 
       .where(and(inArray(schema.workClient.accountManagerPersonId, ids), isNull(schema.crmPayment.reversedAt), sql`${schema.crmPayment.receivedOn} between ${range.from}::date and ${range.to}::date`))
       .groupBy(schema.workClient.accountManagerPersonId),
     db()
-      .select({ personId: schema.crmActivity.ownerPersonId, due: sql<number>`count(*)`, onTime: sql<number>`count(*) filter (where ${schema.crmActivity.doneAt} is not null and (${schema.crmActivity.doneAt} at time zone 'Asia/Ho_Chi_Minh')::date <= ${schema.crmActivity.dueOn})` })
+      .select({
+        personId: schema.crmActivity.ownerPersonId,
+        due: sql<number>`count(*)`,
+        onTime: sql<number>`count(*) filter (where ${schema.crmActivity.doneAt} is not null and (${schema.crmActivity.doneAt} at time zone 'Asia/Ho_Chi_Minh')::date <= ${schema.crmActivity.dueOn})`,
+      })
       .from(schema.crmActivity)
       .where(and(inArray(schema.crmActivity.ownerPersonId, ids), isNotNull(schema.crmActivity.dueOn), sql`${schema.crmActivity.dueOn} between ${range.from}::date and ${range.to}::date`))
       .groupBy(schema.crmActivity.ownerPersonId),

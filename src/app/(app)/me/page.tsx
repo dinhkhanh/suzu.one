@@ -115,12 +115,30 @@ export default async function MyProfilePage() {
 
       <Section id="profile" title={t("sections.employment")} className="scroll-mt-16">
         <FactSheet>
-          <Fact label={t("fields.entity")}>{person.entityName ? <RecordLink kind="entity" id={person.entityId}>{person.entityName}</RecordLink> : null}</Fact>
+          <Fact label={t("fields.entity")}>
+            {person.entityName ? (
+              <RecordLink kind="entity" id={person.entityId}>
+                {person.entityName}
+              </RecordLink>
+            ) : null}
+          </Fact>
           <Fact label={t("fields.employeeCode")}>{person.employeeCode}</Fact>
           <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
           <Fact label={t("fields.workforceType")}>{personal.current ? t(`workforceType.${personal.current.workforceType}`) : null}</Fact>
-          <Fact label={t("fields.managerId")}>{person.current?.managerName ? <RecordLink kind="person" id={person.current.managerId}>{person.current.managerName}</RecordLink> : null}</Fact>
-          <Fact label={t("fields.team")}>{person.current?.teamName ? <RecordLink kind="unit" id={person.current.teamId}>{person.current.teamName}</RecordLink> : null}</Fact>
+          <Fact label={t("fields.managerId")}>
+            {person.current?.managerName ? (
+              <RecordLink kind="person" id={person.current.managerId}>
+                {person.current.managerName}
+              </RecordLink>
+            ) : null}
+          </Fact>
+          <Fact label={t("fields.team")}>
+            {person.current?.teamName ? (
+              <RecordLink kind="unit" id={person.current.teamId}>
+                {person.current.teamName}
+              </RecordLink>
+            ) : null}
+          </Fact>
           <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
           <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
           <Fact label={t("fields.jobTitle")}>{jobTitle(t, person.current)}</Fact>
@@ -152,7 +170,13 @@ export default async function MyProfilePage() {
           <p className="text-sm">{tc("oneAtATime")}</p>
         ) : (
           <ChangeRequestForm
-            current={{ phone: profile?.phone ?? null, personalEmail: profile?.personalEmail ?? null, permanentAddress: profile?.permanentAddress ?? null, currentAddress: profile?.currentAddress ?? null, maritalStatus: profile?.maritalStatus ?? null }}
+            current={{
+              phone: profile?.phone ?? null,
+              personalEmail: profile?.personalEmail ?? null,
+              permanentAddress: profile?.permanentAddress ?? null,
+              currentAddress: profile?.currentAddress ?? null,
+              maritalStatus: profile?.maritalStatus ?? null,
+            }}
           />
         )}
         <RequestTable rows={requests ?? []} empty={tc("none")} showRequester={false} />
@@ -165,7 +189,15 @@ export default async function MyProfilePage() {
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
       <MyFaceEnrolment personId={user.person.id} />
-      <MyPrivacy gps={<MyGpsConsent notice={{ state: gps.state, version: GPS_NOTICE_VERSION, days: PUNCH_POSITION_RETENTION_DAYS }} since={gps.at ? format.dateTime(gps.at, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }) : null} answer={answerGpsNoticeAction} />} />
+      <MyPrivacy
+        gps={
+          <MyGpsConsent
+            notice={{ state: gps.state, version: GPS_NOTICE_VERSION, days: PUNCH_POSITION_RETENTION_DAYS }}
+            since={gps.at ? format.dateTime(gps.at, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" }) : null}
+            answer={answerGpsNoticeAction}
+          />
+        }
+      />
       <ResignationBlock personId={user.person.id} />
 
       <Section title={t("me.preferences")}>

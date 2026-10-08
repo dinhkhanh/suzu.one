@@ -8,7 +8,14 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", EMAIL_FROM: "SuZu One <no-reply@suzu.one>", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    EMAIL_FROM: "SuZu One <no-reply@suzu.one>",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
   isDevelopmentEnvironment: () => true,
 }));
 vi.mock("@/lib/action", () => ({
@@ -150,15 +157,13 @@ describe("the catalogue", () => {
 
 describe("creating a schedule", () => {
   it("refuses a report the creator may not read", async () => {
-    await expect(
-      createSchedule(users.huy, { reportKey: "headcount", name: "Nope", parameters: {}, cadence: "daily", dayOfWeek: null, dayOfMonth: null, locale: "vi", recipientPersonIds: [ids.huy] }, TODAY),
-    ).rejects.toThrow("forbidden");
+    await expect(createSchedule(users.huy, { reportKey: "headcount", name: "Nope", parameters: {}, cadence: "daily", dayOfWeek: null, dayOfMonth: null, locale: "vi", recipientPersonIds: [ids.huy] }, TODAY)).rejects.toThrow("forbidden");
   });
 
   it("refuses a report that may never be emailed", async () => {
-    await expect(
-      createSchedule(users.hr, { reportKey: "payroll_cost", name: "Nope", parameters: {}, cadence: "daily", dayOfWeek: null, dayOfMonth: null, locale: "vi", recipientPersonIds: [ids.hr] }, TODAY),
-    ).rejects.toThrow("unknown_report");
+    await expect(createSchedule(users.hr, { reportKey: "payroll_cost", name: "Nope", parameters: {}, cadence: "daily", dayOfWeek: null, dayOfMonth: null, locale: "vi", recipientPersonIds: [ids.hr] }, TODAY)).rejects.toThrow(
+      "unknown_report",
+    );
   });
 
   it("sets the first run date from the cadence", async () => {
@@ -175,11 +180,7 @@ describe("creating a schedule", () => {
 describe("running a schedule", () => {
   it("builds the report for each recipient separately and withholds it from the one who may not read it", async () => {
     sent.length = 0;
-    const schedule = await createSchedule(
-      users.hr,
-      { reportKey: "headcount", name: "Quân số", parameters: {}, cadence: "monthly", dayOfWeek: null, dayOfMonth: 1, locale: "vi", recipientPersonIds: [ids.hr, ids.head, ids.huy] },
-      TODAY,
-    );
+    const schedule = await createSchedule(users.hr, { reportKey: "headcount", name: "Quân số", parameters: {}, cadence: "monthly", dayOfWeek: null, dayOfMonth: 1, locale: "vi", recipientPersonIds: [ids.hr, ids.head, ids.huy] }, TODAY);
     const run = await runSchedule(schedule, "2027-03-01");
 
     // HR and the department head both hold `report:read`; Huy holds nothing.

@@ -49,7 +49,11 @@ export function encryptPayload(plaintext: Buffer, keys: PushKeys, fixed?: { salt
   return Buffer.concat([header, senderPublic, body]);
 }
 
-export type VapidConfig = { /** base64url, 65 bytes uncompressed P-256 point. */ publicKey: string; /** base64url, the 32-byte private scalar. */ privateKey: string; /** "mailto:…" or an https URL the push service can reach the operator at. */ subject: string };
+export type VapidConfig = {
+  /** base64url, 65 bytes uncompressed P-256 point. */ publicKey: string;
+  /** base64url, the 32-byte private scalar. */ privateKey: string;
+  /** "mailto:…" or an https URL the push service can reach the operator at. */ subject: string;
+};
 
 /** `Authorization` for one push service origin: a short-lived ES256 token signed with the VAPID key (RFC 8292). */
 export function vapidAuthorization(endpoint: string, config: VapidConfig, now: Date = new Date()): string {

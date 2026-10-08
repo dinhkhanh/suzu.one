@@ -38,7 +38,12 @@ export async function ensureProjectSpace(projectId: string, actorPersonId: strin
     const [project] = await tx.select({ name: schema.workProject.name, entityId: schema.workProject.entityId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
     if (!project) throw new ActionError("project_not_found");
     const name = [plan.jobNumber, project.name].filter(Boolean).join(" · ").slice(0, 120);
-    const space = await createSpace({ key: projectSpaceKey(projectId), name, description: null, icon: "📁", entityId: project.entityId, ownerProjectId: projectId, kind: "open", sortOrder: 1000 }, actorPersonId, [projectAudience(projectId)], tx);
+    const space = await createSpace(
+      { key: projectSpaceKey(projectId), name, description: null, icon: "📁", entityId: project.entityId, ownerProjectId: projectId, kind: "open", sortOrder: 1000 },
+      actorPersonId,
+      [projectAudience(projectId)],
+      tx,
+    );
     for (const starter of starters) await createPage({ spaceId: space.id, parentId: null, title: starter.name, content: starter.content }, { personId: actorPersonId }, tx);
     await tx.update(schema.projectPlan).set({ kbSpaceId: space.id, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
     return { spaceId: space.id, created: true, pages: starters.length };

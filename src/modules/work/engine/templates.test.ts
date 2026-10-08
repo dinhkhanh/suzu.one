@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { planTree, roleKeysOf, type TreeItem } from "./templates";
 
-const item = (id: string, dueOffsetDays: number, extra: Partial<TreeItem> = {}): TreeItem => ({ id, parentItemId: null, title: id, description: null, assigneeRule: "none", assigneePersonId: null, dueOffsetDays, sortOrder: 0, estimateMinutes: null, ...extra });
+const item = (id: string, dueOffsetDays: number, extra: Partial<TreeItem> = {}): TreeItem => ({
+  id,
+  parentItemId: null,
+  title: id,
+  description: null,
+  assigneeRule: "none",
+  assigneePersonId: null,
+  dueOffsetDays,
+  sortOrder: 0,
+  estimateMinutes: null,
+  ...extra,
+});
 const sunday = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
 
 const retainer: TreeItem[] = [

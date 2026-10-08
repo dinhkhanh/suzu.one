@@ -108,7 +108,10 @@ export function mammothHtmlToMarkdown(html: string): string {
     // img and everything else: nothing. Pictures inside a Word file are not imported.
   }
   flush();
-  return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
+  return `${lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()}\n`;
 
   function itemLine() {
     const text = inline.replace(/\s+/g, " ").trim();

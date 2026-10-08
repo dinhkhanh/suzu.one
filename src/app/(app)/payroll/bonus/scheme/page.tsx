@@ -32,7 +32,10 @@ export default async function BonusSchemePage() {
 
   const [t, versions, entities] = await Promise.all([getTranslations("payroll.bonus"), listBonusSchemeVersions(), listEntityOptions()]);
   const entityCode = new Map(entities.map((entity) => [entity.id, entity.code]));
-  const groupCurrent = versionOn(versions.filter((version) => version.status === "approved" && version.entityId === null), todayInVietnam());
+  const groupCurrent = versionOn(
+    versions.filter((version) => version.status === "approved" && version.entityId === null),
+    todayInVietnam(),
+  );
 
   return (
     <Page width="default">
@@ -55,7 +58,9 @@ export default async function BonusSchemePage() {
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {version.entityId ? entityCode.get(version.entityId) : t("scheme.groupWide")} · {version.validFrom}
                   {version.validTo ? ` → ${version.validTo}` : ""}
-                  <Badge dot variant={statusTone(version.status)}>{t(`scheme.status.${version.status}`)}</Badge>
+                  <Badge dot variant={statusTone(version.status)}>
+                    {t(`scheme.status.${version.status}`)}
+                  </Badge>
                 </span>
                 <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
                   <dt>{t("scheme.payComponent")}</dt>
@@ -69,9 +74,13 @@ export default async function BonusSchemePage() {
                   <dt>{t("scheme.serviceBands")}</dt>
                   <dd className="text-foreground">{version.value.serviceBands.map((band) => `${band.label} ${factor(band.factorBp)}`).join(" · ")}</dd>
                   <dt>{t("scheme.performanceBands")}</dt>
-                  <dd className="text-foreground">{t(`scheme.source.${version.value.performanceMultiplier.source}`)} — {version.value.performanceMultiplier.bands.map((band) => `${band.label} ≥ ${percent(band.minScoreBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
+                  <dd className="text-foreground">
+                    {t(`scheme.source.${version.value.performanceMultiplier.source}`)} — {version.value.performanceMultiplier.bands.map((band) => `${band.label} ≥ ${percent(band.minScoreBp)} ${factor(band.multiplierBp)}`).join(" · ")}
+                  </dd>
                   <dt>{t("scheme.unitOkr")}</dt>
-                  <dd className="text-foreground">{version.value.unitOkr.level} — {version.value.unitOkr.bands.map((band) => `${band.label} ≥ ${percent(band.minProgressBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
+                  <dd className="text-foreground">
+                    {version.value.unitOkr.level} — {version.value.unitOkr.bands.map((band) => `${band.label} ≥ ${percent(band.minProgressBp)} ${factor(band.multiplierBp)}`).join(" · ")}
+                  </dd>
                   <dt>{t("scheme.eligibility")}</dt>
                   <dd className="text-foreground">{t("scheme.eligibilityValue", { months: version.value.eligibility.minServiceMonths, excluded: version.value.eligibility.excludeWorkforceTypes.join(", ") || "—" })}</dd>
                 </dl>

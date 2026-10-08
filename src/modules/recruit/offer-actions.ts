@@ -26,10 +26,7 @@ const blankToNull = (value: unknown) => (typeof value === "string" && value.trim
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
 // Forms post "22.000.000" or "22,000,000": separators are dropped, anything else is refused —
 // the same reading payroll's salary form does, so a recruiter and C&B type money the same way.
-const vnd = z.preprocess(
-  (value) => (typeof value === "string" ? (value.trim() === "" ? 0 : /^[\d.,\s_]+$/.test(value) ? Number(value.replace(/[.,\s_]/g, "")) : Number.NaN) : value),
-  z.number().int().min(0).max(OFFER_LIMITS.maxMonthlyVnd),
-);
+const vnd = z.preprocess((value) => (typeof value === "string" ? (value.trim() === "" ? 0 : /^[\d.,\s_]+$/.test(value) ? Number(value.replace(/[.,\s_]/g, "")) : Number.NaN) : value), z.number().int().min(0).max(OFFER_LIMITS.maxMonthlyVnd));
 
 const offerFields = {
   positionName: z.string().trim().min(1).max(200),

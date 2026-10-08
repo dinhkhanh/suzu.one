@@ -52,7 +52,11 @@ const addPipeline = createAction({
     refresh([input.runId, ...reopenedRunIds]);
     return {
       data: { id: item.id, reopened: reopenedRunIds.length },
-      audit: { resource: { type: "payroll_retro_item", id: item.id, entityId: item.entityId }, summary: `${item.kind} ${item.sourceMonth}`, after: { personId: item.personId, sourceMonth: item.sourceMonth, kind: item.kind, sourceRef: item.sourceRef, reopenedRunIds } },
+      audit: {
+        resource: { type: "payroll_retro_item", id: item.id, entityId: item.entityId },
+        summary: `${item.kind} ${item.sourceMonth}`,
+        after: { personId: item.personId, sourceMonth: item.sourceMonth, kind: item.kind, sourceRef: item.sourceRef, reopenedRunIds },
+      },
     };
   },
 });
@@ -76,7 +80,12 @@ const cancelPipeline = createAction({
     refresh([input.runId, reopenedRunId]);
     return {
       data: { id: item.id, reopened: reopenedRunId ? 1 : 0 },
-      audit: { resource: { type: "payroll_retro_item", id: item.id, entityId: item.entityId }, summary: `cancelled ${item.kind} ${item.sourceMonth}`, before: { status: reopenedRunId ? "taken" : "open" }, after: { status: item.status, personId: item.personId, reopenedRunId } },
+      audit: {
+        resource: { type: "payroll_retro_item", id: item.id, entityId: item.entityId },
+        summary: `cancelled ${item.kind} ${item.sourceMonth}`,
+        before: { status: reopenedRunId ? "taken" : "open" },
+        after: { status: item.status, personId: item.personId, reopenedRunId },
+      },
     };
   },
 });
@@ -94,7 +103,14 @@ const derivePipeline = createAction({
     refresh([input.runId, ...derived.reopenedRunIds]);
     // Counts, not figures and not names: how much was found, not what anyone is owed.
     const counts = { created: derived.created.length, skipped: derived.skipped.length, cancelled: derived.cancelled };
-    return { data: counts, audit: { resource: { type: "payroll_retro_item", entityId: input.entityId }, summary: `derived ${counts.created}, skipped ${counts.skipped}, cancelled ${counts.cancelled}`, after: { ...counts, reopenedRunIds: derived.reopenedRunIds } } };
+    return {
+      data: counts,
+      audit: {
+        resource: { type: "payroll_retro_item", entityId: input.entityId },
+        summary: `derived ${counts.created}, skipped ${counts.skipped}, cancelled ${counts.cancelled}`,
+        after: { ...counts, reopenedRunIds: derived.reopenedRunIds },
+      },
+    };
   },
 });
 export async function deriveRetroItemsAction(input: unknown) {

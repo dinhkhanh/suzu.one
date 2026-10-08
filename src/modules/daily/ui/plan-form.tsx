@@ -33,7 +33,8 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
   const total = items.reduce((sum, item) => sum + (item.minutes ?? 0), 0);
   const over = total > dayMinutes;
 
-  const toggle = (task: Candidate) => setItems((current) => (current.some((item) => item.taskId === task.taskId) ? current.filter((item) => item.taskId !== task.taskId) : [...current, { taskId: task.taskId, minutes: task.estimateMinutes }]));
+  const toggle = (task: Candidate) =>
+    setItems((current) => (current.some((item) => item.taskId === task.taskId) ? current.filter((item) => item.taskId !== task.taskId) : [...current, { taskId: task.taskId, minutes: task.estimateMinutes }]));
   const move = (index: number, by: number) =>
     setItems((current) => {
       const next = [...current];
@@ -42,7 +43,8 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
       return next;
     });
   // The field takes hours ("1.5"); the plan keeps minutes.
-  const setHours = (taskId: string, value: string) => setItems((current) => current.map((item) => (item.taskId === taskId ? { ...item, minutes: value === "" ? null : Math.max(0, Math.min(1440, Math.round((Number(value.replace(",", ".")) || 0) * 60))) } : item)));
+  const setHours = (taskId: string, value: string) =>
+    setItems((current) => current.map((item) => (item.taskId === taskId ? { ...item, minutes: value === "" ? null : Math.max(0, Math.min(1440, Math.round((Number(value.replace(",", ".")) || 0) * 60))) } : item)));
 
   const save = () =>
     startTransition(async () => {
@@ -61,7 +63,10 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
             <span className={over ? "font-mono text-sm font-medium text-destructive tabular-nums" : "font-mono text-sm text-muted-foreground tabular-nums"}>{t("plan.load", { planned: hoursOf(total), available: hoursOf(dayMinutes) })}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-            <div className={over ? "h-full rounded-full bg-destructive transition-[width] duration-200 ease-(--ease-settle)" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-(--ease-settle)"} style={{ width: `${Math.min(100, dayMinutes ? (total / dayMinutes) * 100 : 0)}%` }} />
+            <div
+              className={over ? "h-full rounded-full bg-destructive transition-[width] duration-200 ease-(--ease-settle)" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-(--ease-settle)"}
+              style={{ width: `${Math.min(100, dayMinutes ? (total / dayMinutes) * 100 : 0)}%` }}
+            />
           </div>
         </div>
         <List numbered>
@@ -87,7 +92,18 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
                   </span>
                 </label>
                 <span className="flex shrink-0 items-center gap-1">
-                  <Input type="number" min={0} max={24} step={0.5} inputMode="decimal" value={hoursText(item.minutes)} onChange={(event) => setHours(item.taskId, event.target.value)} aria-label={t("plan.hoursLabel")} placeholder="0" className="h-9 w-16 px-2 text-right font-mono text-[0.8125rem] tabular-nums md:h-8" />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={0.5}
+                    inputMode="decimal"
+                    value={hoursText(item.minutes)}
+                    onChange={(event) => setHours(item.taskId, event.target.value)}
+                    aria-label={t("plan.hoursLabel")}
+                    placeholder="0"
+                    className="h-9 w-16 px-2 text-right font-mono text-[0.8125rem] tabular-nums md:h-8"
+                  />
                   <span className="text-xs text-muted-foreground">{t("plan.hoursShort")}</span>
                 </span>
                 <span className="flex shrink-0 flex-col">

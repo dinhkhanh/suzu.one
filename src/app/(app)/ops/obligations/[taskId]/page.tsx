@@ -40,21 +40,44 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
     canManage && open ? listPersonNames() : [],
   ]);
   const named = (id: string | null) => (id && names.has(id) ? { id, fullName: names.get(id)! } : undefined);
-  const person = (who: { id: string; fullName: string }) => <RecordLink kind="person" id={who.id}>{who.fullName}</RecordLink>;
+  const person = (who: { id: string; fullName: string }) => (
+    <RecordLink kind="person" id={who.id}>
+      {who.fullName}
+    </RecordLink>
+  );
   const [owner, reviewer, subject, completedBy] = [named(task.assigneePersonId), named(instance.reviewerPersonId), named(task.subjectPersonId), named(task.completedByPersonId)];
   // Uploaders are mostly the owner or reviewer, already named above; the rest in one query.
   const uploaders = new Map([...names, ...(await personNamesOf(files.map((file) => file.uploadedByPersonId).filter((id) => id && !names.has(id))))]);
   const day = (date: string) => format.dateTime(new Date(`${date}T00:00:00`), { dateStyle: "medium" });
   const colour = statusColour({ status: task.status, dueDate: task.dueDate, completedLate: instance.completedLate }, today);
   const facts: [string, ReactNode][] = [
-    [t("instance.entity"), entity ? <RecordLink kind="entity" id={entity.id}>{entity.code}</RecordLink> : "—"],
+    [
+      t("instance.entity"),
+      entity ? (
+        <RecordLink kind="entity" id={entity.id}>
+          {entity.code}
+        </RecordLink>
+      ) : (
+        "—"
+      ),
+    ],
     [t("instance.period"), instance.periodKey.startsWith("event:") ? t("instance.eventDriven") : periodLabel(instance.periodKey)],
     [t("instance.dueDate"), task.dueDate ? (task.dueDate === instance.nominalDueDate ? day(task.dueDate) : t("instance.dueShifted", { date: day(task.dueDate), nominal: day(instance.nominalDueDate) })) : "—"],
     [t("instance.owner"), owner ? person(owner) : t("unassigned")],
     [t("instance.reviewer"), reviewer ? person(reviewer) : "—"],
     [t("library.authority"), t(`enums.authority.${template.authority}`)],
     ...(subject ? ([[t("instance.subject"), person(subject)]] as [string, ReactNode][]) : []),
-    ...(task.completedAt ? ([[t("instance.completed"), <>{format.dateTime(task.completedAt, { dateStyle: "medium" })}{completedBy ? <> · {person(completedBy)}</> : instance.note === "system:timesheet_locked" ? ` · ${t("instance.bySystem")}` : ""}</>]] as [string, ReactNode][]) : []),
+    ...(task.completedAt
+      ? ([
+          [
+            t("instance.completed"),
+            <>
+              {format.dateTime(task.completedAt, { dateStyle: "medium" })}
+              {completedBy ? <> · {person(completedBy)}</> : instance.note === "system:timesheet_locked" ? ` · ${t("instance.bySystem")}` : ""}
+            </>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
   ];
 
   return (
@@ -118,7 +141,15 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
         checklistState={instance.checklistState}
         required={template.evidence}
         evidence={{ referenceNumber: instance.referenceNumber, submittedDate: instance.submittedDate, amountPaid: instance.amountPaid, note: instance.note === "system:timesheet_locked" ? t("instance.timesheetLocked") : instance.note }}
-        files={files.map((file) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, uploadedByPersonId: file.uploadedByPersonId, uploadedByName: file.uploadedByPersonId ? (uploaders.get(file.uploadedByPersonId) ?? null) : null, createdAt: file.createdAt.toISOString(), canRemove: canManage || (canWork && file.uploadedByPersonId === user.person.id) }))}
+        files={files.map((file) => ({
+          id: file.id,
+          fileName: file.fileName,
+          sizeBytes: file.sizeBytes,
+          uploadedByPersonId: file.uploadedByPersonId,
+          uploadedByName: file.uploadedByPersonId ? (uploaders.get(file.uploadedByPersonId) ?? null) : null,
+          createdAt: file.createdAt.toISOString(),
+          canRemove: canManage || (canWork && file.uploadedByPersonId === user.person.id),
+        }))}
         accept={ACCEPT_ATTRIBUTE}
         today={today}
       />

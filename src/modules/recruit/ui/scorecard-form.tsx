@@ -163,7 +163,9 @@ export function ScorecardPanel({ criteria, others, blind, awaiting }: { criteria
       {others.map((card) => (
         <article key={card.interviewerPersonId} className="flex flex-col gap-2 rounded-xl border p-4">
           <h4 className="text-sm font-medium">
-            <RecordLink kind="person" id={card.interviewerPersonId}>{card.interviewerName}</RecordLink>
+            <RecordLink kind="person" id={card.interviewerPersonId}>
+              {card.interviewerName}
+            </RecordLink>
             {card.submittedAt === null ? <span className="ml-2 text-xs font-normal text-muted-foreground">({tStatus("draft")})</span> : null}
           </h4>
           <CardBody criteria={criteria} card={card} />

@@ -130,7 +130,9 @@ export async function RegisterTable({ rows, showMoney, numberFrom }: { rows: rea
               <Badge variant="outline">{row.categoryName}</Badge>
             </TableCell>
             <TableCell className="text-muted-foreground">
-              <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>
+              <RecordLink kind="entity" id={row.entityId}>
+                {row.entityName}
+              </RecordLink>
             </TableCell>
             <TableCell>{row.holderName ? <Holder name={row.holderName} confirmed={!!row.handoverConfirmedAt} {...holderLink(row)} /> : <span className="text-faint">—</span>}</TableCell>
             <TableCell>
@@ -154,7 +156,10 @@ export async function AssetHistory({ entries }: { entries: readonly AssetHistory
           <span className="font-mono text-xs text-faint tabular-nums">{entry.at.toLocaleString("vi-VN")}</span>
           {entry.actorName ? (
             <span className="text-xs text-faint">
-              · <RecordLink kind="person" id={entry.actorPersonId}>{entry.actorName}</RecordLink>
+              ·{" "}
+              <RecordLink kind="person" id={entry.actorPersonId}>
+                {entry.actorName}
+              </RecordLink>
             </span>
           ) : null}
           <RichText text={entry.note} className="w-full text-muted-foreground" />

@@ -58,7 +58,8 @@ export function EvidencePanel({ evidence, labels }: { evidence: ReviewEvidence; 
             <li key={card.id} className="text-xs text-muted-foreground">
               <RecordLink kind="person" id={card.fromPersonId} className="font-medium text-foreground">
                 {card.fromName}
-              </RecordLink> — {noteToPlainText(card.message)}
+              </RecordLink>{" "}
+              — {noteToPlainText(card.message)}
             </li>
           ))}
         </ul>

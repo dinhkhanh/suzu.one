@@ -19,7 +19,11 @@ import { CommentForm, DelegateForm, ReassignDialog, ReassignForm } from "./reque
 
 export async function RequestStatusBadge({ status }: { status: string }) {
   const t = await getTranslations("approvals");
-  return <Badge dot variant={statusTone(status)}>{t(`status.${status}` as "status.pending")}</Badge>;
+  return (
+    <Badge dot variant={statusTone(status)}>
+      {t(`status.${status}` as "status.pending")}
+    </Badge>
+  );
 }
 
 /** `3f2a9c1b-…` → `#3F2A9C1B`: the short code a request is spoken of by. */
@@ -39,7 +43,25 @@ const OPEN = new Set(["pending", "returned"]);
  * The top of a request's page: its kind and short code over the title, the status beside it, and
  * who it is from. `actions` are the page's keys (open the PDF, print, amend).
  */
-export async function RequestHeader({ title, status, requestId, kind, who, description, actions, children }: { title: ReactNode; status: string; requestId: string; /** The type's name, when the title is not it. */ kind?: ReactNode; /** Who filed it, and for whom. */ who?: ReactNode; description?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+export async function RequestHeader({
+  title,
+  status,
+  requestId,
+  kind,
+  who,
+  description,
+  actions,
+  children,
+}: {
+  title: ReactNode;
+  status: string;
+  requestId: string;
+  /** The type's name, when the title is not it. */ kind?: ReactNode;
+  /** Who filed it, and for whom. */ who?: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <PageHeader
       eyebrow={
@@ -75,7 +97,12 @@ export function PropertySheet({ rows }: { rows: { label: ReactNode; value: React
   );
 }
 
-type Row = RequestListRow & { waitingOn?: string | null; /** The approvers whose turn is open, and whether this viewer may move it (`canReassignTurns`). */ waiting?: { personId: string; name: string }[]; subjectPersonId?: string | null; reassignable?: boolean };
+type Row = RequestListRow & {
+  waitingOn?: string | null;
+  /** The approvers whose turn is open, and whether this viewer may move it (`canReassignTurns`). */ waiting?: { personId: string; name: string }[];
+  subjectPersonId?: string | null;
+  reassignable?: boolean;
+};
 
 /**
  * The reference grid of requests: kind, title, who, where it stands, how long it has waited. Open
@@ -233,7 +260,7 @@ export async function ApprovalChain({ view }: { view: RequestView }) {
                     state === "done" && "border-success bg-success text-white",
                     state === "current" && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
                     state === "next" && "border-border bg-background text-faint",
-                    state === "off" && "border-destructive/40 bg-destructive/10 text-destructive"
+                    state === "off" && "border-destructive/40 bg-destructive/10 text-destructive",
                   )}
                 >
                   {state === "done" ? <CheckIcon className="size-3.5" strokeWidth={3} /> : index + 1}
@@ -324,7 +351,9 @@ export async function RequestEvents({ view }: { view: RequestView }) {
               · <span className="font-mono text-xs tabular-nums">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
             </span>
             <TurnMoved meta={event.meta} others={t("history.othersOnStep")} />
-            {typeof event.meta?.reason === "string" && t.has(`history.moved.${event.meta.reason}` as "history.moved.offboarded") ? <Badge variant="outline">{t(`history.moved.${event.meta.reason}` as "history.moved.offboarded")}</Badge> : null}
+            {typeof event.meta?.reason === "string" && t.has(`history.moved.${event.meta.reason}` as "history.moved.offboarded") ? (
+              <Badge variant="outline">{t(`history.moved.${event.meta.reason}` as "history.moved.offboarded")}</Badge>
+            ) : null}
             {event.meta?.verifiedSecondChannel ? <Badge variant="outline">{t("history.verified")}</Badge> : null}
             {event.comment ? <p className="w-full text-muted-foreground">“{event.comment}”</p> : null}
           </ListItem>

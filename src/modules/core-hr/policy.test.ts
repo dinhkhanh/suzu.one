@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canBrowsePeople, canChangePhoto, canEditCompetencies, canManageCompetencies, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManagePositions, canManageRecords, canReadRecords, canReassign, canRemovePerson, canSeePhoto } from "./policy";
+import {
+  canBrowsePeople,
+  canChangePhoto,
+  canEditCompetencies,
+  canManageCompetencies,
+  canDecideProfileChange,
+  canEditPerson,
+  canFilterByPersonalFacts,
+  canHireInto,
+  canManagePositions,
+  canManageRecords,
+  canReadRecords,
+  canReassign,
+  canRemovePerson,
+  canSeePhoto,
+} from "./policy";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";

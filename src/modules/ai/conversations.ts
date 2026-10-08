@@ -75,7 +75,13 @@ export async function answerQuestion(user: ViewerSource, question: string, local
   const answered = answer.body.length > 0 && citations.length > 0;
   // "Where to do it": the screens the question or the quoted passages name, unless the answer
   // already links to them.
-  const related = answered ? appLinksFor(question, answer.extracted.passages.map((passage) => passage.excerpt), nav).filter((link) => !answer.body.includes(`](${link.href})`)) : [];
+  const related = answered
+    ? appLinksFor(
+        question,
+        answer.extracted.passages.map((passage) => passage.excerpt),
+        nav,
+      ).filter((link) => !answer.body.includes(`](${link.href})`))
+    : [];
   const body = related.length ? `${answer.body}\n\n---\n\n**${t("title")}** ${related.map((link) => `[${t(link.key as "leaveNew")}](${link.href})`).join(" · ")}` : answer.body;
   return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: answer.driver, model: answer.model, usage: answer.usage, notice: answer.notice };
 }
@@ -101,7 +107,17 @@ export async function resolveAnswer(user: AgentUser, question: string, locale: s
     return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
   }
   if (options.agent) {
-    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent, acting: asksToAct(question), othersPay: route?.tool === "payslip_explain" && route.subject === "other", page: options.page ?? null });
+    const turn = await runAgentTurn({
+      user,
+      question,
+      locale: locale === "en" ? "en" : "vi",
+      today,
+      history: options.history ?? [],
+      driver: options.agent,
+      acting: asksToAct(question),
+      othersPay: route?.tool === "payslip_explain" && route.subject === "other",
+      page: options.page ?? null,
+    });
     if (turn.kind === "answered") return { kind: "agent", turn, outcome: "answered" };
     if (turn.kind === "off_topic") return { kind: "agent", turn, outcome: "off_topic" };
     // The free path: a quoted passage, with the reason the chat gives for it.
@@ -190,7 +206,11 @@ function storedAgent(turn: AgentTurn, shown: AgentShown): Record<string, unknown
  * waits for a transaction that is waiting for it.
  */
 async function ownConversation(tx: Tx, personId: string, conversationId: string): Promise<{ id: string } | null> {
-  const [row] = await tx.select({ id: aiConversation.id }).from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1);
+  const [row] = await tx
+    .select({ id: aiConversation.id })
+    .from(aiConversation)
+    .where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -220,7 +240,9 @@ export async function ask(user: AgentUser & { email?: string | null }, input: As
   // turn that fell back cost what its calls cost.
   const usage = resolved.kind === "kb" ? (turn ? turn.usage : resolved.answer.usage) : resolved.kind === "agent" ? resolved.turn.usage : NO_USAGE;
   const outcome = resolved.outcome;
-  const shown: AgentShown | null = turn ? { steps: turn.calls.map(({ tool: name, outcome: ended }) => ({ tool: name, outcome: ended })), cards: answered?.cards ?? [], offTopic: turn.kind === "off_topic" ? turn.offTopic : null, unstored } : null;
+  const shown: AgentShown | null = turn
+    ? { steps: turn.calls.map(({ tool: name, outcome: ended }) => ({ tool: name, outcome: ended })), cards: answered?.cards ?? [], offTopic: turn.kind === "off_topic" ? turn.offTopic : null, unstored }
+    : null;
   // Only a knowledge-base miss is a missing page. A tool refusal is not a gap in the handbook and
   // must never land in a log that HR reads: "who approves Lê Thị Mai's overtime" belongs nowhere.
   const logAsUnanswered = resolved.kind === "kb" && resolved.outcome === "unanswered";
@@ -229,16 +251,33 @@ export async function ask(user: AgentUser & { email?: string | null }, input: As
     const existing = input.conversationId ? await ownConversation(tx, personId, input.conversationId) : null;
     const conversationId =
       existing?.id ??
-      (await tx
-        .insert(aiConversation)
-        .values({ personId, title: question.slice(0, TITLE_MAX) || "…", locale })
-        .returning({ id: aiConversation.id }))[0].id;
+      (
+        await tx
+          .insert(aiConversation)
+          .values({ personId, title: question.slice(0, TITLE_MAX) || "…", locale })
+          .returning({ id: aiConversation.id })
+      )[0].id;
     if (existing) await tx.update(aiConversation).set({ updatedAt: new Date() }).where(eq(aiConversation.id, conversationId));
 
     await tx.insert(aiMessage).values({ conversationId, personId, role: "user", body: question });
     const [stored] = await tx
       .insert(aiMessage)
-      .values({ conversationId, personId, role: "assistant", body: unstored ? "" : body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, toolCalls: turn && shown ? storedAgent(turn, shown) : null, driver, model, score: best, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
+      .values({
+        conversationId,
+        personId,
+        role: "assistant",
+        body: unstored ? "" : body,
+        outcome,
+        citations,
+        tool: tool?.tool ?? null,
+        toolResult: tool,
+        toolCalls: turn && shown ? storedAgent(turn, shown) : null,
+        driver,
+        model,
+        score: best,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      })
       .returning();
 
     // The cards of this turn's proposals belong to this message (and to this conversation, which the
@@ -262,7 +301,11 @@ export async function listConversations(personId: string, limit = 20): Promise<{
 export async function getConversation(personId: string, conversationId: string): Promise<{ id: string; title: string; turns: ConversationTurn[] } | null> {
   // All at once; the messages and the proposals are only returned when the conversation is the asker's.
   const [[row], messages, proposals, feedback] = await Promise.all([
-    db().select().from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1),
+    db()
+      .select()
+      .from(aiConversation)
+      .where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId)))
+      .limit(1),
     db().select().from(aiMessage).where(eq(aiMessage.conversationId, conversationId)).orderBy(asc(aiMessage.createdAt)),
     proposalStatesIn(personId, conversationId),
     feedbackIn(personId, conversationId),
@@ -270,12 +313,24 @@ export async function getConversation(personId: string, conversationId: string):
   if (!row) return null;
   // A card shows its proposal as it stands now, not as it was proposed: confirmed a minute ago, the buttons are gone.
   const live = (turn: ConversationTurn): ConversationTurn =>
-    turn.agent && turn.agent.cards.some((card) => card.proposal) ? { ...turn, agent: { ...turn.agent, cards: turn.agent.cards.map((card) => (card.proposal ? { ...card, proposal: { ...card.proposal, ...(proposals.get(card.proposal.id) ?? { state: "expired" as const }) } } : card)) } } : turn;
-  return { id: row.id, title: row.title, turns: messages.map(toTurn).map(live).map((turn) => (feedback.has(turn.id) ? { ...turn, feedback: feedback.get(turn.id) } : turn)) };
+    turn.agent && turn.agent.cards.some((card) => card.proposal)
+      ? { ...turn, agent: { ...turn.agent, cards: turn.agent.cards.map((card) => (card.proposal ? { ...card, proposal: { ...card.proposal, ...(proposals.get(card.proposal.id) ?? { state: "expired" as const }) } } : card)) } }
+      : turn;
+  return {
+    id: row.id,
+    title: row.title,
+    turns: messages
+      .map(toTurn)
+      .map(live)
+      .map((turn) => (feedback.has(turn.id) ? { ...turn, feedback: feedback.get(turn.id) } : turn)),
+  };
 }
 
 export async function deleteConversation(personId: string, conversationId: string): Promise<boolean> {
-  const deleted = await db().delete(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).returning({ id: aiConversation.id });
+  const deleted = await db()
+    .delete(aiConversation)
+    .where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId)))
+    .returning({ id: aiConversation.id });
   return deleted.length > 0;
 }
 
@@ -333,9 +388,17 @@ export async function resolveUnanswered(reader: Principal, id: string, byPersonI
   const askers = askersInReach(reader);
   if (askers === null) return 0;
   const inReach = askers ? inArray(aiUnansweredQuestion.personId, db().select({ id: schema.person.id }).from(schema.person).where(askers)) : undefined;
-  const [row] = await db().select({ question: aiUnansweredQuestion.question }).from(aiUnansweredQuestion).where(and(eq(aiUnansweredQuestion.id, id), inReach)).limit(1);
+  const [row] = await db()
+    .select({ question: aiUnansweredQuestion.question })
+    .from(aiUnansweredQuestion)
+    .where(and(eq(aiUnansweredQuestion.id, id), inReach))
+    .limit(1);
   if (!row) return 0;
   const same = sql`lower(regexp_replace(${aiUnansweredQuestion.question}, '\\s+', ' ', 'g')) = lower(regexp_replace(${row.question}, '\\s+', ' ', 'g'))`;
-  const updated = await db().update(aiUnansweredQuestion).set({ resolvedAt: new Date(), resolvedByPersonId: byPersonId, resolutionNote: note }).where(and(same, isNull(aiUnansweredQuestion.resolvedAt), inReach)).returning({ id: aiUnansweredQuestion.id });
+  const updated = await db()
+    .update(aiUnansweredQuestion)
+    .set({ resolvedAt: new Date(), resolvedByPersonId: byPersonId, resolutionNote: note })
+    .where(and(same, isNull(aiUnansweredQuestion.resolvedAt), inReach))
+    .returning({ id: aiUnansweredQuestion.id });
   return updated.length;
 }

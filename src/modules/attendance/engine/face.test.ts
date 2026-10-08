@@ -33,7 +33,15 @@ describe("is it a real head", () => {
   });
 
   it("has no answer for points on one line", () => {
-    expect(nosePosition([[0, 0], [10, 0], [5, 0], [0, 0], [10, 0]])).toBeNull();
+    expect(
+      nosePosition([
+        [0, 0],
+        [10, 0],
+        [5, 0],
+        [0, 0],
+        [10, 0],
+      ]),
+    ).toBeNull();
   });
 
   it("passes a turn the asked way, fails the other way, waits in between", () => {

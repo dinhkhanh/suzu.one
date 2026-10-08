@@ -42,10 +42,15 @@ export default async function AnomaliesPage({ searchParams }: PageProps<"/attend
   const { lines, counts, people } = entityId === asked ? firstRead : await listAnomalies(user.principal, month, filters);
   const href = (changes: { month?: string; entity?: string | null; kind?: AnomalyKind | null; person?: string | null }) => {
     const next = { month, entity: entityId, kind, person: personId, ...changes };
-    return `/attendance/anomalies?${Object.entries(next).flatMap(([key, value]) => (value ? [`${key}=${value}`] : [])).join("&")}`;
+    return `/attendance/anomalies?${Object.entries(next)
+      .flatMap(([key, value]) => (value ? [`${key}=${value}`] : []))
+      .join("&")}`;
   };
   const total = Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
-  const kindOptions = [{ value: "all", label: t("allKinds"), count: total, href: href({ kind: null }) }, ...ANOMALY_KINDS.filter((value) => counts[value]).map((value) => ({ value, label: t(`kinds.${value}`), count: counts[value], href: href({ kind: value }) }))];
+  const kindOptions = [
+    { value: "all", label: t("allKinds"), count: total, href: href({ kind: null }) },
+    ...ANOMALY_KINDS.filter((value) => counts[value]).map((value) => ({ value, label: t(`kinds.${value}`), count: counts[value], href: href({ kind: value }) })),
+  ];
 
   return (
     <Page width="wide">

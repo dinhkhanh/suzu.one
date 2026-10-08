@@ -123,7 +123,15 @@ export function IntakeFormManager({ teamId, forms, projects, checklists, canMana
                     </Link>
                   ) : null}
                 </summary>
-                <div className="mt-2.5 border-t pt-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : form.description?.trim() ? <RichText text={form.description} className="text-muted-foreground" /> : <p className="text-muted-foreground">{t("noDescription")}</p>}</div>
+                <div className="mt-2.5 border-t pt-3">
+                  {canManage ? (
+                    <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} />
+                  ) : form.description?.trim() ? (
+                    <RichText text={form.description} className="text-muted-foreground" />
+                  ) : (
+                    <p className="text-muted-foreground">{t("noDescription")}</p>
+                  )}
+                </div>
               </details>
             </ListItem>
           ))}

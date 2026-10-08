@@ -9,7 +9,14 @@ import { notifyFollowers } from "./followers";
 import { type LoadedTask, loadTask, logActivity } from "./tasks";
 
 export type DeliveryRow = typeof schema.workDelivery.$inferSelect;
-export type DeliveryInput = { deliverableId: string | null; deliveredOn: string; recipient: string | null; links: string[]; note: string | null; /** The version is not approved: the person saw the warning and delivers anyway. */ confirmUnapproved: boolean };
+export type DeliveryInput = {
+  deliverableId: string | null;
+  deliveredOn: string;
+  recipient: string | null;
+  links: string[];
+  note: string | null;
+  /** The version is not approved: the person saw the warning and delivers anyway. */ confirmUnapproved: boolean;
+};
 
 /**
  * The version delivered should be the approved one, better still the one the client approved
@@ -23,12 +30,19 @@ export async function recordDelivery(taskId: string, input: DeliveryInput, actor
     if (input.links.length === 0 && !input.deliverableId) throw new ActionError("delivery_needs_content");
     let version: number | null = null;
     if (input.deliverableId) {
-      const [deliverable] = await tx.select().from(schema.workDeliverable).where(and(eq(schema.workDeliverable.id, input.deliverableId), eq(schema.workDeliverable.taskId, taskId))).limit(1);
+      const [deliverable] = await tx
+        .select()
+        .from(schema.workDeliverable)
+        .where(and(eq(schema.workDeliverable.id, input.deliverableId), eq(schema.workDeliverable.taskId, taskId)))
+        .limit(1);
       if (!deliverable) throw new ActionError("deliverable_not_found");
       if (deliverable.decision !== "approved" && !deliverable.frozenAt && !input.confirmUnapproved) throw new ActionError("delivery_version_unapproved", { version: deliverable.version });
       version = deliverable.version;
     }
-    const [delivery] = await tx.insert(schema.workDelivery).values({ taskId, deliverableId: input.deliverableId, deliveredOn: input.deliveredOn, deliveredByPersonId: actor.personId, recipient: input.recipient, links: input.links, note: input.note }).returning();
+    const [delivery] = await tx
+      .insert(schema.workDelivery)
+      .values({ taskId, deliverableId: input.deliverableId, deliveredOn: input.deliveredOn, deliveredByPersonId: actor.personId, recipient: input.recipient, links: input.links, note: input.note })
+      .returning();
     await logActivity(tx, taskId, actor.personId, [{ type: "delivery_recorded", to: { name: input.recipient ?? (version ? `v${version}` : input.links[0]), version, deliveredOn: input.deliveredOn } }]);
     await tx.update(schema.task).set({ updatedAt: new Date() }).where(eq(schema.task.id, taskId));
     await notifyFollowers(tx, loaded, actor.personId, "tasks.commented", { name: actor.fullName, excerpt: `📦 ${input.recipient ?? ""} ${input.deliveredOn.split("-").reverse().join("/")}`.trim() });

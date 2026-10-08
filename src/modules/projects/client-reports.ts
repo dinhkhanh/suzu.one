@@ -36,7 +36,11 @@ export async function saveClientReport(projectId: string, reportId: string | nul
   }
   const before = await findClientReport(reportId);
   if (!before || before.projectId !== projectId) throw new ActionError("report_not_found");
-  const [after] = await db().update(schema.projectClientReport).set({ ...input, updatedAt: new Date() }).where(eq(schema.projectClientReport.id, reportId)).returning();
+  const [after] = await db()
+    .update(schema.projectClientReport)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(schema.projectClientReport.id, reportId))
+    .returning();
   return { before, after };
 }
 
@@ -103,7 +107,12 @@ export async function entityLetterhead(projectId: string): Promise<LetterheadFie
   const [row] = await db().select({ entity: schema.entity }).from(schema.workProject).leftJoin(schema.entity, eq(schema.entity.id, schema.workProject.entityId)).where(eq(schema.workProject.id, projectId)).limit(1);
   const entity = row?.entity;
   if (!entity) return {};
-  return { companyName: entity.legalName, ...(entity.address ? { address: entity.address } : {}), ...(entity.taxCode ? { taxCode: entity.taxCode } : {}), ...(entity.legalRepresentative ? { representative: entity.legalRepresentative } : {}) };
+  return {
+    companyName: entity.legalName,
+    ...(entity.address ? { address: entity.address } : {}),
+    ...(entity.taxCode ? { taxCode: entity.taxCode } : {}),
+    ...(entity.legalRepresentative ? { representative: entity.legalRepresentative } : {}),
+  };
 }
 
 /** The default period of a new report: this month so far. */

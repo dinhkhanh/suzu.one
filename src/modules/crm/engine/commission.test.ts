@@ -115,7 +115,16 @@ describe("a rule's problems", () => {
     expect(ruleProblem(rule())).toBeNull();
     expect(ruleProblem(rule({ tiers: [] }))).toBe("commission_tiers");
     expect(ruleProblem(rule({ tiers: [{ fromVnd: 0, rateBp: 5000 }] }))).toBe("commission_tiers");
-    expect(ruleProblem(rule({ tiers: [{ fromVnd: 0, rateBp: 100 }, { fromVnd: 0, rateBp: 200 }] }))).toBe("commission_tiers");
+    expect(
+      ruleProblem(
+        rule({
+          tiers: [
+            { fromVnd: 0, rateBp: 100 },
+            { fromVnd: 0, rateBp: 200 },
+          ],
+        }),
+      ),
+    ).toBe("commission_tiers");
     expect(ruleProblem(rule({ splitOwnerBp: 12_000 }))).toBe("commission_split");
   });
 });

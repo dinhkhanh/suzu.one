@@ -44,13 +44,48 @@ function ErrorLine({ errorKey }: { errorKey: string | null }) {
   );
 }
 
-export type BlockerItem = { id: string; reason: string; neededPersonId?: string | null; neededName: string | null; raisedByPersonId?: string | null; raisedByName: string | null; raisedAt: string; resolvedAt: string | null; resolvedByPersonId?: string | null; resolvedByName: string | null; resolution: string | null; minutes: number };
+export type BlockerItem = {
+  id: string;
+  reason: string;
+  neededPersonId?: string | null;
+  neededName: string | null;
+  raisedByPersonId?: string | null;
+  raisedByName: string | null;
+  raisedAt: string;
+  resolvedAt: string | null;
+  resolvedByPersonId?: string | null;
+  resolvedByName: string | null;
+  resolution: string | null;
+  minutes: number;
+};
 
 /** The parts of a line, a dot between each. */
-const dotted = (parts: React.ReactNode[]) => parts.filter(Boolean).map((part, index) => <Fragment key={index}>{index ? " · " : null}{part}</Fragment>);
+const dotted = (parts: React.ReactNode[]) =>
+  parts.filter(Boolean).map((part, index) => (
+    <Fragment key={index}>
+      {index ? " · " : null}
+      {part}
+    </Fragment>
+  ));
 
 /** "Mark blocked" with a reason and who can unblock it; "Resolve" with a note; the history below. */
-export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, closed, draft }: { taskId: string; blockers: BlockerItem[]; people: { id: string; fullName: string }[]; canRaise: boolean; canResolve: boolean; closed: boolean; /** What the forms open with: the assistant's proposal, being edited (Sửa). */ draft?: { reason?: string; neededPersonId?: string | null; resolution?: string | null } }) {
+export function BlockerPanel({
+  taskId,
+  blockers,
+  people,
+  canRaise,
+  canResolve,
+  closed,
+  draft,
+}: {
+  taskId: string;
+  blockers: BlockerItem[];
+  people: { id: string; fullName: string }[];
+  canRaise: boolean;
+  canResolve: boolean;
+  closed: boolean;
+  /** What the forms open with: the assistant's proposal, being edited (Sửa). */ draft?: { reason?: string; neededPersonId?: string | null; resolution?: string | null };
+}) {
   const t = useTranslations("work.blockers");
   const format = useFormatter();
   const { run, pending, errorKey } = useRun();
@@ -61,7 +96,11 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
   const when = (iso: string) => format.dateTime(new Date(iso), { dateStyle: "short", timeStyle: "short" });
   const who = (personId: string | null | undefined, name: string | null) =>
     function Who(chunks: React.ReactNode) {
-      return <RecordLink kind="person" id={name ? personId : null}>{chunks}</RecordLink>;
+      return (
+        <RecordLink kind="person" id={name ? personId : null}>
+          {chunks}
+        </RecordLink>
+      );
     };
 
   return (
@@ -70,7 +109,13 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
       {open ? (
         <div className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
           <p className="font-medium text-destructive">{t("open", { reason: open.reason })}</p>
-          <p className="text-xs text-muted-foreground">{dotted([open.neededName ? t.rich("waitingOn", { name: open.neededName, who: who(open.neededPersonId, open.neededName) }) : null, t.rich("raisedBy", { name: open.raisedByName ?? "—", date: when(open.raisedAt), who: who(open.raisedByPersonId, open.raisedByName) }), t("blockedFor", { duration: formatDuration(open.minutes) })])}</p>
+          <p className="text-xs text-muted-foreground">
+            {dotted([
+              open.neededName ? t.rich("waitingOn", { name: open.neededName, who: who(open.neededPersonId, open.neededName) }) : null,
+              t.rich("raisedBy", { name: open.raisedByName ?? "—", date: when(open.raisedAt), who: who(open.raisedByPersonId, open.raisedByName) }),
+              t("blockedFor", { duration: formatDuration(open.minutes) }),
+            ])}
+          </p>
           {canResolve ? (
             <form
               className="flex flex-wrap gap-2"
@@ -94,7 +139,10 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
-              run(() => raiseBlockerAction({ taskId, reason: data.get("reason"), neededPersonId: data.get("neededPersonId") }), () => setRaising(false));
+              run(
+                () => raiseBlockerAction({ taskId, reason: data.get("reason"), neededPersonId: data.get("neededPersonId") }),
+                () => setRaising(false),
+              );
             }}
           >
             <Label htmlFor="blocker-reason">{t("reason")}</Label>
@@ -135,7 +183,14 @@ export function BlockerPanel({ taskId, blockers, people, canRaise, canResolve, c
             {past.map((blocker) => (
               <li key={blocker.id} className="flex flex-col text-xs">
                 <span className="font-medium">{blocker.reason}</span>
-                <span className="text-muted-foreground">{dotted([t.rich("raisedBy", { name: blocker.raisedByName ?? "—", date: when(blocker.raisedAt), who: who(blocker.raisedByPersonId, blocker.raisedByName) }), t.rich("resolvedBy", { name: blocker.resolvedByName ?? "—", date: when(blocker.resolvedAt!), who: who(blocker.resolvedByPersonId, blocker.resolvedByName) }), t("blockedFor", { duration: formatDuration(blocker.minutes) }), blocker.resolution])}</span>
+                <span className="text-muted-foreground">
+                  {dotted([
+                    t.rich("raisedBy", { name: blocker.raisedByName ?? "—", date: when(blocker.raisedAt), who: who(blocker.raisedByPersonId, blocker.raisedByName) }),
+                    t.rich("resolvedBy", { name: blocker.resolvedByName ?? "—", date: when(blocker.resolvedAt!), who: who(blocker.resolvedByPersonId, blocker.resolvedByName) }),
+                    t("blockedFor", { duration: formatDuration(blocker.minutes) }),
+                    blocker.resolution,
+                  ])}
+                </span>
               </li>
             ))}
           </ul>

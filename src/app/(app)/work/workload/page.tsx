@@ -80,7 +80,9 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
             {view.rows.map((row) => (
               <TableRow key={row.person.id}>
                 <TableCell className="align-top font-medium">
-                  <RecordLink kind="person" id={row.person.id}>{row.person.fullName}</RecordLink>
+                  <RecordLink kind="person" id={row.person.id}>
+                    {row.person.fullName}
+                  </RecordLink>
                 </TableCell>
                 {row.cells.map((cell) => (
                   <TableCell key={cell.week.start} className={`py-2 align-top whitespace-normal ${cell.over ? "bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>

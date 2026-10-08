@@ -63,7 +63,13 @@ const GUARD_AFTER_DATA = [
 
 /** The user turn: the question, the delimited data block, the screens it may link, then our instruction again. */
 export function buildUserMessage(question: string, sources: readonly PromptSource[], links: readonly PromptLink[] = []): string {
-  const blocks = sources.map((source) => [`<source index="${source.index}" page="${escapeSourceText(source.pageTitle, 200)}" space="${escapeSourceText(source.spaceName, 200)}" heading="${escapeSourceText(source.headingPath, 300)}" href="${escapeSourceText(source.href, 200)}">`, escapeSourceText(source.content), "</source>"].join("\n"));
+  const blocks = sources.map((source) =>
+    [
+      `<source index="${source.index}" page="${escapeSourceText(source.pageTitle, 200)}" space="${escapeSourceText(source.spaceName, 200)}" heading="${escapeSourceText(source.headingPath, 300)}" href="${escapeSourceText(source.href, 200)}">`,
+      escapeSourceText(source.content),
+      "</source>",
+    ].join("\n"),
+  );
   // The app's own screens, from our catalogue and the asker's navigation — not retrieved text.
   const pages = links.map((link) => `- ${escapeSourceText(link.label, 100)}: ${escapeSourceText(link.href, 200)}`);
   return [

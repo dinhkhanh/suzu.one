@@ -204,7 +204,16 @@ function RuleForm({ sectionId, rule, examples }: { sectionId: string; rule?: Bra
       router.refresh();
     },
   });
-  const exampleOptions = [<option key="" value="">{t("noExample")}</option>, ...examples.map((example) => <option key={example.id} value={example.id}>{example.title}</option>)];
+  const exampleOptions = [
+    <option key="" value="">
+      {t("noExample")}
+    </option>,
+    ...examples.map((example) => (
+      <option key={example.id} value={example.id}>
+        {example.title}
+      </option>
+    )),
+  ];
   const prefix = `rule-${rule?.id ?? `new-${sectionId}`}`;
 
   return (

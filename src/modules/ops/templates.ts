@@ -81,7 +81,13 @@ export function templateProblem(input: TemplateInput): string | null {
 export async function saveTemplate(templateId: string | null, input: TemplateInput, options: { keepReviewed?: boolean } = {}): Promise<{ before: ObligationTemplateRow | null; after: ObligationTemplateRow }> {
   const problem = templateProblem(input);
   if (problem) throw new ActionError(problem);
-  const values = { ...input, ownerPersonId: input.ownerRule === "person" ? input.ownerPersonId : null, reviewerPersonId: input.reviewerRule === "person" ? input.reviewerPersonId : null, entityIds: input.entityIds?.length ? input.entityIds : null, reminderLeadDays: [...new Set(input.reminderLeadDays)].sort((a, b) => b - a) };
+  const values = {
+    ...input,
+    ownerPersonId: input.ownerRule === "person" ? input.ownerPersonId : null,
+    reviewerPersonId: input.reviewerRule === "person" ? input.reviewerPersonId : null,
+    entityIds: input.entityIds?.length ? input.entityIds : null,
+    reminderLeadDays: [...new Set(input.reminderLeadDays)].sort((a, b) => b - a),
+  };
   const saved = await db().transaction(async (tx) => {
     const [clash] = await tx.select({ id: schema.obligationTemplate.id }).from(schema.obligationTemplate).where(eq(schema.obligationTemplate.code, input.code)).limit(1);
     if (clash && clash.id !== templateId) throw new ActionError("template_code_taken");
@@ -93,7 +99,11 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
     if (!before) throw new ActionError("template_not_found");
     // A changed rule is a new claim about the law: it needs looking at again.
     const review = options.keepReviewed ? {} : { reviewStatus: "unreviewed", reviewedByPersonId: null, reviewedAt: null };
-    const [after] = await tx.update(schema.obligationTemplate).set({ ...values, ...review, updatedAt: new Date() }).where(eq(schema.obligationTemplate.id, templateId)).returning();
+    const [after] = await tx
+      .update(schema.obligationTemplate)
+      .set({ ...values, ...review, updatedAt: new Date() })
+      .where(eq(schema.obligationTemplate.id, templateId))
+      .returning();
     return { before, after };
   });
   await invalidate(TEMPLATES_CACHE);

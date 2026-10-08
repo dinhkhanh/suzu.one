@@ -69,15 +69,7 @@ export async function getWorkAnalytics(viewer: WorkViewer, filter: AnalyticsFilt
     })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
-    .where(
-      and(
-        eq(schema.task.kind, WORK_KIND),
-        isNull(schema.task.deletedAt),
-        visible,
-        filter.teamId ? eq(schema.workTask.teamId, filter.teamId) : undefined,
-        filter.clientId ? eq(schema.workTask.clientId, filter.clientId) : undefined,
-      ),
-    )
+    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), visible, filter.teamId ? eq(schema.workTask.teamId, filter.teamId) : undefined, filter.clientId ? eq(schema.workTask.clientId, filter.clientId) : undefined))
     .groupBy(sql`grouping sets ((), (${schema.workTask.teamId}), (${schema.workTask.clientId}))`);
 
   const cellOf = (row: (typeof rows)[number]): AnalyticsCell => ({

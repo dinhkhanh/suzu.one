@@ -87,7 +87,12 @@ describe("weekend and holiday shifting", () => {
 describe("periodsDueBetween", () => {
   it("lists the monthly periods that fall due in a window", () => {
     const due = periodsDueBetween("monthly", { type: "after_period", monthsAfter: 1, day: 20 }, "2026-09-01", "2026-12-31");
-    expect(due.map((row) => [row.period.key, row.nominalDueDate])).toEqual([["2026-08", "2026-09-20"], ["2026-09", "2026-10-20"], ["2026-10", "2026-11-20"], ["2026-11", "2026-12-20"]]);
+    expect(due.map((row) => [row.period.key, row.nominalDueDate])).toEqual([
+      ["2026-08", "2026-09-20"],
+      ["2026-09", "2026-10-20"],
+      ["2026-10", "2026-11-20"],
+      ["2026-11", "2026-12-20"],
+    ]);
   });
 
   it("finds an annual period that ended long before its due date", () => {

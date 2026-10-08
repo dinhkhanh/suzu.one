@@ -43,7 +43,15 @@ export function QuickCreate({
     if (!value) return;
     const dueDate = new FormData(event.currentTarget).get("dueDate");
     startTransition(async () => {
-      const result = await createTaskAction({ teamId: scope.teamId, ...(scope.projectId ? { projectId: scope.projectId } : {}), title: value, stateId: defaults?.stateId ?? "", assigneePersonId: defaults?.assigneePersonId ?? "", labelIds: defaults?.labelIds ?? [], dueDate: typeof dueDate === "string" && dueDate ? dueDate : (defaults?.dueDate ?? "") });
+      const result = await createTaskAction({
+        teamId: scope.teamId,
+        ...(scope.projectId ? { projectId: scope.projectId } : {}),
+        title: value,
+        stateId: defaults?.stateId ?? "",
+        assigneePersonId: defaults?.assigneePersonId ?? "",
+        labelIds: defaults?.labelIds ?? [],
+        dueDate: typeof dueDate === "string" && dueDate ? dueDate : (defaults?.dueDate ?? ""),
+      });
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
       if (!result.ok) return;
       if (title.current) title.current.value = "";

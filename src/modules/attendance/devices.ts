@@ -40,7 +40,11 @@ const EXTENSION_OF = { csv: ["csv"], xlsx: ["xlsx"], dat: ["dat", "txt", "log"] 
 // ── Profiles ────────────────────────────────────────────────────────────────────────────────
 
 export async function listProfiles(): Promise<(ProfileRow & { entityName: string | null })[]> {
-  const rows = await db().select({ profile: schema.deviceMappingProfile, entityName: schema.entity.shortName }).from(schema.deviceMappingProfile).leftJoin(schema.entity, eq(schema.entity.id, schema.deviceMappingProfile.entityId)).orderBy(asc(schema.deviceMappingProfile.name));
+  const rows = await db()
+    .select({ profile: schema.deviceMappingProfile, entityName: schema.entity.shortName })
+    .from(schema.deviceMappingProfile)
+    .leftJoin(schema.entity, eq(schema.entity.id, schema.deviceMappingProfile.entityId))
+    .orderBy(asc(schema.deviceMappingProfile.name));
   return rows.map((row) => ({ ...row.profile, entityName: row.entityName }));
 }
 
@@ -56,7 +60,12 @@ export async function saveProfile(input: ProfileInput): Promise<{ before: Profil
   const values = { name: input.name, deviceModel: input.deviceModel, fileKind: input.fileKind, mapping: input.mapping, isActive: input.isActive, updatedAt: new Date() };
   try {
     // A profile stays where it was created (group or entity): moving it would change who may edit it.
-    const [after] = before ? await db().update(schema.deviceMappingProfile).set(values).where(eq(schema.deviceMappingProfile.id, before.id)).returning() : await db().insert(schema.deviceMappingProfile).values({ ...values, entityId: input.entityId }).returning();
+    const [after] = before
+      ? await db().update(schema.deviceMappingProfile).set(values).where(eq(schema.deviceMappingProfile.id, before.id)).returning()
+      : await db()
+          .insert(schema.deviceMappingProfile)
+          .values({ ...values, entityId: input.entityId })
+          .returning();
     return { before, after };
   } catch (error) {
     if (String((error as { cause?: unknown }).cause ?? error).includes("device_mapping_profile_name_key")) throw new ActionError("profile_name_taken");
@@ -86,8 +95,16 @@ export async function listDevices(principal: Principal): Promise<DeviceView[]> {
       .where(inArray(schema.attendanceDeviceEntity.deviceId, ids))
       .groupBy(schema.attendanceDeviceEntity.deviceId),
     db().select({ deviceId: schema.deviceUserMap.deviceId, value: count() }).from(schema.deviceUserMap).where(inArray(schema.deviceUserMap.deviceId, ids)).groupBy(schema.deviceUserMap.deviceId),
-    db().select({ deviceId: schema.deviceUnmappedLog.deviceId, value: sql<number>`count(distinct ${schema.deviceUnmappedLog.deviceUserId})::int` }).from(schema.deviceUnmappedLog).where(inArray(schema.deviceUnmappedLog.deviceId, ids)).groupBy(schema.deviceUnmappedLog.deviceId),
-    db().select({ deviceId: schema.punch.deviceId, value: max(schema.punch.at) }).from(schema.punch).where(inArray(schema.punch.deviceId, ids)).groupBy(schema.punch.deviceId),
+    db()
+      .select({ deviceId: schema.deviceUnmappedLog.deviceId, value: sql<number>`count(distinct ${schema.deviceUnmappedLog.deviceUserId})::int` })
+      .from(schema.deviceUnmappedLog)
+      .where(inArray(schema.deviceUnmappedLog.deviceId, ids))
+      .groupBy(schema.deviceUnmappedLog.deviceId),
+    db()
+      .select({ deviceId: schema.punch.deviceId, value: max(schema.punch.at) })
+      .from(schema.punch)
+      .where(inArray(schema.punch.deviceId, ids))
+      .groupBy(schema.punch.deviceId),
   ]);
   return visible.map((row) => ({
     ...row.device,
@@ -136,7 +153,12 @@ export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRo
   const values = { name: input.name, model: input.model, serialNumber: input.serialNumber, locationId: input.locationId, profileId: input.profileId, isActive: input.isActive, updatedAt: new Date() };
   try {
     const after = await db().transaction(async (tx) => {
-      const [row] = before ? await tx.update(schema.attendanceDevice).set(values).where(eq(schema.attendanceDevice.id, before.id)).returning() : await tx.insert(schema.attendanceDevice).values({ ...values, entityId }).returning();
+      const [row] = before
+        ? await tx.update(schema.attendanceDevice).set(values).where(eq(schema.attendanceDevice.id, before.id)).returning()
+        : await tx
+            .insert(schema.attendanceDevice)
+            .values({ ...values, entityId })
+            .returning();
       if (input.alsoServes) {
         await tx.delete(schema.attendanceDeviceEntity).where(eq(schema.attendanceDeviceEntity.deviceId, row.id));
         if (servedAfter.length > 0) await tx.insert(schema.attendanceDeviceEntity).values(servedAfter.map((id) => ({ deviceId: row.id, entityId: id })));
@@ -199,7 +221,17 @@ async function insertDevicePunches(tx: Tx, deviceId: string, batchId: string | n
       const key = dayKey(item.personId, item.at);
       const index = position.get(key) ?? 0;
       position.set(key, index + 1);
-      return { personId: item.personId, entityId: item.entityId, at: item.at, direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index), source: "device" as const, deviceId, deviceUserId: item.deviceUserId, importBatchId: batchId, kioskSessionId: item.kioskSessionId ?? null };
+      return {
+        personId: item.personId,
+        entityId: item.entityId,
+        at: item.at,
+        direction: item.direction ?? inferredDirection(already.get(key) ?? 0, index),
+        source: "device" as const,
+        deviceId,
+        deviceUserId: item.deviceUserId,
+        importBatchId: batchId,
+        kioskSessionId: item.kioskSessionId ?? null,
+      };
     });
 
   let inserted = 0;
@@ -230,7 +262,11 @@ export async function mapDeviceUser(deviceId: string, deviceUserId: string, pers
     const device = await getDevice(deviceId, tx as Tx);
     const [person] = await tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
     if (!device || !person || !person.entityId || !(await servedEntityIds(device, tx as Tx)).includes(person.entityId)) throw new ActionError("not_found");
-    const [taken] = await tx.select({ id: schema.deviceUserMap.id }).from(schema.deviceUserMap).where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.deviceUserMap.deviceUserId, deviceUserId))).limit(1);
+    const [taken] = await tx
+      .select({ id: schema.deviceUserMap.id })
+      .from(schema.deviceUserMap)
+      .where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.deviceUserMap.deviceUserId, deviceUserId)))
+      .limit(1);
     if (taken) throw new ActionError("device_user_taken");
     await tx.insert(schema.deviceUserMap).values({ deviceId, deviceUserId, personId, createdByPersonId: actorPersonId });
     return { resolved: await resolveUnmapped(tx as Tx, deviceId, [{ deviceUserId, personId, entityId: person.entityId }]) };
@@ -239,11 +275,32 @@ export async function mapDeviceUser(deviceId: string, deviceUserId: string, pers
 
 async function resolveUnmapped(tx: Tx, deviceId: string, mapped: { deviceUserId: string; personId: string; entityId: string | null }[]): Promise<number> {
   if (mapped.length === 0) return 0;
-  const waiting = await tx.select().from(schema.deviceUnmappedLog).where(and(eq(schema.deviceUnmappedLog.deviceId, deviceId), inArray(schema.deviceUnmappedLog.deviceUserId, mapped.map((item) => item.deviceUserId))));
+  const waiting = await tx
+    .select()
+    .from(schema.deviceUnmappedLog)
+    .where(
+      and(
+        eq(schema.deviceUnmappedLog.deviceId, deviceId),
+        inArray(
+          schema.deviceUnmappedLog.deviceUserId,
+          mapped.map((item) => item.deviceUserId),
+        ),
+      ),
+    );
   if (waiting.length === 0) return 0;
   const owner = new Map(mapped.map((item) => [item.deviceUserId, item]));
-  const result = await insertDevicePunches(tx, deviceId, null, waiting.map((line) => ({ personId: owner.get(line.deviceUserId)!.personId, entityId: owner.get(line.deviceUserId)!.entityId, at: line.at, direction: line.direction, deviceUserId: line.deviceUserId })));
-  await tx.delete(schema.deviceUnmappedLog).where(inArray(schema.deviceUnmappedLog.id, waiting.map((line) => line.id)));
+  const result = await insertDevicePunches(
+    tx,
+    deviceId,
+    null,
+    waiting.map((line) => ({ personId: owner.get(line.deviceUserId)!.personId, entityId: owner.get(line.deviceUserId)!.entityId, at: line.at, direction: line.direction, deviceUserId: line.deviceUserId })),
+  );
+  await tx.delete(schema.deviceUnmappedLog).where(
+    inArray(
+      schema.deviceUnmappedLog.id,
+      waiting.map((line) => line.id),
+    ),
+  );
   await recomputeAfterImport(tx, result);
   return result.inserted;
 }
@@ -269,7 +326,10 @@ export async function bulkMapByEmployeeCode(deviceId: string, lines: string, act
     const device = await getDevice(deviceId, tx as Tx);
     if (!device) throw new ActionError("not_found");
     const served = new Set(await servedEntityIds(device, tx as Tx));
-    const parsed = lines.split(/\r?\n/).map((raw, index) => ({ line: index + 1, fields: raw.split(/[,;\t]/).map((field) => field.trim()) })).filter((item) => item.fields.some(Boolean));
+    const parsed = lines
+      .split(/\r?\n/)
+      .map((raw, index) => ({ line: index + 1, fields: raw.split(/[,;\t]/).map((field) => field.trim()) }))
+      .filter((item) => item.fields.some(Boolean));
     const facts = await listEmploymentFacts({ employeeCodes: parsed.map((item) => (item.fields[1] ?? "").toUpperCase()).filter(Boolean) }, tx as Tx);
     const byCode = new Map<string, EmploymentFacts[]>();
     for (const fact of facts) {
@@ -376,7 +436,14 @@ async function commitRows(rows: LogRow[], tx: Tx, deviceId: string, batchId: str
   }
   const result = await insertDevicePunches(tx, deviceId, batchId, mapped);
   let unmapped = 0;
-  for (let index = 0; index < waiting.length; index += 500) unmapped += (await tx.insert(schema.deviceUnmappedLog).values(waiting.slice(index, index + 500)).onConflictDoNothing().returning({ id: schema.deviceUnmappedLog.id })).length;
+  for (let index = 0; index < waiting.length; index += 500)
+    unmapped += (
+      await tx
+        .insert(schema.deviceUnmappedLog)
+        .values(waiting.slice(index, index + 500))
+        .onConflictDoNothing()
+        .returning({ id: schema.deviceUnmappedLog.id })
+    ).length;
   await recomputeAfterImport(tx, result);
   // skipped = lines that were already on the books (an overlapping export) or repeated in the file.
   return { counts: { punches: result.inserted, skipped: usable - result.inserted - unmapped, unmapped, people: result.people.length }, personIds: result.people };
@@ -401,7 +468,17 @@ export const deviceLogImport = defineImport({
   onCommitted: () => revalidatePath("/attendance", "layout"),
 });
 
-export type ImportHistoryRow = { id: string; fileName: string; status: "invalid" | "ready" | "committed"; rowCount: number; result: Record<string, number> | null; createdAt: Date; committedAt: Date | null; byName: string; deviceId: string | null };
+export type ImportHistoryRow = {
+  id: string;
+  fileName: string;
+  status: "invalid" | "ready" | "committed";
+  rowCount: number;
+  result: Record<string, number> | null;
+  createdAt: Date;
+  committedAt: Date | null;
+  byName: string;
+  deviceId: string | null;
+};
 
 /** Uploads of device logs the viewer may see: those of devices in their reach. */
 export async function listImportHistory(principal: Principal, limit = 30): Promise<ImportHistoryRow[]> {
@@ -414,14 +491,29 @@ export async function listImportHistory(principal: Principal, limit = 30): Promi
     .orderBy(desc(schema.importBatch.createdAt))
     .limit(200);
   return rows
-    .map(({ batch, byName }) => ({ id: batch.id, fileName: batch.fileName, status: batch.status, rowCount: batch.rowCount, result: batch.result as Record<string, number> | null, createdAt: batch.createdAt, committedAt: batch.committedAt, byName, deviceId: (batch.params as Params | null)?.deviceId ?? null }))
+    .map(({ batch, byName }) => ({
+      id: batch.id,
+      fileName: batch.fileName,
+      status: batch.status,
+      rowCount: batch.rowCount,
+      result: batch.result as Record<string, number> | null,
+      createdAt: batch.createdAt,
+      committedAt: batch.committedAt,
+      byName,
+      deviceId: (batch.params as Params | null)?.deviceId ?? null,
+    }))
     .filter((row) => row.deviceId !== null && devices.has(row.deviceId))
     .slice(0, limit);
 }
 
 /** Every waiting line of a device, for the downloadable error report. */
 export async function listUnmappedLines(deviceId: string, limit = 5000) {
-  return db().select({ deviceUserId: schema.deviceUnmappedLog.deviceUserId, at: schema.deviceUnmappedLog.at, direction: schema.deviceUnmappedLog.direction }).from(schema.deviceUnmappedLog).where(eq(schema.deviceUnmappedLog.deviceId, deviceId)).orderBy(asc(schema.deviceUnmappedLog.deviceUserId), asc(schema.deviceUnmappedLog.at)).limit(limit);
+  return db()
+    .select({ deviceUserId: schema.deviceUnmappedLog.deviceUserId, at: schema.deviceUnmappedLog.at, direction: schema.deviceUnmappedLog.direction })
+    .from(schema.deviceUnmappedLog)
+    .where(eq(schema.deviceUnmappedLog.deviceId, deviceId))
+    .orderBy(asc(schema.deviceUnmappedLog.deviceUserId), asc(schema.deviceUnmappedLog.at))
+    .limit(limit);
 }
 
 // ── Clocks that push their punches ──────────────────────────────────────────────────────────
@@ -432,7 +524,11 @@ const hashPushToken = (token: string) => createHash("sha256").update(token).dige
 /** A new token for the clock, replacing any earlier one. The plain token is returned once and never stored. */
 export async function issuePushToken(deviceId: string): Promise<{ token: string; device: DeviceRow }> {
   const token = `szd_${randomBytes(32).toString("base64url")}`;
-  const [device] = await db().update(schema.attendanceDevice).set({ pushTokenHash: hashPushToken(token), pushTokenIssuedAt: new Date(), updatedAt: new Date() }).where(eq(schema.attendanceDevice.id, deviceId)).returning();
+  const [device] = await db()
+    .update(schema.attendanceDevice)
+    .set({ pushTokenHash: hashPushToken(token), pushTokenIssuedAt: new Date(), updatedAt: new Date() })
+    .where(eq(schema.attendanceDevice.id, deviceId))
+    .returning();
   if (!device) throw new ActionError("not_found");
   return { token, device };
 }
@@ -470,7 +566,11 @@ export async function deviceRoster(deviceId: string): Promise<{ userId: string; 
   // recognising them at its next sync and deletes their faces by its own purge (docs/privacy).
   const [rows, gone] = await Promise.all([
     listUserMap(deviceId),
-    db().select({ id: schema.person.id }).from(schema.person).innerJoin(schema.deviceUserMap, eq(schema.deviceUserMap.personId, schema.person.id)).where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.person.status, "offboarded"))),
+    db()
+      .select({ id: schema.person.id })
+      .from(schema.person)
+      .innerJoin(schema.deviceUserMap, eq(schema.deviceUserMap.personId, schema.person.id))
+      .where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.person.status, "offboarded"))),
   ]);
   const withdrawn = await faceWithdrawnAmong([...new Set(rows.map((row) => row.personId))]);
   const left = new Set(gone.map((row) => row.id));
@@ -491,7 +591,14 @@ export async function nextKioskDirection(personId: string, at: Date = new Date()
   const [last] = await executor
     .select({ direction: schema.punch.direction })
     .from(schema.punch)
-    .where(and(eq(schema.punch.personId, personId), sql`${schema.punch.reviewStatus} <> 'rejected'`, sql`${schema.punch.at} > ${new Date(at.getTime() - OPEN_STAY_MS).toISOString()}::timestamptz`, sql`${schema.punch.at} <= ${at.toISOString()}::timestamptz`))
+    .where(
+      and(
+        eq(schema.punch.personId, personId),
+        sql`${schema.punch.reviewStatus} <> 'rejected'`,
+        sql`${schema.punch.at} > ${new Date(at.getTime() - OPEN_STAY_MS).toISOString()}::timestamptz`,
+        sql`${schema.punch.at} <= ${at.toISOString()}::timestamptz`,
+      ),
+    )
     .orderBy(desc(schema.punch.at))
     .limit(1);
   return last?.direction === "in" ? "out" : "in";
@@ -544,7 +651,15 @@ export async function withdrawKioskPunch(deviceId: string, punchId: string, now:
   const removed = await db().transaction(async (tx) => {
     const [row] = await tx
       .delete(schema.punch)
-      .where(and(eq(schema.punch.id, punchId), eq(schema.punch.deviceId, deviceId), eq(schema.punch.source, "device"), sql`${schema.punch.deviceUserId} like 'face:%'`, sql`${schema.punch.createdAt} > ${new Date(now.getTime() - KIOSK_UNDO_MS).toISOString()}::timestamptz`))
+      .where(
+        and(
+          eq(schema.punch.id, punchId),
+          eq(schema.punch.deviceId, deviceId),
+          eq(schema.punch.source, "device"),
+          sql`${schema.punch.deviceUserId} like 'face:%'`,
+          sql`${schema.punch.createdAt} > ${new Date(now.getTime() - KIOSK_UNDO_MS).toISOString()}::timestamptz`,
+        ),
+      )
       .returning({ personId: schema.punch.personId, at: schema.punch.at });
     if (!row) return null;
     const date = vietnamDateAndMinute(row.at.getTime()).date;

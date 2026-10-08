@@ -39,15 +39,27 @@ export default async function StaffingPage() {
                 <TableCell className="font-medium">
                   {teamName ? (
                     <>
-                      <RecordLink kind="unit" id={rule.teamId}>{teamName}</RecordLink> ·{" "}
+                      <RecordLink kind="unit" id={rule.teamId}>
+                        {teamName}
+                      </RecordLink>{" "}
+                      ·{" "}
                     </>
                   ) : null}
                   {departmentName ? (
                     <>
-                      <RecordLink kind="unit" id={rule.departmentId}>{departmentName}</RecordLink> ·{" "}
+                      <RecordLink kind="unit" id={rule.departmentId}>
+                        {departmentName}
+                      </RecordLink>{" "}
+                      ·{" "}
                     </>
                   ) : null}
-                  {entityName ? <RecordLink kind="entity" id={rule.entityId}>{entityName}</RecordLink> : t("everyEntity")}
+                  {entityName ? (
+                    <RecordLink kind="entity" id={rule.entityId}>
+                      {entityName}
+                    </RecordLink>
+                  ) : (
+                    t("everyEntity")
+                  )}
                 </TableCell>
                 <TableCell kind="number">{rule.minPresent}</TableCell>
                 <TableCell kind="actions">{canManageLeaveConfig(user.principal, rule.entityId) ? <DeleteStaffingRuleButton id={rule.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}</TableCell>

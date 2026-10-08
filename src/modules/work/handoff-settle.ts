@@ -9,7 +9,12 @@ import { loadTask, logActivity, taskKey } from "./tasks";
 
 type Executor = Tx | ReturnType<typeof db>;
 
-export async function settleCrossTeamHandoff(tx: Executor, receivingTaskId: string, outcome: { status: "accepted"; targetTaskId?: string } | { status: "returned"; reason: string }, actor: { personId: string; fullName: string }): Promise<number> {
+export async function settleCrossTeamHandoff(
+  tx: Executor,
+  receivingTaskId: string,
+  outcome: { status: "accepted"; targetTaskId?: string } | { status: "returned"; reason: string },
+  actor: { personId: string; fullName: string },
+): Promise<number> {
   const rows = await tx
     .update(schema.workHandoff)
     .set({

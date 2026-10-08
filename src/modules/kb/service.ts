@@ -7,7 +7,24 @@ export { pagePublishedVisibleSql, pageVisibleSql, spaceEditableSql, spaceManaged
 export { type Doc, type DocNode, docToPlainText, EMPTY_DOC, fileIdsOf, outlineOf, validateDoc } from "@/modules/platform/rich-text/engine/doc";
 export { findPageFile, listPageFiles, listSpaceFiles, mayOpenPageFile, PAGE_FILE_OWNER, pageFileLink, type SpaceFileView } from "./files";
 export * from "./pages";
-export { atLeast, canCreatePage, canEditPage, canManageAnySpace, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, type KbLevel, type KbViewer, kbViewerOf, pageLevel, spaceLevel, spaceOwner, type ViewerSource, viewerKeys } from "./policy";
+export {
+  atLeast,
+  canCreatePage,
+  canEditPage,
+  canManageAnySpace,
+  canManageSpace,
+  canOrganisePages,
+  canPublishDirectly,
+  canViewPage,
+  type KbLevel,
+  type KbViewer,
+  kbViewerOf,
+  pageLevel,
+  spaceLevel,
+  spaceOwner,
+  type ViewerSource,
+  viewerKeys,
+} from "./policy";
 export * from "./spaces";
 export { getPublishReview, kbPublishRequest, type PublishReviewView, syncReviewState } from "./publishing";
 export * from "./acknowledgements";

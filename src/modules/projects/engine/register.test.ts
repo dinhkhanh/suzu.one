@@ -57,7 +57,8 @@ describe("deliverables register (FR-PJM-05)", () => {
   });
 
   it("gives a cancelled task no status, whatever else is recorded on it", () => {
-    for (const review of REVIEWS) for (const clientDecision of CLIENT) for (const flag of [false, true]) expect(unitStatus({ category: "cancelled", review, clientDecision, sentToClient: flag, noClient: flag, delivered: flag, published: flag })).toBeNull();
+    for (const review of REVIEWS)
+      for (const clientDecision of CLIENT) for (const flag of [false, true]) expect(unitStatus({ category: "cancelled", review, clientDecision, sentToClient: flag, noClient: flag, delivered: flag, published: flag })).toBeNull();
   });
 
   it("puts a line at its least advanced unit; unlinked units stay promised", () => {
@@ -75,7 +76,16 @@ describe("deliverables register (FR-PJM-05)", () => {
     // Without a client the same twelve done tasks are the line accepted.
     expect(twelvePosts(Array.from({ length: 12 }, () => ({ category: "done" as const, noClient: true })))).toMatchObject({ status: "accepted", accepted: 12, awaitingClient: 0 });
     // Delivered and published units together: the line is delivered.
-    expect(lineStatus({ quantity: 2, cancelled: false, units: [{ category: "done", delivered: true }, { category: "done", published: true }] }).status).toBe("delivered");
+    expect(
+      lineStatus({
+        quantity: 2,
+        cancelled: false,
+        units: [
+          { category: "done", delivered: true },
+          { category: "done", published: true },
+        ],
+      }).status,
+    ).toBe("delivered");
   });
 
   it("fills the promise with the most advanced units; cancelled tasks and lines count for nothing", () => {
@@ -86,7 +96,13 @@ describe("deliverables register (FR-PJM-05)", () => {
   });
 
   it("measures progress as accepted ÷ promised, with what waits on the client beside it", () => {
-    expect(registerProgress([{ promised: 12, accepted: 6, awaitingClient: 4 }, { promised: 4, accepted: 4, awaitingClient: 0 }, { promised: 0, accepted: 0, awaitingClient: 0 }])).toEqual({ promised: 16, accepted: 10, awaitingClient: 4, percent: 62 });
+    expect(
+      registerProgress([
+        { promised: 12, accepted: 6, awaitingClient: 4 },
+        { promised: 4, accepted: 4, awaitingClient: 0 },
+        { promised: 0, accepted: 0, awaitingClient: 0 },
+      ]),
+    ).toEqual({ promised: 16, accepted: 10, awaitingClient: 4, percent: 62 });
     expect(registerProgress([])).toEqual({ promised: 0, accepted: 0, awaitingClient: 0, percent: null });
   });
 

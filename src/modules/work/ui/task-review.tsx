@@ -20,7 +20,18 @@ import { decideReviewAction, submitDeliverableAction } from "../review-actions";
 import { type ClientContactChoice, ClientDecisionForm } from "./client-decision";
 import { CompareVersions, type MediaVersion, PinBoard, type PinItem } from "./visual-feedback";
 
-export type ReviewDecisionItem = { id: string; stageName: string | null; decision: string; comment: string | null; isClient: boolean; decidedByPersonId?: string | null; decidedByName: string | null; createdAt: string; client: { channel: string; decidedByName: string; decidedOn: string; evidenceUrl?: string | null; evidenceFileId?: string | null } | null; evidenceFileName: string | null };
+export type ReviewDecisionItem = {
+  id: string;
+  stageName: string | null;
+  decision: string;
+  comment: string | null;
+  isClient: boolean;
+  decidedByPersonId?: string | null;
+  decidedByName: string | null;
+  createdAt: string;
+  client: { channel: string; decidedByName: string; decidedOn: string; evidenceUrl?: string | null; evidenceFileId?: string | null } | null;
+  evidenceFileName: string | null;
+};
 
 export type ReviewDeliverable = {
   id: string;
@@ -131,7 +142,11 @@ export function TaskReview({
     <section className="flex flex-col gap-3">
       <h2 className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground">
         {t("title")}
-        {status !== "none" ? <Badge dot variant={statusTone(status)}>{t(`status.${status}`)}</Badge> : null}
+        {status !== "none" ? (
+          <Badge dot variant={statusTone(status)}>
+            {t(`status.${status}`)}
+          </Badge>
+        ) : null}
         {rounds > 0 ? <Badge variant="outline">{t("rounds", { count: rounds })}</Badge> : null}
       </h2>
 
@@ -158,7 +173,14 @@ export function TaskReview({
             </li>
           ))}
           <li className="basis-full pt-1 text-muted-foreground">
-            {tChain.rich("waitingOn", { name: waiting!.stageReviewerName ?? "—", who: (chunks) => <RecordLink kind="person" id={waiting!.stageReviewerName ? waiting!.stageReviewerPersonId : null}>{chunks}</RecordLink> })}
+            {tChain.rich("waitingOn", {
+              name: waiting!.stageReviewerName ?? "—",
+              who: (chunks) => (
+                <RecordLink kind="person" id={waiting!.stageReviewerName ? waiting!.stageReviewerPersonId : null}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}
             {waiting!.stageDueAt ? ` · ${tChain("dueAt", { when: when(waiting!.stageDueAt) })}` : ""}
           </li>
         </ol>
@@ -174,7 +196,10 @@ export function TaskReview({
             const form = event.currentTarget;
             const decision = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
             const comment = String(new FormData(form).get("comment") ?? "");
-            run(() => (inChain ? decideStageAction({ taskId, decision, comment }) : decideReviewAction({ taskId, decision, comment })), () => form.reset());
+            run(
+              () => (inChain ? decideStageAction({ taskId, decision, comment }) : decideReviewAction({ taskId, decision, comment })),
+              () => form.reset(),
+            );
           }}
         >
           <p className="text-sm font-medium">{inChain ? tChain("decideTitle", { version: waiting.version, stage: waiting.stages[stageIndex] }) : t("decideTitle", { version: waiting.version })}</p>
@@ -207,7 +232,10 @@ export function TaskReview({
             event.preventDefault();
             const form = event.currentTarget;
             const data = new FormData(form);
-            run(() => submitDeliverableAction({ taskId, fileId: source === "file" ? data.get("fileId") : "", url: source === "link" ? data.get("url") : "", note: data.get("note") }), () => form.reset());
+            run(
+              () => submitDeliverableAction({ taskId, fileId: source === "file" ? data.get("fileId") : "", url: source === "link" ? data.get("url") : "", note: data.get("note") }),
+              () => form.reset(),
+            );
           }}
         >
           <p className="text-sm font-medium">{t(status === "submitted" ? "submitAgainTitle" : "submitTitle", { version: (deliverables[0]?.version ?? 0) + 1 })}</p>
@@ -270,9 +298,21 @@ export function TaskReview({
                       <Lock aria-hidden /> {tClient("frozen")}
                     </Badge>
                   ) : null}
-                  <Badge dot variant={statusTone(item.decision)}>{t(`decision.${item.decision}`)}</Badge>
+                  <Badge dot variant={statusTone(item.decision)}>
+                    {t(`decision.${item.decision}`)}
+                  </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{t.rich("submittedBy", { name: item.submittedByName ?? "—", when: when(item.submittedAt), who: (chunks) => <RecordLink kind="person" id={item.submittedByName ? item.submittedByPersonId : null}>{chunks}</RecordLink> })}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t.rich("submittedBy", {
+                    name: item.submittedByName ?? "—",
+                    when: when(item.submittedAt),
+                    who: (chunks) => (
+                      <RecordLink kind="person" id={item.submittedByName ? item.submittedByPersonId : null}>
+                        {chunks}
+                      </RecordLink>
+                    ),
+                  })}
+                </p>
                 {item.note ? <p className="text-sm whitespace-pre-wrap">{item.note}</p> : null}
                 {item.decisions.length ? (
                   <ul className="flex flex-col gap-1 border-l-2 pl-2">
@@ -283,10 +323,27 @@ export function TaskReview({
                         {tChain(`decisions.${decision.decision}`)}
                         {" · "}
                         {decision.isClient && decision.client ? (
-                          tClient.rich("recordedAs", { client: decision.client.decidedByName || "—", channel: tClient(`channels.${decision.client.channel}`), date: decision.client.decidedOn.split("-").reverse().join("/"), name: decision.decidedByName ?? "—", who: (chunks) => <RecordLink kind="person" id={decision.decidedByName ? decision.decidedByPersonId : null}>{chunks}</RecordLink> })
+                          tClient.rich("recordedAs", {
+                            client: decision.client.decidedByName || "—",
+                            channel: tClient(`channels.${decision.client.channel}`),
+                            date: decision.client.decidedOn.split("-").reverse().join("/"),
+                            name: decision.decidedByName ?? "—",
+                            who: (chunks) => (
+                              <RecordLink kind="person" id={decision.decidedByName ? decision.decidedByPersonId : null}>
+                                {chunks}
+                              </RecordLink>
+                            ),
+                          })
                         ) : (
                           <>
-                            {decision.decidedByName ? <RecordLink kind="person" id={decision.decidedByPersonId}>{decision.decidedByName}</RecordLink> : "—"}, {when(decision.createdAt)}
+                            {decision.decidedByName ? (
+                              <RecordLink kind="person" id={decision.decidedByPersonId}>
+                                {decision.decidedByName}
+                              </RecordLink>
+                            ) : (
+                              "—"
+                            )}
+                            , {when(decision.createdAt)}
                           </>
                         )}
                         <RichText text={decision.comment} className="text-sm" />
@@ -302,7 +359,19 @@ export function TaskReview({
                   </ul>
                 ) : null}
                 {/* A single-step review keeps its decision on the version; a chain's are the rows above. */}
-                {!item.chainId && item.decidedAt && item.decidedByName ? <p className="text-xs text-muted-foreground">{t.rich("decidedBy", { name: item.decidedByName, when: when(item.decidedAt), who: (chunks) => <RecordLink kind="person" id={item.decidedByPersonId}>{chunks}</RecordLink> })}</p> : null}
+                {!item.chainId && item.decidedAt && item.decidedByName ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t.rich("decidedBy", {
+                      name: item.decidedByName,
+                      when: when(item.decidedAt),
+                      who: (chunks) => (
+                        <RecordLink kind="person" id={item.decidedByPersonId}>
+                          {chunks}
+                        </RecordLink>
+                      ),
+                    })}
+                  </p>
+                ) : null}
                 {!item.chainId && item.decisionComment?.trim() ? <RichText text={item.decisionComment} className="border-l-2 pl-2 text-sm" /> : null}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {media ? (
@@ -317,7 +386,9 @@ export function TaskReview({
                   ) : null}
                 </div>
                 {media && pinsFor === item.id ? <PinBoard version={media} pins={item.pins} canPin={canPin} /> : null}
-                {recordingFor === item.id ? <ClientDecisionForm target={{ kind: "version", taskId, deliverableId: item.id }} version={item.version} clientName={clientName} contacts={clientContacts} files={files} today={today} onDone={() => setRecordingFor(null)} /> : null}
+                {recordingFor === item.id ? (
+                  <ClientDecisionForm target={{ kind: "version", taskId, deliverableId: item.id }} version={item.version} clientName={clientName} contacts={clientContacts} files={files} today={today} onDone={() => setRecordingFor(null)} />
+                ) : null}
               </ListItem>
             );
           })}

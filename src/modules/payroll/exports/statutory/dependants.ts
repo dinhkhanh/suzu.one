@@ -57,7 +57,5 @@ const columns: ExportColumn<DependantRegistration & { index: number }>[] = [
 
 export function buildDependants(input: { entityCode: string; period: string; rows: readonly DependantRegistration[] }): StatutoryFile {
   const numbered = input.rows.map((row, index) => ({ ...row, index: index + 1 }));
-  return csvFile(`07DK-NPT-TNCN_${input.entityCode}_${input.period}.csv`, columns, numbered, [
-    "Biểu mẫu chính thức tách người phụ thuộc đã có mã số thuế và chưa có — lọc theo cột MA SO THUE NPT.",
-  ]);
+  return csvFile(`07DK-NPT-TNCN_${input.entityCode}_${input.period}.csv`, columns, numbered, ["Biểu mẫu chính thức tách người phụ thuộc đã có mã số thuế và chưa có — lọc theo cột MA SO THUE NPT."]);
 }

@@ -15,7 +15,10 @@ describe("sortInbox", () => {
     expect(sortInbox(items, "2026-09-20").map((item) => item.id)).toEqual(["very-late", "late", "today-urgent", "today-low", "next-week", "undated-urgent", "undated"]);
   });
   it("keeps the given order for equals", () => {
-    const items = [{ id: "a", dueDate: "2026-09-21", priority: 2 }, { id: "b", dueDate: "2026-09-21", priority: 2 }];
+    const items = [
+      { id: "a", dueDate: "2026-09-21", priority: 2 },
+      { id: "b", dueDate: "2026-09-21", priority: 2 },
+    ];
     expect(sortInbox(items, "2026-09-20").map((item) => item.id)).toEqual(["a", "b"]);
   });
 });

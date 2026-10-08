@@ -62,8 +62,15 @@ type Fill = {
 const FILLS: Fill[] = [
   {
     who: HUY,
-    self: { answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Rút thời gian dựng bản nháp đầu từ 14 giờ xuống 10,5 giờ và học xong khoá DaVinci Resolve.", improve: "Chủ động hỏi brief sớm hơn để đỡ phải sửa nhiều vòng." }, comment: "Một năm học được nhiều, nhất là phần color grading." },
-    manager: { by: LONG, answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Tiến bộ rõ về tốc độ dựng; đã chia sẻ lại kiến thức color cho cả phòng.", improve: "Cần tự tin hơn khi trao đổi trực tiếp với khách." }, comment: "Đồng ý với phần tự đánh giá. Là người tiến bộ nhanh nhất phòng năm nay." },
+    self: {
+      answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Rút thời gian dựng bản nháp đầu từ 14 giờ xuống 10,5 giờ và học xong khoá DaVinci Resolve.", improve: "Chủ động hỏi brief sớm hơn để đỡ phải sửa nhiều vòng." },
+      comment: "Một năm học được nhiều, nhất là phần color grading.",
+    },
+    manager: {
+      by: LONG,
+      answers: { quality: 4, ownership: 3, teamwork: 4, growth: 5, highlights: "Tiến bộ rõ về tốc độ dựng; đã chia sẻ lại kiến thức color cho cả phòng.", improve: "Cần tự tin hơn khi trao đổi trực tiếp với khách." },
+      comment: "Đồng ý với phần tự đánh giá. Là người tiến bộ nhanh nhất phòng năm nay.",
+    },
     calibrate: { bp: 11200, note: "Cân đối theo mặt bằng chung của phòng Video: giữ ở mức vượt mong đợi.", by: MAI },
     release: MAI,
     acknowledge: "Cảm ơn anh. Em sẽ chú ý phần trao đổi với khách.",
@@ -71,8 +78,15 @@ const FILLS: Fill[] = [
   },
   {
     who: TAM,
-    self: { answers: { quality: 4, ownership: 4, teamwork: 3, growth: 3, highlights: "Đạo diễn 6 TVC, 5 bàn giao đúng hạn; số vòng sửa trung bình giảm từ 3,5 xuống 2,4.", improve: "Giao việc lại cho đội nhiều hơn thay vì ôm." }, comment: "Quý 3 nặng nhưng giữ được chất lượng." },
-    manager: { by: LONG, answers: { quality: 4, ownership: 4, teamwork: 3, growth: 4, highlights: "Giữ được chất lượng khi khối lượng tăng; khách hài lòng.", improve: "Phân việc cho Huy và Linh nhiều hơn để đỡ nghẽn ở một người." }, comment: "Trụ cột của phòng. Cần tập giao việc." },
+    self: {
+      answers: { quality: 4, ownership: 4, teamwork: 3, growth: 3, highlights: "Đạo diễn 6 TVC, 5 bàn giao đúng hạn; số vòng sửa trung bình giảm từ 3,5 xuống 2,4.", improve: "Giao việc lại cho đội nhiều hơn thay vì ôm." },
+      comment: "Quý 3 nặng nhưng giữ được chất lượng.",
+    },
+    manager: {
+      by: LONG,
+      answers: { quality: 4, ownership: 4, teamwork: 3, growth: 4, highlights: "Giữ được chất lượng khi khối lượng tăng; khách hài lòng.", improve: "Phân việc cho Huy và Linh nhiều hơn để đỡ nghẽn ở một người." },
+      comment: "Trụ cột của phòng. Cần tập giao việc.",
+    },
     release: MAI,
     acknowledge: "Em nhận phần giao việc. Sang năm sẽ chia rõ đầu việc cho Huy và Linh ngay từ đầu dự án.",
     peers: [
@@ -108,7 +122,9 @@ export async function seedReviews(db: Db): Promise<string> {
 
   const [szm] = await db.select().from(entity).where(eq(entity.code, "SZM")).limit(1);
   if (!szm) return "0 review cycles (no SZM entity)";
-  const people = await db.select({ id: person.id, fullName: person.fullName, managerId: person.managerId, entityId: person.primaryEntityId, departmentId: person.departmentId, workforceType: person.workforceType, status: person.status }).from(person);
+  const people = await db
+    .select({ id: person.id, fullName: person.fullName, managerId: person.managerId, entityId: person.primaryEntityId, departmentId: person.departmentId, workforceType: person.workforceType, status: person.status })
+    .from(person);
   const byName = new Map(people.map((row) => [row.fullName, row]));
   const mai = byName.get(MAI);
   if (!mai) return "0 review cycles (run the people seed first)";
@@ -116,7 +132,15 @@ export async function seedReviews(db: Db): Promise<string> {
   const shape: ReviewFormShape = { sections: SECTIONS, ratingScale: SCALE };
   const [template] = await db
     .insert(reviewTemplate)
-    .values({ name: "Đánh giá năm — biểu mẫu chuẩn", nameEn: "Annual review — standard form", description: "Bốn nhóm năng lực chấm điểm và hai câu tự luận. Mức “Đạt yêu cầu” tương đương 100 %.", sections: SECTIONS, ratingScale: SCALE, isActive: true, createdByPersonId: mai.id })
+    .values({
+      name: "Đánh giá năm — biểu mẫu chuẩn",
+      nameEn: "Annual review — standard form",
+      description: "Bốn nhóm năng lực chấm điểm và hai câu tự luận. Mức “Đạt yêu cầu” tương đương 100 %.",
+      sections: SECTIONS,
+      ratingScale: SCALE,
+      isActive: true,
+      createdByPersonId: mai.id,
+    })
     .returning();
 
   const [cycle] = await db
@@ -179,7 +203,15 @@ export async function seedReviews(db: Db): Promise<string> {
     for (const peer of fill.peers ?? []) {
       const author = byName.get(peer.by);
       if (!author) continue;
-      await db.insert(reviewPeerNomination).values({ cycleId: cycle.id, participantId: participant.id, peerPersonId: author.id, nominatedByPersonId: subject.id, status: "approved", decidedByPersonId: participant.managerPersonId, decidedAt: new Date("2026-11-28T02:00:00Z") });
+      await db.insert(reviewPeerNomination).values({
+        cycleId: cycle.id,
+        participantId: participant.id,
+        peerPersonId: author.id,
+        nominatedByPersonId: subject.id,
+        status: "approved",
+        decidedByPersonId: participant.managerPersonId,
+        decidedAt: new Date("2026-11-28T02:00:00Z"),
+      });
       await writeForm(participant.id, subject.id, "peer", author.id, peer.answers, peer.comment, "2026-12-09T04:00:00Z");
     }
 

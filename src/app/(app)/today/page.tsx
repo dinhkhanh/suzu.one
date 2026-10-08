@@ -50,7 +50,15 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
   const query = await searchParams;
   const tab: Tab = TABS.includes(query.view as Tab) ? (query.view as Tab) : "today";
   // Every inbox list in one cached entry (work/my-work.ts): the tabs' counts come from it.
-  const [t, tTasks, format, view, checkIn, mine, followUps] = await Promise.all([getTranslations("daily"), getTranslations("tasks"), getFormatter(), getToday(user.person.id, date), getCheckInState(user.person, now), loadMyWork(user.person.id, date), openFollowUps(user.person.id, tab)]);
+  const [t, tTasks, format, view, checkIn, mine, followUps] = await Promise.all([
+    getTranslations("daily"),
+    getTranslations("tasks"),
+    getFormatter(),
+    getToday(user.person.id, date),
+    getCheckInState(user.person, now),
+    loadMyWork(user.person.id, date),
+    openFollowUps(user.person.id, tab),
+  ]);
   const counts = inboxCounts(mine, followUps.count);
   const day = view.day;
   const off = !!day?.dayOff;
@@ -66,7 +74,12 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
   const lastOut = [...checkIn.punches].reverse().find((punch) => punch.direction === "out");
   const checkedIn = checkIn.nextDirection === "out" && !!lastIn;
   const elapsed = lastIn ? Math.max(0, Math.floor((now.getTime() - lastIn.at.getTime()) / 60_000)) : 0;
-  const checkInLine = checkedIn && lastIn ? `${t("today.checkedIn", { time: clock(lastIn.at) })} · ${t("today.elapsed", { hours: Math.floor(elapsed / 60), minutes: elapsed % 60 })}` : lastOut ? t("today.checkedOut", { time: clock(lastOut.at) }) : t("today.notCheckedIn");
+  const checkInLine =
+    checkedIn && lastIn
+      ? `${t("today.checkedIn", { time: clock(lastIn.at) })} · ${t("today.elapsed", { hours: Math.floor(elapsed / 60), minutes: elapsed % 60 })}`
+      : lastOut
+        ? t("today.checkedOut", { time: clock(lastOut.at) })
+        : t("today.notCheckedIn");
 
   const planCard = (
     <Link href="/daily/plan" className="press flex min-h-24 flex-col justify-between gap-2 rounded-[14px] border border-border bg-background p-4 hover:bg-canvas">
@@ -74,7 +87,13 @@ export default async function TodayPage({ searchParams }: PageProps<"/today">) {
         {view.plan?.submittedAt ? <Check aria-hidden className="size-3.5 text-success" strokeWidth={2.5} /> : null}
         {t("today.planShort")}
       </span>
-      <span className="text-[0.9375rem] leading-snug font-semibold tracking-[-0.01em]">{view.plan?.submittedAt ? t("today.planSummary", { count: view.planned.length, planned: hoursOf(plannedMinutes), available: hoursOf(day?.minutes ?? 0) }) : day?.plan.required ? t("today.planBy", { time: day.rules.planCutoff }) : t("today.makePlan")}</span>
+      <span className="text-[0.9375rem] leading-snug font-semibold tracking-[-0.01em]">
+        {view.plan?.submittedAt
+          ? t("today.planSummary", { count: view.planned.length, planned: hoursOf(plannedMinutes), available: hoursOf(day?.minutes ?? 0) })
+          : day?.plan.required
+            ? t("today.planBy", { time: day.rules.planCutoff })
+            : t("today.makePlan")}
+      </span>
     </Link>
   );
 

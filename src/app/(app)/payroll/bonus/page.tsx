@@ -79,7 +79,9 @@ export default async function BonusRunsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
+                    <Badge dot variant={statusTone(run.status)}>
+                      {t(`status.${run.status}`)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-[0.8125rem] tabular-nums">{run.year}</TableCell>
                   <TableCell className="font-mono text-[0.8125rem] tabular-nums">{run.payrollMonth}</TableCell>

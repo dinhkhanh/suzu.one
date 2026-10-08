@@ -39,7 +39,11 @@ import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "huy" | "bao" | "khoi" | "boss" | "ngoai";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "open" | "secret" | "client" | "script" | "design", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const actor = (key: Key) => ({ personId: ids[key], fullName: key });
 const viewer = async (key: Key) => (await viewerOfPerson(db(), ids[key]))!;
 const TODAY = todayInVietnam();
@@ -91,7 +95,14 @@ describe("automations (FR-PJM-33)", () => {
   const runs = async (automationId: string) => db().select().from(schema.workAutomationRun).where(eq(schema.workAutomationRun.automationId, automationId));
 
   it("a team-wide rule of a leader outside a private project does not run on its work", async () => {
-    const rule = (await saveAutomation({ teamId: ids.video, projectId: null }, null, { name: "Báo cho sếp", trigger: { type: "state_entered", stateId: ids.design }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "Đã sang thiết kế" }], isActive: true }, ids.boss)).after;
+    const rule = (
+      await saveAutomation(
+        { teamId: ids.video, projectId: null },
+        null,
+        { name: "Báo cho sếp", trigger: { type: "state_entered", stateId: ids.design }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "Đã sang thiết kế" }], isActive: true },
+        ids.boss,
+      )
+    ).after;
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Deck", stateId: ids.script, assigneePersonId: ids.huy }, ids.huy);
     await updateWorkTask(task.id, { stateId: ids.design }, ids.huy);
     expect(await runs(rule.id)).toEqual([]);
@@ -104,20 +115,51 @@ describe("automations (FR-PJM-33)", () => {
   });
 
   it("drops the people a rule names who may not open the task, and writes them down in the run", async () => {
-    const rule = (await saveAutomation({ teamId: ids.video, projectId: null }, null, { name: "Giao cho Khôi", trigger: { type: "state_entered", stateId: ids.design }, conditions: [], actions: [{ type: "assign", personId: ids.khoi }, { type: "notify", personId: ids.khoi, text: "Việc mới" }], isActive: true }, ids.long)).after;
+    const rule = (
+      await saveAutomation(
+        { teamId: ids.video, projectId: null },
+        null,
+        {
+          name: "Giao cho Khôi",
+          trigger: { type: "state_entered", stateId: ids.design },
+          conditions: [],
+          actions: [
+            { type: "assign", personId: ids.khoi },
+            { type: "notify", personId: ids.khoi, text: "Việc mới" },
+          ],
+          isActive: true,
+        },
+        ids.long,
+      )
+    ).after;
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Kịch bản pitch", stateId: ids.script, assigneePersonId: ids.huy }, ids.huy);
     await updateWorkTask(task.id, { stateId: ids.design }, ids.huy);
 
     const [run] = await runs(rule.id);
-    expect(run.detail.dropped).toEqual([{ action: "assign", personId: ids.khoi }, { action: "notify", personId: ids.khoi }]);
+    expect(run.detail.dropped).toEqual([
+      { action: "assign", personId: ids.khoi },
+      { action: "notify", personId: ids.khoi },
+    ]);
     expect((run.detail.results as { action: string; status: string; reason?: string }[]).every((step) => step.status === "skipped")).toBe(true);
     expect((await loadTask(task.id))!.task.assigneePersonId).toBe(ids.huy);
-    expect(await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.khoi), eq(schema.notification.kind, "tasks.automation")))).toEqual([]);
+    expect(
+      await db()
+        .select()
+        .from(schema.notification)
+        .where(and(eq(schema.notification.recipientPersonId, ids.khoi), eq(schema.notification.kind, "tasks.automation"))),
+    ).toEqual([]);
     await db().delete(schema.workAutomation).where(eq(schema.workAutomation.id, rule.id));
   });
 
   it("hides the rules of a project the reader may not open", async () => {
-    const rule = (await saveAutomation({ teamId: ids.video, projectId: ids.secret }, null, { name: "Quy tắc của pitch", trigger: { type: "state_entered", stateId: ids.design }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "x" }], isActive: true }, ids.huy)).after;
+    const rule = (
+      await saveAutomation(
+        { teamId: ids.video, projectId: ids.secret },
+        null,
+        { name: "Quy tắc của pitch", trigger: { type: "state_entered", stateId: ids.design }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: "x" }], isActive: true },
+        ids.huy,
+      )
+    ).after;
     expect((await automationPanel({ teamId: ids.video, projectId: null }, await viewer("huy"))).rules.map((row) => row.id)).toContain(rule.id);
     expect((await automationPanel({ teamId: ids.video, projectId: null }, await viewer("bao"))).rules.map((row) => row.id)).not.toContain(rule.id);
     await db().delete(schema.workAutomation).where(eq(schema.workAutomation.id, rule.id));
@@ -130,7 +172,10 @@ describe("leave cover (FR-PJM-44)", () => {
       .insert(schema.workCoverPlan)
       .values({ personId: ids.huy, leaveRequestId: crypto.randomUUID(), fromDate: over.from ?? addDays(TODAY, 1), toDate: over.to ?? addDays(TODAY, 3), status: over.status ?? "draft", appliedAt: over.appliedAt ?? null })
       .returning();
-    for (const item of items) await db().insert(schema.workCoverItem).values({ planId: plan.id, itemType: "task", itemId: item.itemId, coverPersonId: item.coverPersonId ?? null });
+    for (const item of items)
+      await db()
+        .insert(schema.workCoverItem)
+        .values({ planId: plan.id, itemType: "task", itemId: item.itemId, coverPersonId: item.coverPersonId ?? null });
     return plan;
   };
 
@@ -151,7 +196,16 @@ describe("leave cover (FR-PJM-44)", () => {
     if (asBao) expect([asBao.label, asBao.href]).toEqual([null, null]);
 
     // Khôi is in another team: he cannot be given this work, by name or as the cover for all.
-    expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: null, items: [{ id: (await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id)))[0].id, coverPersonId: ids.khoi }], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_not_assignable");
+    expect(
+      await fails(
+        submitCoverPlan(
+          plan.id,
+          { defaultCoverPersonId: null, items: [{ id: (await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id)))[0].id, coverPersonId: ids.khoi }], note: { context: "x" } },
+          actor("huy"),
+          TODAY,
+        ),
+      ),
+    ).toBe("cover_not_assignable");
     expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: ids.khoi, items: [], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_item_uncovered");
     // Bảo is in the team but not in this private project: the work does not go to him either.
     expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: ids.bao, items: [], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_item_uncovered");
@@ -162,8 +216,18 @@ describe("leave cover (FR-PJM-44)", () => {
   it("is handed back per cover, and never before the last day of the leave", async () => {
     const first = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Việc một", assigneePersonId: ids.huy }, ids.long)).task;
     const second = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Việc hai", assigneePersonId: ids.huy }, ids.long)).task;
-    const plan = await planWith([{ itemId: first.id, coverPersonId: ids.bao }, { itemId: second.id, coverPersonId: ids.long }], { from: addDays(TODAY, -3), to: addDays(TODAY, 2), status: "submitted", appliedAt: new Date() });
-    for (const task of [first, second]) await db().update(schema.task).set({ assigneePersonId: task.id === first.id ? ids.bao : ids.long }).where(eq(schema.task.id, task.id));
+    const plan = await planWith(
+      [
+        { itemId: first.id, coverPersonId: ids.bao },
+        { itemId: second.id, coverPersonId: ids.long },
+      ],
+      { from: addDays(TODAY, -3), to: addDays(TODAY, 2), status: "submitted", appliedAt: new Date() },
+    );
+    for (const task of [first, second])
+      await db()
+        .update(schema.task)
+        .set({ assigneePersonId: task.id === first.id ? ids.bao : ids.long })
+        .where(eq(schema.task.id, task.id));
 
     expect(await fails(handBackCover(plan.id, actor("bao"), TODAY, { whole: false }))).toBe("cover_hand_back_early");
     const last = addDays(TODAY, 2);
@@ -183,7 +247,10 @@ describe("exit handover (FR-PJM-45)", () => {
   it("shows the runner only what they run, and hands each item to someone the work can go to", async () => {
     const secretTask = (await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Hợp đồng pitch", assigneePersonId: ids.huy }, ids.huy)).task;
     const openTask = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Bản dựng cuối", assigneePersonId: ids.huy }, ids.long)).task;
-    const [handover] = await db().insert(schema.workExitHandover).values({ personId: ids.huy, lifecycleEventId: crypto.randomUUID(), reason: "termination", lastDay: addDays(TODAY, 10) }).returning();
+    const [handover] = await db()
+      .insert(schema.workExitHandover)
+      .values({ personId: ids.huy, lifecycleEventId: crypto.randomUUID(), reason: "termination", lastDay: addDays(TODAY, 10) })
+      .returning();
 
     const asBoss = (await getExitHandover(handover.id, await viewer("boss")))!;
     const secretItem = asBoss.owned.find((item) => item.id === secretTask.id)!;
@@ -226,7 +293,10 @@ describe("who a private project's work can be given to (FR-PJM-14)", () => {
 
   it("keeps the cover of a private task inside it", async () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Kịch bản pitch", assigneePersonId: ids.huy }, ids.huy);
-    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.huy, leaveRequestId: crypto.randomUUID(), fromDate: addDays(TODAY, 1), toDate: addDays(TODAY, 3), status: "draft" }).returning();
+    const [plan] = await db()
+      .insert(schema.workCoverPlan)
+      .values({ personId: ids.huy, leaveRequestId: crypto.randomUUID(), fromDate: addDays(TODAY, 1), toDate: addDays(TODAY, 3), status: "draft" })
+      .returning();
     await db().insert(schema.workCoverItem).values({ planId: plan.id, itemType: "task", itemId: task.id });
     // Bảo is in the team but not in the project: neither by name nor as the cover for all.
     const [item] = await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id));
@@ -237,7 +307,10 @@ describe("who a private project's work can be given to (FR-PJM-14)", () => {
 
   it("hands a leaver's private work to the team's lead, not to the rest of the team", async () => {
     const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Hồ sơ thầu", assigneePersonId: ids.huy }, ids.huy);
-    const [handover] = await db().insert(schema.workExitHandover).values({ personId: ids.huy, lifecycleEventId: crypto.randomUUID(), reason: "termination", lastDay: addDays(TODAY, 10) }).returning();
+    const [handover] = await db()
+      .insert(schema.workExitHandover)
+      .values({ personId: ids.huy, lifecycleEventId: crypto.randomUUID(), reason: "termination", lastDay: addDays(TODAY, 10) })
+      .returning();
     const note = { context: "Huy nghỉ việc" };
     expect(await fails(reassignOwnership(handover.id, { items: [{ kind: "task", id: task.id }], toPersonId: ids.bao, note }, actor("long"), await viewer("long")))).toBe("person_not_assignable");
     await reassignOwnership(handover.id, { items: [{ kind: "task", id: task.id }], toPersonId: ids.long, note }, actor("long"), await viewer("long"));
@@ -350,7 +423,11 @@ describe("the posts a person holds in projects, on their page", () => {
     expect(await posts("huy", "bao")).toEqual([]);
 
     // The director reads the private project by authority, not as one of its people: the read is recorded.
-    const privateReads = () => db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.resourceId, tender)));
+    const privateReads = () =>
+      db()
+        .select()
+        .from(schema.auditLog)
+        .where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.resourceId, tender)));
     const before = (await privateReads()).length;
     expect(await posts("boss", "bao")).toEqual([
       ["Chiến dịch hè", "account_manager"],

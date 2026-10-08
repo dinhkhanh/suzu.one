@@ -38,7 +38,9 @@ export async function CoverPlanPanel({ leaveRequestId, viewerPersonId }: { leave
         description={plan.status !== "cancelled" && moving.length > 0 ? t("coveredCount", { covered, total: moving.length }) : undefined}
         actions={
           <>
-            <Badge dot variant={statusTone(plan.status)}>{t(`statuses.${plan.status}`)}</Badge>
+            <Badge dot variant={statusTone(plan.status)}>
+              {t(`statuses.${plan.status}`)}
+            </Badge>
             {/* The person, a cover named in it, whoever may submit it for them: the people its page opens for. */}
             {cover.canOpen && plan.status !== "cancelled" ? (
               <Link href={`/work/cover/${plan.id}`} className="text-sm text-link hover:underline">
@@ -57,7 +59,18 @@ export async function CoverPlanPanel({ leaveRequestId, viewerPersonId }: { leave
               <ListItem key={item.id} className="flex-wrap gap-x-2">
                 <span className="text-muted-foreground">{t(`types.${item.itemType}`)}:</span>
                 <span className={item.label === null ? "text-muted-foreground italic" : undefined}>{item.label ?? t("privateItem")}</span>
-                <span className="text-muted-foreground">→ {item.itemType === "booking" ? t("bookingInfo") : item.effectiveCoverName ? <RecordLink kind="person" id={item.coverPersonId ?? plan.defaultCoverPersonId}>{item.effectiveCoverName}</RecordLink> : t("uncovered")}</span>
+                <span className="text-muted-foreground">
+                  →{" "}
+                  {item.itemType === "booking" ? (
+                    t("bookingInfo")
+                  ) : item.effectiveCoverName ? (
+                    <RecordLink kind="person" id={item.coverPersonId ?? plan.defaultCoverPersonId}>
+                      {item.effectiveCoverName}
+                    </RecordLink>
+                  ) : (
+                    t("uncovered")
+                  )}
+                </span>
                 {item.acknowledgedAt ? <span className="text-xs text-muted-foreground">({t("acknowledgedOn", { date: format.dateTime(item.acknowledgedAt, { dateStyle: "short" }) })})</span> : null}
               </ListItem>
             ))}

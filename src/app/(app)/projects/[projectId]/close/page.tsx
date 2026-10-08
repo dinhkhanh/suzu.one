@@ -122,8 +122,8 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
             {(["wentWell", "improve", "actions"] as const).map((key) => (
               <Card key={key} size="sm">
                 <CardContent className="flex flex-col gap-1">
-                <p className="text-xs text-muted-foreground">{t(`retro.${key}`)}</p>
-                {retro.retro?.[key]?.trim() ? <RichText text={retro.retro[key]} /> : <p>—</p>}
+                  <p className="text-xs text-muted-foreground">{t(`retro.${key}`)}</p>
+                  {retro.retro?.[key]?.trim() ? <RichText text={retro.retro[key]} /> : <p>—</p>}
                 </CardContent>
               </Card>
             ))}
@@ -139,13 +139,7 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
             </div>
           </details>
         ) : null}
-        {holdsRetro && retro?.retro ? (
-          writable.length ? (
-            <PublishLessonsForm projectId={project.id} spaces={writable} />
-          ) : (
-            <p className="text-xs text-muted-foreground">{t("noSpace")}</p>
-          )
-        ) : null}
+        {holdsRetro && retro?.retro ? writable.length ? <PublishLessonsForm projectId={project.id} spaces={writable} /> : <p className="text-xs text-muted-foreground">{t("noSpace")}</p> : null}
       </section>
 
       {!closed && canCloseProject(viewer, facts) ? (

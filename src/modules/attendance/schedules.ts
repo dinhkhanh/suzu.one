@@ -83,11 +83,18 @@ export async function getDayPlans(personIds: readonly string[], from: IsoDate, t
           and(
             lte(schema.scheduleAssignment.validFrom, to),
             or(isNull(schema.scheduleAssignment.validTo), gte(schema.scheduleAssignment.validTo, from)),
-            or(inArray(schema.scheduleAssignment.personId, ids), departmentIds.length ? inArray(schema.scheduleAssignment.departmentId, departmentIds) : undefined, entityIds.length ? and(eq(schema.scheduleAssignment.scope, "entity"), inArray(schema.scheduleAssignment.entityId, entityIds)) : undefined),
+            or(
+              inArray(schema.scheduleAssignment.personId, ids),
+              departmentIds.length ? inArray(schema.scheduleAssignment.departmentId, departmentIds) : undefined,
+              entityIds.length ? and(eq(schema.scheduleAssignment.scope, "entity"), inArray(schema.scheduleAssignment.entityId, entityIds)) : undefined,
+            ),
           ),
         ),
       reader.select().from(schema.workSchedule),
-      reader.select().from(schema.calendarDay).where(between(schema.calendarDay.date, from, to)),
+      reader
+        .select()
+        .from(schema.calendarDay)
+        .where(between(schema.calendarDay.date, from, to)),
     ]);
   }
 
@@ -95,7 +102,9 @@ export async function getDayPlans(personIds: readonly string[], from: IsoDate, t
   const fallback = schedules.find((row) => row.isDefault && row.isActive) ?? null;
   const facts: AssignmentFact[] = assignments;
   const calendarDays: CalendarDay[] = calendar.map((row) => ({ date: row.date, entityId: row.entityId, kind: row.kind, name: row.name }));
-  const rosterOf = new Map<string, RosterEntry>(roster.map((row) => [`${row.personId}:${row.date}`, { date: row.date, shift: row.shiftId && row.segments ? { id: row.shiftId, segments: row.segments, breakMinutes: row.breakMinutes ?? 0 } : null }]));
+  const rosterOf = new Map<string, RosterEntry>(
+    roster.map((row) => [`${row.personId}:${row.date}`, { date: row.date, shift: row.shiftId && row.segments ? { id: row.shiftId, segments: row.segments, breakMinutes: row.breakMinutes ?? 0 } : null }]),
+  );
   const dates = eachDate(from, to);
 
   for (const person of people) {
@@ -163,7 +172,12 @@ export async function saveCalendarDay(input: CalendarDayInput): Promise<{ before
       .limit(1)
       .for("update");
     const values = { kind: input.kind, name: input.name, isConfirmed: true, updatedAt: new Date() };
-    const [after] = before ? await tx.update(schema.calendarDay).set(values).where(eq(schema.calendarDay.id, before.id)).returning() : await tx.insert(schema.calendarDay).values({ entityId: input.entityId, date: input.date, ...values }).returning();
+    const [after] = before
+      ? await tx.update(schema.calendarDay).set(values).where(eq(schema.calendarDay.id, before.id)).returning()
+      : await tx
+          .insert(schema.calendarDay)
+          .values({ entityId: input.entityId, date: input.date, ...values })
+          .returning();
     return { before: before ?? null, after };
   });
   await invalidate(ATTENDANCE_CACHE.calendar);
@@ -211,7 +225,12 @@ export async function saveShift(input: ShiftInput): Promise<{ before: ShiftRow |
   if (clash.some((row) => row.id !== input.id)) throw new ActionError("shift_code_taken");
   const values = { code: input.code, name: input.name, segments: input.segments, breakMinutes: input.breakMinutes, isActive: input.isActive, updatedAt: new Date() };
   // A shift stays with the entity it was made for.
-  const [after] = before ? await db().update(schema.shift).set(values).where(eq(schema.shift.id, before.id)).returning() : await db().insert(schema.shift).values({ entityId: input.entityId, ...values }).returning();
+  const [after] = before
+    ? await db().update(schema.shift).set(values).where(eq(schema.shift.id, before.id)).returning()
+    : await db()
+        .insert(schema.shift)
+        .values({ entityId: input.entityId, ...values })
+        .returning();
   await invalidate(ATTENDANCE_CACHE.shifts);
   return { before, after };
 }
@@ -242,7 +261,12 @@ export async function saveSchedule(input: ScheduleInput): Promise<{ before: Work
     if (before && before.entityId !== input.entityId) throw new ActionError("schedule_entity_fixed");
     if (input.isDefault) await tx.update(schema.workSchedule).set({ isDefault: false }).where(eq(schema.workSchedule.isDefault, true));
     const values = { name: input.name, kind: input.kind, pattern: input.pattern, isDefault: input.isDefault, isActive: input.isActive, updatedAt: new Date() };
-    const [after] = before ? await tx.update(schema.workSchedule).set(values).where(eq(schema.workSchedule.id, before.id)).returning() : await tx.insert(schema.workSchedule).values({ entityId: input.entityId, ...values }).returning();
+    const [after] = before
+      ? await tx.update(schema.workSchedule).set(values).where(eq(schema.workSchedule.id, before.id)).returning()
+      : await tx
+          .insert(schema.workSchedule)
+          .values({ entityId: input.entityId, ...values })
+          .returning();
     return { before: before ?? null, after };
   });
   await invalidate(ATTENDANCE_CACHE.schedules);
@@ -270,13 +294,26 @@ export async function getAssignment(id: string): Promise<ScheduleAssignmentRow |
   return row ?? null;
 }
 
-export type AssignmentInput = { scope: "entity" | "department" | "person"; entityId: string | null; departmentId: string | null; personId: string | null; scheduleId: string; validFrom: IsoDate; validTo: IsoDate | null; note: string | null };
+export type AssignmentInput = {
+  scope: "entity" | "department" | "person";
+  entityId: string | null;
+  departmentId: string | null;
+  personId: string | null;
+  scheduleId: string;
+  validFrom: IsoDate;
+  validTo: IsoDate | null;
+  note: string | null;
+};
 
 const sameScope = (input: Pick<AssignmentInput, "scope" | "entityId" | "departmentId" | "personId">) =>
   input.scope === "person"
     ? and(eq(schema.scheduleAssignment.scope, "person"), eq(schema.scheduleAssignment.personId, input.personId!))
     : input.scope === "department"
-      ? and(eq(schema.scheduleAssignment.scope, "department"), eq(schema.scheduleAssignment.departmentId, input.departmentId!), input.entityId ? eq(schema.scheduleAssignment.entityId, input.entityId) : isNull(schema.scheduleAssignment.entityId))
+      ? and(
+          eq(schema.scheduleAssignment.scope, "department"),
+          eq(schema.scheduleAssignment.departmentId, input.departmentId!),
+          input.entityId ? eq(schema.scheduleAssignment.entityId, input.entityId) : isNull(schema.scheduleAssignment.entityId),
+        )
       : and(eq(schema.scheduleAssignment.scope, "entity"), eq(schema.scheduleAssignment.entityId, input.entityId!));
 
 /**
@@ -299,8 +336,16 @@ export async function assignSchedule(input: AssignmentInput, actorPersonId: stri
       .for("update");
     if (overlapping.some((row) => row.validFrom >= input.validFrom)) throw new ActionError("schedule_assignment_overlap");
     let closed: ScheduleAssignmentRow | null = null;
-    for (const row of overlapping) [closed] = await tx.update(schema.scheduleAssignment).set({ validTo: addDays(input.validFrom, -1) }).where(eq(schema.scheduleAssignment.id, row.id)).returning();
-    const [assignment] = await tx.insert(schema.scheduleAssignment).values({ ...input, createdByPersonId: actorPersonId }).returning();
+    for (const row of overlapping)
+      [closed] = await tx
+        .update(schema.scheduleAssignment)
+        .set({ validTo: addDays(input.validFrom, -1) })
+        .where(eq(schema.scheduleAssignment.id, row.id))
+        .returning();
+    const [assignment] = await tx
+      .insert(schema.scheduleAssignment)
+      .values({ ...input, createdByPersonId: actorPersonId })
+      .returning();
     return { assignment, closed };
   });
   await invalidate(ATTENDANCE_CACHE.assignments);
@@ -316,12 +361,36 @@ export async function removeAssignment(id: string): Promise<ScheduleAssignmentRo
 
 // ── Roster ──────────────────────────────────────────────────────────────────────────────────
 
-export type RosterView = { id: string; personId: string; personName: string; entityId: string | null; departmentId: string | null; teamId: string | null; date: IsoDate; shiftId: string | null; shiftCode: string | null; shiftName: string | null; note: string | null };
+export type RosterView = {
+  id: string;
+  personId: string;
+  personName: string;
+  entityId: string | null;
+  departmentId: string | null;
+  teamId: string | null;
+  date: IsoDate;
+  shiftId: string | null;
+  shiftCode: string | null;
+  shiftName: string | null;
+  note: string | null;
+};
 
 export async function listRoster(from: IsoDate, to: IsoDate, personIds?: readonly string[]): Promise<RosterView[]> {
   if (personIds && personIds.length === 0) return [];
   return db()
-    .select({ id: schema.shiftRoster.id, personId: schema.shiftRoster.personId, personName: schema.person.fullName, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, date: schema.shiftRoster.date, shiftId: schema.shiftRoster.shiftId, shiftCode: schema.shift.code, shiftName: schema.shift.name, note: schema.shiftRoster.note })
+    .select({
+      id: schema.shiftRoster.id,
+      personId: schema.shiftRoster.personId,
+      personName: schema.person.fullName,
+      entityId: schema.person.primaryEntityId,
+      departmentId: schema.person.departmentId,
+      teamId: schema.person.teamId,
+      date: schema.shiftRoster.date,
+      shiftId: schema.shiftRoster.shiftId,
+      shiftCode: schema.shift.code,
+      shiftName: schema.shift.name,
+      note: schema.shiftRoster.note,
+    })
     .from(schema.shiftRoster)
     .innerJoin(schema.person, eq(schema.person.id, schema.shiftRoster.personId))
     .leftJoin(schema.shift, eq(schema.shift.id, schema.shiftRoster.shiftId))
@@ -338,7 +407,11 @@ export async function setRoster(input: RosterInput): Promise<{ dates: number }> 
   if (dates.length > 62) throw new ActionError("roster_range_too_long");
   return db().transaction(async (tx) => {
     if (input.shiftId !== "off" && input.shiftId !== "clear") {
-      const [row] = await tx.select({ id: schema.shift.id }).from(schema.shift).where(and(eq(schema.shift.id, input.shiftId), eq(schema.shift.isActive, true))).limit(1);
+      const [row] = await tx
+        .select({ id: schema.shift.id })
+        .from(schema.shift)
+        .where(and(eq(schema.shift.id, input.shiftId), eq(schema.shift.isActive, true)))
+        .limit(1);
       if (!row) throw new ActionError("shift_not_found");
     }
     await tx.delete(schema.shiftRoster).where(and(eq(schema.shiftRoster.personId, input.personId), between(schema.shiftRoster.date, input.from, input.to)));

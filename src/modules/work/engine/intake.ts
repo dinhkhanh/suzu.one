@@ -49,7 +49,9 @@ export function checkAnswers(fields: readonly IntakeField[], raw: Record<string,
 
 /** The answers as the task's description: one "Label: value" block per answered field, in the form's order. */
 export function describeAnswers(formName: string, fields: readonly IntakeField[], answers: Record<string, string>): string {
-  const blocks = fields.filter((field) => answers[field.key]).map((field) => (field.type === "long_text" ? `${field.label}:\n${answers[field.key]}` : `${field.label}: ${field.type === "date" ? answers[field.key].split("-").reverse().join("/") : answers[field.key]}`));
+  const blocks = fields
+    .filter((field) => answers[field.key])
+    .map((field) => (field.type === "long_text" ? `${field.label}:\n${answers[field.key]}` : `${field.label}: ${field.type === "date" ? answers[field.key].split("-").reverse().join("/") : answers[field.key]}`));
   return [`[${formName}]`, ...blocks].join("\n\n");
 }
 

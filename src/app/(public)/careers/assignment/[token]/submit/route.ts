@@ -19,7 +19,15 @@ const MAX_BODY_BYTES = MAX_SUBMISSION_BYTES + 256 * 1024;
 const seeOther = (location: string) => new Response(null, { status: 303, headers: { location, "cache-control": "no-store" } });
 
 /** One link per line; blanks and duplicates dropped. Validation belongs to the schema. */
-const linesOf = (value: string, max: number): string[] => [...new Set(value.split(/[\n\r]+/).map((line) => line.trim()).filter(Boolean))].slice(0, max);
+const linesOf = (value: string, max: number): string[] =>
+  [
+    ...new Set(
+      value
+        .split(/[\n\r]+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, max);
 
 export async function POST(request: Request, context: RouteContext<"/careers/assignment/[token]/submit">) {
   const { token } = await context.params;

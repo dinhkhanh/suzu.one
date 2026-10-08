@@ -174,7 +174,11 @@ describe("a finished symbol", () => {
   it("puts the finder patterns, the timing lines and the always-dark module where a scanner looks", () => {
     const matrix = encodeQr("SZM-LAP-0007");
     const dark = (row: number, col: number) => matrix.modules[row][col];
-    for (const [top, left] of [[0, 0], [0, matrix.size - 7], [matrix.size - 7, 0]] as const) {
+    for (const [top, left] of [
+      [0, 0],
+      [0, matrix.size - 7],
+      [matrix.size - 7, 0],
+    ] as const) {
       expect(dark(top + 0, left + 0)).toBe(true);
       expect(dark(top + 1, left + 1)).toBe(false);
       expect(dark(top + 3, left + 3)).toBe(true);

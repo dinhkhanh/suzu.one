@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canManageDevices, canReviewPunchOf, canSeePunchDetailOf, canSeeTimesheetOf, canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf, canOpenKiosk, canOpenKioskPage, canEnrolFaceOf } from "./policy";
+import {
+  canAssignSchedule,
+  canManageAttendanceConfig,
+  canManageLocation,
+  canOpenAttendanceSettings,
+  canManageDevices,
+  canReviewPunchOf,
+  canSeePunchDetailOf,
+  canSeeTimesheetOf,
+  canApproveMonthOf,
+  canConfirmHoursOf,
+  canFileAttendanceRequestFor,
+  canLockPeriod,
+  canManageAttendanceOf,
+  canOpenKiosk,
+  canOpenKioskPage,
+  canEnrolFaceOf,
+} from "./policy";
 
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
 const hrAdmin = principal([{ role: "hr_admin", scope: { type: "group" } }]);

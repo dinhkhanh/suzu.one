@@ -21,7 +21,6 @@ import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
 export type DeliveryItem = { id: string; version: number | null; deliveredOn: string; recipient: string | null; links: string[]; note: string | null; deliveredByPersonId?: string | null; deliveredByName: string | null; canRemove: boolean };
 export type DeliverableChoice = { id: string; version: number; approved: boolean; frozen: boolean };
 
-
 export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }: { taskId: string; deliveries: DeliveryItem[]; versions: DeliverableChoice[]; canRecord: boolean; today: string }) {
   const t = useTranslations("work.delivery");
   const format = useFormatter();
@@ -73,7 +72,15 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
                 <TableCell className="font-medium">{day(item.deliveredOn)}</TableCell>
                 <TableCell kind="id">{item.version ? `v${item.version}` : "—"}</TableCell>
                 <TableCell>{item.recipient ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{item.deliveredByName ? <RecordLink kind="person" id={item.deliveredByPersonId}>{item.deliveredByName}</RecordLink> : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {item.deliveredByName ? (
+                    <RecordLink kind="person" id={item.deliveredByPersonId}>
+                      {item.deliveredByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell kind="link" className="max-w-64">
                   {item.links.length ? (
                     <span className="flex flex-col">
@@ -90,9 +97,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
                 <TableCell className="max-w-64 whitespace-pre-wrap">{item.note ?? "—"}</TableCell>
                 {deliveries.some((row) => row.canRemove) ? (
                   <TableCell kind="actions">
-                    {item.canRemove ? (
-                      <ConfirmButton size="xs" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeDeliveryAction({ deliveryId: item.id }))} />
-                    ) : null}
+                    {item.canRemove ? <ConfirmButton size="xs" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeDeliveryAction({ deliveryId: item.id }))} /> : null}
                   </TableCell>
                 ) : null}
               </TableRow>
@@ -106,7 +111,11 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
               onSubmit={(event) => {
                 event.preventDefault();
                 const data = new FormData(event.currentTarget);
-                run(() => recordDeliveryAction({ taskId, deliverableId: chosen, deliveredOn: data.get("deliveredOn"), recipient: data.get("recipient"), links: data.get("links"), note: data.get("note"), confirmUnapproved: confirm }), () => setAddRow((count) => count + 1), setFormError);
+                run(
+                  () => recordDeliveryAction({ taskId, deliverableId: chosen, deliveredOn: data.get("deliveredOn"), recipient: data.get("recipient"), links: data.get("links"), note: data.get("note"), confirmUnapproved: confirm }),
+                  () => setAddRow((count) => count + 1),
+                  setFormError,
+                );
               }}
             >
               <div className="grid gap-3 sm:grid-cols-3">

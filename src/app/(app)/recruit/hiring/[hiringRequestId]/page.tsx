@@ -42,20 +42,28 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
           <p className="text-sm text-muted-foreground">
             {view.entityName ? (
               <>
-                <RecordLink kind="entity" id={hiringRequest.entityId}>{view.entityName}</RecordLink>
+                <RecordLink kind="entity" id={hiringRequest.entityId}>
+                  {view.entityName}
+                </RecordLink>
                 {" · "}
               </>
             ) : null}
             {view.departmentName ? (
               <>
-                <RecordLink kind="unit" id={hiringRequest.departmentId}>{view.departmentName}</RecordLink>
+                <RecordLink kind="unit" id={hiringRequest.departmentId}>
+                  {view.departmentName}
+                </RecordLink>
                 {" · "}
               </>
             ) : null}
-            <RecordLink kind="person" id={hiringRequest.requestedByPersonId}>{view.requesterName}</RecordLink>
+            <RecordLink kind="person" id={hiringRequest.requestedByPersonId}>
+              {view.requesterName}
+            </RecordLink>
           </p>
         </div>
-        <Badge dot variant={statusTone(hiringRequest.status)}>{t(`hiringStatus.${hiringRequest.status}`)}</Badge>
+        <Badge dot variant={statusTone(hiringRequest.status)}>
+          {t(`hiringStatus.${hiringRequest.status}`)}
+        </Badge>
       </header>
 
       <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">
@@ -65,7 +73,15 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("form.hiringManager")}</dt>
-          <dd>{view.hiringManagerName ? <RecordLink kind="person" id={hiringRequest.hiringManagerPersonId}>{view.hiringManagerName}</RecordLink> : "—"}</dd>
+          <dd>
+            {view.hiringManagerName ? (
+              <RecordLink kind="person" id={hiringRequest.hiringManagerPersonId}>
+                {view.hiringManagerName}
+              </RecordLink>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         {hiringRequest.targetStartDate ? (
           <div className="flex justify-between gap-3">
@@ -116,7 +132,9 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
                   {event.comment ? <span className="block text-xs text-muted-foreground">{event.comment}</span> : null}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink>
+                  <RecordLink kind="person" id={event.actorPersonId}>
+                    {event.actorName}
+                  </RecordLink>
                 </span>
                 <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
               </ListItem>

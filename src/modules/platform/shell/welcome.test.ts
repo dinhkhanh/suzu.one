@@ -19,7 +19,12 @@ describe("welcomeSteps", () => {
   });
 
   it("leaves out a page the person has no entry for", () => {
-    const steps = welcomeSteps(new Map([["me", "/me"], ["kb", "/kb"]]));
+    const steps = welcomeSteps(
+      new Map([
+        ["me", "/me"],
+        ["kb", "/kb"],
+      ]),
+    );
     expect(steps.map((step) => step.key)).toEqual(["welcome", "me", "kb", "finish"]);
   });
 });

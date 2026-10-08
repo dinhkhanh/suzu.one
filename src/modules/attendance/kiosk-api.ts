@@ -50,7 +50,6 @@ async function read<Schema extends z.ZodType>(request: Request, body: Schema): P
   }
 }
 
-
 const audit = (kiosk: Kiosk, request: Request, action: string, summary: string, after: unknown) =>
   recordAudit({ action, resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary, after, request: { ipAddress: clientIpFrom(request.headers), userAgent: request.headers.get("user-agent") } });
 
@@ -90,7 +89,13 @@ export function punch(request: Request): Promise<Response> {
     // Within the minute the earlier punch is the answer and nothing is written (`commitKioskPunch`).
     const made = await commitKioskPunch(kiosk.device.id, { personId: found.personId, entityId: found.entityId }, "face", new Date(), kiosk.session.id);
     if (made.repeat) return json({ punchId: null, at: made.at.toISOString(), name: found.name, repeat: true, direction: made.direction });
-    await audit(kiosk, request, "attendance.kiosk.punch", `${kiosk.device.name}: ${found.name} checked ${made.direction} by face`, { personId: found.personId, punchId: made.punchId, direction: made.direction, score: Math.round(found.score * 1000) / 1000, kioskSessionId: kiosk.session.id });
+    await audit(kiosk, request, "attendance.kiosk.punch", `${kiosk.device.name}: ${found.name} checked ${made.direction} by face`, {
+      personId: found.personId,
+      punchId: made.punchId,
+      direction: made.direction,
+      score: Math.round(found.score * 1000) / 1000,
+      kioskSessionId: kiosk.session.id,
+    });
     return json({ punchId: made.punchId, at: made.at.toISOString(), name: found.name, repeat: false, direction: made.direction });
   });
 }
@@ -100,7 +105,13 @@ export function undo(request: Request): Promise<Response> {
     const body = await read(request, undoBody);
     if (!body) return json({ error: "invalid" }, 400);
     const removed = await withdrawKioskPunch(kiosk.device.id, body.punchId);
-    if (removed) await audit(kiosk, request, "attendance.kiosk.punch_withdrawn", `${kiosk.device.name}: "Not me" — a face punch taken back`, { personId: removed.personId, punchId: body.punchId, at: removed.at.toISOString(), kioskSessionId: kiosk.session.id });
+    if (removed)
+      await audit(kiosk, request, "attendance.kiosk.punch_withdrawn", `${kiosk.device.name}: "Not me" — a face punch taken back`, {
+        personId: removed.personId,
+        punchId: body.punchId,
+        at: removed.at.toISOString(),
+        kioskSessionId: kiosk.session.id,
+      });
     return json({ cancelled: !!removed });
   });
 }

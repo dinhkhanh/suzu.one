@@ -44,11 +44,15 @@ export default async function OneOnOnesPage() {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <RecordLink kind="person" id={row.managerPersonId === user.person.id ? row.personId : row.managerPersonId}>{row.managerPersonId === user.person.id ? personName : managerName}</RecordLink>
+                  <RecordLink kind="person" id={row.managerPersonId === user.person.id ? row.personId : row.managerPersonId}>
+                    {row.managerPersonId === user.person.id ? personName : managerName}
+                  </RecordLink>
                 </TableCell>
                 <TableCell kind="number">{actionCount > 0 ? actionCount : "—"}</TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`status.${row.status}`)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

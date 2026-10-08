@@ -20,7 +20,18 @@ import { PersonAvatar } from "./task-row";
 import { RecordLink } from "@/components/ui/record-link";
 
 type Person = { id: string; fullName: string };
-export type DiscussionComment = { id: string; parentId: string | null; /** null = posted by an automation. */ authorPersonId: string | null; authorName: string; byAutomation?: boolean; body: string; reactions: Record<string, string[]>; editedAt: string | null; deleted: boolean; createdAt: string };
+export type DiscussionComment = {
+  id: string;
+  parentId: string | null;
+  /** null = posted by an automation. */ authorPersonId: string | null;
+  authorName: string;
+  byAutomation?: boolean;
+  body: string;
+  reactions: Record<string, string[]>;
+  editedAt: string | null;
+  deleted: boolean;
+  createdAt: string;
+};
 export type DiscussionFile = { id: string; fileName: string; sizeBytes: number; uploadedByPersonId?: string | null; uploadedByName: string | null; createdAt: string; canRemove: boolean };
 
 type Failure = { ok: boolean; error?: string; message?: string };
@@ -63,7 +74,23 @@ function Body({ body }: { body: string }) {
 }
 
 /** A text box with an @-picker over the people who may see the task. */
-function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCancel, placeholder }: { people: Person[]; initial?: string; submitLabel: string; pending: boolean; onSubmit: (body: string, reset: () => void) => void; onCancel?: () => void; placeholder: string }) {
+function Composer({
+  people,
+  initial = "",
+  submitLabel,
+  pending,
+  onSubmit,
+  onCancel,
+  placeholder,
+}: {
+  people: Person[];
+  initial?: string;
+  submitLabel: string;
+  pending: boolean;
+  onSubmit: (body: string, reset: () => void) => void;
+  onCancel?: () => void;
+  placeholder: string;
+}) {
   const t = useTranslations("work.discussion");
   // The box holds the draft as it reads ("@Lê Trần Ý Nhiên"); the people picked are kept beside
   // it, and the stored tokens are put back only when the comment is sent.
@@ -249,7 +276,15 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
                   <FileLink fileId={file.id} fileName={file.fileName} download={openTaskFileAction} onError={setErrorKey} />
                 </TableCell>
                 <TableCell kind="number">{size(file.sizeBytes)}</TableCell>
-                <TableCell>{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {file.uploadedByName ? (
+                    <RecordLink kind="person" id={file.uploadedByPersonId}>
+                      {file.uploadedByName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{format.dateTime(new Date(file.createdAt), { dateStyle: "short" })}</TableCell>
                 {files.some((row) => row.canRemove) ? (
                   <TableCell kind="actions">
@@ -304,7 +339,23 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
 type Named = { id: string; name: string };
 
 /** Comments and the field-by-field history in one timeline (FR-WRK-09), oldest first; replies sit under their comment. */
-export function TaskDiscussion({ taskId, comments, activity, people, selfId, canModerate, draft }: { taskId: string; comments: DiscussionComment[]; activity: DetailActivity[]; people: Person[]; selfId: string; canModerate: boolean; /** A comment the composer opens with: the assistant's proposal, being edited (Sửa). */ draft?: string }) {
+export function TaskDiscussion({
+  taskId,
+  comments,
+  activity,
+  people,
+  selfId,
+  canModerate,
+  draft,
+}: {
+  taskId: string;
+  comments: DiscussionComment[];
+  activity: DetailActivity[];
+  people: Person[];
+  selfId: string;
+  canModerate: boolean;
+  /** A comment the composer opens with: the assistant's proposal, being edited (Sửa). */ draft?: string;
+}) {
   const t = useTranslations("work.discussion");
   const tTask = useTranslations("work.task");
   const tWork = useTranslations("work");
@@ -354,7 +405,9 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
       <PersonAvatar name={comment.byAutomation ? null : comment.authorName} className="mt-0.5" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-          <RecordLink kind="person" id={comment.byAutomation ? null : comment.authorPersonId} className="font-medium">{comment.authorName}</RecordLink>
+          <RecordLink kind="person" id={comment.byAutomation ? null : comment.authorPersonId} className="font-medium">
+            {comment.authorName}
+          </RecordLink>
           {comment.byAutomation ? <Badge variant="outline">{t("byAutomation")}</Badge> : null}
           <time className="text-xs text-faint">{when(comment.createdAt)}</time>
           {comment.editedAt && !comment.deleted ? <span className="text-xs text-faint">{t("edited")}</span> : null}
@@ -362,7 +415,20 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
         {comment.deleted ? (
           <p className="text-sm text-muted-foreground italic">{t("deleted")}</p>
         ) : editing === comment.id ? (
-          <Composer people={people} initial={comment.body} submitLabel={t("saveEdit")} pending={pending} placeholder={t("placeholder")} onCancel={() => setEditing(null)} onSubmit={(body) => run(() => editCommentAction({ commentId: comment.id, body }), () => setEditing(null))} />
+          <Composer
+            people={people}
+            initial={comment.body}
+            submitLabel={t("saveEdit")}
+            pending={pending}
+            placeholder={t("placeholder")}
+            onCancel={() => setEditing(null)}
+            onSubmit={(body) =>
+              run(
+                () => editCommentAction({ commentId: comment.id, body }),
+                () => setEditing(null),
+              )
+            }
+          />
         ) : (
           <Body body={comment.body} />
         )}
@@ -372,7 +438,14 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
               const who = comment.reactions[emoji] ?? [];
               const mine = who.includes(selfId);
               return who.length || replyTo === `react:${comment.id}` ? (
-                <button key={emoji} type="button" disabled={pending} aria-pressed={mine} onClick={() => run(() => reactToCommentAction({ commentId: comment.id, emoji }))} className={`press inline-flex h-6 items-center gap-1 rounded-full border px-2 font-mono tabular-nums ${mine ? "border-primary/40 bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}>
+                <button
+                  key={emoji}
+                  type="button"
+                  disabled={pending}
+                  aria-pressed={mine}
+                  onClick={() => run(() => reactToCommentAction({ commentId: comment.id, emoji }))}
+                  className={`press inline-flex h-6 items-center gap-1 rounded-full border px-2 font-mono tabular-nums ${mine ? "border-primary/40 bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}
+                >
                   {emoji} {who.length || ""}
                 </button>
               ) : null;
@@ -396,7 +469,19 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
           </div>
         )}
         {replyTo === comment.id ? (
-          <Composer people={people} submitLabel={t("reply")} pending={pending} placeholder={t("replyPlaceholder")} onCancel={() => setReplyTo(null)} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body, parentId: comment.id }), () => (reset(), setReplyTo(null)))} />
+          <Composer
+            people={people}
+            submitLabel={t("reply")}
+            pending={pending}
+            placeholder={t("replyPlaceholder")}
+            onCancel={() => setReplyTo(null)}
+            onSubmit={(body, reset) =>
+              run(
+                () => addCommentAction({ taskId, body, parentId: comment.id }),
+                () => (reset(), setReplyTo(null)),
+              )
+            }
+          />
         ) : null}
       </div>
     </ListItem>
@@ -406,7 +491,13 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
     <section className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="section-label">{t("title", { count: comments.filter((comment) => !comment.deleted).length })}</h2>
-        <Segmented aria-label={t("title", { count: comments.length })} value={show} onChange={setShow} options={(["all", "comments"] as const).map((value) => ({ value, label: t(`show.${value}`) }))} className="[&>button]:h-7 md:[&>button]:h-6 [&>button]:text-xs" />
+        <Segmented
+          aria-label={t("title", { count: comments.length })}
+          value={show}
+          onChange={setShow}
+          options={(["all", "comments"] as const).map((value) => ({ value, label: t(`show.${value}`) }))}
+          className="[&>button]:h-7 md:[&>button]:h-6 [&>button]:text-xs"
+        />
       </div>
       <TableCard>
         <List>
@@ -418,7 +509,9 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
                   <HistoryIcon className="size-3.5" />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-wrap gap-x-1.5">
-                  <RecordLink kind="person" id={item.entry.actorName ? item.entry.actorPersonId : null} className="font-medium">{item.entry.actorName ?? tTask("system")}</RecordLink>
+                  <RecordLink kind="person" id={item.entry.actorName ? item.entry.actorPersonId : null} className="font-medium">
+                    {item.entry.actorName ?? tTask("system")}
+                  </RecordLink>
                   <span className="min-w-0 text-muted-foreground">{describe(item.entry)}</span>
                 </span>
                 <time className="shrink-0 font-mono text-[0.6875rem] text-faint tabular-nums">{when(item.entry.createdAt)}</time>

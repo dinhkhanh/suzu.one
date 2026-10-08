@@ -30,16 +30,27 @@ import { addWorkTemplateItem, saveWorkTemplate, updateWorkTemplateItem } from ".
 import { createSavedView, listSavedViews, updateSavedView } from "./views";
 
 const ids = {} as Record<"szm" | "long" | "huy" | "video" | "project", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const task = async (title: string, extra: { parentTaskId?: string; projectId?: string | null } = {}) => (await createWorkTask({ teamId: ids.video, projectId: extra.projectId === undefined ? ids.project : extra.projectId, title, parentTaskId: extra.parentTaskId }, ids.long)).task;
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const task = async (title: string, extra: { parentTaskId?: string; projectId?: string | null } = {}) =>
+  (await createWorkTask({ teamId: ids.video, projectId: extra.projectId === undefined ? ids.project : extra.projectId, title, parentTaskId: extra.parentTaskId }, ids.long)).task;
 const isDeleted = async (taskId: string) => !!(await db().select({ deletedAt: schema.task.deletedAt }).from(schema.task).where(eq(schema.task.id, taskId)))[0].deletedAt;
 
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
-  for (const [key, name] of [["long", "Long Dang"], ["huy", "Huy Ho"]] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+  for (const [key, name] of [
+    ["long", "Long Dang"],
+    ["huy", "Huy Ho"],
+  ] as const) {
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
@@ -55,7 +66,10 @@ describe("a deleted task can be put back", () => {
     const earlier = await task("Bản nháp cũ", { parentTaskId: parent.id });
     await deleteWorkTask(earlier.id, ids.huy);
     // Deleted a minute before its parent: another deletion, which putting the parent back does not undo.
-    await db().update(schema.task).set({ deletedAt: new Date(Date.now() - 60_000) }).where(eq(schema.task.id, earlier.id));
+    await db()
+      .update(schema.task)
+      .set({ deletedAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.task.id, earlier.id));
     await deleteWorkTask(parent.id, ids.long);
 
     // A sub-task deleted with its parent is no row of its own; one deleted before is.
@@ -93,7 +107,17 @@ describe("recurring tasks on a team's backlog", () => {
     // 2026-10-04 is a Sunday and 5 October a holiday this year: the Sunday post is due on Tuesday the 6th.
     await db().insert(schema.calendarDay).values({ entityId: null, date: "2026-10-05", kind: "public_holiday", name: "Ngày lễ" });
     const { recurrence, made } = await createRecurrence(
-      { projectId: null, teamId: ids.video, title: "Bài đăng Chủ nhật", rule: { freq: "weekly", interval: 1, weekdays: [7] }, startDate: "2026-10-01", endDate: null, leadDays: 7, onDayOff: "shift", draft: { assigneePersonId: ids.huy, estimateMinutes: 90 } },
+      {
+        projectId: null,
+        teamId: ids.video,
+        title: "Bài đăng Chủ nhật",
+        rule: { freq: "weekly", interval: 1, weekdays: [7] },
+        startDate: "2026-10-01",
+        endDate: null,
+        leadDays: 7,
+        onDayOff: "shift",
+        draft: { assigneePersonId: ids.huy, estimateMinutes: 90 },
+      },
       ids.long,
       "2026-10-01",
     );
@@ -106,13 +130,19 @@ describe("recurring tasks on a team's backlog", () => {
     expect(await fails(createRecurrence({ projectId: null, teamId: null, title: "x", rule: { freq: "daily", interval: 1 }, startDate: "2026-10-01", endDate: null, leadDays: 0, draft: {} }, ids.long, "2026-10-01"))).toBe("team_not_found");
 
     // Changed to Wednesdays, skipping days off: the next is made at once; what was made stays.
-    const changed = await updateRecurrence(recurrence.id, { title: "Bài đăng giữa tuần", rule: { freq: "weekly", interval: 1, weekdays: [3] }, endDate: null, leadDays: 7, onDayOff: "skip", assigneePersonId: null, estimateMinutes: 60 }, "2026-10-01");
+    const changed = await updateRecurrence(
+      recurrence.id,
+      { title: "Bài đăng giữa tuần", rule: { freq: "weekly", interval: 1, weekdays: [3] }, endDate: null, leadDays: 7, onDayOff: "skip", assigneePersonId: null, estimateMinutes: 60 },
+      "2026-10-01",
+    );
     expect(changed.made).toBe(1);
     const backlog = await listTeamBacklog(ids.video);
     expect(backlog.filter((row) => row.title === "Bài đăng Chủ nhật").map((row) => row.dueDate)).toEqual(["2026-10-06"]);
     expect(backlog.filter((row) => row.title === "Bài đăng giữa tuần").map((row) => [row.dueDate, row.assigneePersonId])).toEqual([["2026-10-07", null]]);
     expect(await generateOccurrences("2026-10-01")).toMatchObject({ made: 0 });
-    expect(await fails(updateRecurrence(recurrence.id, { title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, endDate: null, leadDays: 7, onDayOff: "skip", assigneePersonId: null, estimateMinutes: null }, "2026-10-01"))).toBe("recurrence_rule_invalid");
+    expect(await fails(updateRecurrence(recurrence.id, { title: "x", rule: { freq: "weekly", interval: 1, weekdays: [] }, endDate: null, leadDays: 7, onDayOff: "skip", assigneePersonId: null, estimateMinutes: null }, "2026-10-01"))).toBe(
+      "recurrence_rule_invalid",
+    );
   });
 });
 
@@ -161,7 +191,12 @@ describe("a task moved under another", () => {
     expect(await fails(updateWorkTask(campaign.id, { parentTaskId: cut.id }, ids.long))).toBe("parent_cycle");
     expect(await fails(updateWorkTask(video.id, { parentTaskId: video.id }, ids.long))).toBe("parent_cycle");
     const choices = await listLinkableTasks({ projectId: ids.project, teamId: ids.video, subtreeOf: campaign.id });
-    expect(choices.filter((row) => row.under).map((row) => row.title).sort()).toEqual(["Bản dựng", "Chiến dịch Tết", "Video"]);
+    expect(
+      choices
+        .filter((row) => row.under)
+        .map((row) => row.title)
+        .sort(),
+    ).toEqual(["Bản dựng", "Chiến dịch Tết", "Video"]);
     expect(choices.find((row) => row.id === unrelated.id)?.under).toBe(false);
 
     await updateWorkTask(cut.id, { parentTaskId: unrelated.id }, ids.long);

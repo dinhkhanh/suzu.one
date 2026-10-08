@@ -24,7 +24,11 @@ export function PosterEditor({ project }: { project: { id: string; name: string;
       // Square, cut from the centre: every list and header shows the poster as a square.
       const picture = await squarePicture(file, { edge: POSTER_EDGE_PX, name: "poster.jpg" });
       if (!picture) return setErrorKey("poster_unreadable");
-      const result = await uploadThroughSignedUrl(picture, (meta) => beginPosterUploadAction({ projectId: project.id, ...meta }), (fileId) => completePosterUploadAction({ projectId: project.id, fileId }));
+      const result = await uploadThroughSignedUrl(
+        picture,
+        (meta) => beginPosterUploadAction({ projectId: project.id, ...meta }),
+        (fileId) => completePosterUploadAction({ projectId: project.id, fileId }),
+      );
       setErrorKey(result.ok ? null : result.errorKey);
       if (result.ok) router.refresh();
     });

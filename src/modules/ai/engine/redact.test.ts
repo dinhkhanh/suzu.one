@@ -20,7 +20,15 @@ describe("redactContacts", () => {
   });
 
   it("takes out Zalo and Messenger handles written as links, whole", () => {
-    for (const link of ["https://zalo.me/0912345678", "zalo.me/g/abcxyz123", "https://chat.zalo.me/?phone=0912345678", "m.me/mai.tran.92", "https://www.messenger.com/t/1000123456789", "https://www.facebook.com/messages/t/mai.tran", "https://t.me/maitran"]) {
+    for (const link of [
+      "https://zalo.me/0912345678",
+      "zalo.me/g/abcxyz123",
+      "https://chat.zalo.me/?phone=0912345678",
+      "m.me/mai.tran.92",
+      "https://www.messenger.com/t/1000123456789",
+      "https://www.facebook.com/messages/t/mai.tran",
+      "https://t.me/maitran",
+    ]) {
       expect(redactContacts(`Nhắn khách qua ${link} nhé`), link).toBe(`Nhắn khách qua ${REDACTED} nhé`);
     }
   });

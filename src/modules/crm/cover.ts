@@ -25,13 +25,23 @@ export async function applyLeaveCover(today: IsoDate): Promise<{ followUpsCovere
       .select({ personId: schema.workCoverPlan.personId, coverId: schema.workCoverPlan.defaultCoverPersonId, fromDate: schema.workCoverPlan.fromDate, toDate: schema.workCoverPlan.toDate, name: schema.person.fullName })
       .from(schema.workCoverPlan)
       .innerJoin(schema.person, eq(schema.person.id, schema.workCoverPlan.personId))
-      .where(and(eq(schema.workCoverPlan.status, "submitted"), sql`${schema.workCoverPlan.appliedAt} is not null`, sql`${schema.workCoverPlan.fromDate} <= ${today}::date`, sql`${schema.workCoverPlan.toDate} >= ${today}::date`, sql`${schema.workCoverPlan.defaultCoverPersonId} is not null`));
+      .where(
+        and(
+          eq(schema.workCoverPlan.status, "submitted"),
+          sql`${schema.workCoverPlan.appliedAt} is not null`,
+          sql`${schema.workCoverPlan.fromDate} <= ${today}::date`,
+          sql`${schema.workCoverPlan.toDate} >= ${today}::date`,
+          sql`${schema.workCoverPlan.defaultCoverPersonId} is not null`,
+        ),
+      );
     let covered = 0;
     for (const plan of plans) {
       const moved = await tx
         .update(schema.crmActivity)
         .set({ ownerPersonId: plan.coverId!, coverFromPersonId: plan.personId, remindedOn: null, updatedAt: new Date() })
-        .where(and(eq(schema.crmActivity.ownerPersonId, plan.personId), isNull(schema.crmActivity.doneAt), isNull(schema.crmActivity.coverFromPersonId), sql`${schema.crmActivity.dueOn} between ${plan.fromDate}::date and ${plan.toDate}::date`))
+        .where(
+          and(eq(schema.crmActivity.ownerPersonId, plan.personId), isNull(schema.crmActivity.doneAt), isNull(schema.crmActivity.coverFromPersonId), sql`${schema.crmActivity.dueOn} between ${plan.fromDate}::date and ${plan.toDate}::date`),
+        )
         .returning({ id: schema.crmActivity.id });
       if (moved.length) await notify({ recipients: [plan.coverId!], kind: "crm.cover_followups", params: { count: moved.length, name: plan.name }, link: "/today?view=work" }, tx);
       covered += moved.length;

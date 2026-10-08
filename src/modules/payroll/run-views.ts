@@ -54,11 +54,7 @@ export async function listRunsForViewer(principal: Principal, filter: { entityId
     .from(schema.payrollRun)
     .innerJoin(schema.entity, eq(schema.entity.id, schema.payrollRun.entityId))
     .where(
-      and(
-        reach.all ? undefined : inArray(schema.payrollRun.entityId, reach.entityIds),
-        filter.entityId ? eq(schema.payrollRun.entityId, filter.entityId) : undefined,
-        filter.month ? eq(schema.payrollRun.month, filter.month) : undefined,
-      ),
+      and(reach.all ? undefined : inArray(schema.payrollRun.entityId, reach.entityIds), filter.entityId ? eq(schema.payrollRun.entityId, filter.entityId) : undefined, filter.month ? eq(schema.payrollRun.month, filter.month) : undefined),
     )
     .orderBy(desc(schema.payrollRun.month), desc(schema.payrollRun.createdAt))
     .limit(200);
@@ -150,7 +146,16 @@ export async function getRunView(principal: Principal, runId: string): Promise<R
   ]);
   const inRun = new Set(personRows.map((person) => person.row.personId));
   // One read for every name the variance check does not already hold.
-  const strangers = [...new Set([...readiness.blockers, ...readiness.warnings].map((issue) => issue.personId).concat((retroItems ?? []).flatMap((item) => [item.personId, ...(item.createdByPersonId ? [item.createdByPersonId] : [])]), unpriced.map((row) => row.personId)))].filter((personId) => !variance.names.has(personId));
+  const strangers = [
+    ...new Set(
+      [...readiness.blockers, ...readiness.warnings]
+        .map((issue) => issue.personId)
+        .concat(
+          (retroItems ?? []).flatMap((item) => [item.personId, ...(item.createdByPersonId ? [item.createdByPersonId] : [])]),
+          unpriced.map((row) => row.personId),
+        ),
+    ),
+  ].filter((personId) => !variance.names.has(personId));
   const names = new Map([...variance.names, ...(await listPayrollNames(strangers)).map((row) => [row.personId, { fullName: row.fullName, employeeCode: row.employeeCode }] as const)]);
   const named = (personId: string) => ({ fullName: names.get(personId)?.fullName ?? "—", employeeCode: names.get(personId)?.employeeCode ?? null });
 
@@ -183,7 +188,12 @@ export async function getRunView(principal: Principal, runId: string): Promise<R
     unverifiedParameters: (run.context as { unverifiedParameters?: string[] } | null)?.unverifiedParameters ?? [],
     readiness,
     names,
-    retro: retroItems ? { items: retroItems.map((item) => ({ ...item, ...named(item.personId), createdByName: item.createdByPersonId ? (names.get(item.createdByPersonId)?.fullName ?? null) : null, inRun: inRun.has(item.personId) })), unpriced: unpriced.map((row) => ({ ...row, ...named(row.personId) })) } : null,
+    retro: retroItems
+      ? {
+          items: retroItems.map((item) => ({ ...item, ...named(item.personId), createdByName: item.createdByPersonId ? (names.get(item.createdByPersonId)?.fullName ?? null) : null, inRun: inRun.has(item.personId) })),
+          unpriced: unpriced.map((row) => ({ ...row, ...named(row.personId) })),
+        }
+      : null,
   };
 }
 
@@ -275,7 +285,10 @@ export async function listRunnableMonthsOf(entityIds: readonly string[], limit =
       .from(schema.timesheetPeriod)
       .where(and(inArray(schema.timesheetPeriod.entityId, [...entityIds]), eq(schema.timesheetPeriod.status, "locked")))
       .orderBy(desc(schema.timesheetPeriod.month)),
-    db().select({ entityId: schema.payrollRun.entityId, month: schema.payrollRun.month, status: schema.payrollRun.status }).from(schema.payrollRun).where(and(inArray(schema.payrollRun.entityId, [...entityIds]), eq(schema.payrollRun.kind, "regular"))),
+    db()
+      .select({ entityId: schema.payrollRun.entityId, month: schema.payrollRun.month, status: schema.payrollRun.status })
+      .from(schema.payrollRun)
+      .where(and(inArray(schema.payrollRun.entityId, [...entityIds]), eq(schema.payrollRun.kind, "regular"))),
   ]);
   const taken = new Set(runs.filter((row) => row.status !== "cancelled").map((row) => `${row.entityId}:${row.month}`));
   const seen = new Map<string, number>();

@@ -46,7 +46,14 @@ const openPipeline = createAction({
     for (const name of AUTH_COOKIES) jar.delete(name);
     // No revalidation: it would render this page again for a browser that is no longer signed in.
     // The browser goes to /kiosk next, and the kiosk page is dynamic for everyone else.
-    return { data: { sessionId: session.id }, audit: { resource: { type: "attendance_device", id: device.id, entityId: device.entityId }, summary: `${device.name}: kiosk opened on a tablet; its user signed out there`, after: { kioskSessionId: session.id, userAgent: session.userAgent } } };
+    return {
+      data: { sessionId: session.id },
+      audit: {
+        resource: { type: "attendance_device", id: device.id, entityId: device.entityId },
+        summary: `${device.name}: kiosk opened on a tablet; its user signed out there`,
+        after: { kioskSessionId: session.id, userAgent: session.userAgent },
+      },
+    };
   },
 });
 export async function openKioskAction(input: unknown) {
@@ -67,7 +74,14 @@ const closePipeline = createAction({
     const here = await kioskOfToken(jar.get(KIOSK_COOKIE)?.value);
     if (!here || here.session.id === session.id) jar.delete(KIOSK_COOKIE);
     refresh();
-    return { data: { id: session.id }, audit: { resource: { type: "attendance_device", id: session.deviceId, entityId: session.entityId }, summary: "kiosk closed", before: { kioskSessionId: session.id, openedAt: session.openedAt.toISOString(), openedByPersonId: session.openedByPersonId } } };
+    return {
+      data: { id: session.id },
+      audit: {
+        resource: { type: "attendance_device", id: session.deviceId, entityId: session.entityId },
+        summary: "kiosk closed",
+        before: { kioskSessionId: session.id, openedAt: session.openedAt.toISOString(), openedByPersonId: session.openedByPersonId },
+      },
+    };
   },
 });
 export async function closeKioskAction(input: unknown) {
@@ -93,7 +107,14 @@ const enrolPipeline = createAction({
     if (!person || person.status === "offboarded") throw new ActionError("not_found");
     const result = await enrolFaces({ personId: input.personId, entityId: person.entityId, embeddings: input.embeddings, consent: input.consent, actorPersonId: user.person.id });
     refresh();
-    return { data: result, audit: { resource: { type: "face_enrolment", id: input.personId, entityId: person.entityId }, summary: `${result.added} face templates added (${result.total} kept)${input.consent ? "; signed consent recorded" : ""}`, after: { added: result.added, total: result.total, consentRecorded: result.consentRecorded } } };
+    return {
+      data: result,
+      audit: {
+        resource: { type: "face_enrolment", id: input.personId, entityId: person.entityId },
+        summary: `${result.added} face templates added (${result.total} kept)${input.consent ? "; signed consent recorded" : ""}`,
+        after: { added: result.added, total: result.total, consentRecorded: result.consentRecorded },
+      },
+    };
   },
 });
 export async function enrolFaceAction(input: unknown) {
@@ -108,7 +129,10 @@ const deletePipeline = createAction({
     const target = await getPersonTarget(input.personId);
     const deleted = await deleteFaces(input.personId);
     refresh();
-    return { data: { deleted }, audit: { resource: { type: "face_enrolment", id: input.personId, entityId: target?.entityId ?? null }, summary: `face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } } };
+    return {
+      data: { deleted },
+      audit: { resource: { type: "face_enrolment", id: input.personId, entityId: target?.entityId ?? null }, summary: `face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } },
+    };
   },
 });
 export async function deleteFacesAction(input: unknown) {
@@ -131,7 +155,14 @@ const withdrawPipeline = createAction({
     await recordConsentEvent({ personId: user.person.id, purpose: "face_check_in", decision: "withdrawn" });
     refresh();
     revalidatePath("/me");
-    return { data: { deleted }, audit: { resource: { type: "face_enrolment", id: user.person.id, entityId: user.person.primaryEntityId }, summary: `consent withdrawn by the person; face data deleted (${deleted} templates) with the consent record`, before: { templates: deleted } } };
+    return {
+      data: { deleted },
+      audit: {
+        resource: { type: "face_enrolment", id: user.person.id, entityId: user.person.primaryEntityId },
+        summary: `consent withdrawn by the person; face data deleted (${deleted} templates) with the consent record`,
+        before: { templates: deleted },
+      },
+    };
   },
 });
 export async function withdrawFaceConsentAction(input: unknown) {
@@ -156,8 +187,19 @@ const qrPunchPipeline = createAction({
     if (person.status !== "active" || !person.primaryEntityId || !kiosk.entityIds.includes(person.primaryEntityId)) throw new ActionError("kiosk_not_yours");
     // Within the minute the earlier punch is the answer and nothing is written (`commitKioskPunch`).
     const made = await commitKioskPunch(kiosk.device.id, { personId: person.id, entityId: person.primaryEntityId }, "qr", new Date(), kiosk.session.id);
-    if (made.repeat) return { data: { at: made.at.toISOString(), repeat: true, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` } };
-    return { data: { at: made.at.toISOString(), repeat: false, direction: made.direction, device: kiosk.device.name }, audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: checked ${made.direction} with the kiosk's QR code`, after: { punchId: made.punchId, direction: made.direction, kioskSessionId: kiosk.session.id } } };
+    if (made.repeat)
+      return {
+        data: { at: made.at.toISOString(), repeat: true, direction: made.direction, device: kiosk.device.name },
+        audit: { resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId }, summary: `${kiosk.device.name}: QR punch repeated within the minute; nothing new` },
+      };
+    return {
+      data: { at: made.at.toISOString(), repeat: false, direction: made.direction, device: kiosk.device.name },
+      audit: {
+        resource: { type: "attendance_device", id: kiosk.device.id, entityId: kiosk.device.entityId },
+        summary: `${kiosk.device.name}: checked ${made.direction} with the kiosk's QR code`,
+        after: { punchId: made.punchId, direction: made.direction, kioskSessionId: kiosk.session.id },
+      },
+    };
   },
 });
 export async function kioskQrPunchAction(input: unknown) {

@@ -24,7 +24,13 @@ import { invalidateTies } from "./viewer";
 type Executor = Tx | ReturnType<typeof db>;
 export type DealRow = typeof schema.crmDeal.$inferSelect;
 
-export const dealFacts = (deal: Pick<DealRow, "id" | "entityId" | "ownerPersonId" | "status">, account: AccountRef): DealFacts => ({ id: deal.id, entityId: deal.entityId, ownerPersonId: deal.ownerPersonId, status: deal.status as DealStatus, account: account.facts });
+export const dealFacts = (deal: Pick<DealRow, "id" | "entityId" | "ownerPersonId" | "status">, account: AccountRef): DealFacts => ({
+  id: deal.id,
+  entityId: deal.entityId,
+  ownerPersonId: deal.ownerPersonId,
+  status: deal.status as DealStatus,
+  account: account.facts,
+});
 
 export const findDeal = async (dealId: string, executor: Executor = db()): Promise<DealRow | undefined> => (await executor.select().from(schema.crmDeal).where(eq(schema.crmDeal.id, dealId)).limit(1))[0];
 
@@ -64,30 +70,32 @@ async function readDeals(where: SQL | undefined, limit: number, executor: Execut
     .where(sql`${schema.crmActivity.dealId} is not null`)
     .groupBy(schema.crmActivity.dealId)
     .as("last_activity");
-  return executor
-    .select({
-      deal: schema.crmDeal,
-      accountName: schema.workClient.name,
-      brandName: brand.name,
-      ownerName: owner.fullName,
-      teamName: schema.workTeam.name,
-      entityName: schema.entity.shortName,
-      stage: { id: schema.crmStage.id, name: schema.crmStage.name, nameEn: schema.crmStage.nameEn, category: schema.crmStage.category, probability: schema.crmStage.probability },
-      lastTouchedOn: sql<string>`to_char(greatest(${schema.crmDeal.stageChangedAt}, coalesce(${lastActivity.at}, ${schema.crmDeal.stageChangedAt})) at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')`,
-    })
-    .from(schema.crmDeal)
-    .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
-    .innerJoin(schema.crmStage, eq(schema.crmStage.id, schema.crmDeal.stageId))
-    .leftJoin(brand, eq(brand.id, schema.crmDeal.brandId))
-    .leftJoin(owner, eq(owner.id, schema.crmDeal.ownerPersonId))
-    .leftJoin(schema.workTeam, eq(schema.workTeam.id, schema.crmDeal.teamId))
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.crmDeal.entityId))
-    .leftJoin(lastActivity, eq(lastActivity.dealId, schema.crmDeal.id))
-    .where(where)
-    // The id last, so that the order is total and a page never repeats or skips a deal.
-    .orderBy(asc(schema.crmStage.sortOrder), desc(schema.crmDeal.updatedAt), asc(schema.crmDeal.id))
-    .limit(limit)
-    .offset(offset);
+  return (
+    executor
+      .select({
+        deal: schema.crmDeal,
+        accountName: schema.workClient.name,
+        brandName: brand.name,
+        ownerName: owner.fullName,
+        teamName: schema.workTeam.name,
+        entityName: schema.entity.shortName,
+        stage: { id: schema.crmStage.id, name: schema.crmStage.name, nameEn: schema.crmStage.nameEn, category: schema.crmStage.category, probability: schema.crmStage.probability },
+        lastTouchedOn: sql<string>`to_char(greatest(${schema.crmDeal.stageChangedAt}, coalesce(${lastActivity.at}, ${schema.crmDeal.stageChangedAt})) at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')`,
+      })
+      .from(schema.crmDeal)
+      .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
+      .innerJoin(schema.crmStage, eq(schema.crmStage.id, schema.crmDeal.stageId))
+      .leftJoin(brand, eq(brand.id, schema.crmDeal.brandId))
+      .leftJoin(owner, eq(owner.id, schema.crmDeal.ownerPersonId))
+      .leftJoin(schema.workTeam, eq(schema.workTeam.id, schema.crmDeal.teamId))
+      .leftJoin(schema.entity, eq(schema.entity.id, schema.crmDeal.entityId))
+      .leftJoin(lastActivity, eq(lastActivity.dealId, schema.crmDeal.id))
+      .where(where)
+      // The id last, so that the order is total and a page never repeats or skips a deal.
+      .orderBy(asc(schema.crmStage.sortOrder), desc(schema.crmDeal.updatedAt), asc(schema.crmDeal.id))
+      .limit(limit)
+      .offset(offset)
+  );
 }
 
 type ReadRow = Awaited<ReturnType<typeof readDeals>>[number];
@@ -111,7 +119,17 @@ function shapeDeal(row: ReadRow, seesValue: boolean, canEdit: boolean): DealView
   };
 }
 
-export type DealFilters = { status?: DealStatus | "all"; ownerId?: string | null; teamId?: string | null; entityId?: string | null; clientId?: string | null; serviceLine?: ServiceLine | null; closeMonth?: string | null; q?: string | null; mine?: boolean };
+export type DealFilters = {
+  status?: DealStatus | "all";
+  ownerId?: string | null;
+  teamId?: string | null;
+  entityId?: string | null;
+  clientId?: string | null;
+  serviceLine?: ServiceLine | null;
+  closeMonth?: string | null;
+  q?: string | null;
+  mine?: boolean;
+};
 
 /**
  * The deals this viewer may see, filtered in SQL by the rule of `canViewDeal` — their own, their
@@ -156,7 +174,11 @@ function dealWhere(viewer: CrmViewer, filters: DealFilters & { closedSince?: Iso
 
 /** How many deals the filters name, counted in SQL (the `q` filter needs the account's name). */
 async function countDeals(where: SQL | undefined): Promise<number> {
-  const [row] = await db().select({ count: sql<number>`count(*)`.mapWith(Number) }).from(schema.crmDeal).innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId)).where(where);
+  const [row] = await db()
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(schema.crmDeal)
+    .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
+    .where(where);
   return row?.count ?? 0;
 }
 
@@ -322,7 +344,10 @@ export async function createDeal(input: NewDeal, actorPersonId: string, executor
 async function replaceContacts(tx: Tx, deal: Pick<DealRow, "id">, account: AccountRef, contacts: readonly { contactId: string; role: string | null }[]): Promise<void> {
   const ids = [...new Set(contacts.map((contact) => contact.contactId))];
   if (ids.length) {
-    const rows = await tx.select({ id: schema.crmContact.id }).from(schema.crmContact).where(and(inArray(schema.crmContact.id, ids), eq(schema.crmContact.clientId, account.client.id), isNull(schema.crmContact.erasedAt)));
+    const rows = await tx
+      .select({ id: schema.crmContact.id })
+      .from(schema.crmContact)
+      .where(and(inArray(schema.crmContact.id, ids), eq(schema.crmContact.clientId, account.client.id), isNull(schema.crmContact.erasedAt)));
     if (rows.length !== ids.length) throw new ActionError("contact_not_found");
   }
   await tx.delete(schema.crmDealContact).where(eq(schema.crmDealContact.dealId, deal.id));
@@ -340,7 +365,11 @@ export async function updateDeal(dealId: string, input: DealInput): Promise<{ be
     const before = await lockDeal(tx, dealId);
     if (before.status !== "open") throw new ActionError("deal_closed");
     await checkDealInput(tx, before.clientId, input);
-    const [after] = await tx.update(schema.crmDeal).set({ ...input, updatedAt: new Date() }).where(eq(schema.crmDeal.id, dealId)).returning();
+    const [after] = await tx
+      .update(schema.crmDeal)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.crmDeal.id, dealId))
+      .returning();
     return { before, after };
   });
 }
@@ -412,7 +441,12 @@ export async function moveDeal(dealId: string, stageId: string, actorPersonId: s
 /** A won deal: its account's manager and sales owner, and the leads of the team that will deliver it. */
 async function announceWin(tx: Tx, deal: DealRow, actorPersonId: string): Promise<void> {
   const account = await findAccount(deal.clientId, tx);
-  const leads = deal.teamId ? await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, deal.teamId), eq(schema.workTeamMember.role, "lead"))) : [];
+  const leads = deal.teamId
+    ? await tx
+        .select({ personId: schema.workTeamMember.personId })
+        .from(schema.workTeamMember)
+        .where(and(eq(schema.workTeamMember.teamId, deal.teamId), eq(schema.workTeamMember.role, "lead")))
+    : [];
   const recipients = [...new Set([account?.client.accountManagerPersonId, account?.profile?.salesOwnerPersonId, deal.ownerPersonId, ...leads.map((row) => row.personId)].filter((id): id is string => !!id && id !== actorPersonId))];
   if (recipients.length) await notify({ recipients, kind: "crm.deal_won", params: { deal: deal.title, account: account?.client.name ?? "" }, link: `/crm/deals/${deal.id}` }, tx);
 }
@@ -468,7 +502,15 @@ export async function sendStaleReminders(today: IsoDate = todayInVietnam()): Pro
   const stale = rows.filter((row) => isStale({ lastTouchedOn: row.lastTouchedOn }, today, staleDealDays));
   if (stale.length === 0) return { staleDeals: 0 };
   await db().transaction(async (tx) => {
-    await tx.update(schema.crmDeal).set({ staleNotifiedOn: today }).where(inArray(schema.crmDeal.id, stale.map((row) => row.deal.id)));
+    await tx
+      .update(schema.crmDeal)
+      .set({ staleNotifiedOn: today })
+      .where(
+        inArray(
+          schema.crmDeal.id,
+          stale.map((row) => row.deal.id),
+        ),
+      );
     for (const row of stale) await notify({ recipients: [row.deal.ownerPersonId], kind: "crm.deal_stale", params: { deal: row.deal.title, account: row.accountName, days: staleDealDays }, link: `/crm/deals/${row.deal.id}` }, tx);
   });
   return { staleDeals: stale.length };
@@ -478,7 +520,15 @@ export async function sendStaleReminders(today: IsoDate = todayInVietnam()): Pro
 export async function openDealsOf(personIds: readonly string[], executor: Executor = db()): Promise<(Pick<DealRow, "id" | "code" | "title" | "clientId" | "expectedCloseOn" | "ownerPersonId"> & { accountName: string })[]> {
   if (personIds.length === 0) return [];
   return executor
-    .select({ id: schema.crmDeal.id, code: schema.crmDeal.code, title: schema.crmDeal.title, clientId: schema.crmDeal.clientId, expectedCloseOn: schema.crmDeal.expectedCloseOn, ownerPersonId: schema.crmDeal.ownerPersonId, accountName: schema.workClient.name })
+    .select({
+      id: schema.crmDeal.id,
+      code: schema.crmDeal.code,
+      title: schema.crmDeal.title,
+      clientId: schema.crmDeal.clientId,
+      expectedCloseOn: schema.crmDeal.expectedCloseOn,
+      ownerPersonId: schema.crmDeal.ownerPersonId,
+      accountName: schema.workClient.name,
+    })
     .from(schema.crmDeal)
     .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
     .where(and(inArray(schema.crmDeal.ownerPersonId, [...personIds]), eq(schema.crmDeal.status, "open")))

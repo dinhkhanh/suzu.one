@@ -61,7 +61,11 @@ function Connector({ parallel, label }: { parallel: boolean; label: string }) {
   return (
     <div className="flex w-[72px] shrink-0 items-center" aria-hidden>
       <span className="h-px flex-1 bg-input" />
-      {parallel ? <span className="px-1 font-mono text-[0.625rem] text-faint" title={label}>‖</span> : null}
+      {parallel ? (
+        <span className="px-1 font-mono text-[0.625rem] text-faint" title={label}>
+          ‖
+        </span>
+      ) : null}
       <span className="h-px flex-1 bg-input" />
       <span className="border-y-4 border-l-[6px] border-y-transparent border-l-input" />
     </div>
@@ -108,7 +112,9 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
         requestType,
         entityId,
         active,
-        definition: JSON.stringify({ steps: steps.map((item, at) => ({ key: item.key, mode: item.mode, approvers: item.approvers, ...(item.condition ? { condition: item.condition } : {}), ...(item.parallel && at > 0 ? { parallel: true } : {}) })) }),
+        definition: JSON.stringify({
+          steps: steps.map((item, at) => ({ key: item.key, mode: item.mode, approvers: item.approvers, ...(item.condition ? { condition: item.condition } : {}), ...(item.parallel && at > 0 ? { parallel: true } : {}) })),
+        }),
       }),
     );
   const addStep = () => {
@@ -173,7 +179,9 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
                     <span className="truncate">{item.key || t("stepKey", { number: at + 1 })}</span>
                   </span>
                   <span className="line-clamp-2 text-xs text-muted-foreground">{item.approvers.map(ruleName).join(item.mode === "all" ? " + " : " / ")}</span>
-                  {item.condition ? <span className="truncate font-mono text-[0.6875rem] text-faint">{`${item.condition.field} ${t(`ops.${item.condition.op}`)} ${Array.isArray(item.condition.value) ? item.condition.value.join(", ") : String(item.condition.value)}`}</span> : null}
+                  {item.condition ? (
+                    <span className="truncate font-mono text-[0.6875rem] text-faint">{`${item.condition.field} ${t(`ops.${item.condition.op}`)} ${Array.isArray(item.condition.value) ? item.condition.value.join(", ") : String(item.condition.value)}`}</span>
+                  ) : null}
                 </button>
               </li>
             );
@@ -181,7 +189,11 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
           {steps.length < 8 ? (
             <li className="flex shrink-0 items-center">
               <Connector parallel={false} label="" />
-              <button type="button" onClick={addStep} className="press flex h-full min-h-[4.5rem] w-[200px] items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-input text-[0.8125rem] font-medium text-muted-foreground hover:bg-background hover:text-foreground [&_svg]:size-4">
+              <button
+                type="button"
+                onClick={addStep}
+                className="press flex h-full min-h-[4.5rem] w-[200px] items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-input text-[0.8125rem] font-medium text-muted-foreground hover:bg-background hover:text-foreground [&_svg]:size-4"
+              >
                 <PlusIcon aria-hidden />
                 {t("addStep")}
               </button>
@@ -221,7 +233,9 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
                         </option>
                       ))}
                     </Select>
-                    {rule.rule === "manager_level" ? <Input className="w-20 font-mono" type="number" min={1} max={6} value={rule.level} onChange={(event) => patchRule(index, ruleIndex, { rule: "manager_level", level: Number(event.target.value) })} /> : null}
+                    {rule.rule === "manager_level" ? (
+                      <Input className="w-20 font-mono" type="number" min={1} max={6} value={rule.level} onChange={(event) => patchRule(index, ruleIndex, { rule: "manager_level", level: Number(event.target.value) })} />
+                    ) : null}
                     {rule.rule === "permission" ? (
                       <Select className="w-full sm:w-56" value={rule.permission} onChange={(event) => patchRule(index, ruleIndex, { rule: "permission", permission: event.target.value })}>
                         {options.permissions.map((permission) => (
@@ -276,14 +290,22 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
                         <option key={field} value={field} />
                       ))}
                     </datalist>
-                    <Select className="w-28" value={step.condition.op} onChange={(event) => patch(index, { condition: { ...step.condition!, op: event.target.value as Condition["op"], value: conditionValue(event.target.value as Condition["op"], String(step.condition!.value)) } })}>
+                    <Select
+                      className="w-28"
+                      value={step.condition.op}
+                      onChange={(event) => patch(index, { condition: { ...step.condition!, op: event.target.value as Condition["op"], value: conditionValue(event.target.value as Condition["op"], String(step.condition!.value)) } })}
+                    >
                       {OPS.map((op) => (
                         <option key={op} value={op}>
                           {t(`ops.${op}`)}
                         </option>
                       ))}
                     </Select>
-                    <Input className="w-36 font-mono" defaultValue={Array.isArray(step.condition.value) ? step.condition.value.join(", ") : String(step.condition.value)} onChange={(event) => patch(index, { condition: { ...step.condition!, value: conditionValue(step.condition!.op, event.target.value) } })} />
+                    <Input
+                      className="w-36 font-mono"
+                      defaultValue={Array.isArray(step.condition.value) ? step.condition.value.join(", ") : String(step.condition.value)}
+                      onChange={(event) => patch(index, { condition: { ...step.condition!, value: conditionValue(step.condition!.op, event.target.value) } })}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -302,9 +324,7 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
       {errorKey ? <Alert variant="destructive">{t.has(`errors.${errorKey}`) ? t(`errors.${errorKey}` as "errors.generic") : t("errors.generic")}</Alert> : null}
       <div className="flex flex-wrap items-center justify-end gap-2">
         {saved ? <span className="mr-auto text-xs text-success">{t("saved")}</span> : null}
-        {flow ? (
-          <ConfirmButton variant="outline" disabled={pending} label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteFlowAction({ id: flow.id }))} />
-        ) : null}
+        {flow ? <ConfirmButton variant="outline" disabled={pending} label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteFlowAction({ id: flow.id }))} /> : null}
         <Button type="button" disabled={pending} onClick={save}>
           {t("save")}
         </Button>

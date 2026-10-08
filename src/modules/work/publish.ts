@@ -52,7 +52,10 @@ export async function planPublish(taskId: string, input: PlanInput, actor: Actor
     const loaded = await loadTask(taskId, tx);
     if (!loaded) throw new ActionError("task_not_found");
     if (loaded.task.status === "cancelled") throw new ActionError("publish_task_closed");
-    const [publish] = await tx.insert(schema.workPublish).values({ taskId, ...place, plannedAt: input.plannedAt, createdByPersonId: actor.personId }).returning();
+    const [publish] = await tx
+      .insert(schema.workPublish)
+      .values({ taskId, ...place, plannedAt: input.plannedAt, createdByPersonId: actor.personId })
+      .returning();
     await logActivity(tx, taskId, actor.personId, [{ type: "publish_planned", to: { name: [place.platform, place.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
     await touch(tx, taskId);
     return publish;
@@ -66,8 +69,14 @@ export async function updatePublishPlan(publishId: string, input: PlanInput, act
     const found = await findPublish(publishId, tx);
     if (!found) throw new ActionError("publish_not_found");
     if (found.publish.status !== "planned") throw new ActionError("publish_not_planned");
-    const [after] = await tx.update(schema.workPublish).set({ ...place, plannedAt: input.plannedAt, updatedAt: new Date() }).where(eq(schema.workPublish.id, publishId)).returning();
-    await logActivity(tx, found.publish.taskId, actor.personId, [{ type: "publish_rescheduled", from: { plannedAt: found.publish.plannedAt?.toISOString() ?? null }, to: { name: [place.platform, place.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
+    const [after] = await tx
+      .update(schema.workPublish)
+      .set({ ...place, plannedAt: input.plannedAt, updatedAt: new Date() })
+      .where(eq(schema.workPublish.id, publishId))
+      .returning();
+    await logActivity(tx, found.publish.taskId, actor.personId, [
+      { type: "publish_rescheduled", from: { plannedAt: found.publish.plannedAt?.toISOString() ?? null }, to: { name: [place.platform, place.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } },
+    ]);
     return { before: found.publish, after };
   });
 }
@@ -84,7 +93,15 @@ export async function markPublished(publishId: string, input: PublishedInput, ac
     if (found.publish.status === "cancelled") throw new ActionError("publish_not_planned");
     const [after] = await tx
       .update(schema.workPublish)
-      .set({ status: "published", url: input.url, publishedAt: input.publishedAt, publishedByPersonId: found.publish.status === "published" ? found.publish.publishedByPersonId : actor.personId, boosted: input.boosted, adAccount: input.boosted ? input.adAccount : null, updatedAt: new Date() })
+      .set({
+        status: "published",
+        url: input.url,
+        publishedAt: input.publishedAt,
+        publishedByPersonId: found.publish.status === "published" ? found.publish.publishedByPersonId : actor.personId,
+        boosted: input.boosted,
+        adAccount: input.boosted ? input.adAccount : null,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.workPublish.id, publishId))
       .returning();
     await logActivity(tx, found.publish.taskId, actor.personId, [{ type: "publish_published", to: { name: input.url, platform: found.publish.platform, boosted: input.boosted } }]);
@@ -130,7 +147,11 @@ export async function listPublishesByTask(taskIds: readonly string[]): Promise<P
 
 async function listResultsOf(publishIds: readonly string[]): Promise<ResultRow[]> {
   if (publishIds.length === 0) return [];
-  return db().select().from(schema.workPublishResult).where(inArray(schema.workPublishResult.publishId, [...publishIds])).orderBy(asc(schema.workPublishResult.recordedOn), asc(schema.workPublishResult.createdAt));
+  return db()
+    .select()
+    .from(schema.workPublishResult)
+    .where(inArray(schema.workPublishResult.publishId, [...publishIds]))
+    .orderBy(asc(schema.workPublishResult.recordedOn), asc(schema.workPublishResult.createdAt));
 }
 
 export type ResultView = ResultRow & { taskId: string; platform: string; url: string | null };
@@ -160,7 +181,11 @@ export type ResultInput = { recordedOn: IsoDate } & Partial<Record<ResultMetric,
 export async function saveResult(executor: Executor, publishId: string, input: ResultInput, source: "manual" | "csv", actorPersonId: string): Promise<{ result: ResultRow; replaced: boolean }> {
   const metrics = cleanMetrics(input);
   if (!metrics) throw new ActionError("result_metrics_required");
-  const [existing] = await executor.select().from(schema.workPublishResult).where(and(eq(schema.workPublishResult.publishId, publishId), eq(schema.workPublishResult.recordedOn, input.recordedOn))).limit(1);
+  const [existing] = await executor
+    .select()
+    .from(schema.workPublishResult)
+    .where(and(eq(schema.workPublishResult.publishId, publishId), eq(schema.workPublishResult.recordedOn, input.recordedOn)))
+    .limit(1);
   if (existing) {
     const [result] = await executor.update(schema.workPublishResult).set({ metrics, source, createdByPersonId: actorPersonId }).where(eq(schema.workPublishResult.id, existing.id)).returning();
     return { result, replaced: true };
@@ -194,7 +219,21 @@ export async function removeResult(resultId: string): Promise<ResultRow> {
 
 // ── The content calendar (FR-PJM-54) ────────────────────────────────────────────────────────
 
-export type CalendarPublish = { id: string; taskId: string; key: string; title: string; platform: string; page: string | null; status: string; plannedAt: Date | null; publishedAt: Date | null; url: string | null; teamId: string; projectId: string | null; channel: string | null };
+export type CalendarPublish = {
+  id: string;
+  taskId: string;
+  key: string;
+  title: string;
+  platform: string;
+  page: string | null;
+  status: string;
+  plannedAt: Date | null;
+  publishedAt: Date | null;
+  url: string | null;
+  teamId: string;
+  projectId: string | null;
+  channel: string | null;
+};
 
 /**
  * Posts planned or published in a range, of tasks the viewer may see (the same clause as every
@@ -210,9 +249,31 @@ export async function listCalendarPublishes(viewer: WorkViewer, range: { from: I
     .innerJoin(schema.task, eq(schema.task.id, schema.workPublish.taskId))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), or(inRange(schema.workPublish.plannedAt), inRange(schema.workPublish.publishedAt)), range.projectId ? eq(schema.workTask.projectId, range.projectId) : undefined, await visibleTaskCondition(viewer)))
+    .where(
+      and(
+        eq(schema.task.kind, WORK_KIND),
+        isNull(schema.task.deletedAt),
+        or(inRange(schema.workPublish.plannedAt), inRange(schema.workPublish.publishedAt)),
+        range.projectId ? eq(schema.workTask.projectId, range.projectId) : undefined,
+        await visibleTaskCondition(viewer),
+      ),
+    )
     .orderBy(asc(schema.workPublish.plannedAt));
-  return rows.map(({ publish, title, number, teamKey, teamId, projectId, channel }) => ({ id: publish.id, taskId: publish.taskId, key: taskKey(teamKey, number), title, platform: publish.platform, page: publish.page, status: publish.status, plannedAt: publish.plannedAt, publishedAt: publish.publishedAt, url: publish.url, teamId, projectId, channel }));
+  return rows.map(({ publish, title, number, teamKey, teamId, projectId, channel }) => ({
+    id: publish.id,
+    taskId: publish.taskId,
+    key: taskKey(teamKey, number),
+    title,
+    platform: publish.platform,
+    page: publish.page,
+    status: publish.status,
+    plannedAt: publish.plannedAt,
+    publishedAt: publish.publishedAt,
+    url: publish.url,
+    teamId,
+    projectId,
+    channel,
+  }));
 }
 
 /** How many publish rows (any status but cancelled) each task has — the calendar's "missing" flag. */
@@ -251,7 +312,16 @@ export async function sendPublishReminders(now: Date = new Date()): Promise<{ du
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-    .where(and(eq(schema.workPublish.status, "planned"), isNotNull(schema.workPublish.plannedAt), lt(schema.workPublish.plannedAt, dayEnd), gte(schema.workPublish.plannedAt, new Date(dayStart.getTime() - MISSED_LOOKBACK_DAYS * 86_400_000)), isNull(schema.task.deletedAt), inArray(schema.task.status, ["todo", "in_progress", "done"])))
+    .where(
+      and(
+        eq(schema.workPublish.status, "planned"),
+        isNotNull(schema.workPublish.plannedAt),
+        lt(schema.workPublish.plannedAt, dayEnd),
+        gte(schema.workPublish.plannedAt, new Date(dayStart.getTime() - MISSED_LOOKBACK_DAYS * 86_400_000)),
+        isNull(schema.task.deletedAt),
+        inArray(schema.task.status, ["todo", "in_progress", "done"]),
+      ),
+    )
     .orderBy(asc(schema.workPublish.plannedAt));
 
   let due = 0;
@@ -266,9 +336,21 @@ export async function sendPublishReminders(now: Date = new Date()): Promise<{ du
     const sentOn = isDue ? today : todayInVietnam(plannedAt);
     const label = `${taskKey(row.teamKey, row.number)} ${row.title}`;
     await db().transaction(async (tx) => {
-      const fresh = await tx.insert(schema.workReminderSent).values(recipients.map((personId) => ({ taskId: row.publish.taskId, personId, kind, sentOn }))).onConflictDoNothing().returning({ personId: schema.workReminderSent.personId });
+      const fresh = await tx
+        .insert(schema.workReminderSent)
+        .values(recipients.map((personId) => ({ taskId: row.publish.taskId, personId, kind, sentOn })))
+        .onConflictDoNothing()
+        .returning({ personId: schema.workReminderSent.personId });
       if (fresh.length === 0) return;
-      await notify({ recipients: fresh.map((mark) => mark.personId), kind: isDue ? "tasks.publish_due" : "tasks.publish_missed", params: isDue ? { task: label, time: timeInVietnam.format(plannedAt) } : { task: label }, link: `/work/tasks/${row.publish.taskId}` }, tx);
+      await notify(
+        {
+          recipients: fresh.map((mark) => mark.personId),
+          kind: isDue ? "tasks.publish_due" : "tasks.publish_missed",
+          params: isDue ? { task: label, time: timeInVietnam.format(plannedAt) } : { task: label },
+          link: `/work/tasks/${row.publish.taskId}`,
+        },
+        tx,
+      );
       if (isDue) due += 1;
       else missed += 1;
     });
@@ -283,14 +365,29 @@ export type ContentCalendar = { posts: { id: string; taskId: string; key: string
  * out, else the day it is planned for — flagged published, planned or late; and the content tasks
  * on the calendar that are due without any post planned ("missing").
  */
-export async function contentCalendar(viewer: WorkViewer, range: { from: IsoDate; to: IsoDate; projectId?: string }, tasks: readonly { id: string; channel: string | null; dueDate: string | null; status: string }[], now: Date = new Date()): Promise<ContentCalendar> {
+export async function contentCalendar(
+  viewer: WorkViewer,
+  range: { from: IsoDate; to: IsoDate; projectId?: string },
+  tasks: readonly { id: string; channel: string | null; dueDate: string | null; status: string }[],
+  now: Date = new Date(),
+): Promise<ContentCalendar> {
   const [rows, counts] = await Promise.all([listCalendarPublishes(viewer, range), publishCountsByTask(tasks.filter((task) => task.channel).map((task) => task.id))]);
   const today = todayInVietnam(now);
   const posts = rows
     .filter((row) => row.status !== "cancelled")
     .map((row) => {
       const at = row.publishedAt ?? row.plannedAt;
-      return { id: row.id, taskId: row.taskId, key: row.key, title: row.title, teamId: row.teamId, platform: row.platform, date: at ? todayInVietnam(at) : range.from, flag: publishFlag(row, now), time: at ? timeInVietnam.format(at) : null };
+      return {
+        id: row.id,
+        taskId: row.taskId,
+        key: row.key,
+        title: row.title,
+        teamId: row.teamId,
+        platform: row.platform,
+        date: at ? todayInVietnam(at) : range.from,
+        flag: publishFlag(row, now),
+        time: at ? timeInVietnam.format(at) : null,
+      };
     });
   const missingTaskIds = tasks.filter((task) => isPublishMissing(task, counts.get(task.id) ?? 0, today)).map((task) => task.id);
   return { posts, missingTaskIds };

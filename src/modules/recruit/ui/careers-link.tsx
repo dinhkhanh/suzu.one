@@ -11,12 +11,7 @@ export function CareersLinks({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={buttonVariants({ size: "sm", variant: "outline" })}
-      >
+      <a href={url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ size: "sm", variant: "outline" })}>
         {t("openCareersPage")}
       </a>
       <Button

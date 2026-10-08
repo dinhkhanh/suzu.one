@@ -100,7 +100,9 @@ export const task = pgTable(
   },
   (t) => [
     // "My open tasks", the most common question.
-    index("task_assignee_open_idx").on(t.assigneePersonId, t.dueDate).where(sql`${t.deletedAt} IS NULL AND ${t.status} IN ('todo', 'in_progress')`),
+    index("task_assignee_open_idx")
+      .on(t.assigneePersonId, t.dueDate)
+      .where(sql`${t.deletedAt} IS NULL AND ${t.status} IN ('todo', 'in_progress')`),
     index("task_context_idx").on(t.contextType, t.contextId),
     index("task_subject_idx").on(t.subjectPersonId),
     index("task_parent_idx").on(t.parentTaskId),

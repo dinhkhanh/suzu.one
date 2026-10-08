@@ -12,7 +12,7 @@ import type { IsoDate } from "@/lib/dates";
  */
 export function addMonthsClamped(date: IsoDate, months: number): IsoDate {
   const [year, month, day] = date.split("-").map(Number);
-  const total = (year * 12 + (month - 1)) + months;
+  const total = year * 12 + (month - 1) + months;
   const newYear = Math.floor(total / 12);
   const newMonth = total % 12;
   // Day 0 of the month after is the last day of the month we want.

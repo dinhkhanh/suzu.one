@@ -23,6 +23,9 @@ export const FEEDBACK_SCREENSHOT_OWNER_TYPE = "feedback_screenshot";
 
 /** "/projects/abc/tasks" → "projects": the part of the app the feedback is about, for grouping. */
 export function areaOfPath(path: string | null | undefined): string | null {
-  const first = (path ?? "").split(/[?#]/)[0].split("/").find((part) => part.length > 0);
+  const first = (path ?? "")
+    .split(/[?#]/)[0]
+    .split("/")
+    .find((part) => part.length > 0);
   return first && /^[a-z][a-z0-9-]{0,39}$/.test(first) ? first : null;
 }

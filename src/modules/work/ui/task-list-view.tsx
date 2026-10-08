@@ -63,7 +63,13 @@ export type ListOptions = {
 
 /** Sort choices: the fixed ones both ways, then each field's. */
 export function sortChoices(fields: FieldView[]): { value: string; field?: FieldView }[] {
-  return [...SORTS.flatMap((key) => (key === "rank" ? [{ value: key }] : [{ value: key }, { value: `-${key}` }])), ...fields.flatMap((field) => [{ value: customKey(field.id), field }, { value: `-${customKey(field.id)}`, field }])];
+  return [
+    ...SORTS.flatMap((key) => (key === "rank" ? [{ value: key }] : [{ value: key }, { value: `-${key}` }])),
+    ...fields.flatMap((field) => [
+      { value: customKey(field.id), field },
+      { value: `-${customKey(field.id)}`, field },
+    ]),
+  ];
 }
 
 const PRIORITY_CLASS: Record<number, string> = { 1: "text-destructive", 2: "text-tone-orange", 3: "text-info", 4: "text-faint" };
@@ -147,7 +153,17 @@ export function TaskListView({
   const visible = useMemo(() => sortTasks(filterTasks(shown, filters, { selfId, today, fields }), sort, fields, names), [shown, filters, selfId, today, fields, sort, names]);
   const groupField = fields.find((field) => field.id === fieldIdOf(grouping));
   const groups = useMemo(() => {
-    const order = groupField ? (groupField.type === "checkbox" ? ["1", "0"] : groupField.type === "person" ? options.people.map((person) => person.id) : groupField.options.map((option) => option.id)) : grouping === "status" ? options.states.map((state) => state.id) : grouping === "assignee" ? options.people.map((person) => person.id) : options.clients.map((client) => client.id);
+    const order = groupField
+      ? groupField.type === "checkbox"
+        ? ["1", "0"]
+        : groupField.type === "person"
+          ? options.people.map((person) => person.id)
+          : groupField.options.map((option) => option.id)
+      : grouping === "status"
+        ? options.states.map((state) => state.id)
+        : grouping === "assignee"
+          ? options.people.map((person) => person.id)
+          : options.clients.map((client) => client.id);
     return groupTasks(visible, grouping, order, fields);
   }, [visible, grouping, options, fields, groupField]);
   const groupName = (key: string) => {
@@ -173,7 +189,23 @@ export function TaskListView({
     const state = options.states.find((row) => row.id === filters.state && row.isActive);
     titleInput.current!.value = "";
     startTransition(async () => {
-      applyOptimistic({ id: `new-${title}`, key: "…", title, status: "todo", stateId: state?.id ?? "", priority: null, assigneePersonId: assignee || null, assigneeName: null, dueDate: null, clientId: null, labelIds: [], parentTaskId: null, blockedBy: 0, subtasks: { done: 0, total: 0 }, checklist: { done: 0, total: 0 } });
+      applyOptimistic({
+        id: `new-${title}`,
+        key: "…",
+        title,
+        status: "todo",
+        stateId: state?.id ?? "",
+        priority: null,
+        assigneePersonId: assignee || null,
+        assigneeName: null,
+        dueDate: null,
+        clientId: null,
+        labelIds: [],
+        parentTaskId: null,
+        blockedBy: 0,
+        subtasks: { done: 0, total: 0 },
+        checklist: { done: 0, total: 0 },
+      });
       const result = await createTaskAction({ teamId: scope.teamId, ...(scope.projectId ? { projectId: scope.projectId } : {}), title, stateId: state?.id ?? "", assigneePersonId: assignee, labelIds: filters.label ? [filters.label] : [] });
       failed(result);
       router.refresh();
@@ -205,7 +237,11 @@ export function TaskListView({
     // Sharing is offered only to the people working on the list; without the box, the view stays as shared as it was.
     const shared = canContribute ? { isShared: data.get("isShared") === "on" } : {};
     startTransition(async () => {
-      failed(update ? await updateViewAction({ viewId: update.id, name: data.get("name"), filters: current, ...shared }) : await saveViewAction({ projectId: scope.projectId, teamId: scope.teamId, name: data.get("name"), filters: current, ...shared }));
+      failed(
+        update
+          ? await updateViewAction({ viewId: update.id, name: data.get("name"), filters: current, ...shared })
+          : await saveViewAction({ projectId: scope.projectId, teamId: scope.teamId, name: data.get("name"), filters: current, ...shared }),
+      );
       if (!update) form.reset();
       router.refresh();
     });
@@ -215,7 +251,10 @@ export function TaskListView({
     ...GROUPINGS.map((value) => ({ value, label: t(`grouping.${value}`) })),
     ...fields.filter((field) => field.type !== "text" && field.type !== "url").map((field) => ({ value: customKey(field.id), label: t("groupByField", { name: field.name }) })),
   ];
-  const sortOptions = sortChoices(fields).map((choice) => ({ value: choice.value, label: choice.field ? t(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : t(`sorts.${choice.value as "rank"}`) }));
+  const sortOptions = sortChoices(fields).map((choice) => ({
+    value: choice.value,
+    label: choice.field ? t(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : t(`sorts.${choice.value as "rank"}`),
+  }));
 
   const row = (task: ListTask, depth: number) => {
     const open = task.status === "todo" || task.status === "in_progress";
@@ -279,7 +318,15 @@ export function TaskListView({
         <TableCell className="w-px">
           <span className="flex items-center gap-2" title={assignee ?? t("unassigned")}>
             <PersonAvatar name={assignee} />
-            <span className="hidden max-w-32 truncate text-xs text-muted-foreground lg:inline">{assignee ? <RecordLink kind="person" id={task.assigneePersonId}>{assignee}</RecordLink> : t("unassigned")}</span>
+            <span className="hidden max-w-32 truncate text-xs text-muted-foreground lg:inline">
+              {assignee ? (
+                <RecordLink kind="person" id={task.assigneePersonId}>
+                  {assignee}
+                </RecordLink>
+              ) : (
+                t("unassigned")
+              )}
+            </span>
           </span>
         </TableCell>
         <TableCell kind="date" className="hidden w-px md:table-cell">
@@ -293,10 +340,17 @@ export function TaskListView({
 
   return (
     <div className="flex flex-col gap-3">
-      <FilterBar filters={filters} setFilter={setFilter} clear={() => {
-        setFilters({});
-        sync({}, grouping);
-      }} options={options} showState showDue>
+      <FilterBar
+        filters={filters}
+        setFilter={setFilter}
+        clear={() => {
+          setFilters({});
+          sync({}, grouping);
+        }}
+        options={options}
+        showState
+        showDue
+      >
         <MenuPicker
           icon={<LayersIcon data-icon="inline-start" />}
           label={t("group")}

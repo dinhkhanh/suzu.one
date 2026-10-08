@@ -45,7 +45,14 @@ export function ActivityList({ items, past = false }: { items: readonly ShownAct
         ) : (
           <span>{t.has(`categories.${item.title}`) ? t(`categories.${item.title}` as "categories.admin") : item.title}</span>
         );
-        const detail = kind === "time_logged" ? t("hours", { value: hoursOf(Number(item.detail ?? 0)) }) : kind === "commented" ? t("comments", { count: Number(item.detail ?? 1) }) : kind === "reviewed" && item.detail ? t(`decisions.${item.detail === "approved" ? "approved" : "changes_requested"}`) : item.detail;
+        const detail =
+          kind === "time_logged"
+            ? t("hours", { value: hoursOf(Number(item.detail ?? 0)) })
+            : kind === "commented"
+              ? t("comments", { count: Number(item.detail ?? 1) })
+              : kind === "reviewed" && item.detail
+                ? t(`decisions.${item.detail === "approved" ? "approved" : "changes_requested"}`)
+                : item.detail;
         return (
           <li key={`${item.kind}:${item.taskId ?? item.title}:${index}`} className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-xs font-medium text-muted-foreground">{kind ? t(`kinds.${kind}`) : item.kind}</span>

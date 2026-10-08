@@ -18,7 +18,12 @@ describe("the brief and its gate (FR-PJM-03)", () => {
     const next = withOpenFields(approved, { clientContacts: [{ name: "Chị Mai", role: "Brand manager" }], links: [] });
     expect(next).toEqual({ objective: "Ra mắt", scopeIn: "3 video", successCriteria: "Hai vòng duyệt", clientContacts: [{ name: "Chị Mai", role: "Brand manager" }] });
     // Whatever else is handed in with them is not taken: the agreed text is the stored one.
-    expect(withOpenFields(approved, { clientContacts: [], links: ["https://drive.google.com/b"], objective: "Khác" } as never)).toEqual({ objective: "Ra mắt", scopeIn: "3 video", successCriteria: "Hai vòng duyệt", links: ["https://drive.google.com/b"] });
+    expect(withOpenFields(approved, { clientContacts: [], links: ["https://drive.google.com/b"], objective: "Khác" } as never)).toEqual({
+      objective: "Ra mắt",
+      scopeIn: "3 video",
+      successCriteria: "Hai vòng duyệt",
+      links: ["https://drive.google.com/b"],
+    });
   });
   it("tells work done for a client under contract from work that answers to no client", () => {
     expect(["client", "retainer", "pitch", "internal", null, undefined].map((kind) => isClientWork(kind))).toEqual([true, true, false, false, false, false]);

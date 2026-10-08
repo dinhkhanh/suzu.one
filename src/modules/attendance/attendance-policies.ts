@@ -16,7 +16,16 @@ export type AttendancePolicyRow = typeof schema.attendancePolicy.$inferSelect;
 
 /** What the engine assumes when nobody has configured anything: count to the minute, forgive nothing, approve all overtime. */
 const UNCONFIGURED: Omit<AttendancePolicyRow, "id" | "entityId" | "validFrom" | "validTo" | "createdByPersonId" | "createdAt"> = {
-  mergeRule: "first_in_last_out", graceLateMinutes: 0, graceEarlyMinutes: 0, roundingMinutes: 0, otMinMinutes: 30, otRequiresApproval: true, duplicateWindowMinutes: 3, breakStart: "12:00", dayBoundary: "04:00", monthlyCorrectionCap: null,
+  mergeRule: "first_in_last_out",
+  graceLateMinutes: 0,
+  graceEarlyMinutes: 0,
+  roundingMinutes: 0,
+  otMinMinutes: 30,
+  otRequiresApproval: true,
+  duplicateWindowMinutes: 3,
+  breakStart: "12:00",
+  dayBoundary: "04:00",
+  monthlyCorrectionCap: null,
 };
 
 export type ResolvedPolicy = TimesheetPolicy & { dayBoundary: number; monthlyCorrectionCap: number | null; policyId: string | null };
@@ -64,9 +73,7 @@ export async function listPolicies(): Promise<(AttendancePolicyRow & { entityNam
   const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
   // As `order by entity.short_name asc, valid_from desc`: the group's own rows (no entity) last.
   const byName = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b));
-  return policies
-    .map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null }))
-    .sort((a, b) => byName(a.entityName, b.entityName) || (a.validFrom < b.validFrom ? 1 : a.validFrom > b.validFrom ? -1 : 0));
+  return policies.map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null })).sort((a, b) => byName(a.entityName, b.entityName) || (a.validFrom < b.validFrom ? 1 : a.validFrom > b.validFrom ? -1 : 0));
 }
 
 export type PolicyInput = Omit<AttendancePolicyRow, "id" | "validTo" | "createdByPersonId" | "createdAt">;
@@ -80,15 +87,32 @@ export async function savePolicy(input: PolicyInput, actorPersonId: string, exec
   if (input.roundingMinutes < 0 || input.roundingMinutes > 60 || input.graceLateMinutes < 0 || input.graceEarlyMinutes < 0 || input.otMinMinutes < 0 || input.duplicateWindowMinutes < 0) throw new ActionError("attendance_policy_invalid");
   const saved = await executor.transaction(async (tx) => {
     const scope = input.entityId ? eq(schema.attendancePolicy.entityId, input.entityId) : isNull(schema.attendancePolicy.entityId);
-    const [open] = await tx.select().from(schema.attendancePolicy).where(and(scope, isNull(schema.attendancePolicy.validTo))).orderBy(desc(schema.attendancePolicy.validFrom)).limit(1).for("update");
+    const [open] = await tx
+      .select()
+      .from(schema.attendancePolicy)
+      .where(and(scope, isNull(schema.attendancePolicy.validTo)))
+      .orderBy(desc(schema.attendancePolicy.validFrom))
+      .limit(1)
+      .for("update");
     if (open && open.validFrom >= input.validFrom) {
       // Same start date = a correction of that version; an earlier one would rewrite history.
       if (open.validFrom > input.validFrom) throw new ActionError("attendance_policy_before_current");
-      const [after] = await tx.update(schema.attendancePolicy).set({ ...input }).where(eq(schema.attendancePolicy.id, open.id)).returning();
+      const [after] = await tx
+        .update(schema.attendancePolicy)
+        .set({ ...input })
+        .where(eq(schema.attendancePolicy.id, open.id))
+        .returning();
       return { before: open, after, affectedFrom: input.validFrom };
     }
-    if (open) await tx.update(schema.attendancePolicy).set({ validTo: addDays(input.validFrom, -1) }).where(eq(schema.attendancePolicy.id, open.id));
-    const [after] = await tx.insert(schema.attendancePolicy).values({ ...input, createdByPersonId: actorPersonId }).returning();
+    if (open)
+      await tx
+        .update(schema.attendancePolicy)
+        .set({ validTo: addDays(input.validFrom, -1) })
+        .where(eq(schema.attendancePolicy.id, open.id));
+    const [after] = await tx
+      .insert(schema.attendancePolicy)
+      .values({ ...input, createdByPersonId: actorPersonId })
+      .returning();
     return { before: open ?? null, after, affectedFrom: input.validFrom };
   });
   await invalidate(POLICY_CACHE);

@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { type FilterableTask, filterEntries, filterTasks, groupTasks, nestTasks, readFilters, readGrouping, readSort, sortTasks } from "./filter";
 
-const task = (id: string, overrides: Partial<FilterableTask> = {}): FilterableTask => ({ id, key: `VID-${id}`, title: `Task ${id}`, status: "todo", stateId: "brief", priority: null, assigneePersonId: null, dueDate: null, clientId: null, labelIds: [], parentTaskId: null, ...overrides });
+const task = (id: string, overrides: Partial<FilterableTask> = {}): FilterableTask => ({
+  id,
+  key: `VID-${id}`,
+  title: `Task ${id}`,
+  status: "todo",
+  stateId: "brief",
+  priority: null,
+  assigneePersonId: null,
+  dueDate: null,
+  clientId: null,
+  labelIds: [],
+  parentTaskId: null,
+  ...overrides,
+});
 const context = { selfId: "huy", today: "2026-09-20" };
 const tasks = [
   task("1", { title: "Kịch bản TVC Tết", assigneePersonId: "huy", priority: 1, dueDate: "2026-09-18", clientId: "vinamilk", labelIds: ["urgent"] }),
@@ -47,19 +60,39 @@ describe("filterTasks", () => {
 
 describe("groupTasks and nestTasks", () => {
   it("orders groups as told and puts the unassigned last", () => {
-    expect(groupTasks(tasks, "status", ["brief", "edit", "published"]).map((group) => [group.key, ids(group.tasks)])).toEqual([["brief", ["1", "4"]], ["edit", ["2"]], ["published", ["3"]]]);
+    expect(groupTasks(tasks, "status", ["brief", "edit", "published"]).map((group) => [group.key, ids(group.tasks)])).toEqual([
+      ["brief", ["1", "4"]],
+      ["edit", ["2"]],
+      ["published", ["3"]],
+    ]);
     expect(groupTasks(tasks, "assignee", ["tam", "huy"]).map((group) => group.key)).toEqual(["tam", "huy", "none"]);
     expect(groupTasks(tasks, "none", [])).toHaveLength(1);
   });
   it("puts a sub-task under its parent only when the parent is in the list", () => {
-    expect(nestTasks(tasks).map((row) => [row.task.id, row.depth])).toEqual([["1", 0], ["4", 1], ["2", 0], ["3", 0]]);
-    expect(nestTasks(tasks.filter((row) => row.id !== "1")).map((row) => [row.task.id, row.depth])).toEqual([["2", 0], ["3", 0], ["4", 0]]);
+    expect(nestTasks(tasks).map((row) => [row.task.id, row.depth])).toEqual([
+      ["1", 0],
+      ["4", 1],
+      ["2", 0],
+      ["3", 0],
+    ]);
+    expect(nestTasks(tasks.filter((row) => row.id !== "1")).map((row) => [row.task.id, row.depth])).toEqual([
+      ["2", 0],
+      ["3", 0],
+      ["4", 0],
+    ]);
   });
 });
 
 describe("PJM additions: triage, blockers, custom fields", () => {
   const FIELD = "8b1f6a3e-2c4d-4e5f-9a0b-1c2d3e4f5a6b";
-  const format = { id: FIELD, type: "select" as const, options: [{ id: "reels", label: "Reels" }, { id: "tvc", label: "TVC" }] };
+  const format = {
+    id: FIELD,
+    type: "select" as const,
+    options: [
+      { id: "reels", label: "Reels" },
+      { id: "tvc", label: "TVC" },
+    ],
+  };
   const rows = [
     task("1", { customValues: { [FIELD]: "tvc" }, dueDate: "2026-09-30", priority: 2 }),
     task("2", { customValues: { [FIELD]: "reels" }, triageStatus: "pending" }),
@@ -89,11 +122,18 @@ describe("PJM additions: triage, blockers, custom fields", () => {
     expect(ids(sortTasks(rows, "rank"))).toEqual(["1", "2", "3", "4"]);
   });
   it("groups by a field in option order, the empty ones last", () => {
-    expect(groupTasks(rows, `cf.${FIELD}`, ["reels", "tvc"], [format]).map((group) => [group.key, ids(group.tasks)])).toEqual([["reels", ["2"]], ["tvc", ["1"]], ["none", ["3", "4"]]]);
+    expect(groupTasks(rows, `cf.${FIELD}`, ["reels", "tvc"], [format]).map((group) => [group.key, ids(group.tasks)])).toEqual([
+      ["reels", ["2"]],
+      ["tvc", ["1"]],
+      ["none", ["3", "4"]],
+    ]);
   });
   it("reads the URL: known keys and field keys only; saved views of old keys still read", () => {
     expect(readFilters({ assignee: "me", [`cf.${FIELD}`]: "tvc", "cf.x": "1", view: "table", q: "" })).toEqual({ assignee: "me", [`cf.${FIELD}`]: "tvc" });
-    expect(filterEntries({ assignee: "me", closed: undefined, triage: "1" })).toEqual([["assignee", "me"], ["triage", "1"]]);
+    expect(filterEntries({ assignee: "me", closed: undefined, triage: "1" })).toEqual([
+      ["assignee", "me"],
+      ["triage", "1"],
+    ]);
     expect([readGrouping("client"), readGrouping(`cf.${FIELD}`), readGrouping("cf.x"), readGrouping(undefined)]).toEqual(["client", `cf.${FIELD}`, "none", "none"]);
     expect([readSort("-due"), readSort(`cf.${FIELD}`), readSort("drop table")]).toEqual(["-due", `cf.${FIELD}`, "rank"]);
   });

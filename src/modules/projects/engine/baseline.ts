@@ -34,7 +34,11 @@ export type Slip = {
   worstMilestoneSlipDays: number | null;
 };
 
-export function baselineSlip(baseline: ProjectBaseline | null, current: { startDate: IsoDate | null; dueDate: IsoDate | null; budgetMinutes: number | null; milestones: readonly { id: string; dueDate: IsoDate | null; doneOn: IsoDate | null }[] }, today: IsoDate): Slip | null {
+export function baselineSlip(
+  baseline: ProjectBaseline | null,
+  current: { startDate: IsoDate | null; dueDate: IsoDate | null; budgetMinutes: number | null; milestones: readonly { id: string; dueDate: IsoDate | null; doneOn: IsoDate | null }[] },
+  today: IsoDate,
+): Slip | null {
   if (!baseline) return null;
   const planned = new Map(baseline.milestones.map((milestone) => [milestone.id, milestone.dueDate]));
   const milestones = current.milestones.map((milestone) => ({ id: milestone.id, slipDays: planned.has(milestone.id) ? slipDays(planned.get(milestone.id), effectiveDate(milestone, today)) : null }));

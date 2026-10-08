@@ -21,8 +21,29 @@ type Seed = {
 const SEEDS: Seed[] = [
   { code: "BASE", name: "Lương cơ bản", nameEn: "Base salary", kind: "earning", category: "salary", source: "structure", subjectToInsurance: true, proration: "attendance" },
   { code: "ALW_RESPONSIBILITY", name: "Phụ cấp trách nhiệm", nameEn: "Responsibility allowance", kind: "earning", category: "allowance", source: "structure", subjectToInsurance: true, proration: "attendance" },
-  { code: "ALW_MEAL", name: "Phụ cấp ăn trưa", nameEn: "Meal allowance", kind: "earning", category: "allowance", source: "structure", taxTreatment: "exempt_up_to_cap", exemptCap: 730_000, proration: "attendance", note: "Mức miễn thuế 730.000 đ/tháng là mức cũ — kế toán trưởng xác nhận mức hiện hành." },
-  { code: "ALW_PHONE", name: "Phụ cấp điện thoại", nameEn: "Phone allowance", kind: "earning", category: "allowance", source: "structure", taxTreatment: "exempt", proration: "fixed", note: "Miễn thuế trong mức khoán theo quy chế công ty — kế toán trưởng xác nhận." },
+  {
+    code: "ALW_MEAL",
+    name: "Phụ cấp ăn trưa",
+    nameEn: "Meal allowance",
+    kind: "earning",
+    category: "allowance",
+    source: "structure",
+    taxTreatment: "exempt_up_to_cap",
+    exemptCap: 730_000,
+    proration: "attendance",
+    note: "Mức miễn thuế 730.000 đ/tháng là mức cũ — kế toán trưởng xác nhận mức hiện hành.",
+  },
+  {
+    code: "ALW_PHONE",
+    name: "Phụ cấp điện thoại",
+    nameEn: "Phone allowance",
+    kind: "earning",
+    category: "allowance",
+    source: "structure",
+    taxTreatment: "exempt",
+    proration: "fixed",
+    note: "Miễn thuế trong mức khoán theo quy chế công ty — kế toán trưởng xác nhận.",
+  },
   { code: "ALW_TRANSPORT", name: "Phụ cấp xăng xe, đi lại", nameEn: "Transport allowance", kind: "earning", category: "allowance", source: "structure", proration: "attendance" },
   { code: "ALW_HOUSING", name: "Phụ cấp nhà ở", nameEn: "Housing allowance", kind: "earning", category: "allowance", source: "structure", proration: "fixed" },
   { code: "OT_WEEKDAY", name: "Làm thêm ngày thường", nameEn: "Overtime — weekday", kind: "earning", category: "overtime", source: "engine" },
@@ -34,7 +55,15 @@ const SEEDS: Seed[] = [
   { code: "BONUS", name: "Thưởng khác", nameEn: "Other bonus", kind: "earning", category: "bonus", source: "input" },
   { code: "THIRTEENTH_MONTH", name: "Lương tháng 13", nameEn: "13th-month salary", kind: "earning", category: "thirteenth_month", source: "input" },
   { code: "HOLIDAY_BONUS", name: "Thưởng lễ, Tết", nameEn: "Holiday bonus", kind: "earning", category: "holiday_bonus", source: "input" },
-  { code: "LEAVE_PAYOUT", name: "Thanh toán phép năm chưa nghỉ", nameEn: "Unused leave payout", kind: "earning", category: "leave_payout", source: "engine", note: "Tính tự động khi nghỉ việc: số ngày phép sổ phép chi trả × lương theo hợp đồng của tháng liền kề trước tháng nghỉ việc ÷ số ngày làm việc bình thường của tháng đó (Điều 113.3 BLLĐ 2019, Điều 67.3 NĐ 145/2020)." },
+  {
+    code: "LEAVE_PAYOUT",
+    name: "Thanh toán phép năm chưa nghỉ",
+    nameEn: "Unused leave payout",
+    kind: "earning",
+    category: "leave_payout",
+    source: "engine",
+    note: "Tính tự động khi nghỉ việc: số ngày phép sổ phép chi trả × lương theo hợp đồng của tháng liền kề trước tháng nghỉ việc ÷ số ngày làm việc bình thường của tháng đó (Điều 113.3 BLLĐ 2019, Điều 67.3 NĐ 145/2020).",
+  },
   // FR-PAY-18: the severance allowance a leaver may be owed is typed in by C&B — whether it is owed
   // at all turns on why the contract ended and on the months not covered by unemployment insurance.
   {

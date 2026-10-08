@@ -75,8 +75,14 @@ describe("cell parsers", () => {
 
 describe("csv", () => {
   it("handles a BOM, quotes, embedded newlines and Excel's semicolons", () => {
-    expect(parseCsv('﻿a,b\r\n"x, ""y""","line1\nline2"\r\n')).toEqual([["a", "b"], ['x, "y"', "line1\nline2"]]);
-    expect(parseCsv("a;b\n1,5;2")).toEqual([["a", "b"], ["1,5", "2"]]);
+    expect(parseCsv('﻿a,b\r\n"x, ""y""","line1\nline2"\r\n')).toEqual([
+      ["a", "b"],
+      ['x, "y"', "line1\nline2"],
+    ]);
+    expect(parseCsv("a;b\n1,5;2")).toEqual([
+      ["a", "b"],
+      ["1,5", "2"],
+    ]);
   });
 
   it("round-trips its own template", () => {

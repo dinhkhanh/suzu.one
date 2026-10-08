@@ -41,7 +41,13 @@ type PendingStepUp = { state: string; nonce: string; next: string; sessionId: st
 const sign = (body: string) => createHmac("sha256", env().BETTER_AUTH_SECRET).update("step-up\u0000").update(body).digest("base64url");
 
 export function sealPendingStepUp(input: { next: string; sessionId: string }, now: Date = new Date()): { cookie: string; pending: PendingStepUp } {
-  const pending: PendingStepUp = { state: randomBytes(24).toString("base64url"), nonce: randomBytes(24).toString("base64url"), next: safeNextPath(input.next), sessionId: input.sessionId, expiresAt: Math.floor(now.getTime() / 1000) + STATE_TTL_SECONDS };
+  const pending: PendingStepUp = {
+    state: randomBytes(24).toString("base64url"),
+    nonce: randomBytes(24).toString("base64url"),
+    next: safeNextPath(input.next),
+    sessionId: input.sessionId,
+    expiresAt: Math.floor(now.getTime() / 1000) + STATE_TTL_SECONDS,
+  };
   const body = Buffer.from(JSON.stringify(pending), "utf8").toString("base64url");
   return { cookie: `${body}.${sign(body)}`, pending };
 }

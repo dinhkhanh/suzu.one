@@ -18,7 +18,27 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/client";
-import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, reopenProjectAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updateBriefContactsAction, updatePlanSettingsAction } from "../actions";
+import {
+  cancelDeliverableAction,
+  createLineTasksAction,
+  deleteMilestoneAction,
+  deletePhaseAction,
+  linkTaskAction,
+  postStatusUpdateAction,
+  rebaselineAction,
+  reopenProjectAction,
+  saveDeliverableAction,
+  saveMilestoneAction,
+  savePhaseAction,
+  setAccountManagerAction,
+  setFeeAction,
+  setMilestoneDoneAction,
+  submitBriefAction,
+  unlinkTaskAction,
+  updateBriefAction,
+  updateBriefContactsAction,
+  updatePlanSettingsAction,
+} from "../actions";
 
 type Person = { id: string; fullName: string };
 type Named = { id: string; name: string };
@@ -84,7 +104,17 @@ export function ActionButton({ action, input, label, confirm, variant = "outline
 
 // ── Overview: brief, kick-off, settings ─────────────────────────────────────────────────────
 
-export type BriefValues = { objective?: string; scopeIn?: string; scopeOut?: string; successCriteria?: string; assumptions?: string; audience?: string; keyMessages?: string; clientContacts?: { name: string; role?: string; contact?: string }[]; links?: string[] };
+export type BriefValues = {
+  objective?: string;
+  scopeIn?: string;
+  scopeOut?: string;
+  successCriteria?: string;
+  assumptions?: string;
+  audience?: string;
+  keyMessages?: string;
+  clientContacts?: { name: string; role?: string; contact?: string }[];
+  links?: string[];
+};
 
 /** `accountContacts`: the account's contacts (FR-CRM-46), put in the contacts field while the brief names none. */
 export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { projectId: string; brief: BriefValues; kind: string; accountContacts?: { name: string; title: string | null }[] }) {
@@ -92,7 +122,14 @@ export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { pr
   const t = useTranslations("projects.brief");
   const area = (name: keyof BriefValues, rows = 3) => (
     <Field name={name} label={t(`fields.${name}`)}>
-      <NoteEditor id={name} name={name} rows={rows} maxLength={4000} defaultValue={(brief[name] as string | undefined) ?? ""} placeholder={t.has(`hints.${kind}.${name}`) ? t(`hints.${kind}.${name}` as "hints.client.objective") : undefined} />
+      <NoteEditor
+        id={name}
+        name={name}
+        rows={rows}
+        maxLength={4000}
+        defaultValue={(brief[name] as string | undefined) ?? ""}
+        placeholder={t.has(`hints.${kind}.${name}`) ? t(`hints.${kind}.${name}` as "hints.client.objective") : undefined}
+      />
     </Field>
   );
   return (
@@ -109,7 +146,13 @@ export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { pr
       </div>
       {area("assumptions", 2)}
       <Field name="clientContacts" label={t("fields.clientContacts")}>
-        <Textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={contacts.map((contact: { name: string; role?: string; contact?: string }) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")} placeholder={t("contactsHint")} />
+        <Textarea
+          id="clientContacts"
+          name="clientContacts"
+          rows={3}
+          defaultValue={contacts.map((contact: { name: string; role?: string; contact?: string }) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")}
+          placeholder={t("contactsHint")}
+        />
       </Field>
       <Field name="links" label={t("fields.links")}>
         <Textarea id="links" name="links" rows={2} defaultValue={(brief.links ?? []).join("\n")} placeholder="https://drive.google.com/…" className="font-mono" />
@@ -141,7 +184,17 @@ export function SubmitBriefButton({ projectId, resubmit }: { projectId: string; 
 }
 
 /** `scopeLocked`: after the kick-off the total hours budget moves only through a change request — it is shown, not typed; the split between roles stays. */
-export function PlanSettingsForm({ projectId, values, kinds, scopeLocked = false }: { projectId: string; values: { kind: string; budgetMinutes: number | null; budgetByRole: { role: string; minutes: number }[]; updateCadenceDays: number; driveUrl: string | null }; kinds: readonly string[]; scopeLocked?: boolean }) {
+export function PlanSettingsForm({
+  projectId,
+  values,
+  kinds,
+  scopeLocked = false,
+}: {
+  projectId: string;
+  values: { kind: string; budgetMinutes: number | null; budgetByRole: { role: string; minutes: number }[]; updateCadenceDays: number; driveUrl: string | null };
+  kinds: readonly string[];
+  scopeLocked?: boolean;
+}) {
   const t = useTranslations("projects");
   const roles = [...values.budgetByRole, { role: "", minutes: 0 }, { role: "", minutes: 0 }];
   return (
@@ -216,7 +269,13 @@ export function PhaseForm({ projectId, phase, onDone }: { projectId: string; pha
   const t = useTranslations("projects");
   const id = phase?.id ?? "new";
   return (
-    <ActionForm action={savePhaseAction} extra={{ projectId, phaseId: phase?.id ?? null }} submit={phase ? t("settings.save") : t("plan.addPhase")} onDone={onDone} className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_6rem_4rem_auto] sm:items-end">
+    <ActionForm
+      action={savePhaseAction}
+      extra={{ projectId, phaseId: phase?.id ?? null }}
+      submit={phase ? t("settings.save") : t("plan.addPhase")}
+      onDone={onDone}
+      className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_6rem_4rem_auto] sm:items-end"
+    >
       <Field name="name" label={t("fields.phase")}>
         <Input id={`phase-name-${id}`} name="name" required maxLength={120} defaultValue={phase?.name ?? ""} />
       </Field>
@@ -236,7 +295,19 @@ export function PhaseForm({ projectId, phase, onDone }: { projectId: string; pha
   );
 }
 
-export function MilestoneForm({ projectId, milestone, phases, people, showAmount }: { projectId: string; milestone?: { id: string; name: string; dueDate: string | null; phaseId: string | null; ownerPersonId: string | null; isClientFacing: boolean; isBilling: boolean; billingAmountVnd?: number | null; sortOrder: number }; phases: Named[]; people: Person[]; showAmount: boolean }) {
+export function MilestoneForm({
+  projectId,
+  milestone,
+  phases,
+  people,
+  showAmount,
+}: {
+  projectId: string;
+  milestone?: { id: string; name: string; dueDate: string | null; phaseId: string | null; ownerPersonId: string | null; isClientFacing: boolean; isBilling: boolean; billingAmountVnd?: number | null; sortOrder: number };
+  phases: Named[];
+  people: Person[];
+  showAmount: boolean;
+}) {
   const t = useTranslations("projects");
   const id = milestone?.id ?? "new";
   return (
@@ -355,12 +426,26 @@ export function UnlinkButton({ taskId }: { taskId: string }) {
  * only through a change request — they are shown and posted back unchanged; the wording, the
  * milestone and the due date stay editable.
  */
-export function DeliverableForm({ projectId, line, milestones, scopeLocked = false }: { projectId: string; line?: { id: string; title: string; quantity: number; format: string | null; channel: string | null; dueDate: string | null; milestoneId: string | null; sortOrder: number }; milestones: Named[]; scopeLocked?: boolean }) {
+export function DeliverableForm({
+  projectId,
+  line,
+  milestones,
+  scopeLocked = false,
+}: {
+  projectId: string;
+  line?: { id: string; title: string; quantity: number; format: string | null; channel: string | null; dueDate: string | null; milestoneId: string | null; sortOrder: number };
+  milestones: Named[];
+  scopeLocked?: boolean;
+}) {
   const t = useTranslations("projects");
   const tWork = useTranslations("work");
   const id = line?.id ?? "new";
   return (
-    <ActionForm action={saveDeliverableAction} extra={{ projectId, deliverableId: line?.id ?? null, ...(scopeLocked ? { format: line?.format ?? "", channel: line?.channel ?? "" } : {}) }} submit={line ? t("settings.save") : t("register.add")}>
+    <ActionForm
+      action={saveDeliverableAction}
+      extra={{ projectId, deliverableId: line?.id ?? null, ...(scopeLocked ? { format: line?.format ?? "", channel: line?.channel ?? "" } : {}) }}
+      submit={line ? t("settings.save") : t("register.add")}
+    >
       {scopeLocked ? <p className="text-xs text-muted-foreground">{t("scope.lineLocked")}</p> : null}
       <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
         <Field name="quantity" label={t("fields.quantity")}>

@@ -23,22 +23,61 @@ import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { correctEmployment, listPositionCatalogue, removePersonCreatedInError, renamePosition } from "./corrections";
 import { rehirePerson, terminateEmployment } from "./lifecycle";
-import { createContract, createDependent, getSensitiveFields, listContracts, listDependents, listDocuments, addEmergencyContact, listEmergencyContacts, updateContract, updateDependent, updateDocument, updateEmergencyContact } from "./records";
+import {
+  createContract,
+  createDependent,
+  getSensitiveFields,
+  listContracts,
+  listDependents,
+  listDocuments,
+  addEmergencyContact,
+  listEmergencyContacts,
+  updateContract,
+  updateDependent,
+  updateDocument,
+  updateEmergencyContact,
+} from "./records";
 import { hirePerson, type HireInput } from "./service";
 
 const today = todayInVietnam();
 const ids = {} as Record<"media" | "video" | "actor", string>;
 const owner: Principal = { personId: "owner", workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] };
 const NO_PROFILE = { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null };
-const placement = (positionName: string | null = "Editor") => ({ workforceType: "employee" as const, branchId: null, orgUnitId: ids.video, positionName, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null });
+const placement = (positionName: string | null = "Editor") => ({
+  workforceType: "employee" as const,
+  branchId: null,
+  orgUnitId: ids.video,
+  positionName,
+  seniorityLevel: null,
+  positionLevel: null,
+  managerId: null,
+  dottedManagerId: null,
+  workLocation: null,
+});
 
 const hire = (fullName: string, overrides: Partial<HireInput> = {}) =>
-  hirePerson({ fullName, workEmail: `${fullName.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2024-01-01", seniorityDate: null, placement: placement(), ...overrides }, ids.actor);
-const contract = (over: Record<string, unknown> = {}) => ({ number: "HD-1", type: "fixed_term" as const, parentContractId: null, jobCategory: null, signDate: null, startDate: "2024-01-01", endDate: "2024-12-31", salaryTerms: null, note: null, ...over });
+  hirePerson(
+    { fullName, workEmail: `${fullName.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: NO_PROFILE, entityId: ids.media, employeeCode: null, startDate: "2024-01-01", seniorityDate: null, placement: placement(), ...overrides },
+    ids.actor,
+  );
+const contract = (over: Record<string, unknown> = {}) => ({
+  number: "HD-1",
+  type: "fixed_term" as const,
+  parentContractId: null,
+  jobCategory: null,
+  signDate: null,
+  startDate: "2024-01-01",
+  endDate: "2024-12-31",
+  salaryTerms: null,
+  note: null,
+  ...over,
+});
 
 beforeAll(async () => {
   await migrateTestDb();
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
@@ -99,7 +138,21 @@ describe("dependents, contacts and the vault", () => {
     await updateEmergencyContact(contact.id, { fullName: "Nguyễn Thị Mẹ", relationship: "mẹ", phone: "0901 234 567", note: null });
     expect((await listEmergencyContacts(owner, person.id))?.[0]).toMatchObject({ fullName: "Nguyễn Thị Mẹ", phone: "0901 234 567" });
 
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: `test/${person.id}.pdf`, fileName: "cccd.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: person.id, entityId: ids.media, tier: "restricted", status: "ready" }).returning();
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "test",
+        objectPath: `test/${person.id}.pdf`,
+        fileName: "cccd.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 10,
+        ownerType: "person_document",
+        ownerId: person.id,
+        entityId: ids.media,
+        tier: "restricted",
+        status: "ready",
+      })
+      .returning();
     const [document] = await db().insert(schema.personDocument).values({ personId: person.id, entityId: ids.media, category: "id_scan", title: "CCCD", tier: "restricted", fileId: file.id }).returning();
     const { after } = await updateDocument(document.id, { title: "CCCD mặt trước", expiresOn: "2031-05-10" });
     expect(after).toMatchObject({ title: "CCCD mặt trước", expiresOn: "2031-05-10", category: "id_scan", tier: "restricted" });

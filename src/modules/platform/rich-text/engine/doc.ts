@@ -203,8 +203,15 @@ const MARKS: Record<string, (attrs: Attrs, path: string) => Attrs | undefined> =
   },
 };
 
-const BLOCKS = Object.entries(NODES).filter(([, spec]) => spec.group === "block").map(([type]) => type);
-const INLINES = ["text", ...Object.entries(NODES).filter(([, spec]) => spec.group === "inline").map(([type]) => type)];
+const BLOCKS = Object.entries(NODES)
+  .filter(([, spec]) => spec.group === "block")
+  .map(([type]) => type);
+const INLINES = [
+  "text",
+  ...Object.entries(NODES)
+    .filter(([, spec]) => spec.group === "inline")
+    .map(([type]) => type),
+];
 
 function cleanMarks(raw: unknown, path: string): DocMark[] | undefined {
   if (raw === undefined || raw === null) return undefined;

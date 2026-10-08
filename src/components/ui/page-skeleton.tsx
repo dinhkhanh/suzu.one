@@ -1,7 +1,7 @@
-import { useTranslations } from "next-intl"
-import { cn } from "cn"
-import { Page } from "@/components/ui/page"
-import { Skeleton } from "@/components/ui/skeleton"
+import { useTranslations } from "next-intl";
+import { cn } from "cn";
+import { Page } from "@/components/ui/page";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // What a page looks like while its data is on the way: the bones of `Page` — the title, a row of
 // tiles where the page has figures, and a sheet of rows — in the muted tint, nothing more. The
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 /** The placeholder a `loading.tsx` renders. `tiles`: the page opens with figures (a dashboard). */
 function PageSkeleton({ width = "default", tiles = false, rows = 6 }: { width?: "narrow" | "default" | "wide" | "full"; tiles?: boolean; rows?: number }) {
-  const t = useTranslations("controls")
+  const t = useTranslations("controls");
   return (
     <Page width={width} role="status" aria-busy="true">
       <span className="sr-only">{t("loading")}</span>
@@ -21,7 +21,7 @@ function PageSkeleton({ width = "default", tiles = false, rows = 6 }: { width?: 
       {tiles ? <TileSkeletons /> : null}
       <RowsSkeleton rows={rows} />
     </Page>
-  )
+  );
 }
 
 /** A row of tile placeholders, packed as `TileGrid` packs tiles. */
@@ -32,7 +32,7 @@ function TileSkeletons({ count = 4 }: { count?: number }) {
         <Skeleton key={index} className="h-[4.75rem] rounded-xl" />
       ))}
     </div>
-  )
+  );
 }
 
 /** A sheet of row placeholders: the shape of a `TableCard` or a `List`. */
@@ -46,19 +46,19 @@ function RowsSkeleton({ rows = 6, className }: { rows?: number; className?: stri
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 /** The fallback of a `<Suspense>` around one section of a page that streams in after the rest. */
 function SectionSkeleton({ tiles = false, rows = 3 }: { tiles?: boolean; rows?: number }) {
-  const t = useTranslations("controls")
+  const t = useTranslations("controls");
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-2.5">
       <span className="sr-only">{t("loading")}</span>
       <Skeleton aria-hidden className="h-3 w-28" />
       {tiles ? <TileSkeletons /> : <RowsSkeleton rows={rows} />}
     </div>
-  )
+  );
 }
 
-export { PageSkeleton, RowsSkeleton, SectionSkeleton, TileSkeletons }
+export { PageSkeleton, RowsSkeleton, SectionSkeleton, TileSkeletons };

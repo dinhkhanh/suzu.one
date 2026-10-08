@@ -7,7 +7,34 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, competency, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, reviewTemplate, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import {
+  approvalFlow,
+  assetCategory,
+  attendancePolicy,
+  competency,
+  payComponent,
+  payrollPolicy,
+  companyValue,
+  documentTemplate,
+  kbTemplate,
+  kpiDefinition,
+  reviewTemplate,
+  calendarDay,
+  orgUnit,
+  deviceMappingProfile,
+  entity,
+  leavePolicy,
+  leaveType,
+  obligationTemplate,
+  recruitEmailTemplate,
+  recruitPipeline,
+  recruitPipelineStage,
+  requestType,
+  statutoryParameter,
+  taskTemplate,
+  taskTemplateItem,
+  workSchedule,
+} from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -79,7 +106,8 @@ async function main() {
   const newComponents = payComponentSeedRows().filter((row) => !componentCodes.has(row.code));
   if (newComponents.length) await db.insert(payComponent).values(newComponents);
   const [anyPayPolicy] = await db.select({ id: payrollPolicy.id }).from(payrollPolicy).limit(1);
-  if (!anyPayPolicy) await db.insert(payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: PAY_COMPONENT_SEED_VALID_FROM, status: "approved", note: "Mặc định khởi tạo — Chủ sở hữu rà soát trước kỳ lương đầu tiên." });
+  if (!anyPayPolicy)
+    await db.insert(payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: PAY_COMPONENT_SEED_VALID_FROM, status: "approved", note: "Mặc định khởi tạo — Chủ sở hữu rà soát trước kỳ lương đầu tiên." });
   console.log(`Seeded ${newComponents.length} pay components${anyPayPolicy ? "" : " and the group's default pay policy"} (starting points for the chief accountant and the owner to confirm).`);
 
   // Starter checklists: only for a purpose that has no template at all, so nothing HR wrote is touched.
@@ -87,19 +115,41 @@ async function main() {
   let templates = 0;
   for (const seed of TEMPLATE_SEED.filter((template) => !purposes.has(template.purpose))) {
     const [created] = await db.insert(taskTemplate).values({ purpose: seed.purpose, name: seed.name }).returning();
-    await db.insert(taskTemplateItem).values(seed.items.map((item, index) => ({ templateId: created.id, title: item.title, description: item.description ?? null, assigneeRule: item.assigneeRule, dueOffsetDays: item.dueOffsetDays, sortOrder: index })));
+    await db
+      .insert(taskTemplateItem)
+      .values(seed.items.map((item, index) => ({ templateId: created.id, title: item.title, description: item.description ?? null, assigneeRule: item.assigneeRule, dueOffsetDays: item.dueOffsetDays, sortOrder: index })));
     templates++;
   }
   console.log(`Seeded ${templates} checklist templates (purposes that already have one skipped).`);
 
   // Starter work templates (FR-WRK-10), shared by every team: only names that do not exist yet.
-  const workNames = new Set((await db.select({ name: taskTemplate.name }).from(taskTemplate).where(and(inArray(taskTemplate.purpose, ["work_project", "work_task"]), isNull(taskTemplate.ownerId)))).map((row) => row.name));
+  const workNames = new Set(
+    (
+      await db
+        .select({ name: taskTemplate.name })
+        .from(taskTemplate)
+        .where(and(inArray(taskTemplate.purpose, ["work_project", "work_task"]), isNull(taskTemplate.ownerId)))
+    ).map((row) => row.name),
+  );
   let workTemplates = 0;
   for (const seed of WORK_TEMPLATE_SEED.filter((template) => !workNames.has(template.name))) {
     const [created] = await db.insert(taskTemplate).values({ purpose: seed.purpose, name: seed.name, description: seed.description }).returning();
     for (const [index, step] of seed.steps.entries()) {
-      const item = (row: Omit<typeof step, "steps">, sortOrder: number, parentItemId: string | null) => ({ templateId: created.id, title: row.title, description: row.description ?? null, assigneeRule: row.role ? `role:${row.role}` : "none", roleKey: row.role ?? null, dueOffsetDays: row.day, estimateMinutes: row.hours ? row.hours * 60 : null, sortOrder, parentItemId });
-      const [parent] = await db.insert(taskTemplateItem).values(item(step, index, null)).returning();
+      const item = (row: Omit<typeof step, "steps">, sortOrder: number, parentItemId: string | null) => ({
+        templateId: created.id,
+        title: row.title,
+        description: row.description ?? null,
+        assigneeRule: row.role ? `role:${row.role}` : "none",
+        roleKey: row.role ?? null,
+        dueOffsetDays: row.day,
+        estimateMinutes: row.hours ? row.hours * 60 : null,
+        sortOrder,
+        parentItemId,
+      });
+      const [parent] = await db
+        .insert(taskTemplateItem)
+        .values(item(step, index, null))
+        .returning();
       if (step.steps?.length) await db.insert(taskTemplateItem).values(step.steps.map((child, childIndex) => item(child, childIndex, parent.id)));
     }
     workTemplates++;
@@ -131,7 +181,11 @@ async function main() {
   // Working calendar: only years that have no row at all, so nothing HR entered or removed comes back.
   let calendarDays = 0;
   for (const year of [...new Set(CALENDAR_SEED.map((row) => row.date.slice(0, 4)))]) {
-    const [existing] = await db.select({ id: calendarDay.id }).from(calendarDay).where(between(calendarDay.date, `${year}-01-01`, `${year}-12-31`)).limit(1);
+    const [existing] = await db
+      .select({ id: calendarDay.id })
+      .from(calendarDay)
+      .where(between(calendarDay.date, `${year}-01-01`, `${year}-12-31`))
+      .limit(1);
     if (existing) continue;
     const rows = CALENDAR_SEED.filter((row) => row.date.startsWith(year));
     await db.insert(calendarDay).values(rows.map((row) => ({ ...row, entityId: null, isConfirmed: false })));
@@ -234,7 +288,10 @@ async function main() {
   const emailTemplateCodes = new Set((await db.select({ code: recruitEmailTemplate.code }).from(recruitEmailTemplate)).map((row) => row.code));
   const newEmailTemplates = EMAIL_TEMPLATE_SEED.filter((seed) => !emailTemplateCodes.has(seed.code));
   for (const seed of newEmailTemplates) {
-    for (const draft of [{ subject: seed.subject, body: seed.body }, { subject: seed.subjectEn, body: seed.bodyEn }]) {
+    for (const draft of [
+      { subject: seed.subject, body: seed.body },
+      { subject: seed.subjectEn, body: seed.bodyEn },
+    ]) {
       const problems = emailTemplateProblems(draft);
       if (problems.length) throw new Error(`email template seed is invalid: ${seed.code} (${problems.join(", ")})`);
     }

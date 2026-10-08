@@ -43,23 +43,11 @@ export async function peopleModuleOpen(user: { person: PersonRow; principal: Pri
 // A person's latest employment and the primary assignment in force today. People who have not
 // started yet get their first assignment; people who have left keep their last one.
 function placementOn(today: IsoDate) {
-  const e = db()
-    .select()
-    .from(schema.employment)
-    .where(eq(schema.employment.personId, schema.person.id))
-    .orderBy(desc(schema.employment.startDate))
-    .limit(1)
-    .as("e");
+  const e = db().select().from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("e");
   const a = db()
     .select()
     .from(schema.assignment)
-    .where(
-      and(
-        eq(schema.assignment.employmentId, e.id),
-        eq(schema.assignment.kind, "primary"),
-        sql`${schema.assignment.validFrom} <= greatest(${today}::date, ${e.startDate})`,
-      ),
-    )
+    .where(and(eq(schema.assignment.employmentId, e.id), eq(schema.assignment.kind, "primary"), sql`${schema.assignment.validFrom} <= greatest(${today}::date, ${e.startDate})`))
     .orderBy(desc(schema.assignment.validFrom))
     .limit(1)
     .as("a");
@@ -117,7 +105,11 @@ export type PeopleListRow = {
   status: PersonStatus | null;
 };
 
-export async function listPeople(principal: Principal, filters: PeopleFilters, options: { /** The export asks for everything at once; screens page. */ pageSize?: number } = {}): Promise<{ rows: PeopleListRow[]; total: number; pageSize: number }> {
+export async function listPeople(
+  principal: Principal,
+  filters: PeopleFilters,
+  options: { /** The export asks for everything at once; screens page. */ pageSize?: number } = {},
+): Promise<{ rows: PeopleListRow[]; total: number; pageSize: number }> {
   const pageSize = options.pageSize ?? PAGE_SIZE;
   const placement = placementOn(todayInVietnam());
   const { e, a } = placement;
@@ -139,9 +131,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
     filters.entityId ? eq(e.entityId, filters.entityId) : undefined,
     filters.competencyId ? sql`exists (select 1 from ${schema.personCompetency} where ${schema.personCompetency.personId} = ${schema.person.id} and ${schema.personCompetency.competencyId} = ${filters.competencyId})` : undefined,
     filters.departmentId ? or(eq(a.departmentId, filters.departmentId), filterUnits.length ? inArray(a.orgUnitId, filterUnits) : undefined) : undefined,
-    pattern
-      ? or(ilike(schema.person.searchName, `%${toSearchKey(q!).replace(/[\\%_]/g, "\\$&")}%`), ilike(schema.person.workEmail, pattern), ilike(e.employeeCode, pattern))
-      : undefined,
+    pattern ? or(ilike(schema.person.searchName, `%${toSearchKey(q!).replace(/[\\%_]/g, "\\$&")}%`), ilike(schema.person.workEmail, pattern), ilike(e.employeeCode, pattern)) : undefined,
   );
 
   // The count joins a placement only when a condition reads it: each join is one row per person at most.
@@ -642,7 +632,16 @@ export async function openEmployment(
   const event = await recordLifecycleEvent(
     tx,
     options.type === "transfer"
-      ? { personId, employmentId: employment.id, entityId: entity.id, type: "transfer", effectiveDate: input.startDate, reason: options.reason, assignmentId: assignment.id, details: { from: options.from, to: { ...to, entity: options.entityName } } }
+      ? {
+          personId,
+          employmentId: employment.id,
+          entityId: entity.id,
+          type: "transfer",
+          effectiveDate: input.startDate,
+          reason: options.reason,
+          assignmentId: assignment.id,
+          details: { from: options.from, to: { ...to, entity: options.entityName } },
+        }
       : { personId, employmentId: employment.id, entityId: entity.id, type: options.type, effectiveDate: input.startDate, assignmentId: assignment.id, details: { to } },
     actorPersonId,
   );
@@ -675,7 +674,11 @@ export async function updatePersonBasics(personId: string, input: { fullName: st
 
 export type AssignmentChangeKind = "correction" | "transfer" | "promotion";
 
-export async function changeAssignment(personId: string, input: { validFrom: IsoDate; changeReason: string | null; placement: PlacementInput; /** A transfer or promotion is an event on the timeline; a correction only fixes the record. */ kind?: AssignmentChangeKind }, actorPersonId: string) {
+export async function changeAssignment(
+  personId: string,
+  input: { validFrom: IsoDate; changeReason: string | null; placement: PlacementInput; /** A transfer or promotion is an event on the timeline; a correction only fixes the record. */ kind?: AssignmentChangeKind },
+  actorPersonId: string,
+) {
   const result = await changeAssignmentInTransaction(personId, input, actorPersonId);
   // A future-dated change leaves `person` alone, so the page's history is dropped here regardless.
   await invalidatePersonView(personId);
@@ -688,13 +691,7 @@ function changeAssignmentInTransaction(personId: string, input: Parameters<typeo
 
 /** The change of assignment in the caller's transaction — an approved transfer or promotion (FR-CHR-09). The caller drops the person's page once it has committed. */
 export async function changeAssignmentIn(tx: Tx, personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
-  const [employment] = await tx
-    .select()
-    .from(schema.employment)
-    .where(eq(schema.employment.personId, personId))
-    .orderBy(desc(schema.employment.startDate))
-    .limit(1)
-    .for("update");
+  const [employment] = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1).for("update");
   if (!employment) throw new ActionError("no_employment");
 
   const existing = await tx
@@ -709,7 +706,11 @@ export async function changeAssignmentIn(tx: Tx, personId: string, input: Parame
   let after: typeof schema.assignment.$inferSelect;
   if (plan.kind === "replace") {
     before = existing.find((row) => row.id === plan.id) ?? null;
-    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+    [after] = await tx
+      .update(schema.assignment)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.assignment.id, plan.id))
+      .returning();
   } else {
     if (plan.kind === "succeed") {
       before = existing.find((row) => row.id === plan.closeId) ?? null;
@@ -794,7 +795,11 @@ export async function changeWorkforceTypeIn(tx: Tx, personId: string, input: { v
   };
   let after: typeof schema.assignment.$inferSelect;
   if (plan.kind === "replace") {
-    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+    [after] = await tx
+      .update(schema.assignment)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.assignment.id, plan.id))
+      .returning();
   } else {
     if (plan.kind === "succeed") await tx.update(schema.assignment).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.closeId));
     [after] = await tx
@@ -837,7 +842,15 @@ export async function recordPastAssignmentInTransaction(tx: Tx, personId: string
     ? await tx
         .select()
         .from(schema.lifecycleEvent)
-        .where(and(inArray(schema.lifecycleEvent.assignmentId, existing.map((row) => row.id)), sql`${schema.lifecycleEvent.status} <> 'cancelled'`))
+        .where(
+          and(
+            inArray(
+              schema.lifecycleEvent.assignmentId,
+              existing.map((row) => row.id),
+            ),
+            sql`${schema.lifecycleEvent.status} <> 'cancelled'`,
+          ),
+        )
     : [];
   // What opened the employment sits on its first day; any other transfer or promotion keeps its date.
   const opens = (event: (typeof events)[number]) => event.effectiveDate === employment.startDate && (event.type === "hire" || event.type === "rehire" || event.type === "transfer");
@@ -851,7 +864,11 @@ export async function recordPastAssignmentInTransaction(tx: Tx, personId: string
   let after: typeof schema.assignment.$inferSelect;
   if (plan.kind === "replace") {
     before = existing.find((row) => row.id === plan.id) ?? null;
-    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+    [after] = await tx
+      .update(schema.assignment)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.assignment.id, plan.id))
+      .returning();
   } else {
     // Make room first: the exclusion constraint checks every statement.
     if (plan.shortenId) await tx.update(schema.assignment).set({ validTo: plan.shortenTo, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.shortenId));
@@ -873,7 +890,10 @@ export async function recordPastAssignmentInTransaction(tx: Tx, personId: string
   if (described.length) {
     const to = await describePlacement(tx, after);
     for (const event of described) {
-      await tx.update(schema.lifecycleEvent).set({ details: { ...event.details, to: { ...(event.details.to as Record<string, unknown> | undefined), ...to } }, updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, event.id));
+      await tx
+        .update(schema.lifecycleEvent)
+        .set({ details: { ...event.details, to: { ...(event.details.to as Record<string, unknown> | undefined), ...to } }, updatedAt: new Date() })
+        .where(eq(schema.lifecycleEvent.id, event.id));
     }
   }
   await invalidatePersonView(personId);

@@ -33,7 +33,15 @@ async function personWeeks(personIds: readonly string[], weekStart: IsoDate): Pr
     db()
       .select()
       .from(schema.dailyReport)
-      .where(and(inArray(schema.dailyReport.personId, ids), inArray(schema.dailyReport.date, Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))))),
+      .where(
+        and(
+          inArray(schema.dailyReport.personId, ids),
+          inArray(
+            schema.dailyReport.date,
+            Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
+          ),
+        ),
+      ),
     listWorkActivityBetween(ids, weekStart, weekEnd),
     listTimeOf(ids, weekStart, weekEnd),
     daysOf(ids, weekStart, weekEnd),
@@ -76,7 +84,16 @@ type TeamWithMembers = { id: string; name: string; entityId: string | null; depa
 
 async function activeTeams(teamIds?: readonly string[]): Promise<TeamWithMembers[]> {
   const rows = await db()
-    .select({ id: schema.workTeam.id, name: schema.workTeam.name, entityId: schema.workTeam.entityId, departmentId: schema.workTeam.departmentId, personId: schema.workTeamMember.personId, personName: schema.person.fullName, role: schema.workTeamMember.role, status: schema.person.status })
+    .select({
+      id: schema.workTeam.id,
+      name: schema.workTeam.name,
+      entityId: schema.workTeam.entityId,
+      departmentId: schema.workTeam.departmentId,
+      personId: schema.workTeamMember.personId,
+      personName: schema.person.fullName,
+      role: schema.workTeamMember.role,
+      status: schema.person.status,
+    })
     .from(schema.workTeam)
     .innerJoin(schema.workTeamMember, eq(schema.workTeamMember.teamId, schema.workTeam.id))
     .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
@@ -128,7 +145,14 @@ async function tellOfWeek(weekStart: IsoDate, teams: readonly TeamWithMembers[],
   const unsentPeople = personIds.filter((personId) => !rows.get(`person:${personId}`)!.sentAt);
   if (unsentTeams.length === 0 && unsentPeople.length === 0) return 0;
   const placed = unsentTeams.filter((team) => team.departmentId);
-  const [holders, readers] = await Promise.all([listPeopleHoldingEach("work:manage", placed.map((team) => ({ entityId: team.entityId, unitPath: [team.departmentId!] })), { includeWildcard: false }), firstReadersOf(unsentPeople)]);
+  const [holders, readers] = await Promise.all([
+    listPeopleHoldingEach(
+      "work:manage",
+      placed.map((team) => ({ entityId: team.entityId, unitPath: [team.departmentId!] })),
+      { includeWildcard: false },
+    ),
+    firstReadersOf(unsentPeople),
+  ]);
   const above = new Map(placed.map((team, index) => [team.id, holders[index]]));
   const notices: WeekNotice[] = [
     ...unsentTeams.map((team) => ({
@@ -146,17 +170,39 @@ async function tellOfWeek(weekStart: IsoDate, teams: readonly TeamWithMembers[],
   const week = weekLabel(weekStart);
   return db().transaction(async (tx) => {
     // Claimed first, so two runs at once tell nobody twice.
-    const claimed = new Set((await tx.update(schema.dailyWeeklyReport).set({ sentAt: new Date() }).where(and(inArray(schema.dailyWeeklyReport.id, notices.map((notice) => notice.rowId)), isNull(schema.dailyWeeklyReport.sentAt))).returning({ id: schema.dailyWeeklyReport.id })).map((row) => row.id));
+    const claimed = new Set(
+      (
+        await tx
+          .update(schema.dailyWeeklyReport)
+          .set({ sentAt: new Date() })
+          .where(
+            and(
+              inArray(
+                schema.dailyWeeklyReport.id,
+                notices.map((notice) => notice.rowId),
+              ),
+              isNull(schema.dailyWeeklyReport.sentAt),
+            ),
+          )
+          .returning({ id: schema.dailyWeeklyReport.id })
+      ).map((row) => row.id),
+    );
     const sent = notices.filter((notice) => claimed.has(notice.rowId));
     const byRecipient = new Map<string, WeekNotice[]>();
     for (const notice of sent) for (const recipient of notice.recipients) byRecipient.set(recipient, [...(byRecipient.get(recipient) ?? []), notice]);
     // One week to read: the notice names it and opens it. Several: one notice that counts them.
-    const one = Map.groupBy([...byRecipient].filter(([, own]) => own.length === 1), ([, own]) => own[0].rowId);
+    const one = Map.groupBy(
+      [...byRecipient].filter(([, own]) => own.length === 1),
+      ([, own]) => own[0].rowId,
+    );
     for (const group of one.values()) {
       const [notice] = group[0][1];
       await notify({ recipients: group.map(([recipient]) => recipient), kind: "daily.weekly_report", params: { subject: notice.subject, week }, link: notice.link }, tx);
     }
-    const several = Map.groupBy([...byRecipient].filter(([, own]) => own.length > 1), ([, own]) => own.length);
+    const several = Map.groupBy(
+      [...byRecipient].filter(([, own]) => own.length > 1),
+      ([, own]) => own.length,
+    );
     for (const [count, group] of several) await notify({ recipients: group.map(([recipient]) => recipient), kind: "daily.weekly_reports", params: { count, week }, link: `/daily/weekly?week=${weekStart}` }, tx);
     return sent.length;
   });
@@ -190,7 +236,11 @@ const rowView = (row: WeeklyRow): WeeklyRowView => {
  * left: a past week is still theirs to read). Oversight (`daily:oversee`) reads every person's
  * row, so its query names no one. Each row is still put to the policy before it is shown.
  */
-export async function listWeekly(reader: ReportReader, weekStart: IsoDate, canRunTeam: (team: { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: string }) => boolean): Promise<{ teams: WeeklyTeamView[]; people: WeeklyPersonView[] }> {
+export async function listWeekly(
+  reader: ReportReader,
+  weekStart: IsoDate,
+  canRunTeam: (team: { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: string }) => boolean,
+): Promise<{ teams: WeeklyTeamView[]; people: WeeklyPersonView[] }> {
   if (!reader.personId) return { teams: [], people: [] };
   const [directory, overseen] = await Promise.all([workDirectory(), reader.oversees ? [] : listOverseen(reader, { includeLeft: true })]);
   const runnableTeams = new Map(directory.teams.filter(canRunTeam).map((team) => [team.id, team]));
@@ -226,7 +276,10 @@ export async function listWeekly(reader: ReportReader, weekStart: IsoDate, canRu
 
   // One read-time check for every task and project the page would name, for this reader.
   const seen = await loadSeen(reader.personId, {
-    taskIds: mine.filter((view) => !readsOwn(reader, view.subject.personId)).flatMap((view) => [...view.content.done, ...view.content.slipped]).map((line) => line.taskId),
+    taskIds: mine
+      .filter((view) => !readsOwn(reader, view.subject.personId))
+      .flatMap((view) => [...view.content.done, ...view.content.slipped])
+      .map((line) => line.taskId),
     projectIds: [...runnable.flatMap((view) => view.content.hoursByProject), ...mine.flatMap((view) => view.content.hoursByProject)].map((group) => group.projectId),
   });
   const teams = runnable.map((view) => ({ ...view, content: showTeamWeek(view.content, seen, mayRead) }));

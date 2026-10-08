@@ -46,8 +46,16 @@ import {
 
 type Who = "owner" | "mai" | "long" | "tam" | "huy" | "linh" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "bod", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => error.message);
-const detailsOf = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error.details);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error & { details?: unknown }) => error.message,
+  );
+const detailsOf = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error.details,
+  );
 
 const SCALE: RatingPoint[] = [
   { value: 1, label: "Chưa đạt", labelEn: "Below", scoreBp: 4000 },
@@ -60,7 +68,16 @@ const SECTIONS: ReviewSection[] = [
   { key: "highlights", title: "Điểm nổi bật", titleEn: "Highlights", kind: "text", weight: 0, required: false, askedOf: ["self", "manager", "peer"] },
 ];
 
-const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}): Parameters<typeof saveReviewTemplate>[1] => ({ name: "Đánh giá năm", nameEn: "Annual", description: null, kinds: [], sections: SECTIONS, ratingScale: SCALE, isActive: true, ...over });
+const template = (over: Partial<Parameters<typeof saveReviewTemplate>[1]> = {}): Parameters<typeof saveReviewTemplate>[1] => ({
+  name: "Đánh giá năm",
+  nameEn: "Annual",
+  description: null,
+  kinds: [],
+  sections: SECTIONS,
+  ratingScale: SCALE,
+  isActive: true,
+  ...over,
+});
 const cycle = (over: Partial<CycleInput> = {}): CycleInput => ({
   entityId: ids.szm,
   name: "Đánh giá năm 2026",
@@ -105,7 +122,10 @@ beforeAll(async () => {
     ["ngo", vid.id, "tam", "active", "collaborator"],
   ];
   for (const [key, departmentId, manager, status, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status, workforceType, primaryEntityId: szm.id, orgUnitId: departmentId, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status, workforceType, primaryEntityId: szm.id, orgUnitId: departmentId, managerId: manager ? ids[manager] : null })
+      .returning();
     ids[key] = row.id;
   }
   templateId = (await saveReviewTemplate(null, template(), ids.mai)).after.id;
@@ -287,7 +307,12 @@ describe("writing, releasing and acknowledging", () => {
 
     // Every live cycle tam owes a review in — this one has both of their reports.
     const owed = await listReviewsIOwe(ids.tam);
-    expect(owed.filter((line) => line.cycleId === cycleId).map((line) => line.personName).sort()).toEqual(["huy", "linh"]);
+    expect(
+      owed
+        .filter((line) => line.cycleId === cycleId)
+        .map((line) => line.personName)
+        .sort(),
+    ).toEqual(["huy", "linh"]);
     expect(owed.every((line) => line.managerPersonId === ids.tam)).toBe(true);
 
     const progress = (await cycleProgress([cycleId])).get(cycleId)!;
@@ -356,7 +381,10 @@ describe("participants HR adds and removes by hand", () => {
 
 describe("the record on disk", () => {
   it("keeps one form per author and kind, and stores the trace beside the figure", async () => {
-    const rows = await db().select().from(schema.reviewForm).where(and(eq(schema.reviewForm.kind, "self"), eq(schema.reviewForm.status, "submitted")));
+    const rows = await db()
+      .select()
+      .from(schema.reviewForm)
+      .where(and(eq(schema.reviewForm.kind, "self"), eq(schema.reviewForm.status, "submitted")));
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       expect(row.scoreTrace).not.toBeNull();

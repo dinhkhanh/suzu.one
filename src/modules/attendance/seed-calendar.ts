@@ -50,4 +50,17 @@ export const DEFAULT_SCHEDULE_SEED: { name: string; kind: "fixed"; pattern: Sche
 };
 
 /** The group's starting attendance policy (company practice, HR edits it): added by `pnpm db:seed` only when no policy exists. */
-export const DEFAULT_POLICY_SEED = { entityId: null, validFrom: "2026-01-01", mergeRule: "first_in_last_out" as const, graceLateMinutes: 5, graceEarlyMinutes: 5, roundingMinutes: 0, otMinMinutes: 30, otRequiresApproval: true, duplicateWindowMinutes: 3, breakStart: "12:00", dayBoundary: "04:00", monthlyCorrectionCap: 3 };
+export const DEFAULT_POLICY_SEED = {
+  entityId: null,
+  validFrom: "2026-01-01",
+  mergeRule: "first_in_last_out" as const,
+  graceLateMinutes: 5,
+  graceEarlyMinutes: 5,
+  roundingMinutes: 0,
+  otMinMinutes: 30,
+  otRequiresApproval: true,
+  duplicateWindowMinutes: 3,
+  breakStart: "12:00",
+  dayBoundary: "04:00",
+  monthlyCorrectionCap: 3,
+};

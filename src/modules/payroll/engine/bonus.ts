@@ -104,7 +104,11 @@ export type BonusPersonInput = {
 const roundHalfUp = (numerator: bigint, denominator: bigint): number => Number((numerator * 2n + denominator) / (denominator * 2n));
 
 /** The highest band whose floor the figure reaches. */
-const pick = <B>(bands: readonly B[], floorOf: (band: B) => number, figure: number): B | null => [...bands].sort((a, b) => floorOf(a) - floorOf(b)).filter((band) => figure >= floorOf(band)).pop() ?? null;
+const pick = <B>(bands: readonly B[], floorOf: (band: B) => number, figure: number): B | null =>
+  [...bands]
+    .sort((a, b) => floorOf(a) - floorOf(b))
+    .filter((band) => figure >= floorOf(band))
+    .pop() ?? null;
 
 export const serviceBandFor = (bands: readonly ServiceBand[], months: number): ServiceBand | null => pick(bands, (band) => band.minMonths, months);
 export const scoreBandFor = (bands: readonly BonusScoreBand[], scoreBp: number): BonusScoreBand | null => pick(bands, (band) => band.minScoreBp, scoreBp);

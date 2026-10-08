@@ -23,7 +23,14 @@
       "to": "2026-09-11",
       "standardDays": 10,
       "paidDaysCenti": 1000,
-      "terms": { "baseSalary": 48000000, "insuranceSalary": 52000000, "allowances": [{ "code": "ALW_RESPONSIBILITY", "amount": 4000000 }, { "code": "ALW_MEAL", "amount": 730000 }] }
+      "terms": {
+        "baseSalary": 48000000,
+        "insuranceSalary": 52000000,
+        "allowances": [
+          { "code": "ALW_RESPONSIBILITY", "amount": 4000000 },
+          { "code": "ALW_MEAL", "amount": 730000 }
+        ]
+      }
     }
   ],
   "timesheet": { "standardDays": 10, "paidDaysCenti": 1000 },
@@ -31,7 +38,14 @@
     "daysCenti": 350,
     "basisMonth": "2026-08",
     "workingDays": 26,
-    "terms": { "baseSalary": 48000000, "insuranceSalary": 52000000, "allowances": [{ "code": "ALW_RESPONSIBILITY", "amount": 4000000 }, { "code": "ALW_MEAL", "amount": 730000 }] }
+    "terms": {
+      "baseSalary": 48000000,
+      "insuranceSalary": 52000000,
+      "allowances": [
+        { "code": "ALW_RESPONSIBILITY", "amount": 4000000 },
+        { "code": "ALW_MEAL", "amount": 730000 }
+      ]
+    }
   },
   "expect": {
     "lines": { "BASE": 18461538, "ALW_RESPONSIBILITY": 1538462, "ALW_MEAL": 280769, "LEAVE_PAYOUT": 7000000, "PIT": 650000 },

@@ -39,7 +39,7 @@ export function IconTile({ icon, tone }: { icon: ReactNode; tone: "violet" | "te
         tone === "teal" && "bg-tone-teal/12 text-tone-teal",
         tone === "orange" && "bg-tone-orange/12 text-tone-orange",
         tone === "destructive" && "bg-destructive/10 text-destructive",
-        tone === "muted" && "bg-muted text-muted-foreground"
+        tone === "muted" && "bg-muted text-muted-foreground",
       )}
     >
       {icon}
@@ -57,7 +57,14 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
   // The CRM's share of the day (FR-CRM-06, 16, 43): client follow-ups due, won deals handed over.
   // The job number beside each project's name (FR-PJM-02): the tasks come from the work module,
   // which knows none, so the page reads them once for every project on it.
-  const [targets, states, followUps, salesHandoffs, crm, jobNumbers] = await Promise.all([listCreateTargets(viewer), listStates([...new Set(tasksOnScreen.map((task) => task.teamId))]), listFollowUpsOf(user.person.id, date), listSalesHandoffsFor(user.person.id), loadCrm(user), jobNumbersOf(tasksOnScreen.map((task) => task.projectId))]);
+  const [targets, states, followUps, salesHandoffs, crm, jobNumbers] = await Promise.all([
+    listCreateTargets(viewer),
+    listStates([...new Set(tasksOnScreen.map((task) => task.teamId))]),
+    listFollowUpsOf(user.person.id, date),
+    listSalesHandoffsFor(user.person.id),
+    loadCrm(user),
+    jobNumbersOf(tasksOnScreen.map((task) => task.projectId)),
+  ]);
   const projectLabel = (task: DayTask) => (task.projectName ? [task.projectId ? jobNumbers.get(task.projectId) : null, task.projectName].filter(Boolean).join(" ") : null);
   const people = followUps.length ? await listPersonNames() : [];
   const statesOf = (teamId: string) => states.filter((state) => state.teamId === teamId && state.isActive).map(({ id, name, category }) => ({ id, name, category }));
@@ -80,10 +87,11 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
           </span>
           <Link href={recordHref("task", task.taskId)} className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">
-              <span className="font-mono text-xs font-normal text-muted-foreground">{task.key}</span>{" "}
-              <span className={task.status === "done" ? "text-muted-foreground line-through" : undefined}>{task.title}</span>
+              <span className="font-mono text-xs font-normal text-muted-foreground">{task.key}</span> <span className={task.status === "done" ? "text-muted-foreground line-through" : undefined}>{task.title}</span>
             </span>
-            <span className="block truncate text-xs text-muted-foreground">{[projectLabel(task), task.plannedMinutes ? t("hours", { value: hoursOf(task.plannedMinutes) }) : null, task.dueDate ? t("today.due", { date: shortDate(task.dueDate) }) : null].filter(Boolean).join(" · ")}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {[projectLabel(task), task.plannedMinutes ? t("hours", { value: hoursOf(task.plannedMinutes) }) : null, task.dueDate ? t("today.due", { date: shortDate(task.dueDate) }) : null].filter(Boolean).join(" · ")}
+            </span>
           </Link>
           {running ? (
             <Badge dot variant="info">
@@ -196,7 +204,9 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
                     <span className="block truncate font-medium">
                       <span className="font-mono text-xs font-normal text-muted-foreground">{blocker.key}</span> {blocker.title}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">{onMe ? t("today.blockerBy", { name: blocker.raisedByName ?? "—", reason: blocker.reason }) : blocker.neededName ? t("today.blockerNeeds", { name: blocker.neededName, reason: blocker.reason }) : blocker.reason}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {onMe ? t("today.blockerBy", { name: blocker.raisedByName ?? "—", reason: blocker.reason }) : blocker.neededName ? t("today.blockerNeeds", { name: blocker.neededName, reason: blocker.reason }) : blocker.reason}
+                    </span>
                   </Link>
                   <Badge variant={onMe ? "destructive" : "warning"}>{onMe ? t("today.waitingOnYou") : t("today.youRaised")}</Badge>
                 </ListItem>
@@ -245,7 +255,12 @@ export async function DayLists({ user, date, view }: { user: CurrentUser; date: 
       >
         <TimeList entries={view.time.map(({ id, taskId, key, title, projectName, jobNumber, category, minutes, billable }) => ({ id, taskId, key, title, projectName, jobNumber, category, minutes, billable }))} />
         <div className="flex flex-wrap items-center gap-2">
-          <QuickLog date={date} tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))].filter((task) => task.status !== "cancelled").map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: !!task.projectId && billable.has(task.projectId) }))} />
+          <QuickLog
+            date={date}
+            tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))]
+              .filter((task) => task.status !== "cancelled")
+              .map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: !!task.projectId && billable.has(task.projectId) }))}
+          />
         </div>
       </Section>
     </>

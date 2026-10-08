@@ -20,7 +20,15 @@ export default async function KnowledgeBasePage() {
   const t = await getTranslations("kb");
   const viewer = kbViewerOf(user);
   const managesAny = canManageAnySpace(user.principal);
-  const [spaces, recent, popular, updated, pendingAcks, entities, unitRows] = await Promise.all([listSpaces(viewer), listRecentlyViewed(viewer), listPopularPages(viewer), listRecentlyPublished(viewer), countMyPendingAcks(viewer), managesAny ? listEntities() : [], managesAny ? unitChoices() : []]);
+  const [spaces, recent, popular, updated, pendingAcks, entities, unitRows] = await Promise.all([
+    listSpaces(viewer),
+    listRecentlyViewed(viewer),
+    listPopularPages(viewer),
+    listRecentlyPublished(viewer),
+    countMyPendingAcks(viewer),
+    managesAny ? listEntities() : [],
+    managesAny ? unitChoices() : [],
+  ]);
   const lists: { key: "recent" | "popular" | "updated"; pages: KbPageCard[] }[] = [
     { key: "recent", pages: recent },
     { key: "popular", pages: popular },

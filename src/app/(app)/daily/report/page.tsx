@@ -23,7 +23,12 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
   const today = todayInVietnam();
   const { date: asked, proposal } = await searchParams;
   const date = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && withinReportWindow(asked, today) ? asked : today;
-  const [t, format, form, proposed] = await Promise.all([getTranslations("daily"), getFormatter(), getReportForm(user.person.id, date), proposalDraft(user.person.id, typeof proposal === "string" ? proposal : null, ["daily.report.submit"])]);
+  const [t, format, form, proposed] = await Promise.all([
+    getTranslations("daily"),
+    getFormatter(),
+    getReportForm(user.person.id, date),
+    proposalDraft(user.person.id, typeof proposal === "string" ? proposal : null, ["daily.report.submit"]),
+  ]);
   // Only a proposal for this day, and only the tasks the form can show.
   const prefill = proposed && proposed.date === date ? proposed : null;
   const text = (value: unknown) => (typeof value === "string" ? value : null);
@@ -62,13 +67,17 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
       >
         <div className="flex flex-wrap gap-1.5 pt-1">
           {submitted ? (
-            <Badge dot variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge>
+            <Badge dot variant={form.report!.late ? "warning" : "success"}>
+              {form.report!.late ? t("late") : t("submitted")}
+            </Badge>
           ) : !day?.report.required ? (
             <Badge variant="secondary">{t(isToday ? "report.optional" : "report.optionalPast")}</Badge>
           ) : isToday ? (
             <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge>
           ) : (
-            <Badge dot variant="warning">{t("report.missed")}</Badge>
+            <Badge dot variant="warning">
+              {t("report.missed")}
+            </Badge>
           )}
         </div>
       </PageHeader>

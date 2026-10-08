@@ -2,7 +2,23 @@
 // this file; HR and PJM never import it — where their screens show CRM items, the routes ask here,
 // or the CRM registers with a platform registry.
 export * from "./enums";
-export { accountChoices, accountFacts, accountsById, accountWorkOf, accountSignals, type AccountFilters, type AccountListItem, type AccountProfileRow, type AccountRef, type AccountSignals, findAccount, listAccountProfiles, listAccounts, listAccountTeam, type TeamMemberView } from "./accounts";
+export {
+  accountChoices,
+  accountFacts,
+  accountsById,
+  accountWorkOf,
+  accountSignals,
+  type AccountFilters,
+  type AccountListItem,
+  type AccountProfileRow,
+  type AccountRef,
+  type AccountSignals,
+  findAccount,
+  listAccountProfiles,
+  listAccounts,
+  listAccountTeam,
+  type TeamMemberView,
+} from "./accounts";
 export { type AccountAbilities, accountAbilities, type AccountPage, accountsManagedBy, getAccountPage, visibleAccountProjectIds } from "./account-view";
 export { activityLink, type ActivityView, countOpenFollowUps, listActivities, listAllFollowUpsOf, listDoneBy, listFollowUpsOf, listOpenFollowUps } from "./activities";
 export { contactChoicesFor, type ContactName, type ContactView, findContact, listContacts } from "./contacts";
@@ -22,4 +38,16 @@ export { accountTimeline, TIMELINE_KINDS, type TimelineItem } from "./timeline";
 export { type CrmContext, loadCrm } from "./viewer";
 export { managesAnAccount } from "./pages";
 export { salesFactsOf, type SalesFacts } from "./sales-facts";
-export { canDecideCommissionScheme, canProposeCommissionScheme, canRunCommission, commissionMonths, type CommissionSchemeRow, computeCommission, confirmStatement, listCommissionSchemes, listCommissionStatements, postConfirmedCommissions, type StatementView } from "./commission";
+export {
+  canDecideCommissionScheme,
+  canProposeCommissionScheme,
+  canRunCommission,
+  commissionMonths,
+  type CommissionSchemeRow,
+  computeCommission,
+  confirmStatement,
+  listCommissionSchemes,
+  listCommissionStatements,
+  postConfirmedCommissions,
+  type StatementView,
+} from "./commission";

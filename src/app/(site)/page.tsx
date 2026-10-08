@@ -45,11 +45,17 @@ export default async function HomePage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t("site.googleTitle")}</h2>
         {googleBody.map((paragraph) => (
-          <p key={paragraph} className="text-sm text-muted-foreground">{paragraph}</p>
+          <p key={paragraph} className="text-sm text-muted-foreground">
+            {paragraph}
+          </p>
         ))}
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/privacy" className="font-medium underline underline-offset-4">{t("app.privacy")}</Link>
-          <Link href="/terms" className="font-medium underline underline-offset-4">{t("app.terms")}</Link>
+          <Link href="/privacy" className="font-medium underline underline-offset-4">
+            {t("app.privacy")}
+          </Link>
+          <Link href="/terms" className="font-medium underline underline-offset-4">
+            {t("app.terms")}
+          </Link>
         </p>
       </section>
 

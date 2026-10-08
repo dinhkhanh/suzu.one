@@ -87,7 +87,21 @@ function LineRows({ name, lines, idPrefix }: { name: string; lines: readonly Lin
 }
 
 /** Picks a file, uploads it straight to storage and hands its id to the form. */
-export function UploadField({ label, name, begin, complete, required, initial }: { label: string; name: string; begin: (meta: { fileName: string; sizeBytes: number }) => Promise<ActionResult<Upload>>; complete: (fileId: string) => Promise<ActionResult<Stored>>; required?: boolean; initial?: Stored | null }) {
+export function UploadField({
+  label,
+  name,
+  begin,
+  complete,
+  required,
+  initial,
+}: {
+  label: string;
+  name: string;
+  begin: (meta: { fileName: string; sizeBytes: number }) => Promise<ActionResult<Upload>>;
+  complete: (fileId: string) => Promise<ActionResult<Stored>>;
+  required?: boolean;
+  initial?: Stored | null;
+}) {
   const t = useTranslations("projects");
   const tErrors = useTranslations("projects.errors");
   const [pending, startTransition] = useTransition();
@@ -246,14 +260,40 @@ export function LineUnlinkButton({ taskId }: { taskId: string }) {
 
 // ── Change requests (FR-PJM-11) ─────────────────────────────────────────────────────────────
 
-export type ChangeValues = { id: string; title: string; description: string | null; requestedBy: string; lines: Line[]; cancelIds: string[]; minutesDelta: number | null; feeDeltaVnd?: number | null; dueDateTo: string | null; evidenceUrl: string | null; evidence: Stored | null };
+export type ChangeValues = {
+  id: string;
+  title: string;
+  description: string | null;
+  requestedBy: string;
+  lines: Line[];
+  cancelIds: string[];
+  minutesDelta: number | null;
+  feeDeltaVnd?: number | null;
+  dueDateTo: string | null;
+  evidenceUrl: string | null;
+  evidence: Stored | null;
+};
 
 /**
  * `retainer`: the monthly scope of a retainer project as the form should show it — the terms as
  * they stand, with whatever this draft already changes laid over them. The whole scope is posted
  * and the server keeps only what differs, so leaving the rows alone changes nothing.
  */
-export function ChangeForm({ projectId, change, register, requesters, editFee, retainer = null }: { projectId: string; change?: ChangeValues; register: { id: string; title: string; quantity: number }[]; requesters: readonly string[]; editFee: boolean; retainer?: { lines: readonly Line[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null } | null }) {
+export function ChangeForm({
+  projectId,
+  change,
+  register,
+  requesters,
+  editFee,
+  retainer = null,
+}: {
+  projectId: string;
+  change?: ChangeValues;
+  register: { id: string; title: string; quantity: number }[];
+  requesters: readonly string[];
+  editFee: boolean;
+  retainer?: { lines: readonly Line[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null } | null;
+}) {
   const t = useTranslations("projects.changes");
   const id = change?.id ?? "new";
   return (
@@ -322,7 +362,13 @@ export function ChangeForm({ projectId, change, register, requesters, editFee, r
         </fieldset>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <UploadField label={t("fields.evidenceFile")} name="evidenceFileId" initial={change?.evidence} begin={(meta) => beginChangeEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeChangeEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>} />
+        <UploadField
+          label={t("fields.evidenceFile")}
+          name="evidenceFileId"
+          initial={change?.evidence}
+          begin={(meta) => beginChangeEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>}
+          complete={(fileId) => completeChangeEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>}
+        />
         <Field name="evidenceUrl" label={t("fields.evidenceUrl")}>
           <Input id={`cr-url-${id}`} name="evidenceUrl" type="url" maxLength={500} defaultValue={change?.evidenceUrl ?? ""} placeholder="https://" />
         </Field>
@@ -417,7 +463,13 @@ export function SignAcceptanceForm({ acceptanceId, today, contacts = [] }: { acc
   return (
     <ActionForm action={signAcceptanceAction} extra={{ acceptanceId }} submit={t("sign")}>
       <div className="grid gap-3 sm:grid-cols-3">
-        <UploadField label={t("signedScan")} name="signedFileId" required begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>} />
+        <UploadField
+          label={t("signedScan")}
+          name="signedFileId"
+          required
+          begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>}
+          complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>}
+        />
         <Field name="signedOn" label={t("signedOn")}>
           <DatePicker id={`signedOn-${acceptanceId}`} name="signedOn" required max={today} defaultValue={today} />
         </Field>
@@ -445,7 +497,12 @@ export function CorrectSignedForm({ acceptanceId, today, signedOn, signedByClien
     <ActionForm action={correctSignedAcceptanceAction} extra={{ acceptanceId }} submit={t("correctSubmit")}>
       <p className="text-xs text-muted-foreground">{t("correctHint")}</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <UploadField label={t("replaceScan")} name="signedFileId" begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>} />
+        <UploadField
+          label={t("replaceScan")}
+          name="signedFileId"
+          begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>}
+          complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>}
+        />
         <Field name="signedOn" label={t("signedOn")}>
           <DatePicker id={`fix-signedOn-${acceptanceId}`} name="signedOn" required max={today} defaultValue={signedOn ?? today} />
         </Field>
@@ -621,14 +678,18 @@ export function PublishLessonsForm({ projectId, spaces }: { projectId: string; s
   const [done, setDone] = useState<{ pageId: string; spaceKey: string } | null>(null);
   if (done) return <p className="text-sm text-muted-foreground">{t("lessonsDone")}</p>;
   return (
-    <ActionForm action={async (input) => {
-      const result = await publishLessonsAction(input);
-      if (result.ok) {
-        setDone(result.data);
-        router.push(`/kb/pages/${result.data.pageId}/edit`);
-      }
-      return result;
-    }} extra={{ projectId }} submit={t("publishLessons")}>
+    <ActionForm
+      action={async (input) => {
+        const result = await publishLessonsAction(input);
+        if (result.ok) {
+          setDone(result.data);
+          router.push(`/kb/pages/${result.data.pageId}/edit`);
+        }
+        return result;
+      }}
+      extra={{ projectId }}
+      submit={t("publishLessons")}
+    >
       <Field name="spaceId" label={t("lessonsSpace")}>
         <Select id="spaceId" name="spaceId" required defaultValue="">
           <option value="" disabled>

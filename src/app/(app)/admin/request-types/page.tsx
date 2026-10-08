@@ -44,7 +44,9 @@ export default async function RequestTypesPage() {
               <TableHead kind="org">{t("entity")}</TableHead>
               <TableHead kind="number">{t("columns.fields")}</TableHead>
               <TableHead kind="number">{t("columns.followUps")}</TableHead>
-              <TableHead kind="time" className="text-left">{t("columns.reminder")}</TableHead>
+              <TableHead kind="time" className="text-left">
+                {t("columns.reminder")}
+              </TableHead>
               <TableHead kind="status">{t("columns.status")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -59,14 +61,24 @@ export default async function RequestTypesPage() {
                 </TableCell>
                 <TableCell kind="id">{type.code}</TableCell>
                 <TableCell>
-                  <Badge variant={type.entityId ? "info" : "secondary"}>{type.entityId ? <RecordLink kind="entity" id={type.entityId}>{entityName.get(type.entityId) ?? "—"}</RecordLink> : t("wholeGroup")}</Badge>
+                  <Badge variant={type.entityId ? "info" : "secondary"}>
+                    {type.entityId ? (
+                      <RecordLink kind="entity" id={type.entityId}>
+                        {entityName.get(type.entityId) ?? "—"}
+                      </RecordLink>
+                    ) : (
+                      t("wholeGroup")
+                    )}
+                  </Badge>
                 </TableCell>
                 <TableCell kind="number">{type.form.fields.length}</TableCell>
                 <TableCell kind="number">{type.followUps.length || <span className="text-faint">—</span>}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{type.slaRemindAfterDays > 0 ? t("remindsAfter", { days: type.slaRemindAfterDays }) : <span className="text-faint">—</span>}</TableCell>
                 <TableCell>
                   <span className="flex gap-1.5">
-                    <Badge dot variant={type.active ? "success" : "outline"}>{type.active ? t("on") : t("off")}</Badge>
+                    <Badge dot variant={type.active ? "success" : "outline"}>
+                      {type.active ? t("on") : t("off")}
+                    </Badge>
                     {type.standalone ? null : <Badge variant="outline">{t("followUpOnly")}</Badge>}
                   </span>
                 </TableCell>

@@ -37,7 +37,8 @@ export function templateProblems(draft: TemplateDraft): TemplateProblem[] {
   if (new Set(sections.map((section) => section.key)).size !== sections.length) problems.push("review_template_duplicate_key");
   if (sections.some((section) => section.title.trim() === "")) problems.push("review_template_untitled_section");
   if (sections.some((section) => section.askedOf.length === 0)) problems.push("review_template_unasked_section");
-  if (sections.some((section) => !REVIEW_SECTION_KINDS.includes(section.kind) || !Number.isInteger(section.weight) || section.weight < 0 || section.askedOf.some((kind) => !REVIEW_FORM_KINDS.includes(kind)))) problems.push("review_template_bad_section");
+  if (sections.some((section) => !REVIEW_SECTION_KINDS.includes(section.kind) || !Number.isInteger(section.weight) || section.weight < 0 || section.askedOf.some((kind) => !REVIEW_FORM_KINDS.includes(kind))))
+    problems.push("review_template_bad_section");
   if (ratingScale.length < 2) problems.push("review_template_scale_short");
   if (new Set(ratingScale.map((point) => point.value)).size !== ratingScale.length) problems.push("review_template_duplicate_point");
   if (ratingScale.some((point) => point.label.trim() === "" || !Number.isInteger(point.value) || !Number.isInteger(point.scoreBp) || point.scoreBp < 0)) problems.push("review_template_bad_point");

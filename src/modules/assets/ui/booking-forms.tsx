@@ -15,7 +15,6 @@ import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { bookAssetAction, cancelBookingAction, checkInBookingAction, checkOutBookingAction, decideBookingAction } from "../actions";
 import { ASSET_CONDITIONS, type AssetCondition } from "../enums";
 
-
 export type BookableAsset = { id: string; code: string; name: string; categoryName: string };
 
 /** "2026-09-25T09:00" in Vietnam time, which is what the action reads the field as. */

@@ -18,13 +18,31 @@ import { statusTone } from "@/components/ui/tone";
 import type { ActionResult } from "@/lib/action";
 import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
-import { approveMonthsAction, beginEvidenceAction, cancelAttendanceRequestAction, completeEvidenceAction, confirmMonthAction, confirmWorkedMinutesAction, createAdjustmentAction, evidenceLinkAction, lockPeriodAction, nudgeAction, remindToConfirmAction, reopenMonthAction, resubmitAttendanceRequestAction, submitAttendanceRequestAction, voidAdjustmentAction } from "../request-actions";
+import {
+  approveMonthsAction,
+  beginEvidenceAction,
+  cancelAttendanceRequestAction,
+  completeEvidenceAction,
+  confirmMonthAction,
+  confirmWorkedMinutesAction,
+  createAdjustmentAction,
+  evidenceLinkAction,
+  lockPeriodAction,
+  nudgeAction,
+  remindToConfirmAction,
+  reopenMonthAction,
+  resubmitAttendanceRequestAction,
+  submitAttendanceRequestAction,
+  voidAdjustmentAction,
+} from "../request-actions";
 import { useConfirmedSubmit } from "@/components/ui/confirm";
 import { PositionPicker } from "./position-picker";
 
 const ERRORS = "attendance.requests.errors";
 type RequestType = "attendance_correction" | "remote_work" | "overtime" | "holiday_work";
-export type RequestDefaults = Partial<Record<"startDate" | "endDate" | "reason" | "cause" | "inTime" | "outTime" | "kind" | "portion" | "locationName" | "latitude" | "longitude" | "radiusM" | "from" | "to" | "compensation", string>> & { outNextDay?: boolean };
+export type RequestDefaults = Partial<Record<"startDate" | "endDate" | "reason" | "cause" | "inTime" | "outTime" | "kind" | "portion" | "locationName" | "latitude" | "longitude" | "radiusM" | "from" | "to" | "compensation", string>> & {
+  outNextDay?: boolean;
+};
 
 /** One form, four request types: the page chose `type`; the fields follow it. With `resubmit`, a returned request goes round again. */
 export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { type: RequestType; personId: string | null; defaults: RequestDefaults; resubmit: string | null }) {
@@ -173,7 +191,23 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
   );
 }
 
-function ConfirmingForm({ action, extra, label, confirm, askReason, reasonName = "reason", variant = "outline" }: { action: (input: unknown) => Promise<ActionResult<unknown>>; extra: Record<string, unknown>; label: string; confirm?: string; askReason?: string; reasonName?: string; variant?: "outline" | "default" | "destructive" }) {
+function ConfirmingForm({
+  action,
+  extra,
+  label,
+  confirm,
+  askReason,
+  reasonName = "reason",
+  variant = "outline",
+}: {
+  action: (input: unknown) => Promise<ActionResult<unknown>>;
+  extra: Record<string, unknown>;
+  label: string;
+  confirm?: string;
+  askReason?: string;
+  reasonName?: string;
+  variant?: "outline" | "default" | "destructive";
+}) {
   const router = useRouter();
   const form = useActionForm(action, { extra, onSuccess: () => router.refresh() });
   const { onSubmit, dialog } = useConfirmedSubmit(form.onSubmit, { question: confirm, confirmLabel: label, destructive: variant === "destructive" });
@@ -283,14 +317,30 @@ export function ApproveMonthsForm({ month, rows }: { month: string; rows: { pers
               <TableRow key={row.personId} data-state={selected.has(row.personId) ? "selected" : undefined}>
                 <TableCell>
                   <span className="flex items-center gap-3">
-                    <Checkbox name="personIds[]" value={row.personId} disabled={!row.canApprove || row.status === "approved" || row.status === "locked"} defaultChecked={row.canApprove && row.status === "confirmed"} onCheckedChange={(checked) => setSelected((current) => { const next = new Set(current); if (checked) next.add(row.personId); else next.delete(row.personId); return next; })} aria-label={row.fullName} />
+                    <Checkbox
+                      name="personIds[]"
+                      value={row.personId}
+                      disabled={!row.canApprove || row.status === "approved" || row.status === "locked"}
+                      defaultChecked={row.canApprove && row.status === "confirmed"}
+                      onCheckedChange={(checked) =>
+                        setSelected((current) => {
+                          const next = new Set(current);
+                          if (checked) next.add(row.personId);
+                          else next.delete(row.personId);
+                          return next;
+                        })
+                      }
+                      aria-label={row.fullName}
+                    />
                     <a href={row.href} className="font-medium underline-offset-4 hover:underline">
                       {row.fullName}
                     </a>
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`status.${row.status}`)}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {row.line}
@@ -338,7 +388,22 @@ export function RemindButton({ entityId, month, label }: { entityId: string; mon
   return <ConfirmingForm action={remindToConfirmAction} extra={{ entityId, month }} label={label} />;
 }
 
-const DELTA_FIELDS = ["workedMinutes", "paidDaysCenti", "leavePaidMinutes", "leaveUnpaidMinutes", "absenceMinutes", "lateMinutes", "earlyMinutes", "nightMinutes", "otWeekdayMinutes", "otWeekdayNightMinutes", "otRestDayMinutes", "otRestDayNightMinutes", "otHolidayMinutes", "otHolidayNightMinutes"] as const;
+const DELTA_FIELDS = [
+  "workedMinutes",
+  "paidDaysCenti",
+  "leavePaidMinutes",
+  "leaveUnpaidMinutes",
+  "absenceMinutes",
+  "lateMinutes",
+  "earlyMinutes",
+  "nightMinutes",
+  "otWeekdayMinutes",
+  "otWeekdayNightMinutes",
+  "otRestDayMinutes",
+  "otRestDayNightMinutes",
+  "otHolidayMinutes",
+  "otHolidayNightMinutes",
+] as const;
 
 export function AdjustmentForm({ month, people }: { month: string; people: { id: string; fullName: string }[] }) {
   const t = useTranslations("attendance.months");

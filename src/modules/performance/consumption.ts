@@ -43,20 +43,30 @@ export async function releaseConsumedScores(consumerId: string, executor: Execut
 
 /** Has anything been paid from this entity's month? What `reopenMonth` asks before it supersedes. */
 export async function monthConsumers(entityId: string, month: string, executor: Executor = db()): Promise<KpiScoreUseRow[]> {
-  return executor.select().from(schema.kpiScoreUse).where(and(eq(schema.kpiScoreUse.entityId, entityId), eq(schema.kpiScoreUse.month, month)));
+  return executor
+    .select()
+    .from(schema.kpiScoreUse)
+    .where(and(eq(schema.kpiScoreUse.entityId, entityId), eq(schema.kpiScoreUse.month, month)));
 }
 
 export const isMonthConsumed = async (entityId: string, month: string, executor: Executor = db()): Promise<boolean> => (await monthConsumers(entityId, month, executor)).length > 0;
 
 /** The whole year, for the bonus screens: "2026 has already been paid for SZM". */
 export async function isYearConsumed(entityId: string, year: number, executor: Executor = db()): Promise<boolean> {
-  const [row] = await executor.select({ id: schema.kpiScoreUse.id }).from(schema.kpiScoreUse).where(and(eq(schema.kpiScoreUse.entityId, entityId), eq(schema.kpiScoreUse.year, year))).limit(1);
+  const [row] = await executor
+    .select({ id: schema.kpiScoreUse.id })
+    .from(schema.kpiScoreUse)
+    .where(and(eq(schema.kpiScoreUse.entityId, entityId), eq(schema.kpiScoreUse.year, year)))
+    .limit(1);
   return !!row;
 }
 
 /** Which of these entities' months are frozen — for the periods screen, in one query. */
 export async function consumedMonths(entityIds: readonly string[], executor: Executor = db()): Promise<Set<string>> {
   if (entityIds.length === 0) return new Set();
-  const rows = await executor.selectDistinct({ entityId: schema.kpiScoreUse.entityId, month: schema.kpiScoreUse.month }).from(schema.kpiScoreUse).where(inArray(schema.kpiScoreUse.entityId, [...entityIds]));
+  const rows = await executor
+    .selectDistinct({ entityId: schema.kpiScoreUse.entityId, month: schema.kpiScoreUse.month })
+    .from(schema.kpiScoreUse)
+    .where(inArray(schema.kpiScoreUse.entityId, [...entityIds]));
   return new Set(rows.map((row) => `${row.entityId}:${row.month}`));
 }

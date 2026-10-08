@@ -14,7 +14,16 @@ describe("field definitions", () => {
     expect(fieldDefinitionProblem({ name: " ", type: "text", options: [] })).toBe("custom_field_name_required");
     expect(fieldDefinitionProblem({ name: "Tỉ lệ", type: "colour", options: [] })).toBe("custom_field_type_invalid");
     expect(fieldDefinitionProblem({ name: "Tỉ lệ", type: "select", options: [] })).toBe("custom_field_needs_options");
-    expect(fieldDefinitionProblem({ name: "Tỉ lệ", type: "select", options: [{ id: "a", label: "9:16" }, { id: "b", label: " 9:16" }] })).toBe("custom_field_option_duplicate");
+    expect(
+      fieldDefinitionProblem({
+        name: "Tỉ lệ",
+        type: "select",
+        options: [
+          { id: "a", label: "9:16" },
+          { id: "b", label: " 9:16" },
+        ],
+      }),
+    ).toBe("custom_field_option_duplicate");
     expect(fieldDefinitionProblem({ name: "Nền tảng", type: "multi_select", options })).toBeNull();
     expect(fieldDefinitionProblem({ name: "Link ads", type: "url", options: [] })).toBeNull();
   });

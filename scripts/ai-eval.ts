@@ -10,7 +10,20 @@ config({ path: ".env.local" });
 
 type Bucket = Record<string, { total: number; passed: number }>;
 type Failure = { id: string; who: string; kind: string; question: string; problem: string | null; score: number };
-type Report = { driver: string; model: string; embeddingModel: string; total: number; passed: number; percent: number; byKind: Bucket; byLocale: Bucket; citedAnywhere: number; lowestCorrect: number; highestWronglyAnswered: number; failures: Failure[] };
+type Report = {
+  driver: string;
+  model: string;
+  embeddingModel: string;
+  total: number;
+  passed: number;
+  percent: number;
+  byKind: Bucket;
+  byLocale: Bucket;
+  citedAnywhere: number;
+  lowestCorrect: number;
+  highestWronglyAnswered: number;
+  failures: Failure[];
+};
 
 const share = (bucket: Bucket) =>
   Object.entries(bucket)
@@ -39,7 +52,11 @@ function printAgent(report: AgentReport) {
   console.log("  " + "─".repeat(72));
   console.log(`  ${report.passed}/${report.total} correct`);
   for (const [kind, bucket] of Object.entries(report.byKind)) console.log(`  ${kind.padEnd(14)} ${String(bucket.percent).padStart(5)}%  (${bucket.passed}/${bucket.total}, exit ≥ ${AGENT_EXIT[kind] ?? "?"}%)`);
-  console.log(`  turns ending on each tier: ${Object.entries(report.byFinalTier).map(([tier, count]) => `${tier} ${count}`).join(" · ")}`);
+  console.log(
+    `  turns ending on each tier: ${Object.entries(report.byFinalTier)
+      .map(([tier, count]) => `${tier} ${count}`)
+      .join(" · ")}`,
+  );
   console.log(`  cost per turn: p50 ${usd(report.cost.p50MicroUsd)} · p95 ${usd(report.cost.p95MicroUsd)} · ${report.cost.turns} turns, ${usd(report.cost.totalMicroUsd)} in all`);
   // NFR-AGT-01: a full answer p50 < 8 s, p95 < 20 s — measured on this machine, without the phone's network.
   if (report.latency) console.log(`  time per turn: p50 ${(report.latency.p50Ms / 1000).toFixed(1)} s · p95 ${(report.latency.p95Ms / 1000).toFixed(1)} s · max ${(report.latency.maxMs / 1000).toFixed(1)} s`);

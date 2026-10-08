@@ -41,8 +41,16 @@ const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan"
 type Key = (typeof PEOPLE)[number];
 const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "client" | "other" | "t1" | "t2" | "t3", string>;
 const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do", vy: "Vy Nguyen" };
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const vn = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
 
 beforeAll(async () => {
@@ -51,7 +59,10 @@ beforeAll(async () => {
   ids.szm = szm.id;
   const [dept] = await db().insert(schema.orgUnit).values({ name: "Marketing", kind: "department", entityId: szm.id }).returning();
   for (const key of PEOPLE) {
-    const [row] = await db().insert(schema.person).values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   // Huy reports to Tam, Tam to Chi. Chi heads Marketing, where Video sits.
@@ -61,11 +72,15 @@ beforeAll(async () => {
 
   const team = async (key: string, name: string, lead: Key, members: Key[], departmentId: string | null = null) => {
     const [row] = await db().insert(schema.workTeam).values({ key, name, entityId: szm.id, departmentId }).returning();
-    await db().insert(schema.workState).values([
-      { teamId: row.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
-      { teamId: row.id, name: "Đã xong", category: "done", sortOrder: 2 },
-    ]);
-    await db().insert(schema.workTeamMember).values([{ teamId: row.id, personId: ids[lead], role: "lead" }, ...members.map((member) => ({ teamId: row.id, personId: ids[member], role: "member" }))]);
+    await db()
+      .insert(schema.workState)
+      .values([
+        { teamId: row.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
+        { teamId: row.id, name: "Đã xong", category: "done", sortOrder: 2 },
+      ]);
+    await db()
+      .insert(schema.workTeamMember)
+      .values([{ teamId: row.id, personId: ids[lead], role: "lead" }, ...members.map((member) => ({ teamId: row.id, personId: ids[member], role: "member" }))]);
     return row.id;
   };
   ids.video = await team("VID", "Video", "long", ["huy", "bao"], dept.id);
@@ -79,10 +94,12 @@ beforeAll(async () => {
   // TVC Tết is led by Vy (named lead), who is in none of Huy's teams and not above him.
   ids.client = (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name: "TVC Tết", leadPersonId: ids.vy }).returning())[0].id;
   ids.other = (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name: "Showreel", leadPersonId: ids.long }).returning())[0].id;
-  await db().insert(schema.projectPlan).values([
-    { projectId: ids.client, kind: "client", jobNumber: "SZM-26-007" },
-    { projectId: ids.other, kind: "internal" },
-  ]);
+  await db()
+    .insert(schema.projectPlan)
+    .values([
+      { projectId: ids.client, kind: "client", jobNumber: "SZM-26-007" },
+      { projectId: ids.other, kind: "internal" },
+    ]);
   const doing = (await listStates([ids.video])).find((state) => state.category === "in_progress")!;
   const task = async (title: string, assignee: Key, projectId: string) => (await createWorkTask({ teamId: ids.video, projectId, title, assigneePersonId: ids[assignee], stateId: doing.id }, ids.long)).task.id;
   ids.t1 = await task("Rough cut", "huy", ids.client);
@@ -106,7 +123,10 @@ describe("the timer", () => {
     // Starting another stops the first: 90 minutes of the rough cut.
     const second = await startTimer(ids.huy, { taskId: null, category: "admin" }, vn(W, "10:30"));
     expect(second.stopped).toMatchObject({ id: first.started.id, minutes: 90, timerStartedAt: null, capped: false });
-    const running = await db().select().from(schema.timeEntry).where(and(eq(schema.timeEntry.personId, ids.huy), isNotNull(schema.timeEntry.timerStartedAt), isNull(schema.timeEntry.deletedAt)));
+    const running = await db()
+      .select()
+      .from(schema.timeEntry)
+      .where(and(eq(schema.timeEntry.personId, ids.huy), isNotNull(schema.timeEntry.timerStartedAt), isNull(schema.timeEntry.deletedAt)));
     expect(running.map((row) => row.id)).toEqual([second.started.id]);
 
     const stopped = await stopRunningTimer(ids.huy, vn(W, "10:45"));
@@ -116,8 +136,16 @@ describe("the timer", () => {
   });
 
   it("one running timer per person, held by the database", async () => {
-    await db().insert(schema.timeEntry).values({ personId: ids.bao, date: W, weekStart: W, category: "admin", timerStartedAt: vn(W, "08:00"), source: "timer" });
-    expect(await fails(db().insert(schema.timeEntry).values({ personId: ids.bao, date: W, weekStart: W, category: "idle", timerStartedAt: vn(W, "08:05"), source: "timer" }))).not.toBe("no error");
+    await db()
+      .insert(schema.timeEntry)
+      .values({ personId: ids.bao, date: W, weekStart: W, category: "admin", timerStartedAt: vn(W, "08:00"), source: "timer" });
+    expect(
+      await fails(
+        db()
+          .insert(schema.timeEntry)
+          .values({ personId: ids.bao, date: W, weekStart: W, category: "idle", timerStartedAt: vn(W, "08:05"), source: "timer" }),
+      ),
+    ).not.toBe("no error");
     // Under half a minute leaves nothing.
     const gone = await stopRunningTimer(ids.bao, new Date(vn(W, "08:00").getTime() + 20_000));
     expect(gone!.deletedAt).not.toBeNull();
@@ -173,11 +201,13 @@ describe("the week grid", () => {
 describe("the attendance hint", () => {
   it("shows attended minutes beside the day; untracked Saturdays say so", async () => {
     const day = { entityId: ids.szm, inputsHash: "x" };
-    await db().insert(schema.timesheetDay).values([
-      { ...day, personId: ids.huy, date: W, planKind: "working", status: "present", requiredMinutes: 480, workedMinutes: 450 },
-      { ...day, personId: ids.huy, date: "2026-09-22", planKind: "working", status: "partial", requiredMinutes: 480, workedMinutes: 240, wfhMinutes: 120 },
-      { ...day, personId: ids.huy, date: "2026-09-26", planKind: "untracked", status: "untracked", creditedMinutes: 480 },
-    ]);
+    await db()
+      .insert(schema.timesheetDay)
+      .values([
+        { ...day, personId: ids.huy, date: W, planKind: "working", status: "present", requiredMinutes: 480, workedMinutes: 450 },
+        { ...day, personId: ids.huy, date: "2026-09-22", planKind: "working", status: "partial", requiredMinutes: 480, workedMinutes: 240, wfhMinutes: 120 },
+        { ...day, personId: ids.huy, date: "2026-09-26", planKind: "untracked", status: "untracked", creditedMinutes: 480 },
+      ]);
     const week = (await getMyTimeWeek(ids.huy, W, TODAY))!;
     expect(week.days.map((row) => row.hint)).toEqual([{ kind: "attended", minutes: 450 }, { kind: "attended", minutes: 360 }, { kind: "none" }, { kind: "none" }, { kind: "none" }, { kind: "untracked" }, { kind: "none" }]);
     // The line-management chain sees it: the manager and the manager's manager (security review, finding 4).
@@ -229,7 +259,11 @@ describe("the weekly timesheet", () => {
     const { after } = await submitWeek(ids.huy, W, TODAY, vn(TODAY, "20:00"));
     expect(after).toMatchObject({ status: "submitted", minutes: 505 });
     // The leads of both his teams and his line manager — not the manager's manager, not himself.
-    for (const key of ["long", "mai", "tam"] as const) expect((await noticesOf(ids[key], "daily.timesheet_submitted")).map((row) => row.params), key).toEqual([{ person: names.huy, week: "21/09/2026" }]);
+    for (const key of ["long", "mai", "tam"] as const)
+      expect(
+        (await noticesOf(ids[key], "daily.timesheet_submitted")).map((row) => row.params),
+        key,
+      ).toEqual([{ person: names.huy, week: "21/09/2026" }]);
     expect(await noticesOf(ids.chi, "daily.timesheet_submitted")).toHaveLength(0);
     expect(await noticesOf(ids.huy, "daily.timesheet_submitted")).toHaveLength(0);
     expect(await fails(logTime({ personId: ids.huy, date: W, taskId: ids.t1, category: null, minutes: 10, note: null, billable: null }))).toBe("time_week_locked");
@@ -398,9 +432,18 @@ describe("totals for other modules", () => {
     expect(await loggedMinutesOfPerson(ids.huy, range, "week")).toEqual([{ id: null, label: W, key: null, minutes: 595, billable: 250, totalMinutes: 595 }]);
     for (const by of ["project", "task"] as const) {
       const groups = await loggedMinutesOfPerson(ids.huy, range, by);
-      expect(groups.reduce((sum, group) => sum + group.minutes, 0), by).toBe(595);
-      expect(groups.every((group) => group.totalMinutes === 595), by).toBe(true);
-      expect(groups.map((group) => group.minutes), by).toEqual([...groups.map((group) => group.minutes)].sort((a, b) => b - a));
+      expect(
+        groups.reduce((sum, group) => sum + group.minutes, 0),
+        by,
+      ).toBe(595);
+      expect(
+        groups.every((group) => group.totalMinutes === 595),
+        by,
+      ).toBe(true);
+      expect(
+        groups.map((group) => group.minutes),
+        by,
+      ).toEqual([...groups.map((group) => group.minutes)].sort((a, b) => b - a));
     }
     // Another person's time is not in it, and an empty range is empty.
     expect(await loggedMinutesOfPerson(ids.huy, { from: "2020-01-01", to: "2020-01-31" }, "project")).toEqual([]);

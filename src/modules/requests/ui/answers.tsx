@@ -50,11 +50,9 @@ export async function Answers({
                 ) : field.type === "date" ? (
                   format.dateTime(new Date(`${String(value)}T00:00:00`), { dateStyle: "long" })
                 ) : field.type === "select" ? (
-                  (label((field.options ?? []).find((option) => option.value === value) ?? { labelVi: String(value), labelEn: String(value) }))
+                  label((field.options ?? []).find((option) => option.value === value) ?? { labelVi: String(value), labelEn: String(value) })
                 ) : field.type === "multi_select" ? (
-                  (Array.isArray(value) ? value : [])
-                    .map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) }))
-                    .join(", ") || "—"
+                  (Array.isArray(value) ? value : []).map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) })).join(", ") || "—"
                 ) : field.type === "person" || field.type === "entity" ? (
                   (Array.isArray(value) ? value : [value]).map((entry, index) => (
                     <span key={String(entry)}>

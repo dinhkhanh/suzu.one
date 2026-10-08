@@ -37,7 +37,16 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .where(and(eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt), inArray(schema.task.status, ["todo", "in_progress"]), isNotNull(schema.task.assigneePersonId), isNotNull(schema.task.dueDate), lte(schema.task.dueDate, addDays(today, REMINDER_LOOK_AHEAD))))
+    .where(
+      and(
+        eq(schema.task.kind, WORK_KIND),
+        isNull(schema.task.deletedAt),
+        inArray(schema.task.status, ["todo", "in_progress"]),
+        isNotNull(schema.task.assigneePersonId),
+        isNotNull(schema.task.dueDate),
+        lte(schema.task.dueDate, addDays(today, REMINDER_LOOK_AHEAD)),
+      ),
+    )
     .orderBy(schema.task.dueDate, schema.workTask.number);
   if (rows.length === 0) return { dueSoon: 0, overdue: 0, people: 0 };
 
@@ -53,11 +62,23 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
   for (const [groupKey, own] of Map.groupBy(due, (row) => `${row.assigneeId}:${row.kind}`)) {
     const [assigneeId, kind] = groupKey.split(":") as [string, ReminderKind];
     await db().transaction(async (tx) => {
-      const fresh = await tx.insert(schema.workReminderSent).values(own.map((row) => ({ taskId: row.id, personId: assigneeId, kind, sentOn: today }))).onConflictDoNothing().returning({ taskId: schema.workReminderSent.taskId });
+      const fresh = await tx
+        .insert(schema.workReminderSent)
+        .values(own.map((row) => ({ taskId: row.id, personId: assigneeId, kind, sentOn: today })))
+        .onConflictDoNothing()
+        .returning({ taskId: schema.workReminderSent.taskId });
       const tasks = own.filter((row) => fresh.some((mark) => mark.taskId === row.id));
       if (tasks.length === 0) return;
       const [first] = tasks;
-      await notify({ recipients: [assigneeId], kind: kind === "due_soon" ? "tasks.due_soon" : "tasks.overdue", params: { count: tasks.length, key: taskKey(first.teamKey, first.number), title: first.title, dueDate: first.dueDate!.split("-").reverse().join("/") }, link: tasks.length === 1 ? `/work/tasks/${first.id}` : "/tasks" }, tx);
+      await notify(
+        {
+          recipients: [assigneeId],
+          kind: kind === "due_soon" ? "tasks.due_soon" : "tasks.overdue",
+          params: { count: tasks.length, key: taskKey(first.teamKey, first.number), title: first.title, dueDate: first.dueDate!.split("-").reverse().join("/") },
+          link: tasks.length === 1 ? `/work/tasks/${first.id}` : "/tasks",
+        },
+        tx,
+      );
       sent[kind] += tasks.length;
       people.add(assigneeId);
     });

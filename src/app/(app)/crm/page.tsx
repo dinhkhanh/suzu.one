@@ -12,7 +12,23 @@ import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
-import { accountChoices, agingSummary, canEditActivity, crmSettings, expiringContracts, isStaleDeal, listDeals, listFollowUpsOf, listLeads, listSalesHandoffsFor, listStages, pipelineTotals, salesDashboard, salesTile, stageName } from "@/modules/crm/service";
+import {
+  accountChoices,
+  agingSummary,
+  canEditActivity,
+  crmSettings,
+  expiringContracts,
+  isStaleDeal,
+  listDeals,
+  listFollowUpsOf,
+  listLeads,
+  listSalesHandoffsFor,
+  listStages,
+  pipelineTotals,
+  salesDashboard,
+  salesTile,
+  stageName,
+} from "@/modules/crm/service";
 import { crmShell, sells } from "@/modules/crm/pages";
 import { type BoardColumn, DealBoard } from "@/modules/crm/ui/board";
 import { HandoffAnswerForm, NewLeadForm } from "@/modules/crm/ui/deal-forms";
@@ -66,7 +82,17 @@ export default async function CrmHomePage() {
         ...total,
         cards: deals
           .filter((deal) => deal.stageId === stage.id)
-          .map((deal) => ({ id: deal.id, code: deal.code, title: deal.title, accountName: deal.accountName, ownerName: deal.ownerName, expectedCloseOn: deal.expectedCloseOn, stale: isStaleDeal({ lastTouchedOn: deal.lastTouchedOn }, today, settings.staleDealDays), value: deal.value ? { totalVnd: deal.value.totalVnd, weightedVnd: deal.value.weightedVnd } : null, canMove: deal.canEdit })),
+          .map((deal) => ({
+            id: deal.id,
+            code: deal.code,
+            title: deal.title,
+            accountName: deal.accountName,
+            ownerName: deal.ownerName,
+            expectedCloseOn: deal.expectedCloseOn,
+            stale: isStaleDeal({ lastTouchedOn: deal.lastTouchedOn }, today, settings.staleDealDays),
+            value: deal.value ? { totalVnd: deal.value.totalVnd, weightedVnd: deal.value.weightedVnd } : null,
+            canMove: deal.canEdit,
+          })),
       };
     });
 
@@ -99,7 +125,12 @@ export default async function CrmHomePage() {
         <TileGrid>
           {tile ? <Tile label={t("home.tiles.pipeline")} value={f.money(tile.weightedVnd)} hint={t("home.tiles.pipelineHint", { count: tile.openDeals })} href="/crm/deals" /> : null}
           {tile ? <Tile label={t("home.tiles.won")} value={f.money(tile.wonVnd)} hint={t("home.tiles.wonHint", { count: tile.wonCount })} tone={tile.wonCount > 0 ? "success" : undefined} href="/crm/deals?view=list&status=won" /> : null}
-          <Tile label={t("home.tiles.followUps")} value={followUps.length} hint={followUpOverdue ? t("home.tiles.followUpsOverdue") : t("home.tiles.followUpsDue")} tone={followUpOverdue ? "destructive" : followUps.length > 0 ? "warning" : undefined} />
+          <Tile
+            label={t("home.tiles.followUps")}
+            value={followUps.length}
+            hint={followUpOverdue ? t("home.tiles.followUpsOverdue") : t("home.tiles.followUpsDue")}
+            tone={followUpOverdue ? "destructive" : followUps.length > 0 ? "warning" : undefined}
+          />
           {dashboard ? <Tile label={t("home.tiles.winRate")} value={f.percent(dashboard.winRate)} hint={t("home.tiles.winRateHint")} href="/crm/reports" /> : null}
         </TileGrid>
       ) : null}
@@ -113,8 +144,23 @@ export default async function CrmHomePage() {
                   <RecordLink kind="deal" id={handoff.dealId} className="font-medium">
                     {handoff.dealTitle}
                   </RecordLink>{" "}
-                  → <RecordLink kind="project" id={handoff.projectId}>{handoff.projectName}</RecordLink>
-                  <span className="text-xs text-faint"> · {t.rich("home.handoffFrom", { name: handoff.fromName ?? "—", date: f.when(handoff.createdAt), person: (chunks) => <RecordLink kind="person" id={handoff.fromPersonId}>{chunks}</RecordLink> })}</span>
+                  →{" "}
+                  <RecordLink kind="project" id={handoff.projectId}>
+                    {handoff.projectName}
+                  </RecordLink>
+                  <span className="text-xs text-faint">
+                    {" "}
+                    ·{" "}
+                    {t.rich("home.handoffFrom", {
+                      name: handoff.fromName ?? "—",
+                      date: f.when(handoff.createdAt),
+                      person: (chunks) => (
+                        <RecordLink kind="person" id={handoff.fromPersonId}>
+                          {chunks}
+                        </RecordLink>
+                      ),
+                    })}
+                  </span>
                 </p>
                 <HandoffAnswerForm projectId={handoff.projectId} />
               </ListItem>
@@ -127,11 +173,7 @@ export default async function CrmHomePage() {
         <FollowUpList items={followUps} canEdit={(item) => canEditActivity(viewer, item, null)} people={people} meId={me} today={today} />
       </Section>
 
-      <Section
-        title={t("home.myDeals")}
-        count={deals.length || null}
-        action={shell.show.deals ? <Link href="/crm/deals">{t("home.pipeline")}</Link> : null}
-      >
+      <Section title={t("home.myDeals")} count={deals.length || null} action={shell.show.deals ? <Link href="/crm/deals">{t("home.pipeline")}</Link> : null}>
         {shell.show.deals && columns.length ? (
           deals.length === 0 ? (
             <List>
@@ -161,10 +203,14 @@ export default async function CrmHomePage() {
                     </RecordLink>
                   </TableCell>
                   <TableCell>
-                    <RecordLink kind="account" id={deal.clientId}>{deal.accountName}</RecordLink>
+                    <RecordLink kind="account" id={deal.clientId}>
+                      {deal.accountName}
+                    </RecordLink>
                   </TableCell>
                   <TableCell>
-                    <Badge dot variant="info">{deal.stage.name}</Badge>
+                    <Badge dot variant="info">
+                      {deal.stage.name}
+                    </Badge>
                   </TableCell>
                   <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
                   <TableCell kind="date">{deal.expectedCloseOn ? f.date(deal.expectedCloseOn) : "—"}</TableCell>
@@ -200,7 +246,15 @@ export default async function CrmHomePage() {
                         {t(`enums.leadStatus.${lead.status as "new"}`)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{lead.ownerName ? <RecordLink kind="person" id={lead.ownerPersonId}>{lead.ownerName}</RecordLink> : t("leads.unassigned")}</TableCell>
+                    <TableCell>
+                      {lead.ownerName ? (
+                        <RecordLink kind="person" id={lead.ownerPersonId}>
+                          {lead.ownerName}
+                        </RecordLink>
+                      ) : (
+                        t("leads.unassigned")
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -233,7 +287,9 @@ export default async function CrmHomePage() {
                   </TableCell>
                   <TableCell>{contract.title}</TableCell>
                   <TableCell>
-                    <RecordLink kind="account" id={contract.clientId}>{contract.accountName}</RecordLink>
+                    <RecordLink kind="account" id={contract.clientId}>
+                      {contract.accountName}
+                    </RecordLink>
                   </TableCell>
                   <TableCell kind="date">{f.date(contract.endDate)}</TableCell>
                 </TableRow>

@@ -40,7 +40,11 @@ describe("keyResultProgressBp", () => {
   });
 
   it("counts milestones done", () => {
-    const milestones = [{ title: "a", done: true }, { title: "b", done: true }, { title: "c", done: false }];
+    const milestones = [
+      { title: "a", done: true },
+      { title: "b", done: true },
+      { title: "c", done: false },
+    ];
     expect(keyResultProgressBp(kr({ metricType: "milestone", milestones }))).toBe(6667);
     expect(keyResultProgressBp(kr({ metricType: "milestone", milestones: [] }))).toBe(0);
     expect(keyResultProgressBp(kr({ metricType: "milestone", milestones: null }))).toBe(0);
@@ -49,9 +53,24 @@ describe("keyResultProgressBp", () => {
 
 describe("weightedAverageBp", () => {
   it("weights the lines and rounds halves up", () => {
-    expect(weightedAverageBp([{ weight: 3, progressBp: 10_000 }, { weight: 1, progressBp: 0 }])).toBe(7500);
-    expect(weightedAverageBp([{ weight: 1, progressBp: 3333 }, { weight: 1, progressBp: 3334 }])).toBe(3334); // 3333.5
-    expect(weightedAverageBp([{ weight: 2, progressBp: null }, { weight: 1, progressBp: 4000 }])).toBe(4000);
+    expect(
+      weightedAverageBp([
+        { weight: 3, progressBp: 10_000 },
+        { weight: 1, progressBp: 0 },
+      ]),
+    ).toBe(7500);
+    expect(
+      weightedAverageBp([
+        { weight: 1, progressBp: 3333 },
+        { weight: 1, progressBp: 3334 },
+      ]),
+    ).toBe(3334); // 3333.5
+    expect(
+      weightedAverageBp([
+        { weight: 2, progressBp: null },
+        { weight: 1, progressBp: 4000 },
+      ]),
+    ).toBe(4000);
     expect(weightedAverageBp([])).toBeNull();
     expect(weightedAverageBp([{ weight: 1, progressBp: null }])).toBeNull();
   });
@@ -123,7 +142,10 @@ describe("goalProgress", () => {
     const result = goalProgress("a", goals);
     expect(result.progressBp).toBe(5000);
     // Seen from b: a leads straight back to b, so a has nothing to add; c still counts.
-    expect(goalProgress("b", goals).lines.map((line) => [line.id, line.progressBp, line.skipped])).toEqual([["a", null, "not_measured"], ["c", 5000, null]]);
+    expect(goalProgress("b", goals).lines.map((line) => [line.id, line.progressBp, line.skipped])).toEqual([
+      ["a", null, "not_measured"],
+      ["c", 5000, null],
+    ]);
     expect(goalProgress("b", goals, new Set(["a"])).lines[0]).toMatchObject({ id: "a", skipped: "cycle" });
   });
 });

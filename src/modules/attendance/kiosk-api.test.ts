@@ -51,7 +51,12 @@ beforeEach(() => {
 
 describe("the kiosk's endpoints", () => {
   it("refuse a browser without an open kiosk", async () => {
-    for (const response of [await identify(request("/api/kiosk/identify", { embedding }, null)), await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }, "suzu_kiosk=szk_old")), await undo(request("/api/kiosk/undo", { punchId: PERSON }, null)), await qr(request("/api/kiosk/qr", undefined, null))]) {
+    for (const response of [
+      await identify(request("/api/kiosk/identify", { embedding }, null)),
+      await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }, "suzu_kiosk=szk_old")),
+      await undo(request("/api/kiosk/undo", { punchId: PERSON }, null)),
+      await qr(request("/api/kiosk/qr", undefined, null)),
+    ]) {
       expect(response.status).toBe(401);
     }
     expect(recognise).not.toHaveBeenCalled();
@@ -61,7 +66,12 @@ describe("the kiosk's endpoints", () => {
 
   it("tell a kiosk that ran out of time that it needs opening again, and do nothing for it", async () => {
     const cookie = `suzu_kiosk=${LAPSED}`;
-    for (const response of [await identify(request("/api/kiosk/identify", { embedding }, cookie)), await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }, cookie)), await undo(request("/api/kiosk/undo", { punchId: PERSON }, cookie)), await qr(request("/api/kiosk/qr", undefined, cookie))]) {
+    for (const response of [
+      await identify(request("/api/kiosk/identify", { embedding }, cookie)),
+      await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }, cookie)),
+      await undo(request("/api/kiosk/undo", { punchId: PERSON }, cookie)),
+      await qr(request("/api/kiosk/qr", undefined, cookie)),
+    ]) {
       expect(response.status).toBe(401);
       expect(await response.json()).toEqual({ error: "expired" });
     }
@@ -75,13 +85,23 @@ describe("the kiosk's endpoints", () => {
     await punch(request("/api/kiosk/punch", { personId: PERSON, embedding }));
     await undo(request("/api/kiosk/undo", { punchId: PERSON }));
     await qr(request("/api/kiosk/qr"));
-    expect(limit.mock.calls).toEqual([["kiosk_identify", "kiosk:s1"], ["kiosk_punch", "kiosk:s1"], ["kiosk_undo", "kiosk:s1"], ["kiosk_qr", "kiosk:s1"]]);
+    expect(limit.mock.calls).toEqual([
+      ["kiosk_identify", "kiosk:s1"],
+      ["kiosk_punch", "kiosk:s1"],
+      ["kiosk_undo", "kiosk:s1"],
+      ["kiosk_qr", "kiosk:s1"],
+    ]);
 
     recognise.mockClear();
     withdraw.mockClear();
     commit.mockClear();
     limit.mockResolvedValue({ ok: false, retryAfterSeconds: 17 });
-    for (const response of [await identify(request("/api/kiosk/identify", { embedding })), await punch(request("/api/kiosk/punch", { personId: PERSON, embedding })), await undo(request("/api/kiosk/undo", { punchId: PERSON })), await qr(request("/api/kiosk/qr"))]) {
+    for (const response of [
+      await identify(request("/api/kiosk/identify", { embedding })),
+      await punch(request("/api/kiosk/punch", { personId: PERSON, embedding })),
+      await undo(request("/api/kiosk/undo", { punchId: PERSON })),
+      await qr(request("/api/kiosk/qr")),
+    ]) {
       expect(response.status).toBe(429);
       expect(response.headers.get("retry-after")).toBe("17");
       expect(await response.json()).toEqual({ error: "rate_limited" });
@@ -126,7 +146,7 @@ describe("the kiosk's endpoints", () => {
     expect(audit).not.toHaveBeenCalled();
   });
 
-  it("takes a punch back on \"Not me\", and audits only what it took back", async () => {
+  it('takes a punch back on "Not me", and audits only what it took back', async () => {
     withdraw.mockResolvedValueOnce({ personId: PERSON, at: new Date("2026-10-02T01:42:00Z") });
     expect(await (await undo(request("/api/kiosk/undo", { punchId: PERSON }))).json()).toEqual({ cancelled: true });
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "attendance.kiosk.punch_withdrawn" }));

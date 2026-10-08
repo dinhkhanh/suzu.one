@@ -30,20 +30,19 @@ const profileArbitrary: fc.Arbitrary<ProfileFacts> = fc.record({
   taxResidency: fc.oneof({ weight: 5, arbitrary: fc.constant("resident" as const) }, { weight: 1, arbitrary: fc.constant("non_resident" as const) }),
   pitMethod: fc.oneof({ weight: 4, arbitrary: fc.constant("progressive" as const) }, { weight: 1, arbitrary: fc.constant("flat_without_contract" as const) }, { weight: 1, arbitrary: fc.constant("flat_non_resident" as const) }),
   pitCommitment: fc.oneof({ weight: 4, arbitrary: fc.constant(false) }, { weight: 1, arbitrary: fc.constant(true) }),
-  insuranceExemption: fc.oneof(
-    { weight: 6, arbitrary: fc.constant(null) },
-    { weight: 1, arbitrary: fc.constantFrom("probation" as const, "retiree" as const, "insured_elsewhere" as const, "foreigner" as const, "other" as const) },
-  ),
+  insuranceExemption: fc.oneof({ weight: 6, arbitrary: fc.constant(null) }, { weight: 1, arbitrary: fc.constantFrom("probation" as const, "retiree" as const, "insured_elsewhere" as const, "foreigner" as const, "other" as const) }),
   unionMember: fc.boolean(),
 });
 
-const policyArbitrary: fc.Arbitrary<PayrollPolicyValue> = fc.record({
-  prorationBasis: fc.constantFrom("working_days" as const, "calendar_days" as const, "fixed_days" as const),
-  hoursPerDay: fc.integer({ min: 6, max: 10 }),
-  overtimeBase: fc.constantFrom("base_salary" as const, "base_plus_insurable_allowances" as const),
-  unionEnabled: fc.boolean(),
-  simplePitTreatment: fc.constantFrom("none" as const, "flat_withholding" as const),
-}).map((partial) => ({ ...DEFAULT_PAYROLL_POLICY, ...partial, fixedDays: partial.prorationBasis === "fixed_days" ? 26 : null }));
+const policyArbitrary: fc.Arbitrary<PayrollPolicyValue> = fc
+  .record({
+    prorationBasis: fc.constantFrom("working_days" as const, "calendar_days" as const, "fixed_days" as const),
+    hoursPerDay: fc.integer({ min: 6, max: 10 }),
+    overtimeBase: fc.constantFrom("base_salary" as const, "base_plus_insurable_allowances" as const),
+    unionEnabled: fc.boolean(),
+    simplePitTreatment: fc.constantFrom("none" as const, "flat_withholding" as const),
+  })
+  .map((partial) => ({ ...DEFAULT_PAYROLL_POLICY, ...partial, fixedDays: partial.prorationBasis === "fixed_days" ? 26 : null }));
 
 /** A month someone could really have: bounded, but free in every way that matters. */
 const inputArbitrary: fc.Arbitrary<PersonPayInput> = fc
@@ -80,7 +79,16 @@ const inputArbitrary: fc.Arbitrary<PersonPayInput> = fc
       wageRegion: draft.wageRegion,
       employment: { startDate: null, endDate: null, dependents: draft.dependents, serviceMonths: 24, kpiScoreBp: 0 },
       profile: draft.profile,
-      segments: [{ from: period.start, to: period.end, standardDays: draft.monthStandardDays, paidDaysCenti, unpaidDaysCenti, terms: { baseSalary: draft.baseSalary, insuranceSalary: draft.insuranceSalary, allowances: [{ code: "ALW_MEAL", amount: draft.meal }] } }],
+      segments: [
+        {
+          from: period.start,
+          to: period.end,
+          standardDays: draft.monthStandardDays,
+          paidDaysCenti,
+          unpaidDaysCenti,
+          terms: { baseSalary: draft.baseSalary, insuranceSalary: draft.insuranceSalary, allowances: [{ code: "ALW_MEAL", amount: draft.meal }] },
+        },
+      ],
       timesheet: {
         standardDays: draft.monthStandardDays,
         standardMinutes: draft.monthStandardDays * draft.policy.hoursPerDay * 60,
@@ -244,7 +252,12 @@ describe("progressive tax", () => {
       fc.property(vnd(5_000_000_000), (income) => {
         const { tax, slices } = progressiveTax(income, brackets);
         expect(slices.reduce((sum, slice) => sum + slice.tax, 0)).toBe(tax);
-        expect(slices.reduce((sum, slice) => sum + slice.amount, 0)).toBe(Math.min(income, slices.reduce((ceiling, slice) => Math.max(ceiling, slice.upTo ?? income), 0)));
+        expect(slices.reduce((sum, slice) => sum + slice.amount, 0)).toBe(
+          Math.min(
+            income,
+            slices.reduce((ceiling, slice) => Math.max(ceiling, slice.upTo ?? income), 0),
+          ),
+        );
       }),
       RUNS,
     );
@@ -299,4 +312,3 @@ describe("the net → gross converter", () => {
     );
   });
 });
-

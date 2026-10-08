@@ -50,8 +50,14 @@ describe("the starter forms (PRF-01)", () => {
 
   it("make “meets expectations” worth exactly 100 % and weigh the scored questions to 100", () => {
     for (const seed of REVIEW_TEMPLATE_SEED) {
-      expect(seed.ratingScale.filter((point) => point.scoreBp === 10000), seed.seedKey).toHaveLength(1);
-      expect(seed.sections.filter((section) => section.kind === "rating").reduce((sum, section) => sum + section.weight, 0), seed.seedKey).toBe(100);
+      expect(
+        seed.ratingScale.filter((point) => point.scoreBp === 10000),
+        seed.seedKey,
+      ).toHaveLength(1);
+      expect(
+        seed.sections.filter((section) => section.kind === "rating").reduce((sum, section) => sum + section.weight, 0),
+        seed.seedKey,
+      ).toBe(100);
     }
   });
 });

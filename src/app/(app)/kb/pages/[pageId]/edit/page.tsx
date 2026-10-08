@@ -26,7 +26,9 @@ export default async function EditKbPage(props: PageProps<"/kb/pages/[pageId]/ed
   return (
     <div className="flex max-w-4xl flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        <RecordLink kind="kbSpace" id={space.key}>{space.name}</RecordLink>
+        <RecordLink kind="kbSpace" id={space.key}>
+          {space.name}
+        </RecordLink>
         <span aria-hidden> / </span>
         <Link href={pagePath(space.key, page)} className="hover:underline">
           {t("page.backToPage")}

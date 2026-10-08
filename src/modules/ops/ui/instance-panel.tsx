@@ -13,7 +13,17 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
-import { beginEvidenceUploadAction, cancelObligationAction, completeEvidenceUploadAction, completeObligationAction, openEvidenceFileAction, reassignObligationAction, removeEvidenceFileAction, reopenObligationAction, saveObligationProgressAction } from "../actions";
+import {
+  beginEvidenceUploadAction,
+  cancelObligationAction,
+  completeEvidenceUploadAction,
+  completeObligationAction,
+  openEvidenceFileAction,
+  reassignObligationAction,
+  removeEvidenceFileAction,
+  reopenObligationAction,
+  saveObligationProgressAction,
+} from "../actions";
 import type { EvidenceKey, EvidenceRequirement } from "../enums";
 import { RecordLink } from "@/components/ui/record-link";
 
@@ -118,7 +128,9 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
                 {file.uploadedByName ? (
                   <>
                     {" · "}
-                    <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink>
+                    <RecordLink kind="person" id={file.uploadedByPersonId}>
+                      {file.uploadedByName}
+                    </RecordLink>
                   </>
                 ) : null}
                 {" · "}
@@ -180,7 +192,15 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
             {t("complete")}
           </Button>
         ) : null}
-        {canManage ? <ReasonButton label={open ? t("cancel") : t("reopen")} placeholder={t("reason")} confirm={t("confirm")} disabled={pending} onConfirm={(reason) => run(() => (open ? cancelObligationAction({ taskId, reason }) : reopenObligationAction({ taskId, reason })))} /> : null}
+        {canManage ? (
+          <ReasonButton
+            label={open ? t("cancel") : t("reopen")}
+            placeholder={t("reason")}
+            confirm={t("confirm")}
+            disabled={pending}
+            onConfirm={(reason) => run(() => (open ? cancelObligationAction({ taskId, reason }) : reopenObligationAction({ taskId, reason })))}
+          />
+        ) : null}
       </div>
     </div>
   );

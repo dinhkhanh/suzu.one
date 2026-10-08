@@ -68,7 +68,9 @@ beforeAll(async () => {
   // The roll-out as it happens: everyone loaded with today's placement from their first day.
   const head = "Mã nhân viên,Họ và tên,Email công việc,Pháp nhân (mã),Phòng ban (mã),Chức danh,Ngày vào làm,Quản lý trực tiếp";
   const loaded = parseTable(
-    parseCsv(`${head}\nSZM-0001,Đặng Hoàng Long,long.dang@suzu.group,SZM,VID,Trưởng phòng,01/03/2019,\nSZM-0002,Hồ Gia Huy,huy.ho@suzu.group,SZM,VID,Dựng phim,01/06/2021,SZM-0001\nSZM-0003,Bùi Thanh Tâm,tam.bui@suzu.group,SZM,VID,Dựng phim,01/01/2020,\n`),
+    parseCsv(
+      `${head}\nSZM-0001,Đặng Hoàng Long,long.dang@suzu.group,SZM,VID,Trưởng phòng,01/03/2019,\nSZM-0002,Hồ Gia Huy,huy.ho@suzu.group,SZM,VID,Dựng phim,01/06/2021,SZM-0001\nSZM-0003,Bùi Thanh Tâm,tam.bui@suzu.group,SZM,VID,Dựng phim,01/01/2020,\n`,
+    ),
     employeeColumns,
   );
   expect(loaded.problems).toEqual([]);
@@ -122,7 +124,10 @@ describe("work history import", () => {
     ]);
     expect(periods[0].managerId).toBe(ids.huy);
     // The hire now points at where Long started, and says so.
-    const [hire] = await db().select().from(schema.lifecycleEvent).where(and(eq(schema.lifecycleEvent.personId, ids.long), eq(schema.lifecycleEvent.type, "hire")));
+    const [hire] = await db()
+      .select()
+      .from(schema.lifecycleEvent)
+      .where(and(eq(schema.lifecycleEvent.personId, ids.long), eq(schema.lifecycleEvent.type, "hire")));
     expect(hire.assignmentId).toBe(periods[0].id);
     expect((hire.details.to as { position: string }).position).toBe("Biên tập viên");
     // Today's placement is untouched.

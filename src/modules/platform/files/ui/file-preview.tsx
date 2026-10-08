@@ -31,12 +31,7 @@ const MAX_TEXT_CHARS = 200_000;
 const RETRY_AFTER_MS = 10_000;
 
 type Sheet = { name: string; rows: string[][]; total: number };
-type Content =
-  | { kind: "pdf"; objectUrl: string }
-  | { kind: "document"; html: string }
-  | { kind: "sheets"; sheets: Sheet[] }
-  | { kind: "text"; text: string }
-  | { kind: "archive"; entries: ZipEntry[] | null };
+type Content = { kind: "pdf"; objectUrl: string } | { kind: "document"; html: string } | { kind: "sheets"; sheets: Sheet[] } | { kind: "text"; text: string } | { kind: "archive"; entries: ZipEntry[] | null };
 
 const nameInLink = (url: string) => {
   try {
@@ -98,9 +93,7 @@ export function FilePreviewDialog({ target, onClose }: { target: PreviewTarget; 
             {t("download")}
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
-          {broken ? <Notice onDownload={download}>{t("failed")}</Notice> : <Viewer kind={kind} url={url} onExpired={onExpired} onDownload={download} />}
-        </div>
+        <div className="min-h-0 flex-1 overflow-auto">{broken ? <Notice onDownload={download}>{t("failed")}</Notice> : <Viewer kind={kind} url={url} onExpired={onExpired} onDownload={download} />}</div>
       </DialogContent>
     </Dialog>
   );
@@ -153,7 +146,13 @@ async function readContent(kind: PreviewKind, blob: Blob): Promise<Content> {
   }
   if (kind === "csv") {
     const text = await blob.text();
-    const rows = text.includes("\t") && !text.includes(",") ? text.replace(/^﻿/, "").split(/\r?\n/).map((line) => line.split("\t")) : parseCsv(text);
+    const rows =
+      text.includes("\t") && !text.includes(",")
+        ? text
+            .replace(/^﻿/, "")
+            .split(/\r?\n/)
+            .map((line) => line.split("\t"))
+        : parseCsv(text);
     return { kind: "sheets", sheets: [tableOf("", rows)] };
   }
   if (kind === "archive") return { kind: "archive", entries: listZipEntries(new Uint8Array(await blob.arrayBuffer())) };
@@ -280,7 +279,9 @@ function ArchiveViewer({ entries }: { entries: ZipEntry[] | null }) {
             {files.map((entry) => (
               <TableRow key={entry.name}>
                 <TableCell className="font-mono text-xs break-all whitespace-normal">{entry.name}</TableCell>
-                <TableCell kind="number" className="text-xs text-muted-foreground">{formatBytes(entry.sizeBytes)}</TableCell>
+                <TableCell kind="number" className="text-xs text-muted-foreground">
+                  {formatBytes(entry.sizeBytes)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

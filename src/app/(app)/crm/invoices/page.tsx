@@ -30,7 +30,15 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
   const status = STATUSES.find((value) => value === params.status) ?? "open";
   const today = todayInVietnam();
   const records = can(user.principal, "pjm:commercial");
-  const [t, f, aging, invoices, ready, accounts, vat] = await Promise.all([getTranslations("crm"), formatters(), agingSummary(shell.viewer, {}, today), listInvoices(shell.viewer, { status }, today), records ? listBillingQueue(user.principal, { status: "ready" }) : Promise.resolve([]), accountsById(), vatRates(today)]);
+  const [t, f, aging, invoices, ready, accounts, vat] = await Promise.all([
+    getTranslations("crm"),
+    formatters(),
+    agingSummary(shell.viewer, {}, today),
+    listInvoices(shell.viewer, { status }, today),
+    records ? listBillingQueue(user.principal, { status: "ready" }) : Promise.resolve([]),
+    accountsById(),
+    vatRates(today),
+  ]);
   const [references, held] = await Promise.all([contractNumbersOfProjects([...new Set(ready.map((item) => item.projectId))]), heldBillingItemIds(ready.map((item) => item.id))]);
   // One invoice goes to one client from one entity: ready items grouped that way, those this reader
   // may invoice — and not those a draft already holds (they are on that draft's page).
@@ -85,13 +93,19 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
                   {invoice.number ?? t("invoice.draftHeading")}
                 </RecordLink>
                 <p className="font-sans text-xs text-faint">
-                  <RecordLink kind="entity" id={invoice.entityId}>{invoice.entityName}</RecordLink>
+                  <RecordLink kind="entity" id={invoice.entityId}>
+                    {invoice.entityName}
+                  </RecordLink>
                 </p>
               </TableCell>
               <TableCell>
-                <RecordLink kind="account" id={invoice.clientId}>{invoice.accountName}</RecordLink>
+                <RecordLink kind="account" id={invoice.clientId}>
+                  {invoice.accountName}
+                </RecordLink>
                 <p className="text-xs text-faint">
-                  <RecordLink kind="person" id={invoice.managerPersonId}>{invoice.managerName}</RecordLink>
+                  <RecordLink kind="person" id={invoice.managerPersonId}>
+                    {invoice.managerName}
+                  </RecordLink>
                 </p>
               </TableCell>
               <TableCell kind="date">{f.date(invoice.issuedOn)}</TableCell>
@@ -105,7 +119,9 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
                 </Badge>
               </TableCell>
               <TableCell kind="money">{f.money(invoice.totalVnd)}</TableCell>
-              <TableCell kind="money" className={invoice.outstandingVnd > 0 && invoice.daysPastDue > 0 ? "text-destructive" : undefined}>{f.money(invoice.outstandingVnd)}</TableCell>
+              <TableCell kind="money" className={invoice.outstandingVnd > 0 && invoice.daysPastDue > 0 ? "text-destructive" : undefined}>
+                {f.money(invoice.outstandingVnd)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -124,7 +140,20 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
                       {group.entityName ? ` · ${group.entityName}` : ""} <span className="font-mono text-xs font-normal text-faint tabular-nums">{t("invoices.readyCount", { count: group.items.length })}</span>
                     </summary>
                     <div className="pt-3">
-                      <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectId: item.projectId, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
+                      <RecordInvoiceForm
+                        items={group.items.map((item) => ({
+                          id: item.id,
+                          projectId: item.projectId,
+                          projectName: item.projectName,
+                          jobNumber: item.jobNumber,
+                          description: item.description,
+                          amountVnd: item.amountVnd ?? null,
+                          reference: item.reference ?? references.get(item.projectId) ?? null,
+                        }))}
+                        vatRates={vat.allowedBp}
+                        defaultVat={vat.defaultBp}
+                        today={today}
+                      />
                     </div>
                   </details>
                 </ListItem>

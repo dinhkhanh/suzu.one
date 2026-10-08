@@ -141,7 +141,15 @@ export async function findPipeline(pipelineId: string, executor?: Executor): Pro
   return (await pipelineTables(executor)).pipelines.find((row) => row.id === pipelineId);
 }
 
-export type PipelineInput = { code: string; name: string; nameEn: string | null; description: string | null; isDefault: boolean; isActive: boolean; stages: { key: string; name: string; nameEn: string | null; category: PipelineStageRow["category"] }[] };
+export type PipelineInput = {
+  code: string;
+  name: string;
+  nameEn: string | null;
+  description: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  stages: { key: string; name: string; nameEn: string | null; category: PipelineStageRow["category"] }[];
+};
 
 /**
  * Writes a pipeline and its stages. A stage that is still named is kept (its id is what
@@ -165,7 +173,11 @@ export async function savePipeline(pipelineId: string | null, input: PipelineInp
       [after] = await tx.insert(schema.recruitPipeline).values(values).returning();
     }
     // At most one default, and the database is not asked to remember it for us.
-    if (input.isDefault) await tx.update(schema.recruitPipeline).set({ isDefault: false }).where(sql`${schema.recruitPipeline.id} <> ${after.id}`);
+    if (input.isDefault)
+      await tx
+        .update(schema.recruitPipeline)
+        .set({ isDefault: false })
+        .where(sql`${schema.recruitPipeline.id} <> ${after.id}`);
 
     const existing = await tx.select().from(schema.recruitPipelineStage).where(eq(schema.recruitPipelineStage.pipelineId, after.id));
     const keeping = new Set(input.stages.map((stage) => stage.key));
@@ -200,11 +212,7 @@ export function recruitReach(principal: Principal, columns: { entityId: AnyPgCol
   const reach = permissionReach(principal, "recruit:manage");
   if (reach.all) return sql`true`;
   const units = reach.unitIds.length > 0 ? [...new Set(reach.unitIds)] : null;
-  return or(
-    reach.entityIds.length > 0 ? inArray(columns.entityId, reach.entityIds) : undefined,
-    units ? inArray(columns.departmentId, units) : undefined,
-    units ? inArray(columns.teamId, units) : undefined,
-  );
+  return or(reach.entityIds.length > 0 ? inArray(columns.entityId, reach.entityIds) : undefined, units ? inArray(columns.departmentId, units) : undefined, units ? inArray(columns.teamId, units) : undefined);
 }
 
 /**
@@ -484,7 +492,14 @@ export async function updateOpening(openingId: string, input: OpeningInput, mone
     .where(
       and(
         eq(schema.jobOpening.id, openingId),
-        pipelineChanges ? notExists(db().select({ one: sql`1` }).from(schema.jobApplication).where(eq(schema.jobApplication.openingId, schema.jobOpening.id))) : undefined,
+        pipelineChanges
+          ? notExists(
+              db()
+                .select({ one: sql`1` })
+                .from(schema.jobApplication)
+                .where(eq(schema.jobApplication.openingId, schema.jobOpening.id)),
+            )
+          : undefined,
       ),
     )
     .returning();
@@ -689,16 +704,27 @@ export async function listCandidates(principal: Principal, filters: CandidateFil
   return (await readCandidates(principal, filters, 200, 0)).rows;
 }
 
-type CandidateFilters = { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean; /** Only the talent pool: kept beyond their applications, by their own consent. */ talentPool?: boolean };
+type CandidateFilters = {
+  query?: string;
+  tag?: string;
+  source?: CandidateSource;
+  /** Leave out whoever already applied here. */ notAppliedTo?: string;
+  /** Leave out anonymised rows. */ identifiedOnly?: boolean;
+  /** Only the talent pool: kept beyond their applications, by their own consent. */ talentPool?: boolean;
+};
 
 /** One page of the candidate database (PERF-03), newest first, and how many candidates the filters name in all. */
-export const listCandidatePage = (principal: Principal, filters: CandidateFilters, page: number, pageSize: number): Promise<{ rows: CandidateListRow[]; total: number }> => readCandidates(principal, filters, pageSize, (Math.max(1, page) - 1) * pageSize);
+export const listCandidatePage = (principal: Principal, filters: CandidateFilters, page: number, pageSize: number): Promise<{ rows: CandidateListRow[]; total: number }> =>
+  readCandidates(principal, filters, pageSize, (Math.max(1, page) - 1) * pageSize);
 
 async function readCandidates(principal: Principal, filters: CandidateFilters, limit: number, offset: number): Promise<{ rows: CandidateListRow[]; total: number }> {
   if (!canBrowseCandidates(principal)) return { rows: [], total: 0 };
 
   // Counted for the rows returned only (one page), off the candidate index.
-  const applications = sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, schema.candidate.id))})`;
+  const applications = sql<number>`(${db()
+    .select({ value: sql<number>`count(*)::int` })
+    .from(schema.jobApplication)
+    .where(eq(schema.jobApplication.candidateId, schema.candidate.id))})`;
 
   const query = filters.query?.trim();
   const rows = await db()
@@ -738,7 +764,21 @@ async function readCandidates(principal: Principal, filters: CandidateFilters, l
     .limit(limit)
     .offset(offset);
 
-  return { total: rows[0]?.total ?? 0, rows: rows.map(({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, talentPool, applications }) => ({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, applications: Number(applications ?? 0), anonymised: !!anonymisedAt, talentPool })) };
+  return {
+    total: rows[0]?.total ?? 0,
+    rows: rows.map(({ id, fullName, currentTitle, source, tags, createdAt, anonymisedAt, talentPool, applications }) => ({
+      id,
+      fullName,
+      currentTitle,
+      source,
+      tags,
+      createdAt,
+      anonymisedAt,
+      applications: Number(applications ?? 0),
+      anonymised: !!anonymisedAt,
+      talentPool,
+    })),
+  };
 }
 
 /**
@@ -956,11 +996,7 @@ export async function withdrawApplication(applicationId: string, actorPersonId: 
     const before = await findApplication(applicationId, tx);
     if (!before) throw new ActionError("recruit_application_not_found");
     if (APPLICATION_CLOSED.includes(before.status)) throw new ActionError("recruit_application_closed");
-    const [after] = await tx
-      .update(schema.jobApplication)
-      .set({ status: "withdrawn", closedAt: now(), decidedByPersonId: actorPersonId, updatedAt: now() })
-      .where(eq(schema.jobApplication.id, applicationId))
-      .returning();
+    const [after] = await tx.update(schema.jobApplication).set({ status: "withdrawn", closedAt: now(), decidedByPersonId: actorPersonId, updatedAt: now() }).where(eq(schema.jobApplication.id, applicationId)).returning();
     await recordApplicationEvent(tx, { applicationId, type: "withdrawn", fromStageId: before.stageId, actorPersonId, note });
     return { before, after };
   });
@@ -1147,7 +1183,21 @@ export async function getApplicationView(viewer: { principal: Principal; personI
 
 // ── Hiring requests (FR-REC-01) ─────────────────────────────────────────────────────────────
 
-export type HiringRequestListRow = { id: string; positionTitle: string; headcount: number; status: HiringRequestRow["status"]; entityId: string; entityName: string | null; departmentId: string | null; departmentName: string | null; requesterPersonId: string; requesterName: string; createdAt: Date; approvalRequestId: string | null; openingId: string | null };
+export type HiringRequestListRow = {
+  id: string;
+  positionTitle: string;
+  headcount: number;
+  status: HiringRequestRow["status"];
+  entityId: string;
+  entityName: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  requesterPersonId: string;
+  requesterName: string;
+  createdAt: Date;
+  approvalRequestId: string | null;
+  openingId: string | null;
+};
 
 /** The asks the principal may see: theirs, the ones they will manage, and the ones in their recruitment scope. */
 export async function listHiringRequests(principal: Principal): Promise<HiringRequestListRow[]> {

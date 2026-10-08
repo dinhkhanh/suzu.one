@@ -57,7 +57,6 @@ export async function propose(context: ToolContext, tool: string, spec: Proposal
   };
 }
 
-
 // ── Names → ids, among a list the module itself gave ─────────────────────────────────────────
 
 const ME = new Set(["me", "myself", "toi", "minh", "em"]);

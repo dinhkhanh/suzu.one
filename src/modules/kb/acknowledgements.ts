@@ -63,7 +63,12 @@ export async function setAckRequirement(pageId: string, input: AckSettings): Pro
   }
   if (input.required && audience.length === 0) throw new ActionError("kb_ack_audience_required");
   return db().transaction(async (tx) => {
-    const [before] = await tx.select().from(kbPage).where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(kbPage)
+      .where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     const audienceBefore = await getAckSettings(pageId, tx);
     await tx.delete(kbAckAudience).where(eq(kbAckAudience.pageId, pageId));
@@ -106,7 +111,13 @@ async function pendingPeople(executor: Executor, pageId: string): Promise<Owing[
  */
 async function viewersFor(executor: Executor, personIds: readonly string[]): Promise<Map<string, KbViewer>> {
   if (personIds.length === 0) return new Map();
-  const [rows, grants] = await Promise.all([executor.select().from(person).where(inArray(person.id, [...personIds])), loadGrantsOfPeople(personIds, todayInVietnam(), executor)]);
+  const [rows, grants] = await Promise.all([
+    executor
+      .select()
+      .from(person)
+      .where(inArray(person.id, [...personIds])),
+    loadGrantsOfPeople(personIds, todayInVietnam(), executor),
+  ]);
   return new Map(
     rows.map((row) => {
       const principal = { personId: row.id, workforceType: row.workforceType, grants: grants.get(row.id) ?? [] };
@@ -158,7 +169,15 @@ async function sendNoticeBatches(tx: Tx, batches: readonly NoticeBatch[], today:
   if (asked.length === 0) return sent;
   const fresh = await tx
     .insert(kbAckReminder)
-    .values(asked.map(({ page, kind, personId, overdue }) => ({ pageId: page.id, versionId: page.ackVersionId!, personId, sentOn: today, kind: kind === "requested" ? ("requested" as const) : overdue ? ("overdue" as const) : ("reminder" as const) })))
+    .values(
+      asked.map(({ page, kind, personId, overdue }) => ({
+        pageId: page.id,
+        versionId: page.ackVersionId!,
+        personId,
+        sentOn: today,
+        kind: kind === "requested" ? ("requested" as const) : overdue ? ("overdue" as const) : ("reminder" as const),
+      })),
+    )
     .onConflictDoNothing()
     .returning({ pageId: kbAckReminder.pageId, personId: kbAckReminder.personId });
   const claimed = new Set(fresh.map((row) => `${row.pageId}:${row.personId}`));
@@ -172,7 +191,10 @@ async function sendNoticeBatches(tx: Tx, batches: readonly NoticeBatch[], today:
     groups.set(key, group);
   }
   for (const { page, kind, dueOn, recipients } of groups.values()) {
-    await notify({ recipients, kind: kind === "requested" ? "kb.ack_requested" : "kb.ack_reminder", params: { title: page.publishedTitle ?? page.title, dueDate: dueText(dueOn), overdue: dueOn < today ? "yes" : "no" }, link: `/kb/pages/${page.id}` }, tx);
+    await notify(
+      { recipients, kind: kind === "requested" ? "kb.ack_requested" : "kb.ack_reminder", params: { title: page.publishedTitle ?? page.title, dueDate: dueText(dueOn), overdue: dueOn < today ? "yes" : "no" }, link: `/kb/pages/${page.id}` },
+      tx,
+    );
   }
   return sent;
 }
@@ -181,14 +203,31 @@ async function sendNoticeBatches(tx: Tx, batches: readonly NoticeBatch[], today:
 async function askNewlyOwing(tx: Tx, page: PageRow, today: IsoDate): Promise<number> {
   if (!page.ackVersionId) return 0;
   const pending = await pendingPeople(tx, page.id);
-  const told = new Set((await tx.select({ personId: kbAckReminder.personId }).from(kbAckReminder).where(and(eq(kbAckReminder.pageId, page.id), eq(kbAckReminder.versionId, page.ackVersionId)))).map((row) => row.personId));
-  return sendNotices(tx, page, pending.filter((owing) => !told.has(owing.personId)), today, "requested");
+  const told = new Set(
+    (
+      await tx
+        .select({ personId: kbAckReminder.personId })
+        .from(kbAckReminder)
+        .where(and(eq(kbAckReminder.pageId, page.id), eq(kbAckReminder.versionId, page.ackVersionId)))
+    ).map((row) => row.personId),
+  );
+  return sendNotices(
+    tx,
+    page,
+    pending.filter((owing) => !told.has(owing.personId)),
+    today,
+    "requested",
+  );
 }
 
 /** HR's "remind now": everyone still pending, whatever the rhythm — but never twice on one day. */
 export async function remindPendingNow(pageId: string, today: IsoDate = todayInVietnam()): Promise<{ page: PageRow; reminded: number; pending: number }> {
   return db().transaction(async (tx) => {
-    const [page] = await tx.select().from(kbPage).where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt))).limit(1);
+    const [page] = await tx
+      .select()
+      .from(kbPage)
+      .where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt)))
+      .limit(1);
     if (!page) throw new ActionError("kb_page_not_found");
     if (!page.ackRequired || !page.ackVersionId) throw new ActionError("kb_ack_not_required");
     const pending = await pendingPeople(tx, pageId);
@@ -229,7 +268,14 @@ export async function sendAckReminders(today: IsoDate = todayInVietnam()): Promi
       const sentOn = (row: (typeof owing)[number]) => lastBy.get(`${page.id}:${row.personId}`);
       return [
         { page, kind: "requested", people: owing.filter((row) => !sentOn(row)) },
-        { page, kind: "reminder", people: owing.filter((row) => { const at = sentOn(row); return !!at && addDays(at, ACK_REMINDER_EVERY_DAYS) <= today; }) },
+        {
+          page,
+          kind: "reminder",
+          people: owing.filter((row) => {
+            const at = sentOn(row);
+            return !!at && addDays(at, ACK_REMINDER_EVERY_DAYS) <= today;
+          }),
+        },
       ];
     });
     const sent = await sendNoticeBatches(tx, batches, today);
@@ -262,14 +308,27 @@ export async function getAckStatus(page: PageRow, personId: string, today: IsoDa
 /** "I have read and understood." Only for someone in the audience; twice is once. The caller has checked that they can open the page. */
 export async function acknowledgePage(pageId: string, personId: string): Promise<{ page: PageRow; versionId: string; acknowledgedAt: Date; already: boolean }> {
   return db().transaction(async (tx) => {
-    const [page] = await tx.select().from(kbPage).where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt))).limit(1);
+    const [page] = await tx
+      .select()
+      .from(kbPage)
+      .where(and(eq(kbPage.id, pageId), isNull(kbPage.deletedAt)))
+      .limit(1);
     if (!page) throw new ActionError("kb_page_not_found");
     if (!page.ackRequired || !page.ackVersionId || !page.publishedVersionId || page.status === "archived") throw new ActionError("kb_ack_not_required");
-    const [member] = await tx.select({ id: person.id }).from(person).innerJoin(kbPage, eq(kbPage.id, pageId)).where(and(eq(person.id, personId), eq(person.status, "active"), inAudienceSql())).limit(1);
+    const [member] = await tx
+      .select({ id: person.id })
+      .from(person)
+      .innerJoin(kbPage, eq(kbPage.id, pageId))
+      .where(and(eq(person.id, personId), eq(person.status, "active"), inAudienceSql()))
+      .limit(1);
     if (!member) throw new ActionError("kb_ack_not_in_audience");
     const [fresh] = await tx.insert(kbAcknowledgement).values({ pageId, versionId: page.ackVersionId, personId }).onConflictDoNothing().returning();
     if (fresh) return { page, versionId: page.ackVersionId, acknowledgedAt: fresh.acknowledgedAt, already: false };
-    const [existing] = await tx.select().from(kbAcknowledgement).where(and(eq(kbAcknowledgement.pageId, pageId), eq(kbAcknowledgement.versionId, page.ackVersionId), eq(kbAcknowledgement.personId, personId))).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(kbAcknowledgement)
+      .where(and(eq(kbAcknowledgement.pageId, pageId), eq(kbAcknowledgement.versionId, page.ackVersionId), eq(kbAcknowledgement.personId, personId)))
+      .limit(1);
     return { page, versionId: page.ackVersionId, acknowledgedAt: existing.acknowledgedAt, already: true };
   });
 }
@@ -279,7 +338,17 @@ export type PendingAck = { pageId: string; title: string; spaceName: string; spa
 /** What the viewer still has to confirm — only pages they can open (filtered in SQL). For "my acknowledgements" and the home feed. */
 export async function listMyPendingAcks(viewer: KbViewer, today: IsoDate = todayInVietnam()): Promise<PendingAck[]> {
   const rows = await db()
-    .select({ pageId: kbPage.id, title: kbPage.publishedTitle, fallbackTitle: kbPage.title, spaceName: kbSpace.name, spaceKey: kbSpace.key, versionNo: kbPageVersion.versionNo, ackSince: kbPage.ackSince, ackDueDays: kbPage.ackDueDays, createdAt: person.createdAt })
+    .select({
+      pageId: kbPage.id,
+      title: kbPage.publishedTitle,
+      fallbackTitle: kbPage.title,
+      spaceName: kbSpace.name,
+      spaceKey: kbSpace.key,
+      versionNo: kbPageVersion.versionNo,
+      ackSince: kbPage.ackSince,
+      ackDueDays: kbPage.ackDueDays,
+      createdAt: person.createdAt,
+    })
     .from(kbPage)
     .innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId))
     .innerJoin(kbPageVersion, eq(kbPageVersion.id, kbPage.ackVersionId))
@@ -310,7 +379,15 @@ export type DoneAck = { pageId: string; title: string; versionNo: number; acknow
 /** What the person has confirmed, newest first; `current` = it is still the version that counts. */
 export async function listMyAcknowledgements(personId: string, limit = 100): Promise<DoneAck[]> {
   const rows = await db()
-    .select({ pageId: kbPage.id, title: kbPageVersion.title, versionNo: kbPageVersion.versionNo, acknowledgedAt: kbAcknowledgement.acknowledgedAt, versionId: kbAcknowledgement.versionId, ackVersionId: kbPage.ackVersionId, ackRequired: kbPage.ackRequired })
+    .select({
+      pageId: kbPage.id,
+      title: kbPageVersion.title,
+      versionNo: kbPageVersion.versionNo,
+      acknowledgedAt: kbAcknowledgement.acknowledgedAt,
+      versionId: kbAcknowledgement.versionId,
+      ackVersionId: kbPage.ackVersionId,
+      ackRequired: kbPage.ackRequired,
+    })
     .from(kbAcknowledgement)
     .innerJoin(kbPage, eq(kbPage.id, kbAcknowledgement.pageId))
     .innerJoin(kbPageVersion, eq(kbPageVersion.id, kbAcknowledgement.versionId))
@@ -322,7 +399,19 @@ export async function listMyAcknowledgements(personId: string, limit = 100): Pro
 
 // ── The managers' report ────────────────────────────────────────────────────────────────────
 
-export type AckReportRow = { personId: string; fullName: string; entityId: string | null; entityName: string | null; departmentId: string | null; departmentName: string | null; acknowledgedAt: Date | null; dueOn: IsoDate; overdue: boolean; lastNoticeOn: IsoDate | null; notices: number };
+export type AckReportRow = {
+  personId: string;
+  fullName: string;
+  entityId: string | null;
+  entityName: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  acknowledgedAt: Date | null;
+  dueOn: IsoDate;
+  overdue: boolean;
+  lastNoticeOn: IsoDate | null;
+  notices: number;
+};
 export type AckGroup = { name: string; total: number; done: number };
 export type AckReport = { versionNo: number | null; since: Date | null; dueDays: number; total: number; done: number; overdue: number; rows: AckReportRow[]; byEntity: AckGroup[]; byDepartment: AckGroup[] };
 
@@ -353,11 +442,33 @@ export async function getAckReport(page: PageRow, today: IsoDate = todayInVietna
     .orderBy(asc(person.searchName));
   const rows: AckReportRow[] = people.map((row) => {
     const dueOn = ackDueOn(page, row.createdAt);
-    return { personId: row.personId, fullName: row.fullName, entityId: row.entityId, entityName: row.entityName, departmentId: row.departmentId, departmentName: row.departmentName, acknowledgedAt: row.acknowledgedAt, dueOn, overdue: !row.acknowledgedAt && dueOn < today, lastNoticeOn: row.lastNoticeOn, notices: row.notices };
+    return {
+      personId: row.personId,
+      fullName: row.fullName,
+      entityId: row.entityId,
+      entityName: row.entityName,
+      departmentId: row.departmentId,
+      departmentName: row.departmentName,
+      acknowledgedAt: row.acknowledgedAt,
+      dueOn,
+      overdue: !row.acknowledgedAt && dueOn < today,
+      lastNoticeOn: row.lastNoticeOn,
+      notices: row.notices,
+    };
   });
   const group = (key: (row: AckReportRow) => string | null): AckGroup[] =>
     [...Map.groupBy(rows, (row) => key(row) ?? "—")].map(([name, own]) => ({ name, total: own.length, done: own.filter((row) => row.acknowledgedAt).length })).sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  return { versionNo: version?.versionNo ?? null, since: page.ackSince, dueDays: page.ackDueDays, total: rows.length, done: rows.filter((row) => row.acknowledgedAt).length, overdue: rows.filter((row) => row.overdue).length, rows, byEntity: group((row) => row.entityName), byDepartment: group((row) => row.departmentName) };
+  return {
+    versionNo: version?.versionNo ?? null,
+    since: page.ackSince,
+    dueDays: page.ackDueDays,
+    total: rows.length,
+    done: rows.filter((row) => row.acknowledgedAt).length,
+    overdue: rows.filter((row) => row.overdue).length,
+    rows,
+    byEntity: group((row) => row.entityName),
+    byDepartment: group((row) => row.departmentName),
+  };
 }
 
 // ── Review-by dates (FR-KB-07) ──────────────────────────────────────────────────────────────
@@ -372,7 +483,11 @@ export async function sendReviewDueNotices(today: IsoDate = todayInVietnam()): P
   let notified = 0;
   for (const page of pages) {
     await db().transaction(async (tx) => {
-      const [marked] = await tx.update(kbPage).set({ reviewRemindedOn: today }).where(and(eq(kbPage.id, page.id), isNull(kbPage.reviewRemindedOn))).returning({ id: kbPage.id });
+      const [marked] = await tx
+        .update(kbPage)
+        .set({ reviewRemindedOn: today })
+        .where(and(eq(kbPage.id, page.id), isNull(kbPage.reviewRemindedOn)))
+        .returning({ id: kbPage.id });
       if (!marked) return;
       await notify({ recipients: [page.ownerPersonId!], kind: "kb.review_due", params: { title: page.publishedTitle ?? page.title, date: dueText(page.reviewBy!) }, link: `/kb/pages/${page.id}` }, tx);
       notified++;

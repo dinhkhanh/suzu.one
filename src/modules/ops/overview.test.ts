@@ -30,10 +30,36 @@ import { saveTemplate, type TemplateInput } from "./templates";
 import { tableToCsv } from "../platform/export/csv";
 
 const ids = {} as Record<"szm" | "szc" | "fin" | "finance" | "accountant" | "head" | "hrSzm" | "ceo" | "owner" | "employee", string>;
-const base: TemplateInput = { code: "VAT", name: "VAT return", category: "external", authority: "tax", recurrence: "monthly", dueRule: { type: "after_period", monthsAfter: 1, day: 20 }, shift: "none", eventType: null, entityIds: null, ownerRule: "person", ownerPersonId: null, reviewerRule: "person", reviewerPersonId: null, checklist: [], guidance: null, links: [], reminderLeadDays: [7, 3, 1], escalation: { managerAfterDays: 3, executiveAfterDays: 7 }, evidence: NO_EVIDENCE, penaltyNote: null, isActive: true };
+const base: TemplateInput = {
+  code: "VAT",
+  name: "VAT return",
+  category: "external",
+  authority: "tax",
+  recurrence: "monthly",
+  dueRule: { type: "after_period", monthsAfter: 1, day: 20 },
+  shift: "none",
+  eventType: null,
+  entityIds: null,
+  ownerRule: "person",
+  ownerPersonId: null,
+  reviewerRule: "person",
+  reviewerPersonId: null,
+  checklist: [],
+  guidance: null,
+  links: [],
+  reminderLeadDays: [7, 3, 1],
+  escalation: { managerAfterDays: 3, executiveAfterDays: 7 },
+  evidence: NO_EVIDENCE,
+  penaltyNote: null,
+  isActive: true,
+};
 
 const principal = (personId: string, grants: Principal["grants"]): { principal: Principal; personId: string } => ({ principal: { personId, workforceType: "employee", grants }, personId });
-const noticesOf = async (kind: string) => (await db().select({ personId: schema.notification.recipientPersonId, params: schema.notification.params }).from(schema.notification).where(eq(schema.notification.kind, kind))).map((row) => ({ who: Object.entries(ids).find(([, id]) => id === row.personId)?.[0], count: (row.params as { count: number }).count }));
+const noticesOf = async (kind: string) =>
+  (await db().select({ personId: schema.notification.recipientPersonId, params: schema.notification.params }).from(schema.notification).where(eq(schema.notification.kind, kind))).map((row) => ({
+    who: Object.entries(ids).find(([, id]) => id === row.personId)?.[0],
+    count: (row.params as { count: number }).count,
+  }));
 const clearNotices = () => db().delete(schema.notification);
 
 beforeAll(async () => {
@@ -43,16 +69,21 @@ beforeAll(async () => {
   const [fin] = await db().insert(schema.orgUnit).values({ code: "FIN", name: "Finance" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, fin: fin.id });
   for (const key of ["finance", "head", "accountant", "hrSzm", "ceo", "owner", "employee"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: key === "accountant" || key === "head" ? fin.id : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: key === "accountant" || key === "head" ? fin.id : null })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.finance, role: "finance", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: fin.id, validFrom: "2020-01-01" },
-    { personId: ids.hrSzm, role: "hr_staff", scopeType: "entity", scopeId: szm.id, validFrom: "2020-01-01" },
-    { personId: ids.ceo, role: "c_level", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.finance, role: "finance", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+      { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: fin.id, validFrom: "2020-01-01" },
+      { personId: ids.hrSzm, role: "hr_staff", scopeType: "entity", scopeId: szm.id, validFrom: "2020-01-01" },
+      { personId: ids.ceo, role: "c_level", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+      { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
+    ]);
   // The accountant owns the VAT return, the finance lead reviews it; periods July–September 2026 for both entities.
   await saveTemplate(null, { ...base, ownerPersonId: ids.accountant, reviewerPersonId: ids.finance });
   await generateInstances("2026-08-01", { from: "2026-08-01", horizonDays: 90 });
@@ -71,7 +102,10 @@ describe("ops reminders and escalation", () => {
   it("the first day late tells the owner and the reviewer; then the department head; then finance, the CEO and the owner", async () => {
     await clearNotices();
     expect(await sendOpsReminders("2026-08-21")).toMatchObject({ overdue: 4, escalated: 0 });
-    expect((await noticesOf("ops.overdue")).sort((a, b) => a.who!.localeCompare(b.who!))).toEqual([{ who: "accountant", count: 2 }, { who: "finance", count: 2 }]);
+    expect((await noticesOf("ops.overdue")).sort((a, b) => a.who!.localeCompare(b.who!))).toEqual([
+      { who: "accountant", count: 2 },
+      { who: "finance", count: 2 },
+    ]);
     expect(await sendOpsReminders("2026-08-22")).toMatchObject({ overdue: 0, escalated: 0 });
 
     await clearNotices();
@@ -87,7 +121,10 @@ describe("ops reminders and escalation", () => {
   it("shows the escalation level on the list and says nothing more once the item is closed", async () => {
     const viewer = principal(ids.finance, [{ role: "finance", scope: { type: "group" } }]);
     const july = (await listInstances(viewer, { open: true }, "2026-08-27")).filter((item) => item.periodKey === "2026-07");
-    expect(july.map((item) => [item.colour, item.escalationLevel])).toEqual([["overdue", 2], ["overdue", 2]]);
+    expect(july.map((item) => [item.colour, item.escalationLevel])).toEqual([
+      ["overdue", 2],
+      ["overdue", 2],
+    ]);
     for (const item of july) await completeInstance(item.taskId, ids.accountant, "2026-08-27");
     await clearNotices();
     // 20 September: nothing about July any more; the August return is due in 0 days with no same-day lead time → the closest reached lead (1) goes out once.
@@ -123,8 +160,18 @@ describe("dashboard, archive and export scoping", () => {
       const dashboard = await getDashboard(viewer, {}, day);
       // (The last month ends past the 28th, but nothing is due that late in it.)
       const items = await listInstances(viewer, { dueFrom: `${dashboard.months[0]}-01`, dueTo: `${dashboard.months.at(-1)}-28`, limit: 5000 }, day);
-      expect(dashboard.rows).toEqual(dashboardMatrix(dashboard.rows.map((row) => row.entity), dashboard.months, items));
-      expect(dashboard.totals).toEqual({ overdue: items.filter((item) => item.colour === "overdue").length, dueSoon: items.filter((item) => item.colour === "due_soon").length, escalated: items.filter((item) => item.colour === "overdue" && item.escalationLevel > 0).length });
+      expect(dashboard.rows).toEqual(
+        dashboardMatrix(
+          dashboard.rows.map((row) => row.entity),
+          dashboard.months,
+          items,
+        ),
+      );
+      expect(dashboard.totals).toEqual({
+        overdue: items.filter((item) => item.colour === "overdue").length,
+        dueSoon: items.filter((item) => item.colour === "due_soon").length,
+        escalated: items.filter((item) => item.colour === "overdue" && item.escalationLevel > 0).length,
+      });
     }
   });
 
@@ -137,7 +184,9 @@ describe("dashboard, archive and export scoping", () => {
     expect(dashboard.totals).toMatchObject({ overdue: 2, escalated: 1 });
     const cell = dashboard.rows.find((row) => row.entity.id === august.entityId)!.cells.find((c) => c.month === "2026-09")!;
     expect(cell).toMatchObject({ counts: { overdue: 1 }, escalated: 1 });
-    await db().delete(schema.obligationNoticeSent).where(and(eq(schema.obligationNoticeSent.instanceId, august.instanceId), eq(schema.obligationNoticeSent.key, "escalate:manager")));
+    await db()
+      .delete(schema.obligationNoticeSent)
+      .where(and(eq(schema.obligationNoticeSent.instanceId, august.instanceId), eq(schema.obligationNoticeSent.key, "escalate:manager")));
   });
 
   it("filters by authority, category and owner", async () => {
@@ -160,6 +209,12 @@ describe("dashboard, archive and export scoping", () => {
     const file = await buildHistoryExport(entityViewer, { year: 2026 }, "en", today);
     expect(file.rowCount).toBe(1);
     expect(tableToCsv(file.table)).toContain("SZM,VAT,VAT return");
-    expect(await db().select().from(schema.obligationNoticeSent).where(and(inArray(schema.obligationNoticeSent.key, ["escalate:executive"]))).then((sent) => sent.length)).toBe(2);
+    expect(
+      await db()
+        .select()
+        .from(schema.obligationNoticeSent)
+        .where(and(inArray(schema.obligationNoticeSent.key, ["escalate:executive"])))
+        .then((sent) => sent.length),
+    ).toBe(2);
   });
 });

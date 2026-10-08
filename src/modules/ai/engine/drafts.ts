@@ -18,7 +18,7 @@ export type DraftLine = { key: string; params: Record<string, string | number> }
 // ── Guardrail ───────────────────────────────────────────────────────────────────────────────
 
 /** Amounts of money: "15.000.000 đ", "15tr", "20 triệu", "1,5 tỷ", "VND 3,000,000", "$1200". */
-export const MONEY =/(?:(?:vnd|vnđ|usd|\$)\s?\d[\d.,]*(?:\s?(?:k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))?)|(?:\d[\d.,]*\s?(?:đồng|đ|₫|vnd|vnđ|usd|k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))/giu;
+export const MONEY = /(?:(?:vnd|vnđ|usd|\$)\s?\d[\d.,]*(?:\s?(?:k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))?)|(?:\d[\d.,]*\s?(?:đồng|đ|₫|vnd|vnđ|usd|k|tr|triệu|tỷ|nghìn|ngàn)(?!\p{L}))/giu;
 /**
  * Whole words, in any script: `\b` only knows ASCII letters, so "sẽ" or "đã" would never match it.
  * Tested with Vietnamese on both edges.
@@ -83,7 +83,18 @@ export function eodDraftLines(facts: EodFacts): DraftLine[] {
 // ── Project status summary (FR-PJM-27) ──────────────────────────────────────────────────────
 
 /** The status facts of a project — hours and counts; the fee is never among them. */
-export type StatusDraftFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number };
+export type StatusDraftFacts = {
+  tasksDone: number;
+  tasksOpen: number;
+  overdue: number;
+  blocked: number;
+  milestoneSlipDays: number | null;
+  nextMilestone: { name: string; dueDate: string | null } | null;
+  minutesLogged: number;
+  budgetMinutes: number | null;
+  deliverablesAccepted: number;
+  deliverablesPromised: number;
+};
 
 export function statusDraftLines(facts: StatusDraftFacts): DraftLine[] {
   const lines: DraftLine[] = [{ key: "status.progress", params: { done: facts.tasksDone, open: facts.tasksOpen } }];
@@ -91,9 +102,13 @@ export function statusDraftLines(facts: StatusDraftFacts): DraftLine[] {
   if (facts.overdue > 0) lines.push({ key: "status.overdue", params: { count: facts.overdue } });
   if (facts.blocked > 0) lines.push({ key: "status.blocked", params: { count: facts.blocked } });
   if (facts.milestoneSlipDays !== null && facts.milestoneSlipDays > 0) lines.push({ key: "status.slip", params: { days: facts.milestoneSlipDays } });
-  if (facts.nextMilestone) lines.push(facts.nextMilestone.dueDate ? { key: "status.nextMilestone", params: { name: facts.nextMilestone.name, date: facts.nextMilestone.dueDate } } : { key: "status.nextMilestoneUndated", params: { name: facts.nextMilestone.name } });
+  if (facts.nextMilestone)
+    lines.push(
+      facts.nextMilestone.dueDate ? { key: "status.nextMilestone", params: { name: facts.nextMilestone.name, date: facts.nextMilestone.dueDate } } : { key: "status.nextMilestoneUndated", params: { name: facts.nextMilestone.name } },
+    );
   const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
-  if (facts.budgetMinutes && facts.budgetMinutes > 0) lines.push({ key: "status.burn", params: { logged: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes), percent: Math.round((facts.minutesLogged / facts.budgetMinutes) * 100) } });
+  if (facts.budgetMinutes && facts.budgetMinutes > 0)
+    lines.push({ key: "status.burn", params: { logged: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes), percent: Math.round((facts.minutesLogged / facts.budgetMinutes) * 100) } });
   else if (facts.minutesLogged > 0) lines.push({ key: "status.hours", params: { logged: hours(facts.minutesLogged) } });
   return lines;
 }

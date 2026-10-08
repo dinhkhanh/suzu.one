@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { pickReviewer, type ReviewState, stateOnApproval, stateOnChangesRequested, stateOnSubmit } from "./review";
 
 const state = (id: string, category: ReviewState["category"], sortOrder: number, isActive = true): ReviewState => ({ id, category, sortOrder, isActive });
-const content = [state("backlog", "backlog", 0), state("brief", "todo", 1), state("edit", "in_progress", 5), state("internal", "in_review", 6), state("client", "in_review", 7), state("scheduled", "in_progress", 8), state("published", "done", 9), state("cancelled", "cancelled", 11)];
+const content = [
+  state("backlog", "backlog", 0),
+  state("brief", "todo", 1),
+  state("edit", "in_progress", 5),
+  state("internal", "in_review", 6),
+  state("client", "in_review", 7),
+  state("scheduled", "in_progress", 8),
+  state("published", "done", 9),
+  state("cancelled", "cancelled", 11),
+];
 
 describe("pickReviewer", () => {
   it("takes the first candidate who is not the submitter", () => {

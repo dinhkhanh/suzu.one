@@ -23,7 +23,20 @@ import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { contractsToWatch, sendHrAlerts } from "./alerts";
 import { isLabourContract } from "./engine/contract-rules";
-import { createContract, createDependent, deleteContract, findPeopleByNationalId, getContractSalaryTerms, getSensitiveFields, getSensitiveSummary, listContracts, listDependents, listDocuments, type SensitiveFields, updateSensitiveFields } from "./records";
+import {
+  createContract,
+  createDependent,
+  deleteContract,
+  findPeopleByNationalId,
+  getContractSalaryTerms,
+  getSensitiveFields,
+  getSensitiveSummary,
+  listContracts,
+  listDependents,
+  listDocuments,
+  type SensitiveFields,
+  updateSensitiveFields,
+} from "./records";
 import { rewrapEncryptedFields } from "./rewrap";
 import { hirePerson } from "./service";
 
@@ -46,7 +59,9 @@ let contractId: string;
 
 beforeAll(async () => {
   await migrateTestDb();
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
   const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
@@ -74,11 +89,13 @@ beforeAll(async () => {
   const huy = await hire("Ho Gia Huy", manager);
   const colleague = await hire("Some Colleague", manager);
   Object.assign(ids, { media: media.id, video: video.id, manager, head, hrStaff, hrAdmin, huy, colleague });
-  await db().insert(schema.roleAssignment).values([
-    { personId: head, role: "department_head", scopeType: "unit", scopeId: video.id, validFrom: "2024-01-01" },
-    { personId: hrStaff, role: "hr_staff", scopeType: "entity", scopeId: media.id, validFrom: "2024-01-01" },
-    { personId: hrAdmin, role: "hr_admin", scopeType: "group", validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: head, role: "department_head", scopeType: "unit", scopeId: video.id, validFrom: "2024-01-01" },
+      { personId: hrStaff, role: "hr_staff", scopeType: "entity", scopeId: media.id, validFrom: "2024-01-01" },
+      { personId: hrAdmin, role: "hr_admin", scopeType: "group", validFrom: "2024-01-01" },
+    ]);
   viewers = {
     self: principal(huy),
     lineManager: principal(manager),
@@ -98,9 +115,18 @@ beforeAll(async () => {
   contractId = contract.id;
 
   // Vault documents, one per tier. The bytes are irrelevant here; storage has its own integration test.
-  for (const [category, tier] of [["degree", "personal"], ["id_scan", "restricted"], ["contract", "compensation"]] as const) {
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: `test/${category}.pdf`, fileName: `${category}.pdf`, contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: category, entityId: media.id, tier, status: "ready" }).returning();
-    await db().insert(schema.personDocument).values({ personId: huy, entityId: media.id, category, title: category, tier, fileId: file.id, expiresOn: category === "id_scan" ? addDays(today, 12) : null });
+  for (const [category, tier] of [
+    ["degree", "personal"],
+    ["id_scan", "restricted"],
+    ["contract", "compensation"],
+  ] as const) {
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({ bucket: "test", objectPath: `test/${category}.pdf`, fileName: `${category}.pdf`, contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: category, entityId: media.id, tier, status: "ready" })
+      .returning();
+    await db()
+      .insert(schema.personDocument)
+      .values({ personId: huy, entityId: media.id, category, title: category, tier, fileId: file.id, expiresOn: category === "id_scan" ? addDays(today, 12) : null });
   }
 });
 
@@ -182,7 +208,6 @@ describe("contract rules at the service", () => {
     await expect(createContract(ids.colleague, { ...base, number: "HD-001", type: "nda", startDate: "2026-01-01", endDate: null }, ids.hrAdmin)).rejects.toThrow("contract_number_taken");
   });
 
-
   it("frees the number of a contract deleted as a mistake", async () => {
     const nda = { number: "NDA-7", type: "nda" as const, parentContractId: null, jobCategory: null, signDate: null, startDate: "2026-01-01", endDate: null, salaryTerms: null, note: null };
     const first = await createContract(ids.colleague, nda, ids.hrAdmin);
@@ -197,7 +222,11 @@ describe("daily alerts", () => {
   it("warns HR and the line manager once per threshold, and the person about their own documents", async () => {
     expect(await sendHrAlerts(today)).toEqual({ contractAlerts: 1, probationAlerts: 0, documentAlerts: 1 });
     const sent = await db().select().from(schema.notification);
-    const recipients = (kind: string) => sent.filter((row) => row.kind === kind).map((row) => row.recipientPersonId).sort();
+    const recipients = (kind: string) =>
+      sent
+        .filter((row) => row.kind === kind)
+        .map((row) => row.recipientPersonId)
+        .sort();
     expect(recipients("hr.contract_expiring")).toEqual([ids.hrStaff, ids.hrAdmin, ids.manager].sort());
     expect(recipients("hr.document_expiring")).toEqual([ids.hrStaff, ids.hrAdmin, ids.huy].sort());
     expect(sent.find((row) => row.kind === "hr.contract_expiring")?.params).toMatchObject({ person: "Ho Gia Huy", label: "HD-001", days: 30 });
@@ -209,8 +238,24 @@ describe("daily alerts", () => {
   });
 
   it("works out several people's alerts together, each to their own HR and their own person", async () => {
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: "test/colleague-id.pdf", fileName: "colleague-id.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "person_document", ownerId: "colleague-id", entityId: ids.media, tier: "restricted", status: "ready" }).returning();
-    await db().insert(schema.personDocument).values({ personId: ids.colleague, entityId: ids.media, category: "id_scan", title: "Colleague ID", tier: "restricted", fileId: file.id, expiresOn: addDays(today, 12) });
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "test",
+        objectPath: "test/colleague-id.pdf",
+        fileName: "colleague-id.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 10,
+        ownerType: "person_document",
+        ownerId: "colleague-id",
+        entityId: ids.media,
+        tier: "restricted",
+        status: "ready",
+      })
+      .returning();
+    await db()
+      .insert(schema.personDocument)
+      .values({ personId: ids.colleague, entityId: ids.media, category: "id_scan", title: "Colleague ID", tier: "restricted", fileId: file.id, expiresOn: addDays(today, 12) });
     // Huy's alerts are still due today but already claimed; only the colleague's is new.
     expect(await sendHrAlerts(today)).toEqual({ contractAlerts: 0, probationAlerts: 0, documentAlerts: 1 });
     const sent = (await db().select().from(schema.notification)).filter((row) => row.kind === "hr.document_expiring" && (row.params as { label?: string }).label === "Colleague ID");
@@ -226,14 +271,29 @@ describe("which contracts are watched", () => {
     const all = await db().select().from(schema.contract).where(isNull(schema.contract.deletedAt));
     const running = all.filter((row) => !row.terminatedOn && row.endDate && row.endDate >= today);
     const renewed = (contract: (typeof all)[number]) => all.some((other) => other.employmentId === contract.employmentId && other.id !== contract.id && isLabourContract(other.type) && other.startDate > contract.endDate!);
-    return running.filter((row) => (["fixed_term", "service", "internship"].includes(row.type) || row.type === "probation") && !renewed(row)).map((row) => row.id).sort();
+    return running
+      .filter((row) => (["fixed_term", "service", "internship"].includes(row.type) || row.type === "probation") && !renewed(row))
+      .map((row) => row.id)
+      .sort();
   };
 
   it("picks exactly the contracts the in-memory scan picked, renewals and all", async () => {
-    const [huys] = await db().select().from(schema.contract).where(and(eq(schema.contract.personId, ids.huy), eq(schema.contract.number, "HD-001")));
+    const [huys] = await db()
+      .select()
+      .from(schema.contract)
+      .where(and(eq(schema.contract.personId, ids.huy), eq(schema.contract.number, "HD-001")));
     const [colleagues] = await db().select({ employmentId: schema.employment.id }).from(schema.employment).where(eq(schema.employment.personId, ids.colleague));
     const end = huys.endDate!;
-    const row = (number: string, values: Partial<typeof schema.contract.$inferInsert>) => ({ employmentId: huys.employmentId, personId: ids.huy, entityId: huys.entityId, number, type: "fixed_term" as const, startDate: addDays(today, -10), endDate: addDays(today, 20), ...values });
+    const row = (number: string, values: Partial<typeof schema.contract.$inferInsert>) => ({
+      employmentId: huys.employmentId,
+      personId: ids.huy,
+      entityId: huys.entityId,
+      number,
+      type: "fixed_term" as const,
+      startDate: addDays(today, -10),
+      endDate: addDays(today, 20),
+      ...values,
+    });
     await db()
       .insert(schema.contract)
       .values([
@@ -252,7 +312,9 @@ describe("which contracts are watched", () => {
     expect(await watched()).toContain(huys.id);
 
     // A real renewal on file: HD-001 is no longer watched, by either rule.
-    await db().insert(schema.contract).values(row("W-RENEWAL", { type: "indefinite", startDate: addDays(end, 1), endDate: null }));
+    await db()
+      .insert(schema.contract)
+      .values(row("W-RENEWAL", { type: "indefinite", startDate: addDays(end, 1), endDate: null }));
     expect(await watched()).toEqual(await oldRule());
     expect(await watched()).not.toContain(huys.id);
   });

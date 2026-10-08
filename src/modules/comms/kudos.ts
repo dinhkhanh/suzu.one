@@ -26,7 +26,11 @@ export async function listCompanyValues(options: { includeInactive?: boolean } =
 
 /** Colleagues one can thank: active staff, no collaborators, not oneself. Names only. */
 export async function listKudosRecipients(selfPersonId: string): Promise<{ id: string; fullName: string }[]> {
-  return db().select({ id: person.id, fullName: person.fullName }).from(person).where(and(eq(person.status, "active"), ne(person.workforceType, "collaborator"), ne(person.id, selfPersonId))).orderBy(asc(person.searchName));
+  return db()
+    .select({ id: person.id, fullName: person.fullName })
+    .from(person)
+    .where(and(eq(person.status, "active"), ne(person.workforceType, "collaborator"), ne(person.id, selfPersonId)))
+    .orderBy(asc(person.searchName));
 }
 
 export async function findRecipient(personId: string): Promise<KudosRecipient | null> {
@@ -37,7 +41,11 @@ export async function findRecipient(personId: string): Promise<KudosRecipient | 
 export async function giveKudos(from: { personId: string; fullName: string; principal: Principal }, input: { toPersonId: string; valueKey: string; message: string }): Promise<KudosRow> {
   const to = await findRecipient(input.toPersonId);
   if (!to || !canGiveKudos(from.principal, to)) throw new ActionError("comms_kudos_recipient");
-  const [value] = await db().select().from(companyValue).where(and(eq(companyValue.key, input.valueKey), eq(companyValue.isActive, true))).limit(1);
+  const [value] = await db()
+    .select()
+    .from(companyValue)
+    .where(and(eq(companyValue.key, input.valueKey), eq(companyValue.isActive, true)))
+    .limit(1);
   if (!value) throw new ActionError("comms_value_unknown");
   return db().transaction(async (tx) => {
     const [row] = await tx.insert(kudos).values({ fromPersonId: from.personId, toPersonId: input.toPersonId, valueKey: value.key, message: input.message }).returning();
@@ -47,7 +55,11 @@ export async function giveKudos(from: { personId: string; fullName: string; prin
 }
 
 export async function findKudos(id: string): Promise<{ row: KudosRow; to: KudosRecipient } | null> {
-  const [row] = await db().select().from(kudos).where(and(eq(kudos.id, id), isNull(kudos.deletedAt))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(kudos)
+    .where(and(eq(kudos.id, id), isNull(kudos.deletedAt)))
+    .limit(1);
   const to = row ? await findRecipient(row.toPersonId) : null;
   return row && to ? { row, to } : null;
 }
@@ -55,19 +67,49 @@ export async function findKudos(id: string): Promise<{ row: KudosRow; to: KudosR
 export const mayRemoveKudos = (principal: Principal, found: { row: KudosRow; to: KudosRecipient }): boolean => canRemoveKudos(principal, found.row, found.to);
 
 export async function removeKudos(id: string, actorPersonId: string): Promise<KudosRow> {
-  const [row] = await db().update(kudos).set({ deletedAt: new Date(), deletedByPersonId: actorPersonId }).where(and(eq(kudos.id, id), isNull(kudos.deletedAt))).returning();
+  const [row] = await db()
+    .update(kudos)
+    .set({ deletedAt: new Date(), deletedByPersonId: actorPersonId })
+    .where(and(eq(kudos.id, id), isNull(kudos.deletedAt)))
+    .returning();
   if (!row) throw new ActionError("comms_kudos_not_found");
   return row;
 }
 
-export type KudosCard = { id: string; fromPersonId: string; fromName: string; toPersonId: string; toName: string; toEntityId: string | null; toUnitPath: readonly string[]; valueKey: string; valueNameVi: string | null; valueNameEn: string | null; message: string; createdAt: Date };
+export type KudosCard = {
+  id: string;
+  fromPersonId: string;
+  fromName: string;
+  toPersonId: string;
+  toName: string;
+  toEntityId: string | null;
+  toUnitPath: readonly string[];
+  valueKey: string;
+  valueNameVi: string | null;
+  valueNameEn: string | null;
+  message: string;
+  createdAt: Date;
+};
 
 /** The cards, joined to both people and the value, newest first; the caller adds the WHERE and the limit. */
 function kudosCards() {
   const giver = alias(person, "giver");
   const receiver = alias(person, "receiver");
   return db()
-    .select({ id: kudos.id, fromPersonId: kudos.fromPersonId, fromName: giver.fullName, toPersonId: kudos.toPersonId, toName: receiver.fullName, toEntityId: receiver.primaryEntityId, toUnitPath: receiver.orgUnitPath, valueKey: kudos.valueKey, valueNameVi: companyValue.nameVi, valueNameEn: companyValue.nameEn, message: kudos.message, createdAt: kudos.createdAt })
+    .select({
+      id: kudos.id,
+      fromPersonId: kudos.fromPersonId,
+      fromName: giver.fullName,
+      toPersonId: kudos.toPersonId,
+      toName: receiver.fullName,
+      toEntityId: receiver.primaryEntityId,
+      toUnitPath: receiver.orgUnitPath,
+      valueKey: kudos.valueKey,
+      valueNameVi: companyValue.nameVi,
+      valueNameEn: companyValue.nameEn,
+      message: kudos.message,
+      createdAt: kudos.createdAt,
+    })
     .from(kudos)
     .innerJoin(giver, eq(giver.id, kudos.fromPersonId))
     .innerJoin(receiver, eq(receiver.id, kudos.toPersonId))
@@ -90,9 +132,6 @@ export async function listKudos(options: { toPersonId?: string; fromPersonId?: s
  */
 export async function kudosReceived(toPersonId: string, options: { from?: Date; to?: Date; recent: number }): Promise<{ count: number; recent: KudosCard[] }> {
   const where = and(isNull(kudos.deletedAt), eq(kudos.toPersonId, toPersonId), options.from ? gte(kudos.createdAt, options.from) : undefined, options.to ? lte(kudos.createdAt, options.to) : undefined);
-  const [[total], recent] = await Promise.all([
-    db().select({ count: count() }).from(kudos).where(where),
-    options.recent > 0 ? kudosCards().where(where).orderBy(desc(kudos.createdAt)).limit(options.recent) : Promise.resolve([]),
-  ]);
+  const [[total], recent] = await Promise.all([db().select({ count: count() }).from(kudos).where(where), options.recent > 0 ? kudosCards().where(where).orderBy(desc(kudos.createdAt)).limit(options.recent) : Promise.resolve([])]);
   return { count: total?.count ?? 0, recent };
 }

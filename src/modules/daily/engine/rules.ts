@@ -28,7 +28,18 @@ export type TeamRules = {
  * required of everyone, every working day, the report by 23:00; time is logged in every team and
  * the week is approved by a lead. A team that never set its own rules follows these.
  */
-export const DEFAULT_TEAM_RULES: TeamRules = { planMode: "required", reportMode: "required", reportDays: [], planCutoff: "09:30", reportDeadline: "23:00", timeMode: "required", timesheetApproval: true, coverMinDays: 2, cycleWeeks: null, cycleStart: null };
+export const DEFAULT_TEAM_RULES: TeamRules = {
+  planMode: "required",
+  reportMode: "required",
+  reportDays: [],
+  planCutoff: "09:30",
+  reportDeadline: "23:00",
+  timeMode: "required",
+  timesheetApproval: true,
+  coverMinDays: 2,
+  cycleWeeks: null,
+  cycleStart: null,
+};
 
 /** What one person follows: a team's rules without the team's own calendar (cycles). */
 export type PersonRules = Omit<TeamRules, "cycleWeeks" | "cycleStart">;
@@ -37,7 +48,16 @@ export type PersonRules = Omit<TeamRules, "cycleWeeks" | "cycleStart">;
  * Someone in no work team follows the same company rules as everyone else (Q18): the day is asked
  * of the person, not of the team, and their line manager reads it and approves their week.
  */
-export const NO_TEAM_RULES: PersonRules = { planMode: DEFAULT_TEAM_RULES.planMode, reportMode: DEFAULT_TEAM_RULES.reportMode, reportDays: DEFAULT_TEAM_RULES.reportDays, planCutoff: DEFAULT_TEAM_RULES.planCutoff, reportDeadline: DEFAULT_TEAM_RULES.reportDeadline, timeMode: DEFAULT_TEAM_RULES.timeMode, timesheetApproval: DEFAULT_TEAM_RULES.timesheetApproval, coverMinDays: DEFAULT_TEAM_RULES.coverMinDays };
+export const NO_TEAM_RULES: PersonRules = {
+  planMode: DEFAULT_TEAM_RULES.planMode,
+  reportMode: DEFAULT_TEAM_RULES.reportMode,
+  reportDays: DEFAULT_TEAM_RULES.reportDays,
+  planCutoff: DEFAULT_TEAM_RULES.planCutoff,
+  reportDeadline: DEFAULT_TEAM_RULES.reportDeadline,
+  timeMode: DEFAULT_TEAM_RULES.timeMode,
+  timesheetApproval: DEFAULT_TEAM_RULES.timesheetApproval,
+  coverMinDays: DEFAULT_TEAM_RULES.coverMinDays,
+};
 
 const RANK: Record<RuleMode, number> = { off: 0, optional: 1, required: 2 };
 const strictest = (modes: readonly RuleMode[]): RuleMode => modes.reduce<RuleMode>((best, mode) => (RANK[mode] > RANK[best] ? mode : best), "off");

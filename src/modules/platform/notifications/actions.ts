@@ -109,7 +109,12 @@ export async function startMessengerLinkAction(input: unknown) {
 
 const messengerConfirmPipeline = createAction({
   name: "notification.messenger.confirm",
-  input: z.object({ code: z.string().trim().regex(/^\d{6}$/) }),
+  input: z.object({
+    code: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/),
+  }),
   authorize: () => true,
   run: async ({ user, input }) => {
     const { linkId } = await confirmMessengerLink(user.person.id, input.code);
@@ -167,7 +172,12 @@ export async function startTelegramLinkAction(input: unknown) {
 
 const telegramConfirmPipeline = createAction({
   name: "notification.telegram.confirm",
-  input: z.object({ code: z.string().trim().regex(/^\d{6}$/) }),
+  input: z.object({
+    code: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/),
+  }),
   authorize: () => true,
   run: async ({ user, input }) => {
     const { linkId } = await confirmTelegramLink(user.person.id, input.code);

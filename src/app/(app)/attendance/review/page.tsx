@@ -23,7 +23,9 @@ export default async function ReviewPunchesPage() {
   const describe = (row: (typeof rows)[number]) => (
     <>
       <p className="flex flex-wrap items-center gap-2 text-sm">
-        <RecordLink kind="person" id={row.personId} className="font-medium">{row.personName}</RecordLink>
+        <RecordLink kind="person" id={row.personId} className="font-medium">
+          {row.personName}
+        </RecordLink>
         <span className="font-mono text-[0.8125rem] tabular-nums">{format.dateTime(row.at, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
         <Badge variant={row.direction === "in" ? "success" : "secondary"}>{tFlags(row.direction === "in" ? "in" : "out")}</Badge>
       </p>
@@ -71,7 +73,9 @@ export default async function ReviewPunchesPage() {
                     {tFlags(`review.${row.reviewStatus}`)}
                   </Badge>
                   <span className="text-muted-foreground">
-                    <RecordLink kind="person" id={row.reviewerPersonId}>{row.reviewerName}</RecordLink>
+                    <RecordLink kind="person" id={row.reviewerPersonId}>
+                      {row.reviewerName}
+                    </RecordLink>
                     {row.reviewerName && row.reviewNote ? " — " : null}
                     {row.reviewNote}
                   </span>

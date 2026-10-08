@@ -19,7 +19,21 @@ export type AnswerGpsNotice = (input: unknown) => Promise<ActionResult<{ decisio
 export type GpsNotice = { state: GpsConsentState; version: string; days: number };
 
 /** The notice itself, in a sheet on a phone. "Không đồng ý" is offered only where a check-in can go on without it. */
-export function GpsNoticeDialog({ open, onOpenChange, days, pending, onAnswer, declineLabel }: { open: boolean; onOpenChange: (open: boolean) => void; days: number; pending: boolean; onAnswer: (decision: "given" | "declined") => void; declineLabel?: string }) {
+export function GpsNoticeDialog({
+  open,
+  onOpenChange,
+  days,
+  pending,
+  onAnswer,
+  declineLabel,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  days: number;
+  pending: boolean;
+  onAnswer: (decision: "given" | "declined") => void;
+  declineLabel?: string;
+}) {
   const t = useTranslations("privacy.gpsNotice");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,7 +97,16 @@ export function MyGpsConsent({ notice, since, answer }: { notice: GpsNotice; sin
         )}
       </div>
       <GpsNoticeDialog open={open === "notice"} onOpenChange={(value) => setOpen(value ? "notice" : null)} days={notice.days} pending={pending} onAnswer={(decision) => (decision === "given" ? send("given") : setOpen(null))} />
-      <ConfirmDialog open={open === "withdraw"} onOpenChange={(value) => setOpen(value ? "withdraw" : null)} question={t("withdrawConfirm")} detail={t("withdrawDetail", { days: notice.days })} confirmLabel={t("withdraw")} destructive pending={pending} onConfirm={() => send("withdrawn")} />
+      <ConfirmDialog
+        open={open === "withdraw"}
+        onOpenChange={(value) => setOpen(value ? "withdraw" : null)}
+        question={t("withdrawConfirm")}
+        detail={t("withdrawDetail", { days: notice.days })}
+        confirmLabel={t("withdraw")}
+        destructive
+        pending={pending}
+        onConfirm={() => send("withdrawn")}
+      />
       {failed ? (
         <p role="alert" className="text-xs text-destructive">
           {t("failed")}

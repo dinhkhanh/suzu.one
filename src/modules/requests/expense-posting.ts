@@ -166,9 +166,20 @@ export async function sweepApprovedClaims(actorPersonId: string | null): Promise
     const payable = approved.filter((claim) => (claim.amount ?? 0) > 0);
     const freed = payable.filter((claim) => claim.postedRunId !== null);
     if (freed.length > 0) {
-      await tx.delete(schema.expenseClaimPosting).where(and(inArray(schema.expenseClaimPosting.submissionId, freed.map((claim) => claim.submissionId)), inArray(schema.expenseClaimPosting.runId, [...new Set(freed.map((claim) => claim.postedRunId!))])));
+      await tx.delete(schema.expenseClaimPosting).where(
+        and(
+          inArray(
+            schema.expenseClaimPosting.submissionId,
+            freed.map((claim) => claim.submissionId),
+          ),
+          inArray(schema.expenseClaimPosting.runId, [...new Set(freed.map((claim) => claim.postedRunId!))]),
+        ),
+      );
     }
-    const openRuns = await findOpenRegularRuns(payable.flatMap((claim) => (claim.entityId ? [claim.entityId] : [])), tx);
+    const openRuns = await findOpenRegularRuns(
+      payable.flatMap((claim) => (claim.entityId ? [claim.entityId] : [])),
+      tx,
+    );
     const runOf = (claim: (typeof approved)[number]) => (claim.entityId ? openRuns.get(claim.entityId) : undefined);
     const going = payable.filter((claim) => !!runOf(claim));
     // The unique submission id still guards against paying one twice: a claim an approval posted

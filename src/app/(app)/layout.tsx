@@ -62,14 +62,32 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     { key: "notifications", href: "/notifications", label: t("nav.tabs.notifications"), count: unread },
     { key: "me", href: "/me", label: t("nav.tabs.me") },
   ];
-  const quickAdd = { title: t("nav.quickAdd.title"), button: t("nav.quickAdd.button"), task: t("nav.quickAdd.task"), taskHint: t("nav.quickAdd.taskHint"), time: t("nav.quickAdd.time"), timeHint: t("nav.quickAdd.timeHint"), leave: t("nav.quickAdd.leave"), leaveHint: t("nav.quickAdd.leaveHint"), request: t("nav.quickAdd.request"), requestHint: t("nav.quickAdd.requestHint"), cancel: t("nav.quickAdd.cancel") };
+  const quickAdd = {
+    title: t("nav.quickAdd.title"),
+    button: t("nav.quickAdd.button"),
+    task: t("nav.quickAdd.task"),
+    taskHint: t("nav.quickAdd.taskHint"),
+    time: t("nav.quickAdd.time"),
+    timeHint: t("nav.quickAdd.timeHint"),
+    leave: t("nav.quickAdd.leave"),
+    leaveHint: t("nav.quickAdd.leaveHint"),
+    request: t("nav.quickAdd.request"),
+    requestHint: t("nav.quickAdd.requestHint"),
+    cancel: t("nav.quickAdd.cancel"),
+  };
   const sections = groupNav([...today, ...nav.main.map(row), row({ key: "notificationSettings", href: "/notifications#settings" }), ...nav.admin.map(row)]).map((section) => ({
     key: section.key,
     label: t(`nav.sections.${section.key}`),
     items: section.items,
     // The language and the theme are switched in place, under the preference rows; the shell draws
     // the rows (icon, label) around the controls handed to it.
-    controls: section.key === "preferences" ? [{ key: "language", label: label("language"), control: <LocaleSwitch compact /> }, { key: "appearance", label: label("appearance"), control: <ThemeSwitch theme={theme} compact /> }] : undefined,
+    controls:
+      section.key === "preferences"
+        ? [
+            { key: "language", label: label("language"), control: <LocaleSwitch compact /> },
+            { key: "appearance", label: label("appearance"), control: <ThemeSwitch theme={theme} compact /> },
+          ]
+        : undefined,
   }));
   // The first-sign-in guide, until confirmed: it points only at pages this person's sidebar offers.
   // Vietnamese names end with the given name, which is what the greeting uses.
@@ -125,7 +143,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </AppFrame>
       <CommandPalette
         selfId={user.person.id}
-        pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
+        pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) =>
+          item.href ? [{ label: label(item.key), href: item.href }] : [],
+        )}
       />
       {welcome ? <WelcomeGuide steps={welcome} name={user.person.fullName.split(" ").at(-1) ?? user.person.fullName} /> : null}
     </DraftOwnerProvider>

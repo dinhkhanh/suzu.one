@@ -62,9 +62,13 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
                 </Link>
               </TableCell>
               <TableCell className="text-muted-foreground">
-                <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink>
+                <RecordLink kind="entity" id={row.entityId}>
+                  {row.entityName}
+                </RecordLink>
                 {row.entityName && row.departmentName ? " · " : null}
-                <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink>
+                <RecordLink kind="unit" id={row.departmentId}>
+                  {row.departmentName}
+                </RecordLink>
               </TableCell>
               {codes.map((code) => {
                 const balance = row.balances.find((candidate) => candidate.code === code);

@@ -9,7 +9,12 @@ import { getProfitability, type ProfitabilityFilter, type ProfitabilityReader } 
 import { accountsById } from "./accounts";
 import { type AccountProfit, accountProfitability } from "./engine/profit";
 
-export type ClientProfitability = { period: { from: string; to: string }; accounts: AccountProfit[]; total: ReturnType<typeof accountProfitability>["total"]; privateLine: { costVnd: number; feeVnd: number | null; projects: number } | null };
+export type ClientProfitability = {
+  period: { from: string; to: string };
+  accounts: AccountProfit[];
+  total: ReturnType<typeof accountProfitability>["total"];
+  privateLine: { costVnd: number; feeVnd: number | null; projects: number } | null;
+};
 
 export async function getClientProfitability(reader: ProfitabilityReader, filter: Omit<ProfitabilityFilter, "clientId">): Promise<ClientProfitability | null> {
   const view = await getProfitability(reader, filter);
@@ -18,7 +23,15 @@ export async function getClientProfitability(reader: ProfitabilityReader, filter
   const { accounts: rows, total } = accountProfitability(
     view.projects.map((project) => {
       const account = project.clientId ? accounts.get(project.clientId) : undefined;
-      return { accountId: account?.client.id ?? null, accountName: account?.client.name ?? project.clientName, pitch: plans.get(project.id)?.kind === "pitch", feeVnd: project.feeVnd, costVnd: project.costVnd, hours: project.hours, estimated: project.estimated };
+      return {
+        accountId: account?.client.id ?? null,
+        accountName: account?.client.name ?? project.clientName,
+        pitch: plans.get(project.id)?.kind === "pitch",
+        feeVnd: project.feeVnd,
+        costVnd: project.costVnd,
+        hours: project.hours,
+        estimated: project.estimated,
+      };
     }),
   );
   return { period: view.period, accounts: rows, total, privateLine: view.privateProjects ? { costVnd: view.privateProjects.costVnd, feeVnd: view.privateProjects.feeVnd, projects: view.privateProjects.projects } : null };

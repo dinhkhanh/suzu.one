@@ -80,7 +80,13 @@ describe("scoreReviewForm", () => {
     // (1 × 7000 + 2 × 10000) / 3 = 27000 / 3 = 9000
     expect(scoreReviewForm(odd, "self", { a: 2, b: 3 }).scoreBp).toBe(9000);
     // A genuine half: (1 × 4000 + 2 × 11500) / 3 = 27000/3 = 9000; use a 2-line odd split instead.
-    const half: ReviewFormShape = { ratingScale: [{ value: 1, label: "x", labelEn: null, scoreBp: 10001 }, { value: 2, label: "y", labelEn: null, scoreBp: 10000 }], sections: [section("a"), section("b")] };
+    const half: ReviewFormShape = {
+      ratingScale: [
+        { value: 1, label: "x", labelEn: null, scoreBp: 10001 },
+        { value: 2, label: "y", labelEn: null, scoreBp: 10000 },
+      ],
+      sections: [section("a"), section("b")],
+    };
     // (10001 + 10000) / 2 = 10000.5 → 10001
     expect(scoreReviewForm(half, "self", { a: 1, b: 2 }).scoreBp).toBe(10001);
   });

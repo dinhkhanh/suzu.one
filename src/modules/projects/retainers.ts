@@ -21,7 +21,27 @@ import { notify } from "../platform/notifications/service";
 import { fireProjectAutomations } from "../work/service";
 import { acceptedForBilling, ensureBillingItem } from "./billing";
 import { type LineStatus, lineStatus, unitsConsumed } from "./engine/register";
-import { addMonths, HOURS_ALERT, hoursUsage, isMonth, lastDayOf, missedMonths, type Month, monthBounds, monthOf, monthsDue, monthsToMake, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
+import {
+  addMonths,
+  HOURS_ALERT,
+  hoursUsage,
+  isMonth,
+  lastDayOf,
+  missedMonths,
+  type Month,
+  monthBounds,
+  monthOf,
+  monthsDue,
+  monthsToMake,
+  planPeriod,
+  type PreviousPeriod,
+  quotaAlertsDue,
+  type RetainerRollover,
+  type RetainerTerms,
+  totalUsage,
+  type Usage,
+  usage,
+} from "./engine/retainer";
 import { loadLineUnits } from "./metrics";
 import { assertRetainerQuotaOpen } from "./guards";
 import { ensurePlan, isProjectClosed } from "./plans";
@@ -78,7 +98,10 @@ export async function saveRetainer(projectId: string, input: RetainerInput): Pro
     assertRetainerQuotaOpen(plan, before, { lines: input.lines, minutesPerMonth: input.minutesPerMonth, feePerMonthVnd: input.feePerMonthVnd });
     const bounds = monthBounds(monthOf(todayInVietnam(plan.createdAt)), monthOf(todayInVietnam()));
     const floor = project?.startDate && monthOf(project.startDate) < bounds.min ? monthOf(project.startDate) : bounds.min;
-    for (const [month, stored] of [[input.startMonth, before?.startMonth], [input.endMonth, before?.endMonth]] as const) {
+    for (const [month, stored] of [
+      [input.startMonth, before?.startMonth],
+      [input.endMonth, before?.endMonth],
+    ] as const) {
       if (!month || month === stored) continue;
       if (month < floor || month > bounds.max) throw new ActionError("retainer_month_out_of_range", { min: floor, max: bounds.max });
     }
@@ -113,7 +136,11 @@ export type PeriodLine = DeliverableRow & LineStatus & { consumed: number; usage
 async function periodLines(periodIds: readonly string[]): Promise<Map<string, PeriodLine[]>> {
   const result = new Map<string, PeriodLine[]>(periodIds.map((id) => [id, []]));
   if (periodIds.length === 0) return result;
-  const lines = await db().select().from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.retainerPeriodId, [...periodIds])).orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
+  const lines = await db()
+    .select()
+    .from(schema.projectDeliverable)
+    .where(inArray(schema.projectDeliverable.retainerPeriodId, [...periodIds]))
+    .orderBy(asc(schema.projectDeliverable.sortOrder), asc(schema.projectDeliverable.createdAt));
   const units = await loadLineUnits(lines.map((line) => line.id));
   for (const line of lines) {
     const own = units.get(line.id) ?? [];
@@ -145,25 +172,45 @@ const termsOf = (retainer: RetainerRow, project: { startDate: IsoDate | null; du
  * which the month being made does not change.
  */
 async function makePeriod(retainerId: string, month: Month): Promise<PeriodRow | null> {
-  const [previous] = await db().select().from(schema.projectRetainerPeriod).where(and(eq(schema.projectRetainerPeriod.retainerId, retainerId), eq(schema.projectRetainerPeriod.month, addMonths(month, -1)))).limit(1);
+  const [previous] = await db()
+    .select()
+    .from(schema.projectRetainerPeriod)
+    .where(and(eq(schema.projectRetainerPeriod.retainerId, retainerId), eq(schema.projectRetainerPeriod.month, addMonths(month, -1))))
+    .limit(1);
   const previousLines = previous ? ((await periodLines([previous.id])).get(previous.id) ?? []) : null;
   return db().transaction(async (tx) => {
     const [retainer] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.id, retainerId)).limit(1).for("update");
     if (!retainer) return null;
-    const [existing] = await tx.select().from(schema.projectRetainerPeriod).where(and(eq(schema.projectRetainerPeriod.retainerId, retainerId), eq(schema.projectRetainerPeriod.month, month))).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(schema.projectRetainerPeriod)
+      .where(and(eq(schema.projectRetainerPeriod.retainerId, retainerId), eq(schema.projectRetainerPeriod.month, month)))
+      .limit(1);
     if (existing) return null;
     const [project] = await tx.select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, retainer.projectId)).limit(1);
     const plan = planPeriod(termsOf(retainer, project ?? { startDate: null, dueDate: null }), month, previousLines ? previousOf(previousLines) : null);
     const [period] = await tx.insert(schema.projectRetainerPeriod).values({ retainerId, month, minutesAllowance: plan.minutesAllowance, carried: plan.carried }).onConflictDoNothing().returning();
     if (!period) return null;
     if (plan.lines.length) {
-      await tx.insert(schema.projectDeliverable).values(plan.lines.map((line, index) => ({ projectId: retainer.projectId, retainerPeriodId: period.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: lastDayOf(month), sortOrder: index })));
+      await tx.insert(schema.projectDeliverable).values(
+        plan.lines.map((line, index) => ({
+          projectId: retainer.projectId,
+          retainerPeriodId: period.id,
+          title: line.title,
+          quantity: line.quantity,
+          format: line.format,
+          channel: line.channel,
+          dueDate: lastDayOf(month),
+          sortOrder: index,
+        })),
+      );
     }
     return period;
   });
 }
 
-const monthsMade = async (retainerId: string): Promise<Month[]> => (await db().select({ month: schema.projectRetainerPeriod.month }).from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.retainerId, retainerId))).map((row) => row.month);
+const monthsMade = async (retainerId: string): Promise<Month[]> =>
+  (await db().select({ month: schema.projectRetainerPeriod.month }).from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.retainerId, retainerId))).map((row) => row.month);
 
 /**
  * A month the midnight job never made, made now by the lead (FR-PJM-06): a retainer entered after
@@ -200,7 +247,12 @@ function periodFee(retainer: RetainerRow, project: { startDate: IsoDate | null; 
 
 /** The fee of one month of a retainer, looked up by the period — for a retainer month's acceptance. */
 export async function feeOfPeriod(executor: Executor, periodId: string): Promise<{ month: Month; feeVnd: number | null } | null> {
-  const [row] = await executor.select({ period: schema.projectRetainerPeriod, retainer: schema.projectRetainer }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainerPeriod.id, periodId)).limit(1);
+  const [row] = await executor
+    .select({ period: schema.projectRetainerPeriod, retainer: schema.projectRetainer })
+    .from(schema.projectRetainerPeriod)
+    .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
+    .where(eq(schema.projectRetainerPeriod.id, periodId))
+    .limit(1);
   if (!row) return null;
   const [project] = await executor.select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, row.retainer.projectId)).limit(1);
   return { month: row.period.month, feeVnd: periodFee(row.retainer, project ?? { startDate: null, dueDate: null }, row.period.month) };
@@ -223,7 +275,11 @@ export async function closePeriod(periodId: string, actorPersonId: string | null
     const [period] = await tx.select().from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.id, periodId)).limit(1).for("update");
     if (!period) throw new ActionError("retainer_period_not_found");
     const [retainer] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.id, period.retainerId)).limit(1);
-    const [project] = await tx.select({ clientId: schema.workProject.clientId, startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, retainer.projectId)).limit(1);
+    const [project] = await tx
+      .select({ clientId: schema.workProject.clientId, startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate })
+      .from(schema.workProject)
+      .where(eq(schema.workProject.id, retainer.projectId))
+      .limit(1);
     const closed = period.status === "open";
     if (closed) await tx.update(schema.projectRetainerPeriod).set({ status: "closed", closedAt: new Date() }).where(eq(schema.projectRetainerPeriod.id, periodId));
     const fee = periodFee(retainer, project ?? { startDate: null, dueDate: null }, period.month);
@@ -305,10 +361,12 @@ export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
   ]);
   let alerts = 0;
   for (const { period, projectId, projectName } of periods) {
-    const due = (lines.get(period.id) ?? []).filter((line) => !line.cancelledAt).flatMap((line) => {
-      const keys = quotaAlertsDue(line.id, line.usage.percent, period.alerted);
-      return keys.length ? [{ line, keys }] : [];
-    });
+    const due = (lines.get(period.id) ?? [])
+      .filter((line) => !line.cancelledAt)
+      .flatMap((line) => {
+        const keys = quotaAlertsDue(line.id, line.usage.percent, period.alerted);
+        return keys.length ? [{ line, keys }] : [];
+      });
     const hours = hoursUsage(period.minutesAllowance, minutes.get(`${projectId} ${period.month}`) ?? 0);
     if (due.length === 0 && (!hours || quotaAlertsDue(HOURS_ALERT, hours.percent, period.alerted).length === 0)) continue;
     const recipients = recipientsByProject.get(projectId) ?? [];
@@ -387,7 +445,12 @@ export async function listPeriods(retainer: RetainerRow, seesFees: boolean): Pro
   const [lines, minutes, items, project] = await Promise.all([
     periodLines(ids),
     minutesByProjectMonth([retainer.projectId]),
-    ids.length ? db().select().from(schema.projectBillingItem).where(and(inArray(schema.projectBillingItem.retainerPeriodId, ids), eq(schema.projectBillingItem.source, "retainer"))) : Promise.resolve([]),
+    ids.length
+      ? db()
+          .select()
+          .from(schema.projectBillingItem)
+          .where(and(inArray(schema.projectBillingItem.retainerPeriodId, ids), eq(schema.projectBillingItem.source, "retainer")))
+      : Promise.resolve([]),
     db().select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, retainer.projectId)).limit(1),
   ]);
   const itemOf = new Map(items.map((item) => [item.retainerPeriodId, item]));
@@ -437,7 +500,12 @@ export async function retainerConsumption(projectIds: readonly string[], range: 
 
 /** The retainer period of a project, for the actions' checks. */
 export async function findPeriod(periodId: string): Promise<(PeriodRow & { projectId: string }) | undefined> {
-  const [row] = await db().select({ period: schema.projectRetainerPeriod, projectId: schema.projectRetainer.projectId }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainerPeriod.id, periodId)).limit(1);
+  const [row] = await db()
+    .select({ period: schema.projectRetainerPeriod, projectId: schema.projectRetainer.projectId })
+    .from(schema.projectRetainerPeriod)
+    .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
+    .where(eq(schema.projectRetainerPeriod.id, periodId))
+    .limit(1);
   return row ? { ...row.period, projectId: row.projectId } : undefined;
 }
 

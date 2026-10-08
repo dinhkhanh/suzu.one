@@ -15,7 +15,13 @@ describe("notes", () => {
       heading(2, "Mục tiêu"),
       paragraph("Hoàn thành ", bold("bản nháp"), " trước thứ Sáu, xem ", link("brief", "https://example.com/a"), ".", { type: "hardBreak" }, "snake_case giữ nguyên, _nghiêng_ thì không."),
       bulletList("Một", [paragraph("Hai", { type: "hardBreak" }, "dòng hai"), bulletList("Hai rưỡi")]),
-      { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Đã gửi")] }, { type: "taskItem", content: [paragraph("Chờ duyệt")] }] },
+      {
+        type: "taskList",
+        content: [
+          { type: "taskItem", attrs: { checked: true }, content: [paragraph("Đã gửi")] },
+          { type: "taskItem", content: [paragraph("Chờ duyệt")] },
+        ],
+      },
       callout("warning", "Hạn chót cứng.", "Không dời."),
       { type: "blockquote", content: [paragraph("Trích 1"), paragraph("Trích 2")] },
     );

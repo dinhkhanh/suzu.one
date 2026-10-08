@@ -53,7 +53,19 @@ type Option = { id: string; name: string };
 type AudienceType = (typeof ACK_AUDIENCE_TYPES)[number];
 
 /** "Must read": on or off, days to confirm, who must confirm. Saves the whole setting at once. */
-export function AckSettingsForm({ pageId, required, dueDays, audience, choices }: { pageId: string; required: boolean; dueDays: number; audience: { subjectKey: string; label: string }[]; choices: { entities: Option[]; units: Option[]; people: Option[] } }) {
+export function AckSettingsForm({
+  pageId,
+  required,
+  dueDays,
+  audience,
+  choices,
+}: {
+  pageId: string;
+  required: boolean;
+  dueDays: number;
+  audience: { subjectKey: string; label: string }[];
+  choices: { entities: Option[]; units: Option[]; people: Option[] };
+}) {
   const t = useTranslations("kb");
   const router = useRouter();
   const [on, setOn] = useState(required);

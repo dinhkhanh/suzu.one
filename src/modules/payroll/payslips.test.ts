@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -75,7 +81,11 @@ const summary = () => ({
 });
 
 /** A principal holding one role over one entity. */
-const grantee = (personId: string, role: "hr_admin" | "hr_staff" | "c_level" | "finance" | "department_head" | "entity_director" | "auditor" | "payroll", entityId: string): Principal => ({ personId, workforceType: "employee", grants: [{ role, scope: { type: "entity", id: entityId } }] });
+const grantee = (personId: string, role: "hr_admin" | "hr_staff" | "c_level" | "finance" | "department_head" | "entity_director" | "auditor" | "payroll", entityId: string): Principal => ({
+  personId,
+  workforceType: "employee",
+  grants: [{ role, scope: { type: "entity", id: entityId } }],
+});
 /** The person themselves, with no role at all. */
 const self = (personId: string): Principal => ({ personId, workforceType: "employee", grants: [] });
 const owner = (personId: string): Principal => ({ personId, workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] });
@@ -92,7 +102,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string, managerId: string | null = null) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate,
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -123,7 +142,9 @@ beforeAll(async () => {
   ] as const) {
     const id = crypto.randomUUID();
     const terms = { baseSalary: amount, insuranceSalary: amount, allowances: [] };
-    await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employmentOf(personId), entityId: entity.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({ id, personId, employmentId: employmentOf(personId), entityId: entity.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
   }
 
   const lockedAt = new Date("2026-08-28T03:00:00Z");

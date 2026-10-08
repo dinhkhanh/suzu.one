@@ -50,17 +50,9 @@ export default async function PeoplePage(props: PageProps<"/people">) {
     page: Number.parseInt(one("page") ?? "1", 10) || 1,
   };
   // What a saved view stores, and what the pager carries from page to page.
-  const activeFilters = Object.fromEntries(
-    Object.entries({ ...filters, page: undefined }).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-  );
+  const activeFilters = Object.fromEntries(Object.entries({ ...filters, page: undefined }).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 
-  const [{ rows, total, pageSize }, entities, departments, views, competencies] = await Promise.all([
-    listPeople(user.principal, filters),
-    listEntities(),
-    unitChoices(),
-    listSavedViews(user.person.id, "people"),
-    competencyChoices(),
-  ]);
+  const [{ rows, total, pageSize }, entities, departments, views, competencies] = await Promise.all([listPeople(user.principal, filters), listEntities(), unitChoices(), listSavedViews(user.person.id, "people"), competencyChoices()]);
   const page = filters.page ?? 1;
   const [te, locale] = await Promise.all([getTranslations("exports"), getLocale()]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -199,14 +191,42 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                 </TableCell>
                 <TableCell>{jobTitle(t, row) ?? "—"}</TableCell>
                 <TableCell>{row.positionName ?? "—"}</TableCell>
-                <TableCell>{row.departmentName ? <RecordLink kind="unit" id={row.departmentId}>{row.departmentName}</RecordLink> : "—"}</TableCell>
-                <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : "—"}</TableCell>
-                <TableCell>{row.managerName ? <RecordLink kind="person" id={row.managerId}>{row.managerName}</RecordLink> : "—"}</TableCell>
+                <TableCell>
+                  {row.departmentName ? (
+                    <RecordLink kind="unit" id={row.departmentId}>
+                      {row.departmentName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.entityName ? (
+                    <RecordLink kind="entity" id={row.entityId}>
+                      {row.entityName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.managerName ? (
+                    <RecordLink kind="person" id={row.managerId}>
+                      {row.managerName}
+                    </RecordLink>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 {personalFacts ? (
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
                       {row.workforceType ? <Badge variant="secondary">{t(`workforceType.${row.workforceType}`)}</Badge> : "—"}
-                      {row.status && row.status !== "active" ? <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge> : null}
+                      {row.status && row.status !== "active" ? (
+                        <Badge dot variant={statusTone(row.status)}>
+                          {t(`status.${row.status}`)}
+                        </Badge>
+                      ) : null}
                     </span>
                   </TableCell>
                 ) : null}

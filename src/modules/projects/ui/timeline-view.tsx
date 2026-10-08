@@ -104,12 +104,29 @@ export function TimelineView({ view }: { view: View }) {
   const totalDays = daysBetween(view.range.from, view.range.to) + 1;
   const chartW = totalDays * dayW;
   const x = useCallback((date: string) => daysBetween(view.range.from, date) * dayW, [view.range.from, dayW]);
-  const calendar = useMemo(() => workCalendar(view.workingWeekdays, view.daysOff.map((day) => day.date)), [view.workingWeekdays, view.daysOff]);
+  const calendar = useMemo(
+    () =>
+      workCalendar(
+        view.workingWeekdays,
+        view.daysOff.map((day) => day.date),
+      ),
+    [view.workingWeekdays, view.daysOff],
+  );
 
   const tasks = useMemo(() => view.tasks.map((task) => ({ ...task, ...(overrides.get(task.id) ?? {}) })), [view.tasks, overrides]);
   const dated = useMemo(() => tasks.filter((task) => task.dueDate), [tasks]);
   const undated = useMemo(() => tasks.filter((task) => !task.dueDate), [tasks]);
-  const critical = useMemo(() => (showCritical ? criticalPath(calendar, tasks.map((task) => ({ id: task.id, startDate: task.startDate, dueDate: task.dueDate, open: isOpen(task) })), view.dependencies) : new Set<string>()), [showCritical, calendar, tasks, view.dependencies]);
+  const critical = useMemo(
+    () =>
+      showCritical
+        ? criticalPath(
+            calendar,
+            tasks.map((task) => ({ id: task.id, startDate: task.startDate, dueDate: task.dueDate, open: isOpen(task) })),
+            view.dependencies,
+          )
+        : new Set<string>(),
+    [showCritical, calendar, tasks, view.dependencies],
+  );
 
   const rows = useMemo<Row[]>(() => {
     const result: Row[] = [];
@@ -196,7 +213,12 @@ export function TimelineView({ view }: { view: View }) {
 
   function commit(task: TimelineTask, to: Dates) {
     if (to.startDate === task.startDate && to.dueDate === task.dueDate) return;
-    const plan = planMove(calendar, tasks.filter((other) => isOpen(other) || other.id === task.id), view.dependencies, { taskId: task.id, ...to });
+    const plan = planMove(
+      calendar,
+      tasks.filter((other) => isOpen(other) || other.id === task.id),
+      view.dependencies,
+      { taskId: task.id, ...to },
+    );
     if (plan.shifts.length) setPending({ task, to, plan });
     else send(task, to, null, false);
   }
@@ -310,9 +332,21 @@ export function TimelineView({ view }: { view: View }) {
     const title = [milestone.name, milestone.dueDate, milestone.slipDays ? slipText(milestone.slipDays) : null].filter(Boolean).join(" · ");
     return (
       <span key={milestone.id} className="contents">
-        {showBaseline && milestone.baselineDue && milestone.baselineDue !== milestone.dueDate ? <span aria-hidden className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-dashed border-muted-foreground/70" style={{ left: x(milestone.baselineDue) + dayW / 2 }} /> : null}
-        <span role="img" aria-label={title} title={title} className={`absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 ${milestone.done ? "bg-emerald-600" : late ? "bg-destructive" : "bg-amber-500"}`} style={{ left: center }} />
-        {milestone.slipDays ? <span className={`absolute top-1/2 -translate-y-1/2 pl-2 text-[10px] whitespace-nowrap ${milestone.slipDays > 0 ? "text-destructive" : "text-success"}`} style={{ left: center + 6 }}>{slipShort(milestone.slipDays)}</span> : null}
+        {showBaseline && milestone.baselineDue && milestone.baselineDue !== milestone.dueDate ? (
+          <span aria-hidden className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-dashed border-muted-foreground/70" style={{ left: x(milestone.baselineDue) + dayW / 2 }} />
+        ) : null}
+        <span
+          role="img"
+          aria-label={title}
+          title={title}
+          className={`absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 ${milestone.done ? "bg-emerald-600" : late ? "bg-destructive" : "bg-amber-500"}`}
+          style={{ left: center }}
+        />
+        {milestone.slipDays ? (
+          <span className={`absolute top-1/2 -translate-y-1/2 pl-2 text-[10px] whitespace-nowrap ${milestone.slipDays > 0 ? "text-destructive" : "text-success"}`} style={{ left: center + 6 }}>
+            {slipShort(milestone.slipDays)}
+          </span>
+        ) : null}
       </span>
     );
   };
@@ -354,7 +388,19 @@ export function TimelineView({ view }: { view: View }) {
             {body}
           </Link>
         ) : (
-          <span role="button" tabIndex={0} title={title} aria-label={`${title}. ${t("keyboardHint")}`} className={className} style={{ left, width }} onPointerDown={(event) => onPointerDown(event, task, "move")} onPointerMove={onPointerMove} onPointerUp={(event) => onPointerUp(event, task)} onPointerCancel={() => setDrag(null)} onKeyDown={(event) => onKeyDown(event, task)}>
+          <span
+            role="button"
+            tabIndex={0}
+            title={title}
+            aria-label={`${title}. ${t("keyboardHint")}`}
+            className={className}
+            style={{ left, width }}
+            onPointerDown={(event) => onPointerDown(event, task, "move")}
+            onPointerMove={onPointerMove}
+            onPointerUp={(event) => onPointerUp(event, task)}
+            onPointerCancel={() => setDrag(null)}
+            onKeyDown={(event) => onKeyDown(event, task)}
+          >
             {body}
           </span>
         )}
@@ -516,7 +562,11 @@ export function TimelineView({ view }: { view: View }) {
                   </span>
                 ))}
                 {header.ticks.map((tick) => (
-                  <span key={tick.left} className={`absolute bottom-1 text-[10px] ${tick.strong ? "text-foreground" : "text-muted-foreground"}`} style={{ left: tick.left, width: scale === "day" ? dayW : undefined, textAlign: scale === "day" ? "center" : undefined }}>
+                  <span
+                    key={tick.left}
+                    className={`absolute bottom-1 text-[10px] ${tick.strong ? "text-foreground" : "text-muted-foreground"}`}
+                    style={{ left: tick.left, width: scale === "day" ? dayW : undefined, textAlign: scale === "day" ? "center" : undefined }}
+                  >
                     {tick.label}
                   </span>
                 ))}
@@ -536,7 +586,11 @@ export function TimelineView({ view }: { view: View }) {
             {rows.slice(first, last + 1).map((row, offset) => {
               const index = first + offset;
               return (
-                <div key={row.kind === "task" ? row.task.id : `${row.kind}:${index}`} className={`absolute left-0 flex border-b border-border/50 ${row.kind === "group" ? "bg-muted/30" : ""}`} style={{ top: HEADER_H + index * ROW_H, height: ROW_H, width: labelW + chartW }}>
+                <div
+                  key={row.kind === "task" ? row.task.id : `${row.kind}:${index}`}
+                  className={`absolute left-0 flex border-b border-border/50 ${row.kind === "group" ? "bg-muted/30" : ""}`}
+                  style={{ top: HEADER_H + index * ROW_H, height: ROW_H, width: labelW + chartW }}
+                >
                   <div className="sticky left-0 z-20 flex shrink-0 items-center border-r bg-background px-2" style={{ width: labelW }}>
                     {label(row)}
                   </div>

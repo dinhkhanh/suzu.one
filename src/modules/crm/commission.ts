@@ -54,7 +54,11 @@ const SCHEMES_KEY = "crm:commission-schemes";
 
 /** Every scheme, newest first by start (then by id, so the cached array is always the same). */
 export async function listCommissionSchemes(executor?: Executor): Promise<CommissionSchemeRow[]> {
-  const read = (from: Executor) => from.select().from(schema.crmCommissionScheme).orderBy(sql`${schema.crmCommissionScheme.validFrom} desc`, asc(schema.crmCommissionScheme.id));
+  const read = (from: Executor) =>
+    from
+      .select()
+      .from(schema.crmCommissionScheme)
+      .orderBy(sql`${schema.crmCommissionScheme.validFrom} desc`, asc(schema.crmCommissionScheme.id));
   return executor && executor !== db() ? read(executor) : cached(SCHEMES_KEY, TTL.reference, () => read(db()));
 }
 
@@ -148,7 +152,15 @@ async function collectionsOf(month: string, executor: Executor): Promise<(Collec
     .leftJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId))
     .where(and(sql`${schema.crmPayment.receivedOn} between ${from}::date and ${to}::date`, isNull(schema.crmPayment.reversedAt)))
     .orderBy(asc(schema.crmPayment.receivedOn), asc(schema.crmPayment.id), asc(schema.crmInvoiceItem.billingItemId));
-  return rows.map((row) => ({ ...row, invoiceNumber: row.invoiceNumber ?? "", paidVnd: Number(row.paidVnd), invoiceSubtotalVnd: Number(row.invoiceSubtotalVnd), invoiceTotalVnd: Number(row.invoiceTotalVnd), itemVnd: Number(row.itemVnd), itemsVnd: Number(row.itemsVnd) }));
+  return rows.map((row) => ({
+    ...row,
+    invoiceNumber: row.invoiceNumber ?? "",
+    paidVnd: Number(row.paidVnd),
+    invoiceSubtotalVnd: Number(row.invoiceSubtotalVnd),
+    invoiceTotalVnd: Number(row.invoiceTotalVnd),
+    itemVnd: Number(row.itemVnd),
+    itemsVnd: Number(row.itemsVnd),
+  }));
 }
 
 const seal = (id: string, trace: CommissionTrace) => ({ amountEnc: fieldCipher().encrypt(String(trace.amountVnd), amountContext(id)), traceEnc: fieldCipher().encrypt(JSON.stringify(trace), traceContext(id)) });
@@ -196,7 +208,11 @@ async function computeCommissionIn(tx: Tx, month: string, schemes: readonly Comm
       }
       const id = current?.id ?? crypto.randomUUID();
       const sealed = seal(id, trace);
-      if (current) await tx.update(schema.crmCommissionStatement).set({ ...sealed, schemeId: group.scheme.id, updatedAt: new Date() }).where(eq(schema.crmCommissionStatement.id, id));
+      if (current)
+        await tx
+          .update(schema.crmCommissionStatement)
+          .set({ ...sealed, schemeId: group.scheme.id, updatedAt: new Date() })
+          .where(eq(schema.crmCommissionStatement.id, id));
       else await tx.insert(schema.crmCommissionStatement).values({ id, personId, entityId: group.entityId, month, schemeId: group.scheme.id, ...sealed });
       result.written += 1;
     }
@@ -242,7 +258,15 @@ export async function followPaymentChange(tx: Tx, change: { receivedOn: IsoDate;
     if (row.confirmedByPersonId) reopenedBy.add(row.confirmedByPersonId);
   }
   if (reopen.length) {
-    await tx.update(schema.crmCommissionStatement).set({ status: "draft", payrollRunId: null, confirmedByPersonId: null, confirmedAt: null, updatedAt: new Date() }).where(inArray(schema.crmCommissionStatement.id, reopen.map((row) => row.id)));
+    await tx
+      .update(schema.crmCommissionStatement)
+      .set({ status: "draft", payrollRunId: null, confirmedByPersonId: null, confirmedAt: null, updatedAt: new Date() })
+      .where(
+        inArray(
+          schema.crmCommissionStatement.id,
+          reopen.map((row) => row.id),
+        ),
+      );
     // Each person's line in an open run is written again without the statement (payroll's own path, per person).
     for (const row of reopen) if (row.payrollRunId && runs.get(row.payrollRunId)) await rewriteRunInput(tx, row.payrollRunId, row.personId, actorPersonId);
     result.reopened = reopen.length;
@@ -271,7 +295,7 @@ export async function listCommissionStatements(principal: Principal, month: stri
     .where(
       and(
         eq(schema.crmCommissionStatement.month, month),
-        reach.all ? undefined : or(me ? eq(schema.crmCommissionStatement.personId, me) : undefined, reach.entityIds.length ? inArray(schema.person.primaryEntityId, reach.entityIds) : undefined) ?? sql`false`,
+        reach.all ? undefined : (or(me ? eq(schema.crmCommissionStatement.personId, me) : undefined, reach.entityIds.length ? inArray(schema.person.primaryEntityId, reach.entityIds) : undefined) ?? sql`false`),
       ),
     )
     .orderBy(asc(schema.person.fullName), asc(schema.crmCommissionStatement.id));
@@ -289,7 +313,10 @@ export async function listCommissionStatements(principal: Principal, month: stri
 async function rewriteRunInput(tx: Tx, runId: string, personId: string, actorPersonId: string): Promise<void> {
   const run = await getRunHandle(runId, tx);
   if (!run || !run.openForEditing) return;
-  const posted = await tx.select().from(schema.crmCommissionStatement).where(and(eq(schema.crmCommissionStatement.payrollRunId, runId), eq(schema.crmCommissionStatement.personId, personId), eq(schema.crmCommissionStatement.status, "in_payroll")));
+  const posted = await tx
+    .select()
+    .from(schema.crmCommissionStatement)
+    .where(and(eq(schema.crmCommissionStatement.payrollRunId, runId), eq(schema.crmCommissionStatement.personId, personId), eq(schema.crmCommissionStatement.status, "in_payroll")));
   const total = posted.reduce((sum, row) => sum + openAmount(row), 0);
   if (total <= 0) {
     await removeRunInput(runId, personId, COMMISSION_COMPONENT, tx);

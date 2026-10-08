@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../platform/rbac/policy";
-import { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canEndDigitalAccess, canManageAssets, canManageCategories, canManageDigitalAssets, canReadAssetMoney, canReadDigitalSecrets, canReadPersonAssets, canReadRegister, canRequestDigitalAccess, canRunDigitalAsset, canViewAsset, canViewDigitalAsset } from "./policy";
+import {
+  assetReach,
+  canActOnBooking,
+  canBookAssets,
+  canConfirmHandover,
+  canDecideBookings,
+  canEndDigitalAccess,
+  canManageAssets,
+  canManageCategories,
+  canManageDigitalAssets,
+  canReadAssetMoney,
+  canReadDigitalSecrets,
+  canReadPersonAssets,
+  canReadRegister,
+  canRequestDigitalAccess,
+  canRunDigitalAsset,
+  canViewAsset,
+  canViewDigitalAsset,
+} from "./policy";
 
 const SZM = "00000000-0000-4000-8000-000000000001";
 const SZC = "00000000-0000-4000-8000-000000000002";

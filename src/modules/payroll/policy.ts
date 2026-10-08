@@ -31,8 +31,7 @@ export const canViewCompensationOf = (principal: Principal, person: PersonInEnti
  * A figure typed into one person's line of a run (an allowance, a deduction, an adjustment): C&B
  * over both the run's entity and the person's — and never on their own line, whoever they are.
  */
-export const canSetRunInputFor = (principal: Principal, run: InEntity, person: PersonInEntity): boolean =>
-  canManageCompensation(principal, run) && canManageCompensation(principal, person) && principal.personId !== person.personId;
+export const canSetRunInputFor = (principal: Principal, run: InEntity, person: PersonInEntity): boolean => canManageCompensation(principal, run) && canManageCompensation(principal, person) && principal.personId !== person.personId;
 
 /**
  * A retro item for one person (FR-PAY-17) is a figure entered by hand like any typed into a run,
@@ -72,8 +71,7 @@ export const canVoidSalaryStructure = (principal: Principal, where: InEntity): b
  * A pay profile: the owner when the owner approved it; C&B over the entity too for a first
  * Statutory profile, which took effect without anyone's approval (`decidedByPersonId` empty).
  */
-export const canVoidProfile = (principal: Principal, profile: InEntity & { decidedByPersonId: string | null }): boolean =>
-  canDecidePayRules(principal) || (profile.decidedByPersonId === null && canManageCompensation(principal, profile));
+export const canVoidProfile = (principal: Principal, profile: InEntity & { decidedByPersonId: string | null }): boolean => canDecidePayRules(principal) || (profile.decidedByPersonId === null && canManageCompensation(principal, profile));
 
 /** FR-PAY-08 / risk R11: who is on the Simple profile and why — the owner's eyes only. */
 export const canSeeSimpleProfileReport = (principal: Principal): boolean => canDecidePayRules(principal);

@@ -77,7 +77,10 @@ export function scriptedDriver(script: readonly (ScriptedReply | ((call: AgentCa
       const step = script[calls.length - 1];
       const reply = typeof step === "function" ? step(call) : (step ?? { text: "" });
       if ("refuse" in reply) return { ok: false, notice: reply.refuse };
-      const content: Anthropic.ContentBlockParam[] = [...(reply.text ? [{ type: "text" as const, text: reply.text }] : []), ...(reply.tools ?? []).map((tool) => ({ type: "tool_use" as const, id: `toolu_${++toolIds}`, name: tool.name, input: tool.input }))];
+      const content: Anthropic.ContentBlockParam[] = [
+        ...(reply.text ? [{ type: "text" as const, text: reply.text }] : []),
+        ...(reply.tools ?? []).map((tool) => ({ type: "tool_use" as const, id: `toolu_${++toolIds}`, name: tool.name, input: tool.input })),
+      ];
       return { ok: true, content, stopReason: reply.stopReason ?? (reply.tools?.length ? "tool_use" : "end_turn"), model: `scripted-${call.tier}`, usage: NO_USAGE };
     },
   };

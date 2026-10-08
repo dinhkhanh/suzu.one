@@ -42,7 +42,15 @@ const savePlanPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await savePlan(user.person.id, input.date, input.items, input.note);
     refreshDay();
-    return { data: { id: after.id, items: after.items.length }, audit: { resource: { type: "daily_plan", id: after.id }, summary: `${input.date}: ${after.items.length} tasks`, before: before ? { items: before.items, note: before.note } : undefined, after: { items: after.items, note: after.note } } };
+    return {
+      data: { id: after.id, items: after.items.length },
+      audit: {
+        resource: { type: "daily_plan", id: after.id },
+        summary: `${input.date}: ${after.items.length} tasks`,
+        before: before ? { items: before.items, note: before.note } : undefined,
+        after: { items: after.items, note: after.note },
+      },
+    };
   },
 });
 export async function savePlanAction(input: unknown) {
@@ -76,7 +84,12 @@ const submitReportPipeline = createAction({
     revalidatePath(`/daily/reports/${after.id}`);
     return {
       data: { id: after.id, late: after.late },
-      audit: { resource: { type: "daily_report", id: after.id }, summary: `${input.date}${after.late ? " (late)" : ""}`, before: before ? { status: before.status, submittedAt: before.submittedAt } : undefined, after: { status: after.status, late: after.late, done: after.done.length, notDone: after.notDone.length, tomorrow: after.tomorrow.length, secondsToSubmit: after.secondsToSubmit } },
+      audit: {
+        resource: { type: "daily_report", id: after.id },
+        summary: `${input.date}${after.late ? " (late)" : ""}`,
+        before: before ? { status: before.status, submittedAt: before.submittedAt } : undefined,
+        after: { status: after.status, late: after.late, done: after.done.length, notDone: after.notDone.length, tomorrow: after.tomorrow.length, secondsToSubmit: after.secondsToSubmit },
+      },
     };
   },
 });
@@ -98,7 +111,10 @@ const commentPipeline = createAction({
     const { comment, report } = await commentOnReport(await loadReportReader(user.person.id), input.reportId, input, user.person.fullName);
     revalidatePath(`/daily/reports/${report.id}`);
     revalidatePath("/daily/team");
-    return { data: { id: comment.id }, audit: { resource: { type: "daily_report", id: report.id }, summary: input.reaction ? `reaction ${input.reaction}` : `comment ${comment.id}`, after: { commentId: comment.id, reaction: input.reaction } } };
+    return {
+      data: { id: comment.id },
+      audit: { resource: { type: "daily_report", id: report.id }, summary: input.reaction ? `reaction ${input.reaction}` : `comment ${comment.id}`, after: { commentId: comment.id, reaction: input.reaction } },
+    };
   },
 });
 export async function commentOnReportAction(input: unknown) {

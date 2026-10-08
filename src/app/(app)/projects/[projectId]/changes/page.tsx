@@ -11,14 +11,28 @@ import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { decideChangeAction } from "@/modules/projects/commercial-actions";
-import { canManageChanges, CHANGE_REQUESTERS, changeEditable, type ChangeLedger, type ChangeStatus, type ChangeView, getChangeLedger, getChangeRequest, getRetainer, listChanges, listStructure, openChangesForApprover, openProject, shapeRetainer } from "@/modules/projects/service";
+import {
+  canManageChanges,
+  CHANGE_REQUESTERS,
+  changeEditable,
+  type ChangeLedger,
+  type ChangeStatus,
+  type ChangeView,
+  getChangeLedger,
+  getChangeRequest,
+  getRetainer,
+  listChanges,
+  listStructure,
+  openChangesForApprover,
+  openProject,
+  shapeRetainer,
+} from "@/modules/projects/service";
 import { ChangeButtons, ChangeForm, EvidenceLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("changeRequests");
-
 
 /**
  * Change requests (FR-PJM-11): original + changes = current for hours, fee and due date — with a
@@ -32,7 +46,8 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
   const { projectId } = await params;
   const context = await openProject(user, projectId);
   const [t, tWork, format] = await Promise.all([getTranslations("projects.changes"), getTranslations("work"), getFormatter()]);
-  const money = (value: number | null | undefined, signed = false) => (value === null || value === undefined ? "—" : `${signed && value > 0 ? "+" : ""}${format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}`);
+  const money = (value: number | null | undefined, signed = false) =>
+    value === null || value === undefined ? "—" : `${signed && value > 0 ? "+" : ""}${format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}`;
   const hours = (minutes: number | null | undefined, signed = false) => (minutes === null || minutes === undefined ? "—" : `${signed && minutes > 0 ? "+" : ""}${format.number(minutes / 60, { maximumFractionDigits: 1 })} h`);
   const date = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
 
@@ -131,7 +146,9 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
               <TableHead kind="text" />
               <TableHead kind="time">{t("budget")}</TableHead>
               {can.seeFees ? <TableHead kind="money">{t("fee")}</TableHead> : null}
-              <TableHead kind="date" className="text-right">{t("dueDate")}</TableHead>
+              <TableHead kind="date" className="text-right">
+                {t("dueDate")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -145,7 +162,9 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
                       <Badge dot variant="warning">
                         {t("unexplained")}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{[step.delta.minutes ? hours(step.delta.minutes, true) : null, can.seeFees && step.delta.feeVnd ? money(step.delta.feeVnd, true) : null, step.delta.dueDate ? t("dueDate") : null].filter(Boolean).join(" · ")}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[step.delta.minutes ? hours(step.delta.minutes, true) : null, can.seeFees && step.delta.feeVnd ? money(step.delta.feeVnd, true) : null, step.delta.dueDate ? t("dueDate") : null].filter(Boolean).join(" · ")}
+                      </span>
                     </span>,
                     step.after,
                   ),
@@ -176,13 +195,17 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-muted-foreground">CR-{change.number}</span>
                   <h3 className="font-medium">{change.title}</h3>
-                  <Badge dot variant={statusTone(status)}>{t(`status.${status}`)}</Badge>
+                  <Badge dot variant={statusTone(status)}>
+                    {t(`status.${status}`)}
+                  </Badge>
                   <Badge variant="outline">{t(`requesters.${change.requestedBy as "client"}`)}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {change.authorName ? (
                     <>
-                      <RecordLink kind="person" id={change.createdByPersonId}>{change.authorName}</RecordLink>
+                      <RecordLink kind="person" id={change.createdByPersonId}>
+                        {change.authorName}
+                      </RecordLink>
                       {" · "}
                     </>
                   ) : null}
@@ -221,7 +244,19 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
                         requesters={CHANGE_REQUESTERS}
                         editFee={can.editFees}
                         retainer={monthly ? { ...monthly, ...change.impact.retainer } : null}
-                        change={{ id: change.id, title: change.title, description: change.description, requestedBy: change.requestedBy, lines: change.impact.deliverables ?? [], cancelIds: change.impact.cancelDeliverableIds ?? [], minutesDelta: change.impact.minutesDelta ?? null, ...(can.seeFees ? { feeDeltaVnd: change.impact.feeDeltaVnd ?? null } : {}), dueDateTo: change.impact.dueDateTo ?? null, evidenceUrl: change.evidenceUrl, evidence: change.evidenceFileId ? { fileId: change.evidenceFileId, fileName: fileNames.get(change.evidenceFileId) ?? t("evidenceFile") } : null }}
+                        change={{
+                          id: change.id,
+                          title: change.title,
+                          description: change.description,
+                          requestedBy: change.requestedBy,
+                          lines: change.impact.deliverables ?? [],
+                          cancelIds: change.impact.cancelDeliverableIds ?? [],
+                          minutesDelta: change.impact.minutesDelta ?? null,
+                          ...(can.seeFees ? { feeDeltaVnd: change.impact.feeDeltaVnd ?? null } : {}),
+                          dueDateTo: change.impact.dueDateTo ?? null,
+                          evidenceUrl: change.evidenceUrl,
+                          evidence: change.evidenceFileId ? { fileId: change.evidenceFileId, fileName: fileNames.get(change.evidenceFileId) ?? t("evidenceFile") } : null,
+                        }}
                       />
                     </div>
                   </details>

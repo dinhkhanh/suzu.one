@@ -20,7 +20,12 @@ export const notification = pgTable(
     // Set once the daily digest has carried it, or when no digest is wanted.
     digestedAt: timestamp("digested_at", { withTimezone: true }),
   },
-  (t) => [index("notification_recipient_idx").on(t.recipientPersonId, t.createdAt), index("notification_unread_idx").on(t.recipientPersonId).where(sql`${t.readAt} IS NULL`)],
+  (t) => [
+    index("notification_recipient_idx").on(t.recipientPersonId, t.createdAt),
+    index("notification_unread_idx")
+      .on(t.recipientPersonId)
+      .where(sql`${t.readAt} IS NULL`),
+  ],
 ).enableRLS();
 
 export const emailChannel = pgEnum("email_channel", ["instant", "digest", "off"]);
@@ -196,8 +201,12 @@ export const messengerLink = pgTable(
     revokedReason: text("revoked_reason"),
   },
   (t) => [
-    uniqueIndex("messenger_link_live_person_idx").on(t.personId).where(sql`${t.revokedAt} IS NULL`),
-    uniqueIndex("messenger_link_live_psid_idx").on(t.psid).where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("messenger_link_live_person_idx")
+      .on(t.personId)
+      .where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("messenger_link_live_psid_idx")
+      .on(t.psid)
+      .where(sql`${t.revokedAt} IS NULL`),
   ],
 ).enableRLS();
 
@@ -283,8 +292,12 @@ export const telegramLink = pgTable(
     revokedReason: text("revoked_reason"),
   },
   (t) => [
-    uniqueIndex("telegram_link_live_person_idx").on(t.personId).where(sql`${t.revokedAt} IS NULL`),
-    uniqueIndex("telegram_link_live_chat_idx").on(t.chatId).where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("telegram_link_live_person_idx")
+      .on(t.personId)
+      .where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("telegram_link_live_chat_idx")
+      .on(t.chatId)
+      .where(sql`${t.revokedAt} IS NULL`),
   ],
 ).enableRLS();
 

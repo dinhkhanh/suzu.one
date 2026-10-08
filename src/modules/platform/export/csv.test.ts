@@ -12,7 +12,7 @@ describe("toCsv", () => {
   });
   it("defuses cells a spreadsheet would run as formulas, but keeps negative numbers", () => {
     const csv = toCsv(columns, [
-      { name: "=HYPERLINK(\"http://evil\")", note: "+84 912 345 678", amount: -5 },
+      { name: '=HYPERLINK("http://evil")', note: "+84 912 345 678", amount: -5 },
       { name: "@cmd", note: "-2+3", amount: 0 },
     ]);
     const lines = csv.split("\r\n");

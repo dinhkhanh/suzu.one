@@ -9,6 +9,10 @@
 export function clientIpFrom(headers: { get(name: string): string | null }): string | null {
   const real = headers.get("x-real-ip")?.trim();
   if (real) return real;
-  const forwarded = headers.get("x-forwarded-for")?.split(",").map((part) => part.trim()).filter(Boolean);
+  const forwarded = headers
+    .get("x-forwarded-for")
+    ?.split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
   return forwarded?.at(-1) ?? null;
 }

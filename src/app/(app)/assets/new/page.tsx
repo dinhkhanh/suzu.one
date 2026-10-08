@@ -18,7 +18,22 @@ export default async function NewAssetPage() {
     <Page width="narrow">
       <PageHeader title={t("nav.new")} />
       <AssetForm
-        value={{ id: null, categoryId: categories[0]?.id ?? "", entityId: entities[0]?.id ?? "", name: "", brand: null, model: null, serial: null, purchaseDate: null, purchasePrice: null, supplier: null, warrantyUntil: null, condition: "new", location: null, notes: null }}
+        value={{
+          id: null,
+          categoryId: categories[0]?.id ?? "",
+          entityId: entities[0]?.id ?? "",
+          name: "",
+          brand: null,
+          model: null,
+          serial: null,
+          purchaseDate: null,
+          purchasePrice: null,
+          supplier: null,
+          warrantyUntil: null,
+          condition: "new",
+          location: null,
+          notes: null,
+        }}
         options={{ entities, categories, people: [], teams: [], canSeeMoney: canReadAssetMoney(user.principal) }}
       />
     </Page>

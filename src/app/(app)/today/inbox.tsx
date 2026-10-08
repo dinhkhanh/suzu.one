@@ -25,7 +25,17 @@ export type InboxView = (typeof INBOX_VIEWS)[number];
 
 /** How many items each inbox tab holds; the open follow-ups are counted, not listed, off the work tab. */
 export function inboxCounts(mine: MyWork, followUps: number): Record<InboxView, number> {
-  const { tasks: { open }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
+  const {
+    tasks: { open },
+    workItems,
+    reviews,
+    approvals,
+    triage,
+    blockers,
+    handoffs,
+    coverPlans,
+    handovers,
+  } = mine;
   return {
     work: workItems.length + open.filter((task) => task.kind !== "work").length + followUps,
     reviews: reviews.length + blockers.length + triage.length,
@@ -39,14 +49,37 @@ export function inboxCounts(mine: MyWork, followUps: number): Record<InboxView, 
 // are rows of the one task table). The Today page holds it under its tabs (`?view=`), one kind of
 // waiting per tab; each item is worked on in its own screen, checklist steps right here.
 export async function Inbox({ view, user, today, mine, followUps }: { view: InboxView; user: CurrentUser; today: IsoDate; mine: MyWork; /** Every open follow-up, on the work tab. */ followUps: ActivityView[] }) {
-  const { tasks: { open, recentlyDone }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
+  const {
+    tasks: { open, recentlyDone },
+    workItems,
+    reviews,
+    approvals,
+    triage,
+    blockers,
+    handoffs,
+    coverPlans,
+    handovers,
+  } = mine;
   // The job number beside each project's name (FR-PJM-02): every project on the tab in one read.
-  const [t, format, tWork, crm, people, jobNumbers] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadCrm(user), followUps.length ? listPersonNames() : Promise.resolve([]), jobNumbersOf([...workItems, ...reviews].map((row) => row.projectId))]);
+  const [t, format, tWork, crm, people, jobNumbers] = await Promise.all([
+    getTranslations("tasks"),
+    getFormatter(),
+    getTranslations("work"),
+    loadCrm(user),
+    followUps.length ? listPersonNames() : Promise.resolve([]),
+    jobNumbersOf([...workItems, ...reviews].map((row) => row.projectId)),
+  ]);
   const jobOf = (projectId: string | null | undefined) => (projectId ? (jobNumbers.get(projectId) ?? null) : null);
   const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? recordHref("task", task.id) : task.kind === "obligation" ? recordHref("obligation", task.id) : null);
   const work = sortInbox(workItems, today);
-  const obligations = sortInbox(open.filter((task) => task.kind === "obligation"), today);
-  const checklist = sortInbox(open.filter((task) => task.kind !== "work" && task.kind !== "obligation"), today);
+  const obligations = sortInbox(
+    open.filter((task) => task.kind === "obligation"),
+    today,
+  );
+  const checklist = sortInbox(
+    open.filter((task) => task.kind !== "work" && task.kind !== "obligation"),
+    today,
+  );
   // New work for the teams I lead (FR-PJM-32), one link per team's queue.
   const triageTeams = [...Map.groupBy(triage, (item) => item.teamId)].map(([teamId, items]) => ({ teamId, teamName: items[0].teamName, items }));
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
@@ -54,7 +87,11 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
 
   const flags = (item: (typeof work)[number]) => (
     <>
-      {item.blocker ? <Badge variant="destructive" title={item.blocker}>{t("flagged", { reason: item.blocker.length > 40 ? `${item.blocker.slice(0, 40)}…` : item.blocker })}</Badge> : null}
+      {item.blocker ? (
+        <Badge variant="destructive" title={item.blocker}>
+          {t("flagged", { reason: item.blocker.length > 40 ? `${item.blocker.slice(0, 40)}…` : item.blocker })}
+        </Badge>
+      ) : null}
       {item.reviewStatus === "changes_requested" ? <Badge variant="destructive">{t("changesRequested")}</Badge> : null}
       {item.priority === 1 ? <Badge variant="warning">{t("urgent")}</Badge> : null}
       {item.blockedBy ? <Badge variant="outline">{t("blocked", { count: item.blockedBy })}</Badge> : null}
@@ -161,7 +198,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                   </span>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     {review.projectName ? <ProjectChip name={review.projectName} projectId={review.projectId} jobNumber={jobOf(review.projectId)} /> : null}
-                    <span>{review.submittedByName ?? "—"} · v{review.version}</span>
+                    <span>
+                      {review.submittedByName ?? "—"} · v{review.version}
+                    </span>
                     <DueText dueDate={review.dueDate} today={today} open />
                   </span>
                 </span>
@@ -187,7 +226,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
               <TableBody>
                 {reviews.map((review) => (
                   <TableRow key={review.taskId}>
-                    <TableCell className="pr-0"><StateDot category="in_review" /></TableCell>
+                    <TableCell className="pr-0">
+                      <StateDot category="in_review" />
+                    </TableCell>
                     <TableCell kind="id">{review.key}</TableCell>
                     <TableCell className="max-w-80 truncate">
                       <RecordLink kind="task" id={review.taskId} className="font-medium">
@@ -205,7 +246,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                       </span>
                     </TableCell>
                     <TableCell kind="number">{review.version}</TableCell>
-                    <TableCell kind="date"><DueText dueDate={review.dueDate} today={today} open /></TableCell>
+                    <TableCell kind="date">
+                      <DueText dueDate={review.dueDate} today={today} open />
+                    </TableCell>
                     <TableCell>
                       <Badge variant={review.isClient ? "info" : "violet"}>{review.isClient ? t("toRecordClient") : t("toReview")}</Badge>
                     </TableCell>
@@ -228,7 +271,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <TaskKey>{blocker.key}</TaskKey>
                     <span className="truncate font-medium">{blocker.title}</span>
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">{blocker.raisedByName ?? "—"} · {blocker.reason}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {blocker.raisedByName ?? "—"} · {blocker.reason}
+                  </span>
                 </span>
                 <Badge variant="destructive">{t("toUnblock")}</Badge>
               </ListItem>
@@ -282,7 +327,10 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
               key={group.teamId}
               title={
                 <>
-                  {t("sections.triage", { count: group.items.length })} · <RecordLink kind="team" id={group.teamId}>{group.teamName}</RecordLink>
+                  {t("sections.triage", { count: group.items.length })} ·{" "}
+                  <RecordLink kind="team" id={group.teamId}>
+                    {group.teamName}
+                  </RecordLink>
                 </>
               }
               action={<Link href={`/work/teams/${group.teamId}/triage`}>{t("openTriage")}</Link>}
@@ -293,7 +341,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                     <TableRow>
                       <TableHead kind="id">{t("columns.key")}</TableHead>
                       <TableHead kind="text">{t("columns.title")}</TableHead>
-                      <TableHead kind="date" className="hidden md:table-cell">{t("columns.created")}</TableHead>
+                      <TableHead kind="date" className="hidden md:table-cell">
+                        {t("columns.created")}
+                      </TableHead>
                       <TableHead kind="status">{t("columns.step")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -306,7 +356,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                             {item.title}
                           </RecordLink>
                         </TableCell>
-                        <TableCell kind="date" className="hidden md:table-cell">{format.dateTime(item.createdAt, { dateStyle: "medium" })}</TableCell>
+                        <TableCell kind="date" className="hidden md:table-cell">
+                          {format.dateTime(item.createdAt, { dateStyle: "medium" })}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="warning">{t("toTriage")}</Badge>
                         </TableCell>
@@ -409,7 +461,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
               <TableBody>
                 {work.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="pr-0"><StateDot category={dotOf(item.status, item.reviewStatus)} /></TableCell>
+                    <TableCell className="pr-0">
+                      <StateDot category={dotOf(item.status, item.reviewStatus)} />
+                    </TableCell>
                     <TableCell kind="id">{item.key}</TableCell>
                     <TableCell className="max-w-80 truncate">
                       <RecordLink kind="task" id={item.id} className="font-medium">
@@ -417,7 +471,9 @@ export async function Inbox({ view, user, today, mine, followUps }: { view: Inbo
                       </RecordLink>
                     </TableCell>
                     <TableCell className="max-w-56">{item.projectName ? <ProjectChip name={item.projectName} projectId={item.projectId} jobNumber={jobOf(item.projectId)} /> : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell kind="date"><DueText dueDate={item.dueDate} today={today} open /></TableCell>
+                    <TableCell kind="date">
+                      <DueText dueDate={item.dueDate} today={today} open />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{item.stateName}</TableCell>
                     <TableCell>
                       <span className="flex gap-1.5">{flags(item)}</span>

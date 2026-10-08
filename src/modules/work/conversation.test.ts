@@ -31,11 +31,18 @@ import { viewerOfPerson } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "tam" | "huy" | "khoi" | "video" | "teamProject" | "privateProject" | "task" | "privateTask", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const named = (key: "long" | "tam" | "huy" | "khoi") => ({ id: ids[key], fullName: { long: "Long Dang", tam: "Tam Bui", huy: "Huy Ho", khoi: "Khoi Ly" }[key] });
 
 async function addPerson(name: string, entityId: string) {
-  const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replaceAll(" ", ".")}@suzu.group`, status: "active", primaryEntityId: entityId }).returning();
+  const [row] = await db()
+    .insert(schema.person)
+    .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replaceAll(" ", ".")}@suzu.group`, status: "active", primaryEntityId: entityId })
+    .returning();
   return row.id;
 }
 async function noticesOf(personId: string, kind?: string) {
@@ -48,11 +55,18 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id });
-  for (const [key, name, entity] of [["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
+  for (const [key, name, entity] of [
+    ["long", "Long Dang", szm.id],
+    ["tam", "Tam Bui", szm.id],
+    ["huy", "Huy Ho", szm.id],
+    ["khoi", "Khoi Ly", szc.id],
+  ] as const)
+    ids[key] = await addPerson(name, entity);
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy]) await setTeamMember(video.id, personId, "member");
-  const project = (name: string, visibility: "team" | "private", actor: string) => createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
+  const project = (name: string, visibility: "team" | "private", actor: string) =>
+    createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
   ids.teamProject = (await project("TVC Tet", "team", ids.long)).id;
   ids.privateProject = (await project("Pitch — confidential", "private", ids.tam)).id;
   ids.task = (await createWorkTask({ teamId: video.id, projectId: ids.teamProject, title: "Rough cut", assigneePersonId: ids.huy, requesterPersonId: ids.long }, ids.long)).task.id;
@@ -67,7 +81,7 @@ describe("comments and mentions", () => {
     // Huy is the assignee; Long (requester and author) hears nothing about his own comment.
     expect(told).toEqual([ids.huy]);
     expect((await noticesOf(ids.tam)).map((row) => row.kind)).toEqual(["tasks.mentioned"]);
-    expect((await noticesOf(ids.huy, "tasks.commented"))).toHaveLength(1);
+    expect(await noticesOf(ids.huy, "tasks.commented")).toHaveLength(1);
     expect(await noticesOf(ids.long, "tasks.commented")).toHaveLength(0);
     expect((await noticesOf(ids.huy, "tasks.commented"))[0].params).toMatchObject({ name: "Long Dang", excerpt: "@Tam Bui xem bản dựng https://drive.google.com/file/d/abc" });
     // The mentioned person follows from now on; the author was already the requester.
@@ -176,7 +190,10 @@ describe("reminders", () => {
     // A retry, or the second cron trigger of the day.
     expect(await sendWorkReminders("2026-09-22")).toEqual({ dueSoon: 0, overdue: 0, people: 0 });
     // Next day: the task two days late turns three days late and is due a reminder; finished work is left alone.
-    const [subtitles] = await db().select().from(schema.task).where(and(eq(schema.task.title, "Subtitles")));
+    const [subtitles] = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.title, "Subtitles")));
     const done = (await listStates([ids.video])).find((state) => state.category === "done")!;
     await updateWorkTask(subtitles.id, { stateId: done.id }, ids.tam);
     expect(await sendWorkReminders("2026-09-23")).toEqual({ dueSoon: 0, overdue: 1, people: 1 });

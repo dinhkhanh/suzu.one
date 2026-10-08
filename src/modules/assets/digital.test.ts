@@ -41,7 +41,11 @@ import {
   summariseDigitalAssets,
 } from "./service";
 
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const principal = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 
 type PersonKey = "keeper" | "khoi" | "huy" | "lan" | "long" | "gone";
@@ -49,7 +53,11 @@ const ids = {} as Record<PersonKey | "szm" | "szc" | "client", string>;
 let keeper: Principal;
 let szcKeeper: Principal;
 const as = (key: PersonKey) => principal(ids[key]);
-const noticesOf = (key: PersonKey, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
+const noticesOf = (key: PersonKey, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, ids[key]), eq(schema.notification.kind, kind)));
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -64,7 +72,10 @@ beforeAll(async () => {
     ["lan", "Trần Ngọc Lan", "active"],
     ["gone", "Người đã nghỉ", "offboarded"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, status, managerId: key === "huy" || key === "lan" ? ids.long : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName, searchName: key, primaryEntityId: szm.id, status, managerId: key === "huy" || key === "lan" ? ids.long : null })
+      .returning();
     ids[key] = row.id;
   }
   const [client] = await db().insert(schema.workClient).values({ code: "TLX", name: "Trà Lá Xanh" }).returning();
@@ -211,7 +222,12 @@ describe("the life of a grant", () => {
     expect(changed.outcome).toBe("changed");
     expect(changed.access.level).toBe("admin");
     // Still one row for the pair.
-    expect(await db().select().from(schema.digitalAssetAccess).where(and(eq(schema.digitalAssetAccess.digitalAssetId, asset.id), eq(schema.digitalAssetAccess.personId, ids.huy)))).toHaveLength(1);
+    expect(
+      await db()
+        .select()
+        .from(schema.digitalAssetAccess)
+        .where(and(eq(schema.digitalAssetAccess.digitalAssetId, asset.id), eq(schema.digitalAssetAccess.personId, ids.huy))),
+    ).toHaveLength(1);
 
     await requestDigitalAccess({ assetId: asset.id, level: "analyst", note: null }, ids.lan);
     expect((await grant(asset.id, "lan")).outcome).toBe("approved");
@@ -274,7 +290,10 @@ describe("what a leaver gives back", () => {
     await requestDigitalAccess({ assetId: pending.id, level: "editor", note: null }, ids.huy);
 
     const opened = await db().transaction((tx) => openReturnTasks(tx, ids.huy, "2026-10-31", ids.keeper));
-    const tasks = await db().select().from(schema.task).where(and(eq(schema.task.subjectPersonId, ids.huy), inArray(schema.task.kind, ["digital_access_revoke", "digital_asset_handover"])));
+    const tasks = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.subjectPersonId, ids.huy), inArray(schema.task.kind, ["digital_access_revoke", "digital_asset_handover"])));
     const open = () => tasks.filter((task) => task.status === "todo");
     expect(opened).toBeGreaterThanOrEqual(2);
     const revoke = open().find((task) => task.contextId === access.id)!;
@@ -291,7 +310,10 @@ describe("what a leaver gives back", () => {
     // Doing the thing settles its task: the access is taken away, a new owner is named.
     await endDigitalAccess(access.id, "Nghỉ việc", ids.khoi);
     await saveDigitalAsset(theirs.id, input({ name: "Fanpage người nghỉ phụ trách", ownerPersonId: ids.lan }), ids.keeper);
-    const after = await db().select().from(schema.task).where(inArray(schema.task.contextId, [access.id, theirs.id]));
+    const after = await db()
+      .select()
+      .from(schema.task)
+      .where(inArray(schema.task.contextId, [access.id, theirs.id]));
     expect(after.every((task) => task.status === "cancelled")).toBe(true);
     expect((await listDigitalAccessOfPerson(ids.huy)).some((row) => row.assetId === others.id)).toBe(false);
   });
@@ -302,7 +324,10 @@ describe("what a leaver gives back", () => {
     await db().transaction((tx) => openReturnTasks(tx, ids.lan, "2026-11-30", ids.keeper));
     const cancelled = await db().transaction((tx) => cancelReturnTasks(tx, ids.lan));
     expect(cancelled).toBeGreaterThanOrEqual(1);
-    const tasks = await db().select().from(schema.task).where(and(eq(schema.task.subjectPersonId, ids.lan), eq(schema.task.kind, "digital_access_revoke")));
+    const tasks = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.subjectPersonId, ids.lan), eq(schema.task.kind, "digital_access_revoke")));
     expect(tasks.every((task) => task.status === "cancelled")).toBe(true);
     // The access itself is untouched: the person is staying.
     expect((await listDigitalAccessOfPerson(ids.lan)).some((row) => row.assetId === asset.id && row.status === "active")).toBe(true);

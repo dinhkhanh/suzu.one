@@ -17,7 +17,13 @@ export const Callout = Node.create({
   content: "block+",
   defining: true,
   addAttributes() {
-    return { kind: { default: "info", parseHTML: (element) => ((CALLOUT_KINDS as readonly string[]).includes(element.getAttribute("data-callout") ?? "") ? element.getAttribute("data-callout") : "info"), renderHTML: (attributes) => ({ "data-callout": attributes.kind }) } };
+    return {
+      kind: {
+        default: "info",
+        parseHTML: (element) => ((CALLOUT_KINDS as readonly string[]).includes(element.getAttribute("data-callout") ?? "") ? element.getAttribute("data-callout") : "info"),
+        renderHTML: (attributes) => ({ "data-callout": attributes.kind }),
+      },
+    };
   },
   parseHTML() {
     return [{ tag: "div[data-callout]" }];

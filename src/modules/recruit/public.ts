@@ -179,8 +179,7 @@ export async function findPublicOpening(slug: string): Promise<PublicOpening | n
 // ── Applying ────────────────────────────────────────────────────────────────────────────────
 
 const trimmed = (max: number) => z.string().trim().max(max);
-const optional = (max: number) =>
-  z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), trimmed(max).nullable().default(null));
+const optional = (max: number) => z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), trimmed(max).nullable().default(null));
 
 /**
  * The second gate, after the route handler has turned a multipart body into values. Every string
@@ -202,10 +201,7 @@ const applicationSchema = z.object({
   links: z.array(z.url().max(PUBLIC_LIMITS.link)).max(PUBLIC_LIMITS.links).default([]),
   coverLetter: optional(PUBLIC_LIMITS.coverLetter),
   answers: z.record(z.string().max(64), z.string().max(PUBLIC_LIMITS.answer)).default({}),
-  salaryExpectationVnd: z.preprocess(
-    (value) => (typeof value === "string" ? (value.replace(/[.,\s]/g, "") === "" ? null : value.replace(/[.,\s]/g, "")) : value),
-    z.coerce.number().int().min(0).max(10_000_000_000).nullable().default(null),
-  ),
+  salaryExpectationVnd: z.preprocess((value) => (typeof value === "string" ? (value.replace(/[.,\s]/g, "") === "" ? null : value.replace(/[.,\s]/g, "")) : value), z.coerce.number().int().min(0).max(10_000_000_000).nullable().default(null)),
   // Refused, not dropped: consent is the lawful basis for holding any of this at all (PDPL), so
   // an application without it fails validation rather than being quietly stored unconsented.
   consent: z.preprocess((value) => value === true || value === "true" || value === "on", z.literal(true)),
@@ -216,7 +212,10 @@ const applicationSchema = z.object({
     .max(8)
     .optional()
     .transform((value): CandidateLocale => (value === "en" ? "en" : "vi")),
-  cv: z.object({ fileName: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array) }).nullable().default(null),
+  cv: z
+    .object({ fileName: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array) })
+    .nullable()
+    .default(null),
 });
 
 export type PublicApplicationInput = z.input<typeof applicationSchema>;
@@ -336,9 +335,7 @@ const applyPipeline = createPublicAction({
     // The bytes are checked and stored before the transaction, because storage is a network call
     // and a transaction is not the place to make one. `ownerId` is corrected the moment the
     // application exists; if anything below fails the file is soft-deleted rather than orphaned.
-    const stored = input.cv
-      ? await storeIncomingFile({ ownerType: "job_application", ownerId: `pending:${opening.id}`, entityId: opening.entityId, tier: "personal" }, input.cv, { maxBytes: MAX_CV_BYTES })
-      : null;
+    const stored = input.cv ? await storeIncomingFile({ ownerType: "job_application", ownerId: `pending:${opening.id}`, entityId: opening.entityId, tier: "personal" }, input.cv, { maxBytes: MAX_CV_BYTES }) : null;
 
     try {
       const application = await db().transaction(async (tx) => {

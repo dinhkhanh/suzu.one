@@ -67,7 +67,10 @@ export async function savePackage(teamId: string, packageId: string | null, inpu
   const checklistIds = await assertUsable(input.checklistIds ?? [], packageId ? ((await findPackage(packageId))?.checklistIds ?? []) : []);
   const saved = await db().transaction(async (tx) => {
     const stateIds = [input.toStateId, input.fromStateId].filter((id): id is string => !!id);
-    const states = await tx.select({ id: schema.workState.id }).from(schema.workState).where(and(inArray(schema.workState.id, stateIds), eq(schema.workState.teamId, teamId)));
+    const states = await tx
+      .select({ id: schema.workState.id })
+      .from(schema.workState)
+      .where(and(inArray(schema.workState.id, stateIds), eq(schema.workState.teamId, teamId)));
     if (states.length !== new Set(stateIds).size) throw new ActionError("state_not_found");
     const values = {
       name: input.name,
@@ -84,12 +87,19 @@ export async function savePackage(teamId: string, packageId: string | null, inpu
     const problem = packageProblem(values);
     if (problem) throw new ActionError(problem);
     if (!packageId) {
-      const [after] = await tx.insert(schema.workHandoffPackage).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.workHandoffPackage)
+        .values({ teamId, ...values, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after };
     }
     const [before] = await tx.select().from(schema.workHandoffPackage).where(eq(schema.workHandoffPackage.id, packageId)).limit(1);
     if (!before || before.teamId !== teamId) throw new ActionError("handoff_package_not_found");
-    const [after] = await tx.update(schema.workHandoffPackage).set({ ...values, updatedAt: new Date() }).where(eq(schema.workHandoffPackage.id, packageId)).returning();
+    const [after] = await tx
+      .update(schema.workHandoffPackage)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.workHandoffPackage.id, packageId))
+      .returning();
     return { before, after };
   });
   await invalidateHandoffPackages();
@@ -121,7 +131,11 @@ export async function handOffStage(taskId: string, input: StageHandoffInput, act
     const note = normalizeNote({ ...input.note, links: [...(input.note.links ?? []), ...input.links] });
     const pkg = await findPackageFor(tx, loaded.team.id, loaded.work.stateId, input.toStateId);
     if (input.fileId) {
-      const [file] = await tx.select({ id: schema.storedFile.id }).from(schema.storedFile).where(and(eq(schema.storedFile.id, input.fileId), eq(schema.storedFile.ownerType, "work_task"), eq(schema.storedFile.ownerId, taskId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt))).limit(1);
+      const [file] = await tx
+        .select({ id: schema.storedFile.id })
+        .from(schema.storedFile)
+        .where(and(eq(schema.storedFile.id, input.fileId), eq(schema.storedFile.ownerType, "work_task"), eq(schema.storedFile.ownerId, taskId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt)))
+        .limit(1);
       if (!file) throw new ActionError("file_not_found");
     }
     if (pkg) {
@@ -187,13 +201,22 @@ async function pendingHandoff(tx: Executor, handoffId: string): Promise<{ handof
 export async function acceptHandoff(handoffId: string, actor: Actor): Promise<{ handoff: HandoffRow; loaded: LoadedTask }> {
   return db().transaction(async (tx) => {
     const { handoff, loaded } = await pendingHandoff(tx, handoffId);
-    const [after] = await tx.update(schema.workHandoff).set({ status: "accepted", respondedByPersonId: actor.personId, respondedAt: new Date() }).where(and(eq(schema.workHandoff.id, handoffId), eq(schema.workHandoff.status, "pending"))).returning();
+    const [after] = await tx
+      .update(schema.workHandoff)
+      .set({ status: "accepted", respondedByPersonId: actor.personId, respondedAt: new Date() })
+      .where(and(eq(schema.workHandoff.id, handoffId), eq(schema.workHandoff.status, "pending")))
+      .returning();
     if (!after) throw new ActionError("handoff_not_pending");
     const receiver = handoff.toPersonId ?? actor.personId;
     if (handoff.kind === "stage" && loaded.task.assigneePersonId !== receiver) await updateWorkTaskIn(tx, loaded.task.id, { assigneePersonId: receiver }, actor.personId, { quiet: true, handoff: "system" });
-    if (handoff.kind === "cover") await tx.update(schema.workCoverItem).set({ acknowledgedAt: new Date() }).where(and(eq(schema.workCoverItem.handoffId, handoffId), isNull(schema.workCoverItem.acknowledgedAt)));
+    if (handoff.kind === "cover")
+      await tx
+        .update(schema.workCoverItem)
+        .set({ acknowledgedAt: new Date() })
+        .where(and(eq(schema.workCoverItem.handoffId, handoffId), isNull(schema.workCoverItem.acknowledgedAt)));
     await logActivity(tx, loaded.task.id, actor.personId, [{ type: "handoff_accepted", to: { name: actor.fullName } }]);
-    if (handoff.fromPersonId && handoff.fromPersonId !== actor.personId) await notify({ recipients: [handoff.fromPersonId], kind: "tasks.handoff_accepted", params: { actor: actor.fullName, task: named(loaded) }, link: taskLink(loaded.task.id) }, tx);
+    if (handoff.fromPersonId && handoff.fromPersonId !== actor.personId)
+      await notify({ recipients: [handoff.fromPersonId], kind: "tasks.handoff_accepted", params: { actor: actor.fullName, task: named(loaded) }, link: taskLink(loaded.task.id) }, tx);
     await runTaskAutomations(tx, loaded.task.id, { type: "handoff_accepted" });
     return { handoff: after, loaded };
   });
@@ -207,7 +230,11 @@ export async function acceptHandoff(handoffId: string, actor: Actor): Promise<{ 
 export async function returnHandoff(handoffId: string, reason: string, actor: Actor): Promise<{ handoff: HandoffRow; loaded: LoadedTask }> {
   return db().transaction(async (tx) => {
     const { handoff, loaded } = await pendingHandoff(tx, handoffId);
-    const [after] = await tx.update(schema.workHandoff).set({ status: "returned", respondedByPersonId: actor.personId, respondedAt: new Date(), returnReason: reason }).where(and(eq(schema.workHandoff.id, handoffId), eq(schema.workHandoff.status, "pending"))).returning();
+    const [after] = await tx
+      .update(schema.workHandoff)
+      .set({ status: "returned", respondedByPersonId: actor.personId, respondedAt: new Date(), returnReason: reason })
+      .where(and(eq(schema.workHandoff.id, handoffId), eq(schema.workHandoff.status, "pending")))
+      .returning();
     if (!after) throw new ActionError("handoff_not_pending");
     if (handoff.kind === "stage") {
       const [fromState] = handoff.fromStateId ? await tx.select().from(schema.workState).where(eq(schema.workState.id, handoff.fromStateId)).limit(1) : [];
@@ -222,7 +249,8 @@ export async function returnHandoff(handoffId: string, reason: string, actor: Ac
     }
     if (handoff.kind === "cover") await returnCoverItem(tx, handoffId, actor.personId);
     await logActivity(tx, loaded.task.id, actor.personId, [{ type: "handoff_returned", to: { name: reason } }]);
-    if (handoff.fromPersonId && handoff.fromPersonId !== actor.personId) await notify({ recipients: [handoff.fromPersonId], kind: "tasks.handoff_returned", params: { actor: actor.fullName, task: named(loaded), reason }, link: taskLink(loaded.task.id) }, tx);
+    if (handoff.fromPersonId && handoff.fromPersonId !== actor.personId)
+      await notify({ recipients: [handoff.fromPersonId], kind: "tasks.handoff_returned", params: { actor: actor.fullName, task: named(loaded), reason }, link: taskLink(loaded.task.id) }, tx);
     await runTaskAutomations(tx, loaded.task.id, { type: "handoff_returned" });
     return { handoff: after, loaded };
   });
@@ -241,7 +269,11 @@ async function returnCoverItem(tx: Executor, handoffId: string, actorPersonId: s
     const [row] = await tx.select({ assignee: schema.task.assigneePersonId }).from(schema.task).where(eq(schema.task.id, item.itemId)).limit(1);
     if (row?.assignee === cover) await updateWorkTaskIn(tx, item.itemId, { assigneePersonId: plan.personId }, actorPersonId, { quiet: true, handoff: "system" });
   }
-  if (item.itemType === "review") await tx.update(schema.workTask).set({ reviewerPersonId: plan.personId }).where(and(eq(schema.workTask.taskId, item.itemId), eq(schema.workTask.reviewerPersonId, cover)));
+  if (item.itemType === "review")
+    await tx
+      .update(schema.workTask)
+      .set({ reviewerPersonId: plan.personId })
+      .where(and(eq(schema.workTask.taskId, item.itemId), eq(schema.workTask.reviewerPersonId, cover)));
 }
 
 // ── Cross-team (FR-PJM-42) ──────────────────────────────────────────────────────────────────
@@ -261,10 +293,28 @@ export async function sendToTeam(taskId: string, input: CrossTeamInput, actor: A
     if (!team?.isActive) throw new ActionError("team_not_found");
     const note = normalizeNote(input.note);
     if (noteIsEmpty(note)) throw new ActionError("handoff_note_required");
-    const created = await createWorkTaskIn(tx, { teamId: team.id, projectId: null, title: input.title, description: describeNote(note, named(loaded)), requesterPersonId: actor.personId, dueDate: input.dueDate, clientId: loaded.work.clientId, channel: loaded.work.channel, contentFormat: loaded.work.contentFormat }, actor.personId, { notify: false });
+    const created = await createWorkTaskIn(
+      tx,
+      {
+        teamId: team.id,
+        projectId: null,
+        title: input.title,
+        description: describeNote(note, named(loaded)),
+        requesterPersonId: actor.personId,
+        dueDate: input.dueDate,
+        clientId: loaded.work.clientId,
+        channel: loaded.work.channel,
+        contentFormat: loaded.work.contentFormat,
+      },
+      actor.personId,
+      { notify: false },
+    );
     await sendToTriage(tx, created.task.id, "handoff", { actorPersonId: actor.personId });
     await tx.insert(schema.workTaskDependency).values({ blockerTaskId: taskId, blockedTaskId: created.task.id, type: "relates", createdByPersonId: actor.personId }).onConflictDoNothing();
-    const [handoff] = await tx.insert(schema.workHandoff).values({ taskId, kind: "cross_team", fromPersonId: actor.personId, toTeamId: team.id, fromStateId: loaded.work.stateId, note, status: "pending", targetTaskId: created.task.id, createdByPersonId: actor.personId }).returning();
+    const [handoff] = await tx
+      .insert(schema.workHandoff)
+      .values({ taskId, kind: "cross_team", fromPersonId: actor.personId, toTeamId: team.id, fromStateId: loaded.work.stateId, note, status: "pending", targetTaskId: created.task.id, createdByPersonId: actor.personId })
+      .returning();
     await logActivity(tx, taskId, actor.personId, [{ type: "handoff_sent_team", to: { id: created.task.id, name: `${created.key} · ${team.name}` } }]);
     await logActivity(tx, created.task.id, actor.personId, [{ type: "handoff_received_team", from: { id: taskId, name: named(loaded) } }]);
     return { handoff, loaded, target: { id: created.task.id, key: created.key } };
@@ -289,17 +339,26 @@ function describeNote(note: Note, from: string): string {
     [label("contacts"), note.contacts],
     [label("links"), note.links?.join("\n")],
   ];
-  return parts
-    .filter(([, value]) => value)
-    // A part written over several lines (a list, a quote) starts on its own line, so it stays one.
-    .map(([label, value]) => (value!.includes("\n") ? `${label}:\n${value}` : `${label}: ${value}`))
-    .join("\n\n")
-    .slice(0, 10000);
+  return (
+    parts
+      .filter(([, value]) => value)
+      // A part written over several lines (a list, a quote) starts on its own line, so it stays one.
+      .map(([label, value]) => (value!.includes("\n") ? `${label}:\n${value}` : `${label}: ${value}`))
+      .join("\n\n")
+      .slice(0, 10000)
+  );
 }
 
 // ── Account handover (FR-PJM-46) ────────────────────────────────────────────────────────────
 
-export type AccountHandoverResult = { before: string | null; after: string; projects: { id: string; name: string }[]; skipped: { id: string; name: string }[]; /** Open projects the actor may not run: left as they were, and not named. */ withheld: number; handoff: HandoffRow };
+export type AccountHandoverResult = {
+  before: string | null;
+  after: string;
+  projects: { id: string; name: string }[];
+  skipped: { id: string; name: string }[];
+  /** Open projects the actor may not run: left as they were, and not named. */ withheld: number;
+  handoff: HandoffRow;
+};
 
 /**
  * A client's relationship changes hands with a note: the client's account manager, and the
@@ -323,13 +382,30 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
     if (client.accountManagerPersonId === to.id) throw new ActionError("account_manager_unchanged");
     await tx.update(schema.workClient).set({ accountManagerPersonId: to.id, updatedAt: new Date() }).where(eq(schema.workClient.id, clientId));
 
-    const rows = await tx.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(and(eq(schema.workProject.clientId, clientId), notInArray(schema.workProject.status, ["done", "archived"])));
+    const rows = await tx
+      .select({ project: schema.workProject, team: schema.workTeam })
+      .from(schema.workProject)
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
+      .where(and(eq(schema.workProject.clientId, clientId), notInArray(schema.workProject.status, ["done", "archived"])));
     const moved: { id: string; name: string }[] = [];
     const skipped: { id: string; name: string }[] = [];
     let withheld = 0;
     const runs = rows.filter((row) => canManageProject(viewer, projectFacts(row.project, row.team)));
     withheld += rows.length - runs.length;
-    const membersOf = Map.groupBy(runs.length ? await tx.select().from(schema.workProjectMember).where(inArray(schema.workProjectMember.projectId, runs.map((row) => row.project.id))) : [], (member) => member.projectId);
+    const membersOf = Map.groupBy(
+      runs.length
+        ? await tx
+            .select()
+            .from(schema.workProjectMember)
+            .where(
+              inArray(
+                schema.workProjectMember.projectId,
+                runs.map((row) => row.project.id),
+              ),
+            )
+        : [],
+      (member) => member.projectId,
+    );
     for (const row of runs) {
       const project = { id: row.project.id, name: row.project.name };
       const members = membersOf.get(project.id) ?? [];
@@ -350,7 +426,10 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
       await invalidateMemberships(to.id, ...members.map((member) => member.personId));
       moved.push(project);
     }
-    const [handoff] = await tx.insert(schema.workHandoff).values({ kind: "account", clientId, fromPersonId: client.accountManagerPersonId, toPersonId: to.id, note, status: "recorded", sourceRef: { clientId }, createdByPersonId: actor.personId }).returning();
+    const [handoff] = await tx
+      .insert(schema.workHandoff)
+      .values({ kind: "account", clientId, fromPersonId: client.accountManagerPersonId, toPersonId: to.id, note, status: "recorded", sourceRef: { clientId }, createdByPersonId: actor.personId })
+      .returning();
     return { before: client.accountManagerPersonId, after: to.id, projects: moved, skipped, withheld, handoff };
   });
   await Promise.all([invalidateWorkClients(), invalidateWorkDirectory()]);
@@ -366,7 +445,17 @@ export async function listAccountHandoffs(clientIds: readonly string[]): Promise
   const to = alias(schema.person, "to_person");
   const by = alias(schema.person, "by_person");
   const rows = await db()
-    .select({ id: schema.workHandoff.id, clientId: schema.workHandoff.clientId, fromPersonId: schema.workHandoff.fromPersonId, fromName: from.fullName, toPersonId: schema.workHandoff.toPersonId, toName: to.fullName, byName: by.fullName, note: schema.workHandoff.note, createdAt: schema.workHandoff.createdAt })
+    .select({
+      id: schema.workHandoff.id,
+      clientId: schema.workHandoff.clientId,
+      fromPersonId: schema.workHandoff.fromPersonId,
+      fromName: from.fullName,
+      toPersonId: schema.workHandoff.toPersonId,
+      toName: to.fullName,
+      byName: by.fullName,
+      note: schema.workHandoff.note,
+      createdAt: schema.workHandoff.createdAt,
+    })
     .from(schema.workHandoff)
     .leftJoin(from, eq(from.id, schema.workHandoff.fromPersonId))
     .leftJoin(to, eq(to.id, schema.workHandoff.toPersonId))
@@ -412,7 +501,17 @@ export async function listTaskHandoffs(taskId: string, viewer: WorkViewer): Prom
   const fromState = alias(schema.workState, "from_state");
   const toState = alias(schema.workState, "to_state");
   const rows = await db()
-    .select({ handoff: schema.workHandoff, fromName: from.fullName, toName: to.fullName, respondedByName: responder.fullName, toTeamName: schema.workTeam.name, fromStateName: fromState.name, toStateName: toState.name, packageName: schema.workHandoffPackage.name, packageFields: schema.workHandoffPackage.fields })
+    .select({
+      handoff: schema.workHandoff,
+      fromName: from.fullName,
+      toName: to.fullName,
+      respondedByName: responder.fullName,
+      toTeamName: schema.workTeam.name,
+      fromStateName: fromState.name,
+      toStateName: toState.name,
+      packageName: schema.workHandoffPackage.name,
+      packageFields: schema.workHandoffPackage.fields,
+    })
     .from(schema.workHandoff)
     .leftJoin(from, eq(from.id, schema.workHandoff.fromPersonId))
     .leftJoin(to, eq(to.id, schema.workHandoff.toPersonId))
@@ -424,7 +523,17 @@ export async function listTaskHandoffs(taskId: string, viewer: WorkViewer): Prom
     .where(eq(schema.workHandoff.taskId, taskId))
     .orderBy(desc(schema.workHandoff.createdAt));
   const targets = await loadTasks(rows.map((row) => row.handoff.targetTaskId).filter((id): id is string => !!id));
-  const targetStates = targets.size ? await db().select({ id: schema.workState.id, name: schema.workState.name }).from(schema.workState).where(inArray(schema.workState.id, [...targets.values()].map((row) => row.work.stateId))) : [];
+  const targetStates = targets.size
+    ? await db()
+        .select({ id: schema.workState.id, name: schema.workState.name })
+        .from(schema.workState)
+        .where(
+          inArray(
+            schema.workState.id,
+            [...targets.values()].map((row) => row.work.stateId),
+          ),
+        )
+    : [];
   return rows.map(({ handoff, packageFields, ...names }) => {
     const target = handoff.targetTaskId ? targets.get(handoff.targetTaskId) : undefined;
     const visible = target && canViewTask(viewer, target.facts);
@@ -445,7 +554,16 @@ export async function listTaskHandoffs(taskId: string, viewer: WorkViewer): Prom
       ...names,
       // The sender follows the receiving task's progress (FR-PJM-42) — its state at least, even
       // where they may not open the other team's task.
-      target: target ? { id: target.task.id, key: visible ? keyOf(target) : null, title: visible ? target.task.title : null, stateName: targetStates.find((state) => state.id === target.work.stateId)?.name ?? "", status: target.task.status, triageStatus: target.work.triageStatus } : null,
+      target: target
+        ? {
+            id: target.task.id,
+            key: visible ? keyOf(target) : null,
+            title: visible ? target.task.title : null,
+            stateName: targetStates.find((state) => state.id === target.work.stateId)?.name ?? "",
+            status: target.task.status,
+            triageStatus: target.work.triageStatus,
+          }
+        : null,
     };
   });
 }
@@ -453,7 +571,18 @@ export async function listTaskHandoffs(taskId: string, viewer: WorkViewer): Prom
 /** Pending hand-offs addressed to a person, with the task — for "My work" (Today reads day-feed's). */
 export async function listPendingHandoffsFor(personId: string): Promise<{ id: string; taskId: string; key: string; title: string; kind: string; fromPersonId: string | null; fromName: string | null; createdAt: Date; note: Note }[]> {
   const rows = await db()
-    .select({ id: schema.workHandoff.id, taskId: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, kind: schema.workHandoff.kind, fromPersonId: schema.workHandoff.fromPersonId, fromName: schema.person.fullName, createdAt: schema.workHandoff.createdAt, note: schema.workHandoff.note })
+    .select({
+      id: schema.workHandoff.id,
+      taskId: schema.task.id,
+      number: schema.workTask.number,
+      teamKey: schema.workTeam.key,
+      title: schema.task.title,
+      kind: schema.workHandoff.kind,
+      fromPersonId: schema.workHandoff.fromPersonId,
+      fromName: schema.person.fullName,
+      createdAt: schema.workHandoff.createdAt,
+      note: schema.workHandoff.note,
+    })
     .from(schema.workHandoff)
     .innerJoin(schema.task, and(eq(schema.task.id, schema.workHandoff.taskId), isNull(schema.task.deletedAt)))
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
@@ -466,7 +595,16 @@ export async function listPendingHandoffsFor(personId: string): Promise<{ id: st
 
 // ── Statistics (FR-PJM-41, for the delivery dashboards of FR-PJM-60) ────────────────────────
 
-export type StageHandoffStats = { teamId: string; toStateId: string | null; stateName: string | null; total: number; returned: number; pending: number; /** Mean minutes from hand-off to answer, over the answered ones. */ avgWaitMinutes: number | null; /** The longest a pending one has waited so far. */ oldestPendingMinutes: number | null };
+export type StageHandoffStats = {
+  teamId: string;
+  toStateId: string | null;
+  stateName: string | null;
+  total: number;
+  returned: number;
+  pending: number;
+  /** Mean minutes from hand-off to answer, over the answered ones. */ avgWaitMinutes: number | null;
+  /** The longest a pending one has waited so far. */ oldestPendingMinutes: number | null;
+};
 
 /**
  * Per team and stage (the state handed into), since a moment: how many hand-offs, how many came
@@ -492,7 +630,14 @@ export async function handoffStatsByStage(teamIds: readonly string[], since: Dat
     .where(and(eq(schema.workHandoff.kind, "stage"), inArray(schema.workTask.teamId, [...teamIds]), gte(schema.workHandoff.createdAt, since)))
     .groupBy(schema.workTask.teamId, schema.workHandoff.toStateId, schema.workState.name, schema.workState.sortOrder)
     .orderBy(asc(schema.workState.sortOrder));
-  return rows.map((row) => ({ ...row, total: Number(row.total), returned: Number(row.returned), pending: Number(row.pending), avgWaitMinutes: row.avgWaitMinutes === null ? null : Number(row.avgWaitMinutes), oldestPendingMinutes: row.oldestPendingMinutes === null ? null : Number(row.oldestPendingMinutes) }));
+  return rows.map((row) => ({
+    ...row,
+    total: Number(row.total),
+    returned: Number(row.returned),
+    pending: Number(row.pending),
+    avgWaitMinutes: row.avgWaitMinutes === null ? null : Number(row.avgWaitMinutes),
+    oldestPendingMinutes: row.oldestPendingMinutes === null ? null : Number(row.oldestPendingMinutes),
+  }));
 }
 
 /** Returned hand-offs per task — the quality signal a close-out report and the task page show. */

@@ -75,7 +75,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const person = await findPersonByEmail(session.user.email);
   if (!person || person.status === "suspended" || person.status === "offboarded") {
-    await auth().api.revokeSessions({ headers: requestHeaders }).catch(() => undefined);
+    await auth()
+      .api.revokeSessions({ headers: requestHeaders })
+      .catch(() => undefined);
     return null;
   }
 

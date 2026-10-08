@@ -176,11 +176,7 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
   const editor = useEditor({
     // Rendered in the browser only: the server has no DOM for ProseMirror.
     immediatelyRender: false,
-    extensions: [
-      ...pageExtensions({ placeholder: t("editor.slashHint") }),
-      SlashCommands.configure({ items: (query) => matchSlash(slashItems(te, tr), query) }),
-      SaveKey,
-    ],
+    extensions: [...pageExtensions({ placeholder: t("editor.slashHint") }), SlashCommands.configure({ items: (query) => matchSlash(slashItems(te, tr), query) }), SaveKey],
     content: initialContent as object,
     editorProps: {
       attributes: { "aria-label": t("editor.body") },
@@ -205,7 +201,11 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
     if (!editor) return;
     setUploads((count) => count + 1);
     setErrorKey(null);
-    void uploadThroughSignedUrl(file, (meta) => beginPageUploadAction({ pageId, ...meta }), (fileId) => completePageUploadAction({ fileId }))
+    void uploadThroughSignedUrl(
+      file,
+      (meta) => beginPageUploadAction({ pageId, ...meta }),
+      (fileId) => completePageUploadAction({ fileId }),
+    )
       .then((result) => {
         if (!result.ok) return setErrorKey(result.errorKey);
         const { fileId, fileName, sizeBytes, contentType } = result.data;
@@ -231,7 +231,11 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
       // `attrs` to the server as a function, and every heading, callout and table was refused.
       const content = JSON.stringify(editor.getJSON());
       // In a controlled space an editor's "publish" is a request to the space's reviewers.
-      const result = !publish ? await savePageDraftAction({ pageId, title, content }) : canPublish ? await publishPageAction({ pageId, title, content, changeNote, isMajor }) : await submitPageReviewAction({ pageId, title, content, changeNote, isMajor });
+      const result = !publish
+        ? await savePageDraftAction({ pageId, title, content })
+        : canPublish
+          ? await publishPageAction({ pageId, title, content, changeNote, isMajor })
+          : await submitPageReviewAction({ pageId, title, content, changeNote, isMajor });
       setErrorKey(keyOf(result));
       if (!result.ok) return;
       if (revision.current === saving) setDirty(false);

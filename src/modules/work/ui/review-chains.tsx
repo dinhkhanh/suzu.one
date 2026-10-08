@@ -81,7 +81,14 @@ export function ReviewChainManager({ teamId, projectId = null, chains, people, c
 
 type StageDraft = { id: string; key: string | null; name: string; rule: string; personId: string; dueHours: string };
 const newRowId = () => Math.random().toString(36).slice(2, 10);
-const toDraft = (stage: ChainView["stages"][number]): StageDraft => ({ id: newRowId(), key: stage.key, name: stage.name, rule: stage.reviewer.startsWith("person:") ? "person" : stage.reviewer, personId: stage.reviewer.startsWith("person:") ? stage.reviewer.slice(7) : "", dueHours: stage.dueHours ? String(stage.dueHours) : "" });
+const toDraft = (stage: ChainView["stages"][number]): StageDraft => ({
+  id: newRowId(),
+  key: stage.key,
+  name: stage.name,
+  rule: stage.reviewer.startsWith("person:") ? "person" : stage.reviewer,
+  personId: stage.reviewer.startsWith("person:") ? stage.reviewer.slice(7) : "",
+  dueHours: stage.dueHours ? String(stage.dueHours) : "",
+});
 
 function ChainForm({ teamId, projectId, people, chain }: { teamId: string; projectId: string | null; people: Person[]; chain?: ChainView }) {
   const t = useTranslations("work.chains");
@@ -89,7 +96,14 @@ function ChainForm({ teamId, projectId, people, chain }: { teamId: string; proje
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [stages, setStages] = useState<StageDraft[]>(chain ? chain.stages.map(toDraft) : [{ id: newRowId(), key: null, name: t("defaults.lead"), rule: "team_lead", personId: "", dueHours: "24" }, { id: newRowId(), key: null, name: t("defaults.client"), rule: "client", personId: "", dueHours: "72" }]);
+  const [stages, setStages] = useState<StageDraft[]>(
+    chain
+      ? chain.stages.map(toDraft)
+      : [
+          { id: newRowId(), key: null, name: t("defaults.lead"), rule: "team_lead", personId: "", dueHours: "24" },
+          { id: newRowId(), key: null, name: t("defaults.client"), rule: "client", personId: "", dueHours: "72" },
+        ],
+  );
   const change = (id: string, patch: Partial<StageDraft>) => setStages((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   const move = (index: number, by: number) =>
     setStages((rows) => {
@@ -185,7 +199,14 @@ function ChainForm({ teamId, projectId, people, chain }: { teamId: string; proje
             </div>
           </div>
         ))}
-        <Button type="button" size="sm" variant="outline" className="w-fit" disabled={stages.length >= MAX_CHAIN_STAGES} onClick={() => setStages((rows) => [...rows, { id: newRowId(), key: null, name: "", rule: "project_lead", personId: "", dueHours: "24" }])}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="w-fit"
+          disabled={stages.length >= MAX_CHAIN_STAGES}
+          onClick={() => setStages((rows) => [...rows, { id: newRowId(), key: null, name: "", rule: "project_lead", personId: "", dueHours: "24" }])}
+        >
           <Plus aria-hidden /> {t("addStage")}
         </Button>
         <p className="text-xs text-muted-foreground">{t("clientLast")}</p>
@@ -199,9 +220,7 @@ function ChainForm({ teamId, projectId, people, chain }: { teamId: string; proje
         <Button type="submit" size="sm" disabled={pending}>
           {chain ? tWork("save") : t("create")}
         </Button>
-        {chain ? (
-          <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeReviewChainAction({ chainId: chain.id }))} />
-        ) : null}
+        {chain ? <ConfirmButton size="sm" variant="ghost" disabled={pending} label={t("remove")} question={t("removeConfirm")} onConfirm={() => run(() => removeReviewChainAction({ chainId: chain.id }))} /> : null}
       </div>
     </form>
   );

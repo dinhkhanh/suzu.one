@@ -55,7 +55,10 @@ export async function getSensitiveFields(principal: Principal, personId: string)
   const [row] = await db().select().from(schema.personSensitive).where(eq(schema.personSensitive.personId, personId)).limit(1);
   const text = Object.fromEntries(SENSITIVE_TEXT_FIELDS.map((field) => [field, unseal(row?.[field] ?? null, sensitiveContext(field, personId))])) as Record<SensitiveTextField, string | null>;
   const accounts = unseal(row?.bankAccounts ?? null, sensitiveContext("bankAccounts", personId));
-  const dependents = await db().select().from(schema.dependent).where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt)));
+  const dependents = await db()
+    .select()
+    .from(schema.dependent)
+    .where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt)));
   return {
     ...text,
     bankAccounts: accounts ? (JSON.parse(accounts) as BankAccount[]) : [],
@@ -106,7 +109,10 @@ export async function patchSensitiveFields(executor: Tx | ReturnType<typeof db>,
 
 /** Other people with the same national ID on file — for the duplicate-person warning. Decrypts nothing. */
 export async function findPeopleByNationalId(nationalId: string, exceptPersonId?: string): Promise<string[]> {
-  const rows = await db().select({ personId: schema.personSensitive.personId }).from(schema.personSensitive).where(eq(schema.personSensitive.nationalIdIndex, fieldBlindIndex(normalizeIdNumber(nationalId), NATIONAL_ID_INDEX_CONTEXT)));
+  const rows = await db()
+    .select({ personId: schema.personSensitive.personId })
+    .from(schema.personSensitive)
+    .where(eq(schema.personSensitive.nationalIdIndex, fieldBlindIndex(normalizeIdNumber(nationalId), NATIONAL_ID_INDEX_CONTEXT)));
   return rows.map((row) => row.personId).filter((id) => id !== exceptPersonId);
 }
 
@@ -114,7 +120,10 @@ export async function findPeopleByNationalId(nationalId: string, exceptPersonId?
 export async function nationalIdsOnFile(nationalIds: string[]): Promise<Set<string>> {
   const byIndex = new Map(nationalIds.map((value) => [fieldBlindIndex(normalizeIdNumber(value), NATIONAL_ID_INDEX_CONTEXT), normalizeIdNumber(value)]));
   if (byIndex.size === 0) return new Set();
-  const rows = await db().select({ index: schema.personSensitive.nationalIdIndex }).from(schema.personSensitive).where(inArray(schema.personSensitive.nationalIdIndex, [...byIndex.keys()]));
+  const rows = await db()
+    .select({ index: schema.personSensitive.nationalIdIndex })
+    .from(schema.personSensitive)
+    .where(inArray(schema.personSensitive.nationalIdIndex, [...byIndex.keys()]));
   return new Set(rows.flatMap((row) => (row.index && byIndex.has(row.index) ? [byIndex.get(row.index)!] : [])));
 }
 
@@ -132,8 +141,28 @@ export async function listContracts(principal: Principal, personId: string): Pro
   const target = await readable(principal, personId, "personal");
   if (!target) return null;
   const seesPay = canReadTier(principal, target, "compensation");
-  const rows = await db().select().from(schema.contract).where(and(eq(schema.contract.personId, personId), isNull(schema.contract.deletedAt))).orderBy(desc(schema.contract.startDate), desc(schema.contract.createdAt));
-  const files = seesPay && rows.length ? await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.ownerType, "contract"), inArray(schema.storedFile.ownerId, rows.map((row) => row.id)), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt))) : [];
+  const rows = await db()
+    .select()
+    .from(schema.contract)
+    .where(and(eq(schema.contract.personId, personId), isNull(schema.contract.deletedAt)))
+    .orderBy(desc(schema.contract.startDate), desc(schema.contract.createdAt));
+  const files =
+    seesPay && rows.length
+      ? await db()
+          .select()
+          .from(schema.storedFile)
+          .where(
+            and(
+              eq(schema.storedFile.ownerType, "contract"),
+              inArray(
+                schema.storedFile.ownerId,
+                rows.map((row) => row.id),
+              ),
+              eq(schema.storedFile.status, "ready"),
+              isNull(schema.storedFile.deletedAt),
+            ),
+          )
+      : [];
   return rows.map((row) => ({
     id: row.id,
     number: row.number,
@@ -151,7 +180,11 @@ export async function listContracts(principal: Principal, personId: string): Pro
 }
 
 export async function findContract(contractId: string): Promise<ContractRow | undefined> {
-  const [row] = await db().select().from(schema.contract).where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.contract)
+    .where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt)))
+    .limit(1);
   return row;
 }
 
@@ -169,7 +202,10 @@ export async function getContractSalaryTerms(principal: Principal, contractId: s
  */
 export async function contractSalaryTermsOf(principal: Principal, personId: string): Promise<Map<string, string>> {
   if (!(await readable(principal, personId, "compensation"))) return new Map();
-  const rows = await db().select({ id: schema.contract.id, salaryTerms: schema.contract.salaryTerms }).from(schema.contract).where(and(eq(schema.contract.personId, personId), isNull(schema.contract.deletedAt)));
+  const rows = await db()
+    .select({ id: schema.contract.id, salaryTerms: schema.contract.salaryTerms })
+    .from(schema.contract)
+    .where(and(eq(schema.contract.personId, personId), isNull(schema.contract.deletedAt)));
   return new Map(rows.flatMap((row) => (row.salaryTerms ? [[row.id, unseal(row.salaryTerms, contractTermsContext(row.id))!] as const] : [])));
 }
 
@@ -210,7 +246,10 @@ export async function createContract(personId: string, input: ContractInput, act
   const limits = executor ? null : await contractLimits(input.startDate);
   const work = async (tx: Tx) => {
     const employment = await employmentFor(tx, personId, input.startDate);
-    const existing = await tx.select().from(schema.contract).where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt)));
+    const existing = await tx
+      .select()
+      .from(schema.contract)
+      .where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt)));
     const [problem] = checkContract(input, existing, limits ?? (await contractLimits(input.startDate, tx)));
     if (problem) throw new ActionError(problem);
 
@@ -233,15 +272,27 @@ export async function createContract(personId: string, input: ContractInput, act
 export async function updateContract(contractId: string, input: Omit<ContractInput, "salaryTerms"> & { salaryTerms?: string | null }): Promise<{ before: ContractRow; after: ContractRow }> {
   const limits = await contractLimits(input.startDate);
   return inTransaction(async (tx) => {
-    const [before] = await tx.select().from(schema.contract).where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.contract)
+      .where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!before) throw new ActionError("contract_not_found");
     const employment = await employmentFor(tx, before.personId, input.startDate);
-    const existing = await tx.select().from(schema.contract).where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt), ne(schema.contract.id, contractId)));
+    const existing = await tx
+      .select()
+      .from(schema.contract)
+      .where(and(eq(schema.contract.employmentId, employment.id), isNull(schema.contract.deletedAt), ne(schema.contract.id, contractId)));
     const [problem] = checkContract(input, existing, limits);
     if (problem) throw new ActionError(problem);
     // A contract with appendices stays a contract: they would be left hanging off an appendix.
     if (input.type === "appendix" && before.type !== "appendix") {
-      const [child] = await tx.select({ id: schema.contract.id }).from(schema.contract).where(and(eq(schema.contract.parentContractId, contractId), isNull(schema.contract.deletedAt))).limit(1);
+      const [child] = await tx
+        .select({ id: schema.contract.id })
+        .from(schema.contract)
+        .where(and(eq(schema.contract.parentContractId, contractId), isNull(schema.contract.deletedAt)))
+        .limit(1);
       if (child) throw new ActionError("contract_has_appendices");
     }
     if (before.terminatedOn && (before.terminatedOn < input.startDate || (input.endDate && before.terminatedOn > input.endDate))) throw new ActionError("contract_termination_outside_term");
@@ -267,13 +318,18 @@ export async function terminateContract(contractId: string, terminatedOn: IsoDat
 
 /** For contracts entered by mistake. Soft (DR-03). */
 export async function deleteContract(contractId: string): Promise<ContractRow> {
-  const [row] = await db().update(schema.contract).set({ deletedAt: new Date() }).where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt))).returning();
+  const [row] = await db()
+    .update(schema.contract)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(schema.contract.id, contractId), isNull(schema.contract.deletedAt)))
+    .returning();
   if (!row) throw new ActionError("contract_not_found");
   return row;
 }
 
 /** Audit-safe copy: the ciphertext says nothing, but it has no business in the log either. */
-export const withoutSecrets = <Row extends Record<string, unknown>>(row: Row, fields: readonly (keyof Row)[]) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, fields.includes(key) && value !== null ? "[encrypted]" : value]));
+export const withoutSecrets = <Row extends Record<string, unknown>>(row: Row, fields: readonly (keyof Row)[]) =>
+  Object.fromEntries(Object.entries(row).map(([key, value]) => [key, fields.includes(key) && value !== null ? "[encrypted]" : value]));
 
 // ── Dependents ──────────────────────────────────────────────────────────────────────────────
 
@@ -283,8 +339,27 @@ export type DependentView = Pick<DependentRow, "id" | "fullName" | "relationship
 /** The PIT family-deduction register: restricted tier as a whole. null = refused. ID numbers come with `getSensitiveFields`. */
 export async function listDependents(principal: Principal, personId: string): Promise<DependentView[] | null> {
   if (!(await readable(principal, personId, "restricted"))) return null;
-  const rows = await db().select().from(schema.dependent).where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt))).orderBy(asc(schema.dependent.deductionFrom), asc(schema.dependent.createdAt));
-  const files = rows.length ? await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.ownerType, "dependent"), inArray(schema.storedFile.ownerId, rows.map((row) => row.id)), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt))) : [];
+  const rows = await db()
+    .select()
+    .from(schema.dependent)
+    .where(and(eq(schema.dependent.personId, personId), isNull(schema.dependent.deletedAt)))
+    .orderBy(asc(schema.dependent.deductionFrom), asc(schema.dependent.createdAt));
+  const files = rows.length
+    ? await db()
+        .select()
+        .from(schema.storedFile)
+        .where(
+          and(
+            eq(schema.storedFile.ownerType, "dependent"),
+            inArray(
+              schema.storedFile.ownerId,
+              rows.map((row) => row.id),
+            ),
+            eq(schema.storedFile.status, "ready"),
+            isNull(schema.storedFile.deletedAt),
+          ),
+        )
+    : [];
   return rows.map((row) => ({
     id: row.id,
     fullName: row.fullName,
@@ -299,10 +374,23 @@ export async function listDependents(principal: Principal, personId: string): Pr
   }));
 }
 
-export type DependentInput = { fullName: string; relationship: DependentRow["relationship"]; dateOfBirth: IsoDate | null; idNumber: string | null; taxCode: string | null; deductionFrom: IsoDate; deductionTo: IsoDate | null; note: string | null };
+export type DependentInput = {
+  fullName: string;
+  relationship: DependentRow["relationship"];
+  dateOfBirth: IsoDate | null;
+  idNumber: string | null;
+  taxCode: string | null;
+  deductionFrom: IsoDate;
+  deductionTo: IsoDate | null;
+  note: string | null;
+};
 
 export async function findDependent(dependentId: string): Promise<DependentRow | undefined> {
-  const [row] = await db().select().from(schema.dependent).where(and(eq(schema.dependent.id, dependentId), isNull(schema.dependent.deletedAt))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.dependent)
+    .where(and(eq(schema.dependent.id, dependentId), isNull(schema.dependent.deletedAt)))
+    .limit(1);
   return row;
 }
 
@@ -349,7 +437,11 @@ export async function endDependentDeduction(dependentId: string, deductionTo: Is
 }
 
 export async function deleteDependent(dependentId: string): Promise<DependentRow> {
-  const [row] = await db().update(schema.dependent).set({ deletedAt: new Date() }).where(and(eq(schema.dependent.id, dependentId), isNull(schema.dependent.deletedAt))).returning();
+  const [row] = await db()
+    .update(schema.dependent)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(schema.dependent.id, dependentId), isNull(schema.dependent.deletedAt)))
+    .returning();
   if (!row) throw new ActionError("dependent_not_found");
   return row;
 }
@@ -364,7 +456,10 @@ export async function listEmergencyContacts(principal: Principal, personId: stri
 }
 
 export async function addEmergencyContact(personId: string, input: { fullName: string; relationship: string | null; phone: string; note: string | null }): Promise<EmergencyContactRow> {
-  const [created] = await db().insert(schema.emergencyContact).values({ personId, ...input }).returning();
+  const [created] = await db()
+    .insert(schema.emergencyContact)
+    .values({ personId, ...input })
+    .returning();
   return created;
 }
 
@@ -403,7 +498,17 @@ export async function listDocuments(principal: Principal, personId: string): Pro
     .orderBy(asc(schema.personDocument.category), desc(schema.personDocument.createdAt));
   return rows
     .filter((row) => canReadTier(principal, target, row.document.tier as Tier))
-    .map(({ document, fileName, sizeBytes }) => ({ id: document.id, category: document.category, title: document.title, expiresOn: document.expiresOn, tier: document.tier as Tier, fileId: document.fileId, fileName, sizeBytes, createdAt: document.createdAt }));
+    .map(({ document, fileName, sizeBytes }) => ({
+      id: document.id,
+      category: document.category,
+      title: document.title,
+      expiresOn: document.expiresOn,
+      tier: document.tier as Tier,
+      fileId: document.fileId,
+      fileName,
+      sizeBytes,
+      createdAt: document.createdAt,
+    }));
 }
 
 type Upload = { fileId: string; uploadUrl: string; contentType: string };
@@ -429,7 +534,11 @@ export async function completeDocumentUpload(personId: string, input: { fileId: 
 }
 
 export async function findDocument(documentId: string) {
-  const [row] = await db().select().from(schema.personDocument).where(and(eq(schema.personDocument.id, documentId), isNull(schema.personDocument.deletedAt))).limit(1);
+  const [row] = await db()
+    .select()
+    .from(schema.personDocument)
+    .where(and(eq(schema.personDocument.id, documentId), isNull(schema.personDocument.deletedAt)))
+    .limit(1);
   return row;
 }
 
@@ -445,7 +554,11 @@ export async function updateDocument(documentId: string, input: { title: string;
 }
 
 export async function deleteDocument(documentId: string) {
-  const [row] = await db().update(schema.personDocument).set({ deletedAt: new Date() }).where(and(eq(schema.personDocument.id, documentId), isNull(schema.personDocument.deletedAt))).returning();
+  const [row] = await db()
+    .update(schema.personDocument)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(schema.personDocument.id, documentId), isNull(schema.personDocument.deletedAt)))
+    .returning();
   if (!row) throw new ActionError("document_not_found");
   await softDeleteFile(row.fileId);
   return row;
@@ -474,7 +587,15 @@ export async function resolveAttachmentOwner(ownerType: string, ownerId: string)
 
 /** `pending: true` looks at an upload that is still to be confirmed. */
 export async function resolveFileOwner(fileId: string, options: { pending?: boolean } = {}): Promise<{ file: StoredFileRow; personId: string; tier: Tier } | null> {
-  const file = options.pending ? (await db().select().from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending"))).limit(1))[0] : await findFile(fileId);
+  const file = options.pending
+    ? (
+        await db()
+          .select()
+          .from(schema.storedFile)
+          .where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.status, "pending")))
+          .limit(1)
+      )[0]
+    : await findFile(fileId);
   const owner = file && (await resolveAttachmentOwner(file.ownerType, file.ownerId));
   return file && owner ? { file, ...owner } : null;
 }

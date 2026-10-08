@@ -21,7 +21,11 @@ export default async function DevicesPage() {
   const t = await getTranslations("attendance.devices");
   const format = await getFormatter();
   const [devices, profiles, locations, options] = await Promise.all([listDevices(user.principal), listProfiles(), listLocations(), configOptions(user.principal)]);
-  const formOptions = { entities: options.entities, profiles: profiles.filter((profile) => profile.isActive).map((profile) => ({ id: profile.id, name: profile.name, entityId: profile.entityId })), locations: locations.map((location) => ({ id: location.id, name: location.name, entityId: location.entityId })) };
+  const formOptions = {
+    entities: options.entities,
+    profiles: profiles.filter((profile) => profile.isActive).map((profile) => ({ id: profile.id, name: profile.name, entityId: profile.entityId })),
+    locations: locations.map((location) => ({ id: location.id, name: location.name, entityId: location.entityId })),
+  };
 
   return (
     <section className="flex flex-col gap-3">
@@ -38,14 +42,31 @@ export default async function DevicesPage() {
                 <Badge variant="secondary">{device.profileName}</Badge>
                 <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>
                 {device.unmapped > 0 ? <Badge variant="destructive">{t("device.unmapped", { count: device.unmapped })}</Badge> : null}
-                <span className="text-xs text-muted-foreground">{device.lastPunchAt ? t("device.lastPunch", { at: format.dateTime(device.lastPunchAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("device.noPunches")}</span>
-                {device.pushTokenHash ? <Badge variant="outline">{device.lastSeenAt ? t("push.lastSeen", { at: format.dateTime(device.lastSeenAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("push.neverSeen")}</Badge> : null}
+                <span className="text-xs text-muted-foreground">
+                  {device.lastPunchAt ? t("device.lastPunch", { at: format.dateTime(device.lastPunchAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("device.noPunches")}
+                </span>
+                {device.pushTokenHash ? (
+                  <Badge variant="outline">{device.lastSeenAt ? t("push.lastSeen", { at: format.dateTime(device.lastSeenAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("push.neverSeen")}</Badge>
+                ) : null}
                 {device.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
               </div>
               <details className="mt-2">
                 <summary className="cursor-pointer text-sm text-muted-foreground">{t("device.edit")}</summary>
                 <div className="mt-3">
-                  <DeviceForm device={{ id: device.id, entityId: device.entityId, name: device.name, model: device.model, serialNumber: device.serialNumber, locationId: device.locationId, profileId: device.profileId, isActive: device.isActive, alsoServes: device.alsoServes }} {...formOptions} />
+                  <DeviceForm
+                    device={{
+                      id: device.id,
+                      entityId: device.entityId,
+                      name: device.name,
+                      model: device.model,
+                      serialNumber: device.serialNumber,
+                      locationId: device.locationId,
+                      profileId: device.profileId,
+                      isActive: device.isActive,
+                      alsoServes: device.alsoServes,
+                    }}
+                    {...formOptions}
+                  />
                 </div>
               </details>
             </ListItem>

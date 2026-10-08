@@ -31,7 +31,11 @@ export default async function IssuedDocumentsPage({ searchParams }: PageProps<"/
 
   return (
     <Page width="wide">
-      <PageHeader title={t("register.title")} description={t("register.description")} actions={<ExportButton action={exportIssuedDocumentsAction} input={{ kind, year, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
+      <PageHeader
+        title={t("register.title")}
+        description={t("register.description")}
+        actions={<ExportButton action={exportIssuedDocumentsAction} input={{ kind, year, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />}
+      />
       <form action="/documents" className="toolbar">
         <Select name="kind" defaultValue={kind ?? ""} aria-label={t("register.kind")} className="w-auto">
           <option value="">{t("register.allKinds")}</option>

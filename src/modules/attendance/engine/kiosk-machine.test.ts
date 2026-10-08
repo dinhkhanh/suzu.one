@@ -43,7 +43,14 @@ describe("the kiosk screen", () => {
     expect(machine.tracked(0.8, 0.55, 400)).toMatchObject({ view: { state: "challenge" }, punch: null });
     expect(machine.tracked(0.7, 0.66, 1500)).toEqual({ view: { state: "punching", name: "Lan", way: "in" }, punch: lan });
     expect(machine.observe(face(), 1600).need).toBeNull();
-    expect(machine.punched({ punchId: "p1", at: "2026-10-02T08:42:00+07:00", name: "Lan", repeat: false, direction: "in" }, 1700)).toEqual({ state: "done", name: "Lan", at: "2026-10-02T08:42:00+07:00", punchId: "p1", repeat: false, way: "in" });
+    expect(machine.punched({ punchId: "p1", at: "2026-10-02T08:42:00+07:00", name: "Lan", repeat: false, direction: "in" }, 1700)).toEqual({
+      state: "done",
+      name: "Lan",
+      at: "2026-10-02T08:42:00+07:00",
+      punchId: "p1",
+      repeat: false,
+      way: "in",
+    });
     expect(machine.observe(null, 3000).view.state).toBe("done");
     expect(machine.observe(null, 1700 + KIOSK_SETTINGS.doneMs + 1).view).toEqual({ state: "idle" });
   });

@@ -107,7 +107,9 @@ export default async function JobsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead kind="id">{t("job")}</TableHead>
-                <TableHead kind="time" className="text-left">{t("schedule")}</TableHead>
+                <TableHead kind="time" className="text-left">
+                  {t("schedule")}
+                </TableHead>
                 <TableHead kind="date">{t("lastRun")}</TableHead>
                 <TableHead kind="status">{t("status")}</TableHead>
                 {mayRun ? <TableHead kind="actions" /> : null}
@@ -121,7 +123,15 @@ export default async function JobsPage() {
                     <TableCell className="font-semibold">{job.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{when ?? t("onDemand")}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">{job.latest ? format.dateTime(job.latest.startedAt, { dateStyle: "short", timeStyle: "short" }) : "—"}</TableCell>
-                    <TableCell>{job.latest ? <Badge dot variant={statusTone(job.latest.status)}>{t(`statuses.${job.latest.status}`)}</Badge> : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell>
+                      {job.latest ? (
+                        <Badge dot variant={statusTone(job.latest.status)}>
+                          {t(`statuses.${job.latest.status}`)}
+                        </Badge>
+                      ) : (
+                        <span className="text-faint">—</span>
+                      )}
+                    </TableCell>
                     {mayRun ? (
                       <TableCell kind="actions">
                         <RunNowButton job={job.name} />
@@ -142,7 +152,9 @@ export default async function JobsPage() {
               <TableRow>
                 <TableHead kind="date">{t("started")}</TableHead>
                 <TableHead kind="id">{t("job")}</TableHead>
-                <TableHead kind="time" className="text-left">{t("schedule")}</TableHead>
+                <TableHead kind="time" className="text-left">
+                  {t("schedule")}
+                </TableHead>
                 <TableHead kind="status">{t("status")}</TableHead>
                 <TableHead kind="time">{t("took")}</TableHead>
                 <TableHead kind="text">{t("result")}</TableHead>
@@ -159,9 +171,13 @@ export default async function JobsPage() {
                     <TableCell className="font-semibold">{run.job}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{when ?? <span className="text-faint">—</span>}</TableCell>
                     <TableCell>
-                      <Badge dot variant={statusTone(run.status)}>{t(`statuses.${run.status}`)}</Badge>
+                      <Badge dot variant={statusTone(run.status)}>
+                        {t(`statuses.${run.status}`)}
+                      </Badge>
                     </TableCell>
-                    <TableCell kind="time" className="text-muted-foreground">{length === null ? "—" : took(length)}</TableCell>
+                    <TableCell kind="time" className="text-muted-foreground">
+                      {length === null ? "—" : took(length)}
+                    </TableCell>
                     <TableCell className="max-w-md truncate font-mono text-xs text-muted-foreground" title={run.error ?? (run.result ? JSON.stringify(run.result) : undefined)}>
                       {run.error ? <span className="text-destructive">{run.error}</span> : run.result ? JSON.stringify(run.result) : "—"}
                     </TableCell>

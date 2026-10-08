@@ -76,7 +76,17 @@ export type TeamWeek = {
 
 /** A team's week from its people's weeks: whoever had blockers first, then by name. */
 export function summariseTeamWeek(people: readonly { personId: string; name: string; week: PersonWeek }[]): TeamWeek {
-  const rows: TeamWeekPerson[] = people.map(({ personId, name, week }) => ({ personId, name, done: week.done.length, slipped: week.slipped.length, blockers: week.blockers.length, minutes: week.totalMinutes, submitted: week.submitted, required: week.required, late: week.late }));
+  const rows: TeamWeekPerson[] = people.map(({ personId, name, week }) => ({
+    personId,
+    name,
+    done: week.done.length,
+    slipped: week.slipped.length,
+    blockers: week.blockers.length,
+    minutes: week.totalMinutes,
+    submitted: week.submitted,
+    required: week.required,
+    late: week.late,
+  }));
   rows.sort((a, b) => b.blockers - a.blockers || a.name.localeCompare(b.name, "vi"));
   const hours = new Map<string, ProjectHours>();
   for (const { week } of people)

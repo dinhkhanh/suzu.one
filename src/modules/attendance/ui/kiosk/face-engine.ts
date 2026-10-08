@@ -29,7 +29,14 @@ const sizeOf = (source: Source): [number, number] =>
 async function landmarker(mode: "VIDEO" | "IMAGE"): Promise<FaceLandmarker> {
   const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
   const fileset = await FilesetResolver.forVisionTasks(`${ASSETS}/vendor/mediapipe`);
-  const options = (delegate: "GPU" | "CPU") => ({ baseOptions: { modelAssetPath: `${ASSETS}/models/face_landmarker.task`, delegate }, runningMode: mode, numFaces: 2, minFaceDetectionConfidence: 0.6, minFacePresenceConfidence: 0.6, minTrackingConfidence: 0.5 });
+  const options = (delegate: "GPU" | "CPU") => ({
+    baseOptions: { modelAssetPath: `${ASSETS}/models/face_landmarker.task`, delegate },
+    runningMode: mode,
+    numFaces: 2,
+    minFaceDetectionConfidence: 0.6,
+    minFacePresenceConfidence: 0.6,
+    minTrackingConfidence: 0.5,
+  });
   // The GPU is quicker where there is one that WebGL can use; a tablet without falls back to the CPU.
   try {
     return await FaceLandmarker.createFromOptions(fileset, options("GPU"));
@@ -77,7 +84,12 @@ export async function loadFaceEngine(mode: "VIDEO" | "IMAGE"): Promise<FaceEngin
     async embed(source, points) {
       // Only the part of the frame the 112 × 112 face is cut from is read back, not the whole frame.
       const back = invertAffine(alignmentMatrix(points));
-      const corners = [[0, 0], [ALIGNED_SIZE, 0], [0, ALIGNED_SIZE], [ALIGNED_SIZE, ALIGNED_SIZE]].map(([x, y]) => applyAffine(back, [x, y]));
+      const corners = [
+        [0, 0],
+        [ALIGNED_SIZE, 0],
+        [0, ALIGNED_SIZE],
+        [ALIGNED_SIZE, ALIGNED_SIZE],
+      ].map(([x, y]) => applyAffine(back, [x, y]));
       const [width, height] = sizeOf(source);
       const left = Math.max(0, Math.floor(Math.min(...corners.map((point) => point[0]))) - 1);
       const top = Math.max(0, Math.floor(Math.min(...corners.map((point) => point[1]))) - 1);

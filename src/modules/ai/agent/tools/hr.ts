@@ -61,11 +61,26 @@ const headcount = defineTool({
         byGender: counts(snapshot.byGender),
         byAge: counts(snapshot.byAge),
         bySeniority: counts(snapshot.bySeniority),
-        movement: { from: movement.from, to: movement.to, opening: movement.opening, closing: movement.closing, joiners: movement.joiners, leavers: movement.leavers, turnoverPercent: percentOf(movement.turnoverBp), joinersByDepartment: counts(movement.joinersByDepartment), leaversByDepartment: counts(movement.leaversByDepartment) },
+        movement: {
+          from: movement.from,
+          to: movement.to,
+          opening: movement.opening,
+          closing: movement.closing,
+          joiners: movement.joiners,
+          leavers: movement.leavers,
+          turnoverPercent: percentOf(movement.turnoverBp),
+          joinersByDepartment: counts(movement.joinersByDepartment),
+          leaversByDepartment: counts(movement.leaversByDepartment),
+        },
         contractsEndingWithin90Days: report.contractsExpiring.length,
         probationsRunning: report.probations.length,
       },
-      card: { tool: "headcount", href: "/reports/headcount", items: [{ label: "", title: { key: "headcountOn", params: { total: snapshot.total, date: snapshot.asOf } }, href: "/reports/headcount", meta: { key: "movement", params: { joiners: movement.joiners, leavers: movement.leavers } } }], more: 0 },
+      card: {
+        tool: "headcount",
+        href: "/reports/headcount",
+        items: [{ label: "", title: { key: "headcountOn", params: { total: snapshot.total, date: snapshot.asOf } }, href: "/reports/headcount", meta: { key: "movement", params: { joiners: movement.joiners, leavers: movement.leavers } } }],
+        more: 0,
+      },
       subject: null,
     };
   },
@@ -97,7 +112,12 @@ const contractsEnding = defineTool({
     return {
       outcome: "answered",
       model: { link: "/reports/headcount", today, until, ...modelRows(shaped, { name: "text", entity: "text", department: "text", contractType: "value", endDate: "value", link: "value" }, CAP) },
-      card: { tool: "contracts_ending", href: "/reports/headcount", items: shaped.slice(0, 8).map((row) => ({ label: row.name, href: row.link, meta: { key: row.contractType === "probation" ? "probationEnds" : "contractEnds", params: { date: row.endDate } } })), more: Math.max(0, shaped.length - 8) },
+      card: {
+        tool: "contracts_ending",
+        href: "/reports/headcount",
+        items: shaped.slice(0, 8).map((row) => ({ label: row.name, href: row.link, meta: { key: row.contractType === "probation" ? "probationEnds" : "contractEnds", params: { date: row.endDate } } })),
+        more: Math.max(0, shaped.length - 8),
+      },
       subject: null,
     };
   },
@@ -118,7 +138,16 @@ const recruitment = defineTool({
   run: async ({ user, today }, input) => {
     const period = periodOf(input, today, { daysBack: 183 });
     const [report, openings] = await Promise.all([getRecruitReport(user.principal, { from: period.from, to: period.to }), listOpenings(user.principal, { status: "open" })]);
-    const shaped = openings.map((row) => ({ code: row.code, title: row.title, entity: row.entityName, department: row.departmentName, headcount: row.headcount, activeApplications: row.activeApplications, hired: row.hiredCount, link: recordHref("opening", row.id) }));
+    const shaped = openings.map((row) => ({
+      code: row.code,
+      title: row.title,
+      entity: row.entityName,
+      department: row.departmentName,
+      headcount: row.headcount,
+      activeApplications: row.activeApplications,
+      hired: row.hiredCount,
+      link: recordHref("opening", row.id),
+    }));
     return {
       outcome: "answered",
       model: {
@@ -136,7 +165,12 @@ const recruitment = defineTool({
         },
       },
       card: shaped.length
-        ? { tool: "recruitment", href: "/recruit", items: shaped.slice(0, 8).map((row) => ({ label: row.title, href: row.link, meta: { key: "applications", params: { count: row.activeApplications } } })), more: Math.max(0, shaped.length - 8) }
+        ? {
+            tool: "recruitment",
+            href: "/recruit",
+            items: shaped.slice(0, 8).map((row) => ({ label: row.title, href: row.link, meta: { key: "applications", params: { count: row.activeApplications } } })),
+            more: Math.max(0, shaped.length - 8),
+          }
         : { tool: "recruitment", href: "/recruit/reports", items: [{ label: "", title: { key: "applicationsIn", params: { count: report.applications } }, href: "/recruit/reports", meta: null }], more: 0 },
       subject: null,
     };
@@ -163,7 +197,12 @@ const leaveByUnit = defineTool({
     return {
       outcome: "answered",
       model: { link: "/leave/calendar", period, totalDays: DAYS(rows.reduce((sum, row) => sum + row.daysCenti, 0)), ...modelRows(shaped, { department: "text", people: "value", days: "value" }, CAP) },
-      card: { tool: "leave_by_unit", href: "/leave/calendar", items: shaped.slice(0, 8).map((row) => ({ label: row.department, href: null, meta: { key: "leaveTaken", params: { people: row.people, days: row.days } } })), more: Math.max(0, shaped.length - 8) },
+      card: {
+        tool: "leave_by_unit",
+        href: "/leave/calendar",
+        items: shaped.slice(0, 8).map((row) => ({ label: row.department, href: null, meta: { key: "leaveTaken", params: { people: row.people, days: row.days } } })),
+        more: Math.max(0, shaped.length - 8),
+      },
       subject: null,
     };
   },

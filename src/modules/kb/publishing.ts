@@ -33,7 +33,12 @@ export type SubmitReviewInput = { changeNote: string | null; isMajor: boolean; /
 export async function submitPageForReview(pageId: string, actor: { personId: string }, input: SubmitReviewInput): Promise<{ page: PageRow; requestId: string; resubmitted: boolean }> {
   if (input.draft) await saveDraft(pageId, input.draft, actor);
   return db().transaction(async (tx) => {
-    const [page] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
+    const [page] = await tx
+      .select()
+      .from(schema.kbPage)
+      .where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt)))
+      .limit(1)
+      .for("update");
     if (!page) throw new ActionError("kb_page_not_found");
     if (page.status === "in_review") throw new ActionError("kb_page_in_review");
     if (page.status === "archived") throw new ActionError("kb_page_archived");
@@ -43,13 +48,29 @@ export async function submitPageForReview(pageId: string, actor: { personId: str
     const summary = summaryOf(page.title, payload.changeNote, payload.isMajor);
 
     // After "return for changes" the same person sends the same request round again.
-    const [returned] = page.reviewRequestId ? await tx.select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, page.reviewRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actor.personId))).limit(1) : [];
+    const [returned] = page.reviewRequestId
+      ? await tx
+          .select()
+          .from(schema.approvalRequest)
+          .where(and(eq(schema.approvalRequest.id, page.reviewRequestId), eq(schema.approvalRequest.status, "returned"), eq(schema.approvalRequest.requesterPersonId, actor.personId)))
+          .limit(1)
+      : [];
     let requestId: string;
     if (returned) {
       await resubmitRequest(tx, kbPublishRequest, returned.id, actor.personId, { summary, payload });
       requestId = returned.id;
     } else {
-      const { request, outcome } = await submitRequest(tx, kbPublishRequest, { entityId: space?.entityId ?? null, requesterPersonId: actor.personId, subjectPersonId: null, subjectType: "kb_page", subjectId: pageId, summary, payload, link: (id) => `/approvals/kb-publish/${id}`, target: { entityId: space?.entityId ?? null } });
+      const { request, outcome } = await submitRequest(tx, kbPublishRequest, {
+        entityId: space?.entityId ?? null,
+        requesterPersonId: actor.personId,
+        subjectPersonId: null,
+        subjectType: "kb_page",
+        subjectId: pageId,
+        summary,
+        payload,
+        link: (id) => `/approvals/kb-publish/${id}`,
+        target: { entityId: space?.entityId ?? null },
+      });
       // A flow configured with no step that applies approves at once: publish now.
       if (outcome === "approved") {
         const published = await publishPage(pageId, actor, { changeNote: payload.changeNote, isMajor: payload.isMajor, approvalRequestId: request.id }, tx);
@@ -82,7 +103,11 @@ export async function decidePageReview(actorPersonId: string, requestId: string,
 async function releasePage(tx: Tx, pageId: string, requestId: string, keepRequest: boolean): Promise<PageRow | null> {
   const [page] = await tx.select().from(schema.kbPage).where(eq(schema.kbPage.id, pageId)).limit(1).for("update");
   if (!page || page.reviewRequestId !== requestId) return page ?? null;
-  const [after] = await tx.update(schema.kbPage).set({ status: page.status === "in_review" ? restingStatus(page) : page.status, reviewRequestId: keepRequest ? requestId : null, updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+  const [after] = await tx
+    .update(schema.kbPage)
+    .set({ status: page.status === "in_review" ? restingStatus(page) : page.status, reviewRequestId: keepRequest ? requestId : null, updatedAt: new Date() })
+    .where(eq(schema.kbPage.id, pageId))
+    .returning();
   return after;
 }
 
@@ -107,18 +132,33 @@ export async function syncReviewState(page: Pick<PageRow, "id" | "status" | "rev
     if (request?.status === "pending" || (request?.status === "returned" && page.status !== "in_review")) return false;
     const [current] = await tx.select().from(schema.kbPage).where(eq(schema.kbPage.id, page.id)).limit(1).for("update");
     if (!current) return false;
-    await tx.update(schema.kbPage).set({ status: current.status === "in_review" ? restingStatus(current) : current.status, reviewRequestId: request?.status === "returned" ? current.reviewRequestId : null }).where(eq(schema.kbPage.id, page.id));
+    await tx
+      .update(schema.kbPage)
+      .set({ status: current.status === "in_review" ? restingStatus(current) : current.status, reviewRequestId: request?.status === "returned" ? current.reviewRequestId : null })
+      .where(eq(schema.kbPage.id, page.id));
     return true;
   });
 }
 
-export type PublishReviewView = RequestView & { payload: PublishReviewPayload; page: PageRow | null; spaceName: string | null; spaceKey: string | null; /** What is being reviewed: the frozen working copy while pending, else the version it became. */ submitted: { title: string; content: Doc } | null; diff: { fromVersionNo: number | null; lines: DiffLine[] } | null };
+export type PublishReviewView = RequestView & {
+  payload: PublishReviewPayload;
+  page: PageRow | null;
+  spaceName: string | null;
+  spaceKey: string | null;
+  /** What is being reviewed: the frozen working copy while pending, else the version it became. */ submitted: { title: string; content: Doc } | null;
+  diff: { fromVersionNo: number | null; lines: DiffLine[] } | null;
+};
 
 export async function getPublishReview(viewer: { personId: string; principal: Principal }, requestId: string): Promise<PublishReviewView | null> {
   const view = await getRequest(viewer, kbPublishRequest, requestId);
   if (!view) return null;
   const payload = view.request.payload as PublishReviewPayload;
-  const [row] = await db().select({ page: schema.kbPage, spaceName: schema.kbSpace.name, spaceKey: schema.kbSpace.key }).from(schema.kbPage).innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId)).where(eq(schema.kbPage.id, payload.pageId)).limit(1);
+  const [row] = await db()
+    .select({ page: schema.kbPage, spaceName: schema.kbSpace.name, spaceKey: schema.kbSpace.key })
+    .from(schema.kbPage)
+    .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
+    .where(eq(schema.kbPage.id, payload.pageId))
+    .limit(1);
   const page = row?.page ?? null;
   let submitted: PublishReviewView["submitted"] = null;
   let diff: PublishReviewView["diff"] = null;
@@ -127,10 +167,18 @@ export async function getPublishReview(viewer: { personId: string; principal: Pr
     const [published] = page.publishedVersionId ? await db().select().from(schema.kbPageVersion).where(eq(schema.kbPageVersion.id, page.publishedVersionId)).limit(1) : [];
     diff = { fromVersionNo: published?.versionNo ?? null, lines: diffLines(published?.contentText ?? "", page.contentText) };
   } else if (page && view.request.status === "approved") {
-    const [version] = await db().select().from(schema.kbPageVersion).where(and(eq(schema.kbPageVersion.pageId, page.id), eq(schema.kbPageVersion.approvalRequestId, view.request.id))).limit(1);
+    const [version] = await db()
+      .select()
+      .from(schema.kbPageVersion)
+      .where(and(eq(schema.kbPageVersion.pageId, page.id), eq(schema.kbPageVersion.approvalRequestId, view.request.id)))
+      .limit(1);
     if (version) {
       submitted = { title: version.title, content: version.content as Doc };
-      const [previous] = await db().select().from(schema.kbPageVersion).where(and(eq(schema.kbPageVersion.pageId, page.id), eq(schema.kbPageVersion.versionNo, version.versionNo - 1))).limit(1);
+      const [previous] = await db()
+        .select()
+        .from(schema.kbPageVersion)
+        .where(and(eq(schema.kbPageVersion.pageId, page.id), eq(schema.kbPageVersion.versionNo, version.versionNo - 1)))
+        .limit(1);
       diff = { fromVersionNo: previous?.versionNo ?? null, lines: diffLines(previous?.contentText ?? "", version.contentText) };
     }
   }

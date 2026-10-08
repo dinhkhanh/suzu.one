@@ -81,10 +81,19 @@ export const REVIEW_TEMPLATE_SEED: ReviewTemplateSeed[] = [
       { key: "learned", title: "Kết quả đạt được và điều đã học được trong thời gian thử việc", titleEn: "Results and what was learned during probation", kind: "text", weight: 0, required: true, askedOf: ["self"] },
       { key: "difficulties", title: "Khó khăn gặp phải và hỗ trợ mong muốn", titleEn: "Difficulties and support wanted", kind: "text", weight: 0, required: false, askedOf: ["self"] },
       { key: "assessment", title: "Nhận xét của quản lý trực tiếp", titleEn: "The line manager's assessment", kind: "text", weight: 0, required: true, askedOf: ["manager"] },
-      { key: "proposal", title: "Đề xuất sau thử việc (ký hợp đồng lao động hoặc không tiếp tục) và lý do", titleEn: "Proposal after probation (sign a labour contract or not) and why", kind: "text", weight: 0, required: true, askedOf: ["manager"] },
+      {
+        key: "proposal",
+        title: "Đề xuất sau thử việc (ký hợp đồng lao động hoặc không tiếp tục) và lý do",
+        titleEn: "Proposal after probation (sign a labour contract or not) and why",
+        kind: "text",
+        weight: 0,
+        required: true,
+        askedOf: ["manager"],
+      },
       { key: "next_goals", title: "Mục tiêu ba tháng tiếp theo nếu ký hợp đồng", titleEn: "Goals for the next three months if a contract is signed", kind: "text", weight: 0, required: false, askedOf: ["self", "manager"] },
     ],
   },
 ];
 
-export const reviewTemplateSeedRows = () => REVIEW_TEMPLATE_SEED.map((seed) => ({ seedKey: seed.seedKey, name: seed.name, nameEn: seed.nameEn, description: seed.description, kinds: seed.kinds, sections: seed.sections, ratingScale: seed.ratingScale, isActive: true }));
+export const reviewTemplateSeedRows = () =>
+  REVIEW_TEMPLATE_SEED.map((seed) => ({ seedKey: seed.seedKey, name: seed.name, nameEn: seed.nameEn, description: seed.description, kinds: seed.kinds, sections: seed.sections, ratingScale: seed.ratingScale, isActive: true }));

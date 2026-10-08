@@ -35,7 +35,14 @@ const trigger = z.object({
   percent: z.number().int().min(1).max(200).optional(),
   days: z.number().int().min(0).max(30).optional(),
 });
-const condition = z.object({ field: z.string().min(1).max(60), op: z.enum(CONDITION_OPS), value: z.union([z.string().trim().max(200), z.number()]).nullable().optional() });
+const condition = z.object({
+  field: z.string().min(1).max(60),
+  op: z.enum(CONDITION_OPS),
+  value: z
+    .union([z.string().trim().max(200), z.number()])
+    .nullable()
+    .optional(),
+});
 const action = z.object({
   type: z.enum(AUTOMATION_ACTIONS),
   stateId: z.uuid().optional(),
@@ -50,7 +57,15 @@ const scope = { teamId: z.uuid(), projectId: z.uuid().nullable().default(null) }
 
 const savePipeline = createAction({
   name: "work.automation.save",
-  input: z.object({ automationId: z.uuid().nullable().default(null), ...scope, name: z.string().trim().min(1).max(120), trigger, conditions: z.array(condition).max(MAX_RULE_CONDITIONS), actions: z.array(action).min(1).max(MAX_RULE_ACTIONS), isActive: z.boolean().default(true) }),
+  input: z.object({
+    automationId: z.uuid().nullable().default(null),
+    ...scope,
+    name: z.string().trim().min(1).max(120),
+    trigger,
+    conditions: z.array(condition).max(MAX_RULE_CONDITIONS),
+    actions: z.array(action).min(1).max(MAX_RULE_ACTIONS),
+    isActive: z.boolean().default(true),
+  }),
   authorize: async (user, input) => {
     const existing = input.automationId ? await findAutomation(input.automationId) : null;
     if (input.automationId && (existing?.teamId !== input.teamId || (existing?.projectId ?? null) !== input.projectId)) return false;

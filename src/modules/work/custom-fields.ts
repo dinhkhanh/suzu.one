@@ -17,7 +17,8 @@ export type CustomFieldRow = typeof schema.workCustomField.$inferSelect;
 const FIELDS_KEY = "work:custom-fields";
 const FIELDS_TTL = 30 * 60;
 
-export const toFieldViews = (rows: readonly CustomFieldRow[]): FieldView[] => rows.map((row) => ({ id: row.id, name: row.name, type: row.type as CustomFieldType, options: row.options, showOnCard: row.showOnCard, projectId: row.projectId, isActive: row.isActive, sortOrder: row.sortOrder }));
+export const toFieldViews = (rows: readonly CustomFieldRow[]): FieldView[] =>
+  rows.map((row) => ({ id: row.id, name: row.name, type: row.type as CustomFieldType, options: row.options, showOnCard: row.showOnCard, projectId: row.projectId, isActive: row.isActive, sortOrder: row.sortOrder }));
 
 export const asFieldDef = (row: CustomFieldRow): CustomFieldDef => ({ id: row.id, name: row.name, type: row.type as CustomFieldType, options: row.options, teamId: row.teamId, projectId: row.projectId, isActive: row.isActive });
 
@@ -50,8 +51,16 @@ const newOptionId = () => Math.random().toString(36).slice(2, 10);
  * longer read. Removing an option clears it from every task that had it, each change in that
  * task's activity, so a filter never counts a choice nobody can see.
  */
-export async function saveCustomField(scope: { teamId: string; projectId: string | null }, fieldId: string | null, input: CustomFieldInput, actorPersonId: string): Promise<{ before: CustomFieldRow | null; after: CustomFieldRow; cleared: number }> {
-  const options: CustomFieldOption[] = input.type === "select" || input.type === "multi_select" ? input.options.filter((option) => option.label.trim()).map((option) => ({ id: option.id || newOptionId(), label: option.label.trim(), ...(option.color ? { color: option.color } : {}) })) : [];
+export async function saveCustomField(
+  scope: { teamId: string; projectId: string | null },
+  fieldId: string | null,
+  input: CustomFieldInput,
+  actorPersonId: string,
+): Promise<{ before: CustomFieldRow | null; after: CustomFieldRow; cleared: number }> {
+  const options: CustomFieldOption[] =
+    input.type === "select" || input.type === "multi_select"
+      ? input.options.filter((option) => option.label.trim()).map((option) => ({ id: option.id || newOptionId(), label: option.label.trim(), ...(option.color ? { color: option.color } : {}) }))
+      : [];
   const problem = fieldDefinitionProblem({ name: input.name, type: input.type, options });
   if (problem) throw new ActionError(problem);
   const values = { name: input.name.trim(), options, showOnCard: input.showOnCard, sortOrder: input.sortOrder, isActive: input.isActive };
@@ -62,15 +71,25 @@ export async function saveCustomField(scope: { teamId: string; projectId: string
       if (!project || project.teamId !== scope.teamId) throw new ActionError("project_not_found");
     }
     if (!fieldId) {
-      const [{ value }] = await tx.select({ value: sql<number>`count(*)::int` }).from(schema.workCustomField).where(and(eq(schema.workCustomField.teamId, scope.teamId), scope.projectId ? eq(schema.workCustomField.projectId, scope.projectId) : isNull(schema.workCustomField.projectId)));
+      const [{ value }] = await tx
+        .select({ value: sql<number>`count(*)::int` })
+        .from(schema.workCustomField)
+        .where(and(eq(schema.workCustomField.teamId, scope.teamId), scope.projectId ? eq(schema.workCustomField.projectId, scope.projectId) : isNull(schema.workCustomField.projectId)));
       if (value >= MAX_CUSTOM_FIELDS) throw new ActionError("custom_field_limit");
-      const [after] = await tx.insert(schema.workCustomField).values({ teamId: scope.teamId, projectId: scope.projectId, type: input.type, ...values, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.workCustomField)
+        .values({ teamId: scope.teamId, projectId: scope.projectId, type: input.type, ...values, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after, cleared: 0 };
     }
     const [before] = await tx.select().from(schema.workCustomField).where(eq(schema.workCustomField.id, fieldId)).limit(1);
     if (!before || before.teamId !== scope.teamId || before.projectId !== scope.projectId) throw new ActionError("custom_field_not_found");
     if (before.type !== input.type) throw new ActionError("custom_field_type_locked");
-    const [after] = await tx.update(schema.workCustomField).set({ ...values, updatedAt: new Date() }).where(eq(schema.workCustomField.id, fieldId)).returning();
+    const [after] = await tx
+      .update(schema.workCustomField)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.workCustomField.id, fieldId))
+      .returning();
 
     const removed = before.options.filter((option) => !options.some((kept) => kept.id === option.id));
     let cleared = 0;
@@ -89,7 +108,14 @@ export async function saveCustomField(scope: { teamId: string; projectId: string
         if (next === null) delete nextValues[fieldId];
         else nextValues[fieldId] = next;
         await tx.update(schema.workTask).set({ customValues: nextValues }).where(eq(schema.workTask.taskId, holder.taskId));
-        await tx.insert(schema.workActivity).values({ taskId: holder.taskId, actorPersonId, type: "custom_field_changed", field: fieldId, fromValue: { name: before.name, value: displayCustomValue(beforeDef, old) }, toValue: { name: after.name, value: displayCustomValue(afterDef, next) } });
+        await tx.insert(schema.workActivity).values({
+          taskId: holder.taskId,
+          actorPersonId,
+          type: "custom_field_changed",
+          field: fieldId,
+          fromValue: { name: before.name, value: displayCustomValue(beforeDef, old) },
+          toValue: { name: after.name, value: displayCustomValue(afterDef, next) },
+        });
         cleared += 1;
       }
     }
@@ -104,7 +130,11 @@ export async function saveCustomField(scope: { teamId: string; projectId: string
  * Only the task's own fields may be set (its team's, and its project's); a person must still be
  * with the company. Unchanged values write nothing.
  */
-export async function customValueChanges(tx: Executor, task: { teamId: string; projectId: string | null; customValues: Record<string, CustomFieldValue> }, patch: Record<string, unknown>): Promise<{ values: Record<string, CustomFieldValue>; changes: ActivityEntry[] }> {
+export async function customValueChanges(
+  tx: Executor,
+  task: { teamId: string; projectId: string | null; customValues: Record<string, CustomFieldValue> },
+  patch: Record<string, unknown>,
+): Promise<{ values: Record<string, CustomFieldValue>; changes: ActivityEntry[] }> {
   const fields = applicableFields((await allFields(tx)).map(asFieldDef), task);
   const values = { ...task.customValues };
   const changes: ActivityEntry[] = [];
@@ -126,7 +156,12 @@ export async function customValueChanges(tx: Executor, task: { teamId: string; p
   for (const row of pending) {
     if (row.field.type === "person" && typeof row.to === "string" && !people.some((person) => person.id === row.to && person.status !== "offboarded")) throw new ActionError("person_not_found");
     const names = new Map(people.map((person) => [person.id, person.name]));
-    changes.push({ type: "custom_field_changed", field: row.field.id, from: { name: row.field.name, value: displayCustomValue(row.field, row.from, names) }, to: { name: row.field.name, value: displayCustomValue(row.field, row.to, names) } });
+    changes.push({
+      type: "custom_field_changed",
+      field: row.field.id,
+      from: { name: row.field.name, value: displayCustomValue(row.field, row.from, names) },
+      to: { name: row.field.name, value: displayCustomValue(row.field, row.to, names) },
+    });
   }
   return { values, changes };
 }

@@ -17,7 +17,10 @@ export type KpiActualRow = typeof schema.kpiActual.$inferSelect;
 export type KpiPeriodRow = typeof schema.kpiPeriod.$inferSelect;
 export type KpiScoreRow = typeof schema.kpiScore.$inferSelect;
 
-export const hashInputs = (month: string, lines: readonly KpiLineInput[], missingAs: KpiTrace["missingAs"]): string => createHash("sha256").update(canonicalInputs(month, lines, missingAs)).digest("hex");
+export const hashInputs = (month: string, lines: readonly KpiLineInput[], missingAs: KpiTrace["missingAs"]): string =>
+  createHash("sha256")
+    .update(canonicalInputs(month, lines, missingAs))
+    .digest("hex");
 
 // ── Lines: what is due in a month, with what has been entered ───────────────────────────────
 
@@ -58,14 +61,37 @@ async function dueLines(filter: { entityIds?: readonly string[]; personIds?: rea
     return periodKey ? [{ assignment, kpi, periodKey }] : [];
   });
   if (due.length === 0) return [];
-  const actuals = await executor.select().from(schema.kpiActual).where(inArray(schema.kpiActual.assignmentId, due.map((item) => item.assignment.id)));
+  const actuals = await executor
+    .select()
+    .from(schema.kpiActual)
+    .where(
+      inArray(
+        schema.kpiActual.assignmentId,
+        due.map((item) => item.assignment.id),
+      ),
+    );
   const actualOf = new Map(actuals.map((actual) => [`${actual.assignmentId}:${actual.periodKey}`, actual]));
   return due.map(({ assignment, kpi, periodKey }) => {
     // A figure the work job proposed (FR-PJM-62) is not an actual until the scorer confirms it:
     // it reads as missing here, so no scorecard, dashboard or close can ever score it.
     const entered = actualOf.get(`${assignment.id}:${periodKey}`);
     const actual = entered && entered.status !== "confirmed" ? undefined : entered;
-    const line: KpiLineInput = { assignmentId: assignment.id, kpiCode: kpi.code, kpiName: kpi.name, unit: kpi.unit as KpiUnit, direction: kpi.direction as KpiDirection, frequency: kpi.frequency as KpiFrequency, periodKey, weight: assignment.weight, targetValue: assignment.targetValue, capBp: kpi.capBp, floorBp: kpi.floorBp, actualValue: actual?.actualValue ?? null, notApplicable: actual?.notApplicable ?? false, note: actual?.note ?? null };
+    const line: KpiLineInput = {
+      assignmentId: assignment.id,
+      kpiCode: kpi.code,
+      kpiName: kpi.name,
+      unit: kpi.unit as KpiUnit,
+      direction: kpi.direction as KpiDirection,
+      frequency: kpi.frequency as KpiFrequency,
+      periodKey,
+      weight: assignment.weight,
+      targetValue: assignment.targetValue,
+      capBp: kpi.capBp,
+      floorBp: kpi.floorBp,
+      actualValue: actual?.actualValue ?? null,
+      notApplicable: actual?.notApplicable ?? false,
+      note: actual?.note ?? null,
+    };
     return { entityId: assignment.entityId, personId: assignment.personId, line };
   });
 }
@@ -75,7 +101,11 @@ export const isMissing = (line: Pick<KpiLineInput, "actualValue" | "notApplicabl
 // ── Periods ─────────────────────────────────────────────────────────────────────────────────
 
 export async function isKpiMonthClosed(entityId: string, month: string, executor: Executor = db()): Promise<boolean> {
-  const [row] = await executor.select({ status: schema.kpiPeriod.status }).from(schema.kpiPeriod).where(and(eq(schema.kpiPeriod.entityId, entityId), eq(schema.kpiPeriod.month, month))).limit(1);
+  const [row] = await executor
+    .select({ status: schema.kpiPeriod.status })
+    .from(schema.kpiPeriod)
+    .where(and(eq(schema.kpiPeriod.entityId, entityId), eq(schema.kpiPeriod.month, month)))
+    .limit(1);
   return row?.status === "closed";
 }
 
@@ -84,7 +114,13 @@ export async function listPeriods(filter: { year?: number; month?: string; entit
   return executor
     .select()
     .from(schema.kpiPeriod)
-    .where(and(filter.year ? like(schema.kpiPeriod.month, `${filter.year}-%`) : undefined, filter.month ? eq(schema.kpiPeriod.month, filter.month) : undefined, filter.entityIds ? inArray(schema.kpiPeriod.entityId, [...filter.entityIds]) : undefined))
+    .where(
+      and(
+        filter.year ? like(schema.kpiPeriod.month, `${filter.year}-%`) : undefined,
+        filter.month ? eq(schema.kpiPeriod.month, filter.month) : undefined,
+        filter.entityIds ? inArray(schema.kpiPeriod.entityId, [...filter.entityIds]) : undefined,
+      ),
+    )
     .orderBy(asc(schema.kpiPeriod.month));
 }
 
@@ -112,7 +148,12 @@ export async function saveActuals(actorPersonId: string, entries: readonly Actua
     const seen = new Set<string>();
     const closed = new Map<string, boolean>();
     for (const entry of entries) {
-      const [found] = await tx.select({ assignment: schema.kpiAssignment, kpi: schema.kpiDefinition }).from(schema.kpiAssignment).innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId)).where(eq(schema.kpiAssignment.id, entry.assignmentId)).limit(1);
+      const [found] = await tx
+        .select({ assignment: schema.kpiAssignment, kpi: schema.kpiDefinition })
+        .from(schema.kpiAssignment)
+        .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId))
+        .where(eq(schema.kpiAssignment.id, entry.assignmentId))
+        .limit(1);
       if (!found) throw new ActionError("kpi_not_found");
       const { assignment, kpi } = found;
       const key = `${assignment.id}:${entry.periodKey}`;
@@ -136,8 +177,20 @@ export async function saveActuals(actorPersonId: string, entries: readonly Actua
       if (actualValue !== null && actualValue < 0) throw new ActionError("kpi_bad_value", { kpiCode: kpi.code });
       if (entry.notApplicable && !note) throw new ActionError("kpi_not_applicable_needs_note", { kpiCode: kpi.code });
 
-      const [before] = await tx.select().from(schema.kpiActual).where(and(eq(schema.kpiActual.assignmentId, assignment.id), eq(schema.kpiActual.periodKey, entry.periodKey))).limit(1);
-      const facts = (row: { actualValue: number | null; notApplicable: boolean; note: string | null }): ActualFacts => ({ assignmentId: assignment.id, personId: assignment.personId, kpiCode: kpi.code, periodKey: entry.periodKey, actualValue: row.actualValue, notApplicable: row.notApplicable, note: row.note });
+      const [before] = await tx
+        .select()
+        .from(schema.kpiActual)
+        .where(and(eq(schema.kpiActual.assignmentId, assignment.id), eq(schema.kpiActual.periodKey, entry.periodKey)))
+        .limit(1);
+      const facts = (row: { actualValue: number | null; notApplicable: boolean; note: string | null }): ActualFacts => ({
+        assignmentId: assignment.id,
+        personId: assignment.personId,
+        kpiCode: kpi.code,
+        periodKey: entry.periodKey,
+        actualValue: row.actualValue,
+        notApplicable: row.notApplicable,
+        note: row.note,
+      });
       const nothing = actualValue === null && !entry.notApplicable;
       // An empty line over a dismissed proposal is the same empty line: keep the dismissal.
       if (nothing && (!before || before.status === "dismissed")) {
@@ -195,10 +248,23 @@ export type Scorecard = {
 };
 
 export async function getScorecard(personId: string, month: string, executor: Executor = db()): Promise<Scorecard> {
-  const scores = await executor.select().from(schema.kpiScore).where(and(eq(schema.kpiScore.personId, personId), eq(schema.kpiScore.month, month))).orderBy(desc(schema.kpiScore.revision));
+  const scores = await executor
+    .select()
+    .from(schema.kpiScore)
+    .where(and(eq(schema.kpiScore.personId, personId), eq(schema.kpiScore.month, month)))
+    .orderBy(desc(schema.kpiScore.revision));
   const current = scores.find((score) => score.supersededAt === null) ?? null;
   const superseded = scores.filter((score) => score.supersededAt !== null).map((score) => ({ revision: score.revision, scoreBp: score.scoreBp, computedAt: score.computedAt, supersededAt: score.supersededAt! }));
-  if (current) return { month, entityId: current.entityId, state: "closed", trace: current.trace, missing: current.trace.lines.filter((line) => line.flags.includes("missing")).length, stored: { scoreId: current.id, revision: current.revision, computedAt: current.computedAt, inputsHash: current.inputsHash }, superseded };
+  if (current)
+    return {
+      month,
+      entityId: current.entityId,
+      state: "closed",
+      trace: current.trace,
+      missing: current.trace.lines.filter((line) => line.flags.includes("missing")).length,
+      stored: { scoreId: current.id, revision: current.revision, computedAt: current.computedAt, inputsHash: current.inputsHash },
+      superseded,
+    };
   const lines = (await loadMonthLines({ personIds: [personId] }, month, executor)).get(personId) ?? [];
   const [person] = await executor.select({ entityId: schema.person.primaryEntityId }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   return { month, entityId: person?.entityId ?? null, state: "open", trace: kpiMonthScore(month, lines, { missingAs: "excluded" }), missing: lines.filter(isMissing).length, stored: null, superseded };
@@ -219,7 +285,10 @@ export async function closeBlockersOf(entityIds: readonly string[], month: strin
   const missing = [...byEntity.entries()].flatMap(([entityId, lines]) => [...lines.entries()].flatMap(([personId, items]) => items.filter(isMissing).map((line) => ({ entityId, personId, line }))));
   const result = new Map<string, CloseBlocker[]>(entityIds.map((entityId) => [entityId, []]));
   if (missing.length === 0) return result;
-  const names = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, [...new Set(missing.map((item) => item.personId))]));
+  const names = await executor
+    .select({ id: schema.person.id, fullName: schema.person.fullName })
+    .from(schema.person)
+    .where(inArray(schema.person.id, [...new Set(missing.map((item) => item.personId))]));
   const nameOf = new Map(names.map((row) => [row.id, row.fullName]));
   for (const { entityId, personId, line } of missing) result.get(entityId)!.push({ personId, personName: nameOf.get(personId) ?? "", kpiCode: line.kpiCode, kpiName: line.kpiName, periodKey: line.periodKey });
   for (const blockers of result.values()) blockers.sort((a, b) => a.personName.localeCompare(b.personName) || a.kpiCode.localeCompare(b.kpiCode));
@@ -238,7 +307,11 @@ export async function closeMonth(actorPersonId: string, input: { entityId: strin
   return executor.transaction(async (tx) => {
     const [entity] = await tx.select({ id: schema.entity.id }).from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1).for("update");
     if (!entity) throw new ActionError("kpi_not_found");
-    const [existing] = await tx.select().from(schema.kpiPeriod).where(and(eq(schema.kpiPeriod.entityId, input.entityId), eq(schema.kpiPeriod.month, input.month))).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(schema.kpiPeriod)
+      .where(and(eq(schema.kpiPeriod.entityId, input.entityId), eq(schema.kpiPeriod.month, input.month)))
+      .limit(1);
     if (existing?.status === "closed") throw new ActionError("kpi_month_already_closed");
 
     const lines = await loadMonthLines({ entityId: input.entityId }, input.month, tx);
@@ -247,7 +320,10 @@ export async function closeMonth(actorPersonId: string, input: { entityId: strin
     const reason = input.overrideReason?.trim() ? input.overrideReason.trim() : null;
     if (blockers.length > 0 && !reason) throw new ActionError("kpi_month_blocked", { blockers });
 
-    const revisions = await tx.select({ personId: schema.kpiScore.personId, revision: schema.kpiScore.revision, supersededAt: schema.kpiScore.supersededAt }).from(schema.kpiScore).where(and(eq(schema.kpiScore.month, input.month), inArray(schema.kpiScore.personId, [...lines.keys()])));
+    const revisions = await tx
+      .select({ personId: schema.kpiScore.personId, revision: schema.kpiScore.revision, supersededAt: schema.kpiScore.supersededAt })
+      .from(schema.kpiScore)
+      .where(and(eq(schema.kpiScore.month, input.month), inArray(schema.kpiScore.personId, [...lines.keys()])));
     if (revisions.some((row) => row.supersededAt === null)) throw new ActionError("kpi_month_already_closed");
     const scores: (number | null)[] = [];
     for (const [personId, items] of lines) {
@@ -256,8 +332,20 @@ export async function closeMonth(actorPersonId: string, input: { entityId: strin
       await tx.insert(schema.kpiScore).values({ personId, entityId: input.entityId, month: input.month, revision, scoreBp: trace.scoreBp, trace, inputsHash: hashInputs(input.month, items, "zero") });
       scores.push(trace.scoreBp);
     }
-    const values = { status: "closed", closedByPersonId: actorPersonId, closedAt: new Date(), overrideReason: blockers.length > 0 ? reason : null, exceptions: blockers.length > 0 ? blockers.map(({ personId, kpiCode, periodKey }) => ({ personId, kpiCode, periodKey })) : null, updatedAt: new Date() };
-    const [period] = existing ? await tx.update(schema.kpiPeriod).set(values).where(eq(schema.kpiPeriod.id, existing.id)).returning() : await tx.insert(schema.kpiPeriod).values({ entityId: input.entityId, month: input.month, ...values }).returning();
+    const values = {
+      status: "closed",
+      closedByPersonId: actorPersonId,
+      closedAt: new Date(),
+      overrideReason: blockers.length > 0 ? reason : null,
+      exceptions: blockers.length > 0 ? blockers.map(({ personId, kpiCode, periodKey }) => ({ personId, kpiCode, periodKey })) : null,
+      updatedAt: new Date(),
+    };
+    const [period] = existing
+      ? await tx.update(schema.kpiPeriod).set(values).where(eq(schema.kpiPeriod.id, existing.id)).returning()
+      : await tx
+          .insert(schema.kpiPeriod)
+          .values({ entityId: input.entityId, month: input.month, ...values })
+          .returning();
     const counted = scores.filter((score): score is number => score !== null);
     return { period, people: lines.size, scored: counted.length, averageBp: counted.length === 0 ? null : Math.round(counted.reduce((sum, score) => sum + score, 0) / counted.length), exceptions: blockers };
   });
@@ -274,12 +362,25 @@ export async function closeMonth(actorPersonId: string, input: { entityId: strin
  */
 export async function reopenMonth(actorPersonId: string, input: { entityId: string; month: string; reason: string }, executor: ReturnType<typeof db> = db()): Promise<{ before: KpiPeriodRow; after: KpiPeriodRow; superseded: number }> {
   return executor.transaction(async (tx) => {
-    const [before] = await tx.select().from(schema.kpiPeriod).where(and(eq(schema.kpiPeriod.entityId, input.entityId), eq(schema.kpiPeriod.month, input.month))).limit(1).for("update");
+    const [before] = await tx
+      .select()
+      .from(schema.kpiPeriod)
+      .where(and(eq(schema.kpiPeriod.entityId, input.entityId), eq(schema.kpiPeriod.month, input.month)))
+      .limit(1)
+      .for("update");
     if (!before || before.status !== "closed") throw new ActionError("kpi_month_not_closed");
     const consumers = await monthConsumers(input.entityId, input.month, tx);
     if (consumers.length > 0) throw new ActionError("kpi_month_consumed", { consumerType: consumers[0].consumerType, consumerIds: [...new Set(consumers.map((row) => row.consumerId))] });
-    const superseded = await tx.update(schema.kpiScore).set({ supersededAt: new Date() }).where(and(eq(schema.kpiScore.entityId, input.entityId), eq(schema.kpiScore.month, input.month), isNull(schema.kpiScore.supersededAt))).returning({ id: schema.kpiScore.id });
-    const [after] = await tx.update(schema.kpiPeriod).set({ status: "open", reopenedByPersonId: actorPersonId, reopenedAt: new Date(), reopenReason: input.reason, updatedAt: new Date() }).where(eq(schema.kpiPeriod.id, before.id)).returning();
+    const superseded = await tx
+      .update(schema.kpiScore)
+      .set({ supersededAt: new Date() })
+      .where(and(eq(schema.kpiScore.entityId, input.entityId), eq(schema.kpiScore.month, input.month), isNull(schema.kpiScore.supersededAt)))
+      .returning({ id: schema.kpiScore.id });
+    const [after] = await tx
+      .update(schema.kpiPeriod)
+      .set({ status: "open", reopenedByPersonId: actorPersonId, reopenedAt: new Date(), reopenReason: input.reason, updatedAt: new Date() })
+      .where(eq(schema.kpiPeriod.id, before.id))
+      .returning();
     return { before, after, superseded: superseded.length };
   });
 }
@@ -318,24 +419,48 @@ export async function getKpiResultsOfPeople(input: { personIds: readonly string[
       .from(schema.kpiScore)
       .where(and(inArray(schema.kpiScore.personId, personIds), like(schema.kpiScore.month, `${input.year}-%`), isNull(schema.kpiScore.supersededAt)))
       .orderBy(asc(schema.kpiScore.month)),
-    executor.select({ assignment: schema.kpiAssignment, frequency: schema.kpiDefinition.frequency }).from(schema.kpiAssignment).innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId)).where(inArray(schema.kpiAssignment.personId, personIds)),
+    executor
+      .select({ assignment: schema.kpiAssignment, frequency: schema.kpiDefinition.frequency })
+      .from(schema.kpiAssignment)
+      .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId))
+      .where(inArray(schema.kpiAssignment.personId, personIds)),
   ]);
   for (const personId of personIds) {
     const own = scores.filter((score) => score.personId === personId);
     const ownAssignments = assignments.filter(({ assignment }) => assignment.personId === personId);
     const closedMonths = own.map((score) => score.month);
-    const openMonths = monthsOfYear(input.year).filter((month) => !closedMonths.includes(month) && ownAssignments.some(({ assignment, frequency }) => coversMonth(assignment, month) && periodDueIn(frequency as KpiFrequency, month) !== null));
+    const openMonths = monthsOfYear(input.year).filter(
+      (month) => !closedMonths.includes(month) && ownAssignments.some(({ assignment, frequency }) => coversMonth(assignment, month) && periodDueIn(frequency as KpiFrequency, month) !== null),
+    );
     const year = annualKpiScore(own.map((score) => score.trace));
-    result.set(personId, { scoreBp: year.scoreBp, closedMonths, openMonths, months: own.map((score) => ({ month: score.month, scoreBp: score.scoreBp, revision: score.revision, scoreId: score.id, closedAt: score.computedAt })), final: closedMonths.length > 0 && openMonths.length === 0, byKpi: year.byKpi });
+    result.set(personId, {
+      scoreBp: year.scoreBp,
+      closedMonths,
+      openMonths,
+      months: own.map((score) => ({ month: score.month, scoreBp: score.scoreBp, revision: score.revision, scoreId: score.id, closedAt: score.computedAt })),
+      final: closedMonths.length > 0 && openMonths.length === 0,
+      byKpi: year.byKpi,
+    });
   }
   return result;
 }
 
 /** The current stored scores of many people for one month — dashboards. */
-export async function listStoredScores(filter: { month?: string; year?: number; personIds?: readonly string[]; entityIds?: readonly string[] }, executor: Executor = db()): Promise<Pick<KpiScoreRow, "id" | "personId" | "entityId" | "month" | "scoreBp" | "revision">[]> {
+export async function listStoredScores(
+  filter: { month?: string; year?: number; personIds?: readonly string[]; entityIds?: readonly string[] },
+  executor: Executor = db(),
+): Promise<Pick<KpiScoreRow, "id" | "personId" | "entityId" | "month" | "scoreBp" | "revision">[]> {
   if (filter.personIds?.length === 0 || filter.entityIds?.length === 0) return [];
   return executor
     .select({ id: schema.kpiScore.id, personId: schema.kpiScore.personId, entityId: schema.kpiScore.entityId, month: schema.kpiScore.month, scoreBp: schema.kpiScore.scoreBp, revision: schema.kpiScore.revision })
     .from(schema.kpiScore)
-    .where(and(isNull(schema.kpiScore.supersededAt), filter.month ? eq(schema.kpiScore.month, filter.month) : undefined, filter.year ? like(schema.kpiScore.month, `${filter.year}-%`) : undefined, filter.personIds ? inArray(schema.kpiScore.personId, [...filter.personIds]) : undefined, filter.entityIds ? inArray(schema.kpiScore.entityId, [...filter.entityIds]) : undefined));
+    .where(
+      and(
+        isNull(schema.kpiScore.supersededAt),
+        filter.month ? eq(schema.kpiScore.month, filter.month) : undefined,
+        filter.year ? like(schema.kpiScore.month, `${filter.year}-%`) : undefined,
+        filter.personIds ? inArray(schema.kpiScore.personId, [...filter.personIds]) : undefined,
+        filter.entityIds ? inArray(schema.kpiScore.entityId, [...filter.entityIds]) : undefined,
+      ),
+    );
 }

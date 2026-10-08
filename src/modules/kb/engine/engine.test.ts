@@ -40,7 +40,11 @@ describe("validateDoc", () => {
     const result = validateDoc({
       type: "doc",
       content: [
-        { type: "orderedList", attrs: { start: 1, type: null }, content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href: "https://suzu.vn", target: "_blank", rel: "noopener", class: null } }] }] }] }] },
+        {
+          type: "orderedList",
+          attrs: { start: 1, type: null },
+          content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href: "https://suzu.vn", target: "_blank", rel: "noopener", class: null } }] }] }] }],
+        },
         { type: "codeBlock", attrs: { language: null }, content: [{ type: "text", text: "y" }] },
         { type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", attrs: { colspan: 1, rowspan: 1, colwidth: null }, content: [{ type: "paragraph" }] }] }] },
       ],
@@ -104,7 +108,26 @@ describe("validateDoc", () => {
 describe("reading a document", () => {
   it("gives the plain text one line per block, a table row per line", () => {
     expect(docToPlainText(sample)).toBe(
-      ["Quy định nghỉ phép", "Nhân viên được 12 ngày phép năm. Xem biểu mẫu.", "Báo trước 3 ngày làm việc.", "Các bước", "Tạo đơn trên SuZu One", "Quản lý duyệt", "Mục cha", "Mục con", "Loại | Số ngày", "Phép năm | 12", "Kết hôn | 3", "a = 1", "b = 2", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Mẫu đơn.pdf", "Sơ đồ", "Hỏi @Phạm Bảo", "cuối."].join("\n"),
+      [
+        "Quy định nghỉ phép",
+        "Nhân viên được 12 ngày phép năm. Xem biểu mẫu.",
+        "Báo trước 3 ngày làm việc.",
+        "Các bước",
+        "Tạo đơn trên SuZu One",
+        "Quản lý duyệt",
+        "Mục cha",
+        "Mục con",
+        "Loại | Số ngày",
+        "Phép năm | 12",
+        "Kết hôn | 3",
+        "a = 1",
+        "b = 2",
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "Mẫu đơn.pdf",
+        "Sơ đồ",
+        "Hỏi @Phạm Bảo",
+        "cuối.",
+      ].join("\n"),
     );
     expect(docToPlainText(doc())).toBe("");
   });
@@ -131,12 +154,26 @@ describe("links and embeds", () => {
     expect(normalizeEmbed("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toEqual({ provider: "youtube", src: "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" });
     expect(normalizeEmbed("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing")).toEqual({ provider: "google_drive", src: "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/preview" });
     expect(normalizeEmbed("https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOp/edit#gid=0")).toEqual({ provider: "google_docs", src: "https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOp/preview" });
-    expect(normalizeEmbed("https://www.figma.com/design/AbCdEf123456/Brand-kit?node-id=1-2&t=x")).toEqual({ provider: "figma", src: `https://www.figma.com/embed?embed_host=suzu-one&url=${encodeURIComponent("https://www.figma.com/design/AbCdEf123456/Brand-kit?node-id=1-2")}` });
+    expect(normalizeEmbed("https://www.figma.com/design/AbCdEf123456/Brand-kit?node-id=1-2&t=x")).toEqual({
+      provider: "figma",
+      src: `https://www.figma.com/embed?embed_host=suzu-one&url=${encodeURIComponent("https://www.figma.com/design/AbCdEf123456/Brand-kit?node-id=1-2")}`,
+    });
     expect(normalizeEmbed("https://www.canva.com/design/DAFabcdefgh/AbCdEfGhIjKl/view")).toEqual({ provider: "canva", src: "https://www.canva.com/design/DAFabcdefgh/AbCdEfGhIjKl/view?embed" });
   });
 
   it("frames nothing else", () => {
-    for (const bad of ["http://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ", "https://www.youtube.com/watch?v=<script>", "https://user@youtube.com/watch?v=dQw4w9WgXcQ", "https://docs.google.com/forms/d/abcdefgh/viewform", "https://evil.example", "javascript:alert(1)", "not a url", 7]) expect(normalizeEmbed(bad)).toBeNull();
+    for (const bad of [
+      "http://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ",
+      "https://www.youtube.com/watch?v=<script>",
+      "https://user@youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://docs.google.com/forms/d/abcdefgh/viewform",
+      "https://evil.example",
+      "javascript:alert(1)",
+      "not a url",
+      7,
+    ])
+      expect(normalizeEmbed(bad)).toBeNull();
   });
 });
 
@@ -157,7 +194,10 @@ describe("diffLines", () => {
   });
 
   it("handles empty sides and identical texts", () => {
-    expect(diffLines("", "a\nb")).toEqual([{ type: "added", text: "a" }, { type: "added", text: "b" }]);
+    expect(diffLines("", "a\nb")).toEqual([
+      { type: "added", text: "a" },
+      { type: "added", text: "b" },
+    ]);
     expect(diffLines("a", "")).toEqual([{ type: "removed", text: "a" }]);
     expect(diffStats(diffLines("a\nb", "a\nb"))).toEqual({ added: 0, removed: 0 });
   });

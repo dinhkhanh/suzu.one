@@ -84,7 +84,7 @@ function groupStart(steps: readonly StepState[], index: number): number {
 
 // Opens the next group of steps that has anything to answer, starting at the group at `from`.
 function activate(steps: StepState[], from: number): { currentStep: number; done: boolean } {
-  for (let start = from; start < steps.length; ) {
+  for (let start = from; start < steps.length;) {
     const end = groupEnd(steps, start);
     let first = -1;
     for (let index = start; index <= end; index++) {
@@ -127,8 +127,7 @@ export type Decision = { actorId: string; action: DecisionAction };
 export type Refusal = "not_pending" | "not_assignee" | "not_requester" | "own_request";
 
 export type DecisionResult =
-  | { ok: true; state: RequestState; /** "pending" = the request moves on but is not decided yet. */ outcome: RequestStatus; /** People whose turn it has just become. */ nowWaitingFor: string[] }
-  | { ok: false; reason: Refusal };
+  { ok: true; state: RequestState; /** "pending" = the request moves on but is not decided yet. */ outcome: RequestStatus; /** People whose turn it has just become. */ nowWaitingFor: string[] } | { ok: false; reason: Refusal };
 
 const clone = (state: RequestState): RequestState => ({ ...state, steps: state.steps.map((step) => ({ ...step, assignees: step.assignees.map((assignee) => ({ ...assignee })) })) });
 

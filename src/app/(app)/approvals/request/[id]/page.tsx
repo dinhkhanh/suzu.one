@@ -68,7 +68,11 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
         kind={typeName}
         status={request.status}
         requestId={request.id}
-        who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>}
+        who={
+          <RecordLink kind="person" id={request.requesterPersonId}>
+            {view.requesterName}
+          </RecordLink>
+        }
         actions={
           <Link href="/approvals" className="text-sm text-link hover:underline">
             ← {t("backToApprovals")}

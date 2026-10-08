@@ -20,7 +20,12 @@ export function StageBadge({ stage, label }: { stage: ReviewStage; label: string
 }
 
 export function FormStatusBadge({ status, label }: { status: "draft" | "submitted" | null; label: string }) {
-  const tone = status === "submitted" ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : status === "draft" ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" : "border border-dashed text-muted-foreground";
+  const tone =
+    status === "submitted"
+      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+      : status === "draft"
+        ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+        : "border border-dashed text-muted-foreground";
   return <span className={`${pill} ${tone}`}>{label}</span>;
 }
 
@@ -33,7 +38,25 @@ export const pointOfBp = (scale: readonly RatingPoint[], bp: number | null): Rat
  * One submitted form, read-only: every question asked of that form, what was answered, and the
  * figure it came to. The page decides whether the viewer may see it at all; this only draws it.
  */
-export function FilledForm({ shape, kind, answers, overallRatingBp, comment, author, draft = false, labels }: { shape: ReviewFormShape; kind: ReviewFormKind; answers: Record<string, string | number>; overallRatingBp: number | null; comment: string | null; author: string | null; /** Not submitted yet: shown to its author, and to oversight. */ draft?: boolean; labels: { t: Translate; format: NumberFormat } }) {
+export function FilledForm({
+  shape,
+  kind,
+  answers,
+  overallRatingBp,
+  comment,
+  author,
+  draft = false,
+  labels,
+}: {
+  shape: ReviewFormShape;
+  kind: ReviewFormKind;
+  answers: Record<string, string | number>;
+  overallRatingBp: number | null;
+  comment: string | null;
+  author: string | null;
+  /** Not submitted yet: shown to its author, and to oversight. */ draft?: boolean;
+  labels: { t: Translate; format: NumberFormat };
+}) {
   const { t, format } = labels;
   const asked = shape.sections.filter((section) => section.askedOf.includes(kind));
   return (
@@ -52,7 +75,7 @@ export function FilledForm({ shape, kind, answers, overallRatingBp, comment, aut
           return (
             <div key={section.key} className="flex flex-col gap-0.5">
               <dt className="text-xs text-muted-foreground">{section.title}</dt>
-              <dd className="text-sm">{section.kind === "rating" ? (point ? `${point.label} (${ratingText(format, point.scoreBp)})` : "—") : typeof answer === "string" && answer.trim() !== "" ? <RichText text={answer} /> : "—"}</dd>
+              <dd className="text-sm">{section.kind === "rating" ? point ? `${point.label} (${ratingText(format, point.scoreBp)})` : "—" : typeof answer === "string" && answer.trim() !== "" ? <RichText text={answer} /> : "—"}</dd>
             </div>
           );
         })}

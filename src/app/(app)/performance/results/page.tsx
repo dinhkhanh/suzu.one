@@ -140,7 +140,9 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                     {maySettle && line.status === "locked" ? <ResultStepForm resultId={line.id} step="publish" /> : null}
                     {maySettle && line.status !== "draft" ? <ResultStepForm resultId={line.id} step="unlock" /> : null}
                   </div>
-                  {mayOverride && line.status === "draft" ? <OverrideResultForm resultId={line.id} currentPercent={row?.overrideScoreBp === null || row === null ? "" : String(row.overrideScoreBp / 100)} reason={row?.overrideReason ?? ""} /> : null}
+                  {mayOverride && line.status === "draft" ? (
+                    <OverrideResultForm resultId={line.id} currentPercent={row?.overrideScoreBp === null || row === null ? "" : String(row.overrideScoreBp / 100)} reason={row?.overrideReason ?? ""} />
+                  ) : null}
 
                   {/* FR-PRF-06: what this result leads to. A salary adjustment goes out through
                       payroll's own approval; the others raise a task for HR. */}

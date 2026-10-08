@@ -16,7 +16,6 @@ import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { saveLicenceAction } from "../actions";
 import { BILLING_CYCLES, type BillingCycle, LICENCE_STATUSES, type LicenceStatus } from "../enums";
 
-
 export type LicenceFormValue = {
   id: string | null;
   name: string;

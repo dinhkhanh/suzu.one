@@ -11,11 +11,30 @@ type Tone = "default" | "success" | "warning" | "destructive";
 
 const FILL: Record<Tone, string> = { default: "bg-primary", success: "bg-success", warning: "bg-warning", destructive: "bg-destructive" };
 
-export function ProgressBar({ percent, pending = null, tone = "default", className, label }: { percent: number | null; /** Percent points beyond `percent`, drawn paler. */ pending?: number | null; tone?: Tone; className?: string; label?: string }) {
+export function ProgressBar({
+  percent,
+  pending = null,
+  tone = "default",
+  className,
+  label,
+}: {
+  percent: number | null;
+  /** Percent points beyond `percent`, drawn paler. */ pending?: number | null;
+  tone?: Tone;
+  className?: string;
+  label?: string;
+}) {
   const value = percent === null ? 0 : Math.max(0, Math.min(100, percent));
   const reach = Math.max(value, Math.min(100, value + Math.max(0, pending ?? 0)));
   return (
-    <div className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-muted", className)} role={label ? "progressbar" : undefined} aria-label={label} aria-valuemin={label ? 0 : undefined} aria-valuemax={label ? 100 : undefined} aria-valuenow={label ? value : undefined}>
+    <div
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
+      role={label ? "progressbar" : undefined}
+      aria-label={label}
+      aria-valuemin={label ? 0 : undefined}
+      aria-valuemax={label ? 100 : undefined}
+      aria-valuenow={label ? value : undefined}
+    >
       {reach > value ? <div className={cn("absolute inset-y-0 left-0 rounded-full opacity-30", FILL[tone])} style={{ width: `${reach}%` }} /> : null}
       <div className={cn("relative h-full rounded-full transition-[width] duration-300 ease-(--ease-settle)", FILL[tone])} style={{ width: `${value}%` }} />
     </div>

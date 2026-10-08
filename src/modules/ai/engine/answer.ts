@@ -155,7 +155,16 @@ export function extractAnswer(question: string, ranked: readonly RankedPassage[]
   }
   return {
     passages: chosen.map((passage, index) => ({
-      citation: { pageId: passage.pageId, pageTitle: passage.pageTitle, spaceKey: passage.spaceKey, spaceName: passage.spaceName, headingPath: passage.headingPath, anchor: passage.anchor, chunkId: passage.chunkId, score: Math.round(passage.score * 1000) / 1000 },
+      citation: {
+        pageId: passage.pageId,
+        pageTitle: passage.pageTitle,
+        spaceKey: passage.spaceKey,
+        spaceName: passage.spaceName,
+        headingPath: passage.headingPath,
+        anchor: passage.anchor,
+        chunkId: passage.chunkId,
+        score: Math.round(passage.score * 1000) / 1000,
+      },
       excerpt: excerpt(question, passage.content, index === 0 ? MAX_PASSAGE_CHARS : NEXT_PASSAGE_CHARS),
     })),
   };
@@ -170,7 +179,13 @@ const escapeLinkText = (text: string): string => text.replace(/([\\[\]*_`])/g, "
 export function renderExtractedAnswer(answer: ExtractedAnswer): string {
   return answer.passages
     .map(({ citation, excerpt: text }) => {
-      const section = citation.headingPath.split("›").slice(1).map((part) => part.trim()).filter(Boolean).join(" › ") || citation.pageTitle;
+      const section =
+        citation.headingPath
+          .split("›")
+          .slice(1)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .join(" › ") || citation.pageTitle;
       const label = section === citation.pageTitle ? section : `${section} · ${citation.pageTitle}`;
       return `#### [${escapeLinkText(label)}](${citationHref(citation)})\n\n${text}`;
     })

@@ -15,12 +15,19 @@ import { listPeople } from "./service";
 const ids = {} as Record<"an" | "binh" | "chi", string>;
 const owner: Principal = { personId: null, workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] };
 const names = (list: { name: string }[]) => list.map((item) => item.name);
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 beforeAll(async () => {
   await migrateTestDb();
   for (const key of ["an", "binh", "chi"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active" }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active" })
+      .returning();
     ids[key] = row.id;
   }
 });

@@ -157,7 +157,10 @@ export async function recordActivity(input: ActivityInput, actorPersonId: string
     let logged: ActivityRow | null = null;
     if (input.occurredAt || !input.followUp) {
       const at = input.occurredAt ?? new Date();
-      [logged] = await tx.insert(schema.crmActivity).values({ ...base, kind: input.kind, body: input.body, outcome: input.outcome, ownerPersonId: actorPersonId, occurredAt: at, doneAt: at }).returning();
+      [logged] = await tx
+        .insert(schema.crmActivity)
+        .values({ ...base, kind: input.kind, body: input.body, outcome: input.outcome, ownerPersonId: actorPersonId, occurredAt: at, doneAt: at })
+        .returning();
     }
     let followUp: ActivityRow | null = null;
     if (input.followUp) {
@@ -193,7 +196,11 @@ export const activityLink = (activity: Pick<ActivityRow, "clientId" | "dealId" |
  * Done: the follow-up takes its outcome and becomes a logged activity of the kind it turned out to
  * be. `next` schedules the one after it in the same step.
  */
-export async function completeFollowUp(activityId: string, input: { outcome: string | null; kind: ActivityKind | null; next: { subject: string; dueOn: IsoDate; ownerPersonId: string } | null }, actorPersonId: string): Promise<{ before: ActivityRow; after: ActivityRow; next: ActivityRow | null }> {
+export async function completeFollowUp(
+  activityId: string,
+  input: { outcome: string | null; kind: ActivityKind | null; next: { subject: string; dueOn: IsoDate; ownerPersonId: string } | null },
+  actorPersonId: string,
+): Promise<{ before: ActivityRow; after: ActivityRow; next: ActivityRow | null }> {
   return db().transaction(async (tx) => {
     const [before] = await tx.select().from(schema.crmActivity).where(eq(schema.crmActivity.id, activityId)).limit(1).for("update");
     if (!before) throw new ActionError("activity_not_found");
@@ -209,7 +216,17 @@ export async function completeFollowUp(activityId: string, input: { outcome: str
       await activeOwner(tx, input.next.ownerPersonId);
       [next] = await tx
         .insert(schema.crmActivity)
-        .values({ kind: "task", subject: input.next.subject, clientId: before.clientId, contactId: before.contactId, dealId: before.dealId, leadId: before.leadId, ownerPersonId: input.next.ownerPersonId, dueOn: input.next.dueOn, createdByPersonId: actorPersonId })
+        .values({
+          kind: "task",
+          subject: input.next.subject,
+          clientId: before.clientId,
+          contactId: before.contactId,
+          dealId: before.dealId,
+          leadId: before.leadId,
+          ownerPersonId: input.next.ownerPersonId,
+          dueOn: input.next.dueOn,
+          createdByPersonId: actorPersonId,
+        })
         .returning();
       if (input.next.ownerPersonId !== actorPersonId) await notifyAssigned(tx, next, actorPersonId);
     }
@@ -269,7 +286,16 @@ export async function moveFollowUps(tx: Tx, where: { ownerPersonId: string; clie
  */
 export async function sendFollowUpReminders(today: IsoDate = todayInVietnam()): Promise<{ followUpsReminded: number }> {
   const due = await db()
-    .select({ id: schema.crmActivity.id, ownerPersonId: schema.crmActivity.ownerPersonId, subject: schema.crmActivity.subject, clientId: schema.crmActivity.clientId, dealId: schema.crmActivity.dealId, leadId: schema.crmActivity.leadId, account: schema.workClient.name, lead: schema.crmLead.companyName })
+    .select({
+      id: schema.crmActivity.id,
+      ownerPersonId: schema.crmActivity.ownerPersonId,
+      subject: schema.crmActivity.subject,
+      clientId: schema.crmActivity.clientId,
+      dealId: schema.crmActivity.dealId,
+      leadId: schema.crmActivity.leadId,
+      account: schema.workClient.name,
+      lead: schema.crmLead.companyName,
+    })
     .from(schema.crmActivity)
     .leftJoin(schema.workClient, eq(schema.workClient.id, schema.crmActivity.clientId))
     .leftJoin(schema.crmLead, eq(schema.crmLead.id, schema.crmActivity.leadId))
@@ -280,7 +306,15 @@ export async function sendFollowUpReminders(today: IsoDate = todayInVietnam()): 
     const claimed = await tx
       .update(schema.crmActivity)
       .set({ remindedOn: today })
-      .where(and(inArray(schema.crmActivity.id, due.map((row) => row.id)), or(isNull(schema.crmActivity.remindedOn), sql`${schema.crmActivity.remindedOn} < ${today}::date`)))
+      .where(
+        and(
+          inArray(
+            schema.crmActivity.id,
+            due.map((row) => row.id),
+          ),
+          or(isNull(schema.crmActivity.remindedOn), sql`${schema.crmActivity.remindedOn} < ${today}::date`),
+        ),
+      )
       .returning({ id: schema.crmActivity.id });
     const mine = new Set(claimed.map((row) => row.id));
     for (const row of due.filter((item) => mine.has(item.id))) {

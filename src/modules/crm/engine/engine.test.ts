@@ -47,7 +47,22 @@ describe("quote totals", () => {
   it("sums hours by role and scales a service's per-unit hours", () => {
     expect(scaleRoleMinutes([{ role: "Design", minutes: 90 }], 12, null)).toEqual([{ role: "Design", minutes: 1080 }]);
     expect(scaleRoleMinutes([{ role: "Account", minutes: 600 }], 1, 6)).toEqual([{ role: "Account", minutes: 3600 }]);
-    expect(minutesByRole([{ roleMinutes: [{ role: "Design", minutes: 60 }, { role: "Content", minutes: 30 }] }, { roleMinutes: [{ role: "Design", minutes: 30 }, { role: "Idle", minutes: 0 }] }])).toEqual([
+    expect(
+      minutesByRole([
+        {
+          roleMinutes: [
+            { role: "Design", minutes: 60 },
+            { role: "Content", minutes: 30 },
+          ],
+        },
+        {
+          roleMinutes: [
+            { role: "Design", minutes: 30 },
+            { role: "Idle", minutes: 0 },
+          ],
+        },
+      ]),
+    ).toEqual([
       { role: "Content", minutes: 30 },
       { role: "Design", minutes: 90 },
     ]);

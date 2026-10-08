@@ -53,7 +53,9 @@ async function candidatesOf(personId: string, absence: { from: IsoDate; to: IsoD
       .select({ id: schema.task.id, dueDate: schema.task.dueDate, startDate: schema.task.startDate })
       .from(schema.task)
       .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
-      .where(and(eq(schema.task.kind, WORK_KIND), live, eq(schema.task.assigneePersonId, personId), inArray(schema.task.status, ["todo", "in_progress"]), or(isNull(schema.workTask.triageStatus), eq(schema.workTask.triageStatus, "accepted")))),
+      .where(
+        and(eq(schema.task.kind, WORK_KIND), live, eq(schema.task.assigneePersonId, personId), inArray(schema.task.status, ["todo", "in_progress"]), or(isNull(schema.workTask.triageStatus), eq(schema.workTask.triageStatus, "accepted"))),
+      ),
     tx
       .select({ taskId: schema.workTask.taskId })
       .from(schema.workTask)
@@ -82,8 +84,18 @@ const selectionFor = async (personId: string, absence: { from: IsoDate; to: IsoD
 async function refreshItems(tx: Executor, plan: CoverPlanRow, fresh: CoverSelection): Promise<void> {
   const current = await tx.select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id));
   const { add, remove } = reconcileItems(current, fresh);
-  if (add.length) await tx.insert(schema.workCoverItem).values(add.map((item) => ({ planId: plan.id, ...item }))).onConflictDoNothing();
-  if (remove.length) await tx.delete(schema.workCoverItem).where(inArray(schema.workCoverItem.id, remove.map((item) => item.id)));
+  if (add.length)
+    await tx
+      .insert(schema.workCoverItem)
+      .values(add.map((item) => ({ planId: plan.id, ...item })))
+      .onConflictDoNothing();
+  if (remove.length)
+    await tx.delete(schema.workCoverItem).where(
+      inArray(
+        schema.workCoverItem.id,
+        remove.map((item) => item.id),
+      ),
+    );
 }
 
 /**
@@ -96,10 +108,18 @@ async function eligibleCovers(tx: Executor, items: readonly Pick<CoverItemRow, "
   const recurrenceIds = items.filter((item) => item.itemType === "recurrence").map((item) => item.itemId);
   const [tasks, recurrences] = await Promise.all([
     taskIds.length
-      ? tx.select({ id: schema.workTask.taskId, teamId: schema.workTask.teamId, projectId: schema.workTask.projectId, visibility: schema.workProject.visibility }).from(schema.workTask).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId)).where(inArray(schema.workTask.taskId, taskIds))
+      ? tx
+          .select({ id: schema.workTask.taskId, teamId: schema.workTask.teamId, projectId: schema.workTask.projectId, visibility: schema.workProject.visibility })
+          .from(schema.workTask)
+          .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
+          .where(inArray(schema.workTask.taskId, taskIds))
       : [],
     recurrenceIds.length
-      ? tx.select({ id: schema.workRecurrence.id, teamId: schema.workRecurrence.teamId, projectId: schema.workRecurrence.projectId, visibility: schema.workProject.visibility }).from(schema.workRecurrence).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, recurrenceIds))
+      ? tx
+          .select({ id: schema.workRecurrence.id, teamId: schema.workRecurrence.teamId, projectId: schema.workRecurrence.projectId, visibility: schema.workProject.visibility })
+          .from(schema.workRecurrence)
+          .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId))
+          .where(inArray(schema.workRecurrence.id, recurrenceIds))
       : [],
   ]);
   const scopes = new Map([...tasks, ...recurrences].map((row) => [row.id, row]));
@@ -107,8 +127,20 @@ async function eligibleCovers(tx: Executor, items: readonly Pick<CoverItemRow, "
   const projectIds = [...new Set([...scopes.values()].flatMap((scope) => (scope.projectId ? [scope.projectId] : [])))];
   const active = sql`${schema.person.status} <> 'offboarded'`;
   const [teamPeople, projectPeople] = await Promise.all([
-    teamIds.length ? tx.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), active)) : [],
-    projectIds.length ? tx.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, projectIds), active)) : [],
+    teamIds.length
+      ? tx
+          .select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role })
+          .from(schema.workTeamMember)
+          .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
+          .where(and(inArray(schema.workTeamMember.teamId, teamIds), active))
+      : [],
+    projectIds.length
+      ? tx
+          .select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId })
+          .from(schema.workProjectMember)
+          .innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId))
+          .where(and(inArray(schema.workProjectMember.projectId, projectIds), active))
+      : [],
   ]);
   const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
   const byProject = Map.groupBy(projectPeople, (row) => row.scopeId);
@@ -147,10 +179,26 @@ const coverWithin = (item: Pick<CoverItemRow, "id" | "itemType" | "coverPersonId
 export async function syncCoverPlans(today: IsoDate, options: { personId?: string } = {}): Promise<{ drafted: number; refreshed: number; cancelled: number; applied: number }> {
   const result = { drafted: 0, refreshed: 0, cancelled: 0, applied: 0 };
   const upcoming = await listLeaveForCover({ endOnOrAfter: today, personId: options.personId });
-  const open = await db().select().from(schema.workCoverPlan).where(and(inArray(schema.workCoverPlan.status, OPEN), options.personId ? eq(schema.workCoverPlan.personId, options.personId) : undefined));
+  const open = await db()
+    .select()
+    .from(schema.workCoverPlan)
+    .where(and(inArray(schema.workCoverPlan.status, OPEN), options.personId ? eq(schema.workCoverPlan.personId, options.personId) : undefined));
   const missing = open.map((plan) => plan.leaveRequestId).filter((id) => !upcoming.some((fact) => fact.id === id));
   const facts: LeaveCoverFact[] = [...upcoming, ...(missing.length ? await listLeaveForCover({ requestIds: missing }) : [])];
-  const known = new Map((facts.length ? await db().select().from(schema.workCoverPlan).where(inArray(schema.workCoverPlan.leaveRequestId, facts.map((fact) => fact.id))) : []).map((plan) => [plan.leaveRequestId, plan]));
+  const known = new Map(
+    (facts.length
+      ? await db()
+          .select()
+          .from(schema.workCoverPlan)
+          .where(
+            inArray(
+              schema.workCoverPlan.leaveRequestId,
+              facts.map((fact) => fact.id),
+            ),
+          )
+      : []
+    ).map((plan) => [plan.leaveRequestId, plan]),
+  );
   const rules = await (await dailyService()).rulesOfPeople(facts.map((fact) => fact.personId));
 
   for (const fact of facts) {
@@ -182,7 +230,11 @@ export async function syncCoverPlans(today: IsoDate, options: { personId?: strin
     if (plan.status === "draft") {
       const fresh = await selectionFor(fact.personId, { from: fact.startDate, to: fact.endDate });
       await db().transaction(async (tx) => {
-        const [current] = await tx.update(schema.workCoverPlan).set({ fromDate: fact.startDate, toDate: fact.endDate, updatedAt: new Date() }).where(and(eq(schema.workCoverPlan.id, plan.id), eq(schema.workCoverPlan.status, "draft"))).returning();
+        const [current] = await tx
+          .update(schema.workCoverPlan)
+          .set({ fromDate: fact.startDate, toDate: fact.endDate, updatedAt: new Date() })
+          .where(and(eq(schema.workCoverPlan.id, plan.id), eq(schema.workCoverPlan.status, "draft")))
+          .returning();
         if (current) await refreshItems(tx, current, fresh);
       });
       result.refreshed += 1;
@@ -201,7 +253,11 @@ export async function syncCoverPlans(today: IsoDate, options: { personId?: strin
 
 async function cancelCoverHandoffs(tx: Executor, planId: string): Promise<void> {
   const handoffIds = (await tx.select({ id: schema.workCoverItem.handoffId }).from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, planId))).map((row) => row.id).filter((id): id is string => !!id);
-  if (handoffIds.length) await tx.update(schema.workHandoff).set({ status: "cancelled" }).where(and(inArray(schema.workHandoff.id, handoffIds), eq(schema.workHandoff.status, "pending")));
+  if (handoffIds.length)
+    await tx
+      .update(schema.workHandoff)
+      .set({ status: "cancelled" })
+      .where(and(inArray(schema.workHandoff.id, handoffIds), eq(schema.workHandoff.status, "pending")));
 }
 
 /**
@@ -210,7 +266,11 @@ async function cancelCoverHandoffs(tx: Executor, planId: string): Promise<void> 
  * something meanwhile). Claimed by `applied_at`, so it happens once.
  */
 async function applyCoverPlan(tx: Executor, planId: string): Promise<boolean> {
-  const [plan] = await tx.update(schema.workCoverPlan).set({ appliedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.workCoverPlan.id, planId), eq(schema.workCoverPlan.status, "submitted"), isNull(schema.workCoverPlan.appliedAt))).returning();
+  const [plan] = await tx
+    .update(schema.workCoverPlan)
+    .set({ appliedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(schema.workCoverPlan.id, planId), eq(schema.workCoverPlan.status, "submitted"), isNull(schema.workCoverPlan.appliedAt)))
+    .returning();
   if (!plan) return false;
   const items = await tx.select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, planId));
   // Checked again on the day: a cover who has left the project since the plan was submitted does
@@ -227,13 +287,21 @@ async function applyCoverPlan(tx: Executor, planId: string): Promise<boolean> {
 /** One item from one person to another, if the first still holds it. */
 async function moveItem(tx: Executor, item: CoverItemRow, from: string, to: string, actorPersonId: string | null): Promise<boolean> {
   if (item.itemType === "task") {
-    const [row] = await tx.select({ assignee: schema.task.assigneePersonId, status: schema.task.status }).from(schema.task).where(and(eq(schema.task.id, item.itemId), live)).limit(1);
+    const [row] = await tx
+      .select({ assignee: schema.task.assigneePersonId, status: schema.task.status })
+      .from(schema.task)
+      .where(and(eq(schema.task.id, item.itemId), live))
+      .limit(1);
     if (!row || row.assignee !== from || (row.status !== "todo" && row.status !== "in_progress")) return false;
     await updateWorkTaskIn(tx, item.itemId, { assigneePersonId: to }, actorPersonId, { silent: true, handoff: "system" });
     return true;
   }
   if (item.itemType === "review") {
-    const moved = await tx.update(schema.workTask).set({ reviewerPersonId: to }).where(and(eq(schema.workTask.taskId, item.itemId), eq(schema.workTask.reviewerPersonId, from))).returning({ id: schema.workTask.taskId });
+    const moved = await tx
+      .update(schema.workTask)
+      .set({ reviewerPersonId: to })
+      .where(and(eq(schema.workTask.taskId, item.itemId), eq(schema.workTask.reviewerPersonId, from)))
+      .returning({ id: schema.workTask.taskId });
     if (moved.length) await logActivity(tx, item.itemId, actorPersonId, [{ type: "field_changed", field: "reviewer", from: { id: from }, to: { id: to } }]);
     return moved.length > 0;
   }
@@ -269,7 +337,21 @@ export async function coverPlanFacts(plan: CoverPlanRow, executor: Executor = db
  * `label` null: work the reader may not open (a private project's task, its bookings) — shown as
  * "private work" with no link, never by name. `assignableIds`: who may cover the item.
  */
-export type CoverItemView = { id: string; itemType: CoverItemType; itemId: string; label: string | null; detail: string | null; href: string | null; coverPersonId: string | null; coverName: string | null; effectiveCoverName: string | null; acknowledgedAt: Date | null; handedBackAt: Date | null; handoffStatus: string | null; assignableIds: string[] };
+export type CoverItemView = {
+  id: string;
+  itemType: CoverItemType;
+  itemId: string;
+  label: string | null;
+  detail: string | null;
+  href: string | null;
+  coverPersonId: string | null;
+  coverName: string | null;
+  effectiveCoverName: string | null;
+  acknowledgedAt: Date | null;
+  handedBackAt: Date | null;
+  handoffStatus: string | null;
+  assignableIds: string[];
+};
 export type CoverPlanView = CoverPlanRow & { personName: string; defaultCoverName: string | null; items: CoverItemView[] };
 
 /** The plan as `viewer` may read it: the names of work they may not open are left out. */
@@ -309,17 +391,38 @@ export async function getLeaveCoverAs(leaveRequestId: string, personId: string):
 }
 
 async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlanView> {
-  const items = await db().select({ item: schema.workCoverItem, coverName: schema.person.fullName, handoffStatus: schema.workHandoff.status }).from(schema.workCoverItem).leftJoin(schema.person, eq(schema.person.id, schema.workCoverItem.coverPersonId)).leftJoin(schema.workHandoff, eq(schema.workHandoff.id, schema.workCoverItem.handoffId)).where(eq(schema.workCoverItem.planId, plan.id));
+  const items = await db()
+    .select({ item: schema.workCoverItem, coverName: schema.person.fullName, handoffStatus: schema.workHandoff.status })
+    .from(schema.workCoverItem)
+    .leftJoin(schema.person, eq(schema.person.id, schema.workCoverItem.coverPersonId))
+    .leftJoin(schema.workHandoff, eq(schema.workHandoff.id, schema.workCoverItem.handoffId))
+    .where(eq(schema.workCoverItem.planId, plan.id));
   const idsOf = (type: CoverItemType) => items.filter((row) => row.item.itemType === type).map((row) => row.item.itemId);
   const taskIds = [...idsOf("task"), ...idsOf("review")];
   const [people, loaded, recurrences, bookings, eligible] = await Promise.all([
-    db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, [plan.personId, plan.defaultCoverPersonId].filter((id): id is string => !!id))),
+    db()
+      .select({ id: schema.person.id, name: schema.person.fullName })
+      .from(schema.person)
+      .where(
+        inArray(
+          schema.person.id,
+          [plan.personId, plan.defaultCoverPersonId].filter((id): id is string => !!id),
+        ),
+      ),
     loadTasks(taskIds),
     idsOf("recurrence").length
-      ? db().select({ recurrence: schema.workRecurrence, team: schema.workTeam, project: schema.workProject }).from(schema.workRecurrence).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId)).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, idsOf("recurrence")))
+      ? db()
+          .select({ recurrence: schema.workRecurrence, team: schema.workTeam, project: schema.workProject })
+          .from(schema.workRecurrence)
+          .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId))
+          .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId))
+          .where(inArray(schema.workRecurrence.id, idsOf("recurrence")))
       : [],
     idsOf("booking").length ? bookingLabels(plan, idsOf("booking"), viewer) : [],
-    eligibleCovers(db(), items.map((row) => row.item)),
+    eligibleCovers(
+      db(),
+      items.map((row) => row.item),
+    ),
   ]);
   const nameOf = (id: string | null) => (id ? (people.find((person) => person.id === id)?.name ?? null) : null);
   const defaultCoverName = nameOf(plan.defaultCoverPersonId);
@@ -348,7 +451,21 @@ async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlan
         // The one for all counts only where that person may take the item.
         const effective = item.coverPersonId ? coverName : type === "booking" || !coverWithin(item, plan.defaultCoverPersonId, eligible) ? null : defaultCoverName;
         const assignableIds = label === null ? [] : [...(eligible.get(item.id) ?? [])];
-        return { id: item.id, itemType: type, itemId: item.itemId, label, detail, href, coverPersonId: item.coverPersonId, coverName, effectiveCoverName: effective, acknowledgedAt: item.acknowledgedAt, handedBackAt: item.handedBackAt, handoffStatus, assignableIds };
+        return {
+          id: item.id,
+          itemType: type,
+          itemId: item.itemId,
+          label,
+          detail,
+          href,
+          coverPersonId: item.coverPersonId,
+          coverName,
+          effectiveCoverName: effective,
+          acknowledgedAt: item.acknowledgedAt,
+          handedBackAt: item.handedBackAt,
+          handoffStatus,
+          assignableIds,
+        };
       })
       .sort((a, b) => order.indexOf(a.itemType) - order.indexOf(b.itemType) || (a.label ?? "").localeCompare(b.label ?? "", "vi")),
   };
@@ -357,7 +474,12 @@ async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlan
 /** A booking reads as its project's name — for a reader who may open that project. */
 async function bookingLabels(plan: CoverPlanRow, bookingIds: string[], viewer: WorkViewer): Promise<{ id: string; label: string; detail: string }[]> {
   const { listProjectBookings, mondayOf } = await projectsService();
-  const projects = await db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProjectMember).innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId)).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProjectMember.personId, plan.personId));
+  const projects = await db()
+    .select({ project: schema.workProject, team: schema.workTeam })
+    .from(schema.workProjectMember)
+    .innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId))
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
+    .where(eq(schema.workProjectMember.personId, plan.personId));
   const open = projects.map(({ project, team }) => projectFacts(project, team)).filter((facts) => canViewProject(viewer, facts));
   await notePrivateProjectReads(viewer, open);
   const readable = projects.filter(({ project }) => open.some((facts) => facts.id === project.id)).map(({ project }) => project);
@@ -422,7 +544,10 @@ async function saveChoice(tx: Executor, plan: CoverPlanRow, choice: CoverChoice)
   const eligible = await eligibleCovers(tx, items);
   const outside = items.filter((item) => item.coverPersonId && movesOnCover(item.itemType as CoverItemType) && !eligible.get(item.id)?.has(item.coverPersonId));
   if (outside.length) throw new ActionError("cover_not_assignable", { count: outside.length });
-  await tx.update(schema.workCoverPlan).set({ defaultCoverPersonId: choice.defaultCoverPersonId, note: normalizeNote(choice.note), updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, plan.id));
+  await tx
+    .update(schema.workCoverPlan)
+    .set({ defaultCoverPersonId: choice.defaultCoverPersonId, note: normalizeNote(choice.note), updatedAt: new Date() })
+    .where(eq(schema.workCoverPlan.id, plan.id));
   return { items, eligible };
 }
 
@@ -464,7 +589,16 @@ export async function submitCoverPlan(planId: string, choice: CoverChoice, actor
       const onTask = item.itemType === "task" || item.itemType === "review";
       const [handoff] = await tx
         .insert(schema.workHandoff)
-        .values({ taskId: onTask ? item.itemId : null, kind: "cover", fromPersonId: plan.personId, toPersonId: cover, note, status: "pending", sourceRef: { leaveRequestId: plan.leaveRequestId, coverPlanId: plan.id, itemType: item.itemType, itemId: item.itemId }, createdByPersonId: actor.personId })
+        .values({
+          taskId: onTask ? item.itemId : null,
+          kind: "cover",
+          fromPersonId: plan.personId,
+          toPersonId: cover,
+          note,
+          status: "pending",
+          sourceRef: { leaveRequestId: plan.leaveRequestId, coverPlanId: plan.id, itemType: item.itemType, itemId: item.itemId },
+          createdByPersonId: actor.personId,
+        })
         .returning();
       await tx.update(schema.workCoverItem).set({ coverPersonId: item.coverPersonId, handoffId: handoff.id }).where(eq(schema.workCoverItem.id, item.id));
       if (onTask) await logActivity(tx, item.itemId, actor.personId, [{ type: "cover_requested", to: { id: cover, name: formatDay(plan.fromDate) } }]);
@@ -474,7 +608,8 @@ export async function submitCoverPlan(planId: string, choice: CoverChoice, actor
       items.filter((item) => coverFor(item)),
       (item) => coverFor(item)!,
     );
-    for (const [cover, own] of byCover) await notify({ recipients: [cover], kind: "tasks.cover_requested", params: { actor: person?.name ?? actor.fullName, from: formatDay(plan.fromDate), to: formatDay(plan.toDate), count: own.length }, link: coverLink(plan.id) }, tx);
+    for (const [cover, own] of byCover)
+      await notify({ recipients: [cover], kind: "tasks.cover_requested", params: { actor: person?.name ?? actor.fullName, from: formatDay(plan.fromDate), to: formatDay(plan.toDate), count: own.length }, link: coverLink(plan.id) }, tx);
     const applied = coverStartsOn({ from: plan.fromDate, to: plan.toDate }, today) ? await applyCoverPlan(tx, planId) : false;
     return { plan: after, covers: [...byCover.keys()], applied };
   });
@@ -485,12 +620,27 @@ export async function acknowledgeCover(planId: string, actor: { personId: string
   return db().transaction(async (tx) => {
     const plan = await findCoverPlan(planId, tx);
     if (!plan || plan.status !== "submitted") throw new ActionError("cover_plan_not_submitted");
-    const items = await tx.select().from(schema.workCoverItem).where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.acknowledgedAt)));
+    const items = await tx
+      .select()
+      .from(schema.workCoverItem)
+      .where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.acknowledgedAt)));
     const mine = items.filter((item) => coverOf(item, plan.defaultCoverPersonId) === actor.personId);
     if (mine.length === 0) return 0;
-    await tx.update(schema.workCoverItem).set({ acknowledgedAt: new Date() }).where(inArray(schema.workCoverItem.id, mine.map((item) => item.id)));
+    await tx
+      .update(schema.workCoverItem)
+      .set({ acknowledgedAt: new Date() })
+      .where(
+        inArray(
+          schema.workCoverItem.id,
+          mine.map((item) => item.id),
+        ),
+      );
     const handoffIds = mine.map((item) => item.handoffId).filter((id): id is string => !!id);
-    if (handoffIds.length) await tx.update(schema.workHandoff).set({ status: "accepted", respondedByPersonId: actor.personId, respondedAt: new Date() }).where(and(inArray(schema.workHandoff.id, handoffIds), eq(schema.workHandoff.status, "pending")));
+    if (handoffIds.length)
+      await tx
+        .update(schema.workHandoff)
+        .set({ status: "accepted", respondedByPersonId: actor.personId, respondedAt: new Date() })
+        .where(and(inArray(schema.workHandoff.id, handoffIds), eq(schema.workHandoff.status, "pending")));
     return mine.length;
   });
 }
@@ -509,7 +659,10 @@ export async function handBackCover(planId: string, actor: { personId: string; f
   return db().transaction(async (tx) => {
     const plan = await lockCoverPlan(tx, planId);
     if (!plan || plan.status !== "submitted") throw new ActionError("cover_plan_not_submitted");
-    const pending = await tx.select().from(schema.workCoverItem).where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.handedBackAt)));
+    const pending = await tx
+      .select()
+      .from(schema.workCoverItem)
+      .where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.handedBackAt)));
     if (!plan.appliedAt) {
       if (!options.whole) throw new ActionError("cover_plan_not_started");
       await tx.update(schema.workCoverPlan).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, planId));
@@ -531,7 +684,15 @@ export async function handBackCover(planId: string, actor: { personId: string; f
       returned += 1;
       returnedBy.set(cover, (returnedBy.get(cover) ?? 0) + 1);
       if (item.itemType === "task" || item.itemType === "review") {
-        await tx.insert(schema.workHandoff).values({ taskId: item.itemId, kind: "cover_return", fromPersonId: cover, toPersonId: plan.personId, status: "recorded", sourceRef: { leaveRequestId: plan.leaveRequestId, coverPlanId: plan.id }, createdByPersonId: actor.personId });
+        await tx.insert(schema.workHandoff).values({
+          taskId: item.itemId,
+          kind: "cover_return",
+          fromPersonId: cover,
+          toPersonId: plan.personId,
+          status: "recorded",
+          sourceRef: { leaveRequestId: plan.leaveRequestId, coverPlanId: plan.id },
+          createdByPersonId: actor.personId,
+        });
         await logActivity(tx, item.itemId, actor.personId, [{ type: "cover_handed_back", to: { id: plan.personId, name: person?.name ?? "" } }]);
       }
     }
@@ -561,7 +722,14 @@ const RETURN_REMINDER_DAYS = 14;
  */
 export async function sendCoverReturnReminders(today: IsoDate): Promise<{ returned: number; reminded: number }> {
   const rows = await db()
-    .select({ planId: schema.workCoverPlan.id, personId: schema.workCoverPlan.personId, personName: schema.person.fullName, toDate: schema.workCoverPlan.toDate, defaultCoverPersonId: schema.workCoverPlan.defaultCoverPersonId, coverPersonId: schema.workCoverItem.coverPersonId })
+    .select({
+      planId: schema.workCoverPlan.id,
+      personId: schema.workCoverPlan.personId,
+      personName: schema.person.fullName,
+      toDate: schema.workCoverPlan.toDate,
+      defaultCoverPersonId: schema.workCoverPlan.defaultCoverPersonId,
+      coverPersonId: schema.workCoverItem.coverPersonId,
+    })
     .from(schema.workCoverPlan)
     .innerJoin(schema.workCoverItem, eq(schema.workCoverItem.planId, schema.workCoverPlan.id))
     .innerJoin(schema.person, eq(schema.person.id, schema.workCoverPlan.personId))
@@ -579,12 +747,19 @@ export async function sendCoverReturnReminders(today: IsoDate): Promise<{ return
   const plans = [...Map.groupBy(rows, (row) => row.planId).values()];
   const { claimReminders, daysOf } = await dailyService();
   const earliest = plans.map(([plan]) => plan.toDate).sort()[0];
-  const days = await daysOf(plans.map(([plan]) => plan.personId), addDays(earliest, 1), today);
+  const days = await daysOf(
+    plans.map(([plan]) => plan.personId),
+    addDays(earliest, 1),
+    today,
+  );
   let returned = 0;
   let reminded = 0;
   for (const items of plans) {
     const [plan] = items;
-    const back = [...(days.get(plan.personId)?.values() ?? [])].filter((day) => day.day.date > plan.toDate && !day.dayOff).map((day) => day.day.date).sort()[0];
+    const back = [...(days.get(plan.personId)?.values() ?? [])]
+      .filter((day) => day.day.date > plan.toDate && !day.dayOff)
+      .map((day) => day.day.date)
+      .sort()[0];
     // Still away — a rest day, a holiday, more leave: the reminder waits for the day they are back.
     if (!back) continue;
     returned += 1;

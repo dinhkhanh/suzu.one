@@ -45,7 +45,10 @@ export async function templateContent(templateId: string): Promise<Doc> {
  * someone switched off is left out, not brought back.
  */
 export async function projectStarters(): Promise<{ key: string; name: string; content: Doc }[]> {
-  const rows = await db().select().from(schema.kbTemplate).where(inArray(schema.kbTemplate.key, [...PROJECT_STARTER_TEMPLATES]));
+  const rows = await db()
+    .select()
+    .from(schema.kbTemplate)
+    .where(inArray(schema.kbTemplate.key, [...PROJECT_STARTER_TEMPLATES]));
   const seeded = new Map(kbTemplateSeedRows().map((row) => [row.key, row]));
   return PROJECT_STARTER_TEMPLATES.flatMap((key) => {
     const row = rows.find((template) => template.key === key) ?? seeded.get(key);
@@ -65,7 +68,10 @@ export async function saveAsTemplate(input: { name: string; description: string 
   const taken = new Set((await db().select({ key: schema.kbTemplate.key }).from(schema.kbTemplate)).map((row) => row.key));
   let key = base;
   for (let n = 2; taken.has(key); n++) key = `${base}_${n}`;
-  const [row] = await db().insert(schema.kbTemplate).values({ key, name: input.name.trim().slice(0, 120), description: input.description, content: checked.doc, isSystem: false, sortOrder: 1000, createdByPersonId: actor.personId }).returning();
+  const [row] = await db()
+    .insert(schema.kbTemplate)
+    .values({ key, name: input.name.trim().slice(0, 120), description: input.description, content: checked.doc, isSystem: false, sortOrder: 1000, createdByPersonId: actor.personId })
+    .returning();
   await invalidate(TEMPLATES_KEY);
   return row;
 }
@@ -80,14 +86,22 @@ export async function setTemplateActive(templateId: string, isActive: boolean): 
 
 export const MAX_IMPORT_CHARS = 400_000;
 
-const titleFromFile = (fileName: string | null | undefined) => (fileName ?? "").replace(/\.[A-Za-z0-9]{1,5}$/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+const titleFromFile = (fileName: string | null | undefined) =>
+  (fileName ?? "")
+    .replace(/\.[A-Za-z0-9]{1,5}$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 /**
  * Markdown → a DRAFT page (FR-KB-10): pasted, uploaded as .md, or what Google Docs gives under
  * File → Download → Markdown. The title is the text's first level-1 heading, else the file's
  * name. Nothing is published: the editor reads the result first.
  */
-export async function importMarkdownPage(input: { spaceId: string; parentId: string | null; markdown: string; title?: string | null; fileName?: string | null }, actor: Actor): Promise<{ page: PageRow; titleFrom: "given" | "heading" | "file" | "fallback" }> {
+export async function importMarkdownPage(
+  input: { spaceId: string; parentId: string | null; markdown: string; title?: string | null; fileName?: string | null },
+  actor: Actor,
+): Promise<{ page: PageRow; titleFrom: "given" | "heading" | "file" | "fallback" }> {
   if (!input.markdown.trim()) throw new ActionError("kb_import_empty");
   if (input.markdown.length > MAX_IMPORT_CHARS) throw new ActionError("kb_import_too_large");
   let imported;

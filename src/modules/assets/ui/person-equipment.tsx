@@ -17,7 +17,14 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
   const target = await getPersonTarget(personId);
   if (!target || !canReadPersonAssets(principal, target)) return null;
 
-  const [held, access, owned, seats, t, tDigital] = await Promise.all([listAssetsOfPerson(personId), listDigitalAccessOfPerson(personId), listDigitalAssetsOwnedBy(personId), listSeatsOfPerson(personId), getTranslations("assets.person"), getTranslations("assets.digital")]);
+  const [held, access, owned, seats, t, tDigital] = await Promise.all([
+    listAssetsOfPerson(personId),
+    listDigitalAccessOfPerson(personId),
+    listDigitalAssetsOwnedBy(personId),
+    listSeatsOfPerson(personId),
+    getTranslations("assets.person"),
+    getTranslations("assets.digital"),
+  ]);
   const active = access.filter((row) => row.status === "active");
   return (
     <section className="flex flex-col gap-3">
@@ -75,7 +82,9 @@ export async function PersonEquipment({ principal, personId }: { principal: Prin
           <ul className="flex flex-col gap-2 text-sm">
             {seats.map((seat) => (
               <li key={seat.seatId} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
-                <RecordLink kind="licence" id={canManageLicences(principal) ? seat.licenceId : null}>{seat.name}</RecordLink>
+                <RecordLink kind="licence" id={canManageLicences(principal) ? seat.licenceId : null}>
+                  {seat.name}
+                </RecordLink>
                 <span className="text-xs text-muted-foreground">{[seat.vendor, seat.viaAsset ? t("onDevice", { device: seat.viaAsset.code }) : null].filter(Boolean).join(" · ")}</span>
               </li>
             ))}

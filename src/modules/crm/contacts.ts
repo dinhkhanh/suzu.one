@@ -88,7 +88,10 @@ export type ContactInput = {
 
 async function checkBrands(executor: Executor, clientId: string, brandIds: readonly string[]): Promise<void> {
   if (brandIds.length === 0) return;
-  const rows = await executor.select({ id: schema.workClient.id }).from(schema.workClient).where(and(inArray(schema.workClient.id, [...brandIds]), eq(schema.workClient.parentId, clientId)));
+  const rows = await executor
+    .select({ id: schema.workClient.id })
+    .from(schema.workClient)
+    .where(and(inArray(schema.workClient.id, [...brandIds]), eq(schema.workClient.parentId, clientId)));
   if (rows.length !== new Set(brandIds).size) throw new ActionError("contact_brand_invalid");
 }
 
@@ -104,17 +107,31 @@ export async function saveContact(clientId: string, contactId: string | null, in
     if (contactId && (!before || before.clientId !== clientId)) throw new ActionError("contact_not_found");
     if (before?.erasedAt) throw new ActionError("contact_erased");
     if (!contactId && !options.confirmDuplicate) {
-      const existing = await tx.select({ id: schema.crmContact.id, fullName: schema.crmContact.fullName, email: schema.crmContact.email, phone: schema.crmContact.phone }).from(schema.crmContact).where(and(eq(schema.crmContact.clientId, clientId), isNull(schema.crmContact.erasedAt)));
+      const existing = await tx
+        .select({ id: schema.crmContact.id, fullName: schema.crmContact.fullName, email: schema.crmContact.email, phone: schema.crmContact.phone })
+        .from(schema.crmContact)
+        .where(and(eq(schema.crmContact.clientId, clientId), isNull(schema.crmContact.erasedAt)));
       const duplicates = likelyDuplicateContacts(input, existing);
       if (duplicates.length) throw new ActionError("contact_duplicate", { duplicates: existing.filter((row) => duplicates.includes(row.id)).map((row) => ({ id: row.id, fullName: row.fullName })) });
     }
     const values = { ...input, email: input.email?.trim().toLowerCase() || null, searchName: toSearchKey(input.fullName) };
-    if (input.isPrimary) await tx.update(schema.crmContact).set({ isPrimary: false, updatedAt: new Date() }).where(and(eq(schema.crmContact.clientId, clientId), eq(schema.crmContact.isPrimary, true), contactId ? ne(schema.crmContact.id, contactId) : undefined));
+    if (input.isPrimary)
+      await tx
+        .update(schema.crmContact)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(and(eq(schema.crmContact.clientId, clientId), eq(schema.crmContact.isPrimary, true), contactId ? ne(schema.crmContact.id, contactId) : undefined));
     if (!contactId) {
-      const [after] = await tx.insert(schema.crmContact).values({ ...values, clientId, createdByPersonId: actorPersonId }).returning();
+      const [after] = await tx
+        .insert(schema.crmContact)
+        .values({ ...values, clientId, createdByPersonId: actorPersonId })
+        .returning();
       return { before: null, after };
     }
-    const [after] = await tx.update(schema.crmContact).set({ ...values, updatedAt: new Date() }).where(eq(schema.crmContact.id, contactId)).returning();
+    const [after] = await tx
+      .update(schema.crmContact)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(schema.crmContact.id, contactId))
+      .returning();
     return { before, after };
   });
 }
@@ -140,7 +157,10 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\
 async function eraseCopiesIn(tx: Tx, contact: Pick<ContactRow, "clientId" | "fullName" | "email" | "phone" | "zalo">): Promise<ErasedCopies> {
   const email = contact.email?.trim().toLowerCase() || null;
   const phoneDigits = contact.phone?.replace(/\D/g, "") ?? "";
-  const clients = await tx.select({ id: schema.workClient.id }).from(schema.workClient).where(or(eq(schema.workClient.id, contact.clientId), eq(schema.workClient.parentId, contact.clientId)));
+  const clients = await tx
+    .select({ id: schema.workClient.id })
+    .from(schema.workClient)
+    .where(or(eq(schema.workClient.id, contact.clientId), eq(schema.workClient.parentId, contact.clientId)));
   const clientIds = clients.map((row) => row.id);
 
   const leads = await tx
@@ -202,7 +222,13 @@ export async function searchContacts(clientIds: readonly string[], q: string, li
   return db()
     .select()
     .from(schema.crmContact)
-    .where(and(inArray(schema.crmContact.clientId, [...clientIds]), isNull(schema.crmContact.erasedAt), sql`(${schema.crmContact.searchName} like ${key} or lower(coalesce(${schema.crmContact.email}, '')) like ${raw} or coalesce(${schema.crmContact.phone}, '') like ${raw})`))
+    .where(
+      and(
+        inArray(schema.crmContact.clientId, [...clientIds]),
+        isNull(schema.crmContact.erasedAt),
+        sql`(${schema.crmContact.searchName} like ${key} or lower(coalesce(${schema.crmContact.email}, '')) like ${raw} or coalesce(${schema.crmContact.phone}, '') like ${raw})`,
+      ),
+    )
     .orderBy(asc(schema.crmContact.searchName))
     .limit(limit);
 }

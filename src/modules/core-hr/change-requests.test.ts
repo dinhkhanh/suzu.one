@@ -83,7 +83,9 @@ beforeAll(async () => {
     [owner]: [{ role: "owner", scope: { type: "group" } }],
   };
   for (const [personId, list] of Object.entries(grants)) {
-    await db().insert(schema.roleAssignment).values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
+    await db()
+      .insert(schema.roleAssignment)
+      .values(list.map((grant) => ({ personId, role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id })));
   }
   const viewer = (personId: string) => ({ personId, principal: principal(personId, grants[personId] ?? []) });
   who = { huy: viewer(huy), manager: viewer(manager), hrStaff: viewer(hrStaff), hrAdmin: viewer(hrAdmin), otherHr: viewer(otherHr), payroll: viewer(payroll) };
@@ -163,7 +165,10 @@ describe("deciding", () => {
     expect((await decideProfileChange(who.hrStaff, request.id, { ...approve, action: "reject", comment: "Số không đúng" })).outcome).toBe("rejected");
     expect((await profileOf(ids.huy)).phone).toBe("0900000000");
     const view = await getProfileChange(who.huy, request.id);
-    expect(view?.events.map((event) => [event.type, event.comment])).toEqual([["submitted", null], ["rejected", "Số không đúng"]]);
+    expect(view?.events.map((event) => [event.type, event.comment])).toEqual([
+      ["submitted", null],
+      ["rejected", "Số không đúng"],
+    ]);
   });
 
   it("return for changes → the requester corrects and resubmits → approve applies the corrected values", async () => {

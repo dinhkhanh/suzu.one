@@ -29,8 +29,7 @@ export function pathOf(id: string, parentOf: ReadonlyMap<string, string | null>)
 }
 
 /** Would making `parentId` the parent of `unitId` put the unit under itself? */
-export const wouldLoop = (unitId: string, parentId: string | null, parentOf: ReadonlyMap<string, string | null>): boolean =>
-  parentId !== null && (parentId === unitId || pathOf(parentId, parentOf).includes(unitId));
+export const wouldLoop = (unitId: string, parentId: string | null, parentOf: ReadonlyMap<string, string | null>): boolean => parentId !== null && (parentId === unitId || pathOf(parentId, parentOf).includes(unitId));
 
 /** `unitId` and every unit below it. */
 export const subtreeOf = (unitId: string, units: readonly UnitNode[]): UnitNode[] => units.filter((unit) => unit.path.includes(unitId));

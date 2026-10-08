@@ -71,7 +71,12 @@ const myTasks = defineTool({
     const shaped = tasks.map((task) => ({ ...task, link: recordHref("task", task.id), blocked: task.blockedBy > 0 || task.blocker !== null }));
     const view = modelRows(shaped, { key: "value", title: "text", stateName: "text", dueDate: "value", priority: "value", projectName: "text", blocked: "value", blocker: "text", link: "value" }, CAP);
     const items: AgentCardItem[] = shaped.slice(0, 8).map((task) => ({ label: `${task.key} · ${task.title}`, href: task.link, meta: task.dueDate ? meta(task.dueDate < today ? "overdue" : "due", { date: task.dueDate }) : null }));
-    return { outcome: "answered", model: { link: "/work", today, filter: input.filter ?? "all_open", ...view }, card: { tool: "my_tasks", href: "/work", items, more: Math.max(0, shaped.length - items.length) }, subject: self(user.person.id) };
+    return {
+      outcome: "answered",
+      model: { link: "/work", today, filter: input.filter ?? "all_open", ...view },
+      card: { tool: "my_tasks", href: "/work", items, more: Math.max(0, shaped.length - items.length) },
+      subject: self(user.person.id),
+    };
   },
 });
 
@@ -92,7 +97,13 @@ const myDay = defineTool({
   run: async ({ user, today }, input) => {
     const date: IsoDate = input.date && input.date <= today && input.date >= addDays(today, -7) ? input.date : today;
     const [day, missing, logged] = await Promise.all([getToday(user.person.id, date), listMissingReportDays(user.person.id, today), loggedMinutesOfPerson(user.person.id, { from: date, to: date }, "week")]);
-    const task = (row: { taskId: string; key: string; title: string; stateName: string; dueDate: IsoDate | null }) => ({ key: row.key, title: modelText(row.title), state: row.stateName, dueDate: row.dueDate, link: recordHref("task", row.taskId) });
+    const task = (row: { taskId: string; key: string; title: string; stateName: string; dueDate: IsoDate | null }) => ({
+      key: row.key,
+      title: modelText(row.title),
+      state: row.stateName,
+      dueDate: row.dueDate,
+      link: recordHref("task", row.taskId),
+    });
     const minutesLogged = logged[0]?.totalMinutes ?? 0;
     const report = day.report ? { status: day.report.status, submittedAt: day.report.submittedAt?.toISOString() ?? null, late: day.report.late } : null;
     const model = {
@@ -138,7 +149,12 @@ const myTime = defineTool({
     const total = groups[0].totalMinutes;
     const view = modelRows(shaped, { label: "text", key: "value", hours: "value", billableHours: "value", link: "value" }, CAP);
     const items: AgentCardItem[] = shaped.slice(0, 8).map((group) => ({ label: [group.key, group.label].filter(Boolean).join(" · ") || "—", href: by === "week" ? null : group.link, meta: meta("hours", { hours: group.hours }) }));
-    return { outcome: "answered", model: { link: "/daily/time", from: clipped, to, groupBy: by, totalHours: HOURS(total), ...view }, card: { tool: "my_time", href: "/daily/time", items, more: Math.max(0, shaped.length - items.length) }, subject: self(user.person.id) };
+    return {
+      outcome: "answered",
+      model: { link: "/daily/time", from: clipped, to, groupBy: by, totalHours: HOURS(total), ...view },
+      card: { tool: "my_time", href: "/daily/time", items, more: Math.max(0, shaped.length - items.length) },
+      subject: self(user.person.id),
+    };
   },
 });
 
@@ -164,7 +180,12 @@ const myLeave = defineTool({
     if (tracked.length === 0) return nothing("/leave", user.person.id, { year });
     const shaped = tracked.map((row) => ({ type: row.name, code: row.code, availableDays: DAYS(row.availableCenti), usedDays: DAYS(row.usedCenti), pendingDays: DAYS(row.pendingCenti) }));
     const items: AgentCardItem[] = shaped.map((row) => ({ label: row.type, href: null, meta: meta("leaveDays", { available: row.availableDays, used: row.usedDays }) }));
-    return { outcome: "answered", model: { link: "/leave", year, ...modelRows(shaped, { type: "text", code: "value", availableDays: "value", usedDays: "value", pendingDays: "value" }, CAP) }, card: { tool: "my_leave", href: "/leave", items, more: 0 }, subject: self(user.person.id) };
+    return {
+      outcome: "answered",
+      model: { link: "/leave", year, ...modelRows(shaped, { type: "text", code: "value", availableDays: "value", usedDays: "value", pendingDays: "value" }, CAP) },
+      card: { tool: "my_leave", href: "/leave", items, more: 0 },
+      subject: self(user.person.id),
+    };
   },
 });
 
@@ -184,8 +205,25 @@ const myAttendance = defineTool({
     const summary = await getMonthSummaryFor(user.principal, user.person.id, month);
     if (!summary) return { outcome: "refused", model: { link: "/attendance" }, card: null, subject: self(user.person.id) };
     if (summary.days === 0) return nothing("/attendance", user.person.id, { month });
-    const model = { link: "/attendance", month, days: summary.days, lateCount: summary.lateCount, lateMinutes: summary.lateMinutes, earlyCount: summary.earlyCount, absentDays: summary.absentDays, missingPunchDays: summary.missingPunchDays, workedHours: HOURS(summary.workedMinutes), overtimeHours: HOURS(summary.otTotalMinutes), paidDays: DAYS(summary.paidDaysCenti) };
-    return { outcome: "answered", model, card: { tool: "my_attendance", href: "/attendance", items: [{ label: month, href: "/attendance", meta: meta("attendance", { late: summary.lateCount, missing: summary.missingPunchDays }) }], more: 0 }, subject: self(user.person.id) };
+    const model = {
+      link: "/attendance",
+      month,
+      days: summary.days,
+      lateCount: summary.lateCount,
+      lateMinutes: summary.lateMinutes,
+      earlyCount: summary.earlyCount,
+      absentDays: summary.absentDays,
+      missingPunchDays: summary.missingPunchDays,
+      workedHours: HOURS(summary.workedMinutes),
+      overtimeHours: HOURS(summary.otTotalMinutes),
+      paidDays: DAYS(summary.paidDaysCenti),
+    };
+    return {
+      outcome: "answered",
+      model,
+      card: { tool: "my_attendance", href: "/attendance", items: [{ label: month, href: "/attendance", meta: meta("attendance", { late: summary.lateCount, missing: summary.missingPunchDays }) }], more: 0 },
+      subject: self(user.person.id),
+    };
   },
 });
 
@@ -208,7 +246,10 @@ const myRequests = defineTool({
     if (mine.length === 0 && waiting.length === 0) return nothing("/requests", user.person.id);
     const spec = { type: "value", summary: "text", status: "value", createdAt: "value", requesterName: "text", link: "value" } as const;
     const shape = (row: (typeof mine)[number]) => ({ ...row, link: row.link ?? "/approvals" });
-    const items: AgentCardItem[] = [...waiting.slice(0, 5).map((row) => ({ label: row.summary, href: row.link ?? "/approvals", meta: meta("waitingOnYou", { name: row.requesterName }) })), ...mine.slice(0, 5).map((row) => ({ label: row.summary, href: row.link ?? "/requests", meta: meta(`status_${row.status}`) }))];
+    const items: AgentCardItem[] = [
+      ...waiting.slice(0, 5).map((row) => ({ label: row.summary, href: row.link ?? "/approvals", meta: meta("waitingOnYou", { name: row.requesterName }) })),
+      ...mine.slice(0, 5).map((row) => ({ label: row.summary, href: row.link ?? "/requests", meta: meta(`status_${row.status}`) })),
+    ];
     return {
       outcome: "answered",
       model: { mine: { link: "/requests", ...modelRows(mine.map(shape), spec, CAP) }, waitingOnMe: { link: "/approvals", ...modelRows(waiting.map(shape), spec, CAP) } },
@@ -255,7 +296,8 @@ const whoApproves = defineTool({
 const myPayslip = defineTool({
   name: "my_payslip",
   module: "payroll",
-  description: "The asker's own released payslip for a month (default the latest): gross, insurance, union dues, personal income tax, other deductions, net, paid days, and the largest earning and deduction lines. Needs a recent identity confirmation (step-up).",
+  description:
+    "The asker's own released payslip for a month (default the latest): gross, insurance, union dues, personal income tax, other deductions, net, paid days, and the largest earning and deduction lines. Needs a recent identity confirmation (step-up).",
   input: z.strictObject({ month: MONTH.optional().describe("YYYY-MM; default the latest released payslip.") }),
   offeredTo: everyone,
   tier: "compensation",
@@ -282,7 +324,21 @@ const myPayslip = defineTool({
     const link = recordHref("payslip", wanted.id);
     return {
       outcome: "answered",
-      model: { link, month: view.run.month, entity: view.entity.shortName, grossVnd: totals.grossEarnings, insuranceVnd: totals.employeeInsurance, unionDuesVnd: totals.unionDues, incomeTaxVnd: totals.pit, otherDeductionsVnd: totals.otherDeductions, totalDeductionsVnd: totals.totalDeductions, netVnd: totals.net, paidDays: DAYS(view.result.proration.paidDaysCenti), standardDays: view.result.proration.standardDays, lines: [...top("earning"), ...top("deduction")] },
+      model: {
+        link,
+        month: view.run.month,
+        entity: view.entity.shortName,
+        grossVnd: totals.grossEarnings,
+        insuranceVnd: totals.employeeInsurance,
+        unionDuesVnd: totals.unionDues,
+        incomeTaxVnd: totals.pit,
+        otherDeductionsVnd: totals.otherDeductions,
+        totalDeductionsVnd: totals.totalDeductions,
+        netVnd: totals.net,
+        paidDays: DAYS(view.result.proration.paidDaysCenti),
+        standardDays: view.result.proration.standardDays,
+        lines: [...top("earning"), ...top("deduction")],
+      },
       // The card names the payslip and links it; the figures stay on the payslip's own page.
       card: { tool: "my_payslip", href: link, items: [{ label: view.run.month, href: link, meta: null }], more: 0 },
       subject: { type: "payslip", id: wanted.id },
@@ -334,7 +390,12 @@ const myObligations = defineTool({
     return {
       outcome: "answered",
       model: { link: "/ops", today, ...modelRows(shaped, { title: "text", template: "text", entity: "value", period: "value", dueDate: "value", status: "value", link: "value" }, CAP) },
-      card: { tool: "my_obligations", href: "/ops", items: shaped.slice(0, 8).map((row) => ({ label: row.title, href: row.link, meta: row.dueDate ? meta(row.dueDate < today ? "overdue" : "due", { date: row.dueDate }) : null })), more: Math.max(0, shaped.length - 8) },
+      card: {
+        tool: "my_obligations",
+        href: "/ops",
+        items: shaped.slice(0, 8).map((row) => ({ label: row.title, href: row.link, meta: row.dueDate ? meta(row.dueDate < today ? "overdue" : "due", { date: row.dueDate }) : null })),
+        more: Math.max(0, shaped.length - 8),
+      },
       subject: self(user.person.id),
     };
   },

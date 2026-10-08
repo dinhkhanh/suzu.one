@@ -17,7 +17,9 @@ export type DashboardCount = { entityId: string; month: string; colour: StatusCo
 
 /** Cancelled ("not applicable") items are left out: they are neither work nor proof. An item sits in the month of its due date. */
 export function dashboardMatrix<Entity extends { id: string }>(entities: readonly Entity[], months: readonly string[], items: readonly DashboardItem[]): DashboardRow<Entity>[] {
-  const counts = items.flatMap((item): DashboardCount[] => (item.dueDate ? [{ entityId: item.entityId, month: item.dueDate.slice(0, 7), colour: item.colour, count: 1, escalated: item.escalationLevel > 0 && item.colour === "overdue" ? 1 : 0 }] : []));
+  const counts = items.flatMap((item): DashboardCount[] =>
+    item.dueDate ? [{ entityId: item.entityId, month: item.dueDate.slice(0, 7), colour: item.colour, count: 1, escalated: item.escalationLevel > 0 && item.colour === "overdue" ? 1 : 0 }] : [],
+  );
   return dashboardMatrixFromCounts(entities, months, counts);
 }
 

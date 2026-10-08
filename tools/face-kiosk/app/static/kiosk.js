@@ -39,8 +39,20 @@ const TEXT = {
 
 const $ = (id) => document.getElementById(id);
 const store = {
-  get: (key) => { try { return localStorage.getItem(key); } catch { return null; } },
-  set: (key, value) => { try { localStorage.setItem(key, value); } catch { /* private mode */ } },
+  get: (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set: (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* private mode */
+    }
+  },
 };
 
 // The setup link carries the key in the fragment, which never reaches a server log.
@@ -84,7 +96,10 @@ function show(state, title, sub, arrow = false) {
 let undoTimer = 0;
 function render(view) {
   const undo = $("undo");
-  if (view.state !== "done") { undo.hidden = true; clearTimeout(undoTimer); }
+  if (view.state !== "done") {
+    undo.hidden = true;
+    clearTimeout(undoTimer);
+  }
   switch (view.state) {
     case "challenge": {
       const [title, arrow] = t.challenge(view.name, view.direction);
@@ -98,7 +113,12 @@ function render(view) {
         undo.textContent = t.undo;
         undo.hidden = false;
         clearTimeout(undoTimer);
-        undoTimer = setTimeout(() => { undo.hidden = true; }, Math.max(1, undoSeconds - 1) * 1000);
+        undoTimer = setTimeout(
+          () => {
+            undo.hidden = true;
+          },
+          Math.max(1, undoSeconds - 1) * 1000,
+        );
       }
       return;
     }
@@ -121,7 +141,9 @@ $("undo").addEventListener("click", async () => {
       show("failed", ...t.undone);
       heldUntil = Date.now() + 3000;
     }
-  } catch { /* the punch stands; HR can correct it */ }
+  } catch {
+    /* the punch stands; HR can correct it */
+  }
 });
 
 async function frame() {
@@ -155,9 +177,13 @@ async function loop() {
 async function keepAwake() {
   try {
     if ("wakeLock" in navigator) await navigator.wakeLock.request("screen");
-  } catch { /* not supported or not allowed */ }
+  } catch {
+    /* not supported or not allowed */
+  }
 }
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") keepAwake();
+});
 
 async function start() {
   if (!key) return setup(TEXT.vi.setup + "\n\n" + TEXT.en.setup);
@@ -168,7 +194,9 @@ async function start() {
     t = TEXT[info.lang] || TEXT.vi;
     undoSeconds = info.undoSeconds || 8;
     document.documentElement.lang = info.lang || "vi";
-  } catch { /* render offline below */ }
+  } catch {
+    /* render offline below */
+  }
   tick();
   render({ state: "idle" });
   try {

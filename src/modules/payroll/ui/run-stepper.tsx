@@ -34,7 +34,7 @@ export async function RunStepper({ status }: { status: RunStatus }) {
                   "flex size-[22px] shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-semibold",
                   state === "done" && "border-success bg-success text-white",
                   state === "current" && "border-primary bg-primary text-primary-foreground ring-4 ring-primary/15",
-                  state === "next" && "border-border bg-background text-faint"
+                  state === "next" && "border-border bg-background text-faint",
                 )}
               >
                 {state === "done" ? <CheckIcon className="size-3.5" strokeWidth={3} /> : index + 1}

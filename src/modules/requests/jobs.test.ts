@@ -16,21 +16,34 @@ const ids = {} as Record<"entity" | "boss" | "huy", string>;
 const DAY = 24 * 60 * 60 * 1000;
 const purchase = { item: "Ổ cứng 4TB", quantity: 1, amount: 3_000_000, category: "it", needed_by: "2099-01-01", reason: "Lưu trữ dự án quay phim" };
 
-const reminders = async () => (await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.boss), eq(schema.notification.kind, "approvals.sla_reminder")))).length;
+const reminders = async () =>
+  (
+    await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.boss), eq(schema.notification.kind, "approvals.sla_reminder")))
+  ).length;
 
 beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "SZM" }).returning();
   ids.entity = entity.id;
   const person = async (name: string, managerId: string | null) => {
-    const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id, managerId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id, managerId })
+      .returning();
     return row.id;
   };
   ids.boss = await person("Boss", null);
   ids.huy = await person("Huy", ids.boss);
   const seed = REQUEST_TYPE_SEED.find((entry) => entry.code === "purchase")!;
-  await db().insert(schema.requestType).values({ ...seed, flow: undefined, slaRemindAfterDays: 1, slaEscalateAfterDays: 0, slaEscalateTo: null } as typeof schema.requestType.$inferInsert);
-  await db().insert(schema.approvalFlow).values({ requestType: "request:purchase", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+  await db()
+    .insert(schema.requestType)
+    .values({ ...seed, flow: undefined, slaRemindAfterDays: 1, slaEscalateAfterDays: 0, slaEscalateTo: null } as typeof schema.requestType.$inferInsert);
+  await db()
+    .insert(schema.approvalFlow)
+    .values({ requestType: "request:purchase", entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
 });
 
 describe("the SLA job", () => {

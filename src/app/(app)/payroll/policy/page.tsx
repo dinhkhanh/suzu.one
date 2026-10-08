@@ -29,7 +29,10 @@ export default async function PayPolicyPage() {
   const [t, format, versions, entities] = await Promise.all([getTranslations("payroll"), getFormatter(), listPolicyVersions(), listEntityOptions()]);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
   const entityCode = new Map(entities.map((entity) => [entity.id, entity.code]));
-  const groupCurrent = versionOn(versions.filter((version) => version.status === "approved" && version.entityId === null), todayInVietnam());
+  const groupCurrent = versionOn(
+    versions.filter((version) => version.status === "approved" && version.entityId === null),
+    todayInVietnam(),
+  );
 
   return (
     <Page width="default">
@@ -51,13 +54,17 @@ export default async function PayPolicyPage() {
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {version.entityId ? entityCode.get(version.entityId) : t("policy.groupWide")} · {day(version.validFrom)}
                   {version.validTo ? ` → ${day(version.validTo)}` : ""}
-                  <Badge dot variant={statusTone(version.status)}>{t(`rules.status.${version.status}`)}</Badge>
+                  <Badge dot variant={statusTone(version.status)}>
+                    {t(`rules.status.${version.status}`)}
+                  </Badge>
                 </span>
                 <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
                   {Object.entries(version.value).map(([key, value]) => (
                     <div key={key} className="contents">
                       <dt>{t(`policy.fields.${key}` as "policy.fields.payDay")}</dt>
-                      <dd className="text-foreground">{typeof value === "string" ? t(`policy.options.${key}.${value}` as "policy.options.prorationBasis.working_days") : typeof value === "boolean" ? t(value ? "policy.yes" : "policy.no") : String(value ?? "—")}</dd>
+                      <dd className="text-foreground">
+                        {typeof value === "string" ? t(`policy.options.${key}.${value}` as "policy.options.prorationBasis.working_days") : typeof value === "boolean" ? t(value ? "policy.yes" : "policy.no") : String(value ?? "—")}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -65,7 +72,9 @@ export default async function PayPolicyPage() {
                 {version.status === "voided" ? <span className="text-muted-foreground">{t("rules.voided.because", { reason: version.voidReason ?? "—" })}</span> : null}
               </div>
               {version.status === "proposed" && canDecidePayRules(user.principal) ? <RuleDecisionButtons id={version.id} kind="policy" /> : null}
-              {version.status === "approved" && canVoidPayRule(user.principal) ? <VoidVersionButton action={voidPolicyAction} id={version.id} title={`${version.entityId ? entityCode.get(version.entityId) : t("policy.groupWide")} — ${day(version.validFrom)}`} errorNamespace="payroll.errors" /> : null}
+              {version.status === "approved" && canVoidPayRule(user.principal) ? (
+                <VoidVersionButton action={voidPolicyAction} id={version.id} title={`${version.entityId ? entityCode.get(version.entityId) : t("policy.groupWide")} — ${day(version.validFrom)}`} errorNamespace="payroll.errors" />
+              ) : null}
             </ListItem>
           ))}
         </List>

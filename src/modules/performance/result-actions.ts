@@ -12,12 +12,26 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const year = z.coerce.number().int().min(2000).max(2100);
 /** Percentages as typed ("103,5" → 10350 bp). */
-const percentBp = z.coerce.number().min(0).max(10_000).transform((value) => Math.round(value * 100));
+const percentBp = z.coerce
+  .number()
+  .min(0)
+  .max(10_000)
+  .transform((value) => Math.round(value * 100));
 
 const refresh = () => revalidatePath("/performance", "layout");
 
 // What the audit keeps of a result: the figures and the decision, never the prose of a review.
-const resultFacts = (row: PerformanceResultRow) => ({ personId: row.personId, year: row.year, computedScoreBp: row.computedScoreBp, computedBand: row.computedBand, overrideScoreBp: row.overrideScoreBp, finalScoreBp: row.finalScoreBp, finalBand: row.finalBand, multiplierBp: row.multiplierBp, status: row.status });
+const resultFacts = (row: PerformanceResultRow) => ({
+  personId: row.personId,
+  year: row.year,
+  computedScoreBp: row.computedScoreBp,
+  computedBand: row.computedBand,
+  overrideScoreBp: row.overrideScoreBp,
+  finalScoreBp: row.finalScoreBp,
+  finalBand: row.finalBand,
+  multiplierBp: row.multiplierBp,
+  status: row.status,
+});
 
 const personOf = async (personId: string): Promise<PersonContext | null> => (await loadDirectory()).get(personId) ?? null;
 
@@ -40,15 +54,19 @@ const proposeWeightingPipeline = createAction({
     // Posted as `bands.0.key`, `bands.1.key`, … which the form nester turns into an object.
     bands: z.preprocess(
       (value) => (value && typeof value === "object" && !Array.isArray(value) ? Object.values(value) : value),
-      z.array(
-        z.object({
-          key: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
-          label: z.string().trim().min(1).max(120),
-          labelEn: optional(z.string().trim().max(120)),
-          minPercent: z.coerce.number().min(0).max(10_000),
-          multiplierPercent: z.coerce.number().min(0).max(10_000),
-        }),
-      )
+      z
+        .array(
+          z.object({
+            key: z
+              .string()
+              .trim()
+              .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
+            label: z.string().trim().min(1).max(120),
+            labelEn: optional(z.string().trim().max(120)),
+            minPercent: z.coerce.number().min(0).max(10_000),
+            multiplierPercent: z.coerce.number().min(0).max(10_000),
+          }),
+        )
         .min(1)
         .max(12),
     ),
@@ -84,7 +102,15 @@ const decideWeightingPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await decideWeighting(input.id, input.decision, user.person.id);
     refresh();
-    return { data: { status: after.status }, audit: { resource: { type: "performance_weighting", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, validFrom: after.validFrom, validTo: after.validTo } } };
+    return {
+      data: { status: after.status },
+      audit: {
+        resource: { type: "performance_weighting", id: after.id, entityId: after.entityId },
+        summary: `${before.status} → ${after.status}`,
+        before: { status: before.status },
+        after: { status: after.status, validFrom: after.validFrom, validTo: after.validTo },
+      },
+    };
   },
 });
 export async function decideWeightingAction(input: unknown) {
@@ -107,7 +133,14 @@ const computePipeline = createAction({
   run: async ({ user, input }) => {
     const summary = await computeResults({ personIds: input.personIds, year: input.year }, user.person.id);
     refresh();
-    return { data: summary, audit: { resource: { type: "performance_result", id: String(input.year) }, summary: `${input.year}: computed ${summary.computed}, skipped ${summary.skipped.length}`, after: { year: input.year, computed: summary.computed, skipped: summary.skipped.length } } };
+    return {
+      data: summary,
+      audit: {
+        resource: { type: "performance_result", id: String(input.year) },
+        summary: `${input.year}: computed ${summary.computed}, skipped ${summary.skipped.length}`,
+        after: { year: input.year, computed: summary.computed, skipped: summary.skipped.length },
+      },
+    };
   },
 });
 export async function computeResultsAction(input: unknown) {
@@ -122,7 +155,15 @@ const overridePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await overrideResult(input.resultId, { scoreBp: input.scorePercent, reason: input.reason }, user.person.id);
     refresh();
-    return { data: { finalScoreBp: after.finalScoreBp, finalBand: after.finalBand }, audit: { resource: { type: "performance_result", id: after.id, entityId: after.entityId }, summary: input.scorePercent === null ? "override removed" : `override → ${after.finalScoreBp} bp`, before: resultFacts(before), after: { ...resultFacts(after), overrideReason: after.overrideReason } } };
+    return {
+      data: { finalScoreBp: after.finalScoreBp, finalBand: after.finalBand },
+      audit: {
+        resource: { type: "performance_result", id: after.id, entityId: after.entityId },
+        summary: input.scorePercent === null ? "override removed" : `override → ${after.finalScoreBp} bp`,
+        before: resultFacts(before),
+        after: { ...resultFacts(after), overrideReason: after.overrideReason },
+      },
+    };
   },
 });
 export async function overrideResultAction(input: unknown) {
@@ -142,7 +183,10 @@ const settle = (name: string, step: (resultId: string, actorPersonId: string) =>
     run: async ({ user, input }) => {
       const { before, after } = await step(input.resultId, user.person.id);
       refresh();
-      return { data: { status: after.status }, audit: { resource: { type: "performance_result", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}`, before: resultFacts(before), after: resultFacts(after) } };
+      return {
+        data: { status: after.status },
+        audit: { resource: { type: "performance_result", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}`, before: resultFacts(before), after: resultFacts(after) },
+      };
     },
   });
 

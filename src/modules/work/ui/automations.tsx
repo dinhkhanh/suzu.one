@@ -18,14 +18,38 @@ import { RecordLink } from "@/components/ui/record-link";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addAutomationPresetAction, removeAutomationAction, saveAutomationAction, toggleAutomationAction } from "../automation-actions";
-import { AUTOMATION_ACTIONS, AUTOMATION_PRESETS, AUTOMATION_TRIGGERS, type AutomationPreset, CLIENT_DECISIONS, CONDITION_FIELDS, CONDITION_OPS, MAX_RULE_ACTIONS, MAX_RULE_CONDITIONS, QUOTA_PERCENTS, ROLES_FOR, WATCHED_FIELDS } from "../engine/automation";
+import {
+  AUTOMATION_ACTIONS,
+  AUTOMATION_PRESETS,
+  AUTOMATION_TRIGGERS,
+  type AutomationPreset,
+  CLIENT_DECISIONS,
+  CONDITION_FIELDS,
+  CONDITION_OPS,
+  MAX_RULE_ACTIONS,
+  MAX_RULE_CONDITIONS,
+  QUOTA_PERCENTS,
+  ROLES_FOR,
+  WATCHED_FIELDS,
+} from "../engine/automation";
 import { CUSTOM_PREFIX } from "../engine/custom-fields";
 import { CHANNELS, CONTENT_FORMATS, PRIORITIES } from "../enums";
 import type { AutomationAction, AutomationCondition, AutomationTrigger } from "../schema";
 import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
 
 type Named = { id: string; name: string };
-export type AutomationView = { id: string; name: string; projectId: string | null; projectName: string | null; trigger: AutomationTrigger; conditions: AutomationCondition[]; actions: AutomationAction[]; isActive: boolean; runCount: number; lastRunAt: string | null };
+export type AutomationView = {
+  id: string;
+  name: string;
+  projectId: string | null;
+  projectName: string | null;
+  trigger: AutomationTrigger;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
+  isActive: boolean;
+  runCount: number;
+  lastRunAt: string | null;
+};
 export type AutomationOptions = { states: Named[]; labels: Named[]; people: { id: string; fullName: string }[]; fields: { id: string; name: string; options: { id: string; label: string }[] }[]; templates: Named[] };
 export type AutomationRunItem = { id: string; ruleName: string; taskId: string | null; taskKey: string | null; taskTitle: string | null; outcome: string; createdAt: string; failure: string | null };
 
@@ -110,7 +134,21 @@ function useDescribe(options: AutomationOptions) {
 
 // ── The page's panel ────────────────────────────────────────────────────────────────────────
 
-export function AutomationManager({ teamId, projectId = null, rules, options, runs, canManage }: { teamId: string; projectId?: string | null; rules: AutomationView[]; options: AutomationOptions; runs: AutomationRunItem[]; canManage: boolean }) {
+export function AutomationManager({
+  teamId,
+  projectId = null,
+  rules,
+  options,
+  runs,
+  canManage,
+}: {
+  teamId: string;
+  projectId?: string | null;
+  rules: AutomationView[];
+  options: AutomationOptions;
+  runs: AutomationRunItem[];
+  canManage: boolean;
+}) {
   const t = useTranslations("work.automations");
   const describe = useDescribe(options);
   const format = useFormatter();
@@ -160,7 +198,9 @@ export function AutomationManager({ teamId, projectId = null, rules, options, ru
                       {rule.projectName ? <Badge variant="secondary">{rule.projectName}</Badge> : null}
                       {inherited ? <Badge variant="outline">{t("fromTeam")}</Badge> : null}
                       {rule.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                      <span className="text-xs text-muted-foreground">{rule.lastRunAt ? t("runs.count", { count: rule.runCount, when: format.dateTime(new Date(rule.lastRunAt), { dateStyle: "short", timeStyle: "short" }) }) : t("runs.never")}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {rule.lastRunAt ? t("runs.count", { count: rule.runCount, when: format.dateTime(new Date(rule.lastRunAt), { dateStyle: "short", timeStyle: "short" }) }) : t("runs.never")}
+                      </span>
                     </span>
                     <span className="text-muted-foreground">{describe(rule)}</span>
                   </summary>
@@ -170,7 +210,16 @@ export function AutomationManager({ teamId, projectId = null, rules, options, ru
                         <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleAutomationAction({ automationId: rule.id, isActive: !rule.isActive }))}>
                           {rule.isActive ? t("turnOff") : t("turnOn")}
                         </Button>
-                        <ConfirmButton size="sm" variant="ghost" disabled={pending} className="text-destructive" destructive label={t("remove")} question={t("confirmRemove", { name: rule.name })} onConfirm={() => run(() => removeAutomationAction({ automationId: rule.id }))}>
+                        <ConfirmButton
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          className="text-destructive"
+                          destructive
+                          label={t("remove")}
+                          question={t("confirmRemove", { name: rule.name })}
+                          onConfirm={() => run(() => removeAutomationAction({ automationId: rule.id }))}
+                        >
                           <Trash2 aria-hidden className="size-4" /> {t("remove")}
                         </ConfirmButton>
                       </div>
@@ -449,7 +498,11 @@ function PersonChoice({ action, roles, options, onChange }: { action: Automation
   const t = useTranslations("work.automations");
   const value = action.personId ? `person:${action.personId}` : (action.to ?? "");
   return (
-    <Select aria-label={t("person")} value={value} onChange={(event) => (event.target.value.startsWith("person:") ? onChange({ personId: event.target.value.slice(7), to: undefined }) : onChange({ to: event.target.value || undefined, personId: undefined }))}>
+    <Select
+      aria-label={t("person")}
+      value={value}
+      onChange={(event) => (event.target.value.startsWith("person:") ? onChange({ personId: event.target.value.slice(7), to: undefined }) : onChange({ to: event.target.value || undefined, personId: undefined }))}
+    >
       <option value="">—</option>
       <optgroup label={t("rolesGroup")}>
         {roles.map((role) => (
@@ -481,9 +534,7 @@ function ActionFields({ action, options, quota, onChange }: { action: Automation
       ))}
     </Select>
   );
-  const text = (
-    <Input aria-label={t("text")} value={action.text ?? ""} maxLength={500} placeholder={t("textPlaceholder")} onChange={(event) => onChange({ text: event.target.value })} />
-  );
+  const text = <Input aria-label={t("text")} value={action.text ?? ""} maxLength={500} placeholder={t("textPlaceholder")} onChange={(event) => onChange({ text: event.target.value })} />;
   switch (action.type) {
     case "move_state":
       return pick(options.states, "stateId", t("state"));

@@ -25,8 +25,23 @@ export function datePlan(parts: TemplatePlanParts, anchor: Anchor, lastStepDay: 
   const total = totalOfRoles(parts.budgetByRole);
   return {
     phases: parts.phases.map((phase, index) => ({ name: phase.name, startDate: on(Math.min(phase.startDay, phase.endDay)), endDate: on(Math.max(phase.startDay, phase.endDay)), sortOrder: index })),
-    milestones: parts.milestones.map((milestone, index) => ({ name: milestone.name, dueDate: on(milestone.day), phase: validIndex(milestone.phase, parts.phases.length), isClientFacing: milestone.isClientFacing, isBilling: milestone.isBilling, sortOrder: index })),
-    lines: parts.deliverables.map((line, index) => ({ title: line.title, quantity: Math.max(1, line.quantity), format: line.format, channel: line.channel, milestone: validIndex(line.milestone, parts.milestones.length), dueDate: line.day === null ? null : on(line.day), sortOrder: index })),
+    milestones: parts.milestones.map((milestone, index) => ({
+      name: milestone.name,
+      dueDate: on(milestone.day),
+      phase: validIndex(milestone.phase, parts.phases.length),
+      isClientFacing: milestone.isClientFacing,
+      isBilling: milestone.isBilling,
+      sortOrder: index,
+    })),
+    lines: parts.deliverables.map((line, index) => ({
+      title: line.title,
+      quantity: Math.max(1, line.quantity),
+      format: line.format,
+      channel: line.channel,
+      milestone: validIndex(line.milestone, parts.milestones.length),
+      dueDate: line.day === null ? null : on(line.day),
+      sortOrder: index,
+    })),
     budgetMinutes: total > 0 ? total : null,
   };
 }

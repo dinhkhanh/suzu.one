@@ -31,7 +31,9 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
   const labels = { t, format };
 
   const withHistory = new Set(checkIns.map((checkIn) => checkIn.keyResultId));
-  const parents = siblings.filter((candidate) => candidate.status === "draft" || candidate.status === "active").map((candidate) => ({ id: candidate.id, title: candidate.title, level: candidate.level, periodKey: candidate.periodKey, unitName: candidate.unitName }));
+  const parents = siblings
+    .filter((candidate) => candidate.status === "draft" || candidate.status === "active")
+    .map((candidate) => ({ id: candidate.id, title: candidate.title, level: candidate.level, periodKey: candidate.periodKey, unitName: candidate.unitName }));
   const moves = [
     ...(goal.status === "draft" && rights.edit ? (["activate"] as const) : []),
     ...(goal.status === "active" && rights.close ? (["close"] as const) : []),
@@ -62,7 +64,14 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
           {goal.unitName ? " · " : null}
           <GoalUnitLink goal={goal} />
           {" · "}
-          {t.rich("detail.owner", { name: goal.ownerName, person: (chunks) => <RecordLink kind="person" id={goal.ownerPersonId}>{chunks}</RecordLink> })}
+          {t.rich("detail.owner", {
+            name: goal.ownerName,
+            person: (chunks) => (
+              <RecordLink kind="person" id={goal.ownerPersonId}>
+                {chunks}
+              </RecordLink>
+            ),
+          })}
           {` · ${periodLabel(t, goal.periodKey)} · ${t("detail.weight", { weight: goal.weight })}`}
         </p>
         <RichText text={goal.description} />
@@ -87,7 +96,11 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
                   t(`enums.metric.${keyResult.metricType}`),
                   keyResult.metricType === "milestone"
                     ? metricText(format, "milestone", 0, keyResult.milestones)
-                    : t("kr.fromTo", { start: metricText(format, keyResult.metricType, keyResult.startValue), current: metricText(format, keyResult.metricType, keyResult.currentValue), target: metricText(format, keyResult.metricType, keyResult.targetValue) }),
+                    : t("kr.fromTo", {
+                        start: metricText(format, keyResult.metricType, keyResult.startValue),
+                        current: metricText(format, keyResult.metricType, keyResult.currentValue),
+                        target: metricText(format, keyResult.metricType, keyResult.targetValue),
+                      }),
                   t("detail.weight", { weight: keyResult.weight }),
                   keyResult.lastCheckInAt ? t("kr.lastCheckIn", { date: dateTime(keyResult.lastCheckInAt) }) : t("kr.noCheckIn"),
                   keyResult.stale ? t("stale") : null,
@@ -114,7 +127,19 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
                 <details>
                   <summary className="cursor-pointer text-xs text-muted-foreground">{t("kr.edit")}</summary>
                   <div className="flex flex-col gap-2 pt-2">
-                    <KeyResultForm goalId={goal.id} value={{ id: keyResult.id, title: keyResult.title, metricType: keyResult.metricType, startValue: keyResult.startValue, targetValue: keyResult.targetValue, milestones: keyResult.milestones, weight: keyResult.weight, hasCheckIns: withHistory.has(keyResult.id) }} />
+                    <KeyResultForm
+                      goalId={goal.id}
+                      value={{
+                        id: keyResult.id,
+                        title: keyResult.title,
+                        metricType: keyResult.metricType,
+                        startValue: keyResult.startValue,
+                        targetValue: keyResult.targetValue,
+                        milestones: keyResult.milestones,
+                        weight: keyResult.weight,
+                        hasCheckIns: withHistory.has(keyResult.id),
+                      }}
+                    />
                     {withHistory.has(keyResult.id) ? <p className="text-xs text-muted-foreground">{t("kr.keptForTrace")}</p> : <RemoveKeyResultButton keyResultId={keyResult.id} />}
                   </div>
                 </details>
@@ -143,7 +168,17 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
             <TableBody>
               {goal.progress.lines.map((line) => (
                 <TableRow key={line.id} className={line.skipped ? "text-muted-foreground" : undefined}>
-                  <TableCell className="whitespace-normal">{line.redacted ? t("trace.private") : line.kind === "goal" ? <RecordLink kind="goal" id={line.id}>{lineTitles[line.id] ?? "—"}</RecordLink> : (lineTitles[line.id] ?? "—")}</TableCell>
+                  <TableCell className="whitespace-normal">
+                    {line.redacted ? (
+                      t("trace.private")
+                    ) : line.kind === "goal" ? (
+                      <RecordLink kind="goal" id={line.id}>
+                        {lineTitles[line.id] ?? "—"}
+                      </RecordLink>
+                    ) : (
+                      (lineTitles[line.id] ?? "—")
+                    )}
+                  </TableCell>
                   <TableCell kind="number">{line.weight}</TableCell>
                   <TableCell kind="percent">{line.redacted ? "—" : line.skipped ? t(`trace.skipped.${line.skipped}`) : progressLabel(labels, line.progressBp)}</TableCell>
                 </TableRow>
@@ -187,7 +222,9 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
                   <ConfidenceBadge confidence={checkIn.confidence as "on_track" | "at_risk" | "off_track"} label={t(`enums.confidence.${checkIn.confidence as "on_track" | "at_risk" | "off_track"}`)} />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <RecordLink kind="person" id={checkIn.authorPersonId}>{checkIn.authorName}</RecordLink>
+                  <RecordLink kind="person" id={checkIn.authorPersonId}>
+                    {checkIn.authorName}
+                  </RecordLink>
                   {" · "}
                   {[dateTime(checkIn.createdAt), t("checkIn.week", { date: format.dateTime(new Date(`${checkIn.weekStart}T00:00:00`), { dateStyle: "medium" }) })].join(" · ")}
                 </p>
@@ -201,7 +238,10 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
       {rights.edit && open && options ? (
         <section className="flex flex-col gap-4 rounded-xl border p-4">
           <h2>{t("detail.edit")}</h2>
-          <EditGoalForm goal={{ id: goal.id, title: goal.title, description: goal.description, periodKey: goal.periodKey, year: goal.year, weight: goal.weight, ownerPersonId: goal.ownerPersonId, level: goal.level }} owners={options.owners} />
+          <EditGoalForm
+            goal={{ id: goal.id, title: goal.title, description: goal.description, periodKey: goal.periodKey, year: goal.year, weight: goal.weight, ownerPersonId: goal.ownerPersonId, level: goal.level }}
+            owners={options.owners}
+          />
           <ReparentForm goal={{ id: goal.id, level: goal.level, periodKey: goal.periodKey, parentGoalId: goal.parentGoalId }} parents={parents} />
         </section>
       ) : null}

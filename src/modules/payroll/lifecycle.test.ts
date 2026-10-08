@@ -4,7 +4,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -74,7 +80,9 @@ async function addStructure(personId: string, validFrom: string, baseSalary: num
   const [employment] = await db().select().from(schema.employment).where(eq(schema.employment.personId, personId)).limit(1);
   const id = crypto.randomUUID();
   const terms = { baseSalary, insuranceSalary: baseSalary, allowances: [] };
-  await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employment.id, entityId: ids.entity, validFrom, reason: "raise", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
+  await db()
+    .insert(schema.salaryStructure)
+    .values({ id, personId, employmentId: employment.id, entityId: ids.entity, validFrom, reason: "raise", termsEnc: fieldCipher().encrypt(JSON.stringify(terms), salaryTermsContext(id)) });
 }
 
 async function lockMonth(month: string, people: string[]) {
@@ -132,7 +140,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate,
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -321,7 +338,13 @@ describe("period locking (DR-07)", () => {
     await refused(db().update(schema.payrollRun).set({ note: "sửa trộm" }).where(eq(schema.payrollRun.id, run.id)), /is locked/);
     await refused(db().delete(schema.payrollRun).where(eq(schema.payrollRun.id, run.id)), /is locked/);
     // …and nothing hanging off it either: not a person's figures, not a typed-in amount.
-    await refused(db().update(schema.payrollRunPerson).set({ warnings: ["negative_net"] }).where(eq(schema.payrollRunPerson.runId, run.id)), /is locked/);
+    await refused(
+      db()
+        .update(schema.payrollRunPerson)
+        .set({ warnings: ["negative_net"] })
+        .where(eq(schema.payrollRunPerson.runId, run.id)),
+      /is locked/,
+    );
     await refused(db().delete(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, run.id)), /is locked/);
     // A recalculation is refused before it reaches the trigger, by the status itself.
     await expect(calculateRun(run.id)).rejects.toThrow("run_not_editable");

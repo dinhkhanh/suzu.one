@@ -53,7 +53,14 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
             {view.requesterName !== view.subjectName ? (
               <>
                 {" · "}
-                {t.rich("request.filedBy", { name: view.requesterName, person: (chunks) => <RecordLink kind="person" id={request.requesterPersonId}>{chunks}</RecordLink> })}
+                {t.rich("request.filedBy", {
+                  name: view.requesterName,
+                  person: (chunks) => (
+                    <RecordLink kind="person" id={request.requesterPersonId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })}
               </>
             ) : null}
           </>
@@ -77,7 +84,11 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
           rows={[
             { label: t("request.dates"), value: leaveRequest.startDate === leaveRequest.endDate ? date(leaveRequest.startDate) : `${date(leaveRequest.startDate)} – ${date(leaveRequest.endDate)}` },
             { label: t("request.cost"), value: t("daysCount", { days: days(leaveRequest.totalCenti) }), money: true },
-            { label: t("request.countedDays"), value: view.days.map((day) => `${format.dateTime(new Date(`${day.date}T00:00:00`), { day: "numeric", month: "numeric" })}${day.portion === "full" ? "" : ` (${t(`portions.${day.portion}`)})`}`).join(" · "), long: true },
+            {
+              label: t("request.countedDays"),
+              value: view.days.map((day) => `${format.dateTime(new Date(`${day.date}T00:00:00`), { day: "numeric", month: "numeric" })}${day.portion === "full" ? "" : ` (${t(`portions.${day.portion}`)})`}`).join(" · "),
+              long: true,
+            },
             ...(view.balance ? [{ label: t("request.balanceNow"), value: `${days(view.balance.balanceCenti)}${view.balance.pendingCenti ? ` (${t("balances.pending", { days: days(view.balance.pendingCenti) })})` : ""}`, money: true }] : []),
             { label: t("request.reason"), value: leaveRequest.reason, long: true },
             ...(leaveRequest.attachmentFileId ? [{ label: t("request.attachment"), value: <AttachmentButton requestId={request.id} label={t("request.openAttachment")} /> }] : []),
@@ -94,11 +105,18 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
             <ul className="text-muted-foreground">
               {view.conflicts.colleaguesAway.map((row) => (
                 <li key={row.personId}>
-                  <RecordLink kind="person" id={row.personId}>{row.name}</RecordLink>: <span className="font-mono text-xs tabular-nums">{row.dates.map((value) => format.dateTime(new Date(`${value}T00:00:00`), { day: "numeric", month: "numeric" })).join(", ")}</span>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.name}
+                  </RecordLink>
+                  : <span className="font-mono text-xs tabular-nums">{row.dates.map((value) => format.dateTime(new Date(`${value}T00:00:00`), { day: "numeric", month: "numeric" })).join(", ")}</span>
                 </li>
               ))}
             </ul>
-            {view.conflicts.shortfalls.length > 0 ? <Alert variant="warning">{t("request.shortfall", { dates: view.conflicts.shortfalls.map((row) => format.dateTime(new Date(`${row.date}T00:00:00`), { day: "numeric", month: "numeric" })).join(", "), min: view.conflicts.shortfalls[0].minPresent })}</Alert> : null}
+            {view.conflicts.shortfalls.length > 0 ? (
+              <Alert variant="warning">
+                {t("request.shortfall", { dates: view.conflicts.shortfalls.map((row) => format.dateTime(new Date(`${row.date}T00:00:00`), { day: "numeric", month: "numeric" })).join(", "), min: view.conflicts.shortfalls[0].minPresent })}
+              </Alert>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

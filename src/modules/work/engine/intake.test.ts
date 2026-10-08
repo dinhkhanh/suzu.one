@@ -21,7 +21,10 @@ describe("formProblem", () => {
 
 describe("checkAnswers", () => {
   it("keeps good answers, drops unknown keys, and reports every problem at once", () => {
-    expect(checkAnswers(fields, { f1: " Banner 9.9 ", f2: "1080x1080", f3: "2026-09-30", f4: "https://drive.google.com/x", other: "x" })).toEqual({ answers: { f1: "Banner 9.9", f2: "1080x1080", f3: "2026-09-30", f4: "https://drive.google.com/x" }, problems: [] });
+    expect(checkAnswers(fields, { f1: " Banner 9.9 ", f2: "1080x1080", f3: "2026-09-30", f4: "https://drive.google.com/x", other: "x" })).toEqual({
+      answers: { f1: "Banner 9.9", f2: "1080x1080", f3: "2026-09-30", f4: "https://drive.google.com/x" },
+      problems: [],
+    });
     expect(checkAnswers(fields, { f1: "", f2: "A4", f3: "30/09/2026", f4: "http://plain" }).problems).toEqual([
       { key: "f1", problem: "required" },
       { key: "f2", problem: "not_an_option" },

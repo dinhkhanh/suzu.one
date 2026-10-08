@@ -1,10 +1,7 @@
 {
   "name": "Two months in the company: below the scheme's three-month floor",
   "source": "synthetic",
-  "derivation": [
-    "Eligibility asks for at least 3 months on the reference day; this person has 2.",
-    "Amount 0 ₫, reason 'service_too_short'."
-  ],
+  "derivation": ["Eligibility asks for at least 3 months on the reference day; this person has 2.", "Amount 0 ₫, reason 'service_too_short'."],
   "person": {
     "baseSalaryVnd": 15000000,
     "serviceMonths": 2,

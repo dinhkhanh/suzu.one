@@ -17,5 +17,15 @@
     "unitOkrProgressBp": 9500,
     "result": { "resultId": "r1", "finalScoreBp": 8500, "bandKey": "meets", "bandMultiplierBp": 10000, "bandLabel": "Đạt", "reviewScoreBp": 8000, "kpiScoreBp": 8800, "okrScoreBp": 8200, "overridden": false, "overrideReason": null }
   },
-  "expect": { "eligible": true, "exclusion": null, "serviceFactorBp": 10000, "performanceMultiplierBp": 10000, "unitOkrMultiplierBp": 10000, "combinedMultiplierBp": 10000, "capApplied": false, "computedAmountVnd": 20000000, "finalAmountVnd": 20000000 }
+  "expect": {
+    "eligible": true,
+    "exclusion": null,
+    "serviceFactorBp": 10000,
+    "performanceMultiplierBp": 10000,
+    "unitOkrMultiplierBp": 10000,
+    "combinedMultiplierBp": 10000,
+    "capApplied": false,
+    "computedAmountVnd": 20000000,
+    "finalAmountVnd": 20000000
+  }
 }

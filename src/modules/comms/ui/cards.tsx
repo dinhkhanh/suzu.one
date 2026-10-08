@@ -54,7 +54,11 @@ export async function AnnouncementCards({ cards, empty }: { cards: AnnouncementC
           <CardFooter className="flex-wrap justify-between gap-2 py-2.5">
             <span className="flex flex-wrap items-center gap-1.5">
               {card.pinned ? <Badge variant="secondary">{t("list.pinned")}</Badge> : null}
-              {card.mustAcknowledge ? <Badge variant={card.acknowledged ? "success" : "warning"} dot>{card.acknowledged ? t("list.acknowledged") : t("list.mustAcknowledge")}</Badge> : null}
+              {card.mustAcknowledge ? (
+                <Badge variant={card.acknowledged ? "success" : "warning"} dot>
+                  {card.acknowledged ? t("list.acknowledged") : t("list.mustAcknowledge")}
+                </Badge>
+              ) : null}
             </span>
             {card.mustAcknowledge && !card.acknowledged ? (
               <AcknowledgeAnnouncementButton id={card.id} />

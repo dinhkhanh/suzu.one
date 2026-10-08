@@ -74,12 +74,7 @@ export const normaliseName = (value: string): string => toSearchKey(value);
  * The name with its words in alphabetical order, so "Trần Thị Mai" and "Mai Trần Thị" — the same
  * person filling in a Western-ordered form — compare equal. Used only for the *name* signal.
  */
-const sortedTokens = (searchName: string): string =>
-  searchName
-    .split(" ")
-    .filter(Boolean)
-    .sort()
-    .join(" ");
+const sortedTokens = (searchName: string): string => searchName.split(" ").filter(Boolean).sort().join(" ");
 
 /** Dice coefficient over character bigrams: 1 = identical, 0 = nothing in common. */
 export function nameSimilarity(a: string, b: string): number {

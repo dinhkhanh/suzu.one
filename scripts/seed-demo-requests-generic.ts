@@ -52,7 +52,14 @@ const DEMO: Demo[] = [
     code: "payment",
     requester: "duc.phan@suzu.group",
     daysAgo: 3,
-    values: { payee: "Công ty TNHH In ấn Tân Thành", amount: 4_150_000, method: "transfer", bank_account: "0123456789 — Vietcombank CN Tân Bình", due_date: day(7), purpose: "In standee và backdrop cho sự kiện ra mắt sản phẩm của khách hàng." },
+    values: {
+      payee: "Công ty TNHH In ấn Tân Thành",
+      amount: 4_150_000,
+      method: "transfer",
+      bank_account: "0123456789 — Vietcombank CN Tân Bình",
+      due_date: day(7),
+      purpose: "In standee và backdrop cho sự kiện ra mắt sản phẩm của khách hàng.",
+    },
     decisions: [{ by: "ha.nguyen@suzu.vn", action: "return" }],
   },
   {
@@ -76,7 +83,16 @@ const DEMO: Demo[] = [
     code: "business_trip",
     requester: "huy.ho@suzu.group",
     daysAgo: 8,
-    values: { destination: "Đà Nẵng", start_date: day(20), end_date: day(23), transport: ["plane"], amount: 9_800_000, needs_accommodation: true, accommodation_note: "Khách sạn gần khu vực quay, 3 đêm.", purpose: "Khảo sát địa điểm và gặp khách hàng cho dự án quý sau." },
+    values: {
+      destination: "Đà Nẵng",
+      start_date: day(20),
+      end_date: day(23),
+      transport: ["plane"],
+      amount: 9_800_000,
+      needs_accommodation: true,
+      accommodation_note: "Khách sạn gần khu vực quay, 3 đêm.",
+      purpose: "Khảo sát địa điểm và gặp khách hàng cho dự án quý sau.",
+    },
     decisions: [{ by: "long.dang@suzu.group", action: "reject" }],
   },
   {
@@ -158,7 +174,11 @@ export async function seedGenericRequests(db: Db): Promise<number> {
       subjectPersonId: requester.id,
       subjectType: "request_type",
       subjectId: type.id,
-      summary: summarize(type, demo.values, demo.lines?.reduce((total, line) => total + line.amount, 0)),
+      summary: summarize(
+        type,
+        demo.values,
+        demo.lines?.reduce((total, line) => total + line.amount, 0),
+      ),
       payload: { ...conditionData(type, demo.values), ...(demo.lines ? { amount: demo.lines.reduce((total, line) => total + line.amount, 0), lines: demo.lines.length } : {}) },
       flowSnapshot: { definition, source: "group", resolved: steps.map(({ key, mode, applies, approverIds }) => ({ key, mode, applies, approverIds })) },
       link: `/approvals/request/${id}`,
@@ -192,7 +212,11 @@ export async function seedGenericRequests(db: Db): Promise<number> {
       })
       .returning({ id: requestSubmission.id });
     if (demo.lines) {
-      await db.insert(expenseClaimLine).values(demo.lines.map((line, index) => ({ submissionId: submission.id, lineDate: line.lineDate, category: line.category, description: line.description, amount: line.amount, projectTag: line.projectTag ?? null, sortOrder: index })));
+      await db
+        .insert(expenseClaimLine)
+        .values(
+          demo.lines.map((line, index) => ({ submissionId: submission.id, lineDate: line.lineDate, category: line.category, description: line.description, amount: line.amount, projectTag: line.projectTag ?? null, sortOrder: index })),
+        );
     }
 
     // Walk the decisions the demo asked for, one open step at a time.
@@ -217,8 +241,14 @@ export async function seedGenericRequests(db: Db): Promise<number> {
       });
 
       if (decision.action !== "approve") {
-        await db.update(approvalStep).set({ status: decision.action === "reject" ? "rejected" : "waiting" }).where(eq(approvalStep.id, step.id));
-        await db.update(approvalRequest).set({ status: decision.action === "reject" ? "rejected" : "returned", decidedAt: decision.action === "reject" ? decidedAt : null, updatedAt: decidedAt }).where(eq(approvalRequest.id, id));
+        await db
+          .update(approvalStep)
+          .set({ status: decision.action === "reject" ? "rejected" : "waiting" })
+          .where(eq(approvalStep.id, step.id));
+        await db
+          .update(approvalRequest)
+          .set({ status: decision.action === "reject" ? "rejected" : "returned", decidedAt: decision.action === "reject" ? decidedAt : null, updatedAt: decidedAt })
+          .where(eq(approvalRequest.id, id));
         break;
       }
 
@@ -238,10 +268,13 @@ export async function seedGenericRequests(db: Db): Promise<number> {
   return made;
 }
 
-const reasonFor = (action: "reject" | "return") =>
-  action === "reject" ? "Chưa phải thời điểm: hoãn sang quý sau khi có ngân sách." : "Thiếu hóa đơn đỏ và mã số thuế của nhà cung cấp — bổ sung rồi gửi lại giúp mình.";
+const reasonFor = (action: "reject" | "return") => (action === "reject" ? "Chưa phải thời điểm: hoãn sang quý sau khi có ngân sách." : "Thiếu hóa đơn đỏ và mã số thuế của nhà cung cấp — bổ sung rồi gửi lại giúp mình.");
 
-const firstApplying = (steps: { applies: boolean }[]) => Math.max(0, steps.findIndex((step) => step.applies));
+const firstApplying = (steps: { applies: boolean }[]) =>
+  Math.max(
+    0,
+    steps.findIndex((step) => step.applies),
+  );
 const nextApplying = (steps: { applies: boolean }[], after: number) => {
   const index = steps.findIndex((step, position) => position > after && step.applies);
   return index < 0 ? null : index;

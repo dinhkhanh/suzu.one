@@ -49,7 +49,10 @@ export type NewTask = {
 
 async function tellAssignees(executor: Executor, tasks: TaskRow[], actorId: string | null): Promise<void> {
   // One notice per person per batch: a twelve-step checklist is one event, not twelve.
-  const byAssignee = Map.groupBy(tasks.filter((task) => task.assigneePersonId && task.assigneePersonId !== actorId), (task) => task.assigneePersonId!);
+  const byAssignee = Map.groupBy(
+    tasks.filter((task) => task.assigneePersonId && task.assigneePersonId !== actorId),
+    (task) => task.assigneePersonId!,
+  );
   for (const [assigneeId, own] of byAssignee) {
     await notify({ recipients: [assigneeId], kind: "tasks.assigned", params: { count: own.length, title: own[0].title }, link: "/today?view=work" }, executor);
   }
@@ -101,10 +104,20 @@ export async function instantiateTemplate(tx: Executor, input: InstantiateInput)
     const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);
     if (rule?.rule !== "permission" || holders.has(rule.permission) || !lookup) continue;
     // The people whose job it is, not the owners' "*"; never the subject (nobody offboards themselves).
-    const people = lookup.holding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false }).filter((id) => id !== input.subjectPersonId).sort();
+    const people = lookup
+      .holding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false })
+      .filter((id) => id !== input.subjectPersonId)
+      .sort();
     // Several people may hold it (entity HR and group HR): the one who works in the entity is the
     // likelier owner of the step. One name, not a committee — a manager of the kind can reassign.
-    const local = people.length > 1 && input.entityId ? await tx.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, people), eq(schema.person.primaryEntityId, input.entityId))).orderBy(asc(schema.person.id)) : [];
+    const local =
+      people.length > 1 && input.entityId
+        ? await tx
+            .select({ id: schema.person.id })
+            .from(schema.person)
+            .where(and(inArray(schema.person.id, people), eq(schema.person.primaryEntityId, input.entityId)))
+            .orderBy(asc(schema.person.id))
+        : [];
     holders.set(rule.permission, local[0]?.id ?? people[0] ?? null);
   }
   const resolve = (rule: AssigneeRule): string | null => {
@@ -115,14 +128,22 @@ export async function instantiateTemplate(tx: Executor, input: InstantiateInput)
   };
 
   const planned = planChecklist(items, input.anchorDate, resolve);
-  const tasks = await createTasks(tx, planned.map((task) => ({ ...task, kind: input.kind ?? "checklist", entityId: input.entityId, context: input.context, subjectPersonId: input.subjectPersonId })), input.actorId);
+  const tasks = await createTasks(
+    tx,
+    planned.map((task) => ({ ...task, kind: input.kind ?? "checklist", entityId: input.entityId, context: input.context, subjectPersonId: input.subjectPersonId })),
+    input.actorId,
+  );
   return { template, tasks };
 }
 
 // ── Working on tasks ────────────────────────────────────────────────────────────────────────
 
 export async function findTask(taskId: string, executor: Executor = db()): Promise<TaskRow | undefined> {
-  const [row] = await executor.select().from(schema.task).where(and(eq(schema.task.id, taskId), live)).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.task)
+    .where(and(eq(schema.task.id, taskId), live))
+    .limit(1);
   return row;
 }
 
@@ -188,24 +209,40 @@ export async function listMyTasks(personId: string): Promise<{ open: TaskView[];
   const mine = and(eq(schema.task.assigneePersonId, personId), live);
   const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const [open, recentlyDone] = await Promise.all([
-    taskViews().where(and(mine, inArray(schema.task.status, OPEN))).orderBy(sql`${schema.task.dueDate} asc nulls last`, asc(schema.task.sortOrder)),
-    taskViews().where(and(mine, eq(schema.task.status, "done"), gte(schema.task.completedAt, twoWeeksAgo))).orderBy(desc(schema.task.completedAt)).limit(30),
+    taskViews()
+      .where(and(mine, inArray(schema.task.status, OPEN)))
+      .orderBy(sql`${schema.task.dueDate} asc nulls last`, asc(schema.task.sortOrder)),
+    taskViews()
+      .where(and(mine, eq(schema.task.status, "done"), gte(schema.task.completedAt, twoWeeksAgo)))
+      .orderBy(desc(schema.task.completedAt))
+      .limit(30),
   ]);
   return { open: flatten(open), recentlyDone: flatten(recentlyDone) };
 }
 
 export async function countMyOpenTasks(personId: string): Promise<number> {
-  const [row] = await db().select({ value: count() }).from(schema.task).where(and(eq(schema.task.assigneePersonId, personId), inArray(schema.task.status, OPEN), live));
+  const [row] = await db()
+    .select({ value: count() })
+    .from(schema.task)
+    .where(and(eq(schema.task.assigneePersonId, personId), inArray(schema.task.status, OPEN), live));
   return row?.value ?? 0;
 }
 
 export async function listTasksOfContext(context: TaskContext, executor: Executor = db()): Promise<TaskView[]> {
-  return flatten(await taskViews(executor).where(and(eq(schema.task.contextType, context.type), eq(schema.task.contextId, context.id), live)).orderBy(asc(schema.task.sortOrder)));
+  return flatten(
+    await taskViews(executor)
+      .where(and(eq(schema.task.contextType, context.type), eq(schema.task.contextId, context.id), live))
+      .orderBy(asc(schema.task.sortOrder)),
+  );
 }
 
 /** Every checklist about a person, grouped by context by the caller. */
 export async function listTasksAbout(subjectPersonId: string, kind: string): Promise<TaskView[]> {
-  return flatten(await taskViews().where(and(eq(schema.task.subjectPersonId, subjectPersonId), eq(schema.task.kind, kind), live)).orderBy(desc(schema.task.createdAt), asc(schema.task.sortOrder)));
+  return flatten(
+    await taskViews()
+      .where(and(eq(schema.task.subjectPersonId, subjectPersonId), eq(schema.task.kind, kind), live))
+      .orderBy(desc(schema.task.createdAt), asc(schema.task.sortOrder)),
+  );
 }
 
 // ── Templates ───────────────────────────────────────────────────────────────────────────────
@@ -226,7 +263,11 @@ export const invalidateChecklistTemplates = () => invalidate(CHECKLIST_TEMPLATES
 export async function listTemplates(): Promise<TemplateView[]> {
   return cached(CHECKLIST_TEMPLATES_KEY, TTL.reference, async () => {
     const [templates, items] = await Promise.all([
-      db().select().from(schema.taskTemplate).where(sql`${schema.taskTemplate.purpose} not like 'work\_%'`).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name), asc(schema.taskTemplate.id)),
+      db()
+        .select()
+        .from(schema.taskTemplate)
+        .where(sql`${schema.taskTemplate.purpose} not like 'work\_%'`)
+        .orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name), asc(schema.taskTemplate.id)),
       db()
         .select({ item: schema.taskTemplateItem })
         .from(schema.taskTemplateItem)
@@ -250,7 +291,12 @@ export async function findTemplate(templateId: string): Promise<TaskTemplateRow 
 }
 
 export async function findTemplateItem(itemId: string): Promise<{ item: TaskTemplateItemRow; template: TaskTemplateRow } | undefined> {
-  const [row] = await db().select({ item: schema.taskTemplateItem, template: schema.taskTemplate }).from(schema.taskTemplateItem).innerJoin(schema.taskTemplate, eq(schema.taskTemplate.id, schema.taskTemplateItem.templateId)).where(eq(schema.taskTemplateItem.id, itemId)).limit(1);
+  const [row] = await db()
+    .select({ item: schema.taskTemplateItem, template: schema.taskTemplate })
+    .from(schema.taskTemplateItem)
+    .innerJoin(schema.taskTemplate, eq(schema.taskTemplate.id, schema.taskTemplateItem.templateId))
+    .where(eq(schema.taskTemplateItem.id, itemId))
+    .limit(1);
   return row;
 }
 
@@ -262,7 +308,11 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
   }
   const before = await findTemplate(templateId);
   if (!before) throw new ActionError("template_not_found");
-  const [after] = await db().update(schema.taskTemplate).set({ ...input, updatedAt: new Date() }).where(eq(schema.taskTemplate.id, templateId)).returning();
+  const [after] = await db()
+    .update(schema.taskTemplate)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(schema.taskTemplate.id, templateId))
+    .returning();
   await invalidateChecklistTemplates();
   return { before, after };
 }
@@ -275,7 +325,10 @@ function checkItem(input: TemplateItemInput): void {
 
 export async function addTemplateItem(templateId: string, input: TemplateItemInput): Promise<TaskTemplateItemRow> {
   checkItem(input);
-  const [row] = await db().insert(schema.taskTemplateItem).values({ templateId, ...input, assigneePersonId: input.assigneeRule === "person" ? input.assigneePersonId : null }).returning();
+  const [row] = await db()
+    .insert(schema.taskTemplateItem)
+    .values({ templateId, ...input, assigneePersonId: input.assigneeRule === "person" ? input.assigneePersonId : null })
+    .returning();
   await invalidateChecklistTemplates();
   return row;
 }

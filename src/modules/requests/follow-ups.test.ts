@@ -6,7 +6,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 
 import { eq } from "drizzle-orm";
@@ -56,7 +62,18 @@ async function resave(code: string, change: Partial<SaveTypeInput>) {
 async function invoice(personId: string) {
   const [file] = await db()
     .insert(schema.storedFile)
-    .values({ bucket: "suzu-private", ownerType: "request_attachment", ownerId: personId, entityId: ids.entity, tier: "personal", fileName: "hoadon.pdf", objectPath: `x/${Math.random()}`, contentType: "application/pdf", sizeBytes: 10, status: "ready" })
+    .values({
+      bucket: "suzu-private",
+      ownerType: "request_attachment",
+      ownerId: personId,
+      entityId: ids.entity,
+      tier: "personal",
+      fileName: "hoadon.pdf",
+      objectPath: `x/${Math.random()}`,
+      contentType: "application/pdf",
+      sizeBytes: 10,
+      status: "ready",
+    })
     .returning();
   return { payee: "Vietnam Airlines", amount: 5_500_000, method: "cash", due_date: "2099-01-01", purpose: "Quyết toán chuyến công tác Đà Nẵng", invoice: [file.id] };
 }
@@ -98,8 +115,12 @@ beforeAll(async () => {
   // line manager alone, so the tests are about the family rather than about who signs.
   for (const code of ["business_trip", "advance", "payment", "purchase"]) {
     const seed = REQUEST_TYPE_SEED.find((entry) => entry.code === code)!;
-    await db().insert(schema.requestType).values({ ...seed, flow: undefined } as typeof schema.requestType.$inferInsert);
-    await db().insert(schema.approvalFlow).values({ requestType: `request:${code}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+    await db()
+      .insert(schema.requestType)
+      .values({ ...seed, flow: undefined } as typeof schema.requestType.$inferInsert);
+    await db()
+      .insert(schema.approvalFlow)
+      .values({ requestType: `request:${code}`, entityId: null, definition: { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
   }
 });
 

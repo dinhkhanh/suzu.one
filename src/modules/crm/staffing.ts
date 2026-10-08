@@ -31,7 +31,12 @@ export type StaffingCheck = {
  * there is nothing to check — no team, no quote, no hours estimated — or the reader plans nobody's
  * time in that team.
  */
-export async function staffingCheck(user: Pick<CurrentUser, "person" | "principal">, deal: { teamId: string | null; expectedCloseOn: string | null }, quotes: readonly { id: string; number: string; status: string }[], today: IsoDate): Promise<StaffingCheck | null> {
+export async function staffingCheck(
+  user: Pick<CurrentUser, "person" | "principal">,
+  deal: { teamId: string | null; expectedCloseOn: string | null },
+  quotes: readonly { id: string; number: string; status: string }[],
+  today: IsoDate,
+): Promise<StaffingCheck | null> {
   if (!deal.teamId) return null;
   const quote = quotes.find((row) => row.status === "accepted") ?? quotes.find((row) => row.status !== "superseded" && row.status !== "rejected" && row.status !== "expired");
   if (!quote) return null;

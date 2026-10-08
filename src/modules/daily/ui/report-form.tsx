@@ -85,7 +85,8 @@ export function ReportForm({
       <details className="group/activity rounded-[14px] border border-border bg-background" open={timeRequired && draft.minutesLogged === 0}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
-            {t(past ? "report.activityPast" : "report.activity", { count: draft.activity.length })} <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">· {t("hours", { value: hoursOf(draft.minutesLogged) })}</span>
+            {t(past ? "report.activityPast" : "report.activity", { count: draft.activity.length })}{" "}
+            <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">· {t("hours", { value: hoursOf(draft.minutesLogged) })}</span>
           </span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/activity:rotate-180" />
         </summary>

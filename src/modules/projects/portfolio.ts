@@ -71,7 +71,10 @@ const matches = (row: PortfolioRow, filters: PortfolioFilters) =>
   (!filters.kind || row.kind === filters.kind) &&
   (!filters.health || (filters.health === "stale" ? row.stale : filters.health === "none" ? row.health === null : row.health === filters.health));
 
-export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDate; filters?: PortfolioFilters; includeDone?: boolean; /** Only these clients' projects (an account and its brands, FR-CRM-04), narrowed before any figure is read. */ clientIds?: readonly string[] }): Promise<PortfolioRow[]> {
+export async function listPortfolio(
+  viewer: WorkViewer,
+  options: { today: IsoDate; filters?: PortfolioFilters; includeDone?: boolean; /** Only these clients' projects (an account and its brands, FR-CRM-04), narrowed before any figure is read. */ clientIds?: readonly string[] },
+): Promise<PortfolioRow[]> {
   const clients = options.clientIds ? new Set(options.clientIds) : null;
   const projects = (await visibleProjects(viewer, { today: options.today })).filter((project) => (options.includeDone || project.status !== "done") && (!clients || (!!project.clientId && clients.has(project.clientId))));
   if (projects.length === 0) return [];
@@ -93,7 +96,13 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
     db()
       .selectDistinctOn([schema.projectPhase.projectId], { projectId: schema.projectPhase.projectId, name: schema.projectPhase.name })
       .from(schema.projectPhase)
-      .where(and(inArray(schema.projectPhase.projectId, ids), or(isNull(schema.projectPhase.startDate), lte(schema.projectPhase.startDate, options.today)), or(isNull(schema.projectPhase.endDate), gte(schema.projectPhase.endDate, options.today))))
+      .where(
+        and(
+          inArray(schema.projectPhase.projectId, ids),
+          or(isNull(schema.projectPhase.startDate), lte(schema.projectPhase.startDate, options.today)),
+          or(isNull(schema.projectPhase.endDate), gte(schema.projectPhase.endDate, options.today)),
+        ),
+      )
       .orderBy(asc(schema.projectPhase.projectId), asc(schema.projectPhase.sortOrder)),
     managerIds.length ? db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, managerIds)) : [],
     // Entities are reference data: the org module's cached list, not a query of this page's own.

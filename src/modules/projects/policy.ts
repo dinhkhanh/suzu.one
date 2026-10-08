@@ -83,7 +83,13 @@ export const canManageBookings = canEditPlan;
 // decision of 2026-09-23) and has no business in who is busy when.
 
 export type CapacityReader = { personId: string | null; principal: Principal; /** Active work teams the reader leads. */ ledTeamIds: ReadonlySet<string> };
-export type CapacitySubject = { personId: string; /** Active work teams the person belongs to. */ teamIds: readonly string[]; /** Everyone above the person in the reporting line. */ chainAbove: readonly string[]; entityId: string | null; unitPath: readonly string[] | null };
+export type CapacitySubject = {
+  personId: string;
+  /** Active work teams the person belongs to. */ teamIds: readonly string[];
+  /** Everyone above the person in the reporting line. */ chainAbove: readonly string[];
+  entityId: string | null;
+  unitPath: readonly string[] | null;
+};
 
 export function canSeeCapacityOf(reader: CapacityReader, subject: CapacitySubject): boolean {
   if (!reader.personId) return false;

@@ -189,11 +189,11 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
                   <RecordLink kind="application" id={row.applicationId} className="font-medium">
                     {row.candidateName}
                   </RecordLink>
-                  <Badge dot variant={row.status === "failed" ? "destructive" : "warning"}>{t(row.status === "failed" ? "delivery.failed" : "delivery.retrying")}</Badge>
+                  <Badge dot variant={row.status === "failed" ? "destructive" : "warning"}>
+                    {t(row.status === "failed" ? "delivery.failed" : "delivery.retrying")}
+                  </Badge>
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {[row.templateName, row.openingTitle, format.dateTime(row.at, { dateStyle: "short", timeStyle: "short" })].filter(Boolean).join(" · ")}
-                </span>
+                <span className="text-xs text-muted-foreground">{[row.templateName, row.openingTitle, format.dateTime(row.at, { dateStyle: "short", timeStyle: "short" })].filter(Boolean).join(" · ")}</span>
                 {row.error ? <span className="text-xs break-all text-destructive">{row.error}</span> : null}
               </ListItem>
             ))}
@@ -227,14 +227,32 @@ export default async function RecruitPage({ searchParams }: PageProps<"/recruit"
                     </RecordLink>
                   </TableCell>
                   <TableCell kind="id">{opening.code}</TableCell>
-                  <TableCell>{opening.entityName ? <RecordLink kind="entity" id={opening.entityId}>{opening.entityName}</RecordLink> : "—"}</TableCell>
-                  <TableCell>{opening.departmentName ? <RecordLink kind="unit" id={opening.departmentId}>{opening.departmentName}</RecordLink> : "—"}</TableCell>
+                  <TableCell>
+                    {opening.entityName ? (
+                      <RecordLink kind="entity" id={opening.entityId}>
+                        {opening.entityName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {opening.departmentName ? (
+                      <RecordLink kind="unit" id={opening.departmentId}>
+                        {opening.departmentName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell kind="number">{opening.headcount}</TableCell>
                   <TableCell kind="number">{opening.activeApplications}</TableCell>
                   <TableCell kind="number">{opening.hiredCount}</TableCell>
                   <TableCell>{opening.publishedAt ? format.dateTime(opening.publishedAt, { dateStyle: "medium" }) : "—"}</TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(opening.status)}>{t(`status.${opening.status}`)}</Badge>
+                    <Badge dot variant={statusTone(opening.status)}>
+                      {t(`status.${opening.status}`)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

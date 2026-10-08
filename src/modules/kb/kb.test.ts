@@ -21,7 +21,26 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { pageVisibleSql, spaceEditableSql } from "./access-sql";
 import { doc, heading, link, paragraph } from "@/modules/platform/rich-text/engine/build";
-import { compareVersions, createPage, deletePage, getReadingView, levelOf, listTree, listVersions, loadPage, loadPageInSpace, movePage, publishPage, recordView, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageSlug, unpublishPage } from "./pages";
+import {
+  compareVersions,
+  createPage,
+  deletePage,
+  getReadingView,
+  levelOf,
+  listTree,
+  listVersions,
+  loadPage,
+  loadPageInSpace,
+  movePage,
+  publishPage,
+  recordView,
+  restoreVersion,
+  saveDraft,
+  setPageAccess,
+  setPageArchived,
+  setPageSlug,
+  unpublishPage,
+} from "./pages";
 import { atLeast, type KbViewer, spaceLevel, viewerKeys } from "./policy";
 import { createSpace, listSpaces, loadSpace, setSpaceAccess, setSpaceArchived, updateSpace } from "./spaces";
 
@@ -30,7 +49,11 @@ const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
 const viewers = {} as Record<Who, KbViewer>;
 const spaces = {} as Record<"handbook" | "szmHr" | "video" | "tools" | "finance", string>;
 const pages = {} as Record<"leave" | "leaveForms" | "managers" | "managersChild" | "draft" | "videoSop" | "toolsTip" | "szmPolicy", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -50,7 +73,10 @@ beforeAll(async () => {
     ["ngo", szm.id, vid.id, null, null, "collaborator"],
   ];
   for (const [key, entityId, departmentId, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId })
+      .returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     const principal: Principal = { personId: row.id, workforceType, grants };
@@ -59,10 +85,17 @@ beforeAll(async () => {
 
   const make = async (key: string, over: { entityId?: string | null; kind?: "open" | "controlled" }, access: { subjectKey: string; level: "view" | "edit" }[]) =>
     (await createSpace({ key, name: key, description: null, icon: null, entityId: over.entityId ?? null, kind: over.kind ?? "open", sortOrder: 0 }, ids.owner, access)).id;
-  spaces.handbook = await make("handbook", { kind: "controlled" }, [{ subjectKey: "all", level: "view" }, { subjectKey: "role:hr_staff", level: "edit" }, { subjectKey: "role:hr_admin", level: "edit" }]);
+  spaces.handbook = await make("handbook", { kind: "controlled" }, [
+    { subjectKey: "all", level: "view" },
+    { subjectKey: "role:hr_staff", level: "edit" },
+    { subjectKey: "role:hr_admin", level: "edit" },
+  ]);
   spaces.szmHr = await make("szm-hr", { entityId: szm.id, kind: "controlled" }, [{ subjectKey: `entity:${szm.id}`, level: "view" }]);
   spaces.video = await make("video", {}, [{ subjectKey: `unit:${vid.id}`, level: "edit" }]);
-  spaces.tools = await make("tools", {}, [{ subjectKey: "all", level: "edit" }, { subjectKey: `person:${ids.ngo}`, level: "view" }]);
+  spaces.tools = await make("tools", {}, [
+    { subjectKey: "all", level: "edit" },
+    { subjectKey: `person:${ids.ngo}`, level: "view" },
+  ]);
   spaces.finance = await make("finance", {}, [{ subjectKey: "role:finance", level: "edit" }]);
 
   const actor = { personId: ids.hrGroup };
@@ -184,14 +217,20 @@ describe("working copy, publishing, versions", () => {
     expect(version).toMatchObject({ versionNo: 2, isMajor: true, changeNote: "Tăng lên 14 ngày", title: "Quy định nghỉ phép 2027" });
     expect(page).toMatchObject({ status: "published", hasUnpublishedChanges: false, publishedVersionId: version.id, publishedTitle: "Quy định nghỉ phép 2027", searchTitle: "quy dinh nghi phep 2027" });
     expect(page.searchBody).toContain("nhan vien duoc 14 ngay phep nam");
-    const found = await db().select({ id: schema.kbPage.id }).from(schema.kbPage).where(sql`${schema.kbPage.searchVector} @@ plainto_tsquery('simple', 'nghi phep')`);
+    const found = await db()
+      .select({ id: schema.kbPage.id })
+      .from(schema.kbPage)
+      .where(sql`${schema.kbPage.searchVector} @@ plainto_tsquery('simple', 'nghi phep')`);
     expect(found.map((row) => row.id)).toContain(pages.leave);
     expect(await fails(publishPage(pages.leave, actor()))).toBe("kb_nothing_to_publish");
   });
 
   it("lists, compares and restores versions without rewriting history", async () => {
     const loaded = (await loadPage(pages.leave))!;
-    expect((await listVersions(loaded.page)).map((row) => [row.versionNo, row.current, row.isMajor])).toEqual([[2, true, true], [1, false, false]]);
+    expect((await listVersions(loaded.page)).map((row) => [row.versionNo, row.current, row.isMajor])).toEqual([
+      [2, true, true],
+      [1, false, false],
+    ]);
     const comparison = (await compareVersions(loaded.page, 1, 2))!;
     expect(comparison.lines.filter((line) => line.type !== "same")).toEqual([
       { type: "removed", text: "Quy định nghỉ phép" },
@@ -209,7 +248,11 @@ describe("working copy, publishing, versions", () => {
 
   it("never lets a published version change or go (database trigger)", async () => {
     await expect(db().update(schema.kbPageVersion).set({ title: "x" }).where(eq(schema.kbPageVersion.pageId, pages.leave))).rejects.toThrow();
-    await expect(db().delete(schema.kbPageVersion).where(and(eq(schema.kbPageVersion.pageId, pages.leave), eq(schema.kbPageVersion.versionNo, 1)))).rejects.toThrow();
+    await expect(
+      db()
+        .delete(schema.kbPageVersion)
+        .where(and(eq(schema.kbPageVersion.pageId, pages.leave), eq(schema.kbPageVersion.versionNo, 1))),
+    ).rejects.toThrow();
   });
 
   it("refuses content the validator refuses, and saving while a review is open", async () => {

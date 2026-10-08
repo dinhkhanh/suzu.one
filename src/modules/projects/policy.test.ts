@@ -2,7 +2,40 @@ import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole } from "../work/enums";
 import { canGiveProjectRole, type ProjectFacts, type TeamFacts, type WorkViewer } from "../work/policy";
-import { billingReach, canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewMeetings, canViewRaid, type CapacityReader, type CapacitySubject, canCloseProject, canDecideBilling, canEditBriefContacts, canEditClientSide, canEditFees, canEditPlan, canEditRetainer, canHoldRetro, canManageAcceptance, canManageBookings, canManageChanges, canOpenBillingQueue, canOpenCapacity, canPostStatus, canRebaseline, canReopenProject, canSeeCapacityOf, canSeeFees, canViewBookings, canViewPlan, canWriteClientReport } from "./policy";
+import {
+  billingReach,
+  canAddRaid,
+  canCloseRaidItem,
+  canCreateProjectSpace,
+  canEditMeeting,
+  canEditRaidItem,
+  canRecordMeeting,
+  canViewMeetings,
+  canViewRaid,
+  type CapacityReader,
+  type CapacitySubject,
+  canCloseProject,
+  canDecideBilling,
+  canEditBriefContacts,
+  canEditClientSide,
+  canEditFees,
+  canEditPlan,
+  canEditRetainer,
+  canHoldRetro,
+  canManageAcceptance,
+  canManageBookings,
+  canManageChanges,
+  canOpenBillingQueue,
+  canOpenCapacity,
+  canPostStatus,
+  canRebaseline,
+  canReopenProject,
+  canSeeCapacityOf,
+  canSeeFees,
+  canViewBookings,
+  canViewPlan,
+  canWriteClientReport,
+} from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -146,7 +179,11 @@ describe("bookings (FR-PJM-13)", () => {
 });
 
 describe("capacity (FR-PJM-13)", () => {
-  const reader = (personId: string, options: { grants?: Grant[]; leads?: string[] } = {}): CapacityReader => ({ personId, principal: { personId, workforceType: "employee", grants: options.grants ?? [] }, ledTeamIds: new Set(options.leads ?? []) });
+  const reader = (personId: string, options: { grants?: Grant[]; leads?: string[] } = {}): CapacityReader => ({
+    personId,
+    principal: { personId, workforceType: "employee", grants: options.grants ?? [] },
+    ledTeamIds: new Set(options.leads ?? []),
+  });
   // Huy is in the video team, reports to Tam, who reports to the department head's deputy Long.
   const huy: CapacitySubject = { personId: "huy", teamIds: ["team-video"], chainAbove: ["tam", "long"], entityId: SZM, unitPath: ["dept-marketing", VID] };
   const other: CapacitySubject = { personId: "mai", teamIds: ["team-social"], chainAbove: ["ha"], entityId: SZC, unitPath: ["dept-sales"] };

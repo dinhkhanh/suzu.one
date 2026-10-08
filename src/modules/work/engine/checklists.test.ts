@@ -6,7 +6,15 @@ const counter = () => {
   let next = 0;
   return () => `n${++next}`;
 };
-const brief = { id: "11111111-2222-3333-4444-555555555555", name: "Nhận brief", isActive: true, items: [{ id: "i_a", text: "Đủ deadline" }, { id: "i_b", text: "Có brand guideline", linkUrl: "/kb/pages/brand" }] };
+const brief = {
+  id: "11111111-2222-3333-4444-555555555555",
+  name: "Nhận brief",
+  isActive: true,
+  items: [
+    { id: "i_a", text: "Đủ deadline" },
+    { id: "i_b", text: "Có brand guideline", linkUrl: "/kb/pages/brand" },
+  ],
+};
 const handoff = { id: "99999999-2222-3333-4444-555555555555", name: "Trước bàn giao", isActive: true, items: [{ id: "i_c", text: "Đã xuất file gốc" }] };
 
 describe("normalizeItems", () => {
@@ -30,7 +38,15 @@ describe("checklistProblem", () => {
     expect(checklistProblem({ name: "X", items: [{ id: "i_a", text: "x".repeat(201) }] })).toBe("checklist_item_text");
     expect(checklistProblem({ name: "X", items: [{ id: "i_a", text: "x", linkUrl: "javascript:alert(1)" }] })).toBe("checklist_item_link");
     expect(checklistProblem({ name: "X", items: [{ id: "i_a", text: "x", linkUrl: "//evil.example" }] })).toBe("checklist_item_link");
-    expect(checklistProblem({ name: "X", items: [{ id: "i_a", text: "x" }, { id: "i_a", text: "y" }] })).toBe("checklist_item_duplicate");
+    expect(
+      checklistProblem({
+        name: "X",
+        items: [
+          { id: "i_a", text: "x" },
+          { id: "i_a", text: "y" },
+        ],
+      }),
+    ).toBe("checklist_item_duplicate");
   });
 });
 
@@ -65,7 +81,12 @@ describe("mergeChecklistPatch", () => {
     { id: "n1", text: "Đủ deadline", done: false, checklistId: brief.id, checklistName: "Nhận brief" },
   ];
   it("changes a copied box's tick only, whatever else is sent", () => {
-    expect(mergeChecklistPatch(stored, [{ id: "x", text: "Việc riêng (sửa)", done: true }, { id: "n1", text: "Không cần deadline", done: true }])).toEqual([
+    expect(
+      mergeChecklistPatch(stored, [
+        { id: "x", text: "Việc riêng (sửa)", done: true },
+        { id: "n1", text: "Không cần deadline", done: true },
+      ]),
+    ).toEqual([
       { id: "x", text: "Việc riêng (sửa)", done: true },
       { id: "n1", text: "Đủ deadline", done: true, checklistId: brief.id, checklistName: "Nhận brief" },
     ]);
@@ -91,7 +112,12 @@ describe("missingRequired", () => {
       { checklistId: brief.id, checklistName: "Nhận brief", text: "Có brand guideline" },
       { checklistId: handoff.id, checklistName: "Trước bàn giao", text: "Đã xuất file gốc" },
     ]);
-    expect(missingRequired(items.map((item) => ({ ...item, done: true })), [brief])).toEqual([]);
+    expect(
+      missingRequired(
+        items.map((item) => ({ ...item, done: true })),
+        [brief],
+      ),
+    ).toEqual([]);
   });
   it("asks for the boxes as copied, not as the checklist reads today", () => {
     const copied: TaskChecklistItem[] = [{ id: "n1", text: "Bản cũ", done: false, checklistId: brief.id, checklistName: "Nhận brief (cũ)" }];

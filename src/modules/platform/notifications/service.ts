@@ -90,7 +90,10 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   const telegrams: (typeof schema.telegramDelivery.$inferInsert)[] = [];
   for (const person of people) {
     if (!stillHere(person.status)) continue;
-    const choice = effectiveChoice(category, preferences.find((row) => row.personId === person.id));
+    const choice = effectiveChoice(
+      category,
+      preferences.find((row) => row.personId === person.id),
+    );
     const wantsDigest = choice.email === "digest" && !!person.workEmail;
     if (choice.inApp || wantsDigest) {
       rows.push({ recipientPersonId: person.id, kind: input.kind, params, link: input.link ?? null, readAt: choice.inApp ? null : now, digestedAt: wantsDigest ? null : now });
@@ -168,13 +171,7 @@ function composeEmail(to: string, kind: string, params: Params, link: string | n
  *
  * Returns the outbox row's id, so the caller can show what became of it (sent, retrying, failed).
  */
-export async function queueRawEmail(
-  to: string,
-  subject: string,
-  bodyText: string,
-  executor: Tx | ReturnType<typeof db> = db(),
-  attachments: readonly EmailAttachment[] | null = null,
-): Promise<{ id: string }> {
+export async function queueRawEmail(to: string, subject: string, bodyText: string, executor: Tx | ReturnType<typeof db> = db(), attachments: readonly EmailAttachment[] | null = null): Promise<{ id: string }> {
   const [row] = await executor
     .insert(schema.emailOutbox)
     .values({ toEmail: to, subject, bodyText, attachments: attachments?.length ? [...attachments] : null })
@@ -193,7 +190,9 @@ export async function queueEmail(to: string, kind: Kind, params: Params, executo
 function deliverSoon(): void {
   try {
     after(() =>
-      Promise.all([deliverPendingEmails(), deliverPendingPushes(), deliverPendingChats(), deliverPendingMessengers(), deliverPendingTelegrams()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
+      Promise.all([deliverPendingEmails(), deliverPendingPushes(), deliverPendingChats(), deliverPendingMessengers(), deliverPendingTelegrams()]).catch((error) =>
+        console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) })),
+      ),
     );
   } catch {
     // Not in a request.
@@ -202,7 +201,12 @@ function deliverSoon(): void {
 
 export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; failed: number; skipped: number }> {
   const outbox = schema.emailOutbox;
-  const pending = await db().select().from(outbox).where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS))).orderBy(asc(outbox.createdAt)).limit(limit);
+  const pending = await db()
+    .select()
+    .from(outbox)
+    .where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS)))
+    .orderBy(asc(outbox.createdAt))
+    .limit(limit);
   const tally = { sent: 0, failed: 0, skipped: 0 };
   for (const email of pending) {
     // Claim it: a second deliverer running at the same moment sees a different attempt count and moves on.
@@ -224,7 +228,10 @@ export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; 
         .where(eq(outbox.id, email.id));
       tally.failed++;
     } else {
-      await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null, attachments: null }).where(eq(outbox.id, email.id));
+      await db()
+        .update(outbox)
+        .set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null, attachments: null })
+        .where(eq(outbox.id, email.id));
       tally[result.status]++;
     }
   }
@@ -276,7 +283,10 @@ export async function listPushSubscriptions(personId: string): Promise<{ id: str
 /** A push to every device of one person, outside the catalogue of kinds — the "send me a test" button. */
 export async function queueTestPush(personId: string, message: { title: string; body: string; link: string | null }): Promise<number> {
   const devices = await db().select({ id: schema.pushSubscription.id }).from(schema.pushSubscription).where(eq(schema.pushSubscription.personId, personId));
-  if (devices.length) await db().insert(schema.pushDelivery).values(devices.map((device) => ({ subscriptionId: device.id, personId, kind: "test", ...message })));
+  if (devices.length)
+    await db()
+      .insert(schema.pushDelivery)
+      .values(devices.map((device) => ({ subscriptionId: device.id, personId, kind: "test", ...message })));
   return devices.length;
 }
 
@@ -302,13 +312,21 @@ export async function deliverPendingPushes(limit = 100): Promise<{ sent: number;
     // The device unsubscribed between the event and now. The tag is the thing the push is about:
     // news of the same item replaces its earlier notice, but two items of one kind (two pieces of
     // feedback) are two notices — a tag per kind let the second silently overwrite the first.
-    const result = device ? await driver.send({ endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth }, { title: delivery.title, body: delivery.body, link: delivery.link, tag: delivery.link ?? undefined }) : ({ status: "gone" } as const);
+    const result = device
+      ? await driver.send({ endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth }, { title: delivery.title, body: delivery.body, link: delivery.link, tag: delivery.link ?? undefined })
+      : ({ status: "gone" } as const);
 
     if (result.status === "failed") {
       const givenUp = delivery.attempts + 1 >= MAX_ATTEMPTS;
-      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, delivery.id));
+      await db()
+        .update(outbox)
+        .set({ status: givenUp ? "failed" : "pending", lastError: result.error })
+        .where(eq(outbox.id, delivery.id));
     } else {
-      await db().update(outbox).set({ status: result.status, sentAt: result.status === "gone" ? null : new Date(), lastError: null }).where(eq(outbox.id, delivery.id));
+      await db()
+        .update(outbox)
+        .set({ status: result.status, sentAt: result.status === "gone" ? null : new Date(), lastError: null })
+        .where(eq(outbox.id, delivery.id));
       if (result.status === "gone" && device) await db().delete(schema.pushSubscription).where(eq(schema.pushSubscription.id, device.id));
       if (result.status === "sent" && device) await db().update(schema.pushSubscription).set({ lastSuccessAt: new Date() }).where(eq(schema.pushSubscription.id, device.id));
     }
@@ -323,7 +341,12 @@ export async function deliverPendingPushes(limit = 100): Promise<{ sent: number;
 export async function deliverPendingChats(limit = 50): Promise<{ sent: number; simulated: number; failed: number }> {
   const outbox = schema.chatDelivery;
   const driver = chatDriver();
-  const pending = await db().select().from(outbox).where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS))).orderBy(asc(outbox.createdAt)).limit(limit);
+  const pending = await db()
+    .select()
+    .from(outbox)
+    .where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS)))
+    .orderBy(asc(outbox.createdAt))
+    .limit(limit);
   const tally = { sent: 0, simulated: 0, failed: 0 };
   for (const card of pending) {
     // Claim it, as the email and push deliverers do.
@@ -337,7 +360,10 @@ export async function deliverPendingChats(limit = 50): Promise<{ sent: number; s
     const result = await driver.send({ title: card.title, body: card.body, link: card.link, actionLink: card.actionLink, actionLabel: card.actionLabel });
     if (result.status === "failed") {
       const givenUp = card.attempts + 1 >= MAX_ATTEMPTS;
-      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, card.id));
+      await db()
+        .update(outbox)
+        .set({ status: givenUp ? "failed" : "pending", lastError: result.error })
+        .where(eq(outbox.id, card.id));
     } else {
       await db().update(outbox).set({ status: result.status, sentAt: new Date(), lastError: null }).where(eq(outbox.id, card.id));
     }
@@ -369,7 +395,15 @@ export async function sendDigests(): Promise<{ digests: number }> {
         });
         digests++;
       }
-      await tx.update(schema.notification).set({ digestedAt: new Date() }).where(inArray(schema.notification.id, items.map((item) => item.id)));
+      await tx
+        .update(schema.notification)
+        .set({ digestedAt: new Date() })
+        .where(
+          inArray(
+            schema.notification.id,
+            items.map((item) => item.id),
+          ),
+        );
     });
   }
   return { digests };
@@ -378,7 +412,10 @@ export async function sendDigests(): Promise<{ digests: number }> {
 // ── The notification centre ─────────────────────────────────────────────────────────────────
 
 export async function countUnread(personId: string): Promise<number> {
-  const [row] = await db().select({ value: count() }).from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), isNull(schema.notification.readAt)));
+  const [row] = await db()
+    .select({ value: count() })
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), isNull(schema.notification.readAt)));
   return row?.value ?? 0;
 }
 
@@ -387,7 +424,13 @@ export async function listNotifications(personId: string, page = 1): Promise<{ r
   const load = async () => {
     const where = eq(schema.notification.recipientPersonId, personId);
     const [rows, total] = await Promise.all([
-      db().select().from(schema.notification).where(where).orderBy(desc(schema.notification.createdAt)).limit(NOTIFICATIONS_PAGE_SIZE).offset((Math.max(1, page) - 1) * NOTIFICATIONS_PAGE_SIZE),
+      db()
+        .select()
+        .from(schema.notification)
+        .where(where)
+        .orderBy(desc(schema.notification.createdAt))
+        .limit(NOTIFICATIONS_PAGE_SIZE)
+        .offset((Math.max(1, page) - 1) * NOTIFICATIONS_PAGE_SIZE),
       db().$count(schema.notification, where),
     ]);
     return { rows, total };
@@ -443,12 +486,22 @@ export async function scrubDeliveries(input: { kindPrefix: string; links: readon
   const [pushes, chats, messages, telegrams] = await Promise.all([
     executor
       .update(schema.pushDelivery)
-      .set({ title: input.title, body: "", status: sql`case when ${schema.pushDelivery.status} = 'pending' then 'failed'::push_status else ${schema.pushDelivery.status} end`, lastError: sql`case when ${schema.pushDelivery.status} = 'pending' then ${reason} else ${schema.pushDelivery.lastError} end` })
+      .set({
+        title: input.title,
+        body: "",
+        status: sql`case when ${schema.pushDelivery.status} = 'pending' then 'failed'::push_status else ${schema.pushDelivery.status} end`,
+        lastError: sql`case when ${schema.pushDelivery.status} = 'pending' then ${reason} else ${schema.pushDelivery.lastError} end`,
+      })
       .where(and(sql`${schema.pushDelivery.kind} like ${kindLike}`, inArray(schema.pushDelivery.link, links)))
       .returning({ id: schema.pushDelivery.id }),
     executor
       .update(schema.chatDelivery)
-      .set({ title: input.title, body: "", status: sql`case when ${schema.chatDelivery.status} = 'pending' then 'failed'::chat_status else ${schema.chatDelivery.status} end`, lastError: sql`case when ${schema.chatDelivery.status} = 'pending' then ${reason} else ${schema.chatDelivery.lastError} end` })
+      .set({
+        title: input.title,
+        body: "",
+        status: sql`case when ${schema.chatDelivery.status} = 'pending' then 'failed'::chat_status else ${schema.chatDelivery.status} end`,
+        lastError: sql`case when ${schema.chatDelivery.status} = 'pending' then ${reason} else ${schema.chatDelivery.lastError} end`,
+      })
       .where(and(sql`${schema.chatDelivery.kind} like ${kindLike}`, inArray(chatPath, links)))
       .returning({ id: schema.chatDelivery.id }),
     executor
@@ -480,7 +533,13 @@ export async function getPreferences(personId: string): Promise<Record<Category,
   const stored = (await preferenceRows()).filter((row) => row.personId === personId);
   return Object.fromEntries(
     CATEGORIES.map((category) => {
-      return [category, effectiveChoice(category, stored.find((row) => row.category === category))];
+      return [
+        category,
+        effectiveChoice(
+          category,
+          stored.find((row) => row.category === category),
+        ),
+      ];
     }),
   ) as Record<Category, ChannelChoice>;
 }

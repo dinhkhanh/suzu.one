@@ -28,6 +28,18 @@ export async function listTaskLinks(projectId: string): Promise<TaskLinkView[]> 
   const linkOf = new Map(links.map(({ link }) => [link.taskId, link]));
   return tasks.map((task) => {
     const link = linkOf.get(task.id);
-    return { taskId: task.id, key: task.key, title: task.title, status: task.status, dueDate: task.dueDate, assigneePersonId: task.assigneePersonId, assigneeName: task.assigneeName, milestoneId: link?.milestoneId ?? null, deliverableId: link?.deliverableId ?? null, phaseId: link?.phaseId ?? null, baselineDue: link?.baselineDue ?? null };
+    return {
+      taskId: task.id,
+      key: task.key,
+      title: task.title,
+      status: task.status,
+      dueDate: task.dueDate,
+      assigneePersonId: task.assigneePersonId,
+      assigneeName: task.assigneeName,
+      milestoneId: link?.milestoneId ?? null,
+      deliverableId: link?.deliverableId ?? null,
+      phaseId: link?.phaseId ?? null,
+      baselineDue: link?.baselineDue ?? null,
+    };
   });
 }

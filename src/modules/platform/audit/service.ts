@@ -80,7 +80,13 @@ export async function listAuditEntries(reach: { all: true } | { all: false; enti
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = options.pageSize ?? AUDIT_PAGE_SIZE;
   const [rows, total] = await Promise.all([
-    db().select().from(log).where(where).orderBy(desc(log.id)).limit(pageSize).offset((page - 1) * pageSize),
+    db()
+      .select()
+      .from(log)
+      .where(where)
+      .orderBy(desc(log.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db().$count(log, where),
   ]);
   return { rows, total };

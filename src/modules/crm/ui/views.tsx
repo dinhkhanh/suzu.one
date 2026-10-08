@@ -79,7 +79,10 @@ export async function ActivityList({ items }: { items: ActivityView[] }) {
             <Badge variant="outline">{tEnums(`activityKind.${item.kind as "call"}`)}</Badge>
             <span className="font-medium">{item.subject}</span>
             <span className="text-xs text-muted-foreground">
-              {f.when(item.occurredAt ?? item.doneAt)} · <RecordLink kind="person" id={item.ownerPersonId}>{item.ownerName}</RecordLink>
+              {f.when(item.occurredAt ?? item.doneAt)} ·{" "}
+              <RecordLink kind="person" id={item.ownerPersonId}>
+                {item.ownerName}
+              </RecordLink>
               {item.contactName ? ` · ${item.contactName}` : ""}
             </span>
           </p>

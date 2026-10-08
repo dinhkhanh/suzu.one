@@ -48,7 +48,9 @@ export async function competencyChoices(): Promise<CompetencyLists> {
 export async function competenciesOf(personId: string): Promise<CompetencyLists> {
   const [catalogue, held] = await Promise.all([
     listCompetencies(),
-    cached(heldKey(personId), TTL.personal, async () => (await db().select({ id: schema.personCompetency.competencyId }).from(schema.personCompetency).where(eq(schema.personCompetency.personId, personId)).orderBy(schema.personCompetency.competencyId)).map((row) => row.id)),
+    cached(heldKey(personId), TTL.personal, async () =>
+      (await db().select({ id: schema.personCompetency.competencyId }).from(schema.personCompetency).where(eq(schema.personCompetency.personId, personId)).orderBy(schema.personCompetency.competencyId)).map((row) => row.id),
+    ),
   ]);
   const mine = new Set(held);
   return byKind(catalogue.filter((row) => mine.has(row.id)));
@@ -82,15 +84,25 @@ export async function setPersonCompetencies(personId: string, input: Record<Comp
     const [person] = await tx.select({ id: schema.person.id }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
     if (!person) throw new ActionError("person_not_found");
 
-    const created = wanted.length ? await tx.insert(schema.competency).values(wanted.map((row) => ({ ...row, createdByPersonId: actorPersonId }))).onConflictDoNothing().returning({ id: schema.competency.id }) : [];
+    const created = wanted.length
+      ? await tx
+          .insert(schema.competency)
+          .values(wanted.map((row) => ({ ...row, createdByPersonId: actorPersonId })))
+          .onConflictDoNothing()
+          .returning({ id: schema.competency.id })
+      : [];
     const named = wanted.length
       ? await tx
           .select({ id: schema.competency.id, kind: schema.competency.kind, name: schema.competency.name })
           .from(schema.competency)
-          .where(or(...COMPETENCY_KINDS.flatMap((kind) => {
-            const keys = wanted.filter((row) => row.kind === kind).map((row) => row.searchName);
-            return keys.length ? [and(eq(schema.competency.kind, kind), inArray(schema.competency.searchName, keys))] : [];
-          })))
+          .where(
+            or(
+              ...COMPETENCY_KINDS.flatMap((kind) => {
+                const keys = wanted.filter((row) => row.kind === kind).map((row) => row.searchName);
+                return keys.length ? [and(eq(schema.competency.kind, kind), inArray(schema.competency.searchName, keys))] : [];
+              }),
+            ),
+          )
           .orderBy(schema.competency.kind, schema.competency.searchName, schema.competency.id)
       : [];
     const current = await tx
@@ -105,7 +117,11 @@ export async function setPersonCompetencies(personId: string, input: Record<Comp
     const dropped = current.filter((row) => !keep.has(row.id)).map((row) => row.id);
     const gained = named.filter((row) => !held.has(row.id)).map((row) => row.id);
     if (dropped.length) await tx.delete(schema.personCompetency).where(and(eq(schema.personCompetency.personId, personId), inArray(schema.personCompetency.competencyId, dropped)));
-    if (gained.length) await tx.insert(schema.personCompetency).values(gained.map((competencyId) => ({ personId, competencyId, addedByPersonId: actorPersonId }))).onConflictDoNothing();
+    if (gained.length)
+      await tx
+        .insert(schema.personCompetency)
+        .values(gained.map((competencyId) => ({ personId, competencyId, addedByPersonId: actorPersonId })))
+        .onConflictDoNothing();
 
     const names = (rows: readonly Competency[]) => ({ profession: rows.filter((row) => row.kind === "profession").map((row) => row.name), skill: rows.filter((row) => row.kind === "skill").map((row) => row.name) });
     return { catalogueGrew: created.length > 0, before: names(current), after: names(named) };
@@ -122,10 +138,7 @@ export type CatalogueEntry = Competency & { /** How many people hold it. */ hold
 
 /** Every entry of both kinds with the number of people who hold it: the one list HR keeps tidy. */
 export async function listCompetencyCatalogue(): Promise<CatalogueEntry[]> {
-  const [catalogue, counts] = await Promise.all([
-    listCompetencies(),
-    db().select({ id: schema.personCompetency.competencyId, holders: count() }).from(schema.personCompetency).groupBy(schema.personCompetency.competencyId),
-  ]);
+  const [catalogue, counts] = await Promise.all([listCompetencies(), db().select({ id: schema.personCompetency.competencyId, holders: count() }).from(schema.personCompetency).groupBy(schema.personCompetency.competencyId)]);
   const holders = new Map(counts.map((row) => [row.id, row.holders]));
   return catalogue.map((row) => ({ ...row, holders: holders.get(row.id) ?? 0 }));
 }
@@ -135,7 +148,11 @@ export async function addCompetency(input: { name: string; kind: CompetencyKind 
   const name = capitalizeWords(input.name);
   if (!name) throw new ActionError("competency_name_empty");
   if (name.length > MAX_COMPETENCY_NAME) throw new ActionError("competency_name_too_long");
-  const [row] = await db().insert(schema.competency).values({ kind: input.kind, name, searchName: toSearchKey(name), createdByPersonId: actorPersonId }).onConflictDoNothing().returning({ id: schema.competency.id, kind: schema.competency.kind, name: schema.competency.name });
+  const [row] = await db()
+    .insert(schema.competency)
+    .values({ kind: input.kind, name, searchName: toSearchKey(name), createdByPersonId: actorPersonId })
+    .onConflictDoNothing()
+    .returning({ id: schema.competency.id, kind: schema.competency.kind, name: schema.competency.name });
   if (!row) throw new ActionError("competency_exists");
   await invalidateCompetencies();
   return row;
@@ -168,7 +185,16 @@ export async function updateCompetency(competencyId: string, input: { name: stri
     }
     // The same entry twice: its holders go over to the one that stays, in one statement.
     const holders = await tx.select({ personId: schema.personCompetency.personId }).from(schema.personCompetency).where(eq(schema.personCompetency.competencyId, competencyId));
-    if (holders.length) await tx.insert(schema.personCompetency).select(tx.select({ personId: schema.personCompetency.personId, competencyId: sql<string>`${twin.id}::uuid`.as("competency_id"), addedByPersonId: schema.personCompetency.addedByPersonId, createdAt: schema.personCompetency.createdAt }).from(schema.personCompetency).where(eq(schema.personCompetency.competencyId, competencyId))).onConflictDoNothing();
+    if (holders.length)
+      await tx
+        .insert(schema.personCompetency)
+        .select(
+          tx
+            .select({ personId: schema.personCompetency.personId, competencyId: sql<string>`${twin.id}::uuid`.as("competency_id"), addedByPersonId: schema.personCompetency.addedByPersonId, createdAt: schema.personCompetency.createdAt })
+            .from(schema.personCompetency)
+            .where(eq(schema.personCompetency.competencyId, competencyId)),
+        )
+        .onConflictDoNothing();
     await tx.delete(schema.competency).where(eq(schema.competency.id, competencyId));
     return { before, after: twin, merged: true, moved: holders.map((row) => row.personId) };
   });

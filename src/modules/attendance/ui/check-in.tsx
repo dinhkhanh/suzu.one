@@ -126,7 +126,10 @@ export function CheckInPanel({
   const status = checkedIn ? "in" : result || punchedToday ? "out" : "none";
 
   return (
-    <section data-slot="check-in-card" className={cn("flex flex-col items-center gap-5 rounded-[14px] border border-border bg-background px-5 py-6 text-center transition-shadow duration-200 ease-(--ease-settle)", checkedIn && "ring-8 ring-success/10")}>
+    <section
+      data-slot="check-in-card"
+      className={cn("flex flex-col items-center gap-5 rounded-[14px] border border-border bg-background px-5 py-6 text-center transition-shadow duration-200 ease-(--ease-settle)", checkedIn && "ring-8 ring-success/10")}
+    >
       <Badge variant={checkedIn ? "success" : "secondary"} className="h-7 px-3 text-[0.8125rem]">
         <span aria-hidden className={cn("size-2 shrink-0 rounded-full bg-current", checkedIn && "animate-pulse")} />
         {t(`status.${status}`)}

@@ -19,6 +19,8 @@ export const jobRun = pgTable(
   (t) => [
     index("job_run_job_started_at_idx").on(t.job, t.startedAt),
     // A job never runs twice at once; a second trigger finds this row and backs off.
-    uniqueIndex("job_run_one_running_key").on(t.job).where(sql`${t.status} = 'running'`),
+    uniqueIndex("job_run_one_running_key")
+      .on(t.job)
+      .where(sql`${t.status} = 'running'`),
   ],
 ).enableRLS();

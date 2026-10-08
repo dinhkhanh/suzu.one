@@ -9,7 +9,19 @@ const office = { date: DATE, kind: "working" as const, segments: [{ start: 510, 
 describe("expected check-in", () => {
   it("is the start of the first segment, in Vietnam time", () => {
     expect(expectedCheckIn(office, [], [])).toBe(at("08:30"));
-    expect(expectedCheckIn({ ...office, segments: [{ start: 960, end: 1200 }, { start: 300, end: 540 }] }, [], [])).toBe(at("05:00"));
+    expect(
+      expectedCheckIn(
+        {
+          ...office,
+          segments: [
+            { start: 960, end: 1200 },
+            { start: 300, end: 540 },
+          ],
+        },
+        [],
+        [],
+      ),
+    ).toBe(at("05:00"));
   });
 
   it("asks nothing on a day that is not a tracked working day", () => {

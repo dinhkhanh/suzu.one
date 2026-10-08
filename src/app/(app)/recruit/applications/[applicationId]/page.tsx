@@ -47,7 +47,9 @@ async function LetterDelivery({ event }: { event: ApplicationEventView }) {
   const tone = state === "sent" ? "success" : state === "failed" ? "destructive" : state === "retrying" || state === "skipped" ? "warning" : "secondary";
   return (
     <span className="mt-1 flex flex-col items-start gap-0.5">
-      <Badge dot variant={tone}>{t(`delivery.${state}`)}</Badge>
+      <Badge dot variant={tone}>
+        {t(`delivery.${state}`)}
+      </Badge>
       {error && state !== "sent" ? <span className="text-xs break-all text-destructive">{error}</span> : null}
     </span>
   );
@@ -87,7 +89,9 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
       <PageHeader
         eyebrow={
           <>
-            <RecordLink kind="opening" id={view.opening.id}>{view.opening.title}</RecordLink>
+            <RecordLink kind="opening" id={view.opening.id}>
+              {view.opening.title}
+            </RecordLink>
             <span className="font-mono text-xs text-faint"> · {view.opening.code}</span>
           </>
         }
@@ -126,7 +130,9 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
             {view.canReadMoney ? (
               <TableRow>
                 <TableCell className="w-40 whitespace-normal text-muted-foreground">{t("form.salaryExpectation")}</TableCell>
-                <TableCell kind="money" className="text-left">{view.salaryExpectationVnd === null ? "—" : format.number(view.salaryExpectationVnd)}</TableCell>
+                <TableCell kind="money" className="text-left">
+                  {view.salaryExpectationVnd === null ? "—" : format.number(view.salaryExpectationVnd)}
+                </TableCell>
               </TableRow>
             ) : null}
           </TableBody>
@@ -197,13 +203,17 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                     {row.interviewers.map((person, index) => (
                       <Fragment key={person.personId}>
                         {index ? ", " : ""}
-                        <RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>
+                        <RecordLink kind="person" id={person.personId}>
+                          {person.fullName}
+                        </RecordLink>
                       </Fragment>
                     ))}
                   </TableCell>
                   <TableCell>{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
                   <TableCell>
-                    <Badge dot variant={statusTone(row.status)}>{tInterview(`statuses.${row.status}`)}</Badge>
+                    <Badge dot variant={statusTone(row.status)}>
+                      {tInterview(`statuses.${row.status}`)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
@@ -224,7 +234,9 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               <ListItem key={assignment.id} className="flex-col items-stretch gap-2 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">{assignment.title}</span>
-                  <Badge dot variant={statusTone(assignment.status)}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
+                  <Badge dot variant={statusTone(assignment.status)}>
+                    {tAssignment(`statuses.${assignment.status}`)}
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {tAssignment("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "medium", timeStyle: "short" })}
@@ -280,7 +292,9 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                 </TableCell>
                 <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(row.status)}>{tOffer(`statuses.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {tOffer(`statuses.${row.status}`)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -311,7 +325,15 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                   {event.type === "anonymised" && event.detail?.reason === "erasure" ? t("event.erased") : t(`event.${event.type}`)}
                   {event.toStageName ? ` → ${event.toStageName}` : ""}
                 </span>
-                <span className="block text-xs text-faint">{event.actorName ? <RecordLink kind="person" id={event.actorPersonId}>{event.actorName}</RecordLink> : t("source.careers_page")}</span>
+                <span className="block text-xs text-faint">
+                  {event.actorName ? (
+                    <RecordLink kind="person" id={event.actorPersonId}>
+                      {event.actorName}
+                    </RecordLink>
+                  ) : (
+                    t("source.careers_page")
+                  )}
+                </span>
                 {event.note ? <span className="block text-xs text-muted-foreground">{noteToPlainText(event.note)}</span> : null}
                 {/* A letter to the candidate: whether it went, is being retried, or failed — and a
                     letter that could not be sent at all says why. */}

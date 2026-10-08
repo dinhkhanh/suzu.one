@@ -39,7 +39,20 @@ export type ProfitabilityFilter = { from: IsoDate; to: IsoDate; clientId?: strin
  * (logged on the project itself) or no position; `other`: small groups folded together.
  */
 export type CostGroup = { name: string | null; other: boolean; hours: number; costVnd: number };
-export type ProjectLine = Margin & { id: string; name: string; jobNumber: string | null; teamName: string; clientId: string | null; clientName: string | null; basis: FeeBasis; hours: number; unratedHours: number; estimated: boolean; byTeam: CostGroup[]; byRole: CostGroup[] };
+export type ProjectLine = Margin & {
+  id: string;
+  name: string;
+  jobNumber: string | null;
+  teamName: string;
+  clientId: string | null;
+  clientName: string | null;
+  basis: FeeBasis;
+  hours: number;
+  unratedHours: number;
+  estimated: boolean;
+  byTeam: CostGroup[];
+  byRole: CostGroup[];
+};
 export type ClientLine = Margin & { clientId: string | null; clientName: string | null; projects: number; hours: number; estimated: boolean };
 export type ProfitabilityView = {
   period: { from: IsoDate; to: IsoDate };
@@ -78,7 +91,10 @@ const PRIVATE_GROUP = "private";
 export async function buildProfitability(reader: Pick<ProfitabilityReader, "person" | "principal"> & Partial<Pick<ProfitabilityReader, "userId" | "email" | "request">>, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
   if (!canReadProfitability(reader.principal)) return null;
   const reach = entityReach(reader.principal, "pjm:cost");
-  const [rows, viewer] = await Promise.all([projectsOfEntities(reach), loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal, userId: reader.userId, email: reader.email, request: reader.request })]);
+  const [rows, viewer] = await Promise.all([
+    projectsOfEntities(reach),
+    loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal, userId: reader.userId, email: reader.email, request: reader.request }),
+  ]);
   const all = rows.filter((project) => canSeeProfitabilityOf(reader.principal, project));
   // A private project this reader could not open is summed without its name — nor its client: a
   // client whose only project is private would name the project in the filter and the per-client
@@ -91,9 +107,14 @@ export async function buildProfitability(reader: Pick<ProfitabilityReader, "pers
   const isOneOfItsPeople = (project: (typeof all)[number]) => viewer.projectRoles.has(project.id) || viewer.teamRoles.get(project.teamId) === "lead";
   const byPortfolio = all.filter((project) => readsPrivateByPortfolio(viewer, factsOf.get(project.id)!));
   const namedIds = new Set([...all.filter((project) => project.visibility !== "private" || isOneOfItsPeople(project)).map((project) => project.id), ...byPortfolio.map((project) => project.id)]);
-  await notePrivateProjectReads(viewer, byPortfolio.map((project) => factsOf.get(project.id)!));
+  await notePrivateProjectReads(
+    viewer,
+    byPortfolio.map((project) => factsOf.get(project.id)!),
+  );
   const unnamed = (project: (typeof all)[number]) => !namedIds.has(project.id);
-  const clientsOffered = [...new Map(all.flatMap((project) => (!unnamed(project) && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  const clientsOffered = [...new Map(all.flatMap((project) => (!unnamed(project) && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "vi"),
+  );
   const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId && !unnamed(project)) : all;
   const period = { from: filter.from, to: filter.to };
   const empty: ProfitabilityView = { period, projects: [], privateProjects: null, clients: [], total: { feeVnd: null, costVnd: 0, marginVnd: null, marginRate: null, hours: 0, estimated: false }, clientsOffered };
@@ -153,7 +174,19 @@ export async function buildProfitability(reader: Pick<ProfitabilityReader, "pers
       .filter((row) => row.hours > 0 || row.feeVnd !== null)
       .sort((a, b) => (a.marginVnd ?? Infinity) - (b.marginVnd ?? Infinity) || a.name.localeCompare(b.name, "vi")),
     privateProjects: hidden.length ? { projects: hidden.length, hours: hours(hidden.reduce((total, row) => total + row.minutes, 0)), estimated: hidden.some((row) => row.estimated), ...sumMargin(hidden) } : null,
-    clients: result.clients.filter((client) => client.clientId !== PRIVATE_GROUP).map((client) => ({ clientId: client.clientId, clientName: client.clientId ? (clientName.get(client.clientId) ?? null) : null, projects: client.projects, hours: hours(client.minutes), estimated: client.estimated, feeVnd: client.feeVnd, costVnd: client.costVnd, marginVnd: client.marginVnd, marginRate: client.marginRate })),
+    clients: result.clients
+      .filter((client) => client.clientId !== PRIVATE_GROUP)
+      .map((client) => ({
+        clientId: client.clientId,
+        clientName: client.clientId ? (clientName.get(client.clientId) ?? null) : null,
+        projects: client.projects,
+        hours: hours(client.minutes),
+        estimated: client.estimated,
+        feeVnd: client.feeVnd,
+        costVnd: client.costVnd,
+        marginVnd: client.marginVnd,
+        marginRate: client.marginRate,
+      })),
     total: { feeVnd: result.total.feeVnd, costVnd: result.total.costVnd, marginVnd: result.total.marginVnd, marginRate: result.total.marginRate, hours: hours(result.total.minutes), estimated: result.total.estimated },
     clientsOffered,
   };

@@ -20,7 +20,23 @@ type AllowanceOption = { code: string; name: string };
  * C&B proposes someone's pay terms. With `requestId` it is the corrected version of a returned request.
  * `bare` drops the frame and heading, for a form that sits in a list's add row, which names it.
  */
-export function SalaryChangeForm({ personId, allowances, current, initial, requestId, defaults, bare }: { personId: string; allowances: AllowanceOption[]; current: SalaryTerms | null; initial: boolean; requestId?: string; defaults?: { validFrom: string; reason: string; note: string | null }; bare?: boolean }) {
+export function SalaryChangeForm({
+  personId,
+  allowances,
+  current,
+  initial,
+  requestId,
+  defaults,
+  bare,
+}: {
+  personId: string;
+  allowances: AllowanceOption[];
+  current: SalaryTerms | null;
+  initial: boolean;
+  requestId?: string;
+  defaults?: { validFrom: string; reason: string; note: string | null };
+  bare?: boolean;
+}) {
   const t = useTranslations("payroll.salaries");
   const router = useRouter();
   const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(requestId ? resubmitSalaryChangeAction : submitSalaryChangeAction, {

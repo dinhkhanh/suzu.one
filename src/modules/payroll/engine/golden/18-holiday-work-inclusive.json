@@ -17,9 +17,7 @@
   "month": "2026-09",
   "monthStandardDays": 22,
   "statutory": { "overtime.holiday_pay": { "mode": "inclusive" } },
-  "segments": [
-    { "from": "2026-09-01", "to": "2026-09-30", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }
-  ],
+  "segments": [{ "from": "2026-09-01", "to": "2026-09-30", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }],
   "timesheet": {
     "standardDays": 22,
     "paidDaysCenti": 2200,

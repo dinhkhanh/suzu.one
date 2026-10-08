@@ -116,7 +116,8 @@ const baseOpening = () => ({
   departmentId: ids.vid,
   teamId: null,
   positionName: "Video Editor",
-  seniorityLevel: "mid" as const, positionLevel: "executive" as const,
+  seniorityLevel: "mid" as const,
+  positionLevel: "executive" as const,
   employmentType: "employee" as const,
   workMode: "onsite" as const,
   workLocation: "Hà Nội",
@@ -144,7 +145,9 @@ describe("pipelines", () => {
   });
 
   it("refuses a pipeline with nowhere for an application to start", async () => {
-    expect(await fails(savePipeline(null, { code: "BAD", name: "Bad", nameEn: null, description: null, isDefault: false, isActive: true, stages: [{ key: "offer", name: "Offer", nameEn: null, category: "offer" }] }))).toBe("recruit_pipeline_no_entry");
+    expect(await fails(savePipeline(null, { code: "BAD", name: "Bad", nameEn: null, description: null, isDefault: false, isActive: true, stages: [{ key: "offer", name: "Offer", nameEn: null, category: "offer" }] }))).toBe(
+      "recruit_pipeline_no_entry",
+    );
   });
 });
 
@@ -262,8 +265,27 @@ describe("who sees which openings", () => {
     expect(rows).not.toContain(szcOpening);
     expect(await getOpeningView({ principal: videoRecruiter, personId: ids.employeePerson }, szmOpening)).not.toBeNull();
 
-    const candidate = await createCandidate({ fullName: "Ứng Viên Phòng Video", email: "unit.scope@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.recruiterPerson);
-    await createApplication({ candidateId: candidate.id, openingId: szmOpening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.recruiterPerson);
+    const candidate = await createCandidate(
+      {
+        fullName: "Ứng Viên Phòng Video",
+        email: "unit.scope@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.recruiterPerson,
+    );
+    await createApplication(
+      { candidateId: candidate.id, openingId: szmOpening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null },
+      ids.recruiterPerson,
+    );
     expect((await listCandidates(videoRecruiter)).map((row) => row.id)).toContain(candidate.id);
     expect(await canReachCandidate(videoRecruiter, candidate.id)).toBe(true);
     // A grant on Design reaches neither.
@@ -273,7 +295,10 @@ describe("who sees which openings", () => {
     expect(designRows).not.toContain(szmOpening);
     expect((await listCandidates(designRecruiter)).map((row) => row.id)).not.toContain(candidate.id);
 
-    const [ask] = await db().insert(schema.hiringRequest).values({ entityId: ids.szm, departmentId: ids.vid, positionTitle: "Editor theo phòng", headcount: 1, reason: "Thử phạm vi", requestedByPersonId: ids.headPerson, status: "pending" }).returning();
+    const [ask] = await db()
+      .insert(schema.hiringRequest)
+      .values({ entityId: ids.szm, departmentId: ids.vid, positionTitle: "Editor theo phòng", headcount: 1, reason: "Thử phạm vi", requestedByPersonId: ids.headPerson, status: "pending" })
+      .returning();
     expect((await listHiringRequests(videoRecruiter)).map((row) => row.id)).toContain(ask.id);
     expect((await listHiringRequests(designRecruiter)).map((row) => row.id)).not.toContain(ask.id);
   });
@@ -371,7 +396,20 @@ describe("applications", () => {
     await setOpeningStatus(openingId, "open", null);
     await setOpeningTeam(openingId, [{ personId: ids.headPerson, role: "hiring_manager" }]);
     const candidate = await createCandidate(
-      { fullName: "Lê Hoàng Yến", email: "yen.le@example.com", phone: "0933111222", currentTitle: null, currentEmployer: null, location: null, links: [], source: "careers_page", sourceDetail: null, referredByPersonId: null, tags: [], notes: null },
+      {
+        fullName: "Lê Hoàng Yến",
+        email: "yen.le@example.com",
+        phone: "0933111222",
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "careers_page",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
       null,
     );
     candidateId = candidate.id;
@@ -390,7 +428,9 @@ describe("applications", () => {
 
   it("refuses a second application to the same opening", async () => {
     expect(
-      await fails(createApplication({ candidateId, openingId, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.recruiterPerson)),
+      await fails(
+        createApplication({ candidateId, openingId, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null }, ids.recruiterPerson),
+      ),
     ).toBe("recruit_already_applied");
   });
 
@@ -491,11 +531,32 @@ describe("the candidate database", () => {
     // Another entity's recruiter may neither edit this person nor pull them into their opening.
     expect(await canReachCandidate(szcRecruiter, applied.id)).toBe(false);
     expect(await canReachCandidate(head, applied.id)).toBe(false);
-    expect([...(await reachableCandidateIds(szcRecruiter, all.map((row) => row.id)))]).toEqual((await listCandidates(szcRecruiter)).map((row) => row.id).filter((id) => all.some((row) => row.id === id)));
+    expect([
+      ...(await reachableCandidateIds(
+        szcRecruiter,
+        all.map((row) => row.id),
+      )),
+    ]).toEqual((await listCandidates(szcRecruiter)).map((row) => row.id).filter((id) => all.some((row) => row.id === id)));
   });
 
   it("opens a lead who has applied nowhere to a group-wide grant only", async () => {
-    const lead = await createCandidate({ fullName: "Ứng Viên Tiềm Năng", email: "lead.only@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson);
+    const lead = await createCandidate(
+      {
+        fullName: "Ứng Viên Tiềm Năng",
+        email: "lead.only@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+    );
     expect(await getCandidateView({ principal: hrAdmin, personId: ids.hrPerson }, lead.id)).not.toBeNull();
     expect(await getCandidateView({ principal: recruiter, personId: ids.recruiterPerson }, lead.id)).toBeNull();
     expect(await getCandidateView({ principal: szcRecruiter, personId: ids.szcRecruiterPerson }, lead.id)).toBeNull();
@@ -505,9 +566,23 @@ describe("the candidate database", () => {
   it("tells a recruiter a clash exists, but not who it is when they cannot reach them", async () => {
     const all = await listCandidates(hrAdmin);
     const applied = (await Promise.all(all.filter((row) => row.applications > 0 && !row.anonymised).map((row) => db().select().from(schema.candidate).where(eq(schema.candidate.id, row.id))))).flat().find((row) => row.email)!;
-    const clash = { fullName: "Khác Hẳn", email: applied.email, phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct" as const, sourceDetail: null, referredByPersonId: null, tags: [], notes: null };
+    const clash = {
+      fullName: "Khác Hẳn",
+      email: applied.email,
+      phone: null,
+      currentTitle: null,
+      currentEmployer: null,
+      location: null,
+      links: [],
+      source: "direct" as const,
+      sourceDetail: null,
+      referredByPersonId: null,
+      tags: [],
+      notes: null,
+    };
     const detailsFor = async (viewer: Principal) =>
-      ((await createCandidate(clash, viewer.personId, { viewer }).catch((thrown: Error & { details?: { duplicates: RedactedDuplicateMatch[] } }) => thrown)) as Error & { details?: { duplicates: RedactedDuplicateMatch[] } }).details!.duplicates;
+      ((await createCandidate(clash, viewer.personId, { viewer }).catch((thrown: Error & { details?: { duplicates: RedactedDuplicateMatch[] } }) => thrown)) as Error & { details?: { duplicates: RedactedDuplicateMatch[] } }).details!
+        .duplicates;
     const hidden = await detailsFor(szcRecruiter);
     expect(hidden[0]).toMatchObject({ id: null, fullName: null, certain: true });
     expect(hidden[0].signals).toContain("email");
@@ -569,7 +644,28 @@ describe("recruitment reports (FR-REC-11)", () => {
       { stage: 1, status: "withdrawn", source: "careers_page" },
     ] as const;
     for (const [index, shape] of shapes.entries()) {
-      const candidateId = candidates[index]?.id ?? (await createCandidate({ fullName: `Ứng viên báo cáo ${index}`, email: `report${index}@example.com`, phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: shape.source, sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.recruiterPerson, { confirmedNotDuplicate: true })).id;
+      const candidateId =
+        candidates[index]?.id ??
+        (
+          await createCandidate(
+            {
+              fullName: `Ứng viên báo cáo ${index}`,
+              email: `report${index}@example.com`,
+              phone: null,
+              currentTitle: null,
+              currentEmployer: null,
+              location: null,
+              links: [],
+              source: shape.source,
+              sourceDetail: null,
+              referredByPersonId: null,
+              tags: [],
+              notes: null,
+            },
+            ids.recruiterPerson,
+            { confirmedNotDuplicate: true },
+          )
+        ).id;
       const appliedAt = new Date("2026-03-01T00:00:00Z");
       const closedAt = "days" in shape ? new Date(appliedAt.getTime() + shape.days * 86_400_000) : null;
       await db().insert(schema.jobApplication).values({ candidateId, openingId: opening.id, stageId: stages[shape.stage].id, status: shape.status, source: shape.source, appliedAt, closedAt });
@@ -579,7 +675,9 @@ describe("recruitment reports (FR-REC-11)", () => {
         category: schema.recruitPipelineStage.category,
         status: schema.jobApplication.status,
         source: schema.jobApplication.source,
-        days: sql<number | null>`case when ${schema.jobApplication.status} = 'hired' then extract(day from coalesce(${schema.jobApplication.closedAt}, ${schema.jobApplication.updatedAt}) - ${schema.jobApplication.appliedAt})::int else null end`,
+        days: sql<
+          number | null
+        >`case when ${schema.jobApplication.status} = 'hired' then extract(day from coalesce(${schema.jobApplication.closedAt}, ${schema.jobApplication.updatedAt}) - ${schema.jobApplication.appliedAt})::int else null end`,
       })
       .from(schema.jobApplication)
       .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId));

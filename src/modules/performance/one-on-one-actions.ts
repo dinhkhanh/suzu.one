@@ -63,7 +63,14 @@ const updatePipeline = createAction({
     const { after } = await updateOneOnOne(input.meetingId, { meetingOn: input.meetingOn, agenda: input.agenda, sharedNotes: input.sharedNotes, ...(writesPrivate ? { privateNotes: input.privateNotes } : {}) });
     refresh(input.meetingId);
     // Lengths, not text: a 1:1 note is not something the audit log should hold.
-    return { data: { id: after.id }, audit: { resource: { type: "one_on_one", id: after.id, entityId: null }, summary: `cập nhật 1:1 ${after.meetingOn}`, after: { agendaLength: after.agenda?.length ?? 0, sharedLength: after.sharedNotes?.length ?? 0, privateLength: after.privateNotes?.length ?? 0 } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "one_on_one", id: after.id, entityId: null },
+        summary: `cập nhật 1:1 ${after.meetingOn}`,
+        after: { agendaLength: after.agenda?.length ?? 0, sharedLength: after.sharedNotes?.length ?? 0, privateLength: after.privateNotes?.length ?? 0 },
+      },
+    };
   },
 });
 export async function updateOneOnOneAction(input: unknown) {
@@ -92,7 +99,10 @@ const addActionPipeline = createAction({
     const created = await addOneOnOneAction(input, user.person.id);
     refresh(input.meetingId);
     revalidatePath("/today");
-    return { data: { id: created.id, taskId: created.taskId }, audit: { resource: { type: "one_on_one_action", id: created.id, entityId: null }, summary: created.title, after: { taskId: created.taskId, assigneePersonId: created.assigneePersonId, dueOn: created.dueOn } } };
+    return {
+      data: { id: created.id, taskId: created.taskId },
+      audit: { resource: { type: "one_on_one_action", id: created.id, entityId: null }, summary: created.title, after: { taskId: created.taskId, assigneePersonId: created.assigneePersonId, dueOn: created.dueOn } },
+    };
   },
 });
 export async function addOneOnOneActionAction(input: unknown) {
@@ -151,7 +161,14 @@ const raisePipeline = createAction({
     revalidatePath("/performance/results");
     revalidatePath("/today");
     // The type and the ids; the proposed salary itself lives in payroll's encrypted request.
-    return { data: { id: created.id }, audit: { resource: { type: "review_outcome", id: created.id, entityId: created.entityId }, summary: `${created.type} (${created.year})`, after: { personId: created.personId, type: created.type, salaryRequestId: created.salaryRequestId, taskId: created.taskId } } };
+    return {
+      data: { id: created.id },
+      audit: {
+        resource: { type: "review_outcome", id: created.id, entityId: created.entityId },
+        summary: `${created.type} (${created.year})`,
+        after: { personId: created.personId, type: created.type, salaryRequestId: created.salaryRequestId, taskId: created.taskId },
+      },
+    };
   },
 });
 export async function raiseOutcomeAction(input: unknown) {
@@ -171,7 +188,10 @@ const decidePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await decideOutcome(input.outcomeId, input.decision, user.person.id);
     revalidatePath("/performance/results");
-    return { data: { id: after.id, status: after.status }, audit: { resource: { type: "review_outcome", id: after.id, entityId: after.entityId }, summary: `${after.type}: ${after.status}`, before: { status: before.status }, after: { status: after.status } } };
+    return {
+      data: { id: after.id, status: after.status },
+      audit: { resource: { type: "review_outcome", id: after.id, entityId: after.entityId }, summary: `${after.type}: ${after.status}`, before: { status: before.status }, after: { status: after.status } },
+    };
   },
 });
 export async function decideOutcomeAction(input: unknown) {

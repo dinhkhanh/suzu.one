@@ -27,7 +27,14 @@ const eodPipeline = createAction({
     await admitAiUse(user, "draft");
     const result = await draftEodNotes(user, input.date, input.locale);
     if (!result) throw new ActionError("draft_not_available");
-    return { data: { text: result.draft, extractive: result.extractive }, audit: { resource: { type: "daily_report", id: `${user.person.id}:${input.date}` }, summary: `EOD notes draft ${input.date}`, after: { driver: result.driver, model: result.model, extractive: result.extractive, length: result.draft.length, ...result.usage } } };
+    return {
+      data: { text: result.draft, extractive: result.extractive },
+      audit: {
+        resource: { type: "daily_report", id: `${user.person.id}:${input.date}` },
+        summary: `EOD notes draft ${input.date}`,
+        after: { driver: result.driver, model: result.model, extractive: result.extractive, length: result.draft.length, ...result.usage },
+      },
+    };
   },
 });
 
@@ -43,7 +50,10 @@ const statusPipeline = createAction({
     await admitAiUse(user, "draft");
     const result = await draftStatusSummary(user, input.projectId, input.locale);
     if (!result) throw new ActionError("draft_not_available");
-    return { data: { text: result.draft.summary, health: result.draft.health, extractive: result.extractive }, audit: { resource: { type: "work_project", id: input.projectId }, summary: "status update draft", after: { driver: result.driver, model: result.model, extractive: result.extractive, health: result.draft.health, ...result.usage } } };
+    return {
+      data: { text: result.draft.summary, health: result.draft.health, extractive: result.extractive },
+      audit: { resource: { type: "work_project", id: input.projectId }, summary: "status update draft", after: { driver: result.driver, model: result.model, extractive: result.extractive, health: result.draft.health, ...result.usage } },
+    };
   },
 });
 
@@ -59,7 +69,10 @@ const handoffPipeline = createAction({
     await admitAiUse(user, "draft");
     const result = await draftHandoffNote(user, input.taskId, input.locale);
     if (!result) throw new ActionError("draft_not_available");
-    return { data: { note: result.draft, extractive: result.extractive }, audit: { resource: { type: "task", id: input.taskId }, summary: "hand-off note draft", after: { driver: result.driver, model: result.model, extractive: result.extractive, parts: Object.keys(result.draft), ...result.usage } } };
+    return {
+      data: { note: result.draft, extractive: result.extractive },
+      audit: { resource: { type: "task", id: input.taskId }, summary: "hand-off note draft", after: { driver: result.driver, model: result.model, extractive: result.extractive, parts: Object.keys(result.draft), ...result.usage } },
+    };
   },
 });
 

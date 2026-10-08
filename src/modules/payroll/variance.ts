@@ -111,7 +111,5 @@ export type PayabilityFlag = (typeof PAYABILITY_FLAGS)[number];
  */
 export async function runBlockers(run: PayrollRunRow, executor?: Executor, variance?: Pick<RunVariance, "flagged">): Promise<{ personId: string; flags: PayabilityFlag[] }[]> {
   const report = variance ?? (await getRunVariance(run, executor));
-  return report.flagged
-    .map((person) => ({ personId: person.personId, flags: PAYABILITY_FLAGS.filter((flag) => person.flags.includes(flag)) }))
-    .filter((person) => person.flags.length > 0);
+  return report.flagged.map((person) => ({ personId: person.personId, flags: PAYABILITY_FLAGS.filter((flag) => person.flags.includes(flag)) })).filter((person) => person.flags.length > 0);
 }

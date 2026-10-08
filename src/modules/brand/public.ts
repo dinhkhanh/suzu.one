@@ -43,7 +43,10 @@ export async function listPublicBrandKits(): Promise<PublicBrandCard[]> {
  * may have, or a redirect to its current address, or nothing.
  */
 export async function openPublicBrandKit(slug: string): Promise<{ kind: "kit"; content: BrandKitContent } | { kind: "moved"; slug: string } | null> {
-  const resolved = resolveBrandSlug((await allBrandKits()).filter((kit) => isOpenToPublic(kit.visibility)), slug);
+  const resolved = resolveBrandSlug(
+    (await allBrandKits()).filter((kit) => isOpenToPublic(kit.visibility)),
+    slug,
+  );
   if (!resolved) return null;
   if (resolved.redirect) return { kind: "moved", slug: resolved.kit.slug };
   return { kind: "kit", content: publicPart(await loadBrandKitContent(resolved.kit)) };
@@ -81,7 +84,13 @@ export async function countBrandFileHit(bucket: BrandFileBucket, keyHash: string
  * asks for, so guessing ids costs the guesser their allowance and the product nothing but one
  * upsert.
  */
-export async function servePublicBrandFile(slug: string, assetId: string, purpose: BrandFileBucket, visitor: Pick<Visitor, "ipHash">, at: Date = new Date()): Promise<{ ok: true; url: string | null } | { ok: false; retryAfterSeconds: number }> {
+export async function servePublicBrandFile(
+  slug: string,
+  assetId: string,
+  purpose: BrandFileBucket,
+  visitor: Pick<Visitor, "ipHash">,
+  at: Date = new Date(),
+): Promise<{ ok: true; url: string | null } | { ok: false; retryAfterSeconds: number }> {
   const allowed = await countBrandFileHit(purpose, brandVisitorKey(visitor.ipHash, at), at);
   if (!allowed.ok) return allowed;
   return { ok: true, url: await publicBrandFileLink(slug, assetId, purpose) };

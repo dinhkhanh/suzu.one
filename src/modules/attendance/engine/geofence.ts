@@ -92,7 +92,10 @@ export type ParsedIp = { version: 4 | 6; value: bigint };
 
 /** An address as a number. IPv4-mapped IPv6 ("::ffff:10.0.0.1") counts as the IPv4 address it carries. */
 export function parseIp(text: string): ParsedIp | null {
-  const trimmed = text.trim().replace(/^\[|\]$/g, "").replace(/%.*$/, "");
+  const trimmed = text
+    .trim()
+    .replace(/^\[|\]$/g, "")
+    .replace(/%.*$/, "");
   if (!trimmed) return null;
   if (!trimmed.includes(":")) {
     const value = parseIpv4(trimmed);

@@ -32,7 +32,10 @@ export const kbSpace = pgTable(
     key: text("key").notNull().unique(),
     // Keys it had before: an old link still finds the space and is sent on to the current key. A
     // key another space takes for its own leaves this list.
-    formerKeys: text("former_keys").array().notNull().default(sql`'{}'::text[]`),
+    formerKeys: text("former_keys")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     name: text("name").notNull(),
     description: text("description"),
     icon: text("icon"),
@@ -73,7 +76,10 @@ export const kbPage = pgTable(
     // than slugs; its id still finds it.
     slug: text("slug"),
     // Slugs it had before, sent on to the current one; a slug another page takes leaves this list.
-    formerSlugs: text("former_slugs").array().notNull().default(sql`'{}'::text[]`),
+    formerSlugs: text("former_slugs")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     // The working copy: what editors see and change. Readers get the published version.
     title: text("title").notNull(),
     content: jsonb("content").notNull(),
@@ -139,8 +145,12 @@ export const kbAccess = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("kb_access_space_subject_idx").on(t.spaceId, t.subjectKey).where(sql`${t.pageId} IS NULL`),
-    uniqueIndex("kb_access_page_subject_idx").on(t.pageId, t.subjectKey).where(sql`${t.pageId} IS NOT NULL`),
+    uniqueIndex("kb_access_space_subject_idx")
+      .on(t.spaceId, t.subjectKey)
+      .where(sql`${t.pageId} IS NULL`),
+    uniqueIndex("kb_access_page_subject_idx")
+      .on(t.pageId, t.subjectKey)
+      .where(sql`${t.pageId} IS NOT NULL`),
     index("kb_access_subject_idx").on(t.subjectKey),
   ],
 ).enableRLS();

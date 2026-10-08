@@ -29,7 +29,11 @@ export default async function PositionKpisPage() {
         const mine = canManagePositionKpis(user.principal, template.entityId);
         return (
           <TableCard key={`${template.positionId}:${template.entityId ?? ""}`}>
-            <TableCardHeader title={template.positionName} count={template.entityId ? (entityName.get(template.entityId) ?? "") : t("positions.everyEntity")} actions={<ApplyTemplatesForm positionId={template.positionId} defaultFrom={nextMonth} label={t("positions.apply")} />} />
+            <TableCardHeader
+              title={template.positionName}
+              count={template.entityId ? (entityName.get(template.entityId) ?? "") : t("positions.everyEntity")}
+              actions={<ApplyTemplatesForm positionId={template.positionId} defaultFrom={nextMonth} label={t("positions.apply")} />}
+            />
             <Table>
               <TableHeader>
                 <TableRow>

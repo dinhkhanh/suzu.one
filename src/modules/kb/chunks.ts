@@ -27,7 +27,10 @@ const hashOf = (headingPath: string, content: string) => createHash("sha256").up
 
 /** Replaces a page's chunks with those of the version just published. Same transaction as the publish. */
 export async function rebuildChunks(tx: Tx, page: { id: string }, version: { id: string; title: string; content: unknown }): Promise<{ chunks: number; reused: number }> {
-  const before = await tx.select({ contentHash: kbPageChunk.contentHash, embeddingVector: kbPageChunk.embeddingVector, embeddingModel: kbPageChunk.embeddingModel, embeddedAt: kbPageChunk.embeddedAt }).from(kbPageChunk).where(eq(kbPageChunk.pageId, page.id));
+  const before = await tx
+    .select({ contentHash: kbPageChunk.contentHash, embeddingVector: kbPageChunk.embeddingVector, embeddingModel: kbPageChunk.embeddingModel, embeddedAt: kbPageChunk.embeddedAt })
+    .from(kbPageChunk)
+    .where(eq(kbPageChunk.pageId, page.id));
   const known = new Map(before.filter((row) => row.embeddingVector).map((row) => [row.contentHash, row]));
   await tx.delete(kbPageChunk).where(eq(kbPageChunk.pageId, page.id));
   const chunks = chunkDoc(version.content as Doc, version.title);
@@ -38,7 +41,20 @@ export async function rebuildChunks(tx: Tx, page: { id: string }, version: { id:
         const contentHash = hashOf(chunk.headingPath, chunk.content);
         const kept = known.get(contentHash);
         if (kept) reused++;
-        return { pageId: page.id, versionId: version.id, chunkIndex: chunk.index, headingPath: chunk.headingPath, anchor: chunk.anchor, format: CHUNK_FORMAT, content: chunk.content, contentHash, tokenEstimate: chunk.tokenEstimate, embeddingVector: kept?.embeddingVector ?? null, embeddingModel: kept?.embeddingModel ?? null, embeddedAt: kept?.embeddedAt ?? null };
+        return {
+          pageId: page.id,
+          versionId: version.id,
+          chunkIndex: chunk.index,
+          headingPath: chunk.headingPath,
+          anchor: chunk.anchor,
+          format: CHUNK_FORMAT,
+          content: chunk.content,
+          contentHash,
+          tokenEstimate: chunk.tokenEstimate,
+          embeddingVector: kept?.embeddingVector ?? null,
+          embeddingModel: kept?.embeddingModel ?? null,
+          embeddedAt: kept?.embeddedAt ?? null,
+        };
       }),
     );
   }
@@ -144,7 +160,19 @@ export async function chunkUnchunkedPages(limit = 500): Promise<{ pages: number 
 /** A question is a sentence or two; whatever is pasted beyond this is not sent to be embedded. */
 const QUESTION_EMBED_MAX = 1000;
 
-export type RetrievedChunk = { chunkId: string; pageId: string; pageTitle: string; spaceKey: string; spaceName: string; versionId: string; chunkIndex: number; headingPath: string; anchor: string | null; content: string; /** Cosine similarity to the question, -1..1; 0 when the chunk has no vector of the current model. */ score: number };
+export type RetrievedChunk = {
+  chunkId: string;
+  pageId: string;
+  pageTitle: string;
+  spaceKey: string;
+  spaceName: string;
+  versionId: string;
+  chunkIndex: number;
+  headingPath: string;
+  anchor: string | null;
+  content: string;
+  /** Cosine similarity to the question, -1..1; 0 when the chunk has no vector of the current model. */ score: number;
+};
 
 /**
  * THE RETRIEVAL API for Phase 9. The passages of pages the viewer may read — the permission
@@ -169,7 +197,18 @@ export async function retrieveKbChunks(viewer: KbViewer, input: { query: string;
   const asked = input.question?.trim().slice(0, QUESTION_EMBED_MAX);
   const { model, vectors } = await embedTexts([asked && !embeddingDriver().isFake ? asked : input.query], "query");
   const distance = sql<number>`(${kbPageChunk.embeddingVector} OPERATOR(extensions.<=>) ${vectorLiteral(vectors[0])}::extensions.vector)::float8`;
-  const select = { chunkId: kbPageChunk.id, pageId: kbPage.id, pageTitle: kbPage.publishedTitle, spaceKey: kbSpace.key, spaceName: kbSpace.name, versionId: kbPageChunk.versionId, chunkIndex: kbPageChunk.chunkIndex, headingPath: kbPageChunk.headingPath, anchor: kbPageChunk.anchor, content: kbPageChunk.content };
+  const select = {
+    chunkId: kbPageChunk.id,
+    pageId: kbPage.id,
+    pageTitle: kbPage.publishedTitle,
+    spaceKey: kbSpace.key,
+    spaceName: kbSpace.name,
+    versionId: kbPageChunk.versionId,
+    chunkIndex: kbPageChunk.chunkIndex,
+    headingPath: kbPageChunk.headingPath,
+    anchor: kbPageChunk.anchor,
+    content: kbPageChunk.content,
+  };
   const visible = and(pagePublishedVisibleSql(viewer), eq(kbPageChunk.versionId, kbPage.publishedVersionId), input.spaceId ? eq(kbPage.spaceId, input.spaceId) : undefined);
 
   const ranked = await db()
@@ -200,6 +239,12 @@ export async function retrieveKbChunks(viewer: KbViewer, input: { query: string;
 /** How much of the knowledge base is ready for the assistant. */
 export async function chunkStats(): Promise<{ chunks: number; embedded: number; pages: number; model: string }> {
   const model = embeddingDriver().model;
-  const [row] = await db().select({ chunks: sql<number>`count(*)::int`, embedded: sql<number>`count(*) filter (where ${kbPageChunk.embeddingModel} = ${model} and ${kbPageChunk.embeddingVector} is not null)::int`, pages: sql<number>`count(distinct ${kbPageChunk.pageId})::int` }).from(kbPageChunk);
+  const [row] = await db()
+    .select({
+      chunks: sql<number>`count(*)::int`,
+      embedded: sql<number>`count(*) filter (where ${kbPageChunk.embeddingModel} = ${model} and ${kbPageChunk.embeddingVector} is not null)::int`,
+      pages: sql<number>`count(distinct ${kbPageChunk.pageId})::int`,
+    })
+    .from(kbPageChunk);
   return { chunks: row?.chunks ?? 0, embedded: row?.embedded ?? 0, pages: row?.pages ?? 0, model };
 }

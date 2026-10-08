@@ -33,10 +33,7 @@ export type CalendarEvent = {
   wantsMeeting: boolean;
 };
 
-export type CalendarResult =
-  | { status: "simulated" }
-  | { status: "sent"; eventId: string; meetingUrl: string | null }
-  | { status: "failed"; error: string };
+export type CalendarResult = { status: "simulated" } | { status: "sent"; eventId: string; meetingUrl: string | null } | { status: "failed"; error: string };
 
 export type CalendarDriver = {
   name: "google" | "local";
@@ -73,9 +70,7 @@ const base64url = (input: Buffer | string): string => Buffer.from(input).toStrin
 function assertionFor(account: ServiceAccount, now: Date): string {
   const issuedAt = Math.floor(now.getTime() / 1000);
   const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claims = base64url(
-    JSON.stringify({ iss: account.email, sub: account.impersonate, scope: CALENDAR_SCOPE, aud: TOKEN_URL, iat: issuedAt, exp: issuedAt + 3600 }),
-  );
+  const claims = base64url(JSON.stringify({ iss: account.email, sub: account.impersonate, scope: CALENDAR_SCOPE, aud: TOKEN_URL, iat: issuedAt, exp: issuedAt + 3600 }));
   const signer = createSign("RSA-SHA256");
   signer.update(`${header}.${claims}`);
   // The key is stored with literal "\n" in an environment variable, as every deployment does it.
@@ -165,12 +160,7 @@ function googleDriver(account: ServiceAccount): CalendarDriver {
 
 /** All four settings or none: a half-configured integration is worse than none at all. */
 export function calendarDriver(): CalendarDriver {
-  const {
-    GOOGLE_CALENDAR_ID: calendarId,
-    GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: email,
-    GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY: privateKey,
-    GOOGLE_CALENDAR_IMPERSONATE: impersonate,
-  } = env();
+  const { GOOGLE_CALENDAR_ID: calendarId, GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: email, GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY: privateKey, GOOGLE_CALENDAR_IMPERSONATE: impersonate } = env();
   if (!calendarId || !email || !privateKey || !impersonate) return localDriver;
   return googleDriver({ calendarId, email, privateKey, impersonate });
 }

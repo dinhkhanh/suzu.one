@@ -10,7 +10,15 @@ export type AssetsTab = "register" | "mine" | "bookings" | "digital" | "licences
 
 const HREF: Record<AssetsTab, string> = { register: "/assets", mine: "/assets/mine", bookings: "/assets/bookings", digital: "/assets/digital", licences: "/assets/licences", categories: "/assets/categories" };
 
-export async function AssetsNav({ current, manages, principal }: { current: AssetsTab; /** Whether the categories tab is offered. */ manages: boolean; /** Given, decides which tabs the reader may open; without it every tab shows. */ principal?: Principal }) {
+export async function AssetsNav({
+  current,
+  manages,
+  principal,
+}: {
+  current: AssetsTab;
+  /** Whether the categories tab is offered. */ manages: boolean;
+  /** Given, decides which tabs the reader may open; without it every tab shows. */ principal?: Principal;
+}) {
   const t = await getTranslations("assets");
   const label: Record<AssetsTab, string> = { register: t("nav.register"), mine: t("nav.mine"), bookings: t("nav.bookings"), digital: t("nav.digital"), licences: t("nav.licences"), categories: t("nav.categories") };
   const tabs = (["register", "mine", "bookings", "digital", "licences", "categories"] as const).filter((tab) => {

@@ -13,7 +13,15 @@ const SAMPLE = "> [!NOTE]\n> Văn bản mẫu để dùng thử SuZu One. Phòng
 
 export const HANDBOOK_PAGES: HandbookPage[] = [
   {
-    key: "rules", space: "so-tay", title: "Nội quy lao động", owner: MAI, reviewBy: "2027-03-31", on: "2026-08-24", by: MAI, note: "Ban hành nội quy 2026", major: true,
+    key: "rules",
+    space: "so-tay",
+    title: "Nội quy lao động",
+    owner: MAI,
+    reviewBy: "2027-03-31",
+    on: "2026-08-24",
+    by: MAI,
+    note: "Ban hành nội quy 2026",
+    major: true,
     markdown: `${SAMPLE}## 1. Phạm vi áp dụng
 
 Nội quy áp dụng cho toàn bộ người lao động của SuZu Group, SuZu Media và SuZu Creative, kể cả thử việc, thực tập và bán thời gian.
@@ -54,7 +62,12 @@ Việc xử lý kỷ luật tuân theo trình tự của Bộ luật Lao động
 `,
   },
   {
-    key: "hours", space: "so-tay", title: "Giờ làm việc và chấm công", owner: BAO, on: "2026-08-25", by: MAI,
+    key: "hours",
+    space: "so-tay",
+    title: "Giờ làm việc và chấm công",
+    owner: BAO,
+    on: "2026-08-25",
+    by: MAI,
     markdown: `${SAMPLE}## Giờ làm việc
 
 | Nhóm | Giờ làm | Ghi chú |
@@ -78,7 +91,12 @@ Việc xử lý kỷ luật tuân theo trình tự của Bộ luật Lao động
 `,
   },
   {
-    key: "overtime", space: "so-tay", title: "Làm thêm giờ", owner: BAO, on: "2026-08-25", by: MAI,
+    key: "overtime",
+    space: "so-tay",
+    title: "Làm thêm giờ",
+    owner: BAO,
+    on: "2026-08-25",
+    by: MAI,
     markdown: `${SAMPLE}## Nguyên tắc
 
 Làm thêm giờ phải được **quản lý trực tiếp duyệt trước** trên SuZu One (đơn *Làm thêm giờ*). Giờ làm thêm không có đơn được duyệt sẽ không được tính.
@@ -103,7 +121,12 @@ Bạn có thể chọn **nghỉ bù** thay cho nhận tiền khi tạo đơn. Gi
 `,
   },
   {
-    key: "pay", space: "so-tay", title: "Lương và ngày trả lương", owner: MAI, on: "2026-08-26", by: MAI,
+    key: "pay",
+    space: "so-tay",
+    title: "Lương và ngày trả lương",
+    owner: MAI,
+    on: "2026-08-26",
+    by: MAI,
     markdown: `${SAMPLE}## Kỳ lương
 
 - Kỳ tính lương: từ ngày 1 đến ngày cuối tháng.
@@ -129,7 +152,12 @@ Bạn có thể chọn **nghỉ bù** thay cho nhận tiền khi tạo đơn. Gi
 `,
   },
   {
-    key: "insurance", space: "so-tay", title: "Bảo hiểm xã hội, y tế và thất nghiệp", owner: BAO, on: "2026-08-26", by: MAI,
+    key: "insurance",
+    space: "so-tay",
+    title: "Bảo hiểm xã hội, y tế và thất nghiệp",
+    owner: BAO,
+    on: "2026-08-26",
+    by: MAI,
     markdown: `${SAMPLE}## Ai được tham gia
 
 Người lao động có hợp đồng lao động từ đủ 1 tháng trở lên được công ty đăng ký tham gia BHXH, BHYT, BHTN kể từ tháng bắt đầu hợp đồng chính thức.
@@ -152,7 +180,12 @@ Tỷ lệ đóng của người lao động và của công ty theo **quy địn
 `,
   },
   {
-    key: "contract", space: "so-tay", title: "Thử việc và hợp đồng lao động", owner: MAI, on: "2026-08-27", by: MAI,
+    key: "contract",
+    space: "so-tay",
+    title: "Thử việc và hợp đồng lao động",
+    owner: MAI,
+    on: "2026-08-27",
+    by: MAI,
     markdown: `${SAMPLE}## Thử việc
 
 | Vị trí | Thời gian thử việc tối đa |
@@ -178,7 +211,12 @@ Người lao động báo trước 30 ngày (hợp đồng xác định thời h
 `,
   },
   {
-    key: "conduct", space: "so-tay", title: "Quy tắc ứng xử", owner: MAI, on: "2026-08-27", by: MAI,
+    key: "conduct",
+    space: "so-tay",
+    title: "Quy tắc ứng xử",
+    owner: MAI,
+    on: "2026-08-27",
+    by: MAI,
     markdown: `${SAMPLE}## Với đồng nghiệp
 
 - Tôn trọng, không phân biệt đối xử vì giới tính, tuổi, vùng miền, tôn giáo.
@@ -202,7 +240,12 @@ Báo cho phòng Nhân sự khi bạn hoặc người thân có lợi ích tại 
 `,
   },
   {
-    key: "remote", space: "so-tay", title: "Làm việc từ xa", owner: BAO, on: "2026-08-28", by: MAI,
+    key: "remote",
+    space: "so-tay",
+    title: "Làm việc từ xa",
+    owner: BAO,
+    on: "2026-08-28",
+    by: MAI,
     markdown: `${SAMPLE}## Ai được làm việc từ xa
 
 Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn phòng hoặc phim trường, được quản lý trực tiếp đồng ý.
@@ -221,7 +264,12 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 `,
   },
   {
-    key: "expenses", space: "quy-trinh-tai-chinh", title: "Công tác phí và thanh toán chi phí", owner: TUAN, on: "2026-08-20", by: TUAN,
+    key: "expenses",
+    space: "quy-trinh-tai-chinh",
+    title: "Công tác phí và thanh toán chi phí",
+    owner: TUAN,
+    on: "2026-08-20",
+    by: TUAN,
     markdown: `${SAMPLE}## Định mức công tác phí
 
 | Khoản | Định mức | Chứng từ |
@@ -243,7 +291,12 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 `,
   },
   {
-    key: "onboarding", space: "chinh-sach-nhan-su", title: "Quy trình tiếp nhận nhân viên mới", owner: BAO, on: "2026-08-21", by: MAI,
+    key: "onboarding",
+    space: "chinh-sach-nhan-su",
+    title: "Quy trình tiếp nhận nhân viên mới",
+    owner: BAO,
+    on: "2026-08-21",
+    by: MAI,
     markdown: `${SAMPLE}## Trước ngày nhận việc
 
 | Việc | Người phụ trách | Hạn |
@@ -266,7 +319,12 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 `,
   },
   {
-    key: "offboarding", space: "chinh-sach-nhan-su", title: "Quy trình nghỉ việc và bàn giao", owner: BAO, on: "2026-08-21", by: MAI,
+    key: "offboarding",
+    space: "chinh-sach-nhan-su",
+    title: "Quy trình nghỉ việc và bàn giao",
+    owner: BAO,
+    on: "2026-08-21",
+    by: MAI,
     markdown: `${SAMPLE}## Các bước
 
 1. Nhân viên gửi **Đơn xin nghỉ việc** trên SuZu One; quản lý trực tiếp duyệt.
@@ -287,7 +345,13 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 `,
   },
   {
-    key: "client-review", space: "san-xuat-video", parent: "video-sop", title: "SOP: duyệt nội dung với khách hàng", owner: LONG, on: "2026-08-18", by: LONG,
+    key: "client-review",
+    space: "san-xuat-video",
+    parent: "video-sop",
+    title: "SOP: duyệt nội dung với khách hàng",
+    owner: LONG,
+    on: "2026-08-18",
+    by: LONG,
     markdown: `## Mục đích
 
 Giảm số vòng sửa và tránh tranh cãi về phạm vi bằng cách duyệt theo từng mốc, có ghi nhận.
@@ -313,7 +377,12 @@ Giảm số vòng sửa và tránh tranh cãi về phạm vi bằng cách duyệ
 `,
   },
   {
-    key: "suzu-one", space: "cong-cu", title: "Hướng dẫn dùng SuZu One", owner: BAO, on: "2026-09-01", by: BAO,
+    key: "suzu-one",
+    space: "cong-cu",
+    title: "Hướng dẫn dùng SuZu One",
+    owner: BAO,
+    on: "2026-09-01",
+    by: BAO,
     markdown: `## Bắt đầu
 
 1. Đăng nhập bằng tài khoản Google của công ty tại trang SuZu One.

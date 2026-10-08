@@ -24,8 +24,32 @@ import { LabelChip } from "./team-forms";
 
 type Named = { id: string; name: string };
 type Person = { id: string; fullName: string };
-export type TriageCard = { id: string; key: string; title: string; description: string | null; source: string | null; triageStatus: string | null; snoozedUntil: string | null; requesterPersonId?: string | null; requesterName: string | null; formName: string | null; createdAt: string; assigneePersonId: string | null; projectId: string | null; dueDate: string | null; priority: number | null; labelIds: string[] };
-export type TriageRuleView = { id: string; name: string; match: { source?: string; intakeFormId?: string; keyword?: string }; set: { assigneePersonId?: string; projectId?: string; labelIds?: string[]; priority?: number }; sortOrder: number; isActive: boolean };
+export type TriageCard = {
+  id: string;
+  key: string;
+  title: string;
+  description: string | null;
+  source: string | null;
+  triageStatus: string | null;
+  snoozedUntil: string | null;
+  requesterPersonId?: string | null;
+  requesterName: string | null;
+  formName: string | null;
+  createdAt: string;
+  assigneePersonId: string | null;
+  projectId: string | null;
+  dueDate: string | null;
+  priority: number | null;
+  labelIds: string[];
+};
+export type TriageRuleView = {
+  id: string;
+  name: string;
+  match: { source?: string; intakeFormId?: string; keyword?: string };
+  set: { assigneePersonId?: string; projectId?: string; labelIds?: string[]; priority?: number };
+  sortOrder: number;
+  isActive: boolean;
+};
 type Choices = { people: Person[]; projects: Named[]; labels: { id: string; name: string; color: string }[]; forms: Named[]; mergeTargets: { id: string; key: string; title: string }[] };
 
 function useRun() {
@@ -108,7 +132,15 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
           {item.snoozedUntil ? <Badge variant="warning">{t("until", { date: localDate(item.snoozedUntil) })}</Badge> : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          {t.rich("from", { name: item.requesterName ?? "—", date: format.dateTime(new Date(item.createdAt), { dateStyle: "medium" }), who: (chunks) => <RecordLink kind="person" id={item.requesterName ? item.requesterPersonId : null}>{chunks}</RecordLink> })}
+          {t.rich("from", {
+            name: item.requesterName ?? "—",
+            date: format.dateTime(new Date(item.createdAt), { dateStyle: "medium" }),
+            who: (chunks) => (
+              <RecordLink kind="person" id={item.requesterName ? item.requesterPersonId : null}>
+                {chunks}
+              </RecordLink>
+            ),
+          })}
           {item.formName ? ` · ${t("viaForm", { form: item.formName })}` : null}
         </p>
         {item.description ? (
@@ -121,8 +153,16 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
           <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {t("prefilled")}:{" "}
             {[
-              assignee ? <RecordLink key="assignee" kind="person" id={assignee.id}>{assignee.fullName}</RecordLink> : null,
-              project ? <RecordLink key="project" kind="project" id={project.id}>{project.name}</RecordLink> : null,
+              assignee ? (
+                <RecordLink key="assignee" kind="person" id={assignee.id}>
+                  {assignee.fullName}
+                </RecordLink>
+              ) : null,
+              project ? (
+                <RecordLink key="project" kind="project" id={project.id}>
+                  {project.name}
+                </RecordLink>
+              ) : null,
               item.priority ? tWork(`priority.${item.priority}`) : null,
             ]
               .filter(Boolean)
@@ -268,8 +308,21 @@ export function TriageRuleManager({ teamId, rules, choices, canManage }: { teamI
   // The add row folds shut when its form is done: a new key mounts it closed again.
   const [addRow, setAddRow] = useState(0);
   const describe = (rule: TriageRuleView) => {
-    const when = [rule.match.source ? tTriage(`sources.${rule.match.source as "intake"}`) : null, rule.match.intakeFormId ? choices.forms.find((form) => form.id === rule.match.intakeFormId)?.name : null, rule.match.keyword ? `“${rule.match.keyword}”` : null].filter(Boolean).join(" · ");
-    const then = [choices.people.find((person) => person.id === rule.set.assigneePersonId)?.fullName, choices.projects.find((project) => project.id === rule.set.projectId)?.name, rule.set.priority ? tWork(`priority.${rule.set.priority}`) : null, ...(rule.set.labelIds ?? []).map((id) => choices.labels.find((label) => label.id === id)?.name)].filter(Boolean).join(" · ");
+    const when = [
+      rule.match.source ? tTriage(`sources.${rule.match.source as "intake"}`) : null,
+      rule.match.intakeFormId ? choices.forms.find((form) => form.id === rule.match.intakeFormId)?.name : null,
+      rule.match.keyword ? `“${rule.match.keyword}”` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const then = [
+      choices.people.find((person) => person.id === rule.set.assigneePersonId)?.fullName,
+      choices.projects.find((project) => project.id === rule.set.projectId)?.name,
+      rule.set.priority ? tWork(`priority.${rule.set.priority}`) : null,
+      ...(rule.set.labelIds ?? []).map((id) => choices.labels.find((label) => label.id === id)?.name),
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return `${t("summaryWhen", { conditions: when || t("summaryAll") })} → ${t("summaryThen", { values: then })}`;
   };
   return (
@@ -288,7 +341,16 @@ export function TriageRuleManager({ teamId, rules, choices, canManage }: { teamI
                     <Button size="sm" variant="ghost" onClick={() => setEditing(editing === rule.id ? null : rule.id)}>
                       {tWork("customFields.edit")}
                     </Button>
-                    <ConfirmButton size="sm" variant="ghost" className="text-destructive" disabled={pending} destructive label={t("delete")} question={t("deleteConfirm")} onConfirm={() => run(() => deleteTriageRuleAction({ ruleId: rule.id }))} />
+                    <ConfirmButton
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      disabled={pending}
+                      destructive
+                      label={t("delete")}
+                      question={t("deleteConfirm")}
+                      onConfirm={() => run(() => deleteTriageRuleAction({ ruleId: rule.id }))}
+                    />
                   </>
                 ) : null}
               </div>

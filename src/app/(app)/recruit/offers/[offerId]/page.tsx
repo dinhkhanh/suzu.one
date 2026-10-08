@@ -48,7 +48,9 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
             · {view.offer.number}
           </p>
         </div>
-        <Badge dot variant={statusTone(view.status)}>{t(`statuses.${view.status}`)}</Badge>
+        <Badge dot variant={statusTone(view.status)}>
+          {t(`statuses.${view.status}`)}
+        </Badge>
       </header>
 
       <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">
@@ -70,11 +72,27 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("department")}</dt>
-          <dd>{view.departmentName ? <RecordLink kind="unit" id={view.offer.departmentId}>{view.departmentName}</RecordLink> : "—"}</dd>
+          <dd>
+            {view.departmentName ? (
+              <RecordLink kind="unit" id={view.offer.departmentId}>
+                {view.departmentName}
+              </RecordLink>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("manager")}</dt>
-          <dd>{view.managerName ? <RecordLink kind="person" id={view.offer.managerPersonId}>{view.managerName}</RecordLink> : "—"}</dd>
+          <dd>
+            {view.managerName ? (
+              <RecordLink kind="person" id={view.offer.managerPersonId}>
+                {view.managerName}
+              </RecordLink>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
       </dl>
 

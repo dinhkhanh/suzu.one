@@ -15,7 +15,18 @@ import { buildLockedMonthExport } from "./exports";
 import { attendanceRequestFields, submitAttendanceRequestInput } from "./inputs";
 import { ADJUSTMENT_FIELDS, approveMonth, confirmMonth, createAdjustment, findAdjustment, isMonth, lockPeriod, remindToConfirm, reopenMonth, voidAdjustment } from "./months";
 import { canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
-import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, findAttendanceRequest, findByApproval, getAttendanceRequestView, isPendingEvidence, resubmitAttendanceRequest, submitAttendanceRequest } from "./requests";
+import {
+  type AttendanceRequestInput,
+  cancelAttendanceRequest,
+  confirmWorkedMinutes,
+  decideAttendanceRequest,
+  findAttendanceRequest,
+  findByApproval,
+  getAttendanceRequestView,
+  isPendingEvidence,
+  resubmitAttendanceRequest,
+  submitAttendanceRequest,
+} from "./requests";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -40,9 +51,17 @@ const isHrFor = async (user: ActingUser, personId: string) => {
 type RequestFields = z.output<z.ZodObject<typeof attendanceRequestFields>>;
 
 function toInput(fields: RequestFields): AttendanceRequestInput {
-  const base = { type: fields.type, startDate: fields.startDate, endDate: fields.type === "remote_work" ? (fields.endDate ?? fields.startDate) : fields.startDate, reason: fields.reason, evidenceFileId: fields.type === "attendance_correction" ? fields.evidenceFileId : null, compensation: fields.compensation };
+  const base = {
+    type: fields.type,
+    startDate: fields.startDate,
+    endDate: fields.type === "remote_work" ? (fields.endDate ?? fields.startDate) : fields.startDate,
+    reason: fields.reason,
+    evidenceFileId: fields.type === "attendance_correction" ? fields.evidenceFileId : null,
+    compensation: fields.compensation,
+  };
   if (fields.type === "attendance_correction") return { ...base, details: { type: fields.type, cause: fields.cause, inTime: fields.inTime, outTime: fields.outTime, outNextDay: fields.outNextDay && !!fields.outTime } };
-  if (fields.type === "remote_work") return { ...base, details: { type: fields.type, kind: fields.kind, portion: fields.portion, locationName: fields.locationName, latitude: fields.latitude, longitude: fields.longitude, radiusM: fields.radiusM } };
+  if (fields.type === "remote_work")
+    return { ...base, details: { type: fields.type, kind: fields.kind, portion: fields.portion, locationName: fields.locationName, latitude: fields.latitude, longitude: fields.longitude, radiusM: fields.radiusM } };
   if (fields.type === "overtime") return { ...base, details: { type: fields.type, from: fields.from ?? "", to: fields.to ?? "" } };
   return { ...base, details: { type: fields.type, from: fields.from, to: fields.to } };
 }
@@ -61,7 +80,14 @@ const submitPipeline = createAction({
     const filed = await submitAttendanceRequest(subjectId, toInput(fields), { personId: user.person.id, isHr: await isHrFor(user, subjectId) });
     refresh();
     const row = filed.attendanceRequest;
-    return { data: { id: row.id, approvalRequestId: filed.approvalRequestId, outcome: filed.outcome, warnings: filed.warnings }, audit: { resource: { type: "attendance_request", id: row.id, entityId: row.entityId }, summary: `${row.type} ${row.startDate}${row.endDate !== row.startDate ? ` – ${row.endDate}` : ""}`, after: { personId: subjectId, type: row.type, startDate: row.startDate, endDate: row.endDate, details: row.details, compensation: row.compensation, approvalRequestId: filed.approvalRequestId } } };
+    return {
+      data: { id: row.id, approvalRequestId: filed.approvalRequestId, outcome: filed.outcome, warnings: filed.warnings },
+      audit: {
+        resource: { type: "attendance_request", id: row.id, entityId: row.entityId },
+        summary: `${row.type} ${row.startDate}${row.endDate !== row.startDate ? ` – ${row.endDate}` : ""}`,
+        after: { personId: subjectId, type: row.type, startDate: row.startDate, endDate: row.endDate, details: row.details, compensation: row.compensation, approvalRequestId: filed.approvalRequestId },
+      },
+    };
   },
 });
 export async function submitAttendanceRequestAction(input: unknown) {
@@ -80,7 +106,15 @@ const resubmitPipeline = createAction({
     refresh();
     revalidatePath(`/approvals/attendance/${requestId}`);
     const row = result.attendanceRequest;
-    return { data: { id: row.id, approvalRequestId: requestId, warnings: result.warnings }, audit: { resource: { type: "attendance_request", id: row.id, entityId: row.entityId }, summary: `resubmitted ${row.type} ${row.startDate}`, before: { startDate: result.before.startDate, endDate: result.before.endDate, details: result.before.details }, after: { startDate: row.startDate, endDate: row.endDate, details: row.details } } };
+    return {
+      data: { id: row.id, approvalRequestId: requestId, warnings: result.warnings },
+      audit: {
+        resource: { type: "attendance_request", id: row.id, entityId: row.entityId },
+        summary: `resubmitted ${row.type} ${row.startDate}`,
+        before: { startDate: result.before.startDate, endDate: result.before.endDate, details: result.before.details },
+        after: { startDate: row.startDate, endDate: row.endDate, details: row.details },
+      },
+    };
   },
 });
 export async function resubmitAttendanceRequestAction(input: unknown) {
@@ -96,7 +130,15 @@ const decidePipeline = createAction({
     const { request, before, outcome, attendanceRequest } = await decideAttendanceRequest(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
     refresh();
     revalidatePath(`/approvals/attendance/${request.id}`);
-    return { data: { outcome }, audit: { resource: { type: "attendance_request", id: attendanceRequest.id, entityId: request.entityId }, summary: `${input.decision}: ${request.summary}`, before: { status: before.status }, after: { status: request.status, requestStatus: attendanceRequest.status, requestId: request.id } } };
+    return {
+      data: { outcome },
+      audit: {
+        resource: { type: "attendance_request", id: attendanceRequest.id, entityId: request.entityId },
+        summary: `${input.decision}: ${request.summary}`,
+        before: { status: before.status },
+        after: { status: request.status, requestStatus: attendanceRequest.status, requestId: request.id },
+      },
+    };
   },
 });
 export async function decideAttendanceRequestAction(input: unknown) {
@@ -118,7 +160,15 @@ const cancelPipeline = createAction({
     const { before, after } = await cancelAttendanceRequest(input.attendanceRequestId, { personId: user.person.id, isHr: await isHrFor(user, current!.personId) }, input.reason);
     refresh();
     if (after.approvalRequestId) revalidatePath(`/approvals/attendance/${after.approvalRequestId}`);
-    return { data: { status: after.status }, audit: { resource: { type: "attendance_request", id: after.id, entityId: after.entityId }, summary: `${before.status} → ${after.status}: ${after.type} ${after.startDate}`, before: { status: before.status }, after: { status: after.status, reason: input.reason } } };
+    return {
+      data: { status: after.status },
+      audit: {
+        resource: { type: "attendance_request", id: after.id, entityId: after.entityId },
+        summary: `${before.status} → ${after.status}: ${after.type} ${after.startDate}`,
+        before: { status: before.status },
+        after: { status: after.status, reason: input.reason },
+      },
+    };
   },
 });
 export async function cancelAttendanceRequestAction(input: unknown) {
@@ -137,7 +187,15 @@ const confirmHoursPipeline = createAction({
     const { before, after } = await confirmWorkedMinutes(input.attendanceRequestId, user.person.id, input.minutes);
     refresh();
     if (after.approvalRequestId) revalidatePath(`/approvals/attendance/${after.approvalRequestId}`);
-    return { data: { confirmedMinutes: after.confirmedMinutes }, audit: { resource: { type: "attendance_request", id: after.id, entityId: after.entityId }, summary: `hours confirmed: ${input.minutes} min on ${after.startDate}`, before: { confirmedMinutes: before.confirmedMinutes }, after: { confirmedMinutes: after.confirmedMinutes } } };
+    return {
+      data: { confirmedMinutes: after.confirmedMinutes },
+      audit: {
+        resource: { type: "attendance_request", id: after.id, entityId: after.entityId },
+        summary: `hours confirmed: ${input.minutes} min on ${after.startDate}`,
+        before: { confirmedMinutes: before.confirmedMinutes },
+        after: { confirmedMinutes: after.confirmedMinutes },
+      },
+    };
   },
 });
 export async function confirmWorkedMinutesAction(input: unknown) {
@@ -204,7 +262,10 @@ const confirmMonthPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await confirmMonth(user.person.id, input.month);
     refresh();
-    return { data: { status: after.status }, audit: { resource: { type: "timesheet_month", id: after.id, entityId: after.entityId }, summary: `confirmed ${input.month}`, before: { status: before.status }, after: { status: after.status, summary: after.summary } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "timesheet_month", id: after.id, entityId: after.entityId }, summary: `confirmed ${input.month}`, before: { status: before.status }, after: { status: after.status, summary: after.summary } },
+    };
   },
 });
 export async function confirmMonthAction(input: unknown) {
@@ -252,7 +313,10 @@ const reopenMonthPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await reopenMonth(input.personId, input.month, user.person.id, input.comment);
     refresh();
-    return { data: { status: after.status }, audit: { resource: { type: "timesheet_month", id: after.id, entityId: after.entityId }, summary: `sent back ${input.month}: ${input.comment}`, before: { status: before.status }, after: { status: after.status } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "timesheet_month", id: after.id, entityId: after.entityId }, summary: `sent back ${input.month}: ${input.comment}`, before: { status: before.status }, after: { status: after.status } },
+    };
   },
 });
 export async function reopenMonthAction(input: unknown) {
@@ -267,7 +331,14 @@ const lockPipeline = createAction({
     if (input.overrideReason !== null && input.overrideReason.length < 10) throw new ActionError("timesheet_override_reason_short");
     const result = await lockPeriod(input.entityId, input.month, user.person.id, { overrideReason: input.overrideReason });
     refresh();
-    return { data: { people: result.people, days: result.days, toilPosted: result.toilPosted.length, exceptions: result.exceptions.length }, audit: { resource: { type: "timesheet_period", id: result.period.id, entityId: input.entityId }, summary: `locked ${input.month}: ${result.people} people, ${result.days} days${result.exceptions.length ? `, override with ${result.exceptions.length} exception(s)` : ""}`, after: { month: input.month, people: result.people, days: result.days, toilPosted: result.toilPosted, overrideReason: input.overrideReason, exceptions: result.exceptions } } };
+    return {
+      data: { people: result.people, days: result.days, toilPosted: result.toilPosted.length, exceptions: result.exceptions.length },
+      audit: {
+        resource: { type: "timesheet_period", id: result.period.id, entityId: input.entityId },
+        summary: `locked ${input.month}: ${result.people} people, ${result.days} days${result.exceptions.length ? `, override with ${result.exceptions.length} exception(s)` : ""}`,
+        after: { month: input.month, people: result.people, days: result.days, toilPosted: result.toilPosted, overrideReason: input.overrideReason, exceptions: result.exceptions },
+      },
+    };
   },
 });
 export async function lockPeriodAction(input: unknown) {
@@ -280,7 +351,13 @@ const remindPipeline = createAction({
   authorize: (user, input) => canLockPeriod(user.principal, input.entityId),
   run: async ({ input }) => {
     const { told, reviewers } = await remindToConfirm(input.entityId, input.month);
-    return { data: { told, reviewers }, audit: { resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId }, summary: `reminded ${told} people to confirm ${input.month}${reviewers ? ` and ${reviewers} reviewer(s) of flagged check-ins` : ""}` } };
+    return {
+      data: { told, reviewers },
+      audit: {
+        resource: { type: "timesheet_period", id: `${input.entityId}:${input.month}`, entityId: input.entityId },
+        summary: `reminded ${told} people to confirm ${input.month}${reviewers ? ` and ${reviewers} reviewer(s) of flagged check-ins` : ""}`,
+      },
+    };
   },
 });
 export async function remindToConfirmAction(input: unknown) {
@@ -293,13 +370,25 @@ const signedMinutes = z.preprocess((value) => (typeof value === "string" && /^-?
 
 const adjustPipeline = createAction({
   name: "attendance.adjustment.create",
-  input: z.object({ personId: z.uuid(), month, date: optional(day), reason: z.string().trim().min(5).max(1000), ...Object.fromEntries(ADJUSTMENT_FIELDS.map((field) => [field, signedMinutes])) } as { personId: z.ZodUUID; month: typeof month; date: ReturnType<typeof optional<typeof day>>; reason: z.ZodString } & Record<(typeof ADJUSTMENT_FIELDS)[number], typeof signedMinutes>),
+  input: z.object({ personId: z.uuid(), month, date: optional(day), reason: z.string().trim().min(5).max(1000), ...Object.fromEntries(ADJUSTMENT_FIELDS.map((field) => [field, signedMinutes])) } as {
+    personId: z.ZodUUID;
+    month: typeof month;
+    date: ReturnType<typeof optional<typeof day>>;
+    reason: z.ZodString;
+  } & Record<(typeof ADJUSTMENT_FIELDS)[number], typeof signedMinutes>),
   authorize: (user, input) => isHrFor(user, input.personId),
   run: async ({ user, input }) => {
     const deltas = Object.fromEntries(ADJUSTMENT_FIELDS.flatMap((field) => (input[field] ? [[field, input[field]]] : [])));
     const row = await createAdjustment({ personId: input.personId, month: input.month, date: input.date, deltas, reason: input.reason }, user.person.id);
     refresh();
-    return { data: { id: row.id }, audit: { resource: { type: "timesheet_adjustment", id: row.id, entityId: row.entityId }, summary: `adjustment to locked ${input.month}: ${input.reason}`, after: { personId: input.personId, month: input.month, date: input.date, deltas: row.deltas } } };
+    return {
+      data: { id: row.id },
+      audit: {
+        resource: { type: "timesheet_adjustment", id: row.id, entityId: row.entityId },
+        summary: `adjustment to locked ${input.month}: ${input.reason}`,
+        after: { personId: input.personId, month: input.month, date: input.date, deltas: row.deltas },
+      },
+    };
   },
 });
 export async function createAdjustmentAction(input: unknown) {
@@ -316,7 +405,10 @@ const voidAdjustmentPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await voidAdjustment(input.adjustmentId, user.person.id, input.reason);
     refresh();
-    return { data: { status: after.status }, audit: { resource: { type: "timesheet_adjustment", id: after.id, entityId: after.entityId }, summary: `adjustment voided: ${input.reason}`, before: { status: before.status, deltas: before.deltas }, after: { status: after.status } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "timesheet_adjustment", id: after.id, entityId: after.entityId }, summary: `adjustment voided: ${input.reason}`, before: { status: before.status, deltas: before.deltas }, after: { status: after.status } },
+    };
   },
 });
 export async function voidAdjustmentAction(input: unknown) {
@@ -347,7 +439,17 @@ const exportPipeline = createAction({
     // The screen's own function with the viewer's principal: the file holds what the screen shows.
     const { lines } = await listAnomalies(user.principal, input.month, input);
     const rows = lines.slice(0, EXPORT_ROW_LIMIT);
-    const table = toTable([{ header: "Loại", value: (row: (typeof rows)[number]) => row.kind }, { header: "Nhân viên", value: (row) => row.fullName ?? "" }, { header: "Ngày", value: (row) => row.date ?? "" }, { header: "Phút", value: (row) => row.minutes ?? "" }, { header: "Chi tiết", value: (row) => row.detail ?? "" }, { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") }], rows);
+    const table = toTable(
+      [
+        { header: "Loại", value: (row: (typeof rows)[number]) => row.kind },
+        { header: "Nhân viên", value: (row) => row.fullName ?? "" },
+        { header: "Ngày", value: (row) => row.date ?? "" },
+        { header: "Phút", value: (row) => row.minutes ?? "" },
+        { header: "Chi tiết", value: (row) => row.detail ?? "" },
+        { header: "Chặn khoá công", value: (row) => (row.blocking ? "x" : "") },
+      ],
+      rows,
+    );
     const file: ExportFile = { fileName: `attendance-anomalies-${input.month}-${todayInVietnam()}`, table, rowCount: rows.length, truncated: lines.length > rows.length };
     return { data: file, audit: { resource: { type: "export:attendance_anomalies", id: input.month, entityId: input.entityId }, summary: `${file.rowCount} rows`, after: { filters: input, rowCount: file.rowCount } } };
   },

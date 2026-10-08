@@ -62,26 +62,26 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
         ) : null}
         {results.byKpi.length > 0 ? (
           <TableCard>
-          <Table numbered={false}>
-            <TableHeader>
-              <TableRow>
-                <TableHead kind="text">{t("kpi.columns.kpi")}</TableHead>
-                <TableHead kind="date">{t("kpi.year.periods")}</TableHead>
-                <TableHead kind="number">{t("kpi.year.weightMonths")}</TableHead>
-                <TableHead kind="percent">{t("kpi.year.average")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {results.byKpi.map((line) => (
-                <TableRow key={line.kpiCode}>
-                  <TableCell>{line.kpiName}</TableCell>
-                  <TableCell className="whitespace-normal text-xs text-muted-foreground">{line.periods.map(periodLabel).join(", ")}</TableCell>
-                  <TableCell kind="number">{line.weightMonths}</TableCell>
-                  <TableCell kind="percent">{bpText(format, line.averageBp)}</TableCell>
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="text">{t("kpi.columns.kpi")}</TableHead>
+                  <TableHead kind="date">{t("kpi.year.periods")}</TableHead>
+                  <TableHead kind="number">{t("kpi.year.weightMonths")}</TableHead>
+                  <TableHead kind="percent">{t("kpi.year.average")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {results.byKpi.map((line) => (
+                  <TableRow key={line.kpiCode}>
+                    <TableCell>{line.kpiName}</TableCell>
+                    <TableCell className="whitespace-normal text-xs text-muted-foreground">{line.periods.map(periodLabel).join(", ")}</TableCell>
+                    <TableCell kind="number">{line.weightMonths}</TableCell>
+                    <TableCell kind="percent">{bpText(format, line.averageBp)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </TableCard>
         ) : null}
         <p className="text-xs text-muted-foreground">{t("kpi.year.formula")}</p>

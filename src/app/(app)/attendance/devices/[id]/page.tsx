@@ -41,7 +41,11 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
 
       {unmapped.length > 0 ? (
         <TableCard className="border-destructive/40">
-          <TableCardHeader title={t("map.unmappedTitle", { count: unmapped.length })} description={t("map.unmappedHint")} actions={<ExportButton action={exportUnmappedAction} input={{ deviceId: id }} label={t("map.export")} failedLabel={t("errors.generic")} truncatedLabel={t("map.exportTruncated")} />} />
+          <TableCardHeader
+            title={t("map.unmappedTitle", { count: unmapped.length })}
+            description={t("map.unmappedHint")}
+            actions={<ExportButton action={exportUnmappedAction} input={{ deviceId: id }} label={t("map.export")} failedLabel={t("errors.generic")} truncatedLabel={t("map.exportTruncated")} />}
+          />
           <List>
             {unmapped.map((row) => (
               <ListItem key={row.deviceUserId} className="flex-wrap items-end justify-between">
@@ -69,9 +73,13 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
             {map.length === 0 ? <TableEmpty>{t("map.empty")}</TableEmpty> : null}
             {map.map((row) => (
               <TableRow key={row.id}>
-                <TableCell kind="id" className="font-medium text-foreground">{row.deviceUserId}</TableCell>
+                <TableCell kind="id" className="font-medium text-foreground">
+                  {row.deviceUserId}
+                </TableCell>
                 <TableCell>
-                  <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink>
+                  <RecordLink kind="person" id={row.personId}>
+                    {row.fullName}
+                  </RecordLink>
                   {row.employeeCode ? <span className="text-muted-foreground"> · {row.employeeCode}</span> : null}
                 </TableCell>
                 <TableCell kind="actions">

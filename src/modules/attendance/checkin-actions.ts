@@ -21,8 +21,14 @@ const punchPipeline = createAction({
     direction: z.enum(["in", "out"]),
     // What the browser's Geolocation API returned; null when the person refused or the phone could not tell.
     // There is deliberately no time field: the server's clock is the only clock.
-    position: z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(1_000_000) }).nullable().default(null),
-    deviceInfo: z.record(z.string().max(40), z.union([z.string().max(200), z.number(), z.boolean()])).nullable().default(null),
+    position: z
+      .object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(1_000_000) })
+      .nullable()
+      .default(null),
+    deviceInfo: z
+      .record(z.string().max(40), z.union([z.string().max(200), z.number(), z.boolean()]))
+      .nullable()
+      .default(null),
     note: optional(z.string().trim().max(300)),
   }),
   // One's own punch needs no permission; the service refuses people who are not employed.
@@ -36,9 +42,21 @@ const punchPipeline = createAction({
     const result = await recordAppPunch({ person: user.person, direction: input.direction, position, ipAddress: user.request.ipAddress, userAgent: user.request.userAgent, deviceInfo, note: input.note });
     revalidatePath("/attendance", "layout");
     return {
-      data: { id: result.punch.id, at: result.punch.at.toISOString(), direction: result.punch.direction, outcome: result.outcome, flags: result.flags, locationName: result.locationName, distanceM: result.punch.distanceM, duplicate: result.duplicate },
+      data: {
+        id: result.punch.id,
+        at: result.punch.at.toISOString(),
+        direction: result.punch.direction,
+        outcome: result.outcome,
+        flags: result.flags,
+        locationName: result.locationName,
+        distanceM: result.punch.distanceM,
+        duplicate: result.duplicate,
+      },
       // Where exactly stays on the punch row (personal tier); the audit log keeps the verdict.
-      audit: { resource: { type: "punch", id: result.punch.id, entityId: result.punch.entityId }, summary: `${result.punch.direction} ${result.outcome}${result.flags.length ? `: ${result.flags.join(", ")}` : ""}${result.duplicate ? " (repeat)" : ""}` },
+      audit: {
+        resource: { type: "punch", id: result.punch.id, entityId: result.punch.entityId },
+        summary: `${result.punch.direction} ${result.outcome}${result.flags.length ? `: ${result.flags.join(", ")}` : ""}${result.duplicate ? " (repeat)" : ""}`,
+      },
     };
   },
 });
@@ -57,7 +75,15 @@ const reviewPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after } = await reviewPunch(input.id, user.person.id, { decision: input.decision, note: input.note });
     revalidatePath("/attendance", "layout");
-    return { data: { id: after.id, reviewStatus: after.reviewStatus }, audit: { resource: { type: "punch", id: after.id, entityId: after.entityId }, summary: `${after.reviewStatus}: ${after.flags.join(", ")}`, before: { reviewStatus: before.reviewStatus }, after: { reviewStatus: after.reviewStatus, reviewNote: after.reviewNote } } };
+    return {
+      data: { id: after.id, reviewStatus: after.reviewStatus },
+      audit: {
+        resource: { type: "punch", id: after.id, entityId: after.entityId },
+        summary: `${after.reviewStatus}: ${after.flags.join(", ")}`,
+        before: { reviewStatus: before.reviewStatus },
+        after: { reviewStatus: after.reviewStatus, reviewNote: after.reviewNote },
+      },
+    };
   },
 });
 export async function reviewPunchAction(input: unknown) {
@@ -93,7 +119,17 @@ const saveLocationPipeline = createAction({
   run: async ({ input }) => {
     const { before, after } = await saveLocation(input);
     revalidatePath("/attendance", "layout");
-    const facts = (row: typeof after) => ({ name: row.name, latitude: row.latitude, longitude: row.longitude, radiusM: row.radiusM, accuracyLimitM: row.accuracyLimitM, ipAllowlist: row.ipAllowlist, rule: row.rule, mode: row.mode, isActive: row.isActive });
+    const facts = (row: typeof after) => ({
+      name: row.name,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      radiusM: row.radiusM,
+      accuracyLimitM: row.accuracyLimitM,
+      ipAllowlist: row.ipAllowlist,
+      rule: row.rule,
+      mode: row.mode,
+      isActive: row.isActive,
+    });
     return { data: { id: after.id }, audit: { resource: { type: "work_location", id: after.id, entityId: after.entityId }, summary: after.name, before: before ? facts(before) : null, after: facts(after) } };
   },
 });

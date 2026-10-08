@@ -34,12 +34,22 @@ const yesNo = oneOf({ yes: ["có", "x", "1", "true", "yes", "y"], no: ["không",
 export const profileColumns = {
   employeeCode: { headers: ["Mã nhân viên", "Employee code"], required: true, parse: code(24), example: "SZM-0004" } as Column<string>,
   profile: { headers: ["Hồ sơ trả lương", "Pay profile"], required: true, parse: oneOf({ statutory: ["Đầy đủ", "Statutory"], simple: ["Đơn giản", "Simple"] }), example: "statutory" } as Column<"statutory" | "simple">,
-  simpleBasis: { headers: ["Cơ sở", "Basis"], parse: oneOf({ probation: ["Thử việc"], internship: ["Thực tập"], service_contract: ["Hợp đồng dịch vụ", "CTV"], short_term: ["Ngắn hạn"], retiree: ["Nghỉ hưu"], other: ["Khác"] }), example: "" } as Column<PayProfileRow["simpleBasis"] & string>,
+  simpleBasis: {
+    headers: ["Cơ sở", "Basis"],
+    parse: oneOf({ probation: ["Thử việc"], internship: ["Thực tập"], service_contract: ["Hợp đồng dịch vụ", "CTV"], short_term: ["Ngắn hạn"], retiree: ["Nghỉ hưu"], other: ["Khác"] }),
+    example: "",
+  } as Column<PayProfileRow["simpleBasis"] & string>,
   validFrom: { headers: ["Hiệu lực từ", "Valid from"], required: true, parse: day, example: "2026-11-01" } as Column<IsoDate>,
   taxResidency: { headers: ["Cư trú thuế", "Tax residency"], parse: oneOf({ resident: ["Cư trú"], non_resident: ["Không cư trú"] }), example: "resident" } as Column<"resident" | "non_resident">,
-  pitMethod: { headers: ["Cách tính thuế", "PIT method"], parse: oneOf({ progressive: ["Lũy tiến"], flat_without_contract: ["Khấu trừ theo tỷ lệ"], flat_non_resident: ["Không cư trú"] }), example: "progressive" } as Column<PayProfileRow["pitMethod"]>,
+  pitMethod: { headers: ["Cách tính thuế", "PIT method"], parse: oneOf({ progressive: ["Lũy tiến"], flat_without_contract: ["Khấu trừ theo tỷ lệ"], flat_non_resident: ["Không cư trú"] }), example: "progressive" } as Column<
+    PayProfileRow["pitMethod"]
+  >,
   pitCommitment: { headers: ["Cam kết 08", "Commitment form"], parse: yesNo, example: "không" } as Column<"yes" | "no">,
-  insuranceExemption: { headers: ["Miễn bảo hiểm", "Insurance exemption"], parse: oneOf({ probation: ["Thử việc"], retiree: ["Nghỉ hưu"], insured_elsewhere: ["Đóng nơi khác"], foreigner: ["Người nước ngoài"], other: ["Khác"] }), example: "" } as Column<NonNullable<PayProfileRow["insuranceExemption"]>>,
+  insuranceExemption: {
+    headers: ["Miễn bảo hiểm", "Insurance exemption"],
+    parse: oneOf({ probation: ["Thử việc"], retiree: ["Nghỉ hưu"], insured_elsewhere: ["Đóng nơi khác"], foreigner: ["Người nước ngoài"], other: ["Khác"] }),
+    example: "",
+  } as Column<NonNullable<PayProfileRow["insuranceExemption"]>>,
   unionMember: { headers: ["Đoàn viên", "Union member"], parse: yesNo, example: "có" } as Column<"yes" | "no">,
   reviewDate: { headers: ["Ngày xem lại", "Review date"], parse: day, example: "" } as Column<IsoDate>,
   note: { headers: ["Ghi chú", "Note"], parse: text(500), example: "" } as Column<string>,
@@ -64,7 +74,13 @@ export async function resolveProfileRows(rows: Row[], user: { principal: Princip
   const byCode = new Map(facts.flatMap((fact) => (fact.employeeCode ? [[fact.employeeCode.toUpperCase(), fact] as const] : [])));
   const employmentIds = facts.map((fact) => fact.employmentId!);
   const table = schema.payProfile;
-  const existing = employmentIds.length > 0 ? await executor.select({ id: table.id, employmentId: table.employmentId, status: table.status, validFrom: table.validFrom, validTo: table.validTo }).from(table).where(and(inArray(table.employmentId, employmentIds), inArray(table.status, ["approved", "proposed"]))) : [];
+  const existing =
+    employmentIds.length > 0
+      ? await executor
+          .select({ id: table.id, employmentId: table.employmentId, status: table.status, validFrom: table.validFrom, validTo: table.validTo })
+          .from(table)
+          .where(and(inArray(table.employmentId, employmentIds), inArray(table.status, ["approved", "proposed"])))
+      : [];
   const seen = new Set<string>();
 
   for (const row of rows) {
@@ -167,7 +183,14 @@ export async function listProfileImport(principal: Principal, batchId: string, e
     .from(schema.payProfile)
     .where(and(eq(schema.payProfile.importBatchId, batchId), canDecidePayRules(principal) ? undefined : withinReach(schema.payProfile.entityId, compensationReach(principal))))
     .orderBy(schema.payProfile.createdAt);
-  const names = new Map((await listPayrollNames(rows.map((row) => row.personId), executor)).map((name) => [name.personId, name]));
+  const names = new Map(
+    (
+      await listPayrollNames(
+        rows.map((row) => row.personId),
+        executor,
+      )
+    ).map((name) => [name.personId, name]),
+  );
   return rows.map((row) => ({ ...row, fullName: names.get(row.personId)?.fullName ?? "—", employeeCode: names.get(row.personId)?.employeeCode ?? null }));
 }
 

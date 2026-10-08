@@ -20,7 +20,19 @@ import { CrmButton, CrmForm } from "./common";
 export type ServiceChoice = { id: string; code: string; name: string; unit: string; isRecurring: boolean; format: string | null; channel: string | null; priceVnd: number | null; roleMinutes: { role: string; minutes: number }[] };
 type Role = { role: string; hours: string };
 type Line = { key: number; serviceId: string; title: string; description: string; quantity: string; unit: string; unitPriceVnd: string; discountPercent: string; months: string; format: string; channel: string; roles: Role[] };
-export type QuoteLineValues = { serviceId: string | null; title: string; description: string | null; quantity: number; unit: string | null; unitPriceVnd: number; discountBp: number; months: number | null; format: string | null; channel: string | null; roleMinutes: { role: string; minutes: number }[] };
+export type QuoteLineValues = {
+  serviceId: string | null;
+  title: string;
+  description: string | null;
+  quantity: number;
+  unit: string | null;
+  unitPriceVnd: number;
+  discountBp: number;
+  months: number | null;
+  format: string | null;
+  channel: string | null;
+  roleMinutes: { role: string; minutes: number }[];
+};
 
 const hours = (minutes: number) => String(Math.round((minutes / 60) * 100) / 100);
 const toLine = (key: number, line?: QuoteLineValues): Line => ({
@@ -39,7 +51,19 @@ const toLine = (key: number, line?: QuoteLineValues): Line => ({
 });
 const number = (value: string) => Number(value.replace(/[.,\s]/g, "")) || 0;
 
-export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates }: { quoteId: string; quote: { title: string; validUntil: string | null; vatRateBp: number; intro: string | null; terms: string | null }; lines: QuoteLineValues[]; services: ServiceChoice[]; vatRates: number[] }) {
+export function QuoteEditor({
+  quoteId,
+  quote,
+  lines: initial,
+  services,
+  vatRates,
+}: {
+  quoteId: string;
+  quote: { title: string; validUntil: string | null; vatRateBp: number; intro: string | null; terms: string | null };
+  lines: QuoteLineValues[];
+  services: ServiceChoice[];
+  vatRates: number[];
+}) {
   const t = useTranslations("crm.quote");
   const tFormats = useTranslations("work.formats");
   const tChannels = useTranslations("work.channels");
@@ -52,9 +76,25 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
     const service = services.find((row) => row.id === serviceId);
     if (!service) return update(key, { serviceId: "" });
     const quantity = number(lines.find((row) => row.key === key)?.quantity ?? "1") || 1;
-    update(key, { serviceId, title: service.name, unit: service.unit, unitPriceVnd: service.priceVnd === null ? "" : String(service.priceVnd), format: service.format ?? "", channel: service.channel ?? "", months: service.isRecurring ? "12" : "", roles: service.roleMinutes.map((entry) => ({ role: entry.role, hours: hours(entry.minutes * quantity * (service.isRecurring ? 12 : 1)) })) });
+    update(key, {
+      serviceId,
+      title: service.name,
+      unit: service.unit,
+      unitPriceVnd: service.priceVnd === null ? "" : String(service.priceVnd),
+      format: service.format ?? "",
+      channel: service.channel ?? "",
+      months: service.isRecurring ? "12" : "",
+      roles: service.roleMinutes.map((entry) => ({ role: entry.role, hours: hours(entry.minutes * quantity * (service.isRecurring ? 12 : 1)) })),
+    });
   };
-  const totals = useMemo(() => quoteTotals(lines.map((line) => ({ quantity: number(line.quantity), unitPriceVnd: number(line.unitPriceVnd), discountBp: Math.round(Number(line.discountPercent || 0) * 100), months: line.months ? number(line.months) : null })), vat), [lines, vat]);
+  const totals = useMemo(
+    () =>
+      quoteTotals(
+        lines.map((line) => ({ quantity: number(line.quantity), unitPriceVnd: number(line.unitPriceVnd), discountBp: Math.round(Number(line.discountPercent || 0) * 100), months: line.months ? number(line.months) : null })),
+        vat,
+      ),
+    [lines, vat],
+  );
   const money = (value: number) => format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
   return (
@@ -94,7 +134,14 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
               <Input name={`lines.${index}.quantity`} type="number" min={1} value={line.quantity} onChange={(event) => update(line.key, { quantity: event.target.value })} aria-label={t("quantity")} placeholder={t("quantity")} />
               <Input name={`lines.${index}.unit`} maxLength={40} value={line.unit} onChange={(event) => update(line.key, { unit: event.target.value })} aria-label={t("unit")} placeholder={t("unit")} />
               <MoneyInput name={`lines.${index}.unitPriceVnd`} value={line.unitPriceVnd} onChange={(event) => update(line.key, { unitPriceVnd: event.target.value })} aria-label={t("unitPrice")} placeholder={t("unitPrice")} />
-              <Input name={`lines.${index}.discountPercent`} inputMode="decimal" value={line.discountPercent} onChange={(event) => update(line.key, { discountPercent: event.target.value })} aria-label={t("discount")} placeholder={t("discount")} />
+              <Input
+                name={`lines.${index}.discountPercent`}
+                inputMode="decimal"
+                value={line.discountPercent}
+                onChange={(event) => update(line.key, { discountPercent: event.target.value })}
+                aria-label={t("discount")}
+                placeholder={t("discount")}
+              />
               <Input name={`lines.${index}.months`} type="number" min={1} max={120} value={line.months} onChange={(event) => update(line.key, { months: event.target.value })} aria-label={t("months")} placeholder={t("monthsHint")} />
               <p className="self-center text-right text-sm tabular-nums">{money(Math.max(0, number(line.quantity) * number(line.unitPriceVnd) * (line.months ? number(line.months) : 1) * (1 - Number(line.discountPercent || 0) / 100)))}</p>
             </div>

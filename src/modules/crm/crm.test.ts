@@ -57,9 +57,21 @@ import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "seller" | "am" | "lead" | "director" | "finance" | "colleague" | "member" | "team" | "account" | "contact", string>;
 const today = todayInVietnam();
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const failure = (promise: Promise<unknown>) => promise.then(() => null, (error: Error & { details?: unknown }) => error);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const failure = (promise: Promise<unknown>) =>
+  promise.then(
+    () => null,
+    (error: Error & { details?: unknown }) => error,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const grantsOf: Record<string, Grant[]> = {};
 const principalOf = (personId: string): Principal => ({ personId, workforceType: "employee", grants: grantsOf[personId] ?? [] });
 const viewerOf = (personId: string, ties: [string, AccountTie[]][] = []): CrmViewer => ({ principal: principalOf(personId), ties: new Map(ties) });
@@ -72,21 +84,35 @@ beforeAll(async () => {
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const key of ["seller", "am", "lead", "director", "finance", "colleague", "member"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.seller, role: "sales", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-    { personId: ids.director, role: "entity_director", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-    { personId: ids.finance, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.seller, role: "sales", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+      { personId: ids.director, role: "entity_director", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+      { personId: ids.finance, role: "finance", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
+    ]);
   grantsOf[ids.seller] = [{ role: "sales", scope: { type: "entity", id: szm.id } }];
   grantsOf[ids.director] = [{ role: "entity_director", scope: { type: "entity", id: szm.id } }];
   grantsOf[ids.finance] = [{ role: "finance", scope: { type: "entity", id: szm.id } }];
-  await db().insert(schema.statutoryParameter).values([
-    { key: "crm.settings", validFrom: "2021-01-01", value: { staleDealDays: 14, renewalLeadDays: 45, receivableReminderDays: [1, 15, 30], defaultPaymentTermsDays: 30, quoteValidityDays: 30, quoteDiscountApprovalBp: 1000, quoteMarginFloorBp: 3000 }, status: "approved", isVerified: false, legalReference: "test" },
-    { key: "tax.vat", validFrom: "2021-01-01", value: { defaultBp: 1000, allowedBp: [0, 800, 1000] }, status: "approved", isVerified: false, legalReference: "test" },
-  ]);
+  await db()
+    .insert(schema.statutoryParameter)
+    .values([
+      {
+        key: "crm.settings",
+        validFrom: "2021-01-01",
+        value: { staleDealDays: 14, renewalLeadDays: 45, receivableReminderDays: [1, 15, 30], defaultPaymentTermsDays: 30, quoteValidityDays: 30, quoteDiscountApprovalBp: 1000, quoteMarginFloorBp: 3000 },
+        status: "approved",
+        isVerified: false,
+        legalReference: "test",
+      },
+      { key: "tax.vat", validFrom: "2021-01-01", value: { defaultBp: 1000, allowedBp: [0, 800, 1000] }, status: "approved", isVerified: false, legalReference: "test" },
+    ]);
   await seedStages(db() as never);
   const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.team = team.id;
@@ -95,18 +121,66 @@ beforeAll(async () => {
 
 describe("accounts and contacts", () => {
   it("makes an account with its profile, and stops a likely duplicate until confirmed", async () => {
-    const { client, profile } = await createAccount({ code: "VNM", name: "Vinamilk", entityId: ids.szm, note: null, profile: { legalName: "Công ty CP Sữa Việt Nam", taxCode: "0300588569", address: null, website: null, industry: "FMCG", size: "enterprise", source: "referral", tier: "a", contractingEntityId: ids.szm }, salesOwnerPersonId: ids.seller, accountManagerPersonId: ids.am, confirmDuplicate: false });
+    const { client, profile } = await createAccount({
+      code: "VNM",
+      name: "Vinamilk",
+      entityId: ids.szm,
+      note: null,
+      profile: { legalName: "Công ty CP Sữa Việt Nam", taxCode: "0300588569", address: null, website: null, industry: "FMCG", size: "enterprise", source: "referral", tier: "a", contractingEntityId: ids.szm },
+      salesOwnerPersonId: ids.seller,
+      accountManagerPersonId: ids.am,
+      confirmDuplicate: false,
+    });
     ids.account = client.id;
     expect(profile).toMatchObject({ taxCode: "0300588569", lifecycle: "prospect", salesOwnerPersonId: ids.seller });
     expect((await findAccount(client.id))?.client.accountManagerPersonId).toBe(ids.am);
-    const duplicate = await failure(createAccount({ code: "VNM2", name: "Sữa Việt Nam", entityId: ids.szm, note: null, profile: { legalName: null, taxCode: "0300 588 569", address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null }, salesOwnerPersonId: null, accountManagerPersonId: null, confirmDuplicate: false }));
+    const duplicate = await failure(
+      createAccount({
+        code: "VNM2",
+        name: "Sữa Việt Nam",
+        entityId: ids.szm,
+        note: null,
+        profile: { legalName: null, taxCode: "0300 588 569", address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null },
+        salesOwnerPersonId: null,
+        accountManagerPersonId: null,
+        confirmDuplicate: false,
+      }),
+    );
     expect(duplicate?.message).toBe("account_duplicate");
     expect(duplicate?.details).toEqual({ duplicates: [{ clientId: client.id, name: "Vinamilk", reason: "tax_code" }] });
-    expect(await fails(createAccount({ code: "BAD", name: "Bad", entityId: null, note: null, profile: { legalName: null, taxCode: "12345", address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null }, salesOwnerPersonId: null, accountManagerPersonId: null, confirmDuplicate: true }))).toBe("tax_code_invalid");
+    expect(
+      await fails(
+        createAccount({
+          code: "BAD",
+          name: "Bad",
+          entityId: null,
+          note: null,
+          profile: { legalName: null, taxCode: "12345", address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null },
+          salesOwnerPersonId: null,
+          accountManagerPersonId: null,
+          confirmDuplicate: true,
+        }),
+      ),
+    ).toBe("tax_code_invalid");
   });
 
   it("keeps contacts' details from readers outside the team, and erases them on request keeping the name", async () => {
-    const input = { fullName: "Nguyễn Thị Lan", title: "Brand manager", email: "Lan@Vinamilk.vn", phone: "0901234567", zalo: null, decisionRole: "decision_maker" as const, isPrimary: true, preferredChannel: "email", birthday: null, notes: "Prefers mornings", source: "business_card", lawfulBasis: "legitimate_interest", status: "active" as const, brandIds: [] };
+    const input = {
+      fullName: "Nguyễn Thị Lan",
+      title: "Brand manager",
+      email: "Lan@Vinamilk.vn",
+      phone: "0901234567",
+      zalo: null,
+      decisionRole: "decision_maker" as const,
+      isPrimary: true,
+      preferredChannel: "email",
+      birthday: null,
+      notes: "Prefers mornings",
+      source: "business_card",
+      lawfulBasis: "legitimate_interest",
+      status: "active" as const,
+      brandIds: [],
+    };
     const { after } = await saveContact(ids.account, null, input, ids.seller);
     ids.contact = after.id;
     expect(after.email).toBe("lan@vinamilk.vn");
@@ -129,7 +203,21 @@ describe("accounts and contacts", () => {
   });
 
   it("puts a follow-up on its owner's day, tells them, and reminds once on the morning it is due", async () => {
-    const { logged, followUp } = await recordActivity({ kind: "call", subject: "Intro call", body: null, clientId: ids.account, contactId: ids.contact, dealId: null, leadId: null, occurredAt: new Date(), outcome: "Wants a Tết proposal", followUp: { ownerPersonId: ids.am, dueOn: today, subject: "Send the Tết proposal" } }, ids.seller);
+    const { logged, followUp } = await recordActivity(
+      {
+        kind: "call",
+        subject: "Intro call",
+        body: null,
+        clientId: ids.account,
+        contactId: ids.contact,
+        dealId: null,
+        leadId: null,
+        occurredAt: new Date(),
+        outcome: "Wants a Tết proposal",
+        followUp: { ownerPersonId: ids.am, dueOn: today, subject: "Send the Tết proposal" },
+      },
+      ids.seller,
+    );
     expect(logged?.doneAt).not.toBeNull();
     expect(followUp).toMatchObject({ subject: "Send the Tết proposal", ownerPersonId: ids.am, dueOn: today, doneAt: null, kind: "task" });
     expect(await noticesOf(ids.am, "crm.followup_assigned")).toHaveLength(1);
@@ -144,16 +232,72 @@ describe("leads and the pipeline", () => {
   let dealId = "";
 
   it("takes a colleague's referral to the sales directors and credits the referrer when it converts", async () => {
-    const lead = await createLead({ entityId: ids.szm, clientId: null, companyName: "Vinamilk", contactName: "Lan", contactTitle: null, email: null, phone: null, need: "Tết campaign", budgetText: "~200tr", source: "referral" }, { personId: ids.colleague, sells: false }, null);
+    const lead = await createLead(
+      { entityId: ids.szm, clientId: null, companyName: "Vinamilk", contactName: "Lan", contactTitle: null, email: null, phone: null, need: "Tết campaign", budgetText: "~200tr", source: "referral" },
+      { personId: ids.colleague, sells: false },
+      null,
+    );
     expect(lead).toMatchObject({ referrerPersonId: ids.colleague, ownerPersonId: null });
     expect(await noticesOf(ids.director, "crm.lead_assigned")).toHaveLength(1);
-    const { deal } = await convertLead(lead.id, { account: { clientId: ids.account }, contact: { contactId: ids.contact }, deal: { title: "Tết 2027 campaign", brandId: null, serviceLines: ["video", "social"], oneOffVnd: null, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: ids.team, entityId: ids.szm, source: null, competitors: null, nextStep: "Kick-off in January", stageId: null, ownerPersonId: ids.seller } }, ids.seller);
+    const { deal } = await convertLead(
+      lead.id,
+      {
+        account: { clientId: ids.account },
+        contact: { contactId: ids.contact },
+        deal: {
+          title: "Tết 2027 campaign",
+          brandId: null,
+          serviceLines: ["video", "social"],
+          oneOffVnd: null,
+          monthlyVnd: null,
+          months: null,
+          probability: null,
+          expectedCloseOn: null,
+          teamId: ids.team,
+          entityId: ids.szm,
+          source: null,
+          competitors: null,
+          nextStep: "Kick-off in January",
+          stageId: null,
+          ownerPersonId: ids.seller,
+        },
+      },
+      ids.seller,
+    );
     dealId = deal.id;
     expect(deal.code).toMatch(/^DL-SZM-\d{2}-001$/);
     expect(deal).toMatchObject({ status: "open", source: "referral", ownerPersonId: ids.seller, clientId: ids.account });
     expect((await findLead(lead.id))?.status).toBe("converted");
     expect(await noticesOf(ids.colleague, "crm.lead_converted")).toHaveLength(1);
-    expect(await fails(convertLead(lead.id, { account: { clientId: ids.account }, contact: null, deal: { title: "again", brandId: null, serviceLines: [], oneOffVnd: null, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: null, entityId: ids.szm, source: null, competitors: null, nextStep: null, stageId: null, ownerPersonId: ids.seller } }, ids.seller))).toBe("lead_closed");
+    expect(
+      await fails(
+        convertLead(
+          lead.id,
+          {
+            account: { clientId: ids.account },
+            contact: null,
+            deal: {
+              title: "again",
+              brandId: null,
+              serviceLines: [],
+              oneOffVnd: null,
+              monthlyVnd: null,
+              months: null,
+              probability: null,
+              expectedCloseOn: null,
+              teamId: null,
+              entityId: ids.szm,
+              source: null,
+              competitors: null,
+              nextStep: null,
+              stageId: null,
+              ownerPersonId: ids.seller,
+            },
+          },
+          ids.seller,
+        ),
+      ),
+    ).toBe("lead_closed");
   });
 
   it("refuses a stage whose gates the deal does not meet, and names them", async () => {
@@ -164,7 +308,10 @@ describe("leads and the pipeline", () => {
     expect(refused?.message).toBe("deal_gates");
     expect(refused?.details).toEqual({ gates: ["contacts", "close_date"] });
     await setDealContacts(dealId, [{ contactId: ids.contact, role: "decides" }]);
-    await db().update(schema.crmDeal).set({ expectedCloseOn: addDays(today, 20) }).where(eq(schema.crmDeal.id, dealId));
+    await db()
+      .update(schema.crmDeal)
+      .set({ expectedCloseOn: addDays(today, 20) })
+      .where(eq(schema.crmDeal.id, dealId));
     expect((await moveDeal(dealId, proposal.id, ids.seller)).after.stageId).toBe(proposal.id);
   });
 
@@ -178,7 +325,19 @@ describe("leads and the pipeline", () => {
       intro: null,
       terms: null,
       lines: [
-        { serviceId: null, title: "TVC 30s", description: null, quantity: 1, unit: "video", unitPriceVnd: 120_000_000, discountBp: 1500, months: null, format: "tvc", channel: "youtube", roleMinutes: [{ role: "Video editing", minutes: 1920 }] },
+        {
+          serviceId: null,
+          title: "TVC 30s",
+          description: null,
+          quantity: 1,
+          unit: "video",
+          unitPriceVnd: 120_000_000,
+          discountBp: 1500,
+          months: null,
+          format: "tvc",
+          channel: "youtube",
+          roleMinutes: [{ role: "Video editing", minutes: 1920 }],
+        },
         { serviceId: null, title: "Page management", description: null, quantity: 1, unit: "month", unitPriceVnd: 25_000_000, discountBp: 0, months: 3, format: null, channel: "facebook", roleMinutes: [{ role: "Account", minutes: 1800 }] },
       ],
     });
@@ -219,7 +378,21 @@ describe("leads and the pipeline", () => {
   });
 
   it("makes the delivery project from the accepted quote and hands it to its lead", async () => {
-    const { project } = await setUpDelivery(dealId, { teamId: ids.team, leadPersonId: ids.lead, name: "Vinamilk — Tết 2027", templateId: null, startDate: "2026-11-02", dueDate: null, visibility: "team", contractId: null, note: { context: "Won against two agencies", questions: "Which KOLs?" } }, ids.seller);
+    const { project } = await setUpDelivery(
+      dealId,
+      {
+        teamId: ids.team,
+        leadPersonId: ids.lead,
+        name: "Vinamilk — Tết 2027",
+        templateId: null,
+        startDate: "2026-11-02",
+        dueDate: null,
+        visibility: "team",
+        contractId: null,
+        note: { context: "Won against two agencies", questions: "Which KOLs?" },
+      },
+      ids.seller,
+    );
     expect(project).toMatchObject({ status: "planned", clientId: ids.account, leadPersonId: ids.lead });
     const plan = await readPlan(project.id);
     expect(plan).toMatchObject({ kind: "retainer", feeVnd: 102_000_000, accountManagerPersonId: ids.am, budgetByRole: [{ role: "Video editing", minutes: 1920 }], budgetMinutes: 1920 });
@@ -234,7 +407,13 @@ describe("leads and the pipeline", () => {
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, project.id));
     expect(retainer).toMatchObject({ startMonth: "2026-11", endMonth: "2027-01", feePerMonthVnd: 25_000_000, minutesPerMonth: 600, lines: [{ title: "Page management", quantity: 1, format: null, channel: "facebook" }] });
     const members = await db().select().from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, project.id));
-    expect(new Map(members.map((row) => [row.personId, row.role]))).toEqual(new Map([[ids.seller, "member"], [ids.lead, "lead"], [ids.am, "account_manager"]]));
+    expect(new Map(members.map((row) => [row.personId, row.role]))).toEqual(
+      new Map([
+        [ids.seller, "member"],
+        [ids.lead, "lead"],
+        [ids.am, "account_manager"],
+      ]),
+    );
     expect(await noticesOf(ids.lead, "crm.delivery_handoff")).toHaveLength(1);
     expect((await listSalesHandoffsFor(ids.lead)).map((row) => row.projectId)).toEqual([project.id]);
     expect(await fails(respondToHandoff(project.id, { accept: true }, ids.seller))).toBe("handoff_not_yours");
@@ -252,7 +431,7 @@ describe("leads and the pipeline", () => {
     expect(seen.map((deal) => deal.id)).toEqual([dealId]);
     expect(seen[0].value).toBeUndefined();
     expect(await listDeals(viewerOf(ids.colleague), { status: "all" })).toEqual([]);
-    expect((await listDeals(viewerOf(ids.finance), { status: "all" }))).toEqual([]);
+    expect(await listDeals(viewerOf(ids.finance), { status: "all" })).toEqual([]);
   });
 
   it("proposes the account active once it has an open project", async () => {
@@ -266,15 +445,58 @@ describe("leads and the pipeline", () => {
 
 describe("contracts, invoices and payments", () => {
   it("opens one renewal deal for a contract ending within the lead time", async () => {
-    const { after: contract } = await saveContract(ids.account, null, { number: "15/2026/HĐDV-SZM", title: "Social retainer 2026", kind: "service", entityId: ids.szm, parentContractId: null, dealId: null, startDate: "2026-01-01", endDate: addDays(today, 30), valueVnd: 300_000_000, paymentTermsDays: 15, autoRenew: false, noticeDays: 30, note: null }, ids.am);
-    const [file] = await db().insert(schema.storedFile).values({ bucket: "test", objectPath: `crm_contract/${contract.id}.pdf`, fileName: "hd.pdf", contentType: "application/pdf", sizeBytes: 100, ownerType: "crm_contract", ownerId: contract.id, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.am }).returning();
+    const { after: contract } = await saveContract(
+      ids.account,
+      null,
+      {
+        number: "15/2026/HĐDV-SZM",
+        title: "Social retainer 2026",
+        kind: "service",
+        entityId: ids.szm,
+        parentContractId: null,
+        dealId: null,
+        startDate: "2026-01-01",
+        endDate: addDays(today, 30),
+        valueVnd: 300_000_000,
+        paymentTermsDays: 15,
+        autoRenew: false,
+        noticeDays: 30,
+        note: null,
+      },
+      ids.am,
+    );
+    const [file] = await db()
+      .insert(schema.storedFile)
+      .values({
+        bucket: "test",
+        objectPath: `crm_contract/${contract.id}.pdf`,
+        fileName: "hd.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 100,
+        ownerType: "crm_contract",
+        ownerId: contract.id,
+        entityId: ids.szm,
+        tier: "personal",
+        status: "ready",
+        uploadedByPersonId: ids.am,
+      })
+      .returning();
     await signContract(contract.id, { signedOn: "2026-01-01", signedFileId: file.id });
     expect(await openRenewals(today)).toEqual({ renewalsOpened: 1 });
     expect(await openRenewals(today)).toEqual({ renewalsOpened: 0 });
     const [renewal] = await db().select().from(schema.crmDeal).where(eq(schema.crmDeal.renewsContractId, contract.id));
     expect(renewal).toMatchObject({ ownerPersonId: ids.am, status: "open", expectedCloseOn: addDays(today, 30) });
     expect(await noticesOf(ids.am, "crm.renewal_opened")).toHaveLength(1);
-    expect(await fails(saveContract(ids.account, null, { number: "15/2026/HĐDV-SZM", title: "Dup", kind: "service", entityId: ids.szm, parentContractId: null, dealId: null, startDate: null, endDate: null, paymentTermsDays: null, autoRenew: false, noticeDays: null, note: null }, ids.am))).toBe("contract_number_taken");
+    expect(
+      await fails(
+        saveContract(
+          ids.account,
+          null,
+          { number: "15/2026/HĐDV-SZM", title: "Dup", kind: "service", entityId: ids.szm, parentContractId: null, dealId: null, startDate: null, endDate: null, paymentTermsDays: null, autoRenew: false, noticeDays: null, note: null },
+          ids.am,
+        ),
+      ),
+    ).toBe("contract_number_taken");
   });
 
   it("records an invoice over billing items, ages it, reminds once, and closes it when paid", async () => {
@@ -315,7 +537,29 @@ describe("contracts, invoices and payments", () => {
 
   it("opens a deal only on an account's client, filing a brand under it", async () => {
     const [brand] = await db().insert(schema.workClient).values({ code: "VNM-PROBI", name: "Probi", kind: "brand", parentId: ids.account, entityId: ids.szm }).returning();
-    const deal = await createDeal({ clientId: brand.id, title: "Probi launch", brandId: null, serviceLines: [], oneOffVnd: 50_000_000, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: null, entityId: ids.szm, source: null, competitors: null, nextStep: null, ownerPersonId: ids.seller, stageId: null, leadId: null, contacts: [] }, ids.seller);
+    const deal = await createDeal(
+      {
+        clientId: brand.id,
+        title: "Probi launch",
+        brandId: null,
+        serviceLines: [],
+        oneOffVnd: 50_000_000,
+        monthlyVnd: null,
+        months: null,
+        probability: null,
+        expectedCloseOn: null,
+        teamId: null,
+        entityId: ids.szm,
+        source: null,
+        competitors: null,
+        nextStep: null,
+        ownerPersonId: ids.seller,
+        stageId: null,
+        leadId: null,
+        contacts: [],
+      },
+      ids.seller,
+    );
     expect(deal).toMatchObject({ clientId: ids.account, brandId: brand.id });
   });
 });
@@ -343,9 +587,15 @@ describe("a leaver's CRM work (FR-CRM-40)", () => {
     const result = await reassignOwnership(handover.id, { items: crmItems, toPersonId: ids.director, note: { context: "Leaving", next: "Call Lan" } }, { personId: ids.director, fullName: "director" }, runner);
     expect(result.moved.length).toBe(crmItems.length);
     expect((await listOwnership(ids.seller, db(), { timeWeeks: false })).filter((item) => item.kind.startsWith("crm_"))).toEqual([]);
-    const deals = await db().select().from(schema.crmDeal).where(and(eq(schema.crmDeal.status, "open"), eq(schema.crmDeal.clientId, ids.account)));
+    const deals = await db()
+      .select()
+      .from(schema.crmDeal)
+      .where(and(eq(schema.crmDeal.status, "open"), eq(schema.crmDeal.clientId, ids.account)));
     expect(deals.every((deal) => deal.ownerPersonId !== ids.seller)).toBe(true);
-    const handoffs = await db().select().from(schema.workHandoff).where(and(eq(schema.workHandoff.kind, "exit"), eq(schema.workHandoff.fromPersonId, ids.seller)));
+    const handoffs = await db()
+      .select()
+      .from(schema.workHandoff)
+      .where(and(eq(schema.workHandoff.kind, "exit"), eq(schema.workHandoff.fromPersonId, ids.seller)));
     expect(handoffs.length).toBe(crmItems.length);
   });
 });
@@ -364,9 +614,15 @@ describe("the day's report (FR-CRM-43)", () => {
 describe("leave cover of follow-ups (FR-CRM-41)", () => {
   it("moves the absent person's follow-ups to the cover while the plan runs, and back after", async () => {
     const { applyLeaveCover } = await import("./cover");
-    const open = await db().select().from(schema.crmActivity).where(and(eq(schema.crmActivity.ownerPersonId, ids.am), eq(schema.crmActivity.dueOn, today)));
+    const open = await db()
+      .select()
+      .from(schema.crmActivity)
+      .where(and(eq(schema.crmActivity.ownerPersonId, ids.am), eq(schema.crmActivity.dueOn, today)));
     expect(open.filter((row) => !row.doneAt).length).toBeGreaterThan(0);
-    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.am, leaveRequestId: crypto.randomUUID(), fromDate: today, toDate: addDays(today, 2), status: "submitted", defaultCoverPersonId: ids.member, appliedAt: new Date() }).returning();
+    const [plan] = await db()
+      .insert(schema.workCoverPlan)
+      .values({ personId: ids.am, leaveRequestId: crypto.randomUUID(), fromDate: today, toDate: addDays(today, 2), status: "submitted", defaultCoverPersonId: ids.member, appliedAt: new Date() })
+      .returning();
     const first = await applyLeaveCover(today);
     expect(first.followUpsCovered).toBeGreaterThan(0);
     expect(await applyLeaveCover(today)).toEqual({ followUpsCovered: 0, followUpsHandedBack: 0 });
@@ -470,13 +726,44 @@ describe("a quote's approval signal (CRM-03)", () => {
   // One line of 10m with no discount unless given; the hours decide the margin.
   const draftOf = async (hours: number, discountBp = 0) => {
     const quote = await createQuote(dealId, ids.seller);
-    await saveQuote(quote.id, { title: "Clip", validUntil: null, vatRateBp: 1000, intro: null, terms: null, lines: [{ serviceId: null, title: "Clip", description: null, quantity: 1, unit: "video", unitPriceVnd: 10_000_000, discountBp, months: null, format: null, channel: null, roleMinutes: [{ role: "Video editing", minutes: hours * 60 }] }] });
+    await saveQuote(quote.id, {
+      title: "Clip",
+      validUntil: null,
+      vatRateBp: 1000,
+      intro: null,
+      terms: null,
+      lines: [
+        { serviceId: null, title: "Clip", description: null, quantity: 1, unit: "video", unitPriceVnd: 10_000_000, discountBp, months: null, format: null, channel: null, roleMinutes: [{ role: "Video editing", minutes: hours * 60 }] },
+      ],
+    });
     return (await getQuote(quote.id))!;
   };
   const seller = { seesMargin: false, drafts: true };
 
   it("tells a drafter without pjm:cost nothing the margin decides, and does not work the margin out for them", async () => {
-    const deal = await createDeal({ clientId: ids.account, title: "Clip series", brandId: null, serviceLines: ["video"], oneOffVnd: null, monthlyVnd: null, months: null, probability: null, expectedCloseOn: null, teamId: ids.team, entityId: ids.szm, source: null, competitors: null, nextStep: null, ownerPersonId: ids.seller, stageId: null, leadId: null, contacts: [] }, ids.seller);
+    const deal = await createDeal(
+      {
+        clientId: ids.account,
+        title: "Clip series",
+        brandId: null,
+        serviceLines: ["video"],
+        oneOffVnd: null,
+        monthlyVnd: null,
+        months: null,
+        probability: null,
+        expectedCloseOn: null,
+        teamId: ids.team,
+        entityId: ids.szm,
+        source: null,
+        competitors: null,
+        nextStep: null,
+        ownerPersonId: ids.seller,
+        stageId: null,
+        leadId: null,
+        contacts: [],
+      },
+      ids.seller,
+    );
     dealId = deal.id;
     cost.rate = 300_000;
     const healthy = await draftOf(10); // 3m of cost on 10m: 70%
@@ -520,14 +807,22 @@ describe("what an activity is recorded against (CRM-01)", () => {
     recordActivity({ kind: "call", subject: "Called", body: null, contactId: null, dealId: null, occurredAt: new Date(), outcome: null, followUp: { ownerPersonId: ids.member, dueOn: today }, ...targets }, ids.colleague);
 
   it("refuses a lead beside an account that is not its own, and takes it alone or with the account it came from", async () => {
-    const stranger = await createLead({ entityId: ids.szm, clientId: null, companyName: "Masan", contactName: "Hùng", contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" }, { personId: ids.colleague, sells: true }, null);
+    const stranger = await createLead(
+      { entityId: ids.szm, clientId: null, companyName: "Masan", contactName: "Hùng", contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" },
+      { personId: ids.colleague, sells: true },
+      null,
+    );
     // The lead's owner names somebody else's account in the same request: nothing is written on it.
     expect(await fails(activity({ leadId: stranger.id, clientId: ids.account }))).toBe("lead_not_found");
     expect(await db().select().from(schema.crmActivity).where(eq(schema.crmActivity.leadId, stranger.id))).toEqual([]);
     expect((await activity({ leadId: stranger.id, clientId: null })).logged).toMatchObject({ leadId: stranger.id, clientId: null });
 
     const [brand] = await db().select().from(schema.workClient).where(eq(schema.workClient.parentId, ids.account));
-    const own = await createLead({ entityId: ids.szm, clientId: brand.id, companyName: "Vinamilk — Probi", contactName: null, contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" }, { personId: ids.colleague, sells: true }, null);
+    const own = await createLead(
+      { entityId: ids.szm, clientId: brand.id, companyName: "Vinamilk — Probi", contactName: null, contactTitle: null, email: null, phone: null, need: null, budgetText: null, source: "referral" },
+      { personId: ids.colleague, sells: true },
+      null,
+    );
     // An enquiry from a brand is its client's account's.
     expect((await activity({ leadId: own.id, clientId: ids.account })).followUp).toMatchObject({ leadId: own.id, clientId: ids.account, ownerPersonId: ids.member });
     // A deal the lead did not become is not the lead's either.
@@ -538,7 +833,11 @@ describe("what an activity is recorded against (CRM-01)", () => {
 
 describe("erasure on request reaches every copy (CRM-02)", () => {
   const lead = (over: Partial<Parameters<typeof createLead>[0]>) =>
-    createLead({ entityId: ids.szm, clientId: null, companyName: "Vinamilk", contactName: "Chị Lan", contactTitle: "Brand manager", email: null, phone: null, need: "Tết", budgetText: null, source: "referral", ...over }, { personId: ids.colleague, sells: true }, null);
+    createLead(
+      { entityId: ids.szm, clientId: null, companyName: "Vinamilk", contactName: "Chị Lan", contactTitle: "Brand manager", email: null, phone: null, need: "Tết", budgetText: null, source: "referral", ...over },
+      { personId: ids.colleague, sells: true },
+      null,
+    );
 
   it("blanks the leads that hold the contact, and the email and phone older briefs and hand-off notes copied", async () => {
     const byEmail = await lead({ email: "Lan@Vinamilk.vn" });
@@ -548,8 +847,22 @@ describe("erasure on request reaches every copy (CRM-02)", () => {
     // What delivery set-up wrote before it stopped copying details.
     const [link] = await db().select({ projectId: schema.crmDealProject.projectId }).from(schema.crmDealProject).innerJoin(schema.crmDeal, eq(schema.crmDeal.id, schema.crmDealProject.dealId)).where(eq(schema.crmDeal.clientId, ids.account));
     const plan = (await readPlan(link.projectId))!;
-    await db().update(schema.projectPlan).set({ brief: { ...plan.brief, clientContacts: [{ name: "Nguyễn Thị Lan", role: "decides", contact: "lan@vinamilk.vn · 0901234567" }, { name: "Lan Anh", contact: "lananh@vinamilk.vn" }] } }).where(eq(schema.projectPlan.projectId, link.projectId));
-    await db().update(schema.crmDealProject).set({ handoffNote: { context: "Won against two agencies", contacts: "Nguyễn Thị Lan — decides — lan@vinamilk.vn · 0901234567\nLan Anh — lananh@vinamilk.vn" } }).where(eq(schema.crmDealProject.projectId, link.projectId));
+    await db()
+      .update(schema.projectPlan)
+      .set({
+        brief: {
+          ...plan.brief,
+          clientContacts: [
+            { name: "Nguyễn Thị Lan", role: "decides", contact: "lan@vinamilk.vn · 0901234567" },
+            { name: "Lan Anh", contact: "lananh@vinamilk.vn" },
+          ],
+        },
+      })
+      .where(eq(schema.projectPlan.projectId, link.projectId));
+    await db()
+      .update(schema.crmDealProject)
+      .set({ handoffNote: { context: "Won against two agencies", contacts: "Nguyễn Thị Lan — decides — lan@vinamilk.vn · 0901234567\nLan Anh — lananh@vinamilk.vn" } })
+      .where(eq(schema.crmDealProject.projectId, link.projectId));
 
     const { after, copies } = await eraseContact(ids.contact);
     expect(after).toMatchObject({ fullName: "Nguyễn Thị Lan", email: null, phone: null });
@@ -557,7 +870,10 @@ describe("erasure on request reaches every copy (CRM-02)", () => {
     for (const row of [byEmail, byPhone, byName]) expect(await findLead(row.id)).toMatchObject({ contactName: null, contactTitle: null, email: null, phone: null, need: "Tết" });
     expect(await findLead(somebodyElse.id)).toMatchObject({ contactName: "Lan Anh", email: "lananh@vinamilk.vn", phone: "0907654321" });
     // The name and the role stay where they were; somebody else's line is not touched.
-    expect((await readPlan(link.projectId))?.brief.clientContacts).toEqual([{ name: "Nguyễn Thị Lan", role: "decides" }, { name: "Lan Anh", contact: "lananh@vinamilk.vn" }]);
+    expect((await readPlan(link.projectId))?.brief.clientContacts).toEqual([
+      { name: "Nguyễn Thị Lan", role: "decides" },
+      { name: "Lan Anh", contact: "lananh@vinamilk.vn" },
+    ]);
     const [note] = await db().select({ note: schema.crmDealProject.handoffNote }).from(schema.crmDealProject).where(eq(schema.crmDealProject.projectId, link.projectId));
     expect(note.note).toEqual({ context: "Won against two agencies", contacts: "Nguyễn Thị Lan — decides\nLan Anh — lananh@vinamilk.vn" });
   });
@@ -572,15 +888,38 @@ describe("erasure on request reaches every copy (CRM-02)", () => {
 
 describe("the pipeline's pages and board figures (PERF-03)", () => {
   it("pages the list with a count of all, and sums each stage over every deal, not the cards that fit", async () => {
-    const { client } = await createAccount({ code: "PGN", name: "Paged Co", entityId: ids.szm, note: null, profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null }, salesOwnerPersonId: ids.seller, accountManagerPersonId: null, confirmDuplicate: false });
+    const { client } = await createAccount({
+      code: "PGN",
+      name: "Paged Co",
+      entityId: ids.szm,
+      note: null,
+      profile: { legalName: null, taxCode: null, address: null, website: null, industry: null, size: null, source: null, tier: null, contractingEntityId: null },
+      salesOwnerPersonId: ids.seller,
+      accountManagerPersonId: null,
+      confirmDuplicate: false,
+    });
     const stages = await listStages();
     const [open, won, lost] = (["open", "won", "lost"] as const).map((category) => firstStageOf(stages, category)!);
-    const deal = (index: number, extra: Partial<typeof schema.crmDeal.$inferInsert> = {}) => ({ code: `DL-PG-${index}`, entityId: ids.szm, clientId: client.id, title: `Paged ${index}`, stageId: open.id, ownerPersonId: ids.seller, oneOffVnd: 10_000_000 * index, monthlyVnd: index % 2 ? 1_000_000 : null, months: index % 2 ? 3 : null, probability: index === 2 ? 35 : null, ...extra });
-    await db().insert(schema.crmDeal).values([
-      ...[1, 2, 3, 4, 5].map((index) => deal(index)),
-      deal(6, { stageId: won.id, status: "won", wonAt: new Date(Date.now() - 5 * 86_400_000) }),
-      deal(7, { stageId: lost.id, status: "lost", lostAt: new Date(Date.now() - 60 * 86_400_000) }),
-    ]);
+    const deal = (index: number, extra: Partial<typeof schema.crmDeal.$inferInsert> = {}) => ({
+      code: `DL-PG-${index}`,
+      entityId: ids.szm,
+      clientId: client.id,
+      title: `Paged ${index}`,
+      stageId: open.id,
+      ownerPersonId: ids.seller,
+      oneOffVnd: 10_000_000 * index,
+      monthlyVnd: index % 2 ? 1_000_000 : null,
+      months: index % 2 ? 3 : null,
+      probability: index === 2 ? 35 : null,
+      ...extra,
+    });
+    await db()
+      .insert(schema.crmDeal)
+      .values([
+        ...[1, 2, 3, 4, 5].map((index) => deal(index)),
+        deal(6, { stageId: won.id, status: "won", wonAt: new Date(Date.now() - 5 * 86_400_000) }),
+        deal(7, { stageId: lost.id, status: "lost", lostAt: new Date(Date.now() - 60 * 86_400_000) }),
+      ]);
     const seller = viewerOf(ids.seller);
     const every = await listDeals(seller, { clientId: client.id, status: "all" });
     expect(every).toHaveLength(7);
@@ -617,9 +956,7 @@ describe("the lists as files (FR-PLT-37)", () => {
     expect(file.table.rows.map((row) => row[0])).toEqual(listed.map((row) => row.client.name));
     expect(file.table.header).toContain("Pipeline");
     // A reader with no ties to any account and no sales role sees no CRM rows at all.
-    expect((await buildAccountsExport(viewerOf(ids.colleague), {}, "en")).file.rowCount).toBe(
-      (await listAccounts(viewerOf(ids.colleague), {})).length,
-    );
+    expect((await buildAccountsExport(viewerOf(ids.colleague), {}, "en")).file.rowCount).toBe((await listAccounts(viewerOf(ids.colleague), {})).length);
   });
 
   it("exports the deals of the list under its filters, valued only for who may value them", async () => {

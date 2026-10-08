@@ -47,12 +47,23 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<><Link href="/crm/leads" className="underline">
-            {t("leads.title")}
-          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{lead.companyName}
-          <Badge dot variant="outline">
-            {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
-          </Badge></span>}>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href="/crm/leads" className="underline">
+              {t("leads.title")}
+            </Link>
+          </>
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {lead.companyName}
+            <Badge dot variant="outline">
+              {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
+            </Badge>
+          </span>
+        }
+      >
         <p className="text-sm text-muted-foreground">
           {[
             t(`enums.source.${lead.source as "referral"}`),
@@ -61,8 +72,32 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
                 {lead.entityName}
               </RecordLink>
             ) : null,
-            lead.ownerName ? <span key="owner">{t.rich("lead.ownerIs", { name: lead.ownerName, person: (chunks) => <RecordLink kind="person" id={lead.ownerPersonId}>{chunks}</RecordLink> })}</span> : t("leads.unassigned"),
-            lead.referrerName ? <span key="referrer">{t.rich("leads.referredBy", { name: lead.referrerName, person: (chunks) => <RecordLink kind="person" id={lead.referrerPersonId}>{chunks}</RecordLink> })}</span> : null,
+            lead.ownerName ? (
+              <span key="owner">
+                {t.rich("lead.ownerIs", {
+                  name: lead.ownerName,
+                  person: (chunks) => (
+                    <RecordLink kind="person" id={lead.ownerPersonId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })}
+              </span>
+            ) : (
+              t("leads.unassigned")
+            ),
+            lead.referrerName ? (
+              <span key="referrer">
+                {t.rich("leads.referredBy", {
+                  name: lead.referrerName,
+                  person: (chunks) => (
+                    <RecordLink kind="person" id={lead.referrerPersonId}>
+                      {chunks}
+                    </RecordLink>
+                  ),
+                })}
+              </span>
+            ) : null,
             f.when(lead.createdAt),
           ]
             .filter(Boolean)
@@ -118,7 +153,16 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
           <details className="rounded-xl border p-4" open>
             <summary className="cursor-pointer text-sm font-medium">{t("lead.convert")}</summary>
             <div className="pt-3">
-              <ConvertLeadForm leadId={lead.id} lead={lead} accounts={accounts} entities={entityOptions} teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))} stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))} sellers={people} ownerId={lead.ownerPersonId ?? user.person.id} />
+              <ConvertLeadForm
+                leadId={lead.id}
+                lead={lead}
+                accounts={accounts}
+                entities={entityOptions}
+                teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))}
+                stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))}
+                sellers={people}
+                ownerId={lead.ownerPersonId ?? user.person.id}
+              />
             </div>
           </details>
           <details className="rounded-xl border p-4">

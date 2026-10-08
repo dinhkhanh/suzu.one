@@ -59,7 +59,19 @@ export function useSignedUrl(fileId: string | null, enabled = true) {
  * its minute), the fresh one picks up where the viewer was — the moment, and whether it was
  * playing — instead of starting a long review cut over from 0:00.
  */
-export function SignedVideo({ url, refresh, videoRef, onTimeUpdate, className }: { url: string; refresh: () => void; videoRef?: RefObject<HTMLVideoElement | null>; onTimeUpdate?: (event: SyntheticEvent<HTMLVideoElement>) => void; className?: string }) {
+export function SignedVideo({
+  url,
+  refresh,
+  videoRef,
+  onTimeUpdate,
+  className,
+}: {
+  url: string;
+  refresh: () => void;
+  videoRef?: RefObject<HTMLVideoElement | null>;
+  onTimeUpdate?: (event: SyntheticEvent<HTMLVideoElement>) => void;
+  className?: string;
+}) {
   const own = useRef<HTMLVideoElement>(null);
   const playing = useRef(false);
   const resume = useRef<{ time: number; play: boolean } | null>(null);

@@ -69,7 +69,14 @@ export type CloseReportInput = {
 
 export type CloseReport = {
   closedOn: IsoDate;
-  dates: { baselineStart: IsoDate | null; baselineDue: IsoDate | null; plannedDue: IsoDate | null; actualStart: IsoDate | null; actualEnd: IsoDate; /** Calendar days the end came after the baseline's due date (negative = early); null without a baseline date. */ slipDays: number | null };
+  dates: {
+    baselineStart: IsoDate | null;
+    baselineDue: IsoDate | null;
+    plannedDue: IsoDate | null;
+    actualStart: IsoDate | null;
+    actualEnd: IsoDate;
+    /** Calendar days the end came after the baseline's due date (negative = early); null without a baseline date. */ slipDays: number | null;
+  };
   hours: { budgetMinutes: number | null; loggedMinutes: number; /** logged ÷ budget, whole percent rounded down. */ percent: number | null };
   revisionRounds: { internal: number; client: number } | null;
   returnedHandoffs: number | null;

@@ -55,7 +55,17 @@ export default async function CrmSettingsPage() {
       </TableCard>
       <section className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
         <h2 className="font-medium">{t("settings.parameters")}</h2>
-        <p>{t("settings.parameterValues", { stale: settings.staleDealDays, renewal: settings.renewalLeadDays, reminders: settings.receivableReminderDays.join(", "), terms: settings.defaultPaymentTermsDays, validity: settings.quoteValidityDays, discount: settings.quoteDiscountApprovalBp / 100, margin: settings.quoteMarginFloorBp / 100 })}</p>
+        <p>
+          {t("settings.parameterValues", {
+            stale: settings.staleDealDays,
+            renewal: settings.renewalLeadDays,
+            reminders: settings.receivableReminderDays.join(", "),
+            terms: settings.defaultPaymentTermsDays,
+            validity: settings.quoteValidityDays,
+            discount: settings.quoteDiscountApprovalBp / 100,
+            margin: settings.quoteMarginFloorBp / 100,
+          })}
+        </p>
         <p>{t("settings.vat", { rate: vat.defaultBp / 100, allowed: vat.allowedBp.map((bp) => `${bp / 100}%`).join(", ") })}</p>
         <p className="text-muted-foreground">
           {t("settings.parametersHint")}{" "}

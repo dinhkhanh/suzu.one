@@ -13,7 +13,12 @@ import { KioskScreen } from "@/modules/attendance/ui/kiosk/kiosk-screen";
  * itself after a while (`engine/kiosk-lifetime.ts`); the tablet then says it needs opening again.
  */
 // Its own manifest and the home-screen flags, so a tablet that adds it to the home screen opens it with no bars.
-export const metadata: Metadata = { title: { absolute: "SuZu check-in" }, robots: { index: false, follow: false }, manifest: "/kiosk/manifest.webmanifest", appleWebApp: { capable: true, title: "SuZu check-in", statusBarStyle: "black-translucent" } };
+export const metadata: Metadata = {
+  title: { absolute: "SuZu check-in" },
+  robots: { index: false, follow: false },
+  manifest: "/kiosk/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "SuZu check-in", statusBarStyle: "black-translucent" },
+};
 
 export default async function KioskPage() {
   const access = await kioskAccessOfToken((await cookies()).get(KIOSK_COOKIE)?.value);

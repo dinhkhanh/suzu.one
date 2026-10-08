@@ -11,7 +11,18 @@ import type { StateCategory } from "../enums";
 import type { AutomationAction, AutomationCondition, AutomationTrigger, CustomFieldValue } from "../schema";
 import { CUSTOM_PREFIX } from "./custom-fields";
 
-export const AUTOMATION_TRIGGERS = ["state_entered", "field_changed", "due_date_reached", "all_subtasks_done", "deliverable_approved", "changes_requested", "client_decision", "handoff_accepted", "handoff_returned", "quota_threshold"] as const;
+export const AUTOMATION_TRIGGERS = [
+  "state_entered",
+  "field_changed",
+  "due_date_reached",
+  "all_subtasks_done",
+  "deliverable_approved",
+  "changes_requested",
+  "client_decision",
+  "handoff_accepted",
+  "handoff_returned",
+  "quota_threshold",
+] as const;
 export type AutomationTriggerType = (typeof AUTOMATION_TRIGGERS)[number];
 
 /** The fields a condition can test. A custom field is `cf.<fieldId>`. */
@@ -401,14 +412,30 @@ export function presetRule(preset: AutomationPreset, states: readonly PresetStat
   const list = states.filter((state) => state.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   const reviews = list.filter((state) => state.category === "in_review");
   const firstReview = list.findIndex((state) => state.category === "in_review");
-  const working = firstReview > 0 ? list.slice(0, firstReview).reverse().find((state) => state.category === "in_progress") : undefined;
+  const working =
+    firstReview > 0
+      ? list
+          .slice(0, firstReview)
+          .reverse()
+          .find((state) => state.category === "in_progress")
+      : undefined;
   switch (preset) {
     case "client_review_due": {
       const clientReview = reviews.at(-1);
       return clientReview ? { name: texts.name, trigger: { type: "state_entered", stateId: clientReview.id }, conditions: [], actions: [{ type: "set_due", days: 2 }] } : null;
     }
     case "client_changes_reopen":
-      return working ? { name: texts.name, trigger: { type: "client_decision", decision: "changes_required" }, conditions: [], actions: [{ type: "move_state", stateId: working.id }, { type: "notify", to: "role:assignee", text: texts.text }] } : null;
+      return working
+        ? {
+            name: texts.name,
+            trigger: { type: "client_decision", decision: "changes_required" },
+            conditions: [],
+            actions: [
+              { type: "move_state", stateId: working.id },
+              { type: "notify", to: "role:assignee", text: texts.text },
+            ],
+          }
+        : null;
     case "overdue_notify_lead":
       return { name: texts.name, trigger: { type: "due_date_reached", days: 1 }, conditions: [], actions: [{ type: "notify", to: "role:lead", text: texts.text }] };
   }

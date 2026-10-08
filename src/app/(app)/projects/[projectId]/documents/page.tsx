@@ -112,13 +112,23 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
                         {file.fileName}
                       </KbFileLink>
                     </TableCell>
-                    <TableCell kind="number" className="text-muted-foreground">{size(file.sizeBytes)}</TableCell>
+                    <TableCell kind="number" className="text-muted-foreground">
+                      {size(file.sizeBytes)}
+                    </TableCell>
                     <TableCell className="max-w-64 truncate">
                       <RecordLink kind="kbPage" id={file.pageId} className="text-link">
                         {file.pageTitle}
                       </RecordLink>
                     </TableCell>
-                    <TableCell>{file.uploadedByName ? <RecordLink kind="person" id={file.uploadedByPersonId}>{file.uploadedByName}</RecordLink> : "—"}</TableCell>
+                    <TableCell>
+                      {file.uploadedByName ? (
+                        <RecordLink kind="person" id={file.uploadedByPersonId}>
+                          {file.uploadedByName}
+                        </RecordLink>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell>{format.dateTime(file.createdAt, { dateStyle: "medium" })}</TableCell>
                   </TableRow>
                 ))}

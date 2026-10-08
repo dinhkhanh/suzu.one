@@ -113,7 +113,13 @@ export default async function CheckInPage() {
                   <TableCell kind="time">{time(punch.at)}</TableCell>
                   <TableCell className="font-medium">{t(punch.direction === "in" ? "in" : "out")}</TableCell>
                   <TableCell className="text-muted-foreground">{punch.locationName ?? ""}</TableCell>
-                  <TableCell>{punch.reviewStatus !== "none" ? <Badge dot variant={statusTone(punch.reviewStatus)}>{t(`review.${punch.reviewStatus}`)}</Badge> : null}</TableCell>
+                  <TableCell>
+                    {punch.reviewStatus !== "none" ? (
+                      <Badge dot variant={statusTone(punch.reviewStatus)}>
+                        {t(`review.${punch.reviewStatus}`)}
+                      </Badge>
+                    ) : null}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

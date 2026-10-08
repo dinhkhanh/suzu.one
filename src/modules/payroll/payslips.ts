@@ -200,7 +200,13 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
  * published payslip and by C&B's reading of a person's lines on the run (`run-views.ts`).
  */
 export async function payslipPersonOf(personId: string): Promise<PayslipView["person"]> {
-  const latest = db().select({ id: schema.employment.id, employeeCode: schema.employment.employeeCode }).from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("latest");
+  const latest = db()
+    .select({ id: schema.employment.id, employeeCode: schema.employment.employeeCode })
+    .from(schema.employment)
+    .where(eq(schema.employment.personId, schema.person.id))
+    .orderBy(desc(schema.employment.startDate))
+    .limit(1)
+    .as("latest");
   const held = db()
     .select({ positionName: schema.position.name })
     .from(schema.assignment)
@@ -238,7 +244,10 @@ export async function listPayslipsOfRun(runId: string, names?: ReadonlyMap<strin
   const [people, payslips, queries] = await Promise.all([
     loadRunPeople(runId),
     // Only the payslips that are out: a withdrawn one has nothing to open and nobody reading it.
-    db().select().from(schema.payslip).where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt))),
+    db()
+      .select()
+      .from(schema.payslip)
+      .where(and(eq(schema.payslip.runId, runId), isNull(schema.payslip.withdrawnAt))),
     db()
       .select({ payslipId: schema.payslipQuery.payslipId, count: sql<number>`count(*)::int` })
       .from(schema.payslipQuery)
@@ -288,7 +297,12 @@ async function listQueryThreads(payslipId: string, executor: Executor = db()): P
     .select({ message: schema.payslipQueryMessage, authorName: schema.person.fullName })
     .from(schema.payslipQueryMessage)
     .innerJoin(schema.person, eq(schema.person.id, schema.payslipQueryMessage.authorPersonId))
-    .where(inArray(schema.payslipQueryMessage.queryId, queries.map((query) => query.id)))
+    .where(
+      inArray(
+        schema.payslipQueryMessage.queryId,
+        queries.map((query) => query.id),
+      ),
+    )
     .orderBy(schema.payslipQueryMessage.createdAt);
   return queries.map((query) => ({ query, messages: messages.filter((row) => row.message.queryId === query.id).map((row) => ({ ...row.message, authorName: row.authorName })) }));
 }
@@ -351,7 +365,11 @@ export async function replyToPayslipQuery(input: { queryId: string; body: string
 
 /** Either side can close a settled question. */
 export async function closePayslipQuery(queryId: string): Promise<PayslipQueryRow> {
-  const [row] = await db().update(schema.payslipQuery).set({ status: "closed", closedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.payslipQuery.id, queryId), inArray(schema.payslipQuery.status, ["open", "answered"]))).returning();
+  const [row] = await db()
+    .update(schema.payslipQuery)
+    .set({ status: "closed", closedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(schema.payslipQuery.id, queryId), inArray(schema.payslipQuery.status, ["open", "answered"])))
+    .returning();
   if (!row) throw new ActionError("query_not_found");
   return row;
 }
@@ -377,7 +395,12 @@ export async function listQueriesForManager(principal: Principal, includeClosed 
   const messages = await db()
     .selectDistinctOn([schema.payslipQueryMessage.queryId], { queryId: schema.payslipQueryMessage.queryId, body: schema.payslipQueryMessage.body, createdAt: schema.payslipQueryMessage.createdAt })
     .from(schema.payslipQueryMessage)
-    .where(inArray(schema.payslipQueryMessage.queryId, rows.map((row) => row.query.id)))
+    .where(
+      inArray(
+        schema.payslipQueryMessage.queryId,
+        rows.map((row) => row.query.id),
+      ),
+    )
     .orderBy(schema.payslipQueryMessage.queryId, desc(schema.payslipQueryMessage.createdAt));
   const lastOf = new Map(messages.map((message) => [message.queryId, message]));
 

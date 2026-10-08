@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { chainFor, chainProblems, fromVietnamLocal, isPublishMissing, isPublishStateName, latestMetrics, parseReviewerRule, pinProblem, publishFlag, resolveStageReviewer, stageDueAt, stageOutcome, toVietnamLocal, cleanMetrics, formatTimecode, freezesVersion } from "./delivery";
+import {
+  chainFor,
+  chainProblems,
+  fromVietnamLocal,
+  isPublishMissing,
+  isPublishStateName,
+  latestMetrics,
+  parseReviewerRule,
+  pinProblem,
+  publishFlag,
+  resolveStageReviewer,
+  stageDueAt,
+  stageOutcome,
+  toVietnamLocal,
+  cleanMetrics,
+  formatTimecode,
+  freezesVersion,
+} from "./delivery";
 
 const PERSON = "7b0f7a52-6d8f-4d9e-9a36-2f1b8c0c1e11";
 
@@ -40,7 +57,12 @@ describe("which chain applies", () => {
   const chain = (id: string, over: Partial<Parameters<typeof chainFor>[0][number]> = {}) => ({ id, teamId: "team", projectId: null, contentFormat: null, isActive: true, stageCount: 2, createdAt: at(0), ...over });
   const task = { teamId: "team", projectId: "project", contentFormat: "short_video" };
   it("prefers the project's chain to the team's, and a format's to one for every format", () => {
-    const chains = [chain("team-any"), chain("team-video", { contentFormat: "short_video" }), chain("project-any", { projectId: "project", teamId: null }), chain("project-video", { projectId: "project", teamId: null, contentFormat: "short_video" })];
+    const chains = [
+      chain("team-any"),
+      chain("team-video", { contentFormat: "short_video" }),
+      chain("project-any", { projectId: "project", teamId: null }),
+      chain("project-video", { projectId: "project", teamId: null, contentFormat: "short_video" }),
+    ];
     expect(chainFor(chains, task)?.id).toBe("project-video");
     expect(chainFor(chains.slice(0, 3), task)?.id).toBe("project-any");
     expect(chainFor(chains.slice(0, 2), task)?.id).toBe("team-video");

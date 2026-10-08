@@ -1,6 +1,31 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canEnterRetroItemFor, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canSetRunInputFor, canViewBonusOf, canViewCompensationOf, canVoidPayRule, canVoidProfile, canVoidSalaryStructure, compensationReach, hasPayrollDesk } from "./policy";
+import {
+  canAdjustBonusLine,
+  canApproveBonusRun,
+  canApprovePayroll,
+  canDecideBonusScheme,
+  canDecidePayRules,
+  canDecideSalaryChange,
+  canEnterRetroItemFor,
+  canManageBonusRun,
+  canManageCompensation,
+  canPayPayroll,
+  canProposeBonusRun,
+  canProposeBonusScheme,
+  canProposePayRules,
+  canReadBonusRun,
+  canReadPayroll,
+  canSeeSimpleProfileReport,
+  canSetRunInputFor,
+  canViewBonusOf,
+  canViewCompensationOf,
+  canVoidPayRule,
+  canVoidProfile,
+  canVoidSalaryStructure,
+  compensationReach,
+  hasPayrollDesk,
+} from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -70,7 +95,10 @@ describe("payroll policy: one person's salary and payslips", () => {
   });
 
   it("a department head who is also the line manager still sees nothing", () => {
-    const both = principal("p-long", [{ role: "department_head", scope: { type: "unit", id: "d-video" } }, { role: "department_head", scope: inSzm }]);
+    const both = principal("p-long", [
+      { role: "department_head", scope: { type: "unit", id: "d-video" } },
+      { role: "department_head", scope: inSzm },
+    ]);
     expect(canViewCompensationOf(both, employee)).toBe(false);
   });
 

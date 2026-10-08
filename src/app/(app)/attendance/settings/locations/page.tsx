@@ -40,7 +40,23 @@ export default async function LocationsSettingsPage() {
                   {location.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
                 </summary>
                 <div className="mt-4">
-                  <LocationForm location={{ id: location.id, entityId: location.entityId, name: location.name, address: location.address, latitude: location.latitude, longitude: location.longitude, radiusM: location.radiusM, accuracyLimitM: location.accuracyLimitM, ipAllowlist: location.ipAllowlist, rule: location.rule, mode: location.mode, isActive: location.isActive }} entities={options.entities} />
+                  <LocationForm
+                    location={{
+                      id: location.id,
+                      entityId: location.entityId,
+                      name: location.name,
+                      address: location.address,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      radiusM: location.radiusM,
+                      accuracyLimitM: location.accuracyLimitM,
+                      ipAllowlist: location.ipAllowlist,
+                      rule: location.rule,
+                      mode: location.mode,
+                      isActive: location.isActive,
+                    }}
+                    entities={options.entities}
+                  />
                 </div>
               </details>
             </ListItem>

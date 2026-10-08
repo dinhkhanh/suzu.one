@@ -21,17 +21,15 @@ const fake = vi.hoisted(() => {
 });
 
 vi.mock("next/cache", () => ({
-  unstable_cache:
-    (load: () => Promise<unknown>, keyParts: string[], options: { tags: string[] }) =>
-    async () => {
-      if (fake.state.failCache) throw new Error("Invariant: incrementalCache missing in unstable_cache");
-      const key = keyParts.join(",");
-      const hit = fake.store.get(key);
-      if (hit) return JSON.parse(hit.body);
-      const result = await fake.scope.run("unstable-cache", load);
-      fake.store.set(key, { body: JSON.stringify(result), tags: options.tags });
-      return result;
-    },
+  unstable_cache: (load: () => Promise<unknown>, keyParts: string[], options: { tags: string[] }) => async () => {
+    if (fake.state.failCache) throw new Error("Invariant: incrementalCache missing in unstable_cache");
+    const key = keyParts.join(",");
+    const hit = fake.store.get(key);
+    if (hit) return JSON.parse(hit.body);
+    const result = await fake.scope.run("unstable-cache", load);
+    fake.store.set(key, { body: JSON.stringify(result), tags: options.tags });
+    return result;
+  },
 }));
 vi.mock("next/server", () => ({ after: (callback: () => Promise<void>) => fake.afterCallbacks.push(callback) }));
 vi.mock("./vercel", () => ({ purgeApi: () => (fake.state.onVercel ? fake.purge : undefined) }));

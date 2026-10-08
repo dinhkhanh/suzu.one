@@ -20,7 +20,20 @@ type EntityOption = { id: string; name: string };
 /** The company a brand belongs to; "the whole group" only for someone whose grant reaches it. */
 function useEntityOptions(entities: readonly EntityOption[], allowGroup: boolean) {
   const t = useTranslations("brands");
-  return [...(allowGroup ? [<option key="" value="">{t("wholeGroup")}</option>] : []), ...entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)];
+  return [
+    ...(allowGroup
+      ? [
+          <option key="" value="">
+            {t("wholeGroup")}
+          </option>,
+        ]
+      : []),
+    ...entities.map((entity) => (
+      <option key={entity.id} value={entity.id}>
+        {entity.name}
+      </option>
+    )),
+  ];
 }
 
 /** The address the kit will have, as it is typed. */
@@ -177,9 +190,30 @@ export function KitStyleForm({ kit }: { kit: BrandKitRow }) {
                 <input type="color" value={hex ?? "#000000"} onChange={(event) => setColor(row.key, { hex: event.target.value.toUpperCase() })} className="absolute inset-0 size-full cursor-pointer opacity-0" />
               </label>
               <Input aria-label={t("colorName")} placeholder={t("colorName")} maxLength={BRAND_LIMITS.colorName} value={row.name} onChange={(event) => setColor(row.key, { name: event.target.value })} />
-              <Input aria-label={t("colorHex")} placeholder="#EA3026" value={row.hex} onChange={(event) => setColor(row.key, { hex: event.target.value })} aria-invalid={row.hex !== "" && !hex} className="col-span-2 font-mono sm:col-span-1" />
-              <Input aria-label={t("colorNote")} placeholder={t("colorNotePlaceholder")} maxLength={BRAND_LIMITS.colorNote} value={row.note} onChange={(event) => setColor(row.key, { note: event.target.value })} className="col-span-2 sm:col-span-1" />
-              <Button type="button" variant="ghost" size="icon" aria-label={t("removeColor")} onClick={() => setColors((rows) => rows.filter((candidate) => candidate.key !== row.key))} className="col-start-3 row-start-1 sm:col-start-auto sm:row-start-auto">
+              <Input
+                aria-label={t("colorHex")}
+                placeholder="#EA3026"
+                value={row.hex}
+                onChange={(event) => setColor(row.key, { hex: event.target.value })}
+                aria-invalid={row.hex !== "" && !hex}
+                className="col-span-2 font-mono sm:col-span-1"
+              />
+              <Input
+                aria-label={t("colorNote")}
+                placeholder={t("colorNotePlaceholder")}
+                maxLength={BRAND_LIMITS.colorNote}
+                value={row.note}
+                onChange={(event) => setColor(row.key, { note: event.target.value })}
+                className="col-span-2 sm:col-span-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("removeColor")}
+                onClick={() => setColors((rows) => rows.filter((candidate) => candidate.key !== row.key))}
+                className="col-start-3 row-start-1 sm:col-start-auto sm:row-start-auto"
+              >
                 <Trash2Icon />
               </Button>
             </div>
@@ -197,9 +231,30 @@ export function KitStyleForm({ kit }: { kit: BrandKitRow }) {
         {fonts.map((row) => (
           <div key={row.key} className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
             <Input id={`${id}-font-${row.key}`} aria-label={t("fontName")} placeholder={t("fontName")} maxLength={BRAND_LIMITS.fontName} value={row.name} onChange={(event) => setFont(row.key, { name: event.target.value })} />
-            <Input aria-label={t("fontUsage")} placeholder={t("fontUsagePlaceholder")} maxLength={BRAND_LIMITS.fontUsage} value={row.usage} onChange={(event) => setFont(row.key, { usage: event.target.value })} className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto" />
-            <Input aria-label={t("fontUrl")} type="url" placeholder="https://fonts.google.com/…" value={row.url} onChange={(event) => setFont(row.key, { url: event.target.value })} className="col-span-2 row-start-3 sm:col-span-1 sm:row-start-auto" />
-            <Button type="button" variant="ghost" size="icon" aria-label={t("removeFont")} onClick={() => setFonts((rows) => rows.filter((candidate) => candidate.key !== row.key))} className="col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">
+            <Input
+              aria-label={t("fontUsage")}
+              placeholder={t("fontUsagePlaceholder")}
+              maxLength={BRAND_LIMITS.fontUsage}
+              value={row.usage}
+              onChange={(event) => setFont(row.key, { usage: event.target.value })}
+              className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"
+            />
+            <Input
+              aria-label={t("fontUrl")}
+              type="url"
+              placeholder="https://fonts.google.com/…"
+              value={row.url}
+              onChange={(event) => setFont(row.key, { url: event.target.value })}
+              className="col-span-2 row-start-3 sm:col-span-1 sm:row-start-auto"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("removeFont")}
+              onClick={() => setFonts((rows) => rows.filter((candidate) => candidate.key !== row.key))}
+              className="col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto"
+            >
               <Trash2Icon />
             </Button>
           </div>

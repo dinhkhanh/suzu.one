@@ -53,10 +53,14 @@ export function parseDat(source: string): string[][] {
 export function parseTimestamp(text: string, format: string): string | null {
   const tokens = ["YYYY", "MM", "DD", "HH", "mm", "ss"] as const;
   const order: (typeof tokens)[number][] = [];
-  const pattern = format.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/YYYY|MM|DD|HH|mm|ss/g, (token) => {
-    order.push(token as (typeof tokens)[number]);
-    return token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})";
-  }).replace(/\s+/g, "\\s+");
+  const pattern = format
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/YYYY|MM|DD|HH|mm|ss/g, (token) => {
+      order.push(token as (typeof tokens)[number]);
+      return token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})";
+    })
+    .replace(/\s+/g, "\\s+");
   const match = new RegExp(`^${pattern}$`).exec(text.trim());
   if (!match || !order.includes("YYYY") || !order.includes("MM") || !order.includes("DD") || !order.includes("HH") || !order.includes("mm")) return null;
   const part = (token: (typeof tokens)[number]) => (order.includes(token) ? Number(match[order.indexOf(token) + 1]) : 0);
@@ -124,13 +128,29 @@ export const PROFILE_SEED: { name: string; deviceModel: string; fileKind: "csv" 
     name: "CSV chung (có dòng tiêu đề)",
     deviceModel: "Generic CSV",
     fileKind: "csv",
-    mapping: { hasHeader: true, userId: { header: "User ID" }, timestamp: { header: "Time" }, direction: { header: "Status" }, timestampFormat: "YYYY-MM-DD HH:mm:ss", directionCodes: { in: "in", out: "out", "check-in": "in", "check-out": "out", "c/in": "in", "c/out": "out", "0": "in", "1": "out" }, inferDirection: true },
+    mapping: {
+      hasHeader: true,
+      userId: { header: "User ID" },
+      timestamp: { header: "Time" },
+      direction: { header: "Status" },
+      timestampFormat: "YYYY-MM-DD HH:mm:ss",
+      directionCodes: { in: "in", out: "out", "check-in": "in", "check-out": "out", "c/in": "in", "c/out": "out", "0": "in", "1": "out" },
+      inferDirection: true,
+    },
   },
   {
     name: "ZKTeco attlog.dat",
     deviceModel: "ZKTeco (attlog.dat)",
     fileKind: "dat",
     // PIN · timestamp · device number · status (0 in, 1 out, 4 overtime in, 5 overtime out) · verify mode · work code
-    mapping: { hasHeader: false, userId: { position: 1 }, timestamp: { position: 2 }, direction: { position: 4 }, timestampFormat: "YYYY-MM-DD HH:mm:ss", directionCodes: { "0": "in", "1": "out", "4": "in", "5": "out" }, inferDirection: true },
+    mapping: {
+      hasHeader: false,
+      userId: { position: 1 },
+      timestamp: { position: 2 },
+      direction: { position: 4 },
+      timestampFormat: "YYYY-MM-DD HH:mm:ss",
+      directionCodes: { "0": "in", "1": "out", "4": "in", "5": "out" },
+      inferDirection: true,
+    },
   },
 ];

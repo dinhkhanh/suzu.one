@@ -209,7 +209,28 @@ const convertPipeline = createAction({
       {
         account: input.clientId
           ? { clientId: input.clientId }
-          : { create: { code: input.code!, name: input.name!, entityId: input.accountEntityId ?? lead.entityId, note: null, profile: { legalName: input.legalName, taxCode: input.taxCode, address: null, website: null, industry: null, size: input.size, source: lead.source as never, tier: input.tier, contractingEntityId: input.accountEntityId ?? lead.entityId }, salesOwnerPersonId: deal.ownerPersonId, accountManagerPersonId: null, confirmDuplicate: input.confirmDuplicate } },
+          : {
+              create: {
+                code: input.code!,
+                name: input.name!,
+                entityId: input.accountEntityId ?? lead.entityId,
+                note: null,
+                profile: {
+                  legalName: input.legalName,
+                  taxCode: input.taxCode,
+                  address: null,
+                  website: null,
+                  industry: null,
+                  size: input.size,
+                  source: lead.source as never,
+                  tier: input.tier,
+                  contractingEntityId: input.accountEntityId ?? lead.entityId,
+                },
+                salesOwnerPersonId: deal.ownerPersonId,
+                accountManagerPersonId: null,
+                confirmDuplicate: input.confirmDuplicate,
+              },
+            },
         contact: input.contactId ? { contactId: input.contactId } : input.createContact ? { create: { source: input.contactSource, lawfulBasis: input.lawfulBasis } } : null,
         deal,
       },
@@ -240,7 +261,8 @@ const createDealPipeline = createAction({
       // Naming someone else the owner: they must be able to hold it.
       const context = await findAccount(input.clientId);
       const target = (await viewersOfPeople([ownerPersonId])).get(ownerPersonId);
-      if (!context || !target || !canCreateDeal({ principal: target.principal, ties: new Map() }, context.facts, input.entityId ?? context.profile?.contractingEntityId ?? context.client.entityId)) throw new ActionError("deal_owner_ineligible");
+      if (!context || !target || !canCreateDeal({ principal: target.principal, ties: new Map() }, context.facts, input.entityId ?? context.profile?.contractingEntityId ?? context.client.entityId))
+        throw new ActionError("deal_owner_ineligible");
     }
     const deal = await createDeal({ ...input, ownerPersonId, leadId: null }, user.person.id);
     refresh([`/crm/deals/${deal.id}`, `/crm/accounts/${deal.clientId}`]);
@@ -287,7 +309,15 @@ const movePipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after, stage } = await moveDeal(input.dealId, input.stageId, user.person.id, input.lostReason ? { reason: input.lostReason, note: input.lostNote } : null);
     refresh([`/crm/deals/${input.dealId}`, `/crm/accounts/${after.clientId}`]);
-    return { data: { status: after.status }, audit: { resource: { type: "crm_deal", id: input.dealId, entityId: after.entityId }, summary: stage.name, before: { stageId: before.stageId, status: before.status }, after: { stageId: after.stageId, status: after.status, lostReason: after.lostReason } } };
+    return {
+      data: { status: after.status },
+      audit: {
+        resource: { type: "crm_deal", id: input.dealId, entityId: after.entityId },
+        summary: stage.name,
+        before: { stageId: before.stageId, status: before.status },
+        after: { stageId: after.stageId, status: after.status, lostReason: after.lostReason },
+      },
+    };
   },
 });
 export async function moveDealAction(input: unknown) {

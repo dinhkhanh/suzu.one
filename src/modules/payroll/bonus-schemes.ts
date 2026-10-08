@@ -44,14 +44,24 @@ export async function listBonusSchemeVersions(executor?: Executor): Promise<Bonu
  */
 export async function getBonusScheme(entityId: string | null, date: IsoDate, executor?: Executor): Promise<ResolvedBonusScheme> {
   const approved = readsCache(executor) ? (await listBonusSchemeVersions()).filter((row) => row.status === "approved") : await executor!.select().from(schema.bonusScheme).where(eq(schema.bonusScheme.status, "approved"));
-  const version = versionOn(approved.filter((row) => row.entityId === entityId), date) ?? versionOn(approved.filter((row) => row.entityId === null), date);
+  const version =
+    versionOn(
+      approved.filter((row) => row.entityId === entityId),
+      date,
+    ) ??
+    versionOn(
+      approved.filter((row) => row.entityId === null),
+      date,
+    );
   if (!version) throw new ActionError("bonus_scheme_missing");
   return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: bonusSchemeSchema.parse(version.value) };
 }
 
 /** Is there a scheme at all for this entity and date? What the screens ask before offering a run. */
 export async function hasBonusScheme(entityId: string | null, date: IsoDate, executor?: Executor): Promise<boolean> {
-  return getBonusScheme(entityId, date, executor).then(() => true).catch(() => false);
+  return getBonusScheme(entityId, date, executor)
+    .then(() => true)
+    .catch(() => false);
 }
 
 /** The exact version a stored line was computed by — for explaining an amount long afterwards. */
@@ -98,14 +108,26 @@ export async function decideBonusScheme(id: string, decision: "approve" | "rejec
     if (!before || before.status !== "proposed") throw new ActionError("proposal_not_found");
     const decided = { decidedByPersonId: actorPersonId, decidedAt: new Date(), updatedAt: new Date() };
     if (decision === "reject") {
-      const [after] = await tx.update(table).set({ status: "rejected", ...decided }).where(eq(table.id, id)).returning();
+      const [after] = await tx
+        .update(table)
+        .set({ status: "rejected", ...decided })
+        .where(eq(table.id, id))
+        .returning();
       return { before, after };
     }
-    const approved = await tx.select().from(table).where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(before.entityId ? eq(table.entityId, before.entityId) : isNull(table.entityId), eq(table.status, "approved")))
+      .for("update");
     const plan = planApproval(approved, before.validFrom);
     if (plan.kind === "rejected") throw new ActionError(`rule_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
-    const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    const [after] = await tx
+      .update(table)
+      .set({ status: "approved", ...decided })
+      .where(eq(table.id, id))
+      .returning();
     return { before, after };
   });
   await invalidate(SCHEMES_CACHE);

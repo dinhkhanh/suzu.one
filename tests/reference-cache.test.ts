@@ -49,7 +49,10 @@ beforeAll(async () => {
   }
   const [team] = await db().insert(schema.workTeam).values({ key: "VID", name: "Video" }).returning();
   ids.team = team.id;
-  const [project] = await db().insert(schema.workProject).values({ teamId: team.id, key: "VID-P1", name: "Phim", createdByPersonId: ids.mai } as never).returning();
+  const [project] = await db()
+    .insert(schema.workProject)
+    .values({ teamId: team.id, key: "VID-P1", name: "Phim", createdByPersonId: ids.mai } as never)
+    .returning();
   ids.project = project.id;
 });
 
@@ -102,7 +105,17 @@ describe("checklist templates", () => {
 });
 
 describe("document templates and entities", () => {
-  const template = (overrides: Partial<DocumentTemplateInput> = {}): DocumentTemplateInput => ({ code: "XN-1", name: "Giấy xác nhận", entityId: null, kind: "confirmation" as never, tier: "personal", body: "Xác nhận {{person.fullName}}.", letterhead: {}, isActive: true, ...overrides });
+  const template = (overrides: Partial<DocumentTemplateInput> = {}): DocumentTemplateInput => ({
+    code: "XN-1",
+    name: "Giấy xác nhận",
+    entityId: null,
+    kind: "confirmation" as never,
+    tier: "personal",
+    body: "Xác nhận {{person.fullName}}.",
+    letterhead: {},
+    isActive: true,
+    ...overrides,
+  });
 
   it("lists, finds and offers the templates, with each entity's current name", async () => {
     const { after: confirmation } = await saveDocumentTemplate(null, template({ entityId: ids.szm }), ids.mai);
@@ -118,7 +131,16 @@ describe("document templates and entities", () => {
 
     // A renamed entity is renamed on the templates too: the name is the org module's, not a copy.
     const before = (await findEntity(ids.szm))!;
-    await updateEntity(ids.szm, { legalName: before.legalName, shortName: "SuZu Media Group", taxCode: before.taxCode, insuranceUnitCode: before.insuranceUnitCode, wageRegion: before.wageRegion, address: before.address, legalRepresentative: before.legalRepresentative, isActive: before.isActive });
+    await updateEntity(ids.szm, {
+      legalName: before.legalName,
+      shortName: "SuZu Media Group",
+      taxCode: before.taxCode,
+      insuranceUnitCode: before.insuranceUnitCode,
+      wageRegion: before.wageRegion,
+      address: before.address,
+      legalRepresentative: before.legalRepresentative,
+      isActive: before.isActive,
+    });
     expect((await findEntity(ids.szm))?.shortName).toBe("SuZu Media Group");
     expect((await listDocumentTemplates()).find((row) => row.id === confirmation.id)?.entityName).toBe("SuZu Media Group");
     expect((await listEntities()).map((row) => row.code)).toEqual(["SZC", "SZM"]);

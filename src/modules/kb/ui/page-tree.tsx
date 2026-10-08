@@ -28,7 +28,7 @@ export async function PageTree({ tree, spaceKey, currentId, compact = false, cla
               className={cn(
                 "flex h-[30px] min-w-0 items-center gap-1.5 rounded-[7px] px-2 text-[0.8125rem] transition-colors duration-100",
                 on ? "bg-primary/8 font-medium text-primary" : "text-foreground hover:bg-canvas",
-                node.status === "archived" && "text-muted-foreground line-through"
+                node.status === "archived" && "text-muted-foreground line-through",
               )}
             >
               <ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0", parents.has(node.id) ? (on ? "text-primary/70" : "text-faint") : "invisible")} />

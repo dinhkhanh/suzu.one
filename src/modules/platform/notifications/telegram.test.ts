@@ -16,7 +16,10 @@ describe("the webhook secret", () => {
 });
 
 describe("parsing an update", () => {
-  const privateMessage = (text: string | undefined, extra: Record<string, unknown> = {}) => ({ update_id: 1, message: { chat: { id: 42, type: "private" }, from: { id: 42, is_bot: false }, ...(text === undefined ? {} : { text }), ...extra } });
+  const privateMessage = (text: string | undefined, extra: Record<string, unknown> = {}) => ({
+    update_id: 1,
+    message: { chat: { id: 42, type: "private" }, from: { id: 42, is_bot: false }, ...(text === undefined ? {} : { text }), ...extra },
+  });
 
   it("reads Start with a payload, plain text and other input from a private chat", () => {
     expect(parseUpdate(privateMessage("/start link_abc-DEF_1"))).toEqual({ type: "start", chatId: "42", payload: "link_abc-DEF_1" });

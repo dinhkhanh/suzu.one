@@ -4,7 +4,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -32,7 +38,21 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { DEFAULT_PAYROLL_POLICY } from "./enums";
 import { salaryTermsContext } from "./field-contexts";
 import { stepRun } from "./lifecycle";
-import { bankOf, cashSheetRows, confirmCashReceipt, generateBankFile, listCashAwaitingReceipt, listPayables, listPaymentFiles, openCashAmount, openCashSheet, openFileTotal, planPayment, recordCashDisbursement, settlementOf } from "./payments";
+import {
+  bankOf,
+  cashSheetRows,
+  confirmCashReceipt,
+  generateBankFile,
+  listCashAwaitingReceipt,
+  listPayables,
+  listPaymentFiles,
+  openCashAmount,
+  openCashSheet,
+  openFileTotal,
+  planPayment,
+  recordCashDisbursement,
+  settlementOf,
+} from "./payments";
 import { calculateRun, createRegularRun, getRun } from "./runs";
 import { payComponentSeedRows } from "./seed-components";
 
@@ -43,11 +63,33 @@ let otherRunId = "";
 let otherCashPersonId = "";
 
 const summary = () => ({
-  days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
-  leavePaidMinutes: 0, leaveUnpaidMinutes: 0, holidayMinutes: 0, absenceMinutes: 0, lateMinutes: 0, earlyMinutes: 0,
-  lateCount: 0, earlyCount: 0, missingPunchDays: 0, absentDays: 0, wfhMinutes: 0, tripMinutes: 0, nightMinutes: 0,
-  otWeekday: { day: 0, night: 0 }, otRestDay: { day: 0, night: 0 }, otHoliday: { day: 0, night: 0 },
-  otTotalMinutes: 0, otUnapprovedMinutes: 0, otTimeOffMinutes: 0, paidDaysCenti: 2200, unpaidDaysCenti: 0, anomalyDays: 0,
+  days: 31,
+  standardDays: 22,
+  standardMinutes: 10_560,
+  workedMinutes: 10_560,
+  creditedMinutes: 0,
+  leavePaidMinutes: 0,
+  leaveUnpaidMinutes: 0,
+  holidayMinutes: 0,
+  absenceMinutes: 0,
+  lateMinutes: 0,
+  earlyMinutes: 0,
+  lateCount: 0,
+  earlyCount: 0,
+  missingPunchDays: 0,
+  absentDays: 0,
+  wfhMinutes: 0,
+  tripMinutes: 0,
+  nightMinutes: 0,
+  otWeekday: { day: 0, night: 0 },
+  otRestDay: { day: 0, night: 0 },
+  otHoliday: { day: 0, night: 0 },
+  otTotalMinutes: 0,
+  otUnapprovedMinutes: 0,
+  otTimeOffMinutes: 0,
+  paidDaysCenti: 2200,
+  unpaidDaysCenti: 0,
+  anomalyDays: 0,
 });
 
 const sensitiveContext = (field: "taxCode" | "bankAccounts", personId: string) => `person_sensitive.${field === "taxCode" ? "tax_code" : "bank_accounts"}:${personId}`;
@@ -64,7 +106,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate,
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -75,7 +126,9 @@ beforeAll(async () => {
   ids.noAccount = await hire("Le Van Minh", "2025-01-01");
   ids.cashPerson = await hire("Pham Thi Nga", "2025-06-01");
 
-  await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
+  await db()
+    .insert(schema.statutoryParameter)
+    .values(STATUTORY_SEED.map((seed) => ({ key: seed.key, value: seed.value, validFrom: seed.validFrom, status: "approved" as const, legalReference: seed.legalReference, note: seed.note ?? null })));
   await db().insert(schema.payComponent).values(payComponentSeedRows());
   await db().insert(schema.payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: "2026-01-01", status: "approved" });
 
@@ -98,7 +151,11 @@ beforeAll(async () => {
   for (const [personId, bankName, accountNumber] of accounts) {
     await db()
       .insert(schema.personSensitive)
-      .values({ personId, taxCode: fieldCipher().encrypt("8412345678", sensitiveContext("taxCode", personId)), bankAccounts: fieldCipher().encrypt(JSON.stringify([{ bankName, accountNumber, accountHolder: null, branch: null }]), sensitiveContext("bankAccounts", personId)) });
+      .values({
+        personId,
+        taxCode: fieldCipher().encrypt("8412345678", sensitiveContext("taxCode", personId)),
+        bankAccounts: fieldCipher().encrypt(JSON.stringify([{ bankName, accountNumber, accountHolder: null, branch: null }]), sensitiveContext("bankAccounts", personId)),
+      });
   }
 
   for (const [personId, amount] of [
@@ -108,7 +165,17 @@ beforeAll(async () => {
     [ids.cashPerson, 12_000_000],
   ] as const) {
     const id = crypto.randomUUID();
-    await db().insert(schema.salaryStructure).values({ id, personId, employmentId: employmentOf(personId), entityId: entity.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({
+        id,
+        personId,
+        employmentId: employmentOf(personId),
+        entityId: entity.id,
+        validFrom: "2026-01-01",
+        reason: "initial",
+        termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: amount, insuranceSalary: amount, allowances: [] }), salaryTermsContext(id)),
+      });
   }
 
   const lockedAt = new Date("2026-08-28T03:00:00Z");
@@ -271,7 +338,17 @@ describe("a run is only paid when both channels are settled (FR-PAY-39)", () => 
     const [employment] = await db().insert(schema.employment).values({ personId: person.id, entityId: other.id, employeeCode: "SZX-1", startDate: "2026-01-01", seniorityDate: "2026-01-01" }).returning();
     await db().insert(schema.payProfile).values({ personId: person.id, employmentId: employment.id, entityId: other.id, profile: "simple", simpleBasis: "other", validFrom: "2026-01-01", status: "approved" });
     const structureId = crypto.randomUUID();
-    await db().insert(schema.salaryStructure).values({ id: structureId, personId: person.id, employmentId: employment.id, entityId: other.id, validFrom: "2026-01-01", reason: "initial", termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 9_000_000, insuranceSalary: 9_000_000, allowances: [] }), salaryTermsContext(structureId)) });
+    await db()
+      .insert(schema.salaryStructure)
+      .values({
+        id: structureId,
+        personId: person.id,
+        employmentId: employment.id,
+        entityId: other.id,
+        validFrom: "2026-01-01",
+        reason: "initial",
+        termsEnc: fieldCipher().encrypt(JSON.stringify({ baseSalary: 9_000_000, insuranceSalary: 9_000_000, allowances: [] }), salaryTermsContext(structureId)),
+      });
     const lockedAt = new Date("2026-08-28T03:00:00Z");
     await db().insert(schema.timesheetPeriod).values({ entityId: other.id, month: "2026-08", status: "locked", lockedAt, lockedByPersonId: ids.actor });
     await db().insert(schema.timesheetMonth).values({ personId: person.id, entityId: other.id, month: "2026-08", status: "locked", summary: summary(), lockedAt, lockedByPersonId: ids.actor });
@@ -320,7 +397,12 @@ describe("a run is only paid when both channels are settled (FR-PAY-39)", () => 
     };
     await refused(db().update(schema.payrollCashPayment).set({ disbursedOn: "2026-09-09" }).where(eq(schema.payrollCashPayment.id, before.id)));
     await refused(db().update(schema.payrollCashPayment).set({ amountEnc: "tampered" }).where(eq(schema.payrollCashPayment.id, before.id)));
-    await refused(db().update(schema.payrollCashPayment).set({ receiptConfirmedAt: new Date("2030-01-01") }).where(eq(schema.payrollCashPayment.id, before.id)));
+    await refused(
+      db()
+        .update(schema.payrollCashPayment)
+        .set({ receiptConfirmedAt: new Date("2030-01-01") })
+        .where(eq(schema.payrollCashPayment.id, before.id)),
+    );
     await refused(db().delete(schema.payrollCashPayment).where(eq(schema.payrollCashPayment.id, before.id)));
   });
 });

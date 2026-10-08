@@ -91,7 +91,9 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
             <span className="ps-2 text-xs text-faint">
               {project.jobNumber}
               {project.jobNumber && project.clientName ? " · " : null}
-              <RecordLink kind="account" id={project.clientId}>{project.clientName}</RecordLink>
+              <RecordLink kind="account" id={project.clientId}>
+                {project.clientName}
+              </RecordLink>
             </span>
             {project.estimated ? (
               <Badge variant="warning" className="ms-2">
@@ -109,10 +111,18 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
       <TableCell className="align-top">
         <Badge variant="outline">{t(`basis.${project.basis}`)}</Badge>
       </TableCell>
-      <TableCell kind="time" className="align-top">{decimal(project.hours)}</TableCell>
-      <TableCell kind="money" className="align-top">{money(project.feeVnd)}</TableCell>
-      <TableCell kind="money" className="align-top">{money(project.costVnd)}</TableCell>
-      <TableCell kind="money" className={`align-top ${tone(project.marginVnd)}`}>{money(project.marginVnd)}</TableCell>
+      <TableCell kind="time" className="align-top">
+        {decimal(project.hours)}
+      </TableCell>
+      <TableCell kind="money" className="align-top">
+        {money(project.feeVnd)}
+      </TableCell>
+      <TableCell kind="money" className="align-top">
+        {money(project.costVnd)}
+      </TableCell>
+      <TableCell kind="money" className={`align-top ${tone(project.marginVnd)}`}>
+        {money(project.marginVnd)}
+      </TableCell>
       <TableCell kind="percent" className={`align-top ${tone(project.marginVnd)}`}>
         <RateBar rate={project.marginRate} label={percent(project.marginRate)} tone={project.marginVnd !== null && project.marginVnd < 0 ? "destructive" : undefined} />
       </TableCell>
@@ -137,7 +147,15 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
         eyebrow={<Link href="/reports">{t("back")}</Link>}
         title={t("title")}
         description={t("description")}
-        actions={<ExportButton action={exportReportAction} input={{ reportKey: "profitability", parameters: clientId ? { clientId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+        actions={
+          <ExportButton
+            action={exportReportAction}
+            input={{ reportKey: "profitability", parameters: clientId ? { clientId } : {}, from: period.from, to: period.to, locale }}
+            label={tExports("button")}
+            failedLabel={tExports("failed")}
+            truncatedLabel={tExports("truncated")}
+          />
+        }
       />
 
       <form className="toolbar">
@@ -188,8 +206,12 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
                 <TableCell kind="time">{decimal(view.privateProjects.hours)}</TableCell>
                 <TableCell kind="money">{money(view.privateProjects.feeVnd)}</TableCell>
                 <TableCell kind="money">{money(view.privateProjects.costVnd)}</TableCell>
-                <TableCell kind="money" className={tone(view.privateProjects.marginVnd)}>{money(view.privateProjects.marginVnd)}</TableCell>
-                <TableCell kind="percent" className={tone(view.privateProjects.marginVnd)}>{percent(view.privateProjects.marginRate)}</TableCell>
+                <TableCell kind="money" className={tone(view.privateProjects.marginVnd)}>
+                  {money(view.privateProjects.marginVnd)}
+                </TableCell>
+                <TableCell kind="percent" className={tone(view.privateProjects.marginVnd)}>
+                  {percent(view.privateProjects.marginRate)}
+                </TableCell>
               </TableRow>
             ) : null}
           </TableBody>
@@ -215,7 +237,13 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
               {view.clients.map((client) => (
                 <TableRow key={client.clientId ?? "none"}>
                   <TableCell>
-                    {client.clientName ? <RecordLink kind="account" id={client.clientId}>{client.clientName}</RecordLink> : t("noClient")}
+                    {client.clientName ? (
+                      <RecordLink kind="account" id={client.clientId}>
+                        {client.clientName}
+                      </RecordLink>
+                    ) : (
+                      t("noClient")
+                    )}
                     {client.estimated ? (
                       <Badge variant="warning" className="ms-2">
                         {t("estimated")}
@@ -226,7 +254,9 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
                   <TableCell kind="time">{decimal(client.hours)}</TableCell>
                   <TableCell kind="money">{money(client.feeVnd)}</TableCell>
                   <TableCell kind="money">{money(client.costVnd)}</TableCell>
-                  <TableCell kind="money" className={tone(client.marginVnd)}>{money(client.marginVnd)}</TableCell>
+                  <TableCell kind="money" className={tone(client.marginVnd)}>
+                    {money(client.marginVnd)}
+                  </TableCell>
                   <TableCell kind="percent" className={tone(client.marginVnd)}>
                     <RateBar rate={client.marginRate} label={percent(client.marginRate)} tone={client.marginVnd !== null && client.marginVnd < 0 ? "destructive" : undefined} />
                   </TableCell>

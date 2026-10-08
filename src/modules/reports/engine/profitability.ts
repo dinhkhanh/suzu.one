@@ -108,7 +108,11 @@ export function breakdown(lines: readonly { key: string; personId: string; minut
 
 export type ProfitProject = { projectId: string; clientId: string | null; fee: FeeFacts };
 
-export function profitability(input: { projects: readonly ProfitProject[]; time: readonly TimeLine[]; rates: readonly RateRow[]; periodMonths: readonly string[] }): { projects: ProjectProfit[]; clients: ClientProfit[]; total: Margin & { minutes: number; estimated: boolean } } {
+export function profitability(input: { projects: readonly ProfitProject[]; time: readonly TimeLine[]; rates: readonly RateRow[]; periodMonths: readonly string[] }): {
+  projects: ProjectProfit[];
+  clients: ClientProfit[];
+  total: Margin & { minutes: number; estimated: boolean };
+} {
   const timeOf = Map.groupBy(input.time, (line) => line.projectId);
   const projects = input.projects.map((project): ProjectProfit => {
     const costed = (timeOf.get(project.projectId) ?? []).map((line) => {
@@ -133,13 +137,29 @@ export function profitability(input: { projects: readonly ProfitProject[]; time:
   const clientOf = new Map(input.projects.map((project) => [project.projectId, project.clientId]));
   const clients = [...Map.groupBy(projects, (project) => clientOf.get(project.projectId) ?? null)].map(([clientId, rows]): ClientProfit => {
     const fees = rows.filter((row) => row.feeVnd !== null);
-    return { clientId, projects: rows.length, minutes: rows.reduce((total, row) => total + row.minutes, 0), estimated: rows.some((row) => row.estimated), ...marginOf(fees.length ? fees.reduce((total, row) => total + (row.feeVnd ?? 0), 0) : null, rows.reduce((total, row) => total + row.costVnd, 0)) };
+    return {
+      clientId,
+      projects: rows.length,
+      minutes: rows.reduce((total, row) => total + row.minutes, 0),
+      estimated: rows.some((row) => row.estimated),
+      ...marginOf(
+        fees.length ? fees.reduce((total, row) => total + (row.feeVnd ?? 0), 0) : null,
+        rows.reduce((total, row) => total + row.costVnd, 0),
+      ),
+    };
   });
 
   const fees = projects.filter((row) => row.feeVnd !== null);
   return {
     projects,
     clients: clients.sort((a, b) => (b.marginVnd ?? -Infinity) - (a.marginVnd ?? -Infinity)),
-    total: { minutes: projects.reduce((total, row) => total + row.minutes, 0), estimated: projects.some((row) => row.estimated), ...marginOf(fees.length ? fees.reduce((total, row) => total + (row.feeVnd ?? 0), 0) : null, projects.reduce((total, row) => total + row.costVnd, 0)) },
+    total: {
+      minutes: projects.reduce((total, row) => total + row.minutes, 0),
+      estimated: projects.some((row) => row.estimated),
+      ...marginOf(
+        fees.length ? fees.reduce((total, row) => total + (row.feeVnd ?? 0), 0) : null,
+        projects.reduce((total, row) => total + row.costVnd, 0),
+      ),
+    },
   };
 }

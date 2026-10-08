@@ -24,18 +24,7 @@ import { getLeaveOnDays } from "@/modules/leave/service";
 import { calendarDriver, type CalendarResult } from "@/modules/platform/calendar/service";
 import { notify } from "@/modules/platform/notifications/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import {
-  DEFAULT_INTERVIEW_KIT,
-  INTERVIEW_CLOSED,
-  type InterviewKind,
-  type InterviewMode,
-  type InterviewRecommendation,
-  type InterviewStatus,
-  SCORE_MAX,
-  SCORE_MIN,
-  type ScorecardCriterion,
-  type CandidateLocale,
-} from "./enums";
+import { DEFAULT_INTERVIEW_KIT, INTERVIEW_CLOSED, type InterviewKind, type InterviewMode, type InterviewRecommendation, type InterviewStatus, SCORE_MAX, SCORE_MIN, type ScorecardCriterion, type CandidateLocale } from "./enums";
 import { type BusyBlock, clashesWith, daysTouched, schedulingProblems } from "./engine/schedule";
 import { icsFileName, renderIcs } from "./engine/ics";
 import { interviewPlaceText, interviewTimeText } from "./engine/letters";
@@ -234,10 +223,7 @@ export async function listMyInterviews(personId: string, options: { limit?: numb
     .innerJoin(schema.jobApplication, eq(schema.jobApplication.id, schema.interview.applicationId))
     .innerJoin(schema.candidate, eq(schema.candidate.id, schema.jobApplication.candidateId))
     .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.interview.openingId))
-    .leftJoin(
-      schema.interviewScorecard,
-      and(eq(schema.interviewScorecard.interviewId, schema.interview.id), eq(schema.interviewScorecard.interviewerPersonId, personId)),
-    )
+    .leftJoin(schema.interviewScorecard, and(eq(schema.interviewScorecard.interviewId, schema.interview.id), eq(schema.interviewScorecard.interviewerPersonId, personId)))
     .where(eq(schema.interviewInterviewer.personId, personId))
     .orderBy(desc(schema.interview.startAt))
     .limit(options.limit ?? 100);
@@ -290,14 +276,7 @@ export async function interviewerAvailability(personIds: readonly string[], wind
     })
     .from(schema.interviewInterviewer)
     .innerJoin(schema.interview, eq(schema.interview.id, schema.interviewInterviewer.interviewId))
-    .where(
-      and(
-        inArray(schema.interviewInterviewer.personId, ids),
-        ne(schema.interview.status, "cancelled"),
-        lte(schema.interview.startAt, window.to),
-        gte(schema.interview.endAt, window.from),
-      ),
-    )
+    .where(and(inArray(schema.interviewInterviewer.personId, ids), ne(schema.interview.status, "cancelled"), lte(schema.interview.startAt, window.to), gte(schema.interview.endAt, window.from)))
     .orderBy(asc(schema.interview.startAt));
 
   const days = daysTouched({ startAt: window.from, endAt: window.to }, TIME_ZONE);
@@ -317,15 +296,9 @@ export async function interviewerAvailability(personIds: readonly string[], wind
  * a recruiter may be moving one of the two, or may know the other is about to be cancelled, and a
  * system that refuses a booking it does not understand is a system people book around.
  */
-export async function clashesFor(
-  personIds: readonly string[],
-  window: { from: Date; to: Date },
-  exceptInterviewId?: string,
-): Promise<{ personId: string; fullName: string; clashes: BusyBlock[] }[]> {
+export async function clashesFor(personIds: readonly string[], window: { from: Date; to: Date }, exceptInterviewId?: string): Promise<{ personId: string; fullName: string; clashes: BusyBlock[] }[]> {
   const availability = await interviewerAvailability(personIds, window);
-  return availability
-    .map((row) => ({ personId: row.personId, fullName: row.fullName, clashes: clashesWith({ startAt: window.from, endAt: window.to }, row.busy, exceptInterviewId) }))
-    .filter((row) => row.clashes.length > 0);
+  return availability.map((row) => ({ personId: row.personId, fullName: row.fullName, clashes: clashesWith({ startAt: window.from, endAt: window.to }, row.busy, exceptInterviewId) })).filter((row) => row.clashes.length > 0);
 }
 
 /**
@@ -525,9 +498,7 @@ async function notifyInterviewers(interview: InterviewRow, kind: "recruit.interv
  * as the one attendee. The panel's names and addresses are the company's business.
  */
 async function tellTheCandidate(interview: InterviewRow, letter: "interview" | "interviewCancelled", actor: { personId: string; fullName: string }) {
-  const [organizer] = interview.scheduledByPersonId
-    ? await db().select({ fullName: schema.person.fullName, workEmail: schema.person.workEmail }).from(schema.person).where(eq(schema.person.id, interview.scheduledByPersonId)).limit(1)
-    : [];
+  const [organizer] = interview.scheduledByPersonId ? await db().select({ fullName: schema.person.fullName, workEmail: schema.person.workEmail }).from(schema.person).where(eq(schema.person.id, interview.scheduledByPersonId)).limit(1) : [];
   const [opening] = await db()
     .select({ title: schema.jobOpening.title, titleEn: schema.jobOpening.titleEn, companyName: schema.entity.shortName })
     .from(schema.jobOpening)
@@ -583,11 +554,7 @@ export async function rescheduleInterview(
     const before = await findInterview(interviewId, tx);
     if (!before) throw new ActionError("recruit_interview_not_found");
     if (INTERVIEW_CLOSED.includes(before.status)) throw new ActionError("recruit_interview_closed");
-    const [after] = await tx
-      .update(schema.interview)
-      .set({ startAt: input.startAt, endAt: input.endAt, location: input.location, meetingUrl: input.meetingUrl, updatedAt: now() })
-      .where(eq(schema.interview.id, interviewId))
-      .returning();
+    const [after] = await tx.update(schema.interview).set({ startAt: input.startAt, endAt: input.endAt, location: input.location, meetingUrl: input.meetingUrl, updatedAt: now() }).where(eq(schema.interview.id, interviewId)).returning();
     await setInterviewers(tx, interviewId, input.interviewerPersonIds);
     await recordApplicationEvent(tx, { applicationId: after.applicationId, type: "interview_scheduled", actorPersonId, note: after.title, detail: { rescheduled: true } });
     return after;
@@ -774,12 +741,7 @@ function cleanRatings(criteria: readonly ScorecardCriterion[], given: Record<str
  * because an interviewer who may revise after reading the panel is exactly the thing the blind rule
  * exists to prevent. A draft may be saved as often as they like.
  */
-export async function saveScorecard(
-  interviewId: string,
-  interviewerPersonId: string,
-  input: ScorecardInput,
-  options: { submit: boolean },
-): Promise<ScorecardRow> {
+export async function saveScorecard(interviewId: string, interviewerPersonId: string, input: ScorecardInput, options: { submit: boolean }): Promise<ScorecardRow> {
   return db().transaction(async (tx) => {
     const interview = await findInterview(interviewId, tx);
     if (!interview) throw new ActionError("recruit_interview_not_found");
@@ -809,7 +771,10 @@ export async function saveScorecard(
 
     const [card] = existing
       ? await tx.update(schema.interviewScorecard).set(values).where(eq(schema.interviewScorecard.id, existing.id)).returning()
-      : await tx.insert(schema.interviewScorecard).values({ interviewId, interviewerPersonId, ...values }).returning();
+      : await tx
+          .insert(schema.interviewScorecard)
+          .values({ interviewId, interviewerPersonId, ...values })
+          .returning();
 
     if (options.submit) {
       await recordApplicationEvent(tx, {
@@ -836,13 +801,7 @@ export async function pendingScorecardCount(applicationId: string, executor: Exe
     .select({ value: sql<number>`count(*)::int` })
     .from(schema.interviewInterviewer)
     .innerJoin(schema.interview, eq(schema.interview.id, schema.interviewInterviewer.interviewId))
-    .leftJoin(
-      schema.interviewScorecard,
-      and(
-        eq(schema.interviewScorecard.interviewId, schema.interviewInterviewer.interviewId),
-        eq(schema.interviewScorecard.interviewerPersonId, schema.interviewInterviewer.personId),
-      ),
-    )
+    .leftJoin(schema.interviewScorecard, and(eq(schema.interviewScorecard.interviewId, schema.interviewInterviewer.interviewId), eq(schema.interviewScorecard.interviewerPersonId, schema.interviewInterviewer.personId)))
     .where(and(eq(schema.interview.applicationId, applicationId), ne(schema.interview.status, "cancelled"), isNull(schema.interviewScorecard.submittedAt)));
   return Number(row?.value ?? 0);
 }

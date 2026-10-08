@@ -75,7 +75,9 @@ export function BankFileForm({ runId, entityId, banks, accounts, defaultValueDat
       <div>
         <p className="text-sm text-muted-foreground">{t("bank.hint")}</p>
         {/* The formats are reconstructions until the accountant checks them against the bank. */}
-        <Alert variant="warning" className="mt-2 text-xs">{t("bank.unverified")}</Alert>
+        <Alert variant="warning" className="mt-2 text-xs">
+          {t("bank.unverified")}
+        </Alert>
       </div>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,7 +147,10 @@ export function BankFileForm({ runId, entityId, banks, accounts, defaultValueDat
           <li className="font-medium">{t("bank.skippedTitle")}</li>
           {generated.skipped.map((row) => (
             <li key={row.personId} className="text-muted-foreground">
-              <RecordLink kind="person" id={row.personId}>{row.fullName}</RecordLink> — {t(`bank.skipReasons.${row.reason}` as "bank.skipReasons.no_account")}
+              <RecordLink kind="person" id={row.personId}>
+                {row.fullName}
+              </RecordLink>{" "}
+              — {t(`bank.skipReasons.${row.reason}` as "bank.skipReasons.no_account")}
             </li>
           ))}
         </ul>
@@ -303,9 +308,7 @@ export function CashSheetScanUpload({ runId }: { runId: string }) {
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor="cash-sheet-scan">
-        {t("cash.scanAttach")}
-      </Label>
+      <Label htmlFor="cash-sheet-scan">{t("cash.scanAttach")}</Label>
       <input
         id="cash-sheet-scan"
         type="file"

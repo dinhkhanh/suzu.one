@@ -3,11 +3,99 @@ import "server-only";
 
 export * from "./enums";
 export { invalidateMemberships, loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
-export { canActForClient, canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type ProjectFacts, type TeamFacts, type WorkViewer } from "./policy";
+export {
+  canActForClient,
+  canAdminTeam,
+  canContributeToProject,
+  canContributeToTeam,
+  canCreateProject,
+  canDeleteTask,
+  canEditTask,
+  canGiveProjectRole,
+  canJoinTaskConversation,
+  canManageProject,
+  canManageWorkspace,
+  canModerateTask,
+  canViewProject,
+  canViewTask,
+  canViewTeam,
+  canViewTeamBacklog,
+  canDecideReview,
+  canSubmitIntake,
+  canManageTemplate,
+  canNudgeTask,
+  canSubmitDeliverable,
+  readsPrivateByPortfolio,
+  type ProjectFacts,
+  type TeamFacts,
+  type WorkViewer,
+} from "./policy";
 export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
-export { addableMembers, type ClientInput, type ClientRow, entryState, findClient, invalidateWorkClients, saveClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
-export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, type ProjectAppointment, projectAppointmentsOf, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
-export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, searchTasksLoosely, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
+export {
+  addableMembers,
+  type ClientInput,
+  type ClientRow,
+  entryState,
+  findClient,
+  invalidateWorkClients,
+  saveClient,
+  findLabel,
+  findState,
+  findTeam,
+  type LabelRow,
+  listClients,
+  listLabels,
+  listStates,
+  listTeamMembers,
+  listTeams,
+  type MemberChoice,
+  type MemberView,
+  type StateRow,
+  teamFacts,
+  type TeamRow,
+  type TeamSummary,
+} from "./teams";
+export {
+  createProjectIn,
+  type ProjectInput,
+  type CreateTargets,
+  findProject,
+  listAssignable,
+  listAssignableByTeam,
+  listCreateTargets,
+  listProjectMembers,
+  listProjectOptions,
+  type ProjectAppointment,
+  projectAppointmentsOf,
+  projectFacts,
+  projectRoleOf,
+  type ProjectMemberView,
+  type ProjectRow,
+  type ProjectSummary,
+  visibleProjects,
+} from "./projects";
+export {
+  type ActivityView,
+  createWorkTask,
+  createWorkTaskIn,
+  getTaskDetail,
+  type LinkedTask,
+  listActivity,
+  listLinkableTasks,
+  listProjectTasks,
+  listTeamBacklog,
+  listVisibleTaskIds,
+  loadTask,
+  type NewWorkTask,
+  searchTasks,
+  searchTasksLoosely,
+  type TaskDetail,
+  taskKey,
+  type TaskListItem,
+  type TaskSearchHit,
+  visibleTaskCondition,
+  WORK_KIND,
+} from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
 export { type DeletedTask, listDeletedTasks, RESTORE_WINDOW_DAYS } from "./tasks";
 export { listTaskSlice, TASK_LIST_LIMIT, type TaskSlice } from "./tasks";
@@ -36,7 +124,19 @@ export { getPersonTaskStats, type PersonTaskStats } from "./stats";
  */
 export { type AnalyticsCell, type AnalyticsFilter, defaultAnalyticsPeriod, getWorkAnalytics, type NamedGroup, type WorkAnalytics } from "./analytics";
 /** Phase 10 (FR-PJM-20..23): the person's own work and activity for Today, the plan and the EOD report — no authorization inside; the daily module decides who reads the result. */
-export { countOpenBlockersRaisedBy, type DayTask, type FeedEvent, type FeedKind, type HandoffWaiting, listDayTasks, listHandoffsWaitingFor, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "./day-feed";
+export {
+  countOpenBlockersRaisedBy,
+  type DayTask,
+  type FeedEvent,
+  type FeedKind,
+  type HandoffWaiting,
+  listDayTasks,
+  listHandoffsWaitingFor,
+  listOpenBlockersRaisedBy,
+  listOpenWorkOf,
+  listWorkActivityBetween,
+  type OpenBlocker,
+} from "./day-feed";
 /**
  * Phase 10 (FR-PJM-01..27): the project layer builds on projects and tasks. Work never imports
  * projects — the plan half of a template is applied through `createProjectFromTemplate`'s callback.
@@ -65,7 +165,19 @@ export { listMoveTargets } from "./move";
  * teams the caller names. Leave cover reads the leave module; exit handover reads core HR's
  * lifecycle events and guards the offboarding step (registered in schema.ts).
  */
-export { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
+export {
+  canAcknowledgeCover,
+  canChangeAccountManager,
+  canHandBackCover,
+  canHandOff,
+  canManageHandoffPackages,
+  canRespondToHandoff,
+  canRunExitHandover,
+  canSendToTeam,
+  canSubmitCoverPlan,
+  canViewCoverPlan,
+  canViewExitHandover,
+} from "./policy";
 export { type HandoffPackageRow, type HandoffRequirement, listPackages } from "./handoff-gate";
 export { type AccountHandoffView, handoffReturnsByTask, handoffStatsByStage, type HandoffView, listAccountHandoffs, listPendingHandoffsFor, listTaskHandoffs, type StageHandoffStats } from "./handoffs";
 export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getLeaveCoverAs, type LeaveCover, listCoverPlansFor } from "./cover";
@@ -95,7 +207,22 @@ export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/deliv
  * decides who may see it, and the task page asks before it calls.
  */
 export { canManagePreviewLinks, canRevokePreviewLink, canSeeProjectPreviewLinks } from "./preview-policy";
-export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, listProjectPreviewLinks, openPreviewFile, openPreviewLink, type PreviewDecisionInput, type PreviewFileOutcome, type PreviewLinkView, type PreviewOutcome, type PreviewPage, type ProjectPreviewLinkView, purgePreviewHits, sweepPreviewLinks } from "./preview";
+export {
+  decideOnPreviewLink,
+  findPreviewLink,
+  listPreviewLinks,
+  listProjectPreviewLinks,
+  openPreviewFile,
+  openPreviewLink,
+  type PreviewDecisionInput,
+  type PreviewFileOutcome,
+  type PreviewLinkView,
+  type PreviewOutcome,
+  type PreviewPage,
+  type ProjectPreviewLinkView,
+  purgePreviewHits,
+  sweepPreviewLinks,
+} from "./preview";
 export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_DAYS, type PreviewState } from "./engine/preview";
 /**
  * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run
@@ -114,7 +241,21 @@ export { canKeepChecklists, canManageChecklist, canUseChecklists, type Checklist
 export { checklistChoices, type ChecklistRow, listChecklists, listStateChecklists, type StateChecklistRow } from "./checklist-library";
 export { checklistOwners, checklistUsage } from "./checklists";
 export { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "./engine/checklists";
-export { listProjectStatusSets, listProjectStatuses, listStateSets, projectStatusChoices, projectStatusNames, projectStatusSetChoices, projectStatusUsage, type ProjectStatusRow, type ProjectStatusSetRow, statusesOfSet, type StateSetRow, usableByTeam, workflowChoices } from "./status-sets";
+export {
+  listProjectStatusSets,
+  listProjectStatuses,
+  listStateSets,
+  projectStatusChoices,
+  projectStatusNames,
+  projectStatusSetChoices,
+  projectStatusUsage,
+  type ProjectStatusRow,
+  type ProjectStatusSetRow,
+  statusesOfSet,
+  type StateSetRow,
+  usableByTeam,
+  workflowChoices,
+} from "./status-sets";
 /**
  * FR-AST-09: where a piece of work goes. Tasks, projects and posts point at the digital assets of
  * the asset register — the pages and channels everybody may name — and the asset's page reads back

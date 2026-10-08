@@ -63,15 +63,29 @@ export default async function DocumentTemplatesPage() {
                     {row.isActive ? null : <span className="ml-2 text-xs text-faint">{t("inactive")}</span>}
                   </TableCell>
                   <TableCell>{kinds(row.kind)}</TableCell>
-                  <TableCell>{row.entityName ? <RecordLink kind="entity" id={row.entityId}>{row.entityName}</RecordLink> : <span className="text-muted-foreground">{t("groupWide")}</span>}</TableCell>
+                  <TableCell>
+                    {row.entityName ? (
+                      <RecordLink kind="entity" id={row.entityId}>
+                        {row.entityName}
+                      </RecordLink>
+                    ) : (
+                      <span className="text-muted-foreground">{t("groupWide")}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5">
                       <Badge variant={row.tier === "compensation" ? "destructive" : row.tier === "restricted" ? "warning" : "outline"}>{tiers(row.tier)}</Badge>
                       {/* What the body actually demands, so a mismatch is visible at a glance. */}
-                      {row.tier !== needed ? <span className="text-xs text-faint">({t("needs")} {tiers(needed)})</span> : null}
+                      {row.tier !== needed ? (
+                        <span className="text-xs text-faint">
+                          ({t("needs")} {tiers(needed)})
+                        </span>
+                      ) : null}
                     </span>
                   </TableCell>
-                  <TableCell kind="number" className="text-faint">v{row.version}</TableCell>
+                  <TableCell kind="number" className="text-faint">
+                    v{row.version}
+                  </TableCell>
                 </TableRow>
               );
             })}

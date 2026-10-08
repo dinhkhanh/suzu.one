@@ -6,7 +6,16 @@ const social = [state("s-backlog", "backlog", 10), state("s-brief", "todo", 20),
 
 describe("mapStatesByCategory", () => {
   it("lands on the target's first active state of the same category", () => {
-    const video = [state("v-backlog", "backlog", 10), state("v-brief", "todo", 20), state("v-edit", "in_progress", 40), state("v-script", "in_progress", 30), state("v-client", "in_review", 60), state("v-internal", "in_review", 50), state("v-done", "done", 70), state("v-cancel", "cancelled", 80)];
+    const video = [
+      state("v-backlog", "backlog", 10),
+      state("v-brief", "todo", 20),
+      state("v-edit", "in_progress", 40),
+      state("v-script", "in_progress", 30),
+      state("v-client", "in_review", 60),
+      state("v-internal", "in_review", 50),
+      state("v-done", "done", 70),
+      state("v-cancel", "cancelled", 80),
+    ];
     expect(Object.fromEntries(mapStatesByCategory(social, video))).toEqual({ "s-backlog": "v-backlog", "s-brief": "v-brief", "s-write": "v-script", "s-review": "v-internal", "s-posted": "v-done", "s-cancel": "v-cancel" });
   });
   it("falls back to a near state that keeps open work open, and says when nothing fits", () => {

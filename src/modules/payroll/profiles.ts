@@ -27,14 +27,21 @@ export type ProfileInput = Pick<PayProfileRow, "profile" | "simpleBasis" | "revi
 export async function getProfilesOn(personIds: readonly string[], date: IsoDate, executor: Executor = db()): Promise<Map<string, PayProfileRow>> {
   if (personIds.length === 0) return new Map();
   const table = schema.payProfile;
-  const rows = await executor.select().from(table).where(and(inArray(table.personId, [...personIds]), eq(table.status, "approved"), lte(table.validFrom, date), or(isNull(table.validTo), gte(table.validTo, date))));
+  const rows = await executor
+    .select()
+    .from(table)
+    .where(and(inArray(table.personId, [...personIds]), eq(table.status, "approved"), lte(table.validFrom, date), or(isNull(table.validTo), gte(table.validTo, date))));
   return new Map(rows.map((row) => [row.personId, row]));
 }
 
 /** Every approved profile overlapping a period, per person — a run needs them when someone moved mid-month. */
 export async function listProfilesBetween(entityId: string, from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<PayProfileRow[]> {
   const table = schema.payProfile;
-  return executor.select().from(table).where(and(eq(table.entityId, entityId), eq(table.status, "approved"), lte(table.validFrom, to), or(isNull(table.validTo), gte(table.validTo, from)))).orderBy(table.personId, table.validFrom);
+  return executor
+    .select()
+    .from(table)
+    .where(and(eq(table.entityId, entityId), eq(table.status, "approved"), lte(table.validFrom, to), or(isNull(table.validTo), gte(table.validTo, from))))
+    .orderBy(table.personId, table.validFrom);
 }
 
 /** One person's profile versions, newest first. The caller has checked `canViewCompensationOf` / `canManageCompensation`. */
@@ -87,7 +94,11 @@ export async function submitProfile(input: ProfileInput, actorPersonId: string):
 
   return db().transaction(async (tx) => {
     const table = schema.payProfile;
-    const existing = await tx.select().from(table).where(and(eq(table.employmentId, facts.employmentId!), inArray(table.status, ["approved", "proposed"]))).for("update");
+    const existing = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.employmentId, facts.employmentId!), inArray(table.status, ["approved", "proposed"])))
+      .for("update");
     if (existing.some((row) => row.status === "proposed")) throw new ActionError("profile_proposal_open");
     const approved = existing.filter((row) => row.status === "approved");
     const plan = planApproval(approved, input.validFrom);
@@ -112,16 +123,29 @@ export async function decideProfile(id: string, decision: "approve" | "reject", 
     if (!before || before.status !== "proposed") throw new ActionError("proposal_not_found");
     const decided = { decidedByPersonId: actorPersonId, decidedAt: new Date(), updatedAt: new Date() };
     if (decision === "reject") {
-      const [after] = await tx.update(table).set({ status: "rejected", ...decided }).where(eq(table.id, id)).returning();
+      const [after] = await tx
+        .update(table)
+        .set({ status: "rejected", ...decided })
+        .where(eq(table.id, id))
+        .returning();
       return { before, after };
     }
-    const approved = await tx.select().from(table).where(and(eq(table.employmentId, before.employmentId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.employmentId, before.employmentId), eq(table.status, "approved")))
+      .for("update");
     const plan = planApproval(approved, before.validFrom);
     if (plan.kind === "rejected") throw new ActionError(`rule_${plan.reason}`);
     if (plan.kind === "succeed") await tx.update(table).set({ validTo: plan.closeOn, updatedAt: new Date() }).where(eq(table.id, plan.closeId));
-    const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
+    const [after] = await tx
+      .update(table)
+      .set({ status: "approved", ...decided })
+      .where(eq(table.id, id))
+      .returning();
     // FR-PAY-07: a move between profiles is a lifecycle event. A first profile is not a move.
-    if (approved.length > 0) await recordPayEvent(tx, { type: "pay_profile_change", personId: after.personId, employmentId: after.employmentId, entityId: after.entityId, effectiveDate: after.validFrom, reason: null, details: {} }, actorPersonId);
+    if (approved.length > 0)
+      await recordPayEvent(tx, { type: "pay_profile_change", personId: after.personId, employmentId: after.employmentId, entityId: after.entityId, effectiveDate: after.validFrom, reason: null, details: {} }, actorPersonId);
     return { before, after };
   });
 }
@@ -145,7 +169,11 @@ export async function voidProfile(id: string, reason: string, actorPersonId: str
     if (!before || before.status !== "approved") throw new ActionError("version_not_voidable");
     const refusal = await personVersionRefusal(before, tx);
     if (refusal) throw new ActionError(refusal);
-    const approved = await tx.select().from(table).where(and(eq(table.employmentId, before.employmentId), eq(table.status, "approved"))).for("update");
+    const approved = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.employmentId, before.employmentId), eq(table.status, "approved")))
+      .for("update");
     const now = new Date();
     const [after] = await tx.update(table).set({ status: "voided", voidedAt: now, voidedByPersonId: actorPersonId, voidReason: reason, updatedAt: now }).where(eq(table.id, id)).returning();
     const plan = planVoid(approved, before);
@@ -154,7 +182,19 @@ export async function voidProfile(id: string, reason: string, actorPersonId: str
   });
 }
 
-export type ExposureRow = { personId: string; fullName: string; employeeCode: string | null; entityId: string; workforceType: string; basis: SimpleBasis; since: IsoDate; months: number; reviewDate: IsoDate | null; contractType: string | null; flags: ExposureFlag[] };
+export type ExposureRow = {
+  personId: string;
+  fullName: string;
+  employeeCode: string | null;
+  entityId: string;
+  workforceType: string;
+  basis: SimpleBasis;
+  since: IsoDate;
+  months: number;
+  reviewDate: IsoDate | null;
+  contractType: string | null;
+  flags: ExposureFlag[];
+};
 
 /**
  * FR-PAY-08 / risk R11 — everyone on the Simple profile today, by basis and time on it. Nobody is
@@ -162,11 +202,18 @@ export type ExposureRow = { personId: string; fullName: string; employeeCode: st
  */
 export async function listSimpleProfileExposure(today: IsoDate = todayInVietnam(), executor: Executor = db()): Promise<ExposureRow[]> {
   const table = schema.payProfile;
-  const current = await executor.select().from(table).where(and(eq(table.status, "approved"), eq(table.profile, "simple"), lte(table.validFrom, today), or(isNull(table.validTo), gte(table.validTo, today))));
+  const current = await executor
+    .select()
+    .from(table)
+    .where(and(eq(table.status, "approved"), eq(table.profile, "simple"), lte(table.validFrom, today), or(isNull(table.validTo), gte(table.validTo, today))));
   if (current.length === 0) return [];
   const personIds = current.map((row) => row.personId);
   const [history, facts, limits] = await Promise.all([
-    executor.select().from(table).where(and(inArray(table.personId, personIds), eq(table.status, "approved"), eq(table.profile, "simple"))).orderBy(desc(table.validFrom)),
+    executor
+      .select()
+      .from(table)
+      .where(and(inArray(table.personId, personIds), eq(table.status, "approved"), eq(table.profile, "simple")))
+      .orderBy(desc(table.validFrom)),
     listPayrollFacts({ personIds }, today.slice(0, 7), executor),
     getParameter("probation.limits", today, executor),
   ]);

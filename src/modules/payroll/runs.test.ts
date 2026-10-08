@@ -4,7 +4,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
@@ -90,7 +96,16 @@ beforeAll(async () => {
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      {
+        fullName: name,
+        workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`,
+        profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null },
+        entityId: entity.id,
+        employeeCode: null,
+        startDate,
+        seniorityDate: null,
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, seniorityLevel: null, positionLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+      },
       actor.id,
       { onboarding: false },
     );
@@ -182,8 +197,14 @@ describe("retro items (FR-PAY-17)", () => {
     // the exclusion constraint refuses two live structures for one person.
     // July's run was calculated on 3 August; the raise is approved on the 20th — that is what
     // makes it late, and what `deriveRetroItems` looks for.
-    await db().update(schema.payrollRun).set({ calculatedAt: new Date("2026-08-03T02:00:00Z") }).where(eq(schema.payrollRun.month, "2026-07"));
-    await db().update(schema.salaryStructure).set({ validTo: "2026-06-30" }).where(and(eq(schema.salaryStructure.personId, ids.huy), eq(schema.salaryStructure.validFrom, "2024-03-01")));
+    await db()
+      .update(schema.payrollRun)
+      .set({ calculatedAt: new Date("2026-08-03T02:00:00Z") })
+      .where(eq(schema.payrollRun.month, "2026-07"));
+    await db()
+      .update(schema.salaryStructure)
+      .set({ validTo: "2026-06-30" })
+      .where(and(eq(schema.salaryStructure.personId, ids.huy), eq(schema.salaryStructure.validFrom, "2024-03-01")));
     await addStructure(ids.huy, "2026-07-01", 33_000_000, new Date("2026-08-20T02:00:00Z"));
 
     // While July can still be sent back and calculated again it is not "paid": a recalculation

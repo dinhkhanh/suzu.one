@@ -52,7 +52,15 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
         }
         description={
           <>
-            {t.rich("detail.sentBy", { name: own ? t("detail.you") : view.personName, when: when(row.createdAt), person: (chunks) => <RecordLink kind="person" id={own ? null : row.personId}>{chunks}</RecordLink> })}
+            {t.rich("detail.sentBy", {
+              name: own ? t("detail.you") : view.personName,
+              when: when(row.createdAt),
+              person: (chunks) => (
+                <RecordLink kind="person" id={own ? null : row.personId}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}
             {staff && !own && view.personEmail ? ` · ${view.personEmail}` : ""}
           </>
         }
@@ -94,7 +102,19 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
             <span className="text-xs break-words text-muted-foreground">{row.userAgent}</span>
           </Fact>
         ) : null}
-        {view.handlerName && staff ? <Fact label={t("detail.handledBy")}>{t.rich("detail.handledAt", { name: view.handlerName, when: when(row.updatedAt), person: (chunks) => <RecordLink kind="person" id={row.handledByPersonId}>{chunks}</RecordLink> })}</Fact> : null}
+        {view.handlerName && staff ? (
+          <Fact label={t("detail.handledBy")}>
+            {t.rich("detail.handledAt", {
+              name: view.handlerName,
+              when: when(row.updatedAt),
+              person: (chunks) => (
+                <RecordLink kind="person" id={row.handledByPersonId}>
+                  {chunks}
+                </RecordLink>
+              ),
+            })}
+          </Fact>
+        ) : null}
       </FactSheet>
 
       {triage ? (

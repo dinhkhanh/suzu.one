@@ -91,7 +91,14 @@ export function CalendarView({
     return placeByDueDate(visible);
   }, [shown, filters, extra, selfId, today, options.fields]);
 
-  const postsByDate = useMemo(() => Map.groupBy((posts ?? []).filter((post) => (!extra.team || post.teamId === extra.team) && (!extra.channel || post.platform === extra.channel)), (post) => post.date), [posts, extra]);
+  const postsByDate = useMemo(
+    () =>
+      Map.groupBy(
+        (posts ?? []).filter((post) => (!extra.team || post.teamId === extra.team) && (!extra.channel || post.platform === extra.channel)),
+        (post) => post.date,
+      ),
+    [posts, extra],
+  );
   const missing = useMemo(() => new Set(missingTaskIds ?? []), [missingTaskIds]);
 
   const setExtraKey = (key: "team" | "channel", value: string) => {
@@ -227,7 +234,12 @@ export function CalendarView({
                   );
                 })}
                 {(postsByDate.get(day.date) ?? []).map((post) => (
-                  <Link key={post.id} href={`/work/tasks/${post.taskId}`} title={[post.key, post.title, tWork(`channels.${post.platform}`), t(`posts.${post.flag}`)].join(" · ")} className={`truncate rounded border px-1.5 py-0.5 text-[11px] hover:underline ${POST_CLASS[post.flag]}`}>
+                  <Link
+                    key={post.id}
+                    href={`/work/tasks/${post.taskId}`}
+                    title={[post.key, post.title, tWork(`channels.${post.platform}`), t(`posts.${post.flag}`)].join(" · ")}
+                    className={`truncate rounded border px-1.5 py-0.5 text-[11px] hover:underline ${POST_CLASS[post.flag]}`}
+                  >
                     {post.flag === "published" ? "✓ " : post.flag === "late" ? "⚠ " : "◷ "}
                     {post.time ? `${post.time} ` : ""}
                     {post.title}

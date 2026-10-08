@@ -61,7 +61,9 @@ export default async function ClientsPage() {
             <AccountHandoverForm clientId={client.id} currentName={nameOf(client.accountManagerPersonId)} people={people.filter((person) => person.id !== client.accountManagerPersonId)} />
             {(handoffs.get(client.id) ?? []).map((handoff) => (
               <div key={handoff.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground">{tHandoff("history", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", by: handoff.byName ?? "—", date: format.dateTime(handoff.createdAt, { dateStyle: "medium" }) })}</p>
+                <p className="text-xs text-muted-foreground">
+                  {tHandoff("history", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", by: handoff.byName ?? "—", date: format.dateTime(handoff.createdAt, { dateStyle: "medium" }) })}
+                </p>
                 <HandoffNoteView note={handoff.note} />
               </div>
             ))}

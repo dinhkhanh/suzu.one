@@ -21,13 +21,21 @@ export default async function TeamAutomationsPage({ params }: PageProps<"/work/t
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
-            {t("title")}
-          </Link>
-          <span className="text-faint">/</span>
-          <RecordLink kind="team" id={team.id}>
-            {team.name}
-          </RecordLink></span>} title={t("automations.title")} description={t("automations.description")} />
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <RecordLink kind="team" id={team.id}>
+              {team.name}
+            </RecordLink>
+          </span>
+        }
+        title={t("automations.title")}
+        description={t("automations.description")}
+      />
       <AutomationManager teamId={team.id} rules={panel.rules} options={panel.options} runs={panel.runs} canManage={canManageAutomations(viewer, teamFacts(team))} />
     </Page>
   );

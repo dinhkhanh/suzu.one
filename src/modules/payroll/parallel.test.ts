@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64") }),
+  env: () => ({
+    allowedWorkspaceDomains: ["suzu.vn", "suzu.group"],
+    bootstrapOwnerEmails: [],
+    BETTER_AUTH_URL: "https://suzu.one",
+    DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 3).toString("base64")}`,
+    DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 5).toString("base64"),
+  }),
 }));
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 
@@ -42,8 +48,31 @@ const result = (over: Partial<PersonPayResult["totals"]> = {}): PersonPayResult 
       ...over,
     },
     proration: { basis: "working_days", divisorDays: 22, paidDaysCenti: 2200, standardDays: 22 },
-    insurance: { covered: true, reason: null, declaredBase: 25_000_000, bhxhBhytBase: 25_000_000, bhtnBase: 25_000_000, employee: { bhxh: 2_000_000, bhyt: 375_000, bhtn: 250_000 }, employer: { bhxh: 4_375_000, bhyt: 750_000, bhtn: 250_000 }, funds: { bhxh: true, bhyt: true, bhtn: true } },
-    pit: { method: "progressive", taxableIncome: 25_000_000, exemptIncome: 0, personalDeduction: 15_500_000, dependentDeduction: 0, dependents: 0, insuranceDeduction: 2_625_000, otherDeductions: 0, assessableIncome: 6_875_000, brackets: [], monthTax: 310_000, priorTax: 0, tax: 310_000 },
+    insurance: {
+      covered: true,
+      reason: null,
+      declaredBase: 25_000_000,
+      bhxhBhytBase: 25_000_000,
+      bhtnBase: 25_000_000,
+      employee: { bhxh: 2_000_000, bhyt: 375_000, bhtn: 250_000 },
+      employer: { bhxh: 4_375_000, bhyt: 750_000, bhtn: 250_000 },
+      funds: { bhxh: true, bhyt: true, bhtn: true },
+    },
+    pit: {
+      method: "progressive",
+      taxableIncome: 25_000_000,
+      exemptIncome: 0,
+      personalDeduction: 15_500_000,
+      dependentDeduction: 0,
+      dependents: 0,
+      insuranceDeduction: 2_625_000,
+      otherDeductions: 0,
+      assessableIncome: 6_875_000,
+      brackets: [],
+      monthTax: 310_000,
+      priorTax: 0,
+      tax: 310_000,
+    },
     warnings: [],
     trace: [],
   }) as PersonPayResult;
@@ -51,12 +80,28 @@ const result = (over: Partial<PersonPayResult["totals"]> = {}): PersonPayResult 
 async function seedRun(personIds: readonly string[]) {
   await db()
     .insert(schema.payrollRun)
-    .values({ id: ids.run, entityId: ids.entity, month: "2026-08", kind: "regular", status: "approved", headcount: personIds.length, totalsEnc: fieldCipher().encrypt(JSON.stringify({ headcount: personIds.length }), runTotalsContext(ids.run)) });
+    .values({
+      id: ids.run,
+      entityId: ids.entity,
+      month: "2026-08",
+      kind: "regular",
+      status: "approved",
+      headcount: personIds.length,
+      totalsEnc: fieldCipher().encrypt(JSON.stringify({ headcount: personIds.length }), runTotalsContext(ids.run)),
+    });
   for (const personId of personIds) {
     const rowId = randomUUID();
     await db()
       .insert(schema.payrollRunPerson)
-      .values({ id: rowId, runId: ids.run, personId, entityId: ids.entity, profile: "statutory", resultEnc: fieldCipher().encrypt(JSON.stringify({ ...result(), personId }), runResultContext(rowId)), inputEnc: fieldCipher().encrypt("{}", `payroll_run_person.input:${rowId}`) });
+      .values({
+        id: rowId,
+        runId: ids.run,
+        personId,
+        entityId: ids.entity,
+        profile: "statutory",
+        resultEnc: fieldCipher().encrypt(JSON.stringify({ ...result(), personId }), runResultContext(rowId)),
+        inputEnc: fieldCipher().encrypt("{}", `payroll_run_person.input:${rowId}`),
+      });
   }
 }
 
@@ -73,14 +118,18 @@ const reference = (over: Partial<Record<(typeof COMPARED_FIELDS)[number], number
 describe("parallel run reconciliation", () => {
   beforeAll(async () => {
     await migrateTestDb();
-    await db().insert(schema.entity).values([
-      { id: ids.entity, code: "SZM", legalName: "SuZu Media", shortName: "SZM" },
-      { id: ids.other, code: "SZC", legalName: "SuZu Creative", shortName: "SZC" },
-    ]);
-    await db().insert(schema.person).values([
-      { id: ids.person, fullName: "Nguyễn Văn A", searchName: "nguyen van a", workforceType: "employee", status: "active", primaryEntityId: ids.entity },
-      { id: ids.second, fullName: "Trần Thị B", searchName: "tran thi b", workforceType: "employee", status: "active", primaryEntityId: ids.entity },
-    ]);
+    await db()
+      .insert(schema.entity)
+      .values([
+        { id: ids.entity, code: "SZM", legalName: "SuZu Media", shortName: "SZM" },
+        { id: ids.other, code: "SZC", legalName: "SuZu Creative", shortName: "SZC" },
+      ]);
+    await db()
+      .insert(schema.person)
+      .values([
+        { id: ids.person, fullName: "Nguyễn Văn A", searchName: "nguyen van a", workforceType: "employee", status: "active", primaryEntityId: ids.entity },
+        { id: ids.second, fullName: "Trần Thị B", searchName: "tran thi b", workforceType: "employee", status: "active", primaryEntityId: ids.entity },
+      ]);
     await seedRun([ids.person, ids.second]);
   });
 

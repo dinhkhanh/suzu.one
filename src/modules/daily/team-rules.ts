@@ -19,7 +19,18 @@ const listAllRows = (executor?: Executor): Promise<TeamPolicyRow[]> => (executor
 
 const rulesOfRow = (row: TeamPolicyRow | undefined): TeamRules =>
   row
-    ? { planMode: row.planMode as RuleMode, reportMode: row.reportMode as RuleMode, reportDays: row.reportDays, planCutoff: row.planCutoff, reportDeadline: row.reportDeadline, timeMode: row.timeMode as RuleMode, timesheetApproval: row.timesheetApproval, coverMinDays: row.coverMinDays, cycleWeeks: row.cycleWeeks, cycleStart: row.cycleStart }
+    ? {
+        planMode: row.planMode as RuleMode,
+        reportMode: row.reportMode as RuleMode,
+        reportDays: row.reportDays,
+        planCutoff: row.planCutoff,
+        reportDeadline: row.reportDeadline,
+        timeMode: row.timeMode as RuleMode,
+        timesheetApproval: row.timesheetApproval,
+        coverMinDays: row.coverMinDays,
+        cycleWeeks: row.cycleWeeks,
+        cycleStart: row.cycleStart,
+      }
     : DEFAULT_TEAM_RULES;
 
 /** A team's rules; a team that never set any follows the defaults (SRS A10, A11). */
@@ -31,7 +42,11 @@ export async function saveTeamRules(teamId: string, rules: TeamRules): Promise<{
   const saved = await db().transaction(async (tx) => {
     const before = await getTeamRules(teamId, tx);
     const values = { ...rules, reportDays: [...rules.reportDays].sort((a, b) => a - b), updatedAt: new Date() };
-    const [row] = await tx.insert(schema.dailyTeamPolicy).values({ teamId, ...values }).onConflictDoUpdate({ target: schema.dailyTeamPolicy.teamId, set: values }).returning();
+    const [row] = await tx
+      .insert(schema.dailyTeamPolicy)
+      .values({ teamId, ...values })
+      .onConflictDoUpdate({ target: schema.dailyTeamPolicy.teamId, set: values })
+      .returning();
     return { before, after: rulesOfRow(row) };
   });
   await invalidate(RULES_CACHE);
@@ -67,7 +82,10 @@ export async function rulesOfPeople(personIds: readonly string[], executor?: Exe
       .from(schema.workTeamMember)
       .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTeamMember.teamId))
       .where(and(inArray(schema.workTeamMember.personId, ids), eq(schema.workTeam.isActive, true))),
-    reader.select({ personId: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, ids), exemptFromDaily())),
+    reader
+      .select({ personId: schema.person.id })
+      .from(schema.person)
+      .where(and(inArray(schema.person.id, ids), exemptFromDaily())),
     listAllRows(executor),
   ]);
   const byTeam = new Map(rows.map((row) => [row.teamId, row]));
@@ -89,6 +107,9 @@ export async function rulesOfPeople(personIds: readonly string[], executor?: Exe
  * `dayOf`'s answer, person by person.
  */
 export async function listDailyPeople(executor: Executor = db()): Promise<string[]> {
-  const rows = await executor.select({ personId: schema.person.id }).from(schema.person).where(and(eq(schema.person.status, "active"), not(exemptFromDaily())));
+  const rows = await executor
+    .select({ personId: schema.person.id })
+    .from(schema.person)
+    .where(and(eq(schema.person.status, "active"), not(exemptFromDaily())));
   return rows.map((row) => row.personId);
 }

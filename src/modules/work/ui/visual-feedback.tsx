@@ -93,13 +93,23 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
                 {numberOf(pin.id)}
               </button>
             ))}
-          {draft?.x !== null && draft?.x !== undefined ? <span style={{ left: `${draft.x * 100}%`, top: `${draft.y! * 100}%` }} className="pointer-events-none absolute size-7 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full border-2 border-dashed border-primary bg-primary/30" /> : null}
+          {draft?.x !== null && draft?.x !== undefined ? (
+            <span
+              style={{ left: `${draft.x * 100}%`, top: `${draft.y! * 100}%` }}
+              className="pointer-events-none absolute size-7 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full border-2 border-dashed border-primary bg-primary/30"
+            />
+          ) : null}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           <SignedVideo url={url} refresh={refresh} videoRef={video} className="w-full rounded-lg border bg-black" onTimeUpdate={(event) => setPlayhead(Math.round(event.currentTarget.currentTime * 1000))} />
           {canPin ? (
-            <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => {
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-fit"
+              onClick={() => {
                 video.current?.pause();
                 setDraft({ x: null, y: null, timecodeMs: playhead });
               }}
@@ -117,7 +127,10 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
           onSubmit={(event) => {
             event.preventDefault();
             const body = String(new FormData(event.currentTarget).get("body") ?? "");
-            run(() => addPinAction({ deliverableId: version.id, x: draft.x ?? "", y: draft.y ?? "", timecodeMs: draft.timecodeMs ?? "", body }), () => setDraft(null));
+            run(
+              () => addPinAction({ deliverableId: version.id, x: draft.x ?? "", y: draft.y ?? "", timecodeMs: draft.timecodeMs ?? "", body }),
+              () => setDraft(null),
+            );
           }}
         >
           <span className="text-xs text-muted-foreground">{draft.timecodeMs !== null ? formatTimecode(draft.timecodeMs) : t("newPin")}</span>
@@ -147,7 +160,12 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
           <List>
             {shown.map((pin) => (
               <ListItem key={pin.id} className={`items-start gap-2 ${active === pin.id ? "bg-muted/60" : ""}`}>
-                <button type="button" onClick={() => seek(pin)} className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${pin.resolved ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`} aria-label={t("pinNumber", { number: numberOf(pin.id) })}>
+                <button
+                  type="button"
+                  onClick={() => seek(pin)}
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${pin.resolved ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}
+                  aria-label={t("pinNumber", { number: numberOf(pin.id) })}
+                >
                   {numberOf(pin.id)}
                 </button>
                 <div className="min-w-0 flex-1">
@@ -156,7 +174,14 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
                     {pin.body}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {pin.authorName ? <RecordLink kind="person" id={pin.authorPersonId}>{pin.authorName}</RecordLink> : "—"} · {format.dateTime(new Date(pin.createdAt), { dateStyle: "short", timeStyle: "short" })}
+                    {pin.authorName ? (
+                      <RecordLink kind="person" id={pin.authorPersonId}>
+                        {pin.authorName}
+                      </RecordLink>
+                    ) : (
+                      "—"
+                    )}{" "}
+                    · {format.dateTime(new Date(pin.createdAt), { dateStyle: "short", timeStyle: "short" })}
                   </p>
                 </div>
                 {pin.canResolve ? (

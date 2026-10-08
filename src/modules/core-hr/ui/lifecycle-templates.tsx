@@ -70,7 +70,15 @@ export async function LifecycleTemplates({ principal }: { principal: Principal }
                                 </p>
                               ) : null}
                             </TableCell>
-                            <TableCell>{item.assigneeRule === "person" ? <RecordLink kind="person" id={item.assigneePersonId}>{people.find((person) => person.id === item.assigneePersonId)?.fullName}</RecordLink> : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}</TableCell>
+                            <TableCell>
+                              {item.assigneeRule === "person" ? (
+                                <RecordLink kind="person" id={item.assigneePersonId}>
+                                  {people.find((person) => person.id === item.assigneePersonId)?.fullName}
+                                </RecordLink>
+                              ) : (
+                                t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")
+                              )}
+                            </TableCell>
                             <TableCell>{t("offset", { days: item.dueOffsetDays })}</TableCell>
                             {manage ? (
                               <TableCell kind="actions">

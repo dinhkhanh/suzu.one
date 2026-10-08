@@ -172,7 +172,18 @@ export function FilterBar({
     if (!field) return key;
     if (value === EMPTY) return tFields("filterEmpty", { name: field.name });
     if (value === SET) return tFields("filterSet", { name: field.name });
-    const label = field.type === "person" ? (value === "me" ? t("me") : name(options.people, value)) : field.type === "checkbox" ? (value === "1" ? tFields("yes") : tFields("no")) : field.type === "select" || field.type === "multi_select" ? name(field.options, value) : value;
+    const label =
+      field.type === "person"
+        ? value === "me"
+          ? t("me")
+          : name(options.people, value)
+        : field.type === "checkbox"
+          ? value === "1"
+            ? tFields("yes")
+            : tFields("no")
+          : field.type === "select" || field.type === "multi_select"
+            ? name(field.options, value)
+            : value;
     return `${field.name}: ${label}`;
   };
 
@@ -197,7 +208,12 @@ export function FilterBar({
       {active.map(([key, value]) => (
         <Badge key={key} variant="secondary" className="h-8 gap-1 pr-1 pl-2.5 md:h-7">
           <span className="max-w-56 truncate">{chip(key, value)}</span>
-          <button type="button" aria-label={`${t("clear")}: ${chip(key, value)}`} onClick={() => setFilter(key as keyof TaskFilters, "")} className="press flex size-5 items-center justify-center rounded-full hover:bg-foreground/10 [&_svg]:size-3">
+          <button
+            type="button"
+            aria-label={`${t("clear")}: ${chip(key, value)}`}
+            onClick={() => setFilter(key as keyof TaskFilters, "")}
+            className="press flex size-5 items-center justify-center rounded-full hover:bg-foreground/10 [&_svg]:size-3"
+          >
             <XIcon />
           </button>
         </Badge>
@@ -326,4 +342,3 @@ export function FilterBar({
     </div>
   );
 }
-

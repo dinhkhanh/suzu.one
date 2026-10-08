@@ -197,14 +197,19 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
                   <ul className="flex flex-col gap-0.5">
                     {preview.conflicts.colleaguesAway.map((row) => (
                       <li key={row.personId}>
-                        <RecordLink kind="person" id={row.personId}>{row.name}</RecordLink>: {row.dates.map(date).join(", ")}
+                        <RecordLink kind="person" id={row.personId}>
+                          {row.name}
+                        </RecordLink>
+                        : {row.dates.map(date).join(", ")}
                       </li>
                     ))}
                   </ul>
                 </div>
               </Alert>
             ) : null}
-            {preview.conflicts.shortfalls.length > 0 ? <Alert variant="warning">{t("request.shortfall", { dates: preview.conflicts.shortfalls.map((row) => date(row.date)).join(", "), min: preview.conflicts.shortfalls[0].minPresent })}</Alert> : null}
+            {preview.conflicts.shortfalls.length > 0 ? (
+              <Alert variant="warning">{t("request.shortfall", { dates: preview.conflicts.shortfalls.map((row) => date(row.date)).join(", "), min: preview.conflicts.shortfalls[0].minPresent })}</Alert>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

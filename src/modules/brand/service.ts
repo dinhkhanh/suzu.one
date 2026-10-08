@@ -96,7 +96,10 @@ export async function totalsByKit(kitIds: readonly string[]): Promise<Map<string
       (select count(*)::int from brand_asset a join stored_file f on f.id = a.file_id where a.brand_id = k.id and f.status = 'ready' and f.deleted_at is null) as files,
       (select coalesce(sum(d.downloads), 0)::int from brand_asset_download d join brand_asset a on a.id = d.asset_id where a.brand_id = k.id) as downloads
     from brand_kit k
-    where k.id in (${sql.join(kitIds.map((id) => sql`${id}::uuid`), sql`, `)})`);
+    where k.id in (${sql.join(
+      kitIds.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    )})`);
   return new Map(rowsOf<{ brand_id: string; sections: number; files: number; downloads: number }>(result).map((row) => [row.brand_id, { sections: row.sections, files: row.files, downloads: row.downloads }]));
 }
 
@@ -185,7 +188,11 @@ export async function updateBrandKitDetails(kitId: string, input: BrandKitDetail
 
 /** The kit's palette and typefaces, already cleaned (`cleanPalette`, `cleanFonts`). */
 export async function updateBrandKitStyle(kitId: string, input: { colors: BrandColor[]; fonts: BrandFont[] }): Promise<BrandKitRow> {
-  const [after] = await db().update(schema.brandKit).set({ ...input, updatedAt: new Date() }).where(eq(schema.brandKit.id, kitId)).returning();
+  const [after] = await db()
+    .update(schema.brandKit)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(schema.brandKit.id, kitId))
+    .returning();
   if (!after) throw new ActionError("brand_not_found");
   await invalidateBrandKits();
   return after;
@@ -194,7 +201,10 @@ export async function updateBrandKitStyle(kitId: string, input: { colors: BrandC
 /** Only a kit without files can go: files are removed one by one, deliberately. Hide a kit to withdraw it. */
 export async function deleteBrandKit(kitId: string): Promise<BrandKitRow> {
   const removed = await db().transaction(async (tx) => {
-    const [{ files }] = await tx.select({ files: sql<number>`count(*)::int` }).from(schema.brandAsset).where(eq(schema.brandAsset.brandId, kitId));
+    const [{ files }] = await tx
+      .select({ files: sql<number>`count(*)::int` })
+      .from(schema.brandAsset)
+      .where(eq(schema.brandAsset.brandId, kitId));
     if (files > 0) throw new ActionError("brand_has_files");
     const [kit] = await tx.delete(schema.brandKit).where(eq(schema.brandKit.id, kitId)).returning();
     if (!kit) throw new ActionError("brand_not_found");
@@ -217,18 +227,28 @@ export async function createBrandSection(kitId: string, input: { kind: BrandSect
       .from(schema.brandSection)
       .where(eq(schema.brandSection.brandId, kitId));
     if (sections >= MAX_BRAND_SECTIONS) throw new ActionError("too_many_sections");
-    const [section] = await tx.insert(schema.brandSection).values({ brandId: kitId, ...input, sortOrder: next }).returning();
+    const [section] = await tx
+      .insert(schema.brandSection)
+      .values({ brandId: kitId, ...input, sortOrder: next })
+      .returning();
     return section;
   });
   await invalidateBrandKits();
   return created;
 }
 
-export async function updateBrandSection(sectionId: string, input: { kind: BrandSectionKind; title: string; titleEn: string | null; body: string | null; bodyEn: string | null }): Promise<{ before: BrandSectionRow; after: BrandSectionRow }> {
+export async function updateBrandSection(
+  sectionId: string,
+  input: { kind: BrandSectionKind; title: string; titleEn: string | null; body: string | null; bodyEn: string | null },
+): Promise<{ before: BrandSectionRow; after: BrandSectionRow }> {
   const result = await db().transaction(async (tx) => {
     const [before] = await tx.select().from(schema.brandSection).where(eq(schema.brandSection.id, sectionId)).limit(1);
     if (!before) throw new ActionError("section_not_found");
-    const [after] = await tx.update(schema.brandSection).set({ ...input, updatedAt: new Date() }).where(eq(schema.brandSection.id, sectionId)).returning();
+    const [after] = await tx
+      .update(schema.brandSection)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(schema.brandSection.id, sectionId))
+      .returning();
     return { before, after };
   });
   await invalidateBrandKits();
@@ -292,7 +312,10 @@ export async function createBrandRule(section: BrandSectionRow, input: BrandRule
       .from(schema.brandRule)
       .where(eq(schema.brandRule.sectionId, section.id));
     if (rules >= MAX_BRAND_RULES) throw new ActionError("too_many_rules");
-    const [rule] = await tx.insert(schema.brandRule).values({ sectionId: section.id, ...input, sortOrder: next }).returning();
+    const [rule] = await tx
+      .insert(schema.brandRule)
+      .values({ sectionId: section.id, ...input, sortOrder: next })
+      .returning();
     return rule;
   });
   await invalidateBrandKits();
@@ -335,7 +358,10 @@ async function checkSection(tx: Executor, kitId: string, sectionId: string | nul
 
 /** Step 1 of adding a file: where the browser may PUT it. */
 export async function beginBrandAssetUpload(kit: BrandKitRow, file: { fileName: string; sizeBytes: number }, actor: Actor) {
-  const [{ files }] = await db().select({ files: sql<number>`count(*)::int` }).from(schema.brandAsset).where(eq(schema.brandAsset.brandId, kit.id));
+  const [{ files }] = await db()
+    .select({ files: sql<number>`count(*)::int` })
+    .from(schema.brandAsset)
+    .where(eq(schema.brandAsset.brandId, kit.id));
   if (files >= MAX_BRAND_ASSETS) throw new ActionError("too_many_files");
   return beginUpload(ownerOf(kit), file, actor);
 }
@@ -352,7 +378,10 @@ export async function completeBrandAssetUpload(kit: BrandKitRow, fileId: string,
       .select({ next: sql<number>`coalesce(max(${schema.brandAsset.sortOrder}), 0)::int + 10` })
       .from(schema.brandAsset)
       .where(and(eq(schema.brandAsset.brandId, kit.id), eq(schema.brandAsset.kind, details.kind)));
-    return tx.insert(schema.brandAsset).values({ brandId: kit.id, fileId: file.id, ...details, sortOrder: next, createdByPersonId: actor.personId }).returning();
+    return tx
+      .insert(schema.brandAsset)
+      .values({ brandId: kit.id, fileId: file.id, ...details, sortOrder: next, createdByPersonId: actor.personId })
+      .returning();
   });
   await invalidateBrandKits();
   return asset;

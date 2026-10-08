@@ -114,7 +114,10 @@ export function ruleProblems(rule: unknown, recurrence: string): RuleProblem[] {
   }
   if (recurrence === "event" || !(recurrence in MONTHS_IN)) return ["rule_recurrence"];
   if (candidate.type === "after_period") {
-    return [...(dayOk(candidate.day) ? [] : (["rule_day"] as const)), ...(Number.isInteger(candidate.monthsAfter) && (candidate.monthsAfter as number) >= 0 && (candidate.monthsAfter as number) <= 12 ? [] : (["rule_months_after"] as const))];
+    return [
+      ...(dayOk(candidate.day) ? [] : (["rule_day"] as const)),
+      ...(Number.isInteger(candidate.monthsAfter) && (candidate.monthsAfter as number) >= 0 && (candidate.monthsAfter as number) <= 12 ? [] : (["rule_months_after"] as const)),
+    ];
   }
   if (candidate.type === "in_period") {
     const months = MONTHS_IN[recurrence as PeriodicRecurrence];

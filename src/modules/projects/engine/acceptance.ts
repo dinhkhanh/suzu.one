@@ -99,7 +99,11 @@ export function acceptanceItemsText(items: readonly AcceptanceItem[], words: { p
  * What the paper says was accepted: the items, then the lead's own words; and its summary line —
  * the totals of the items, or, for a record made of words alone, that it is as described.
  */
-export function acceptanceBody(items: readonly AcceptanceItem[], description: string | null | undefined, words: { promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string; described: string }): { items: string; totals: string } {
+export function acceptanceBody(
+  items: readonly AcceptanceItem[],
+  description: string | null | undefined,
+  words: { promised: string; delivered: string; accepted: string; totals: (totals: { promised: number; delivered: number; accepted: number }) => string; described: string },
+): { items: string; totals: string } {
   const stated = description?.trim() || null;
   return { items: [items.length ? acceptanceItemsText(items, words) : null, stated].filter(Boolean).join("\n\n"), totals: items.length ? words.totals(acceptanceTotals(items)) : words.described };
 }

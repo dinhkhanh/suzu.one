@@ -9,13 +9,7 @@ export const MAX_BACKDATE_DAYS = 14;
 /** And how far ahead. A year out is a typo too. */
 export const MAX_AHEAD_DAYS = 365;
 
-export type SchedulingProblem =
-  | "interview_ends_before_it_starts"
-  | "interview_too_short"
-  | "interview_too_long"
-  | "interview_too_far_back"
-  | "interview_too_far_ahead"
-  | "interview_no_interviewer";
+export type SchedulingProblem = "interview_ends_before_it_starts" | "interview_too_short" | "interview_too_long" | "interview_too_far_back" | "interview_too_far_ahead" | "interview_no_interviewer";
 
 export type SchedulingDraft = { startAt: Date; endAt: Date; interviewerPersonIds: readonly string[] };
 

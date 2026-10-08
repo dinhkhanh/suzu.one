@@ -60,7 +60,9 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
     crmSettings(today),
   ]);
   const params_ = (patch: Record<string, string>) => {
-    const next = new URLSearchParams(Object.entries({ view, ...(mine ? { mine: "1" } : {}), ...(teamId ? { team: teamId } : {}), ...(serviceLine ? { service: serviceLine } : {}), ...patch }).filter(([, value]) => value) as [string, string][]);
+    const next = new URLSearchParams(
+      Object.entries({ view, ...(mine ? { mine: "1" } : {}), ...(teamId ? { team: teamId } : {}), ...(serviceLine ? { service: serviceLine } : {}), ...patch }).filter(([, value]) => value) as [string, string][],
+    );
     return `/crm/deals?${next.toString()}`;
   };
   // The list's pages carry its status and search along.
@@ -80,14 +82,28 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
         ...total,
         cards: boardDeals
           .filter((deal) => deal.stageId === stage.id)
-          .map((deal) => ({ id: deal.id, code: deal.code, title: deal.title, accountName: deal.accountName, ownerName: deal.ownerName, expectedCloseOn: deal.expectedCloseOn, stale: deal.status === "open" && isStaleDeal({ lastTouchedOn: deal.lastTouchedOn }, today, settings.staleDealDays), value: deal.value ? { totalVnd: deal.value.totalVnd, weightedVnd: deal.value.weightedVnd } : null, canMove: deal.canEdit })),
+          .map((deal) => ({
+            id: deal.id,
+            code: deal.code,
+            title: deal.title,
+            accountName: deal.accountName,
+            ownerName: deal.ownerName,
+            expectedCloseOn: deal.expectedCloseOn,
+            stale: deal.status === "open" && isStaleDeal({ lastTouchedOn: deal.lastTouchedOn }, today, settings.staleDealDays),
+            value: deal.value ? { totalVnd: deal.value.totalVnd, weightedVnd: deal.value.weightedVnd } : null,
+            canMove: deal.canEdit,
+          })),
       };
     });
   const months = view === "forecast" ? await forecast(shell.viewer, { teamId, ownerId: mine ? user.person.id : null }, today) : [];
 
   return (
     <Page width="wide">
-      <PageHeader title={t("deals.title")} description={t("deals.intro")} actions={view === "list" ? <ExportButton action={exportDealsAction} input={{ ...filters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} /> : null} />
+      <PageHeader
+        title={t("deals.title")}
+        description={t("deals.intro")}
+        actions={view === "list" ? <ExportButton action={exportDealsAction} input={{ ...filters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} /> : null}
+      />
       <CrmTabs current="deals" show={shell.show} />
       <form method="get" className="toolbar">
         <input type="hidden" name="view" value={view} />
@@ -133,47 +149,51 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
 
       {view === "list" ? (
         <>
-        <Table numberFrom={(page - 1) * PAGE_SIZE + 1}>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
-              <TableHead kind="org">{t("deals.columns.account")}</TableHead>
-              <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
-              <TableHead kind="person">{t("deals.columns.owner")}</TableHead>
-              <TableHead kind="date">{t("deals.columns.close")}</TableHead>
-              <TableHead kind="money">{t("deals.columns.value")}</TableHead>
-              <TableHead kind="money">{t("deals.columns.weighted")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {deals.length === 0 ? <TableEmpty>{t("deals.empty")}</TableEmpty> : null}
-            {deals.map((deal) => (
-              <TableRow key={deal.id}>
-                <TableCell>
-                  <RecordLink kind="deal" id={deal.id} className="font-medium">
-                    {deal.title}
-                  </RecordLink>
-                  <p className="font-mono text-xs text-faint">{deal.code}</p>
-                </TableCell>
-                <TableCell>
-                  <RecordLink kind="account" id={deal.clientId}>{deal.accountName}</RecordLink>
-                </TableCell>
-                <TableCell>
-                  <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
-                    {stageName(deal.stage, locale)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <RecordLink kind="person" id={deal.ownerPersonId}>{deal.ownerName}</RecordLink>
-                </TableCell>
-                <TableCell kind="date">{f.date(deal.expectedCloseOn)}</TableCell>
-                <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
-                <TableCell kind="money">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>
+          <Table numberFrom={(page - 1) * PAGE_SIZE + 1}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
+                <TableHead kind="org">{t("deals.columns.account")}</TableHead>
+                <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
+                <TableHead kind="person">{t("deals.columns.owner")}</TableHead>
+                <TableHead kind="date">{t("deals.columns.close")}</TableHead>
+                <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+                <TableHead kind="money">{t("deals.columns.weighted")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Pager page={page} pageSize={PAGE_SIZE} total={list?.total ?? 0} href={pageHref} />
+            </TableHeader>
+            <TableBody>
+              {deals.length === 0 ? <TableEmpty>{t("deals.empty")}</TableEmpty> : null}
+              {deals.map((deal) => (
+                <TableRow key={deal.id}>
+                  <TableCell>
+                    <RecordLink kind="deal" id={deal.id} className="font-medium">
+                      {deal.title}
+                    </RecordLink>
+                    <p className="font-mono text-xs text-faint">{deal.code}</p>
+                  </TableCell>
+                  <TableCell>
+                    <RecordLink kind="account" id={deal.clientId}>
+                      {deal.accountName}
+                    </RecordLink>
+                  </TableCell>
+                  <TableCell>
+                    <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
+                      {stageName(deal.stage, locale)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <RecordLink kind="person" id={deal.ownerPersonId}>
+                      {deal.ownerName}
+                    </RecordLink>
+                  </TableCell>
+                  <TableCell kind="date">{f.date(deal.expectedCloseOn)}</TableCell>
+                  <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
+                  <TableCell kind="money">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Pager page={page} pageSize={PAGE_SIZE} total={list?.total ?? 0} href={pageHref} />
         </>
       ) : null}
 

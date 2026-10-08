@@ -170,7 +170,13 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                   ) : null}
                   <TableCell>
                     {task.canManage && people && open ? (
-                      <Select aria-label={t("reassign")} className="h-8 w-40 md:h-7 text-xs md:text-xs" defaultValue={task.assigneePersonId ?? ""} disabled={pending} onChange={(event) => run(reassignTaskAction, { taskId: task.id, assigneePersonId: event.target.value })}>
+                      <Select
+                        aria-label={t("reassign")}
+                        className="h-8 w-40 md:h-7 text-xs md:text-xs"
+                        defaultValue={task.assigneePersonId ?? ""}
+                        disabled={pending}
+                        onChange={(event) => run(reassignTaskAction, { taskId: task.id, assigneePersonId: event.target.value })}
+                      >
                         <option value="">{t("unassigned")}</option>
                         {people.map((person) => (
                           <option key={person.id} value={person.id}>

@@ -18,7 +18,26 @@ import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { decideBriefAction } from "@/modules/projects/actions";
-import { awaitingAcceptance, briefContactsEditable, briefEditable, briefProblems, briefSubmittable, type BriefStatus, canEditBriefContacts, getBriefRequest, scopeLocked, listProjectBookings, listStatusUpdates, listStructure, loadStatusFacts, mondayOf, openBriefForApprover, openProject, PROJECT_KINDS, type ProjectKind } from "@/modules/projects/service";
+import {
+  awaitingAcceptance,
+  briefContactsEditable,
+  briefEditable,
+  briefProblems,
+  briefSubmittable,
+  type BriefStatus,
+  canEditBriefContacts,
+  getBriefRequest,
+  scopeLocked,
+  listProjectBookings,
+  listStatusUpdates,
+  listStructure,
+  loadStatusFacts,
+  mondayOf,
+  openBriefForApprover,
+  openProject,
+  PROJECT_KINDS,
+  type ProjectKind,
+} from "@/modules/projects/service";
 import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { BriefView } from "@/modules/projects/ui/brief-view";
 import { AccountManagerForm, BriefContactsForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
@@ -131,7 +150,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           {leads.map((lead) => (
             <span key={lead.personId} className="flex items-center gap-1.5">
               <PersonAvatar person={{ id: lead.personId, fullName: lead.fullName, photoFileId: null }} size="sm" />
-              <RecordLink kind="person" id={lead.personId}>{lead.fullName}</RecordLink>
+              <RecordLink kind="person" id={lead.personId}>
+                {lead.fullName}
+              </RecordLink>
             </span>
           ))}
         </span>
@@ -139,7 +160,16 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         "—"
       ),
     },
-    { label: t("fields.accountManager"), value: accountManager ? <RecordLink kind="person" id={accountManager.personId}>{accountManager.fullName}</RecordLink> : <span className="text-muted-foreground">{t("settings.noAccountManager")}</span> },
+    {
+      label: t("fields.accountManager"),
+      value: accountManager ? (
+        <RecordLink kind="person" id={accountManager.personId}>
+          {accountManager.fullName}
+        </RecordLink>
+      ) : (
+        <span className="text-muted-foreground">{t("settings.noAccountManager")}</span>
+      ),
+    },
     {
       label: t("overview.people"),
       value: members.length ? (
@@ -165,12 +195,27 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           <span className="font-mono text-[0.8125rem] tabular-nums">
             {date(project.startDate)} → {date(project.dueDate)}
           </span>
-          {daysLeft !== null ? <span className={`text-xs ${daysLeft < 0 ? "text-destructive" : daysLeft <= 7 ? "text-warning" : "text-faint"}`}>{daysLeft < 0 ? t("overview.daysOver", { count: -daysLeft }) : daysLeft === 0 ? t("overview.dueToday") : t("overview.daysLeft", { count: daysLeft })}</span> : null}
+          {daysLeft !== null ? (
+            <span className={`text-xs ${daysLeft < 0 ? "text-destructive" : daysLeft <= 7 ? "text-warning" : "text-faint"}`}>
+              {daysLeft < 0 ? t("overview.daysOver", { count: -daysLeft }) : daysLeft === 0 ? t("overview.dueToday") : t("overview.daysLeft", { count: daysLeft })}
+            </span>
+          ) : null}
         </span>
       ),
     },
     ...(can.seeFees ? [{ label: t("fields.feeVnd"), value: <span className="font-mono text-[0.8125rem] tabular-nums">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : money(plan.feeVnd)}</span> }] : []),
-    ...(entityName ? [{ label: t("fields.entity"), value: <RecordLink kind="entity" id={project.entityId}>{entityName}</RecordLink> }] : []),
+    ...(entityName
+      ? [
+          {
+            label: t("fields.entity"),
+            value: (
+              <RecordLink kind="entity" id={project.entityId}>
+                {entityName}
+              </RecordLink>
+            ),
+          },
+        ]
+      : []),
     ...(contract || (origin && showsDeal)
       ? [
           {
@@ -219,11 +264,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
             </dl>
           </Section>
 
-          <Section
-            title={t("plan.milestones")}
-            count={structure.milestones.length || undefined}
-            action={<Link href={`/projects/${project.id}/plan`}>{t("overview.allPlan")}</Link>}
-          >
+          <Section title={t("plan.milestones")} count={structure.milestones.length || undefined} action={<Link href={`/projects/${project.id}/plan`}>{t("overview.allPlan")}</Link>}>
             <List>
               {structure.milestones.length === 0 ? <ListEmpty>{t("plan.noMilestones")}</ListEmpty> : null}
               {structure.milestones.map((milestone) => {
@@ -232,7 +273,13 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
                   <ListItem key={milestone.id} className="gap-3">
                     <span aria-hidden className={`size-2 shrink-0 rounded-full ${state === "done" ? "bg-success" : state === "late" ? "bg-destructive" : "bg-faint/50"}`} />
                     <span className={`min-w-0 flex-1 truncate ${state === "done" ? "text-muted-foreground" : "font-medium"}`}>{milestone.name}</span>
-                    {state === "done" ? <Badge variant="success">{t("plan.done")}</Badge> : state === "late" ? <Badge variant="destructive">{t("plan.late")}</Badge> : milestone.isClientFacing ? <Badge variant="outline">{t("fields.isClientFacing")}</Badge> : null}
+                    {state === "done" ? (
+                      <Badge variant="success">{t("plan.done")}</Badge>
+                    ) : state === "late" ? (
+                      <Badge variant="destructive">{t("plan.late")}</Badge>
+                    ) : milestone.isClientFacing ? (
+                      <Badge variant="outline">{t("fields.isClientFacing")}</Badge>
+                    ) : null}
                     <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{milestone.dueDate ? date(milestone.dueDate) : "—"}</span>
                   </ListItem>
                 );
@@ -262,9 +309,27 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
               <CardTitle>{t("overview.progress")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <Meter label={t("facts.tasks")} figure={`${facts.tasksDone}/${tasksTotal}`} percent={percentOf(facts.tasksDone, tasksTotal)} hint={facts.overdue || facts.blocked ? t("overview.tasksHint", { overdue: facts.overdue, blocked: facts.blocked }) : undefined} />
-              <Meter label={t("facts.hours")} figure={facts.budgetMinutes ? t("facts.hoursOfBudget", { used: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes) }) : hours(facts.minutesLogged)} percent={percentOf(facts.minutesLogged, facts.budgetMinutes)} tone={burnTone(percentOf(facts.minutesLogged, facts.budgetMinutes))} hint={facts.budgetMinutes ? undefined : t("budget.noBudget")} />
-              <Meter label={t("facts.deliverables")} figure={`${facts.deliverablesAccepted}/${facts.deliverablesPromised}`} percent={percentOf(facts.deliverablesAccepted, facts.deliverablesPromised)} pending={percentOf(facts.deliverablesAwaitingClient ?? 0, facts.deliverablesPromised)} tone="success" hint={facts.deliverablesPromised ? (facts.deliverablesAwaitingClient ? t("register.awaitingClient", { count: facts.deliverablesAwaitingClient }) : undefined) : t("register.empty")} />
+              <Meter
+                label={t("facts.tasks")}
+                figure={`${facts.tasksDone}/${tasksTotal}`}
+                percent={percentOf(facts.tasksDone, tasksTotal)}
+                hint={facts.overdue || facts.blocked ? t("overview.tasksHint", { overdue: facts.overdue, blocked: facts.blocked }) : undefined}
+              />
+              <Meter
+                label={t("facts.hours")}
+                figure={facts.budgetMinutes ? t("facts.hoursOfBudget", { used: hours(facts.minutesLogged), budget: hours(facts.budgetMinutes) }) : hours(facts.minutesLogged)}
+                percent={percentOf(facts.minutesLogged, facts.budgetMinutes)}
+                tone={burnTone(percentOf(facts.minutesLogged, facts.budgetMinutes))}
+                hint={facts.budgetMinutes ? undefined : t("budget.noBudget")}
+              />
+              <Meter
+                label={t("facts.deliverables")}
+                figure={`${facts.deliverablesAccepted}/${facts.deliverablesPromised}`}
+                percent={percentOf(facts.deliverablesAccepted, facts.deliverablesPromised)}
+                pending={percentOf(facts.deliverablesAwaitingClient ?? 0, facts.deliverablesPromised)}
+                tone="success"
+                hint={facts.deliverablesPromised ? (facts.deliverablesAwaitingClient ? t("register.awaitingClient", { count: facts.deliverablesAwaitingClient }) : undefined) : t("register.empty")}
+              />
             </CardContent>
           </Card>
 
@@ -301,7 +366,15 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
                 <ul className="flex flex-col gap-2">
                   {bookings.map((booking) => (
                     <li key={booking.id} className="flex items-center gap-3 text-sm">
-                      <span className="min-w-0 flex-1 truncate">{booking.personName ? <RecordLink kind="person" id={booking.personId}>{booking.personName}</RecordLink> : <span className="italic text-muted-foreground">{t("bookings.placeholder", { role: booking.placeholderRole ?? "" })}</span>}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {booking.personName ? (
+                          <RecordLink kind="person" id={booking.personId}>
+                            {booking.personName}
+                          </RecordLink>
+                        ) : (
+                          <span className="italic text-muted-foreground">{t("bookings.placeholder", { role: booking.placeholderRole ?? "" })}</span>
+                        )}
+                      </span>
                       <span className="shrink-0 font-mono text-xs tabular-nums">
                         {t("bookings.hoursShort", { hours: hours(booking.minutes) })}
                         {booking.status === "tentative" ? <span className="text-faint">?</span> : null}
@@ -323,10 +396,18 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
       <Section title={t("kickoff.title")}>
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">{status === "approved" ? t("kickoff.approvedNote", { date: plan.briefApprovedAt ? format.dateTime(plan.briefApprovedAt, { dateStyle: "medium" }) : "—" }) : project.status === "planned" ? t("kickoff.gateNote") : t("kickoff.notApprovedNote")}</p>
+            <p className="text-sm text-muted-foreground">
+              {status === "approved"
+                ? t("kickoff.approvedNote", { date: plan.briefApprovedAt ? format.dateTime(plan.briefApprovedAt, { dateStyle: "medium" }) : "—" })
+                : project.status === "planned"
+                  ? t("kickoff.gateNote")
+                  : t("kickoff.notApprovedNote")}
+            </p>
             <div className="flex items-center gap-2">
               {request ? <RequestStatusBadge status={request.request.status} /> : null}
-              <Badge dot variant={statusTone(status)}>{t(`brief.status.${status}`)}</Badge>
+              <Badge dot variant={statusTone(status)}>
+                {t(`brief.status.${status}`)}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -346,7 +427,11 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
 
             {editable && briefSubmittable(status) ? (
               <div className="flex flex-col gap-2 border-t pt-3">
-                {problems.length ? <p className="text-sm text-muted-foreground">{t("kickoff.missing", { fields: problems.map((field) => t(`brief.fields.${field}`)).join(", ") })}</p> : <p className="text-sm text-muted-foreground">{t("kickoff.ready")}</p>}
+                {problems.length ? (
+                  <p className="text-sm text-muted-foreground">{t("kickoff.missing", { fields: problems.map((field) => t(`brief.fields.${field}`)).join(", ") })}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("kickoff.ready")}</p>
+                )}
                 <div>
                   <SubmitBriefButton projectId={project.id} resubmit={status === "returned" && !!plan.briefApprovalRequestId} />
                 </div>
@@ -395,7 +480,12 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           <Card>
             <CardContent className="flex flex-col gap-4">
               <AccountManagerForm projectId={project.id} current={accountManager?.personId ?? null} people={people} />
-              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} scopeLocked={scopeLocked(plan)} />
+              <PlanSettingsForm
+                projectId={project.id}
+                values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }}
+                kinds={PROJECT_KINDS}
+                scopeLocked={scopeLocked(plan)}
+              />
             </CardContent>
           </Card>
         </Section>

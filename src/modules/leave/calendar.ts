@@ -26,7 +26,11 @@ const reachClause = (reach: TierReach): SQL | "all" | null => (reach.all ? "all"
  */
 async function calendarScope(viewer: { personId: string; principal: Principal }) {
   const active = eq(schema.person.status, "active");
-  const [meRow] = await db().select().from(schema.person).where(and(eq(schema.person.id, viewer.personId), active)).limit(1);
+  const [meRow] = await db()
+    .select()
+    .from(schema.person)
+    .where(and(eq(schema.person.id, viewer.personId), active))
+    .limit(1);
   const me = meRow as PersonRow | undefined;
   const hrReach = permissionReach(viewer.principal, "leave:manage");
   const personalReach = tierReach(viewer.principal, "personal");
@@ -34,7 +38,13 @@ async function calendarScope(viewer: { personId: string; principal: Principal })
   // Collaborators have no directory: they see themselves only.
   const inGroup = !!me && viewer.principal.workforceType !== "collaborator";
   const sameGroup = (person: PersonRow) => inGroup && (me!.teamId ? person.teamId === me!.teamId : !!me!.departmentId && person.departmentId === me!.departmentId && person.primaryEntityId === me!.primaryEntityId);
-  const sameGroupSql = !inGroup ? undefined : me!.teamId ? eq(schema.person.teamId, me!.teamId) : me!.departmentId ? and(eq(schema.person.departmentId, me!.departmentId), me!.primaryEntityId ? eq(schema.person.primaryEntityId, me!.primaryEntityId) : isNull(schema.person.primaryEntityId)) : undefined;
+  const sameGroupSql = !inGroup
+    ? undefined
+    : me!.teamId
+      ? eq(schema.person.teamId, me!.teamId)
+      : me!.departmentId
+        ? and(eq(schema.person.departmentId, me!.departmentId), me!.primaryEntityId ? eq(schema.person.primaryEntityId, me!.primaryEntityId) : isNull(schema.person.primaryEntityId))
+        : undefined;
   const reaches = [reachClause(hrReach), reachClause(personalReach)];
   // Only the people the viewer may see are loaded; the predicate stays as a guard.
   const visibleSql = reaches.includes("all") ? undefined : or(eq(schema.person.id, viewer.personId), eq(schema.person.managerId, viewer.personId), sameGroupSql, ...reaches.filter((clause): clause is SQL => !!clause && clause !== "all"));
@@ -46,13 +56,11 @@ export async function getTeamCalendar(viewer: { personId: string; principal: Pri
   // The viewer's own calendar does not depend on who is shown, so it is read alongside.
   const [scope, plansByPerson] = await Promise.all([calendarScope(viewer), getDayPlans([viewer.personId], range.from, range.to)]);
   const { target } = scope;
-  const rows = await db()
-    .select({ person: schema.person, departmentName: schema.orgUnit.name })
-    .from(schema.person)
-    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
-    .where(scope.where);
+  const rows = await db().select({ person: schema.person, departmentName: schema.orgUnit.name }).from(schema.person).leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId)).where(scope.where);
   const visible = rows.filter(({ person }) => scope.visible(person));
-  const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const shown = visible.filter((row) => !range.departmentId || row.person.departmentId === range.departmentId);
 
   const ids = shown.map((row) => row.person.id);

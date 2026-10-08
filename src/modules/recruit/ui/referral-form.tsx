@@ -17,7 +17,6 @@ import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { submitReferralAction } from "../referral-actions";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
-
 export type ReferralOpening = { id: string; title: string; code: string; departmentName: string | null; entityName: string | null };
 
 export function ReferralForm({ openings }: { openings: ReferralOpening[] }) {

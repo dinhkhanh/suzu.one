@@ -14,7 +14,31 @@ import { initialsOf } from "@/lib/text";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setPageAccessAction } from "@/modules/kb/actions";
 import { pagePath, parseSubjectKey } from "@/modules/kb/enums";
-import { atLeast, breadcrumbOf, canManageSpace, spaceOwner, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listSpaces, listTree, loadPage, loadPageInSpace, loadSpace, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
+import {
+  atLeast,
+  breadcrumbOf,
+  canManageSpace,
+  spaceOwner,
+  canOrganisePages,
+  getAckSettings,
+  getAckStatus,
+  canPublishDirectly,
+  getReadingView,
+  kbViewerOf,
+  levelOf,
+  listPageAccess,
+  listSpaces,
+  listTree,
+  loadPage,
+  loadPageInSpace,
+  loadSpace,
+  moveTargets,
+  outlineOf,
+  recordView,
+  subjectNames,
+  subjectOptions,
+  syncReviewState,
+} from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
 import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
 import { appLinksOf } from "@/modules/kb/ui/app-links";
@@ -70,8 +94,7 @@ export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pa
   const appLinks = appLinksOf(view.content);
   // The owner's name is on the meta line for every reader; the directory already holds it when one was loaded.
   const ownerKey = !choices && page.ownerPersonId ? [`person:${page.ownerPersonId}`] : [];
-  const names =
-    organises || manages || ownerKey.length ? await subjectNames([...(organises ? ownRows.map((row) => row.subjectKey) : []), ...(manages ? ackAudience : []), ...ownerKey]) : new Map<string, string>();
+  const names = organises || manages || ownerKey.length ? await subjectNames([...(organises ? ownRows.map((row) => row.subjectKey) : []), ...(manages ? ackAudience : []), ...ownerKey]) : new Map<string, string>();
   const ownerName = page.ownerPersonId ? (names.get(`person:${page.ownerPersonId}`) ?? choices?.people.find((person) => person.id === page.ownerPersonId)?.name ?? null) : null;
   // Without the directory, the owner field offers the owner the page already has, so a save keeps it.
   const ownerChoices = choices?.people ?? (page.ownerPersonId ? [{ id: page.ownerPersonId, name: ownerName ?? "—" }] : []);
@@ -131,7 +154,9 @@ export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pa
                   <Avatar size="sm">
                     <AvatarFallback>{initialsOf(ownerName)}</AvatarFallback>
                   </Avatar>
-                  <RecordLink kind="person" id={page.ownerPersonId}>{ownerName}</RecordLink>
+                  <RecordLink kind="person" id={page.ownerPersonId}>
+                    {ownerName}
+                  </RecordLink>
                 </span>
               ) : null}
               {view.version ? (
@@ -196,7 +221,11 @@ export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pa
               <Alert variant="success">{t("ack.done", { n: ack.versionNo ?? 0, date: format.dateTime(ack.acknowledgedAt, { dateStyle: "medium" }) })}</Alert>
             ) : (
               <Alert variant={ack.overdue ? "destructive" : "info"} className="items-center">
-                <span className="min-w-0 flex-1">{ack.overdue ? t("ack.bannerOverdue", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) }) : t("ack.banner", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) })}</span>
+                <span className="min-w-0 flex-1">
+                  {ack.overdue
+                    ? t("ack.bannerOverdue", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) })
+                    : t("ack.banner", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) })}
+                </span>
                 <AcknowledgeButton pageId={page.id} />
               </Alert>
             )
@@ -248,7 +277,14 @@ export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pa
                     </section>
                   </>
                 ) : null}
-                <PageLifecycleButtons pageId={page.id} spaceKey={space.key} status={page.status} published={!!page.publishedVersionId} canPublish={publishes} canDelete={!hasChildren && (page.publishedVersionId ? publishes && organises : editor)} />
+                <PageLifecycleButtons
+                  pageId={page.id}
+                  spaceKey={space.key}
+                  status={page.status}
+                  published={!!page.publishedVersionId}
+                  canPublish={publishes}
+                  canDelete={!hasChildren && (page.publishedVersionId ? publishes && organises : editor)}
+                />
               </div>
             </details>
           ) : null}

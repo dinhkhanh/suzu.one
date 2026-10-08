@@ -30,7 +30,13 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
   // The retrospective lives on the close-out page.
   if (meeting.kind === "retro") redirect(`/projects/${project.id}/close`);
   const edits = canEditMeeting(viewer, facts, meeting);
-  const [t, tRaid, tProjects, format, people] = await Promise.all([getTranslations("projects.meetings"), getTranslations("projects.raid"), getTranslations("projects"), getFormatter(), edits ? meetingPeople(project.id) : Promise.resolve([])]);
+  const [t, tRaid, tProjects, format, people] = await Promise.all([
+    getTranslations("projects.meetings"),
+    getTranslations("projects.raid"),
+    getTranslations("projects"),
+    getFormatter(),
+    edits ? meetingPeople(project.id) : Promise.resolve([]),
+  ]);
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
 
   return (
@@ -52,7 +58,14 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
           {meeting.authorName ? (
             <>
               {" · "}
-              {t.rich("recordedBy", { name: meeting.authorName, person: (chunks) => <RecordLink kind="person" id={meeting.createdByPersonId}>{chunks}</RecordLink> })}
+              {t.rich("recordedBy", {
+                name: meeting.authorName,
+                person: (chunks) => (
+                  <RecordLink kind="person" id={meeting.createdByPersonId}>
+                    {chunks}
+                  </RecordLink>
+                ),
+              })}
             </>
           ) : null}
         </p>
@@ -64,7 +77,9 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
                 ? meeting.attendees.map((person, index) => (
                     <span key={person.id}>
                       {index ? ", " : ""}
-                      <RecordLink kind="person" id={person.id}>{person.fullName}</RecordLink>
+                      <RecordLink kind="person" id={person.id}>
+                        {person.fullName}
+                      </RecordLink>
                     </span>
                   ))
                 : "—"}
@@ -141,7 +156,15 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
                     <span className={action.status === "done" || action.status === "cancelled" ? "line-through" : undefined}>{action.title}</span>
                   </RecordLink>
                 </TableCell>
-                <TableCell>{action.assigneeName ? <RecordLink kind="person" id={action.assigneePersonId}>{action.assigneeName}</RecordLink> : t("unassigned")}</TableCell>
+                <TableCell>
+                  {action.assigneeName ? (
+                    <RecordLink kind="person" id={action.assigneePersonId}>
+                      {action.assigneeName}
+                    </RecordLink>
+                  ) : (
+                    t("unassigned")
+                  )}
+                </TableCell>
                 <TableCell>{action.dueDate ? date(action.dueDate) : "—"}</TableCell>
               </TableRow>
             ))}
@@ -152,7 +175,10 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
       {edits ? (
         <>
           {/* FR-PJM-30: the invitation, which says what the adapter really did — "simulated" included. */}
-          <MeetingCalendar projectId={project.id} meeting={{ id: meeting.id, startTime: meeting.startTime, calendarEventId: meeting.calendarEventId, calendarStatus: meeting.calendarStatus, calendarError: meeting.calendarError, meetingUrl: meeting.meetingUrl }} />
+          <MeetingCalendar
+            projectId={project.id}
+            meeting={{ id: meeting.id, startTime: meeting.startTime, calendarEventId: meeting.calendarEventId, calendarStatus: meeting.calendarStatus, calendarError: meeting.calendarError, meetingUrl: meeting.meetingUrl }}
+          />
           <Card>
             <CardContent className="flex flex-col gap-3">
               <h2>{t("edit")}</h2>
@@ -160,7 +186,18 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
                 projectId={project.id}
                 people={people}
                 today={todayInVietnam()}
-                meeting={{ id: meeting.id, kind: meeting.kind, title: meeting.title, heldOn: meeting.heldOn, startTime: meeting.startTime, durationMinutes: meeting.durationMinutes, attendeeIds: meeting.attendeeIds, externalAttendees: meeting.externalAttendees, agenda: meeting.agenda, notes: meeting.notes }}
+                meeting={{
+                  id: meeting.id,
+                  kind: meeting.kind,
+                  title: meeting.title,
+                  heldOn: meeting.heldOn,
+                  startTime: meeting.startTime,
+                  durationMinutes: meeting.durationMinutes,
+                  attendeeIds: meeting.attendeeIds,
+                  externalAttendees: meeting.externalAttendees,
+                  agenda: meeting.agenda,
+                  notes: meeting.notes,
+                }}
               />
             </CardContent>
           </Card>

@@ -84,5 +84,9 @@ it("refuses to void a value a payroll run past C&B was calculated with", async (
 });
 
 it("cannot hold two approved versions for the same day, even if written directly", async () => {
-  await expect(db().insert(schema.statutoryParameter).values({ key: "insurance.reference_level", value: { amount: 9 }, validFrom: "2026-12-01", status: "approved" })).rejects.toThrow();
+  await expect(
+    db()
+      .insert(schema.statutoryParameter)
+      .values({ key: "insurance.reference_level", value: { amount: 9 }, validFrom: "2026-12-01", status: "approved" }),
+  ).rejects.toThrow();
 });

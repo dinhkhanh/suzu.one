@@ -14,7 +14,11 @@ type Executor = Tx | ReturnType<typeof db>;
 export async function isProjectPerson(executor: Executor, projectId: string, personId: string): Promise<boolean> {
   const [person] = await executor.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   if (!person || person.status === "offboarded") return false;
-  const [member] = await executor.select({ id: schema.workProjectMember.id }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId))).limit(1);
+  const [member] = await executor
+    .select({ id: schema.workProjectMember.id })
+    .from(schema.workProjectMember)
+    .where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId)))
+    .limit(1);
   if (member) return true;
   const [team] = await executor
     .select({ id: schema.workTeamMember.id })

@@ -21,13 +21,21 @@ export default async function TeamReviewChainsPage({ params }: PageProps<"/work/
 
   return (
     <Page width="default">
-      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
-            {t("title")}
-          </Link>
-          <span className="text-faint">/</span>
-          <RecordLink kind="team" id={team.id}>
-            {team.name}
-          </RecordLink></span>} title={t("chains.title")} description={t("chains.description")} />
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <RecordLink kind="team" id={team.id}>
+              {team.name}
+            </RecordLink>
+          </span>
+        }
+        title={t("chains.title")}
+        description={t("chains.description")}
+      />
       <ReviewChainManager
         teamId={team.id}
         chains={chains.map(({ id, name, projectId, contentFormat, isActive, stages }) => ({ id, name, projectId, contentFormat, isActive, stages }))}

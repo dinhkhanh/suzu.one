@@ -48,7 +48,11 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
 
   return (
     <Page width="wide">
-      <PageHeader title={tRequests("hub")} description={t("oversight.description")} actions={<ExportButton action={exportAllRequestsAction} input={{ state: state === "all" ? undefined : state, type, since, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />} />
+      <PageHeader
+        title={tRequests("hub")}
+        description={t("oversight.description")}
+        actions={<ExportButton action={exportAllRequestsAction} input={{ state: state === "all" ? undefined : state, type, since, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />}
+      />
       <RequestTabs active="all" personId={user.person.id} principal={user.principal} />
 
       <form action="/approvals/all" className="toolbar">

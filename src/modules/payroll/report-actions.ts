@@ -73,7 +73,11 @@ const exportPipeline = createAction({
     return {
       data: { fileName: built.fileName, csv: built.csv, rowCount: built.rowCount },
       // What left, for whom, and how much of it — never a figure from inside it.
-      audit: { resource: { type: "payroll_report", id: `${input.report}:${input.month}`, entityId: input.entityId }, summary: `${input.report} export ${input.month}`, after: { report: input.report, month: input.month, rows: built.rowCount } },
+      audit: {
+        resource: { type: "payroll_report", id: `${input.report}:${input.month}`, entityId: input.entityId },
+        summary: `${input.report} export ${input.month}`,
+        after: { report: input.report, month: input.month, rows: built.rowCount },
+      },
     };
   },
 });

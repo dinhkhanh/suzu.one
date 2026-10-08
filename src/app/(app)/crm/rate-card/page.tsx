@@ -48,7 +48,13 @@ export default async function RateCardPage() {
                 </summary>
                 <div className="flex flex-col gap-3 pt-3">
                   {service.entityPrices.length ? <p className="text-xs text-muted-foreground">{service.entityPrices.map((price) => `${entityName.get(price.entityId) ?? "—"}: ${f.money(price.priceVnd)}`).join(" · ")}</p> : null}
-                  {service.upcoming.length ? <p className="text-xs text-muted-foreground">{t("rateCard.upcoming", { prices: service.upcoming.map((price) => `${f.money(price.priceVnd)} ${t("rateCard.from", { date: f.date(price.validFrom) })}${price.entityId ? ` (${entityName.get(price.entityId) ?? "—"})` : ""}`).join(" · ") })}</p> : null}
+                  {service.upcoming.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("rateCard.upcoming", {
+                        prices: service.upcoming.map((price) => `${f.money(price.priceVnd)} ${t("rateCard.from", { date: f.date(price.validFrom) })}${price.entityId ? ` (${entityName.get(price.entityId) ?? "—"})` : ""}`).join(" · "),
+                      })}
+                    </p>
+                  ) : null}
                   {configures ? <ServiceForm service={service} /> : null}
                   {configures || priceable.length ? <PriceForm serviceId={service.id} entities={priceable} today={today} /> : null}
                 </div>

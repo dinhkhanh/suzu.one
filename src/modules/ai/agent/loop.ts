@@ -72,7 +72,8 @@ export type AgentTurnInput = {
 
 const DECLINE: Anthropic.Tool = {
   name: DECLINE_TOOL,
-  description: "Declines a question that is not about the company, its people, policies, work or this app. Call it alone, with the kind of question. Never for a request to do something in the app (create, change, log, request, submit…): that is a propose_* tool.",
+  description:
+    "Declines a question that is not about the company, its people, policies, work or this app. Call it alone, with the kind of question. Never for a request to do something in the app (create, change, log, request, submit…): that is a propose_* tool.",
   input_schema: { type: "object", properties: { kind: { type: "string", enum: [...OFF_TOPIC_KINDS] } }, required: ["kind"], additionalProperties: false },
   strict: true,
 };
@@ -80,7 +81,12 @@ const DECLINE: Anthropic.Tool = {
 const CLARIFY: Anthropic.Tool = {
   name: CLARIFY_TOOL,
   description: "Asks the asker one short question back, when you cannot tell what they need (which project, which month) or a request still lacks details a form requires. Call it alone.",
-  input_schema: { type: "object", properties: { question: { type: "string", description: "One short question in the asker's language, ending with a question mark; it may list briefly the details a form still needs." } }, required: ["question"], additionalProperties: false },
+  input_schema: {
+    type: "object",
+    properties: { question: { type: "string", description: "One short question in the asker's language, ending with a question mark; it may list briefly the details a form still needs." } },
+    required: ["question"],
+    additionalProperties: false,
+  },
   strict: true,
 };
 

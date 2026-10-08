@@ -67,7 +67,9 @@ export async function RetroSection({ screen, entityId, runId, editable, people, 
             {items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">
-                  <RecordLink kind="person" id={item.personId}>{item.fullName}</RecordLink>
+                  <RecordLink kind="person" id={item.personId}>
+                    {item.fullName}
+                  </RecordLink>
                   {item.employeeCode ? <span className="ml-2 font-mono text-xs font-normal text-faint">{item.employeeCode}</span> : null}
                 </TableCell>
                 <TableCell className="font-mono tabular-nums">{item.sourceMonth}</TableCell>
@@ -88,7 +90,10 @@ export async function RetroSection({ screen, entityId, runId, editable, people, 
                   <span className="block text-xs text-faint">
                     {item.createdByPersonId ? (
                       <>
-                        <RecordLink kind="person" id={item.createdByPersonId}>{item.createdByName ?? "—"}</RecordLink> ·{" "}
+                        <RecordLink kind="person" id={item.createdByPersonId}>
+                          {item.createdByName ?? "—"}
+                        </RecordLink>{" "}
+                        ·{" "}
                       </>
                     ) : (
                       `${t("bySystem")} · `
@@ -96,14 +101,22 @@ export async function RetroSection({ screen, entityId, runId, editable, people, 
                     {day(item.createdAt)}
                   </span>
                 </TableCell>
-                <TableCell kind="money" className={item.amount < 0 ? "text-destructive" : undefined}>{signed(item.amount)}</TableCell>
+                <TableCell kind="money" className={item.amount < 0 ? "text-destructive" : undefined}>
+                  {signed(item.amount)}
+                </TableCell>
                 <TableCell>
                   {item.status === "taken" ? (
-                    <Badge dot variant="success">{t(runId ? "statuses.takenHere" : "statuses.taken")}</Badge>
+                    <Badge dot variant="success">
+                      {t(runId ? "statuses.takenHere" : "statuses.taken")}
+                    </Badge>
                   ) : item.inRun ? (
-                    <Badge dot variant="warning">{t("statuses.open")}</Badge>
+                    <Badge dot variant="warning">
+                      {t("statuses.open")}
+                    </Badge>
                   ) : (
-                    <Badge dot variant="outline">{t("statuses.outsideRun")}</Badge>
+                    <Badge dot variant="outline">
+                      {t("statuses.outsideRun")}
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell kind="actions">{editable && item.personId !== viewerPersonId ? <CancelRetroItemButton id={item.id} runId={runId} name={item.fullName} /> : null}</TableCell>

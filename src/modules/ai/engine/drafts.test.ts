@@ -59,7 +59,18 @@ describe("eodDraftLines", () => {
 });
 
 describe("statusDraftLines and suggestedHealth", () => {
-  const facts = { tasksDone: 14, tasksOpen: 6, overdue: 2, blocked: 1, milestoneSlipDays: 3, nextMilestone: { name: "Bàn giao master", dueDate: "2026-11-28" }, minutesLogged: 5400, budgetMinutes: 6000, deliverablesAccepted: 4, deliverablesPromised: 9 };
+  const facts = {
+    tasksDone: 14,
+    tasksOpen: 6,
+    overdue: 2,
+    blocked: 1,
+    milestoneSlipDays: 3,
+    nextMilestone: { name: "Bàn giao master", dueDate: "2026-11-28" },
+    minutesLogged: 5400,
+    budgetMinutes: 6000,
+    deliverablesAccepted: 4,
+    deliverablesPromised: 9,
+  };
 
   it("turns the status facts into lines — hours and counts, never a fee", () => {
     expect(statusDraftLines(facts)).toEqual([

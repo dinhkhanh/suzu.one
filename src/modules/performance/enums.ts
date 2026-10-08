@@ -207,7 +207,10 @@ const bp = (max: number) => z.number().int().min(0).max(max);
  * payroll's and stays there.
  */
 export const resultBandSchema = z.object({
-  key: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
+  key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
   label: z.string().trim().min(1).max(120),
   labelEn: z.string().trim().max(120).nullable().default(null),
   minScoreBp: bp(1_000_000),
@@ -250,7 +253,12 @@ export const DEFAULT_PERFORMANCE_WEIGHTING: PerformanceWeightingValue = {
 
 /** The band a figure lands in: the highest band whose floor it reaches. */
 export const bandOf = (bands: readonly ResultBand[], scoreBp: number | null): ResultBand | null =>
-  scoreBp === null ? null : ([...bands].sort((a, b) => a.minScoreBp - b.minScoreBp).filter((band) => scoreBp >= band.minScoreBp).pop() ?? null);
+  scoreBp === null
+    ? null
+    : ([...bands]
+        .sort((a, b) => a.minScoreBp - b.minScoreBp)
+        .filter((band) => scoreBp >= band.minScoreBp)
+        .pop() ?? null);
 
 // ── Peer nominations (week 2) ───────────────────────────────────────────────────────────────
 
@@ -276,7 +284,19 @@ export type OneOnOneStatus = (typeof ONE_ON_ONE_STATUSES)[number];
 // The `sales_*` and `followups_on_time` metrics come from the CRM (FR-CRM-44): value won and deals
 // won or lost by their owner, new accounts won, invoiced and collected on the accounts a person
 // manages, and follow-ups done by their day.
-export const WORK_METRICS = ["on_time_rate", "deliverables_accepted", "utilisation", "revision_rounds_avg", "eod_compliance", "sales_won_value", "sales_invoiced", "sales_collected", "sales_new_accounts", "sales_win_rate", "followups_on_time"] as const;
+export const WORK_METRICS = [
+  "on_time_rate",
+  "deliverables_accepted",
+  "utilisation",
+  "revision_rounds_avg",
+  "eod_compliance",
+  "sales_won_value",
+  "sales_invoiced",
+  "sales_collected",
+  "sales_new_accounts",
+  "sales_win_rate",
+  "followups_on_time",
+] as const;
 export type WorkMetric = (typeof WORK_METRICS)[number];
 export const WORK_METRIC_UNITS: Record<WorkMetric, KpiUnit> = {
   on_time_rate: "percent",

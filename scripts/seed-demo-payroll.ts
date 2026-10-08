@@ -58,7 +58,10 @@ export async function seedPayroll(db: Db): Promise<string> {
   if (!keys) return "no payroll data (DATA_ENCRYPTION_KEYS is not set)";
   const cipher = createFieldCipher(parseKeyRing(keys));
   // Everyone employed at some point from August 2026 on (the first payroll month of the demo) — someone with a last day ahead is still paid.
-  const people = await db.select({ person, job: employment }).from(person).innerJoin(employment, and(eq(employment.personId, person.id), or(isNull(employment.endDate), gte(employment.endDate, "2026-08-01"))));
+  const people = await db
+    .select({ person, job: employment })
+    .from(person)
+    .innerJoin(employment, and(eq(employment.personId, person.id), or(isNull(employment.endDate), gte(employment.endDate, "2026-08-01"))));
   const byEmail = (email: string) => people.find((row) => row.person.workEmail === email);
   const owner = byEmail("owner@suzu.vn");
   const hrLead = byEmail("mai.le@suzu.group");
@@ -92,7 +95,17 @@ export async function seedPayroll(db: Db): Promise<string> {
     const [hasStructure] = await db.select({ id: salaryStructure.id }).from(salaryStructure).where(eq(salaryStructure.employmentId, job.id)).limit(1);
     if (!hasStructure) {
       const id = randomUUID();
-      await db.insert(salaryStructure).values({ id, personId: who.id, employmentId: job.id, entityId: job.entityId, validFrom: job.startDate, termsEnc: cipher.encrypt(JSON.stringify(termsOf(pay)), salaryTermsContext(id)), reason: "initial", createdByPersonId: hrLead.person.id, decidedByPersonId: owner.person.id });
+      await db.insert(salaryStructure).values({
+        id,
+        personId: who.id,
+        employmentId: job.id,
+        entityId: job.entityId,
+        validFrom: job.startDate,
+        termsEnc: cipher.encrypt(JSON.stringify(termsOf(pay)), salaryTermsContext(id)),
+        reason: "initial",
+        createdByPersonId: hrLead.person.id,
+        decidedByPersonId: owner.person.id,
+      });
       structures++;
     }
   }
@@ -118,7 +131,10 @@ export async function seedPayroll(db: Db): Promise<string> {
   // the payment rules refuse (FR-PAY-33) — so the demo company banks everyone, alternating
   // between the two banks the system can write files for.
   let accounts = 0;
-  const statutory = await db.select({ personId: payProfile.personId }).from(payProfile).where(and(eq(payProfile.profile, "statutory"), eq(payProfile.status, "approved")));
+  const statutory = await db
+    .select({ personId: payProfile.personId })
+    .from(payProfile)
+    .where(and(eq(payProfile.profile, "statutory"), eq(payProfile.status, "approved")));
   for (const [index, row] of statutory.entries()) {
     const holder = people.find((candidate) => candidate.person.id === row.personId);
     if (!holder) continue;
@@ -136,7 +152,16 @@ export async function seedPayroll(db: Db): Promise<string> {
   let policies = 0;
   const [media] = await db.select().from(entity).where(eq(entity.code, "SZM")).limit(1);
   if (media && (await db.select({ id: payrollPolicy.id }).from(payrollPolicy).where(eq(payrollPolicy.entityId, media.id)).limit(1)).length === 0) {
-    await db.insert(payrollPolicy).values({ entityId: media.id, value: { ...DEFAULT_PAYROLL_POLICY, unionEnabled: true, simplePitTreatment: "flat_withholding" }, validFrom: "2026-01-01", status: "approved", proposedByPersonId: hrLead.person.id, decidedByPersonId: owner.person.id, decidedAt: new Date(), note: "Dữ liệu mẫu: SZM có công đoàn; hồ sơ Đơn giản khấu trừ thuế theo tỷ lệ." });
+    await db.insert(payrollPolicy).values({
+      entityId: media.id,
+      value: { ...DEFAULT_PAYROLL_POLICY, unionEnabled: true, simplePitTreatment: "flat_withholding" },
+      validFrom: "2026-01-01",
+      status: "approved",
+      proposedByPersonId: hrLead.person.id,
+      decidedByPersonId: owner.person.id,
+      decidedAt: new Date(),
+      note: "Dữ liệu mẫu: SZM có công đoàn; hồ sơ Đơn giản khấu trừ thuế theo tỷ lệ.",
+    });
     policies++;
   }
 
@@ -145,7 +170,11 @@ export async function seedPayroll(db: Db): Promise<string> {
   const request = async (input: { email: string; validFrom: string; reason: "raise" | "promotion"; pay: Pay; note: string; approved: boolean; createdAt: string }): Promise<number> => {
     const subject = byEmail(input.email);
     if (!subject) return 0;
-    const [existing] = await db.select({ id: approvalRequest.id }).from(approvalRequest).where(and(eq(approvalRequest.type, "salary_change"), eq(approvalRequest.subjectPersonId, subject.person.id))).limit(1);
+    const [existing] = await db
+      .select({ id: approvalRequest.id })
+      .from(approvalRequest)
+      .where(and(eq(approvalRequest.type, "salary_change"), eq(approvalRequest.subjectPersonId, subject.person.id)))
+      .limit(1);
     if (existing) return 0;
     const id = randomUUID();
     const created = new Date(input.createdAt);
@@ -167,36 +196,110 @@ export async function seedPayroll(db: Db): Promise<string> {
       createdAt: created,
       decidedAt: input.approved ? decided : null,
     });
-    const [step] = await db.insert(approvalStep).values({ requestId: id, stepIndex: 0, key: "owner", mode: "any", status: input.approved ? "approved" : "pending" }).returning();
+    const [step] = await db
+      .insert(approvalStep)
+      .values({ requestId: id, stepIndex: 0, key: "owner", mode: "any", status: input.approved ? "approved" : "pending" })
+      .returning();
     await db.insert(approvalAssignee).values({ stepId: step.id, requestId: id, approverPersonId: owner.person.id, status: input.approved ? "approved" : "pending", decidedAt: input.approved ? decided : null });
     await db.insert(approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: hrLead.person.id, stepIndex: 0, at: created });
     if (!input.approved) return 1;
 
     await db.insert(approvalEvent).values({ requestId: id, type: "approved", actorPersonId: owner.person.id, stepIndex: 0, at: decided });
-    const [current] = await db.select().from(salaryStructure).where(and(eq(salaryStructure.employmentId, subject.job.id), isNull(salaryStructure.validTo))).limit(1);
+    const [current] = await db
+      .select()
+      .from(salaryStructure)
+      .where(and(eq(salaryStructure.employmentId, subject.job.id), isNull(salaryStructure.validTo)))
+      .limit(1);
     const dayBefore = new Date(Date.parse(`${input.validFrom}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
     if (current) await db.update(salaryStructure).set({ validTo: dayBefore }).where(eq(salaryStructure.id, current.id));
     const structureId = randomUUID();
     const [home] = await db.select({ code: entity.code }).from(entity).where(eq(entity.id, subject.job.entityId)).limit(1);
-    await db.insert(salaryStructure).values({ id: structureId, personId: subject.person.id, employmentId: subject.job.id, entityId: subject.job.entityId, validFrom: input.validFrom, termsEnc: cipher.encrypt(JSON.stringify(termsOf(input.pay)), salaryTermsContext(structureId)), reason: input.reason, approvalRequestId: id, decisionNumber: `001/${input.validFrom.slice(0, 4)}/QĐL-${home?.code ?? "X"}`, decidedByPersonId: owner.person.id, createdByPersonId: hrLead.person.id, createdAt: decided });
-    await db.insert(lifecycleEvent).values({ personId: subject.person.id, employmentId: subject.job.id, entityId: subject.job.entityId, type: "salary_change", effectiveDate: input.validFrom, status: "applied", reason: input.reason, details: {}, approvalRequestId: id, createdByPersonId: owner.person.id });
+    await db.insert(salaryStructure).values({
+      id: structureId,
+      personId: subject.person.id,
+      employmentId: subject.job.id,
+      entityId: subject.job.entityId,
+      validFrom: input.validFrom,
+      termsEnc: cipher.encrypt(JSON.stringify(termsOf(input.pay)), salaryTermsContext(structureId)),
+      reason: input.reason,
+      approvalRequestId: id,
+      decisionNumber: `001/${input.validFrom.slice(0, 4)}/QĐL-${home?.code ?? "X"}`,
+      decidedByPersonId: owner.person.id,
+      createdByPersonId: hrLead.person.id,
+      createdAt: decided,
+    });
+    await db.insert(lifecycleEvent).values({
+      personId: subject.person.id,
+      employmentId: subject.job.id,
+      entityId: subject.job.entityId,
+      type: "salary_change",
+      effectiveDate: input.validFrom,
+      status: "applied",
+      reason: input.reason,
+      details: {},
+      approvalRequestId: id,
+      createdByPersonId: owner.person.id,
+    });
     return 1;
   };
   let requests = 0;
-  requests += await request({ email: "huy.ho@suzu.group", validFrom: "2026-07-01", reason: "raise", pay: { ...staff(20_000_000, { ALW_TRANSPORT: 500_000 }) }, note: "Xét tăng lương định kỳ giữa năm.", approved: true, createdAt: "2026-06-22T03:00:00Z" });
-  requests += await request({ email: "tam.bui@suzu.group", validFrom: "2026-10-01", reason: "raise", pay: { ...staff(31_000_000, { ALW_TRANSPORT: 500_000 }) }, note: "Đề xuất của trưởng phòng Sản xuất Video sau dự án TVC quý 3.", approved: false, createdAt: "2026-09-16T02:30:00Z" });
+  requests += await request({
+    email: "huy.ho@suzu.group",
+    validFrom: "2026-07-01",
+    reason: "raise",
+    pay: { ...staff(20_000_000, { ALW_TRANSPORT: 500_000 }) },
+    note: "Xét tăng lương định kỳ giữa năm.",
+    approved: true,
+    createdAt: "2026-06-22T03:00:00Z",
+  });
+  requests += await request({
+    email: "tam.bui@suzu.group",
+    validFrom: "2026-10-01",
+    reason: "raise",
+    pay: { ...staff(31_000_000, { ALW_TRANSPORT: 500_000 }) },
+    note: "Đề xuất của trưởng phòng Sản xuất Video sau dự án TVC quý 3.",
+    approved: false,
+    createdAt: "2026-09-16T02:30:00Z",
+  });
 
   // A move between profiles waiting for the owner: the intern becomes a Statutory employee.
   let proposals = 0;
   const intern = byEmail("anh.trinh@suzu.group");
-  if (intern && (await db.select({ id: payProfile.id }).from(payProfile).where(and(eq(payProfile.employmentId, intern.job.id), eq(payProfile.status, "proposed"))).limit(1)).length === 0) {
-    await db.insert(payProfile).values({ personId: intern.person.id, employmentId: intern.job.id, entityId: intern.job.entityId, profile: "statutory", validFrom: "2026-10-01", status: "proposed", proposedByPersonId: hrLead.person.id, note: "Ký HĐLĐ chính thức sau kỳ thực tập." });
+  if (
+    intern &&
+    (
+      await db
+        .select({ id: payProfile.id })
+        .from(payProfile)
+        .where(and(eq(payProfile.employmentId, intern.job.id), eq(payProfile.status, "proposed")))
+        .limit(1)
+    ).length === 0
+  ) {
+    await db.insert(payProfile).values({
+      personId: intern.person.id,
+      employmentId: intern.job.id,
+      entityId: intern.job.entityId,
+      profile: "statutory",
+      validFrom: "2026-10-01",
+      status: "proposed",
+      proposedByPersonId: hrLead.person.id,
+      note: "Ký HĐLĐ chính thức sau kỳ thực tập.",
+    });
     proposals++;
   }
 
   // The entity C&B persona keeps her grant even if the people seed ran before this file existed.
   const cnb = byEmail("ngan.vu@suzu.group");
-  if (cnb && (await db.select({ id: roleAssignment.id }).from(roleAssignment).where(and(eq(roleAssignment.personId, cnb.person.id), eq(roleAssignment.role, "payroll"))).limit(1)).length === 0) {
+  if (
+    cnb &&
+    (
+      await db
+        .select({ id: roleAssignment.id })
+        .from(roleAssignment)
+        .where(and(eq(roleAssignment.personId, cnb.person.id), eq(roleAssignment.role, "payroll")))
+        .limit(1)
+    ).length === 0
+  ) {
     await db.insert(roleAssignment).values({ personId: cnb.person.id, role: "payroll", scopeType: "entity", scopeId: cnb.job.entityId });
   }
 

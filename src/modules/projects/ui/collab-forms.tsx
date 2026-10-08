@@ -26,7 +26,18 @@ type Stored = { fileId: string; fileName: string };
 
 // ── The RAID log (FR-PJM-29) ────────────────────────────────────────────────────────────────
 
-export type RaidValues = { id: string; kind: RaidKind; title: string; description: string | null; ownerPersonId: string | null; dueDate: string | null; severity: string | null; decidedOn: string | null; evidenceUrl: string | null; evidence: Stored | null };
+export type RaidValues = {
+  id: string;
+  kind: RaidKind;
+  title: string;
+  description: string | null;
+  ownerPersonId: string | null;
+  dueDate: string | null;
+  severity: string | null;
+  decidedOn: string | null;
+  evidenceUrl: string | null;
+  evidence: Stored | null;
+};
 
 /** A new item (the kind chosen first, the fields following it) or an item being changed (its kind fixed). */
 export function RaidForm({ projectId, people, item, today, onDone }: { projectId: string; people: readonly Person[]; item?: RaidValues; today: string; onDone?: () => void }) {
@@ -97,7 +108,13 @@ export function RaidForm({ projectId, people, item, today, onDone }: { projectId
       </div>
       {kind === "decision" ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <UploadField label={t("fields.evidenceFile")} name="evidenceFileId" initial={item?.evidence} begin={(meta) => beginRaidEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeRaidEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>} />
+          <UploadField
+            label={t("fields.evidenceFile")}
+            name="evidenceFileId"
+            initial={item?.evidence}
+            begin={(meta) => beginRaidEvidenceAction({ projectId, ...meta }) as Promise<ActionResult<Upload>>}
+            complete={(fileId) => completeRaidEvidenceAction({ fileId }) as Promise<ActionResult<Stored>>}
+          />
           <Field name="evidenceUrl" label={t("fields.evidenceUrl")}>
             <Input id={`raid-url-${id}`} name="evidenceUrl" type="url" maxLength={500} defaultValue={item?.evidenceUrl ?? ""} placeholder="https://" />
           </Field>
@@ -158,7 +175,18 @@ export function RaidEdit({ projectId, people, item, today }: { projectId: string
 
 // ── Meetings (FR-PJM-30) ────────────────────────────────────────────────────────────────────
 
-export type MeetingValues = { id: string; kind: string; title: string; heldOn: string; startTime: string | null; durationMinutes: number | null; attendeeIds: string[]; externalAttendees: string | null; agenda: string | null; notes: string | null };
+export type MeetingValues = {
+  id: string;
+  kind: string;
+  title: string;
+  heldOn: string;
+  startTime: string | null;
+  durationMinutes: number | null;
+  attendeeIds: string[];
+  externalAttendees: string | null;
+  agenda: string | null;
+  notes: string | null;
+};
 
 const BLANK_ROWS = 3;
 

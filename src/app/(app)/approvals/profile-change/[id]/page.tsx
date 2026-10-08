@@ -35,7 +35,17 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
 
   return (
     <Page width="narrow">
-      <RequestHeader title={t("detail.title")} kind={tApprovals("types.profile_change")} status={request.status} requestId={request.id} who={<RecordLink kind="person" id={request.requesterPersonId}>{view.requesterName}</RecordLink>} />
+      <RequestHeader
+        title={t("detail.title")}
+        kind={tApprovals("types.profile_change")}
+        status={request.status}
+        requestId={request.id}
+        who={
+          <RecordLink kind="person" id={request.requesterPersonId}>
+            {view.requesterName}
+          </RecordLink>
+        }
+      />
 
       {personal.length > 0 ? (
         <Section title={t("detail.personal")}>

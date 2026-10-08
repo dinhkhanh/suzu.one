@@ -79,7 +79,15 @@ export type TimesheetTotals = {
   overtime: { weekday: { day: number; night: number }; restDay: { day: number; night: number }; holiday: { day: number; night: number } };
 };
 
-export const EMPTY_TIMESHEET: TimesheetTotals = { standardDays: 0, standardMinutes: 0, paidDaysCenti: 0, unpaidDaysCenti: 0, workedMinutes: 0, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } };
+export const EMPTY_TIMESHEET: TimesheetTotals = {
+  standardDays: 0,
+  standardMinutes: 0,
+  paidDaysCenti: 0,
+  unpaidDaysCenti: 0,
+  workedMinutes: 0,
+  nightMinutes: 0,
+  overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } },
+};
 
 /**
  * Overtime the company pays for. The locked timesheet counts the minutes taken as time off in

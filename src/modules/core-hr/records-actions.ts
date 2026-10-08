@@ -46,7 +46,10 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const text = (max: number) => optional(z.string().trim().max(max));
 const day = z.iso.date();
 // <input type="month"> posts "2026-09"; months are stored as their first day.
-const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).transform((value) => `${value}-01`);
+const month = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+  .transform((value) => `${value}-01`);
 const fileMeta = { fileName: z.string().min(1).max(300), sizeBytes: z.number().int().positive() };
 
 const refresh = (personId: string) => revalidatePath(`/people/${personId}`);
@@ -167,7 +170,10 @@ const updateContractPipeline = createAction({
     if (salaryTerms !== undefined && !seesPay) throw new ActionError("contract_salary_terms_forbidden");
     const { before, after } = await updateContract(contractId, { ...details, ...(seesPay && salaryTerms !== undefined ? { salaryTerms } : {}) });
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "contract", id: after.id, entityId: after.entityId }, summary: `${after.number} corrected`, before: withoutSecrets(before, ["salaryTerms"]), after: withoutSecrets(after, ["salaryTerms"]) } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "contract", id: after.id, entityId: after.entityId }, summary: `${after.number} corrected`, before: withoutSecrets(before, ["salaryTerms"]), after: withoutSecrets(after, ["salaryTerms"]) },
+    };
   },
 });
 
@@ -182,7 +188,10 @@ const terminateContractPipeline = createAction({
   run: async ({ input }) => {
     const { before, after } = await terminateContract(input.contractId, input.terminatedOn);
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "contract", id: after.id, entityId: after.entityId }, summary: `${after.number} ended ${after.terminatedOn}`, before: withoutSecrets(before, ["salaryTerms"]), after: withoutSecrets(after, ["salaryTerms"]) } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "contract", id: after.id, entityId: after.entityId }, summary: `${after.number} ended ${after.terminatedOn}`, before: withoutSecrets(before, ["salaryTerms"]), after: withoutSecrets(after, ["salaryTerms"]) },
+    };
   },
 });
 
@@ -243,7 +252,10 @@ const createDependentPipeline = createAction({
     const created = await createDependent(personId, details);
     const target = await getPersonTarget(personId);
     refresh(personId);
-    return { data: { id: created.id }, audit: { resource: { type: "dependent", id: created.id, entityId: target?.entityId }, summary: `${created.relationship} from ${created.deductionFrom.slice(0, 7)}`, after: withoutSecrets(created, ["idNumber", "taxCode"]) } };
+    return {
+      data: { id: created.id },
+      audit: { resource: { type: "dependent", id: created.id, entityId: target?.entityId }, summary: `${created.relationship} from ${created.deductionFrom.slice(0, 7)}`, after: withoutSecrets(created, ["idNumber", "taxCode"]) },
+    };
   },
 });
 
@@ -264,7 +276,15 @@ const endDeductionPipeline = createAction({
     const { before, after } = await endDependentDeduction(input.dependentId, input.deductionTo);
     const target = await getPersonTarget(after.personId);
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "dependent", id: after.id, entityId: target?.entityId }, summary: `deduction to ${after.deductionTo?.slice(0, 7) ?? "open"}`, before: { deductionTo: before.deductionTo }, after: { deductionTo: after.deductionTo } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "dependent", id: after.id, entityId: target?.entityId },
+        summary: `deduction to ${after.deductionTo?.slice(0, 7) ?? "open"}`,
+        before: { deductionTo: before.deductionTo },
+        after: { deductionTo: after.deductionTo },
+      },
+    };
   },
 });
 
@@ -294,7 +314,15 @@ const updateDependentPipeline = createAction({
     const { before, after } = await updateDependent(dependentId, details);
     const target = await getPersonTarget(after.personId);
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "dependent", id: after.id, entityId: target?.entityId }, summary: `${after.relationship} corrected`, before: withoutSecrets(before, ["idNumber", "taxCode"]), after: withoutSecrets(after, ["idNumber", "taxCode"]) } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "dependent", id: after.id, entityId: target?.entityId },
+        summary: `${after.relationship} corrected`,
+        before: withoutSecrets(before, ["idNumber", "taxCode"]),
+        after: withoutSecrets(after, ["idNumber", "taxCode"]),
+      },
+    };
   },
 });
 
@@ -420,7 +448,15 @@ const updateDocumentPipeline = createAction({
     const { documentId, ...details } = input;
     const { before, after } = await updateDocument(documentId, details);
     refresh(after.personId);
-    return { data: { id: after.id }, audit: { resource: { type: "person_document", id: after.id, entityId: after.entityId }, summary: `${after.category}: ${after.title}`, before: { title: before.title, expiresOn: before.expiresOn }, after: { title: after.title, expiresOn: after.expiresOn } } };
+    return {
+      data: { id: after.id },
+      audit: {
+        resource: { type: "person_document", id: after.id, entityId: after.entityId },
+        summary: `${after.category}: ${after.title}`,
+        before: { title: before.title, expiresOn: before.expiresOn },
+        after: { title: after.title, expiresOn: after.expiresOn },
+      },
+    };
   },
 });
 

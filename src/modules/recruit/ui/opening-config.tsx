@@ -33,7 +33,13 @@ export function QuestionsEditor({ openingId, questions }: { openingId: string; q
     labelEn: row.labelEn.trim() || null,
     kind: row.kind,
     required: row.required,
-    choices: row.kind === "choice" ? row.choices.split("\n").map((choice) => choice.trim()).filter(Boolean) : [],
+    choices:
+      row.kind === "choice"
+        ? row.choices
+            .split("\n")
+            .map((choice) => choice.trim())
+            .filter(Boolean)
+        : [],
   }));
   const form = useActionForm(saveOpeningQuestionsAction, { extra: { openingId, questions: JSON.stringify(payload) }, onSuccess: () => router.refresh() });
 
@@ -83,13 +89,7 @@ export function QuestionsEditor({ openingId, questions }: { openingId: string; q
       </List>
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={list.rows.length >= OPENING_CONFIG_LIMITS.questions}
-          onClick={() => list.add({ key: null, label: "", labelEn: "", kind: "text", required: false, choices: "" })}
-        >
+        <Button type="button" size="sm" variant="outline" disabled={list.rows.length >= OPENING_CONFIG_LIMITS.questions} onClick={() => list.add({ key: null, label: "", labelEn: "", kind: "text", required: false, choices: "" })}>
           <Plus aria-hidden data-icon="inline-start" />
           {t("add")}
         </Button>

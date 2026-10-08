@@ -13,7 +13,11 @@ type Executor = Tx | ReturnType<typeof db>;
 export const exitHandoverGuard: CompletionGuard = async (executor, task) => {
   if (task.kind !== "checklist") return null;
   const tx = (executor ?? db()) as Executor;
-  const [handover] = await tx.select().from(schema.workExitHandover).where(and(eq(schema.workExitHandover.taskId, task.id), eq(schema.workExitHandover.status, "open"))).limit(1);
+  const [handover] = await tx
+    .select()
+    .from(schema.workExitHandover)
+    .where(and(eq(schema.workExitHandover.taskId, task.id), eq(schema.workExitHandover.status, "open")))
+    .limit(1);
   if (!handover) return null;
   // The daily module's time weeks are read on their own connection: only outside a transaction.
   const summary = ownershipSummary(await listOwnership(handover.personId, tx, { timeWeeks: tx === db() }));

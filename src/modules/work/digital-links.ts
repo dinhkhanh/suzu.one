@@ -101,5 +101,10 @@ export async function digitalAssetsByTask(taskIds: readonly string[], executor: 
 export async function digitalAssetsByProject(projectIds: readonly string[], executor: Executor = db()): Promise<Map<string, LinkedDigitalAsset[]>> {
   const ids = [...new Set(projectIds)];
   if (ids.length === 0) return new Map();
-  return grouped(await executor.select({ ownerId: schema.workProjectDigitalAsset.projectId, digitalAssetId: schema.workProjectDigitalAsset.digitalAssetId }).from(schema.workProjectDigitalAsset).where(inArray(schema.workProjectDigitalAsset.projectId, ids)));
+  return grouped(
+    await executor
+      .select({ ownerId: schema.workProjectDigitalAsset.projectId, digitalAssetId: schema.workProjectDigitalAsset.digitalAssetId })
+      .from(schema.workProjectDigitalAsset)
+      .where(inArray(schema.workProjectDigitalAsset.projectId, ids)),
+  );
 }

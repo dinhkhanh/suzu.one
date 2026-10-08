@@ -41,8 +41,16 @@ const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan"
 type Key = (typeof PEOPLE)[number];
 const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "dept" | "client" | "internal" | "t1" | "t2" | "t3" | "t4" | "t5" | "hr" | "t6", string>;
 const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do", vu: "Vu Le" };
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
-const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
+const noticesOf = async (personId: string, kind: string) =>
+  db()
+    .select()
+    .from(schema.notification)
+    .where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const at = (time: string) => new Date(`${D}T${time}:00+07:00`);
 
 beforeAll(async () => {
@@ -52,7 +60,10 @@ beforeAll(async () => {
   const [dept] = await db().insert(schema.orgUnit).values({ name: "Marketing", kind: "department", entityId: szm.id }).returning();
   ids.dept = dept.id;
   for (const key of PEOPLE) {
-    const [row] = await db().insert(schema.person).values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id })
+      .returning();
     ids[key] = row.id;
   }
   // Huy reports to Tam, Tam to Chi, Chi to Vu: three levels above Huy. Chi heads Marketing, where Video sits.
@@ -64,11 +75,15 @@ beforeAll(async () => {
   // Teams, their workflow and members as rows: the work module's own tests cover how they are made.
   const team = async (key: string, name: string, lead: Key, members: Key[], departmentId: string | null = null) => {
     const [row] = await db().insert(schema.workTeam).values({ key, name, entityId: szm.id, departmentId }).returning();
-    await db().insert(schema.workState).values([
-      { teamId: row.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
-      { teamId: row.id, name: "Đã xong", category: "done", sortOrder: 2 },
-    ]);
-    await db().insert(schema.workTeamMember).values([{ teamId: row.id, personId: ids[lead], role: "lead" }, ...members.map((member) => ({ teamId: row.id, personId: ids[member], role: "member" }))]);
+    await db()
+      .insert(schema.workState)
+      .values([
+        { teamId: row.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
+        { teamId: row.id, name: "Đã xong", category: "done", sortOrder: 2 },
+      ]);
+    await db()
+      .insert(schema.workTeamMember)
+      .values([{ teamId: row.id, personId: ids[lead], role: "lead" }, ...members.map((member) => ({ teamId: row.id, personId: ids[member], role: "member" }))]);
     return row.id;
   };
   ids.video = await team("VID", "Video", "long", ["huy", "bao"], dept.id);
@@ -80,14 +95,17 @@ beforeAll(async () => {
   const project = async (name: string) => (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name, leadPersonId: ids.long }).returning())[0].id;
   ids.client = await project("TVC Tết");
   ids.internal = await project("Showreel");
-  await db().insert(schema.projectPlan).values([
-    { projectId: ids.client, kind: "client" },
-    { projectId: ids.internal, kind: "internal" },
-  ]);
+  await db()
+    .insert(schema.projectPlan)
+    .values([
+      { projectId: ids.client, kind: "client" },
+      { projectId: ids.internal, kind: "internal" },
+    ]);
 
   const states = await listStates([ids.video]);
   const doing = states.find((state) => state.category === "in_progress")!;
-  const task = async (title: string, assignee: Key, extra: { dueDate?: string; estimateMinutes?: number; projectId?: string; collaboratorIds?: string[] } = {}) => (await createWorkTask({ teamId: ids.video, projectId: extra.projectId ?? ids.client, title, assigneePersonId: ids[assignee], stateId: doing.id, ...extra }, ids.long)).task.id;
+  const task = async (title: string, assignee: Key, extra: { dueDate?: string; estimateMinutes?: number; projectId?: string; collaboratorIds?: string[] } = {}) =>
+    (await createWorkTask({ teamId: ids.video, projectId: extra.projectId ?? ids.client, title, assigneePersonId: ids[assignee], stateId: doing.id, ...extra }, ids.long)).task.id;
   ids.t1 = await task("Rough cut", "huy", { dueDate: D, estimateMinutes: 120 });
   ids.t2 = await task("Subtitles", "huy", { estimateMinutes: 60 });
   ids.t3 = await task("Color grade", "bao", { collaboratorIds: [ids.huy] });
@@ -124,7 +142,15 @@ describe("plan → activity → prefilled report → submit", () => {
     expect(page.candidates.map((task) => task.taskId).sort()).toEqual([ids.t1, ids.t2, ids.t3, ids.t4, ids.t5].sort());
     expect(page.selected).toEqual([]);
     expect(await fails(savePlan(ids.bao, D, [{ taskId: ids.t1, minutes: 60 }], null))).toBe("plan_task_not_yours");
-    const { after } = await savePlan(ids.huy, D, [{ taskId: ids.t1, minutes: 120 }, { taskId: ids.t2, minutes: 60 }], "Ưu tiên bản dựng");
+    const { after } = await savePlan(
+      ids.huy,
+      D,
+      [
+        { taskId: ids.t1, minutes: 120 },
+        { taskId: ids.t2, minutes: 60 },
+      ],
+      "Ưu tiên bản dựng",
+    );
     expect(after.items.map((item) => item.taskId)).toEqual([ids.t1, ids.t2]);
     expect(after.submittedAt).not.toBeNull();
   });
@@ -147,13 +173,22 @@ describe("plan → activity → prefilled report → submit", () => {
     const done = (await listStates([ids.video])).find((state) => state.category === "done")!;
     // Huy moves the rough cut to done at 10:00 on D — as the work module records it.
     await db().update(schema.workTask).set({ stateId: done.id }).where(eq(schema.workTask.taskId, ids.t1));
-    await db().update(schema.task).set({ status: "done", completedAt: at("10:00"), completedByPersonId: ids.huy }).where(eq(schema.task.id, ids.t1));
-    await db().insert(schema.workActivity).values({ taskId: ids.t1, actorPersonId: ids.huy, type: "field_changed", field: "state", fromValue: { name: "Đang làm", category: "in_progress" }, toValue: { id: done.id, name: done.name, category: "done" }, createdAt: at("10:00") });
-    await db().insert(schema.workComment).values([
-      { taskId: ids.t2, authorPersonId: ids.huy, body: "Đang dịch phụ đề", createdAt: at("11:00") },
-      { taskId: ids.t2, authorPersonId: ids.huy, body: "Còn 2 cảnh", createdAt: at("14:00") },
-    ]);
-    await db().insert(schema.workBlocker).values({ taskId: ids.t2, reason: "Chờ khách gửi kịch bản tiếng Anh", neededPersonId: ids.long, raisedByPersonId: ids.huy, raisedAt: at("15:00") });
+    await db()
+      .update(schema.task)
+      .set({ status: "done", completedAt: at("10:00"), completedByPersonId: ids.huy })
+      .where(eq(schema.task.id, ids.t1));
+    await db()
+      .insert(schema.workActivity)
+      .values({ taskId: ids.t1, actorPersonId: ids.huy, type: "field_changed", field: "state", fromValue: { name: "Đang làm", category: "in_progress" }, toValue: { id: done.id, name: done.name, category: "done" }, createdAt: at("10:00") });
+    await db()
+      .insert(schema.workComment)
+      .values([
+        { taskId: ids.t2, authorPersonId: ids.huy, body: "Đang dịch phụ đề", createdAt: at("11:00") },
+        { taskId: ids.t2, authorPersonId: ids.huy, body: "Còn 2 cảnh", createdAt: at("14:00") },
+      ]);
+    await db()
+      .insert(schema.workBlocker)
+      .values({ taskId: ids.t2, reason: "Chờ khách gửi kịch bản tiếng Anh", neededPersonId: ids.long, raisedByPersonId: ids.huy, raisedAt: at("15:00") });
     await logTime({ personId: ids.huy, date: D, taskId: ids.t1, category: null, minutes: 90, note: null, billable: null });
 
     const draft = await buildDraft(ids.huy, D);
@@ -246,11 +281,18 @@ describe("the team daily board", () => {
     const groups = await listOverseen(reader);
     expect(groups.map((group) => group.kind)).toEqual(["company"]);
     const listed = groups.flatMap((group) => group.personIds).sort();
-    expect(listed).toEqual(PEOPLE.filter((key) => key !== "bao").map((key) => ids[key]).sort());
+    expect(listed).toEqual(
+      PEOPLE.filter((key) => key !== "bao")
+        .map((key) => ids[key])
+        .sort(),
+    );
     // The list and the policy agree, and the policy opens someone far outside his chain.
     const subjects = await loadSubjects(listed);
     expect(listed.every((personId) => canViewReport(reader, subjects.get(personId)!))).toBe(true);
-    const [huysReport] = await db().select({ id: schema.dailyReport.id }).from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D)));
+    const [huysReport] = await db()
+      .select({ id: schema.dailyReport.id })
+      .from(schema.dailyReport)
+      .where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D)));
     expect(await getReportView(reader, huysReport.id)).not.toBeNull();
     const board = await getTeamBoard(reader, D);
     expect(board.map((group) => group.kind)).toEqual(["company"]);
@@ -293,7 +335,12 @@ describe("the team daily board", () => {
   });
 
   it("a comment tells the person; a colleague may neither read nor comment", async () => {
-    const report = (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D))))[0];
+    const report = (
+      await db()
+        .select()
+        .from(schema.dailyReport)
+        .where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D)))
+    )[0];
     await commentOnReport(await loadReportReader(ids.long), report.id, { body: "Đã nhắn khách, mai có kịch bản", reaction: null }, names.long);
     const [notice] = await noticesOf(ids.huy, "daily.report_commented");
     expect(notice.params).toEqual({ actor: names.long, date: "21/09/2026" });
@@ -310,7 +357,13 @@ describe("the team daily board", () => {
 });
 
 describe("the whole management chain reads the day", () => {
-  const reportOf = async (personId: string) => (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, D))))[0];
+  const reportOf = async (personId: string) =>
+    (
+      await db()
+        .select()
+        .from(schema.dailyReport)
+        .where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, D)))
+    )[0];
 
   it("the line manager, the skip-level manager and the one above them read the report, the week and the time; colleagues do not", async () => {
     const report = await reportOf(ids.huy);
@@ -409,16 +462,29 @@ describe("private work in someone else's report", () => {
     ids.hr = (await db().insert(schema.workProject).values({ teamId: ids.design, entityId: ids.szm, name: "Tuyển Art Director", visibility: "private", leadPersonId: ids.mai }).returning())[0].id;
     await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal", jobNumber: "SZM-26-099" });
     // Its people: a private project's work goes to nobody outside it.
-    await db().insert(schema.workProjectMember).values([{ projectId: ids.hr, personId: ids.mai, role: "lead" as const }, { projectId: ids.hr, personId: ids.huy, role: "member" as const }]);
+    await db()
+      .insert(schema.workProjectMember)
+      .values([
+        { projectId: ids.hr, personId: ids.mai, role: "lead" as const },
+        { projectId: ids.hr, personId: ids.huy, role: "member" as const },
+      ]);
     const doing = (await listStates([ids.design])).find((state) => state.category === "in_progress")!;
     ids.t6 = (await createWorkTask({ teamId: ids.design, projectId: ids.hr, title: "Sơ tuyển ứng viên", assigneePersonId: ids.huy, stateId: doing.id }, ids.mai)).task.id;
-    await db().insert(schema.workBlocker).values({ taskId: ids.t6, reason: "Chờ mức lương duyệt", raisedByPersonId: ids.huy, raisedAt: at("16:00") });
+    await db()
+      .insert(schema.workBlocker)
+      .values({ taskId: ids.t6, reason: "Chờ mức lương duyệt", raisedByPersonId: ids.huy, raisedAt: at("16:00") });
     await logTime({ personId: ids.huy, date: D, taskId: ids.t6, category: null, minutes: 45, note: null, billable: null });
     await addToPlan(ids.huy, D, ids.t6);
     await submitReport(ids.huy, D, { blockers: "Chờ kịch bản", notes: null, tomorrow: [], secondsToSubmit: 10 }, at("20:30"));
   });
 
-  const reportId = async () => (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D))))[0].id;
+  const reportId = async () =>
+    (
+      await db()
+        .select()
+        .from(schema.dailyReport)
+        .where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D)))
+    )[0].id;
 
   it("the person reads their own day whole", async () => {
     const view = (await getReportView(await loadReportReader(ids.huy), await reportId()))!;
@@ -495,7 +561,10 @@ describe("private work in someone else's report", () => {
     const before = (await noticesOf(ids.long, "daily.report_commented")).length;
     await commentOnReport(await loadReportReader(ids.long), id, { body: "Ổn nhé", reaction: null }, names.long);
     // Long leaves Video: he is no longer anyone's lead, and the thread is no longer his.
-    await db().update(schema.workTeamMember).set({ role: "member" }).where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
+    await db()
+      .update(schema.workTeamMember)
+      .set({ role: "member" })
+      .where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
     await commentOnReport(await loadReportReader(ids.huy), id, { body: "Vâng anh", reaction: null }, names.huy);
     expect(await noticesOf(ids.long, "daily.report_commented")).toHaveLength(before);
     // Mai still leads Design, so her earlier comment still gets answers.
@@ -503,6 +572,9 @@ describe("private work in someone else's report", () => {
     const maiBefore = (await noticesOf(ids.mai, "daily.report_commented")).length;
     await commentOnReport(await loadReportReader(ids.huy), id, { body: "Vâng chị", reaction: null }, names.huy);
     expect(await noticesOf(ids.mai, "daily.report_commented")).toHaveLength(maiBefore + 1);
-    await db().update(schema.workTeamMember).set({ role: "lead" }).where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
+    await db()
+      .update(schema.workTeamMember)
+      .set({ role: "lead" })
+      .where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
   });
 });

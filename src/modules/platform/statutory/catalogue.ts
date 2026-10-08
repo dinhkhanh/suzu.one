@@ -27,7 +27,10 @@ export const PARAMETERS = {
   "pit.brackets": z
     .array(z.object({ upTo: vnd.nullable(), rate: basisPoints }))
     .min(1)
-    .refine((brackets) => brackets.at(-1)?.upTo === null && brackets.slice(0, -1).every((bracket, index) => bracket.upTo !== null && (index === 0 || bracket.upTo > (brackets[index - 1].upTo ?? 0))), "brackets must ascend and end with an open bracket"),
+    .refine(
+      (brackets) => brackets.at(-1)?.upTo === null && brackets.slice(0, -1).every((bracket, index) => bracket.upTo !== null && (index === 0 || bracket.upTo > (brackets[index - 1].upTo ?? 0))),
+      "brackets must ascend and end with an open bracket",
+    ),
   "pit.flat_rates": z.object({ nonResident: basisPoints, withoutContract: basisPoints, withoutContractThreshold: vnd }),
   "overtime.multipliers": z.object({ weekday: percent, restDay: percent, holiday: percent, nightPremium: percent, nightOvertimeExtra: percent }),
   // Holiday work of monthly-salaried staff (SRS Q13): is the holiday multiplier paid *in addition*

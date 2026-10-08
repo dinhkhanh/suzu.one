@@ -27,8 +27,7 @@ export type EmailTemplateRow = typeof schema.recruitEmailTemplate.$inferSelect;
 const TEMPLATES_CACHE = "recruit:email-templates";
 const TEMPLATES_TTL = 60 * 60;
 
-const allTemplates = (): Promise<EmailTemplateRow[]> =>
-  cached(TEMPLATES_CACHE, TEMPLATES_TTL, () => db().select().from(schema.recruitEmailTemplate).orderBy(asc(schema.recruitEmailTemplate.kind), asc(schema.recruitEmailTemplate.name)));
+const allTemplates = (): Promise<EmailTemplateRow[]> => cached(TEMPLATES_CACHE, TEMPLATES_TTL, () => db().select().from(schema.recruitEmailTemplate).orderBy(asc(schema.recruitEmailTemplate.kind), asc(schema.recruitEmailTemplate.name)));
 
 export async function listEmailTemplates(onlyActive = true): Promise<EmailTemplateRow[]> {
   const rows = await allTemplates();
@@ -47,8 +46,7 @@ const INTERVIEW_ONLY = new Set(["interview_time", "interview_place", "interview_
  * place cannot: the application page has no interview to fill them from, and the letter would reach
  * the candidate with braces in it. Those go out from the interview, by themselves.
  */
-export const sendableByHand = (template: EmailTemplateRow): boolean =>
-  !placeholdersIn([template.subject, template.body, template.subjectEn ?? "", template.bodyEn ?? ""].join("\n")).some((key) => INTERVIEW_ONLY.has(key));
+export const sendableByHand = (template: EmailTemplateRow): boolean => !placeholdersIn([template.subject, template.body, template.subjectEn ?? "", template.bodyEn ?? ""].join("\n")).some((key) => INTERVIEW_ONLY.has(key));
 
 /** The wordings the application page offers to send. */
 export async function listHandSentTemplates(): Promise<EmailTemplateRow[]> {
@@ -166,12 +164,7 @@ export async function previewCandidateEmail(applicationId: string, templateId: s
  * everybody and the interesting fact is that it was sent, and when — and, through the outbox row it
  * names, whether it actually went.
  */
-export async function sendCandidateEmail(
-  applicationId: string,
-  templateId: string,
-  sender: { personId: string; fullName: string },
-  locale: string,
-): Promise<{ to: string; subject: string; templateCode: string; entityId: string | null }> {
+export async function sendCandidateEmail(applicationId: string, templateId: string, sender: { personId: string; fullName: string }, locale: string): Promise<{ to: string; subject: string; templateCode: string; entityId: string | null }> {
   const template = await findEmailTemplate(templateId);
   if (!template) throw new ActionError("recruit_email_template_not_found");
   if (!sendableByHand(template)) throw new ActionError("recruit_email_needs_interview");

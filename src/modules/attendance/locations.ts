@@ -46,19 +46,31 @@ export async function listAllLocations(): Promise<WorkLocationRow[]> {
 export async function listLocations(): Promise<(WorkLocationRow & { entityName: string })[]> {
   const [locations, entities] = await Promise.all([listAllLocations(), listEntities()]);
   const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
-  return locations
-    .flatMap((location) => (nameOf.has(location.entityId) ? [{ ...location, entityName: nameOf.get(location.entityId)! }] : []))
-    .sort((a, b) => a.entityName.localeCompare(b.entityName) || a.name.localeCompare(b.name));
+  return locations.flatMap((location) => (nameOf.has(location.entityId) ? [{ ...location, entityName: nameOf.get(location.entityId)! }] : [])).sort((a, b) => a.entityName.localeCompare(b.entityName) || a.name.localeCompare(b.name));
 }
 
 export async function saveLocation(input: LocationInput): Promise<{ before: WorkLocationRow | null; after: WorkLocationRow }> {
   const ipAllowlist = [...new Set(input.ipAllowlist.map(normaliseNetwork).filter(Boolean))];
   const [problem] = locationProblems({ ...input, ipAllowlist });
   if (problem) throw new ActionError(problem);
-  const values = { name: input.name, address: input.address, latitude: input.latitude, longitude: input.longitude, radiusM: input.radiusM, accuracyLimitM: input.accuracyLimitM, ipAllowlist, rule: input.rule, mode: input.mode, isActive: input.isActive };
+  const values = {
+    name: input.name,
+    address: input.address,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    radiusM: input.radiusM,
+    accuracyLimitM: input.accuracyLimitM,
+    ipAllowlist,
+    rule: input.rule,
+    mode: input.mode,
+    isActive: input.isActive,
+  };
 
   if (!input.id) {
-    const [after] = await db().insert(schema.workLocation).values({ entityId: input.entityId, ...values }).returning();
+    const [after] = await db()
+      .insert(schema.workLocation)
+      .values({ entityId: input.entityId, ...values })
+      .returning();
     await invalidate(LOCATION_CACHE);
     return { before: null, after };
   }
@@ -66,7 +78,11 @@ export async function saveLocation(input: LocationInput): Promise<{ before: Work
   if (!before) throw new ActionError("location_not_found");
   // A location stays with its entity: punches already point at it.
   if (before.entityId !== input.entityId) throw new ActionError("location_entity_fixed");
-  const [after] = await db().update(schema.workLocation).set({ ...values, updatedAt: new Date() }).where(eq(schema.workLocation.id, input.id)).returning();
+  const [after] = await db()
+    .update(schema.workLocation)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(schema.workLocation.id, input.id))
+    .returning();
   await invalidate(LOCATION_CACHE);
   return { before, after };
 }

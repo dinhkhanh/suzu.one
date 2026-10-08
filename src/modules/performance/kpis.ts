@@ -49,7 +49,10 @@ export async function saveKpi(kpiId: string | null, input: KpiInput): Promise<{ 
     const [clash] = await tx.select({ id: schema.kpiDefinition.id }).from(schema.kpiDefinition).where(eq(schema.kpiDefinition.code, input.code)).limit(1);
     if (clash && clash.id !== kpiId) throw new ActionError("kpi_code_taken");
     if (!kpiId) {
-      const [after] = await tx.insert(schema.kpiDefinition).values({ ...input, editedAt: new Date() }).returning();
+      const [after] = await tx
+        .insert(schema.kpiDefinition)
+        .values({ ...input, editedAt: new Date() })
+        .returning();
       return { before: null, after: asKpi(after) };
     }
     const [before] = await tx.select().from(schema.kpiDefinition).where(eq(schema.kpiDefinition.id, kpiId)).limit(1).for("update");
@@ -59,7 +62,11 @@ export async function saveKpi(kpiId: string | null, input: KpiInput): Promise<{ 
       const [used] = await tx.select({ id: schema.kpiAssignment.id }).from(schema.kpiAssignment).where(eq(schema.kpiAssignment.kpiId, kpiId)).limit(1);
       if (used) throw new ActionError("kpi_in_use");
     }
-    const [after] = await tx.update(schema.kpiDefinition).set({ ...input, editedAt: new Date(), updatedAt: new Date() }).where(eq(schema.kpiDefinition.id, kpiId)).returning();
+    const [after] = await tx
+      .update(schema.kpiDefinition)
+      .set({ ...input, editedAt: new Date(), updatedAt: new Date() })
+      .where(eq(schema.kpiDefinition.id, kpiId))
+      .returning();
     return { before: asKpi(before), after: asKpi(after) };
   });
   await invalidate(KPI_CACHE.library);
@@ -138,8 +145,15 @@ export async function savePositionKpi(input: { positionId: string; entityId: str
       .limit(1);
     const values = { weight: input.weight, targetValue, sortOrder: input.sortOrder };
     const [after] = before
-      ? await tx.update(schema.positionKpi).set({ ...values, updatedAt: new Date() }).where(eq(schema.positionKpi.id, before.id)).returning()
-      : await tx.insert(schema.positionKpi).values({ positionId: input.positionId, entityId: input.entityId, kpiId: input.kpiId, ...values }).returning();
+      ? await tx
+          .update(schema.positionKpi)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(schema.positionKpi.id, before.id))
+          .returning()
+      : await tx
+          .insert(schema.positionKpi)
+          .values({ positionId: input.positionId, entityId: input.entityId, kpiId: input.kpiId, ...values })
+          .returning();
     return { before: before ?? null, after };
   });
   await invalidate(KPI_CACHE.positionKpis);
@@ -182,7 +196,10 @@ async function closedMonthsWithin(tx: Executor, entityId: string, range: { fromP
     .select({ month: schema.kpiPeriod.month })
     .from(schema.kpiPeriod)
     .where(and(eq(schema.kpiPeriod.entityId, entityId), eq(schema.kpiPeriod.status, "closed"), gte(schema.kpiPeriod.month, range.fromPeriod)));
-  return rows.map((row) => row.month).filter((month) => coversMonth(range, month)).sort();
+  return rows
+    .map((row) => row.month)
+    .filter((month) => coversMonth(range, month))
+    .sort();
 }
 
 export type AssignmentInput = { personId: string; kpiId: string; weight: number; target: string; fromPeriod: string; toPeriod: string | null };
@@ -195,11 +212,17 @@ export async function createAssignment(actorPersonId: string, input: AssignmentI
     if (!kpi || !person?.entityId) throw new ActionError("kpi_not_found");
     if (!kpi.isActive) throw new ActionError("kpi_inactive");
     const targetValue = parseTarget(asKpi(kpi), input.target);
-    const existing = await tx.select().from(schema.kpiAssignment).where(and(eq(schema.kpiAssignment.personId, input.personId), eq(schema.kpiAssignment.kpiId, input.kpiId)));
+    const existing = await tx
+      .select()
+      .from(schema.kpiAssignment)
+      .where(and(eq(schema.kpiAssignment.personId, input.personId), eq(schema.kpiAssignment.kpiId, input.kpiId)));
     if (existing.some((row) => overlaps(row, input))) throw new ActionError("kpi_assignment_overlaps");
     // A closed month's score was computed without this KPI; it cannot appear there afterwards.
     if ((await closedMonthsWithin(tx, person.entityId, input)).length > 0) throw new ActionError("kpi_month_closed");
-    const [row] = await tx.insert(schema.kpiAssignment).values({ personId: input.personId, entityId: person.entityId, kpiId: input.kpiId, weight: input.weight, targetValue, fromPeriod: input.fromPeriod, toPeriod: input.toPeriod, createdByPersonId: actorPersonId }).returning();
+    const [row] = await tx
+      .insert(schema.kpiAssignment)
+      .values({ personId: input.personId, entityId: person.entityId, kpiId: input.kpiId, weight: input.weight, targetValue, fromPeriod: input.fromPeriod, toPeriod: input.toPeriod, createdByPersonId: actorPersonId })
+      .returning();
     return row;
   });
 }
@@ -241,7 +264,12 @@ export type ApplyResult = { holders: number; created: number; skipped: number; w
  * month on. Idempotent: a KPI the person already carries in that range is left exactly as it is.
  * Only people the actor looks after as HR are touched; the rest are not even counted.
  */
-export async function applyTemplates(actor: { principal: Principal; personId: string }, input: { fromPeriod: string; positionId: string | null; personId: string | null }, today: string, executor: ReturnType<typeof db> = db()): Promise<ApplyResult> {
+export async function applyTemplates(
+  actor: { principal: Principal; personId: string },
+  input: { fromPeriod: string; positionId: string | null; personId: string | null },
+  today: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<ApplyResult> {
   if (!isKpiMonth(input.fromPeriod)) throw new ActionError("kpi_bad_period");
   const firstDay = `${input.fromPeriod}-01`;
   return executor.transaction(async (tx) => {
@@ -249,7 +277,18 @@ export async function applyTemplates(actor: { principal: Principal; personId: st
     const chosen = holders.filter((holder) => (!input.positionId || holder.positionId === input.positionId) && (!input.personId || holder.personId === input.personId) && inScope(actor.principal, directory, holder.personId));
     const result: ApplyResult = { holders: chosen.length, created: 0, skipped: 0, withoutTemplate: 0, people: [] };
     if (chosen.length === 0) return result;
-    const existing = await tx.select().from(schema.kpiAssignment).where(and(inArray(schema.kpiAssignment.personId, chosen.map((holder) => holder.personId)), or(isNull(schema.kpiAssignment.toPeriod), gte(schema.kpiAssignment.toPeriod, input.fromPeriod))));
+    const existing = await tx
+      .select()
+      .from(schema.kpiAssignment)
+      .where(
+        and(
+          inArray(
+            schema.kpiAssignment.personId,
+            chosen.map((holder) => holder.personId),
+          ),
+          or(isNull(schema.kpiAssignment.toPeriod), gte(schema.kpiAssignment.toPeriod, input.fromPeriod)),
+        ),
+      );
     const closedByEntity = new Map<string, string[]>();
     for (const holder of chosen) {
       const person = directory.get(holder.personId)!;
@@ -268,7 +307,17 @@ export async function applyTemplates(actor: { principal: Principal; personId: st
         // Something new would land in a month whose scores are stored: start from the next open month instead.
         if (!closedByEntity.has(entityId)) closedByEntity.set(entityId, await closedMonthsWithin(tx, entityId, { fromPeriod: input.fromPeriod, toPeriod: null }));
         if (closedByEntity.get(entityId)!.length > 0) throw new ActionError("kpi_month_closed", { closedMonths: closedByEntity.get(entityId) });
-        await tx.insert(schema.kpiAssignment).values({ personId: holder.personId, entityId, kpiId: line.kpi.id, weight: line.weight, targetValue: line.targetValue, fromPeriod: input.fromPeriod, toPeriod: null, sourcePositionId: holder.positionId, createdByPersonId: actor.personId });
+        await tx.insert(schema.kpiAssignment).values({
+          personId: holder.personId,
+          entityId,
+          kpiId: line.kpi.id,
+          weight: line.weight,
+          targetValue: line.targetValue,
+          fromPeriod: input.fromPeriod,
+          toPeriod: null,
+          sourcePositionId: holder.positionId,
+          createdByPersonId: actor.personId,
+        });
         result.created++;
         touched = true;
       }

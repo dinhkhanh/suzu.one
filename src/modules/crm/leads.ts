@@ -17,7 +17,13 @@ type Executor = Tx | ReturnType<typeof db>;
 export type LeadRow = typeof schema.crmLead.$inferSelect;
 export type LeadView = LeadRow & { ownerName: string | null; referrerName: string | null; clientName: string | null; entityName: string | null };
 
-export const leadFacts = (lead: Pick<LeadRow, "entityId" | "ownerPersonId" | "referrerPersonId" | "createdByPersonId" | "status">): LeadFacts => ({ entityId: lead.entityId, ownerPersonId: lead.ownerPersonId, referrerPersonId: lead.referrerPersonId, createdByPersonId: lead.createdByPersonId, status: lead.status as LeadStatus });
+export const leadFacts = (lead: Pick<LeadRow, "entityId" | "ownerPersonId" | "referrerPersonId" | "createdByPersonId" | "status">): LeadFacts => ({
+  entityId: lead.entityId,
+  ownerPersonId: lead.ownerPersonId,
+  referrerPersonId: lead.referrerPersonId,
+  createdByPersonId: lead.createdByPersonId,
+  status: lead.status as LeadStatus,
+});
 
 export const findLead = async (leadId: string, executor: Executor = db()): Promise<LeadRow | undefined> => (await executor.select().from(schema.crmLead).where(eq(schema.crmLead.id, leadId)).limit(1))[0];
 
@@ -62,7 +68,18 @@ export async function getLead(leadId: string): Promise<LeadView | undefined> {
   return (await listWhere(eq(schema.crmLead.id, leadId), 1))[0];
 }
 
-export type LeadInput = { entityId: string | null; clientId: string | null; companyName: string; contactName: string | null; contactTitle: string | null; email: string | null; phone: string | null; need: string | null; budgetText: string | null; source: Source };
+export type LeadInput = {
+  entityId: string | null;
+  clientId: string | null;
+  companyName: string;
+  contactName: string | null;
+  contactTitle: string | null;
+  email: string | null;
+  phone: string | null;
+  need: string | null;
+  budgetText: string | null;
+  source: Source;
+};
 
 /** The sales directors of an entity: named `crm:manage` holders over it (never the owners' "*"). */
 const salesManagersOf = (executor: Executor, entityId: string | null): Promise<string[]> => listPeopleHolding("crm:manage", { entityId }, { includeWildcard: false, executor });
@@ -98,7 +115,11 @@ async function lockOpen(tx: Tx, leadId: string): Promise<LeadRow> {
 export async function updateLead(leadId: string, input: LeadInput): Promise<{ before: LeadRow; after: LeadRow }> {
   return db().transaction(async (tx) => {
     const before = await lockOpen(tx, leadId);
-    const [after] = await tx.update(schema.crmLead).set({ ...input, email: input.email?.trim().toLowerCase() || null, updatedAt: new Date() }).where(eq(schema.crmLead.id, leadId)).returning();
+    const [after] = await tx
+      .update(schema.crmLead)
+      .set({ ...input, email: input.email?.trim().toLowerCase() || null, updatedAt: new Date() })
+      .where(eq(schema.crmLead.id, leadId))
+      .returning();
     return { before, after };
   });
 }

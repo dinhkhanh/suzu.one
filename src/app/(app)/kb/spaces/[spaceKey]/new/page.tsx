@@ -36,7 +36,9 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
     <Page>
       <PageHeader
         eyebrow={
-          <RecordLink kind="kbSpace" id={loaded.space.key}>{loaded.space.name}</RecordLink>
+          <RecordLink kind="kbSpace" id={loaded.space.key}>
+            {loaded.space.name}
+          </RecordLink>
         }
         title={t("page.new")}
         actions={
@@ -45,7 +47,13 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
           </Link>
         }
       />
-      <NewPageForm spaceId={loaded.space.id} spaceKey={loaded.space.key} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} templates={templates} />
+      <NewPageForm
+        spaceId={loaded.space.id}
+        spaceKey={loaded.space.key}
+        parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))}
+        defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""}
+        templates={templates}
+      />
     </Page>
   );
 }

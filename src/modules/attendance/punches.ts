@@ -33,7 +33,16 @@ const OPEN_PUNCH_HOURS = 20;
 /** Vietnam has no daylight saving: a business date starts at 00:00 +07:00. */
 export const startOfVietnamDay = (date: IsoDate): Date => new Date(`${date}T00:00:00+07:00`);
 
-const asRule = (row: typeof schema.workLocation.$inferSelect, networkNames: ReadonlyMap<string, readonly string[]>): WorkLocationRule => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, radiusM: row.radiusM, accuracyLimitM: row.accuracyLimitM, ipAllowlist: expandAllowlist(row.ipAllowlist, networkNames), rule: row.rule, mode: row.mode });
+const asRule = (row: typeof schema.workLocation.$inferSelect, networkNames: ReadonlyMap<string, readonly string[]>): WorkLocationRule => ({
+  id: row.id,
+  latitude: row.latitude,
+  longitude: row.longitude,
+  radiusM: row.radiusM,
+  accuracyLimitM: row.accuracyLimitM,
+  ipAllowlist: expandAllowlist(row.ipAllowlist, networkNames),
+  rule: row.rule,
+  mode: row.mode,
+});
 
 const offSiteLocationsFor = declaredOffSiteLocations;
 
@@ -42,7 +51,12 @@ const counted = ne(schema.punch.reviewStatus, "rejected");
 
 async function lastOpenPunch(executor: Executor, personId: string, now: Date): Promise<PunchRow | null> {
   const since = new Date(now.getTime() - OPEN_PUNCH_HOURS * 3_600_000);
-  const [row] = await executor.select().from(schema.punch).where(and(eq(schema.punch.personId, personId), gte(schema.punch.at, since), counted)).orderBy(desc(schema.punch.at)).limit(1);
+  const [row] = await executor
+    .select()
+    .from(schema.punch)
+    .where(and(eq(schema.punch.personId, personId), gte(schema.punch.at, since), counted))
+    .orderBy(desc(schema.punch.at))
+    .limit(1);
   return row ?? null;
 }
 
@@ -73,7 +87,10 @@ export async function recordAppPunch(input: AppPunchInput, now: Date = new Date(
     // One punch at a time per person: two tabs tapping at once must not both pass the checks below.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`punch:${person.id}`}))`);
     const [locations, last, declared] = await Promise.all([
-      tx.select().from(schema.workLocation).where(and(eq(schema.workLocation.entityId, entityId), eq(schema.workLocation.isActive, true))),
+      tx
+        .select()
+        .from(schema.workLocation)
+        .where(and(eq(schema.workLocation.entityId, entityId), eq(schema.workLocation.isActive, true))),
       lastOpenPunch(tx, person.id, now),
       offSiteLocationsFor(tx, person.id, today),
     ]);
@@ -180,7 +197,12 @@ export type FlaggedPunch = {
   nearestLocationName: string | null;
 };
 
-const personTarget = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+const personTarget = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }) => ({
+  personId: person.id,
+  entityId: person.primaryEntityId,
+  unitPath: person.orgUnitPath,
+  managerId: person.managerId,
+});
 
 /**
  * How far back a check-in still waiting for review is shown and counted: the start of last month
@@ -202,7 +224,14 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
     .select({ punch: schema.punch, person: schema.person })
     .from(schema.punch)
     .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
-    .where(and(ne(schema.punch.reviewStatus, "none"), or(gte(schema.punch.at, since), and(eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, pendingSince(options.now)))), ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId))))
+    .where(
+      and(
+        ne(schema.punch.reviewStatus, "none"),
+        or(gte(schema.punch.at, since), and(eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, pendingSince(options.now)))),
+        ne(schema.person.id, viewer.personId),
+        anyReachSql([reach], eq(schema.person.managerId, viewer.personId)),
+      ),
+    )
     .orderBy(sql`${schema.punch.reviewStatus} = 'pending' desc`, desc(schema.punch.at))
     .limit(300);
   const mine = rows.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, personTarget(person))));
@@ -272,7 +301,8 @@ export async function reviewPunch(punchId: string, reviewerPersonId: string, inp
     const day = todayInVietnam(after.at);
     await requestTimesheetRecompute([after.personId], addDays(day, -1), day, tx);
     // The person hears why a punch of theirs stopped counting — with time to file a correction before the lock.
-    if (after.reviewStatus === "rejected") await notify({ recipients: [after.personId], kind: "attendance.punch_rejected", params: { time: punchTime(after.at), reason: after.reviewNote ?? "" }, link: `/attendance?month=${day.slice(0, 7)}` }, tx);
+    if (after.reviewStatus === "rejected")
+      await notify({ recipients: [after.personId], kind: "attendance.punch_rejected", params: { time: punchTime(after.at), reason: after.reviewNote ?? "" }, link: `/attendance?month=${day.slice(0, 7)}` }, tx);
     return { before, after };
   });
 }
@@ -280,7 +310,9 @@ export async function reviewPunch(punchId: string, reviewerPersonId: string, inp
 // ── Telling the reviewers (ATT-01) ──────────────────────────────────────────────────────────
 
 const punchTime = (at: Date): string => {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at).map((part) => [part.type, part.value]));
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at).map((part) => [part.type, part.value]),
+  );
   return `${parts.hour}:${parts.minute} ${parts.day}/${parts.month}/${parts.year}`;
 };
 
@@ -293,14 +325,24 @@ const punchTime = (at: Date): string => {
 async function reviewersOfPendingPunches(where: SQL): Promise<Map<string, number>> {
   const manager = alias(schema.person, "manager");
   const rows = await db()
-    .select({ personId: schema.punch.personId, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, managerId: sql<string | null>`case when ${manager.status} = 'active' then ${manager.id} end`, count: sql<number>`count(*)::int` })
+    .select({
+      personId: schema.punch.personId,
+      entityId: schema.person.primaryEntityId,
+      unitPath: schema.person.orgUnitPath,
+      managerId: sql<string | null>`case when ${manager.status} = 'active' then ${manager.id} end`,
+      count: sql<number>`count(*)::int`,
+    })
     .from(schema.punch)
     .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
     .leftJoin(manager, eq(manager.id, schema.person.managerId))
     .where(and(eq(schema.punch.reviewStatus, "pending"), where))
     .groupBy(schema.punch.personId, schema.person.primaryEntityId, schema.person.orgUnitPath, manager.id, manager.status);
   const unmanaged = rows.filter((row) => !row.managerId);
-  const holders = await listPeopleHoldingEach("attendance:manage", unmanaged.map((row) => ({ entityId: row.entityId, unitPath: row.unitPath })), { includeWildcard: false });
+  const holders = await listPeopleHoldingEach(
+    "attendance:manage",
+    unmanaged.map((row) => ({ entityId: row.entityId, unitPath: row.unitPath })),
+    { includeWildcard: false },
+  );
   const hrOf = new Map(unmanaged.map((row, index) => [row.personId, holders[index]]));
   const counts = new Map<string, number>();
   for (const row of rows) {
@@ -321,7 +363,10 @@ type ReviewKind = "attendance.punches_to_review" | "attendance.punches_block_loc
 async function tellReviewers(counts: ReadonlyMap<string, number>, kind: ReviewKind, params: Record<string, string>, onceSince?: Date): Promise<number> {
   let reviewers = [...counts.keys()];
   if (onceSince && reviewers.length) {
-    const told = await db().selectDistinct({ personId: schema.notification.recipientPersonId }).from(schema.notification).where(and(inArray(schema.notification.recipientPersonId, reviewers), eq(schema.notification.kind, kind), gte(schema.notification.createdAt, onceSince)));
+    const told = await db()
+      .selectDistinct({ personId: schema.notification.recipientPersonId })
+      .from(schema.notification)
+      .where(and(inArray(schema.notification.recipientPersonId, reviewers), eq(schema.notification.kind, kind), gte(schema.notification.createdAt, onceSince)));
     const skip = new Set(told.map((row) => row.personId));
     reviewers = reviewers.filter((reviewer) => !skip.has(reviewer));
   }
@@ -340,7 +385,10 @@ async function tellReviewers(counts: ReadonlyMap<string, number>, kind: ReviewKi
 export async function remindPunchReviewsBeforeLock(entityId: string, month: string): Promise<number> {
   const from = `${month}-01`;
   const next = `${addDays(from, 31).slice(0, 7)}-01`;
-  const people = db().selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lt(schema.timesheetDay.date, next)));
+  const people = db()
+    .selectDistinct({ personId: schema.timesheetDay.personId })
+    .from(schema.timesheetDay)
+    .where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lt(schema.timesheetDay.date, next)));
   const counts = await reviewersOfPendingPunches(and(inArray(schema.punch.personId, people), gte(schema.punch.at, startOfVietnamDay(from)), lt(schema.punch.at, startOfVietnamDay(next)))!);
   return tellReviewers(counts, "attendance.punches_block_lock", { month });
 }
@@ -398,7 +446,15 @@ export async function getWhoIsIn(viewer: { personId: string; principal: Principa
   const inMyGroup = sql`exists (select 1 from ${schema.person} as ${sql.identifier("me")} where ${viewerRow.id} = ${viewer.personId} and ${viewerRow.status} = 'active' and (case when ${viewerRow.teamId} is not null then ${schema.person.teamId} = ${viewerRow.teamId} else ${viewerRow.departmentId} is not null and ${schema.person.departmentId} = ${viewerRow.departmentId} and ${schema.person.primaryEntityId} is not distinct from ${viewerRow.primaryEntityId} end))`;
   const everyone = await db()
     .select({
-      person: { id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId },
+      person: {
+        id: schema.person.id,
+        fullName: schema.person.fullName,
+        primaryEntityId: schema.person.primaryEntityId,
+        departmentId: schema.person.departmentId,
+        teamId: schema.person.teamId,
+        orgUnitPath: schema.person.orgUnitPath,
+        managerId: schema.person.managerId,
+      },
       departmentName: schema.orgUnit.name,
     })
     .from(schema.person)
@@ -408,8 +464,12 @@ export async function getWhoIsIn(viewer: { personId: string; principal: Principa
   // Collaborators have no directory: they see themselves only.
   const sameGroup = (person: (typeof everyone)[number]["person"]) =>
     !!me && !collaborator && (me.teamId ? person.teamId === me.teamId : !!me.departmentId && person.departmentId === me.departmentId && person.primaryEntityId === me.primaryEntityId);
-  const visible = everyone.filter(({ person }) => person.id === viewer.personId || sameGroup(person) || person.managerId === viewer.personId || matchesReach(hrReach, personTarget(person)) || matchesReach(personalReach, personTarget(person)));
-  const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const visible = everyone.filter(
+    ({ person }) => person.id === viewer.personId || sameGroup(person) || person.managerId === viewer.personId || matchesReach(hrReach, personTarget(person)) || matchesReach(personalReach, personTarget(person)),
+  );
+  const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const shown = visible.filter((row) => !options.departmentId || row.person.departmentId === options.departmentId);
   const ids = shown.map((row) => row.person.id);
 

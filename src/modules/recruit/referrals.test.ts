@@ -69,7 +69,8 @@ beforeAll(async () => {
     departmentId: ids.vid,
     teamId: null,
     positionName: "Video Editor",
-    seniorityLevel: null, positionLevel: null,
+    seniorityLevel: null,
+    positionLevel: null,
     employmentType: "employee" as const,
     workMode: "onsite" as const,
     workLocation: "Hà Nội",
@@ -256,14 +257,29 @@ async function candidateWith(name: string, options: { talentPool?: boolean; reta
     .set({ retainUntil: options.retainUntil === undefined ? past : options.retainUntil })
     .where(eq(schema.candidate.id, row.id));
   const application = await createApplication(
-    { candidateId: row.id, openingId: ids.opening, source: "careers_page", sourceDetail: null, coverLetter: "Thư xin việc.", answers: { why: "Vì thích." }, cvFileId: null, portfolioLinks: ["https://example.com/reel"], salaryExpectationVnd: 22_000_000, salaryExpectationNote: "thoả thuận" },
+    {
+      candidateId: row.id,
+      openingId: ids.opening,
+      source: "careers_page",
+      sourceDetail: null,
+      coverLetter: "Thư xin việc.",
+      answers: { why: "Vì thích." },
+      cvFileId: null,
+      portfolioLinks: ["https://example.com/reel"],
+      salaryExpectationVnd: 22_000_000,
+      salaryExpectationNote: "thoả thuận",
+    },
     null,
   );
   return { candidate: row, application };
 }
 
 /** The application closed long enough ago that the window counted from its close has passed too. */
-const closedLongAgo = (applicationId: string) => db().update(schema.jobApplication).set({ closedAt: new Date("2020-06-01T03:00:00Z") }).where(eq(schema.jobApplication.id, applicationId));
+const closedLongAgo = (applicationId: string) =>
+  db()
+    .update(schema.jobApplication)
+    .set({ closedAt: new Date("2020-06-01T03:00:00Z") })
+    .where(eq(schema.jobApplication.id, applicationId));
 
 describe("candidate retention", () => {
   it("empties an unsuccessful candidate past their window and leaves the counts standing", async () => {
@@ -293,7 +309,10 @@ describe("candidate retention", () => {
     expect(emptied.rejectionReason).toBe("not_qualified");
     expect(emptied.stageId).not.toBeNull();
 
-    const events = await db().select().from(schema.applicationEvent).where(and(eq(schema.applicationEvent.applicationId, application.id), eq(schema.applicationEvent.type, "anonymised")));
+    const events = await db()
+      .select()
+      .from(schema.applicationEvent)
+      .where(and(eq(schema.applicationEvent.applicationId, application.id), eq(schema.applicationEvent.type, "anonymised")));
     expect(events).toHaveLength(1);
   });
 
@@ -318,7 +337,10 @@ describe("candidate retention", () => {
   it("never touches somebody who became a colleague", async () => {
     const { candidate, application } = await candidateWith("Ứng viên đã vào làm");
     const [person] = await db().insert(schema.person).values({ fullName: "Đồng nghiệp mới", searchName: "dong nghiep moi", primaryEntityId: ids.szm, status: "preboarding" }).returning();
-    await db().update(schema.jobApplication).set({ status: "hired", hiredPersonId: person.id, closedAt: new Date("2020-06-01T03:00:00Z") }).where(eq(schema.jobApplication.id, application.id));
+    await db()
+      .update(schema.jobApplication)
+      .set({ status: "hired", hiredPersonId: person.id, closedAt: new Date("2020-06-01T03:00:00Z") })
+      .where(eq(schema.jobApplication.id, application.id));
 
     await runCandidateRetention(today);
     const [after] = await db().select().from(schema.candidate).where(eq(schema.candidate.id, candidate.id));
@@ -349,7 +371,9 @@ describe("candidate retention", () => {
   });
 
   it("sweeps the rate limiter's counters", async () => {
-    await db().insert(schema.recruitPublicHit).values({ bucket: "apply", visitorHash: "deadbeefdeadbeef", windowStart: new Date("2020-01-01T00:00:00Z"), hits: 3 });
+    await db()
+      .insert(schema.recruitPublicHit)
+      .values({ bucket: "apply", visitorHash: "deadbeefdeadbeef", windowStart: new Date("2020-01-01T00:00:00Z"), hits: 3 });
     const result = await runCandidateRetention(today);
     expect(result.publicHits).toBeGreaterThanOrEqual(1);
     const left = await db().select().from(schema.recruitPublicHit).where(eq(schema.recruitPublicHit.visitorHash, "deadbeefdeadbeef"));
@@ -370,7 +394,10 @@ describe("candidate retention", () => {
     const { candidate, application } = await candidateWith("Ứng viên quay lại");
     await rejectApplication(application.id, { reason: "position_filled", note: null }, ids.hrPerson);
     // Turned down the day before the job runs.
-    await db().update(schema.jobApplication).set({ closedAt: new Date("2026-09-19T03:00:00Z") }).where(eq(schema.jobApplication.id, application.id));
+    await db()
+      .update(schema.jobApplication)
+      .set({ closedAt: new Date("2026-09-19T03:00:00Z") })
+      .where(eq(schema.jobApplication.id, application.id));
 
     const night = await runCandidateRetention(today);
     const [kept] = await db().select().from(schema.candidate).where(eq(schema.candidate.id, candidate.id));
@@ -379,7 +406,10 @@ describe("candidate retention", () => {
     expect(night.considered).toBe(0);
 
     // The same record once that close is more than the window behind it.
-    await db().update(schema.jobApplication).set({ closedAt: new Date("2025-08-01T03:00:00Z") }).where(eq(schema.jobApplication.id, application.id));
+    await db()
+      .update(schema.jobApplication)
+      .set({ closedAt: new Date("2025-08-01T03:00:00Z") })
+      .where(eq(schema.jobApplication.id, application.id));
     const later = await runCandidateRetention(today);
     expect(later.anonymised).toBe(1);
     const [emptied] = await db().select().from(schema.candidate).where(eq(schema.candidate.id, candidate.id));

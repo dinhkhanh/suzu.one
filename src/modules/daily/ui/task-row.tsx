@@ -34,7 +34,7 @@ export function DoneCheck({ taskId, doneStateId, done, action }: { taskId: strin
         onClick={mark}
         className={cn(
           "press flex size-6 shrink-0 items-center justify-center rounded-full border outline-none transition-colors duration-100 focus-visible:ring-2 focus-visible:ring-ring/40 [&_svg]:size-3.5",
-          done ? "border-success/40 bg-success/12 text-success" : "border-input bg-background text-transparent hover:border-foreground/50 hover:text-faint disabled:opacity-60"
+          done ? "border-success/40 bg-success/12 text-success" : "border-input bg-background text-transparent hover:border-foreground/50 hover:text-faint disabled:opacity-60",
         )}
       >
         <Check aria-hidden strokeWidth={2.5} />

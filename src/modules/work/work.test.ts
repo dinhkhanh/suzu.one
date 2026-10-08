@@ -36,13 +36,21 @@ import { loadViewerWith } from "./viewer";
 import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "vidDept" | "owner" | "long" | "tam" | "huy" | "khoi" | "bao" | "freelancer" | "head" | "video" | "design" | "teamProject" | "entityProject" | "privateProject" | "designProject", string>;
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 
 async function addPerson(name: string, entityId: string, workforceType: "employee" | "collaborator" = "employee") {
-  const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replaceAll(" ", ".")}@suzu.group`, workforceType, status: "active", primaryEntityId: entityId }).returning();
+  const [row] = await db()
+    .insert(schema.person)
+    .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replaceAll(" ", ".")}@suzu.group`, workforceType, status: "active", primaryEntityId: entityId })
+    .returning();
   return row.id;
 }
-const viewerOf = (personId: string, entityId: string, grants: Grant[] = [], workforceType: "employee" | "collaborator" = "employee") => loadViewerWith(db(), { person: { id: personId, primaryEntityId: entityId }, principal: { personId, workforceType, grants } });
+const viewerOf = (personId: string, entityId: string, grants: Grant[] = [], workforceType: "employee" | "collaborator" = "employee") =>
+  loadViewerWith(db(), { person: { id: personId, primaryEntityId: entityId }, principal: { personId, workforceType, grants } });
 const stateNamed = async (teamId: string, name: string) => (await listStates([teamId])).find((state) => state.name === name)!;
 
 beforeAll(async () => {
@@ -51,15 +59,29 @@ beforeAll(async () => {
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vidDept: vid.id });
-  for (const [key, name, entity] of [["owner", "The Owner", szm.id], ["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["bao", "Bao Pham", szm.id], ["head", "Other Head", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
+  for (const [key, name, entity] of [
+    ["owner", "The Owner", szm.id],
+    ["long", "Long Dang", szm.id],
+    ["tam", "Tam Bui", szm.id],
+    ["huy", "Huy Ho", szm.id],
+    ["bao", "Bao Pham", szm.id],
+    ["head", "Other Head", szm.id],
+    ["khoi", "Khoi Ly", szc.id],
+  ] as const)
+    ids[key] = await addPerson(name, entity);
   ids.freelancer = await addPerson("Bao Anh", szm.id, "collaborator");
 
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: vid.id, defaultVisibility: "team", isActive: true }, workflow("content", { brief: "Brief", edit: "Edit", published: "Published", reported: "Reported", backlog: "Backlog" }), ids.long);
+  const video = await createTeam(
+    { key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: vid.id, defaultVisibility: "team", isActive: true },
+    workflow("content", { brief: "Brief", edit: "Edit", published: "Published", reported: "Reported", backlog: "Backlog" }),
+    ids.long,
+  );
   const design = await createTeam({ key: "DES", name: "Design", description: null, entityId: szc.id, departmentId: null, defaultVisibility: "entity", isActive: true }, workflow("simple"), ids.khoi);
   Object.assign(ids, { video: video.id, design: design.id });
   for (const personId of [ids.tam, ids.huy, ids.freelancer]) await setTeamMember(video.id, personId, "member");
 
-  const project = (teamId: string, name: string, visibility: "entity" | "team" | "private", actor: string) => createProject({ teamId, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
+  const project = (teamId: string, name: string, visibility: "entity" | "team" | "private", actor: string) =>
+    createProject({ teamId, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
   ids.teamProject = (await project(video.id, "TVC Tet", "team", ids.long)).id;
   ids.entityProject = (await project(video.id, "Company profile video", "entity", ids.long)).id;
   ids.privateProject = (await project(video.id, "Pitch — confidential", "private", ids.tam)).id;
@@ -133,7 +155,10 @@ describe("tasks", () => {
     expect((await listMyTasks(ids.huy)).open.map((task) => task.id)).toContain(first.task.id);
     expect(await countMyOpenTasks(ids.huy)).toBe(1);
     expect((await loadShellCounts(ids.huy)).openTasks).toBe(1);
-    const [notice] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "tasks.work_assigned")));
+    const [notice] = await db()
+      .select()
+      .from(schema.notification)
+      .where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "tasks.work_assigned")));
     expect(notice).toMatchObject({ link: `/work/tasks/${first.task.id}`, params: { key: first.key, title: "Write the script" } });
   });
 
@@ -149,7 +174,12 @@ describe("tasks", () => {
     expect((await loadTask(task.id))!.task.completedAt).toEqual(completedAt);
 
     const activity = await listActivity(task.id);
-    expect(activity.filter((entry) => entry.type === "field_changed").map((entry) => entry.field).sort()).toEqual(["assignee", "checklist", "dueDate", "priority", "state", "state", "title"]);
+    expect(
+      activity
+        .filter((entry) => entry.type === "field_changed")
+        .map((entry) => entry.field)
+        .sort(),
+    ).toEqual(["assignee", "checklist", "dueDate", "priority", "state", "state", "title"]);
     expect(activity.find((entry) => entry.field === "assignee")?.toValue).toEqual({ id: ids.tam, name: "Tam Bui" });
     expect(activity.at(-1)?.type).toBe("created");
     // Saving the same values again changes nothing and logs nothing.
@@ -213,7 +243,8 @@ describe("tasks", () => {
 
 describe("privacy in lists (FR-WRK-18)", () => {
   it("shows each viewer exactly the projects the policy allows", async () => {
-    const names = async (personId: string, entityId: string, grants: Grant[] = [], type: "employee" | "collaborator" = "employee") => (await visibleProjects(await viewerOf(personId, entityId, grants, type), { today: "2026-09-20" })).map((project) => project.name).sort();
+    const names = async (personId: string, entityId: string, grants: Grant[] = [], type: "employee" | "collaborator" = "employee") =>
+      (await visibleProjects(await viewerOf(personId, entityId, grants, type), { today: "2026-09-20" })).map((project) => project.name).sort();
     expect(await names(ids.long, ids.szm)).toEqual(["Company profile video", "Pitch — confidential", "TVC Tet"]);
     expect(await names(ids.tam, ids.szm)).toEqual(["Company profile video", "Pitch — confidential", "TVC Tet"]);
     expect(await names(ids.huy, ids.szm)).toEqual(["Company profile video", "TVC Tet"]);
@@ -284,9 +315,25 @@ describe("analytics and person stats in SQL", () => {
   it("count exactly what the pure engine counts, on the rows the viewer may see", async () => {
     const client = (await saveClient(null, { code: "ACME", name: "Acme", kind: "client", parentId: null, entityId: null, note: null, isActive: true })).after;
     const make = async (title: string, input: { assignee?: string; due?: string | null; estimate?: number; client?: string; teamId?: string; projectId?: string | null }) =>
-      (await createWorkTask({ teamId: input.teamId ?? ids.video, projectId: input.projectId === undefined ? ids.teamProject : input.projectId, title, assigneePersonId: input.assignee ?? null, dueDate: input.due ?? null, estimateMinutes: input.estimate ?? null, clientId: input.client ?? null }, ids.long)).task.id;
+      (
+        await createWorkTask(
+          {
+            teamId: input.teamId ?? ids.video,
+            projectId: input.projectId === undefined ? ids.teamProject : input.projectId,
+            title,
+            assigneePersonId: input.assignee ?? null,
+            dueDate: input.due ?? null,
+            estimateMinutes: input.estimate ?? null,
+            clientId: input.client ?? null,
+          },
+          ids.long,
+        )
+      ).task.id;
     const finish = async (taskId: string, status: "done" | "cancelled", at: string, rounds = 0) => {
-      await db().update(schema.task).set({ status, completedAt: status === "done" ? new Date(at) : null, updatedAt: new Date(at) }).where(eq(schema.task.id, taskId));
+      await db()
+        .update(schema.task)
+        .set({ status, completedAt: status === "done" ? new Date(at) : null, updatedAt: new Date(at) })
+        .where(eq(schema.task.id, taskId));
       await db().update(schema.workTask).set({ revisionRounds: rounds }).where(eq(schema.workTask.taskId, taskId));
     };
     await finish(await make("An: on time", { assignee: ids.huy, due: "2026-09-10", client: client.id }), "done", "2026-09-09T20:00:00Z", 2);
@@ -301,12 +348,26 @@ describe("analytics and person stats in SQL", () => {
 
     const period = { from: "2026-09-01", to: "2026-09-30" };
     const today = "2026-09-20";
-    for (const [personId, entityId, grants] of [[ids.long, ids.szm, []], [ids.khoi, ids.szc, []], [ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]]] as const) {
+    for (const [personId, entityId, grants] of [
+      [ids.long, ids.szm, []],
+      [ids.khoi, ids.szc, []],
+      [ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]],
+    ] as const) {
       const viewer = await viewerOf(personId, entityId, [...grants] as Grant[]);
       const visibleIds = await listVisibleTaskIds(viewer);
       const rows = visibleIds.length
         ? await db()
-            .select({ teamId: schema.workTask.teamId, clientId: schema.workTask.clientId, status: schema.task.status, dueDate: schema.task.dueDate, completedOn: sql<string | null>`(${schema.task.completedAt} at time zone 'Asia/Ho_Chi_Minh')::date`, updatedOn: sql<string>`(${schema.task.updatedAt} at time zone 'Asia/Ho_Chi_Minh')::date`, revisionRounds: schema.workTask.revisionRounds, assigneePersonId: schema.task.assigneePersonId, estimateMinutes: schema.task.estimateMinutes })
+            .select({
+              teamId: schema.workTask.teamId,
+              clientId: schema.workTask.clientId,
+              status: schema.task.status,
+              dueDate: schema.task.dueDate,
+              completedOn: sql<string | null>`(${schema.task.completedAt} at time zone 'Asia/Ho_Chi_Minh')::date`,
+              updatedOn: sql<string>`(${schema.task.updatedAt} at time zone 'Asia/Ho_Chi_Minh')::date`,
+              revisionRounds: schema.workTask.revisionRounds,
+              assigneePersonId: schema.task.assigneePersonId,
+              estimateMinutes: schema.task.estimateMinutes,
+            })
             .from(schema.task)
             .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
             .where(inArray(schema.task.id, visibleIds))
@@ -326,7 +387,13 @@ describe("analytics and person stats in SQL", () => {
     const stats = await getPersonTaskStats({ personId: ids.huy, from: "2026-09-01", to: "2026-09-30", today });
     // The same six numbers the way they were counted before: one query each.
     const mine = and(eq(schema.task.kind, "work"), eq(schema.task.assigneePersonId, ids.huy), sql`${schema.task.deletedAt} is null`);
-    const countOf = async (where: ReturnType<typeof sql>) => (await db().select({ n: sql<number>`count(*)::int` }).from(schema.task).where(and(mine, where)))[0].n;
+    const countOf = async (where: ReturnType<typeof sql>) =>
+      (
+        await db()
+          .select({ n: sql<number>`count(*)::int` })
+          .from(schema.task)
+          .where(and(mine, where))
+      )[0].n;
     const done = sql`${schema.task.status} = 'done' and ${schema.task.completedAt}::date between '2026-09-01' and '2026-09-30'`;
     const completed = await countOf(done);
     const onTime = await countOf(sql`${done} and (${schema.task.dueDate} is null or ${schema.task.completedAt}::date <= ${schema.task.dueDate})`);
@@ -344,7 +411,10 @@ describe("the content calendar (FR-WRK-05)", () => {
   it("cuts a full month to its limit and says how many tasks there were", async () => {
     const make = async (title: string, due: string) => (await createWorkTask({ teamId: ids.video, projectId: ids.teamProject, title, dueDate: due }, ids.long)).task.id;
     const closed = await make("Lịch: đã xong", "2031-03-02");
-    await db().update(schema.task).set({ status: "done", completedAt: new Date("2031-03-02T03:00:00Z") }).where(eq(schema.task.id, closed));
+    await db()
+      .update(schema.task)
+      .set({ status: "done", completedAt: new Date("2031-03-02T03:00:00Z") })
+      .where(eq(schema.task.id, closed));
     const late = await make("Lịch: hạn muộn", "2031-03-20");
     const early = await make("Lịch: hạn sớm", "2031-03-05");
     const viewer = await viewerOf(ids.long, ids.szm);

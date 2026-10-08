@@ -9,9 +9,7 @@ vi.mock("@/lib/env", () => ({ env: () => settings }));
 import { calendarDriver, putInCalendar, removeFromCalendar } from "./service";
 
 /** A key that only has to parse: nothing here verifies a signature. */
-const PRIVATE_KEY = (
-  await import("node:crypto")
-).generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } }).privateKey;
+const PRIVATE_KEY = (await import("node:crypto")).generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } }).privateKey;
 
 const event = {
   uid: "meeting-1@suzu.one",

@@ -68,11 +68,7 @@ describe("nameSimilarity", () => {
 });
 
 describe("rankDuplicates", () => {
-  const onFile = [
-    row("a", "Trần Thị Mai", "tran.thi.mai@gmail.com", "0912345678"),
-    row("b", "Nguyễn Văn An", "an.nguyen@example.com", "0987654321"),
-    row("c", "Phạm Quốc Bảo", null, null),
-  ];
+  const onFile = [row("a", "Trần Thị Mai", "tran.thi.mai@gmail.com", "0912345678"), row("b", "Nguyễn Văn An", "an.nguyen@example.com", "0987654321"), row("c", "Phạm Quốc Bảo", null, null)];
 
   it("matches the same mailbox typed differently", () => {
     const matches = rankDuplicates(probeFor({ fullName: "Mai Tran", email: "tranthimai+cv@gmail.com" }), onFile);

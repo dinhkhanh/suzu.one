@@ -53,7 +53,12 @@ const saveDigitalAssetPipeline = createAction({
     // The audit names the asset and who answers for it — never what it is registered under or where its password is.
     return {
       data: { id: after.id },
-      audit: { resource: { type: "digital_asset", id: after.id, entityId: after.entityId }, summary: after.name, before: before && { name: before.name, status: before.status, ownerPersonId: before.ownerPersonId }, after: { name: after.name, status: after.status, ownerPersonId: after.ownerPersonId } },
+      audit: {
+        resource: { type: "digital_asset", id: after.id, entityId: after.entityId },
+        summary: after.name,
+        before: before && { name: before.name, status: before.status, ownerPersonId: before.ownerPersonId },
+        after: { name: after.name, status: after.status, ownerPersonId: after.ownerPersonId },
+      },
     };
   },
 });
@@ -70,7 +75,10 @@ const grantDigitalAccessPipeline = createAction({
   run: async ({ user, input }) => {
     const { access, asset, outcome } = await grantDigitalAccess(input, user.person.id);
     refresh(asset.id);
-    return { data: { id: access.id, outcome }, audit: { resource: { type: "digital_asset_access", id: access.id, entityId: asset.entityId }, summary: asset.name, after: { personId: access.personId, level: access.level, method: access.method, outcome } } };
+    return {
+      data: { id: access.id, outcome },
+      audit: { resource: { type: "digital_asset_access", id: access.id, entityId: asset.entityId }, summary: asset.name, after: { personId: access.personId, level: access.level, method: access.method, outcome } },
+    };
   },
 });
 
@@ -98,7 +106,10 @@ const decideDigitalAccessPipeline = createAction({
   run: async ({ user, input }) => {
     const { before, after, asset } = await decideDigitalAccess(input, user.person.id);
     refresh(asset.id);
-    return { data: { status: after.status }, audit: { resource: { type: "digital_asset_access", id: after.id, entityId: asset.entityId }, summary: asset.name, before: { status: before.status, level: before.level }, after: { status: after.status, level: after.level } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "digital_asset_access", id: after.id, entityId: asset.entityId }, summary: asset.name, before: { status: before.status, level: before.level }, after: { status: after.status, level: after.level } },
+    };
   },
 });
 
@@ -113,7 +124,10 @@ const endDigitalAccessPipeline = createAction({
     const { before, after, asset } = await endDigitalAccess(input.accessId, input.note, user.person.id);
     refresh(asset.id);
     revalidatePath("/today");
-    return { data: { status: after.status }, audit: { resource: { type: "digital_asset_access", id: after.id, entityId: asset.entityId }, summary: asset.name, before: { status: before.status, personId: before.personId }, after: { status: after.status } } };
+    return {
+      data: { status: after.status },
+      audit: { resource: { type: "digital_asset_access", id: after.id, entityId: asset.entityId }, summary: asset.name, before: { status: before.status, personId: before.personId }, after: { status: after.status } },
+    };
   },
 });
 
@@ -127,7 +141,10 @@ const markCredentialsRotatedPipeline = createAction({
   run: async ({ input }) => {
     const { before, after } = await markCredentialsRotated(input.assetId);
     refresh(after.id);
-    return { data: { id: after.id }, audit: { resource: { type: "digital_asset", id: after.id, entityId: after.entityId }, summary: after.name, before: { rotationDueSince: before.rotationDueSince }, after: { credentialsRotatedAt: after.credentialsRotatedAt } } };
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "digital_asset", id: after.id, entityId: after.entityId }, summary: after.name, before: { rotationDueSince: before.rotationDueSince }, after: { credentialsRotatedAt: after.credentialsRotatedAt } },
+    };
   },
 });
 

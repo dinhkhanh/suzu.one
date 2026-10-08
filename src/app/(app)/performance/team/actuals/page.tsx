@@ -24,7 +24,18 @@ export default async function ActualsPage({ searchParams }: PageProps<"/performa
     personId: row.personId,
     fullName: row.fullName,
     closed: row.closed,
-    lines: row.lines.map((line) => ({ assignmentId: line.assignmentId, periodKey: line.periodKey, kpiCode: line.kpiCode, kpiName: line.kpiName, unit: line.unit, direction: line.direction, targetText: kpiValueText(format, line.unit, line.targetValue), actualValue: line.actualValue, notApplicable: line.notApplicable, note: line.note ?? null })),
+    lines: row.lines.map((line) => ({
+      assignmentId: line.assignmentId,
+      periodKey: line.periodKey,
+      kpiCode: line.kpiCode,
+      kpiName: line.kpiName,
+      unit: line.unit,
+      direction: line.direction,
+      targetText: kpiValueText(format, line.unit, line.targetValue),
+      actualValue: line.actualValue,
+      notApplicable: line.notApplicable,
+      note: line.note ?? null,
+    })),
     // FR-PJM-62: what the work job proposed, in the same text the box takes.
     proposals: Object.fromEntries(row.lines.flatMap((line) => (row.proposals[line.assignmentId] === undefined ? [] : [[line.assignmentId, metricValueText(line.unit, row.proposals[line.assignmentId])]]))),
   }));

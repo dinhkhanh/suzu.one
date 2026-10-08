@@ -49,8 +49,12 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
             <LocaleSwitch />
           </div>
           <nav className="flex gap-4 text-xs text-faint">
-            <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
-            <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              {t("app.privacy")}
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              {t("app.terms")}
+            </Link>
           </nav>
         </div>
       </div>

@@ -71,7 +71,8 @@ beforeAll(async () => {
   // Long manages Huy and Tâm.
   await db().update(schema.person).set({ managerId: ids.long }).where(eq(schema.person.id, ids.huy));
   await db().update(schema.person).set({ managerId: ids.long }).where(eq(schema.person.id, ids.tam));
-  for (const [who, grants] of Object.entries(GRANTS) as [Who, Grant[]][]) for (const grant of grants) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: null, validFrom: "2024-01-01" });
+  for (const [who, grants] of Object.entries(GRANTS) as [Who, Grant[]][])
+    for (const grant of grants) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: null, validFrom: "2024-01-01" });
   const people = await db().select().from(schema.person);
   for (const who of Object.keys(NAMES) as Who[]) {
     const row = people.find((person) => person.id === ids[who])!;
@@ -83,7 +84,8 @@ beforeAll(async () => {
   const design = await createTeam({ key: "DES", name: "Design", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.mai);
   Object.assign(ids, { video: video.id, design: design.id });
   for (const who of ["huy", "tam"] as const) await setTeamMember(video.id, ids[who], "member");
-  const project = (name: string, visibility: "team" | "private", actor: string) => createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
+  const project = (name: string, visibility: "team" | "private", actor: string) =>
+    createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);
   ids.teamProject = (await project("TVC Tet", "team", ids.long)).id;
   ids.secret = (await project("Pitch confidential", "private", ids.tam)).id;
   ids.task = (await createWorkTask({ teamId: video.id, projectId: ids.teamProject, title: "Rough cut — gọi 0912 345 678", assigneePersonId: ids.huy, requesterPersonId: ids.long, dueDate: "2026-01-05" }, ids.long)).task.id;
@@ -180,7 +182,10 @@ describe("projects and tasks only as the asker may open them (FR-AGT-13)", () =>
     expect((await run("tam", "project_status", { project: "Pitch" })).outcome).toBe("answered");
     const owner = await run("ha", "project_status", { project: ids.secret });
     expect(owner.outcome).toBe("answered");
-    const trail = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.ha)));
+    const trail = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.ha)));
     expect(trail.length).toBeGreaterThan(0);
   });
 
@@ -272,7 +277,10 @@ describe("a person's overview: each section only where its module allows (FR-AGT
 
 describe("a question about somebody else reaches the agent, not the router's refusal (D33)", () => {
   it("lets a manager's question about a report through to the tools", async () => {
-    const driver = scriptedDriver([{ tools: [{ name: "person_overview", input: { person: ids.huy } }] }, (call) => ({ text: `Huy đi muộn ${JSON.stringify(call.messages.at(-1)).replaceAll("\\", "").includes('"lateCount":2') ? 2 : "?"} lần.` })]);
+    const driver = scriptedDriver([
+      { tools: [{ name: "person_overview", input: { person: ids.huy } }] },
+      (call) => ({ text: `Huy đi muộn ${JSON.stringify(call.messages.at(-1)).replaceAll("\\", "").includes('"lateCount":2') ? 2 : "?"} lần.` }),
+    ]);
     const resolved = await resolveAnswer(users.long, `Tháng này ${NAMES.huy} đi muộn mấy lần?`, "vi", { agent: driver });
     expect(resolved).toMatchObject({ kind: "agent", outcome: "answered" });
     expect(resolved.kind === "agent" && resolved.turn.kind === "answered" && resolved.turn.body).toBe("Huy đi muộn 2 lần.");
@@ -289,7 +297,14 @@ describe("a question about somebody else reaches the agent, not the router's ref
 
   it("sends no contact detail to the model on any R2 tool", async () => {
     const driver = scriptedDriver([
-      { tools: [{ name: "find_person", input: { name: "huy" } }, { name: "task_detail", input: { task: ids.task } }, { name: "person_overview", input: { person: ids.huy } }, { name: "team_board", input: {} }] },
+      {
+        tools: [
+          { name: "find_person", input: { name: "huy" } },
+          { name: "task_detail", input: { task: ids.task } },
+          { name: "person_overview", input: { person: ids.huy } },
+          { name: "team_board", input: {} },
+        ],
+      },
       { text: "…" },
     ]);
     await runAgentTurn({ user: users.long, question: "Tóm tắt về Huy", locale: "vi", today, history: [], driver });

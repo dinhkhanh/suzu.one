@@ -105,7 +105,8 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         entityId: szm.id,
         departmentId: vid.id,
         positionTitle: "Chuyên viên Dựng phim",
-        seniorityLevel: "mid" as const, positionLevel: "executive" as const,
+        seniorityLevel: "mid" as const,
+        positionLevel: "executive" as const,
         headcount: 1,
         employmentType: "employee",
         workLocation: "Hà Nội",
@@ -132,7 +133,8 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         entityId: szm.id,
         departmentId: vid.id,
         positionName: "Dựng phim",
-        seniorityLevel: "mid" as const, positionLevel: "executive" as const,
+        seniorityLevel: "mid" as const,
+        positionLevel: "executive" as const,
         employmentType: "employee",
         workMode: "onsite",
         workLocation: "Hà Nội",
@@ -256,9 +258,24 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
       { kind: "final" as const, title: "Phỏng vấn cuối — với đạo diễn", on: -34, hour: 10, panel: [director], stage: "final_interview" },
     ];
     const verdicts: Record<string, { ratings: Record<string, number>; recommendation: "yes" | "strong_yes"; strengths: string; concerns: string }> = {
-      [videoHead.id]: { ratings: { craft: 4, problem_solving: 3, collaboration: 3, motivation: 4 }, recommendation: "strong_yes", strengths: "Dựng chắc tay, nhịp phim tốt. Hiểu brief nhanh.", concerns: "Chưa làm nhiều với âm thanh hậu kỳ." },
-      [editor.id]: { ratings: { craft: 3, problem_solving: 3, collaboration: 4, motivation: 4 }, recommendation: "yes", strengths: "Rất dễ phối hợp, chủ động hỏi lại khi brief chưa rõ.", concerns: "Cần làm quen với quy trình đặt tên file của mình." },
-      [director.id]: { ratings: { craft: 4, problem_solving: 4, collaboration: 3, motivation: 3 }, recommendation: "strong_yes", strengths: "Có gu. Đưa ra được lý do cho từng lựa chọn cắt.", concerns: "Kỳ vọng lương ở mức trên của khung." },
+      [videoHead.id]: {
+        ratings: { craft: 4, problem_solving: 3, collaboration: 3, motivation: 4 },
+        recommendation: "strong_yes",
+        strengths: "Dựng chắc tay, nhịp phim tốt. Hiểu brief nhanh.",
+        concerns: "Chưa làm nhiều với âm thanh hậu kỳ.",
+      },
+      [editor.id]: {
+        ratings: { craft: 3, problem_solving: 3, collaboration: 4, motivation: 4 },
+        recommendation: "yes",
+        strengths: "Rất dễ phối hợp, chủ động hỏi lại khi brief chưa rõ.",
+        concerns: "Cần làm quen với quy trình đặt tên file của mình.",
+      },
+      [director.id]: {
+        ratings: { craft: 4, problem_solving: 4, collaboration: 3, motivation: 3 },
+        recommendation: "strong_yes",
+        strengths: "Có gu. Đưa ra được lý do cho từng lựa chọn cắt.",
+        concerns: "Kỳ vọng lương ở mức trên của khung.",
+      },
     };
     for (const round of rounds) {
       const start = at(day(today, round.on), round.hour);
@@ -312,7 +329,8 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
       entityId: szm.id,
       number: "SZM-TM-2026-0001",
       positionName: "Dựng phim",
-      seniorityLevel: "mid" as const, positionLevel: "executive" as const,
+      seniorityLevel: "mid" as const,
+      positionLevel: "executive" as const,
       departmentId: vid.id,
       managerPersonId: videoHead.id,
       employmentType: "employee",
@@ -361,7 +379,10 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
       .returning();
     const [contract] = await tx.insert(employment).values({ personId: colleague.id, entityId: szm.id, employeeCode, startDate, seniorityDate: startDate }).returning();
     await tx.insert(assignment).values({ employmentId: contract.id, workforceType: "employee", departmentId: vid.id, positionId: job.id, managerId: videoHead.id, validFrom: startDate });
-    await tx.insert(employeeCodeScheme).values({ entityId: szm.id, prefix: `${szm.code}-`, nextNumber: number + 1 }).onConflictDoUpdate({ target: employeeCodeScheme.entityId, set: { nextNumber: number + 1 } });
+    await tx
+      .insert(employeeCodeScheme)
+      .values({ entityId: szm.id, prefix: `${szm.code}-`, nextNumber: number + 1 })
+      .onConflictDoUpdate({ target: employeeCodeScheme.entityId, set: { nextNumber: number + 1 } });
     await tx.update(jobApplication).set({ hiredPersonId: colleague.id }).where(eq(jobApplication.id, application.id));
     result.hired = employeeCode;
 
@@ -375,7 +396,8 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         entityId: szc.id,
         departmentId: des.id,
         positionName: "Thiết kế đồ họa",
-        seniorityLevel: "junior" as const, positionLevel: "executive" as const,
+        seniorityLevel: "junior" as const,
+        positionLevel: "executive" as const,
         employmentType: "employee",
         workMode: "hybrid",
         workLocation: "Hà Nội",
@@ -450,7 +472,9 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         .returning();
       await tx.insert(applicationEvent).values({ applicationId: made2.id, type: "applied", toStageId: stageBy("applied").id, actorPersonId: null, at: at(day(today, row.appliedOn), 20) });
       if (row.stage !== "applied") {
-        await tx.insert(applicationEvent).values({ applicationId: made2.id, type: "stage_moved", fromStageId: stageBy("applied").id, toStageId: stageBy(row.stage).id, actorPersonId: recruiter.id, at: at(day(today, Math.min(row.appliedOn + 3, -1)), 11) });
+        await tx
+          .insert(applicationEvent)
+          .values({ applicationId: made2.id, type: "stage_moved", fromStageId: stageBy("applied").id, toStageId: stageBy(row.stage).id, actorPersonId: recruiter.id, at: at(day(today, Math.min(row.appliedOn + 3, -1)), 11) });
       }
       result.candidates++;
       result.applications++;

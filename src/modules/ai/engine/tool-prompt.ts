@@ -45,10 +45,7 @@ export function buildToolUserMessage(input: ToolPromptInput): string {
   // of them is a number. A contact detail is never anybody's exception (SRS §4.15 rule 4): the
   // words of the record and of the question lose theirs, the numbers are not touched.
   const shown = (value: string | number) => (typeof value === "number" ? value : redactContacts(value));
-  const pairs = [
-    ...Object.entries(answer.params).map(([name, value]) => `${name} = ${shown(value)}`),
-    ...answer.lines.flatMap((line) => Object.entries(line.params).map(([name, value]) => `${line.key}.${name} = ${shown(value)}`)),
-  ];
+  const pairs = [...Object.entries(answer.params).map(([name, value]) => `${name} = ${shown(value)}`), ...answer.lines.flatMap((line) => Object.entries(line.params).map(([name, value]) => `${line.key}.${name} = ${shown(value)}`))];
   return [
     `<question>\n${escapeSourceText(redactContacts(input.question), 2000)}\n</question>`,
     "",

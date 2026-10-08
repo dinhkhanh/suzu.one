@@ -56,7 +56,13 @@ async function loadPeople() {
         "tr",
         {},
         el("td", {}, el("code", {}, p.user_id)),
-        el("td", {}, p.full_name, p.employee_code && p.employee_code !== p.user_id ? el("span", { class: "muted" }, ` · ${p.employee_code}`) : "", p.active ? "" : el("span", { class: "pill warn", style: "margin-left:6px" }, "không còn trên SuZu · off the roster")),
+        el(
+          "td",
+          {},
+          p.full_name,
+          p.employee_code && p.employee_code !== p.user_id ? el("span", { class: "muted" }, ` · ${p.employee_code}`) : "",
+          p.active ? "" : el("span", { class: "pill warn", style: "margin-left:6px" }, "không còn trên SuZu · off the roster"),
+        ),
         el("td", {}, el("span", { class: p.faces >= 3 ? "pill ok" : "pill bad" }, p.faces)),
         el("td", {}, p.consent_at ? fmt(p.consent_at) : "—"),
         el(
@@ -69,15 +75,29 @@ async function loadPeople() {
       ),
     ),
   );
-  if (people.length === 0) $("people").replaceChildren(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "Chưa có ai. Gán người cho máy này trên SuZu One rồi bấm Đồng bộ. · Nobody yet: map people to this device in SuZu One, then Sync.")));
+  if (people.length === 0)
+    $("people").replaceChildren(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "Chưa có ai. Gán người cho máy này trên SuZu One rồi bấm Đồng bộ. · Nobody yet: map people to this device in SuZu One, then Sync.")));
 }
 
 async function loadEvents() {
   const events = await api("/api/admin/events");
   $("events").replaceChildren(
     ...events.map((e) => {
-      const status = e.cancelled ? el("span", { class: "pill" }, "đã huỷ · cancelled") : e.sent_at ? el("span", { class: "pill ok" }, "đã gửi · sent") : e.failed_at ? el("span", { class: "pill bad", title: e.error || "" }, "bị từ chối · refused") : el("span", { class: "pill warn", title: e.error || "" }, e.error ? `đang thử lại · retrying (${e.error})` : "đang chờ · waiting");
-      return el("tr", {}, el("td", {}, fmt(e.at)), el("td", {}, e.full_name, el("span", { class: "muted" }, ` · ${e.user_id}`)), el("td", {}, status), el("td", {}, e.failed_at ? el("button", { onclick: () => retry(e.id) }, "Gửi lại · Retry") : ""));
+      const status = e.cancelled
+        ? el("span", { class: "pill" }, "đã huỷ · cancelled")
+        : e.sent_at
+          ? el("span", { class: "pill ok" }, "đã gửi · sent")
+          : e.failed_at
+            ? el("span", { class: "pill bad", title: e.error || "" }, "bị từ chối · refused")
+            : el("span", { class: "pill warn", title: e.error || "" }, e.error ? `đang thử lại · retrying (${e.error})` : "đang chờ · waiting");
+      return el(
+        "tr",
+        {},
+        el("td", {}, fmt(e.at)),
+        el("td", {}, e.full_name, el("span", { class: "muted" }, ` · ${e.user_id}`)),
+        el("td", {}, status),
+        el("td", {}, e.failed_at ? el("button", { onclick: () => retry(e.id) }, "Gửi lại · Retry") : ""),
+      );
     }),
   );
 }

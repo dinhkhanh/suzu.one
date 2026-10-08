@@ -10,7 +10,19 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
-import { bulkMapAction, commitDeviceLogAction, issuePushTokenAction, mapDeviceUserAction, recomputeTimesheetsAction, revokePushTokenAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
+import {
+  bulkMapAction,
+  commitDeviceLogAction,
+  issuePushTokenAction,
+  mapDeviceUserAction,
+  recomputeTimesheetsAction,
+  revokePushTokenAction,
+  saveDeviceAction,
+  savePolicyAction,
+  saveProfileAction,
+  stageDeviceLogAction,
+  unmapDeviceUserAction,
+} from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
 import { ConfirmDialog, useConfirmedSubmit } from "@/components/ui/confirm";
 
@@ -88,7 +100,14 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
             <Input id="timestampFormat" name="timestampFormat" required defaultValue={mapping?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss"} maxLength={40} />
           </Field>
           <Field name="directionCodes" label={t("profile.directionCodes")}>
-            <Input id="directionCodes" name="directionCodes" defaultValue={Object.entries(mapping?.directionCodes ?? { "0": "in", "1": "out" }).map(([code, direction]) => `${code}=${direction}`).join(", ")} maxLength={400} />
+            <Input
+              id="directionCodes"
+              name="directionCodes"
+              defaultValue={Object.entries(mapping?.directionCodes ?? { "0": "in", "1": "out" })
+                .map(([code, direction]) => `${code}=${direction}`)
+                .join(", ")}
+              maxLength={400}
+            />
           </Field>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
@@ -137,11 +156,13 @@ export function DeviceForm({ device, entities, profiles, locations }: { device?:
           </Field>
           <Field name="profileId" label={t("device.profile")}>
             <Select id="profileId" name="profileId" defaultValue={device?.profileId} required>
-              {profiles.filter((profile) => profile.entityId === null || profile.entityId === entityId).map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
+              {profiles
+                .filter((profile) => profile.entityId === null || profile.entityId === entityId)
+                .map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
             </Select>
           </Field>
           <Field name="model" label={t("device.model")}>
@@ -153,11 +174,13 @@ export function DeviceForm({ device, entities, profiles, locations }: { device?:
           <Field name="locationId" label={t("device.location")}>
             <Select id="locationId" name="locationId" defaultValue={device?.locationId ?? ""}>
               <option value="">—</option>
-              {locations.filter((location) => location.entityId === entityId).map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
+              {locations
+                .filter((location) => location.entityId === entityId)
+                .map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))}
             </Select>
           </Field>
         </div>
@@ -306,13 +329,7 @@ export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: st
         </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={pending}
-          onClick={() => (hasToken ? setAsking("replace") : run(true))}
-        >
+        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => (hasToken ? setAsking("replace") : run(true))}>
           {hasToken ? t("replace") : t("issue")}
         </Button>
         {hasToken ? (
@@ -360,7 +377,20 @@ export function DeviceLogImport({ devices, title }: { devices: (Option & { accep
   );
 }
 
-export type PolicyFormValue = { entityId: string | null; validFrom: string; mergeRule: "first_in_last_out" | "prefer_device" | "prefer_app"; graceLateMinutes: number; graceEarlyMinutes: number; roundingMinutes: number; otMinMinutes: number; otRequiresApproval: boolean; duplicateWindowMinutes: number; breakStart: string; dayBoundary: string; monthlyCorrectionCap: number | null };
+export type PolicyFormValue = {
+  entityId: string | null;
+  validFrom: string;
+  mergeRule: "first_in_last_out" | "prefer_device" | "prefer_app";
+  graceLateMinutes: number;
+  graceEarlyMinutes: number;
+  roundingMinutes: number;
+  otMinMinutes: number;
+  otRequiresApproval: boolean;
+  duplicateWindowMinutes: number;
+  breakStart: string;
+  dayBoundary: string;
+  monthlyCorrectionCap: number | null;
+};
 
 export function PolicyForm({ policy, entities, canGroup, today }: { policy?: PolicyFormValue; entities: Option[]; canGroup: boolean; today: string }) {
   const t = useTranslations("attendance.policy");

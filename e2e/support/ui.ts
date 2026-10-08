@@ -52,7 +52,10 @@ export async function clickAndConfirm(page: Page, button: ReturnType<Page["getBy
   await button.click();
   // The app asks in its own ConfirmDialog (components/ui/confirm.tsx), a plain `dialog` — a sheet
   // on a phone; an `alertdialog` is accepted too.
-  const dialog = page.getByRole("alertdialog").or(page.getByRole("dialog")).filter({ has: page.getByRole("button", { name: confirmName }) });
+  const dialog = page
+    .getByRole("alertdialog")
+    .or(page.getByRole("dialog"))
+    .filter({ has: page.getByRole("button", { name: confirmName }) });
   const shown = await dialog
     .waitFor({ state: "visible", timeout: 5000 })
     .then(() => true)

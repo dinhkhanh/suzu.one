@@ -3,7 +3,17 @@ import { addDays, type IsoDate } from "@/lib/dates";
 import { parseAssigneeRule } from "../../platform/tasks-engine/engine/checklist";
 
 export type TreeItem = { id: string; parentItemId: string | null; title: string; description: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number; estimateMinutes: number | null };
-export type PlannedNode = { templateItemId: string; parentItemId: string | null; title: string; description: string | null; assigneePersonId: string | null; roleKey: string | null; dueDate: IsoDate; estimateMinutes: number | null; depth: number };
+export type PlannedNode = {
+  templateItemId: string;
+  parentItemId: string | null;
+  title: string;
+  description: string | null;
+  assigneePersonId: string | null;
+  roleKey: string | null;
+  dueDate: IsoDate;
+  estimateMinutes: number | null;
+  depth: number;
+};
 
 /**
  * "start": offsets count from the kick-off date. "end": the template's last step lands on the
@@ -43,13 +53,27 @@ export function planTree(items: readonly TreeItem[], anchor: Anchor, roles: Read
       const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);
       const roleKey = rule?.rule === "role" ? rule.roleKey : null;
       const assigneePersonId = rule?.rule === "person" ? rule.personId : roleKey ? (roles[roleKey] ?? null) : null;
-      planned.push({ templateItemId: item.id, parentItemId: parentId, title: item.title, description: item.description, assigneePersonId, roleKey, dueDate: workingDay(addDays(anchor.date, item.dueOffsetDays + shift)), estimateMinutes: item.estimateMinutes, depth });
+      planned.push({
+        templateItemId: item.id,
+        parentItemId: parentId,
+        title: item.title,
+        description: item.description,
+        assigneePersonId,
+        roleKey,
+        dueDate: workingDay(addDays(anchor.date, item.dueOffsetDays + shift)),
+        estimateMinutes: item.estimateMinutes,
+        depth,
+      });
       visit(item.id, depth + 1);
     }
   };
   visit(null, 0);
   // A loop of parents (a → b → a) has no root: its items still become top-level tasks.
-  for (const item of [...items].sort(bySortOrder)) if (!seen.has(item.id)) { childrenOf.set(null, [item]); visit(null, 0); }
+  for (const item of [...items].sort(bySortOrder))
+    if (!seen.has(item.id)) {
+      childrenOf.set(null, [item]);
+      visit(null, 0);
+    }
   return planned;
 }
 

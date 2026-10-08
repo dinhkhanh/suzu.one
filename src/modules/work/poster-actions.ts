@@ -61,7 +61,10 @@ const removePipeline = createAction({
     const found = await findProject(input.projectId);
     const previous = await removePoster(input.projectId);
     refresh(input.projectId);
-    return { data: { removed: !!previous }, audit: { resource: { type: "work_project", id: input.projectId, entityId: found?.project.entityId ?? null }, summary: "poster removed", before: { posterFileId: previous }, after: { posterFileId: null } } };
+    return {
+      data: { removed: !!previous },
+      audit: { resource: { type: "work_project", id: input.projectId, entityId: found?.project.entityId ?? null }, summary: "poster removed", before: { posterFileId: previous }, after: { posterFileId: null } },
+    };
   },
 });
 export async function removePosterAction(input: unknown) {

@@ -41,7 +41,10 @@ export function privacyLinkFor(candidate: { id: string; emailKey: string | null;
 
 /** Makes the link open: written in the transaction that queues the letter carrying it. */
 export async function rememberPrivacyLink(executor: Executor, candidateId: string, hash: string): Promise<void> {
-  await executor.update(schema.candidate).set({ privacyTokenHash: hash }).where(and(eq(schema.candidate.id, candidateId), isNull(schema.candidate.anonymisedAt)));
+  await executor
+    .update(schema.candidate)
+    .set({ privacyTokenHash: hash })
+    .where(and(eq(schema.candidate.id, candidateId), isNull(schema.candidate.anonymisedAt)));
 }
 
 /** The record a link opens. Nothing for a malformed token, a retired one, or an emptied record. */

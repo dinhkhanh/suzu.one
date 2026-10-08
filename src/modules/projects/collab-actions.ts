@@ -56,7 +56,16 @@ const raidPipeline = createAction({
     const { projectId, itemId, ...values } = input;
     const { before, after } = await saveRaidItem(projectId, itemId, values, user.person.id);
     refresh(projectId);
-    const shape = (row: typeof after) => ({ kind: row.kind, title: row.title, ownerPersonId: row.ownerPersonId, dueDate: row.dueDate, severity: row.severity, status: row.status, decidedOn: row.decidedOn, evidence: row.evidenceFileId ?? row.evidenceUrl });
+    const shape = (row: typeof after) => ({
+      kind: row.kind,
+      title: row.title,
+      ownerPersonId: row.ownerPersonId,
+      dueDate: row.dueDate,
+      severity: row.severity,
+      status: row.status,
+      decidedOn: row.decidedOn,
+      evidence: row.evidenceFileId ?? row.evidenceUrl,
+    });
     return { data: { id: after.id }, audit: { resource: { type: "project_raid_item", id: after.id }, summary: `${after.kind}: ${after.title}`, before: before ? shape(before) : null, after: { projectId, ...shape(after) } } };
   },
 });
@@ -190,7 +199,12 @@ const meetingPipeline = createAction({
     revalidatePath(`/projects/${projectId}/meetings/${after.id}`);
     return {
       data: { id: after.id, decisions: decisionIds.length, tasks: taskIds.length, calendar },
-      audit: { resource: { type: "project_meeting", id: after.id }, summary: `${after.kind} ${after.heldOn}: ${after.title}`, before: before ? { title: before.title, heldOn: before.heldOn, startTime: before.startTime, attendees: before.attendeeIds.length } : null, after: { projectId, title: after.title, heldOn: after.heldOn, startTime: after.startTime, attendees: after.attendeeIds.length, decisionIds, taskIds, calendar } },
+      audit: {
+        resource: { type: "project_meeting", id: after.id },
+        summary: `${after.kind} ${after.heldOn}: ${after.title}`,
+        before: before ? { title: before.title, heldOn: before.heldOn, startTime: before.startTime, attendees: before.attendeeIds.length } : null,
+        after: { projectId, title: after.title, heldOn: after.heldOn, startTime: after.startTime, attendees: after.attendeeIds.length, decisionIds, taskIds, calendar },
+      },
     };
   },
 });
@@ -216,7 +230,11 @@ const meetingCalendarPipeline = createAction({
     revalidatePath(`/projects/${input.projectId}/meetings/${meeting.id}`);
     return {
       data: { status: delivery.status, driver: delivery.driver, meetingUrl: meeting.meetingUrl },
-      audit: { resource: { type: "project_meeting", id: meeting.id }, summary: `calendar ${input.remove ? "cancel" : "put"}: ${delivery.driver} ${delivery.status}`, after: { projectId: input.projectId, eventId: meeting.calendarEventId, status: delivery.status, error: delivery.error } },
+      audit: {
+        resource: { type: "project_meeting", id: meeting.id },
+        summary: `calendar ${input.remove ? "cancel" : "put"}: ${delivery.driver} ${delivery.status}`,
+        after: { projectId: input.projectId, eventId: meeting.calendarEventId, status: delivery.status, error: delivery.error },
+      },
     };
   },
 });

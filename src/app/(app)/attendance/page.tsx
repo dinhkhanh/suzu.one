@@ -37,7 +37,11 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
   const month = typeof query.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month) && query.month <= today.slice(0, 7) ? query.month : today.slice(0, 7);
   const personId = typeof query.person === "string" && /^[0-9a-f-]{36}$/.test(query.person) ? query.person : user.person.id;
   const own = personId === user.person.id;
-  const [allPlans, toReview, subject] = await Promise.all([getDayPlans([user.person.id], today, addDays(today, 13)), countPunchesToReview({ personId: user.person.id, principal: user.principal }), own ? null : timesheetTargetFor(user.principal, personId)]);
+  const [allPlans, toReview, subject] = await Promise.all([
+    getDayPlans([user.person.id], today, addDays(today, 13)),
+    countPunchesToReview({ personId: user.person.id, principal: user.principal }),
+    own ? null : timesheetTargetFor(user.principal, personId),
+  ]);
   const plans = allPlans.get(user.person.id);
   if (!own && !subject) notFound();
   const [personMonth, monthRow, requests] = await Promise.all([getPersonMonth(personId, month), getMonthRow(personId, month), own ? listAttendanceRequestsOf(personId, { from: monthStart(month), to: monthEnd(month) }) : []]);
@@ -96,7 +100,21 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
         </Link>
       </nav>
 
-      <Section title={subject ? t.rich("timesheet.monthOf", { name: subject.fullName, person: (chunks) => <RecordLink kind="person" id={personId}>{chunks}</RecordLink> }) : t("timesheet.myMonth")} action={<MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />}>
+      <Section
+        title={
+          subject
+            ? t.rich("timesheet.monthOf", {
+                name: subject.fullName,
+                person: (chunks) => (
+                  <RecordLink kind="person" id={personId}>
+                    {chunks}
+                  </RecordLink>
+                ),
+              })
+            : t("timesheet.myMonth")
+        }
+        action={<MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />}
+      >
         <Alert icon={null}>
           <Badge dot variant={statusTone(monthStatus)}>
             {t(`months.status.${monthStatus}`)}

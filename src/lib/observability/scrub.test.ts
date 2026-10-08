@@ -55,7 +55,17 @@ it("cleans the spans of a transaction", () => {
   const clean = scrubEvent({
     type: "transaction",
     transaction: "/preview/k3j2h4g5f6d7s8a9",
-    spans: [{ description: "POST https://api.telegram.org/bot123456:ABC/sendMessage", data: { "http.query": "chat_id=1", "url.full": "https://api.telegram.org/bot123456:ABC/sendMessage" }, span_id: "a", trace_id: "b", start_timestamp: 0, timestamp: 1, status: "ok" }],
+    spans: [
+      {
+        description: "POST https://api.telegram.org/bot123456:ABC/sendMessage",
+        data: { "http.query": "chat_id=1", "url.full": "https://api.telegram.org/bot123456:ABC/sendMessage" },
+        span_id: "a",
+        trace_id: "b",
+        start_timestamp: 0,
+        timestamp: 1,
+        status: "ok",
+      },
+    ],
   } as Event);
   expect(clean.transaction).toBe("/preview/[redacted]");
   expect(clean.spans?.[0].description).toBe("POST https://api.telegram.org/[redacted]/sendMessage");
@@ -65,7 +75,20 @@ it("cleans the spans of a transaction", () => {
 it("drops the headers and the client address OpenTelemetry puts on a request's span", () => {
   const clean = scrubEvent({
     type: "transaction",
-    contexts: { trace: { trace_id: "a", span_id: "b", data: { "http.method": "GET", "http.request.header.cookie": ["better-auth.session_token=x"], "http.request.header.user-agent": ["curl"], "http.response.header.set-cookie": ["a=b"], "client.address": "1.2.3.4", "http.target": "/people?q=a" } } },
+    contexts: {
+      trace: {
+        trace_id: "a",
+        span_id: "b",
+        data: {
+          "http.method": "GET",
+          "http.request.header.cookie": ["better-auth.session_token=x"],
+          "http.request.header.user-agent": ["curl"],
+          "http.response.header.set-cookie": ["a=b"],
+          "client.address": "1.2.3.4",
+          "http.target": "/people?q=a",
+        },
+      },
+    },
   } as Event);
   expect(clean.contexts?.trace?.data).toEqual({ "http.method": "GET", "http.target": "/people" });
 });

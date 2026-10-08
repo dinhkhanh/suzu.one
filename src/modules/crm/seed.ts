@@ -11,7 +11,19 @@ import { crmService, crmServicePrice, crmStage, type RoleMinutes } from "./schem
 type Database = PostgresJsDatabase<Record<string, unknown>>;
 type IsoDate = string;
 type StageSeed = { name: string; nameEn: string | null; category: StageCategory; probability: number; gates: StageGate[]; allowsPitch: boolean; sortOrder: number; isActive: boolean };
-type ServiceSeed = { code: string; name: string; nameEn: string | null; category: string; unit: string; isRecurring: boolean; format: string | null; channel: string | null; roleMinutes: RoleMinutes[]; description: string | null; isActive: boolean };
+type ServiceSeed = {
+  code: string;
+  name: string;
+  nameEn: string | null;
+  category: string;
+  unit: string;
+  isRecurring: boolean;
+  format: string | null;
+  channel: string | null;
+  roleMinutes: RoleMinutes[];
+  description: string | null;
+  isActive: boolean;
+};
 
 // ── Stages ────────────────────────────────────────────────────────────────────────────────────
 
@@ -28,19 +40,123 @@ const STARTER_STAGES: (StageSeed & { key: string })[] = [
 export async function seedStages(database: Database): Promise<{ seeded: number }> {
   const [existing] = await database.select({ n: sql<number>`count(*)` }).from(crmStage);
   if (Number(existing?.n ?? 0) > 0) return { seeded: 0 };
-  await database.insert(crmStage).values(STARTER_STAGES.map((stage) => ({ name: stage.name, nameEn: stage.nameEn, category: stage.category, probability: stage.probability, gates: stage.gates, allowsPitch: stage.allowsPitch, sortOrder: stage.sortOrder, isActive: stage.isActive })));
+  await database.insert(crmStage).values(
+    STARTER_STAGES.map((stage) => ({
+      name: stage.name,
+      nameEn: stage.nameEn,
+      category: stage.category,
+      probability: stage.probability,
+      gates: stage.gates,
+      allowsPitch: stage.allowsPitch,
+      sortOrder: stage.sortOrder,
+      isActive: stage.isActive,
+    })),
+  );
   return { seeded: STARTER_STAGES.length };
 }
 
 // ── Rate card ────────────────────────────────────────────────────────────────────────────────────
 
 const STARTER: (ServiceSeed & { price: number })[] = [
-  { code: "SOC-POST", name: "Bài đăng mạng xã hội", nameEn: "Social post", category: "social", unit: "post", isRecurring: false, format: "post", channel: "facebook", roleMinutes: [{ role: "Content", minutes: 90 }, { role: "Design", minutes: 90 }], description: null, isActive: true, price: 1_500_000 },
-  { code: "SOC-RETAINER", name: "Quản lý fanpage theo tháng", nameEn: "Monthly page management", category: "social", unit: "month", isRecurring: true, format: null, channel: "facebook", roleMinutes: [{ role: "Account", minutes: 600 }, { role: "Content", minutes: 1800 }, { role: "Design", minutes: 1200 }], description: null, isActive: true, price: 25_000_000 },
-  { code: "VID-SHORT", name: "Video ngắn (≤ 60 giây)", nameEn: "Short video (≤ 60 s)", category: "video", unit: "video", isRecurring: false, format: "short_video", channel: "tiktok", roleMinutes: [{ role: "Script", minutes: 120 }, { role: "Production", minutes: 480 }, { role: "Video editing", minutes: 360 }], description: null, isActive: true, price: 8_000_000 },
-  { code: "VID-TVC30", name: "TVC 30 giây", nameEn: "30 s TVC", category: "video", unit: "video", isRecurring: false, format: "tvc", channel: "youtube", roleMinutes: [{ role: "Script", minutes: 960 }, { role: "Production", minutes: 2880 }, { role: "Video editing", minutes: 1920 }], description: null, isActive: true, price: 120_000_000 },
-  { code: "DES-KV", name: "Key visual chiến dịch", nameEn: "Campaign key visual", category: "design", unit: "item", isRecurring: false, format: "key_visual", channel: null, roleMinutes: [{ role: "Design", minutes: 960 }], description: null, isActive: true, price: 15_000_000 },
-  { code: "KOL-BOOK", name: "Booking KOL/KOC (phí quản lý)", nameEn: "KOL/KOC booking (management fee)", category: "kol", unit: "item", isRecurring: false, format: "post", channel: "tiktok", roleMinutes: [{ role: "Account", minutes: 240 }], description: null, isActive: true, price: 5_000_000 },
+  {
+    code: "SOC-POST",
+    name: "Bài đăng mạng xã hội",
+    nameEn: "Social post",
+    category: "social",
+    unit: "post",
+    isRecurring: false,
+    format: "post",
+    channel: "facebook",
+    roleMinutes: [
+      { role: "Content", minutes: 90 },
+      { role: "Design", minutes: 90 },
+    ],
+    description: null,
+    isActive: true,
+    price: 1_500_000,
+  },
+  {
+    code: "SOC-RETAINER",
+    name: "Quản lý fanpage theo tháng",
+    nameEn: "Monthly page management",
+    category: "social",
+    unit: "month",
+    isRecurring: true,
+    format: null,
+    channel: "facebook",
+    roleMinutes: [
+      { role: "Account", minutes: 600 },
+      { role: "Content", minutes: 1800 },
+      { role: "Design", minutes: 1200 },
+    ],
+    description: null,
+    isActive: true,
+    price: 25_000_000,
+  },
+  {
+    code: "VID-SHORT",
+    name: "Video ngắn (≤ 60 giây)",
+    nameEn: "Short video (≤ 60 s)",
+    category: "video",
+    unit: "video",
+    isRecurring: false,
+    format: "short_video",
+    channel: "tiktok",
+    roleMinutes: [
+      { role: "Script", minutes: 120 },
+      { role: "Production", minutes: 480 },
+      { role: "Video editing", minutes: 360 },
+    ],
+    description: null,
+    isActive: true,
+    price: 8_000_000,
+  },
+  {
+    code: "VID-TVC30",
+    name: "TVC 30 giây",
+    nameEn: "30 s TVC",
+    category: "video",
+    unit: "video",
+    isRecurring: false,
+    format: "tvc",
+    channel: "youtube",
+    roleMinutes: [
+      { role: "Script", minutes: 960 },
+      { role: "Production", minutes: 2880 },
+      { role: "Video editing", minutes: 1920 },
+    ],
+    description: null,
+    isActive: true,
+    price: 120_000_000,
+  },
+  {
+    code: "DES-KV",
+    name: "Key visual chiến dịch",
+    nameEn: "Campaign key visual",
+    category: "design",
+    unit: "item",
+    isRecurring: false,
+    format: "key_visual",
+    channel: null,
+    roleMinutes: [{ role: "Design", minutes: 960 }],
+    description: null,
+    isActive: true,
+    price: 15_000_000,
+  },
+  {
+    code: "KOL-BOOK",
+    name: "Booking KOL/KOC (phí quản lý)",
+    nameEn: "KOL/KOC booking (management fee)",
+    category: "kol",
+    unit: "item",
+    isRecurring: false,
+    format: "post",
+    channel: "tiktok",
+    roleMinutes: [{ role: "Account", minutes: 240 }],
+    description: null,
+    isActive: true,
+    price: 5_000_000,
+  },
 ];
 
 /**

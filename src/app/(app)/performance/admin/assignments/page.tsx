@@ -34,7 +34,11 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
         </Link>
         <TableCard>
           <TableCardHeader
-            title={<RecordLink kind="person" id={person.personId}>{person.fullName}</RecordLink>}
+            title={
+              <RecordLink kind="person" id={person.personId}>
+                {person.fullName}
+              </RecordLink>
+            }
             count={assignments.length || null}
             actions={
               <Link href={`/performance/kpis/${person.personId}`} className="text-sm underline underline-offset-4">
@@ -49,7 +53,13 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="font-medium">{assignment.kpi.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {[assignment.kpi.code, t(`kpi.frequency.${assignment.kpi.frequency}`), t("assignments.range", { from: monthLabel(assignment.fromPeriod), to: assignment.toPeriod ? monthLabel(assignment.toPeriod) : "…" }), t("entry.target", { value: kpiValueText(format, assignment.kpi.unit, assignment.targetValue) }), t("assignments.weight", { weight: assignment.weight })].join(" · ")}
+                    {[
+                      assignment.kpi.code,
+                      t(`kpi.frequency.${assignment.kpi.frequency}`),
+                      t("assignments.range", { from: monthLabel(assignment.fromPeriod), to: assignment.toPeriod ? monthLabel(assignment.toPeriod) : "…" }),
+                      t("entry.target", { value: kpiValueText(format, assignment.kpi.unit, assignment.targetValue) }),
+                      t("assignments.weight", { weight: assignment.weight }),
+                    ].join(" · ")}
                   </span>
                 </div>
                 {assignment.toPeriod === null || assignment.toPeriod >= month ? (

@@ -118,9 +118,12 @@ describe("formula language: refusals", () => {
 });
 
 describe("formula language: hostile input", () => {
-  it.each(["__proto__", "_x", "$x", "a.b", "a[0]", "a['b']", '"x"', "`x`", "a;b", "a = 1", "{}", "x => x", "a ? b : c", "a\u0000b", "BASE", "ａ", "1 // comment", "a % b", "a | b", "a & b", "~a", "!a", "\\u0061"])("does not tokenize %j", (source) => {
-    expect(["bad_character", "division_operator"]).toContain(codeOf(() => parseFormula(source)));
-  });
+  it.each(["__proto__", "_x", "$x", "a.b", "a[0]", "a['b']", '"x"', "`x`", "a;b", "a = 1", "{}", "x => x", "a ? b : c", "a\u0000b", "BASE", "ａ", "1 // comment", "a % b", "a | b", "a & b", "~a", "!a", "\\u0061"])(
+    "does not tokenize %j",
+    (source) => {
+      expect(["bad_character", "division_operator"]).toContain(codeOf(() => parseFormula(source)));
+    },
+  );
 
   it.each(["constructor", "prototype", "tostring", "valueof", "hasownproperty", "process", "globalthis", "require", "eval", "function"])("treats %j as an unknown name, as a variable and as a function", (name) => {
     const asVariable = checkFormula(name, ["base_salary"]);

@@ -65,7 +65,12 @@ export const crmAccount = pgTable(
     creditLimitVnd: bigint("credit_limit_vnd", { mode: "number" }),
     ...timestamps,
   },
-  (t) => [index("crm_account_tax_idx").on(t.taxCode).where(sql`${t.taxCode} IS NOT NULL`), index("crm_account_sales_owner_idx").on(t.salesOwnerPersonId)],
+  (t) => [
+    index("crm_account_tax_idx")
+      .on(t.taxCode)
+      .where(sql`${t.taxCode} IS NOT NULL`),
+    index("crm_account_sales_owner_idx").on(t.salesOwnerPersonId),
+  ],
 ).enableRLS();
 
 // Named members of an account's team, beside the account manager, the sales owner and the people
@@ -120,30 +125,32 @@ export const crmContact = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("crm_contact_client_idx").on(t.clientId), index("crm_contact_email_idx").on(t.email).where(sql`${t.email} IS NOT NULL`)],
+  (t) => [
+    index("crm_contact_client_idx").on(t.clientId),
+    index("crm_contact_email_idx")
+      .on(t.email)
+      .where(sql`${t.email} IS NOT NULL`),
+  ],
 ).enableRLS();
 
 // ── Pipeline (FR-CRM-10..16) ────────────────────────────────────────────────────────────────
 
 // Configurable stages (FR-CRM-12). Reference data: one cache key for the table.
 // gates: what a deal must have to enter — contacts | close_date | value | quote_accepted | contract_signed | pitch_project
-export const crmStage = pgTable(
-  "crm_stage",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    name: text("name").notNull(),
-    nameEn: text("name_en"),
-    // open | won | lost
-    category: text("category").notNull(),
-    probability: integer("probability").notNull().default(0),
-    gates: text("gates").array().notNull().default([]),
-    // A deal in this stage may open a pitch project (FR-CRM-14).
-    allowsPitch: boolean("allows_pitch").notNull().default(false),
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: boolean("is_active").notNull().default(true),
-    ...timestamps,
-  },
-).enableRLS();
+export const crmStage = pgTable("crm_stage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  nameEn: text("name_en"),
+  // open | won | lost
+  category: text("category").notNull(),
+  probability: integer("probability").notNull().default(0),
+  gates: text("gates").array().notNull().default([]),
+  // A deal in this stage may open a pitch project (FR-CRM-14).
+  allowsPitch: boolean("allows_pitch").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps,
+}).enableRLS();
 
 // An enquiry not yet qualified (FR-CRM-10). Anyone may log one; the referrer is credited.
 export const crmLead = pgTable(
@@ -230,8 +237,12 @@ export const crmDeal = pgTable(
     index("crm_deal_client_idx").on(t.clientId),
     index("crm_deal_owner_idx").on(t.ownerPersonId, t.status),
     index("crm_deal_entity_idx").on(t.entityId, t.status),
-    uniqueIndex("crm_deal_renewal_unique").on(t.renewsContractId).where(sql`${t.renewsContractId} IS NOT NULL`),
-    uniqueIndex("crm_deal_retainer_renewal_unique").on(t.renewsProjectId).where(sql`${t.renewsProjectId} IS NOT NULL`),
+    uniqueIndex("crm_deal_renewal_unique")
+      .on(t.renewsContractId)
+      .where(sql`${t.renewsContractId} IS NOT NULL`),
+    uniqueIndex("crm_deal_retainer_renewal_unique")
+      .on(t.renewsProjectId)
+      .where(sql`${t.renewsProjectId} IS NOT NULL`),
   ],
 ).enableRLS();
 
@@ -289,7 +300,12 @@ export const crmDealProject = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("crm_deal_project_deal_idx").on(t.dealId), index("crm_deal_project_handoff_idx").on(t.handoffToPersonId).where(sql`${t.handoffStatus} = 'pending'`)],
+  (t) => [
+    index("crm_deal_project_deal_idx").on(t.dealId),
+    index("crm_deal_project_handoff_idx")
+      .on(t.handoffToPersonId)
+      .where(sql`${t.handoffStatus} = 'pending'`),
+  ],
 ).enableRLS();
 
 // ── Rate card, quotes, contracts (FR-CRM-20..27) ────────────────────────────────────────────
@@ -297,28 +313,25 @@ export const crmDealProject = pgTable(
 export type RoleMinutes = { role: string; minutes: number };
 
 // A service on the rate card. Reference data: one cache key with its prices.
-export const crmService = pgTable(
-  "crm_service",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    code: text("code").notNull().unique(),
-    name: text("name").notNull(),
-    nameEn: text("name_en"),
-    // social | video | kol | event | media | design | other — the deal's service lines.
-    category: text("category").notNull().default("other"),
-    // post, video, month, day, hour, item…
-    unit: text("unit").notNull().default("item"),
-    isRecurring: boolean("is_recurring").notNull().default(false),
-    // The register line a sold unit becomes (FR-PJM-05).
-    format: text("format"),
-    channel: text("channel"),
-    // Hours by role for one unit (the quote's estimate, the project's budget by role).
-    roleMinutes: jsonb("role_minutes").$type<RoleMinutes[]>().notNull().default([]),
-    description: text("description"),
-    isActive: boolean("is_active").notNull().default(true),
-    ...timestamps,
-  },
-).enableRLS();
+export const crmService = pgTable("crm_service", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  nameEn: text("name_en"),
+  // social | video | kol | event | media | design | other — the deal's service lines.
+  category: text("category").notNull().default("other"),
+  // post, video, month, day, hour, item…
+  unit: text("unit").notNull().default("item"),
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  // The register line a sold unit becomes (FR-PJM-05).
+  format: text("format"),
+  channel: text("channel"),
+  // Hours by role for one unit (the quote's estimate, the project's budget by role).
+  roleMinutes: jsonb("role_minutes").$type<RoleMinutes[]>().notNull().default([]),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps,
+}).enableRLS();
 
 // Effective-dated list prices; entity_id null = the group's price, an entity's own replaces it.
 export const crmServicePrice = pgTable(
@@ -428,7 +441,13 @@ export const crmContract = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("crm_contract_client_idx").on(t.clientId), index("crm_contract_end_idx").on(t.endDate).where(sql`${t.status} = 'signed'`), unique("crm_contract_number_unique").on(t.entityId, t.number)],
+  (t) => [
+    index("crm_contract_client_idx").on(t.clientId),
+    index("crm_contract_end_idx")
+      .on(t.endDate)
+      .where(sql`${t.status} = 'signed'`),
+    unique("crm_contract_number_unique").on(t.entityId, t.number),
+  ],
 ).enableRLS();
 
 // Which contract a project is delivered under (its billing items quote the number, FR-PJM-56).
@@ -478,7 +497,13 @@ export const crmInvoice = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [unique("crm_invoice_number_unique").on(t.entityId, t.number), index("crm_invoice_client_idx").on(t.clientId, t.status), index("crm_invoice_due_idx").on(t.dueOn).where(sql`${t.status} = 'open'`)],
+  (t) => [
+    unique("crm_invoice_number_unique").on(t.entityId, t.number),
+    index("crm_invoice_client_idx").on(t.clientId, t.status),
+    index("crm_invoice_due_idx")
+      .on(t.dueOn)
+      .where(sql`${t.status} = 'open'`),
+  ],
 ).enableRLS();
 
 // An item is on one live invoice at a time — a draft holds it too, the service checks under the
@@ -563,7 +588,9 @@ export const crmActivity = pgTable(
     index("crm_activity_client_idx").on(t.clientId, t.createdAt),
     index("crm_activity_deal_idx").on(t.dealId),
     index("crm_activity_lead_idx").on(t.leadId),
-    index("crm_activity_open_idx").on(t.ownerPersonId, t.dueOn).where(sql`${t.doneAt} IS NULL`),
+    index("crm_activity_open_idx")
+      .on(t.ownerPersonId, t.dueOn)
+      .where(sql`${t.doneAt} IS NULL`),
     index("crm_activity_done_idx").on(t.ownerPersonId, t.doneAt),
   ],
 ).enableRLS();
@@ -573,24 +600,21 @@ export const crmActivity = pgTable(
 // The owner's scheme, effective-dated: tiers of a rate on cash collected in the month.
 export type CommissionTier = { fromVnd: number; rateBp: number };
 export type CommissionRule = { base: "cash_collected"; earner: "deal_owner" | "account_manager" | "split"; splitOwnerBp: number; tiers: CommissionTier[] };
-export const crmCommissionScheme = pgTable(
-  "crm_commission_scheme",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    // null = the group.
-    entityId: uuid("entity_id").references(() => entity.id),
-    name: text("name").notNull(),
-    rule: jsonb("rule").$type<CommissionRule>().notNull(),
-    validFrom: date("valid_from").notNull(),
-    validTo: date("valid_to"),
-    // proposed | approved | rejected
-    status: text("status").notNull().default("proposed"),
-    proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
-    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
-    decidedAt: timestamp("decided_at", { withTimezone: true }),
-    ...timestamps,
-  },
-).enableRLS();
+export const crmCommissionScheme = pgTable("crm_commission_scheme", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // null = the group.
+  entityId: uuid("entity_id").references(() => entity.id),
+  name: text("name").notNull(),
+  rule: jsonb("rule").$type<CommissionRule>().notNull(),
+  validFrom: date("valid_from").notNull(),
+  validTo: date("valid_to"),
+  // proposed | approved | rejected
+  status: text("status").notNull().default("proposed"),
+  proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
+  decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  ...timestamps,
+}).enableRLS();
 
 // A month's statement for one person: compensation tier, so its figures are encrypted like payroll's.
 export const crmCommissionStatement = pgTable(

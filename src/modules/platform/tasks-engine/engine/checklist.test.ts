@@ -23,7 +23,15 @@ describe("pickTemplate", () => {
 });
 
 describe("planChecklist", () => {
-  const item = (id: string, assigneeRule: string, dueOffsetDays: number, sortOrder: number, assigneePersonId: string | null = null): TemplateItem => ({ id, title: id, description: null, assigneeRule, assigneePersonId, dueOffsetDays, sortOrder });
+  const item = (id: string, assigneeRule: string, dueOffsetDays: number, sortOrder: number, assigneePersonId: string | null = null): TemplateItem => ({
+    id,
+    title: id,
+    description: null,
+    assigneeRule,
+    assigneePersonId,
+    dueOffsetDays,
+    sortOrder,
+  });
   const people: Record<string, string> = { subject: "new-hire", line_manager: "manager", "person:manage": "hr" };
   const resolve = (rule: NonNullable<ReturnType<typeof parseAssigneeRule>>) => (rule.rule === "person" ? rule.personId : rule.rule === "permission" ? (people[rule.permission] ?? null) : people[rule.rule]);
 
@@ -52,7 +60,15 @@ describe("summarize", () => {
       { status: "cancelled" as const, dueDate: "2026-01-01" },
     ];
     expect(summarize(tasks, "2026-02-01")).toEqual({ total: 4, done: 1, open: 3, overdue: 1, complete: false });
-    expect(summarize([{ status: "done", dueDate: null }, { status: "cancelled", dueDate: null }], "2026-02-01").complete).toBe(true);
+    expect(
+      summarize(
+        [
+          { status: "done", dueDate: null },
+          { status: "cancelled", dueDate: null },
+        ],
+        "2026-02-01",
+      ).complete,
+    ).toBe(true);
     expect(summarize([], "2026-02-01").complete).toBe(false);
   });
 });

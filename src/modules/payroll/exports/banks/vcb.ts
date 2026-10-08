@@ -45,14 +45,7 @@ export const vcbFormat: BankFormat = {
 
     payable.forEach((row, index) => {
       total += row.amount;
-      rows.push([
-        String(index + 1),
-        normalizedAccountNumber(row.account!),
-        toAsciiUpper(row.account!.accountHolder ?? row.fullName),
-        String(row.amount),
-        toAsciiUpper(row.narrative),
-        row.employeeCode ?? "",
-      ]);
+      rows.push([String(index + 1), normalizedAccountNumber(row.account!), toAsciiUpper(row.account!.accountHolder ?? row.fullName), String(row.amount), toAsciiUpper(row.narrative), row.employeeCode ?? ""]);
     });
 
     return {

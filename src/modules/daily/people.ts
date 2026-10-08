@@ -114,7 +114,12 @@ export async function listOverseen(reader: ReportReader, options: { includeLeft?
   return groups;
 }
 
-export type FirstReaders = { fullName: string; /** Active leads of the person's active teams, other than the person. */ leads: string[]; /** The line manager, where no lead stands over the person and the manager is active. */ manager: string | null; /** Whom to tell: the leads, else the manager. */ told: string[] };
+export type FirstReaders = {
+  fullName: string;
+  /** Active leads of the person's active teams, other than the person. */ leads: string[];
+  /** The line manager, where no lead stands over the person and the manager is active. */ manager: string | null;
+  /** Whom to tell: the leads, else the manager. */ told: string[];
+};
 
 /**
  * Whom a person's day is sent to (FR-PJM-22 "submitted to the team lead", D23): the leads of the

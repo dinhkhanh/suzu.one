@@ -52,7 +52,9 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
           <span className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-muted font-mono text-[0.6875rem] font-medium tracking-tight text-muted-foreground">{entity.code}</span>
             <span className="min-w-0 truncate">{entity.shortName}</span>
-            <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
+            <Badge dot variant={entity.isActive ? "success" : "outline"}>
+              {entity.isActive ? t("active") : t("inactive")}
+            </Badge>
           </span>
         }
         description={entity.legalName}
@@ -107,7 +109,9 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
                     <TableCell className="font-medium">{branch.name}</TableCell>
                     <TableCell className="whitespace-normal text-muted-foreground">{branch.address ?? "—"}</TableCell>
                     <TableCell>
-                      <Badge dot variant={branch.isActive ? "success" : "outline"}>{branch.isActive ? t("active") : t("inactive")}</Badge>
+                      <Badge dot variant={branch.isActive ? "success" : "outline"}>
+                        {branch.isActive ? t("active") : t("inactive")}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -156,7 +160,9 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
                       <TableCell className="whitespace-normal text-muted-foreground">{account.branch ?? "—"}</TableCell>
                       <TableCell>
                         <span className="flex flex-wrap gap-1.5">
-                          <Badge dot variant={account.isActive ? "success" : "outline"}>{account.isActive ? t("active") : t("inactive")}</Badge>
+                          <Badge dot variant={account.isActive ? "success" : "outline"}>
+                            {account.isActive ? t("active") : t("inactive")}
+                          </Badge>
                           {account.isDefault ? <Badge variant="outline">{t("bankAccount.default")}</Badge> : null}
                         </span>
                       </TableCell>

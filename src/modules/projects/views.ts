@@ -89,7 +89,10 @@ export async function openableProjectIds(user: ProjectReader, projectIds: readon
  * project's team has no other lead — and for whoever oversees projects (`pjm:oversee`): the brief
  * and its request, nothing else. null = neither.
  */
-export async function openBriefForApprover(user: Pick<CurrentUser, "person" | "principal">, projectId: string): Promise<{ projectName: string; plan: Pick<PlanRow, "brief" | "kind" | "jobNumber" | "briefStatus">; request: RequestView } | null> {
+export async function openBriefForApprover(
+  user: Pick<CurrentUser, "person" | "principal">,
+  projectId: string,
+): Promise<{ projectName: string; plan: Pick<PlanRow, "brief" | "kind" | "jobNumber" | "briefStatus">; request: RequestView } | null> {
   if (!UUID.test(projectId)) return null;
   const found = await findProject(projectId);
   if (!found) return null;

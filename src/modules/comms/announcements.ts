@@ -148,7 +148,18 @@ export async function listAnnouncementsFor(viewer: CommsViewer, options: { limit
     .orderBy(desc(announcement.pinned), desc(announcement.publishAt))
     .limit(options.limit ?? 50)
     .offset(options.offset ?? 0);
-  return rows.map(({ row, authorName, readAt, acknowledgedAt }) => ({ id: row.id, title: row.title, excerpt: excerptOf(row.body), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt!, authorPersonId: row.authorPersonId, authorName, read: !!readAt, acknowledged: !!acknowledgedAt }));
+  return rows.map(({ row, authorName, readAt, acknowledgedAt }) => ({
+    id: row.id,
+    title: row.title,
+    excerpt: excerptOf(row.body),
+    pinned: row.pinned,
+    mustAcknowledge: row.mustAcknowledge,
+    publishAt: row.publishAt!,
+    authorPersonId: row.authorPersonId,
+    authorName,
+    read: !!readAt,
+    acknowledged: !!acknowledgedAt,
+  }));
 }
 
 export async function countUnreadAnnouncements(viewer: CommsViewer): Promise<number> {
@@ -181,7 +192,14 @@ export type AnnouncementView = LoadedAnnouncement & { phase: AnnouncementPhase; 
 /** What the viewer may open: a live announcement aimed at them, or any they manage. null = not theirs to see. */
 export async function getAnnouncementView(viewer: CommsViewer, id: string): Promise<AnnouncementView | null> {
   // The viewer's own mark is read alongside; it is only used once the announcement is theirs to see.
-  const [loaded, [mark]] = await Promise.all([loadAnnouncement(id), db().select().from(announcementRead).where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId))).limit(1)]);
+  const [loaded, [mark]] = await Promise.all([
+    loadAnnouncement(id),
+    db()
+      .select()
+      .from(announcementRead)
+      .where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId)))
+      .limit(1),
+  ]);
   if (!loaded) return null;
   const now = new Date();
   const canManage = mayManage(viewer.principal, loaded);
@@ -204,13 +222,29 @@ export async function acknowledgeAnnouncement(viewer: CommsViewer, id: string): 
   if (!loaded.row.mustAcknowledge) throw new ActionError("comms_ack_not_asked");
   const now = new Date();
   await db().insert(announcementRead).values({ announcementId: id, personId: viewer.personId, readAt: now }).onConflictDoNothing();
-  const changed = await db().update(announcementRead).set({ acknowledgedAt: now }).where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId), isNull(announcementRead.acknowledgedAt))).returning({ id: announcementRead.id });
+  const changed = await db()
+    .update(announcementRead)
+    .set({ acknowledgedAt: now })
+    .where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId), isNull(announcementRead.acknowledgedAt)))
+    .returning({ id: announcementRead.id });
   return { row: loaded.row, first: changed.length > 0 };
 }
 
 // ── Managing ────────────────────────────────────────────────────────────────────────────────
 
-export type ManagedRow = { id: string; title: string; phase: AnnouncementPhase; pinned: boolean; mustAcknowledge: boolean; publishAt: Date | null; expiresAt: Date | null; authorPersonId: string; authorName: string; audience: string[]; updatedAt: Date };
+export type ManagedRow = {
+  id: string;
+  title: string;
+  phase: AnnouncementPhase;
+  pinned: boolean;
+  mustAcknowledge: boolean;
+  publishAt: Date | null;
+  expiresAt: Date | null;
+  authorPersonId: string;
+  authorName: string;
+  audience: string[];
+  updatedAt: Date;
+};
 
 /** Everything the viewer may manage. The rule needs each row's resolved targets: the (short) list and all its audiences are loaded at once, then checked row by row with the pure policy. */
 export async function listManagedAnnouncements(principal: Principal, limit = 200): Promise<ManagedRow[]> {
@@ -219,7 +253,12 @@ export async function listManagedAnnouncements(principal: Principal, limit = 200
   const keys = await db()
     .select({ announcementId: announcementAudience.announcementId, key: announcementAudience.subjectKey })
     .from(announcementAudience)
-    .where(inArray(announcementAudience.announcementId, rows.map(({ row }) => row.id)))
+    .where(
+      inArray(
+        announcementAudience.announcementId,
+        rows.map(({ row }) => row.id),
+      ),
+    )
     .orderBy(asc(announcementAudience.subjectKey));
   const audiences = Map.groupBy(keys, (found) => found.announcementId);
   const targets = await targetsOf(keys.map((found) => found.key));
@@ -229,7 +268,19 @@ export async function listManagedAnnouncements(principal: Principal, limit = 200
     const audience = (audiences.get(row.id) ?? []).map((found) => found.key);
     const loaded: LoadedAnnouncement = { row, authorName, audience, targets: [...new Set(audience)].map((key) => ({ key, target: targets.get(key) ?? null })) };
     if (!mayManage(principal, loaded)) continue;
-    result.push({ id: row.id, title: row.title, phase: phaseOf(row, now), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, authorPersonId: row.authorPersonId, authorName, audience: loaded.audience, updatedAt: row.updatedAt });
+    result.push({
+      id: row.id,
+      title: row.title,
+      phase: phaseOf(row, now),
+      pinned: row.pinned,
+      mustAcknowledge: row.mustAcknowledge,
+      publishAt: row.publishAt,
+      expiresAt: row.expiresAt,
+      authorPersonId: row.authorPersonId,
+      authorName,
+      audience: loaded.audience,
+      updatedAt: row.updatedAt,
+    });
   }
   return result;
 }
@@ -251,7 +302,10 @@ export async function createAnnouncement(input: AnnouncementInput, authorPersonI
   return db().transaction(async (tx) => {
     const targets = await resolveAudienceTargets(input.audience, tx);
     const { audience, ...values } = input;
-    const [row] = await tx.insert(announcement).values({ ...values, entityId: commonEntity(targets), authorPersonId }).returning();
+    const [row] = await tx
+      .insert(announcement)
+      .values({ ...values, entityId: commonEntity(targets), authorPersonId })
+      .returning();
     await writeAudience(tx, row.id, audience);
     return row;
   });
@@ -266,7 +320,11 @@ export async function updateAnnouncement(id: string, input: AnnouncementInput): 
     if (loaded.row.status === "archived") throw new ActionError("comms_announcement_archived");
     const targets = await resolveAudienceTargets(input.audience, tx);
     const { audience, ...values } = input;
-    const [after] = await tx.update(announcement).set({ ...values, entityId: commonEntity(targets), updatedAt: new Date() }).where(eq(announcement.id, id)).returning();
+    const [after] = await tx
+      .update(announcement)
+      .set({ ...values, entityId: commonEntity(targets), updatedAt: new Date() })
+      .where(eq(announcement.id, id))
+      .returning();
     await writeAudience(tx, id, audience);
     return { before: loaded.row, after, audienceBefore: loaded.audience };
   });
@@ -292,7 +350,11 @@ export async function publishAnnouncement(id: string, publishAt: Date | null): P
     // Already announced and already live: its date stays what people saw.
     const keepDate = before.status === "published" && before.publishAt && before.publishAt <= now;
     if (before.expiresAt && before.expiresAt <= at) throw new ActionError("comms_expires_before_publish");
-    const [after] = await tx.update(announcement).set({ status: "published", publishAt: keepDate ? before.publishAt : at, updatedAt: now }).where(eq(announcement.id, id)).returning();
+    const [after] = await tx
+      .update(announcement)
+      .set({ status: "published", publishAt: keepDate ? before.publishAt : at, updatedAt: now })
+      .where(eq(announcement.id, id))
+      .returning();
     const notified = !after.notifiedAt && after.publishAt! <= now ? await notifyAudience(tx, after) : 0;
     return { before, after, notified };
   });
@@ -313,12 +375,20 @@ export async function setAnnouncementState(id: string, change: { archive?: boole
 
 /** The job: scheduled announcements whose hour has come and whose audience has not been told. Each is told once. */
 export async function notifyDueAnnouncements(): Promise<{ announcements: number; notified: number }> {
-  const due = await db().select({ id: announcement.id }).from(announcement).where(and(eq(announcement.status, "published"), isNull(announcement.notifiedAt), lte(announcement.publishAt, new Date())));
+  const due = await db()
+    .select({ id: announcement.id })
+    .from(announcement)
+    .where(and(eq(announcement.status, "published"), isNull(announcement.notifiedAt), lte(announcement.publishAt, new Date())));
   let notified = 0;
   let announcements = 0;
   for (const { id } of due) {
     await db().transaction(async (tx) => {
-      const [row] = await tx.select().from(announcement).where(and(eq(announcement.id, id), isNull(announcement.notifiedAt))).limit(1).for("update");
+      const [row] = await tx
+        .select()
+        .from(announcement)
+        .where(and(eq(announcement.id, id), isNull(announcement.notifiedAt)))
+        .limit(1)
+        .for("update");
       if (!row) return;
       // Expired before anyone was told: nothing to say, but never look at it again.
       if (row.expiresAt && row.expiresAt <= new Date()) await tx.update(announcement).set({ notifiedAt: new Date() }).where(eq(announcement.id, id));
@@ -343,7 +413,10 @@ export type ReadReport = {
 export async function getReadReport(id: string, preloaded?: Pick<LoadedAnnouncement, "row" | "audience">): Promise<ReadReport | null> {
   const loaded = preloaded?.row.id === id ? preloaded : await loadAnnouncement(id);
   if (!loaded) return null;
-  const [audience, markRows] = await Promise.all([audiencePeople(loaded.audience), db().select({ personId: announcementRead.personId, readAt: announcementRead.readAt, acknowledgedAt: announcementRead.acknowledgedAt }).from(announcementRead).where(eq(announcementRead.announcementId, id))]);
+  const [audience, markRows] = await Promise.all([
+    audiencePeople(loaded.audience),
+    db().select({ personId: announcementRead.personId, readAt: announcementRead.readAt, acknowledgedAt: announcementRead.acknowledgedAt }).from(announcementRead).where(eq(announcementRead.announcementId, id)),
+  ]);
   const marks = new Map(markRows.map((mark) => [mark.personId, mark]));
   const people = audience.map((member) => ({ ...member, readAt: marks.get(member.personId)?.readAt ?? null, acknowledgedAt: marks.get(member.personId)?.acknowledgedAt ?? null }));
   const count = (members: typeof people) => {
@@ -395,7 +468,12 @@ export async function audienceNames(keys: readonly string[]): Promise<Map<string
     entityIds.size ? listEntities() : [],
     unitIds.size ? listOrgUnits() : [],
     branchIds.size ? listBranches() : [],
-    personIds.size ? db().select({ id: person.id, name: person.fullName }).from(person).where(inArray(person.id, [...personIds])) : [],
+    personIds.size
+      ? db()
+          .select({ id: person.id, name: person.fullName })
+          .from(person)
+          .where(inArray(person.id, [...personIds]))
+      : [],
   ]);
   const names = new Map<string, string>();
   for (const row of entities) if (entityIds.has(row.id)) names.set(`entity:${row.id}`, row.shortName);

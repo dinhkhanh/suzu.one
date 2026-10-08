@@ -72,7 +72,11 @@ async function frame(itemIds: readonly string[], issuedOn: IsoDate, vatRateBp: n
  * — an issued one has invoiced them already, a draft holds them. A voided invoice holds nothing.
  */
 async function holdItems(tx: Tx, itemIds: readonly string[], invoiceId: string | null): Promise<BillingItemRow[]> {
-  const rows = await tx.select().from(schema.projectBillingItem).where(inArray(schema.projectBillingItem.id, [...itemIds])).for("update");
+  const rows = await tx
+    .select()
+    .from(schema.projectBillingItem)
+    .where(inArray(schema.projectBillingItem.id, [...itemIds]))
+    .for("update");
   if (rows.length !== new Set(itemIds).size) throw new ActionError("billing_not_found");
   if (rows.some((row) => row.status !== "ready")) throw new ActionError("billing_decided");
   const [held] = await tx
@@ -96,7 +100,8 @@ async function numberFree(tx: Tx, number: string, entityId: string | null, invoi
 }
 
 /** A draft's lines: each item with the amount typed for it when the item has none of its own. */
-const draftLines = (rows: readonly BillingItemRow[], amounts: Record<string, number>) => rows.map((row) => ({ billingItemId: row.id, amountVnd: row.amountVnd === null ? (amounts[row.id] ?? null) : null, counted: row.amountVnd ?? amounts[row.id] ?? 0 }));
+const draftLines = (rows: readonly BillingItemRow[], amounts: Record<string, number>) =>
+  rows.map((row) => ({ billingItemId: row.id, amountVnd: row.amountVnd === null ? (amounts[row.id] ?? null) : null, counted: row.amountVnd ?? amounts[row.id] ?? 0 }));
 
 const totals = (subtotal: number, vatRateBp: number) => {
   const vat = vatOf(subtotal, vatRateBp);
@@ -126,12 +131,23 @@ export async function recordInvoice(input: NewInvoice, actorPersonId: string): P
     const header = { entityId, clientId: account.client.id, number: input.number, issuedOn: input.issuedOn, dueOn, vatRateBp: input.vatRateBp, note: input.note, createdByPersonId: actorPersonId };
     const [invoice] = await tx
       .insert(schema.crmInvoice)
-      .values({ ...header, status: "draft", ...totals(lines.reduce((sum, line) => sum + line.counted, 0), input.vatRateBp) })
+      .values({
+        ...header,
+        status: "draft",
+        ...totals(
+          lines.reduce((sum, line) => sum + line.counted, 0),
+          input.vatRateBp,
+        ),
+      })
       .returning();
     await tx.insert(schema.crmInvoiceItem).values(lines.map(({ billingItemId, amountVnd }) => ({ billingItemId, invoiceId: invoice.id, amountVnd })));
     if (input.draft) return invoice;
     const subtotal = await issueIn(tx, invoice.id, input.itemIds, { number: input.number!, date: input.issuedOn }, new Map(Object.entries(input.amounts)), actorPersonId);
-    const [issued] = await tx.update(schema.crmInvoice).set({ status: "open", ...totals(subtotal, input.vatRateBp) }).where(eq(schema.crmInvoice.id, invoice.id)).returning();
+    const [issued] = await tx
+      .update(schema.crmInvoice)
+      .set({ status: "open", ...totals(subtotal, input.vatRateBp) })
+      .where(eq(schema.crmInvoice.id, invoice.id))
+      .returning();
     return issued;
   });
 }
@@ -156,7 +172,18 @@ export async function saveDraftInvoice(invoiceId: string, input: InvoiceInput): 
     await tx.insert(schema.crmInvoiceItem).values(lines.map(({ billingItemId, amountVnd }) => ({ billingItemId, invoiceId, amountVnd })));
     const [after] = await tx
       .update(schema.crmInvoice)
-      .set({ number: input.number, issuedOn: input.issuedOn, dueOn, vatRateBp: input.vatRateBp, note: input.note, ...totals(lines.reduce((sum, line) => sum + line.counted, 0), input.vatRateBp), updatedAt: new Date() })
+      .set({
+        number: input.number,
+        issuedOn: input.issuedOn,
+        dueOn,
+        vatRateBp: input.vatRateBp,
+        note: input.note,
+        ...totals(
+          lines.reduce((sum, line) => sum + line.counted, 0),
+          input.vatRateBp,
+        ),
+        updatedAt: new Date(),
+      })
       .where(eq(schema.crmInvoice.id, invoiceId))
       .returning();
     return { before, after };
@@ -169,7 +196,11 @@ export async function issueInvoice(invoiceId: string, input: { number: string; i
   if (!draft) throw new ActionError("invoice_not_found");
   const lines = await db().select().from(schema.crmInvoiceItem).where(eq(schema.crmInvoiceItem.invoiceId, invoiceId));
   if (lines.length === 0) throw new ActionError("billing_not_found");
-  const { entityId, dueOn } = await frame(lines.map((line) => line.billingItemId), input.issuedOn, draft.vatRateBp);
+  const { entityId, dueOn } = await frame(
+    lines.map((line) => line.billingItemId),
+    input.issuedOn,
+    draft.vatRateBp,
+  );
   return db().transaction(async (tx) => {
     const before = await lockInvoice(tx, invoiceId);
     if (before.status !== "draft") throw new ActionError("invoice_not_draft");
@@ -211,7 +242,11 @@ export async function voidInvoice(invoiceId: string, reason: string, actorPerson
     if (before.status !== "open" && before.status !== "paid") throw new ActionError("invoice_closed");
     if ((await paidOf(invoiceId, tx)) > 0) throw new ActionError("invoice_has_payments");
     const lines = await tx.select({ billingItemId: schema.crmInvoiceItem.billingItemId }).from(schema.crmInvoiceItem).where(eq(schema.crmInvoiceItem.invoiceId, invoiceId));
-    const released = await releaseInvoicedItemsIn(tx, lines.map((line) => line.billingItemId), before.number ?? "");
+    const released = await releaseInvoicedItemsIn(
+      tx,
+      lines.map((line) => line.billingItemId),
+      before.number ?? "",
+    );
     const now = new Date();
     const [after] = await tx.update(schema.crmInvoice).set({ status: "void", voidedReason: reason, voidedAt: now, voidedByPersonId: actorPersonId, updatedAt: now }).where(eq(schema.crmInvoice.id, invoiceId)).returning();
     return { before, after, released: released.length };
@@ -222,7 +257,10 @@ export const findInvoice = async (invoiceId: string): Promise<InvoiceRow | undef
 
 /** What has been received on an invoice: its payments that are not reversed, summed in SQL. */
 async function paidOf(invoiceId: string, executor: Executor = db()): Promise<number> {
-  const [row] = await executor.select({ paid: sql<number>`coalesce(sum(${schema.crmPayment.amountVnd}), 0)` }).from(schema.crmPayment).where(and(eq(schema.crmPayment.invoiceId, invoiceId), live));
+  const [row] = await executor
+    .select({ paid: sql<number>`coalesce(sum(${schema.crmPayment.amountVnd}), 0)` })
+    .from(schema.crmPayment)
+    .where(and(eq(schema.crmPayment.invoiceId, invoiceId), live));
   return Number(row?.paid ?? 0);
 }
 
@@ -230,14 +268,21 @@ async function paidOf(invoiceId: string, executor: Executor = db()): Promise<num
  * A payment received. Reaching the total pays the invoice; more than is still owed is refused, and
  * so is a payment on an invoice that is not open (a draft, paid, written off or voided).
  */
-export async function recordPayment(invoiceId: string, input: { receivedOn: IsoDate; amountVnd: number; method: string; reference: string | null; note: string | null }, actorPersonId: string): Promise<{ payment: PaymentRow; invoice: InvoiceRow; commission: PaymentChangeResult }> {
+export async function recordPayment(
+  invoiceId: string,
+  input: { receivedOn: IsoDate; amountVnd: number; method: string; reference: string | null; note: string | null },
+  actorPersonId: string,
+): Promise<{ payment: PaymentRow; invoice: InvoiceRow; commission: PaymentChangeResult }> {
   if (input.amountVnd <= 0) throw new ActionError("payment_amount_invalid");
   return db().transaction(async (tx) => {
     const invoice = await lockInvoice(tx, invoiceId);
     if (invoice.status !== "open") throw new ActionError("invoice_closed");
     const outstanding = invoice.totalVnd - (await paidOf(invoiceId, tx));
     if (input.amountVnd > outstanding) throw new ActionError("payment_above_outstanding", { outstandingVnd: Math.max(0, outstanding) });
-    const [payment] = await tx.insert(schema.crmPayment).values({ invoiceId, ...input, recordedByPersonId: actorPersonId }).returning();
+    const [payment] = await tx
+      .insert(schema.crmPayment)
+      .values({ invoiceId, ...input, recordedByPersonId: actorPersonId })
+      .returning();
     const [after] = input.amountVnd === outstanding ? await tx.update(schema.crmInvoice).set({ status: "paid", updatedAt: new Date() }).where(eq(schema.crmInvoice.id, invoiceId)).returning() : [invoice];
     const commission = await followPaymentChange(tx, { receivedOn: input.receivedOn, entityId: invoice.entityId }, actorPersonId);
     return { payment, invoice: after, commission };
@@ -294,7 +339,17 @@ export function invoiceReach(viewer: CrmViewer): SQL | undefined | null {
   return parts.length ? or(...parts)! : null;
 }
 
-export type InvoiceView = InvoiceRow & { accountName: string; entityName: string | null; managerPersonId: string | null; managerName: string | null; paidVnd: number; outstandingVnd: number; standing: ReturnType<typeof invoiceStanding>; daysPastDue: number; bucket: AgingBucket };
+export type InvoiceView = InvoiceRow & {
+  accountName: string;
+  entityName: string | null;
+  managerPersonId: string | null;
+  managerName: string | null;
+  paidVnd: number;
+  outstandingVnd: number;
+  standing: ReturnType<typeof invoiceStanding>;
+  daysPastDue: number;
+  bucket: AgingBucket;
+};
 
 const paidSub = () =>
   db()
@@ -332,7 +387,15 @@ export async function listInvoices(viewer: CrmViewer, filters: InvoiceFilters = 
     .limit(limit);
   return rows.map(({ invoice, paid: paidAmount, ...rest }) => {
     const paidVnd = Number(paidAmount ?? 0);
-    return { ...invoice, ...rest, paidVnd, outstandingVnd: invoice.status === "open" ? Math.max(0, invoice.totalVnd - paidVnd) : 0, standing: invoiceStanding(invoice.totalVnd, paidVnd, invoice.status), daysPastDue: invoice.status === "open" ? daysPastDue(invoice.dueOn, today) : 0, bucket: agingBucket(invoice.dueOn, today) };
+    return {
+      ...invoice,
+      ...rest,
+      paidVnd,
+      outstandingVnd: invoice.status === "open" ? Math.max(0, invoice.totalVnd - paidVnd) : 0,
+      standing: invoiceStanding(invoice.totalVnd, paidVnd, invoice.status),
+      daysPastDue: invoice.status === "open" ? daysPastDue(invoice.dueOn, today) : 0,
+      bucket: agingBucket(invoice.dueOn, today),
+    };
   });
 }
 
@@ -372,14 +435,27 @@ export type InvoiceDetail = {
 export async function getInvoice(viewer: CrmViewer, invoiceId: string, today: IsoDate = todayInVietnam()): Promise<InvoiceDetail | null> {
   const reach = invoiceReach(viewer);
   if (reach === null) return null;
-  const [found] = await db().select({ id: schema.crmInvoice.id }).from(schema.crmInvoice).where(and(eq(schema.crmInvoice.id, invoiceId), reach)).limit(1);
+  const [found] = await db()
+    .select({ id: schema.crmInvoice.id })
+    .from(schema.crmInvoice)
+    .where(and(eq(schema.crmInvoice.id, invoiceId), reach))
+    .limit(1);
   if (!found) return null;
   const recorder = alias(schema.person, "payment_recorder");
   const reverser = alias(schema.person, "payment_reverser");
   const [[invoice], items, payments] = await Promise.all([
     listInvoicesByIds([invoiceId], today),
     db()
-      .select({ id: schema.projectBillingItem.id, projectId: schema.projectBillingItem.projectId, projectName: schema.workProject.name, jobNumber: schema.projectBillingItem.jobNumber, description: schema.projectBillingItem.description, reference: schema.projectBillingItem.reference, line: schema.crmInvoiceItem.amountVnd, ownVnd: schema.projectBillingItem.amountVnd })
+      .select({
+        id: schema.projectBillingItem.id,
+        projectId: schema.projectBillingItem.projectId,
+        projectName: schema.workProject.name,
+        jobNumber: schema.projectBillingItem.jobNumber,
+        description: schema.projectBillingItem.description,
+        reference: schema.projectBillingItem.reference,
+        line: schema.crmInvoiceItem.amountVnd,
+        ownVnd: schema.projectBillingItem.amountVnd,
+      })
       .from(schema.crmInvoiceItem)
       .innerJoin(schema.projectBillingItem, eq(schema.projectBillingItem.id, schema.crmInvoiceItem.billingItemId))
       .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectBillingItem.projectId))
@@ -426,7 +502,15 @@ async function listInvoicesByIds(ids: readonly string[], today: IsoDate): Promis
     .where(inArray(schema.crmInvoice.id, [...ids]));
   return rows.map(({ invoice, paid: paidAmount, ...rest }) => {
     const paidVnd = Number(paidAmount ?? 0);
-    return { ...invoice, ...rest, paidVnd, outstandingVnd: invoice.status === "open" ? Math.max(0, invoice.totalVnd - paidVnd) : 0, standing: invoiceStanding(invoice.totalVnd, paidVnd, invoice.status), daysPastDue: invoice.status === "open" ? daysPastDue(invoice.dueOn, today) : 0, bucket: agingBucket(invoice.dueOn, today) };
+    return {
+      ...invoice,
+      ...rest,
+      paidVnd,
+      outstandingVnd: invoice.status === "open" ? Math.max(0, invoice.totalVnd - paidVnd) : 0,
+      standing: invoiceStanding(invoice.totalVnd, paidVnd, invoice.status),
+      daysPastDue: invoice.status === "open" ? daysPastDue(invoice.dueOn, today) : 0,
+      bucket: agingBucket(invoice.dueOn, today),
+    };
   });
 }
 
@@ -450,7 +534,11 @@ export async function sendReceivableReminders(today: IsoDate = todayInVietnam())
   });
   if (due.length === 0) return { invoicesReminded: 0 };
   const entityIds = [...new Set(due.map((row) => row.invoice.entityId))];
-  const finance = await listPeopleHoldingEach("pjm:commercial", entityIds.map((entityId) => ({ entityId })), { includeWildcard: false });
+  const finance = await listPeopleHoldingEach(
+    "pjm:commercial",
+    entityIds.map((entityId) => ({ entityId })),
+    { includeWildcard: false },
+  );
   const financeByEntity = new Map(entityIds.map((entityId, index) => [entityId, finance[index]]));
   await db().transaction(async (tx) => {
     for (const row of due) {
@@ -458,7 +546,8 @@ export async function sendReceivableReminders(today: IsoDate = todayInVietnam())
       const sent = [...new Set([...row.invoice.reminded, ...receivableReminderDays.filter((days) => days <= row.threshold)])].sort((a, b) => a - b);
       await tx.update(schema.crmInvoice).set({ reminded: sent }).where(eq(schema.crmInvoice.id, row.invoice.id));
       const recipients = [...new Set([row.manager, ...(financeByEntity.get(row.invoice.entityId) ?? [])].filter((id): id is string => !!id))];
-      if (recipients.length) await notify({ recipients, kind: "crm.invoice_overdue", params: { invoice: row.invoice.number ?? "", account: row.accountName, days: daysPastDue(row.invoice.dueOn, today) }, link: `/crm/invoices/${row.invoice.id}` }, tx);
+      if (recipients.length)
+        await notify({ recipients, kind: "crm.invoice_overdue", params: { invoice: row.invoice.number ?? "", account: row.accountName, days: daysPastDue(row.invoice.dueOn, today) }, link: `/crm/invoices/${row.invoice.id}` }, tx);
     }
   });
   return { invoicesReminded: due.length };

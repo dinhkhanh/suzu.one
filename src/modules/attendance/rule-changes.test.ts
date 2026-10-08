@@ -12,19 +12,41 @@ import { loadPolicies, type PolicyInput } from "./attendance-policies";
 import { decideAttendanceRuleChange, proposeAttendancePolicy } from "./rule-changes";
 
 const ids = {} as Record<"owner" | "hr", string>;
-const input = (overrides: Partial<PolicyInput> = {}): PolicyInput => ({ entityId: null, validFrom: "2027-01-01", mergeRule: "first_in_last_out", graceLateMinutes: 10, graceEarlyMinutes: 5, roundingMinutes: 0, otMinMinutes: 30, otRequiresApproval: true, duplicateWindowMinutes: 3, breakStart: "12:00", dayBoundary: "04:00", monthlyCorrectionCap: 3, ...overrides });
+const input = (overrides: Partial<PolicyInput> = {}): PolicyInput => ({
+  entityId: null,
+  validFrom: "2027-01-01",
+  mergeRule: "first_in_last_out",
+  graceLateMinutes: 10,
+  graceEarlyMinutes: 5,
+  roundingMinutes: 0,
+  otMinMinutes: 30,
+  otRequiresApproval: true,
+  duplicateWindowMinutes: 3,
+  breakStart: "12:00",
+  dayBoundary: "04:00",
+  monthlyCorrectionCap: 3,
+  ...overrides,
+});
 const graces = async () => (await loadPolicies(db())).map((row) => [row.validFrom, row.graceLateMinutes]);
 
 beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "SZM" }).returning();
-  const person = async (name: string) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id }).returning())[0].id;
+  const person = async (name: string) =>
+    (
+      await db()
+        .insert(schema.person)
+        .values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase()}@suzu.group`, primaryEntityId: entity.id })
+        .returning()
+    )[0].id;
   ids.owner = await person("Owner");
   ids.hr = await person("Hr");
-  await db().insert(schema.roleAssignment).values([
-    { personId: ids.owner, role: "owner", scopeType: "group" },
-    { personId: ids.hr, role: "hr_admin", scopeType: "group" },
-  ]);
+  await db()
+    .insert(schema.roleAssignment)
+    .values([
+      { personId: ids.owner, role: "owner", scopeType: "group" },
+      { personId: ids.hr, role: "hr_admin", scopeType: "group" },
+    ]);
   await db().insert(schema.attendancePolicy).values({ entityId: null, validFrom: "2026-01-01", graceLateMinutes: 0 });
 });
 

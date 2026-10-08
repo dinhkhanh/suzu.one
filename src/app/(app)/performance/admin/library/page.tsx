@@ -25,9 +25,38 @@ export default async function KpiLibraryPage() {
               <details>
                 <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 hover:bg-muted/40">
                   <span className={`font-medium ${kpi.isActive ? "" : "text-muted-foreground line-through"}`}>{kpi.name}</span>
-                  <span className="text-xs text-muted-foreground">{[kpi.code, t(`kpi.unit.${kpi.unit}`), t(`kpi.direction.${kpi.direction}`), t(`kpi.frequency.${kpi.frequency}`), t("library.capFloor", { cap: bpText(format, kpi.capBp), floor: bpText(format, kpi.floorBp) }), ...(isWorkMetric(kpi.workMetric) ? [t("workMetrics.fromWork", { metric: t(`workMetrics.metrics.${kpi.workMetric}`) })] : [])].join(" · ")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {[
+                      kpi.code,
+                      t(`kpi.unit.${kpi.unit}`),
+                      t(`kpi.direction.${kpi.direction}`),
+                      t(`kpi.frequency.${kpi.frequency}`),
+                      t("library.capFloor", { cap: bpText(format, kpi.capBp), floor: bpText(format, kpi.floorBp) }),
+                      ...(isWorkMetric(kpi.workMetric) ? [t("workMetrics.fromWork", { metric: t(`workMetrics.metrics.${kpi.workMetric}`) })] : []),
+                    ].join(" · ")}
+                  </span>
                 </summary>
-                <div className="px-3 pb-3">{manages ? <KpiForm value={{ id: kpi.id, code: kpi.code, name: kpi.name, description: kpi.description, unit: kpi.unit, direction: kpi.direction, frequency: kpi.frequency, capBp: kpi.capBp, floorBp: kpi.floorBp, isActive: kpi.isActive, workMetric: isWorkMetric(kpi.workMetric) ? kpi.workMetric : null }} /> : <p className="text-sm text-muted-foreground">{kpi.description ?? "—"}</p>}</div>
+                <div className="px-3 pb-3">
+                  {manages ? (
+                    <KpiForm
+                      value={{
+                        id: kpi.id,
+                        code: kpi.code,
+                        name: kpi.name,
+                        description: kpi.description,
+                        unit: kpi.unit,
+                        direction: kpi.direction,
+                        frequency: kpi.frequency,
+                        capBp: kpi.capBp,
+                        floorBp: kpi.floorBp,
+                        isActive: kpi.isActive,
+                        workMetric: isWorkMetric(kpi.workMetric) ? kpi.workMetric : null,
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{kpi.description ?? "—"}</p>
+                  )}
+                </div>
               </details>
             </ListItem>
           ))}

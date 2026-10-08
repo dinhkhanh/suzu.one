@@ -13,9 +13,7 @@
   "month": "2026-08",
   "monthStandardDays": 22,
   "unpaidWorkingDays": 10,
-  "segments": [
-    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 1200, "unpaidDaysCenti": 1000, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
-  ],
+  "segments": [{ "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 1200, "unpaidDaysCenti": 1000, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }],
   "timesheet": { "standardDays": 22, "paidDaysCenti": 1200, "unpaidDaysCenti": 1000 },
   "expect": {
     "lines": { "BASE": 16363636, "INS_BHXH_EE": 2400000 },

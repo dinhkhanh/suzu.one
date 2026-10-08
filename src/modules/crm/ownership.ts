@@ -23,9 +23,20 @@ export const CRM_OWNERSHIP_KINDS = ["crm_sales_owner", "crm_deal", "crm_lead", "
 async function list(executor: unknown, personId: string): Promise<ProvidedItem[]> {
   const from = executor as Executor;
   const [owned, deals, leads, followUps] = await Promise.all([
-    from.select({ id: schema.crmAccount.clientId, name: schema.workClient.name }).from(schema.crmAccount).innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmAccount.clientId)).where(and(eq(schema.crmAccount.salesOwnerPersonId, personId), eq(schema.workClient.isActive, true))),
-    from.select({ id: schema.crmDeal.id, code: schema.crmDeal.code, title: schema.crmDeal.title, account: schema.workClient.name }).from(schema.crmDeal).innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId)).where(and(eq(schema.crmDeal.ownerPersonId, personId), eq(schema.crmDeal.status, "open"))),
-    from.select({ id: schema.crmLead.id, company: schema.crmLead.companyName }).from(schema.crmLead).where(and(eq(schema.crmLead.ownerPersonId, personId), inArray(schema.crmLead.status, ["new", "contacted", "qualified"]))),
+    from
+      .select({ id: schema.crmAccount.clientId, name: schema.workClient.name })
+      .from(schema.crmAccount)
+      .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmAccount.clientId))
+      .where(and(eq(schema.crmAccount.salesOwnerPersonId, personId), eq(schema.workClient.isActive, true))),
+    from
+      .select({ id: schema.crmDeal.id, code: schema.crmDeal.code, title: schema.crmDeal.title, account: schema.workClient.name })
+      .from(schema.crmDeal)
+      .innerJoin(schema.workClient, eq(schema.workClient.id, schema.crmDeal.clientId))
+      .where(and(eq(schema.crmDeal.ownerPersonId, personId), eq(schema.crmDeal.status, "open"))),
+    from
+      .select({ id: schema.crmLead.id, company: schema.crmLead.companyName })
+      .from(schema.crmLead)
+      .where(and(eq(schema.crmLead.ownerPersonId, personId), inArray(schema.crmLead.status, ["new", "contacted", "qualified"]))),
     from
       .select({ id: schema.crmActivity.id, subject: schema.crmActivity.subject, dueOn: schema.crmActivity.dueOn, account: schema.workClient.name, lead: schema.crmLead.companyName })
       .from(schema.crmActivity)
@@ -47,9 +58,25 @@ async function gate(executor: unknown, runner: { principal: CrmViewer["principal
   const ids = (kind: string) => items.filter((item) => item.kind === kind).map((item) => item.id);
   const [accounts, deals, leads, followUps] = await Promise.all([
     accountsById(from),
-    ids("crm_deal").length ? from.select({ id: schema.crmDeal.id, entityId: schema.crmDeal.entityId, clientId: schema.crmDeal.clientId }).from(schema.crmDeal).where(inArray(schema.crmDeal.id, ids("crm_deal"))) : [],
-    ids("crm_lead").length ? from.select({ id: schema.crmLead.id, entityId: schema.crmLead.entityId }).from(schema.crmLead).where(inArray(schema.crmLead.id, ids("crm_lead"))) : [],
-    ids("crm_followup").length ? from.select({ id: schema.crmActivity.id, clientId: schema.crmActivity.clientId, leadEntity: schema.crmLead.entityId }).from(schema.crmActivity).leftJoin(schema.crmLead, eq(schema.crmLead.id, schema.crmActivity.leadId)).where(inArray(schema.crmActivity.id, ids("crm_followup"))) : [],
+    ids("crm_deal").length
+      ? from
+          .select({ id: schema.crmDeal.id, entityId: schema.crmDeal.entityId, clientId: schema.crmDeal.clientId })
+          .from(schema.crmDeal)
+          .where(inArray(schema.crmDeal.id, ids("crm_deal")))
+      : [],
+    ids("crm_lead").length
+      ? from
+          .select({ id: schema.crmLead.id, entityId: schema.crmLead.entityId })
+          .from(schema.crmLead)
+          .where(inArray(schema.crmLead.id, ids("crm_lead")))
+      : [],
+    ids("crm_followup").length
+      ? from
+          .select({ id: schema.crmActivity.id, clientId: schema.crmActivity.clientId, leadEntity: schema.crmLead.entityId })
+          .from(schema.crmActivity)
+          .leftJoin(schema.crmLead, eq(schema.crmLead.id, schema.crmActivity.leadId))
+          .where(inArray(schema.crmActivity.id, ids("crm_followup")))
+      : [],
   ]);
   // Who could hold a deal or a lead of an entity: its sellers and sales directors (named grants, and the owner's "*").
   const entityIds = [...new Set([...deals.map((row) => row.entityId), ...leads.map((row) => row.entityId)])];
@@ -85,14 +112,32 @@ async function reassign(tx: unknown, items: readonly ProvidedItem[], fromPersonI
   const t = tx as Tx;
   const ids = (kind: string) => items.filter((item) => item.kind === kind).map((item) => item.id);
   const now = new Date();
-  if (ids("crm_sales_owner").length) await t.update(schema.crmAccount).set({ salesOwnerPersonId: toPersonId, updatedAt: now }).where(and(inArray(schema.crmAccount.clientId, ids("crm_sales_owner")), eq(schema.crmAccount.salesOwnerPersonId, fromPersonId)));
+  if (ids("crm_sales_owner").length)
+    await t
+      .update(schema.crmAccount)
+      .set({ salesOwnerPersonId: toPersonId, updatedAt: now })
+      .where(and(inArray(schema.crmAccount.clientId, ids("crm_sales_owner")), eq(schema.crmAccount.salesOwnerPersonId, fromPersonId)));
   if (ids("crm_deal").length) {
-    await t.update(schema.crmDeal).set({ ownerPersonId: toPersonId, updatedAt: now }).where(and(inArray(schema.crmDeal.id, ids("crm_deal")), eq(schema.crmDeal.ownerPersonId, fromPersonId)));
+    await t
+      .update(schema.crmDeal)
+      .set({ ownerPersonId: toPersonId, updatedAt: now })
+      .where(and(inArray(schema.crmDeal.id, ids("crm_deal")), eq(schema.crmDeal.ownerPersonId, fromPersonId)));
     // A deal's follow-ups go with it.
-    await t.update(schema.crmActivity).set({ ownerPersonId: toPersonId, remindedOn: null, updatedAt: now }).where(and(inArray(schema.crmActivity.dealId, ids("crm_deal")), eq(schema.crmActivity.ownerPersonId, fromPersonId), isNull(schema.crmActivity.doneAt)));
+    await t
+      .update(schema.crmActivity)
+      .set({ ownerPersonId: toPersonId, remindedOn: null, updatedAt: now })
+      .where(and(inArray(schema.crmActivity.dealId, ids("crm_deal")), eq(schema.crmActivity.ownerPersonId, fromPersonId), isNull(schema.crmActivity.doneAt)));
   }
-  if (ids("crm_lead").length) await t.update(schema.crmLead).set({ ownerPersonId: toPersonId, updatedAt: now }).where(and(inArray(schema.crmLead.id, ids("crm_lead")), eq(schema.crmLead.ownerPersonId, fromPersonId)));
-  if (ids("crm_followup").length) await t.update(schema.crmActivity).set({ ownerPersonId: toPersonId, remindedOn: null, updatedAt: now }).where(and(inArray(schema.crmActivity.id, ids("crm_followup")), eq(schema.crmActivity.ownerPersonId, fromPersonId), isNull(schema.crmActivity.doneAt)));
+  if (ids("crm_lead").length)
+    await t
+      .update(schema.crmLead)
+      .set({ ownerPersonId: toPersonId, updatedAt: now })
+      .where(and(inArray(schema.crmLead.id, ids("crm_lead")), eq(schema.crmLead.ownerPersonId, fromPersonId)));
+  if (ids("crm_followup").length)
+    await t
+      .update(schema.crmActivity)
+      .set({ ownerPersonId: toPersonId, remindedOn: null, updatedAt: now })
+      .where(and(inArray(schema.crmActivity.id, ids("crm_followup")), eq(schema.crmActivity.ownerPersonId, fromPersonId), isNull(schema.crmActivity.doneAt)));
   return async () => {
     await Promise.all([ids("crm_sales_owner").length ? invalidateAccountProfiles() : null, invalidateTies(fromPersonId, toPersonId)]);
   };

@@ -54,7 +54,9 @@ export default async function RequestsPage() {
       </TableCell>
       <TableCell kind="money">{row.amount === null ? <span className="text-faint">—</span> : money(row.amount)}</TableCell>
       <TableCell>
-        <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
+        <Badge dot variant={statusTone(row.status)}>
+          {tApprovals(`status.${row.status}` as "status.pending")}
+        </Badge>
       </TableCell>
       <TableCell kind="time">
         <RequestAge createdAt={row.createdAt} decidedAt={row.decidedAt} />
@@ -120,7 +122,9 @@ export default async function RequestsPage() {
                 </span>
                 <span className="line-clamp-2 text-sm font-medium">{row.summary || name(row)}</span>
                 <span className="flex items-center justify-between gap-2 text-xs">
-                  <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {tApprovals(`status.${row.status}` as "status.pending")}
+                  </Badge>
                   {row.amount !== null ? <span className="font-mono tabular-nums">{money(row.amount)}</span> : null}
                 </span>
               </ListItem>
@@ -148,7 +152,9 @@ export default async function RequestsPage() {
                     <TableCell className="font-medium">{locale === "en" ? row.nameEn : row.nameVi}</TableCell>
                     <TableCell kind="number">{row.open}</TableCell>
                     <TableCell kind="number">{row.decided}</TableCell>
-                    <TableCell kind="time" className="text-muted-foreground">{row.medianHours === null ? t("tracking.noMedian") : t("tracking.median", { hours: row.medianHours })}</TableCell>
+                    <TableCell kind="time" className="text-muted-foreground">
+                      {row.medianHours === null ? t("tracking.noMedian") : t("tracking.median", { hours: row.medianHours })}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

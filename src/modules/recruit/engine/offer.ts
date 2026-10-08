@@ -109,8 +109,7 @@ export function offerProblems(draft: OfferDraft, today: IsoDate, limits: OfferLe
 export const offerTotalVnd = (offer: { baseSalaryVnd: number; allowancesVnd: number }): number => offer.baseSalaryVnd + offer.allowancesVnd;
 
 /** What the probation months are actually paid, rounded to the đồng the way a payslip would be. */
-export const probationMonthlyVnd = (offer: { baseSalaryVnd: number; allowancesVnd: number; probationSalaryPercent: number }): number =>
-  Math.round((offerTotalVnd(offer) * offer.probationSalaryPercent) / 100);
+export const probationMonthlyVnd = (offer: { baseSalaryVnd: number; allowancesVnd: number; probationSalaryPercent: number }): number => Math.round((offerTotalVnd(offer) * offer.probationSalaryPercent) / 100);
 
 /** The default last day an offer stands: a week, but never past the day the job starts. */
 export function defaultExpiry(startDate: IsoDate, today: IsoDate, validDays: number): IsoDate {

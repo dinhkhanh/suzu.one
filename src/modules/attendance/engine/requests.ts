@@ -19,7 +19,11 @@ export function windowOf(from: string, to: string): { from: number; to: number; 
 
 // ── Correction cap (FR-ATT-10) ──────────────────────────────────────────────────────────────
 
-export type CorrectionCapInput = { /** Pending and approved corrections for days of the same month, this one not included. */ usedThisMonth: number; /** null or 0 = no cap. */ cap: number | null; /** HR filing on someone's behalf is not held to the cap. */ filedByHr: boolean };
+export type CorrectionCapInput = {
+  /** Pending and approved corrections for days of the same month, this one not included. */ usedThisMonth: number;
+  /** null or 0 = no cap. */ cap: number | null;
+  /** HR filing on someone's behalf is not held to the cap. */ filedByHr: boolean;
+};
 
 export function correctionAllowed(input: CorrectionCapInput): { allowed: boolean; remaining: number | null } {
   if (!input.cap || input.cap <= 0) return { allowed: true, remaining: null };

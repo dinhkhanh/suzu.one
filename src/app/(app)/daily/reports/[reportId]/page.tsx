@@ -45,7 +45,15 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
             {mine ? t("index.title") : t("board.title")}
           </Link>
         }
-        title={mine ? t("report.title") : <RecordLink kind="person" id={report.personId}>{subject.fullName}</RecordLink>}
+        title={
+          mine ? (
+            t("report.title")
+          ) : (
+            <RecordLink kind="person" id={report.personId}>
+              {subject.fullName}
+            </RecordLink>
+          )
+        }
         description={format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         actions={
           editable ? (
@@ -56,7 +64,13 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
         }
       >
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
+          {report.status === "submitted" ? (
+            <Badge dot variant={report.late ? "warning" : "success"}>
+              {report.late ? t("late") : t("submitted")}
+            </Badge>
+          ) : (
+            <Badge variant="outline">{t("draft")}</Badge>
+          )}
           {report.revisions.length > 0 ? <Badge variant="outline">{t("report.edited")}</Badge> : null}
           {report.submittedAt ? <span className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(report.submittedAt, { dateStyle: "short", timeStyle: "short" }) })}</span> : null}
           <span className="font-mono text-xs text-muted-foreground tabular-nums">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>

@@ -167,7 +167,11 @@ export function ProposePolicyForm({ entities, current }: { entities: EntityOptio
   const { onSubmit, pending, errorKey, fieldErrors, saved } = useActionForm(proposePolicyAction);
   const choice = <Key extends "prorationBasis" | "overtimeBase" | "simplePitTreatment" | "payDayShift">(name: Key, options: readonly PayrollPolicyValue[Key][], extra: { value?: string; onChange?: (value: string) => void } = {}) => (
     <Field name={`value.${name}`} label={t(`fields.${name}` as "fields.payDay")}>
-      <Select id={`value.${name}`} name={`value.${name}`} {...(extra.value !== undefined ? { value: extra.value, onChange: (event: React.ChangeEvent<HTMLSelectElement>) => extra.onChange?.(event.target.value) } : { defaultValue: start[name] })}>
+      <Select
+        id={`value.${name}`}
+        name={`value.${name}`}
+        {...(extra.value !== undefined ? { value: extra.value, onChange: (event: React.ChangeEvent<HTMLSelectElement>) => extra.onChange?.(event.target.value) } : { defaultValue: start[name] })}
+      >
         {options.map((option) => (
           <option key={option} value={option}>
             {t(`options.${name}.${option}` as "options.prorationBasis.working_days")}

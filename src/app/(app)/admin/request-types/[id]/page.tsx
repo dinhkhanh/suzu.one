@@ -56,7 +56,9 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
         title={
           <span className="flex items-center gap-3">
             <span className="min-w-0 truncate">{type.nameVi}</span>
-            <Badge dot variant={type.active ? "success" : "outline"}>{type.active ? t("on") : t("off")}</Badge>
+            <Badge dot variant={type.active ? "success" : "outline"}>
+              {type.active ? t("on") : t("off")}
+            </Badge>
           </span>
         }
         description={
@@ -66,14 +68,27 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
         }
       />
 
-      <TypeDesigner draft={{ ...type, form: type.form, slaEscalateTo: type.slaEscalateTo ?? null }} entities={manageable} canGroup={can(user.principal, "org:manage", {})} catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))} />
+      <TypeDesigner
+        draft={{ ...type, form: type.form, slaEscalateTo: type.slaEscalateTo ?? null }}
+        entities={manageable}
+        canGroup={can(user.principal, "org:manage", {})}
+        catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))}
+      />
 
       <Section title={t("flow")} count={mine.length}>
         <p className="-mt-1 text-sm text-muted-foreground">{t("flowHint")}</p>
         {mine.map((flow) => (
           <Card key={flow.id}>
             <CardHeader>
-              <CardTitle>{flow.entityName ? <RecordLink kind="entity" id={flow.entityId}>{flow.entityName}</RecordLink> : t("wholeGroup")}</CardTitle>
+              <CardTitle>
+                {flow.entityName ? (
+                  <RecordLink kind="entity" id={flow.entityId}>
+                    {flow.entityName}
+                  </RecordLink>
+                ) : (
+                  t("wholeGroup")
+                )}
+              </CardTitle>
               <CardDescription>{flow.active ? t("flowOn") : t("off")}</CardDescription>
             </CardHeader>
             <CardContent>

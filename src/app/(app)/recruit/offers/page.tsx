@@ -53,13 +53,17 @@ export default async function OffersPage() {
               </TableCell>
               <TableCell className="max-w-56 truncate">{row.positionName}</TableCell>
               <TableCell kind="id">
-                <RecordLink kind="opening" id={row.openingId}>{row.openingCode}</RecordLink>
+                <RecordLink kind="opening" id={row.openingId}>
+                  {row.openingCode}
+                </RecordLink>
               </TableCell>
               <TableCell kind="id">{row.number}</TableCell>
               <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
               <TableCell>
                 <span className="flex items-center gap-1.5">
-                  <Badge dot variant={statusTone(row.status)}>{t(`statuses.${row.status}`)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`statuses.${row.status}`)}
+                  </Badge>
                   {row.hiredPersonId ? <Badge variant="outline">{t("statuses.converted")}</Badge> : null}
                 </span>
               </TableCell>

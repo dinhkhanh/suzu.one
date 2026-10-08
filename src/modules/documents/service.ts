@@ -118,8 +118,7 @@ const peopleWord = createTranslator({ locale: "vi", messages: vi, namespace: "pe
 const documentWord = createTranslator({ locale: "vi", messages: vi, namespace: "documents" });
 
 /** "Phòng Video · Dựng phim · Senior" — a placement in words, for a decision's from → to. */
-const placementWords = (placement: PlacementWords | null) =>
-  placement ? [placement.entity, placement.position, jobTitle(peopleWord, placement), placement.department, placement.team].filter(Boolean).join(" · ") : "";
+const placementWords = (placement: PlacementWords | null) => (placement ? [placement.entity, placement.position, jobTitle(peopleWord, placement), placement.department, placement.team].filter(Boolean).join(" · ") : "");
 
 /**
  * The letterhead of a paper: the entity's own name, address, tax code and representative win over
@@ -298,7 +297,12 @@ async function storePaper(viewer: { principal: Principal; personId: string }, ro
  * standing without its paper, and being the highest, it is simply taken by the next one.
  * `eventId` ties the paper to the lifecycle event it was issued for (a probation pass, a renewal).
  */
-export async function generateDocument(viewer: { principal: Principal; personId: string }, templateId: string, subjectPersonId: string, options: { eventId?: string | null } = {}): Promise<{ document: GeneratedDocumentRow; rendered: RenderedDocument }> {
+export async function generateDocument(
+  viewer: { principal: Principal; personId: string },
+  templateId: string,
+  subjectPersonId: string,
+  options: { eventId?: string | null } = {},
+): Promise<{ document: GeneratedDocumentRow; rendered: RenderedDocument }> {
   const template = await findTemplate(templateId);
   if (!template || !template.isActive) throw new ActionError("template_not_found");
   const subject = await getPersonTarget(subjectPersonId);
@@ -313,7 +317,19 @@ export async function generateDocument(viewer: { principal: Principal; personId:
     const number = await nextNumber(tx, entityRow?.code ?? "SZ", template.kind, Number(issuedOn.slice(0, 4)));
     const [inserted] = await tx
       .insert(schema.generatedDocument)
-      .values({ templateId: template.id, templateCode: template.code, templateVersion: template.version, kind: template.kind, tier: template.tier, subjectPersonId, entityId, number, title: template.name, eventId: options.eventId ?? null, generatedByPersonId: viewer.personId })
+      .values({
+        templateId: template.id,
+        templateCode: template.code,
+        templateVersion: template.version,
+        kind: template.kind,
+        tier: template.tier,
+        subjectPersonId,
+        entityId,
+        number,
+        title: template.name,
+        eventId: options.eventId ?? null,
+        generatedByPersonId: viewer.personId,
+      })
       .returning();
     return inserted;
   });
@@ -414,19 +430,16 @@ export async function listIssuedDocuments(viewer: Principal, filter: RegisterFil
     .innerJoin(schema.person, eq(schema.person.id, schema.generatedDocument.subjectPersonId))
     .leftJoin(author, eq(author.id, schema.generatedDocument.generatedByPersonId))
     .innerJoin(schema.documentTemplate, eq(schema.documentTemplate.id, schema.generatedDocument.templateId))
-    .where(
-      and(
-        filter.kind ? eq(schema.generatedDocument.kind, filter.kind) : undefined,
-        filter.year ? sql`extract(year from ${schema.generatedDocument.createdAt} at time zone 'Asia/Ho_Chi_Minh') = ${filter.year}` : undefined,
-      ),
-    )
+    .where(and(filter.kind ? eq(schema.generatedDocument.kind, filter.kind) : undefined, filter.year ? sql`extract(year from ${schema.generatedDocument.createdAt} at time zone 'Asia/Ho_Chi_Minh') = ${filter.year}` : undefined))
     .orderBy(desc(schema.generatedDocument.createdAt))
     .limit(options.limit ?? REGISTER_LIMIT);
   const subjects = await getPersonTargets([...new Set(rows.map((row) => row.document.subjectPersonId))]);
-  return rows.filter((row) => {
-    const subject = subjects.get(row.document.subjectPersonId);
-    return !!subject && canOpenDocument(viewer, subject, row.document.tier);
-  }).map(toListRow);
+  return rows
+    .filter((row) => {
+      const subject = subjects.get(row.document.subjectPersonId);
+      return !!subject && canOpenDocument(viewer, subject, row.document.tier);
+    })
+    .map(toListRow);
 }
 
 export async function countDocuments(executor: Executor = db()): Promise<number> {
@@ -474,4 +487,3 @@ function threeDigits(value: number, padHundreds: boolean): string {
   }
   return parts.join(" ");
 }
-

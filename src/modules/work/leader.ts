@@ -15,7 +15,11 @@ const open = inArray(schema.task.status, ["todo", "in_progress"]);
 const notInTriage = or(isNull(schema.workTask.triageStatus), notInArray(schema.workTask.triageStatus, ["pending", "snoozed"]));
 
 export type LeaderTask = TaskListItem & { stateName: string; category: StateCategory; projectName: string | null; risk: Risk; mine: "requested" | "led" };
-export type LeaderView = { people: { personId: string | null; name: string | null; tasks: LeaderTask[]; counts: Record<"todo" | "in_progress" | "in_review", number>; overdue: number; atRisk: number; blocked: number }[]; totals: { open: number; overdue: number; atRisk: number; blocked: number }; /** How many tasks are on the page when the limit cut the list; null when all of them are. */ shown: number | null };
+export type LeaderView = {
+  people: { personId: string | null; name: string | null; tasks: LeaderTask[]; counts: Record<"todo" | "in_progress" | "in_review", number>; overdue: number; atRisk: number; blocked: number }[];
+  totals: { open: number; overdue: number; atRisk: number; blocked: number };
+  /** How many tasks are on the page when the limit cut the list; null when all of them are. */ shown: number | null;
+};
 
 /** The most the leader's view lists; past it, the earliest due come first and the page says so. */
 export const LEADER_LIMIT = 1000;
@@ -33,14 +37,38 @@ export async function getLeaderView(viewer: WorkViewer, today: IsoDate): Promise
   if (items.length === 0) return { people: [], totals: NO_TOTALS, shown: null };
 
   const [states, projects, requested] = await Promise.all([
-    db().select({ id: schema.workState.id, name: schema.workState.name, category: schema.workState.category }).from(schema.workState).where(inArray(schema.workState.id, [...new Set(items.map((item) => item.stateId))])),
-    db().select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProject).where(inArray(schema.workProject.id, [...new Set(items.map((item) => item.projectId).filter((id): id is string => !!id))].concat("00000000-0000-0000-0000-000000000000"))),
-    db().select({ id: schema.task.id }).from(schema.task).where(and(inArray(schema.task.id, items.map((item) => item.id)), asked)),
+    db()
+      .select({ id: schema.workState.id, name: schema.workState.name, category: schema.workState.category })
+      .from(schema.workState)
+      .where(inArray(schema.workState.id, [...new Set(items.map((item) => item.stateId))])),
+    db()
+      .select({ id: schema.workProject.id, name: schema.workProject.name })
+      .from(schema.workProject)
+      .where(inArray(schema.workProject.id, [...new Set(items.map((item) => item.projectId).filter((id): id is string => !!id))].concat("00000000-0000-0000-0000-000000000000"))),
+    db()
+      .select({ id: schema.task.id })
+      .from(schema.task)
+      .where(
+        and(
+          inArray(
+            schema.task.id,
+            items.map((item) => item.id),
+          ),
+          asked,
+        ),
+      ),
   ]);
   const tasks: LeaderTask[] = items.map((item) => {
     const state = states.find((row) => row.id === item.stateId);
     const category = (state?.category ?? "todo") as StateCategory;
-    return { ...item, stateName: state?.name ?? "", category, projectName: projects.find((project) => project.id === item.projectId)?.name ?? null, risk: riskOf({ category, dueDate: item.dueDate, blockedBy: item.blockedBy }, today), mine: requested.some((row) => row.id === item.id) ? "requested" : "led" };
+    return {
+      ...item,
+      stateName: state?.name ?? "",
+      category,
+      projectName: projects.find((project) => project.id === item.projectId)?.name ?? null,
+      risk: riskOf({ category, dueDate: item.dueDate, blockedBy: item.blockedBy }, today),
+      mine: requested.some((row) => row.id === item.id) ? "requested" : "led",
+    };
   });
 
   // A task someone flagged blocked (FR-PJM-28) comes first: it needs the leader, not the doer.
@@ -49,7 +77,11 @@ export async function getLeaderView(viewer: WorkViewer, today: IsoDate): Promise
     personId,
     name: own[0].assigneeName,
     tasks: own.sort((a, b) => rank(a) - rank(b) || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999")),
-    counts: { todo: own.filter((task) => task.category === "backlog" || task.category === "todo").length, in_progress: own.filter((task) => task.category === "in_progress").length, in_review: own.filter((task) => task.category === "in_review").length },
+    counts: {
+      todo: own.filter((task) => task.category === "backlog" || task.category === "todo").length,
+      in_progress: own.filter((task) => task.category === "in_progress").length,
+      in_review: own.filter((task) => task.category === "in_review").length,
+    },
     overdue: own.filter((task) => task.risk === "overdue").length,
     atRisk: own.filter((task) => task.risk === "at_risk").length,
     blocked: own.filter((task) => task.blocker).length,
@@ -121,13 +153,34 @@ export async function nudgeTask(taskId: string, actor: { personId: string; fullN
     if (!assigneePersonId || assigneePersonId === actor.personId) throw new ActionError("nudge_nobody");
     const [fresh] = await tx.insert(schema.workReminderSent).values({ taskId, personId: assigneePersonId, kind: "nudge", sentOn: today }).onConflictDoNothing().returning();
     if (!fresh) throw new ActionError("nudge_already_sent");
-    await notify({ recipients: [assigneePersonId], kind: "tasks.nudge", params: { name: actor.fullName, key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, dueDate: loaded.task.dueDate ? loaded.task.dueDate.split("-").reverse().join("/") : "none" }, link: `/work/tasks/${taskId}` }, tx);
+    await notify(
+      {
+        recipients: [assigneePersonId],
+        kind: "tasks.nudge",
+        params: { name: actor.fullName, key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, dueDate: loaded.task.dueDate ? loaded.task.dueDate.split("-").reverse().join("/") : "none" },
+        link: `/work/tasks/${taskId}`,
+      },
+      tx,
+    );
     await logActivity(tx, taskId, actor.personId, [{ type: "nudged" }]);
     return { loaded, assigneePersonId };
   });
 }
 
-export type MyWorkItem = { id: string; key: string; title: string; status: "todo" | "in_progress" | "done" | "cancelled"; stateName: string; dueDate: string | null; priority: number | null; projectId: string | null; projectName: string | null; reviewStatus: string; blockedBy: number; /** The reason of the open blocker raised on it (FR-PJM-28). */ blocker: string | null };
+export type MyWorkItem = {
+  id: string;
+  key: string;
+  title: string;
+  status: "todo" | "in_progress" | "done" | "cancelled";
+  stateName: string;
+  dueDate: string | null;
+  priority: number | null;
+  projectId: string | null;
+  projectName: string | null;
+  reviewStatus: string;
+  blockedBy: number;
+  /** The reason of the open blocker raised on it (FR-PJM-28). */ blocker: string | null;
+};
 
 /** The signed-in person's open work tasks, for "My work". */
 export async function listMyWorkItems(personId: string): Promise<MyWorkItem[]> {

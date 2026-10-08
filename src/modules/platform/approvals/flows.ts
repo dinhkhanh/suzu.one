@@ -30,7 +30,12 @@ export const approverRuleSchema = z.discriminatedUnion("rule", [
 // Also used by the request builder: a form field's "shown only when…" is the same idea, so a
 // designer learns one shape (approvals/engine/flow.ts).
 export const conditionSchema = z.object({
-  field: z.string().trim().min(1).max(60).regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+  field: z
+    .string()
+    .trim()
+    .min(1)
+    .max(60)
+    .regex(/^[A-Za-z][A-Za-z0-9_]*$/),
   op: z.enum(["eq", "ne", "gt", "gte", "lt", "lte", "in"]),
   value: z.union([z.string().max(200), z.number(), z.boolean(), z.array(z.union([z.string().max(200), z.number()])).max(50)]),
 });
@@ -39,7 +44,12 @@ export const flowDefinitionSchema = z.object({
   steps: z
     .array(
       z.object({
-        key: z.string().trim().min(1).max(40).regex(/^[a-z][a-z0-9_]*$/),
+        key: z
+          .string()
+          .trim()
+          .min(1)
+          .max(40)
+          .regex(/^[a-z][a-z0-9_]*$/),
         mode: z.enum(["any", "all"]),
         approvers: z.array(approverRuleSchema).min(1).max(6),
         condition: conditionSchema.optional(),
@@ -103,7 +113,10 @@ export async function saveFlow(input: SaveFlowInput, actorPersonId: string): Pro
   if (problems.length > 0) throw new ActionError(`flow_${problems[0]}`);
   const named = input.definition.steps.flatMap((step) => step.approvers.flatMap((rule) => (rule.rule === "person" ? [rule.personId] : [])));
   if (named.length > 0) {
-    const found = await db().select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, named), eq(schema.person.status, "active")));
+    const found = await db()
+      .select({ id: schema.person.id })
+      .from(schema.person)
+      .where(and(inArray(schema.person.id, named), eq(schema.person.status, "active")));
     if (found.length !== new Set(named).size) throw new ActionError("flow_person_unknown");
   }
   const saved = await db().transaction(async (tx) => {
@@ -116,7 +129,10 @@ export async function saveFlow(input: SaveFlowInput, actorPersonId: string): Pro
     const values = { definition: input.definition, active: input.active, updatedByPersonId: actorPersonId, updatedAt: new Date() };
     const [after] = before
       ? await tx.update(schema.approvalFlow).set(values).where(eq(schema.approvalFlow.id, before.id)).returning()
-      : await tx.insert(schema.approvalFlow).values({ requestType: input.requestType, entityId: input.entityId, ...values }).returning();
+      : await tx
+          .insert(schema.approvalFlow)
+          .values({ requestType: input.requestType, entityId: input.entityId, ...values })
+          .returning();
     return { before: before ?? null, after };
   });
   await invalidateApprovalFlows();

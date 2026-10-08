@@ -18,7 +18,20 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { missingRequired, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
 import { templateProblems } from "./engine/review-template";
-import { laterStage, releasable, type RatingPoint, type ReviewAnswers, type ReviewCycleKind, type ReviewCycleStatus, type ReviewFormKind, type ReviewFormShape, type ReviewFormStatus, type ReviewSection, type ReviewStage, templateSuits } from "./enums";
+import {
+  laterStage,
+  releasable,
+  type RatingPoint,
+  type ReviewAnswers,
+  type ReviewCycleKind,
+  type ReviewCycleStatus,
+  type ReviewFormKind,
+  type ReviewFormShape,
+  type ReviewFormStatus,
+  type ReviewSection,
+  type ReviewStage,
+  templateSuits,
+} from "./enums";
 import { type Directory, loadDirectory } from "./people";
 import type { PersonContext } from "./policy";
 import type { ReviewParties } from "./review-policy";
@@ -65,7 +78,10 @@ export async function saveReviewTemplate(templateId: string | null, input: Templ
   checkTemplate(input);
   const values = { name: input.name, nameEn: input.nameEn, description: input.description, kinds: input.kinds, sections: input.sections, ratingScale: input.ratingScale, isActive: input.isActive, updatedAt: new Date() };
   if (!templateId) {
-    const [after] = await db().insert(schema.reviewTemplate).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = await db()
+      .insert(schema.reviewTemplate)
+      .values({ ...values, createdByPersonId: actorPersonId })
+      .returning();
     await invalidate(TEMPLATES_CACHE);
     return { before: null, after };
   }
@@ -133,7 +149,10 @@ export async function saveReviewCycle(cycleId: string | null, input: CycleInput,
   if (!templateSuits(template, input.kind)) throw new ActionError("review_template_wrong_kind");
   const values = { ...input, updatedAt: new Date() };
   if (!cycleId) {
-    const [after] = await db().insert(schema.reviewCycle).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    const [after] = await db()
+      .insert(schema.reviewCycle)
+      .values({ ...values, createdByPersonId: actorPersonId })
+      .returning();
     return { before: null, after };
   }
   const before = await findReviewCycle(cycleId);
@@ -181,11 +200,7 @@ export async function launchReviewCycle(cycleId: string, actorPersonId: string, 
         .values(people.map((row) => ({ cycleId, personId: row.personId, entityId: row.entityId ?? null, departmentId: directory.get(row.personId)?.departmentId ?? null, managerPersonId: row.managerId ?? null })))
         .onConflictDoNothing();
     }
-    const [after] = await tx
-      .update(schema.reviewCycle)
-      .set({ status: "active", formSnapshot: shape, launchedAt: new Date(), launchedByPersonId: actorPersonId, updatedAt: new Date() })
-      .where(eq(schema.reviewCycle.id, cycleId))
-      .returning();
+    const [after] = await tx.update(schema.reviewCycle).set({ status: "active", formSnapshot: shape, launchedAt: new Date(), launchedByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.reviewCycle.id, cycleId)).returning();
     // Anybody HR put in by hand before the launch is told too, so read the cycle's people back whole.
     const everyone = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.cycleId, cycleId));
     return { cycle: after, participants: everyone.length, enrolled: everyone.map((row) => enrolledOf(row, after)) };
@@ -269,7 +284,13 @@ export type OwnDueDates = { selfDueOn: IsoDate | null; managerDueOn: IsoDate | n
  * want to wait for. Their own deadlines, if given, win over the cycle's; a rolling cycle's people
  * all have their own. Only into a cycle that is still being built or written.
  */
-export async function addParticipant(cycleId: string, personId: string, directory: Directory, executor: Executor = db(), due: OwnDueDates = { selfDueOn: null, managerDueOn: null }): Promise<{ participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
+export async function addParticipant(
+  cycleId: string,
+  personId: string,
+  directory: Directory,
+  executor: Executor = db(),
+  due: OwnDueDates = { selfDueOn: null, managerDueOn: null },
+): Promise<{ participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
   const row = directory.get(personId);
   if (!row) throw new ActionError("review_person_not_found");
   const cycle = await findReviewCycle(cycleId, executor);
@@ -334,7 +355,12 @@ export type SaveFormInput = { participantId: string; kind: ReviewFormKind; answe
  * has had their say** — either the self review is in, or its due date has passed. Nobody's
  * assessment is written over the top of a self review they were never given time to write.
  */
-export async function saveReviewForm(input: SaveFormInput, authorPersonId: string, today: IsoDate = todayInVietnam(), executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewFormRow | null; after: ReviewFormRow; participant: ReviewParticipantRow }> {
+export async function saveReviewForm(
+  input: SaveFormInput,
+  authorPersonId: string,
+  today: IsoDate = todayInVietnam(),
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: ReviewFormRow | null; after: ReviewFormRow; participant: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const found = await findParticipant(input.participantId, tx);
     if (!found) throw new ActionError("review_participant_not_found");
@@ -374,16 +400,18 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
     };
     const after = before
       ? (await tx.update(schema.reviewForm).set(values).where(eq(schema.reviewForm.id, before.id)).returning())[0]
-      : (await tx.insert(schema.reviewForm).values({ ...values, cycleId: cycle.id, participantId: input.participantId, subjectPersonId: participant.personId, authorPersonId, kind: input.kind }).returning())[0];
+      : (
+          await tx
+            .insert(schema.reviewForm)
+            .values({ ...values, cycleId: cycle.id, participantId: input.participantId, subjectPersonId: participant.personId, authorPersonId, kind: input.kind })
+            .returning()
+        )[0];
 
     // The stage follows what has actually been submitted; it never goes backwards.
     let stage = participant.stage as ReviewStage;
     if (input.submit && input.kind === "self") stage = laterStage(stage, "self_done");
     if (input.submit && input.kind === "manager") stage = laterStage(stage, "manager_done");
-    const updated =
-      stage === participant.stage
-        ? participant
-        : (await tx.update(schema.reviewParticipant).set({ stage, updatedAt: new Date() }).where(eq(schema.reviewParticipant.id, participant.id)).returning())[0];
+    const updated = stage === participant.stage ? participant : (await tx.update(schema.reviewParticipant).set({ stage, updatedAt: new Date() }).where(eq(schema.reviewParticipant.id, participant.id)).returning())[0];
     return { before, after, participant: updated };
   });
 }
@@ -393,7 +421,12 @@ export async function saveReviewForm(input: SaveFormInput, authorPersonId: strin
  * is kept on it for the author to read. Only while the review is being written — once it has been
  * calibrated or released the figure is settled. The stage follows what is still submitted.
  */
-export async function returnReviewForm(formId: string, reason: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewFormRow; after: ReviewFormRow; participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
+export async function returnReviewForm(
+  formId: string,
+  reason: string,
+  actorPersonId: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: ReviewFormRow; after: ReviewFormRow; participant: ReviewParticipantRow; cycle: ReviewCycleRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewForm).where(eq(schema.reviewForm.id, formId)).limit(1).for("update");
     if (!before) throw new ActionError("review_form_not_found");
@@ -437,7 +470,12 @@ async function assertReleasable(tx: Tx, participant: ReviewParticipantRow, actor
  * form is left exactly as written — the rating on it is their proposal — and what moves is the
  * figure the final yearly result reads (FR-PRF-09); the note is the record of the difference.
  */
-export async function calibrateParticipant(participantId: string, input: { reviewScoreBp: number | null; note: string }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
+export async function calibrateParticipant(
+  participantId: string,
+  input: { reviewScoreBp: number | null; note: string },
+  actorPersonId: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
@@ -482,7 +520,13 @@ export async function releaseParticipant(participantId: string, actorPersonId: s
  * The sign-off conversation (FR-PRF-03): after release, the manager sits down with the person and
  * records that it happened — the day, and a note of what was agreed. Recorded once.
  */
-export async function recordSignOff(participantId: string, input: { heldOn: IsoDate; note: string | null }, actorPersonId: string, today: IsoDate = todayInVietnam(), executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
+export async function recordSignOff(
+  participantId: string,
+  input: { heldOn: IsoDate; note: string | null },
+  actorPersonId: string,
+  today: IsoDate = todayInVietnam(),
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: ReviewParticipantRow; after: ReviewParticipantRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewParticipant).where(eq(schema.reviewParticipant.id, participantId)).limit(1).for("update");
     if (!before) throw new ActionError("review_participant_not_found");
@@ -543,7 +587,12 @@ export async function peerCandidates(participantId: string, executor: Executor =
 }
 
 const approvedCount = async (participantId: string, executor: Executor): Promise<number> =>
-  (await executor.select({ id: schema.reviewPeerNomination.id }).from(schema.reviewPeerNomination).where(and(eq(schema.reviewPeerNomination.participantId, participantId), eq(schema.reviewPeerNomination.status, "approved")))).length;
+  (
+    await executor
+      .select({ id: schema.reviewPeerNomination.id })
+      .from(schema.reviewPeerNomination)
+      .where(and(eq(schema.reviewPeerNomination.participantId, participantId), eq(schema.reviewPeerNomination.status, "approved")))
+  ).length;
 
 export type NominateResult = { nomination: ReviewPeerNominationRow; notify: boolean };
 
@@ -581,7 +630,12 @@ export async function nominatePeer(input: { participantId: string; peerPersonId:
 }
 
 /** The manager's (or HR's) answer to a nomination the person made. */
-export async function decideNomination(nominationId: string, decision: "approve" | "decline", actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewPeerNominationRow; after: ReviewPeerNominationRow; cycle: ReviewCycleRow }> {
+export async function decideNomination(
+  nominationId: string,
+  decision: "approve" | "decline",
+  actorPersonId: string,
+  executor: ReturnType<typeof db> = db(),
+): Promise<{ before: ReviewPeerNominationRow; after: ReviewPeerNominationRow; cycle: ReviewCycleRow }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId)).limit(1).for("update");
     if (!before) throw new ActionError("review_nomination_not_found");
@@ -608,7 +662,11 @@ export async function withdrawNomination(nominationId: string, executor: ReturnT
   return executor.transaction(async (tx) => {
     const [row] = await tx.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId)).limit(1).for("update");
     if (!row) throw new ActionError("review_nomination_not_found");
-    const [form] = await tx.select({ id: schema.reviewForm.id }).from(schema.reviewForm).where(and(eq(schema.reviewForm.participantId, row.participantId), eq(schema.reviewForm.kind, "peer"), eq(schema.reviewForm.authorPersonId, row.peerPersonId))).limit(1);
+    const [form] = await tx
+      .select({ id: schema.reviewForm.id })
+      .from(schema.reviewForm)
+      .where(and(eq(schema.reviewForm.participantId, row.participantId), eq(schema.reviewForm.kind, "peer"), eq(schema.reviewForm.authorPersonId, row.peerPersonId)))
+      .limit(1);
     if (form) throw new ActionError("review_nomination_has_form");
     await tx.delete(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId));
     return row;
@@ -631,7 +689,16 @@ export async function listPeerInvitations(personId: string, executor: Executor =
     executor
       .select({ participantId: schema.reviewForm.participantId, status: schema.reviewForm.status })
       .from(schema.reviewForm)
-      .where(and(eq(schema.reviewForm.authorPersonId, personId), eq(schema.reviewForm.kind, "peer"), inArray(schema.reviewForm.participantId, rows.map((row) => row.participant.id)))),
+      .where(
+        and(
+          eq(schema.reviewForm.authorPersonId, personId),
+          eq(schema.reviewForm.kind, "peer"),
+          inArray(
+            schema.reviewForm.participantId,
+            rows.map((row) => row.participant.id),
+          ),
+        ),
+      ),
     loadDirectory(executor),
   ]);
   return rows.map(({ nomination, participant, cycle }) => {
@@ -694,7 +761,16 @@ export async function releaseCycle(cycleId: string, actorPersonId: string, execu
     const forms = await tx
       .select({ participantId: schema.reviewForm.participantId, overallRatingBp: schema.reviewForm.overallRatingBp })
       .from(schema.reviewForm)
-      .where(and(inArray(schema.reviewForm.participantId, participants.map((participant) => participant.id)), eq(schema.reviewForm.kind, "manager"), eq(schema.reviewForm.status, "submitted")));
+      .where(
+        and(
+          inArray(
+            schema.reviewForm.participantId,
+            participants.map((participant) => participant.id),
+          ),
+          eq(schema.reviewForm.kind, "manager"),
+          eq(schema.reviewForm.status, "submitted"),
+        ),
+      );
     const managerRating = new Map<string, number | null>();
     for (const form of forms) if (!managerRating.has(form.participantId)) managerRating.set(form.participantId, form.overallRatingBp);
 
@@ -751,7 +827,12 @@ async function toLines(rows: { participant: ReviewParticipantRow; cycle: ReviewC
   const forms = await executor
     .select({ participantId: schema.reviewForm.participantId, kind: schema.reviewForm.kind, status: schema.reviewForm.status, authorPersonId: schema.reviewForm.authorPersonId })
     .from(schema.reviewForm)
-    .where(inArray(schema.reviewForm.participantId, rows.map((row) => row.participant.id)));
+    .where(
+      inArray(
+        schema.reviewForm.participantId,
+        rows.map((row) => row.participant.id),
+      ),
+    );
   return rows.map(({ participant, cycle }) => {
     const mine = forms.filter((form) => form.participantId === participant.id);
     return {
@@ -776,11 +857,17 @@ async function toLines(rows: { participant: ReviewParticipantRow; cycle: ReviewC
   });
 }
 
-const joined = (executor: Executor) => executor.select({ participant: schema.reviewParticipant, cycle: schema.reviewCycle }).from(schema.reviewParticipant).innerJoin(schema.reviewCycle, eq(schema.reviewCycle.id, schema.reviewParticipant.cycleId));
+const joined = (executor: Executor) =>
+  executor.select({ participant: schema.reviewParticipant, cycle: schema.reviewCycle }).from(schema.reviewParticipant).innerJoin(schema.reviewCycle, eq(schema.reviewCycle.id, schema.reviewParticipant.cycleId));
 
 /** My own reviews, newest cycle first. */
 export async function listMyParticipations(personId: string, executor: Executor = db()): Promise<ParticipantLine[]> {
-  const [rows, directory] = await Promise.all([joined(executor).where(and(eq(schema.reviewParticipant.personId, personId), ne(schema.reviewCycle.status, "draft"))).orderBy(desc(schema.reviewCycle.year)), loadDirectory(executor)]);
+  const [rows, directory] = await Promise.all([
+    joined(executor)
+      .where(and(eq(schema.reviewParticipant.personId, personId), ne(schema.reviewCycle.status, "draft")))
+      .orderBy(desc(schema.reviewCycle.year)),
+    loadDirectory(executor),
+  ]);
   return toLines(rows, directory, executor);
 }
 

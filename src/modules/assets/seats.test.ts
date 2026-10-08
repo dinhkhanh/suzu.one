@@ -22,9 +22,28 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
-import { assignAsset, assignSeat, cancelReturnTasks, licenceTotals, type LicenceInput, listLicences, listSeatsOfAsset, listSeatsOfLicence, listSeatsOfPerson, openReturnTasks, registerAsset, releaseSeat, saveLicence, setAssetStatus } from "./service";
+import {
+  assignAsset,
+  assignSeat,
+  cancelReturnTasks,
+  licenceTotals,
+  type LicenceInput,
+  listLicences,
+  listSeatsOfAsset,
+  listSeatsOfLicence,
+  listSeatsOfPerson,
+  openReturnTasks,
+  registerAsset,
+  releaseSeat,
+  saveLicence,
+  setAssetStatus,
+} from "./service";
 
-const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const fails = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "no error",
+    (error: Error) => error.message,
+  );
 const principal = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 
 type PersonKey = "keeper" | "chi" | "huy" | "tam" | "long" | "gone";
@@ -43,7 +62,10 @@ beforeAll(async () => {
     ["tam", "Bùi Thanh Tâm", "active"],
     ["gone", "Người đã nghỉ", "offboarded"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, status, managerId: key === "huy" || key === "tam" ? ids.long : null }).returning();
+    const [row] = await db()
+      .insert(schema.person)
+      .values({ fullName, searchName: key, primaryEntityId: szm.id, status, managerId: key === "huy" || key === "tam" ? ids.long : null })
+      .returning();
     ids[key] = row.id;
   }
   const [laptop] = await db().insert(schema.assetCategory).values({ code: "LAP", name: "Máy tính xách tay", kind: "it_equipment", sortOrder: 1 }).returning();
@@ -51,10 +73,42 @@ beforeAll(async () => {
   keeper = principal(ids.keeper, [{ role: "asset_admin", scope: { type: "group" } }]);
 });
 
-const licenceInput = (over: Partial<LicenceInput> = {}): LicenceInput => ({ name: "Adobe Creative Cloud", vendor: "Adobe", entityId: ids.szm, seats: 3, costPerCycle: 36_000_000, billingCycle: "annual", renewalDate: "2027-03-14", autoRenews: true, ownerPersonId: ids.chi, accountRef: null, notes: null, status: "active", ...over });
+const licenceInput = (over: Partial<LicenceInput> = {}): LicenceInput => ({
+  name: "Adobe Creative Cloud",
+  vendor: "Adobe",
+  entityId: ids.szm,
+  seats: 3,
+  costPerCycle: 36_000_000,
+  billingCycle: "annual",
+  renewalDate: "2027-03-14",
+  autoRenews: true,
+  ownerPersonId: ids.chi,
+  accountRef: null,
+  notes: null,
+  status: "active",
+  ...over,
+});
 const newLicence = async (over: Partial<LicenceInput> = {}) => (await saveLicence(null, licenceInput(over), ids.keeper)).after;
 let serial = 0;
-const newDevice = () => registerAsset({ categoryId: ids.laptop, entityId: ids.szm, name: "MacBook Pro 14", brand: "Apple", model: null, serial: `SN-${++serial}`, purchaseDate: null, purchasePrice: null, supplier: null, warrantyUntil: null, condition: "good", location: null, notes: null }, ids.keeper);
+const newDevice = () =>
+  registerAsset(
+    {
+      categoryId: ids.laptop,
+      entityId: ids.szm,
+      name: "MacBook Pro 14",
+      brand: "Apple",
+      model: null,
+      serial: `SN-${++serial}`,
+      purchaseDate: null,
+      purchasePrice: null,
+      supplier: null,
+      warrantyUntil: null,
+      condition: "good",
+      location: null,
+      notes: null,
+    },
+    ids.keeper,
+  );
 const toPerson = (licenceId: string, person: PersonKey) => assignSeat({ licenceId, personId: ids[person], assetId: null, note: null }, ids.keeper);
 const toDevice = (licenceId: string, assetId: string) => assignSeat({ licenceId, personId: null, assetId, note: null }, ids.keeper);
 
@@ -180,7 +234,10 @@ describe("what a leaver gives back", () => {
 
     // One for the laptop, one for the seat.
     expect(await db().transaction((tx) => openReturnTasks(tx, leaver, "2026-10-31", ids.keeper))).toBe(2);
-    const [task] = await db().select().from(schema.task).where(and(eq(schema.task.kind, "licence_seat_release"), eq(schema.task.subjectPersonId, leaver)));
+    const [task] = await db()
+      .select()
+      .from(schema.task)
+      .where(and(eq(schema.task.kind, "licence_seat_release"), eq(schema.task.subjectPersonId, leaver)));
     expect(task).toMatchObject({ assigneePersonId: ids.chi, contextId: seat.id, dueDate: "2026-10-31", title: "Thu hồi suất dùng: Adobe của người nghỉ", linkUrl: `/assets/licences/${licence.id}` });
     expect(await db().transaction((tx) => openReturnTasks(tx, leaver, "2026-10-31", ids.keeper))).toBe(0);
 

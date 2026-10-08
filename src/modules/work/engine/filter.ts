@@ -33,7 +33,9 @@ type CustomFilterKey = `cf.${string}`;
  * shows blocked work only; `cycle` is a cycle id or "none"; `cf.<fieldId>` filters by a custom
  * field (engine/custom-fields.ts).
  */
-export type TaskFilters = { q?: string; assignee?: string; state?: string; priority?: string; label?: string; client?: string; due?: string; closed?: string; triage?: string; blocked?: string; cycle?: string } & { [key: CustomFilterKey]: string | undefined };
+export type TaskFilters = { q?: string; assignee?: string; state?: string; priority?: string; label?: string; client?: string; due?: string; closed?: string; triage?: string; blocked?: string; cycle?: string } & {
+  [key: CustomFilterKey]: string | undefined;
+};
 export const FILTER_KEYS = ["q", "assignee", "state", "priority", "label", "client", "due", "closed", "triage", "blocked", "cycle"] as const;
 export const GROUPINGS = ["none", "status", "assignee", "client"] as const;
 export type Grouping = (typeof GROUPINGS)[number];
@@ -95,7 +97,9 @@ const inTriage = (task: FilterableTask) => task.triageStatus === "pending" || ta
 export type FilterContext = { selfId: string | null; today: string; /** The custom fields a `cf.` filter may name; others are ignored. */ fields?: readonly Pick<CustomFieldDef, "id" | "type" | "options">[] };
 
 export function filterTasks<Task extends FilterableTask>(tasks: readonly Task[], filters: TaskFilters, context: FilterContext): Task[] {
-  const words = toSearchKey(filters.q ?? "").split(" ").filter(Boolean);
+  const words = toSearchKey(filters.q ?? "")
+    .split(" ")
+    .filter(Boolean);
   const weekEnd = addDays(context.today, 7);
   const custom = Object.entries(filters).flatMap(([key, value]) => {
     const field = typeof value === "string" && value ? context.fields?.find((row) => row.id === fieldIdOf(key)) : undefined;

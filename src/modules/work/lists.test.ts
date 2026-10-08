@@ -35,8 +35,14 @@ beforeAll(async () => {
   tasks.doneLongAgo = await make("Done long ago", "2026-06-01");
   tasks.backlog = await make("In the backlog", null, null);
   // Closed by hand, with the times a screen asks about.
-  await db().update(schema.task).set({ status: "done", updatedAt: new Date("2026-10-03T03:00:00Z") }).where(eq(schema.task.id, tasks.doneLately));
-  await db().update(schema.task).set({ status: "cancelled", updatedAt: new Date("2026-06-02T03:00:00Z") }).where(eq(schema.task.id, tasks.doneLongAgo));
+  await db()
+    .update(schema.task)
+    .set({ status: "done", updatedAt: new Date("2026-10-03T03:00:00Z") })
+    .where(eq(schema.task.id, tasks.doneLately));
+  await db()
+    .update(schema.task)
+    .set({ status: "cancelled", updatedAt: new Date("2026-06-02T03:00:00Z") })
+    .where(eq(schema.task.id, tasks.doneLongAgo));
 });
 
 const idsOf = (slice: { items: { id: string }[] }) => slice.items.map((item) => item.id).sort();
@@ -74,7 +80,15 @@ describe("a screen's slice of a project's tasks (PERF-03)", () => {
     const cut = await listTaskSlice({ projectId: ids.project }, { closed: "all" }, db(), 4);
     expect(cut.total).toBe(5);
     expect(idsOf(cut)).toEqual(sorted("open1", "open2", "open3", "doneLately"));
-    const ranks = await db().select({ id: schema.workTask.taskId, rank: schema.workTask.boardRank, number: schema.workTask.number }).from(schema.workTask).where(inArray(schema.workTask.taskId, cut.items.map((item) => item.id)));
+    const ranks = await db()
+      .select({ id: schema.workTask.taskId, rank: schema.workTask.boardRank, number: schema.workTask.number })
+      .from(schema.workTask)
+      .where(
+        inArray(
+          schema.workTask.taskId,
+          cut.items.map((item) => item.id),
+        ),
+      );
     const order = ranks.sort((a, b) => a.rank - b.rank || a.number - b.number).map((row) => row.id);
     expect(cut.items.map((item) => item.id)).toEqual(order);
   });
