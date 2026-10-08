@@ -390,7 +390,8 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
         </div>
       </div>
 
-      <QuickAdd labels={quickAdd} />
+      {/* Not over the assistant's page: its question box takes the foot of the screen. */}
+      {pathname === "/assistant" || pathname.startsWith("/assistant/") ? null : <QuickAdd labels={quickAdd} />}
 
       <nav className="tab-bar" aria-label={labels.menu}>
         {tabs.map((tab) => (

@@ -562,6 +562,30 @@
   @apply inline-flex gap-0.5 rounded-[10px] bg-muted p-[3px];
 }
 
+/* Words for work under way ("Đang suy nghĩ…"): a light passes along them, AI Elements' Shimmer in
+   CSS. Still, in the muted colour, for a reader who asked for less motion. */
+@utility shimmer {
+  background-image: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer 2s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-image: none;
+    color: var(--muted-foreground);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
 /* A link that is always underlined is a plain text link, and reads as one: in the link colour
    unless the caller gave it a colour of its own (base layer, so any text utility wins). */
 @layer base {
