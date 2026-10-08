@@ -350,7 +350,8 @@ export function AssistantChat({
             rows={1}
             maxLength={QUESTION_MAX}
             placeholder={t("placeholder")}
-            className={cn("max-h-40 min-h-[2.25rem] w-full flex-1 resize-none self-center bg-transparent py-2 text-sm leading-5 outline-none [field-sizing:content] placeholder:text-faint", !sheet && "md:min-h-[3rem]")}
+            enterKeyHint="send"
+            className={cn("max-h-40 min-h-[2.25rem] w-full flex-1 resize-none self-center bg-transparent py-2 text-base leading-5 md:text-sm outline-none [field-sizing:content] placeholder:text-faint", !sheet && "md:min-h-[3rem]")}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
